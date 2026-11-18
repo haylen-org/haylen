@@ -200,8 +200,14 @@ class ProjectResolverTest:
 
         fixed = fixture.app({"plugins": {"kit": {}}, "platforms": {"fake": {"minimumSystemVersion": "3.0"}}}, "fixed")
         fixture.plugin(fixed, "kit", plugin)
-        with pytest.raises(UnsupportedTarget, match=r'The app runs on "fake" 3.0 and newer, .* while the plugin "kit" needs 3.1.'):
+        with pytest.raises(UnsupportedTarget, match=r'The app runs on "fake" 3.0 and newer, .* while the plugin "kit" needs 3.1. Raise'):
             fixture.resolve(fixed)
+
+        both = fixture.app({"plugins": {"kit": {}, "pack": {}}, "platforms": {"fake": {"minimumSystemVersion": "3.0"}}}, "both")
+        fixture.plugin(both, "kit", plugin)
+        fixture.plugin(both, "pack", {**plugin, "contributions": [{"type": "minimumSystemVersion", "platforms": ["fake"], "version": "3.2"}]})
+        with pytest.raises(UnsupportedTarget, match=r'says, while the plugin "kit" needs 3.1 and the plugin "pack" needs 3.2. Raise'):
+            fixture.resolve(both)
 
     def test_an_sdk_too_new_for_the_app_does_not_serve_it(self, tmp_path):
         fixture = ToolingFixture(tmp_path)

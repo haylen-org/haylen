@@ -43,7 +43,7 @@ class ProjectResolver:
         target = self.registry.target(request.target)
         description = target.description
         if app.kind not in description.kinds:
-            raise UnsupportedTarget(f'The target "{description.name}" does not build {app.kind.value} apps, and `{app.origin}` describes one.', origin=app.origin)
+            raise UnsupportedTarget(f'The target "{description.name}" does not build apps of the kind "{app.kind.value}", and `{app.origin}` describes one.', origin=app.origin)
         if request.architectures:
             unknown = [architecture for architecture in request.architectures if architecture not in description.abis]
             if unknown:
@@ -169,9 +169,10 @@ class ProjectResolver:
             version = Version.parse(str(own))
             higher = [item for needed, item in requirements if needed > version]
             if higher:
-                names = ", ".join(f'"{item.owner}" needs {item.fields["version"]}' for item in higher)
+                needs = [f'the plugin "{item.owner}" needs {item.fields["version"]}' for item in higher]
+                joined = needs[0] if len(needs) == 1 else f"{', '.join(needs[:-1])} and {needs[-1]}"
                 raise UnsupportedTarget(
-                    f'The app runs on "{platform}" {own} and newer, as "platforms.{platform}.minimumSystemVersion" of `{app.origin}` says, while the plugin {names}. Raise the version of the app, or remove the plugin.',
+                    f'The app runs on "{platform}" {own} and newer, as "platforms.{platform}.minimumSystemVersion" of `{app.origin}` says, while {joined}. Raise the version of the app, or remove the plugin.',
                     origin=app.origin,
                 )
             return ResolvedValue(str(own), f'{app.origin} at "platforms.{platform}.minimumSystemVersion"', "The app sets it.")
