@@ -133,6 +133,10 @@ TEST_F(DecisionLuaTest, ChoosesByUtility) {
     EXPECT_NE(lua("brain:score('sleep', bot)").find("unknown option"), std::string::npos);
     EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x', considerations = {{input = function() return 0 end, curve = {shape = 'wave'}}}}})").find("unknown value 'wave'"), std::string::npos);
     EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x', considerations = {{input = function() return 'high' end}}}}):choose({})").find("A utility input must return a number, not string."), std::string::npos);
+    EXPECT_NE(lua("ai.newUtilitySelector({'attack'})").find("An option of a utility selector must be a table, not string."), std::string::npos);
+    EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x'}})").find("The \"considerations\" of an option of a utility selector must be a table, not nil."), std::string::npos);
+    EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x', considerations = {3}}})").find("A consideration of a utility selector must be a table, not number."), std::string::npos);
+    EXPECT_NE(lua("ai.newUtilitySelector({{name = 'x', considerations = {{maximum = 3}}}})").find("The \"input\" of a consideration of a utility selector must be a function, not nil."), std::string::npos);
 }
 
 TEST_F(DecisionLuaTest, InputsScoreTheirOwnSelectorAgain) {

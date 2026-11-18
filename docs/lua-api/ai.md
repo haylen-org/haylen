@@ -595,7 +595,7 @@ The score of an option comes from these steps:
 4. With `n` considerations, each factor `f` becomes `f + (1 - f) * (1 - 1 / n) * f`. This raises the factors toward 1 by a share that grows with `n`, so the product does not punish an option for having many considerations.
 5. The product of the factors, times the weight, is the score.
 
-An unknown key raises `Unknown option "<key>".`, and a key of the wrong type, such as a `weight` of `'high'`, raises `The option "<key>" of "newUtilitySelector" is invalid: <reason>.`. A consideration whose `minimum` equals its `maximum` raises `A consideration needs an input and a range with two different ends.`. An option or a consideration that is not a table, an option without a `considerations` table and a consideration without an `input` function raise a `bad argument` error.
+An unknown key raises `Unknown option "<key>".`, and a key of the wrong type, such as a `weight` of `'high'`, raises `The option "<key>" of "newUtilitySelector" is invalid: <reason>.`. A consideration whose `minimum` equals its `maximum` raises `A consideration needs an input and a range with two different ends.`. An option that is not a table raises `An option of a utility selector must be a table, not <type>.`, and an option without a `considerations` table raises `The "considerations" of an option of a utility selector must be a table, not <type>.`. A consideration that is not a table raises `A consideration of a utility selector must be a table, not <type>.`, and a consideration without an `input` function raises `The "input" of a consideration of a utility selector must be a function, not <type>.`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -941,6 +941,10 @@ print(threat:cellCenter(0, 0)) -- 20.0 20.0
 | `A behavior tree action must return a status name, a boolean or nothing.` | An action returned a value of another type. |
 | `The behavior tree is already ticking.` | A leaf called `tick` on its own tree. |
 | `The behavior tree cannot reset while it ticks. Call "reset" after "tick" returns.` | A leaf called `reset` on its own tree. |
+| `An option of a utility selector must be a table, not <type>.` | An option of `ai.newUtilitySelector` is not a table. |
+| `The "considerations" of an option of a utility selector must be a table, not <type>.` | An option of `ai.newUtilitySelector` has no `considerations` table. |
+| `A consideration of a utility selector must be a table, not <type>.` | A consideration of `ai.newUtilitySelector` is not a table. |
+| `The "input" of a consideration of a utility selector must be a function, not <type>.` | A consideration of `ai.newUtilitySelector` has no `input` function. |
 | `A consideration needs an input and a range with two different ends.` | A consideration has the same `minimum` and `maximum`. |
 | `A utility input must return a number, not <type>.` | An input returned something other than a number. |
 | `Weights must be finite and not negative.` | A random choice met a score that is not finite. |

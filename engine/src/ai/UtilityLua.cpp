@@ -113,19 +113,28 @@ int UtilityLua::newSelector(lua_State* L) {
     for (lua_Integer entry = 1; entry <= optionCount; ++entry) {
         lua_rawgeti(L, 1, entry);
         const int table = lua_gettop(L);
-        luaL_checktype(L, table, LUA_TTABLE);
+        if (!lua_istable(L, table)) {
+            return luaL_error(L, "An option of a utility selector must be a table, not %s.", luaL_typename(L, table));
+        }
+
         lua::Table::checkFields(L, table, {kOptionFields});
         UtilitySelector::Option option;
         lua::Table::readField(L, table, "name", option.name);
         lua::Table::readField(L, table, "weight", option.weight);
 
-        lua_getfield(L, table, "considerations");
-        luaL_checktype(L, -1, LUA_TTABLE);
-        const lua_Integer considerationCount = luaL_len(L, -1);
+        if (lua_getfield(L, table, "considerations") != LUA_TTABLE) {
+            return luaL_error(L, "The \"considerations\" of an option of a utility selector must be a table, not %s.", luaL_typename(L, -1));
+        }
+
+        const int considerations = lua_gettop(L);
+        const lua_Integer considerationCount = luaL_len(L, considerations);
         for (lua_Integer factor = 1; factor <= considerationCount; ++factor) {
-            lua_rawgeti(L, -1, factor);
+            lua_rawgeti(L, considerations, factor);
             const int description = lua_gettop(L);
-            luaL_checktype(L, description, LUA_TTABLE);
+            if (!lua_istable(L, description)) {
+                return luaL_error(L, "A consideration of a utility selector must be a table, not %s.", luaL_typename(L, description));
+            }
+
             lua::Table::checkFields(L, description, {kConsiderationFields});
             UtilitySelector::Consideration& consideration = option.considerations.emplace_back();
             lua::Table::readField(L, description, "name", consideration.name);
@@ -135,8 +144,10 @@ int UtilityLua::newSelector(lua_State* L) {
             consideration.curve = readCurve(L, -1);
             lua_pop(L, 1);
 
-            lua_getfield(L, description, "input");
-            luaL_checktype(L, -1, LUA_TFUNCTION);
+            if (lua_getfield(L, description, "input") != LUA_TFUNCTION) {
+                return luaL_error(L, "The \"input\" of a consideration of a utility selector must be a function, not %s.", luaL_typename(L, -1));
+            }
+
             const lua_Integer input = luaL_len(L, inputs) + 1;
             lua_rawseti(L, inputs, input);
             consideration.input = [scripted, input] { return callInput(*scripted, input); };
