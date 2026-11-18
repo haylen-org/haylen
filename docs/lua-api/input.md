@@ -434,7 +434,7 @@ scene.push({
 
 ### input.setGestureSettings(settings)
 
-Changes the limits of gesture recognition. Only the keys that `settings` holds change. Distances are in design units and times in seconds. An unknown key raises `Unknown option "<key>".`.
+Changes the limits of gesture recognition. Only the keys that `settings` holds change. Distances are in design units and times in seconds. An unknown key raises `Unknown option "<key>".`, and a distance or a time that is negative or not finite raises `The gesture setting "<key>" must be a finite number from 0.`.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2172,6 +2172,7 @@ The face buttons are named by their place, so `south` is the bottom button whate
 | `expected left or right` | The function `input.gamepadStick` got another side. It comes inside a bad argument error. |
 | `Unknown option "<key>".` | An options table has a key that the function does not take, such as the options of `input.newActionMap`, `map.devices`, `input.setGestureSettings`, `input.rumble`, `input.startGamepadMotion`, `input.editText`, `input.newCommandBuffer`, its `directions` and commands, and `input.newRecorder`. |
 | `The gamepad dead zone must be at least 0 and below 1.` | The function `input.setGamepadDeadzone` got a value out of range. |
+| `The gesture setting "<key>" must be a finite number from 0.` | The function `input.setGestureSettings` got a distance or a time that is negative or not finite. |
 | `The scroll speed must be a positive number.` | The function `input.setScrollSpeed` got `0` or less. |
 | `The motors of a rumble run from 0 to 1.` | The `low` or `high` of `input.rumble` is out of range. |
 | `A rumble lasts a positive number of seconds.` | The `seconds` of `input.rumble` are not positive. |

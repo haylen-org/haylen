@@ -30,7 +30,8 @@ class GestureRecognizer final {
         bool mouse = true;
     };
 
-    explicit GestureRecognizer(const Settings& value = kDefaultSettings) : settings(value) {}
+    // Throws `std::invalid_argument` for a distance or a time that is negative or not finite, as `setSettings` does.
+    explicit GestureRecognizer(const Settings& value = kDefaultSettings);
 
     void update(const Input& input, float deltaSeconds);
 
@@ -44,9 +45,7 @@ class GestureRecognizer final {
     [[nodiscard]] const Settings& getSettings() const noexcept {
         return settings;
     }
-    void setSettings(const Settings& value) noexcept {
-        settings = value;
-    }
+    void setSettings(const Settings& value);
 
   private:
     // Where the two fingers of a pinch began: how far apart, at which angle from the first finger to the second and around which center.
@@ -67,6 +66,7 @@ class GestureRecognizer final {
 
     static const Settings kDefaultSettings;
 
+    static void validate(const Settings& value);
     void moveTo(Pointer& pointer, math::Vec2 position) const noexcept;
     void finish(const Pointer& pointer);
     void recognizePinch(const Input& input);

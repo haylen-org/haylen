@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <limits>
 #include <numbers>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -244,6 +246,13 @@ TEST_F(GestureTest, TreatsTheMouseAsOneFinger) {
     EXPECT_EQ(frame(), Names{});
 }
 
+TEST_F(GestureTest, RejectsSettingsThatAreNegativeOrNotFinite) {
+    EXPECT_THROW(gestures.setSettings({.longPressDuration = -0.5F}), std::invalid_argument);
+    EXPECT_THROW(gestures.setSettings({.doubleTapDistance = std::numeric_limits<float>::infinity()}), std::invalid_argument);
+    EXPECT_THROW(GestureRecognizer({.tapMaxDuration = std::numeric_limits<float>::quiet_NaN()}), std::invalid_argument);
+    EXPECT_EQ(gestures.getSettings().longPressDuration, 0.5F);
+}
+
 TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
     test::EngineFixture fixture;
     fixture.runLua("input = require('haylen.input') seen = {} require('haylen.scene').push({update = function() for _, g in ipairs(input.gestures()) do seen[#seen + 1] = string.format('%s@%g,%g:%g,%g*%g/%.2f', g.type, g.x, g.y, g.dx, g.dy, g.scale, g.rotation) end end})");
@@ -267,6 +276,9 @@ TEST(GestureLuaTest, ListsGesturesOfTheFrame) {
     EXPECT_EQ(fixture.lua("return seen[2]"), "pinch@400,400:-50,100*2/1.57");
     EXPECT_EQ(fixture.lua("input.setGestureSettings({longPressDuration = 1, mouse = false}) return 'ok'"), "ok");
     EXPECT_NE(fixture.lua("input.setGestureSettings({hold = 1})").find("Unknown option \"hold\""), std::string::npos);
+    EXPECT_NE(fixture.lua("input.setGestureSettings({tapMaxMovement = -1})").find("The gesture setting \"tapMaxMovement\" must be a finite number from 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("input.setGestureSettings({swipeMaxDuration = 0 / 0})").find("The gesture setting \"swipeMaxDuration\" must be a finite number from 0."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return tostring(input.gestureSettings().tapMaxMovement == 24)"), "true");
     EXPECT_EQ(Gesture::typeName(Gesture::Type::LongPress), "longPress");
 }
 

@@ -1,13 +1,45 @@
 #include "haylen/input/GestureRecognizer.hpp"
 
+#include <array>
 #include <cmath>
 #include <numbers>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
 
 #include "haylen/input/Input.hpp"
 
 namespace haylen::input {
 
 const GestureRecognizer::Settings GestureRecognizer::kDefaultSettings{};
+
+GestureRecognizer::GestureRecognizer(const Settings& value) : settings(value) {
+    validate(settings);
+}
+
+void GestureRecognizer::validate(const Settings& value) {
+    const std::array<std::pair<std::string_view, float>, 7> limits{{
+        {"tapMaxDuration", value.tapMaxDuration},
+        {"tapMaxMovement", value.tapMaxMovement},
+        {"doubleTapInterval", value.doubleTapInterval},
+        {"doubleTapDistance", value.doubleTapDistance},
+        {"longPressDuration", value.longPressDuration},
+        {"swipeMinDistance", value.swipeMinDistance},
+        {"swipeMaxDuration", value.swipeMaxDuration},
+    }};
+
+    for (const auto& [name, limit] : limits) {
+        if (!(limit >= 0.0F) || !std::isfinite(limit)) {
+            throw std::invalid_argument("The gesture setting \"" + std::string(name) + "\" must be a finite number from 0.");
+        }
+    }
+}
+
+void GestureRecognizer::setSettings(const Settings& value) {
+    validate(value);
+    settings = value;
+}
 
 void GestureRecognizer::update(const Input& input, float deltaSeconds) {
     gestures.clear();
