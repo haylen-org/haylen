@@ -856,7 +856,7 @@ void Renderer::strokePath(const Path& path, const Stroke& stroke, const DrawOrde
 
 std::uint64_t Renderer::addCanvasOverlay(CanvasOverlay overlay) {
     const std::uint64_t id = state->nextOverlay++;
-    state->overlays.emplace_back(id, std::move(overlay));
+    state->overlays.emplace_back(id, std::make_shared<const CanvasOverlay>(std::move(overlay)));
     return id;
 }
 
@@ -1088,16 +1088,19 @@ void Renderer::runOverlays() {
         return;
     }
 
-    std::vector<std::pair<std::uint64_t, CanvasOverlay>>& overlays = state->overlaySnapshot;
-    overlays = state->overlays;
+    std::vector<std::shared_ptr<const CanvasOverlay>>& overlays = state->overlaySnapshot;
+    for (const auto& entry : state->overlays) {
+        overlays.push_back(entry.second);
+    }
+
     state->clipStack.clear();
     state->clearFades();
     state->layerOffsets.clear();
     state->layerOffset = 0;
     state->drawingOverlays = true;
     try {
-        for (const auto& [id, overlay] : overlays) {
-            overlay(*this);
+        for (const std::shared_ptr<const CanvasOverlay>& overlay : overlays) {
+            (*overlay)(*this);
         }
     } catch (...) {
         overlays.clear();

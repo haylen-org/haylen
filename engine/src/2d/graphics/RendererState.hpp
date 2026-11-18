@@ -226,9 +226,9 @@ struct RendererState {
     // Turns the layout of every text draw into instances, reusing its batches from draw to draw.
     TextPainter painter;
 
-    // The canvas overlays by id, the copy of them that runs as a canvas closes, and whether they are drawing, which keeps them from running inside each other.
-    std::vector<std::pair<std::uint64_t, Renderer::CanvasOverlay>> overlays;
-    std::vector<std::pair<std::uint64_t, Renderer::CanvasOverlay>> overlaySnapshot;
+    // The canvas overlays by id, the copy of them that runs as a canvas closes, and whether they are drawing, which keeps them from running inside each other. The copy shares the functions, so taking it allocates nothing once it has grown.
+    std::vector<std::pair<std::uint64_t, std::shared_ptr<const Renderer::CanvasOverlay>>> overlays;
+    std::vector<std::shared_ptr<const Renderer::CanvasOverlay>> overlaySnapshot;
     std::uint64_t nextOverlay = 1;
     bool drawingOverlays = false;
 

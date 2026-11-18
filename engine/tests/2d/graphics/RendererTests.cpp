@@ -720,6 +720,33 @@ TEST(RendererTest, DrawsMetaballsFromManyPoints) {
     fixture.frames(1);
 }
 
+// An overlay whose function holds more than a function keeps in place runs in every canvas without copying the function, so it allocates nothing once the frames repeat.
+TEST(RendererTest, RunsCanvasOverlaysWithoutAllocating) {
+    test::EngineFixture fixture;
+    Renderer& renderer = fixture.engine().getRenderer2D();
+    // clang-format off
+    const auto measure = [&fixture] {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([](core::Engine& engine) {
+            engine.getRenderer2D().beginScreen();
+        }));
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure();
+
+    const std::array<float, 16> corners{};
+    // clang-format off
+    const std::uint64_t overlay = renderer.addCanvasOverlay([corners](Renderer& drawing) {
+        drawing.drawRect({corners[0], corners[1], 4.0F, 4.0F}, math::Color::white());
+    });
+    // clang-format on
+    EXPECT_EQ(measure(), empty);
+    renderer.removeCanvasOverlay(overlay);
+}
+
 // Once its storage has grown, a frame that draws every kind of draw allocates no more than an empty frame, so the renderer, the text painter and the submission reuse what they hold.
 TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
     test::EngineFixture fixture;
