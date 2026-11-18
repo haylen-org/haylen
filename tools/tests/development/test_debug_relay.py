@@ -2,6 +2,8 @@ import io
 import json
 import socket
 
+import pytest
+
 from haylen.core.package_layout import PackageLayout
 from haylen.development.debug_message import DebugMessage
 from haylen.development.debug_relay import DebugRelay
@@ -83,4 +85,39 @@ class DebugRelayTest:
         finally:
             stream.close()
             editor.close()
+            relay.close()
+
+    def test_a_message_that_the_protocol_cannot_read_is_reported_and_a_failure_of_the_relay_is_never_an_editor_that_left(self, tmp_path, monkeypatch):
+        fixture = DevelopmentFixture(tmp_path, monkeypatch)
+        with pytest.raises(ValueError, match='header "Content-Length" is "ten"'):
+            DebugMessage.read(io.BytesIO(b"Content-Length: ten\r\n\r\n{}"))
+        with pytest.raises(ValueError, match="not a JSON object"):
+            DebugMessage.read(io.BytesIO(DebugMessage.frame([])))
+
+        relay = DebugRelay(PackageLayout.of(fixture.folder, {}), 0, fixture.context.terminal)
+        try:
+            editor, connection = socket.socketpair()
+            relay.editor = connection
+            editor.sendall(b"Content-Length: 2\r\n\r\n{]")
+            editor.close()
+            relay.read(connection)
+            printed = fixture.output.getvalue()
+            assert "The editor sent a message whose body is not JSON" in printed
+            assert "The debugger closed the connection of the editor." in printed
+            assert "The editor left the debugger." not in printed
+            assert relay.editor is None
+
+            def broken(message: dict) -> None:
+                raise ValueError("A defect of the relay.")
+
+            monkeypatch.setattr(relay, "from_editor", broken)
+            editor, connection = socket.socketpair()
+            relay.editor = connection
+            editor.sendall(DebugMessage.frame({"seq": 1, "type": "request", "command": "threads"}))
+            editor.close()
+            with pytest.raises(ValueError, match="A defect of the relay"):
+                relay.read(connection)
+            assert "The editor left the debugger." not in fixture.output.getvalue()
+            assert relay.editor is None
+        finally:
             relay.close()

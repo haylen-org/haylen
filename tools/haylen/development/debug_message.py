@@ -8,7 +8,7 @@ class DebugMessage:
 
     @staticmethod
     def read(stream: BinaryIO) -> dict | None:
-        """Reads one message, and returns nothing once the connection ended."""
+        """Reads one message, and returns nothing once the connection ended. A header without a whole length or a body that is not a JSON object fails with a `ValueError` whose message says which."""
         length = None
         while True:
             line = stream.readline()
@@ -19,14 +19,26 @@ class DebugMessage:
                 break
             name, _, value = line.decode("ascii", errors="replace").partition(":")
             if name.strip().lower() == "content-length":
-                length = int(value.strip())
+                length = DebugMessage.read_length(value.strip())
 
         if length is None:
             return None
         body = stream.read(length)
         if len(body) < length:
             return None
-        return json.loads(body)
+        try:
+            message = json.loads(body)
+        except ValueError as error:
+            raise ValueError(f"The editor sent a message whose body is not JSON: {error}.") from error
+        if not isinstance(message, dict):
+            raise ValueError("The editor sent a message whose body is not a JSON object.")
+        return message
+
+    @staticmethod
+    def read_length(text: str) -> int:
+        if not text.isdigit():
+            raise ValueError(f'The editor sent a message whose header "Content-Length" is "{text}", not a whole number of bytes.')
+        return int(text)
 
     @staticmethod
     def frame(message: dict) -> bytes:

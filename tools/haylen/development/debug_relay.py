@@ -3,6 +3,7 @@ import json
 import socket
 import threading
 from pathlib import Path
+from typing import BinaryIO
 
 from haylen.core.errors.development_failed import DevelopmentFailed
 from haylen.core.package_layout import PackageLayout
@@ -66,12 +67,28 @@ class DebugRelay:
             threading.Thread(target=self.read, args=(connection,), daemon=True).start()
 
     def read(self, connection: socket.socket) -> None:
-        """Hands every message of the editor to the app until the editor leaves, and then lets the app forget it, as a request "disconnect" does."""
+        """Hands every message of the editor to the app until the editor leaves or sends a message that the protocol cannot read, which it reports, and then lets the app forget the editor, as a request "disconnect" does. A failure of the relay itself reaches the log of the thread instead of reading as an editor that left."""
         stream = connection.makefile("rb")
-        with contextlib.suppress(OSError, ValueError):
-            while (message := DebugMessage.read(stream)) is not None:
-                self.from_editor(message)
+        try:
+            self.relay(stream)
+        finally:
+            self.forget(connection)
 
+    def relay(self, stream: BinaryIO) -> None:
+        while True:
+            try:
+                message = DebugMessage.read(stream)
+            except OSError:
+                message = None
+            except ValueError as error:
+                self.terminal.error(f"{error} The debugger closed the connection of the editor.")
+                return
+            if message is None:
+                self.terminal.info("The editor left the debugger.")
+                return
+            self.from_editor(message)
+
+    def forget(self, connection: socket.socket) -> None:
         with self.lock:
             if self.editor is connection:
                 self.editor = None
@@ -81,7 +98,6 @@ class DebugRelay:
         if app is not None:
             self.send_app(app, self.replay_request("disconnect"))
         connection.close()
-        self.terminal.info("The editor left the debugger.")
 
     def to_package(self, path: str) -> str:
         return self.layout.to_package(Path(path)) or path
