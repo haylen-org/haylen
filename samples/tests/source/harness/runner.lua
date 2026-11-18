@@ -9,6 +9,7 @@ local window = require('haylen.window')
 
 local catalog = require('harness.catalog')
 local navigation = require('harness.navigation')
+local shard = require('harness.shard')
 local Unsupported = require('harness.unsupported')
 
 local runner = {}
@@ -66,6 +67,15 @@ function runner.start()
             runner.queue[#runner.queue + 1] = test
         end
     end
+
+    -- The headless player runs only the categories of its shard when several machines share the run.
+    local shardIndex, shardCount = nil, nil
+    if haylen.platform == 'headless' then
+        shardIndex, shardCount = shard.read()
+    end
+    if shardIndex then
+        runner.queue = shard.select(runner.queue, shardIndex, shardCount)
+    end
     runner.index = 0
     runner.failures = {}
 
@@ -115,7 +125,11 @@ function runner.start()
         runner.show()
     end, {priority = 10})
 
-    log.info(string.format('Running %d tests on "%s".', #runner.queue, haylen.platform))
+    if shardIndex then
+        log.info(string.format('Running %d tests on "%s", the shard %d of %d.', #runner.queue, haylen.platform, shardIndex, shardCount))
+    else
+        log.info(string.format('Running %d tests on "%s".', #runner.queue, haylen.platform))
+    end
     runner.reset()
     runner.next()
 end

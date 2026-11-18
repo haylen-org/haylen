@@ -6,12 +6,18 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 - Desktop: `haylen app run samples/tests` runs the project in the player of the desktop SDK with hot reload, once `haylen sdk build --target player` built that SDK.
 - A target: `haylen app run samples/tests --target ios-simulator`, and the same with `tvos-simulator`, `android`, `web`, `macos`, `windows` or `linux`, once `haylen sdk build --target <target>` built the SDK of the target.
-- Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error, failed a check of their results or whose scene failed to load, and exits with the status 1 when any test failed, which the CI job `tests-project` does on every push:
+- Automatic: the headless player runs every test that the headless platform supports, one after the other for 2 seconds each, lists the tests that raised an error, failed a check of their results or whose scene failed to load, and exits with the status 1 when any test failed:
 
 ```sh
 haylen engine build --target haylen-headless
 haylen engine build --target haylen-native-test
 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
+```
+
+- Shards: the variable `HAYLEN_TESTS_SHARD` of the headless player names one part of the automatic run, such as `2/4`, so several machines run the project side by side, as the CI job `test-project` does on every push. Whole categories go to the shards, the category with the most tests first, each to the shard with the fewest tests so far, so the shards take about the same time and together run every test once:
+
+```sh
+HAYLEN_TESTS_SHARD=2/4 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
 - UI tests: `haylen test --ui samples/tests --platform ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--platform visionos-simulator` taps the menu with a look and a pinch.
@@ -36,7 +42,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | --- | --- |
 | `haylen.json` | The project in landscape at a design size of 1920 by 1080, the autoload of the Events tests, the native test libraries and the plugins the tests use. |
 | `source/main.lua` | Loads the catalog, makes the app recoverable and opens the menu, or starts the automatic run on the headless platform. |
-| `source/harness/` | What every test shares: the catalog of the manifests, the menu, the test list, the base class `Test` with its frame and play area, the unsupported page, the automatic run, rows of checks, a log of lines, a pointer for every device and the way between the screens. |
+| `source/harness/` | What every test shares: the catalog of the manifests, the menu, the test list, the base class `Test` with its frame and play area, the unsupported page, the automatic run with its shards, rows of checks, a log of lines, a pointer for every device and the way between the screens. |
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |
 | `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |

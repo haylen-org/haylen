@@ -386,6 +386,8 @@ On the headless platform the test project runs every test that supports the plat
 
 So the headless player exits with 1 when a test raised an error, failed a check or its scene failed to load. A test that needs a person, a device or a native part that the headless host does not load lists `headless` among its unsupported platforms in its manifest.
 
+The variable `HAYLEN_TESTS_SHARD` of the headless player, such as `HAYLEN_TESTS_SHARD=2/4`, runs one part of the automatic run, so several machines run the project side by side. Whole categories go to the shards, the category with the most tests first, each to the shard with the fewest tests so far, so the shards take about the same time and together run every test once. Every test starts from the progress screen alone on the stack and restores what it changed, so it passes whichever tests ran before it.
+
 ## The UI tests
 
 The UI tests drive an app on a simulator the way a person does: they tap, drag and use the system UI, such as the controls that arrange the windows of iPadOS. They run on the iOS and iPadOS simulators, on the Apple TV simulator, where a test presses the buttons of the remote through `XCUIRemote` and types on the keyboard of the system, and on the Apple Vision Pro simulator, where a tap arrives as a look and a pinch.
