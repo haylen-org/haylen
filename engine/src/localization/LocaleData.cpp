@@ -1,7 +1,6 @@
 #include "localization/LocaleData.hpp"
 
 #include <algorithm>
-#include <cctype>
 
 namespace haylen::localization {
 
@@ -618,30 +617,16 @@ const std::array<LocaleData::Locale, 29> LocaleData::kLocales{{
         },}};
 // clang-format on
 
-// Tags compare without case and with dashes or underscores, so `pt_br` finds `pt-BR`.
+// A tag without data of its own takes the data of its language, so `pt-BR` uses `pt`.
 const LocaleData::Locale& LocaleData::find(std::string_view language) noexcept {
-    // clang-format off
-    const auto same = [](std::string_view left, std::string_view right) {
-        return left.size() == right.size() && std::ranges::equal(left, right, [](char first, char second) {
-            const auto normal = [](char character) { return character == '_' ? '-' : static_cast<char>(std::tolower(static_cast<unsigned char>(character))); };
-            return normal(first) == normal(second);
-        });
-    };
-    // clang-format on
-    for (const Locale& locale : kLocales) {
-        if (same(locale.tag, language)) {
-            return locale;
-        }
+    const auto exact = std::ranges::find(kLocales, language, &Locale::tag);
+    if (exact != kLocales.end()) {
+        return *exact;
     }
 
-    const std::string_view base = language.substr(0, language.find_first_of("-_"));
-    for (const Locale& locale : kLocales) {
-        if (same(locale.tag, base)) {
-            return locale;
-        }
-    }
-
-    return kLocales.front();
+    const std::string_view base = language.substr(0, language.find('-'));
+    const auto general = std::ranges::find(kLocales, base, &Locale::tag);
+    return general != kLocales.end() ? *general : kLocales.front();
 }
 
 } // namespace haylen::localization

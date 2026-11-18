@@ -159,4 +159,11 @@ TEST(LocalizationFormatLuaTest, FormatsAndPicksPluralFormsFromLua) {
     EXPECT_NE(fixture.lua("localization.formatList({'a'}, {type = 'xor'})").find("The type of a list must be \"and\" or \"or\"."), std::string::npos);
 }
 
+TEST(LocalizationFormatLuaTest, ReadsTheLanguageOptionInAnyFormOfItsTag) {
+    test::EngineFixture fixture;
+    fixture.runLua("localization = require('haylen.localization')");
+    EXPECT_EQ(fixture.lua("return localization.pluralCategory(3, {language = 'RU'}) .. ' ' .. localization.formatNumber(1234.5, {language = 'PT_br'})"), "few 1.234,5");
+    EXPECT_NE(fixture.lua("localization.formatList({'a'}, {language = 'not a tag'})").find("The language tag \"not a tag\" is not valid."), std::string::npos);
+}
+
 } // namespace haylen::localization

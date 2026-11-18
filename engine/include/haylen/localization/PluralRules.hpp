@@ -8,7 +8,7 @@
 
 namespace haylen::localization {
 
-// Picks the plural category of a count by the rules of a language, the categories of the Unicode plural rules: `zero`, `one`, `two`, `few`, `many` and `other`. Cardinal rules count things, as in "3 apples", and ordinal rules rank them, as in "3rd". A language without rules of its own, or without ordinal rules, uses `other` for every count.
+// Picks the plural category of a count by the rules of a language, the categories of the Unicode plural rules: `zero`, `one`, `two`, `few`, `many` and `other`. Cardinal rules count things, as in "3 apples", and ordinal rules rank them, as in "3rd". A language without rules of its own, or without ordinal rules, uses `other` for every count. The language is a tag in the canonical form that `Catalog::normalizeTag` returns.
 class PluralRules final {
   public:
     enum class Category : std::uint8_t {

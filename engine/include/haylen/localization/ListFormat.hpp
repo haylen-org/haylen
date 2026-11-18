@@ -10,7 +10,7 @@
 
 namespace haylen::localization {
 
-// Joins items into a list in a language, such as "apples, pears, and plums" or "red or blue".
+// Joins items into a list in a language, such as "apples, pears, and plums" or "red or blue". The language is a tag in the canonical form that `Catalog::normalizeTag` returns.
 class ListFormat final {
   public:
     enum class Type : std::uint8_t {

@@ -9,7 +9,7 @@
 
 namespace haylen::localization {
 
-// Writes a moment in Unix seconds as a date, a time or both, in the patterns, month and day names and clock of a language, in the time zone of the device or at a fixed offset from UTC. Languages without names of months in the table write every style of date with numbers.
+// Writes a moment in Unix seconds as a date, a time or both, in the patterns, month and day names and clock of a language, in the time zone of the device or at a fixed offset from UTC. Languages without names of months in the table write every style of date with numbers. The language is a tag in the canonical form that `Catalog::normalizeTag` returns.
 class DateFormat final {
   public:
     enum class Style : std::uint8_t {

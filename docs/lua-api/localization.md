@@ -353,9 +353,9 @@ local intro = assets.load(localization.assetPath('voice/intro.ogg'))
 
 ## Plurals, numbers, dates and lists
 
-These functions follow the current language, or the language of the option `language`. An unknown option raises `Unknown option "<key>".`.
+These functions follow the current language, or the language of the option `language`, a language tag in any form, such as `pt-BR`, `pt_BR` or `PT_br`. A `language` that is no language tag raises the error of [`localization.normalizeTag`](#localizationnormalizetagtag). An unknown option raises `Unknown option "<key>".`.
 
-Numbers, dates and lists know the marks and the words of these languages: `en`, `en-GB`, `es`, `pt`, `fr`, `de`, `it`, `nl`, `sv`, `da`, `nb`, `fi`, `pl`, `cs`, `ru`, `uk`, `tr`, `ja`, `zh`, `ko`, `ar`, `he`, `hi`, `id`, `vi`, `th`, `el`, `ro` and `hu`. The tags match without regard to case, with `-` or `_`. Another tag takes the data of its base language, so `pt-BR` uses `pt`. A language outside the list, or no language at all, uses English.
+Numbers, dates and lists know the marks and the words of these languages: `en`, `en-GB`, `es`, `pt`, `fr`, `de`, `it`, `nl`, `sv`, `da`, `nb`, `fi`, `pl`, `cs`, `ru`, `uk`, `tr`, `ja`, `zh`, `ko`, `ar`, `he`, `hi`, `id`, `vi`, `th`, `el`, `ro` and `hu`. Another tag takes the data of its base language, so `pt-BR` uses `pt`. A language outside the list, or no language at all, uses English.
 
 ### localization.pluralCategory(count, options)
 

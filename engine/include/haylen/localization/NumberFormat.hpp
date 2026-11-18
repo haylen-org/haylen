@@ -9,7 +9,7 @@
 
 namespace haylen::localization {
 
-// Writes numbers with the decimal mark, the grouping, the percent sign, the currency place and the short scales of a language: decimals, percentages of a ratio, amounts of a currency by its ISO code and compact numbers such as `1.2K` or `1,2 Mio.`.
+// Writes numbers with the decimal mark, the grouping, the percent sign, the currency place and the short scales of a language: decimals, percentages of a ratio, amounts of a currency by its ISO code and compact numbers such as `1.2K` or `1,2 Mio.`. The language is a tag in the canonical form that `Catalog::normalizeTag` returns.
 class NumberFormat final {
   public:
     enum class Style : std::uint8_t {

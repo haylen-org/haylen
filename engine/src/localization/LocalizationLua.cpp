@@ -25,6 +25,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/text/Style.hpp"
+#include "localization/LanguageTag.hpp"
 
 namespace haylen::localization {
 
@@ -157,13 +158,15 @@ int LocalizationLua::normalizeTag(lua_State* L) {
     return 1;
 }
 
+// The option takes a language tag in any form, so its canonical form picks the rules and the marks that the catalog would pick for it.
 std::string LocalizationLua::readLanguage(lua_State* L, int index) {
-    std::string language = getCatalog(L).getLanguage();
-    if (lua_istable(L, index)) {
-        lua::Table::readField(L, index, "language", language);
+    if (!lua_istable(L, index)) {
+        return getCatalog(L).getLanguage();
     }
 
-    return language;
+    std::optional<std::string> language;
+    lua::Table::readField(L, index, "language", language);
+    return language ? LanguageTag::normalize(*language) : getCatalog(L).getLanguage();
 }
 
 // Writes a number with `formatNumber(value[, {style, minimumFractionDigits, maximumFractionDigits, currency, grouping, language}])`.

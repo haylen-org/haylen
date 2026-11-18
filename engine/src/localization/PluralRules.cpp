@@ -50,7 +50,7 @@ PluralRules::Operands PluralRules::operandsOf(double count) noexcept {
 }
 
 std::string_view PluralRules::baseOf(std::string_view language) noexcept {
-    return language.substr(0, language.find_first_of("-_"));
+    return language.substr(0, language.find('-'));
 }
 
 PluralRules::Category PluralRules::select(std::string_view language, double count) noexcept {
