@@ -19,7 +19,6 @@ class PluginManifest:
     """The `plugin.json` of a plugin folder, read and checked once: its identity, the version of the plugin interface it follows, how it works on each platform, the plugins it depends on, the permissions it owns, its parameters and its typed contributions. The engine reads the same file from the package."""
 
     FILE = "plugin.json"
-    INTERFACE = 1
     # The permissions that the engine answers itself, which no plugin declares.
     ENGINE_PERMISSIONS = ("screens", "localNetwork")
     # A placeholder of a parameter in a value of a contribution. Build settings such as `$(NAME)` and shell expansions such as `${BUILD_DIR%/Build/*}` are no placeholders.
