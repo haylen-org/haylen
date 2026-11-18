@@ -195,7 +195,7 @@ class MapRenderer final {
     void drawTree(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& parent, const View& view, const DrawOptions& options);
     void drawTiles(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const DrawOptions& options);
     void drawObjects(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const DrawOptions& options);
-    void drawImage(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const graphics2d::DrawOrder& order) const;
+    void drawImage(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const graphics2d::DrawOrder& order);
 
     // Bakes a tile layer into regions of 32 by 32 cells, or into rows of cells that stand on the same y for `ysort`. A layer that baked before bakes only its stale regions again.
     void bake(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, LayerCache& cache, bool rows) const;
@@ -209,6 +209,7 @@ class MapRenderer final {
     std::shared_ptr<text::Font> font;
     std::map<std::pair<std::uint32_t, bool>, LayerCache> caches;
     std::map<std::uint32_t, std::vector<std::size_t>> objectOrders;
+    std::vector<graphics2d::SpriteInstance> imageCopies;
     std::vector<TileCollision> collisions;
     float time = 0.0F;
 };

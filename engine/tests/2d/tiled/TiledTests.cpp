@@ -685,6 +685,25 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     EXPECT_THROW((void)assets.load("tiled", "maps/island.tmj", {{"scale", 2}}), std::invalid_argument);
 }
 
+TEST_F(MapRendererTest, DrawsTheSameMapAgainWithoutAllocating) {
+    test::EngineFixture fixture(packageFiles());
+    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+    const tiled::MapRenderer::View view{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
+    // clang-format off
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+        map.draw(engine.getRenderer2D(), view);
+    }));
+    // clang-format on
+    fixture.frames(3);
+
+    // The sky repeats across the view, and its copies reuse the storage of the frame before.
+    const test::AllocationTracker tracker;
+    fixture.frames(5);
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST_F(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
     // The ground is 40 cells wide, which makes two regions across, with one tile on the left and none on the right.
     core::Json document = orthogonalMap();

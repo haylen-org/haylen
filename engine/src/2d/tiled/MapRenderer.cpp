@@ -808,7 +808,7 @@ void MapRenderer::drawObjects(graphics2d::Renderer& renderer, const Layer& layer
     }
 }
 
-void MapRenderer::drawImage(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const graphics2d::DrawOrder& order) const {
+void MapRenderer::drawImage(graphics2d::Renderer& renderer, const Layer& layer, const Inherited& state, const View& view, const graphics2d::DrawOrder& order) {
     if (!layer.texture.isValid()) {
         return;
     }
@@ -830,14 +830,14 @@ void MapRenderer::drawImage(graphics2d::Renderer& renderer, const Layer& layer, 
     const float top = layer.repeatY ? firstCopy(view.visible.getTop(), origin.y, size.y) : origin.y;
     const float right = layer.repeatX ? view.visible.getRight() : origin.x + 1.0F;
     const float bottom = layer.repeatY ? view.visible.getBottom() : origin.y + 1.0F;
-    std::vector<graphics2d::SpriteInstance> copies;
+    imageCopies.clear();
     for (float y = top; y < bottom; y += size.y) {
         for (float x = left; x < right; x += size.x) {
-            copies.push_back({.position = {x, y}, .size = size, .pivot = {0.0F, 0.0F}, .color = state.tint});
+            imageCopies.push_back({.position = {x, y}, .size = size, .pivot = {0.0F, 0.0F}, .color = state.tint});
         }
     }
 
-    renderer.drawBatch(layer.texture, copies, order);
+    renderer.drawBatch(layer.texture, imageCopies, order);
 }
 
 void MapRenderer::forEachObject(std::string_view layer, const ObjectVisitor& visit) const {
