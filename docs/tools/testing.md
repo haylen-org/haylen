@@ -470,7 +470,7 @@ A fuzzer feeds a parser with inputs that libFuzzer generates, to find the inputs
 | `--llvm` | the variable `HAYLEN_LLVM`, or else the LLVM of a package manager | The `bin` folder of an LLVM whose Clang links libFuzzer. Without either, the command looks in `/opt/homebrew/opt/llvm/bin`, `/usr/local/opt/llvm/bin` and `/usr/lib/llvm-<version>/bin` of every version that the packages installed, the newest first. Apple Clang does not ship libFuzzer. |
 | `--jobs` | the processors minus one | The parallel jobs of the build. |
 
-The command configures `build/engine/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the nine fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
+The command configures `build/engine/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the nine fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/engine/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
 
 | Fuzzer | What it checks | Tests that drive the same code on every run |
 | --- | --- | --- |
