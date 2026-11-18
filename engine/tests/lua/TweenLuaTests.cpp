@@ -212,6 +212,25 @@ TEST(TweenLuaTest, BuildsTimelinesAndStaggers) {
     EXPECT_NE(fixture.lua("tween.stagger({{v = 1}}, 1, function() return 5 end)").find("haylen.Tween expected"), std::string::npos);
 }
 
+// A stagger that refuses one of the tweens that "make" returns places none of them, so they keep playing where they were.
+TEST(TweenLuaTest, AStaggerThatFailsLeavesItsTweensPlaying) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        tween = require('haylen.tween')
+        box = {x = 0}
+        shared = tween.to(box, 1, {x = 10})
+        refused, message = pcall(tween.stagger, {{}, {}}, 0.1, function() return shared end)
+        collectgarbage()
+        collectgarbage()
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return tostring(refused) .. ' ' .. message"), "false A stagger cannot hold the same tween twice.");
+    fixture.frames(2, 0.25);
+    EXPECT_EQ(fixture.lua("return box.x"), "5.0");
+    EXPECT_EQ(fixture.lua("shared:kill() return tostring(shared.alive)"), "false");
+}
+
 TEST(TweenLuaTest, PlaysReadyMadeTweens) {
     test::EngineFixture fixture;
     // clang-format off
@@ -472,6 +491,9 @@ TEST(TweenLuaTest, ReportsMistakes) {
     EXPECT_NE(fixture.lua("tween.to({tint = require('haylen.math').color(1, 1, 1, 1)}, 1, {tint = '#000000FF'}, {colorSpace = 'lab'})").find("The tween option \"colorSpace\" must be \"rgb\" or \"hsv\"."), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {loopMode = 'bounce'})").find("unknown value 'bounce'"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.stagger({{v = 0}}, 1, function(row) return tween.to(row, 1, {v = 1}) end, {origin = 'middle'})").find("unknown value 'middle'"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.stagger({{v = 0}}, 0 / 0, function(row) return tween.to(row, 1, {v = 1}) end)").find("A stagger needs a finite number of seconds between its tweens."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.timeline():insert(0 / 0, function() end)").find("A timeline cannot place anything at a time that is not a number."), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.timeline():addLabel('lost', 0 / 0)").find("A timeline cannot place anything at a time that is not a number."), std::string::npos);
 
     // Fields that are no native property of a userdata go through Lua, which reaches only what the object has.
     fixture.runLua("camera = require('haylen.graphics2d').newCamera()");

@@ -29,7 +29,16 @@ std::size_t Timeline::size() const noexcept {
     return static_cast<std::size_t>(std::count_if(children.begin(), children.end(), [](const Child& child) { return !child.removed; }));
 }
 
-void Timeline::place(std::shared_ptr<Tween> tween, float at, int step) {
+// A tween that a handle of its own keeps alive outlives the timeline, and then it belongs to no timeline anymore.
+Timeline::~Timeline() {
+    for (const Child& child : children) {
+        if (child.tween) {
+            child.tween->parent = nullptr;
+        }
+    }
+}
+
+void Timeline::requireJoinable(const std::shared_ptr<Tween>& tween) const {
     if (!tween) {
         throw std::invalid_argument("A timeline cannot hold an empty tween.");
     }
@@ -47,6 +56,17 @@ void Timeline::place(std::shared_ptr<Tween> tween, float at, int step) {
     if (const auto* property = dynamic_cast<const PropertyTween*>(tween.get()); property != nullptr && property->isSpeedBased()) {
         throw std::logic_error("A speed-based tween cannot join a timeline, because its duration is only known when it starts.");
     }
+}
+
+void Timeline::requireTime(float at) {
+    if (std::isnan(at)) {
+        throw std::invalid_argument("A timeline cannot place anything at a time that is not a number.");
+    }
+}
+
+void Timeline::place(std::shared_ptr<Tween> tween, float at, int step) {
+    requireJoinable(tween);
+    requireTime(at);
 
     if (tween->manager != nullptr) {
         tween->manager->detach(*tween);
@@ -63,6 +83,7 @@ void Timeline::placeCall(std::function<void()> call, float at, int step) {
         throw std::invalid_argument("A timeline callback needs a function.");
     }
 
+    requireTime(at);
     children.push_back({.call = std::move(call), .start = std::max(at, 0.0F), .step = step});
     updateDuration();
 }
@@ -126,6 +147,7 @@ Timeline& Timeline::addLabel(std::string name, float at) {
         throw std::invalid_argument("A timeline label needs a name.");
     }
 
+    requireTime(at);
     labels.insert_or_assign(std::move(name), std::max(at, 0.0F));
     return *this;
 }
@@ -148,11 +170,16 @@ Timeline& Timeline::stagger(std::vector<std::shared_ptr<Tween>> tweens, float ea
         throw std::invalid_argument("A stagger needs at least one tween.");
     }
 
-    lastStepStart = duration;
-    stepEnds.push_back(duration);
-    const int step = static_cast<int>(stepEnds.size()) - 1;
-    const float base = lastStepStart;
+    if (!std::isfinite(each)) {
+        throw std::invalid_argument("A stagger needs a finite number of seconds between its tweens.");
+    }
+
+    // Every tween and time is checked before the first tween joins, so a stagger that fails leaves its tweens where they were.
     const float last = static_cast<float>(tweens.size() - 1);
+    std::vector<float> starts;
+    std::vector<const Tween*> distinct;
+    starts.reserve(tweens.size());
+    distinct.reserve(tweens.size());
     for (std::size_t index = 0; index < tweens.size(); ++index) {
         const auto position = static_cast<float>(index);
         float rank = position;
@@ -162,7 +189,23 @@ Timeline& Timeline::stagger(std::vector<std::shared_ptr<Tween>> tweens, float ea
             rank = std::fabs(position - last * 0.5F);
         }
 
-        place(std::move(tweens[index]), base + rank * each, step);
+        const float start = duration + rank * each;
+        requireJoinable(tweens[index]);
+        requireTime(start);
+        starts.push_back(start);
+        distinct.push_back(tweens[index].get());
+    }
+
+    std::ranges::sort(distinct);
+    if (std::ranges::adjacent_find(distinct) != distinct.end()) {
+        throw std::logic_error("A stagger cannot hold the same tween twice.");
+    }
+
+    lastStepStart = duration;
+    stepEnds.push_back(duration);
+    const int step = static_cast<int>(stepEnds.size()) - 1;
+    for (std::size_t index = 0; index < tweens.size(); ++index) {
+        place(std::move(tweens[index]), starts[index], step);
     }
 
     return *this;

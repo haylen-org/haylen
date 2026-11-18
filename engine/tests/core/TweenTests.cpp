@@ -126,6 +126,14 @@ TEST(TweenManagerTest, RejectsTimesThatAreNotNumbers) {
     EXPECT_THROW(tween->seek(nan), std::invalid_argument);
     EXPECT_THROW(PropertyTween{nan}, std::invalid_argument);
     EXPECT_THROW(rig.tweens.setTimeScale("world", nan), std::invalid_argument);
+
+    auto timeline = std::make_shared<Timeline>();
+    EXPECT_THROW(timeline->insert(nan, rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false)), std::invalid_argument);
+    EXPECT_THROW(timeline->insertCall(nan, [] {}), std::invalid_argument);
+    EXPECT_THROW(timeline->addLabel("lost", nan), std::invalid_argument);
+    EXPECT_THROW(timeline->stagger({rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false)}, nan), std::invalid_argument);
+    EXPECT_THROW(timeline->stagger({rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false)}, std::numeric_limits<float>::infinity()), std::invalid_argument);
+    EXPECT_EQ(timeline->size(), 0U);
 }
 
 TEST(TweenPropertyTest, ResolvesModesWhenItBegins) {
@@ -841,6 +849,42 @@ TEST(TimelineTest, RejectsInvalidChildrenAndKillsTheirTweens) {
     EXPECT_TRUE(timeline->isAlive());
     timeline->kill();
     EXPECT_EQ(timeline->size(), 0U);
+}
+
+TEST(TimelineTest, AStaggerThatFailsLeavesItsTweensWhereTheyWere) {
+    TweenRig rig;
+    Box box;
+    auto playing = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
+    auto staggered = std::make_shared<Timeline>();
+    EXPECT_THROW(staggered->stagger({playing, playing}, 0.1F), std::logic_error);
+    EXPECT_EQ(staggered->size(), 0U);
+    staggered.reset();
+
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(box.x, 5.0);
+    playing->kill();
+    EXPECT_FALSE(playing->isAlive());
+}
+
+// A tween that outlives the timeline that held it belongs to no timeline anymore, and a killed timeline lets go of the timelines inside it.
+TEST(TimelineTest, TweensOutliveTheirTimeline) {
+    TweenRig rig;
+    Box box;
+    auto orphan = rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false);
+    auto first = std::make_shared<Timeline>();
+    first->append(orphan);
+    first.reset();
+    auto adopting = std::make_shared<Timeline>();
+    adopting->append(orphan);
+    EXPECT_EQ(adopting->size(), 1U);
+
+    auto outer = std::make_shared<Timeline>();
+    auto inner = std::make_shared<Timeline>();
+    outer->append(inner);
+    outer->kill();
+    outer.reset();
+    inner->append(rig.tweenX(box, 1.0F, TweenProperty::to(2.0), false));
+    EXPECT_EQ(inner->size(), 1U);
 }
 
 TEST(TimelineTest, JoinsIntoTheFirstStepAndPlaysCallsAtOnce) {

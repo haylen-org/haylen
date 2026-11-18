@@ -341,8 +341,9 @@ void Tween::end(bool justCompleted) {
     killed = true;
     killChildren();
 
-    if (parent != nullptr) {
-        parent->remove(*this);
+    // A killed tween belongs to no timeline, so nothing reaches a timeline that may go away before the tween does.
+    if (Timeline* timeline = std::exchange(parent, nullptr); timeline != nullptr) {
+        timeline->remove(*this);
     }
 
     // The finished signal always fires unless it just reported the completion, so a script waiting on it resumes even when the `kill` callback fails. A killed tween never calls anything again, so it lets go of its callbacks, its listeners and what it played with.

@@ -24,6 +24,7 @@ class Timeline final : public Tween {
     };
 
     Timeline() = default;
+    ~Timeline() override;
 
     // A tween joins a timeline before it starts, leaving the manager if it was playing there. Its delay pushes it further along the timeline.
     Timeline& append(std::shared_ptr<Tween> tween);
@@ -42,7 +43,7 @@ class Timeline final : public Tween {
     [[nodiscard]] float getLabelTime(std::string_view name) const;
     void seekLabel(std::string_view name);
 
-    // Appends the tweens as one step, each one starting `each` seconds after the previous one in the order the origin gives.
+    // Appends the tweens as one step, each one starting `each` seconds after the previous one in the order the origin gives. It places none of them when one cannot join.
     Timeline& stagger(std::vector<std::shared_ptr<Tween>> tweens, float each, StaggerOrigin origin = StaggerOrigin::Start);
 
     [[nodiscard]] float getDuration() const noexcept override {
@@ -81,6 +82,9 @@ class Timeline final : public Tween {
         Timeline& timeline;
     };
 
+    // Throws unless the tween can join this timeline.
+    void requireJoinable(const std::shared_ptr<Tween>& tween) const;
+    static void requireTime(float at);
     void place(std::shared_ptr<Tween> tween, float at, int step);
     void placeCall(std::function<void()> call, float at, int step);
     void remove(const Tween& child);

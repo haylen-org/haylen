@@ -422,7 +422,7 @@ Builds one tween for each element of the sequence `targets` with `make(target, i
 | `'end'` | Starts with the last target. |
 | `'center'` | Starts from the middle and goes outwards, so targets at the same distance from the middle start together. |
 
-An empty sequence raises `A stagger needs at least one tween.`. A `make` that returns anything but a tween or a timeline raises `bad argument #-1 to 'stagger' (haylen.Tween expected, got <type>)`.
+An empty sequence raises `A stagger needs at least one tween.`, and a `seconds` that is not finite raises `A stagger needs a finite number of seconds between its tweens.`. A `make` that returns anything but a tween or a timeline raises `bad argument #-1 to 'stagger' (haylen.Tween expected, got <type>)`, and one that returns the same tween twice raises `A stagger cannot hold the same tween twice.`. The tweens of `make` join the timeline only when every one of them can, as [`Timeline`](#timeline) describes, so a stagger that raises an error leaves them playing on their own.
 
 ```lua
 local tween = require('haylen.tween')
@@ -749,6 +749,8 @@ A tween joins a timeline right after it is created, before it starts and while i
 
 Inside a timeline, a tween follows the playhead of the timeline. It reads its start values when the playhead first reaches it, so it starts from where the tweens before it left the fields. Its delay, loops, `timeScale`, easing and callbacks still apply. Its `paused`, `processMode`, `unscaled`, `fixedStep`, `reducedMotion`, `autoKill` and `tag` no longer matter. A function item runs each time the playhead passes its time, forward or backward, but not when a seek jumps over it.
 
+A time that is NaN, given to `insert` or `addLabel`, raises `A timeline cannot place anything at a time that is not a number.`.
+
 ### timeline:append(item)
 
 Places the item at the end, as a new step. A number appends a pause of that many seconds, which must be above `0` or it raises `A tween needs a positive duration.`. A function is called when the playhead reaches it.
@@ -869,6 +871,8 @@ These messages come from the functions and methods when they are called.
 | `A shake needs a vibrato of at least 1.` | The option `vibrato` of `tween.shake` is below `1`. |
 | `A punch needs a vibrato of at least 1.` | The option `vibrato` of `tween.punch` is below `1`. |
 | `A stagger needs at least one tween.` | The sequence of `tween.stagger` is empty. |
+| `A stagger needs a finite number of seconds between its tweens.` | The `seconds` of `tween.stagger` is NaN or infinite. |
+| `A stagger cannot hold the same tween twice.` | The function `make` of `tween.stagger` returned one tween for two targets. |
 | `bad argument #-1 to 'stagger' (haylen.Tween expected, got <type>)` | The function `make` of `tween.stagger` returned something else than a tween. |
 | `bad argument #1 to 'append' (haylen.Tween expected, got <type>)` | An item of `append` or `join` is another type, with the name of that method. The item of `insert` raises the same message with `#2 to 'insert'`. |
 | `Only a tween that has not started and is in no other timeline can join a timeline.` | The tween already started, was killed or is in another timeline. |
@@ -876,6 +880,7 @@ These messages come from the functions and methods when they are called.
 | `A speed-based tween cannot join a timeline, because its duration is only known when it starts.` | A tween with `speedBased = true` joined a timeline. |
 | `The timeline has no label named "<name>".` | The label of `insert` or `seek` does not exist. |
 | `A timeline label needs a name.` | The name of `addLabel` is empty. |
+| `A timeline cannot place anything at a time that is not a number.` | The time of `insert` or `addLabel` is NaN. |
 | `A tween cannot seek to a time that is not a number.` | The time of `seek`, `time` or `progress` is NaN. |
 | `calling 'seek' on bad self (haylen.Timeline expected, got haylen.Tween)` | The method `seek` got a label on a tween that is not a timeline. |
 | `The type "haylen.Tween" has no member "<name>".` | The code read a member that a tween does not have, or `haylen.Timeline` for a timeline. |
