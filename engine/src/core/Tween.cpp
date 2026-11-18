@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <exception>
 #include <limits>
@@ -69,7 +70,7 @@ float Tween::getTotalDuration() const noexcept {
         return std::numeric_limits<float>::infinity();
     }
 
-    const auto loops = static_cast<float>(repeatCount + 1);
+    const float loops = static_cast<float>(repeatCount) + 1.0F;
     return getDuration() * loops + repeatDelay * (loops - 1.0F);
 }
 
@@ -177,10 +178,12 @@ void Tween::render(double totalTime, bool silent) {
             return;
         }
 
+        // The loops count in 64 bits, so the step past the last loop of a tween that repeats as often as an int holds never overflows.
         const int direction = forward ? 1 : -1;
-        const int reported = std::abs(entered.loop - left.loop) > kMaxLoopCalls ? entered.loop - direction * (kMaxLoopCalls - 1) : left.loop + direction;
-        for (int loop = reported; loop != entered.loop + direction && !silent && events && events->loop; loop += direction) {
-            events->loop(loop);
+        const std::int64_t reported = std::abs(entered.loop - left.loop) > kMaxLoopCalls ? entered.loop - direction * (kMaxLoopCalls - 1) : left.loop + direction;
+        const std::int64_t past = static_cast<std::int64_t>(entered.loop) + direction;
+        for (std::int64_t loop = reported; loop != past && !silent && events && events->loop; loop += direction) {
+            events->loop(static_cast<int>(loop));
 
             if (killed) {
                 return;

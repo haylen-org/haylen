@@ -368,6 +368,23 @@ TEST(TweenManagerTest, RepeatsForeverWithoutLosingSteps) {
     EXPECT_NEAR(std::fmod(tween->getProgress() - before + 1.0F, 1.0F), 0.1F, 1e-3F);
 }
 
+// A tween that repeats as often as an int holds reports its last loop, the largest int, and ends where its last loop of a yoyo ends.
+TEST(TweenManagerTest, RepeatsAsOftenAsAnIntHolds) {
+    TweenRig rig;
+    Box box;
+    auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
+    tween->setRepeatCount(std::numeric_limits<int>::max());
+    tween->setLoopMode(Tween::LoopMode::Yoyo);
+    std::vector<int> loops;
+    tween->getCallbacks().loop = [&loops](int loop) { loops.push_back(loop); };
+    EXPECT_FLOAT_EQ(tween->getTotalDuration(), 2147483648.0F);
+
+    tween->complete();
+    ASSERT_EQ(loops.size(), 256U);
+    EXPECT_EQ(loops.back(), std::numeric_limits<int>::max());
+    EXPECT_DOUBLE_EQ(box.x, 0.0);
+}
+
 TEST(TweenManagerTest, ControlsPlayback) {
     TweenRig rig;
     Box box;
