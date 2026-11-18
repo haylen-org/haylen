@@ -15,17 +15,17 @@ class SteamDepotsTest:
 
         SteamDepots.write_scripts(tmp_path, options.app_id, "Island 1.2.0", options.depots, options.branch)
 
-        build = (tmp_path / "scripts" / "app_build.vdf").read_text(encoding="utf-8")
-        forest = (tmp_path / "scripts" / "depot_build_1002.vdf").read_text(encoding="utf-8")
+        build = (tmp_path / "scripts" / "app-build.vdf").read_text(encoding="utf-8")
+        forest = (tmp_path / "scripts" / "depot-build-1002.vdf").read_text(encoding="utf-8")
         assert '"AppID" "1000"' in build
         assert '"SetLive" "beta"' in build
-        assert '"1002" "depot_build_1002.vdf"' in build
+        assert '"1002" "depot-build-1002.vdf"' in build
         assert '"ContentRoot" "../content/forest/"' in forest
 
     def test_escapes_every_value_that_comes_from_the_app_or_the_command(self, tmp_path):
         SteamDepots.write_scripts(tmp_path, "1000", 'Island "Deluxe" C:\\saves\nsecond line\tend', {"forest": "1002"}, 'beta"\n"AppID" "1')
 
-        build = (tmp_path / "scripts" / "app_build.vdf").read_text(encoding="utf-8")
+        build = (tmp_path / "scripts" / "app-build.vdf").read_text(encoding="utf-8")
         assert '\t"Desc" "Island \\"Deluxe\\" C:\\\\saves\\nsecond line\\tend"\n' in build
         assert '\t"SetLive" "beta\\"\\n\\"AppID\\" \\"1"\n' in build
         assert build.count('"AppID"') == 1
@@ -59,7 +59,7 @@ class SteamDepotsTest:
 
         script = SteamDepots(fixture.context).stage(source, release, "linux", installed, bundle=False, packs_place="lib/island", options=options, output=tmp_path / "steam")
 
-        assert script == tmp_path / "steam" / "scripts" / "app_build.vdf"
+        assert script == tmp_path / "steam" / "scripts" / "app-build.vdf"
         assert (tmp_path / "steam" / "content" / "linux" / "bin" / "island").is_file()
         assert (tmp_path / "steam" / "content" / "forest" / "lib" / "island" / "packs" / "forest.hpak").is_file()
         assert '"Desc" "Island 1.2.0"' in script.read_text(encoding="utf-8")

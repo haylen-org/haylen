@@ -604,11 +604,11 @@ The format `steam` lays a Release build of a Windows or Linux app out for SteamP
 | --- | --- |
 | `content/<platform>/` | The depot of the app: the installed Windows or Linux app with its release. It holds every shard of the release except those of the [packs](../content/content.md#delivery) of the app, or only the shards that its required content needs when `haylen.json` names a content server. |
 | `content/<pack>/` | The depot of each pack. Its shards install into `packs/` next to the executable, in `lib/<executable>/` on Linux, where the runtime finds them. A player who does not own a pack, such as an expansion sold apart, never receives its depot. Its assets stay unavailable, and `assets.loadAsync` of one fails with `storeAssetUnavailable`, which an app shows as content to buy. |
-| `scripts/` | The build scripts of `steamcmd`: `app_build.vdf` with the app ID, a description of the app and its version, and the branch, and one `depot_build_<id>.vdf` per depot that maps its whole folder. |
+| `scripts/` | The build scripts of `steamcmd`: `app-build.vdf` with the app ID, a description of the app and its version, and the branch, and one `depot-build-<id>.vdf` per depot that maps its whole folder. |
 
 The depots of each platform are staged on that platform, such as in one job of continuous integration per platform. Steam compares each depot with the build before it, file by file. A release keeps every unchanged shard byte for byte under the same name, so an update of a few assets uploads and downloads only the shards that changed and the two manifests. A machine without the release before it in its build folder, such as continuous integration, downloads the depots of the live build first, with `steamcmd +login <account> +app_update <app id> validate +quit` or the command `download_depot` of the Steam console, and names that folder with `--previous-release` of `app package`, which finds the release and the shards of its packs in it.
 
-The command `steamcmd +login <account> +run_app_build <output>/scripts/app_build.vdf +quit` uploads the build. The Steamworks API of the app itself, such as achievements and the ownership of packs, is a native library that the app calls through `haylen.native`, as [native libraries](#native-libraries) describe.
+The command `steamcmd +login <account> +run_app_build <output>/scripts/app-build.vdf +quit` uploads the build. The Steamworks API of the app itself, such as achievements and the ownership of packs, is a native library that the app calls through `haylen.native`, as [native libraries](#native-libraries) describe.
 
 ## Privacy manifest
 

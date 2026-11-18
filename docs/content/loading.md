@@ -470,7 +470,7 @@ The manifests and the shards of the app domain, the code of the app, always stay
 
 ```sh
 haylen app package ~/apps/my-game --target windows --format steam --option appId=1000 --option depots=windows=1001 --option depots=forest=1002 --option branch=beta -o ~/apps/my-game/steam
-steamcmd +login <account> +run_app_build ~/apps/my-game/steam/scripts/app_build.vdf +quit
+steamcmd +login <account> +run_app_build ~/apps/my-game/steam/scripts/app-build.vdf +quit
 ```
 
 The command builds the release on a machine of the target, `windows` or `linux`, verifies it and lays out the depots. Each depot needs its ID from Steamworks, with the platform as one name and each pack as another. The option `branch` sets the branch that the build goes live on, such as `beta` for testers.
@@ -482,9 +482,9 @@ The command builds the release on a machine of the target, `windows` or `linux`,
   content/windows/app/content.hmanifest
   content/windows/app/<id>.hpak            The shards that ship: every one but those of packs, or for an app with a server those of the app domain and the required assets.
   content/forest/packs/<id>.hpak           The depot of the pack "forest", which installs into packs/ next to the executable.
-  scripts/app_build.vdf
-  scripts/depot_build_1001.vdf
-  scripts/depot_build_1002.vdf
+  scripts/app-build.vdf
+  scripts/depot-build-1001.vdf
+  scripts/depot-build-1002.vdf
 ```
 
 An app without a content server ships its whole release except its packs in the depot of the app. So Steam delivers all of its content, and the app needs no server of its own. An update is a new build. The release reuses the shards of the release before it and keeps every unchanged shard byte for byte under the same name. So SteamPipe uploads and downloads only the shards that changed and the two manifests, and a new build may carry new Lua bytecode, since the code belongs to the build. A player who does not own a pack never receives its depot.

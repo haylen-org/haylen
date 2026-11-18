@@ -17,7 +17,7 @@ class SteamDepots:
 
     # The KeyValues text of the scripts of steamcmd ends a value at a double quote and reads these escapes inside it.
     ESCAPES = str.maketrans({"\\": "\\\\", '"': '\\"', "\n": "\\n", "\r": "\\r", "\t": "\\t"})
-    APP_SCRIPT = "app_build.vdf"
+    APP_SCRIPT = "app-build.vdf"
 
     @dataclass(frozen=True)
     class Options:
@@ -96,7 +96,7 @@ class SteamDepots:
         scripts = output / "scripts"
         scripts.mkdir(parents=True, exist_ok=True)
         value = SteamDepots.value
-        entries = "".join(f"\t\t{value(depot)} {value(f'depot_build_{depot}.vdf')}\n" for depot in depots.values())
+        entries = "".join(f"\t\t{value(depot)} {value(f'depot-build-{depot}.vdf')}\n" for depot in depots.values())
         live = f'\t"SetLive" {value(branch)}\n' if branch else ""
         app = f'"AppBuild"\n{{\n\t"AppID" {value(app_id)}\n\t"Desc" {value(description)}\n\t"ContentRoot" "../content/"\n\t"BuildOutput" "../output/"\n{live}\t"Depots"\n\t{{\n{entries}\t}}\n}}\n'
         (scripts / SteamDepots.APP_SCRIPT).write_text(app, encoding="utf-8")
@@ -104,5 +104,5 @@ class SteamDepots:
         for name, depot in depots.items():
             mapping = '\t"FileMapping"\n\t{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}\n'
             text = f'"DepotBuild"\n{{\n\t"DepotID" {value(depot)}\n\t"ContentRoot" {value(f"../content/{name}/")}\n{mapping}}}\n'
-            (scripts / f"depot_build_{depot}.vdf").write_text(text, encoding="utf-8")
+            (scripts / f"depot-build-{depot}.vdf").write_text(text, encoding="utf-8")
         return scripts / SteamDepots.APP_SCRIPT
