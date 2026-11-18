@@ -64,6 +64,14 @@ class AppleTargetsTest:
         with pytest.raises(UnsupportedTarget, match='"xcodebuild -downloadPlatform visionOS"'):
             AppleSimulators(recorded.context).find("xrOS", None)
 
+    def test_a_simulator_that_is_off_boots_then_waits_and_shuts_down_afterwards(self, tmp_path):
+        # The flag of "bootstatus" that boots fails with "Invalid argument" on the foldable iPhone, so booting and waiting are two commands.
+        duo = {"udid": "DUO", "name": "iPhone Duo", "state": "Shutdown"}
+        recorded = RecordedCommands(tmp_path, answer=lambda command: json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-2": [duo]}}))
+        with AppleSimulators(recorded.context).booted("iOS", "DUO"):
+            pass
+        assert recorded.commands[1:] == [["xcrun", "simctl", "boot", "DUO"], ["xcrun", "simctl", "bootstatus", "DUO"], ["xcrun", "simctl", "shutdown", "DUO"]]
+
     def test_the_template_holds_no_generated_project(self):
         files = [path.relative_to(AppleProject.TEMPLATE).as_posix() for path in AppleProject.TEMPLATE.rglob("*") if path.is_file()]
         assert not any(".xcodeproj" in name or name.endswith("project.yml") for name in files)

@@ -41,7 +41,9 @@ class AppleSimulators:
         booted = simulator["state"] == "Booted"
         if not booted:
             self.context.terminal.step(f'Booting the simulator "{simulator["name"]}" without a window')
-            self.context.process.run(["xcrun", "simctl", "bootstatus", simulator["udid"], "-b"])
+            # The flag of "bootstatus" that boots a simulator fails on some devices, such as the foldable iPhone, so the simulator boots on its own and "bootstatus" only waits for it.
+            self.context.process.run(["xcrun", "simctl", "boot", simulator["udid"]])
+            self.context.process.run(["xcrun", "simctl", "bootstatus", simulator["udid"]])
         try:
             yield simulator
         finally:
