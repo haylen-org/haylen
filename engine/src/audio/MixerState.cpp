@@ -15,10 +15,6 @@ MixerState::Voice::~Voice() {
     if (handleReady) {
         ma_sound_uninit(&handle);
     }
-
-    if (bufferReady) {
-        ma_audio_buffer_uninit(&buffer);
-    }
 }
 
 MixerState::~MixerState() {

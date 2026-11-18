@@ -3,11 +3,13 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
@@ -351,6 +353,28 @@ TEST_F(MixerTest, MovesTheCursorOfAVoice) {
     mixer.setPaused(music, false);
     peak(toFrames(0.1F));
     EXPECT_NEAR(mixer.getCursor(music), 0.6F, 0.02F);
+}
+
+TEST_F(MixerTest, ReadsTheCursorOfAVoiceWhileTheMixingThreadMovesIt) {
+    const Mixer::VoiceId voice = mixer.play(makeTone(toFrames(0.25F)), {.loop = true});
+    std::atomic<bool> done{false};
+    // clang-format off
+    std::thread mixing([this, &done] {
+        for (int block = 0; block < 400; ++block) {
+            peak(256);
+        }
+
+        done = true;
+    });
+    // clang-format on
+    float latest = 0.0F;
+    while (!done) {
+        latest = std::max(latest, mixer.getCursor(voice));
+    }
+
+    mixing.join();
+    EXPECT_LE(latest, 0.25F);
+    EXPECT_GT(mixer.getCursor(voice), 0.0F);
 }
 
 TEST_F(MixerTest, FailedPlaysLeaveEveryVoicePlaying) {

@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "audio/BufferSource.hpp"
 #include "audio/Device.hpp"
 #include "audio/EffectChain.hpp"
 #include "audio/ReaderSource.hpp"
@@ -59,11 +60,10 @@ struct MixerState {
         Sound sound;
         std::shared_ptr<platform::AudioStream> stream;
         Bus* bus = nullptr;
-        ma_audio_buffer buffer{};
+        std::unique_ptr<BufferSource> bufferSource;
         std::unique_ptr<ReaderSource> readerSource;
         std::unique_ptr<StreamSource> streamSource;
         ma_sound handle{};
-        bool bufferReady = false;
         bool handleReady = false;
         std::unique_ptr<EffectChain> effects;
         core::ProcessMode processMode = core::ProcessMode::Inherit;

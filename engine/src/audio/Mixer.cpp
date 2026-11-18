@@ -189,14 +189,8 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         return id;
     }
 
-    ma_audio_buffer_config config = ma_audio_buffer_config_init(ma_format_f32, data.channels, data.frames, data.samples.data(), nullptr);
-    config.sampleRate = data.sampleRate;
-    if (ma_audio_buffer_init(&config, &voice->buffer) != MA_SUCCESS) {
-        throw std::runtime_error("A sound could not be prepared for playback.");
-    }
-
-    voice->bufferReady = true;
-    ma_data_source* source = &voice->buffer;
+    voice->bufferSource = std::make_unique<BufferSource>(data);
+    ma_data_source* source = voice->bufferSource->get();
     if (region) {
         ma_data_source_set_loop_point_in_pcm_frames(source, toFrame(options.loopStart, data.sampleRate), std::min<ma_uint64>(toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate), data.frames));
     }

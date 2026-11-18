@@ -263,6 +263,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/assets/GroupManifest.cpp
   src/assets/Manager.cpp
   src/audio/AudioLua.cpp
+  src/audio/BufferSource.cpp
   src/audio/Delay.cpp
   src/audio/Device.cpp
   src/audio/Effect.cpp
