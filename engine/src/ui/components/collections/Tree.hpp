@@ -46,6 +46,7 @@ class Tree final : public Component {
     [[nodiscard]] std::size_t countVisible(const std::vector<ChoiceItem>& branch) const;
     void drawItems(Context& context, const math::Rect& bounds, const std::vector<ChoiceItem>& branch, int depth, float& y);
     void toggle(Context& context, const ChoiceItem& item);
+    void addPart(Context& context, const ChoiceItem& item, const math::Rect& area, bool open) const;
 
     std::vector<ChoiceItem> items;
     std::string selected;

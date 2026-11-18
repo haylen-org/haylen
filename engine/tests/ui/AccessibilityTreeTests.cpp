@@ -59,6 +59,8 @@ TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
             ui.richText{text = 'A [b]bold[/b] [lb]word[rb]'},
             ui.column{accessibilityHidden = true, ui.label{text = 'Hidden'}},
             ui.card{accessibilityLabel = 'Coins', accessibilityRole = 'text', accessibilityHint = 'Spent in the shop', ui.label{text = '12'}},
+            ui.tree{items = {{id = 'maps', text = 'Maps', children = {{id = 'coast', text = 'Coast'}}}}, selected = 'coast', expanded = {'maps'}},
+            ui.table{columns = {{text = 'Player'}, {text = 'Score'}}, rows = {{id = 'ana', cells = {'Ana', '120'}}}, selected = 'ana'},
         }, {placement = 'screen'})
     )");
     // clang-format on
@@ -104,6 +106,11 @@ TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
     }
 
     EXPECT_EQ(images, 1U);
+
+    // The rows of trees and tables are elements of their own, with their text and their state.
+    EXPECT_TRUE(find("Maps")->has(Element::Expanded));
+    EXPECT_TRUE(find("Coast")->has(Element::Selected));
+    EXPECT_TRUE(find("Ana, 120")->has(Element::Selected));
 }
 
 TEST_F(AccessibilityTreeTest, SendsTheTreeOnlyWhenItChanges) {

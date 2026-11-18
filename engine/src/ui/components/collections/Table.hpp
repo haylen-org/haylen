@@ -47,6 +47,7 @@ class Table final : public Component {
     [[nodiscard]] float measureWidth(Context& context) const;
     // Returns the width each column without a width of its own gets, an even share of what the others leave.
     [[nodiscard]] float getFlexibleWidth(float total) const;
+    void addPart(Context& context, const Row& entry, const math::Rect& area) const;
 
     std::vector<Column> columns;
     std::vector<Row> rows;

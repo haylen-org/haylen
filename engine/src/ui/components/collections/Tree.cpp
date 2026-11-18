@@ -1,12 +1,15 @@
 #include "ui/components/collections/Tree.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/platform/AccessibilityElement.hpp"
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Widgets.hpp"
 #include "ui/components/ChoiceItem.hpp"
@@ -105,6 +108,7 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
         const math::Rect arrow = context.mirror({left, area.y, indent, height}, area);
         bool toggled = !item.children.empty() && Widgets::interact(context, arrow, context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##toggle", ImGuiButtonFlags_NoNavFocus).clicked;
         const Widgets::Interaction state = ListRow::draw(context, area, item.id == selected);
+        addPart(context, item, area, open);
 
         if (item.id == focused) {
             Widgets::focusItem(context);
@@ -149,9 +153,22 @@ void Tree::toggle(Context& context, const ChoiceItem& item) {
     context.emit(*this, "toggle", {{"item", item.id}, {"expanded", open}});
 }
 
+// Every row reads as an element of the tree, with its text and whether it is selected, closed or open, and disabled.
+void Tree::addPart(Context& context, const ChoiceItem& item, const math::Rect& area, bool open) const {
+    std::uint8_t states = item.id == selected ? platform::AccessibilityElement::Selected : 0U;
+    if (!item.enabled) {
+        states |= platform::AccessibilityElement::Disabled;
+    }
+
+    if (open) {
+        states |= platform::AccessibilityElement::Expanded;
+    }
+
+    context.getAccessibility().addPart(ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, context.getText(item.text), states);
+}
+
 bool Tree::describe(Context&, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::List;
-    element.value.assign(selected);
     return true;
 }
 

@@ -1,6 +1,7 @@
 #include "ui/components/collections/Table.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <set>
 #include <string>
 #include <utility>
@@ -10,6 +11,8 @@
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -61,6 +64,7 @@ void Table::render(Context& context, const math::Rect& bounds) {
         const math::Rect area{bounds.x, bounds.y + header + height * static_cast<float>(index), bounds.width, height};
         ImGui::PushID(entry.id.c_str());
         const Widgets::Interaction state = ListRow::draw(context, area, entry.id == selected);
+        addPart(context, entry, area);
         ImGui::PopID();
 
         // A row scrolled out of view still takes the focus and the pointer, and only its cells are left undrawn.
@@ -185,9 +189,28 @@ float Table::getFlexibleWidth(float total) const {
     return flexible > 0 ? std::max(0.0F, total - fixed) / static_cast<float>(flexible) : 0.0F;
 }
 
+// Every row reads as an element of the table, its cells separated by commas, with whether it is selected.
+void Table::addPart(Context& context, const Row& entry, const math::Rect& area) const {
+    std::string& label = context.getFrameText();
+    for (const TextValue& cell : entry.cells) {
+        const std::string_view text = context.getText(cell);
+        if (text.empty()) {
+            continue;
+        }
+
+        if (!label.empty()) {
+            label.append(", ");
+        }
+
+        label.append(text);
+    }
+
+    const std::uint8_t states = entry.id == selected ? platform::AccessibilityElement::Selected : 0U;
+    context.getAccessibility().addPart(ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, label, states);
+}
+
 bool Table::describe(Context&, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::List;
-    element.value.assign(selected);
     return true;
 }
 
