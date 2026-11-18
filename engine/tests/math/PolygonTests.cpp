@@ -313,4 +313,9 @@ TEST(SplineTest, RejectsWrongPointCounts) {
     EXPECT_EQ(Spline::kindName(Spline::Kind::CatmullRom), "catmullRom");
 }
 
+TEST(SplineTest, RefusesToSampleMorePointsThanItsBound) {
+    const Spline line({{0.0F, 0.0F}, {1.0F, 0.0F}});
+    EXPECT_THROW((void)line.sample(16777217), std::invalid_argument);
+}
+
 } // namespace haylen::math

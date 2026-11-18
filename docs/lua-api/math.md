@@ -2145,7 +2145,7 @@ print(rail:parameterAtDistance(rail.length / 2))
 
 ### spline:sample(count)
 
-Returns `count` points spread evenly over the parameter.
+Returns `count` points spread evenly over the parameter. A `count` above 16777216 raises `Sampling a spline takes at most 16777216 points.`
 
 ```lua
 local m = require('haylen.math')
@@ -2657,6 +2657,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `A Catmull-Rom spline needs at least two points when open and three when closed.` | A `'catmullRom'` spline has too few points. |
 | `A Bezier spline needs 3n + 1 points when open and 3n points when closed.` | A `'bezier'` spline has a count of points that does not fit. |
 | `A B-spline needs at least two points when open and three when closed.` | A `'bSpline'` spline has too few points. |
+| `Sampling a spline takes at most 16777216 points.` | The `count` of `spline:sample` is above 16777216. |
 | `Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve.` | The spacing of `spline:sampleByDistance` is out of range. |
 | `Flattening a spline needs a finite tolerance above 0.` | The tolerance of `spline:flatten` is not finite and above 0. |
 | `A filter has from 1 to 4 dimensions, not <count>.` | The `dimensions` of a filter are out of range. |

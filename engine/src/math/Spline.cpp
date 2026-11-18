@@ -173,6 +173,10 @@ Vec2 Spline::getTangentAtDistance(float distance) const noexcept {
 }
 
 std::vector<Vec2> Spline::sample(std::size_t count) const {
+    if (count > kMaxSteps) {
+        throw std::invalid_argument("Sampling a spline takes at most 16777216 points.");
+    }
+
     std::vector<Vec2> result;
     result.reserve(count);
     for (std::size_t index = 0; index < count; ++index) {
