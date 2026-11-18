@@ -57,8 +57,8 @@ class SaveSlots final {
     void addMigration(int fromVersion, Migration migration);
     void clearMigrations();
 
-    // Throws `std::invalid_argument` for a bad slot name, a summary that is not an object, and a string or key that is not valid UTF-8 or a number that is not finite, which JSON cannot hold.
-    void write(std::string_view slot, const core::Json& data, const core::Json& summary = core::Json::object());
+    // Returns what it wrote. Throws `std::invalid_argument` for a bad slot name, a summary that is not an object, and a string or key that is not valid UTF-8 or a number that is not finite, which JSON cannot hold.
+    Info write(std::string_view slot, const core::Json& data, const core::Json& summary = core::Json::object());
 
     // Reads a slot and migrates its data to the version of the app. Throws `std::runtime_error` for a slot whose file and backup are damaged, a slot of a newer version and a version that no chain of migrations reaches.
     [[nodiscard]] std::optional<core::Json> read(std::string_view slot) const;

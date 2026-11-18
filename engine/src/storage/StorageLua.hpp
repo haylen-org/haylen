@@ -49,7 +49,7 @@ class StorageLua final {
 
     // Runs the Lua migrations of the slot from its version to the version of the app on the data at the top of the stack, which the migrated data replaces. The migrations are plain functions that may not yield.
     static void migrate(lua_State* L, const std::string& slot, int fromVersion);
-    static void publishWrite(lua_State* L, const std::string& slot);
+    static void publishWrite(lua_State* L, const SaveSlots::Info& info);
 
     static int readText(lua_State* L);
     static int writeText(lua_State* L);

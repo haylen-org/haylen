@@ -126,10 +126,9 @@ void StorageLua::migrate(lua_State* L, const std::string& slot, int fromVersion)
     lua_settop(L, migrations - 1);
 }
 
-void StorageLua::publishWrite(lua_State* L, const std::string& slot) {
+void StorageLua::publishWrite(lua_State* L, const SaveSlots::Info& info) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    const std::optional<SaveSlots::Info> info = getSaveSlots(L).getInfo(slot);
-    engine.getEvents().emit(core::LifecycleEvent::kSaveSlotWritten, {{"slot", slot}, {"revision", info ? info->revision : 0}, {"version", info ? info->version : 0}});
+    engine.getEvents().emit(core::LifecycleEvent::kSaveSlotWritten, {{"slot", info.slot}, {"revision", info.revision}, {"version", info.version}});
 }
 
 int StorageLua::setSaveVersion(lua_State* L) {
@@ -203,10 +202,9 @@ int StorageLua::importSlot(lua_State* L) {
 // Saves a slot with `writeSlot(slot, data[, summary])`, where the summary is a small table shown by load menus, and makes it durable at once.
 int StorageLua::writeSlot(lua_State* L) {
     const core::Json summary = lua_isnoneornil(L, 3) ? core::Json::object() : lua::JsonConverter::read(L, 3);
-    const std::string slot = lua::Stack::read<std::string>(L, 1);
-    getSaveSlots(L).write(slot, lua::JsonConverter::read(L, 2), summary);
+    const SaveSlots::Info written = getSaveSlots(L).write(lua::Stack::read<std::string_view>(L, 1), lua::JsonConverter::read(L, 2), summary);
     getUserStorage(L).flush();
-    publishWrite(L, slot);
+    publishWrite(L, written);
     return 0;
 }
 
@@ -382,9 +380,8 @@ int StorageLua::writeSlotAsync(lua_State* L) {
     core::Json summary = lua_isnoneornil(L, 3) ? core::Json::object() : readStorable(L, 3);
     // clang-format off
     return queue(L, true, [&slots, slot = lua::Stack::read<std::string>(L, 1), data = readStorable(L, 2), summary = std::move(summary)] {
-        slots.write(slot, data, summary);
-        return Pusher([slot](lua_State* state) {
-            publishWrite(state, slot);
+        return Pusher([written = slots.write(slot, data, summary)](lua_State* state) {
+            publishWrite(state, written);
             lua_pushboolean(state, 1);
         });
     });

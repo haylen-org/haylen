@@ -719,6 +719,24 @@ TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
     EXPECT_NE(fixture.lua("storage.readTextAsync()").find("error: "), std::string::npos);
 }
 
+// The event tells what the write stored, even when an operation queued after it changed the slot before the frame thread heard of it.
+TEST(StorageLuaTest, ReportsTheRevisionThatAnAsynchronousWriteStored) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        storage = require('haylen.storage')
+        require('haylen.events').on('saveSlotWritten', function(info) written = info.slot .. ':' .. info.revision .. ':' .. info.version end)
+        require('async').spawn(function()
+            local wrote = storage.writeSlotAsync('a', {day = 1})
+            local removed = storage.removeSlotAsync('a')
+            results = tostring(wrote:await()) .. ' ' .. tostring(removed:await())
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(results)") != "nil"; }));
+    EXPECT_EQ(fixture.lua("return results .. ' ' .. written"), "true true a:1:1");
+}
+
 TEST(StorageLuaTest, FinishesQueuedOperationsWhenTheAppStops) {
     test::EngineFixture fixture;
     fixture.runLua("local storage = require('haylen.storage') for index = 1, 50 do storage.writeSlotAsync('slot-' .. index, {index = index}) end");

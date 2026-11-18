@@ -142,7 +142,7 @@ std::optional<SaveSlots::Stored> SaveSlots::load(std::string_view slot) const {
     return Stored{.data = std::move(previous->at("data")), .info = std::move(info)};
 }
 
-void SaveSlots::write(std::string_view slot, const core::Json& data, const core::Json& summary) {
+SaveSlots::Info SaveSlots::write(std::string_view slot, const core::Json& data, const core::Json& summary) {
     if (!summary.is_object()) {
         throw std::invalid_argument("A save summary must be a JSON object.");
     }
@@ -164,6 +164,7 @@ void SaveSlots::write(std::string_view slot, const core::Json& data, const core:
     core::Json saved{{"version", getVersion()}, {"revision", revision + 1}, {"savedAt", clock()}, {"summary", summary}, {"data", data}};
     saved["checksum"] = checksumOf(saved);
     userStorage.writeText(path, saved.dump(), UserStorage::Durability::Durable);
+    return infoOf(slot, saved, false);
 }
 
 std::optional<SaveSlots::Stored> SaveSlots::readStored(std::string_view slot) const {
