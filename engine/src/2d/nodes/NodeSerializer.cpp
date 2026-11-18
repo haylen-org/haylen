@@ -155,11 +155,15 @@ graphics::Texture::Options NodeSerializer::textureOptions(const core::Json& obje
 }
 
 void NodeSerializer::validate(const core::Json& description) {
-    validateNode(description, text(description.is_object() ? description : core::Json::object(), "name", "", ""));
+    validateNode(description, text(description.is_object() ? description : core::Json::object(), "name", "", ""), 1);
 }
 
 // Reading the properties without assets checks every value of the node, and the children follow.
-void NodeSerializer::validateNode(const core::Json& description, const std::string& path) {
+void NodeSerializer::validateNode(const core::Json& description, const std::string& path, int depth) {
+    if (depth > kMaxDepth) {
+        throw std::invalid_argument(describeDepth(path));
+    }
+
     (void)readProperties(description, path, {});
     const auto children = description.find("children");
     if (children == description.end()) {
@@ -171,7 +175,7 @@ void NodeSerializer::validateNode(const core::Json& description, const std::stri
     }
 
     for (const core::Json& child : *children) {
-        validateNode(child, path + "/" + text(child.is_object() ? child : core::Json::object(), "name", path, {}));
+        validateNode(child, path + "/" + text(child.is_object() ? child : core::Json::object(), "name", path, {}), depth + 1);
     }
 }
 
@@ -376,6 +380,18 @@ void NodeSerializer::writeTexture(core::Json& object, const graphics::Texture& t
 }
 
 core::Json NodeSerializer::save(const Node& node, const std::shared_ptr<text::Font>& defaultFont) {
+    return saveNode(node, defaultFont, 1);
+}
+
+std::string NodeSerializer::describeDepth(std::string_view path) {
+    return "The description of the node \"" + std::string(path) + "\" nests deeper than " + std::to_string(kMaxDepth) + " levels.";
+}
+
+core::Json NodeSerializer::saveNode(const Node& node, const std::shared_ptr<text::Font>& defaultFont, int depth) {
+    if (depth > kMaxDepth) {
+        throw std::invalid_argument(describeDepth(node.getPath()));
+    }
+
     core::Json description = core::Json::object();
     // clang-format off
     const auto put = [&description](std::string_view key, auto value, auto fallback) {
@@ -405,7 +421,7 @@ core::Json NodeSerializer::save(const Node& node, const std::shared_ptr<text::Fo
     if (!children.empty()) {
         core::Json list = core::Json::array();
         for (const Node& child : children) {
-            list.push_back(save(child, defaultFont));
+            list.push_back(saveNode(child, defaultFont, depth + 1));
         }
 
         description["children"] = std::move(list);

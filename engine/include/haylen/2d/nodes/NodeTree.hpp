@@ -148,6 +148,29 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
         math::Vec2 scale{1.0F, 1.0F};
     };
 
+    // The nodes on their way out, each with the generation it had and whether its listeners heard of it, deepest last.
+    struct Releasing {
+        std::int32_t index = 0;
+        std::uint32_t generation = 0;
+        bool announced = false;
+    };
+
+    // Drops the entries a walk pushed when it ends, even when a listener throws.
+    class ReleaseScope final {
+      public:
+        ReleaseScope(std::vector<Releasing>& stack, std::size_t size) noexcept : entries(stack), base(size) {}
+        ~ReleaseScope() {
+            entries.resize(base);
+        }
+
+        ReleaseScope(const ReleaseScope&) = delete;
+        ReleaseScope& operator=(const ReleaseScope&) = delete;
+
+      private:
+        std::vector<Releasing>& entries;
+        std::size_t base;
+    };
+
     // Groups of whole subtrees of roots with at least this many nodes each update as one job.
     static constexpr std::size_t kParallelGrain = 1024;
 
@@ -166,6 +189,8 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     void link(std::int32_t index, std::int32_t parent);
     void unlink(std::int32_t index) noexcept;
     void release(std::int32_t index);
+    void announce(std::int32_t index, std::uint32_t generation);
+    void recycle(std::int32_t index);
     [[nodiscard]] bool holds(std::size_t slot, std::uint32_t generation) const noexcept;
     void touch(std::uint32_t index) noexcept;
     void setContent(std::uint32_t index, NodeContent content);
@@ -201,6 +226,8 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     std::vector<std::uint32_t> particles;
     std::vector<std::pair<std::size_t, std::size_t>> chunks;
     std::vector<std::int32_t> walk;
+
+    std::vector<Releasing> releasing;
 
     // Reused by the draws, so drawing allocates nothing once they have grown: the pieces of frames, and the run of neighbouring sprites of one texture and order that draws as one batch.
     std::vector<graphics2d::NineSlice::Patch> patches;

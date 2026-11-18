@@ -127,6 +127,23 @@ TEST_F(NodeTreeTest, InvalidatesHandlesOfDestroyedNodesAndOfGoneTrees) {
     }
 }
 
+TEST_F(NodeTreeTest, DestroysChainsDeeperThanTheStackHolds) {
+    const std::shared_ptr<NodeTree> tree = NodeTree::create();
+    Node root = tree->add({.name = "root"});
+    Node last = root;
+    for (int level = 0; level < 300000; ++level) {
+        last = last.add({});
+    }
+
+    std::size_t gone = 0;
+    tree->destroyed.connect([&gone](const Node&) { ++gone; });
+    root.destroy();
+
+    EXPECT_EQ(gone, 300001U);
+    EXPECT_FALSE(last.isValid());
+    EXPECT_EQ(tree->size(), 0U);
+}
+
 TEST_F(NodeTreeTest, KeepsANodeThatTakesTheSlotOfANodeThatAListenerDestroyed) {
     const std::shared_ptr<NodeTree> tree = NodeTree::create();
     Node parent = tree->add({.name = "parent"});
@@ -309,6 +326,31 @@ TEST_F(NodeSerializerTest, NamesTheNodeAndTheKeyOfBadDescriptions) {
     EXPECT_EQ(message(R"({"name": "tank", "frame": {"texture": "a.png", "fill": "wrap"}})"), "The key \"fill\" of the frame of the node \"tank\" must be \"stretch\" or \"tile\".");
     EXPECT_EQ(message(R"([1, 2])"), "The description of the node \"\" must be an object.");
     EXPECT_EQ(message(R"({"name": "tank", "text": {"text": "Tank", "minScale": 0}})"), "The key \"minScale\" of the text of the node \"tank\" must be above 0 and at most 1.");
+
+    // A description nests only as deep as a Lua table of descriptions, so a hostile prefab never runs out of stack.
+    core::Json deepest = core::Json{{"name", "n"}};
+    std::string path = "n";
+    for (int level = 1; level < NodeSerializer::kMaxDepth; ++level) {
+        deepest = core::Json{{"name", "n"}, {"children", core::Json::array({deepest})}};
+        path += "/n";
+    }
+
+    EXPECT_NO_THROW(NodeSerializer::validate(deepest));
+    const core::Json deeper{{"name", "n"}, {"children", core::Json::array({deepest})}};
+    EXPECT_EQ(message(deeper.dump().c_str()), "The description of the node \"" + path + "/n\" nests deeper than 64 levels.");
+
+    const std::shared_ptr<NodeTree> tree = NodeTree::create();
+    Node node = tree->add({.name = "n"});
+    for (int level = 0; level < NodeSerializer::kMaxDepth; ++level) {
+        node = node.add({.name = "n"});
+    }
+
+    try {
+        (void)NodeSerializer::save(tree->getRoots().front(), nullptr);
+        FAIL() << "A tree deeper than a description was saved.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The description of the node \"" + path + "/n\" nests deeper than 64 levels.");
+    }
 }
 
 TEST_F(Nodes2DLuaTest, BuildsDrawsAndDestroysTreesFromLua) {

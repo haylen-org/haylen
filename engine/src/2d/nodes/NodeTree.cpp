@@ -472,18 +472,40 @@ void NodeTree::unlink(std::int32_t index) noexcept {
     detail.next = kNone;
 }
 
-// Children go first, and a listener that adds a child to a node on its way out sees that child go too. A listener may destroy this node itself, and its slot may then hold a node added since, which stays.
+// Children go first, and a listener that adds a child to a node on its way out sees that child go too. A listener may destroy this node itself, and its slot may then hold a node added since, which stays. The walk keeps its own stack, so a chain of any depth goes without deep recursion, and a listener that destroys other nodes walks above the entries of the walk it interrupts.
 void NodeTree::release(std::int32_t index) {
+    const std::size_t base = releasing.size();
+    const ReleaseScope scope(releasing, base);
+    releasing.push_back({.index = index, .generation = details[static_cast<std::size_t>(index)].generation});
+
+    while (releasing.size() > base) {
+        const Releasing current = releasing.back();
+        const auto slot = static_cast<std::size_t>(current.index);
+        if (!holds(slot, current.generation)) {
+            releasing.pop_back();
+            continue;
+        }
+
+        const std::int32_t child = details[slot].firstChild;
+        if (child != kNone) {
+            releasing.push_back({.index = child, .generation = details[static_cast<std::size_t>(child)].generation});
+            continue;
+        }
+
+        if (!current.announced) {
+            releasing.back().announced = true;
+            announce(current.index, current.generation);
+            continue;
+        }
+
+        releasing.pop_back();
+        recycle(current.index);
+    }
+}
+
+// Tells the listeners of the whole tree and then those of the node that the node goes.
+void NodeTree::announce(std::int32_t index, std::uint32_t generation) {
     const auto slot = static_cast<std::size_t>(index);
-    const std::uint32_t generation = details[slot].generation;
-    while (holds(slot, generation) && details[slot].firstChild != kNone) {
-        release(details[slot].firstChild);
-    }
-
-    if (!holds(slot, generation)) {
-        return;
-    }
-
     const Node node = handle(index);
     destroyed.emit(node);
 
@@ -492,15 +514,11 @@ void NodeTree::release(std::int32_t index) {
         watchers.erase(watched);
         watcher->emit(node);
     }
+}
 
-    while (holds(slot, generation) && details[slot].firstChild != kNone) {
-        release(details[slot].firstChild);
-    }
-
-    if (!holds(slot, generation)) {
-        return;
-    }
-
+void NodeTree::recycle(std::int32_t index) {
+    const auto slot = static_cast<std::size_t>(index);
+    const std::uint32_t generation = details[slot].generation;
     unlink(index);
 
     if (slots[slot].following) {

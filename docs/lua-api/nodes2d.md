@@ -61,6 +61,8 @@ Content made in code has no path, so it cannot be saved. It raises one of these 
 - `The node "<path>" shows a frame of separate pieces, which only a source and borders describe, so it cannot be saved.`
 - `The node "<path>" shows particles that no effect file names, so it cannot be saved.`
 
+A node whose subtree is more than 64 levels deep raises `The description of the node "<path>" nests deeper than 64 levels.`, which names the first node too deep.
+
 ```lua
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
@@ -90,7 +92,7 @@ A description is a table, or the JSON of a `.prefab` file, with the local state 
 | `text` | table | none | A block of text: `text`, `font` (a package path, the default font when absent), `size`, `color`, `outlineWidth`, `outlineColor`, `shadowOffset` (`[x, y]`), `shadowColor`, `shadowBlur`, `align`, `maxWidth`, `maxHeight`, `minScale`, `wrap`, `lineSpacing`, `anchor` (`[x, y]`) and `layer`. The key `minScale` fits the text into its box as the [text style](graphics2d.md#graphics2ddrawtextfont-text-x-y-style) describes. |
 | `frame` | table | none | A nine-slice frame: `texture`, `filter`, `wrap`, `source`, `borders` (`[left, top, right, bottom]`), `fill`, `width`, `height`, `pivotX`, `pivotY`, `color`, `borderScale` and `layer`. |
 | `particles` | string | none | The package path of a `.particles` effect file. |
-| `children` | list | none | The descriptions of the children, in order. |
+| `children` | list | none | The descriptions of the children, in order. A description nests up to 64 levels of nodes. |
 
 A node shows at most one of `sprite`, `text`, `frame` and `particles`.
 
@@ -115,6 +117,7 @@ Every error names the node by its path of names, written here as `<path>`, and t
 - `The key "<key>" of the node "<path>" must be <kind>.` for a value of the wrong type, where `<kind>` is `a number`, `an integer from -2147483648 to 2147483647` for a `layer`, `true or false`, `a string`, `a color such as "#FFFFFFFF"`, `a list of two numbers` or `a list of four numbers: x, y, width and height`.
 - `The key "filter" of the sprite of the node "<path>" must be "nearest" or "linear".` and `The key "wrap" of the sprite of the node "<path>" must be "clamp", "repeat" or "mirror".`, the same for frames.
 - `The key "children" of the node "<path>" must be a list of descriptions.`
+- `The description of the node "<path>" nests deeper than 64 levels.` for a node below 64 levels of descriptions.
 - `The node "<path>" shows more than one of "sprite", "text", "frame" and "particles".`
 - `The sprite of the node "<path>" needs the path of its texture.` and `The frame of the node "<path>" needs the path of its texture.`
 - `The key "minScale" of the text of the node "<path>" must be above 0 and at most 1.`

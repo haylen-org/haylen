@@ -39,13 +39,16 @@ class NodeSerializer final {
         std::function<std::shared_ptr<particles2d::System>(const std::string& path)> particles;
     };
 
-    // Checks a description and every description under it, and throws `std::invalid_argument` naming the node, by its path of names, and the key at fault.
+    // A description nests at most this many levels of nodes, as many as a Lua table of descriptions holds, so the code that walks it never runs out of stack.
+    static constexpr int kMaxDepth = 64;
+
+    // Checks a description and every description under it, and throws `std::invalid_argument` naming the node, by its path of names, and the key at fault, or the node that lies deeper than `kMaxDepth` levels.
     static void validate(const core::Json& description);
 
     // Builds the node of a description and its descendants under the parent, or at the root for an invalid parent, and returns it.
     static Node load(NodeTree& tree, const Node& parent, const core::Json& description, const Assets& assets);
 
-    // Describes a node and its descendants, leaving out the values that equal their defaults. Throws `std::invalid_argument` for content that no package path names, such as a texture made in code, naming the node.
+    // Describes a node and its descendants, leaving out the values that equal their defaults. Throws `std::invalid_argument` for content that no package path names, such as a texture made in code, and for descendants deeper than `kMaxDepth` levels, naming the node.
     [[nodiscard]] static core::Json save(const Node& node, const std::shared_ptr<text::Font>& defaultFont);
 
   private:
@@ -67,7 +70,8 @@ class NodeSerializer final {
     [[nodiscard]] static math::Rect rect(const core::Json& object, std::string_view key, std::string_view node, std::string_view part);
     [[nodiscard]] static graphics::Texture::Options textureOptions(const core::Json& object, std::string_view node, std::string_view part);
 
-    static void validateNode(const core::Json& description, const std::string& path);
+    [[nodiscard]] static std::string describeDepth(std::string_view path);
+    static void validateNode(const core::Json& description, const std::string& path, int depth);
     [[nodiscard]] static NodeProperties readProperties(const core::Json& description, const std::string& path, const Assets& assets);
     [[nodiscard]] static NodeContent readContent(const core::Json& description, const std::string& path, const Assets& assets);
     static Node loadNode(NodeTree& tree, const Node& parent, const core::Json& description, const std::string& path, const Assets& assets);
@@ -75,6 +79,7 @@ class NodeSerializer final {
     [[nodiscard]] static std::string texturePath(const graphics::Texture& texture, std::string_view node);
     static void writeTexture(core::Json& object, const graphics::Texture& texture, std::string_view node);
     static void writeContent(core::Json& object, const Node& node, const std::shared_ptr<text::Font>& defaultFont);
+    [[nodiscard]] static core::Json saveNode(const Node& node, const std::shared_ptr<text::Font>& defaultFont, int depth);
 };
 
 } // namespace haylen::nodes2d
