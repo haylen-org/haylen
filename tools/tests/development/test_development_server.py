@@ -239,3 +239,15 @@ class DevelopmentServerTest:
         finally:
             site.shutdown()
             site.close()
+
+    def test_a_message_that_is_not_json_is_reported_and_the_next_one_arrives(self, tmp_path, monkeypatch):
+        fixture = DevelopmentFixture(tmp_path, monkeypatch)
+        server = fixture.server()
+        received = []
+        monkeypatch.setattr(server, "receive", lambda client, message: received.append(message))
+        stream = io.BytesIO(WebSocket.frame(WebSocket.TEXT, b"{broken") + WebSocket.frame(WebSocket.TEXT, b'{"type": "report"}'))
+
+        server.serve(mock.Mock(), stream)
+
+        assert received == [{"type": "report"}]
+        assert "An app sent the development server a message that is not JSON, which the server skips." in fixture.output.getvalue()

@@ -341,8 +341,12 @@ class DevelopmentServer:
             if not final:
                 continue
             text, message = message, b""
-            with contextlib.suppress(ValueError):
-                self.receive(client, json.loads(text))
+            try:
+                received = json.loads(text)
+            except ValueError:
+                self.terminal.warning("An app sent the development server a message that is not JSON, which the server skips.")
+                continue
+            self.receive(client, received)
 
     def send_all(self, message: bytes) -> int:
         """Sends a text message to every connected app and returns how many it reached, dropping the apps whose connection ended."""
