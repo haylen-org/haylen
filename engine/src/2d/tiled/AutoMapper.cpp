@@ -316,10 +316,6 @@ AutoMapper::CompiledMap AutoMapper::compile(const RuleMap& ruleMap) {
         std::ranges::transform(lower, lower.begin(), [](unsigned char letter) { return static_cast<char>(std::tolower(letter)); });
         const std::size_t underscore = layer->name.find('_');
 
-        if (lower == "regions" || lower.starts_with("regions_")) {
-            throw std::invalid_argument("The rule map \"" + map.path + "\" uses the legacy \"regions\" layers. Remove them, so its rules follow the tiles of their input and output layers.");
-        }
-
         if (lower == "rule_options") {
             options = layer;
         } else if (lower.starts_with("input") && underscore != std::string::npos && layer->kind == Layer::Kind::Tile) {

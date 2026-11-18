@@ -37,7 +37,7 @@ class AutoMapper final {
 
     explicit AutoMapper(std::vector<RuleMap> ruleMaps);
 
-    // Loads a rules file, whose lines name rule maps, other rules files and `[filters]`, or one rule map, by its path inside the package content folder. Throws `std::invalid_argument` for rule maps without input or output layers and for rule maps of the legacy `regions` layers.
+    // Loads a rules file, whose lines name rule maps, other rules files and `[filters]`, or one rule map, by its path inside the package content folder. Throws `std::invalid_argument` for rule maps without input or output layers.
     [[nodiscard]] static AutoMapper load(std::string_view path, const TextReader& readText, const Map::JsonReader& readJson);
 
     // Tells whether a filter of a rules file, where `*` stands for any text, matches the file name of a map.

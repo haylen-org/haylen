@@ -219,7 +219,7 @@ TEST_F(AutoMapperTest, MatchesTilesByTheirTilesetsWhateverTheirGlobalIds) {
     EXPECT_EQ(row(map, "decor", 0), (std::vector<std::uint32_t>{kFlower + 20, 0, kFlower + 20}));
 }
 
-// Rule maps list their filters of map names, and rule maps without input or output, with the legacy regions or with an unknown special tile are refused.
+// Rule maps list their filters of map names, and rule maps without input or output or with an unknown special tile are refused.
 TEST_F(AutoMapperTest, FiltersMapsAndRefusesBrokenRuleMaps) {
     EXPECT_TRUE(AutoMapper::matchesFilter("town*", "maps/town-hall.tmj"));
     EXPECT_TRUE(AutoMapper::matchesFilter("*hall*", "maps/town-hall.tmj"));
@@ -231,7 +231,6 @@ TEST_F(AutoMapperTest, FiltersMapsAndRefusesBrokenRuleMaps) {
     EXPECT_EQ(mapper(document(1, 1, core::Json::array({layer("input_ground", 1, 1, {kGrass}), layer("output_decor", 1, 1, {kFlower})})), "town*").apply(cave, random).matches, 0U);
 
     EXPECT_THROW((void)mapper(document(1, 1, core::Json::array({layer("output_decor", 1, 1, {kFlower})}))), std::invalid_argument);
-    EXPECT_THROW((void)mapper(document(1, 1, core::Json::array({layer("regions", 1, 1, {kGrass}), layer("input_ground", 1, 1, {kGrass}), layer("output_decor", 1, 1, {kFlower})}))), std::invalid_argument);
     core::Json strange = document(1, 1, core::Json::array({layer("input_ground", 1, 1, {kEmpty}), layer("output_decor", 1, 1, {kFlower})}));
     strange["tilesets"][1]["tiles"][0]["properties"][0]["value"] = "Maybe";
     EXPECT_THROW((void)mapper(strange), std::invalid_argument);
