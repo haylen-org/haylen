@@ -60,6 +60,9 @@ class Catalog final {
     // Replaces `{name}` placeholders with the arguments, and `{{` and `}}` with single braces. A `count` argument picks the plural form by the plural rules of the language that holds the text, an `ordinal` argument of `true` picks it by the ordinal rules, a `zero` form takes a count of 0 whatever the rules say, and a form that the entry lacks falls back to `other`.
     [[nodiscard]] std::string getText(std::string_view key, const core::Json& arguments = core::Json::object()) const;
 
+    // Appends what `getText` returns to a text that keeps its storage, such as a label that the UI translates every frame.
+    void appendText(std::string& text, std::string_view key, const core::Json& arguments) const;
+
     // Fills a text that is not in the catalog the way the catalog fills its own: `{name}` placeholders take the arguments, `{{` and `}}` give single braces, and a placeholder without an argument stays as it is.
     [[nodiscard]] static std::string format(std::string_view pattern, const core::Json& arguments);
 
@@ -82,11 +85,15 @@ class Catalog final {
 
     static constexpr std::size_t kMaxDepth = 32;
 
+    // The room of a whole number below 1e15 with its sign.
+    static constexpr std::size_t kWholeNumberSize = 24;
+
     // A plural form holds only texts of plural categories, and always `other`.
     [[nodiscard]] static bool isPlural(const core::Json& value);
     static void flatten(const std::string& path, const core::Json& value, std::size_t depth, Table& entries);
     static void checkArguments(const core::Json& arguments);
-    [[nodiscard]] static std::string formatArgument(const core::Json& value);
+    static void appendFormatted(std::string& text, std::string_view pattern, const core::Json& arguments);
+    static void appendArgument(std::string& text, const core::Json& value);
     [[nodiscard]] static std::string translatePseudo(std::string_view pattern);
 
     // Returns the entry and the language that holds it.

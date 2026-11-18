@@ -22,7 +22,7 @@ void Stepper::readProperties(PropertyReader& reader) {
     reader.read("min", lowest);
     reader.read("max", highest);
     reader.read("step", increment);
-    reader.read("decimals", decimals, 0, 6);
+    reader.read("decimals", decimals, 0, Typography::kMaxDecimals);
     reader.read("wrap", wrap);
     ChoiceItem::readList(reader, "items", items);
     reader.read("selected", selected);
@@ -48,7 +48,11 @@ void Stepper::readProperties(PropertyReader& reader) {
 math::Vec2 Stepper::measureContent(Context& context, float availableWidth) {
     float widest = 0.0F;
     if (items.empty()) {
-        widest = std::max(Typography::measure(context, Theme::Font::Body, Typography::formatNumber(minimum, decimals)).x, Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x);
+        std::string& lowest = context.getFrameText();
+        Typography::appendNumber(lowest, minimum, decimals);
+        std::string& highest = context.getFrameText();
+        Typography::appendNumber(highest, maximum, decimals);
+        widest = std::max(Typography::measure(context, Theme::Font::Body, lowest).x, Typography::measure(context, Theme::Font::Body, highest).x);
     }
 
     for (const ChoiceItem& item : items) {
@@ -106,12 +110,14 @@ void Stepper::render(Context& context, const math::Rect& bounds) {
     }
 }
 
-std::string Stepper::getShownText(Context& context) const {
+std::string_view Stepper::getShownText(Context& context) const {
     if (items.empty()) {
-        return Typography::formatNumber(value, decimals);
+        std::string& shown = context.getFrameText();
+        Typography::appendNumber(shown, value, decimals);
+        return shown;
     }
 
-    return std::string(context.getText(items[static_cast<std::size_t>(ChoiceItem::indexOf(items, selected))].text));
+    return context.getText(items[static_cast<std::size_t>(ChoiceItem::indexOf(items, selected))].text);
 }
 
 bool Stepper::canStep(int direction) const {
@@ -173,7 +179,7 @@ void Stepper::step(Context& context, int direction) {
 bool Stepper::describe(Context& context, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::Slider;
     if (items.empty()) {
-        AccessibilityTree::appendNumber(element.value, value, decimals);
+        Typography::appendNumber(element.value, value, decimals);
     } else if (const int index = ChoiceItem::indexOf(items, selected); index >= 0) {
         element.value.assign(context.getText(items[static_cast<std::size_t>(index)].text));
     }

@@ -21,7 +21,7 @@ void NumberField::readProperties(PropertyReader& reader) {
     reader.read("min", lowest);
     reader.read("max", highest);
     reader.read("step", step, 0.0);
-    reader.read("decimals", decimals, 0, 6);
+    reader.read("decimals", decimals, 0, Typography::kMaxDecimals);
     reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, platform::TextInput::kReturnKeys);
 
     if (lowest > highest) {
@@ -31,7 +31,8 @@ void NumberField::readProperties(PropertyReader& reader) {
     minimum = lowest;
     maximum = highest;
     value = std::clamp(value, minimum, maximum);
-    text = Typography::formatNumber(value, decimals);
+    text.clear();
+    Typography::appendNumber(text, value, decimals);
 }
 
 math::Vec2 NumberField::measureContent(Context& context, float availableWidth) {
@@ -91,7 +92,8 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
     }
 
     if (!editing) {
-        text = Typography::formatNumber(next, decimals);
+        text.clear();
+        Typography::appendNumber(text, next, decimals);
     }
 
     if (next != value) {

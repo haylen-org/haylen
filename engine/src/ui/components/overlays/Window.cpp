@@ -1,8 +1,8 @@
 #include "ui/components/overlays/Window.hpp"
 
 #include <algorithm>
+#include <array>
 #include <format>
-#include <string>
 #include <utility>
 
 #include <imgui.h>
@@ -88,7 +88,9 @@ void Window::render(Context& context, const math::Rect&) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing;
     // The window takes its name from the items of the node, so a window that its GUI builds again stays the same ImGui window.
-    const bool shown = ImGui::Begin(std::format("##window{}", ImGui::GetID("##window")).c_str(), nullptr, flags);
+    std::array<char, kNameSize> name{};
+    std::format_to_n(name.data(), name.size() - 1, "##window{}", ImGui::GetID("##window"));
+    const bool shown = ImGui::Begin(name.data(), nullptr, flags);
     ImGui::PopStyleVar(2);
 
     if (shown) {

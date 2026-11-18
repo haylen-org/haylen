@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -11,6 +12,7 @@
 #include <imgui_internal.h>
 
 #include "haylen/core/Utf8.hpp"
+#include "haylen/input/VirtualInput.hpp"
 #include "haylen/localization/Catalog.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
@@ -236,7 +238,7 @@ std::string_view Context::getText(const TextValue& value) {
     }
 
     std::string& translated = getFrameText();
-    translated = catalog.getText(value.key, value.arguments);
+    catalog.appendText(translated, value.key, value.arguments);
     return translated;
 }
 
@@ -311,19 +313,62 @@ math::Rect Context::toDesign(const math::Rect& uiRect) const noexcept {
 }
 
 void Context::holdButton(std::string_view name) {
-    heldButtons.emplace(name);
+    const auto found = heldButtons.find(name);
+    if (found != heldButtons.end()) {
+        found->second = true;
+        return;
+    }
+
+    heldButtons.emplace(name, true);
 }
 
 void Context::setStick(std::string_view name, math::Vec2 value) {
-    sticks.insert_or_assign(std::string(name), value);
+    const auto found = sticks.find(name);
+    if (found != sticks.end()) {
+        found->second = value;
+        return;
+    }
+
+    sticks.emplace(name, value);
+}
+
+void Context::applyControls(input::VirtualInput& controls) {
+    for (auto button = heldButtons.begin(); button != heldButtons.end();) {
+        controls.setButton(button->first, button->second);
+        button = button->second ? std::next(button) : heldButtons.erase(button);
+    }
+
+    for (auto stick = sticks.begin(); stick != sticks.end();) {
+        controls.setStick(stick->first, stick->second.value_or(math::Vec2{}));
+        stick = stick->second ? std::next(stick) : sticks.erase(stick);
+    }
+}
+
+void Context::releaseControls(input::VirtualInput& controls) {
+    for (const auto& [name, held] : heldButtons) {
+        controls.setButton(name, false);
+    }
+
+    for (const auto& [name, value] : sticks) {
+        controls.setStick(name, {});
+    }
+
+    heldButtons.clear();
+    sticks.clear();
 }
 
 void Context::beginFrame(double now, float delta) noexcept {
     ++frame;
     frameTextCount = 0;
     frameCodePointCount = 0;
-    heldButtons.clear();
-    sticks.clear();
+    for (auto& [name, held] : heldButtons) {
+        held = false;
+    }
+
+    for (auto& [name, value] : sticks) {
+        value.reset();
+    }
+
     reshapes.clear();
     enclosures.clear();
     layers.resize(1);

@@ -39,7 +39,7 @@ class Stepper final : public Component {
     }
 
   private:
-    [[nodiscard]] std::string getShownText(Context& context) const;
+    [[nodiscard]] std::string_view getShownText(Context& context) const;
     [[nodiscard]] bool canStep(int direction) const;
     void step(Context& context, int direction);
 

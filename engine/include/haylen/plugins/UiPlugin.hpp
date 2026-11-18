@@ -5,7 +5,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -218,7 +217,6 @@ class UiPlugin final : public Plugin {
     void drawLeaving(core::Engine& engine, const core::SceneView& view);
     void drawAbove(core::Engine& engine, const core::SceneView& view);
     void drawCurrent(core::Engine& engine, const core::SceneView& view);
-    void applyVirtualInput(core::Engine& engine);
     // The size of the text of the insets that the safe area overlay shows.
     static constexpr float kSafeAreaLabelSize = 24.0F;
 
@@ -266,8 +264,6 @@ class UiPlugin final : public Plugin {
     // The base of every theme file that `loadTheme` read, by its asset path.
     std::map<std::string, std::string, std::less<>> themeFiles;
     std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fontFamilies;
-    std::set<std::string, std::less<>> heldButtons;
-    std::set<std::string, std::less<>> sticks;
     double elapsed = 0.0;
     text::Direction direction = text::Direction::LeftToRight;
     bool safeAreaVisible = false;

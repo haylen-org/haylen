@@ -564,6 +564,16 @@ TEST_F(ComponentTest, MeasuresSplitterChildrenAtTheirShares) {
     EXPECT_GE(getBounds(*gui, "bottom").height, line);
 }
 
+// A number field shows every digit of a huge value, so its text reads back as the same number.
+TEST_F(ComponentTest, ShowsEveryDigitOfAHugeNumber) {
+    mount(R"({"kind": "column", "children": [{"kind": "numberField", "id": "big", "value": 1e80, "max": 1e81, "width": 900}]})");
+    frames();
+    const Backend& backend = getUi().getBackend();
+    const auto found = std::ranges::find_if(backend.getTexts(), [&backend](const Backend::Text& text) { return backend.getContent(text).starts_with("1000"); });
+    ASSERT_NE(found, backend.getTexts().end());
+    EXPECT_EQ(std::stod(std::string(backend.getContent(*found))), 1e80);
+}
+
 // A text area wraps a line longer than its width between its words, and every line draws inside the field.
 TEST_F(ComponentTest, WrapsTheLinesOfATextArea) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": "The tide rose over the harbor wall and the boats drifted toward the lighthouse at dusk."}]})");
@@ -691,6 +701,40 @@ TEST_F(ComponentTest, TouchControlsIgnoreFingersWhileDisabled) {
     EXPECT_EQ(controls.getStick("move"), math::Vec2());
     EXPECT_FALSE(controls.isButtonDown("attack"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release"}));
+}
+
+// Held touch controls set the same virtual input every frame without allocating, and let go of it once released.
+TEST_F(ComponentTest, HoldsTouchControlsWithoutAllocating) {
+    // clang-format off
+    const auto measure = [this] {
+        frames(5);
+        const test::AllocationTracker tracker;
+        frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure();
+
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "padding": 40, "gap": 400, "children": [
+        {"kind": "touchStick", "id": "stick", "action": "moveTheCharacterAround", "radius": 100, "deadZone": 0},
+        {"kind": "touchButton", "id": "attack", "action": "attackTheNearestEnemy", "size": 120}
+    ]})");
+    // clang-format on
+    const math::Rect stick = getBounds(*gui, "stick");
+    const math::Rect attack = getBounds(*gui, "attack");
+    touch(platform::Event::Type::TouchBegan, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
+    touch(platform::Event::Type::TouchBegan, 2, attack.getCenter());
+    EXPECT_EQ(measure(), empty);
+
+    input::VirtualInput& controls = getEngine().getVirtualInput();
+    EXPECT_TRUE(controls.isButtonDown("attackTheNearestEnemy"));
+    EXPECT_GT(controls.getStick("moveTheCharacterAround").x, 0.0F);
+    touch(platform::Event::Type::TouchEnded, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
+    touch(platform::Event::Type::TouchEnded, 2, attack.getCenter());
+    frames(2);
+    EXPECT_FALSE(controls.isButtonDown("attackTheNearestEnemy"));
+    EXPECT_EQ(controls.getStick("moveTheCharacterAround"), math::Vec2());
 }
 
 TEST_F(ComponentTest, SlideInButtonsTakeAFingerThatMovesOntoThem) {
@@ -1431,7 +1475,13 @@ TEST_F(ComponentAssetTest, DrawsFramesWithoutAllocating) {
         {"kind": "table", "columns": [{"text": "Name of the player"}, {"text": "Score"}], "rows": [{"id": "one", "cells": ["Player number one", "120"]}]},
         {"kind": "tree", "items": [{"id": "root", "text": "Root of the tree", "children": [{"id": "leaf", "text": "Leaf"}]}]},
         {"kind": "emptyState", "title": "Nothing here yet", "message": "Add something to see it here"},
-        {"kind": "divider"}, {"kind": "statusIndicator", "text": "Online and ready", "tone": "success"}, {"kind": "avatar", "name": "Ana Lima"}
+        {"kind": "divider"}, {"kind": "statusIndicator", "text": "Online and ready", "tone": "success"}, {"kind": "avatar", "name": "Ana Lima"},
+        {"kind": "label", "text": {"key": "settings.audio.title.of.the.screen"}},
+        {"kind": "richText", "text": "Read the [url=https://example.com/terms]terms of the service[/url] before you start"},
+        {"kind": "stepper", "items": [{"id": "a", "text": "The easiest difficulty"}, {"id": "b", "text": "The hardest difficulty"}], "selected": "a"},
+        {"kind": "formField", "label": "The name that the board shows", "required": true, "children": [{"kind": "textField", "placeholder": "Name"}]},
+        {"kind": "keyCapture", "value": "key:leftShift"}, {"kind": "numberField", "value": 123456789012345678901234567890.5, "decimals": 2},
+        {"kind": "window", "title": "A window with a long title", "x": 100, "y": 100, "width": 500, "height": 300}
     ]}]})");
     // clang-format on
     frames(30);

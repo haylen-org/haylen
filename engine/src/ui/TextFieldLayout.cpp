@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <iterator>
 #include <optional>
 #include <span>
 
@@ -130,28 +132,35 @@ std::size_t TextFieldLayout::moveAlong(std::size_t position, bool down) const {
     return hitLine(layout->lines[down ? lineIndex + 1 : lineIndex - 1], getCaretX(layout->lines[lineIndex], position));
 }
 
-std::vector<math::Rect> TextFieldLayout::getSelection(std::size_t begin, std::size_t end) const {
-    std::vector<math::Rect> boxes;
+// The boxes of the characters of each line go after the boxes of the lines above, run from left to right and join where they touch.
+void TextFieldLayout::getSelection(std::size_t begin, std::size_t end, std::vector<math::Rect>& boxes) const {
+    boxes.clear();
     for (const text::Layout::Line& line : layout->lines) {
-        std::vector<math::Rect> covered;
+        const std::size_t lineStart = boxes.size();
         for (std::size_t index = line.firstCharacter; index < line.endCharacter; ++index) {
             const text::Layout::Character& character = layout->characters[index];
             if (character.begin >= begin && character.end <= end) {
-                covered.push_back({character.box.x, line.box.y, character.box.width, line.box.height});
+                boxes.push_back({character.box.x, line.box.y, character.box.width, line.box.height});
             }
         }
 
-        std::ranges::sort(covered, {}, &math::Rect::x);
-        for (const math::Rect& box : covered) {
-            if (!boxes.empty() && boxes.back().y == box.y && std::abs(boxes.back().getRight() - box.x) < 0.5F) {
-                boxes.back().width = box.getRight() - boxes.back().x;
-            } else {
-                boxes.push_back(box);
+        const auto lineBoxes = std::next(boxes.begin(), static_cast<std::ptrdiff_t>(lineStart));
+        std::ranges::sort(lineBoxes, boxes.end(), {}, &math::Rect::x);
+
+        std::size_t joined = lineStart;
+        for (std::size_t index = lineStart; index < boxes.size(); ++index) {
+            const math::Rect box = boxes[index];
+            if (joined > lineStart && std::abs(boxes[joined - 1].getRight() - box.x) < 0.5F) {
+                boxes[joined - 1].width = box.getRight() - boxes[joined - 1].x;
+                continue;
             }
+
+            boxes[joined] = box;
+            ++joined;
         }
+
+        boxes.resize(joined);
     }
-
-    return boxes;
 }
 
 std::pair<std::size_t, std::size_t> TextFieldLayout::getWord(std::size_t position) const {

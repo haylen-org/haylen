@@ -55,7 +55,7 @@ void Progress::render(Context& context, const math::Rect& bounds) {
 bool Progress::describe(Context& context, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::ProgressBar;
     element.label.assign(context.getText(text));
-    AccessibilityTree::appendNumber(element.value, static_cast<double>(value) * 100.0, 0);
+    Typography::appendNumber(element.value, static_cast<double>(value) * 100.0, 0);
     element.value.push_back('%');
     return true;
 }

@@ -115,15 +115,18 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
     const text::Layout& layout = richText->getLayout();
     const std::vector<std::string>& links = richText->getDocument().links;
     const bool takesFocus = takeFocusRequest();
-    std::vector<bool> reached(links.size(), false);
+    reachedLinks.assign(links.size(), false);
     std::optional<std::size_t> pointed;
 
     for (std::size_t index = 0; index < layout.links.size(); ++index) {
         const text::Layout::Area& area = layout.links[index];
-        const bool first = !reached[area.index];
-        reached[area.index] = true;
-        const std::string label = "##link" + std::to_string(index);
-        const Widgets::Interaction state = Widgets::interact(context, area.rect.translated(origin), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, label, first ? ImGuiButtonFlags{ImGuiButtonFlags_None} : ImGuiButtonFlags{ImGuiButtonFlags_NoNavFocus});
+        const bool first = !reachedLinks[area.index];
+        reachedLinks[area.index] = true;
+
+        const ImGuiButtonFlags flags = first ? ImGuiButtonFlags_None : ImGuiButtonFlags_NoNavFocus;
+        ImGui::PushID(static_cast<int>(index));
+        const Widgets::Interaction state = Widgets::interact(context, area.rect.translated(origin), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##link", flags);
+        ImGui::PopID();
 
         if (first && takesFocus && area.index == 0) {
             Widgets::focusItem(context);

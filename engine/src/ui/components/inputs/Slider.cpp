@@ -18,7 +18,7 @@ void Slider::readProperties(PropertyReader& reader) {
     reader.read("max", highest, -Widgets::kSliderLimit, Widgets::kSliderLimit);
     reader.read("step", step, 0.0);
     reader.read("showValue", showValue);
-    reader.read("decimals", decimals, 0, 6);
+    reader.read("decimals", decimals, 0, Typography::kMaxDecimals);
     if (lowest >= highest) {
         reader.fail("min", "must be smaller than \"max\"");
     }
@@ -34,8 +34,17 @@ math::Vec2 Slider::measureContent(Context& context, float availableWidth) {
 
 // The shown value takes the room of the wider end of the track, so the track keeps its length while the value changes, and at least the value width of the theme, so the tracks of the sliders of a column line up whatever their ends.
 void Slider::render(Context& context, const math::Rect& bounds) {
-    const float widest = std::max(Typography::measure(context, Theme::Font::Body, Typography::formatNumber(minimum, decimals)).x, Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x);
-    const float label = showValue ? std::max(widest, context.getMetric(Theme::Metric::SliderValueWidth)) + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
+    float label = 0.0F;
+    if (showValue) {
+        std::string& lowest = context.getFrameText();
+        Typography::appendNumber(lowest, minimum, decimals);
+        std::string& highest = context.getFrameText();
+        Typography::appendNumber(highest, maximum, decimals);
+
+        const float widest = std::max(Typography::measure(context, Theme::Font::Body, lowest).x, Typography::measure(context, Theme::Font::Body, highest).x);
+        label = std::max(widest, context.getMetric(Theme::Metric::SliderValueWidth)) + context.getMetric(Theme::Metric::ItemSpacing);
+    }
+
     const math::Rect track = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     bool changed = Widgets::slider(context, track, value, minimum, maximum, step);
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
@@ -55,13 +64,15 @@ void Slider::render(Context& context, const math::Rect& bounds) {
     }
 
     if (showValue) {
-        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), Typography::formatNumber(value, decimals), Alignment::End);
+        std::string& shown = context.getFrameText();
+        Typography::appendNumber(shown, value, decimals);
+        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), shown, Alignment::End);
     }
 }
 
 bool Slider::describe(Context&, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::Slider;
-    AccessibilityTree::appendNumber(element.value, value, decimals);
+    Typography::appendNumber(element.value, value, decimals);
     element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
     return true;
 }

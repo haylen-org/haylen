@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
-#include <cstdio>
 
 #include <imgui.h>
 
@@ -133,15 +133,15 @@ void Typography::drawAligned(Context& context, Theme::Font font, const math::Rec
 }
 
 // A value that rounds to zero shows without a sign, so a slider at a tiny negative value or at -0 reads "0.00" and never "-0.00".
-std::string Typography::formatNumber(double value, int decimals) {
-    std::array<char, 64> text{};
-    std::snprintf(text.data(), text.size(), "%.*f", decimals, value);
-    std::string formatted = text.data();
-    if (formatted.front() == '-' && formatted.find_first_not_of("-0.") == std::string::npos) {
-        formatted.erase(0, 1);
+void Typography::appendNumber(std::string& text, double value, int decimals) {
+    std::array<char, kNumberSize> digits{};
+    const std::to_chars_result written = std::to_chars(digits.data(), digits.data() + digits.size(), value, std::chars_format::fixed, decimals);
+    std::string_view number(digits.data(), written.ptr);
+    if (number.front() == '-' && number.find_first_not_of("-0.") == std::string_view::npos) {
+        number.remove_prefix(1);
     }
 
-    return formatted;
+    text.append(number);
 }
 
 } // namespace haylen::ui

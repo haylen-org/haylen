@@ -240,8 +240,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         submitted = ImGui::InputText("##field", &value, flags | ImGuiInputTextFlags_EnterReturnsTrue, &callback, &editing);
     }
 
+    // The selection that a press drags keeps its finger, while the press of a field that waits for a tap goes once the finger travels.
     const bool edited = ImGui::IsItemEdited();
-    if (ImGui::IsItemActive()) {
+    if (!fingerPress && ImGui::IsItemActive()) {
         context.keepDrag(ImGui::GetItemID());
     }
 
@@ -306,7 +307,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     if (state != nullptr && state->HasSelection()) {
         const std::size_t first = toPosition(value, std::min(state->GetSelectionStart(), state->GetSelectionEnd()));
         const std::size_t last = toPosition(value, std::max(state->GetSelectionStart(), state->GetSelectionEnd()));
-        for (const math::Rect& box : field->getSelection(first, last)) {
+        std::vector<math::Rect>& boxes = context.getSelectionBoxes();
+        field->getSelection(first, last, boxes);
+        for (const math::Rect& box : boxes) {
             Surfaces::fill(context, box.translated(origin), context.getColor(Theme::Color::Selection), 0.0F);
         }
     }
@@ -373,7 +376,9 @@ void TextEditor::drawComposition(Context& context, const TextSession& session, I
     }
 
     const float thickness = std::max(1.0F, ImGui::GetFontSize() / 14.0F);
-    for (const math::Rect& box : field.getSelection(static_cast<std::size_t>(composition->first), static_cast<std::size_t>(composition->second))) {
+    std::vector<math::Rect>& boxes = context.getSelectionBoxes();
+    field.getSelection(static_cast<std::size_t>(composition->first), static_cast<std::size_t>(composition->second), boxes);
+    for (const math::Rect& box : boxes) {
         const math::Rect placed = box.translated(origin);
         Widgets::line(context, {placed.x, placed.getBottom() - 1.0F}, {placed.getRight(), placed.getBottom() - 1.0F}, thickness, context.getColor(Theme::Color::Text));
     }

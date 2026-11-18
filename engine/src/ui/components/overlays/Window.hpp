@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string_view>
 
@@ -34,6 +35,9 @@ class Window final : public Linear {
   private:
     // A window floats above the interface, so its shadow is larger and darker than the shadow of a card.
     static constexpr float kShadowLift = 1.5F;
+
+    // The ImGui window takes a name of a fixed size, which the 32 bit id of the node fits.
+    static constexpr std::size_t kNameSize = 24;
 
     [[nodiscard]] math::Vec2 getSize(Context& context);
     void drawTitle(Context& context, const math::Rect& bar);

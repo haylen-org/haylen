@@ -67,8 +67,7 @@ class AccessibilityTree final {
         return focused;
     }
 
-    // Append a number with the decimals, or the parts of a label separated by commas without the empty ones, to a text that keeps its storage, for what elements read aloud.
-    static void appendNumber(std::string& text, double value, int decimals);
+    // Appends the parts of a label separated by commas without the empty ones to a text that keeps its storage, for what elements read aloud.
     static void appendParts(std::string& text, std::initializer_list<std::string_view> parts);
 
     // Returns the focus target that the actions of an element of the last frame reach.

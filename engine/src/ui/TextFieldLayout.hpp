@@ -34,8 +34,8 @@ class TextFieldLayout final {
     // Returns the position on the line above or below whose caret stands nearest to the one of the position.
     [[nodiscard]] std::size_t moveAlong(std::size_t position, bool down) const;
 
-    // Returns the boxes a selection covers on screen, one per run of neighbouring characters, which is several when it crosses lines or directions.
-    [[nodiscard]] std::vector<math::Rect> getSelection(std::size_t begin, std::size_t end) const;
+    // Writes the boxes a selection covers on screen into storage that the caller reuses, one per run of neighbouring characters, which is several when it crosses lines or directions.
+    void getSelection(std::size_t begin, std::size_t end, std::vector<math::Rect>& boxes) const;
 
     // Returns the word around a position, the run of characters between spaces.
     [[nodiscard]] std::pair<std::size_t, std::size_t> getWord(std::size_t position) const;

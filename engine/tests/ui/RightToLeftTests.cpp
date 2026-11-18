@@ -67,7 +67,9 @@ TEST_F(RightToLeftTest, PlacesTheCaretOnTheRightClusterOfRightToLeftText) {
     EXPECT_EQ(field.hitTest({field.getCaret(2).x + 1.0F, 10.0F}), 2U);
 
     // A selection across the change of direction covers two runs apart on screen.
-    EXPECT_EQ(field.getSelection(2, 7).size(), 2U);
+    std::vector<math::Rect> boxes;
+    field.getSelection(2, 7, boxes);
+    EXPECT_EQ(boxes.size(), 2U);
     EXPECT_EQ(field.getWord(6), (std::pair<std::size_t, std::size_t>{5, 8}));
 
     // A Devanagari conjunct with its vowel sign is one cluster, so the caret never stops inside it.

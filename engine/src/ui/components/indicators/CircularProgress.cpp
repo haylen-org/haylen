@@ -89,7 +89,7 @@ void CircularProgress::drawCooldown(Context& context, math::Vec2 center, float r
 bool CircularProgress::describe(Context& context, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::ProgressBar;
     element.label.assign(context.getText(text));
-    AccessibilityTree::appendNumber(element.value, static_cast<double>(value) * 100.0, 0);
+    Typography::appendNumber(element.value, static_cast<double>(value) * 100.0, 0);
     element.value.push_back('%');
     return true;
 }

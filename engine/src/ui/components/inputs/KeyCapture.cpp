@@ -15,7 +15,7 @@
 
 namespace haylen::ui {
 
-std::string KeyCapture::describe(std::string_view binding, input::GamepadLabels labels) {
+std::string KeyCapture::describeBinding(std::string_view binding, input::GamepadLabels labels) {
     const std::size_t separator = binding.find(':');
     const std::string_view kind = binding.substr(0, separator);
     std::string name(separator == std::string_view::npos ? std::string_view{} : binding.substr(separator + 1));
@@ -167,9 +167,10 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
 
     Surfaces::draw(context, capturing ? Theme::Surface::FieldFocused : Theme::Surface::Field, bounds, context.getColor(state.hovered && !capturing ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(capturing ? Theme::Color::Focus : Theme::Color::Border));
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Field));
-    std::string shown = capturing ? std::string(context.getText(prompt)) : (value.empty() ? std::string(context.getText(placeholder)) : describe(value, getLabels(context.getInput())));
-    if (capturing && shown.empty()) {
-        shown = "\xE2\x80\xA6";
+    std::string_view shown = value.empty() ? context.getText(placeholder) : getBindingText(context.getInput());
+    if (capturing) {
+        const std::string_view asked = context.getText(prompt);
+        shown = asked.empty() ? kEllipsis : asked;
     }
 
     const bool muted = capturing || value.empty();
@@ -248,10 +249,22 @@ void KeyCapture::finish(Context& context, const std::string& binding) {
     context.emit(*this, "change", {{"value", value}});
 }
 
+const std::string& KeyCapture::getBindingText(const input::Input& devices) {
+    const input::GamepadLabels labels = getLabels(devices);
+    if (value != describedValue || labels != describedLabels) {
+        bindingText = describeBinding(value, labels);
+        describedValue = value;
+        describedLabels = labels;
+    }
+
+    return bindingText;
+}
+
+// The binding reads as the field shows it, which its last draw wrote.
 bool KeyCapture::describe(Context& context, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::Button;
     element.label.assign(context.getText(capturing ? prompt : placeholder));
-    element.value.assign(value);
+    element.value.assign(value.empty() ? std::string_view() : std::string_view(bindingText));
     element.actions = platform::AccessibilityElement::Activate;
     return true;
 }

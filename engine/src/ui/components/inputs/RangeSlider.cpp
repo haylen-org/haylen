@@ -29,7 +29,7 @@ void RangeSlider::readProperties(PropertyReader& reader) {
     reader.read("max", highest, -Widgets::kSliderLimit, Widgets::kSliderLimit);
     reader.read("step", step, 0.0);
     reader.read("showValue", showValue);
-    reader.read("decimals", decimals, 0, 6);
+    reader.read("decimals", decimals, 0, Typography::kMaxDecimals);
     if (lowest >= highest) {
         reader.fail("min", "must be smaller than \"max\"");
     }
@@ -55,7 +55,6 @@ math::Vec2 RangeSlider::measureContent(Context& context, float availableWidth) {
 }
 
 void RangeSlider::render(Context& context, const math::Rect& bounds) {
-    const std::string range = Typography::formatNumber(low, decimals) + " - " + Typography::formatNumber(high, decimals);
     const float label = showValue ? measureLabel(context) : 0.0F;
     const math::Rect area = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     const float knob = context.getMetric(Theme::Metric::SliderKnobSize);
@@ -96,6 +95,10 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     drawKnob(context, area, toPosition(context, high, track), ring && highActive, pressed && highActive);
 
     if (showValue) {
+        std::string& range = context.getFrameText();
+        Typography::appendNumber(range, low, decimals);
+        range.append(" - ");
+        Typography::appendNumber(range, high, decimals);
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), range, Alignment::End);
     }
 
@@ -107,10 +110,15 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
 
 // The shown range takes the room of its widest text, with both ends as wide as the wider end of the track, so the track keeps its length while the knobs move, and at least the value width of the theme, so its track lines up with the tracks of the sliders of its column.
 float RangeSlider::measureLabel(Context& context) const {
-    const std::string first = Typography::formatNumber(minimum, decimals);
-    const std::string last = Typography::formatNumber(maximum, decimals);
-    const std::string& wider = Typography::measure(context, Theme::Font::Body, first).x > Typography::measure(context, Theme::Font::Body, last).x ? first : last;
-    const float widest = Typography::measure(context, Theme::Font::Body, wider + " - " + wider).x;
+    std::string& first = context.getFrameText();
+    Typography::appendNumber(first, minimum, decimals);
+    std::string& last = context.getFrameText();
+    Typography::appendNumber(last, maximum, decimals);
+    const std::string_view wider = Typography::measure(context, Theme::Font::Body, first).x > Typography::measure(context, Theme::Font::Body, last).x ? first : last;
+
+    std::string& both = context.getFrameText();
+    both.append(wider).append(" - ").append(wider);
+    const float widest = Typography::measure(context, Theme::Font::Body, both).x;
     return std::max(widest, context.getMetric(Theme::Metric::SliderValueWidth)) + context.getMetric(Theme::Metric::ItemSpacing);
 }
 
@@ -185,9 +193,9 @@ void RangeSlider::drawKnob(Context& context, const math::Rect& bounds, float x, 
 
 bool RangeSlider::describe(Context&, platform::AccessibilityElement& element) const {
     element.role = platform::AccessibilityElement::Role::Slider;
-    AccessibilityTree::appendNumber(element.value, low, decimals);
+    Typography::appendNumber(element.value, low, decimals);
     element.value.append(" - ");
-    AccessibilityTree::appendNumber(element.value, high, decimals);
+    Typography::appendNumber(element.value, high, decimals);
     element.actions = platform::AccessibilityElement::Increment | platform::AccessibilityElement::Decrement;
     return true;
 }

@@ -107,13 +107,8 @@ void UiPlugin::start(core::Engine& engine) {
 }
 
 void UiPlugin::stop(core::Engine& engine) {
-    input::VirtualInput& controls = engine.getVirtualInput();
-    for (const std::string& name : std::exchange(heldButtons, {})) {
-        controls.setButton(name, false);
-    }
-
-    for (const std::string& name : std::exchange(sticks, {})) {
-        controls.setStick(name, {});
+    if (context) {
+        context->releaseControls(engine.getVirtualInput());
     }
 
     engine.getInput().setPointerCaptured(false);
@@ -682,7 +677,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
 
     drawing.render(engine.getRenderer2D());
     engine.getAppTextField().setTakenOver(drawing.getTextSession().isActive());
-    applyVirtualInput(engine);
+    context->applyControls(engine.getVirtualInput());
 
     // The action map of the next frame ignores mouse buttons while the interface owns the pointer, so a click on a button never reaches gameplay, and it leaves the presses the interface answers itself to the interface, such as the cancel that closes a popup.
     engine.getInput().setPointerCaptured(isUsingPointer());
@@ -794,32 +789,6 @@ void UiPlugin::drawSafeAreaLabel(ImDrawList& list, const math::Rect& display, co
     const ImVec2 corner{std::floor(display.getCenter().x - lineSize.x * 0.5F), std::floor(display.getBottom() - lineSize.y - padding * 3.0F)};
     list.AddRectFilled({corner.x - padding, corner.y - padding * 0.5F}, {corner.x + lineSize.x + padding, corner.y + lineSize.y + padding * 0.5F}, IM_COL32(0, 0, 0, 200), lineSize.y);
     list.AddText(font, size, corner, color, line.c_str());
-}
-
-void UiPlugin::applyVirtualInput(core::Engine& engine) {
-    input::VirtualInput& controls = engine.getVirtualInput();
-    for (const std::string& name : heldButtons) {
-        if (!context->getHeldButtons().contains(name)) {
-            controls.setButton(name, false);
-        }
-    }
-
-    for (const std::string& name : context->getHeldButtons()) {
-        controls.setButton(name, true);
-    }
-
-    for (const std::string& name : sticks) {
-        if (!context->getSticks().contains(name)) {
-            controls.setStick(name, {});
-        }
-    }
-
-    heldButtons = context->getHeldButtons();
-    sticks.clear();
-    for (const auto& [name, value] : context->getSticks()) {
-        controls.setStick(name, value);
-        sticks.insert(name);
-    }
 }
 
 std::shared_ptr<ui::Gui> UiPlugin::createGui(const core::Json& tree, ui::Placement placement) const {

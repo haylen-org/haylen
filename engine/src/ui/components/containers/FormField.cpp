@@ -37,7 +37,12 @@ void FormField::render(Context& context, const math::Rect& bounds) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing) * 0.5F;
     float y = bounds.y;
     if (!label.isEmpty()) {
-        const std::string labelText = std::string(context.getText(label)) + (required ? " *" : "");
+        std::string& labelText = context.getFrameText();
+        labelText.append(context.getText(label));
+        if (required) {
+            labelText.append(" *");
+        }
+
         Typography::drawAligned(context, Theme::Font::Caption, {bounds.x, y, bounds.width, Typography::getLineHeight(context, Theme::Font::Caption)}, context.getColor(Theme::Color::TextMuted), labelText, Alignment::Start);
         y += Typography::getLineHeight(context, Theme::Font::Caption) + spacing;
     }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <optional>
 #include <stdexcept>
@@ -48,19 +49,23 @@ void Catalog::flatten(const std::string& path, const core::Json& value, std::siz
     }
 }
 
-std::string Catalog::formatArgument(const core::Json& value) {
+void Catalog::appendArgument(std::string& text, const core::Json& value) {
     if (value.is_string()) {
-        return value.get<std::string>();
+        text.append(value.get_ref<const std::string&>());
+        return;
     }
 
     if (value.is_number_float()) {
         const double number = value.get<double>();
         if (std::trunc(number) == number && std::abs(number) < 1e15) {
-            return std::to_string(static_cast<long long>(number));
+            std::array<char, kWholeNumberSize> written{};
+            const std::to_chars_result end = std::to_chars(written.data(), written.data() + written.size(), static_cast<long long>(number));
+            text.append(written.data(), end.ptr);
+            return;
         }
     }
 
-    return value.dump();
+    text.append(value.dump());
 }
 
 void Catalog::checkArguments(const core::Json& arguments) {
@@ -72,31 +77,38 @@ void Catalog::checkArguments(const core::Json& arguments) {
 std::string Catalog::format(std::string_view pattern, const core::Json& arguments) {
     checkArguments(arguments);
     std::string result;
-    result.reserve(pattern.size());
+    appendFormatted(result, pattern, arguments);
+    return result;
+}
+
+void Catalog::appendFormatted(std::string& text, std::string_view pattern, const core::Json& arguments) {
     for (std::size_t index = 0; index < pattern.size(); ++index) {
         const char character = pattern[index];
         const bool doubled = index + 1 < pattern.size() && pattern[index + 1] == character;
 
         if ((character == '{' || character == '}') && doubled) {
-            result += character;
+            text += character;
             ++index;
             continue;
         }
 
         const std::size_t close = character == '{' ? pattern.find('}', index + 1) : std::string_view::npos;
         if (close == std::string_view::npos) {
-            result += character;
+            text += character;
             continue;
         }
 
         // A placeholder without a matching argument stays in the text, where it is easy to spot.
-        const std::string name(pattern.substr(index + 1, close - index - 1));
+        const std::string_view name = pattern.substr(index + 1, close - index - 1);
         const auto argument = arguments.find(name);
-        result += argument != arguments.end() ? formatArgument(*argument) : std::string(pattern.substr(index, close - index + 1));
+        if (argument != arguments.end()) {
+            appendArgument(text, *argument);
+        } else {
+            text.append(pattern.substr(index, close - index + 1));
+        }
+
         index = close;
     }
-
-    return result;
 }
 
 // Letters take accents, placeholders and the tags of rich text stay as they are, and dots after the text make it a third longer.
@@ -250,15 +262,23 @@ bool Catalog::has(std::string_view key) const {
 }
 
 std::string Catalog::getText(std::string_view key, const core::Json& arguments) const {
+    std::string text;
+    appendText(text, key, arguments);
+    return text;
+}
+
+void Catalog::appendText(std::string& text, std::string_view key, const core::Json& arguments) const {
     checkArguments(arguments);
     const auto [entry, entryLanguage] = find(key);
     if (entry == nullptr) {
-        return std::string(key);
+        text.append(key);
+        return;
     }
 
     if (entry->is_string()) {
         const std::string& pattern = entry->get_ref<const std::string&>();
-        return format(pseudo ? translatePseudo(pattern) : pattern, arguments);
+        appendFormatted(text, pseudo ? translatePseudo(pattern) : pattern, arguments);
+        return;
     }
 
     // The rules of the language the text comes from pick the form, a `zero` form always takes a count of 0, and a form the entry lacks falls back to `other`.
@@ -277,7 +297,7 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
     }
 
     const std::string& pattern = entry->at(form).get_ref<const std::string&>();
-    return format(pseudo ? translatePseudo(pattern) : pattern, arguments);
+    appendFormatted(text, pseudo ? translatePseudo(pattern) : pattern, arguments);
 }
 
 std::optional<std::string> Catalog::findBestMatch(std::string_view tag) const {

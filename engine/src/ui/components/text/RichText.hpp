@@ -6,6 +6,7 @@
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -66,6 +67,9 @@ class RichText final : public Component {
     const Context* preparedFor = nullptr;
     std::uint64_t updatedFrame = 0;
     std::optional<std::size_t> hoveredLink;
+
+    // Whether each link of the text met its first piece in the frame, kept between frames so they allocate nothing.
+    std::vector<bool> reachedLinks;
 };
 
 } // namespace haylen::ui

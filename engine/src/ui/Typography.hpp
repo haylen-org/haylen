@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <string>
@@ -58,10 +60,14 @@ class Typography final {
     // Draws a layout of the text in the style at the position of the top-left of its block, moved, scaled and tinted by the transforms of the nodes around it.
     static void drawLayout(Context& context, Theme::Font font, std::string_view text, const text::Style& style, math::Vec2 position);
 
-    // Formats a number with a fixed count of decimals, where a value that rounds to zero has no sign.
-    [[nodiscard]] static std::string formatNumber(double value, int decimals);
+    // Appends a number with a fixed count of decimals, from 0 to `kMaxDecimals`, to a text that keeps its storage, where a value that rounds to zero has no sign.
+    static void appendNumber(std::string& text, double value, int decimals);
+    static constexpr int kMaxDecimals = 6;
 
   private:
+    // The longest number that a finite value writes: a sign, the 309 digits of the largest value, the point and the decimals.
+    static constexpr std::size_t kNumberSize = std::numeric_limits<double>::max_exponent10 + kMaxDecimals + 4;
+
     static constexpr std::string_view kEllipsis = "\xE2\x80\xA6";
 };
 

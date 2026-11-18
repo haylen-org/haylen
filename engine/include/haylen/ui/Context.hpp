@@ -8,7 +8,6 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,7 +33,8 @@ struct ImGuiWindow;
 
 namespace haylen::input {
 class Input;
-}
+class VirtualInput;
+} // namespace haylen::input
 
 namespace haylen::localization {
 class Catalog;
@@ -197,6 +197,11 @@ class Context final {
     // Returns the code points of a text, valid until the next frame begins, from slots that frames reuse.
     [[nodiscard]] std::u32string_view getFrameCodePoints(std::string_view text);
 
+    // Returns storage for the boxes of a selection that a component draws, which frames reuse.
+    [[nodiscard]] std::vector<math::Rect>& getSelectionBoxes() noexcept {
+        return selectionBoxes;
+    }
+
     // Returns the texture that draws a picture over `size` UI units at the density of the screen, or an empty texture while it loads.
     [[nodiscard]] graphics::Texture getImage(std::string_view path, math::Vec2 size) const;
 
@@ -230,15 +235,11 @@ class Context final {
         return input;
     }
 
-    // On-screen controls report every frame the virtual buttons they hold and the stick values they set, and the owner releases whatever stops being reported.
+    // On-screen controls report every frame the virtual buttons they hold and the stick values they set. Applying them sets what the frame reported and releases what stops being reported, and the names stay while they are reported, so a steady frame allocates nothing.
     void holdButton(std::string_view name);
     void setStick(std::string_view name, math::Vec2 value);
-    [[nodiscard]] const std::set<std::string, std::less<>>& getHeldButtons() const noexcept {
-        return heldButtons;
-    }
-    [[nodiscard]] const std::map<std::string, math::Vec2, std::less<>>& getSticks() const noexcept {
-        return sticks;
-    }
+    void applyControls(input::VirtualInput& controls);
+    void releaseControls(input::VirtualInput& controls);
 
     // The stacks the messages of the navigation share, so messages shown together never cover each other.
     [[nodiscard]] MessageStack& getMessages() noexcept {
@@ -339,8 +340,9 @@ class Context final {
     std::vector<Event>* events = nullptr;
     Collection* redirectCollection = nullptr;
     CollectionCell* redirectCell = nullptr;
-    std::set<std::string, std::less<>> heldButtons;
-    std::map<std::string, math::Vec2, std::less<>> sticks;
+    // The virtual buttons and sticks of on-screen controls, with whether the frame held each button and the value it gave each stick.
+    std::map<std::string, bool, std::less<>> heldButtons;
+    std::map<std::string, std::optional<math::Vec2>, std::less<>> sticks;
     std::vector<Reshape> reshapes;
     std::vector<Enclosure> enclosures;
     MessageStack messages;
@@ -350,6 +352,7 @@ class Context final {
     std::size_t frameTextCount = 0;
     std::deque<std::u32string> frameCodePoints;
     std::size_t frameCodePointCount = 0;
+    std::vector<math::Rect> selectionBoxes;
 
     // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
     std::vector<Writing> writings{Writing{}};

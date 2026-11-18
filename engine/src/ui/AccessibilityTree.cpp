@@ -160,12 +160,6 @@ void AccessibilityTree::endFrame(ImGuiID focusedItem) {
     }
 }
 
-void AccessibilityTree::appendNumber(std::string& text, double value, int decimals) {
-    std::array<char, 64> digits{};
-    const std::to_chars_result written = std::to_chars(digits.data(), digits.data() + digits.size(), value, std::chars_format::fixed, decimals);
-    text.append(digits.data(), written.ptr);
-}
-
 void AccessibilityTree::appendParts(std::string& text, std::initializer_list<std::string_view> parts) {
     const std::size_t start = text.size();
     for (const std::string_view part : parts) {

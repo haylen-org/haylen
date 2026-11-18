@@ -106,7 +106,6 @@ int ImGuiLua::beginWindow(lua_State* L) {
     bool closable = false;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
-        lua::Table::checkFields(L, 2, {kWindowFields});
         std::optional<float> x;
         std::optional<float> y;
         std::optional<float> width;
@@ -115,15 +114,31 @@ int ImGuiLua::beginWindow(lua_State* L) {
         bool noResize = false;
         bool noMove = false;
         bool autoResize = false;
-        lua::Table::readField(L, 2, "x", x);
-        lua::Table::readField(L, 2, "y", y);
-        lua::Table::readField(L, 2, "width", width);
-        lua::Table::readField(L, 2, "height", height);
-        lua::Table::readField(L, 2, "closable", closable);
-        lua::Table::readField(L, 2, "noTitleBar", noTitleBar);
-        lua::Table::readField(L, 2, "noResize", noResize);
-        lua::Table::readField(L, 2, "noMove", noMove);
-        lua::Table::readField(L, 2, "autoResize", autoResize);
+
+        // The options of a window that draws every frame are read in one pass over the keys the table holds.
+        // clang-format off
+        lua::Table::readFields(L, 2, kWindowFields, {}, [&](std::string_view key) {
+            if (key == "x") {
+                lua::Table::readValue(L, key, x);
+            } else if (key == "y") {
+                lua::Table::readValue(L, key, y);
+            } else if (key == "width") {
+                lua::Table::readValue(L, key, width);
+            } else if (key == "height") {
+                lua::Table::readValue(L, key, height);
+            } else if (key == "closable") {
+                lua::Table::readValue(L, key, closable);
+            } else if (key == "noTitleBar") {
+                lua::Table::readValue(L, key, noTitleBar);
+            } else if (key == "noResize") {
+                lua::Table::readValue(L, key, noResize);
+            } else if (key == "noMove") {
+                lua::Table::readValue(L, key, noMove);
+            } else if (key == "autoResize") {
+                lua::Table::readValue(L, key, autoResize);
+            }
+        });
+        // clang-format on
 
         if (x && y) {
             ImGui::SetNextWindowPos({*x, *y}, ImGuiCond_FirstUseEver);

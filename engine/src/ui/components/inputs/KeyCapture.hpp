@@ -26,7 +26,7 @@ class KeyCapture final : public Component {
     [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
     // Writes a binding for people, such as Left Shift for `key:leftShift`, and a face button by the labels of the gamepad, such as Button A for `button:south` on a gamepad with letters.
-    [[nodiscard]] static std::string describe(std::string_view binding, input::GamepadLabels labels);
+    [[nodiscard]] static std::string describeBinding(std::string_view binding, input::GamepadLabels labels);
 
   protected:
     [[nodiscard]] bool isFocusable() const noexcept override {
@@ -55,6 +55,7 @@ class KeyCapture final : public Component {
     static constexpr std::array<std::string_view, 4> kSwappedLetters{"B", "A", "Y", "X"};
     static constexpr std::array<std::string_view, 4> kShapes{"Cross", "Circle", "Square", "Triangle"};
     static constexpr float kAxisTravel = 0.6F;
+    static constexpr std::string_view kEllipsis = "\xE2\x80\xA6";
 
     [[nodiscard]] static std::optional<std::string> getFaceLabel(std::string_view place, input::GamepadLabels labels);
     [[nodiscard]] static input::GamepadLabels getLabels(const input::Input& devices);
@@ -64,6 +65,9 @@ class KeyCapture final : public Component {
     void start(const input::Input& devices, std::uint64_t frame);
     void finish(Context& context, const std::string& binding);
 
+    // The text of the binding, which the field writes again only when the binding or the labels of the gamepad change.
+    [[nodiscard]] const std::string& getBindingText(const input::Input& devices);
+
     std::string value;
     TextValue placeholder;
     TextValue prompt;
@@ -72,6 +76,9 @@ class KeyCapture final : public Component {
     std::array<std::array<float, input::Controls::kGamepadAxisCount>, input::Input::kMaxGamepads> resting{};
     std::uint64_t startedFrame = 0;
     bool capturing = false;
+    std::string bindingText;
+    std::string describedValue;
+    input::GamepadLabels describedLabels = input::GamepadLabels::Unknown;
 };
 
 } // namespace haylen::ui

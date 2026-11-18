@@ -19,6 +19,7 @@
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Theme.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "ui/ScrollArbiter.hpp"
 #include "ui/TextSession.hpp"
@@ -551,6 +552,43 @@ TEST_F(TextInputTest, StartsEditingAFieldWhenAFingerTapsIt) {
     ASSERT_TRUE(getInput().isEditing());
     EXPECT_EQ(getPublished().selectionStart, getPublished().selectionEnd);
     EXPECT_LT(getPublished().selectionStart, 4);
+}
+
+// A field that edits with its text selected draws the same frames as it does unfocused, without allocating.
+TEST_F(TextInputTest, DrawsAFieldWithASelectionWithoutAllocating) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "A long name that a person typed into the field", "width": 900}]})");
+    // clang-format off
+    const auto measure = [this] {
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t unfocused = measure();
+
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+    ASSERT_NE(getPublished().selectionStart, getPublished().selectionEnd);
+    EXPECT_EQ(measure(), unfocused);
+}
+
+// A finger that swipes along a field that is not editing is no tap, so the field stays as it was.
+TEST_F(TextInputTest, EditsNothingWhenAFingerSwipesAcrossAField) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
+    const math::Rect field = gui->find("name")->getBounds();
+    const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(2);
+
+    for (int step = 1; step <= 5; ++step) {
+        touch(platform::Event::Type::TouchMoved, start + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        fixture.frames(1);
+    }
+
+    touch(platform::Event::Type::TouchEnded, start + math::Vec2{100.0F, 0.0F});
+    fixture.frames(3);
+    EXPECT_FALSE(getInput().isEditing());
 }
 
 // A finger that drags a list over the field being edited scrolls the list and leaves the field editing.
