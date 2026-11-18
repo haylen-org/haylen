@@ -126,8 +126,8 @@ struct MixerState {
     // Creates a voice on the bus of the options with their volume, pan, pitch, position and process mode, which `start` gives a source.
     [[nodiscard]] std::unique_ptr<Voice> createVoice(const Mixer::PlayOptions& options);
 
-    // Starts the voice with the source and the rest of the options and returns its id. Everything that can fail runs before the voice limit makes room, so a voice that fails to start never stops another one.
-    Mixer::VoiceId start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options);
+    // Starts the voice with the source and the rest of the options and returns it, or returns null when the limit of its sound refuses it, which destroys the voice. Everything that can fail runs before the voice limit makes room, so a voice that fails to start never stops another one.
+    Voice* start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options);
 
     // Resolves the process mode of a voice through its bus and the buses above it, where `Inherit` at `master` means `Pausable`.
     [[nodiscard]] core::ProcessMode resolveMode(const Voice& voice) const noexcept;

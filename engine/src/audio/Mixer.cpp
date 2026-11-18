@@ -172,6 +172,7 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
 
     std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
     voice->sound = sound;
+    const VoiceId id = voice->id;
 
     if (data.reader) {
         voice->readerSource = std::make_unique<ReaderSource>(data);
@@ -179,9 +180,12 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
             voice->readerSource->setLoopRegion(toFrame(options.loopStart, data.sampleRate), toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate));
         }
 
-        MixerState::Voice& streamed = *voice;
-        const VoiceId id = state->start(std::move(voice), streamed.readerSource->get(), options);
-        state->fill(streamed);
+        // A voice that the limit of its sound refuses is gone, so only a voice that started gets its first fill.
+        ma_data_source* source = voice->readerSource->get();
+        if (MixerState::Voice* started = state->start(std::move(voice), source, options)) {
+            state->fill(*started);
+        }
+
         return id;
     }
 
@@ -197,7 +201,8 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         ma_data_source_set_loop_point_in_pcm_frames(source, toFrame(options.loopStart, data.sampleRate), std::min<ma_uint64>(toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate), data.frames));
     }
 
-    return state->start(std::move(voice), source, options);
+    state->start(std::move(voice), source, options);
+    return id;
 }
 
 // The voice takes the stream over from the voice that played it before, which reads silence from then on.
@@ -215,7 +220,7 @@ Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream,
     voice->stream = stream;
     voice->streamSource = std::make_unique<StreamSource>(*stream);
     ma_data_source* source = voice->streamSource->get();
-    return state->start(std::move(voice), source, options);
+    return state->start(std::move(voice), source, options)->id;
 }
 
 void Mixer::stop(VoiceId id, float fadeOutSeconds) {
@@ -425,11 +430,16 @@ Mixer::VoiceId Mixer::playMusic(const Sound& sound, const MusicOptions& options)
         return state->musicVoice;
     }
 
-    // The next track starts before the current one fades out, so a track that cannot play leaves the current one playing.
+    // The next track starts before the current one fades out, so a track that cannot play or that its limit refuses leaves the current one playing.
     const VoiceId track = play(sound, {.bus = options.bus, .volume = options.volume, .loop = options.loop, .fadeIn = options.fade, .startAt = options.startAt, .loopStart = options.loopStart, .loopEnd = options.loopEnd});
+    MixerState::Voice* voice = state->findVoice(track);
+    if (voice == nullptr) {
+        return track;
+    }
+
+    voice->music = true;
     stop(state->musicVoice, options.fade);
     state->musicVoice = track;
-    state->findVoice(track)->music = true;
     return track;
 }
 

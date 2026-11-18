@@ -221,7 +221,7 @@ class Mixer final {
     void removeBusEffect(std::string_view bus, const Effect& effect);
     [[nodiscard]] std::vector<std::shared_ptr<Effect>> getBusEffects(std::string_view bus) const;
 
-    // Plays one music track at a time from its start time, crossfading from the previous track over the fade time, and returns the voice of the track, which pauses, stops, moves its cursor and takes volume and effects like any voice. Asking for the track that is already playing keeps its voice, paused or not, and only changes its volume. A track that cannot play throws and leaves the current track playing.
+    // Plays one music track at a time from its start time, crossfading from the previous track over the fade time, and returns the voice of the track, which pauses, stops, moves its cursor and takes volume and effects like any voice. Asking for the track that is already playing keeps its voice, paused or not, and only changes its volume. A track that cannot play throws and leaves the current track playing, and a track that the limit of its sound refuses returns the id of a voice that already ended and leaves it playing too.
     VoiceId playMusic(const Sound& sound, const MusicOptions& options = kDefaultMusicOptions);
     void stopMusic(float fadeOutSeconds = 1.0F);
 

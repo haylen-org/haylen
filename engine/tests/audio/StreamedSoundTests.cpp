@@ -206,6 +206,16 @@ TEST_F(StreamedSoundTest, PlaysTheFramesOfItsDecodedSoundAndEndsWithThem) {
     EXPECT_FALSE(mixer.isActive(late));
 }
 
+TEST_F(StreamedSoundTest, RefusesAPlayWithinTheCooldownOfItsLimit) {
+    const Sound sound = Sound::stream(makeReader(makePositions(kRate / 4)));
+    mixer.setLimit(sound, {.cooldown = 1.0F});
+    const Mixer::VoiceId first = mixer.play(sound);
+    const Mixer::VoiceId refused = mixer.play(sound);
+    EXPECT_TRUE(mixer.isActive(first));
+    EXPECT_FALSE(mixer.isActive(refused));
+    EXPECT_EQ(mixer.getVoiceCount(), 1U);
+}
+
 TEST_F(StreamedSoundTest, EndsAVoiceWhoseReadsFail) {
     const Sound sound = Sound::stream(std::make_shared<FailingReader>(makePositions(4 * kRate), 256 * 1024));
     const Mixer::VoiceId voice = mixer.play(sound);

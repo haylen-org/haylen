@@ -310,6 +310,21 @@ TEST_F(MixerTest, ControlsMusicThroughItsVoice) {
     EXPECT_EQ(mixer.getMusic(), second);
 }
 
+TEST_F(MixerTest, KeepsTheMusicWhenTheLimitOfTheNextTrackRefusesIt) {
+    const Sound theme = makeTone(toFrames(1.0F));
+    const Sound calm = makeTone(toFrames(1.0F), 0.25F);
+    mixer.setLimit(theme, {.cooldown = 10.0F});
+    mixer.playMusic(theme, {.fade = 0.0F});
+    mixer.stopMusic(0.0F);
+    EXPECT_FALSE(mixer.isActive(mixer.playMusic(theme, {.fade = 0.0F})));
+    EXPECT_FALSE(mixer.getMusic().isValid());
+
+    const Mixer::VoiceId playing = mixer.playMusic(calm, {.fade = 0.0F});
+    EXPECT_FALSE(mixer.isActive(mixer.playMusic(theme, {.fade = 0.0F})));
+    EXPECT_TRUE(mixer.isActive(playing));
+    EXPECT_EQ(mixer.getMusic(), calm);
+}
+
 // A player moves through a track with the cursor of its voice, which stays within the sound, and a music track starts where the app asks.
 TEST_F(MixerTest, MovesTheCursorOfAVoice) {
     const Mixer::VoiceId voice = mixer.play(makeTone(toFrames(1.0F)));

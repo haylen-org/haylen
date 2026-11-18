@@ -432,6 +432,7 @@ Starts a music track, crossfades from the track before and returns the voice id 
 - When the track already plays or is paused, it keeps its voice, which the call returns. Only its volume changes.
 - A paused track that the next track replaces stops without sounding again, and the next track plays.
 - A track that cannot play, such as one for an unknown bus, raises the errors of [`audio.play`](#audioplaysound-options) and leaves the current track playing.
+- A track that the [limit](#audiosetlimitsound-limit) of its sound refuses returns the id of a voice that already ended and leaves the current track playing.
 - An unknown key raises `Unknown option "<key>".`.
 
 ```lua

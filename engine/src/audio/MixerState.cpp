@@ -87,10 +87,10 @@ std::unique_ptr<MixerState::Voice> MixerState::createVoice(const Mixer::PlayOpti
     return voice;
 }
 
-Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options) {
+MixerState::Voice* MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* source, const Mixer::PlayOptions& options) {
     Limited* limited = voice->sound.isValid() ? findLimit(voice->sound) : nullptr;
     if (limited != nullptr && !admits(*limited)) {
-        return voice->id;
+        return nullptr;
     }
 
     if (ma_sound_init_from_data_source(&engine, source, MA_SOUND_FLAG_NO_SPATIALIZATION, &voice->bus->group, &voice->handle) != MA_SUCCESS) {
@@ -121,9 +121,8 @@ Mixer::VoiceId MixerState::start(std::unique_ptr<Voice> voice, ma_data_source* s
     apply(*voice);
     refresh(*voice);
 
-    const Mixer::VoiceId id = voice->id;
     voices.push_back(std::move(voice));
-    return id;
+    return voices.back().get();
 }
 
 core::ProcessMode MixerState::resolveMode(const Voice& voice) const noexcept {
