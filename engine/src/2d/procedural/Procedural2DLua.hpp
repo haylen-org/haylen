@@ -50,14 +50,7 @@ class Procedural2DLua final {
         using Value = std::invoke_result_t<Work>;
         // clang-format off
         engine.getJobs().run(std::forward<Work>(work), [promise, push](core::JobSystem::Result<Value> result) {
-            if (!result.isOk()) {
-                promise.reject(result.error);
-                return;
-            }
-
-            // Every await of the promise pushes the result, so each one receives its own copy.
-            auto value = std::make_shared<const Value>(std::move(*result.value));
-            promise.resolveWith([push, value](lua_State* state) { push(state, *value); });
+            promise.settle(std::move(result), push);
         });
         // clang-format on
         promise.push(L);

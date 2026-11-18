@@ -482,14 +482,21 @@ int MathLua::noiseSampleGridAsync(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
     // clang-format off
-    engine.getJobs().post([promise, noise, grid] {
+    engine.getJobs().run([noise, grid] {
         auto buffer = std::make_shared<core::FloatBuffer>(grid.columns * grid.rows);
         noise.sampleRows(grid, 0, grid.rows, buffer->getValues());
-        promise.resolveWith([buffer](lua_State* state) { lua::Userdata::emplace<core::FloatBuffer>(state, buffer); });
+        return buffer;
+    }, [promise](core::JobSystem::Result<std::shared_ptr<core::FloatBuffer>> result) {
+        promise.settle(std::move(result), &pushSampledGrid);
     });
     // clang-format on
     promise.push(L);
     return 1;
+}
+
+// Every coroutine that awaits the samples receives the same buffer.
+void MathLua::pushSampledGrid(lua_State* L, const std::shared_ptr<core::FloatBuffer>& buffer) {
+    lua::Userdata::emplace<core::FloatBuffer>(L, buffer);
 }
 
 int MathLua::clampValue(lua_State* L) {

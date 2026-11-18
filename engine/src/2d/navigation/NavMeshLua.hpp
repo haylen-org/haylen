@@ -22,6 +22,7 @@ class NavMeshLua final {
   private:
     [[nodiscard]] static NavMesh& check(lua_State* L);
     [[nodiscard]] static std::vector<std::vector<math::Vec2>> readPolygons(lua_State* L, int index);
+    static void pushCopy(lua_State* L, const NavMesh& mesh);
 
     static int newNavMesh(lua_State* L);
     static int buildAsync(lua_State* L);

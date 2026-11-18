@@ -169,11 +169,10 @@ int CoreLua::rootPackageInfo(lua_State* L) {
     // clang-format off
     engine.getJobs().runIo([path = std::move(path)] { return readPackageInfo(path); }, [promise](JobSystem::Result<PackageInfo> result) {
         if (!result.isOk()) {
-            promise.reject("The app package could not be read. " + result.error);
-            return;
+            result.error = "The app package could not be read. " + result.error;
         }
 
-        promise.resolveWith([info = std::move(*result.value)](lua_State* state) { pushPackageInfo(state, info); });
+        promise.settle(std::move(result), &pushPackageInfo);
     });
     // clang-format on
 

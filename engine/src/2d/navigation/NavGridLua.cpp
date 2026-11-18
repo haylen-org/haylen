@@ -161,16 +161,12 @@ std::shared_ptr<const Grid> NavGridLua::snapshotOf(lua_State* L) {
     return self.snapshot;
 }
 
+// Every coroutine that awaits the promise receives its own copy of the value, which keeps the grid of the owner alive.
 template <typename T> void NavGridLua::settleOwned(const lua::Promise& promise, const std::shared_ptr<lua::Reference>& owner, core::JobSystem::Result<T> result) {
-    if (!result.isOk()) {
-        promise.reject(result.error);
-        return;
-    }
-
     // clang-format off
-    promise.resolveWith([owner, value = std::make_shared<const T>(std::move(*result.value))](lua_State* state) {
+    promise.settle(std::move(result), [owner](lua_State* state, const T& value) {
         owner->push(state);
-        pushOwned<T>(state, -1, *value);
+        pushOwned<T>(state, -1, value);
         lua_remove(state, -2);
     });
     // clang-format on
@@ -291,12 +287,7 @@ int NavGridLua::findPathAsync(lua_State* L) {
         const std::span<const Grid::Cell> path = search.findPath(*grid, start, goal, options);
         return std::vector<Grid::Cell>(path.begin(), path.end());
     }, [promise](core::JobSystem::Result<std::vector<Grid::Cell>> result) {
-        if (!result.isOk()) {
-            promise.reject(result.error);
-            return;
-        }
-
-        promise.resolveWith([path = std::move(*result.value)](lua_State* state) { pushPath(state, path); });
+        promise.settle(std::move(result), &pushPath);
     });
     // clang-format on
     promise.push(L);

@@ -67,17 +67,16 @@ int NavMeshLua::buildAsync(lua_State* L) {
         mesh.build();
         return std::move(mesh);
     }, [promise](core::JobSystem::Result<NavMesh> result) {
-        if (!result.isOk()) {
-            promise.reject(result.error);
-            return;
-        }
-
-        // The promise pushes the mesh once for every coroutine that awaits it, and each one gets its own copy.
-        promise.resolveWith([mesh = std::make_shared<const NavMesh>(std::move(*result.value))](lua_State* state) { lua::Userdata::emplace<NavMesh>(state, *mesh); });
+        promise.settle(std::move(result), &pushCopy);
     });
     // clang-format on
     promise.push(L);
     return 1;
+}
+
+// The promise pushes the mesh once for every coroutine that awaits it, and each one gets its own copy.
+void NavMeshLua::pushCopy(lua_State* L, const NavMesh& mesh) {
+    lua::Userdata::emplace<NavMesh>(L, mesh);
 }
 
 int NavMeshLua::setBoundary(lua_State* L) {

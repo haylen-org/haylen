@@ -99,6 +99,7 @@ class MathLua final {
     [[nodiscard]] static Noise2D::Grid readGrid(lua_State* L, bool intoAllowed, std::shared_ptr<core::FloatBuffer>& into);
     static int noiseSampleGrid(lua_State* L);
     static int noiseSampleGridAsync(lua_State* L);
+    static void pushSampledGrid(lua_State* L, const std::shared_ptr<core::FloatBuffer>& buffer);
 
     static int clampValue(lua_State* L);
     [[nodiscard]] static bool approximatelyValue(float lhs, float rhs, std::optional<float> epsilon);
