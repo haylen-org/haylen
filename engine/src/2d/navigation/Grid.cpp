@@ -156,6 +156,7 @@ float Grid::estimate(Cell from, Cell to, Heuristic heuristic) const noexcept {
     case Heuristic::Chebyshev:
         break;
     }
+
     return std::max(dx, dy);
 }
 

@@ -51,6 +51,7 @@ template <> struct EnumNames<navigation2d::Grid::Topology> {
     static std::optional<navigation2d::Grid::Topology> fromName(std::string_view name) {
         return navigation2d::Grid::topologyFromName(name);
     }
+
     static std::string_view name(navigation2d::Grid::Topology value) {
         return navigation2d::Grid::topologyName(value);
     }
@@ -60,6 +61,7 @@ template <> struct EnumNames<navigation2d::Grid::Heuristic> {
     static std::optional<navigation2d::Grid::Heuristic> fromName(std::string_view name) {
         return navigation2d::Grid::heuristicFromName(name);
     }
+
     static std::string_view name(navigation2d::Grid::Heuristic value) {
         return navigation2d::Grid::heuristicName(value);
     }
