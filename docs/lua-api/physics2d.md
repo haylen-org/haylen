@@ -59,8 +59,8 @@ Creates an empty world and returns it. The table `options` is optional, and an u
 | --- | --- | --- | --- |
 | `gravity` | Vec2 or `{x, y}` | `{0, 980}` | Gravity in world units per second squared. |
 | `pixelsPerMeter` | number | `64` | World units in one Box2D meter. It must be positive. |
-| `subSteps` | integer | `4` | Solver sub-steps per step, at least 1. More sub-steps make stacks and joints stiffer and cost more. |
-| `threads` | integer | The workers of the job system, at most `4` | Threads that step the world, at least 1. The [guide](../2d/physics.md#threads) explains when a world uses them. |
+| `subSteps` | integer | `4` | Solver sub-steps per step, from 1 to 64. More sub-steps make stacks and joints stiffer and cost more. |
+| `threads` | integer | The workers of the job system, at most `4` | Threads that step the world, at least 1, of which the world uses at most 32. The [guide](../2d/physics.md#threads) explains when a world uses them. |
 | `continuous` | boolean | `true` | Sweeps fast dynamic bodies against static shapes, so they never pass through thin walls and floors. The body option `bullet` extends the sweep to dynamic and kinematic shapes. |
 | `sleepEnabled` | boolean | `true` | Lets bodies at rest fall asleep, which costs nothing until something wakes them. |
 | `interpolate` | boolean | `false` | Records the transforms of the last two steps, so `body:renderTransform()` and `world:readTransforms()` draw bodies smoothly between fixed steps. |
@@ -74,7 +74,7 @@ Creates an empty world and returns it. The table `options` is optional, and an u
 
 The scale, the threads and `interpolate` stay as the world was created. Every other option is also a [world property](#world-properties) that changes while the world runs. The speeds you leave out keep the values Box2D is tuned for in meters. That is a speed limit of 400 meters per second, overlaps pushed apart at up to 3 meters per second, and bounces and hits from 1 meter per second.
 
-A scale that is not positive, fewer than one sub-step or fewer than one thread raise `A physics world needs positive pixels per meter, at least one sub-step and at least one thread.`. Box2D holds a limited number of worlds at once, 128 by default. A world beyond them raises `Too many physics worlds exist at once to create another one.`.
+A scale that is not positive, a sub-step count outside 1 to 64 or fewer than one thread raise `A physics world needs positive pixels per meter, from 1 to 64 sub-steps and at least one thread.`. Box2D holds a limited number of worlds at once, 128 by default. A world beyond them raises `Too many physics worlds exist at once to create another one.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -329,7 +329,7 @@ scene.push({
 | `pixelsPerMeter` | number | read | The scale the world was created with. |
 | `threads` | integer | read | The threads that step the world, 1 on the web. |
 | `interpolate` | boolean | read | Whether the world records the transforms of its bodies for interpolation. |
-| `subSteps` | integer | read and write | Solver sub-steps per step, at least 1. |
+| `subSteps` | integer | read and write | Solver sub-steps per step, from 1 to 64. |
 | `continuous` | boolean | read and write | Whether fast dynamic bodies sweep against static shapes. |
 | `sleepEnabled` | boolean | read and write | Whether bodies fall asleep at rest. Turning it off wakes every body. |
 | `maxSpeed` | number | read and write | Speed limit of every body in world units per second. |
@@ -348,7 +348,7 @@ scene.push({
 
 These errors can happen:
 
-- Fewer than one sub-step raises `A physics world needs at least one sub-step.`.
+- A count outside 1 to 64 raises `A physics world takes from 1 to 64 sub-steps.`.
 - A speed that is negative or not finite raises `A physics speed needs to be finite and zero or more.`.
 - A contact stiffness that is not positive raises `A physics world needs a positive contact stiffness.`.
 - A contact damping ratio that is not positive raises `A physics world needs a positive contact damping ratio.`.
@@ -1729,7 +1729,7 @@ The path follows the solver of the world. It advances in the sub-steps of the wo
 | `linearDamping` | number | `0` | Linear damping of the thrown body. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | The shapes the path hits, as in a [ray cast filter](#ray-cast-filters). |
 
-A step that is not positive, fewer than one step, or a negative radius or damping raise `A path prediction needs a positive step, at least one step, and a radius and damping of zero or more.`. A swept circle that starts touching a shape hits it at once. So leave the thrown body out of the mask, as the example does, or predict before the body exists.
+A step that is not positive, a step count outside 1 to 65536, or a negative radius or damping raise `A path prediction needs a positive step, from 1 to 65536 steps, and a radius and damping of zero or more.`. A swept circle that starts touching a shape hits it at once. So leave the thrown body out of the mask, as the example does, or predict before the body exists.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -1773,7 +1773,7 @@ scene.push({
 
 ### physics2d.newRayBatch(count)
 
-Creates a [`RayBatch`](#raybatch) of `count` rays, 0 by default. Each ray has zero length until `batch:setRay` sets it.
+Creates a [`RayBatch`](#raybatch) of `count` rays, 0 by default. Each ray has zero length until `batch:setRay` sets it. A batch holds up to 1048576 rays, and a larger count raises `A ray batch holds at most 1048576 rays.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -2115,7 +2115,7 @@ With `limitLength`, on by default, a slack distance joint between the two ends k
 
 These errors can happen, and a rope that fails leaves none of its bodies in the world:
 
-- A rope without segments, with both ends in the same place or without thickness raises `A rope needs at least one segment, two distinct ends and a positive thickness.`.
+- A rope with a segment count outside 1 to 4096, with both ends in the same place or without thickness raises `A rope needs from 1 to 4096 segments, two distinct ends and a positive thickness.`.
 - An invalid material or damping raises the errors of the [shape options](#shape-options) and of [`world:createBody`](#worldcreatebodyoptions).
 - An end body that is destroyed or belongs to another world raises `A joint needs two bodies of this world.`.
 
@@ -3086,7 +3086,7 @@ Sample `(column, row)` lies at `{x, y} + {column, row} * cellSize`. So the terra
 | `friction`, `restitution` | number | `0.6`, `0` | Material of the ground. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | Collision filter of the ground. |
 
-Fewer than 2 by 2 samples, a cell or chunk size that is not positive or a negative tolerance raise `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.`. An invalid material raises the error of the [shape options](#shape-options).
+Fewer than 2 by 2 samples, a cell or chunk size that is not positive or a negative tolerance raise `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.`. More than 16777216 samples raise `A terrain holds at most 16777216 samples.`. An invalid material raises the error of the [shape options](#shape-options).
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -3292,7 +3292,7 @@ Cells that meet near the impact point can leave slivers thinner than the toleran
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `pieces` | integer | `8` | Number of cells. A value below 1 raises `A fracture needs at least one piece.`. |
+| `pieces` | integer | `8` | Number of cells. A value outside 1 to 1024 raises `A fracture makes from 1 to 1024 pieces.`. |
 | `impact` | Vec2 | `nil` | Point in world units where the pieces get smaller. |
 | `seed` | integer | `0` | Seed of the random points. |
 | `minimumArea` | number | `4` | Pieces smaller than this are dropped. |
@@ -3360,14 +3360,14 @@ The table `options` is optional, and an unknown key raises `Unknown option "<key
 | `iterations` | integer | `5` | Density passes in every step. More passes compress the liquid less and cost more. |
 | `gravityScale` | number | `1` | Multiplies the world gravity for the particles. |
 | `maxSpeed` | number | `3000` | Speed limit of the particles in units per second. |
-| `maxParticles` | integer | `8192` | The most particles the fluid holds. |
+| `maxParticles` | integer | `8192` | The most particles the fluid holds, up to 1048576. A larger value raises `A fluid holds at most 1048576 particles.`. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | The shapes the particles collide with, chosen like the shapes that would collide with a shape of this filter, as [collision filtering](#collision-filtering) describes. |
 
-Bad options raise `A fluid needs a positive particle radius, a larger smoothing radius, at least one iteration, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.`. These options are bad:
+Bad options raise `A fluid needs a positive particle radius, a larger smoothing radius, from 1 to 64 iterations, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.`. These options are bad:
 
 - A radius that is not positive.
 - A smoothing radius that is not larger than the radius.
-- Fewer than one iteration.
+- An iteration count outside 1 to 64.
 - A viscosity outside 0 to 1.
 - A negative density, friction, restitution or top speed.
 
@@ -3600,9 +3600,9 @@ Invalid input raises Lua errors with these messages.
 | `unknown value '<name>'` | A body type, joint type, drive, force field kind or falloff is not one of the names this page lists. It comes inside a bad argument error. |
 | `The type "haylen.Body" has no member "<name>".` | A member of a body, shape, joint, world or helper does not exist. The type name changes with the userdata. |
 | `The type "haylen.Body" has no writable property "<name>".` | A read-only property was written. The type name changes with the userdata. |
-| `A physics world needs positive pixels per meter, at least one sub-step and at least one thread.` | The function `physics2d.newWorld()` got a bad scale, sub-step count or thread count. |
+| `A physics world needs positive pixels per meter, from 1 to 64 sub-steps and at least one thread.` | The function `physics2d.newWorld()` got a bad scale, sub-step count or thread count. |
 | `Too many physics worlds exist at once to create another one.` | The function `physics2d.newWorld()` ran while Box2D holds as many worlds as it can. |
-| `A physics world needs at least one sub-step.` | The property `world.subSteps` got fewer than one sub-step. |
+| `A physics world takes from 1 to 64 sub-steps.` | The property `world.subSteps` got a count outside 1 to 64. |
 | `A physics speed needs to be finite and zero or more.` | A speed of the world, or the sleep threshold of a body, is negative or not finite. |
 | `A physics world needs a positive contact stiffness.` | The property `world.contactHertz` got a value that is not positive. |
 | `A physics world needs a positive contact damping ratio.` | The property `world.contactDampingRatio` got a value that is not positive. |
@@ -3611,7 +3611,7 @@ Invalid input raises Lua errors with these messages.
 | `the first position is outside the buffer` | The position `first` of `world:readTransforms()` or `world:writeTransforms()` lies outside the buffer. It comes inside a bad argument error. |
 | `Only a world created with interpolation blends the transforms of its bodies.` | The method `world:readTransforms()` asked for interpolated transforms of a world without `interpolate`. |
 | `A state hash needs live bodies of this world.` | The method `world:stateHash()` got a destroyed body or one of another world. |
-| `A path prediction needs a positive step, at least one step, and a radius and damping of zero or more.` | The method `world:predictPath()` got bad options. |
+| `A path prediction needs a positive step, from 1 to 65536 steps, and a radius and damping of zero or more.` | The method `world:predictPath()` got bad options. |
 | `A rectangle query needs a width and height of zero or more.` | The method `world:queryRect()` got a negative width or height. |
 | `the radius must be zero or more` | The filter of `world:pick()` has a negative radius. It comes inside a bad argument error. |
 | `A circle cast needs a finite radius of zero or more.` | The method `world:castCircle()` got a negative radius. |
@@ -3623,6 +3623,7 @@ Invalid input raises Lua errors with these messages.
 | `the bounce count must not be negative` | The method `world:bounceRay()` got a negative bounce count. It comes inside a bad argument error. |
 | `the length must be finite` | The method `world:rayFan()` got an infinite length. It comes inside a bad argument error. |
 | `Ray batches take no "accept" function, because their rays run on worker threads.` | The method `world:raycastBatch()` got a filter with `accept`. |
+| `A ray batch holds at most 1048576 rays.` | The function `physics2d.newRayBatch()` or the property `batch.size` got more than 1048576 rays. |
 | `the ray index is outside the batch` | A method of a ray batch got an index outside the batch. It comes inside a bad argument error. |
 | `The body was destroyed.` | A destroyed body was used. |
 | `A body moves only to another world.` | The method `body:moveToWorld()` got the world the body is in. |
@@ -3655,7 +3656,7 @@ Invalid input raises Lua errors with these messages.
 | `A joint spring needs a finite stiffness and damping ratio of zero or more.` | The property `joint.hertz` or `joint.dampingRatio` got a negative or infinite value. |
 | `Only mouse joints have a target.` and the other messages that start with `Only` | A joint property was used on a joint type that lacks it, as [Joint properties](#joint-properties) lists. |
 | `The physics joint was destroyed.` | A destroyed joint was used. |
-| `A rope needs at least one segment, two distinct ends and a positive thickness.` | The function `physics2d.newRope()` or `physics2d.newBridge()` got bad options. |
+| `A rope needs from 1 to 4096 segments, two distinct ends and a positive thickness.` | The function `physics2d.newRope()` or `physics2d.newBridge()` got bad options. |
 | `A ragdoll needs a positive height, a negative collision group and a stiffness from 0 to 1.` | The function `physics2d.newRagdoll()` got bad options. |
 | `unknown ragdoll part` | The method `ragdoll:body()` got an unknown part name. It comes inside a bad argument error. |
 | `A vehicle needs a chassis and wheels with a size, a suspension travel of zero or more, a negative collision group, a positive acceleration, top speed and brake, air control of zero or more and an anti-roll from 0 to 1.` | The function `physics2d.newVehicle()` got bad options. |
@@ -3668,17 +3669,19 @@ Invalid input raises Lua errors with these messages.
 | `The mover was destroyed.` | A destroyed mover was used. |
 | `A grabber needs a finite pick radius of zero or more.` | The function `physics2d.newGrabber()` or the property `grabber.pickRadius` got a negative or infinite radius. |
 | `A grabber needs a positive strength, stiffness and damping ratio.` | The function `physics2d.newGrabber()` or a property of the grabber got a value that is not positive. |
-| `A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, and a minimum distance for an inverse square falloff.` | The function `physics2d.newForceField()` got bad options. |
+| `A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, a finite lift, and a minimum distance for an inverse square falloff.` | The function `physics2d.newForceField()` got bad options. |
 | `A force field needs a direction that is not zero.` | The property `field.direction` got a zero vector. |
 | `A force field needs a density of zero or more.` | The property `field.density` got a negative value. |
 | `A force field needs drags of zero or more.` | The property `field.linearDrag` or `field.angularDrag` got a negative value. |
 | `The force field was destroyed.` | A destroyed force field was used. |
 | `An explosion needs a positive radius.` | The function `physics2d.explode()` or the method `terrain:explode()` got a radius that is not positive. |
 | `A terrain needs at least 2 by 2 samples, a positive cell size and chunk size, and a tolerance of at least zero.` | The function `physics2d.newTerrain()` got bad options. |
+| `A terrain holds at most 16777216 samples.` | The function `physics2d.newTerrain()` got more than 16777216 samples. |
 | `The terrain needs one value per sample.` | The property `terrain.samples` got a list of another length. |
 | `The sample is outside the terrain.` | The method `terrain:sample()` got a column or row outside the grid. |
-| `A fracture needs at least one piece.` | The function `physics2d.fracture()` or `physics2d.splitPolygon()` got fewer than one piece. |
-| `A fluid needs a positive particle radius, a larger smoothing radius, at least one iteration, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.` | The function `physics2d.newFluid()` got bad options. |
+| `A fracture makes from 1 to 1024 pieces.` | The function `physics2d.fracture()` or `physics2d.splitPolygon()` got a piece count outside 1 to 1024. |
+| `A fluid needs a positive particle radius, a larger smoothing radius, from 1 to 64 iterations, a viscosity from 0 to 1, and a density, friction, restitution and top speed of zero or more.` | The function `physics2d.newFluid()` got bad options. |
+| `A fluid holds at most 1048576 particles.` | The function `physics2d.newFluid()` got a `maxParticles` above 1048576. |
 | `particles count from 1` | The method `fluid:remove()` got a position below 1. It comes inside a bad argument error. |
 | `The fluid has no such particle.` | The method `fluid:remove()` got a position past the last particle. |
 | `the buffer needs two values for each particle` | The float buffer of `fluid:positions()` or `fluid:velocities()` is too short. It comes inside a bad argument error. |

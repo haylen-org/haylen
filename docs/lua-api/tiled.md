@@ -130,6 +130,7 @@ Creates an empty [`Map`](#map) for a map that code builds, such as a generated d
 These errors can happen:
 
 - A finite map without a positive size, or a tile size that is not positive, raises `A map needs a positive tile size, and a finite map a positive width and height in cells.`.
+- A width and height of more than 16777216 cells raise `A map holds at most 16777216 cells.`.
 - An unknown orientation or render order raises `A map has the orientation "orthogonal", "isometric", "staggered", "hexagonal" or "oblique" and the render order "right-down", "right-up", "left-down" or "left-up".`.
 - An unknown stagger axis or index raises `A map staggers along the axis "x" or "y" from the "odd" or "even" cells.`.
 
@@ -1052,6 +1053,7 @@ The functions and methods raise these errors:
 | `A tile layer uses the tile "<id>", which no tileset of the map holds.` | The method `map:draw` or `map:drawLayer` met a cell whose gid no tileset holds. |
 | `A tileset needs a positive tile size and at least one tile.` | The method `map:addTileset` got an image too small to hold one tile, or a `tileCount` of 0. |
 | `A map needs a positive tile size, and a finite map a positive width and height in cells.` | The function `tiled.newMap` got a bad size. |
+| `A map holds at most 16777216 cells.` | The function `tiled.newMap` got a width and height of more than 16777216 cells. |
 | `A map has the orientation "orthogonal", "isometric", "staggered", "hexagonal" or "oblique" and the render order "right-down", "right-up", "left-down" or "left-up".` | The function `tiled.newMap` got another orientation or render order. |
 | `A map staggers along the axis "x" or "y" from the "odd" or "even" cells.` | The function `tiled.newMap` got another stagger axis or index. |
 | `A tileset needs a positive tile width and height.` | The method `map:addTileset` got a bad tile size. |

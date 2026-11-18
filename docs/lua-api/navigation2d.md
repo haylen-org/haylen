@@ -20,7 +20,7 @@ A grid keeps one copy of its cells for background work, and it shares that copy 
 
 ### navigation2d.newGrid(width, height, layout)
 
-Returns a [`NavGrid`](#navgrid) of `width` columns and `height` rows. Every cell starts walkable with a cost of 1, and cells outside the grid count as blocked. A size that is not positive, or that does not fit 32-bit cell indices, raises `A navigation grid needs a positive size that fits in 32-bit cell indices.` The table `layout` is optional and follows the map properties of Tiled.
+Returns a [`NavGrid`](#navgrid) of `width` columns and `height` rows. Every cell starts walkable with a cost of 1, and cells outside the grid count as blocked. A size that is not positive, or a grid of more than 16777216 cells, raises `A navigation grid needs a positive size of at most 16777216 cells.` The table `layout` is optional and follows the map properties of Tiled.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1474,7 +1474,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `Unknown option "<key>".` | An options table has a key that it does not take. |
 | `The option "<option>" of "<function>" is invalid: <reason>.` | An option has the wrong type or an unknown name, such as `The option "heuristic" of "findPath" is invalid: unknown value 'taxi'.`. |
 | `bad argument #5 to 'estimate' (unknown value '<name>')` | The heuristic of `grid:estimate` is not one of the four names. |
-| `A navigation grid needs a positive size that fits in 32-bit cell indices.` | The size of `navigation2d.newGrid` is out of range. |
+| `A navigation grid needs a positive size of at most 16777216 cells.` | The size of `navigation2d.newGrid` is out of range. |
 | `Cell <x>,<y> is outside the navigation grid.` | The method `grid:setWalkable`, `grid:setCost` or `grid:cost` got a cell outside the grid. |
 | `A navigation cost must be finite and at least 1.` | The cost of `grid:setCost` is out of range. |
 | `A search weight must be finite and at least 1.` | The `weight` of a path search is below 1 or not finite. |

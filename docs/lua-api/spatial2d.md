@@ -383,7 +383,7 @@ The grid algorithms work on a [`CellGrid`](#cellgrid), a grid of integer cells s
 
 ### spatial2d.newCellGrid(width, height, value)
 
-Returns a [`CellGrid`](#cellgrid) of `width` columns and `height` rows whose cells all hold the integer `value`, `0` by default. A size that is not positive, or a grid too large for 32-bit cell indices, raises `A cell grid needs a positive size that fits in 32-bit cell indices.`
+Returns a [`CellGrid`](#cellgrid) of `width` columns and `height` rows whose cells all hold the integer `value`, `0` by default. A size that is not positive, or a grid of more than 16777216 cells, raises `A cell grid needs a positive size of at most 16777216 cells.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -423,7 +423,7 @@ end
 
 ### spatial2d.line(x1, y1, x2, y2)
 
-Returns the cells of the Bresenham line from one cell to another, both included, as a list of `{x = column, y = row}` tables in order. A Bresenham line takes one cell per step along its longer axis, so it has no gaps and no doubled cells.
+Returns the cells of the Bresenham line from one cell to another, both included, as a list of `{x = column, y = row}` tables in order. A Bresenham line takes one cell per step along its longer axis, so it has no gaps and no doubled cells. A line of more than 1048576 cells raises `A line covers at most 1048576 cells.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -435,7 +435,7 @@ end
 
 ### spatial2d.circle(x, y, radius)
 
-Returns the outline of a circle of cells around the cell `x`, `y`, made with the midpoint circle algorithm. Each cell comes once, sorted by row and then by column. A radius of 0 gives the center alone, and a negative radius raises `A circle needs a radius of zero or more cells.`
+Returns the outline of a circle of cells around the cell `x`, `y`, made with the midpoint circle algorithm. Each cell comes once, sorted by row and then by column. A radius of 0 gives the center alone, and a radius outside 0 to 65536 raises `A circle needs a radius from 0 to 65536 cells.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -523,7 +523,7 @@ print(count, islands:get(2, 1), islands:get(8, 5)) -- 2 1 2
 
 ### spatial2d.newUnionFind(count)
 
-Returns a [`UnionFind`](#unionfind) of `count` elements, `0` by default, numbered from 1, each in a set of its own.
+Returns a [`UnionFind`](#unionfind) of `count` elements, `0` by default, numbered from 1, each in a set of its own. More than 16777216 elements raise `A union-find holds at most 16777216 elements.`
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -659,7 +659,7 @@ print(rooms:setSize(3), rooms:setSize(6)) -- 3 1
 
 ### sets:reset(count)
 
-Starts over with `count` elements, each in a set of its own. It reuses the memory of the union-find instead of creating a new one.
+Starts over with `count` elements, each in a set of its own, up to 16777216. It reuses the memory of the union-find instead of creating a new one.
 
 ```lua
 local spatial2d = require('haylen.spatial2d')
@@ -916,13 +916,15 @@ These messages come from the functions and methods of the module. Messages that 
 | `Spatial bounds must be finite and have a non-negative size.` | A rectangle of a structure has a negative size or a component that is not finite. |
 | `A spatial query radius must not be negative.` | The radius of `structure:queryCircle` is negative. |
 | `A spatial query point must be finite.` | The point of `structure:nearest` or `structure:kNearest` is not finite. |
-| `A cell grid needs a positive size that fits in 32-bit cell indices.` | The size of `spatial2d.newCellGrid` is out of range. |
+| `A cell grid needs a positive size of at most 16777216 cells.` | The size of `spatial2d.newCellGrid` is out of range. |
 | `Cell <x>,<y> is outside the cell grid.` | The method `grid:get` or `grid:set` got a cell outside the grid. |
 | `Grid cells need a positive and finite size.` | The cell size of `spatial2d.raycastGrid` or `spatial2d.traverseGrid` is out of range. |
 | `A grid ray must stay within the 32-bit range of cells.` | The segment of `spatial2d.traverseGrid` reaches too far. |
 | `A ray across an unbounded grid needs a finite length.` | The segment of `spatial2d.traverseGrid` is not finite. |
 | `A grid traversal lists at most 65536 cells.` | The segment of `spatial2d.traverseGrid` crosses too many cells. |
-| `A circle needs a radius of zero or more cells.` | The radius of `spatial2d.circle` is negative. |
+| `A circle needs a radius from 0 to 65536 cells.` | The radius of `spatial2d.circle` is negative or above 65536. |
+| `A line covers at most 1048576 cells.` | The ends of `spatial2d.line` lie too far apart. |
+| `A union-find holds at most 16777216 elements.` | The count of `spatial2d.newUnionFind` or `sets:reset` is above 16777216. |
 | `A visibility polygon needs finite walls and bounds.` | A wall or the bounds of `spatial2d.visibilityPolygon` are not finite. |
 | `A visibility polygon needs an origin inside its bounds.` | The origin of `spatial2d.visibilityPolygon` lies outside its bounds. |
 | `Unknown option "<key>".` | An options table or a box has a key that it does not take. |

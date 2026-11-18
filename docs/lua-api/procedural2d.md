@@ -243,7 +243,7 @@ Grows a cave map and returns it as a `CellGrid`. It fills the map with random wa
 | --- | --- | --- | --- |
 | `width`, `height` | integer | `64` | The size of the map in cells. |
 | `fillChance` | number | `0.45` | The chance of a wall before smoothing. |
-| `steps` | integer | `5` | How many times to smooth. |
+| `steps` | integer | `5` | How many times to smooth, from 0 to 1000. Another count raises `A cellular automaton takes from 0 to 1000 steps.` |
 | `birthLimit` | integer | `5` | The wall neighbors that turn a floor into a wall. |
 | `survivalLimit` | integer | `4` | The wall neighbors that keep a wall. |
 | `solidBorder` | boolean | `true` | Keeps the outermost cells as walls and counts cells beyond the map as walls. |
@@ -294,11 +294,11 @@ Carves winding tunnels and returns the `CellGrid`. Random walkers start at the c
 | --- | --- | --- | --- |
 | `width`, `height` | integer | `64` | The size of the map in cells. |
 | `coverage` | number | `0.4` | The share of the inner cells to open. |
-| `walkers` | integer | `1` | How many walkers take turns. |
-| `maxSteps` | integer | `100000` | The most steps of all walkers together. |
+| `walkers` | integer | `1` | How many walkers take turns, up to 4096. |
+| `maxSteps` | integer | `100000` | The most steps of all walkers together, up to 67108864. |
 | `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
 
-A side below 3 or no walkers raise `A drunkard walk needs a map of at least 3 by 3 cells and at least one walker.`
+A side below 3 or no walkers raise `A drunkard walk needs a map of at least 3 by 3 cells and at least one walker.`. More walkers or steps raise `A drunkard walk takes at most 4096 walkers and 67108864 steps.`
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -339,8 +339,8 @@ The method `'bsp'` splits the map in two again and again, puts one room in each 
 | `width`, `height` | integer | `64`, `48` | The size of the map in cells. |
 | `minimumRoomSize`, `maximumRoomSize` | integer | `4`, `10` | The shortest and longest side of a room. |
 | `minimumLeafSize` | integer | `10` | With `'bsp'`, a part smaller than twice this size stops splitting. |
-| `maximumRooms` | integer | `12` | With `'placement'`, the most rooms. |
-| `roomAttempts` | integer | `200` | With `'placement'`, how many spots to try. |
+| `maximumRooms` | integer | `12` | With `'placement'`, the most rooms, up to 4096. |
+| `roomAttempts` | integer | `200` | With `'placement'`, how many spots to try, up to 1048576. More rooms or attempts raise `A dungeon takes at most 1048576 room attempts and 4096 rooms.` |
 | `padding` | integer | `1` | The wall cells kept around each room. |
 | `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
 
@@ -504,7 +504,7 @@ The output takes these keys:
 | --- | --- | --- | --- |
 | `width`, `height` | integer | `32` | The size of the output in cells. |
 | `periodic` | boolean | `false` | Also matches the tiles across opposite edges of the output, so it repeats without a seam. |
-| `attempts` | integer | `10` | How many times to start over after a contradiction. |
+| `attempts` | integer | `10` | How many times to start over after a contradiction, from 1 to 1000. |
 | `fixed` | CellGrid | none | A grid of the size of the output with the tile that each cell must take, or `-1` to leave the cell free. |
 | `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
 
@@ -526,11 +526,13 @@ print(island and island:get(24, 16)) -- 2
 
 These errors come from wrong rules or output keys:
 
-- No sample and no `tiles`, or `tiles = 0`, raise `Wave function collapse needs at least one tile.`
+- No sample and no `tiles`, or a `tiles` outside 1 to 4096, raise `Wave function collapse needs from 1 to 4096 tiles.`
 - A rule or a weight for a tile beyond the tile count raises `The rules have no tile <tile>.`
 - A negative weight raises `Tile weights cannot be negative.`
-- A sample with a negative cell raises `Every cell of a sample must hold a tile number of at least 0.`
+- A sample with a cell outside 0 to 4095 raises `Every cell of a sample must hold a tile number from 0 to 4095.`
 - A side of the output below 1 raises `Wave function collapse needs at least one cell on each side.`
+- An output whose cells times tiles pass 4194304 raises `Wave function collapse tracks at most 4194304 cells times tiles, so the output or the tile set is too large.`
+- An `attempts` outside 1 to 1000 raises `Wave function collapse takes from 1 to 1000 attempts.`
 - A `fixed` grid of another size raises `The fixed cells must match the size of the output.`
 
 ### procedural.waveFunctionCollapseAsync(options)
@@ -675,7 +677,7 @@ end)
 
 ### procedural.relax(points, bounds, iterations)
 
-Moves every point to the center of its Voronoi cell inside `bounds`, `iterations` times, `1` by default, and returns the new points. This is Lloyd relaxation. It evens out the spacing of random points while they still look random.
+Moves every point to the center of its Voronoi cell inside `bounds`, `iterations` times, `1` by default, and returns the new points. A count outside 0 to 1000 raises `A relaxation takes from 0 to 1000 iterations.`. This is Lloyd relaxation. It evens out the spacing of random points while they still look random.
 
 ```lua
 local m = require('haylen.math')
@@ -872,18 +874,24 @@ These messages come from the functions and methods of the module. Messages that 
 | `Scattering over this region would need more than 16777216 points, so the density must be lower or the spacing larger.` | A scatter would place too many points. |
 | `The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.` | A Poisson scatter would need too many cells. |
 | `A drunkard walk needs a map of at least 3 by 3 cells and at least one walker.` | A side of a drunkard walk is below 3, or `walkers` is below 1. |
+| `A cellular automaton takes from 0 to 1000 steps.` | The `steps` of a cave are outside 0 to 1000. |
+| `A drunkard walk takes at most 4096 walkers and 67108864 steps.` | The `walkers` or `maxSteps` of a drunkard walk are too many. |
 | `Dungeon rooms need a positive minimum size, a maximum size of at least the minimum and a padding of at least zero.` | The room sizes or the padding of a dungeon are out of range. |
+| `A dungeon takes at most 1048576 room attempts and 4096 rooms.` | The `roomAttempts` or `maximumRooms` of a dungeon are too many. |
 | `The dungeon and its leaves must fit the smallest room with its padding.` | The map or `minimumLeafSize` is too small for one room. |
 | `A maze needs at least one cell on each side and a tile grid that fits in 32-bit cell indices.` | A side of a maze is below 1, or the maze is too large. |
 | `The cell is outside the maze.` | A method of a maze got a cell outside it. |
 | `Only walls between two cells of the maze can open.` | The method `maze:open` got a wall on the edge or a value that is not one side. |
-| `Wave function collapse needs at least one tile.` | The rules have no sample and no tiles. |
+| `Wave function collapse needs from 1 to 4096 tiles.` | The rules have no sample and no tiles, or a `tiles` outside 1 to 4096. |
 | `The rules have no tile <tile>.` | A rule or a weight names a tile beyond the tile count. |
 | `Tile weights cannot be negative.` | A weight of the rules is negative. |
-| `Every cell of a sample must hold a tile number of at least 0.` | A sample holds a negative cell. |
+| `Every cell of a sample must hold a tile number from 0 to 4095.` | A sample holds a cell outside 0 to 4095. |
 | `Wave function collapse needs at least one cell on each side.` | A side of the output is below 1. |
+| `Wave function collapse tracks at most 4194304 cells times tiles, so the output or the tile set is too large.` | The output and the tile set are too large together. |
+| `Wave function collapse takes from 1 to 1000 attempts.` | The `attempts` are outside 1 to 1000. |
 | `The fixed cells must match the size of the output.` | The `fixed` grid has another size. |
 | `A Delaunay triangulation needs finite points.` | A point of a triangulation, a Voronoi diagram or a relaxation is not finite. |
+| `A relaxation takes from 0 to 1000 iterations.` | The `iterations` of `procedural.relax` are outside 0 to 1000. |
 | `A Voronoi diagram needs a finite area.` | The bounds of a Voronoi diagram or a relaxation are not finite. |
 | `bad argument #1 to 'circumcenter' (the triangle is outside the triangulation)` | The triangle of `mesh:circumcenter` is out of range. |
 | `bad argument #2 to 'findNearest' (the start is outside the points)` | The start of `mesh:findNearest` is out of range. |

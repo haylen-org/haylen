@@ -23,7 +23,7 @@ Cuts an [`Animation`](#animation) from a grid of cells of the same size in `text
 | `spacing` | Vec2 | `{0, 0}` | Empty pixels between cells, as `{x, y}`. |
 | `ticksPerFrame` | integer | `0` | Above 0, every frame lasts this many ticks and the animation advances with `animator:step`. |
 
-These errors can come up: an argument error that says `framesPerSecond must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `The frame size does not fit the texture.` and `A grid animation refers to a cell outside the texture.` Any other key raises `Unknown option "<key>".`
+These errors can come up: an argument error that says `framesPerSecond must be positive`, `A grid animation needs a texture, a positive frame size and a positive frame rate.`, `A grid animation needs frames that a spacing never overlaps.`, `The frame size does not fit the texture.`, `A grid animation has at most 65536 frames.` and `A grid animation refers to a cell outside the texture.` Any other key raises `Unknown option "<key>".`
 
 ```lua
 local animation2d = require('haylen.animation2d')
@@ -210,7 +210,7 @@ Returns a [`Chain`](#chain) that lies straight from its root along `angle`. The 
 | `angle` | number | `0` | The direction in radians that the chain lies along from the root when it is made. |
 | `maxBend` | number | `math.pi` | The largest bend in radians between two segments in a row, from 0, which keeps the chain straight, to `math.pi`, which lets it fold. |
 
-Both `lengths` and `segments`, or neither, raise `A chain takes the lengths of its segments either as "lengths" or as "segments" of the same "length".`. Fewer than one segment raises `A chain needs at least one segment in "segments".`, and a length that is not a number greater than zero raises `Every segment of a chain needs a finite length greater than zero.`
+Both `lengths` and `segments`, or neither, raise `A chain takes the lengths of its segments either as "lengths" or as "segments" of the same "length".`. A count outside 1 to 4096 raises `A chain needs from 1 to 4096 segments in "segments".`, and a length that is not a number greater than zero raises `Every segment of a chain needs a finite length greater than zero.`
 
 ```lua
 local animation2d = require('haylen.animation2d')
