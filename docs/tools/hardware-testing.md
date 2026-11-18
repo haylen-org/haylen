@@ -104,9 +104,14 @@ Amazon rents GPU machines by the hour and real Android and iOS devices by the mi
 | `g4dn.xlarge`, Windows | NVIDIA Tesla T4 | Direct3D 12, Direct3D 11, Vulkan and OpenGL on the NVIDIA GRID driver | About US$ 0.71 an hour on demand |
 
 - New accounts often have no quota for spot GPU instances, so use on demand, or ask for spot quota first.
-- Use an image with the NVIDIA driver installed, or install the driver that Amazon publishes for the instance type.
-- On Windows, turn off the basic display adapter of the machine before the OpenGL tests, or the window gets the software driver.
+- EC2 no longer offers the AMD instances `g4ad` in `us-east-1`, `us-east-2` and `us-west-2`, so AMD GPUs come from [Microsoft Azure](#microsoft-azure).
+- Install the NVIDIA GRID driver that Amazon publishes in the buckets `ec2-windows-nvidia-drivers` and `ec2-linux-nvidia-drivers`. The machine downloads it from an address that `aws s3 presign` makes with an expiry of a few minutes, so no key ever reaches the machine.
+- On Windows, turn off the basic display adapter of the machine before the OpenGL tests, or the window gets the software driver. The GRID driver then shows two displays, so the outputs of the test project open on the second one.
+- On Linux, the GRID driver has four display heads without monitors. An X server whose device section holds `Option "ConnectedMonitor" "DFP-0, DFP-1"`, the mode validation `NoEdidModes` and a `MetaModes` of two modes has two displays for the windowed runs and the outputs. Close a window there through the window manager, such as with `wmctrl -c`, since `xdotool windowclose` destroys it under the app.
 - Give the disk at least 80 GB on Windows, where the driver installer needs room.
+- Windows builds the engine with what [Building](build.md#requirements) lists for the target `windows`, which a fresh machine lacks: Visual Studio Build Tools, Git for Windows, and Strawberry Perl with its NASM. Run the windowed checks from a scheduled task of the session that autologon opens, with its console hidden so it never takes the keyboard from the app.
+- The desktop SDK that continuous integration builds needs the glibc of its runner, so a machine with an older Ubuntu builds its own SDK with `haylen sdk build --target linux`.
+- Ubuntu empties `/tmp` at every boot, so keep downloads in the home folder. A `shutdown` in the `bootcmd` of cloud-init runs before systemd takes it, so arm the shutdown timer from a systemd unit that runs after `multi-user.target`, which also arms it again after a reboot.
 
 #### Macs on EC2
 
@@ -128,13 +133,15 @@ Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A ru
 3. Choose devices of different GPUs, such as Adreno, Mali, PowerVR and Xclipse, and of old and new Android versions. The free call `aws devicefarm get-device-pool-compatibility` shows which devices accept the app before you pay.
 4. Give every job a short timeout, so a hang cannot bill its full default time.
 
+A custom test spec runs a shell script of the test package on a host that reaches the device through `adb -s $DEVICEFARM_DEVICE_UDID`, and keeps what the script writes into `$DEVICEFARM_LOG_DIR`. The `adb` of that host refuses `logcat -v raw`, so read the log in another format. Set the secure setting `immersive_mode_confirmations` to `confirmed` before the first start of an app, or the hint of the system covers it. The GPU test app keeps its results in its own files, which `adb exec-out run-as com.haylen.gputests tar -c -C files gpu-test-output` copies out. The D-pad keys of `adb shell input keyevent` move the focus of the test project, and `pm clear` before each start gives the menu the focus of a first start.
+
 ### Microsoft Azure
 
 Azure rents the AMD Radeon PRO V620, which covers AMD GPUs. The tool is the Azure command line (`az`), logged in with `az login`.
 
 | Size | GPU | Tests | Approximate cost |
 | --- | --- | --- | --- |
-| `Standard_NG8ads_V620_v1`, Linux | AMD Radeon PRO V620 | Vulkan on RADV and OpenGL on radeonsi | About US$ 0.70 to 1.00 an hour |
+| `Standard_NG8ads_V620_v1`, Linux | AMD Radeon PRO V620 | None at the moment, as the note below says | About US$ 0.70 to 1.00 an hour |
 | `Standard_NG8ads_V620_v1`, Windows | AMD Radeon PRO V620 | Direct3D 12, Direct3D 11, Vulkan and OpenGL on the AMD driver | A little more, for the Windows license |
 
 Prepare the subscription once:
@@ -149,6 +156,8 @@ az quota update --resource-name StandardNGADSV620v1Family \
 ```
 
 The quota of 8 virtual processors holds one machine at a time, so run the Linux machine and the Windows machine one after the other.
+
+The V620 of these machines is a virtual function of a shared GPU, whose driver must load firmware through the host. The Ubuntu 24.04 image of Azure blacklists `amdgpu`, and both the `amdgpu` of its kernel and the `amdgpu-dkms` that AMD's `amdgpu-install` builds fail there with `PSP firmware loading failed`, so the Linux machine has no GPU device for Mesa. Check the driver version that Azure supports for the size before renting it again.
 
 ## Saving money
 
