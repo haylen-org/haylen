@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -87,6 +88,14 @@ Sound Sound::stream(std::shared_ptr<io::PackageReader> reader) {
         ReaderDecoder decoder(reader);
         streamed->channels = decoder.getChannels();
         streamed->sampleRate = decoder.getSampleRate();
+
+        // Every voice of the sound keeps a second of its frames ahead, so the header of the file bounds what a voice allocates.
+        const auto maxSampleRate = static_cast<std::uint32_t>(ma_standard_sample_rate_max);
+        const auto maxChannels = static_cast<std::uint32_t>(MA_MAX_CHANNELS);
+        if (streamed->sampleRate > maxSampleRate || streamed->channels > maxChannels) {
+            throw std::runtime_error("The audio file declares a sample rate above " + std::to_string(maxSampleRate) + " or more than " + std::to_string(maxChannels) + " channels, which a streamed sound cannot play.");
+        }
+
         streamed->frames = decoder.getLength();
     }
     streamed->reader = std::move(reader);

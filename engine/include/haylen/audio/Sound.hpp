@@ -21,7 +21,7 @@ class Sound final {
     Sound() = default;
     explicit Sound(std::shared_ptr<const SoundData> value) noexcept : data(std::move(value)) {}
 
-    // Both factories accept WAV, FLAC, MP3 and Ogg Vorbis data and throw `std::runtime_error` when it cannot be decoded. A streamed sound reads only the header of its file here, except an MP3 file without the Xing or Info header of its encoder, which it reads through once to count its frames, and each voice that plays it reads the file in ranges as it goes.
+    // Both factories accept WAV, FLAC, MP3 and Ogg Vorbis data and throw `std::runtime_error` when it cannot be decoded. A streamed sound also throws `std::runtime_error` for a file whose header declares a sample rate above 384000 or more than 254 channels. It reads only the header of its file here, except an MP3 file without the Xing or Info header of its encoder, which it reads through once to count its frames, and each voice that plays it reads the file in ranges as it goes.
     [[nodiscard]] static Sound decode(std::span<const std::uint8_t> encoded);
     [[nodiscard]] static Sound stream(std::shared_ptr<io::PackageReader> reader);
 

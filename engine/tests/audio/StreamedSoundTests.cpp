@@ -90,6 +90,35 @@ class StreamedSoundTest : public MixerFixture {
         return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     }
 
+    // Writes a sample rate into the identification header on the first page of an Ogg Vorbis file and the checksum of that page again, as a hostile file would declare it.
+    [[nodiscard]] static std::vector<std::uint8_t> withSampleRate(std::vector<std::uint8_t> file, std::uint32_t rate) {
+        const std::size_t segments = file[26];
+        const std::size_t packet = 27 + segments;
+        std::size_t pageSize = packet;
+        for (std::size_t segment = 0; segment < segments; ++segment) {
+            pageSize += file[27 + segment];
+        }
+
+        for (std::size_t byte = 0; byte < 4; ++byte) {
+            file[packet + 12 + byte] = static_cast<std::uint8_t>(rate >> (8 * byte));
+        }
+
+        std::fill_n(file.begin() + 22, 4, std::uint8_t{0});
+        std::uint32_t checksum = 0;
+        for (std::size_t index = 0; index < pageSize; ++index) {
+            checksum ^= static_cast<std::uint32_t>(file[index]) << 24;
+            for (int bit = 0; bit < 8; ++bit) {
+                checksum = (checksum & 0x80000000U) != 0 ? (checksum << 1) ^ 0x04C11DB7U : checksum << 1;
+            }
+        }
+
+        for (std::size_t byte = 0; byte < 4; ++byte) {
+            file[22 + byte] = static_cast<std::uint8_t>(checksum >> (8 * byte));
+        }
+
+        return file;
+    }
+
     // Tells whether the positions run on one frame at a time from the first, wrapping to the start of a file of the length.
     [[nodiscard]] static bool isContinuous(std::span<const std::uint64_t> positions, std::uint64_t length) {
         for (std::size_t index = 1; index < positions.size(); ++index) {
@@ -391,6 +420,19 @@ TEST_F(StreamedSoundTest, ReadsTheLengthOfAnOggFileFromItsLastWholePage) {
     std::vector<std::uint8_t> garbage = file;
     std::fill(garbage.end() - 64, garbage.end(), std::uint8_t{'S'});
     EXPECT_LE(Sound::stream(makeReader(garbage)).getFrameCount(), whole);
+}
+
+TEST_F(StreamedSoundTest, RefusesAFileWhoseHeaderDeclaresMoreFramesASecondThanItCanPlay) {
+    const std::vector<std::uint8_t> file = readTestFile("tone.ogg");
+    EXPECT_EQ(Sound::stream(makeReader(withSampleRate(file, 384000))).getSampleRate(), 384000U);
+
+    // The ring of every voice holds a second of frames, so the header alone would make the voice allocate gigabytes.
+    try {
+        (void)Sound::stream(makeReader(withSampleRate(file, 2000000000U)));
+        FAIL() << "A file of two billion frames a second streams.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "The audio file declares a sample rate above 384000 or more than 254 channels, which a streamed sound cannot play.");
+    }
 }
 
 TEST_F(StreamedSoundTest, LoadsAStreamedAssetWithoutReadingItsFile) {
