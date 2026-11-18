@@ -130,6 +130,12 @@ TEST_F(InputRecordingTest, RefusesMalformedBytes) {
     EXPECT_EQ(huge.getStepCount(), InputRecording::kMaxSteps);
     EXPECT_EQ(huge.getMask(InputRecording::kMaxSteps - 1, 0), 1U);
 
+    // A step that presses a button past the buttons of the recording would reach a command buffer that does not have it.
+    std::vector<std::byte> unnamed = single.toBytes();
+    unnamed.back() = std::byte{2};
+    EXPECT_EQ(malformed(unnamed), "The input recording is malformed: a number is out of range.");
+    EXPECT_THROW(single.write(0, 2), std::invalid_argument);
+
     EXPECT_THROW(InputRecording({.buttons = {}}), std::invalid_argument);
     EXPECT_THROW(InputRecording({.buttons = {"a"}, .players = 17}), std::invalid_argument);
 }
@@ -177,7 +183,7 @@ TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
         local pattern = {2, 0, 2, 0, 0, 4, 0, 1, 1, 0}
         for step, mask in ipairs(pattern) do
             recorder:write(1, mask)
-            recorder:write(2, step)
+            recorder:write(2, step % 8)
             live:update(mask)
             typed[#typed + 1] = tostring(live:peek()) .. random:integer(1, 100)
             recorder:advance(step * 7)
@@ -196,7 +202,7 @@ TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
         while not playback.finished do
             index = index + 1
             replayed:update(playback:mask(1))
-            same = same and tostring(replayed:peek()) .. replayRandom:integer(1, 100) == typed[index] and playback:mask(2) == index and playback:hash() == index * 7
+            same = same and tostring(replayed:peek()) .. replayRandom:integer(1, 100) == typed[index] and playback:mask(2) == index % 8 and playback:hash() == index * 7
             playback:advance()
         end
         playback:seek(1)
@@ -206,6 +212,7 @@ TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
 
         EXPECT_NE(fixture.lua("input.loadRecording('nonsense')").find("The input recording is malformed: "), std::string::npos);
         EXPECT_NE(fixture.lua("recorder:write(3, 1)").find("The input recording has players from 1 to 2."), std::string::npos);
+        EXPECT_NE(fixture.lua("recorder:write(1, 1 << 31)").find("The mask of a step presses a button that the input recording does not have."), std::string::npos);
         EXPECT_NE(fixture.lua("input.newRecorder({buttons = {}})").find("An input recording needs from 1 to 32 buttons."), std::string::npos);
         EXPECT_NE(fixture.lua("input.newRecorder({buttons = {'a'}, size = 1})").find("Unknown option \"size\"."), std::string::npos);
         EXPECT_NE(fixture.lua("input.newPlayback(recorder):seek(11)").find("The playback has steps from 0 to 10."), std::string::npos);

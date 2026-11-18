@@ -45,12 +45,12 @@ class CommandBuffer final {
     // Throws `std::invalid_argument` for options without buttons or with more than `kMaxButtons`, a lifetime of 0, a command without a name or steps, a step that names no button, a direction step without directions, a sequence longer than `kMaxSteps` and a name used twice.
     explicit CommandBuffer(Options value);
 
-    // Takes the buttons down on this step as bit `n` for button `n`, or reads them from the step state of the actions named like the buttons, which counts a tap shorter than a step as held for one step.
-    void update(std::uint32_t downMask) noexcept;
+    // Takes the buttons down on this step as bit `n` for button `n`, or reads them from the step state of the actions named like the buttons, which counts a tap shorter than a step as held for one step. Throws `std::invalid_argument` for a mask with a bit at or above the count of buttons.
+    void update(std::uint32_t downMask);
     void update(const ActionMap& map) noexcept;
 
-    // Takes the buttons held now as already down, so a button held across a pause never types a press.
-    void settle(std::uint32_t downMask) noexcept;
+    // Takes the buttons held now as already down, so a button held across a pause never types a press. Throws `std::invalid_argument` for a mask with a bit at or above the count of buttons.
+    void settle(std::uint32_t downMask);
     void settle(const ActionMap& map) noexcept;
 
     // Forgets the kept command and the typed presses and keeps the buttons that are held.
@@ -100,6 +100,8 @@ class CommandBuffer final {
     };
 
     void validate() const;
+    void requireButtons(std::uint32_t downMask) const;
+    void step(std::uint32_t downMask) noexcept;
     [[nodiscard]] std::uint32_t readMask(const ActionMap& map) const noexcept;
     [[nodiscard]] bool completes(const Command& command) const noexcept;
     [[nodiscard]] std::size_t resolveStep(std::size_t step) const noexcept;

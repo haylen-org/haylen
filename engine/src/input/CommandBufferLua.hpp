@@ -39,7 +39,7 @@ class CommandBufferLua final {
     [[nodiscard]] static std::optional<std::uint32_t> readLifetime(lua_State* L, int index);
     [[nodiscard]] static std::size_t readButton(lua_State* L, const CommandBuffer::Options& options, int index, const char* command);
     // Reads the buttons of a step from an action map or from an integer mask.
-    template <void (CommandBuffer::*FromMask)(std::uint32_t) noexcept, void (CommandBuffer::*FromMap)(const ActionMap&) noexcept> static int feed(lua_State* L);
+    template <void (CommandBuffer::*FromMask)(std::uint32_t), void (CommandBuffer::*FromMap)(const ActionMap&) noexcept> static int feed(lua_State* L);
     [[nodiscard]] static std::size_t checkCommand(lua_State* L, const CommandBuffer& buffer, int index);
 
     static int newCommandBuffer(lua_State* L);

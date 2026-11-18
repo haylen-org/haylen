@@ -29,7 +29,7 @@ class InputRecording final {
     // Throws `std::invalid_argument` for a header without buttons or players, with more than the bounds above, or with a name longer than `kMaxNameSize`.
     explicit InputRecording(Header value);
 
-    // Sets the mask of a player for the step that `advance` closes, 0 until it is set.
+    // Sets the mask of a player for the step that `advance` closes, 0 until it is set. Throws `std::out_of_range` for a player the recording does not have and `std::invalid_argument` for a mask with a bit at or above the count of buttons.
     void write(std::size_t player, std::uint32_t mask);
 
     // Closes the step with the masks written for it, and with the hash of the state of the app when one is given. Throws `std::length_error` past `kMaxSteps`.

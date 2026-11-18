@@ -8,6 +8,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/CommandBuffer.hpp"
@@ -213,6 +214,23 @@ TEST_F(CommandBufferTest, RejectsInvalidOptions) {
     EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .directions = std::array<std::size_t, 2>{0, 4}}), "The directions of a command buffer must name two of its buttons.");
 }
 
+TEST_F(CommandBufferTest, RejectsAMaskWithAButtonItDoesNotHave) {
+    CommandBuffer buffer({.buttons = {"punch", "kick", "jump"}, .lifetimes = {10U, 10U, 10U}});
+    EXPECT_THROW(buffer.update(1U << 3), std::invalid_argument);
+    EXPECT_THROW(buffer.settle(1U << 31), std::invalid_argument);
+    EXPECT_FALSE(buffer.peek().has_value());
+    EXPECT_EQ(buffer.getTick(), 0U);
+
+    CommandBuffer::Options every{.lifetimes = std::vector<std::optional<std::uint32_t>>(CommandBuffer::kMaxButtons, 10U)};
+    for (std::size_t button = 0; button < CommandBuffer::kMaxButtons; ++button) {
+        every.buttons.push_back("button" + std::to_string(button));
+    }
+
+    CommandBuffer wide(std::move(every));
+    wide.update(1U << 31);
+    EXPECT_EQ(wide.peek(), 31U);
+}
+
 TEST(CommandBufferLuaTest, TypesCommandsFromMasksAndMaps) {
     test::EngineFixture fixture;
     // clang-format off
@@ -250,6 +268,8 @@ TEST(CommandBufferLuaTest, TypesCommandsFromMasksAndMaps) {
     EXPECT_NE(fixture.lua("input.newCommandBuffer({buttons = {'a'}, commands = {{name = 'a', steps = {'a'}}}})").find("The command name \"a\" is used by more than one command."), std::string::npos);
     EXPECT_NE(fixture.lua("return commands:consume('fly')").find("The command buffer has no command \"fly\"."), std::string::npos);
     EXPECT_NE(fixture.lua("return commands:held('fly')").find("The command buffer has no button \"fly\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("commands:update(128)").find("The mask of a step presses a button that the command buffer does not have."), std::string::npos);
+    EXPECT_NE(fixture.lua("commands:settle(256)").find("The mask of a step presses a button that the command buffer does not have."), std::string::npos);
 }
 
 } // namespace haylen::input

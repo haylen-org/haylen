@@ -148,7 +148,7 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
     return 1;
 }
 
-template <void (CommandBuffer::*FromMask)(std::uint32_t) noexcept, void (CommandBuffer::*FromMap)(const ActionMap&) noexcept> int CommandBufferLua::feed(lua_State* L) {
+template <void (CommandBuffer::*FromMask)(std::uint32_t), void (CommandBuffer::*FromMap)(const ActionMap&) noexcept> int CommandBufferLua::feed(lua_State* L) {
     CommandBuffer& buffer = lua::Userdata::check<CommandBuffer>(L, 1);
     if (const ActionMap* map = lua::Userdata::test<ActionMap>(L, 2)) {
         (buffer.*FromMap)(*map);
@@ -232,7 +232,7 @@ int CommandBufferLua::tick(lua_State* L) {
 }
 
 void CommandBufferLua::install(lua_State* L) {
-    lua::ClassBuilder<CommandBuffer>(L).function("update", &feed<&CommandBuffer::update, &CommandBuffer::update>).function("settle", &feed<&CommandBuffer::settle, &CommandBuffer::settle>).function("peek", &peek).function("consume", &consume).function("held", &held).function("clear", &clear).property("frozen", &frozen, &setFrozen).property("facing", &facing, &setFacing).property("tick", &tick).install();
+    lua::ClassBuilder<CommandBuffer>(L).function("update", &lua::Binding::native<&feed<&CommandBuffer::update, &CommandBuffer::update>>).function("settle", &lua::Binding::native<&feed<&CommandBuffer::settle, &CommandBuffer::settle>>).function("peek", &peek).function("consume", &consume).function("held", &held).function("clear", &clear).property("frozen", &frozen, &setFrozen).property("facing", &facing, &setFacing).property("tick", &tick).install();
 }
 
 void CommandBufferLua::addFunctions(lua_State* L) {

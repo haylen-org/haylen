@@ -43,6 +43,10 @@ void InputRecording::write(std::size_t player, std::uint32_t mask) {
         throw std::out_of_range("The input recording has no player " + std::to_string(player + 1) + ".");
     }
 
+    if ((std::uint64_t{mask} >> header.buttons.size()) != 0) {
+        throw std::invalid_argument("The mask of a step presses a button that the input recording does not have.");
+    }
+
     pending[player] = mask;
 }
 
@@ -207,6 +211,7 @@ InputRecording InputRecording::fromBytes(std::span<const std::byte> bytes) {
     const auto steps = static_cast<std::uint32_t>(takeVarint(bytes, offset, kMaxSteps));
     const bool hashed = takeVarint(bytes, offset, 1) == 1;
     const std::size_t players = recording.header.players;
+    const std::uint64_t maxMask = (std::uint64_t{1} << recording.header.buttons.size()) - 1;
     while (recording.stepCount < steps) {
         const auto run = static_cast<std::uint32_t>(takeVarint(bytes, offset, steps - recording.stepCount));
         if (run == 0) {
@@ -214,7 +219,7 @@ InputRecording InputRecording::fromBytes(std::span<const std::byte> bytes) {
         }
 
         for (std::size_t player = 0; player < players; ++player) {
-            recording.pending[player] = static_cast<std::uint32_t>(takeVarint(bytes, offset, std::numeric_limits<std::uint32_t>::max()));
+            recording.pending[player] = static_cast<std::uint32_t>(takeVarint(bytes, offset, maxMask));
         }
 
         recording.appendRun(run);

@@ -141,7 +141,22 @@ void CommandBuffer::age() noexcept {
     }
 }
 
-void CommandBuffer::update(std::uint32_t downMask) noexcept {
+void CommandBuffer::requireButtons(std::uint32_t downMask) const {
+    if ((std::uint64_t{downMask} >> options.buttons.size()) != 0) {
+        throw std::invalid_argument("The mask of a step presses a button that the command buffer does not have.");
+    }
+}
+
+void CommandBuffer::update(std::uint32_t downMask) {
+    requireButtons(downMask);
+    step(downMask);
+}
+
+void CommandBuffer::update(const ActionMap& map) noexcept {
+    step(readMask(map));
+}
+
+void CommandBuffer::step(std::uint32_t downMask) noexcept {
     ++tick;
     age();
     const std::uint32_t pressed = downMask & ~held;
@@ -186,11 +201,8 @@ void CommandBuffer::update(std::uint32_t downMask) noexcept {
     kept = Kept{.command = *best};
 }
 
-void CommandBuffer::update(const ActionMap& map) noexcept {
-    update(readMask(map));
-}
-
-void CommandBuffer::settle(std::uint32_t downMask) noexcept {
+void CommandBuffer::settle(std::uint32_t downMask) {
+    requireButtons(downMask);
     held = downMask;
 }
 

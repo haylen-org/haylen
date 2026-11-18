@@ -1716,7 +1716,7 @@ scene.push({
 Moves the buffer one step forward with the buttons that are down on it. The argument `mapOrMask` is one of two things:
 
 - An action map. Its actions named like the buttons give their step state, as `map:stepDown` tells, so a tap shorter than a step still counts.
-- An integer whose bit `n - 1` holds the button `n`, such as `map:stepButtons` returns or a recording plays back. An integer outside 32 bits raises a bad argument error with `the buttons of a step are an integer of 32 bits`.
+- An integer whose bit `n - 1` holds the button `n`, such as `map:stepButtons` returns or a recording plays back. An integer outside 32 bits raises a bad argument error with `the buttons of a step are an integer of 32 bits`. An integer with a bit for a button past the last one of the buffer raises `The mask of a step presses a button that the command buffer does not have.`.
 
 ```lua
 local input = require('haylen.input')
@@ -1848,7 +1848,7 @@ scene.push({
 
 ### input.loadRecording(bytes)
 
-Reads the bytes of `recording:bytes()` back into a recording. Bytes that are not a whole recording raise `The input recording is malformed: <reason>.`. A recording of another app raises `The recording belongs to another app.`. A recording made at another fixed rate raises `The recording was made at <rate> fixed steps a second, and the app runs at <rate>.`, since its steps would mean other times.
+Reads the bytes of `recording:bytes()` back into a recording. Bytes that are not a whole recording, or whose steps press a button that the recording does not name, raise `The input recording is malformed: <reason>.`. A recording of another app raises `The recording belongs to another app.`. A recording made at another fixed rate raises `The recording was made at <rate> fixed steps a second, and the app runs at <rate>.`, since its steps would mean other times.
 
 ```lua
 local input = require('haylen.input')
@@ -1861,7 +1861,7 @@ print(copy.steps, copy.players, copy.buttons[1], copy.data)
 
 ### recording:write(player, maskOrMap)
 
-Sets the buttons of a player, from `1`, for the step that the next `advance` closes. The buttons are an integer mask, or an action map whose actions named like the buttons give their step state. A player outside the recording raises `The input recording has players from 1 to <n>.`. A mask outside 32 bits raises a bad argument error with `the buttons of a step are an integer of 32 bits`.
+Sets the buttons of a player, from `1`, for the step that the next `advance` closes. The buttons are an integer mask, or an action map whose actions named like the buttons give their step state. A player outside the recording raises `The input recording has players from 1 to <n>.`. A mask outside 32 bits raises a bad argument error with `the buttons of a step are an integer of 32 bits`, and a mask with a bit for a button past the last one of the recording raises `The mask of a step presses a button that the input recording does not have.`.
 
 ```lua
 local input = require('haylen.input')
@@ -2207,6 +2207,7 @@ The face buttons are named by their place, so `south` is the bottom button whate
 | `The command name "<name>" is used by more than one command.` | Two commands, or a command and a button, share a name. |
 | `the buttons of a step are an integer of 32 bits` | The mask of `buffer:update`, `buffer:settle` or `recording:write` is negative or does not fit in 32 bits. It comes inside a bad argument error. |
 | `The command buffer has no command "<name>".` | The method `buffer:consume` got a name that the buffer does not have. |
+| `The mask of a step presses a button that the command buffer does not have.` | The mask of `buffer:update` or `buffer:settle` has a bit for a button past the last one of the buffer. |
 | `The command buffer has no button "<name>".` | The method `buffer:held` got a name that the buffer does not have. |
 | `An input recording needs from 1 to 32 buttons.` | The `buttons` of `input.newRecorder` are empty or more than 32. |
 | `An input recording needs from 1 to 16 players.` | The `players` of `input.newRecorder` are out of range. |
@@ -2214,8 +2215,9 @@ The face buttons are named by their place, so `south` is the bottom button whate
 | `The data of an input recording has at most 1048576 bytes.` | The `data` of `input.newRecorder` is longer. |
 | `The input recording has players from 1 to <n>.` | The method `recording:write` or `playback:mask` got another player. |
 | `a step hash is an integer of 32 bits` | The hash of `recording:advance` is negative or does not fit in 32 bits. It comes inside a bad argument error. |
+| `The mask of a step presses a button that the input recording does not have.` | The mask of `recording:write` has a bit for a button past the last one of the recording. |
 | `An input recording holds at most 67108864 steps.` | The method `recording:advance` would close one step too many. |
-| `The input recording is malformed: <reason>.` | The bytes of `input.loadRecording` are not a whole recording. |
+| `The input recording is malformed: <reason>.` | The bytes of `input.loadRecording` are not a whole recording, or a step presses a button that the recording does not name. |
 | `The recording belongs to another app.` | The function `input.loadRecording` got a recording of another app. |
 | `The recording was made at <rate> fixed steps a second, and the app runs at <rate>.` | The function `input.loadRecording` got a recording made at another fixed rate. |
 | `The playback has steps from 0 to <n>.` | The method `playback:seek` got another step. |
