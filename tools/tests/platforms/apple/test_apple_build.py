@@ -111,7 +111,7 @@ class AppleBuildTest:
         (app / "native" / "libvendor.a").write_text("archive", encoding="utf-8")
         prepared = apple.prepare(app)
         target = AppleFixture.spec(prepared)["targets"]["App"]
-        assert target["settings"]["base"]["OTHER_LDFLAGS"] == ["$(inherited)", str(app / "native" / "libvendor.a")]
+        assert target["settings"]["base"]["OTHER_LDFLAGS"] == ["$(inherited)", f'"{app / "native" / "libvendor.a"}"']
         assert {"path": str(prepared.folders.project / AppleNativeLibraries.REGISTRY)} in target["sources"]
         assert "vendor_open" in (prepared.folders.project / AppleNativeLibraries.REGISTRY).read_text(encoding="utf-8")
 

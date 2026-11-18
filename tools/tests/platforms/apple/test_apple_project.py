@@ -75,7 +75,7 @@ class AppleProjectTest:
         assert any(dependency.get("framework", "").endswith("HaylenPlayer.xcframework") for dependency in lua_target["dependencies"])
         assert not any(dependency.get("framework", "").endswith("HaylenPlayer.xcframework") for dependency in cpp_target["dependencies"])
         assert {"path": str(cpp / "src"), "group": "App", "type": "syncedFolder"} in cpp_target["sources"]
-        assert cpp_target["settings"]["base"]["HEADER_SEARCH_PATHS"] == ["$(inherited)", str(cpp / "include")]
+        assert cpp_target["settings"]["base"]["HEADER_SEARCH_PATHS"] == ["$(inherited)", f'"{cpp / "include"}"']
         assert cpp_target["settings"]["base"]["GCC_PREPROCESSOR_DEFINITIONS"] == ["$(inherited)", *AppleFixture.DEFINITIONS, "GAME=1"]
 
     def test_the_swift_packages_of_plugins_are_packages_of_the_project(self, apple):

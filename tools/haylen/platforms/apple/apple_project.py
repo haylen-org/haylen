@@ -215,6 +215,11 @@ class AppleProject:
         lines = ["// Written by the Apple backend from haylen.json: the identity of the app, which every target of the project takes.", *(f"{name} = {value}" for name, value in settings.items()), ""]
         return "\n".join(lines)
 
+    @staticmethod
+    def listed_path(path: Path) -> str:
+        """A path in a list of build settings, which Xcode splits at every space that no quotes hold, so a folder whose name holds a space stays one path."""
+        return f'"{path}"'
+
     def settings(self, native: AppleNativeLibraries.Placement) -> dict:
         """The build settings of the app target, with the `buildSettings` of the `apple` section of `haylen.json` last, so they win."""
         target = self.target
@@ -245,10 +250,10 @@ class AppleProject:
         if target.folder == "macos":
             settings["ENABLE_HARDENED_RUNTIME"] = "YES"
         if self.product.app.cpp is not None:
-            settings["HEADER_SEARCH_PATHS"] = ["$(inherited)", *(str(path) for path in self.product.app.cpp.include_directories)]
+            settings["HEADER_SEARCH_PATHS"] = ["$(inherited)", *(AppleProject.listed_path(path) for path in self.product.app.cpp.include_directories)]
         if native.linked:
             # The static native libraries link by their paths, since they are no libraries of the search paths.
-            settings["OTHER_LDFLAGS"] = ["$(inherited)", *(str(path) for path in native.linked)]
+            settings["OTHER_LDFLAGS"] = ["$(inherited)", *(AppleProject.listed_path(path) for path in native.linked)]
         if self.project.of_type(AppleContributions.BUILD_SCRIPT):
             # The scripts of plugins read files of the build that the sandbox of scripts would need listed one by one.
             settings["ENABLE_USER_SCRIPT_SANDBOXING"] = "NO"
