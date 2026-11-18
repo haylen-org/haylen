@@ -10,7 +10,7 @@ buildscript {
 
 // Every module publishes its release variant as `dev.haylen:<module>` at the engine version to the Maven repository that `haylen sdk build --target android` names, and builds into the folder that it names, outside the engine sources.
 plugins {
-    id("com.android.library") version "9.5.0" apply false
+    id("com.android.library") version "9.5.1" apply false
 }
 
 val engineVersion = rootDir.resolve("../../VERSION").readText().trim()

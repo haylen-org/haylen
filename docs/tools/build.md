@@ -99,7 +99,7 @@ The tooling downloads, or builds, the other tools the first time a command needs
 | --- | --- | --- | --- |
 | `haylen-shaderc` | The release that `engine/cmake/haylen-shader-compiler.json` pins | `.tools/haylen-shaderc-<commit>` | Every build and the command `app shaders`, as [the shader compiler](#the-shader-compiler) explains. |
 | Emscripten SDK | 7.0.0 | `.tools/emsdk` | The web SDK, the runtimes that web apps link and the checks of the web. |
-| Gradle | 9.8.2 | `.tools/gradle-9.8.2` | The Android libraries of the Android SDK and the Android projects of apps. |
+| Gradle | 9.9.1 | `.tools/gradle-9.9.1` | The Android libraries of the Android SDK and the Android projects of apps. |
 | XcodeGen | 2.46.0 | `.tools/xcodegen-2.46.0` | The Xcode projects that the Apple backend generates, and the runner of the UI tests. macOS only. |
 | bundletool | 1.18.3 | `.tools/bundletool-1.18.3.jar` | The format `apks` of `app package` on Android, which installs a bundle in the local testing mode of Google Play. |
 | Inno Setup | 7.1.1 | `.tools/inno-setup-7.1.1` | The Windows installer of `app package --format installer`, installed in portable mode, without an uninstaller or entries in the registry. Windows only. |
