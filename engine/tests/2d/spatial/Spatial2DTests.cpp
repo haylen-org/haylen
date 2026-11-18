@@ -542,6 +542,7 @@ TEST(Spatial2DLuaTest, StoresLuaValuesInEveryStructure) {
                 names(structure:kNearest(190, 190, 5, 100)),
                 tostring(structure:remove(tree)) .. tostring(structure:remove(tree)) .. tostring(structure:has(tree)),
             }
+
             structure:clear()
             results[#results + 1] = structure.size .. tostring(structure:has(rock))
             return table.concat(results, ' ')

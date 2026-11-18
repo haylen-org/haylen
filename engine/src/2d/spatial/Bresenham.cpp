@@ -13,6 +13,7 @@ void Bresenham::line(Cell from, Cell to, std::vector<Cell>& cells) {
     if (longest + 1 > kMaxLineCells) {
         throw std::invalid_argument("A line covers at most " + std::to_string(kMaxLineCells) + " cells.");
     }
+
     cells.clear();
     const int spanX = std::abs(to.x - from.x);
     const int spanY = -std::abs(to.y - from.y);

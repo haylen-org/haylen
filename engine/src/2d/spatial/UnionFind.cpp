@@ -15,6 +15,7 @@ void UnionFind::reset(std::size_t count) {
     if (count > kMaxCount) {
         throw std::invalid_argument("A union-find holds at most " + std::to_string(kMaxCount) + " elements.");
     }
+
     parents.resize(count);
     std::iota(parents.begin(), parents.end(), std::size_t{0});
     sizes.assign(count, 1);
