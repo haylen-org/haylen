@@ -15,9 +15,15 @@ TweenManager::~TweenManager() {
 }
 
 std::size_t TweenManager::getGroup(std::string_view tag) {
-    const auto found = std::find_if(groups.begin(), groups.end(), [tag](const Group& group) { return group.tag == tag; });
+    const auto found = std::find_if(groups.begin(), groups.end(), [tag](const Group& group) { return !group.free && group.tag == tag; });
     if (found != groups.end()) {
         return static_cast<std::size_t>(found - groups.begin());
+    }
+
+    const auto unused = std::find_if(groups.begin(), groups.end(), [](const Group& group) { return group.free; });
+    if (unused != groups.end()) {
+        *unused = {.tag = std::string(tag)};
+        return static_cast<std::size_t>(unused - groups.begin());
     }
 
     groups.push_back({.tag = std::string(tag)});
@@ -103,6 +109,27 @@ void TweenManager::finishUpdate() {
     std::erase_if(tweens, [this](const std::shared_ptr<Tween>& tween) { return !tween->isAlive() || tween->manager != this; });
     std::move(pending.begin(), pending.end(), std::back_inserter(tweens));
     pending.clear();
+    releaseUnusedGroups();
+}
+
+// The group of tweens without a tag stays first, and the free groups at the end leave the list.
+void TweenManager::releaseUnusedGroups() noexcept {
+    for (Group& group : groups) {
+        group.users = 0;
+    }
+
+    for (const std::shared_ptr<Tween>& tween : tweens) {
+        ++groups[tween->group].users;
+    }
+
+    for (std::size_t index = 1; index < groups.size(); ++index) {
+        Group& group = groups[index];
+        group.free = group.users == 0 && group.timeScale == 1.0F;
+    }
+
+    while (groups.size() > 1 && groups.back().free) {
+        groups.pop_back();
+    }
 }
 
 void TweenManager::overwrite(const PropertyTween& tween) {

@@ -18,6 +18,7 @@
 #include "haylen/core/TweenProperty.hpp"
 #include "haylen/core/TweenValue.hpp"
 #include "haylen/math/Math.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::core {
@@ -587,6 +588,40 @@ TEST(TweenManagerTest, RunsByProcessModeTimeKindAndGroup) {
     rig.tweens.fixedUpdate(rig.clock);
     EXPECT_NEAR(fixed.x, 1.0 / 60.0, 1e-6);
     EXPECT_THROW(rig.tweens.setTimeScale("world", -1.0F), std::invalid_argument);
+}
+
+// A tag keeps its time scale for the tweens that come later, while the tags that only tweens used leave no trace once those tweens end.
+TEST(TweenManagerTest, ForgetsTagsThatNoTweenUses) {
+    TweenRig rig;
+    Box box;
+    rig.tweens.setTimeScale("slow", 0.5F);
+    // clang-format off
+    const auto playTagged = [&rig, &box](const std::string& tag) {
+        auto tween = rig.tweenX(box, 0.1F, TweenProperty::to(1.0), false);
+        tween->setTag(tag);
+        rig.tweens.add(tween);
+        rig.step(0.2);
+    };
+    // clang-format on
+
+    for (int index = 0; index < 4; ++index) {
+        playTagged("a tag long enough to leave the buffer of a short text " + std::to_string(index));
+    }
+
+    const test::AllocationTracker tracker;
+    for (int index = 4; index < 4000; ++index) {
+        playTagged("a tag long enough to leave the buffer of a short text " + std::to_string(index));
+    }
+
+    EXPECT_LT(tracker.getLargest(), 4096U);
+    EXPECT_FLOAT_EQ(rig.tweens.getTimeScale("slow"), 0.5F);
+
+    box.x = 0.0;
+    auto slow = rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false);
+    slow->setTag("slow");
+    rig.tweens.add(slow);
+    rig.step(0.5);
+    EXPECT_DOUBLE_EQ(box.x, 0.25);
 }
 
 TEST(TweenManagerTest, InheritingTweensFollowTheModeOfTheirParent) {

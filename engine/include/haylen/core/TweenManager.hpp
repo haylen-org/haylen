@@ -65,9 +65,12 @@ class TweenManager final {
   private:
     friend class Timeline;
 
+    // A tag keeps its group while a tween in the manager uses it or while its time scale is not 1. Other groups are free for the next tag, so tags that come and go never pile up.
     struct Group {
         std::string tag;
         float timeScale = 1.0F;
+        std::size_t users = 0;
+        bool free = false;
     };
 
     // A tween that shortens under reduced motion plays this many times faster.
@@ -82,6 +85,7 @@ class TweenManager final {
     // Takes a tween out of the manager because it joined a timeline.
     void detach(Tween& tween);
     void finishUpdate();
+    void releaseUnusedGroups() noexcept;
 
     std::vector<std::shared_ptr<Tween>> tweens;
     std::vector<std::shared_ptr<Tween>> pending;
