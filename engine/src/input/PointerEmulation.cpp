@@ -42,6 +42,7 @@ std::span<const platform::Event> PointerEmulation::convert(const platform::Event
     default:
         break;
     }
+
     return {&event, 1};
 }
 

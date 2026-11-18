@@ -134,6 +134,7 @@ std::string ActionMap::Binding::toString() const {
     case Source::VirtualStick:
         return "virtualStick:" + name;
     }
+
     return {};
 }
 
@@ -362,6 +363,7 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
         case Devices::Gamepads::Every:
             break;
         }
+
         float strongestValue = 0.0F;
         for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
             strongestValue = std::max(strongestValue, read(index));
@@ -391,6 +393,7 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
     case Binding::Source::VirtualStick:
         return getBindingVector(binding, input, virtualInput).getLength();
     }
+
     return 0.0F;
 }
 
