@@ -37,6 +37,7 @@ VkFormat Conversions::toFormat(Device::PixelFormat format) noexcept {
     case Device::PixelFormat::Depth32FloatStencil8:
         return VK_FORMAT_D32_SFLOAT_S8_UINT;
     }
+
     return VK_FORMAT_UNDEFINED;
 }
 
@@ -67,6 +68,7 @@ VkFormat Conversions::toFormat(Device::VertexFormat format) noexcept {
     case Device::VertexFormat::UInt:
         return VK_FORMAT_R32_UINT;
     }
+
     return VK_FORMAT_UNDEFINED;
 }
 
@@ -100,6 +102,7 @@ VkPrimitiveTopology Conversions::toTopology(Device::Primitive primitive) noexcep
     case Device::Primitive::Points:
         return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
     }
+
     return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 }
 
@@ -132,6 +135,7 @@ VkBlendFactor Conversions::toBlendFactor(Device::BlendFactor factor) noexcept {
     case Device::BlendFactor::OneMinusBlendColor:
         return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
     }
+
     return VK_BLEND_FACTOR_ONE;
 }
 
@@ -148,6 +152,7 @@ VkBlendOp Conversions::toBlendOperation(Device::BlendOperation operation) noexce
     case Device::BlendOperation::Maximum:
         return VK_BLEND_OP_MAX;
     }
+
     return VK_BLEND_OP_ADD;
 }
 
@@ -175,6 +180,7 @@ VkCompareOp Conversions::toCompare(Device::CompareFunction function) noexcept {
     case Device::CompareFunction::Always:
         return VK_COMPARE_OP_ALWAYS;
     }
+
     return VK_COMPARE_OP_ALWAYS;
 }
 
@@ -197,6 +203,7 @@ VkStencilOp Conversions::toStencilOperation(Device::StencilOperation operation) 
     case Device::StencilOperation::DecrementWrap:
         return VK_STENCIL_OP_DECREMENT_AND_WRAP;
     }
+
     return VK_STENCIL_OP_KEEP;
 }
 
@@ -209,6 +216,7 @@ VkCullModeFlags Conversions::toCullMode(Device::CullMode mode) noexcept {
     case Device::CullMode::Back:
         return VK_CULL_MODE_BACK_BIT;
     }
+
     return VK_CULL_MODE_NONE;
 }
 
@@ -234,6 +242,7 @@ VkSamplerAddressMode Conversions::toAddressMode(Device::Wrap wrap) noexcept {
     case Device::Wrap::MirroredRepeat:
         return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
     }
+
     return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 }
 
@@ -252,6 +261,7 @@ VkImageViewType Conversions::toViewType(Device::TextureType type) noexcept {
     case Device::TextureType::Cube:
         return VK_IMAGE_VIEW_TYPE_CUBE;
     }
+
     return VK_IMAGE_VIEW_TYPE_2D;
 }
 
@@ -264,6 +274,7 @@ VkAttachmentLoadOp Conversions::toLoad(Device::Load load) noexcept {
     case Device::Load::DontCare:
         return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     }
+
     return VK_ATTACHMENT_LOAD_OP_CLEAR;
 }
 

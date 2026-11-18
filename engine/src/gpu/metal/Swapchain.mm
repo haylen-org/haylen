@@ -64,6 +64,7 @@ bool Swapchain::acquire() {
     @autoreleasepool {
         drawable = [layer nextDrawable];
     }
+
     if (drawable == nil) {
         return false;
     }

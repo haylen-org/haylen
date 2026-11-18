@@ -38,6 +38,7 @@ Conversions::Pixel Conversions::getPixel(Device::PixelFormat format, bool deskto
     case Format::Depth32FloatStencil8:
         return {.internalFormat = Gl::kDepth32fStencil8, .format = Gl::kDepthStencil, .type = Gl::kFloat32UnsignedInt248Rev, .bytes = 8, .depth = true, .stencil = true};
     }
+
     return {};
 }
 
@@ -69,6 +70,7 @@ Conversions::Vertex Conversions::getVertex(Device::VertexFormat format) noexcept
     case Format::UInt:
         return {.size = 1, .type = Gl::kUnsignedInt, .integer = true};
     }
+
     return {};
 }
 
@@ -85,6 +87,7 @@ Gl::Enum Conversions::toPrimitive(Device::Primitive primitive) noexcept {
     case Device::Primitive::Points:
         return Gl::kPoints;
     }
+
     return Gl::kTriangles;
 }
 
@@ -126,6 +129,7 @@ Gl::Enum Conversions::toBlendFactor(Device::BlendFactor factor) noexcept {
     case Factor::OneMinusBlendColor:
         return Gl::kOneMinusConstantColor;
     }
+
     return Gl::kOne;
 }
 
@@ -142,6 +146,7 @@ Gl::Enum Conversions::toBlendOperation(Device::BlendOperation operation) noexcep
     case Device::BlendOperation::Maximum:
         return Gl::kMaximum;
     }
+
     return Gl::kFunctionAdd;
 }
 
@@ -165,6 +170,7 @@ Gl::Enum Conversions::toCompare(Device::CompareFunction function) noexcept {
     case Function::Always:
         return Gl::kAlways;
     }
+
     return Gl::kAlways;
 }
 
@@ -188,6 +194,7 @@ Gl::Enum Conversions::toStencilOperation(Device::StencilOperation operation) noe
     case Operation::DecrementWrap:
         return Gl::kDecrementWrap;
     }
+
     return Gl::kKeep;
 }
 
@@ -213,6 +220,7 @@ Gl::Enum Conversions::toWrap(Device::Wrap wrap) noexcept {
     case Device::Wrap::MirroredRepeat:
         return Gl::kMirroredRepeat;
     }
+
     return Gl::kClampToEdge;
 }
 
@@ -227,6 +235,7 @@ Gl::Enum Conversions::toTextureTarget(Device::TextureType type) noexcept {
     case Device::TextureType::Cube:
         return Gl::kTextureCubeMap;
     }
+
     return Gl::kTexture2d;
 }
 

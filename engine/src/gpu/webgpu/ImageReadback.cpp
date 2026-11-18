@@ -167,6 +167,7 @@ void ImageReadback::convertRow(std::span<const std::byte> source, std::span<std:
         case Device::PixelFormat::Depth32FloatStencil8:
             break;
         }
+
         for (std::size_t channel = 0; channel < 4U; ++channel) {
             out[channel] = toByte(channels[channel]);
         }

@@ -52,6 +52,7 @@ DXGI_FORMAT Formats::getViewFormat(PixelFormat format) noexcept {
     case PixelFormat::Depth32FloatStencil8:
         return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
     }
+
     return DXGI_FORMAT_UNKNOWN;
 }
 
@@ -94,6 +95,7 @@ std::size_t Formats::getBytesPerPixel(PixelFormat format) noexcept {
     case PixelFormat::Rgba32Float:
         return 16;
     }
+
     return 4;
 }
 
@@ -133,6 +135,7 @@ DXGI_FORMAT Formats::getVertexFormat(Device::VertexFormat format) noexcept {
     case VertexFormat::UInt:
         return DXGI_FORMAT_R32_UINT;
     }
+
     return DXGI_FORMAT_UNKNOWN;
 }
 
@@ -145,6 +148,7 @@ DXGI_FORMAT Formats::getIndexFormat(Device::IndexType type) noexcept {
     case Device::IndexType::None:
         break;
     }
+
     return DXGI_FORMAT_UNKNOWN;
 }
 

@@ -89,6 +89,7 @@ D3D12_PRIMITIVE_TOPOLOGY StateDescriptions::toTopology(Device::Primitive primiti
     case Device::Primitive::Points:
         return D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
     }
+
     return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }
 
@@ -103,6 +104,7 @@ D3D12_PRIMITIVE_TOPOLOGY_TYPE StateDescriptions::toTopologyType(Device::Primitiv
     case Device::Primitive::Points:
         return D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
     }
+
     return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 }
 
@@ -136,6 +138,7 @@ D3D12_BLEND StateDescriptions::toBlend(Device::BlendFactor factor) noexcept {
     case BlendFactor::OneMinusBlendColor:
         return D3D12_BLEND_INV_BLEND_FACTOR;
     }
+
     return D3D12_BLEND_ONE;
 }
 
@@ -169,6 +172,7 @@ D3D12_BLEND_OP StateDescriptions::toBlendOperation(Device::BlendOperation operat
     case Device::BlendOperation::Maximum:
         return D3D12_BLEND_OP_MAX;
     }
+
     return D3D12_BLEND_OP_ADD;
 }
 
@@ -192,6 +196,7 @@ D3D12_COMPARISON_FUNC StateDescriptions::toCompare(Device::CompareFunction funct
     case CompareFunction::Always:
         return D3D12_COMPARISON_FUNC_ALWAYS;
     }
+
     return D3D12_COMPARISON_FUNC_ALWAYS;
 }
 
@@ -215,6 +220,7 @@ D3D12_STENCIL_OP StateDescriptions::toStencilOperation(Device::StencilOperation 
     case StencilOperation::DecrementWrap:
         return D3D12_STENCIL_OP_DECR;
     }
+
     return D3D12_STENCIL_OP_KEEP;
 }
 
@@ -231,6 +237,7 @@ D3D12_TEXTURE_ADDRESS_MODE StateDescriptions::toAddress(Device::Wrap wrap) noexc
     case Device::Wrap::MirroredRepeat:
         return D3D12_TEXTURE_ADDRESS_MODE_MIRROR;
     }
+
     return D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 }
 

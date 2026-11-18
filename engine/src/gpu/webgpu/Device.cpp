@@ -237,6 +237,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         descriptor.usage = WGPUTextureUsage_RenderAttachment | WGPUTextureUsage_TextureBinding;
         break;
     }
+
     WGPUTexture texture = wgpuDeviceCreateTexture(device, &descriptor);
 
     // Draws sample the depth of a depth stencil image, and a multisampled image as one flat image.

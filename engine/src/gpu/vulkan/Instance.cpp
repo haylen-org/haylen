@@ -62,6 +62,7 @@ Instance::Instance(bool validation) {
             extensions.push_back(name);
         }
     }
+
     debugUtils = has(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
     std::vector<const char*> layers;
@@ -171,6 +172,7 @@ VkSurfaceKHR Instance::createSurface(const Surface& surface) const {
     default:
         throw std::runtime_error("The Vulkan device cannot draw into a window of this kind.");
     }
+
     if (result != VK_SUCCESS) {
         throw std::runtime_error(std::format("The Vulkan device could not make the surface of the window ({}).", Conversions::describe(result)));
     }

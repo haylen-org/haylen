@@ -153,6 +153,7 @@ std::unique_ptr<Device> DeviceFactory::create(Device::Api api, [[maybe_unused]] 
     default:
         break;
     }
+
     throw std::runtime_error(std::format("This build has no device of the graphics API \"{}\". Add it to \"HAYLEN_GRAPHICS_APIS\" when the engine is built.", getApiName(api)));
 }
 

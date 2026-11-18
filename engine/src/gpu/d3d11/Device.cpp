@@ -814,6 +814,7 @@ Device::Attachment& Device::getAttachment(ImageRecord& image, int mipLevel, int 
         view.Texture3D = {.MipSlice = mip, .FirstWSlice = slice, .WSize = 1};
         break;
     }
+
     HResult::check(device->CreateRenderTargetView(image.resource.Get(), &view, attachment.color.GetAddressOf()), "create the render target view of a pass");
     return image.attachments.emplace_back(std::move(attachment));
 }

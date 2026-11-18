@@ -103,6 +103,7 @@ D3D11_PRIMITIVE_TOPOLOGY StateObjects::toTopology(Device::Primitive primitive) n
     case Device::Primitive::Points:
         return D3D11_PRIMITIVE_TOPOLOGY_POINTLIST;
     }
+
     return D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 }
 
@@ -136,6 +137,7 @@ D3D11_BLEND StateObjects::toBlend(Device::BlendFactor factor) noexcept {
     case BlendFactor::OneMinusBlendColor:
         return D3D11_BLEND_INV_BLEND_FACTOR;
     }
+
     return D3D11_BLEND_ONE;
 }
 
@@ -169,6 +171,7 @@ D3D11_BLEND_OP StateObjects::toBlendOperation(Device::BlendOperation operation) 
     case Device::BlendOperation::Maximum:
         return D3D11_BLEND_OP_MAX;
     }
+
     return D3D11_BLEND_OP_ADD;
 }
 
@@ -192,6 +195,7 @@ D3D11_COMPARISON_FUNC StateObjects::toCompare(Device::CompareFunction function) 
     case CompareFunction::Always:
         return D3D11_COMPARISON_ALWAYS;
     }
+
     return D3D11_COMPARISON_ALWAYS;
 }
 
@@ -215,6 +219,7 @@ D3D11_STENCIL_OP StateObjects::toStencilOperation(Device::StencilOperation opera
     case StencilOperation::DecrementWrap:
         return D3D11_STENCIL_OP_DECR;
     }
+
     return D3D11_STENCIL_OP_KEEP;
 }
 
@@ -231,6 +236,7 @@ D3D11_TEXTURE_ADDRESS_MODE StateObjects::toAddress(Device::Wrap wrap) noexcept {
     case Device::Wrap::MirroredRepeat:
         return D3D11_TEXTURE_ADDRESS_MIRROR;
     }
+
     return D3D11_TEXTURE_ADDRESS_CLAMP;
 }
 

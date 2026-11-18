@@ -49,6 +49,7 @@ WGPUTextureFormat Conversion::toTextureFormat(Device::PixelFormat format) noexce
     case Device::PixelFormat::Depth32FloatStencil8:
         return WGPUTextureFormat_Depth32FloatStencil8;
     }
+
     return WGPUTextureFormat_RGBA8Unorm;
 }
 
@@ -79,6 +80,7 @@ WGPUVertexFormat Conversion::toVertexFormat(Device::VertexFormat format) noexcep
     case Device::VertexFormat::UInt:
         return WGPUVertexFormat_Uint32;
     }
+
     return WGPUVertexFormat_Float32;
 }
 
@@ -95,6 +97,7 @@ WGPUPrimitiveTopology Conversion::toTopology(Device::Primitive primitive) noexce
     case Device::Primitive::Points:
         return WGPUPrimitiveTopology_PointList;
     }
+
     return WGPUPrimitiveTopology_TriangleList;
 }
 
@@ -107,6 +110,7 @@ WGPUIndexFormat Conversion::toIndexFormat(Device::IndexType type) noexcept {
     case Device::IndexType::UInt32:
         return WGPUIndexFormat_Uint32;
     }
+
     return WGPUIndexFormat_Undefined;
 }
 
@@ -139,6 +143,7 @@ WGPUBlendFactor Conversion::toBlendFactor(Device::BlendFactor factor) noexcept {
     case Device::BlendFactor::OneMinusBlendColor:
         return WGPUBlendFactor_OneMinusConstant;
     }
+
     return WGPUBlendFactor_One;
 }
 
@@ -155,6 +160,7 @@ WGPUBlendOperation Conversion::toBlendOperation(Device::BlendOperation operation
     case Device::BlendOperation::Maximum:
         return WGPUBlendOperation_Max;
     }
+
     return WGPUBlendOperation_Add;
 }
 
@@ -208,6 +214,7 @@ WGPUCompareFunction Conversion::toCompare(Device::CompareFunction function) noex
     case Device::CompareFunction::Always:
         return WGPUCompareFunction_Always;
     }
+
     return WGPUCompareFunction_Always;
 }
 
@@ -230,6 +237,7 @@ WGPUStencilOperation Conversion::toStencilOperation(Device::StencilOperation ope
     case Device::StencilOperation::DecrementWrap:
         return WGPUStencilOperation_DecrementWrap;
     }
+
     return WGPUStencilOperation_Keep;
 }
 
@@ -246,6 +254,7 @@ WGPUCullMode Conversion::toCullMode(Device::CullMode mode) noexcept {
     case Device::CullMode::Back:
         return WGPUCullMode_Back;
     }
+
     return WGPUCullMode_None;
 }
 
@@ -270,6 +279,7 @@ WGPUAddressMode Conversion::toAddressMode(Device::Wrap wrap) noexcept {
     case Device::Wrap::MirroredRepeat:
         return WGPUAddressMode_MirrorRepeat;
     }
+
     return WGPUAddressMode_ClampToEdge;
 }
 
@@ -292,6 +302,7 @@ WGPUTextureViewDimension Conversion::toViewDimension(Device::TextureType type) n
     case Device::TextureType::Cube:
         return WGPUTextureViewDimension_Cube;
     }
+
     return WGPUTextureViewDimension_2D;
 }
 
@@ -308,6 +319,7 @@ WGPUTextureSampleType Conversion::toSampleType(Device::SampleType type) noexcept
     case Device::SampleType::UnsignedInteger:
         return WGPUTextureSampleType_Uint;
     }
+
     return WGPUTextureSampleType_Float;
 }
 
@@ -320,6 +332,7 @@ WGPUSamplerBindingType Conversion::toSamplerType(Device::SamplerType type) noexc
     case Device::SamplerType::Comparison:
         return WGPUSamplerBindingType_Comparison;
     }
+
     return WGPUSamplerBindingType_Filtering;
 }
 

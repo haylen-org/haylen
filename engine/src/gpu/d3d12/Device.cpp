@@ -413,6 +413,7 @@ void Device::makeTextureView(ImageRecord& image) {
         view.Texture3D = {.MostDetailedMip = 0, .MipLevels = mips, .ResourceMinLODClamp = 0.0F};
         break;
     }
+
     image.view = textureViews->allocate();
     device->CreateShaderResourceView(image.resource.Get(), &view, image.view);
 }
@@ -982,6 +983,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE Device::getAttachment(ImageRecord& image, int mipLev
         view.Texture3D = {.MipSlice = mip, .FirstWSlice = slice, .WSize = 1};
         break;
     }
+
     const D3D12_CPU_DESCRIPTOR_HANDLE handle = targetViews->allocate();
     device->CreateRenderTargetView(image.resource.Get(), &view, handle);
     return image.attachments.emplace_back(Attachment{.mipLevel = mipLevel, .layer = layer, .handle = handle}).handle;

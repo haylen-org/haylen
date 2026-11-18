@@ -510,6 +510,7 @@ MTLTextureDescriptor* Device::Native::describeImage(const ImageDesc& desc) const
         made.textureType = MTLTextureTypeCube;
         break;
     }
+
     made.pixelFormat = Formats::toPixelFormat(desc.format);
     made.width = static_cast<NSUInteger>(desc.width);
     made.height = static_cast<NSUInteger>(desc.height);
@@ -677,6 +678,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
             }
         }
     }
+
     if (entry.buffer == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the buffer \"{}\" of {} bytes.", desc.label, size));
     }
@@ -695,6 +697,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     @autoreleasepool {
         entry.texture = [native->device newTextureWithDescriptor:native->describeImage(desc)];
     }
+
     if (entry.texture == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the image \"{}\" of {}x{} pixels.", desc.label, desc.width, desc.height));
     }
@@ -772,6 +775,7 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
 
         sampler = [native->device newSamplerStateWithDescriptor:made];
     }
+
     if (sampler == nil) {
         throw std::runtime_error(std::format("Metal could not make the sampler \"{}\".", desc.label));
     }
@@ -831,6 +835,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         entry.vertex = [entry.vertexLibrary newFunctionWithName:Native::toText(desc.vertex.entry)];
         entry.fragment = [entry.fragmentLibrary newFunctionWithName:Native::toText(desc.fragment.entry)];
     }
+
     if (entry.vertex == nil || entry.fragment == nil) {
         native->releaseLibraries(entry);
         throw std::runtime_error(std::format("The program \"{}\" has no function \"{}\" for its vertex stage or \"{}\" for its fragment stage.", desc.label, desc.vertex.entry, desc.fragment.entry));
@@ -916,6 +921,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
 
         entry.state = [native->device newRenderPipelineStateWithDescriptor:made error:&error];
     }
+
     if (entry.state == nil) {
         throw std::runtime_error(std::format("Metal could not make the pipeline \"{}\". {}", desc.label, error == nil ? "It gave no reason." : error.localizedDescription.UTF8String));
     }
@@ -1086,6 +1092,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     @autoreleasepool {
         native->encoder.begin([native->commands renderCommandEncoderWithDescriptor:pass], static_cast<int>(drawable.width), static_cast<int>(drawable.height));
     }
+
     if (native->labels && !desc.label.empty()) {
         native->encoder.get().label = Native::toText(desc.label);
     }
@@ -1164,6 +1171,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     @autoreleasepool {
         native->encoder.begin([native->commands renderCommandEncoderWithDescriptor:pass], width, height);
     }
+
     if (native->labels && !desc.label.empty()) {
         native->encoder.get().label = Native::toText(desc.label);
     }
@@ -1416,6 +1424,7 @@ void Device::openFrame() {
     @autoreleasepool {
         native->commands = [native->queue commandBufferWithDescriptor:native->commandsDesc];
     }
+
     if (native->labels) {
         native->commands.label = @"haylen-frame";
     }

@@ -198,6 +198,7 @@ std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int widt
         default:
             break;
         }
+
         for (std::size_t channel = 0; channel < 4; ++channel) {
             pixels[index * 4 + channel] = toByte(channels[channel]);
         }

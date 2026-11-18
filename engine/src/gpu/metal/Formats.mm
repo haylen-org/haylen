@@ -37,6 +37,7 @@ MTLPixelFormat Formats::toPixelFormat(gpu::Device::PixelFormat format) noexcept 
     case PixelFormat::Depth32FloatStencil8:
         return MTLPixelFormatDepth32Float_Stencil8;
     }
+
     return MTLPixelFormatRGBA8Unorm;
 }
 
@@ -65,6 +66,7 @@ std::size_t Formats::getBytesPerPixel(gpu::Device::PixelFormat format) noexcept 
     case PixelFormat::Rgba32Float:
         return 16;
     }
+
     return 4;
 }
 
@@ -106,6 +108,7 @@ MTLVertexFormat Formats::toVertexFormat(gpu::Device::VertexFormat format) noexce
     case VertexFormat::UInt:
         return MTLVertexFormatUInt;
     }
+
     return MTLVertexFormatFloat;
 }
 
@@ -123,6 +126,7 @@ MTLPrimitiveType Formats::toPrimitiveType(gpu::Device::Primitive primitive) noex
     case Primitive::Points:
         return MTLPrimitiveTypePoint;
     }
+
     return MTLPrimitiveTypeTriangle;
 }
 
@@ -138,6 +142,7 @@ MTLPrimitiveTopologyClass Formats::toTopologyClass(gpu::Device::Primitive primit
     case Primitive::Points:
         return MTLPrimitiveTopologyClassPoint;
     }
+
     return MTLPrimitiveTopologyClassTriangle;
 }
 
@@ -171,6 +176,7 @@ MTLBlendFactor Formats::toBlendFactor(gpu::Device::BlendFactor factor) noexcept 
     case BlendFactor::OneMinusBlendColor:
         return MTLBlendFactorOneMinusBlendColor;
     }
+
     return MTLBlendFactorOne;
 }
 
@@ -188,6 +194,7 @@ MTLBlendOperation Formats::toBlendOperation(gpu::Device::BlendOperation operatio
     case BlendOperation::Maximum:
         return MTLBlendOperationMax;
     }
+
     return MTLBlendOperationAdd;
 }
 
@@ -233,6 +240,7 @@ MTLCompareFunction Formats::toCompareFunction(gpu::Device::CompareFunction funct
     case CompareFunction::Always:
         return MTLCompareFunctionAlways;
     }
+
     return MTLCompareFunctionAlways;
 }
 
@@ -256,6 +264,7 @@ MTLStencilOperation Formats::toStencilOperation(gpu::Device::StencilOperation op
     case StencilOperation::DecrementWrap:
         return MTLStencilOperationDecrementWrap;
     }
+
     return MTLStencilOperationKeep;
 }
 
@@ -269,6 +278,7 @@ MTLCullMode Formats::toCullMode(gpu::Device::CullMode mode) noexcept {
     case CullMode::Back:
         return MTLCullModeBack;
     }
+
     return MTLCullModeNone;
 }
 
@@ -294,6 +304,7 @@ MTLSamplerAddressMode Formats::toAddressMode(gpu::Device::Wrap wrap) noexcept {
     case Wrap::MirroredRepeat:
         return MTLSamplerAddressModeMirrorRepeat;
     }
+
     return MTLSamplerAddressModeClampToEdge;
 }
 
@@ -307,6 +318,7 @@ MTLLoadAction Formats::toLoadAction(gpu::Device::Load load) noexcept {
     case Load::DontCare:
         return MTLLoadActionDontCare;
     }
+
     return MTLLoadActionClear;
 }
 

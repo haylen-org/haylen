@@ -15,6 +15,7 @@ CompileQueue::~CompileQueue() {
         state->stopped = true;
         state->jobs.clear();
     }
+
     state->wake.notify_all();
 }
 
@@ -30,6 +31,7 @@ std::uint64_t CompileQueue::post(std::function<void()> job) {
             ++state->threads;
         }
     }
+
     if (!grow) {
         state->wake.notify_one();
         return ticket;
@@ -47,6 +49,7 @@ std::uint64_t CompileQueue::post(std::function<void()> job) {
             const std::scoped_lock lock(state->mutex);
             --state->threads;
         }
+
         withdraw(ticket);
         throw;
     }

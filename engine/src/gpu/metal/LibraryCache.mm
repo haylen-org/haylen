@@ -70,6 +70,7 @@ void LibraryCache::compile(id<MTLDevice> metal, std::string_view source, Entry& 
         entry.error = std::move(error);
         entry.state = State::Compiled;
     }
+
     entry.compiled.notify_all();
 }
 
@@ -109,6 +110,7 @@ void LibraryCache::release(id<MTLLibrary> library) {
 
             unused = --found->second->users <= 0;
         }
+
         if (unused) {
             entries.erase(found);
         }

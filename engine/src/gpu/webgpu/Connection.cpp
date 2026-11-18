@@ -73,6 +73,7 @@ std::unique_ptr<Connection> Connection::take() {
     case Status::Idle:
         break;
     }
+
     throw std::runtime_error("WebGPU was not requested. The platform requests the device before it creates it.");
 }
 
