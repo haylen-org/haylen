@@ -15,6 +15,8 @@
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/Input.hpp"
+#include "haylen/math/Color.hpp"
+#include "haylen/platform/Event.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -674,6 +676,29 @@ TEST_F(GameComponentTest, RoundsChipsWithTheChipRadius) {
     ASSERT_EQ(radii.size(), 2U);
     EXPECT_FLOAT_EQ(radii[0], pill.height * 0.5F);
     EXPECT_FLOAT_EQ(radii[1], 8.0F);
+}
+
+// A chip that the pointer hovers shows it with the hover color of the theme, as every other control does.
+TEST_F(GameComponentTest, ShowsTheHoverOfAChip) {
+    auto gui = mount(R"({"kind": "row", "children": [{"kind": "chip", "id": "pill", "text": "Wood"}]})");
+    frames(2);
+    const math::Rect pill = getBounds(*gui, "pill");
+    // clang-format off
+    const auto fillOf = [this, pill] {
+        for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+            if (shape.bounds == pill) {
+                return shape.color;
+            }
+        }
+
+        return math::Color::transparent();
+    };
+    // clang-format on
+    const math::Color resting = fillOf();
+
+    pointer(platform::Event::Type::MouseMove, pill.getCenter());
+    frames(2);
+    EXPECT_NE(fillOf(), resting);
 }
 
 // Segments whose labels fit with less than the tab padding start on whole units, and the unit a segment may lose to that comes out of the padding, so no label loses a letter wherever the control lands.

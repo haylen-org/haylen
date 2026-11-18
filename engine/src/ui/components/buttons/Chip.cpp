@@ -35,7 +35,7 @@ void Chip::render(Context& context, const math::Rect& bounds) {
     const Theme::Surface surface = selected ? Theme::Surface::ChipSelected : Theme::Surface::Chip;
     math::Color fill = context.getColor(selected ? Theme::Color::AccentBackground : Theme::Color::Raised);
     if (state.hovered) {
-        fill = math::Color{fill.r, fill.g, fill.b, std::min(1.0F, fill.a + 0.1F)};
+        fill = Widgets::mix(fill, context.getColor(Theme::Color::Hover));
     }
 
     Surfaces::draw(context, surface, bounds, fill, context.getColor(selected ? Theme::Color::Accent : Theme::Color::Border), radius);
