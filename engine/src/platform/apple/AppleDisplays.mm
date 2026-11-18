@@ -35,7 +35,7 @@ NSString* AppleDisplays::getId(UIScreen* screen) {
 
     NSString* known = [ids objectForKey:screen];
     if (known == nil) {
-        known = [NSString stringWithFormat:@"external-%lu", static_cast<unsigned long>(++counted)];
+        known = [NSString stringWithFormat:@"screen-%lu", static_cast<unsigned long>(++counted)];
         [ids setObject:known forKey:screen];
     }
 

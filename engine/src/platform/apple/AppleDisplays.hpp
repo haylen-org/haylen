@@ -12,7 +12,7 @@
 
 namespace haylen::platform {
 
-// The screens of iPhones, iPads and TVs: the screen of the device and every other screen that a scene of the app is on, such as an external display that an iPad extends its windows to or that shows the scene of an external display. UIKit gives screens no lasting identity, so the screen of the device is `main` and every other screen gets `external-<n>` the first time the app sees it, which it keeps while it stays connected. visionOS has no screens and shows the app in a window of the space around the person, so its one display is that window, as `main`. Everything runs on the main thread.
+// The screens of iPhones, iPads and TVs: the main screen of the device and every other screen that a scene of the app is on, such as the inner screen of a foldable iPhone, an external display that an iPad extends its windows to or one that shows the scene of an external display. UIKit gives screens no lasting identity, so the main screen is `main` and every other screen gets `screen-<n>` the first time the app sees it, which it keeps while it stays connected. visionOS has no screens and shows the app in a window of the space around the person, so its one display is that window, as `main`. Everything runs on the main thread.
 class AppleDisplays final {
   public:
     [[nodiscard]] static std::vector<Display> getDisplays();
