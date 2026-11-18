@@ -835,6 +835,7 @@ These errors can happen:
 - An image too small to hold one tile, or a `tileCount` of 0, raises `A tileset needs a positive tile size and at least one tile.`.
 - A Wang set of another type raises `A Wang set has the type "corner", "edge" or "mixed".`.
 - A Wang tile without eight colors raises `A tile of a Wang set needs "wangId", the eight colors of its edges and corners from the top clockwise.`.
+- A Wang color that is not a whole number from 0 to 255 raises `The Wang set "<name>" gives the tile <tile> the color <color>, which is not a whole number from 0 to 255.`.
 
 ```lua
 local tiled = require('haylen.tiled')
@@ -1026,6 +1027,7 @@ Loading a map raises these errors:
 | `The Tiled layer "<name>" uses the blend mode "<mode>", which Tiled does not offer. Layers can use "normal", "add", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference" or "exclusion".` | A layer has a blend mode that Tiled does not offer. |
 | `The Tiled group layer "<name>" uses the blend mode "<mode>", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.` | A group layer has a blend mode other than `normal`. |
 | `A tile template uses the tileset "<path>", which the map does not list.` | A tile template names a tileset that the map lacks. |
+| `The Wang set "<name>" gives the tile <tile> the color <color>, which is not a whole number from 0 to 255.` | A Wang tile of a tileset has a color outside 0 to 255. |
 | `The "project" of a Tiled map is the path of its ".tiled-project" file.` | The option `project` is not a path. |
 | `The pattern "<regexp>" of a Tiled world captures "<text>", which is not a number.` | A capture group of a pattern of a world matched text that is not a number. |
 | `The class "<name>" of the Tiled project holds itself.` | A class of the project contains itself. |
@@ -1064,6 +1066,7 @@ The functions and methods raise these errors:
 | `A tileset needs the package path of its "image" or a "texture".` | The method `map:addTileset` got neither an image nor a texture. |
 | `A Wang set has the type "corner", "edge" or "mixed".` | A Wang set of `map:addTileset` has another type. |
 | `A tile of a Wang set needs "wangId", the eight colors of its edges and corners from the top clockwise.` | A Wang tile of `map:addTileset` lacks its eight colors. |
+| `The Wang set "<name>" gives the tile <tile> the color <color>, which is not a whole number from 0 to 255.` | A Wang tile of `map:addTileset` has a color outside 0 to 255. |
 | `A layer of a map needs a name of its own, and "<name>" is empty or taken.` | The method `map:addLayer` got an empty or taken name. |
 | `A layer built in code has the kind "tile" or "object".` | The method `map:addLayer` got another kind. |
 | `Only the tile layers of an infinite map have chunks.` | The method `map:setChunk` or `map:removeChunk` ran on a finite map. |

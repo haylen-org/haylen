@@ -3,9 +3,11 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/2d/tiled/Properties.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/math/Color.hpp"
 
 namespace haylen::tiled {
@@ -25,6 +27,9 @@ struct WangSet {
         std::uint32_t tileId = 0;
         std::array<std::uint8_t, 8> wangId{};
     };
+
+    // Reads one of the eight colors of a tile of the set, a whole number from 0 to 255, and throws `std::invalid_argument` naming the set and the tile for anything else.
+    [[nodiscard]] static std::uint8_t readColor(const core::Json& value, std::string_view set, std::uint32_t tile);
 
     std::string name;
     std::string type;

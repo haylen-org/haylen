@@ -249,6 +249,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/TileCollision.cpp
   src/2d/tiled/TiledLua.cpp
   src/2d/tiled/Tileset.cpp
+  src/2d/tiled/WangSet.cpp
   src/2d/tiled/World.cpp
   src/ai/AiLua.cpp
   src/ai/BehaviorTree.cpp

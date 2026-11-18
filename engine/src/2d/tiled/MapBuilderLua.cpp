@@ -155,7 +155,7 @@ int MapBuilderLua::addTileset(lua_State* L) {
 
                     WangSet::Tile parsed{.tileId = tile};
                     for (std::size_t corner = 0; corner < 8; ++corner) {
-                        parsed.wangId[corner] = static_cast<std::uint8_t>(wangId[corner]);
+                        parsed.wangId[corner] = WangSet::readColor(core::Json(wangId[corner]), set.name, tile);
                     }
 
                     set.tiles.push_back(parsed);

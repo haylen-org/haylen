@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -467,8 +466,12 @@ std::shared_ptr<Tileset> MapParser::readTileset(const core::Json& document, std:
 
         for (const core::Json& tile : entry.value("wangtiles", core::Json::array())) {
             WangSet::Tile wang{.tileId = tile.at("tileid").get<std::uint32_t>()};
-            const std::vector<int> ids = tile.at("wangid").get<std::vector<int>>();
-            std::ranges::transform(ids | std::views::take(wang.wangId.size()), wang.wangId.begin(), [](int id) { return static_cast<std::uint8_t>(id); });
+            const core::Json& ids = tile.at("wangid");
+            const std::size_t count = std::min(ids.size(), wang.wangId.size());
+            for (std::size_t corner = 0; corner < count; ++corner) {
+                wang.wangId[corner] = WangSet::readColor(ids.at(corner), set.name, wang.tileId);
+            }
+
             set.tiles.push_back(wang);
         }
 

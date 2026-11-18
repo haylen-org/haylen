@@ -440,6 +440,12 @@ TEST_F(MapTest, RejectsBrokenData) {
     map["height"] = -1;
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" has a negative size.");
     map = orthogonalMap();
+    map["tilesets"][1]["wangsets"] = core::Json::parse(R"([{"name": "cliff", "type": "corner", "colors": [{"name": "rock"}], "wangtiles": [{"tileid": 1, "wangid": [0, 1, 0, -1, 0, 1, 0, 1]}]}])");
+    EXPECT_EQ(failure(map), "The Wang set \"cliff\" gives the tile 1 the color -1, which is not a whole number from 0 to 255.");
+    map["tilesets"][1]["wangsets"][0]["wangtiles"][0]["wangid"][3] = 300;
+    EXPECT_EQ(failure(map), "The Wang set \"cliff\" gives the tile 1 the color 300, which is not a whole number from 0 to 255.");
+
+    map = orthogonalMap();
     map["tilewidth"] = 0;
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" needs a positive tile size.");
 
@@ -1364,6 +1370,9 @@ TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
 
     // The JSON of the map holds the tileset with its path relative to the file and the cells row by row.
     EXPECT_EQ(fixture.lua("local j = map:toJson('maps/built.tmj') return j.tilesets[1].image .. ' ' .. j.layers[1].name .. ' ' .. j.layers[1].data[23] .. ' ' .. j.layers[2].type .. ' ' .. j.width"), "images/terrain.png ground 4 objectgroup 8");
+
+    // A Wang color is a whole number from 0 to 255, never cut to its low bits.
+    EXPECT_EQ(fixture.lua("local ok, message = pcall(map.addTileset, map, {name = 'wide', image = 'maps/images/terrain.png', tileWidth = 16, tileHeight = 16, wangSets = {{name = 'cliff', tiles = {{tile = 2, wangId = {0, 256, 0, 1, 0, 1, 0, 1}}}}}}) return message:match('The Wang.*')"), "The Wang set \"cliff\" gives the tile 2 the color 256, which is not a whole number from 0 to 255.");
 
     // A tileset painted larger than the grid draws its tiles at the size of the grid, as Tiled calls it.
     EXPECT_EQ(fixture.lua("map:addTileset({name = 'painted', image = 'maps/images/terrain.png', tileWidth = 32, tileHeight = 32, renderGridSize = true, preserveAspect = true}) local t, j = map:tilesets()[2], map:toJson('maps/built.tmj') return tostring(t.renderGridSize) .. ' ' .. tostring(t.preserveAspect) .. ' ' .. j.tilesets[2].tilerendersize .. ' ' .. j.tilesets[2].fillmode"), "true true grid preserve-aspect-fit");
