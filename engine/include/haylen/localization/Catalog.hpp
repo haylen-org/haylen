@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <functional>
 #include <map>
 #include <optional>
@@ -79,9 +80,11 @@ class Catalog final {
   private:
     using Table = std::map<std::string, core::Json, std::less<>>;
 
+    static constexpr std::size_t kMaxDepth = 32;
+
     // A plural form holds only texts of plural categories, and always `other`.
     [[nodiscard]] static bool isPlural(const core::Json& value);
-    static void flatten(const core::Json& table, const std::string& prefix, Table& entries);
+    static void flatten(const std::string& path, const core::Json& value, std::size_t depth, Table& entries);
     static void checkArguments(const core::Json& arguments);
     [[nodiscard]] static std::string formatArgument(const core::Json& value);
     [[nodiscard]] static std::string translatePseudo(std::string_view pattern);

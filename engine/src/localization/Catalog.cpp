@@ -28,16 +28,23 @@ bool Catalog::isPlural(const core::Json& value) {
     return true;
 }
 
-void Catalog::flatten(const core::Json& table, const std::string& prefix, Table& entries) {
-    for (const auto& [key, value] : table.items()) {
-        const std::string path = prefix.empty() ? key : prefix + "." + key;
-        if (value.is_string() || isPlural(value)) {
-            entries[path] = value;
-        } else if (value.is_object()) {
-            flatten(value, path, entries);
-        } else {
-            throw std::invalid_argument("The localization entry \"" + path + "\" must be text, a plural form or a group of entries.");
-        }
+// The depth is that of the entry, from 1 for the keys of the table itself, and the bound keeps a file that nests without end from exhausting the stack.
+void Catalog::flatten(const std::string& path, const core::Json& value, std::size_t depth, Table& entries) {
+    if (depth > kMaxDepth) {
+        throw std::invalid_argument("The localization entry \"" + path + "\" nests deeper than " + std::to_string(kMaxDepth) + " levels.");
+    }
+
+    if (value.is_string() || isPlural(value)) {
+        entries[path] = value;
+        return;
+    }
+
+    if (!value.is_object()) {
+        throw std::invalid_argument("The localization entry \"" + path + "\" must be text, a plural form or a group of entries.");
+    }
+
+    for (const auto& [key, child] : value.items()) {
+        flatten(path + "." + key, child, depth + 1, entries);
     }
 }
 
@@ -144,11 +151,13 @@ void Catalog::add(const std::string& name, const core::Json& table) {
         }
     }
 
-    core::Json texts = table;
-    texts.erase(std::string(kDirectionKey));
-
     Table entries = tables.contains(tag) ? tables.find(tag)->second : Table{};
-    flatten(texts, "", entries);
+    for (const auto& [key, value] : table.items()) {
+        if (key != kDirectionKey) {
+            flatten(key, value, 1, entries);
+        }
+    }
+
     tables[tag] = std::move(entries);
 
     if (direction) {

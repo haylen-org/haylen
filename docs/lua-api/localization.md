@@ -94,6 +94,7 @@ Adds a language table for `language`, a language tag in any form. When the langu
 - An empty language raises `A localization table needs a language.`.
 - A language that is no language tag raises the error of [`localization.normalizeTag`](#localizationnormalizetagtag).
 - A table that is not a table with string keys, such as a list, raises `The localization table of "<language>" must be a JSON object.`.
+- A table whose groups nest more than 32 levels deep, counting the keys of the table itself as the first level, raises `The localization entry "<key>" nests deeper than 32 levels.`.
 
 ```lua
 local localization = require('haylen.localization')
@@ -480,6 +481,7 @@ The class `haylen::localization::Catalog` of `haylen/localization/Catalog.hpp` h
 | `The localization file "<path>" is not named after a language tag. Name it after its language, such as "en.json", "pt-BR.json" or "pt_BR.json".` | The function `localization.loadFolder` found a file whose name is no language tag. |
 | `The localization table of "<language>" must be a JSON object.` | The function `localization.add` received a list or another value instead of a table with string keys. |
 | `The localization entry "<key>" must be text, a plural form or a group of entries.` | A language table holds a number, a boolean or a list. |
+| `The localization entry "<key>" nests deeper than 32 levels.` | A language table nests its groups more than 32 levels deep. |
 | `The "@direction" of the localization table of "<language>" must be "leftToRight" or "rightToLeft".` | A language table declares another direction. |
 | `The localization file "<path>" is not valid JSON.` | The function `localization.loadFolder` found a broken file. |
 | `No localization table was added for "<language>".` | The function `localization.setFallback` or `localization.direction` named a language that was never added. |

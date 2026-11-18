@@ -98,6 +98,27 @@ TEST_F(CatalogTest, HandlesBracesAndGroupsThatLookLikePlurals) {
     EXPECT_THROW((void)catalog.getText("note", core::Json::array()), std::invalid_argument);
 }
 
+TEST_F(CatalogTest, RefusesTablesThatNestWithoutEnd) {
+    constexpr int kLevels = 200000;
+    std::string text;
+    for (int level = 0; level < kLevels; ++level) {
+        text += R"({"a":)";
+    }
+
+    text += R"("deep")";
+    text.append(kLevels, '}');
+
+    Catalog catalog = makeEnglish();
+    try {
+        catalog.add("en", core::Json::parse(text));
+        ADD_FAILURE() << "A table that nests without end must be refused.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_TRUE(std::string(error.what()).ends_with("\" nests deeper than 32 levels.")) << error.what();
+    }
+
+    EXPECT_EQ(catalog.getText("menu.play"), "Play");
+}
+
 TEST_F(CatalogTest, FormatsTextsOutsideTheCatalogLikeItsOwn) {
     EXPECT_EQ(Catalog::format("You carry {gold} coins, {{gold}} {missing}.", {{"gold", 30}}), "You carry 30 coins, {gold} {missing}.");
     EXPECT_THROW((void)Catalog::format("{gold}", core::Json::array()), std::invalid_argument);
