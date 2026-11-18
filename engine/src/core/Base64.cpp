@@ -22,22 +22,37 @@ std::optional<std::vector<std::uint8_t>> Base64::decode(std::string_view text) {
     bytes.reserve(text.size() / 4 * 3);
     std::uint32_t buffer = 0;
     int bits = 0;
+    std::size_t symbols = 0;
+    std::size_t padding = 0;
     for (const char character : text) {
-        if (character == '=' || std::isspace(static_cast<unsigned char>(character)) != 0) {
+        if (std::isspace(static_cast<unsigned char>(character)) != 0) {
+            continue;
+        }
+
+        if (character == '=') {
+            ++padding;
             continue;
         }
 
         const int value = table[static_cast<unsigned char>(character)];
-        if (value < 0) {
+        if (value < 0 || padding > 0) {
             return std::nullopt;
         }
 
+        ++symbols;
         buffer = (buffer << 6U) | static_cast<std::uint32_t>(value);
         bits += 6;
         if (bits >= 8) {
             bits -= 8;
             bytes.push_back(static_cast<std::uint8_t>((buffer >> static_cast<unsigned>(bits)) & 0xFFU));
         }
+    }
+
+    // Every 4 symbols hold 3 bytes, a last group of 1 symbol holds less than a byte, and padding only fills the last group to 4 symbols.
+    const std::size_t rest = symbols % 4;
+    const bool paddingFits = padding == 0 || (rest != 0 && rest + padding == 4);
+    if (rest == 1 || !paddingFits) {
+        return std::nullopt;
     }
 
     return bytes;

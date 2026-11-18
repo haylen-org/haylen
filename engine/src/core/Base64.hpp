@@ -11,7 +11,7 @@ namespace haylen::core {
 // Reads the Base64 text of data files, such as the tile layers of maps and the SPIR-V modules of shader packages.
 class Base64 final {
   public:
-    // Returns the bytes of the text, skipping padding and white space, or nothing when it holds a character outside the Base64 alphabet.
+    // Returns the bytes of the text, skipping white space, or nothing when it holds a character outside the Base64 alphabet, a last group of one character or padding that does not end it and fill its last group.
     [[nodiscard]] static std::optional<std::vector<std::uint8_t>> decode(std::string_view text);
 
   private:

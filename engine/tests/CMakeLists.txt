@@ -101,6 +101,7 @@ set(HAYLEN_TEST_SOURCES
   content/ReleaseStreamingTests.cpp
   content/ShardTests.cpp
   content/UpdaterTests.cpp
+  core/Base64Tests.cpp
   core/ContainerTests.cpp
   conversation/ConversationTests.cpp
   core/CoreTests.cpp
