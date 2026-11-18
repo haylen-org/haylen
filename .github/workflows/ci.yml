@@ -1,6 +1,6 @@
 name: CI
 
-# The workflow only tests: it publishes nothing, and tags and releases start no run. Its jobs hand built engine SDKs to each other only within a run. A change that touches only Markdown, the docs or the brand images starts no run either, since the tests of the tooling check the docs on every machine before a commit. A run started by hand tests the whole branch at once.
+# The workflow only tests: it publishes nothing, and tags and releases start no run. A change that touches only Markdown, the docs or the brand images starts no run, since the tests of the tooling check the docs on every machine before a commit. A run started by hand tests the whole branch.
 on:
   push:
     branches: ["**"]
@@ -9,29 +9,35 @@ on:
     paths-ignore: ["**.md", "docs/**", "extras/**"]
   workflow_dispatch:
 
-# A newer push to the same branch or pull request supersedes the run in progress, so only the run of the newest commit goes on. A run started by hand has a group of its own, so no push cancels it and it cancels nothing.
+# A newer push to the same branch or pull request supersedes the run in progress. A run started by hand has a group of its own, so no push cancels it and it cancels nothing.
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'changes' }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
-# The jobs read the repository, and a run deletes the compiler caches that the runs before it saved.
 permissions:
   contents: read
-  actions: write
 
 env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
-  # The Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read, so one build of every job fits in the caches of the repository.
+  # The Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read, so the objects that the compiler cache moves stay small.
   HAYLEN_DEBUG_INFO: LINES
+  # The compiler cache is the Cloudflare R2 bucket "haylen-ci", which sccache reaches through its S3 API with the token of the secrets. A pull request from a fork gets no secrets and compiles without it. The server of sccache lives for the whole job.
+  SCCACHE_BUCKET: haylen-ci
+  SCCACHE_REGION: auto
+  SCCACHE_S3_USE_SSL: "true"
+  SCCACHE_IDLE_TIMEOUT: "0"
+  SCCACHE_ENDPOINT: ${{ secrets.HAYLEN_R2_ENDPOINT }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.HAYLEN_R2_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.HAYLEN_R2_SECRET }}
   # The development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL.
   LINUX_PACKAGES: ninja-build libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdecor-0-dev libdbus-1-dev libibus-1.0-dev libudev-dev
   # Mesa lavapipe for Vulkan with its validation layers, and Mesa llvmpipe for OpenGL through EGL, which draw the GPU tests of Linux without a GPU.
   MESA_PACKAGES: mesa-vulkan-drivers libvulkan1 vulkan-validationlayers libegl-mesa0 libgl1-mesa-dri
 
+# The jobs that others wait for come first, so they take the runners first when a run has more jobs than runners.
 jobs:
-  # The command line runs from the lock of the repository with "uv run --locked", the same on every system, and "--verbose" streams the output of every tool into the log of the job.
   format:
-    name: Format and tooling tests
+    name: Format and tooling
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -41,180 +47,211 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
       - name: Install clang-format
         run: pip install clang-format==23.1.3
-      - name: Check the format of the C, C++ and Objective-C sources and of the Python of the tooling with Ruff
+      - name: Check the format
         run: uv run --locked haylen --verbose engine format --check
-      - name: Test the tooling and the rules of the repository
+      - name: Test the tooling
         run: uv run --locked pytest
 
-  # The GPU tests run the conformance suite and the reference scenes of the 2D renderer on every device that a hosted runner can start, with the validation of each API on: Mesa lavapipe and llvmpipe on Linux, WARP on Windows and the paravirtual GPU of macOS. Windows runners have no Vulkan driver and only the OpenGL 1.1 of the system, so their Vulkan and OpenGL devices do not run here.
-  desktop:
-    name: Engine tests on ${{ matrix.system }}
+  # The desktop SDK of each system, with the player and the content tool, builds once per run, and the jobs that build apps take it from here, so no job waits for the SDK of another system.
+  linux-sdk:
+    name: Linux SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+      - name: Build the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target linux
+      - uses: ./.github/actions/sdk
+        with:
+          name: linux-sdk
+          folder: build/sdk/desktop-release
+          upload: "true"
+
+  windows-sdk:
+    name: Windows SDK
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+      - name: Build the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target windows
+      - uses: ./.github/actions/sdk
+        with:
+          name: windows-sdk
+          folder: build/sdk/desktop-release
+          upload: "true"
+
+  # The web SDK, which the page checks and the Apple job take, and the GPU tests in the headless Chrome of the runner, where WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader.
+  web-sdk:
+    name: Web SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ninja-build
+          emscripten: "true"
+          save-tools: emscripten
+      - name: Build the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target web
+      - uses: ./.github/actions/sdk
+        with:
+          name: web-sdk
+          folder: build/sdk/web-release
+          upload: "true"
+      - name: GPU tests on WebGPU
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform web --graphics-api webGpu
+      - name: GPU tests on WebGL2
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform web --graphics-api webGl2
+
+  # The Android SDK of every ABI, with the Android libraries in its local Maven repository.
+  android-sdk:
+    name: Android SDK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: android-actions/setup-android@v4.0.4
+      - name: Install the NDK, CMake and the platform
+        run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ninja-build
+      - name: Build the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target android
+      - uses: ./.github/actions/sdk
+        with:
+          name: android-sdk
+          folder: build/sdk/android-release
+          upload: "true"
+
+  # The slices of "Haylen.xcframework" compile with the architectures that the SDK ships in parallel jobs, one slice each, and the Apple job joins them.
+  apple-slices:
+    name: Apple slice
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-latest
-            system: Linux
-            cache-size: 1G
-          - runner: windows-latest
-            system: Windows
-            cache-size: 1200M
-          - runner: macos-latest
-            system: macOS
-            cache-size: 900M
-    runs-on: ${{ matrix.runner }}
+        slice: [macos, catalyst, ios, ios-simulator, tvos, tvos-simulator, visionos, visionos-simulator]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+      - name: Build the slice
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target ${{ matrix.slice }} --output build/slices/${{ matrix.slice }}
+      - uses: ./.github/actions/sdk
+        with:
+          name: apple-slice-${{ matrix.slice }}
+          folder: build/slices/${{ matrix.slice }}
+          upload: "true"
+
+  # The desktop SDK of macOS, whose content tool builds the protected releases of the Apple job.
+  macos-sdk:
+    name: macOS SDK
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+      - name: Build the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target player
+      - uses: ./.github/actions/sdk
+        with:
+          name: macos-sdk
+          folder: build/sdk/desktop-release
+          upload: "true"
+
+  # The engine tests and the GPU tests on every device that a hosted runner starts, with the validation of each API on: Mesa lavapipe and llvmpipe on Linux, WARP on Windows and the paravirtual GPU of macOS. Windows runners have no Vulkan driver and only the OpenGL 1.1 of the system.
+  tests:
+    name: Tests
+    strategy:
+      fail-fast: false
+      matrix:
+        system: [Linux, macOS, Windows]
+    runs-on: ${{ fromJSON('{"Linux":"ubuntu-latest","macOS":"macos-latest","Windows":"windows-latest"}')[matrix.system] }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
           save-sources: "true"
-          save-tools: shader-compiler ccache
-          cache: desktop
-          cache-size: ${{ matrix.cache-size }}
-      - name: Install the Graphics Tools of Windows, whose debug layer validates Direct3D
+          save-tools: shader-compiler
+      - name: Install the Direct3D debug layer
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           if (-not (Test-Path "$env:SystemRoot\System32\d3d12SDKLayers.dll")) { Add-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0 }
           if (-not (Test-Path "$env:SystemRoot\System32\d3d12SDKLayers.dll")) { throw "The Graphics Tools of Windows did not install the debug layer of Direct3D." }
-      - name: Run the engine tests
-        run: uv run --locked haylen --verbose test --config Debug --jobs ${{ env.JOBS }}
-      - name: Run the GPU tests on Vulkan through Mesa lavapipe
+      - name: Engine tests
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test
+      - name: GPU tests on Vulkan
         if: runner.os == 'Linux'
-        run: uv run --locked haylen --verbose test --gpu --config Debug --graphics-api vulkan --jobs ${{ env.JOBS }}
-      - name: Run the GPU tests on OpenGL through Mesa llvmpipe and EGL without a display
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api vulkan
+      - name: GPU tests on OpenGL
         if: runner.os == 'Linux'
-        run: uv run --locked haylen --verbose test --gpu --config Debug --graphics-api openGl --jobs ${{ env.JOBS }}
-      - name: Run the GPU tests on Direct3D 12 through WARP
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api openGl
+      - name: GPU tests on Direct3D 12
         if: runner.os == 'Windows'
         env:
           HAYLEN_TEST_GPU_SOFTWARE: "1"
-        run: uv run --locked haylen --verbose test --gpu --config Debug --graphics-api direct3D12 --jobs ${{ env.JOBS }}
-      - name: Run the GPU tests on Direct3D 11 through WARP
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api direct3D12
+      - name: GPU tests on Direct3D 11
         if: runner.os == 'Windows'
         env:
           HAYLEN_TEST_GPU_SOFTWARE: "1"
-        run: uv run --locked haylen --verbose test --gpu --config Debug --graphics-api direct3D11 --jobs ${{ env.JOBS }}
-      - name: Run the GPU tests on Metal
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api direct3D11
+      - name: GPU tests on Metal
         if: runner.os == 'macOS'
-        run: uv run --locked haylen --verbose test --gpu --config Debug --graphics-api metal --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api metal
 
-  # The proof of an external port, whose engine port and backend install from outside the tooling, and a project that finds the desktop SDK with "find_package", in one job of each system with one compiler cache. Headless Chrome on Linux draws WebGPU through SwiftShader, which cannot share the swapchain of a WebGPU canvas with the compositor, so the macOS job also checks the pages of the web and the start of the protected web release of the test project on WebGPU, which Chrome draws there through Metal, and the web needs no macOS runner of its own.
-  port:
-    name: ${{ matrix.name }}
+  # AddressSanitizer with UndefinedBehaviorSanitizer and ThreadSanitizer run the engine tests in shards, which together run every test once.
+  sanitizers:
+    name: Sanitizers
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-latest
-            name: Port and SDK on Linux
-            cache-size: 800M
-            sdk-target: linux
-          - runner: windows-latest
-            name: Port and SDK on Windows
-            cache-size: 800M
-            sdk-target: windows
-          - runner: macos-latest
-            name: Port, SDK and WebGPU pages on macOS
-            cache-size: 1500M
-            sdk-target: player
-            web: true
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-        with:
-          packages: ${{ env.LINUX_PACKAGES }}
-          cache: port-sdk
-          cache-size: ${{ matrix.cache-size }}
-          emscripten: ${{ matrix.web == true }}
-          save-tools: ${{ matrix.web && 'emscripten' || '' }}
-      - name: Prove that an engine port and a backend installed from outside the tooling build, verify and run an app with a plugin
-        run: uv run --locked pytest -m port tools/tests/extensions --verbose
-        env:
-          HAYLEN_JOBS: ${{ env.JOBS }}
-      - name: Build the desktop SDK of the system
-        run: uv run --locked haylen --verbose sdk build --target ${{ matrix.sdk-target }} --jobs ${{ env.JOBS }}
-      - name: Build a project that finds the SDK with "find_package"
-        run: uv run --locked haylen --verbose engine consumers --mode package --jobs ${{ env.JOBS }}
-      - name: Build the web SDK with the player for WebGPU and WebGL2
-        if: matrix.web
-        run: uv run --locked haylen --verbose sdk build --target web --jobs ${{ env.JOBS }}
-      - name: Check the error screen, the wake lock, the plugins, the editor and the memory of pages on WebGPU in the headless Chrome of the runner
-        if: matrix.web
-        run: uv run --locked haylen --verbose test --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
-      - name: Check that the protected web release of the test project starts on WebGPU
-        if: matrix.web
-        run: uv run --locked haylen --verbose test --platform web --app samples/tests --config Release --graphics-api webGpu --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
-
-  # The Intel runners of macOS are virtual machines without a Metal device, so they build the engine for x86-64 and run the engine tests on the null device alone, and the Metal paths of Intel Macs stay untested in CI. The report of the displays shows whether a runner gained a Metal device.
-  macos-intel:
-    name: macOS on Intel
-    runs-on: macos-26-intel
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-        with:
-          cache: macos-intel
-          cache-size: 900M
-          save-tools: shader-compiler
-      - name: Show the displays of the runner and whether they support Metal
-        run: system_profiler SPDisplaysDataType
-      - name: Run the engine tests
-        run: uv run --locked haylen --verbose test --config Debug --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
-
-  # The test project builds the headless player in the Linux tree of the desktop job, so it reads the compiler cache of that job.
-  tests-project:
-    name: Test project
+          - sanitizer: address
+            shard: 1/3
+          - sanitizer: address
+            shard: 2/3
+          - sanitizer: address
+            shard: 3/3
+          - sanitizer: thread
+            shard: 1/2
+          - sanitizer: thread
+            shard: 2/2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }}
-          cache: desktop
-          cache-size: 1G
-      - name: Build the headless player and the test library that the native tests load next to it
-        run: uv run --locked haylen --verbose engine build --config Debug --target haylen-headless --target haylen-native-test --jobs ${{ env.JOBS }}
-      - name: Run every test of the test project
-        run: build/engine/linux-debug/bin/haylen-headless samples/tests --frames 60000
+      - name: Engine tests
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --sanitizers ${{ matrix.sanitizer }} --shard ${{ matrix.shard }}
 
-  coverage:
-    name: Coverage
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-      - name: Measure the coverage of the engine tests
-        run: uv run --locked haylen --verbose engine coverage --jobs ${{ env.JOBS }}
-
-  sanitizers:
-    name: Sanitizer ${{ matrix.sanitizer }}
+  # The headless player runs the categories of the test project in two shards, which together run every test once.
+  test-project:
+    name: Test project
     strategy:
       fail-fast: false
       matrix:
-        sanitizer: [address, thread]
+        shard: [1/2, 2/2]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }}
-      - name: Run the engine tests under the sanitizer
-        run: uv run --locked haylen --verbose test --sanitizers ${{ matrix.sanitizer }} --jobs ${{ env.JOBS }}
+      - name: Build the headless player
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine build --config Debug --target haylen-headless --target haylen-native-test
+      - name: Run the test project
+        env:
+          HAYLEN_TESTS_SHARD: ${{ matrix.shard }}
+        run: build/engine/linux-debug/bin/haylen-headless samples/tests --frames 60000
 
   fuzz:
     name: Fuzzers
@@ -224,88 +261,26 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }} clang libclang-rt-dev
-          cache: fuzz
-          cache-size: 600M
-      - name: Fuzz the parsers that read hostile bytes for a minute each
-        run: uv run --locked haylen --verbose engine fuzz --seconds 60 --llvm /usr/bin --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
+      - name: Fuzz each parser for a minute
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine fuzz --seconds 60 --llvm /usr/bin
 
-  # WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader in the headless Chrome of the runner.
-  web-gpu:
-    name: Web GPU tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-        with:
-          packages: ninja-build
-          emscripten: "true"
-      - name: Run the GPU tests on WebGPU in the headless Chrome of the runner
-        run: uv run --locked haylen --verbose test --gpu --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
-      - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
-        run: uv run --locked haylen --verbose test --gpu --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
-
-  # The desktop SDK of Linux and of Windows, with the player and the content tool, builds once per run, and the jobs that build apps take it from these jobs instead of building it again. The SDK of Linux links the libraries of Linux windows. The macOS SDK builds in the macOS jobs that need it, since a job of its own would hold up the slices of the Apple jobs.
-  desktop-sdk:
-    name: Desktop SDK on ${{ matrix.system }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            system: Linux
-            target: linux
-          - runner: windows-latest
-            system: Windows
-            target: windows
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-        with:
-          packages: ${{ env.LINUX_PACKAGES }}
-          cache: desktop-sdk
-          cache-size: 600M
-      - name: Build the desktop SDK with the player and the content tool
-        run: uv run --locked haylen --verbose sdk build --target ${{ matrix.target }} --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/desktop-sdk
-        with:
-          upload: "true"
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
-
-  # The protected release takes the content tool of the desktop SDK, and its keys are made for the job and thrown away with the runner, so no secret is involved. The pages draw through WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas, and the macOS job of the port checks them on WebGPU.
-  web:
-    name: Web
-    needs: desktop-sdk
+  # An engine port and a backend installed from outside the tooling build, verify and run an app with a plugin, and the test port plays its app under ThreadSanitizer, which checks the worker threads of the loop that the port pumps.
+  port:
+    name: Port
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }}
-          cache: web
-          cache-size: 800M
-          emscripten: "true"
-          save-tools: emscripten
-      - uses: ./.github/actions/desktop-sdk
-      - name: Build the web SDK with the player for WebGPU and WebGL2
-        run: uv run --locked haylen --verbose sdk build --target web --jobs ${{ env.JOBS }}
-      - name: Check the error screen, the wake lock, the plugins, the editor and the memory of pages on WebGL2 in the headless Chrome of the runner
-        run: uv run --locked haylen --verbose test --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
-      - name: Build the protected web release of the test project, inspect it for anything a release never holds and check that it starts
-        run: uv run --locked haylen --verbose test --platform web --app samples/tests --config Release --graphics-api webGl2 --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-        with:
-          job-status: ${{ job.status }}
+      - name: Prove an external port
+        env:
+          HAYLEN_JOBS: ${{ env.JOBS }}
+        run: uv run --locked pytest -m port tools/tests/extensions --verbose
+      - name: Port under ThreadSanitizer
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --port --sanitizers thread
 
-  # The emulator of an x86-64 image runs on the KVM of the Linux runner and draws through SwiftShader, and the tests run on every device of the Android build that starts there.
+  # The emulator of an x86-64 image runs on the KVM of the runner and draws through SwiftShader.
   android-gpu:
     name: Android GPU tests
     runs-on: ubuntu-latest
@@ -319,7 +294,7 @@ jobs:
           distribution: temurin
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
-      - name: Install the NDK, CMake, the emulator and its system image
+      - name: Install the NDK, CMake, the emulator and its image
         run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
       - uses: ./.github/actions/build-environment
         with:
@@ -329,15 +304,104 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Create the virtual device that the tests start
+      - name: Create the virtual device
         run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
-      - name: Run the GPU tests on the emulator
-        run: uv run --locked haylen --verbose test --gpu --platform android --jobs ${{ env.JOBS }}
+      - name: GPU tests on the emulator
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform android
 
-  # The protected release of an Android app takes the content tool of the desktop SDK.
+  # A project that finds the desktop SDK of the run with "find_package", the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
+  linux-apps:
+    name: Linux apps
+    needs: linux-sdk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
+      - uses: ./.github/actions/sdk
+        with:
+          name: linux-sdk
+      - name: Build a project that finds the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine consumers --mode package
+      - name: Install CMake with the AppImage generator
+        run: pip install cmake
+      - name: Create the starter apps and a plugin
+        run: |
+          uv run --locked haylen --verbose new build/starter
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose plugin new build/echo-check
+          uv run --locked haylen --verbose plugin add build/echo-check --app build/starter
+      - name: Package the protected release as installers
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app package build/starter --target linux --format installer --output build/dist
+      - name: Validate the desktop entry
+        run: |
+          entries=$(find build/apps -path "*linux-release*" -name "*.desktop")
+          test -n "$entries" || { echo "The Linux release of the starter app holds no desktop entry."; exit 1; }
+          desktop-file-validate $entries
+      - name: Build the C++ app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp
+      - name: Build the protected release of the C++ app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --config Release
+
+  windows-apps:
+    name: Windows apps
+    needs: windows-sdk
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+      - uses: ./.github/actions/sdk
+        with:
+          name: windows-sdk
+      - name: Build a project that finds the SDK
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine consumers --mode package
+      # Bash stops the step at the first command that fails, which PowerShell would not.
+      - name: Create the starter apps and a plugin
+        shell: bash
+        run: |
+          uv run --locked haylen --verbose new build/starter
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose plugin new build/echo-check
+          uv run --locked haylen --verbose plugin add build/echo-check --app build/starter
+      - name: Package the protected release as an installer
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app package build/starter --target windows --format installer --output build/dist
+      - name: Build the C++ app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp
+      - name: Build the protected release of the C++ app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --config Release
+
+  # The checks of the pages in two shards, and the start of the protected web release of the test project in the first, in the headless Chrome of the runner, on WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas. The Apple job checks the start on WebGPU.
+  web:
+    name: Web
+    needs: [linux-sdk, web-sdk]
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/2, 2/2]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+          emscripten: "true"
+      - uses: ./.github/actions/sdk
+        with:
+          name: linux-sdk
+      - uses: ./.github/actions/sdk
+        with:
+          name: web-sdk
+      - name: Check the pages
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --graphics-api webGl2 --shard ${{ matrix.shard }}
+      - name: Start the protected release of the test project
+        if: matrix.shard == '1/2'
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --app samples/tests --config Release --graphics-api webGl2
+
+  # The signed protected release of the starter app and the starter C++ app, whose C++ code Gradle compiles for every ABI against the Android SDK of the run.
   android:
     name: Android
-    needs: desktop-sdk
+    needs: [linux-sdk, android-sdk]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -351,131 +415,52 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }}
-          cache: android
-          cache-size: 2200M
-      - uses: ./.github/actions/desktop-sdk
-      - name: Build the Android SDK with the Android libraries in its local Maven repository
-        run: uv run --locked haylen --verbose sdk build --target android --jobs ${{ env.JOBS }}
-      - name: Create the starter app and the starter C++ app
-        run: uv run --locked haylen --verbose new build/starter && uv run --locked haylen --verbose new build/starter-cpp --kind cpp
-      - name: Give the starter app an upload key
-        run: uv run --locked haylen --verbose app sign build/starter --target android
-      - name: Build and verify its protected release APK
-        run: uv run --locked haylen --verbose app build build/starter --target android --config Release --jobs ${{ env.JOBS }}
-      - name: Build and verify the APK of the starter C++ app, whose C++ code Gradle compiles for every ABI against the SDK
-        run: uv run --locked haylen --verbose app build build/starter-cpp --target android --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
+      - uses: ./.github/actions/sdk
         with:
-          job-status: ${{ job.status }}
+          name: linux-sdk
+      - uses: ./.github/actions/sdk
+        with:
+          name: android-sdk
+      - name: Create the starter apps and an upload key
+        run: |
+          uv run --locked haylen --verbose new build/starter
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose app sign build/starter --target android
+      - name: Build the protected release
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target android --config Release
+      - name: Build the C++ app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target android
 
-  # Every family of slices of "Haylen.xcframework" builds in a job of its own. The iOS job also builds the desktop SDK of macOS for its content tool and the starter apps for the simulator from the slices it built.
+  # The joined Apple SDK, the starter apps for the iOS simulator against it, and the start of the protected web release of the test project on WebGPU, which Chrome draws through Metal.
   apple:
-    name: Apple ${{ matrix.family }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - family: iOS
-            cache: ios
-            targets: --target ios --target ios-simulator
-          - family: tvOS
-            cache: tvos
-            targets: --target tvos --target tvos-simulator
-          - family: visionOS
-            cache: visionos
-            targets: --target visionos --target visionos-simulator
-          - family: macOS and Mac Catalyst
-            cache: mac
-            targets: --target macos --target catalyst
+    name: Apple
+    needs: [apple-slices, macos-sdk, web-sdk]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: apple-${{ matrix.cache }}
-          cache-size: 600M
-          xcodegen: ${{ matrix.family == 'iOS' }}
-          save-tools: ${{ matrix.family == 'iOS' && 'xcodegen' || '' }}
-      - name: Build the slices of "Haylen.xcframework"
-        run: uv run --locked haylen --verbose sdk build ${{ matrix.targets }} --jobs ${{ env.JOBS }}
-      - name: Build the desktop SDK of macOS for its content tool
-        if: matrix.family == 'iOS'
-        run: uv run --locked haylen --verbose sdk build --target player --jobs ${{ env.JOBS }}
-      - name: Create the starter app and the starter C++ app
-        if: matrix.family == 'iOS'
-        run: uv run --locked haylen --verbose new build/starter && uv run --locked haylen --verbose new build/starter-cpp --kind cpp
-      - name: Build and verify the protected release of the starter app for the iOS simulator
-        if: matrix.family == 'iOS'
-        run: uv run --locked haylen --verbose app build build/starter --target ios-simulator --config Release --jobs ${{ env.JOBS }}
-      - name: Build and verify the starter C++ app for the iOS simulator, whose C++ code the Xcode project compiles against the SDK
-        if: matrix.family == 'iOS'
-        run: uv run --locked haylen --verbose app build build/starter-cpp --target ios-simulator --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
+          xcodegen: "true"
+          emscripten: "true"
+          save-tools: xcodegen emscripten
+      - uses: ./.github/actions/sdk
         with:
-          job-status: ${{ job.status }}
-
-  desktop-apps:
-    name: Desktop apps on ${{ matrix.system }}
-    needs: desktop-sdk
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            system: Linux
-            platform: linux
-          - runner: windows-latest
-            system: Windows
-            platform: windows
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
+          name: apple-slice-*
+      - uses: ./.github/actions/sdk
         with:
-          packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
-      - uses: ./.github/actions/desktop-sdk
-      - name: Install CMake with the AppImage generator of CPack
-        if: runner.os == 'Linux'
-        run: pip install cmake
-      - name: Create the starter app
-        run: uv run --locked haylen --verbose new build/starter
-      - name: Create a plugin from the plugin template, whose desktop library the app then builds
-        run: uv run --locked haylen --verbose plugin new build/echo-check
-      - name: Add the plugin to the starter app
-        run: uv run --locked haylen --verbose plugin add build/echo-check --app build/starter
-      - name: Build, verify and package the protected release of the starter app as the installers of the platform
-        run: uv run --locked haylen --verbose app package build/starter --target ${{ matrix.platform }} --format installer --output build/dist --jobs ${{ env.JOBS }}
-      - name: Validate the desktop entry
-        if: runner.os == 'Linux'
+          name: macos-sdk
+      - uses: ./.github/actions/sdk
+        with:
+          name: web-sdk
+      - name: Join the slices
+        run: uv run --locked haylen --verbose sdk join build/slices/*
+      - name: Create the starter apps
         run: |
-          entries=$(find build/apps -path "*linux-release*" -name "*.desktop")
-          test -n "$entries" || { echo "The Linux release of the starter app holds no desktop entry."; exit 1; }
-          desktop-file-validate $entries
-
-  # A C++ app compiles only its own code against the desktop SDK of the run, in Debug and in its protected Release, whose bootstrap holds the keys that each run makes, so the job keeps no compiler cache.
-  cpp-apps:
-    name: C++ apps on ${{ matrix.system }}
-    needs: desktop-sdk
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            system: Linux
-          - runner: windows-latest
-            system: Windows
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-        with:
-          packages: ${{ env.LINUX_PACKAGES }}
-      - uses: ./.github/actions/desktop-sdk
-      - name: Create the starter C++ app
-        run: uv run --locked haylen --verbose new build/starter-cpp --kind cpp
-      - name: Build and verify the starter C++ app
-        run: uv run --locked haylen --verbose app build build/starter-cpp --jobs ${{ env.JOBS }}
-      - name: Build and verify its protected release
-        run: uv run --locked haylen --verbose app build build/starter-cpp --config Release --jobs ${{ env.JOBS }}
+          uv run --locked haylen --verbose new build/starter
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+      - name: Build the protected release for the iOS simulator
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target ios-simulator --config Release
+      - name: Build the C++ app for the iOS simulator
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target ios-simulator
+      - name: Start the protected web release on WebGPU
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --app samples/tests --config Release --graphics-api webGpu

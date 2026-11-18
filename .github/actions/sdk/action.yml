@@ -1,0 +1,47 @@
+name: SDK
+description: Hands an engine SDK that one job of the run built to the other jobs of the same run through an artifact of the run, which no release and no other run reads and which GitHub deletes after a day. With "upload" the job that built the SDK hands over its folder, and without it a job takes every SDK whose artifact matches the name into the folder it was built in.
+
+inputs:
+  name:
+    description: The name of the artifact, or a pattern of names that a job takes, such as "apple-slices-*".
+    required: true
+  folder:
+    description: The folder of the SDK that the job hands over.
+    default: ""
+  upload:
+    description: Whether the job hands over the SDK it built instead of taking SDKs.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    # A tar keeps the modes of the executables, which an artifact of the run drops.
+    - name: Pack the SDK
+      if: inputs.upload == 'true'
+      shell: bash
+      run: tar -cf "${{ inputs.name }}.tar" "${{ inputs.folder }}"
+
+    - name: Hand the SDK to the other jobs
+      if: inputs.upload == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}
+        path: ${{ inputs.name }}.tar
+        retention-days: 1
+        if-no-files-found: error
+
+    - name: Take the SDK
+      if: inputs.upload != 'true'
+      uses: actions/download-artifact@v8
+      with:
+        pattern: ${{ inputs.name }}
+        merge-multiple: true
+
+    - name: Unpack the SDK
+      if: inputs.upload != 'true'
+      shell: bash
+      run: |
+        for archive in *.tar; do
+          tar -xf "$archive"
+          rm "$archive"
+        done
