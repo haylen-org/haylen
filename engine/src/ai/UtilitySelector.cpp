@@ -51,8 +51,10 @@ std::optional<UtilitySelector::Choice> UtilitySelector::choose() const {
     return best;
 }
 
-std::optional<UtilitySelector::Choice> UtilitySelector::choose(math::Random& random, float tolerance) const {
-    std::vector<float> scores;
+// The scores take the buffer of the selector while they are in use, so an input that chooses with the same selector again gets a buffer of its own, and a choice that repeats allocates nothing.
+std::optional<UtilitySelector::Choice> UtilitySelector::choose(math::Random& random, float tolerance) {
+    std::vector<float> scores = std::exchange(scoreBuffer, {});
+    scores.clear();
     float highest = 0.0F;
     for (std::size_t index = 0; index < options.size(); ++index) {
         scores.push_back(score(index));
@@ -64,12 +66,14 @@ std::optional<UtilitySelector::Choice> UtilitySelector::choose(math::Random& ran
         value = value > 0.0F && value >= threshold ? value : 0.0F;
     }
 
-    if (std::ranges::none_of(scores, [](float value) { return value > 0.0F; })) {
-        return std::nullopt;
+    std::optional<Choice> choice;
+    if (std::ranges::any_of(scores, [](float value) { return value > 0.0F; })) {
+        const std::size_t index = random.weightedIndex(scores);
+        choice = Choice{index, scores[index]};
     }
 
-    const std::size_t index = random.weightedIndex(scores);
-    return Choice{index, scores[index]};
+    scoreBuffer = std::move(scores);
+    return choice;
 }
 
 } // namespace haylen::ai

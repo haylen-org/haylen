@@ -47,7 +47,7 @@ class UtilitySelector final {
     [[nodiscard]] std::optional<Choice> choose() const;
 
     // Picks at random, weighted by score, among the options that score above zero and at least `tolerance` times the best score, which makes agents less predictable. The tolerance is clamped to [0, 1], and nothing is returned when every option scores zero.
-    [[nodiscard]] std::optional<Choice> choose(math::Random& random, float tolerance) const;
+    [[nodiscard]] std::optional<Choice> choose(math::Random& random, float tolerance);
 
     [[nodiscard]] const std::vector<Option>& getOptions() const noexcept {
         return options;
@@ -58,6 +58,7 @@ class UtilitySelector final {
 
   private:
     std::vector<Option> options;
+    std::vector<float> scoreBuffer;
 };
 
 } // namespace haylen::ai

@@ -10,6 +10,7 @@
 #include "haylen/ai/ResponseCurve.hpp"
 #include "haylen/ai/UtilitySelector.hpp"
 #include "haylen/math/Random.hpp"
+#include "support/AllocationTracker.hpp"
 
 namespace haylen::ai {
 
@@ -181,6 +182,21 @@ TEST(UtilitySelectorTest, PicksTheOptionWithTheBestScore) {
     EXPECT_FALSE(selector.choose().has_value());
     EXPECT_FALSE(selector.choose(random, 0.5F).has_value());
     EXPECT_THROW(selector.add({.considerations = {{.input = [] { return 0.0F; }, .maximum = 0.0F}}}), std::invalid_argument);
+}
+
+TEST(UtilitySelectorTest, ChoosesAtRandomWithoutAllocatingOnceItChoseBefore) {
+    UtilitySelector selector;
+    selector.add({.name = "attack", .considerations = {{.input = [] { return 0.6F; }}}});
+    selector.add({.name = "flee", .considerations = {{.input = [] { return 0.4F; }}}});
+    math::Random random(3);
+    EXPECT_TRUE(selector.choose(random, 0.0F).has_value());
+
+    const test::AllocationTracker tracker;
+    for (int pick = 0; pick < 100; ++pick) {
+        EXPECT_TRUE(selector.choose(random, 0.0F).has_value());
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
 TEST(ResponseCurveTest, ShapesStayWithinZeroAndOne) {
