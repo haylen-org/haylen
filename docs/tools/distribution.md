@@ -68,7 +68,7 @@ haylen app verify ~/apps/my-game --target web --config Release
 
 The option `--config` picks the configuration of the app: `Debug` ships the package as it is, and `Release` ships the protected release with the bootstrap of the app, as [release builds](#release-builds) explain. The option `--engine-config` picks the configuration of the engine SDK, `Release` by default, and `Debug` only to debug the engine itself, because it runs many times slower. Before the preparation, the shaders of the app whose sources changed compile again, as the command `app shaders` does.
 
-A step never builds the engine. When no installed SDK serves a target, because none was built, it was built from other engine sources or in another configuration, or it runs only on newer systems than the app, the step stops with the reason and the `haylen sdk build` command that makes the right one.
+A step never builds the engine. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of the engine, because none was built or it was built from other sources or in another configuration, the commands that prepare or build the app first build that SDK through the engine port, as `haylen sdk build` does, in a step of its own that says so and how long a first build takes. The commands `project inspect` and `app verify` never build, and they stop with the `haylen sdk build` command that makes the SDK. An SDK of the current sources that serves no app of the target, such as one that runs only on newer systems than the app, stops every command with the reason.
 
 ## Platform projects
 

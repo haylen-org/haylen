@@ -137,7 +137,7 @@ class WebChecks:
     def site(self, app: Path) -> Path:
         """Builds the site of a check app with the web backend in Release and verifies it."""
         request = ProductRequest(app, WebChecks.TARGET, Configuration.RELEASE, Configuration.RELEASE, None)
-        product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request)))
+        product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request, build_sdk=True)))
         ReportPrinter.verification(self.pipeline.verify(product), self.context.terminal, f"`{Repository.shown(product.path)}`")
         return product.path
 

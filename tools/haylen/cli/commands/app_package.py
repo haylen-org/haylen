@@ -28,7 +28,7 @@ class AppPackageCommand(Command):
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         pipeline = session.pipeline
         request = Arguments.request(arguments, session, arguments.previous_release)
-        resolved = pipeline.resolve(request)
+        resolved = pipeline.resolve(request, build_sdk=True)
         pipeline.require(resolved, Capability.PACKAGE)
         product = pipeline.build(pipeline.prepare(resolved))
         report = pipeline.verify(product)

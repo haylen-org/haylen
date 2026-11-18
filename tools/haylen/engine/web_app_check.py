@@ -42,7 +42,7 @@ class WebAppCheck:
             raise InvalidManifest(f'The folder `{Repository.shown(folder)}` holds no "{AppManifest.FILE}". Name the folder of the app whose page the check opens.')
         request = ProductRequest(folder, WebChecks.TARGET, Configuration.parse(configuration), Configuration.RELEASE, None)
 
-        product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request)))
+        product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request, build_sdk=True)))
         ReportPrinter.verification(self.pipeline.verify(product), self.context.terminal, f"`{Repository.shown(product.path)}`")
         name = product.prepared.product.app.name
         apis = [api] if api else list(WebChecks.GRAPHICS_APIS)

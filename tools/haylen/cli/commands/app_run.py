@@ -14,7 +14,7 @@ from haylen.platforms.launch_request import LaunchRequest
 
 class AppRunCommand(Command):
     PATH = ("app", "run")
-    HELP = 'Prepare, build and verify an app for a target, saying each step as it goes, then launch it: a Debug app plays in development with hot reload and the debugger port, and a Release app plays as it ships. Without "--target" a Lua app plays in the player of this machine and a C++ app builds for this machine. It never builds the engine.'
+    HELP = 'Prepare, build and verify an app for a target, saying each step as it goes, then launch it: a Debug app plays in development with hot reload and the debugger port, and a Release app plays as it ships. Without "--target" a Lua app plays in the player of this machine and a C++ app builds for this machine. The build of the app never compiles the engine, and the command builds the engine SDK first when no installed SDK of these engine sources holds the target.'
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         Arguments.add_product(parser)
@@ -27,7 +27,7 @@ class AppRunCommand(Command):
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         pipeline = session.pipeline
         request = Arguments.request(arguments, session, arguments.previous_release)
-        resolved = pipeline.resolve(request)
+        resolved = pipeline.resolve(request, build_sdk=True)
         pipeline.require(resolved, Capability.RUN)
         product = pipeline.build(pipeline.prepare(resolved))
         report = pipeline.verify(product)

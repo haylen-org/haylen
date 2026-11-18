@@ -10,7 +10,7 @@ from haylen.core.repository import Repository
 
 class AppBuildCommand(Command):
     PATH = ("app", "build")
-    HELP = 'Prepare the project of an app for a target, build it with the native tools of the target and verify what it built. It never builds the engine, which comes from the SDK that "haylen sdk build" installs.'
+    HELP = 'Prepare the project of an app for a target, build it with the native tools of the target and verify what it built. The build of the app never compiles the engine, which comes from the SDK that "haylen sdk build" installs, and that this command builds first when no installed SDK of these engine sources holds the target.'
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         Arguments.add_product(parser)
@@ -18,7 +18,7 @@ class AppBuildCommand(Command):
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         pipeline = session.pipeline
-        product = pipeline.build(pipeline.prepare(pipeline.resolve(Arguments.request(arguments, session, arguments.previous_release))))
+        product = pipeline.build(pipeline.prepare(pipeline.resolve(Arguments.request(arguments, session, arguments.previous_release), build_sdk=True)))
         report = pipeline.verify(product)
         ReportPrinter.verification(report, session.terminal, f"`{Repository.shown(product.path)}`")
         return {"product": product.describe(), "verification": report.describe()}

@@ -16,7 +16,7 @@ class ProjectInspectCommand(Command):
         Arguments.add_product(parser)
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
-        product = session.pipeline.resolve(Arguments.request(arguments, session))
+        product = session.pipeline.resolve(Arguments.request(arguments, session), build_sdk=False)
         described = product.describe()
         if session.structured:
             return described

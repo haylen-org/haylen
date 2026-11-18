@@ -94,7 +94,7 @@ class WebAppCheckTest:
         monkeypatch.setattr(HeadlessBrowser, "__exit__", lambda self, *_: ended.append(("browser", tuple(self.arguments))))
         monkeypatch.setattr(Emscripten, "node", staticmethod(lambda: Path("node")))
         product = SimpleNamespace(path=tmp_path / "site", prepared=SimpleNamespace(product=SimpleNamespace(app=SimpleNamespace(name="Tests"))))
-        pipeline = SimpleNamespace(resolve=lambda request: request, prepare=lambda resolved: resolved, build=lambda prepared: product, verify=lambda built: VerificationReport(()))
+        pipeline = SimpleNamespace(resolve=lambda request, build_sdk: request, prepare=lambda resolved: resolved, build=lambda prepared: product, verify=lambda built: VerificationReport(()))
 
         reports = {"webGpu": WebAppCheckTest.report(), "webGl2": WebAppCheckTest.report(drawsThrough="webGl2", firstFrame=False, expired=True)}
         recorded = RecordedCommands(tmp_path, answer=lambda command: json.dumps(reports[command[3].rsplit("=", 1)[1]]))

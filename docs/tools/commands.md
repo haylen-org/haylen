@@ -60,7 +60,7 @@ Result: `folder`, `name`, `identifier` and `kind`.
 haylen app prepare [app] [--target] [--config] [--engine-config] [--architecture] [--previous-release <folder>]
 ```
 
-Resolves the app for a target and generates its native project in the build folder of the app, without building it. Inputs that did not change write nothing. A Release preparation builds the protected release of the app, which follows the release that `--previous-release` names, such as the release that shipped last, which continuous integration keeps, or else the last release of the build folder, so unchanged content keeps its shards. The option takes `--config Release`.
+Resolves the app for a target and generates its native project in the build folder of the app, without building it. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of `--engine-config`, it first builds that SDK as `sdk build` does, in a step that says so. Inputs that did not change write nothing. A Release preparation builds the protected release of the app, which follows the release that `--previous-release` names, such as the release that shipped last, which continuous integration keeps, or else the last release of the build folder, so unchanged content keeps its shards. The option takes `--config Release`.
 
 Result: the prepared project, with `identity`, `backend`, `project` (the folder of the generated project), `changed` (whether a file changed) and `state`, the record of `haylen-preparation.json` with `generator`, `backend`, `backendVersion`, `template`, `sdk`, `inputs`, `output` and `extra`.
 
@@ -70,7 +70,7 @@ Result: the prepared project, with `identity`, `backend`, `project` (the folder 
 haylen app build [app] [--target] [--config] [--engine-config] [--architecture] [--previous-release <folder>]
 ```
 
-Prepares the project, builds it with the native tools of the target and verifies the product. It never compiles the engine. The option `--previous-release` works as for `app prepare`. A target whose SDK is missing, was built from other engine sources or has another configuration stops with the `sdk build` command that makes it.
+Prepares the project, builds it with the native tools of the target and verifies the product. The build of the app never compiles the engine. A target whose SDK is missing, was built from other engine sources or has another configuration gets its SDK first, as for `app prepare`, and an SDK that serves no app of the target, such as one that runs only on newer systems than the app, stops the command with the reason. The option `--previous-release` works as for `app prepare`.
 
 Result: `product` and `verification`. The product holds `identity`, `path`, `kind`, `components` (the `target`, `path` and `kind` of each architecture) and `auxiliary` (other files of the build, such as symbol files). The verification holds `passed` and `checks`, each with `name`, `outcome` (`passed`, `warning` or `failed`), `detail` and `source`.
 
@@ -90,7 +90,7 @@ Result: `product` and `verification`, as for `app build`.
 haylen app run [app] [--target] [--config] [--engine-config] [--architecture] [--previous-release <folder>] [--device <identifier>] [--host <address>] [--port <port>] [--debugger-port <port>] [--coep <policy>] [--coop <policy>] [--open]
 ```
 
-Checks that the backend of the target runs apps, then prepares, builds and verifies the app, printing each step, launches it and follows its log until it ends or the key `q` stops it. The option `--previous-release` works as for `app prepare`. A Debug app plays in development with hot reload and the debugger, and a Release app plays as it ships.
+Checks that the backend of the target runs apps, then builds the SDK that the target lacks, as for `app prepare`, prepares, builds and verifies the app, printing each step, launches it and follows its log until it ends or the key `q` stops it. The option `--previous-release` works as for `app prepare`. A Debug app plays in development with hot reload and the debugger, and a Release app plays as it ships.
 
 | Option | Meaning |
 | --- | --- |
@@ -281,7 +281,7 @@ Result: `devices`, each with `backend`, `identifier`, `name`, `kind`, `state` an
 haylen sdk build --target <name> [--target <name>...] [--config Debug|Release] [--architecture <name>...] [--output <folder>]
 ```
 
-Builds the engine for one or more targets with the engine port that serves them, and installs the SDK that apps build against. It is the only command that compiles the engine for apps. Every target must belong to one port, the configuration is `Release` by default, and the SDK goes to `build/sdk/<port>-<configuration>/` unless `--output` names another folder. Building a target later adds its slice to an SDK of the same engine sources and configuration.
+Builds the engine for one or more targets with the engine port that serves them, and installs the SDK that apps build against. It is the command that compiles the engine for apps, and the app commands that build run it themselves for an SDK that is missing or stale. Every target must belong to one port, the configuration is `Release` by default, and the SDK goes to `build/sdk/<port>-<configuration>/` unless `--output` names another folder. Building a target later adds its slice to an SDK of the same engine sources and configuration.
 
 | Target | SDK |
 | --- | --- |

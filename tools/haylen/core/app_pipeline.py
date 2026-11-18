@@ -24,6 +24,7 @@ from haylen.platforms.verification_report import VerificationReport
 from haylen.plugins.plugin_lock import PluginLock
 from haylen.plugins.plugin_resolver import PluginResolver
 from haylen.plugins.plugin_source import PluginSource
+from haylen.sdk.sdk_builder import SdkBuilder
 from haylen.sdk.sdk_catalog import SdkCatalog
 from haylen.sdk.sdk_selector import SdkSelector
 
@@ -32,14 +33,28 @@ from haylen.sdk.sdk_selector import SdkSelector
 class AppPipeline:
     """The one pipeline of every app, Lua or C++, on every target: the manifest, the target and its capabilities, the plugins of the target, the SDK, the resolved product, then the preparation, the build, the verification and the launch by the backend of the target. Each step checks that the backend declares the capability before it calls it, and the commands call these steps instead of any backend directly."""
 
+    # What the step of an SDK that an app command builds tells the developer, since its first build compiles the whole engine.
+    SDK_BUILD_NOTE = "No installed SDK holds the engine of these sources for the target, so the command builds it once before the app. A first build compiles the whole engine, which takes from 15 minutes to an hour, and a later build compiles only what changed."
+
     context: ToolingContext
     registry: BackendRegistry
 
-    def resolve(self, request: ProductRequest) -> ResolvedProduct:
+    def resolve(self, request: ProductRequest, *, build_sdk: bool) -> ResolvedProduct:
+        """Resolves the product of a request. A command that builds the app first builds the SDK of the architectures that no installed SDK of the current engine sources holds, through the engine port, as `haylen sdk build` does, while a command that only reads the product, such as `project inspect`, stops at a missing SDK."""
         app = AppManifest.load(request.app_folder)
+        if build_sdk:
+            self.provide_sdk(app, request)
         source = PluginSource(app.folder, PluginLock.load(app.folder), self.context.process, self.context.terminal)
         selector = SdkSelector(tuple(SdkCatalog(self.context.environment).manifests()), Repository.engine_revision())
         return ProjectResolver(self.registry, PluginResolver(app, source), selector).resolve(request)
+
+    def provide_sdk(self, app: AppManifest, request: ProductRequest) -> None:
+        description = self.registry.target(request.target).description
+        ProjectResolver.check_kind(app, description)
+        selector = SdkSelector(tuple(SdkCatalog(self.context.environment).manifests()), Repository.engine_revision())
+        missing = tuple(target.architecture for target in ProjectResolver.target_ids(description, request) if selector.lacks(target, request.engine_configuration))
+        if missing:
+            SdkBuilder(self.context, self.registry).build((description.name,), request.engine_configuration, missing, None, AppPipeline.SDK_BUILD_NOTE)
 
     def backend(self, product: ResolvedProduct, capability: Capability) -> PlatformBackend:
         target = self.registry.target(product.target_name)

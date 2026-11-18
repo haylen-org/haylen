@@ -16,7 +16,7 @@ class AppPrepareCommand(Command):
         Arguments.add_previous_release(parser)
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
-        product = session.pipeline.resolve(Arguments.request(arguments, session, arguments.previous_release))
+        product = session.pipeline.resolve(Arguments.request(arguments, session, arguments.previous_release), build_sdk=True)
         prepared = session.pipeline.prepare(product)
         state = "Prepared" if prepared.changed else "The inputs did not change, so nothing changed in"
         session.terminal.success(f"{state} the project `{Repository.shown(prepared.project)}`.")

@@ -8,12 +8,16 @@ from haylen.cli.arguments import Arguments
 from haylen.cli.command_session import CommandSession
 from haylen.cli.commands.doctor import DoctorCommand
 from haylen.core.app_pipeline import AppPipeline
+from haylen.core.configuration import Configuration
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.product_request import ProductRequest
+from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.platforms.backend_registry import BackendRegistry
+from haylen.platforms.sdk_request import SdkRequest
+from haylen.sdk.sdk_manifest import SdkManifest
 from tests.support.fake_backend import FakeBackend
 from tests.support.fake_port import FakePort
 from tests.support.tooling_fixture import ToolingFixture
@@ -27,7 +31,7 @@ class CommandsTest:
         session = CommandSession(fixture.context, structured)
         session.registry = fixture.registry()
 
-        def resolve(pipeline: AppPipeline, request: ProductRequest) -> ResolvedProduct:
+        def resolve(pipeline: AppPipeline, request: ProductRequest, *, build_sdk: bool) -> ResolvedProduct:
             return fixture.resolver(request.app_folder, pipeline.registry).resolve(request)
 
         monkeypatch.setattr(AppPipeline, "resolve", resolve)
@@ -97,6 +101,30 @@ class CommandsTest:
         assert DoctorCommand.tool_state(missing) == "9.8.2, which the first build that needs it downloads into `.tools`"
         assert DoctorCommand.tool_state(found) == "cmake version 4.4.3 at `/opt/homebrew/bin/cmake`"
         assert DoctorCommand.tool_state(broken) == 'The command "xcodebuild" does not run.'
+
+    def test_an_app_build_builds_the_sdk_that_no_installed_sdk_of_the_sources_holds_while_an_inspection_never_builds(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        fixture.sdk(revision="b" * 64)
+        requests: list[SdkRequest] = []
+
+        class BuildingPort(FakePort):
+            def build_sdk(self, request: SdkRequest) -> SdkManifest:
+                requests.append(request)
+                return fixture.sdk(architectures=request.architectures)
+
+        session = CommandSession(fixture.context, False)
+        session.registry = BackendRegistry(fixture.context, [("FakeBackend", lambda: FakeBackend)], [("BuildingPort", lambda: BuildingPort)])
+        request = ProductRequest(fixture.app({}), "fake", Configuration.DEBUG, Configuration.RELEASE, ("arm64",))
+        with pytest.raises(IncompatibleSdk, match="other engine sources"):
+            session.pipeline.resolve(request, build_sdk=False)
+
+        resolved = session.pipeline.resolve(request, build_sdk=True)
+        session.pipeline.resolve(request, build_sdk=True)
+        assert [(built.targets, built.architectures, built.configuration) for built in requests] == [(("fake-device",), ("arm64",), Configuration.RELEASE)]
+        assert resolved.primary.sdk.manifest.revision == ToolingFixture.REVISION
+        assert AppPipeline.SDK_BUILD_NOTE in fixture.output.getvalue()
 
     def test_sdks_join_only_with_one_port_sources_and_configuration_whose_port_declares_joining(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)

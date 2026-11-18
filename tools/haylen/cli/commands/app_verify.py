@@ -17,7 +17,7 @@ class AppVerifyCommand(Command):
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         pipeline = session.pipeline
-        product = pipeline.last_build(pipeline.resolve(Arguments.request(arguments, session)))
+        product = pipeline.last_build(pipeline.resolve(Arguments.request(arguments, session), build_sdk=False))
         report = pipeline.verify(product)
         ReportPrinter.verification(report, session.terminal, f"`{Repository.shown(product.path)}`")
         return {"product": product.describe(), "verification": report.describe()}

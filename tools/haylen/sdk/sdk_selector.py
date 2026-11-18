@@ -12,7 +12,7 @@ from haylen.sdk.selected_sdk import SelectedSdk
 
 @dataclass(frozen=True)
 class SdkSelector:
-    """Chooses the SDK slice of a target after the requirements of the plugins are known and before the project is generated. A slice serves a target only when its system, environment, architecture, binary interface, toolchain and configuration match, it was built from the current engine sources, it runs on the oldest system the app supports and it holds the graphics APIs the app asks for. Nothing builds the engine when no slice serves: the error says which SDK to build."""
+    """Chooses the SDK slice of a target after the requirements of the plugins are known and before the project is generated. A slice serves a target only when its system, environment, architecture, binary interface, toolchain and configuration match, it was built from the current engine sources, it runs on the oldest system the app supports and it holds the graphics APIs the app asks for. The selector never builds: the commands that build apps build a missing SDK before they resolve, and the error says which SDK to build."""
 
     manifests: tuple[SdkManifest, ...]
     revision: str
@@ -33,6 +33,17 @@ class SdkSelector:
             raise IncompatibleSdk(f'No installed SDK holds the engine for "{target_name}" on "{target.architecture}". {build}')
         lines = "\n".join(f"  {reason}" for reason in reasons)
         raise IncompatibleSdk(f'No installed SDK serves "{target_name}" on "{target.architecture}". {build}\n{lines}')
+
+    def lacks(self, target: TargetId, engine_configuration: Configuration) -> bool:
+        """Tells whether no installed SDK of the current engine sources in a configuration holds a slice of the system, environment, architecture, binary interface and toolchain of a target, which only a build of its SDK makes."""
+        for manifest in self.manifests:
+            if manifest.configuration is not engine_configuration or manifest.revision != self.revision:
+                continue
+            for candidate in manifest.slices:
+                built = (candidate.system, candidate.environment, candidate.abi, candidate.toolchain) == (target.system, target.environment, target.abi, target.toolchain)
+                if built and target.architecture in candidate.architectures:
+                    return False
+        return True
 
     @staticmethod
     def mismatch(

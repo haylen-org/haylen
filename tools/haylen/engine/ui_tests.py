@@ -73,7 +73,7 @@ class UiTests:
         folder, tests = UiTests.tests(app)
 
         request = ProductRequest(folder, platform, Configuration(configuration), Configuration.RELEASE, None)
-        product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request)))
+        product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request, build_sdk=True)))
         ReportPrinter.verification(self.pipeline.verify(product), self.context.terminal, f"`{Repository.shown(product.path)}`")
         info = plistlib.loads((product.path / "Info.plist").read_bytes())
 

@@ -66,25 +66,22 @@ The guide to distribution in the documentation lists the minimum versions and ho
 
 The command line of Haylen needs only [uv](https://docs.astral.sh/uv), which brings the Python it runs on and its packages. Building the engine needs CMake, Ninja and a C++20 compiler, Apple platforms need Xcode, and Android needs the Android SDK. The command `haylen doctor` shows what this machine has and lacks for every target, and the other tools download when a build first needs them.
 
-The script `haylen` at the root of the repository, or `haylen.cmd` on Windows, runs the tooling through uv. From the root, build the desktop player once, then create an app and run it:
+The script `haylen` at the root of the repository, or `haylen.cmd` on Windows, runs the tooling through uv. From the root, create an app and run it:
 
 ```sh
-./haylen sdk build --target player
 ./haylen new ~/apps/my-app --name "My App" --identifier com.example.myapp
 ./haylen app run ~/apps/my-app
 ```
 
-The command `sdk build` compiles the engine into the SDK that the apps of a target link, and no other command compiles the engine for apps. The command `new` writes a starter app with its `haylen.json`, and `app run` plays it in the desktop player with hot reload. For another target, build its SDK once and name the target, such as `ios-simulator`, `android` or `web`:
+The command `new` writes a starter app with its `haylen.json`, and `app run` plays it in the desktop player with hot reload. The first run of a target compiles the engine into the SDK that the apps of the target link, as `sdk build` does, which takes from 15 minutes to an hour, and later runs reuse it. For another target, name it, such as `ios-simulator`, `android` or `web`:
 
 ```sh
-./haylen sdk build --target web
 ./haylen app run ~/apps/my-app --target web
 ```
 
 An app written in C++ starts the same way and goes through the same targets, with its C++ code compiled against the SDK:
 
 ```sh
-./haylen sdk build --target ios-simulator
 ./haylen new ~/apps/my-cpp-app --kind cpp
 ./haylen app run ~/apps/my-cpp-app --target ios-simulator
 ```
