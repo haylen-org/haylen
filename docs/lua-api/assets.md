@@ -381,7 +381,7 @@ Starts loading every asset of a group and returns a promise. The assets of the g
 
 The promise resolves once every asset finished, with a list of error messages of the form `'<path>: <error>'` for the assets that failed. An empty list means that everything loaded, and the promise never rejects. Preloading a group that is already loaded loads nothing again, reports progress `1` and resolves with its earlier errors. When the group unloads while it loads, its promises resolve on a later frame with the one error `The asset group "<name>" was unloaded before it finished loading.`.
 
-The optional `progress` function receives the fraction of finished assets, from above `0` to `1`, after each asset. An error raised by it shows the engine error screen. The optional `options` table takes `owner`, a table or a userdata such as a scene. The owner ends the progress function when it is released or collected, like the [owners of `haylen.events`](events.md#owners), and the progress function never keeps its owner alive. Without an `owner`, the progress function takes the default owner, which in development is the module that preloads at its top level.
+The optional `progress` function receives the fraction of the group that finished, from above `0` to `1`, as the download moves on and after each asset. When some assets of the group download first, the download takes the first half of the fraction and the finished assets the second half. Otherwise the fraction is the share of finished assets. An error raised by it shows the engine error screen. The optional `options` table takes `owner`, a table or a userdata such as a scene. The owner ends the progress function when it is released or collected, like the [owners of `haylen.events`](events.md#owners), and the progress function never keeps its owner alive. Without an `owner`, the progress function takes the default owner, which in development is the module that preloads at its top level.
 
 The group checks every entry before it starts to load. So an error leaves the group as it was, without the progress function of that call.
 
@@ -439,7 +439,7 @@ scene.push({
 
 ### assets.groupProgress(name)
 
-Returns the fraction of the group that finished loading, from `0` to `1`. A loaded group returns `1`. An unknown group raises `The asset group "<name>" is not defined.`.
+Returns the fraction of the group that finished loading, from `0` to `1`, the same fraction that the `progress` function of [`assets.preload`](#assetspreloadname-progress-options) receives. A loaded group returns `1`, and a group that is not loading returns `0`. An unknown group raises `The asset group "<name>" is not defined.`.
 
 ```lua
 local assets = require('haylen.assets')

@@ -240,6 +240,7 @@ class Manager final {
     void requireLocal(std::string_view path) const;
     [[nodiscard]] bool isLocal(std::string_view path) const;
     void loadGroup(const std::string& groupName, std::uint64_t generation, std::vector<Request> requests);
+    [[nodiscard]] static float getProgress(const Group& group) noexcept;
     void reportGroupProgress(Group& group) const;
     void finish(const std::string& key, const std::shared_ptr<void>& asset, const std::string& error);
 

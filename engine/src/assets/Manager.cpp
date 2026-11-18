@@ -838,9 +838,18 @@ void Manager::loadGroup(const std::string& groupName, std::uint64_t generation, 
     }
 }
 
+// The download of the assets that are not on the device takes its share first, and the finished assets the rest.
+float Manager::getProgress(const Group& group) noexcept {
+    if (group.loaded) {
+        return 1.0F;
+    }
+
+    const float loaded = group.total == 0 ? 0.0F : static_cast<float>(group.completed) / static_cast<float>(group.total);
+    return group.downloadShare * group.downloaded + (1.0F - group.downloadShare) * loaded;
+}
+
 void Manager::reportGroupProgress(Group& group) const {
-    const float loaded = static_cast<float>(group.completed) / static_cast<float>(group.total);
-    const float fraction = group.downloadShare * group.downloaded + (1.0F - group.downloadShare) * loaded;
+    const float fraction = getProgress(group);
     const std::vector<GroupProgress> listeners = group.progressListeners;
     for (const GroupProgress& listener : listeners) {
         listener(fraction);
@@ -875,6 +884,8 @@ void Manager::unloadGroup(std::string_view name) {
     group.errors.clear();
     group.progressListeners.clear();
     group.completed = 0;
+    group.downloadShare = 0.0F;
+    group.downloaded = 0.0F;
     group.loading = false;
     group.loaded = false;
     ++group.generation;
@@ -897,12 +908,7 @@ float Manager::getGroupProgress(std::string_view name) const {
         throw std::invalid_argument("The asset group \"" + std::string(name) + "\" is not defined.");
     }
 
-    const Group& group = found->second;
-    if (group.loaded) {
-        return 1.0F;
-    }
-
-    return group.total == 0 ? 0.0F : static_cast<float>(group.completed) / static_cast<float>(group.total);
+    return getProgress(found->second);
 }
 
 bool Manager::isGroupLoaded(std::string_view name) const {

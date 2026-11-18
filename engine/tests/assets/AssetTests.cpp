@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <functional>
 #include <map>
 #include <memory>
 #include <span>
@@ -304,6 +305,41 @@ TEST_F(AssetsManagerTest, PreloadsAndUnloadsGroups) {
     EXPECT_THROW(assets.unloadGroup("missing"), std::invalid_argument);
     EXPECT_THROW((void)assets.getGroupProgress("missing"), std::invalid_argument);
     EXPECT_FALSE(assets.isGroupLoaded("missing"));
+}
+
+// The download of the assets that are not on the device takes the first half of the progress, which the listeners and the query report alike.
+TEST_F(AssetsManagerTest, ReportsOneProgressForAGroupWhoseAssetsDownloadFirst) {
+    test::EngineFixture fixture(getAssetFiles());
+    assets::Manager& assets = fixture.engine().getAssets();
+    assets.defineGroups(assets.json("preload.json"));
+    Manager::GroupProgress downloading;
+    std::function<void(std::string)> downloaded;
+    bool delivered = false;
+    // clang-format off
+    assets.setAvailability({
+        .isLocal = [&delivered](std::string_view path) { return delivered || path != "data/config.json"; },
+        .acquire = [&downloading, &downloaded](std::vector<std::string>, Manager::GroupProgress progress, std::function<void(std::string)> done) {
+            downloading = std::move(progress);
+            downloaded = std::move(done);
+        },
+    });
+    // clang-format on
+
+    std::vector<float> reported;
+    bool loaded = false;
+    assets.preload("menu", [&reported](float fraction) { reported.push_back(fraction); }, [&loaded](std::vector<std::string>) { loaded = true; });
+    ASSERT_TRUE(downloading);
+    downloading(0.5F);
+    ASSERT_FALSE(reported.empty());
+    EXPECT_FLOAT_EQ(reported.back(), 0.25F);
+    EXPECT_FLOAT_EQ(assets.getGroupProgress("menu"), 0.25F);
+
+    delivered = true;
+    downloaded("");
+    EXPECT_FLOAT_EQ(assets.getGroupProgress("menu"), 0.5F);
+    ASSERT_TRUE(fixture.frameUntil([&loaded] { return loaded; }));
+    EXPECT_FLOAT_EQ(reported.back(), 1.0F);
+    EXPECT_FLOAT_EQ(assets.getGroupProgress("menu"), 1.0F);
 }
 
 TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
