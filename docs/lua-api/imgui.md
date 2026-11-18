@@ -47,7 +47,7 @@ scene.push({
 
 ### imgui.beginWindow(name, options)
 
-Starts a window and returns two booleans: whether its content is visible, and whether it is still open. The content is not visible while the window is collapsed. The title bar holds the title and the close button, as the windows of [`haylen.ui`](ui.md) do, and a double press on it folds the window to its title bar and opens it again. The argument `name` is the title and the identity of the window. The function `imgui.endWindow` must follow every `beginWindow`, whatever it returned. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
+Starts a window and returns two booleans: whether its content is visible, and whether it is still open. The content is not visible while the window is collapsed. The title bar holds the title, and the close button when `closable` is set, as the windows of [`haylen.ui`](ui.md) do, and a double press on it folds the window to its title bar and opens it again. The argument `name` is the title and the identity of the window. The function `imgui.endWindow` must follow every `beginWindow`, whatever it returned. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |

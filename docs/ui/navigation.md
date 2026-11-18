@@ -308,7 +308,7 @@ A stack draws only the top screen of each stack that shows, and both screens of 
 
 ## From C++
 
-The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert`, messages with `showMessage` in the area of `setMessageArea` and the routes of links with `createRouter`, which takes the options of `ui.showMessage` as JSON properties, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
+The classes of `haylen::ui` are the same model. `ui::Screen` builds its GUI in `build` and hears the same hooks. The `ui::Navigation` of the UI plugin creates stacks with `createStack`, tabs with `createTabs`, splits with `createSplit`, presentations with `present`, alerts with `presentAlert`, messages with `showMessage`, which takes the options of `ui.showMessage` as JSON properties, in the area of `setMessageArea`, and the routes of links with `createRouter`, and `goBack` takes the system back. A presentation tells that it left with its `dismissed` signal, and `getResult` returns its result as JSON. A `ui::Message` tells what happened with its signals `appeared`, `tapped`, `actionPressed` and `dismissed`, and `getReason` says why it left.
 
 ```cpp
 #include <memory>

@@ -50,7 +50,7 @@ A font file is data that anyone can make, and an app may download and launch ano
 
 - A file must hold glyphs, a character map, outlines in a `glyf`, `CFF` or `CFF2` table, and an ascender above its descender. Any other file raises `Font data is not a valid TrueType or OpenType font.` from `assets.font`, and `The font "<name>" is not a TrueType or OpenType font.` from `ui.addFont`.
 - A table that a file damages reads as missing. A glyph whose outline lies outside its table, or whose parts are made of the glyph itself, draws nothing, and a character map that counts more entries than it holds maps no character. A glyph that the character map or a substitution names past the glyphs of the file is the glyph of missing characters.
-- A glyph whose box reaches more than 65536 font units from its origin, farther than any coordinate of a font file can reach, has no box and draws nothing.
+- A glyph whose box reaches more than 65536 font units from its origin, farther than any coordinate of a font file can reach, has no box and draws nothing. The box of a color glyph, which its layers and their transforms paint, is held to the same reach.
 
 ```lua
 local assets = require('haylen.assets')
@@ -161,7 +161,7 @@ print(font.nativeSize, font:lineHeight(32))
 
 A family groups the faces of one typeface: regular, bold, italic, bold italic and mono. It adds fallback fonts for the characters its faces lack. A fallback can be an Arabic, Hebrew, Devanagari or Thai font, a CJK font for Chinese and Japanese, or a symbol font for arrows and stars.
 
-Layout picks the font of each run from its style and from each character, where a character is a letter with its marks as one unit. It takes the first font that has every code point of the character: the face, then each fallback in order, then the [fonts of the system](#fonts-of-the-system) that arrived. When none has it, the face draws its missing glyph box. Spaces, punctuation and digits keep the font of the text before them, so an Arabic sentence stays in the Arabic font up to its full stop. The fonts of the Noto family cover every script with a consistent look, and a fallback for each script the game shows is enough.
+Layout picks the font of each run from its style and from each character, where a character is a letter with its marks as one unit. A character that shows as an emoji, by default or through U+FE0F, takes the first of these fonts that draws it as a color glyph, and one that U+FE0E asks to show as text the first that draws it in the color of the text. Any other character takes the first font that has every code point of the character: the face, then each fallback in order, then the [fonts of the system](#fonts-of-the-system) that arrived. When none has every code point, the first font that has its base letter draws it. When none has it, the face draws its missing glyph box. Spaces, punctuation and digits keep the font of the text before them, so an Arabic sentence stays in the Arabic font up to its full stop. The fonts of the Noto family cover every script with a consistent look, and a fallback for each script the game shows is enough.
 
 A style that the family has no face for is synthesized from the face it has:
 
@@ -188,7 +188,7 @@ local face, syntheticBold, syntheticItalic = story:select({bold = true, italic =
 
 ## Fonts of the system
 
-A person types what an app never planned for, such as a name in Chinese in a game that ships only a Latin font. So a family draws what none of its fonts holds with the fonts of the system. Layout asks the system for the font of each character that no font of the family holds, once for each character. The engine looks the font up on the I/O pool, through the API of each platform, and reads the face it names there once, so a run of Chinese reads its font once. Until the face arrives, the character draws the missing glyph box of the face, and the text lays itself out again when it arrives, plain text at its next draw and rich text at its next update. A character that no font of the system draws keeps the box and is never asked for again. The function `graphics.systemFonts()` lists the faces that arrived.
+A person types what an app never planned for, such as a name in Chinese in a game that ships only a Latin font. So a family draws what none of its fonts holds with the fonts of the system. Layout asks the system for the font of each character that no font of the family holds, by the first code point of the character, once for each code point. The engine looks the font up on the I/O pool, through the API of each platform, and reads the face it names there once, so a run of Chinese reads its font once. Until the face arrives, the character draws the missing glyph box of the face, and the text lays itself out again when it arrives, plain text at its next draw and rich text at its next update. A character that no font of the system draws keeps the box and is never asked for again. The function `graphics.systemFonts()` lists the faces that arrived.
 
 Every family that the engine and the app make uses the fonts of the system: the default family, the families of the UI and of `ui.addFont`, the families of `graphics.newFontFamily` and the family that a font becomes when rich text takes it. A family made with `systemFonts = false` draws the box instead, which keeps the look of the text the same on every device. A `Font` drawn on its own, such as `graphics2d.drawText(font, ...)`, uses only itself.
 
@@ -407,7 +407,7 @@ Plain text lays out in these steps:
 
 Plain text is a document of one paragraph per line. The carriage return of CRLF stays at the end of its line and draws nothing, so the characters of the layout keep counting the code points of the text.
 
-Every font and every family keeps its 512 most recent plain text layouts. They are found by the text and by the style fields that change the layout: size, wrap width, balance, line spacing, alignment, direction, language, bold, italic, ligatures and code. The size, the wrap width and the line spacing must be finite numbers. So text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
+Every font and every family keeps its 512 most recent plain text layouts. They are found by the text and by the style fields that change the layout: size, wrap width and whether it wraps, height and smallest scale of a fit, balance, line spacing, alignment, direction, language, bold, italic, underline, strike, ligatures and code. The size, the wrap width, the height, the smallest scale and the line spacing must be finite numbers. So text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
 
 Rich text lays each paragraph out into lines. Lines wrap where the [line breaking](#line-breaking) rules allow and around images, and inside a word only when the word alone is wider than a line. Every line stands on one baseline and is as tall as its tallest text and images. Lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images are centered by default on the middle of the text of their style. The value `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
 
@@ -464,7 +464,7 @@ Rich text is text with tags in square brackets:
 | `[size=24]`, `[size=150%]` | An absolute size, or a size relative to the text around it. |
 | `[outline=3 color=c]` | An outline 3 pixels wide, black by default. |
 | `[shadow=2,3 color=c blur=2]` | A shadow at an offset, 2,2 and half transparent black by default, softened by the blur. |
-| `[glow=6 color=c]` | A glow that fades out 6 pixels past the text, white by default. |
+| `[glow=6 color=c]` | A glow that fades out 6 pixels past the text, 4 pixels without a value, white by default. |
 | `[gradient=c1,c2 offsets=0,1 angle=1.57]` | Fills the glyphs with 1 to 4 colors that blend across each line, spread evenly unless `offsets` gives one offset from 0 to 1 for each color in increasing order, and from the top down unless `angle` names a direction in radians, as [gradient text](#gradient-text) explains. |
 | `[alpha=0.5]` | Multiplies the opacity of the text, images and icons inside. |
 | `[url=payload]`, `[url]text[/url]` | A link, underlined unless the host turns that off, whose payload hit tests and the UI report. Without a payload the text is the payload. |
@@ -536,6 +536,13 @@ Any other tag name runs a text effect of that name. Malformed markup raises an e
 | `A "[dropcap]" needs some text.` | The drop cap is empty. |
 | `A "[dropcap]" holds plain text, not "[<name>]".` | The drop cap holds a tag. |
 | `A "[dropcap]" cannot hold a line break.` | The drop cap holds a line break. |
+| `A "[gradient]" holds at most 4 colors.` | A gradient lists more colors. |
+| `The "offsets" of "[gradient]" give one offset for each color.` | A gradient lists another count of offsets. |
+| `The "offsets" of "[gradient]" go from 0 to 1 in increasing order.` | An offset of a gradient is out of range or out of order. |
+| `The "bullet" of "[ul]" is one line of text.` | The bullet of a list holds a line break. |
+| `Rich text nests at most 256 tags inside each other.` | Tags open inside each other deeper than that. |
+
+Markup that parses can still name what the host does not have, which raises an error when the text lays out: `The rich text uses the font "<name>", which is not registered.` for a `[font]` that the fonts of the host lack, `The rich text uses the icon "<name>", which is not registered.` for an `[icon]` that no one registered, and `The rich text has no image source for "[img=<path>]".` for an `[img]` where the host gives no images.
 
 ## Effects
 

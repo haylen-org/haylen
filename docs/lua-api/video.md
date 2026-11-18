@@ -44,7 +44,7 @@ Returns a [`Video`](#video) of the file at `path`, relative to `content/`. The v
 | `processMode` | string | `'inherit'` | Whether the pause of the game holds the video, its picture and its sound. The modes `'inherit'` and `'pausable'` hold it, `'whenPaused'` plays only while the game is paused, `'always'` never holds it and `'disabled'` always does. |
 | `owner` | table or userdata | the default owner | Releases the video when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. |
 
-A path that does not exist raises `The video "<path>" does not exist.`, and an unknown option raises `Unknown option "<key>".`. A rate out of range raises `The rate of a video must be from 0.25 to 4.`, and a negative volume raises `The volume of a video must be zero or positive.`.
+A path that does not exist raises `The video "<path>" does not exist.`, an unknown option raises `Unknown option "<key>".`, and a bus that the mixer does not have raises `The audio bus "<bus>" does not exist.`. A rate out of range raises `The rate of a video must be from 0.25 to 4.`, and a negative volume raises `The volume of a video must be zero or positive.`.
 
 ```lua
 local video = require('haylen.video')
@@ -54,7 +54,7 @@ local background = video.load('videos/sea.mp4', {autoplay = true, loop = true, m
 
 ### video.loadAsync(path, options)
 
-Takes the arguments of `video.load` and returns a promise. The promise resolves with the `Video` once it is ready, or rejects with the reason it failed.
+Takes the arguments of `video.load` and returns a promise. The promise resolves with the `Video` once it is ready, or rejects with the reason it failed. A video that its owner releases before it is ready leaves the promise unsettled, as the tasks of that owner end with it.
 
 ```lua
 local async = require('async')
@@ -178,7 +178,7 @@ end)
 
 ### clip:release()
 
-Stops the video and its sound for good. The texture keeps the last frame it showed.
+Stops the video and its sound for good. The texture keeps the last frame it showed, and a later `play` or `seek` raises `The video was released, so it no longer plays.`.
 
 ```lua
 local video = require('haylen.video')
@@ -195,7 +195,7 @@ The method [`clip:on`](#cliponevent-fn-options) listens to these events, which r
 
 | Event | When | Data |
 | --- | --- | --- |
-| `ready` | The video opened and shows its first frame. | None. |
+| `ready` | The video opened, so its size and duration are known, and its first frame shows once it decoded. | None. |
 | `ended` | The video played to its end without `loop`. | None. |
 | `error` | The video cannot play. | A table `{message, code}`. The `code` is `'unsupported'` on a platform without a decoder of video files, and `'failed'` for a file the platform cannot decode or that breaks while it plays. |
 
@@ -229,6 +229,8 @@ end)
 | `The rate of a video must be from 0.25 to 4.` | The option or property `rate` is out of range. |
 | `The volume of a video must be zero or positive.` | The option or property `volume` is negative. |
 | `A video seeks to a finite number of seconds.` | The time of `clip:seek` or of the property `time` is not finite. |
+| `The audio bus "<bus>" does not exist.` | The option `bus` of `video.load` or `video.loadAsync` names a bus that the mixer does not have. |
+| `The video was released, so it no longer plays.` | The method `clip:play` or `clip:seek` ran after `clip:release`. |
 | `Unknown video event "<event>". Videos report "ready", "ended" and "error".` | The method `clip:on` names another event. |
 
 ## C++

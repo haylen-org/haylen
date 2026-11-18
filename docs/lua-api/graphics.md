@@ -65,7 +65,7 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 | `wrap` | string | `'clamp'` | The `'clamp'`, `'repeat'` or `'mirror'` addressing. |
 | `mipmaps` | boolean | `true` with the `'linear'` filter, `false` otherwise | Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, blended between them with the `'linear'` filter. A dynamic texture never has them, and one with `mipmaps = true` raises `A texture that changes in place has no mipmaps.`. |
 
-A size of 0 or less raises `Texture dimensions must be positive.`, and a size above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raises `Texture dimensions exceed the device limit.`. A filled texture checks its size before it makes any pixel.
+A size of 0 or less raises `Texture dimensions must be positive.`, and a size above [`graphics.maxTextureSize()`](#graphicsmaxtexturesize) raises `Texture dimensions exceed the device limit.`. A filled texture checks its size before it makes any pixel. With `pixels`, the image of the pixels checks its size first: a negative size raises `Image dimensions cannot be negative.`, a side above 16384 raises `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.`, and pixels of another length, an empty string among them, raise `Image pixel data does not match its dimensions.`.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1032,7 +1032,7 @@ print(family.regular.nativeSize, family.bold, family.italic, family.boldItalic, 
 
 ### family:select(style)
 
-Returns the face that draws a style, followed by whether bold and whether italic are synthesized because the family lacks the real face. The table `style` takes `bold`, `italic` and `mono`.
+Returns the face that draws a style, followed by whether bold and whether italic are synthesized because the family lacks the real face, and `false`, since a face of the family never waits for the fonts of the system. The table `style` takes `bold`, `italic` and `mono`.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1047,10 +1047,12 @@ print(face == family.regular, syntheticBold, syntheticItalic)
 
 Returns the font that draws `character` in a style, followed by whether bold and italic are synthesized and whether a font of the system that draws it is still loading. The font is the first of these that fits:
 
-- The selected face, when it has the glyph.
-- The first fallback that has the glyph, which synthesizes the styles asked for.
-- The first font of the system that arrived and has the glyph, in a family that uses them.
-- The selected face again, which draws its missing glyph. A family that uses the fonts of the system asks them for the character then, once, and the fourth value is `true` until the answer comes. The character is a code point or a string, which may hold a letter with its marks. A font draws the string only when it has a glyph for every character of it. The table `style` takes `bold`, `italic` and `mono`, and an empty string raises a `bad argument` error that ends with `expected a character`.
+- For a character that shows as an emoji, by default or through U+FE0F, the first of the fonts below that draws it as a color glyph, and for one that U+FE0E asks to show as text, the first that draws it in the color of the text.
+- The selected face, when it has a glyph for every code point of the character.
+- The first fallback that has them, which synthesizes the styles asked for.
+- The first font of the system that arrived and has them, in a family that uses them.
+- The selected face or the first fallback that has the base letter of the character, without its marks.
+- The selected face again, which draws its missing glyph. A family that uses the fonts of the system asks them for the character then, once, and the fourth value is `true` until the answer comes. The character is a code point or a string, which may hold a letter with its marks. The table `style` takes `bold`, `italic` and `mono`, and an empty string raises a `bad argument` error that ends with `expected a character`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -1165,7 +1167,7 @@ print(star.width, star.height, star == assets.load('icons/star.svg'))
 
 ### vectorImage:rasterize(scale, options)
 
-Rasterizes the whole image at `scale`, in pixels per unit of the image, on a worker thread. It returns a promise of a `Texture` of `ceil(width * scale)` by `ceil(height * scale)` pixels, for draws that need a texture of the image, such as a material or a sprite batch. The UI draws `.svg` files itself, as its [image values](ui.md#value-types) describe. The table `options` takes `filter` and `wrap` like `graphics.newTexture`, with `filter = 'linear'` by default.
+Rasterizes the whole image at `scale`, in pixels per unit of the image, on a worker thread. It returns a promise of a `Texture` of `ceil(width * scale)` by `ceil(height * scale)` pixels, for draws that need a texture of the image, such as a material or a sprite batch. The UI draws `.svg` files itself, as its [image values](ui.md#value-types) describe. The table `options` takes `filter`, `wrap` and `mipmaps` like `graphics.newTexture`, with `filter = 'linear'` by default.
 
 A scale that is not positive, or whose raster is larger than [`graphics.maxTextureSize()`](#graphicsmaxtexturesize), raises `A vector image rasterizes at a positive scale whose raster fits the maximum texture size of the device.`. A raster whose texture finds no room on the device, such as when the texture pool is full, makes `:await()` return `nil` and the message of the device.
 
@@ -1188,6 +1190,7 @@ These messages come from the functions and methods of the module.
 | --- | --- |
 | `Texture dimensions must be positive.` | A texture or render target has a size of 0 or less. |
 | `Texture dimensions exceed the device limit.` | A texture or render target is larger than `graphics.maxTextureSize()`. |
+| `Image dimensions cannot be negative.` | The size of `graphics.newTexture` with `pixels` is negative. |
 | `Image pixel data does not match its dimensions.` | The `pixels` of `graphics.newTexture` have another length than `width * height * 4`. |
 | `A texture that changes in place has no mipmaps.` | A dynamic texture asked for mipmaps. |
 | `A render target has no mipmaps.` | A render target asked for mipmaps. |
@@ -1198,9 +1201,12 @@ These messages come from the functions and methods of the module.
 | `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.` | A side of `graphics.newImage` is longer than `graphics.maxImageSize()`. |
 | `The image of <width> by <height> pixels is too large to decode. The image may have at most <maxSize> pixels on a side.` | The header of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` declares a side longer than the option `maxSize`. |
 | `The image could not be decoded, because its data holds more than an image of <width> by <height> pixels.` | The compressed data of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` inflates past the size that their header declares, so the file is damaged. |
+| `The image of <width> by <height> pixels has no pixels to decode.` | The header of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` declares a side of no pixels. |
+| `The encoded image of <count> bytes is too large to decode. An encoded image holds at most 2147483647 bytes.` | The bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` are longer than a decoder reads. |
 | `The option "maxSize" of a decode is from 1 to 16384 pixels.` | The option `maxSize` of `graphics.decodeImage` or `graphics.decodeImageAsync` is out of range. |
 | `A read needs a valid render target.` | The target of `graphics.readTarget` is not valid. |
 | `The area <x>, <y>, <w> by <h> is not inside the image of <w> by <h> pixels.` | The area of `image:crop` lies outside the image. |
+| `The corner and the size of an area of an image are numbers of pixels from -1073741824 to 1073741824.` | An area of `image:fill`, `image:fillGradient`, `image:blit`, `image:crop` or another method of an image is not finite or lies farther away. |
 | `An empty image has no PNG file.` | The image of `image:encodePng` has no pixels. |
 | `A blur has a radius from 0 to 64 pixels.` | The radius of `image:blur` is out of range. |
 | `A sharpening has an amount of 0 or more.` | The amount of `image:sharpen` is negative. |

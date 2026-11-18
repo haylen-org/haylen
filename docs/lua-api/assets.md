@@ -720,6 +720,7 @@ end
 | `The font option "<option>" must be a whole number from -2147483648 to 2147483647, not <value>.` | The `spread`, `atlasSize` or `face` of a font has a fraction or is out of range. |
 | `The font option "bakeSize" must be a finite number that a float holds, not <value>.` | The `bakeSize` of a font is beyond the range of a float. |
 | `Font data is not a valid TrueType or OpenType font.` | A `.ttf` or `.otf` file has no glyphs, no character map, no outlines or no ascender above its descender, as the [text guide](../graphics/text.md#fonts-from-any-package) explains. |
+| `The face of a TrueType font is an index from 0.` | The `face` of a font is negative. |
 | `The font data holds <count> faces, so it has no face <face>.` | The `face` of a font is past the faces of its collection. |
 | `The upload budget cannot be negative.` | The budget of `assets.setUploadBudget` is below `0`. |
 | `The asset group "<name>" is not defined.` | A group function names a group that was never defined. |

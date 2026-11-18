@@ -15,4 +15,4 @@ The UI draws the interface players see and the tools developers use, in design u
 | Name | Description | Link |
 | --- | --- | --- |
 | `haylen.imgui` | Dear ImGui windows for debug panels and tools. | [`lua-api/imgui.md`](../lua-api/imgui.md) |
-| `haylen.ui` | The 64 component kinds of retained GUIs with their properties and events, layout and anchors, glass surfaces, themes and styles, focus and navigation, accessibility, long collections, screens with their stacks, tabs, splits and presentations, and the types `Gui`, `UiCollection`, `UiCell`, `UiTransform`, `NavigationStack`, `NavigationTabs`, `NavigationSplit` and `Presentation`. | [`lua-api/ui.md`](../lua-api/ui.md) |
+| `haylen.ui` | The 62 component kinds of retained GUIs with their properties and events, layout and anchors, glass surfaces, themes and styles, focus and navigation, accessibility, long collections, screens with their stacks, tabs, splits, presentations, messages and routes, and the types `Gui`, `UiCollection`, `UiCell`, `UiTransform`, `NavigationStack`, `NavigationTabs`, `NavigationSplit`, `Presentation`, `Message` and `Router`. | [`lua-api/ui.md`](../lua-api/ui.md) |

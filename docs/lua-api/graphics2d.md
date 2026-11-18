@@ -3209,7 +3209,7 @@ scene.push({
 
 Draws `markup` with the top-left corner of its block at `x`, `y`. The table `options` takes the [rich text options](#rich-text-options), `tint`, a `Color` that multiplies every color of the text and is white by default, and the keys of the [draw order](#draw-order). Its effects follow the time the app has run.
 
-The text plugin keeps the layout of every markup and options that a frame draws or measures, compared by their values. So text drawn the same way every frame lays out once and its frames allocate nothing. At the end of each frame it forgets the layouts that the frame did not use. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text whose markup changes often, such as a number that counts every frame, lays out at each change, and a `RichText` changed with `text.markup` costs the same.
+The text plugin keeps the layout of every markup and options that a frame draws or measures, compared by their values, with families and fonts compared by identity. A font given where a family goes stands for the same family each time. So text drawn the same way every frame lays out once and its frames allocate nothing. At the end of each frame it forgets the layouts that the frame did not use. The images of `[img]` tags load once and stay loaded while frames keep drawing them, and they go back to the assets after a frame that no longer draws them. Text whose markup changes often, such as a number that counts every frame, lays out at each change, and a `RichText` changed with `text.markup` costs the same.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

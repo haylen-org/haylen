@@ -121,7 +121,6 @@ On tvOS, the text field presents the fullscreen keyboard of the system, and a te
 While a field edits, an invisible `NSTextView` over it is the first responder of the window. It brings marked text, dead keys, the accent menu of a held key, the emoji picker and dictation. It is the only text input of the window: the runtime never starts the text input of SDL on macOS, which would read every key a second time and open the accent menu in play.
 
 - Spelling correction, grammar checks, text replacement, completion, inline predictions, math completion and the writing tools stay off for every field. The view is invisible, so the correction panel and the predictions would change text that the user cannot see.
-
 - The Edit menu of the app gives it Undo, Redo, Cut, Copy, Paste, Delete and Select All, with their Command shortcuts. The text system of AppKit adds the moves by word, line and document with Option and Command.
 - The selector `insertNewline:` submits a single line, `insertTab:` moves on, and `cancelOperation:` cancels.
 - Clicks pass through it to the view of the app, which places the caret itself. When the editing ends, the view of the app becomes the first responder again.

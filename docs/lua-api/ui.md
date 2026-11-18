@@ -29,7 +29,7 @@ scene.push({
 
 ## Component kinds
 
-Every kind is also a function of the module, so `ui.button{text = 'Play'}` builds a button node. The function [`ui.kinds()`](#uikinds) lists the 64 kinds. Every kind takes the [common properties](#common-properties) besides its own. Every kind reports [the events of every kind](#the-events-of-every-kind), and its section lists the events it adds.
+Every kind is also a function of the module, so `ui.button{text = 'Play'}` builds a button node. The function [`ui.kinds()`](#uikinds) lists the 62 kinds. Every kind takes the [common properties](#common-properties) besides its own. Every kind reports [the events of every kind](#the-events-of-every-kind), and its section lists the events it adds.
 
 | Kind | Group | What it is |
 | --- | --- | --- |
@@ -375,7 +375,7 @@ A carousel shows pages one at a time that slide sideways, such as a tutorial or 
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `page` | integer from 1 | `1` | The page that shows. |
+| `page` | integer from 1 to 1048576 | `1` | The page that shows. |
 | `loop` | boolean | `false` | Goes on from the last page to the first, and back. |
 | `indicators` | boolean | `true` | Shows the page dots under the pages. Without them, the whole carousel takes the focus. |
 | `arrows` | boolean | `true` | Shows the arrow buttons on the sides. |
@@ -425,7 +425,7 @@ ui.mount(ui.formField{
 
 ### ui.splitter(properties)
 
-A splitter shows two children beside each other, or one above the other, with a handle between them. The player drags the handle. Without a `height`, a side-by-side splitter is as tall as its taller child at its share of the width. A stacked splitter is as tall as both children. Releasing the handle reports `resize`, with the new `ratio`.
+A splitter shows two children beside each other, or one above the other, with a handle between them. The player drags the handle. Without a `height`, a side-by-side splitter is as tall as its taller child at its share of the width. A stacked splitter is as tall as both children. Releasing the handle reports `resize`, with the new `ratio`. The handle takes the focus, and the arrows along the split move it by 0.05, each step reporting `resize`.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -994,7 +994,7 @@ A stepper shows a value between two arrows that step it, the way console setting
 | `step` | number above 0 | `1` | The amount one step adds or removes. |
 | `decimals` | integer from 0 to 6 | `0` | The decimals shown. |
 | `items` | items | empty | Options to step through instead of a number. The stepper skips disabled ones. Items use `id`, `text` and `enabled`. |
-| `selected` | string | first item | The id of the selected option. |
+| `selected` | string | first enabled item | The id of the selected option. |
 | `wrap` | boolean | `false` | Lets the arrows, left and right go on from one end to the other. |
 
 A minimum above the maximum raises `The property "min" of a "stepper" must not be greater than "max".`. A step of zero or less raises `The property "step" of a "stepper" must be greater than zero.`.
@@ -1411,7 +1411,7 @@ The player scrolls a collection in these ways:
 | `cellAspect` | number from 0 to 100 | `0` | Above zero, grid cells that span less than the whole line are this many times as long along the axis as across. So they need no measuring. |
 | `gap` | number from 0 to 10000 | theme `itemSpacing` | The space between lines and between lanes. |
 | `padding` | insets | `0` | The space between the edges of the view and the content. It scrolls with the content. |
-| `placeholder` | string | none | The type that shows the items of pages that did not load yet. Without it, those items take their estimated length and draw nothing. |
+| `placeholder` | string | none | The type that shows the items of pages that did not load yet. Without it, those items take the theme `listRowHeight` and draw nothing. |
 | `stickToEnd` | boolean | `false` | Lays short content against the end edge. While the view is at the end, it stays at the end as items arrive, as a chat does. |
 | `snap` | string | `'none'` | Once the content rests, `'item'` settles on the start of the nearest item, `'center'` centers the nearest item, and `'page'` settles on whole views. |
 | `scrollbar` | boolean | `true` | Shows the scroll bar while the content is longer than the view. It fades while the content rests after touch input, and its lane stays. |
@@ -1434,7 +1434,7 @@ Indices count from 1 in every event.
 
 | Event | Values | When |
 | --- | --- | --- |
-| `select` | `item`, `index`, and `selected` unless `selection` is `'none'` | The player pressed an interactive cell with the pointer, a tap or accept. In multiple selection, a press flips the selection of the item. A press on the selected item of a single selection reports it again. |
+| `select` | `item`, `index`, and `selected` unless `selection` is `'none'` | The player pressed an interactive cell with the pointer, a tap or accept, or the focus moved to an item that was not selected while `selectionFollowsFocus` is on. In multiple selection, a press flips the selection of the item. A press on the selected item of a single selection reports it again. |
 | `itemFocus` | `item`, `index` | The focus moved to another item of the collection. |
 | `visibleChange` | `first`, `last` | The indices of the first and last items in view changed. It reports at most once per frame. |
 | `scrollEnd` | `offset`, `item` | Scrolling by the player or a `scrollTo` came to rest, with the first item in view whole. |
@@ -1535,7 +1535,7 @@ A dialog is the card of a dialog, with a title, a message, optional children and
 | `title` | text | none | The title, in the heading font. |
 | `message` | text | none | The message under the title. |
 | `glass` | boolean | `false` | Draws the dialog on [glass](#glass-surfaces), without its shadow, over the dimmed screen behind it. |
-| `buttons` | list of buttons | empty | The answer buttons, lined up at the bottom right in list order. |
+| `buttons` | list of buttons | empty | The answer buttons, lined up at the bottom end of the dialog in list order. |
 
 A button is a table with a unique `id` string, a `text` and a `variant`. Buttons without an id raise `The property "buttons" of a "dialog" must hold objects with an id.`. A repeated id raises `The property "buttons" of a "dialog" uses the id "<id>" more than once.`. An unknown variant raises `The property "buttons" of a "dialog" has a variant other than "default", "primary", "destructive", "toolbar", "icon" or "link".`.
 
@@ -2146,7 +2146,7 @@ Each error of a style starts with the property that holds it:
 - `The property "style" of a "<kind>" must be a table with "colors", "metrics", "fonts", "surfaces" or "sounds".`
 - `Unknown key "<key>" in the property "style" of a "<kind>".`
 - `The property "style" of a "<kind>" must hold a table in "<section>".`
-- `The property "style" of a "<kind>" has no color role named "<name>".`, and the same for metrics, font roles and surfaces.
+- `The property "style" of a "<kind>" has no color role named "<name>".`, and the same for metrics, font roles, surfaces and sounds.
 - `The color "<name>" of the property "style" of a "<kind>" must be a color such as "#FF2E7D32".`, for a value that starts with `#` or is not a string.
 - `The color "<name>" of the property "style" of a "<kind>" must name a theme color such as "accent" or "textMuted".`, for an unknown role.
 - `The metric "<name>" of the property "style" of a "<kind>" must be a non-negative number.`
@@ -2155,7 +2155,7 @@ Each error of a style starts with the property that holds it:
 - `The image of the surface "<name>" of the property "style" of a "<kind>" must be a path.`
 - `The sound "<name>" of the property "style" of a "<kind>" must be a table or "false".`, and the errors of [theme sounds](#theme-sounds) for its keys, such as `The sound "<name>" of the property "style" of a "<kind>" must name a sound file in "sound".`.
 
-The other values of a surface image are checked once its image has loaded, with the errors of theme surfaces.
+A key that a surface image does not have raises `Unknown key "<key>" in the surface "<name>" of the property "style" of a "<kind>".` at once. The other values of a surface image are checked once its image has loaded, with the errors of theme surfaces.
 
 ### Theme colors
 
@@ -2577,7 +2577,7 @@ The UI moves the focus with these actions of [`haylen.input`](input.md#action-ma
 ### How the focus moves
 
 - A direction moves the focus to the nearest control in that direction, and prefers controls in line with the focused one. A node that names a neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown` sends it there instead.
-- Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls and the page dots of a carousel.
+- Some controls use left and right themselves while they have the focus: sliders, range sliders, steppers, segmented controls, the page dots of a carousel and the handle of a splitter.
 - Tab and Shift Tab walk the controls in the order they draw, also out of a text field being edited. A text field they reach starts editing. While nothing has the focus, Tab goes to the first control of the topmost GUI with controls, and Shift Tab to its last one. So a keyboard alone, as a screen reader user has, enters a GUI that focuses nothing by itself.
 - The focus stays inside its GUI, or inside the GUIs that share it with [`sharedFocus`](#guisharedfocus). A modal presentation and a menu keep it until they close, and then it returns to where it was.
 - A GUI that stops drawing keeps the control that had the focus. That happens to the GUI of a covered scene, or to a GUI with `visible` set to `false`. Once the GUI draws again, the control gets the focus back, unless the focus moved elsewhere meanwhile.
@@ -2855,7 +2855,8 @@ gui:collection('tasks'):setItems(tasks)
 
 The collection reports these errors when the GUI mounts or a `set` changes it:
 
-- `A "collection" needs at least one type in "types".` and `The property "types" of a "collection" must map type names to type definitions.`
+- `A "collection" needs at least one type in "types".` and `The property "types" of a "collection" must map type names to type definitions.`, which a table of more than 4096 types raises too.
+- `The template of the type "<type>" has a problem. A template is limited to 64 levels.` and `The component kind "<kind>" takes at most <count> children.`
 - `The type "<type>" of a "collection" needs a "template" node.` and `Unknown key "<key>" in "collection.types.<type>".`
 - `The "estimatedSize" of the type "<type>" must be a number from 0 to 100000.`
 - `The "span" of the type "<type>" must be a whole number from 1 to 64 or "full".`
@@ -3062,12 +3063,12 @@ Shows a list too long to build at once, which a loader gives a page at a time. T
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `count` | integer, at least 0 | required | The number of items. |
+| `count` | integer from 0 to 16777216 | required | The number of items. |
 | `load` | function | required | The function `load(first, count)`, which returns a list of `count` items from the index `first`, or a promise of one, such as the promise of `jobs.spawn`. |
 | `pageSize` | integer, at least 1 | `50` | The items of a page. |
 | `maxPages` | integer, at least 1 | `16` | The pages that stay loaded. |
 
-An unknown option raises `Unknown option "<key>".`. A missing count raises `The option "count" is required.`, and a negative one `The option "count" must be at least 0.`. A page size or a page limit below 1 raises `The option "pageSize" must be at least 1.`, or the same for `maxPages`. A `load` that is not a function raises `The option "load" must be a function.`.
+An unknown option raises `Unknown option "<key>".`. A missing count raises `The option "count" is required.`, and a count out of range `The option "count" must be from 0 to 16777216.`. A page size or a page limit below 1 raises `The option "pageSize" must be at least 1.`, or the same for `maxPages`. A `load` that is not a function raises `The option "load" must be a function.`.
 
 A loader that fails stops the app, like an error inside a binder:
 
@@ -3305,7 +3306,7 @@ scene.push({
 
 ### collection:saveState()
 
-Returns where the collection is, so that `restoreState` brings it back later. The table holds three fields. The field `item` is the id of the first item in view, and `distance` is how far its start lies from the start of the view. The field `focused` is the item that has the focus. It keeps a place by item rather than by offset.
+Returns where the collection is, so that `restoreState` brings it back later. The table holds up to three fields. The field `item` is the id of the first item in view, and `distance` is how far its start lies from the start of the view. The field `focused` is the item that has the focus. Before the first draw, or once every item in view left, the table has no `item`, and without a focused item it has no `focused`. It keeps a place by item rather than by offset.
 
 ```lua
 local ui = require('haylen.ui')
@@ -3570,7 +3571,7 @@ ui.mount(card)
 
 ### ui.kinds()
 
-Returns a sorted list of the names of every component kind: the 64 kinds of this page, and the kinds that C++ plugins register.
+Returns a sorted list of the names of every component kind: the 62 kinds of this page, and the kinds that C++ plugins register.
 
 ```lua
 local ui = require('haylen.ui')
@@ -3807,7 +3808,7 @@ ui.mount(ui.column{
 
 ### The events of every kind
 
-Every node reports these events, each only while the node has a handler for it, since watching them costs a check every frame. They reach the listeners of `ui.onEvent` for those nodes too. A GUI mounted from C++ turns them on with `Gui::listen`.
+Every node reports these events. The events `focus` and `blur` always report, and the others report only while the node has a handler for them, since watching them costs a check every frame. They reach the listeners of `ui.onEvent` for those nodes too. A GUI mounted from C++ turns them on with `Gui::listen`.
 
 | Event | Values | When |
 | --- | --- | --- |
@@ -3939,7 +3940,7 @@ Creates tabs that each keep a stack in the area of the node `id` of the mounted 
 | `owner` | table or userdata | the default owner | Closes the tabs when it ends. |
 | `onChange` | function | none | Hears every change of the selected tab with the table `{selected, previous}`. |
 
-A list that is missing raises `Navigation tabs list their tabs in "tabs", each a table with an "id" and a "root" function.`. An empty list raises `Navigation tabs need at least one tab.`, a repeated id raises `The navigation tab "<id>" is given more than once.`, a selected id that no tab has raises `There is no navigation tab with the id "<id>".` and a root that returns no screen raises `A screen is a table with a "build" method, not <type>.`.
+A list that is missing raises `Navigation tabs list their tabs in "tabs", each a table with an "id" and a "root" function.`. An empty list raises `Navigation tabs need at least one tab.`, a repeated id raises `The navigation tab "<id>" is given more than once.`, a selected id that no tab has raises `There is no navigation tab with the id "<id>".` a tab without an id raises `Every navigation tab needs an id.`, a root that is not a function raises `The "root" option is a function that returns a screen.` and a root that returns no screen raises `A screen is a table with a "build" method, not <type>.`.
 
 ```lua
 local tabs = ui.navigationTabs{gui = frame, id = 'middle', tabs = {
@@ -3961,7 +3962,7 @@ Creates a list and its detail and returns their [`NavigationSplit`](#navigations
 | `collapsed` | boolean | `false` | Whether the split starts collapsed. |
 | `owner` | table or userdata | the default owner | Closes the split when it ends. |
 
-A missing area raises `A navigation split names the area of its list with "primary", such as {gui = frame, id = "list"}.` or the same sentence for `detail`, and a missing root raises `A screen is a table with a "build" method, not nil.`.
+A missing area raises `A navigation split names the area of its list with "primary", such as {gui = frame, id = "list"}.` or the same sentence for `detail`, a missing root raises `A screen is a table with a "build" method, not nil.` and a placeholder that is not a function raises `The "placeholder" option is a function that returns a screen.`.
 
 ```lua
 local split = ui.navigationSplit{primary = {gui = frame, id = 'list'}, detail = {gui = frame, id = 'detail'}, root = Inbox(), placeholder = function() return Pick() end}
@@ -4003,7 +4004,7 @@ A screen is compact while its safe area is narrower than 824 UI units, or than t
 
 A drag on the grabber, or on a part of the surface that no control takes, moves a sheet between its detents and glides it to the detent nearest to where it was heading. A sheet dragged well below its lowest detent, a card dragged down, and a drawer dragged toward its edge are dismissed, after the screen agreed through its `back` hook, and otherwise they glide back. On a compact screen, the GUIs behind a modal sheet shrink a little as it nears the top, so the sheet reads as a card over them. While the system asks for reduced motion, a slide and a rise cross fade instead.
 
-The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, a width or height that is not positive raises `The widths and heights of a presentation must be positive.`, a detent that is not one of the names or a number raises `A detent is "medium", "large", "fit" or a height in UI units, not <value>.`, a `detent` out of the list raises `The "detent" a sheet opens at is the place of one of its detents, from 1 to <count>.`, a presentation other than a sheet that is not modal raises `Only a sheet can leave the input of the app under it, so only a sheet can be not modal.`, and a popover without an anchor raises `A popover needs the node it points at as its anchor.`.
+The backdrop takes the theme `overlay` color. A screen that a stack or another presentation holds raises `The screen already shows in a navigation stack or in a presentation.`, a width or height that is not positive raises `The widths and heights of a presentation must be positive.`, a detent that is not one of the names or a number raises `A detent is "medium", "large", "fit" or a height in UI units, not <value>.`, an empty list of detents raises `A sheet needs at least one detent.`, a detent height that is not positive raises `The height of a detent must be positive.`, a `detent` out of the list raises `The "detent" a sheet opens at is the place of one of its detents, from 1 to <count>.`, a presentation other than a sheet that is not modal raises `Only a sheet can leave the input of the app under it, so only a sheet can be not modal.`, and a popover without an anchor raises `A popover needs the node it points at as its anchor.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -4168,7 +4169,7 @@ Creates the routes of the app and returns its [`Router`](#router). A route turns
 | `present` | table | Presents the screen with these [options of `ui.present`](#uipresentscreen-options) instead of showing it in a stack. |
 | `screen` | function | Makes the screen from the table of the parameters. A route without it selects its tab and shows the root of the tab. |
 
-A table with another key raises `Unknown option "<key>".`. A missing list raises `A router lists its routes in "routes", each a table with a "name" and a "path".`, a router with both tabs and a stack or neither raises `A router shows its routes in the stacks of "tabs" or in one "stack".`, a route without a name raises `Every route needs a name.`, a repeated name raises `The route "<name>" is given more than once.`, a tab the tabs lack raises `The route "<name>" shows in the tab "<tab>", which the router has no tabs with.`, a parent no route has raises `The route "<name>" names the parent "<parent>", which no route has.`, a parent that is a detail or a presentation raises `The parent of a route is a route of a stack, which "<parent>" is not.`, a circle of parents raises `The parents of the route "<name>" lead back to a route they passed.` and an unknown type raises `The path of the route "<name>" has a parameter of the type "<type>", which is not "string", "integer", "number" or "boolean".`.
+A table with another key raises `Unknown option "<key>".`. A missing list raises `A router lists its routes in "routes", each a table with a "name" and a "path".`, a router with both tabs and a stack or neither raises `A router shows its routes in the stacks of "tabs" or in one "stack".`, a route without a name raises `Every route needs a name.`, a repeated name raises `The route "<name>" is given more than once.`, a tab the tabs lack raises `The route "<name>" shows in the tab "<tab>", which the router has no tabs with.`, a parent no route has raises `The route "<name>" names the parent "<parent>", which no route has.`, a parent that is a detail or a presentation raises `The parent of a route is a route of a stack, which "<parent>" is not.`, a circle of parents raises `The parents of the route "<name>" lead back to a route they passed.` a parameter without a name raises `The path of the route "<name>" has a parameter without a name.`, an unknown type raises `The path of the route "<name>" has a parameter of the type "<type>", which is not "string", "integer", "number" or "boolean".` and a screen that is not a function raises `The "screen" of a route is a function that returns a screen for the parameters of the route.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -4511,7 +4512,7 @@ local state = router:save()
 
 ### router:restore(state)
 
-Builds again the state that `save` returned. A location that no route matches anymore, such as after an update of the app, is left out with a warning in the log.
+Builds again the state that `save` returned. A location that no route matches anymore, such as after an update of the app, is left out with a warning in the log. A state that is not a table raises `The state of a router is an object that "save" returned.`.
 
 ```lua
 router:restore(state)
@@ -4643,7 +4644,7 @@ scene.push({
 
 ### gui:command(id, name, arguments)
 
-Sends the command `name` to the node `id`. The table `arguments` is optional, and only `show`, `update`, `hide` and `scrollTo` take one.
+Sends the command `name` to the node `id`. The table `arguments` is optional, and only `scrollTo` takes one.
 
 - The command `'focus'` moves the keyboard, gamepad and remote focus to the node. The focus ring stays visible when the player was already navigating. It shows at once when the player last used a gamepad or has no pointer device. A mouse or touch player sees it only once they start navigating. The first accept also counts as navigating: it shows the ring and presses the focused node.
 - The command `'open'` opens a `contextMenu` below its child, as a right click would.

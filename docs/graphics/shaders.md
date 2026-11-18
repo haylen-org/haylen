@@ -359,7 +359,7 @@ Reading the file also checks it, so a damaged or hand-edited file fails at once 
 - The GLSL targets read each block as an array of `vec4` or `ivec4` that fills it exactly.
 - Every program reads each block of the material with the slot and size that the file gives it.
 
-A file that breaks a rule raises `The shader file is malformed: ` followed by the problem, from `assets.shader` or from the hot reload, which keeps the last good shader. Examples of problems are `It is not a version 2 Haylen shader package. Compile its source again with the Haylen shader compiler.`, `The texture slot 40 is out of range.` and `The uniform "tint" does not fit in the block "params".`.
+A file that breaks a rule raises `The shader file is malformed: ` followed by the problem, from `assets.shader` or from the hot reload, which keeps the last good shader. Examples of problems are `It is not a version 2 Haylen shader package. Compile its source again with the Haylen shader compiler.`, `The texture slot 40 is out of range.` and `The uniform "tint" does not fit in the block "params".`. A file that is no JSON, or whose JSON lacks a key or holds a value of the wrong type, raises `The shader file is malformed, and the JSON reader reported "<reason>".`.
 
 Two errors come when a draw first uses a program. A program without code for the language of the GPU device raises `The program "<name>/<program>" has no code for the "<language>" language of this GPU device. Compile its shader again with the Haylen shader compiler.`. A GPU program that the graphics API rejects raises `The graphics device could not create the shader "<name>/<program>".`.
 
