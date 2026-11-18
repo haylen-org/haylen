@@ -132,7 +132,7 @@ void BehaviorTree::reset() {
 
     for (std::uint32_t index = 0; index < nodes.size(); ++index) {
         resetNode(index);
-        nodes[index].readyAt = 0.0F;
+        nodes[index].readyAt = 0.0;
     }
 
     status = Status::Success;

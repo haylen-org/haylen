@@ -86,7 +86,7 @@ TEST_F(BehaviorTreeTest, TimersFollowTheTreeClock) {
     BehaviorTree wait(BehaviorTree::wait(1.0F));
     EXPECT_EQ(wait.tick(0.5F), Status::Running);
     EXPECT_EQ(wait.tick(0.5F), Status::Success);
-    EXPECT_FLOAT_EQ(wait.getTime(), 1.0F);
+    EXPECT_DOUBLE_EQ(wait.getTime(), 1.0);
 
     BehaviorTree cooldown(BehaviorTree::cooldown(step("bark", 1, Status::Success), 1.0F));
     EXPECT_EQ(cooldown.tick(0.25F), Status::Success);
@@ -102,6 +102,20 @@ TEST_F(BehaviorTreeTest, TimersFollowTheTreeClock) {
 
     cooldown.reset();
     EXPECT_EQ(cooldown.tick(0.1F), Status::Success);
+}
+
+// After twelve days of ticks a float no longer grows by the step of a frame, so a cooldown would never end.
+TEST_F(BehaviorTreeTest, CooldownsEndAfterDaysOfTicks) {
+    BehaviorTree cooldown(BehaviorTree::cooldown(step("bark", 1, Status::Success), 1.0F));
+    EXPECT_EQ(cooldown.tick(1000000.0F), Status::Success);
+
+    int frames = 0;
+    while (cooldown.tick(1.0F / 60.0F) == Status::Failure && frames < 120) {
+        ++frames;
+    }
+
+    EXPECT_EQ(frames, 59);
+    EXPECT_GT(cooldown.getTime(), 1000001.0);
 }
 
 TEST_F(BehaviorTreeTest, ParallelNodesCountSuccessesAndFailures) {

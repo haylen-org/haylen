@@ -92,7 +92,7 @@ class BehaviorTree final {
     [[nodiscard]] Status getStatus() const noexcept {
         return status;
     }
-    [[nodiscard]] float getTime() const noexcept {
+    [[nodiscard]] double getTime() const noexcept {
         return time;
     }
     [[nodiscard]] std::size_t getNodeCount() const noexcept {
@@ -112,7 +112,7 @@ class BehaviorTree final {
         std::size_t current = 0;
         int finished = 0;
         float elapsed = 0.0F;
-        float readyAt = 0.0F;
+        double readyAt = 0.0;
         std::vector<Status> results;
     };
 
@@ -125,7 +125,8 @@ class BehaviorTree final {
     std::vector<State> nodes;
     Blackboard blackboard;
     Status status = Status::Success;
-    float time = 0.0F;
+    // A double keeps the step of a frame in the sum after days of ticks, where a float stops moving and cooldowns never end.
+    double time = 0.0;
     bool ticking = false;
 };
 
