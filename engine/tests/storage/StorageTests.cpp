@@ -713,6 +713,8 @@ TEST(StorageLuaTest, MigratesSlotsAndMovesThemBetweenDevices) {
     EXPECT_NE(fixture.lua("storage.setSaveVersion(4) return storage.readSlot('slot-1')").find("The save slot \"slot-1\" has version 3 and no migration reaches version 4."), std::string::npos);
     EXPECT_NE(fixture.lua("storage.setSaveVersion(2) return storage.readSlot('slot-1')").find("has version 3, which is newer than the version 2 this app reads."), std::string::npos);
     EXPECT_NE(fixture.lua("storage.setSaveVersion(0)").find("A save version is a whole number from 1."), std::string::npos);
+    EXPECT_NE(fixture.lua("storage.setSaveVersion(2^32 + 3)").find("bad argument #1 to 'setSaveVersion' (integer out of range)"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return storage.saveVersion()"), "2");
     EXPECT_NE(fixture.lua("storage.addMigration(0, print)").find("A save migration needs a version from 1 and a function."), std::string::npos);
 }
 

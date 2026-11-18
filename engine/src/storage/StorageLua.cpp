@@ -132,7 +132,7 @@ void StorageLua::publishWrite(lua_State* L, const SaveSlots::Info& info) {
 }
 
 int StorageLua::setSaveVersion(lua_State* L) {
-    getSaveSlots(L).setVersion(static_cast<int>(luaL_checkinteger(L, 1)));
+    getSaveSlots(L).setVersion(lua::Stack::read<int>(L, 1));
     return 0;
 }
 

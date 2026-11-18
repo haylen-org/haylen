@@ -440,7 +440,7 @@ An update of the app may change the shape of its data, such as a renamed field. 
 
 ### storage.setSaveVersion(version)
 
-Sets the save version of the app, a whole number from 1. A version below 1 raises `A save version is a whole number from 1.`.
+Sets the save version of the app, a whole number from 1 to 2147483647. A version below 1 raises `A save version is a whole number from 1.`, and a version above 2147483647 raises `bad argument #1 to 'setSaveVersion' (integer out of range)`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -710,6 +710,7 @@ These messages come from the save slots.
 | `The save slot "<slot>" has version <version> and no migration reaches version <version>.` | A step of the migrations is missing. |
 | `A save version is a whole number from 1.` | The function `storage.setSaveVersion` received a version below 1. |
 | `A save migration needs a version from 1 and a function.` | The function `storage.addMigration` received a version below 1. |
-| `The imported save slot "<slot>" is damaged.` | The function `storage.importSlot` received bytes that are not a whole slot. |
+| `The imported save slot "<slot>" is damaged.` | The function `storage.importSlot` received bytes that are not a whole slot, as `The save slot "<slot>" is damaged.` describes. |
+| `bad argument #1 to 'setSaveVersion' (integer out of range)` | The function `storage.setSaveVersion` received a version above 2147483647. |
 | `The policy of an imported save slot must be "replace" or "keepNewer".` | The function `storage.importSlot` received another policy. |
 | `Unknown option "<key>".` | The options of `storage.importSlot` hold a key that it does not take. |
