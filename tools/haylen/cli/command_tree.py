@@ -34,6 +34,7 @@ from haylen.cli.commands.plugin_remove import PluginRemoveCommand
 from haylen.cli.commands.plugin_update import PluginUpdateCommand
 from haylen.cli.commands.project_inspect import ProjectInspectCommand
 from haylen.cli.commands.sdk_build import SdkBuildCommand
+from haylen.cli.commands.sdk_join import SdkJoinCommand
 from haylen.cli.commands.sdk_list import SdkListCommand
 from haylen.cli.commands.serve import ServeCommand
 from haylen.cli.commands.test import TestCommand
@@ -62,6 +63,7 @@ class CommandTree:
         PluginNewCommand,
         ProjectInspectCommand,
         SdkBuildCommand,
+        SdkJoinCommand,
         SdkListCommand,
         AppPrepareCommand,
         AppBuildCommand,

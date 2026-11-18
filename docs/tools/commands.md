@@ -10,7 +10,7 @@ haylen doctor [--target]
 haylen devices
 haylen plugin add|update|remove|list|new
 haylen project inspect
-haylen sdk build|list
+haylen sdk build|join|list
 haylen app prepare|build|verify|run|package|sign|zip|shaders|serve|capture
 haylen serve <folder>
 haylen content build|verify|inspect|diff|publish|compact|keys
@@ -291,6 +291,22 @@ Builds the engine for one or more targets with the engine port that serves them,
 | `web` | The web SDK. |
 
 Result: the manifest `haylen-sdk.json` of the SDK with its `folder`: `format`, `port`, `portVersion`, `engineVersion`, `revision`, `configuration`, `slices`, `hostTools` and `files`.
+
+### sdk join
+
+```sh
+haylen sdk join <folder> [<folder>...] [--output <folder>]
+```
+
+Joins SDKs that hold different slices into one SDK, such as SDKs that several machines built side by side with `sdk build --output`. The SDKs must come from one engine port, the same engine sources and the same configuration, no two of them may hold the same slice, and the port must declare the capability `join`, which the Apple port does. The joined SDK goes to `build/sdk/<port>-<configuration>/` unless `--output` names another folder, which cannot be one of the SDKs it joins.
+
+```sh
+haylen sdk build --target ios --target ios-simulator --architecture arm64 --output build/slices/ios
+haylen sdk build --target tvos --target tvos-simulator --architecture arm64 --output build/slices/tvos
+haylen sdk join build/slices/ios build/slices/tvos
+```
+
+Result: the manifest of the joined SDK with its `folder`, as `sdk build` prints it.
 
 ### sdk list
 

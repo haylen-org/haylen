@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 
+from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.environment_report import EnvironmentReport
 from haylen.platforms.port_description import PortDescription
+from haylen.platforms.sdk_join_request import SdkJoinRequest
 from haylen.platforms.sdk_request import SdkRequest
 from haylen.sdk.sdk_manifest import SdkManifest
 
@@ -24,3 +26,7 @@ class EnginePort(ABC):
     @abstractmethod
     def build_sdk(self, request: SdkRequest) -> SdkManifest:
         """Builds the engine for the targets of a request, installs the SDK into its folder and returns its manifest, which the port writes there too."""
+
+    def join_sdks(self, request: SdkJoinRequest) -> SdkManifest:
+        """Joins SDKs of the port that hold different slices into one SDK in the folder of the request and returns its manifest. A port that declares the capability `join` offers it."""
+        raise MissingCapability(f'The engine port "{self.describe().name}" does not join SDKs, so build every slice of its SDK with one "haylen sdk build".')

@@ -8,10 +8,14 @@ from haylen.cli.arguments import Arguments
 from haylen.cli.command_session import CommandSession
 from haylen.cli.commands.doctor import DoctorCommand
 from haylen.core.app_pipeline import AppPipeline
+from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.product_request import ProductRequest
 from haylen.core.resolved_product import ResolvedProduct
+from haylen.platforms.backend_registry import BackendRegistry
+from tests.support.fake_backend import FakeBackend
+from tests.support.fake_port import FakePort
 from tests.support.tooling_fixture import ToolingFixture
 
 
@@ -93,3 +97,14 @@ class CommandsTest:
         assert DoctorCommand.tool_state(missing) == "9.8.2, which the first build that needs it downloads into `.tools`"
         assert DoctorCommand.tool_state(found) == "cmake version 4.4.3 at `/opt/homebrew/bin/cmake`"
         assert DoctorCommand.tool_state(broken) == 'The command "xcodebuild" does not run.'
+
+    def test_sdks_join_only_with_one_port_sources_and_configuration_whose_port_declares_joining(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        release = fixture.sdk()
+        debug = fixture.sdk(configuration="Debug")
+        session = CommandsTest.session(fixture, monkeypatch)
+        session.registry = BackendRegistry(fixture.context, [("FakeBackend", lambda: FakeBackend)], [("FakePort", lambda: FakePort)])
+        with pytest.raises(IncompatibleSdk, match="do not join"):
+            CommandsTest.run(session, ["sdk", "join", str(release.folder), str(debug.folder)])
+        with pytest.raises(MissingCapability, match='The engine port "fake" does not join SDKs'):
+            CommandsTest.run(session, ["sdk", "join", str(release.folder), str(fixture.sdk(architectures=("arm64",)).folder)])

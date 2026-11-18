@@ -3,6 +3,8 @@ import shutil
 from pathlib import Path
 from types import MappingProxyType
 
+from haylen.core.configuration import Configuration
+from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.folders import Folders
 from haylen.core.host import Host
@@ -16,7 +18,9 @@ from haylen.platforms.apple.xcode_tools import XcodeTools
 from haylen.platforms.contract import Contract
 from haylen.platforms.engine_port import EnginePort
 from haylen.platforms.environment_report import EnvironmentReport
+from haylen.platforms.port_capability import PortCapability
 from haylen.platforms.port_description import PortDescription
+from haylen.platforms.sdk_join_request import SdkJoinRequest
 from haylen.platforms.sdk_request import SdkRequest
 from haylen.sdk.sdk_folder import SdkFolder
 from haylen.sdk.sdk_manifest import SdkManifest
@@ -25,7 +29,7 @@ from haylen.toolchains.apple_sdk import AppleSdk
 
 
 class AppleEnginePort(EnginePort):
-    """The engine port of the Apple platforms, which builds the slices of the Apple SDK, one per system and environment: the engine and the runtime of every architecture of a slice merged in its `libhaylen.a` and the Lua player in its `libhaylen-player.a`, joined with `lipo` and gathered into `Haylen.xcframework` and `HaylenPlayer.xcframework`, both signed ad hoc so Xcode takes them as signed. The SDK folder keeps the slices that it holds of the same engine sources and configuration, so building one slice later adds it to the frameworks, and holds the headers, the CMake package of native libraries, the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge."""
+    """The engine port of the Apple platforms, which builds the slices of the Apple SDK, one per system and environment: the engine and the runtime of every architecture of a slice merged in its `libhaylen.a` and the Lua player in its `libhaylen-player.a`, joined with `lipo` and gathered into `Haylen.xcframework` and `HaylenPlayer.xcframework`, both signed ad hoc so Xcode takes them as signed. The SDK folder keeps the slices that it holds of the same engine sources and configuration, so building one slice later adds it to the frameworks, and SDKs that hold different slices, such as SDKs that several machines built side by side, join into one. The SDK holds the headers, the CMake package of native libraries, the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge."""
 
     NAME = "apple"
     VERSION = "1.0.0"
@@ -36,7 +40,7 @@ class AppleEnginePort(EnginePort):
 
     def describe(self) -> PortDescription:
         targets = tuple(target.port_target() for target in AppleTargets.ALL)
-        return PortDescription(AppleEnginePort.NAME, Contract.ENGINE_PORT, AppleEnginePort.VERSION, targets, AppleEnginePort.TOOLS)
+        return PortDescription(AppleEnginePort.NAME, Contract.ENGINE_PORT, AppleEnginePort.VERSION, targets, AppleEnginePort.TOOLS, frozenset({PortCapability.JOIN}))
 
     def check_environment(self, target: str) -> EnvironmentReport:
         if Host.system() != "macos":
@@ -82,14 +86,55 @@ class AppleEnginePort(EnginePort):
         for name, (target, library, player) in built.items():
             slices[name] = (target, library, player, AppleEnginePort.architectures(target, request.architectures))
 
-        ordered = [slices[target.slice] for target in AppleTargets.ALL if target.slice in slices]
-        framework = request.folder / AppleSdkFiles.FRAMEWORK_NAME
-        player_framework = request.folder / AppleSdkFiles.PLAYER_NAME
-        self.create_framework(framework, [(library, installed / "include") for _, library, _, _ in ordered])
-        self.create_framework(player_framework, [(player, None) for _, _, player, _ in ordered])
-        Folders.remove(staging)
-
         shared = AppleEnginePort.install_shared(request.folder, installed, component)
+        manifest = self.create_sdk(request.folder, request.revision, request.configuration, slices, installed / "include", shared)
+        Folders.remove(staging)
+        return manifest
+
+    def join_sdks(self, request: SdkJoinRequest) -> SdkManifest:
+        """Gathers the slices of the SDKs into the frameworks of a new SDK, with the shared files of the first SDK, which every SDK of the same engine sources holds alike."""
+        sources = {manifest.folder for manifest in request.manifests}
+        if request.folder.resolve() in sources:
+            raise InvalidOption(f"The joined SDK goes into `{Repository.shown(request.folder)}`, which holds one of the SDKs to join. Name another folder.")
+
+        slices: dict[str, tuple[AppleTarget, Path, Path, tuple[str, ...]]] = {}
+        for manifest in request.manifests:
+            for entry in manifest.slices:
+                target = AppleTargets.of_system(entry.system, entry.environment)
+                if target.slice in slices:
+                    raise UnsupportedTarget(f'More than one of the SDKs to join holds the slice "{target.slice}". Join SDKs that hold different slices.')
+                library = manifest.folder / entry.files[AppleSdkFiles.LIBRARY]
+                player = manifest.folder / entry.files[AppleSdkFiles.PLAYER_LIBRARY]
+                slices[target.slice] = (target, library, player, entry.architectures)
+
+        first = request.manifests[0]
+        Folders.remove(request.folder)
+        request.folder.mkdir(parents=True)
+        shared: dict[str, str] = {}
+        for name, relative in first.files.items():
+            if name in (AppleSdkFiles.FRAMEWORK, AppleSdkFiles.PLAYER):
+                continue
+            source = first.folder / relative
+            if source.is_dir():
+                shutil.copytree(source, request.folder / relative)
+            else:
+                (request.folder / relative).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(source, request.folder / relative)
+            shared[name] = relative
+        shared[AppleSdkFiles.FRAMEWORK] = AppleSdkFiles.FRAMEWORK_NAME
+        shared[AppleSdkFiles.PLAYER] = AppleSdkFiles.PLAYER_NAME
+        return self.create_sdk(request.folder, first.revision, first.configuration, slices, first.file(AppleSdkFiles.INCLUDE), shared)
+
+    def create_sdk(
+        self, folder: Path, revision: str, configuration: Configuration, slices: dict[str, tuple[AppleTarget, Path, Path, tuple[str, ...]]], include: Path, shared: dict[str, str]
+    ) -> SdkManifest:
+        """Creates the frameworks of an SDK folder from the libraries of its slices and writes its manifest with its shared files."""
+        ordered = [slices[target.slice] for target in AppleTargets.ALL if target.slice in slices]
+        framework = folder / AppleSdkFiles.FRAMEWORK_NAME
+        player_framework = folder / AppleSdkFiles.PLAYER_NAME
+        self.create_framework(framework, [(library, include) for _, library, _, _ in ordered])
+        self.create_framework(player_framework, [(player, None) for _, _, player, _ in ordered])
+
         identifiers = AppleEnginePort.identifiers(framework)
         player_identifiers = AppleEnginePort.identifiers(player_framework)
         entries = []
@@ -114,12 +159,12 @@ class AppleEnginePort(EnginePort):
                 )
             )
         manifest = SdkManifest(
-            folder=request.folder.resolve(),
+            folder=folder.resolve(),
             port=AppleEnginePort.NAME,
             port_version=AppleEnginePort.VERSION,
             engine_version=Repository.engine_version(),
-            revision=request.revision,
-            configuration=request.configuration,
+            revision=revision,
+            configuration=configuration,
             slices=tuple(entries),
             host_tools=(),
             files=MappingProxyType(shared),
