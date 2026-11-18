@@ -7,6 +7,7 @@ from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
+from haylen.native.cmake_app import CMakeApp
 from haylen.native.native_library import NativeLibrary
 from haylen.platforms.android.android_platform import AndroidPlatform
 from haylen.platforms.android.android_template import AndroidTemplate
@@ -53,9 +54,7 @@ class AndroidNativeBuild:
 
     def cmake_lists(self, release: bool) -> str:
         """The CMake project of the native code, which picks the SDK of each ABI by the ABI that Gradle builds."""
-        lines = [
-            f"set({AndroidTemplate.cmake('HAYLEN_SDK_' + project.target.abi)} {AndroidTemplate.cmake(project.sdk.file(AndroidPlatform.CMAKE_FILE).as_posix())})" for project in self.product.projects
-        ]
+        lines = [f"set({CMakeApp.text('HAYLEN_SDK_' + project.target.abi)} {CMakeApp.text(project.sdk.file(AndroidPlatform.CMAKE_FILE).as_posix())})" for project in self.product.projects]
         tokens = {"SDKS": "\n".join(lines), "APP": self.app_lines(release), "LIBRARIES": self.library_lines()}
         return AndroidTemplate.render(AndroidTemplate.NATIVE, tokens)
 
@@ -64,24 +63,9 @@ class AndroidNativeBuild:
             return ""
         # The package of the generated project is what the app ships, which Gradle takes into the assets itself.
         content = f'"${{CMAKE_CURRENT_LIST_DIR}}/../{AndroidNativeBuild.PACKAGE}"'
-        arguments = [AndroidNativeBuild.APP_LIBRARY]
-        cpp = self.product.app.cpp
-        if cpp is not None:
-            arguments += ["CPP", "SOURCES", *(AndroidTemplate.cmake(path.as_posix()) for path in cpp.files())]
-        else:
-            arguments.append("LUA")
-        arguments += ["CONTENT", content]
-        if release:
-            arguments += ["BOOTSTRAP", f'"${{CMAKE_CURRENT_LIST_DIR}}/{ProtectedReleases.BOOTSTRAP_FILE}"']
-
-        lines = ["", f"haylen_add_app({' '.join(arguments)})"]
-        if cpp is not None and cpp.include_directories:
-            folders = " ".join(AndroidTemplate.cmake(path.as_posix()) for path in cpp.include_directories)
-            lines.append(f"target_include_directories({AndroidNativeBuild.APP_LIBRARY} PRIVATE {folders})")
-        if cpp is not None and cpp.definitions:
-            definitions = " ".join(AndroidTemplate.cmake(definition) for definition in cpp.definitions)
-            lines.append(f"target_compile_definitions({AndroidNativeBuild.APP_LIBRARY} PRIVATE {definitions})")
-        return "\n".join(lines) + "\n"
+        bootstrap = f'"${{CMAKE_CURRENT_LIST_DIR}}/{ProtectedReleases.BOOTSTRAP_FILE}"' if release else None
+        lines = CMakeApp.lines(self.product.app, AndroidNativeBuild.APP_LIBRARY, content, bootstrap)
+        return "\n".join(["", *lines]) + "\n"
 
     def library_lines(self) -> str:
         """Adds the CMake project of every library once, whose target of the name of the library builds as a shared library."""
@@ -93,7 +77,7 @@ class AndroidNativeBuild:
             if library.cmake in folders:
                 continue
             folders.append(library.cmake)
-            lines.append(f"add_subdirectory({AndroidTemplate.cmake(library.cmake.as_posix())} {AndroidTemplate.cmake('libraries/' + library.name)} EXCLUDE_FROM_ALL)")
+            lines.append(f"add_subdirectory({CMakeApp.text(library.cmake.as_posix())} {CMakeApp.text('libraries/' + library.name)} EXCLUDE_FROM_ALL)")
         return "\n".join(lines) + "\n"
 
     def prebuilt_files(self) -> dict[str, Path]:

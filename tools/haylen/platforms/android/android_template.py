@@ -50,11 +50,3 @@ class AndroidTemplate:
         """A text in an XML attribute of Android, such as the name of the app, whose leading `@` or `?` would name a resource."""
         escaped = AndroidTemplate.xml(value)
         return f"\\{escaped}" if escaped.startswith(("@", "?")) else escaped
-
-    @staticmethod
-    def cmake(value: str) -> str:
-        """A bracket argument of CMake, which takes any text as it is."""
-        level = 0
-        while f"]{'=' * level}]" in value:
-            level += 1
-        return f"[{'=' * level}[{value}]{'=' * level}]"

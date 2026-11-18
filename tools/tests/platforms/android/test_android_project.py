@@ -5,8 +5,9 @@ import shutil
 import pytest
 
 from haylen.core.errors.invalid_contribution import InvalidContribution
+from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.unsupported_target import UnsupportedTarget
-from haylen.platforms.android.android_template import AndroidTemplate
+from haylen.native.cmake_app import CMakeApp
 from haylen.toolchains.android_ndk import AndroidNdk
 from haylen.toolchains.gradle import Gradle
 from tests.platforms.android.android_fixture import AndroidFixture
@@ -193,14 +194,24 @@ class AndroidProjectTest:
         script = (project / "app" / "build.gradle.kts").read_text(encoding="utf-8")
         manifest = (project / "app" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
 
-        assert f"set({AndroidTemplate.cmake('HAYLEN_SDK_arm64-v8a')} {AndroidTemplate.cmake((fixture.sdk.folder / 'abis/arm64-v8a/lib/cmake/haylen').as_posix())})" in cmake
-        assert f"haylen_add_app(haylen-app CPP SOURCES {AndroidTemplate.cmake((app / 'src' / 'App.cpp').as_posix())} CONTENT" in cmake
-        assert f"target_compile_definitions(haylen-app PRIVATE {AndroidTemplate.cmake('GAME=1')})" in cmake
+        assert f"set({CMakeApp.text('HAYLEN_SDK_arm64-v8a')} {CMakeApp.text((fixture.sdk.folder / 'abis/arm64-v8a/lib/cmake/haylen').as_posix())})" in cmake
+        assert f"haylen_add_app(haylen-app CPP SOURCES {CMakeApp.text((app / 'src' / 'App.cpp').as_posix())} CONTENT" in cmake
+        assert f"target_compile_definitions(haylen-app PRIVATE {CMakeApp.text('GAME=1')})" in cmake
         assert "add_subdirectory(" in cmake
         assert "BOOTSTRAP" not in cmake
         assert 'targets += listOf("haylen-app", "physics")' in script
         assert 'excludes += "lib/*/libhaylen.so"' in script
         assert 'android:value="haylen-app"' in manifest
+
+    def test_a_cpp_app_with_objective_c_sources_fails_before_gradle_compiles_them(self, tmp_path):
+        fixture = AndroidFixture(tmp_path)
+        app = fixture.app({"kind": "cpp", "cpp": {"sources": ["src"]}})
+        (app / "src").mkdir()
+        (app / "src" / "App.cpp").write_text("", encoding="utf-8")
+        (app / "src" / "Bridge.mm").write_text("", encoding="utf-8")
+
+        with pytest.raises(InvalidManifest, match=re.escape('names the Objective-C files `')):
+            fixture.prepare(fixture.resolve(app, architectures=("arm64-v8a",)))
 
     def test_a_lua_debug_app_compiles_only_its_native_libraries(self, tmp_path):
         fixture = AndroidFixture(tmp_path)
