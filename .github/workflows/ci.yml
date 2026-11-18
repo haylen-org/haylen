@@ -101,6 +101,7 @@ jobs:
           name: web-sdk
           folder: build/sdk/web-release
           upload: "true"
+      - uses: ./.github/actions/browser
       - name: GPU tests on WebGPU
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --platform web --graphics-api webGpu
       - name: GPU tests on WebGL2
@@ -392,6 +393,7 @@ jobs:
       - uses: ./.github/actions/sdk
         with:
           name: web-sdk
+      - uses: ./.github/actions/browser
       - name: Check the pages
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --graphics-api webGl2 --shard ${{ matrix.shard }}
       - name: Start the protected release of the test project
@@ -462,5 +464,6 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target ios-simulator --config Release
       - name: Build the C++ app for the iOS simulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target ios-simulator
+      - uses: ./.github/actions/browser
       - name: Start the protected web release on WebGPU
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --platform web --app samples/tests --config Release --graphics-api webGpu

@@ -1,0 +1,15 @@
+name: Browser
+description: Reads the Chrome of the runner into memory in one pass before a job opens its first page in a headless browser. A runner reads a program from its disk page by page the first time it runs, and the first start of Chrome there read about 150 MB in some 1,600 page faults, which took from under a second to more than 30 seconds, while one pass over the whole browser takes a few seconds and every start after it answers within a second.
+
+runs:
+  using: composite
+  steps:
+    - name: Load the browser
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "macOS" ]; then
+          folder="/Applications/Google Chrome.app"
+        else
+          folder="$(dirname "$(readlink -f "$(command -v google-chrome)")")"
+        fi
+        find "$folder" -type f -exec cat {} + > /dev/null

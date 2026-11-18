@@ -5,11 +5,11 @@ import sys
 import tempfile
 import textwrap
 import time
-import urllib.request
 from unittest import mock
 
 import pytest
 
+from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.host import Host
 from haylen.engine.headless_browser import HeadlessBrowser
 from tests.support.recorded_commands import RecordedCommands
@@ -28,6 +28,7 @@ class HeadlessBrowserTest:
             done
             sh -c 'trap "touch \\"$1/late\\"; exit" TERM; while :; do sleep 0.05; done' helper "$profile" &
             echo $! > "{helper}"
+            printf '9222\\n/devtools/browser/test' > "$profile/DevToolsActivePort"
             exec sleep 60
             """
         chrome.write_text(textwrap.dedent(script), encoding="utf-8")
@@ -35,10 +36,10 @@ class HeadlessBrowserTest:
         profile = tmp_path / "profile"
         profile.mkdir()
         monkeypatch.setattr(tempfile, "mkdtemp", lambda: str(profile))
-        monkeypatch.setattr(urllib.request, "urlopen", lambda *arguments, **options: mock.MagicMock())
 
         context = RecordedCommands(tmp_path, {"HAYLEN_CHROME": str(chrome)}).context
-        with HeadlessBrowser(context, [], "the test"):
+        with HeadlessBrowser(context, [], "the test") as port:
+            assert port == 9222
             deadline = time.monotonic() + 10
             while not helper.exists() or not helper.read_text(encoding="utf-8").strip():
                 assert time.monotonic() < deadline, "The browser of the test did not start its helper."
@@ -68,3 +69,17 @@ class HeadlessBrowserTest:
         monkeypatch.setattr(Host, "system", staticmethod(lambda: "linux"))
         with pytest.raises(PermissionError):
             browser.end_process_tree(process)
+
+    @pytest.mark.skipif(sys.platform == "win32", reason="The browser of the test is a shell script.")
+    def test_fails_at_once_with_the_output_of_a_browser_that_ends_before_it_listens(self, tmp_path):
+        chrome = tmp_path / "chrome"
+        chrome.write_text("#!/bin/sh\necho 'Missing X server or $DISPLAY' >&2\nexit 1\n", encoding="utf-8")
+        chrome.chmod(0o755)
+        context = RecordedCommands(tmp_path, {"HAYLEN_CHROME": str(chrome)}).context
+
+        started = time.monotonic()
+        with pytest.raises(BuildFailed) as failure, HeadlessBrowser(context, [], "the test"):
+            pass
+        assert time.monotonic() - started < HeadlessBrowser.START_SECONDS / 2
+        assert failure.value.message == "The headless browser of the test ended with the code 1 before it listened for its driver. The last lines of its output follow."
+        assert failure.value.details == "Missing X server or $DISPLAY"

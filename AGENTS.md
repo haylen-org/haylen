@@ -155,7 +155,7 @@ This file is binding for every change. It describes the project as it is and the
 ## Repository layout
 
 ```text
-.github/                  The CI workflow with the actions of its jobs, which set up a build with its compiler cache and hand SDKs between jobs, the issue templates and the funding links of GitHub.
+.github/                  The CI workflow with the actions of its jobs, which set up a build with its compiler cache, hand SDKs between jobs and read the browser into memory before the first page, the issue templates and the funding links of GitHub.
 CMakeLists.txt            Root project: engine, player and tests.
 haylen, haylen.cmd        The command "haylen" for macOS and Linux and for Windows, which runs the package tools/haylen through uv with its arguments from any folder.
 pyproject.toml            The Python package of the tooling: its dependency, its entry point "haylen", the entry points of its backends and engine ports, its development tools and the settings of Ruff and pytest.
