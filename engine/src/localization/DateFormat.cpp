@@ -68,7 +68,7 @@ DateFormat::Fields DateFormat::toFields(std::int64_t seconds, std::optional<int>
         throw std::invalid_argument(std::format("The system cannot express the moment {} in the time zone of the device. Pass a \"timeZoneOffset\" to format it.", seconds));
     }
 
-    return {.year = local.tm_year + 1900, .month = local.tm_mon + 1, .day = local.tm_mday, .hour = local.tm_hour, .minute = local.tm_min, .weekday = local.tm_wday};
+    return {.year = std::int64_t{local.tm_year} + 1900, .month = local.tm_mon + 1, .day = local.tm_mday, .hour = local.tm_hour, .minute = local.tm_min, .weekday = local.tm_wday};
 }
 
 std::string DateFormat::expand(std::string_view language, std::string_view pattern, const Fields& fields) {

@@ -125,6 +125,7 @@ std::string NumberFormat::format(std::string_view language, double value, const 
         text = std::move(number);
         break;
     }
+
     const bool negative = std::signbit(value) && std::stod(std::format("{:.{}f}", std::fabs(shown), maximum)) != 0.0;
     return negative ? "-" + text : text;
 }
