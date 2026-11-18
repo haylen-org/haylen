@@ -146,7 +146,7 @@ The command `app run` builds and verifies the app as `app build` does, stops whe
 | `macos` | Starts the executable of the app bundle, whose log goes to its standard output. |
 | `catalyst` | Starts the executable of the Mac Catalyst bundle and streams its log from the unified log. |
 | `ios-simulator`, `tvos-simulator`, `visionos-simulator` | Boots the simulator that `--device` names without a window, or else a booted one, or else the first one of the family, installs the app with `xcrun simctl install` and launches it with `launch --console-pty`, while the log of the app streams from the unified log of the simulator. A simulator that the run booted shuts down when it ends. |
-| `ios`, `tvos`, `visionos` | Installs the app with `xcrun devicectl device install app` on the device that `--device` names, and launches it with `device process launch --console`. |
+| `ios`, `tvos`, `visionos` | Installs the app with `xcrun devicectl device install app` on the device that `--device` names, and launches it with `device process launch --console` and the variable `OS_ACTIVITY_DT_MODE`, which makes the process mirror its unified log to its error output. The run shows the records of the engine from that output and leaves out those of the system, such as the ones of UIKit. |
 | `android` | Installs the APK, or the bundle of a release whose asset packs Google Play delivers after the install, on the device or emulator that `--device` names, or on the only one connected, starts it with its launcher intent and streams the log of its process. |
 | `web` | Serves the site on `--host` and `--port` with the `--coep` and `--coop` policies, and opens it with `--open`. |
 | `windows`, `linux` | Registers the URL schemes of the app for the installed app of the products folder, then runs its executable. |
@@ -155,7 +155,7 @@ The command `haylen devices` lists the identifiers that `--device` takes. Where 
 
 - On desktops, to the standard output.
 - On Android, to the log of the process, with `haylen` as the tag. The run streams it with `adb logcat`, filtered to every line of the engine, printed as on a desktop, to the lines of the plugins of the app, which log under their id as the tag, and to the crashes of its Java code under `AndroidRuntime`. The rest of the process, such as the warnings of the graphics driver, stays out, and `adb logcat` still shows it.
-- On iOS, tvOS, visionOS and Mac Catalyst, to the unified log, with the bundle identifier of the app as the subsystem and `haylen` as the category. The log of an app on a device shows in Console.app, while the run shows the standard output and error of its process.
+- On iOS, tvOS, visionOS and Mac Catalyst, to the unified log, with the bundle identifier of the app as the subsystem and `haylen` as the category. A device gives the Mac no stream of its unified log, so the run of a device shows the records that the process mirrors to its error output, and Console.app shows the whole log of the device.
 
 #### While the app runs
 

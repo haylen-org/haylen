@@ -19,6 +19,10 @@ class AppleLauncher:
     """Launches a built Apple app on this Mac, a simulator or a device and follows it until it ends or the developer quits. The engine writes to the standard output of a macOS app and to the unified log elsewhere, which the launcher relays next to the output of the process. A development launch starts the app with the frame capture of Metal, which simulators take through variables that start with `SIMCTL_CHILD_` and devices through the variables of devicectl."""
 
     CAPTURE = {"MTL_CAPTURE_ENABLED": "1"}
+    # A device gives the Mac no stream of its unified log, so the launch asks the process to mirror its records to its error output, which devicectl relays.
+    DEVICE_LOG = {"OS_ACTIVITY_DT_MODE": "YES"}
+    # A record that the unified log mirrors to the output of a process: its time, the process with its identifiers, the category in brackets and the message.
+    DEVICE_RECORD = re.compile(r"\d{4}-\d{2}-\d{2} [\d:.]+[+-]\d{4} .+?\[\d+:\d+\] (?:\[(?P<category>[^\]]*)\] )?(?P<message>.*)")
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
@@ -61,10 +65,12 @@ class AppleLauncher:
         self.context.terminal.step(f'Installing the app on "{device.name}"')
         self.context.process.run(["xcrun", "devicectl", "device", "install", "app", "--device", device.identifier, product.path])
         with AppRun(self.context, product, launch, DevelopmentReach.NETWORK, bundle.package) as run:
-            variables = ["--environment-variables", json.dumps(AppleLauncher.CAPTURE)] if run.developing else []
+            environment = {**AppleLauncher.DEVICE_LOG, **AppleLauncher.CAPTURE} if run.developing else AppleLauncher.DEVICE_LOG
+            variables = ["--environment-variables", json.dumps(environment)]
             # The launch ends the app when it stops, as Ctrl+C does.
             run.show(f"{device.name}, device", lambda: run.process.send_signal(signal.SIGINT))
-            run.follow(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", device.identifier, *variables, bundle.identifier, *run.arguments])
+            command = ["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", device.identifier, *variables, bundle.identifier, *run.arguments]
+            run.follow(command, line=AppleLauncher.device_line)
 
     @staticmethod
     def terminate(udid: str, identifier: str) -> None:
@@ -76,3 +82,13 @@ class AppleLauncher:
         if re.fullmatch(rf"{re.escape(identifier)}: \d+", line.strip()) or line.startswith("Child process terminated with signal"):
             return None
         return line
+
+    @staticmethod
+    def device_line(line: str) -> str | None:
+        """Keeps the message of each record that the engine wrote to the unified log of a device, and leaves out the other records that the process mirrors to its output, such as those of UIKit. Lines that are not records of the unified log, such as those of devicectl and the rest of a record of many lines, stay as they are."""
+        record = AppleLauncher.DEVICE_RECORD.fullmatch(line.rstrip("\r\n"))
+        if record is None:
+            return line
+        if record["category"] != UnifiedLog.CATEGORY:
+            return None
+        return record["message"]

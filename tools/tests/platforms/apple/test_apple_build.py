@@ -137,3 +137,13 @@ class AppleBuildTest:
         assert AppleLauncher.simulator_line("com.haylen.tests", "com.haylen.tests: 4242") is None
         assert AppleLauncher.simulator_line("com.haylen.tests", "Child process terminated with signal 15: Terminated") is None
         assert AppleLauncher.simulator_line("com.haylen.tests", "Hello") == "Hello"
+
+    def test_the_launcher_of_devices_keeps_only_the_records_of_the_engine(self):
+        engine = "2026-11-18 12:48:57.067933-0300 Haylen Tests[2085:131844] [haylen] [2026-11-18 12:48:57.067] [info] The app draws through metal."
+        system = "2026-11-18 12:48:57.018319-0300 Haylen Tests[2085:131844] [Assert] -[UIApplication setStatusBarHidden:] API has been deprecated."
+        uncategorized = "2026-11-18 12:48:57.018319-0300 Haylen Tests[2085:131844] A record without a category."
+        assert AppleLauncher.device_line(engine) == "[2026-11-18 12:48:57.067] [info] The app draws through metal."
+        assert AppleLauncher.device_line(system) is None
+        assert AppleLauncher.device_line(uncategorized) is None
+        assert AppleLauncher.device_line("Launched application with com.haylen.tests bundle identifier.") == "Launched application with com.haylen.tests bundle identifier."
+        assert AppleLauncher.device_line("stack traceback:") == "stack traceback:"
