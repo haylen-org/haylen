@@ -91,17 +91,6 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool isFullscreen() const noexcept override {
         return fullscreen;
     }
-    void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override {
-        if (windowAnswer.state == Permission::State::Granted) {
-            fullscreen = value;
-            fullscreenTarget = {};
-        }
-
-        callback(windowAnswer);
-    }
-
-    // Goes fullscreen like a desktop, on the display and in the mode of the target, which `getFullscreenTarget` reports.
-    void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] const Fullscreen& getFullscreenTarget() const noexcept {
         return fullscreenTarget;
     }
@@ -119,13 +108,6 @@ class HeadlessHost final : public Host {
     }
     void setCursorVisible(bool value) override {
         cursorVisible = value;
-    }
-    void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override {
-        if (windowAnswer.state == Permission::State::Granted) {
-            mouseLocked = value;
-        }
-
-        callback(windowAnswer);
     }
     void setKeyboardVisible(bool value) override {
         textInput.setKeyboardVisible(value);
@@ -197,13 +179,6 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] bool isScreenKeptOn() const noexcept override {
         return screenKeptOn;
-    }
-    void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override {
-        if (windowAnswer.state == Permission::State::Granted) {
-            screenKeptOn = value;
-        }
-
-        callback(windowAnswer);
     }
     [[nodiscard]] int getFrameRate() const noexcept override {
         return frameRate;
@@ -720,6 +695,35 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] const std::string& getCrashContext() const noexcept {
         return crashContext;
+    }
+
+  protected:
+    void applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override {
+        if (windowAnswer.state == Permission::State::Granted) {
+            fullscreen = value;
+            fullscreenTarget = {};
+        }
+
+        callback(windowAnswer);
+    }
+
+    // Goes fullscreen like a desktop, on the display and in the mode of the target, which `getFullscreenTarget` reports.
+    void applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
+
+    void applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override {
+        if (windowAnswer.state == Permission::State::Granted) {
+            mouseLocked = value;
+        }
+
+        callback(windowAnswer);
+    }
+
+    void applyKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override {
+        if (windowAnswer.state == Permission::State::Granted) {
+            screenKeptOn = value;
+        }
+
+        callback(windowAnswer);
     }
 
   private:

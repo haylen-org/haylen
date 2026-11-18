@@ -219,6 +219,21 @@ TEST(WindowEngineTest, AppliesTheWindowOptionsOfHaylenJson) {
     EXPECT_TRUE(host.getPassthroughRegions().empty());
 }
 
+TEST(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
+    test::EngineFixture fixture;
+    HeadlessHost& host = fixture.host();
+    Window& window = host;
+    window.setMouseLocked(true, {});
+    window.setKeepScreenOn(true, {});
+    window.enterFullscreen({}, {});
+    EXPECT_TRUE(host.isMouseLocked());
+    EXPECT_TRUE(host.isScreenKeptOn());
+    EXPECT_TRUE(host.isFullscreen());
+
+    window.setFullscreen(false, {});
+    EXPECT_FALSE(host.isFullscreen());
+}
+
 TEST(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
     test::EngineFixture fixture;
     const HeadlessHost& host = fixture.host();

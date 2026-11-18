@@ -118,7 +118,7 @@ Host::OutputReport Host::getOutputReport(std::uint32_t number) const {
 }
 
 // A desktop window goes fullscreen on the display that shows it, in the mode that the desktop runs in. The page answers once the browser settled the change. The window of SDL answers once SDL reports the mode it asked for: during the call where SDL changes the mode at once, as on Windows or for a hidden window, and at the end of the animation where the system animates the window into it, as on macOS. SDL never reports a change that the system reverts before it ends, such as one that a newer change replaces on macOS, so the mode that SDL reports right after the call is the one the window keeps.
-void Host::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
     if (value && Services::hasDesktop()) {
         enterFullscreen({}, std::move(callback));
         return;
@@ -158,13 +158,13 @@ void Host::followFullscreen(bool entered) {
 }
 
 // The page puts the element that holds the canvas and its overlay in fullscreen, so the fields and the views of plugins stay over the app, on the screen that the Fullscreen API takes. Desktops move the window, and the other platforms keep it on its display.
-void Host::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     const FullscreenTarget target = resolveFullscreen(value);
     WebPage::setFullscreen(true, target.display.id, std::move(callback));
 #else
     if (!Services::hasDesktop()) {
-        NativeHost::enterFullscreen(value, std::move(callback));
+        NativeHost::applyFullscreenTarget(value, std::move(callback));
         return;
     }
 
@@ -267,7 +267,7 @@ void Host::setCursorVisible(bool value) {
 }
 
 // The page locks the pointer once the browser lets it, which the page answers.
-void Host::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
     if (!SDL_SetWindowRelativeMouseMode(runtime.getWindow().get(), value)) {
         callback({.state = Permission::State::Unsupported, .message = std::format("The pointer could not be {}. {}", value ? "locked" : "released", SDL_GetError())});
         return;

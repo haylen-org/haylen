@@ -422,6 +422,8 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `requestPermission(kind, callback)` | Asks the person for a permission of the engine and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
 | `checkPermission(name, callback)`, `requestPermission(name, callback)` | The same by the name of `system.permission`, for a permission of the engine or one that a plugin of the app declares, which the bridge asks the native part of the plugin for. They throw `std::invalid_argument` for a name that nobody owns, and `std::runtime_error` when the plugins of the app cannot be read. |
 
+Each callback may be empty when the caller does not want the answer, which then reaches nobody.
+
 The function `graphics::Device::getAdapterName()` names the GPU on its own.
 
 ```cpp

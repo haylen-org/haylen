@@ -20,11 +20,9 @@ class PortHost final : public platform::NativeHost {
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
     [[nodiscard]] bool isFullscreen() const noexcept override;
-    void setFullscreen(bool value, std::function<void(platform::Permission::Answer answer)> callback) override;
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
-    void setMouseLocked(bool value, std::function<void(platform::Permission::Answer answer)> callback) override;
     void setClipboard(std::string_view value, std::function<void(platform::Permission::Answer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(platform::Permission::Answer answer, std::string text)> callback) override;
@@ -40,6 +38,8 @@ class PortHost final : public platform::NativeHost {
     void setGamepadMotion(input::GamepadMotion::Sensors sensors) override;
 
   protected:
+    void applyFullscreen(bool value, std::function<void(platform::Permission::Answer answer)> callback) override;
+    void applyMouseLocked(bool value, std::function<void(platform::Permission::Answer answer)> callback) override;
     [[nodiscard]] bool allowsQuit() const noexcept override;
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;

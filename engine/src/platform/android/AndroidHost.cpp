@@ -112,7 +112,7 @@ void AndroidHost::setScreenSaverSuspended(bool value, std::function<void(Permiss
 }
 
 // The window of an Android app always covers its screen.
-void AndroidHost::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void AndroidHost::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
     if (!value) {
         callback({.state = Permission::State::Unsupported, .message = "An Android app always covers its screen, so it never leaves fullscreen."});
         return;
@@ -121,7 +121,7 @@ void AndroidHost::setFullscreen(bool value, std::function<void(Permission::Answe
     callback({.state = Permission::State::Granted});
 }
 
-void AndroidHost::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void AndroidHost::applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
     if (value) {
         callback({.state = Permission::State::Unsupported, .message = "Android apps of the engine read the pointer as it moves on the screen and lock no pointer."});
         return;

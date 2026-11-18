@@ -40,11 +40,11 @@ bool Host::isFullscreen() const noexcept {
 }
 
 // The page puts the element that holds the canvas and its overlay in fullscreen, as it does for the runtime on the page.
-void Host::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
     WebPage::setFullscreen(value, getDisplayId(), std::move(callback));
 }
 
-void Host::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
     const FullscreenTarget target = resolveFullscreen(value);
     WebPage::setFullscreen(true, target.display.id, std::move(callback));
 }
@@ -67,7 +67,7 @@ void Host::setCursorVisible(bool value) {
 }
 
 // The page locks the pointer to the canvas, which browsers allow only during an input of the person, and answers once the browser settled it.
-void Host::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
     WebPage::lockPointer(value, std::move(callback));
 }
 

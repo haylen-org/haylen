@@ -58,6 +58,7 @@ graphics2d.drawCircle(320, 180, 24, '#FFE0A040', {layer = 2, blend = 'additive'}
 - Engine events of [`haylen.events`](../lua-api/events.md) that carry data pass one table, so `sceneEntered` passes `{scene}` and `guiMounted` passes `{gui}`. An event without data gains a table when it first carries some.
 - Event names and callback names use the same verbs for the same ideas across modules: `onComplete` and `'complete'` when something reaches its end, `onKill` when it leaves the engine, `Started` and `Finished` for the phases of a transition, and `Changed` for a value that changed.
 - Every function that registers a listener, starts a task or starts a job takes an `owner`. Without one it takes the default owner. So nothing runs for an owner that is gone, as the [owners of `haylen.events`](../lua-api/events.md#owners) describe.
+- An asynchronous call of the C++ API that answers through a callback, such as those of `platform::Window`, `platform::System`, `platform::Bridge` and `platform::Screens`, takes an empty callback when the caller does not want the answer, and the answer then reaches nobody.
 
 ### Asynchronous calls
 

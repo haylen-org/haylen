@@ -19,7 +19,7 @@ bool PortHost::isFullscreen() const noexcept {
     return host->isFullscreen();
 }
 
-void PortHost::setFullscreen(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
+void PortHost::applyFullscreen(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
     host->setFullscreen(value, std::move(callback));
 }
 
@@ -35,7 +35,7 @@ void PortHost::setCursorVisible(bool value) {
     host->setCursorVisible(value);
 }
 
-void PortHost::setMouseLocked(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
+void PortHost::applyMouseLocked(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
     host->setMouseLocked(value, std::move(callback));
 }
 

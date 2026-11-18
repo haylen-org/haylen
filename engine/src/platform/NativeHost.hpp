@@ -50,7 +50,6 @@ class NativeHost : public Host {
     void setSystemGestures(SystemGestures value) override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool isScreenKeptOn() const noexcept override;
-    void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] int getFrameRate() const noexcept override;
     void setFrameRate(int value) override;
     [[nodiscard]] float getMaxPixelDensity() const noexcept override;
@@ -70,8 +69,6 @@ class NativeHost : public Host {
     [[nodiscard]] Passthrough getMousePassthrough() const noexcept override;
     void setMousePassthrough(Passthrough mode, std::span<const math::Polygon::Outline> regions) override;
     void startDrag() override;
-    // Platforms whose window stays on its display go fullscreen only on that display, in the mode that the system picks.
-    void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
     [[nodiscard]] bool hasUnlistedDisplays() const override;
 
@@ -199,6 +196,9 @@ class NativeHost : public Host {
     [[nodiscard]] virtual bool prepareGpuDevice() = 0;
 
   protected:
+    void applyKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    // Platforms whose window stays on its display go fullscreen only on that display, in the mode that the system picks.
+    void applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     // Finds what a fullscreen asks for among the displays of the platform. Throws `std::invalid_argument` as `enterFullscreen` describes.
     [[nodiscard]] FullscreenTarget resolveFullscreen(const Fullscreen& value) const;
 

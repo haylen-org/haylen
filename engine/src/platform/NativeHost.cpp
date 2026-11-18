@@ -77,7 +77,7 @@ bool NativeHost::isScreenKeptOn() const noexcept {
     return screenKeptOn;
 }
 
-void NativeHost::setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) {
+void NativeHost::applyKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) {
     screenKeptOn = value;
     setScreenSaverSuspended(value, std::move(callback));
 }
@@ -193,7 +193,7 @@ FullscreenTarget NativeHost::resolveFullscreen(const Fullscreen& value) const {
     return FullscreenTarget::resolve(getDisplays(), getDisplayId(), value);
 }
 
-void NativeHost::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void NativeHost::applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
     const FullscreenTarget target = resolveFullscreen(value);
     if (target.display.id != getDisplayId() || target.mode) {
         callback({.state = Permission::State::Unsupported, .message = "The window of this platform stays on the display that shows it, in the mode that the system picks."});

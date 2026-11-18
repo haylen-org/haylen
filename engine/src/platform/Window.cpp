@@ -5,6 +5,7 @@
 #include <format>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace haylen::platform {
 
@@ -49,6 +50,31 @@ std::optional<Window::SystemGestures> Window::systemGesturesFromName(std::string
 
 std::string_view Window::systemGesturesName(SystemGestures value) noexcept {
     return std::ranges::find(kSystemGesturesNames, value, &std::pair<std::string_view, SystemGestures>::second)->first;
+}
+
+// An empty callback stands for a caller that does not want the answer, so the window answers nobody.
+std::function<void(Permission::Answer answer)> Window::answerTo(std::function<void(Permission::Answer answer)> callback) {
+    if (callback) {
+        return callback;
+    }
+
+    return [](const Permission::Answer&) {};
+}
+
+void Window::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+    applyFullscreen(value, answerTo(std::move(callback)));
+}
+
+void Window::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+    applyFullscreenTarget(value, answerTo(std::move(callback)));
+}
+
+void Window::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+    applyMouseLocked(value, answerTo(std::move(callback)));
+}
+
+void Window::setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) {
+    applyKeepScreenOn(value, answerTo(std::move(callback)));
 }
 
 } // namespace haylen::platform
