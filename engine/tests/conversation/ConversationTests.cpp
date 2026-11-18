@@ -236,6 +236,22 @@ TEST_F(ConversationTest, PicksTheSameVariantsForTheSameSeedAndStopsLoops) {
     EXPECT_THROW(loop.start("nowhere"), std::invalid_argument);
 }
 
+TEST_F(ConversationTest, StartsAgainWithoutTheChoicesAndTheLineOfTheNodeItLeft) {
+    ConversationState state(read(R"({"nodes": {"ask": {"steps": [{"text": "question"}], "choices": [{"text": "yes"}, {"text": "no"}, {"text": "maybe"}]}, "pick": {"choices": [{"text": "only", "next": "ask"}]}}})"), core::Json(), 1);
+    state.start("ask");
+    state.advance();
+    ASSERT_EQ(state.getChoices().size(), 3U);
+
+    state.start("pick");
+    EXPECT_FALSE(state.getLine());
+    ASSERT_EQ(state.getChoices().size(), 1U);
+    EXPECT_EQ(state.getChoices()[0].text, "only");
+
+    state.choose(0);
+    ASSERT_TRUE(state.getLine());
+    EXPECT_EQ(state.getLine()->text, "question");
+}
+
 // A listener may advance the state, and the commands of the steps it runs reach the app after the ones that waited before them.
 TEST_F(ConversationTest, DeliversCommandsInOrderWhenAListenerAdvances) {
     ConversationState state(read(R"({"nodes": {"a": {"steps": [{"command": "first"}, {"command": "second"}, {"text": "x"}, {"command": "third"}, {"text": "y"}]}}})"), core::Json(), 1);

@@ -24,8 +24,11 @@ void ConversationState::start(std::string_view name) {
         throw std::invalid_argument(std::format("The conversation has no node \"{}\".", name));
     }
 
+    // A start in the middle of a walk leaves the line and the choices of the node it stood at behind.
     started = true;
     finished = false;
+    choices.clear();
+    line.reset();
     enter(*found);
     run();
 }
