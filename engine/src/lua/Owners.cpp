@@ -184,11 +184,10 @@ void Owners::endHeld(std::vector<std::weak_ptr<Task>> tasks, std::vector<std::sh
         }
     }
 
+    connections.clear();
     for (const std::shared_ptr<core::Connection::Link>& link : links) {
         link->disconnect();
     }
-
-    connections.clear();
 }
 
 Owners::Function::Function(lua_State* L, int function, int owner) : state(Runtime::getMainThread(L)) {

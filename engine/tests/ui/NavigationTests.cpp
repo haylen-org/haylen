@@ -269,6 +269,34 @@ TEST_F(NavigationTest, KeepsTheStackOfEveryTab) {
     EXPECT_THROW(tabs->select("library"), std::invalid_argument);
 }
 
+// A tab whose root fails stays unselected, and the tab that showed keeps showing.
+TEST_F(NavigationTest, KeepsTheTabThatShowsWhenTheRootOfAnotherFails) {
+    const auto home = make("home");
+    // clang-format off
+    const std::shared_ptr<NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
+        {.id = "home", .root = [home] { return home; }},
+        {.id = "search", .root = [] { return std::shared_ptr<Screen>(); }},
+    }, "home");
+    // clang-format on
+    settle();
+
+    EXPECT_THROW(tabs->select("search"), std::invalid_argument);
+    EXPECT_EQ(tabs->getSelected(), "home");
+    EXPECT_EQ(home->getState(), Screen::State::Shown);
+    EXPECT_EQ(tabs->findStack("search"), nullptr);
+
+    tabs->select("home");
+    frames(2);
+    EXPECT_EQ(home->getState(), Screen::State::Shown);
+}
+
+// A split whose placeholder fails closes the stacks it opened, so its root leaves.
+TEST_F(NavigationTest, ClosesTheStacksOfASplitWhosePlaceholderFails) {
+    const auto inbox = make("inbox");
+    EXPECT_THROW(static_cast<void>(getNavigation().createSplit(getArea("list"), getArea("detail"), inbox, [] { return std::shared_ptr<Screen>(); }, false)), std::invalid_argument);
+    EXPECT_EQ(inbox->getState(), Screen::State::Removed);
+}
+
 // Collapsed, the detail goes on top of the list as one stack, and it moves back to the detail area with its GUI once the split expands.
 TEST_F(NavigationTest, MovesTheDetailOntoTheListWhenTheSplitCollapses) {
     const auto inbox = make("inbox");
@@ -373,6 +401,33 @@ TEST_F(NavigationTest, KeepsAScreenWhoseBackHookTakesTheBack) {
     EXPECT_TRUE(getNavigation().goBack());
     settle();
     EXPECT_EQ(stack->size(), 1U);
+}
+
+// A handler of a change that changes the stack again finishes the first change, so the screens it removed leave and the screen it covered hides.
+TEST_F(NavigationTest, FinishesAChangeWhoseHandlerChangesTheStack) {
+    const auto home = make("home");
+    const auto artist = make("artist");
+    const auto album = make("album");
+    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    stack->push(artist);
+    settle();
+
+    bool pushed = false;
+    // clang-format off
+    const core::Connection connection = stack->changed.connect([&](NavigationStack& changed) {
+        if (!std::exchange(pushed, true)) {
+            changed.push(album);
+        }
+    });
+    // clang-format on
+    stack->setScreens({make("search")});
+    settle();
+
+    EXPECT_EQ(stack->getTop(), album);
+    EXPECT_EQ(album->getState(), Screen::State::Shown);
+    EXPECT_EQ(home->getState(), Screen::State::Removed);
+    EXPECT_EQ(artist->getState(), Screen::State::Removed);
+    EXPECT_TRUE(hasEntry("artist:disappeared"));
 }
 
 // A stack in the GUI of a screen shows and hides with that screen, and closes once that screen leaves.
@@ -617,6 +672,20 @@ TEST_F(NavigationTest, LeavesTheAppItsInputUnderASheetThatIsNotModal) {
     EXPECT_THROW(static_cast<void>(getNavigation().present(make("card"), {.style = Presentation::Style::Dialog, .modal = false})), std::invalid_argument);
 }
 
+// A form sheet that is not modal shows as a card without detents on a wide screen, so the system back goes past it to the app under it.
+TEST_F(NavigationTest, GoesBackPastACardThatIsNotModal) {
+    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    stack->push(make("profile"));
+    const std::shared_ptr<Presentation> card = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}, .detent = 1});
+    settle();
+
+    EXPECT_TRUE(getNavigation().goBack());
+    settle();
+    EXPECT_EQ(stack->size(), 1U);
+    EXPECT_FALSE(getNavigation().canGoBack());
+    EXPECT_FALSE(card->isDismissed());
+}
+
 // The GUIs behind a modal sheet shrink as it nears the top of a compact screen, and stay whole behind a sheet on a wide screen or one that is not modal.
 TEST_F(NavigationTest, ShrinksTheGuisBehindASheetNearTheTopOfACompactScreen) {
     const Presentation::Frame phone{.display = {0.0F, 0.0F, 800.0F, 1600.0F}, .safe = {0.0F, 60.0F, 800.0F, 1500.0F}, .radius = 16.0F};
@@ -679,6 +748,9 @@ TEST_F(NavigationTest, ShowsStillScreensWithoutAllocating) {
     const std::size_t frameAlone = measure();
     const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     stack->push(make("profile"));
+    settle();
+    EXPECT_EQ(measure(), frameAlone);
+
     const std::shared_ptr<Presentation> queue = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}});
     const std::shared_ptr<Presentation> sheet = getNavigation().present(make("compose"), {.detents = {{.kind = Presentation::Detent::Kind::Fit}, {.kind = Presentation::Detent::Kind::Large}}, .detent = 1});
     const std::shared_ptr<Presentation> popover = getNavigation().present(make("info"), {.style = Presentation::Style::Popover, .anchor = getArea("home")});
@@ -724,6 +796,71 @@ TEST_F(NavigationTest, NavigatesFromLua) {
     getFixture().runLua("sheet:dismiss()");
     frames(20);
     EXPECT_EQ(getFixture().lua("return tostring(closed) .. tostring(sheet.dismissed) .. ui.screenState(sheet.screen)"), "truetrueremoved");
+}
+
+// A back hook that pops its stack itself takes the back, so the screen under it stays.
+TEST_F(NavigationTest, PopsOnceForABackHookThatPopsItself) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        local function build() return ui.column{ui.button{id = 'open', text = 'Open'}} end
+        frame = ui.mount(ui.column{ui.column{id = 'side', grow = 1, align = 'stretch'}}, {placement = 'screen'})
+        stack = ui.navigationStack{gui = frame, id = 'side', root = {build = build}}
+        stack:push({build = build})
+        stack:push({build = build, back = function() stack:pop({effect = 'fade'}) end})
+    )");
+    // clang-format on
+    frames(30);
+    EXPECT_TRUE(getNavigation().goBack());
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return stack.size"), "2");
+}
+
+// A presentation that its owner ends leaves without running the handlers of that owner.
+TEST_F(NavigationTest, DismissesThePresentationOfAnOwnerThatEndsWithoutItsHandlers) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        local function build() return ui.column{ui.button{id = 'open', text = 'Open'}} end
+        frame = ui.mount(ui.column{ui.column{id = 'side', grow = 1, align = 'stretch'}}, {placement = 'screen'})
+        detail = {build = build}
+        stack = ui.navigationStack{gui = frame, id = 'side', root = {build = build}}
+        stack:push(detail)
+        sheet = ui.present({build = build}, {owner = detail, onDismiss = function() heard = true end})
+    )");
+    // clang-format on
+    frames(30);
+    getFixture().runLua("stack:pop()");
+    frames(30);
+    EXPECT_EQ(getFixture().lua("return tostring(sheet.dismissed) .. ' ' .. tostring(heard)"), "true nil");
+}
+
+// Closed tabs, splits and routers let go of the functions of the app that made their screens, so what those functions hold is collected.
+TEST_F(NavigationTest, LetsGoOfTheFactoriesOfWhatCloses) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        local function build() return ui.column{ui.button{id = 'open', text = 'Open'}} end
+        frame = ui.mount(ui.column{ui.column{id = 'side', grow = 1, align = 'stretch'}, ui.column{id = 'list', grow = 1, align = 'stretch'}, ui.column{id = 'detail', grow = 1, align = 'stretch'}}, {placement = 'screen'})
+        held = setmetatable({}, {__mode = 'k'})
+        do
+            local later = {build = build}
+            local token = {}
+            local empty = {build = build}
+            local routed = {build = build}
+            held[later] = true
+            held[token] = true
+            held[empty] = true
+            held[routed] = true
+            tabs = ui.navigationTabs{gui = frame, id = 'side', tabs = {{id = 'home', root = function() return {build = build} end}, {id = 'later', root = function() return later end}}, onChange = function() return token end}
+            split = ui.navigationSplit{primary = {gui = frame, id = 'list'}, detail = {gui = frame, id = 'detail'}, root = {build = build}, collapsed = true, placeholder = function() return empty end}
+            router = ui.router{tabs = tabs, routes = {{name = 'a', path = 'a', screen = function() return routed end}}}
+        end
+    )");
+    // clang-format on
+    frames(2);
+    getFixture().runLua("router:close() split:close() tabs:close() collectgarbage() collectgarbage()");
+    EXPECT_EQ(getFixture().lua("return tostring(next(held))"), "nil");
 }
 
 // A sheet reports its detents and changes them from Lua, a presented flow hands its result to the promise of its presentation, and an alert resolves with the action the person chose.

@@ -156,6 +156,9 @@ class Navigation final {
     // Tells the app that its messages came on screen, that the person tapped them or pressed their actions, and that they left, and lets a snackbar or a banner that waits replace the one of its style and position that shows with a lower priority.
     void updateMessages();
     void followLaunchLink();
+
+    // Builds again the state of the navigation that the run before kept, through a router that keeps it.
+    void restoreState(Router& router);
     void replaceMessages();
 
     // Runs the render hook of the screens that draw.
@@ -238,8 +241,8 @@ class Navigation final {
     std::vector<std::shared_ptr<Router>> routers;
 
     // The last link that opened the app before it created a router that opens links, such as the link that launched it while its first scene loads, which that router opens in its first update.
-    core::ScopedConnection linkConnection;
     std::optional<std::string> launchLink;
+    core::ScopedConnection linkConnection;
     bool routed = false;
 
     // The containers and screens that an update or a render walks, kept between frames so they allocate nothing.

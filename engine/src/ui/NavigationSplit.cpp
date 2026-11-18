@@ -20,8 +20,17 @@ NavigationSplit::NavigationSplit(Navigation& owner, Region primaryRegion, Region
     primary = navigation.createStack(std::move(primaryRegion), std::move(root));
     detail = navigation.createStack(std::move(detailRegion));
     primaryChanged = primary->changed.connect([this](NavigationStack&) { followPrimary(); });
-    if (!collapsed) {
+    if (collapsed) {
+        return;
+    }
+
+    // A placeholder that fails leaves no stack of the split behind.
+    try {
         showPlaceholder();
+    } catch (...) {
+        primary->close();
+        detail->close();
+        throw;
     }
 }
 
@@ -144,6 +153,7 @@ void NavigationSplit::close() {
     }
 
     closed = true;
+    placeholder = nullptr;
     primaryChanged.disconnect();
     primary->close();
     detail->close();

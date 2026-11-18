@@ -9,6 +9,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/core/ScopedConnection.hpp"
 #include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationStack.hpp"
@@ -235,6 +236,60 @@ TEST_F(RouterTest, RoutesLinksFromLuaAndKeepsTheStateAcrossARestart) {
     frames(30);
     EXPECT_EQ(getFixture().lua("return names()"), "search: search, artist sea, album 7 2");
     EXPECT_EQ(getUi().getNavigation().getPresentations().size(), 1U);
+}
+
+// A link that no route reads, such as one whose query does not read as its type, is told like a link that no route matches, and the links after it still open.
+TEST_F(RouterTest, TellsALinkThatNoRouteReadsAndOpensTheNextOne) {
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .schemes = {"music"}});
+    std::vector<std::string> missed;
+    static_cast<void>(router->unmatched.connect([&missed](const std::string& url) { missed.push_back(url); }));
+
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/7/album/1?track=first"}});
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/7"}});
+    frames(30);
+    EXPECT_EQ(missed, (std::vector<std::string>{"music://artist/7/album/1?track=first"}));
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"7\"");
+}
+
+// The state that a router keeps survives one owner that ends its tabs before it, as a scene does when the app stops, and a router whose state fails to build closes and leaves the links to the next one.
+TEST_F(RouterTest, KeepsTheStateWhenItsTabsCloseFirstAndClosesWhenItFailsToBuildIt) {
+    std::shared_ptr<NavigationTabs> tabs = createTabs();
+    std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .restores = true});
+    router->open("artist/42");
+    frames(30);
+    // clang-format off
+    core::ScopedConnection ending = getEngine().getEvents().on(core::LifecycleEvent::kAppStopping, [&](core::EventBus::Event&) {
+        tabs->close();
+        router->close();
+    });
+    // clang-format on
+    getEngine().requestRestart();
+    getFixture().restart();
+    ending.disconnect();
+
+    frame = mount(R"({"kind": "column", "children": [{"kind": "column", "id": "middle", "grow": 1, "align": "stretch"}]})");
+    tabs = createTabs();
+    router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .restores = true});
+    frames(30);
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"42\"");
+    router->close();
+    tabs->close();
+
+    getEngine().requestRestart();
+    getFixture().restart();
+    frame = mount(R"({"kind": "column", "children": [{"kind": "column", "id": "middle", "grow": 1, "align": "stretch"}]})");
+    tabs = createTabs();
+    std::vector<Router::Route> failing = createRoutes();
+    failing[1].screen = [](const core::Json&) -> std::shared_ptr<Screen> { throw std::runtime_error("The artist could not load."); };
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = std::move(failing), .tabs = tabs, .schemes = {"music"}, .restores = true})), std::runtime_error);
+
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/9"}});
+    frames(2);
+    EXPECT_EQ(tabs->getSelected(), "home");
+    router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .schemes = {"music"}});
+    frames(30);
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"9\"");
 }
 
 TEST_F(RouterTest, RefusesRoutesThatCannotWork) {

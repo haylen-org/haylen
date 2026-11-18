@@ -98,7 +98,7 @@ class Owners final {
         std::shared_ptr<const void> lifetime = std::make_shared<bool>();
     };
 
-    // Stops the tasks first, so no code of the owner resumes while its links and connections end.
+    // Stops the tasks and then the connections before the links, so no code of the owner resumes or hears a signal while its links end, such as the dismissal of a presentation it presented.
     static void endHeld(std::vector<std::weak_ptr<Task>> tasks, std::vector<std::shared_ptr<core::Connection::Link>> links, core::ConnectionScope& connections);
 
     // Pushes the scope userdata of the owner and returns its scope, creating it on the first use.

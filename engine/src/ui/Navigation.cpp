@@ -87,26 +87,35 @@ const Navigation::Alert::Action* Navigation::Alert::findCancel() const noexcept 
     return found != actions.end() ? &*found : nullptr;
 }
 
-// A router that keeps the state of the navigation builds again what the run before it kept, after it registered, so a screen that fails to build leaves the router to its owner.
+// A router that keeps the state of the navigation builds again what the run before it kept, and a router whose state fails to build closes, so the links keep waiting for a router that opens them.
 std::shared_ptr<Router> Navigation::createRouter(Router::Options options) {
     const bool restores = options.restores;
     const bool links = options.links;
     auto created = std::make_shared<Router>(*this, engine, std::move(options));
     routers.push_back(created);
+
+    try {
+        if (restores) {
+            restoreState(*created);
+        }
+    } catch (...) {
+        created->close();
+        throw;
+    }
+
     if (links && !routed) {
         routed = true;
         linkConnection.disconnect();
     }
-    if (!restores) {
-        return created;
-    }
-
-    const std::optional<storage::ResumeState::Restored>& restored = engine.getPlugin<plugins::StoragePlugin>().getNavigationState().getRestored();
-    if (restored) {
-        created->restore(restored->value);
-    }
 
     return created;
+}
+
+void Navigation::restoreState(Router& router) {
+    const std::optional<storage::ResumeState::Restored>& restored = engine.getPlugin<plugins::StoragePlugin>().getNavigationState().getRestored();
+    if (restored) {
+        router.restore(restored->value);
+    }
 }
 
 std::shared_ptr<NavigationSplit> Navigation::findSplit(const Screen& host) const {
@@ -396,16 +405,18 @@ const Presentation* Navigation::getTopModal() const {
     return nullptr;
 }
 
-// The innermost stacks come first, and among stacks as deep, the ones created last, such as the detail of a split before its list.
+// The innermost stacks come first, and among stacks as deep, the ones created last, such as the detail of a split before its list. Each stack goes in its place as the walk finds it, so the list that the caller keeps between frames allocates nothing.
 void Navigation::collectActive(const Presentation* layer, std::vector<NavigationStack*>& found) const {
     found.clear();
     for (auto stack = stacks.rbegin(); stack != stacks.rend(); ++stack) {
-        if (isDrawn(**stack) && findPresentation(**stack) == layer) {
-            found.push_back(stack->get());
+        if (!isDrawn(**stack) || findPresentation(**stack) != layer) {
+            continue;
         }
-    }
 
-    std::ranges::stable_sort(found, [this](const NavigationStack* lhs, const NavigationStack* rhs) { return getDepth(*lhs) > getDepth(*rhs); });
+        const std::size_t depth = getDepth(**stack);
+        const auto shallower = std::ranges::find_if(found, [this, depth](const NavigationStack* other) { return getDepth(*other) < depth; });
+        found.insert(shallower, stack->get());
+    }
 }
 
 bool Navigation::canGoBackIn(const Presentation* layer) const {
@@ -436,8 +447,10 @@ bool Navigation::goBackIn(const Presentation* layer) {
 
     activeStacks.clear();
     if (popping) {
+        // A hook that changed the stack itself took the back as well, such as one that pops with a transition of its own.
         const std::shared_ptr<Screen> top = popping->getTop();
-        if (!askBack(*top) && !popping->isClosed()) {
+        const bool kept = askBack(*top);
+        if (!kept && !popping->isClosed() && popping->getTop() == top) {
             popping->pop();
         }
 
@@ -463,7 +476,7 @@ bool Navigation::canGoBack() const {
             continue;
         }
 
-        if (layer.isModal() || layer.getDetent() > 0 || canGoBackIn(&layer)) {
+        if (layer.isModal() || layer.canLowerDetent() || canGoBackIn(&layer)) {
             return true;
         }
     }
@@ -488,7 +501,7 @@ bool Navigation::goBack() {
             return true;
         }
 
-        if (layer->getDetent() > 0) {
+        if (layer->canLowerDetent()) {
             layer->setDetent(0);
             return true;
         }
@@ -584,7 +597,7 @@ void Navigation::followLaunchLink() {
     }
 
     const std::shared_ptr<Router> router = *found;
-    lua::Runtime::runReporting(engine.getLuaState(), [&] { router->follow(link); });
+    router->follow(link);
 }
 
 // The handlers of the app may show and dismiss messages, so the pass walks a copy.

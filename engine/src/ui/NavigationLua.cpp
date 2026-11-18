@@ -3,7 +3,6 @@
 #include <lua.hpp>
 
 #include <algorithm>
-#include <format>
 #include <functional>
 #include <optional>
 #include <string>

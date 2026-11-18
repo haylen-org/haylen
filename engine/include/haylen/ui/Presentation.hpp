@@ -229,6 +229,9 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
     [[nodiscard]] bool isCard(const Frame& frame) const;
     [[nodiscard]] bool isCompact(const Frame& frame) const;
 
+    // Whether the presentation rests as a sheet above its lowest detent, where the system back moves it down, which a card that has no detents never does.
+    [[nodiscard]] bool canLowerDetent() const;
+
     // The top of the surface of a sheet resting at a detent.
     [[nodiscard]] float getDetentTop(const Frame& frame, std::size_t index) const;
     [[nodiscard]] Layout getSheetLayout(const Frame& frame) const;

@@ -79,6 +79,7 @@ void NavigationStack::close() {
         release(*screen);
     }
 
+    changed.clear();
     navigation.forget(*this);
 }
 
@@ -129,7 +130,7 @@ void NavigationStack::setShown(bool value) {
     navigation.hideAtOnce(*top);
 }
 
-// The screens that join take their place first, and the hooks run once the list is whole, so a hook that changes the stack finds it in order and finishes this change before its own.
+// The screens that join take their place first, and the hooks and then the handlers of the change run once the list is whole, so one that changes the stack finds it in order and finishes this change before its own.
 void NavigationStack::apply(std::vector<std::shared_ptr<Screen>> next, const NavigationTransition& transition) {
     checkJoining(next);
     finish();
@@ -159,17 +160,13 @@ void NavigationStack::apply(std::vector<std::shared_ptr<Screen>> next, const Nav
         navigation.place(*screen, self);
     }
 
-    changed.emit(*this);
-    if (generation != started) {
-        return;
-    }
-
-    change = Change{.outgoing = outgoing == incoming ? nullptr : outgoing, .incoming = outgoing == incoming ? nullptr : incoming, .removed = std::move(removed), .transition = transition.reduced(navigation.isMotionReduced()), .backward = backward};
+    const bool moves = outgoing != incoming;
+    change = Change{.outgoing = moves ? outgoing : nullptr, .incoming = moves ? incoming : nullptr, .removed = std::move(removed), .transition = transition.reduced(navigation.isMotionReduced()), .backward = backward};
     if (isActive() && change->outgoing) {
         navigation.beginDisappear(*change->outgoing);
     }
 
-    // A hook that changed the stack or showed or hid it finished this change already.
+    // A hook or a handler of the change that changed the stack or showed or hid it finished this change already.
     if (generation != started || !change) {
         return;
     }
@@ -178,6 +175,11 @@ void NavigationStack::apply(std::vector<std::shared_ptr<Screen>> next, const Nav
         navigation.beginAppear(*change->incoming);
     }
 
+    if (generation != started || !change) {
+        return;
+    }
+
+    changed.emit(*this);
     if (generation != started || !change) {
         return;
     }

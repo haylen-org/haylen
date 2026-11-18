@@ -147,7 +147,7 @@ void Presentation::finishArriving() {
     }
 }
 
-// The presentation leaves the navigation before its signal, so a handler that presents again finds this one gone.
+// The presentation leaves the navigation before its signal, so a handler that presents again finds this one gone, and it lets go of its handlers once they heard it.
 void Presentation::finishLeaving() {
     phase = Phase::Gone;
     const std::shared_ptr<Presentation> self = shared_from_this();
@@ -155,6 +155,8 @@ void Presentation::finishLeaving() {
     navigation.removeScreen(*screen);
     navigation.forget(*this);
     dismissed.emit(*self);
+    dismissed.clear();
+    detentChanged.clear();
 }
 
 float Presentation::getDistance() const {
@@ -182,6 +184,10 @@ bool Presentation::isCompact(const Frame& frame) const {
 
 bool Presentation::isCard(const Frame& frame) const {
     return options.style == Style::Sheet && options.size == Size::Form && !isCompact(frame);
+}
+
+bool Presentation::canLowerDetent() const {
+    return detent > 0 && lastFrame && isSheet(*lastFrame) && !isCard(*lastFrame);
 }
 
 bool Presentation::isSheet(const Frame& frame) const {

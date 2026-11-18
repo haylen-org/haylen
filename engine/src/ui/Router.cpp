@@ -11,6 +11,7 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/lua/Runtime.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/ResumeState.hpp"
 #include "haylen/ui/Navigation.hpp"
@@ -71,20 +72,33 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
         backgroundConnection = engine.getEvents().on(core::LifecycleEvent::kAppBackground, [this](core::EventBus::Event&) {
             persist();
         });
+        stoppingConnection = engine.getEvents().on(core::LifecycleEvent::kAppStopping, [this](core::EventBus::Event&) {
+            persist();
+        });
     }
     // clang-format on
 }
 
 Router::~Router() = default;
 
+// A link comes from outside the app, so a link that no route reads is told like one that no route matches, and a screen that fails to open reaches the error screen instead of the code that delivered the link.
 void Router::follow(const std::string& url) {
-    if (!match(url)) {
+    std::optional<Match> found;
+    try {
+        found = match(url);
+    } catch (const std::invalid_argument& error) {
+        core::Log::error("No route reads the link \"{}\". {}", url, error.what());
+        unmatched.emit(url);
+        return;
+    }
+
+    if (!found) {
         core::Log::error("No route matches the link \"{}\".", url);
         unmatched.emit(url);
         return;
     }
 
-    open(url);
+    lua::Runtime::runReporting(engine.getLuaState(), [this, &url] { open(url); });
 }
 
 // A segment in braces is a parameter, `{name}` or `{name:type}`, and any other segment is a literal.
@@ -138,7 +152,7 @@ std::string Router::decode(std::string_view text) {
             continue;
         }
 
-        int value = 0;
+        unsigned int value = 0;
         const bool escaped = character == '%' && index + 2 < text.size() && std::from_chars(text.data() + index + 1, text.data() + index + 3, value, 16).ptr == text.data() + index + 3;
         if (escaped) {
             decoded.push_back(static_cast<char>(value));
@@ -528,7 +542,7 @@ void Router::restore(const core::Json& state) {
         throw std::logic_error("The router is closed.");
     }
     if (!state.is_object()) {
-        throw std::invalid_argument("The state of a router is an object that `save` returned.");
+        throw std::invalid_argument("The state of a router is an object that \"save\" returned.");
     }
 
     // clang-format off
@@ -591,14 +605,21 @@ void Router::close() {
         return;
     }
 
-    if (options.restores) {
+    // The stacks of the router may have closed first, such as when one owner ends both, and then the state they kept stays as the app stopping or the background left it.
+    const bool showing = options.tabs ? !options.tabs->isClosed() : !options.stack->isClosed();
+    if (options.restores && showing) {
         persist();
     }
 
     closed = true;
     linkConnection = {};
     backgroundConnection = {};
+    stoppingConnection = {};
     unmatched.clear();
+    for (Route& route : options.routes) {
+        route.screen = nullptr;
+    }
+
     navigation.forget(*this);
 }
 

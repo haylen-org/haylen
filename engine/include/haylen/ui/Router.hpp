@@ -168,7 +168,7 @@ class Router final : public std::enable_shared_from_this<Router> {
     void showDetail(const Route& route, const std::shared_ptr<Screen>& screen, const NavigationTransition& transition) const;
     void present(const Route& route, std::shared_ptr<Screen> screen) const;
 
-    // Keeps the state of the navigation for the next start, as the app goes to the background or restarts.
+    // Keeps the state of the navigation for the next start, as the app goes to the background or stops.
     void persist() const;
 
     // Opens a link that opened the app, or logs and tells that no route matches it.
@@ -181,6 +181,7 @@ class Router final : public std::enable_shared_from_this<Router> {
     std::vector<Shown> shown;
     core::ScopedConnection linkConnection;
     core::ScopedConnection backgroundConnection;
+    core::ScopedConnection stoppingConnection;
     bool closed = false;
 };
 

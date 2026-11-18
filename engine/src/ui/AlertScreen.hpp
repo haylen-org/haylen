@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/ScopedConnection.hpp"

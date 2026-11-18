@@ -51,7 +51,7 @@ NavigationTabs::Entry& NavigationTabs::find(std::string_view id) {
     return *found;
 }
 
-// The stack of a tab that does not show is hidden before its root joins, so the root builds its GUI only once its tab shows.
+// The stack of a tab that does not show is hidden before its root joins, so the root builds its GUI only once its tab shows. A tab whose root fails keeps no stack.
 const std::shared_ptr<NavigationStack>& NavigationTabs::open(Entry& entry) {
     if (entry.stack) {
         return entry.stack;
@@ -64,7 +64,13 @@ const std::shared_ptr<NavigationStack>& NavigationTabs::open(Entry& entry) {
 
     std::shared_ptr<NavigationStack> stack = navigation.createStack(region);
     stack->setShown(entry.tab.id == selected);
-    stack->push(std::move(root), {.effect = NavigationTransition::Effect::None});
+    try {
+        stack->push(std::move(root), {.effect = NavigationTransition::Effect::None});
+    } catch (...) {
+        stack->close();
+        throw;
+    }
+
     entry.stack = std::move(stack);
     return entry.stack;
 }
@@ -77,9 +83,10 @@ void NavigationTabs::select(std::string_view id) {
         return;
     }
 
+    const std::shared_ptr<NavigationStack>& next = open(entry);
     const std::string previous = std::exchange(selected, entry.tab.id);
     find(previous).stack->setShown(false);
-    open(entry)->setShown(true);
+    next->setShown(true);
     selectionChanged.emit(selected, previous);
 }
 
@@ -119,13 +126,16 @@ std::shared_ptr<NavigationStack> NavigationTabs::findStack(std::string_view id) 
     return found != entries.end() ? found->stack : nullptr;
 }
 
+// The roots and the handlers go with the tabs, since a function of the app that they keep may keep its owner alive.
 void NavigationTabs::close() {
     if (closed) {
         return;
     }
 
     closed = true;
-    for (const Entry& entry : entries) {
+    selectionChanged.clear();
+    for (Entry& entry : entries) {
+        entry.tab.root = nullptr;
         if (entry.stack) {
             entry.stack->close();
         }
