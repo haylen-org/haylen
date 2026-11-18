@@ -705,7 +705,7 @@ These messages come from the save slots.
 | --- | --- |
 | `The save slot name "<slot>" must use 1 to 64 letters, digits, dashes or underscores.` | The slot name is empty, too long or has other characters. |
 | `A save summary must be a JSON object.` | The summary is not a table, or it is a list. |
-| `The save slot "<slot>" is damaged.` | The file of the slot and its backup are not valid JSON, lack a field or fail their checksum. |
+| `The save slot "<slot>" is damaged.` | The file of the slot and its backup are not valid JSON, lack a field, hold a revision below 0 or a version outside 1 to 2147483647, or fail their checksum. |
 | `The save slot "<slot>" has version <version>, which is newer than the version <version> this app reads.` | A newer version of the app wrote the slot. |
 | `The save slot "<slot>" has version <version> and no migration reaches version <version>.` | A step of the migrations is missing. |
 | `A save version is a whole number from 1.` | The function `storage.setSaveVersion` received a version below 1. |

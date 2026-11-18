@@ -4,6 +4,7 @@
 #include <cctype>
 #include <chrono>
 #include <format>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -87,10 +88,17 @@ std::string SaveSlots::checksumOf(const core::Json& saved) {
     return std::format("{:016x}", hash);
 }
 
+// The checksum only finds damage, since anyone can compute it again, so every field is checked to hold what a write stores.
 std::optional<core::Json> SaveSlots::parse(std::string_view text) {
     core::Json saved = core::Json::parse(text, nullptr, false);
+    if (!saved.is_object()) {
+        return std::nullopt;
+    }
+
     const auto isInteger = [&saved](const char* key) { return saved.contains(key) && saved.at(key).is_number_integer(); };
-    const bool valid = saved.is_object() && saved.contains("data") && saved.contains("summary") && saved.at("summary").is_object() && isInteger("savedAt") && isInteger("version") && saved.at("version").get<std::int64_t>() >= 1 && isInteger("revision") && saved.contains("checksum") && saved.at("checksum").is_string();
+    const bool versionFits = isInteger("version") && saved.at("version").get<std::int64_t>() >= 1 && saved.at("version").get<std::int64_t>() <= std::numeric_limits<int>::max();
+    const bool revisionFits = saved.contains("revision") && saved.at("revision").is_number_unsigned();
+    const bool valid = saved.contains("data") && saved.contains("summary") && saved.at("summary").is_object() && isInteger("savedAt") && versionFits && revisionFits && saved.contains("checksum") && saved.at("checksum").is_string();
     if (!valid || saved.at("checksum").get<std::string>() != checksumOf(saved)) {
         return std::nullopt;
     }
@@ -150,6 +158,7 @@ SaveSlots::Info SaveSlots::write(std::string_view slot, const core::Json& data, 
     StoredJson::validate(data);
     StoredJson::validate(summary);
     const std::string path = pathOf(slot);
+    const std::scoped_lock lock(writing);
 
     // The file of the slot becomes its backup before the new one replaces it, unless it is damaged, which would replace a sound backup with a broken one.
     std::uint64_t revision = 0;
@@ -214,7 +223,9 @@ bool SaveSlots::exists(std::string_view slot) const {
 }
 
 bool SaveSlots::remove(std::string_view slot) {
-    const bool removed = userStorage.remove(pathOf(slot));
+    const std::string path = pathOf(slot);
+    const std::scoped_lock lock(writing);
+    const bool removed = userStorage.remove(path);
     userStorage.remove(backupOf(slot));
     return removed;
 }
@@ -258,6 +269,7 @@ bool SaveSlots::importSlot(std::string_view slot, std::string_view bytes, Import
     }
 
     const std::string path = pathOf(slot);
+    const std::scoped_lock lock(writing);
     if (policy == ImportPolicy::KeepNewer) {
         const std::optional<std::string> current = readFile(path);
         const std::optional<core::Json> saved = current ? parse(*current) : std::nullopt;

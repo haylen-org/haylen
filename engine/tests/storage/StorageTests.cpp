@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <limits>
@@ -308,6 +309,69 @@ TEST(SaveSlotsTest, ImportsOnlyNewerRevisionsUnlessAskedToReplace) {
     EXPECT_THROW((void)phone.importSlot("slot", "{}", SaveSlots::ImportPolicy::Replace), std::invalid_argument);
     EXPECT_EQ(SaveSlots::importPolicyFromName("keepNewer"), SaveSlots::ImportPolicy::KeepNewer);
     EXPECT_EQ(SaveSlots::importPolicyName(SaveSlots::ImportPolicy::Replace), "replace");
+}
+
+// The checksum of a slot finds damage, not intent, so anyone can sign bytes that hold any field.
+class SaveSlotsForgeryTest : public ::testing::Test {
+  protected:
+    // Returns the bytes of a slot whose checksum holds, computed like the checksum that a write stores.
+    [[nodiscard]] static std::string sign(core::Json saved) {
+        std::uint64_t hash = 14695981039346656037ULL;
+        for (const char character : saved.dump()) {
+            hash = (hash ^ static_cast<unsigned char>(character)) * 1099511628211ULL;
+        }
+
+        saved["checksum"] = std::format("{:016x}", hash);
+        return saved.dump();
+    }
+};
+
+TEST_F(SaveSlotsForgeryTest, RefusesRevisionsAndVersionsThatNoWriteStores) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    SaveSlots saves(storage);
+    const core::Json sound{{"data", 1}, {"summary", core::Json::object()}, {"savedAt", 5}, {"version", 1}, {"revision", 1}};
+    EXPECT_TRUE(saves.importSlot("sound", sign(sound), SaveSlots::ImportPolicy::Replace));
+
+    core::Json negative = sound;
+    negative["revision"] = -1;
+    core::Json huge = sound;
+    huge["version"] = std::int64_t{1} << 40;
+    for (const core::Json& forged : {negative, huge}) {
+        try {
+            (void)saves.importSlot("slot", sign(forged), SaveSlots::ImportPolicy::Replace);
+            ADD_FAILURE() << "A slot of " << forged.dump() << " must be refused.";
+        } catch (const std::invalid_argument& error) {
+            EXPECT_STREQ(error.what(), "The imported save slot \"slot\" is damaged.");
+        }
+    }
+}
+
+// Each write reads the revision that the write before it stored, so writes of one slot on two threads lose none.
+TEST(SaveSlotsTest, CountsEveryWriteOfOneSlotFromTwoThreads) {
+    const test::TemporaryDirectory directory;
+    UserStorage storage(directory.getPath());
+    SaveSlots saves(storage);
+    constexpr int kWrites = 25;
+    std::string failure;
+    // clang-format off
+    std::thread other([&] {
+        try {
+            for (int round = 0; round < kWrites; ++round) {
+                saves.write("shared", {{"thread", "other"}});
+            }
+        } catch (const std::exception& error) {
+            failure = error.what();
+        }
+    });
+    // clang-format on
+    for (int round = 0; round < kWrites; ++round) {
+        saves.write("shared", {{"thread", "main"}});
+    }
+
+    other.join();
+    EXPECT_EQ(failure, "");
+    EXPECT_EQ(saves.getInfo("shared")->revision, static_cast<std::uint64_t>(kWrites * 2));
 }
 
 // A slot that is there but cannot be read fails, instead of reading as a slot that was never saved.

@@ -107,6 +107,9 @@ class SaveSlots final {
     std::string directory;
     Clock clock;
     mutable std::mutex mutex;
+
+    // Writes, imports and removals of slots run one at a time, so each one reads the revision that the one before it wrote.
+    std::mutex writing;
     int version = 1;
     std::map<int, Migration> migrations;
 };
