@@ -129,7 +129,7 @@ Every entry point is safe from any thread, and each copies the bytes once, into 
 | Objective-C and Swift | An `NSData` value, `Data` in Swift, in the parameters. | `NSData` and `Data` values anywhere in the value of a reply and of `emit`. |
 | JavaScript | A `Uint8Array` value in the parameters. | `ArrayBuffer`, `Uint8Array` and every other `ArrayBuffer` view anywhere in the value of a handler and of `emit`. They are copied into wasm memory. |
 
-JSON that refers to a buffer it lacks fails a call with the code `invalidBytes` and a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. The same JSON drops an event with an error in the log, and it makes `Bridge::call` and `Bridge::send` throw `std::invalid_argument`. A failure carries JSON alone, so the buffers of a failure are dropped. The Swift helpers for `Codable` values carry JSON alone too, so a Swift handler that takes or returns bytes uses `registerHandler` with dictionaries.
+JSON that refers to a buffer it lacks fails a call with the code `invalidBytes` and a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. The same JSON drops an event with an error in the log, and it makes `Bridge::call` and `Bridge::send` throw `std::invalid_argument`. A failure carries JSON alone, so the buffers of a failure are dropped. The Swift helpers for `Codable` values carry JSON alone too, so a Swift handler that takes or returns bytes uses `registerHandler` with dictionaries. Bytes never turn into text there. A `Codable` result that holds `Data` fails its encoding, so the call fails with the code `exception`. Bytes or data views in the parameters of a `Codable` handler fail the call with the code `invalidParams`.
 
 ```lua
 local async = require('async')

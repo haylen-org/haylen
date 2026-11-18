@@ -28,13 +28,6 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         let language: String
     }
 
-    struct Photo: Encodable {
-        let jpeg: Data
-        let width: Int
-        let height: Int
-        let language: String
-    }
-
     struct MicrophoneStarted: Encodable {
         let sampleRate: Int
         let channels: Int
@@ -140,17 +133,20 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
             return Empty()
         }
 
-        context.register("takePhoto") { [unowned self] (_: Empty) async throws -> Photo in
+        // The JPEG bytes cross as `Data` in the dictionary of the reply, since the helpers for Codable values carry JSON alone.
+        context.registerHandler("takePhoto") { [unowned self] _, reply in
             #if os(tvOS)
-            throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
+            reply(false, ["message": "Apple TV has no camera.", "code": "unsupported"])
             #else
             guard let camera = self.camera else {
-                throw HaylenFailure("The camera is off. Call \"startCamera\" first.", code: "cameraOff")
+                reply(false, ["message": "The camera is off. Call \"startCamera\" first.", "code": "cameraOff"])
+                return
             }
             guard let photo = camera.photo() else {
-                throw HaylenFailure("The camera has no frame yet.", code: "noFrame")
+                reply(false, ["message": "The camera has no frame yet.", "code": "noFrame"])
+                return
             }
-            return Photo(jpeg: photo.jpeg, width: photo.width, height: photo.height, language: Self.language)
+            reply(true, ["jpeg": photo.jpeg, "width": photo.width, "height": photo.height, "language": Self.language])
             #endif
         }
     }

@@ -28,7 +28,7 @@ extension HaylenBridge {
         return { params, reply in
             let task = Task { @MainActor in
                 do {
-                    let input = try JSONSerialization.data(withJSONObject: params, options: .fragmentsAllowed)
+                    let input = try jsonData(params)
                     let result = try await handler(JSONDecoder().decode(Params.self, from: input))
                     reply(true, try jsonObject(result))
                 } catch is CancellationError {
@@ -49,8 +49,22 @@ extension HaylenBridge {
         }
     }
 
+    // The helpers for Codable values carry JSON alone, and bytes never travel as text, so `Data` in a result fails the encoding and bytes or data views in the parameters fail the call instead of turning into base64.
+    fileprivate static let bytesMessage = "Bytes and data views travel only in the dictionaries of \"registerHandler\" and its reply, never through the helpers for Codable values, which carry JSON alone."
+
     fileprivate static func jsonObject(_ value: some Encodable) throws -> Any {
-        try JSONSerialization.jsonObject(with: JSONEncoder().encode(value), options: .fragmentsAllowed)
+        let encoder = JSONEncoder()
+        encoder.dataEncodingStrategy = .custom { data, encoder in
+            throw EncodingError.invalidValue(data, EncodingError.Context(codingPath: encoder.codingPath, debugDescription: bytesMessage))
+        }
+        return try JSONSerialization.jsonObject(with: encoder.encode(value), options: .fragmentsAllowed)
+    }
+
+    fileprivate static func jsonData(_ params: Any) throws -> Data {
+        if (params is [Any] || params is [String: Any]) && !JSONSerialization.isValidJSONObject(params) {
+            throw HaylenFailure(bytesMessage, code: "invalidParams")
+        }
+        return try JSONSerialization.data(withJSONObject: params, options: .fragmentsAllowed)
     }
 }
 
@@ -65,7 +79,7 @@ extension HaylenPluginContext {
         registerScreen(name) { params, screen in
             Task { @MainActor in
                 do {
-                    let input = try JSONSerialization.data(withJSONObject: params, options: .fragmentsAllowed)
+                    let input = try HaylenBridge.jsonData(params)
                     try handler(JSONDecoder().decode(Params.self, from: input), screen)
                 } catch let failure as HaylenFailure {
                     screen.fail(failure.message, code: failure.code, data: failure.data.flatMap { try? HaylenBridge.jsonObject($0) })
