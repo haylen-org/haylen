@@ -230,6 +230,29 @@ TEST(PackageOpenTest, RejectsMissingAndInvalidPackages) {
     }
 }
 
+// The paths of a package are normalized, so an entry whose name is not one could be listed and never read.
+TEST(PackageOpenTest, RefusesZipEntriesWhoseNamesAreNotNormalized) {
+    test::TemporaryDirectory directory;
+    for (const char* entryName : {"./haylen.json", "content\\hero.png", "/haylen.json", "../haylen.json", "content//hero.png"}) {
+        const std::string name = entryName;
+        const std::filesystem::path file = directory.getPath() / "app.zip";
+        const std::string text = "{}";
+        int error = 0;
+        zip_t* archive = zip_open(file.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
+        ASSERT_NE(archive, nullptr);
+        zip_file_add(archive, "source/main.lua", zip_source_buffer(archive, text.data(), text.size(), 0), ZIP_FL_ENC_UTF_8);
+        zip_file_add(archive, name.c_str(), zip_source_buffer(archive, text.data(), text.size(), 0), ZIP_FL_ENC_UTF_8);
+        ASSERT_EQ(zip_close(archive), 0);
+
+        try {
+            (void)Package::open(file);
+            ADD_FAILURE() << "The entry \"" << name << "\" must be refused.";
+        } catch (const std::runtime_error& failure) {
+            EXPECT_EQ(std::string(failure.what()), "The package archive \"app.zip\" holds the entry \"" + name + "\", whose name is not a relative path with forward slashes, such as \"content/images/hero.png\". Make the archive with \"haylen app zip\".");
+        }
+    }
+}
+
 TEST(PackageOpenTest, ReportsDamagedZipEntries) {
     test::TemporaryDirectory directory;
     const std::filesystem::path file = directory.getPath() / "app.zip";

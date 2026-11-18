@@ -23,7 +23,7 @@ class Package {
 
     [[nodiscard]] static std::unique_ptr<Package> openDirectory(const std::filesystem::path& root);
 
-    // Opens a zip archive in place and reads its entries when they are asked for.
+    // Opens a zip archive in place and reads its entries when they are asked for. Throws `std::runtime_error` for a file that is not a zip archive or an archive with an entry whose name is not a relative path with forward slashes, such as `./haylen.json`.
     [[nodiscard]] static std::unique_ptr<Package> openZip(const std::filesystem::path& file);
     [[nodiscard]] static std::unique_ptr<Package> openZip(std::vector<std::uint8_t> bytes, std::string name);
     [[nodiscard]] static std::unique_ptr<Package> open(const std::filesystem::path& path);

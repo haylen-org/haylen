@@ -556,7 +556,7 @@ An app package is a folder or a `.zip` file with `haylen.json`, the Lua modules 
 
 The class `io::Package`, in `haylen/io/Package.hpp`, is the view of a package. It is read-only and safe to use from several threads.
 
-- `Package::open` opens a folder or a zip file. A zip file stays on disk and reads each entry when it is asked for.
+- `Package::open` opens a folder or a zip file. A zip file stays on disk and reads each entry when it is asked for. A zip file with an entry whose name is not a relative path with forward slashes, such as `./haylen.json` or `content\hero.png`, fails to open with a sentence that names the entry, since such an entry could never be read.
 - `Package::openZip` also takes the bytes of a zip file.
 - `io::MemoryPackage`, in `haylen/io/MemoryPackage.hpp`, holds files in memory that can be replaced while the app runs, which is what a browser editor uses.
 

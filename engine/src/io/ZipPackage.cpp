@@ -9,7 +9,34 @@
 
 namespace haylen::io {
 
-ZipPackage::ZipPackage(std::shared_ptr<ZipArchive> openArchive) : archive(std::move(openArchive)) {}
+ZipPackage::ZipPackage(std::shared_ptr<ZipArchive> openArchive) : archive(std::move(openArchive)) {
+    checkEntries();
+}
+
+// Lookups normalize their paths, so an entry whose name is not normalized, such as `./haylen.json` or `content\hero.png`, could be listed and never read.
+void ZipPackage::checkEntries() const {
+    const zip_int64_t count = zip_get_num_entries(archive->get(), 0);
+    for (zip_int64_t index = 0; index < count; ++index) {
+        const char* entry = zip_get_name(archive->get(), static_cast<zip_uint64_t>(index), 0);
+        const std::string_view name = entry == nullptr ? std::string_view{} : std::string_view(entry);
+        const std::string_view path = name.ends_with('/') ? name.substr(0, name.size() - 1) : name;
+        if (!isNormalized(path)) {
+            throw std::runtime_error("The package archive \"" + archive->getName() + "\" holds the entry \"" + std::string(name) + "\", whose name is not a relative path with forward slashes, such as \"content/images/hero.png\". Make the archive with \"haylen app zip\".");
+        }
+    }
+}
+
+bool ZipPackage::isNormalized(std::string_view name) {
+    if (name.empty()) {
+        return false;
+    }
+
+    try {
+        return Path::normalize(name) == name;
+    } catch (const std::invalid_argument&) {
+        return false;
+    }
+}
 
 zip_stat_t ZipPackage::find(const std::string& entry) const {
     zip_stat_t stat;
