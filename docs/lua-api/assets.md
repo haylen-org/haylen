@@ -87,7 +87,7 @@ scene.push({
 
 Loads a font at once and returns it. It takes a TrueType or OpenType font, or a collection of them, with the options `bakeSize`, `spread`, `atlasSize` and `face`, or a BMFont `.fnt` file with the `filter` and `wrap` of its pages. Load a grid font with `assets.load(path, 'gridFont', options)` instead.
 
-A file whose extension no asset type handles, such as `.woff`, raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`. A file of another asset type, such as an image, raises the `bad argument` error of Lua with `expected a .ttf, .otf, .ttc or .fnt file`. A font option that is not a number raises `The font option "<option>" must be a number, not <value>.`, with the value as JSON.
+A file whose extension no asset type handles, such as `.woff`, raises `No asset type handles the file "<path>". Pass its type or use an extension that an asset type handles.`. A file of another asset type, such as an image, raises the `bad argument` error of Lua with `expected a .ttf, .otf, .ttc or .fnt file`. A font option that is not a number raises `The font option "<option>" must be a number, not <value>.`, with the value as JSON. A `spread`, `atlasSize` or `face` that is not a whole number from -2147483648 to 2147483647 raises `The font option "<option>" must be a whole number from -2147483648 to 2147483647, not <value>.`, and a `bakeSize` beyond the range of a float raises `The font option "bakeSize" must be a finite number that a float holds, not <value>.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -717,6 +717,8 @@ end
 | `The texture wrap must be "clamp", "repeat" or "mirror", not <wrap>.` | The `wrap` option is not `clamp`, `repeat` or `mirror`. The message shows it as JSON. |
 | `The texture option "mipmaps" must be true or false, not <value>.` | The `mipmaps` option is not a boolean. The message shows it as JSON. |
 | `The font option "<option>" must be a number, not <value>.` | The `bakeSize`, `spread`, `atlasSize` or `face` of a font is not a number. |
+| `The font option "<option>" must be a whole number from -2147483648 to 2147483647, not <value>.` | The `spread`, `atlasSize` or `face` of a font has a fraction or is out of range. |
+| `The font option "bakeSize" must be a finite number that a float holds, not <value>.` | The `bakeSize` of a font is beyond the range of a float. |
 | `Font data is not a valid TrueType or OpenType font.` | A `.ttf` or `.otf` file has no glyphs, no character map, no outlines or no ascender above its descender, as the [text guide](../graphics/text.md#fonts-from-any-package) explains. |
 | `The font data holds <count> faces, so it has no face <face>.` | The `face` of a font is past the faces of its collection. |
 | `The upload budget cannot be negative.` | The budget of `assets.setUploadBudget` is below `0`. |

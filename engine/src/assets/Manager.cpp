@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cmath>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
@@ -48,28 +50,52 @@ std::string Manager::describe(const core::Json& value) {
     return value.dump(-1, ' ', false, core::Json::error_handler_t::replace);
 }
 
+// The values convert only once they fit their types, since a number past the range of its type has no conversion.
 text::TrueTypeFont::Options Manager::fontOptionsFromJson(const core::Json& options) {
     core::JsonValidator::requireKnownOptions(options, {"bakeSize", "spread", "atlasSize", "face"}, "font options");
-    // clang-format off
-    const auto number = [&options](const char* key, auto value) {
-        if (!options.contains(key)) {
-            return value;
-        }
-
-        if (!options.at(key).is_number()) {
-            throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a number, not " + describe(options.at(key)) + ".");
-        }
-
-        return options.at(key).get<decltype(value)>();
-    };
-    // clang-format on
-
     text::TrueTypeFont::Options result;
-    result.bakeSize = number("bakeSize", result.bakeSize);
-    result.spread = number("spread", result.spread);
-    result.atlasSize = number("atlasSize", result.atlasSize);
-    result.face = number("face", result.face);
+    result.bakeSize = readFontSize(options, "bakeSize", result.bakeSize);
+    result.spread = readFontInteger(options, "spread", result.spread);
+    result.atlasSize = readFontInteger(options, "atlasSize", result.atlasSize);
+    result.face = readFontInteger(options, "face", result.face);
     return result;
+}
+
+float Manager::readFontSize(const core::Json& options, const char* key, float fallback) {
+    if (!options.contains(key)) {
+        return fallback;
+    }
+
+    const core::Json& value = options.at(key);
+    if (!value.is_number()) {
+        throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a number, not " + describe(value) + ".");
+    }
+
+    const double number = value.get<double>();
+    if (!std::isfinite(number) || std::fabs(number) > static_cast<double>(std::numeric_limits<float>::max())) {
+        throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a finite number that a float holds, not " + describe(value) + ".");
+    }
+
+    return static_cast<float>(number);
+}
+
+int Manager::readFontInteger(const core::Json& options, const char* key, int fallback) {
+    if (!options.contains(key)) {
+        return fallback;
+    }
+
+    const core::Json& value = options.at(key);
+    if (!value.is_number()) {
+        throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a number, not " + describe(value) + ".");
+    }
+
+    const double number = value.get<double>();
+    const bool whole = std::trunc(number) == number;
+    if (!whole || number < static_cast<double>(std::numeric_limits<int>::min()) || number > static_cast<double>(std::numeric_limits<int>::max())) {
+        throw std::invalid_argument(std::string("The font option \"") + key + "\" must be a whole number from -2147483648 to 2147483647, not " + describe(value) + ".");
+    }
+
+    return static_cast<int>(number);
 }
 
 core::Json Manager::fontOptionsToJson(const text::TrueTypeFont::Options& options) {

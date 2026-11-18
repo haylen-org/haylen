@@ -212,6 +212,8 @@ class Manager final {
     [[nodiscard]] static std::string lowercase(std::string_view text);
     [[nodiscard]] static std::string describe(const core::Json& value);
     [[nodiscard]] static text::TrueTypeFont::Options fontOptionsFromJson(const core::Json& options);
+    [[nodiscard]] static float readFontSize(const core::Json& options, const char* key, float fallback);
+    [[nodiscard]] static int readFontInteger(const core::Json& options, const char* key, int fallback);
     [[nodiscard]] static core::Json fontOptionsToJson(const text::TrueTypeFont::Options& options);
     [[nodiscard]] static std::string cacheKey(std::string_view type, std::string_view path, const core::Json& options);
 
