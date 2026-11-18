@@ -67,6 +67,19 @@ TEST_F(MessagePackTest, RefusesBrokenAndHostileMessages) {
     }
 
     EXPECT_THROW((void)MessagePack::encode(nested), std::invalid_argument);
+
+    // Both ways count only containers as levels, so 128 nested arrays round-trip and a 129th one fails both ways, even when it is empty.
+    Json deepest = Json::array({0});
+    for (int level = 1; level < 128; ++level) {
+        deepest = Json::array({deepest});
+    }
+
+    EXPECT_EQ(MessagePack::decode(MessagePack::encode(deepest)), deepest);
+    EXPECT_THROW((void)MessagePack::encode(Json::array({deepest})), std::invalid_argument);
+
+    std::vector<std::byte> empty(128, std::byte{0x91});
+    empty.push_back(std::byte{0x90});
+    EXPECT_EQ(refusal(empty), "The bytes are not valid MessagePack: it nests deeper than 128 levels.");
 }
 
 TEST(MessagePackLuaTest, EncodesAndDecodesOnTheFrameThreadAndOffIt) {

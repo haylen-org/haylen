@@ -145,12 +145,13 @@ const char* MessagePack::check(std::span<const std::byte> bytes) noexcept {
             return "a container claims more items than its bytes hold";
         }
 
-        if (items == 0) {
-            continue;
-        }
-
+        // The containers that are still open each count as one level, and this container is one more.
         if (pending.size() >= kMaxDepth) {
             return "it nests deeper than 128 levels";
+        }
+
+        if (items == 0) {
+            continue;
         }
 
         pending.push_back(expected);
@@ -173,13 +174,14 @@ Json MessagePack::decode(std::span<const std::byte> bytes) {
     }
 }
 
+// Only containers count as levels, as they do when a message is decoded.
 bool MessagePack::isTooDeep(const Json& value, std::size_t depth) noexcept {
-    if (depth > kMaxDepth) {
-        return true;
-    }
-
     if (!value.is_structured()) {
         return false;
+    }
+
+    if (depth > kMaxDepth) {
+        return true;
     }
 
     for (const Json& element : value) {
