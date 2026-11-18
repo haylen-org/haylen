@@ -49,7 +49,7 @@ class CommandTree:
         ("content",): "Build, verify, inspect, compare and publish the protected releases of an app, and show its keys.",
         ("plugin",): "Add, update, remove, list and create the plugins of an app.",
         ("project",): "Inspect the resolved project of an app.",
-        ("sdk",): "Build and list the engine SDKs that apps build against.",
+        ("sdk",): "Build, join and list the engine SDKs that apps build against.",
     }
 
     COMMANDS = (
