@@ -173,6 +173,34 @@ The quota of 8 virtual processors holds one machine at a time, so run the Linux 
 
 The V620 of these machines is a virtual function of a shared GPU, whose driver must load firmware through the host. The Ubuntu 24.04 image of Azure blacklists `amdgpu`, and both the `amdgpu` of its kernel and the `amdgpu-dkms` that AMD's `amdgpu-install` builds fail there with `PSP firmware loading failed`, so the Linux machine has no GPU device for Mesa. Check the driver version that Azure supports for the size before renting it again.
 
+## What the hardware covers
+
+These machines and devices ran the whole battery on real GPUs, beyond what continuous integration, the simulators and the emulator show.
+
+| Machine or device | GPU and driver | What passes |
+| --- | --- | --- |
+| EC2 `g4dn.2xlarge`, Windows Server 2025 | NVIDIA Tesla T4, GRID driver 596 | The engine tests. The GPU tests on Direct3D 12, Direct3D 11, Vulkan and OpenGL. The test project in the player on each of the four APIs. The installer of a Lua app, which installs, starts, closes and uninstalls it cleanly, and a C++ app in Debug and Release. Unicode text typed into a field, and an output on the second display. |
+| EC2 `g4dn.2xlarge`, Ubuntu 24.04 | NVIDIA Tesla T4, GRID driver 595 | The engine tests. The GPU tests on Vulkan and OpenGL with an X server of two displays. The test project in the player on Vulkan and OpenGL. Text typed into a field, an output on the second display, and the `.deb` and the AppImage of a Lua app, each installed and started. |
+| Device Farm, Samsung Galaxy S25, Android 16 | Qualcomm Adreno 830 | The GPU tests on Vulkan and OpenGL ES, the run of every test of the test project, the system keyboard of a field and the back key. |
+| Device Farm, Google Pixel 9, Android 16 | ARM Mali-G715 | The same as the Galaxy S25. |
+| Device Farm, Google Pixel 10, Android 17 | Imagination PowerVR D-Series DXT-48 | The GPU tests on Vulkan and OpenGL ES, the system keyboard of a field and the back key. |
+| Device Farm, Xiaomi Redmi Note 13, Android 15 | ARM Mali-G57 MC2 | The same as the Pixel 10. |
+
+The stress samples show how much each phone carries on Vulkan, as frames per second and the mean time of a frame:
+
+| Device | Many Sprites, 20,000 fish | Many Bodies, 3,000 toys at rest | Busy Interface, 12 live cards |
+| --- | --- | --- | --- |
+| Samsung Galaxy S25 | 120, 7.7 ms | 120, 5.0 ms | 100, 9.9 ms |
+| Google Pixel 9 | 35, 28.7 ms | 60, 15.3 ms | 60, 16.0 ms |
+| Google Pixel 10 | 38, 26.0 ms | 60, 14.7 ms | 60, 14.7 ms |
+| Xiaomi Redmi Note 13 | 20, 50.5 ms | 36, 27.8 ms | 36, 27.5 ms |
+
+What the hardware cannot show yet:
+
+- The Mali-G57 measures no time on the GPU, since its OpenGL ES has no timer queries and its Vulkan driver offers no timestamps that the Vulkan device reads, so the readouts say "Not measured" there.
+- A server of Windows has no touch screen, so the touch keyboard of Windows, which shows for a field only on a touch device, needs a tablet or a laptop with a touch screen.
+- The AMD V620 of Azure has no working Linux driver, as [Microsoft Azure](#microsoft-azure) says, so RADV and radeonsi run on no rented GPU.
+
 ## Saving money
 
 Rented machines bill while they run, whether they test or wait. Follow these rules:
@@ -181,4 +209,4 @@ Rented machines bill while they run, whether they test or wait. Follow these rul
 - **One batch.** Plan every test and run them all in one session, never one idea per session.
 - **A timer on every machine.** Start each machine with a shutdown timer, such as `shutdown -h +90` in its startup script, and with the instruction to delete itself on shutdown.
 - **Delete, then check.** Delete every machine, disk, key pair, security group, bucket and project you created as soon as the results are back. Then check with the listing commands (`aws ec2 describe-instances`, `aws devicefarm list-projects`, `az group exists`) that nothing is left.
-- **One group per session.** On Azure, create everything in one resource group, so `az group delete` removes it all.
+- **One group per session.** On Azure, create everything in one resource group, so `az group delete` removes it all. The first virtual network of a region makes Azure create the group `NetworkWatcherRG` outside it, so delete that group too when the session created it.
