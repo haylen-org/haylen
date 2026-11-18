@@ -45,7 +45,7 @@ class SecondSurface::Native final {
   private:
     HWND window = nullptr;
 #elif defined(__linux__) && !defined(__ANDROID__)
-    Native(int width, int height) : display(XOpenDisplay(nullptr)) {
+    Native(int width, int height) : display(openDisplay()) {
         if (display == nullptr) {
             throw std::runtime_error("No display server of X11 runs, so the tests have no window for the surface.");
         }
@@ -59,7 +59,13 @@ class SecondSurface::Native final {
 
     ~Native() {
         XDestroyWindow(display, window);
-        XCloseDisplay(display);
+        XSync(display, False);
+    }
+
+    // The connection stays open until the process ends, as the one of the window of an app does. A Vulkan driver may hook the closing of a display it drew to, such as the one of NVIDIA, and its code leaves with the last Vulkan instance, so a display closed after the device would call into it.
+    static Display* openDisplay() {
+        static Display* const shared = XOpenDisplay(nullptr);
+        return shared;
     }
 
     [[nodiscard]] gpu::Surface describe() const noexcept {
