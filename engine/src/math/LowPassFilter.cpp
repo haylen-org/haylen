@@ -5,16 +5,14 @@
 #include <cstddef>
 #include <numbers>
 #include <stdexcept>
-#include <string>
+
+#include "haylen/math/SignalFilterHelper.hpp"
 
 namespace haylen::math {
 
 LowPassFilter::LowPassFilter(float cutoffFrequency, int count) : cutoff(cutoffFrequency), dimensions(count) {
     setCutoff(cutoffFrequency);
-
-    if (count < 1 || count > kMaxDimensions) {
-        throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
-    }
+    SignalFilterHelper::checkDimensions(count);
 }
 
 void LowPassFilter::setCutoff(float value) {
@@ -26,8 +24,14 @@ void LowPassFilter::setCutoff(float value) {
 }
 
 // The share of the way toward the new values follows from the time constant of the cutoff, so two updates of half the time move as far as one of the whole time.
-void LowPassFilter::update(float seconds, std::span<float> values) noexcept {
+void LowPassFilter::update(float seconds, std::span<float> values) {
+    if (std::isnan(seconds)) {
+        throw std::invalid_argument("The seconds of a low-pass filter update must be a number.");
+    }
+
     const std::size_t count = std::min(values.size(), static_cast<std::size_t>(dimensions));
+    SignalFilterHelper::checkValues(values.first(count));
+
     if (!started) {
         started = true;
 
@@ -45,7 +49,7 @@ void LowPassFilter::update(float seconds, std::span<float> values) noexcept {
     }
 }
 
-float LowPassFilter::update(float seconds, float value) noexcept {
+float LowPassFilter::update(float seconds, float value) {
     update(seconds, std::span(&value, 1));
     return value;
 }

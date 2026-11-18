@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -107,6 +108,28 @@ TEST(SignalFilterTest, KalmanEstimatesASteadyValueFromNoisyMeasurements) {
     EXPECT_THROW(KalmanFilter(0.0F, 1.0F, 1), std::invalid_argument);
 }
 
+// A value that is not finite would stay in the running sum, the state or the estimate for good, so it is refused before it changes anything.
+TEST(SignalFilterTest, RefusesValuesThatAreNotFinite) {
+    const float notANumber = std::numeric_limits<float>::quiet_NaN();
+    const float infinity = std::numeric_limits<float>::infinity();
+    MovingAverage average(2, 1);
+    MedianFilter median(3, 1);
+    HampelFilter hampel(3, 3.0F, 1);
+    KalmanFilter kalman(0.01F, 1.0F, 1);
+    LowPassFilter lowPass(4.0F, 1);
+    EXPECT_EQ(average.update(1.0F), 1.0F);
+
+    EXPECT_THROW((void)average.update(notANumber), std::invalid_argument);
+    EXPECT_THROW((void)median.update(notANumber), std::invalid_argument);
+    EXPECT_THROW((void)hampel.update(infinity), std::invalid_argument);
+    EXPECT_THROW((void)kalman.update(-infinity), std::invalid_argument);
+    EXPECT_THROW((void)lowPass.update(0.1F, notANumber), std::invalid_argument);
+    EXPECT_THROW((void)lowPass.update(notANumber, 1.0F), std::invalid_argument);
+
+    EXPECT_EQ(average.update(3.0F), 2.0F);
+    EXPECT_EQ(average.update(5.0F), 4.0F);
+}
+
 // The filters keep their windows from the start, so smoothing every frame never allocates.
 TEST(SignalFilterTest, UpdatesWithoutAllocating) {
     MovingAverage average(32, 2);
@@ -140,6 +163,7 @@ TEST(SignalFilterLuaTest, SmoothsNumbersAndVectorsFromLua) {
     EXPECT_NE(fixture.lua("average:update(1)").find("The filter takes 2 values, not 1."), std::string::npos);
     EXPECT_NE(fixture.lua("m.medianFilter({windows = 3})").find("Unknown option \"windows\"."), std::string::npos);
     EXPECT_NE(fixture.lua("m.movingAverage({window = 0})").find("The window of a filter holds from 1 to 1024 updates, not 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("average:update(0 / 0, 1)").find("The values of a filter must be finite numbers."), std::string::npos);
 }
 
 } // namespace haylen::math

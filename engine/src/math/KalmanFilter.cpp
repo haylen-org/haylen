@@ -4,7 +4,8 @@
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
-#include <string>
+
+#include "haylen/math/SignalFilterHelper.hpp"
 
 namespace haylen::math {
 
@@ -13,14 +14,14 @@ KalmanFilter::KalmanFilter(float process, float measurement, int count) : proces
         throw std::invalid_argument("The process noise and the measurement noise of a Kalman filter are positive numbers.");
     }
 
-    if (count < 1 || count > kMaxDimensions) {
-        throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
-    }
+    SignalFilterHelper::checkDimensions(count);
 }
 
 // The estimate grows less certain by the process noise between updates, and the gain moves it toward the measurement by the share of the uncertainty that the estimate holds.
-void KalmanFilter::update(std::span<float> values) noexcept {
+void KalmanFilter::update(std::span<float> values) {
     const std::size_t used = std::min(values.size(), static_cast<std::size_t>(dimensions));
+    SignalFilterHelper::checkValues(values.first(used));
+
     if (!started) {
         started = true;
 
@@ -41,7 +42,7 @@ void KalmanFilter::update(std::span<float> values) noexcept {
     }
 }
 
-float KalmanFilter::update(float value) noexcept {
+float KalmanFilter::update(float value) {
     update(std::span(&value, 1));
     return value;
 }

@@ -4,20 +4,21 @@
 #include <span>
 #include <vector>
 
+#include "haylen/math/SignalFilterHelper.hpp"
+
 namespace haylen::math {
 
 // Lets up to four values through unchanged until one of them is an outlier, a value farther from the median of the last updates in a window than the threshold times their spread, measured by the median of their distances to the median. An outlier takes the median instead, so single spikes vanish while every other value stays exact.
 class HampelFilter final {
   public:
-    static constexpr int kMaxDimensions = 4;
     static constexpr int kMaxWindow = 255;
 
-    // Throws `std::invalid_argument` for a window out of 1 to `kMaxWindow`, dimensions out of 1 to `kMaxDimensions` or a threshold that is not positive.
+    // Throws `std::invalid_argument` for a window out of 1 to `kMaxWindow`, dimensions out of 1 to `SignalFilterHelper::kMaxDimensions` or a threshold that is not positive.
     HampelFilter(int window, float threshold, int dimensions);
 
-    // Filters the values in place, one for each dimension of the filter.
-    void update(std::span<float> values) noexcept;
-    [[nodiscard]] float update(float value) noexcept;
+    // Filters the values in place, one for each dimension of the filter. Throws `std::invalid_argument` for a value that is not finite, which leaves the filter as it was.
+    void update(std::span<float> values);
+    [[nodiscard]] float update(float value);
 
     // Whether the last update replaced a value as an outlier.
     [[nodiscard]] bool isOutlier() const noexcept {

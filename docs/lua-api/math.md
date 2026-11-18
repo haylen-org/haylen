@@ -2259,6 +2259,7 @@ These errors apply to every filter:
 
 - Dimensions outside 1 to 4 raise `A filter has from 1 to 4 dimensions, not <count>.`
 - An update with a count of values that differs from the dimensions raises `The filter takes <dimensions> values, not <count>.`
+- An update with a value that is infinite or not a number raises `The values of a filter must be finite numbers.`, and the filter stays as it was, since such a value would spoil every later result.
 - An unknown option raises `Unknown option "<key>".`
 
 ## LowPassFilter
@@ -2283,7 +2284,7 @@ print(gauge.cutoff, gauge.dimensions) -- 2.0 1
 
 ### lowPass:update(dt, ...)
 
-Filters the values and returns them. The seconds since the last update come first, so the smoothing is the same at any frame rate. The first update returns its values as they are.
+Filters the values and returns them. The seconds since the last update come first, so the smoothing is the same at any frame rate, and seconds below 0 count as 0. The first update returns its values as they are. A `dt` that is not a number raises `The seconds of a low-pass filter update must be a number.`
 
 ```lua
 local input = require('haylen.input')
@@ -2662,6 +2663,8 @@ These messages come from the functions and methods of the module. Messages that 
 | `Flattening a spline needs a finite tolerance above 0.` | The tolerance of `spline:flatten` is not finite and above 0. |
 | `A filter has from 1 to 4 dimensions, not <count>.` | The `dimensions` of a filter are out of range. |
 | `The filter takes <dimensions> values, not <count>.` | An update of a filter got another count of values. |
+| `The values of a filter must be finite numbers.` | An update of a filter got a value that is infinite or not a number. |
+| `The seconds of a low-pass filter update must be a number.` | The `dt` of `lowPass:update` is not a number. |
 | `The cutoff of a low-pass filter is a positive number of hertz.` | The `cutoff` of a low-pass filter is not positive. |
 | `The window of a filter holds from 1 to <maximum> updates, not <window>.` | The `window` of a filter is out of range. |
 | `The threshold of a Hampel filter is a positive number of spreads.` | The `threshold` of a Hampel filter is not positive. |

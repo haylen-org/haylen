@@ -4,20 +4,21 @@
 #include <span>
 #include <vector>
 
+#include "haylen/math/SignalFilterHelper.hpp"
+
 namespace haylen::math {
 
 // Smooths up to four values with the median of the last updates in a window, which keeps steps sharp and drops single spikes, such as a sensor that misreads once. Until the window fills, the median is of the updates so far.
 class MedianFilter final {
   public:
-    static constexpr int kMaxDimensions = 4;
     static constexpr int kMaxWindow = 255;
 
-    // Throws `std::invalid_argument` for a window out of 1 to `kMaxWindow` or dimensions out of 1 to `kMaxDimensions`.
+    // Throws `std::invalid_argument` for a window out of 1 to `kMaxWindow` or dimensions out of 1 to `SignalFilterHelper::kMaxDimensions`.
     MedianFilter(int window, int dimensions);
 
-    // Filters the values in place, one for each dimension of the filter.
-    void update(std::span<float> values) noexcept;
-    [[nodiscard]] float update(float value) noexcept;
+    // Filters the values in place, one for each dimension of the filter. Throws `std::invalid_argument` for a value that is not finite, which leaves the filter as it was.
+    void update(std::span<float> values);
+    [[nodiscard]] float update(float value);
 
     [[nodiscard]] int getWindow() const noexcept {
         return window;

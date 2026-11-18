@@ -3,20 +3,15 @@
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
-#include <string>
 
 #include "haylen/math/MedianFilter.hpp"
+#include "haylen/math/SignalFilterHelper.hpp"
 
 namespace haylen::math {
 
 HampelFilter::HampelFilter(int size, float limit, int count) : window(size), threshold(limit), dimensions(count) {
-    if (size < 1 || size > kMaxWindow) {
-        throw std::invalid_argument("The window of a filter holds from 1 to " + std::to_string(kMaxWindow) + " updates, not " + std::to_string(size) + ".");
-    }
-
-    if (count < 1 || count > kMaxDimensions) {
-        throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
-    }
+    SignalFilterHelper::checkWindow(size, kMaxWindow);
+    SignalFilterHelper::checkDimensions(count);
 
     if (!(limit > 0.0F) || !std::isfinite(limit)) {
         throw std::invalid_argument("The threshold of a Hampel filter is a positive number of spreads.");
@@ -27,9 +22,11 @@ HampelFilter::HampelFilter(int size, float limit, int count) : window(size), thr
 }
 
 // The window holds the new value too, so a value only counts as an outlier against the values around it, and the outlier itself stays in the window as the value that arrived.
-void HampelFilter::update(std::span<float> values) noexcept {
+void HampelFilter::update(std::span<float> values) {
     const auto count = static_cast<std::size_t>(dimensions);
     const std::size_t used = std::min(values.size(), count);
+    SignalFilterHelper::checkValues(values.first(used));
+
     for (std::size_t index = 0; index < used; ++index) {
         history[next * count + index] = values[index];
     }
@@ -57,7 +54,7 @@ void HampelFilter::update(std::span<float> values) noexcept {
     }
 }
 
-float HampelFilter::update(float value) noexcept {
+float HampelFilter::update(float value) {
     update(std::span(&value, 1));
     return value;
 }

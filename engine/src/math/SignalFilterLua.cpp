@@ -15,6 +15,7 @@
 #include "haylen/math/LowPassFilter.hpp"
 #include "haylen/math/MedianFilter.hpp"
 #include "haylen/math/MovingAverage.hpp"
+#include "haylen/math/SignalFilterHelper.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::lua {
@@ -158,7 +159,7 @@ int SignalFilterLua::newKalman(lua_State* L) {
 
 int SignalFilterLua::updateLowPass(lua_State* L) {
     LowPassFilter& filter = lua::Userdata::check<LowPassFilter>(L, 1);
-    std::array<float, LowPassFilter::kMaxDimensions> values{};
+    std::array<float, SignalFilterHelper::kMaxDimensions> values{};
     const std::span<float> used = std::span(values).first(static_cast<std::size_t>(filter.getDimensions()));
     const bool vector = readValues(L, 3, filter.getDimensions(), used);
     filter.update(lua::Stack::read<float>(L, 2), used);
@@ -167,7 +168,7 @@ int SignalFilterLua::updateLowPass(lua_State* L) {
 
 int SignalFilterLua::updateMovingAverage(lua_State* L) {
     MovingAverage& filter = lua::Userdata::check<MovingAverage>(L, 1);
-    std::array<float, MovingAverage::kMaxDimensions> values{};
+    std::array<float, SignalFilterHelper::kMaxDimensions> values{};
     const std::span<float> used = std::span(values).first(static_cast<std::size_t>(filter.getDimensions()));
     const bool vector = readValues(L, 2, filter.getDimensions(), used);
     filter.update(used);
@@ -176,7 +177,7 @@ int SignalFilterLua::updateMovingAverage(lua_State* L) {
 
 int SignalFilterLua::updateMedian(lua_State* L) {
     MedianFilter& filter = lua::Userdata::check<MedianFilter>(L, 1);
-    std::array<float, MedianFilter::kMaxDimensions> values{};
+    std::array<float, SignalFilterHelper::kMaxDimensions> values{};
     const std::span<float> used = std::span(values).first(static_cast<std::size_t>(filter.getDimensions()));
     const bool vector = readValues(L, 2, filter.getDimensions(), used);
     filter.update(used);
@@ -185,7 +186,7 @@ int SignalFilterLua::updateMedian(lua_State* L) {
 
 int SignalFilterLua::updateHampel(lua_State* L) {
     HampelFilter& filter = lua::Userdata::check<HampelFilter>(L, 1);
-    std::array<float, HampelFilter::kMaxDimensions> values{};
+    std::array<float, SignalFilterHelper::kMaxDimensions> values{};
     const std::span<float> used = std::span(values).first(static_cast<std::size_t>(filter.getDimensions()));
     const bool vector = readValues(L, 2, filter.getDimensions(), used);
     filter.update(used);
@@ -194,7 +195,7 @@ int SignalFilterLua::updateHampel(lua_State* L) {
 
 int SignalFilterLua::updateKalman(lua_State* L) {
     KalmanFilter& filter = lua::Userdata::check<KalmanFilter>(L, 1);
-    std::array<float, KalmanFilter::kMaxDimensions> values{};
+    std::array<float, SignalFilterHelper::kMaxDimensions> values{};
     const std::span<float> used = std::span(values).first(static_cast<std::size_t>(filter.getDimensions()));
     const bool vector = readValues(L, 2, filter.getDimensions(), used);
     filter.update(used);

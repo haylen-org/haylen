@@ -509,6 +509,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Raycast.cpp
   src/math/RaycastLua.cpp
   src/math/ShuffleBag.cpp
+  src/math/SignalFilterHelper.cpp
   src/math/SignalFilterLua.cpp
   src/math/Spline.cpp
   src/math/SplineLua.cpp

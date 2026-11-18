@@ -1,27 +1,24 @@
 #include "haylen/math/MedianFilter.hpp"
 
 #include <algorithm>
-#include <stdexcept>
-#include <string>
+
+#include "haylen/math/SignalFilterHelper.hpp"
 
 namespace haylen::math {
 
 MedianFilter::MedianFilter(int size, int count) : window(size), dimensions(count) {
-    if (size < 1 || size > kMaxWindow) {
-        throw std::invalid_argument("The window of a filter holds from 1 to " + std::to_string(kMaxWindow) + " updates, not " + std::to_string(size) + ".");
-    }
-
-    if (count < 1 || count > kMaxDimensions) {
-        throw std::invalid_argument("A filter has from 1 to " + std::to_string(kMaxDimensions) + " dimensions, not " + std::to_string(count) + ".");
-    }
+    SignalFilterHelper::checkWindow(size, kMaxWindow);
+    SignalFilterHelper::checkDimensions(count);
 
     history.resize(static_cast<std::size_t>(size * count));
     scratch.resize(static_cast<std::size_t>(size));
 }
 
-void MedianFilter::update(std::span<float> values) noexcept {
+void MedianFilter::update(std::span<float> values) {
     const auto count = static_cast<std::size_t>(dimensions);
     const std::size_t used = std::min(values.size(), count);
+    SignalFilterHelper::checkValues(values.first(used));
+
     for (std::size_t index = 0; index < used; ++index) {
         history[next * count + index] = values[index];
     }
@@ -37,7 +34,7 @@ void MedianFilter::update(std::span<float> values) noexcept {
     }
 }
 
-float MedianFilter::update(float value) noexcept {
+float MedianFilter::update(float value) {
     update(std::span(&value, 1));
     return value;
 }
