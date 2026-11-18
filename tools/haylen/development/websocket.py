@@ -2,6 +2,8 @@ import base64
 import hashlib
 from typing import BinaryIO
 
+from haylen.core.errors.development_failed import DevelopmentFailed
+
 
 class WebSocket:
     """The parts of RFC 6455 that the development server speaks: the answer to the handshake, the frames it sends, which are never masked, and the frames of the apps, which always are."""
@@ -12,6 +14,10 @@ class WebSocket:
     CLOSE = 0x8
     PING = 0x9
     PONG = 0xA
+    # The status of a close that RFC 6455 gives a message too big to process.
+    TOO_BIG = 1009
+    # The largest message that an app sends the development server, in one frame or in several, which is far more than a report, a console answer or a message of the debugger holds.
+    MAX_MESSAGE = 64 * 1024 * 1024
 
     @staticmethod
     def accept(key: str) -> str:
@@ -32,7 +38,7 @@ class WebSocket:
 
     @staticmethod
     def read_frame(stream: BinaryIO) -> tuple[bool, int, bytes] | None:
-        """Reads one frame from a client and returns whether it ends its message, its opcode and its payload, or nothing once the connection ended."""
+        """Reads one frame from a client and returns whether it ends its message, its opcode and its payload, or nothing once the connection ended. A frame longer than the largest message fails before its payload is read."""
         head = stream.read(2)
         if len(head) < 2:
             return None
@@ -42,6 +48,7 @@ class WebSocket:
             size = int.from_bytes(stream.read(2), "big")
         elif size == 127:
             size = int.from_bytes(stream.read(8), "big")
+        WebSocket.check_size(size)
         mask = stream.read(4) if head[1] & 0x80 else b"\0\0\0\0"
         payload = stream.read(size)
         if len(payload) < size:
@@ -49,3 +56,9 @@ class WebSocket:
 
         unmasked = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
         return bool(head[0] & 0x80), head[0] & 0x0F, unmasked
+
+    @staticmethod
+    def check_size(size: int) -> None:
+        """Fails for a message of more bytes than the largest that an app sends."""
+        if size > WebSocket.MAX_MESSAGE:
+            raise DevelopmentFailed(f"An app sent a message of {size} bytes, more than the {WebSocket.MAX_MESSAGE} bytes that the development server takes, so the server closed its connection.")

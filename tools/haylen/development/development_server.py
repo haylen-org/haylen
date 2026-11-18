@@ -320,8 +320,13 @@ class DevelopmentServer:
         handler.wfile.flush()
         handler.close_connection = True
         client = DevelopmentClient(handler.wfile)
-        with contextlib.suppress(OSError):
+        try:
             self.serve(client, handler.rfile)
+        except OSError:
+            pass
+        except DevelopmentFailed as error:
+            client.send(WebSocket.CLOSE, WebSocket.TOO_BIG.to_bytes(2, "big"))
+            self.terminal.error(error.message)
         self.drop(client)
         self.terminal.info("An app left the development server.")
 
@@ -338,6 +343,7 @@ class DevelopmentServer:
                 continue
 
             message += payload
+            WebSocket.check_size(len(message))
             if not final:
                 continue
             text, message = message, b""
