@@ -25,7 +25,7 @@ std::string KeyCapture::describeBinding(std::string_view binding, input::Gamepad
         name.pop_back();
     }
 
-    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the first letter is capitalized, so `leftShift` reads Left Shift, `keypad0` reads Keypad 0 and `f12` stays F12, and the buttons of the directional pad read D-pad, such as D-pad Up.
+    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the name reads in the case of a sentence, so `leftShift` reads Left shift, `keypad0` reads Keypad 0, `f12` stays F12, a word of one letter keeps its capital, such as Left X, and the buttons of the directional pad read D-pad, such as D-pad up.
     if (constexpr std::string_view digit = "digit"; kind == "key" && name.starts_with(digit)) {
         return name.substr(digit.size());
     }
@@ -42,22 +42,35 @@ std::string KeyCapture::describeBinding(std::string_view binding, input::Gamepad
     }
 
     if (kind == "mouse") {
-        return "Mouse " + label;
+        return toInnerWords("Mouse " + label);
     }
 
     if (constexpr std::string_view dpad = "Dpad "; kind == "button" && label.starts_with(dpad)) {
-        return "D-pad " + label.substr(dpad.size());
+        return toInnerWords("D-pad " + label.substr(dpad.size()));
     }
 
     if (kind == "button") {
-        return "Button " + getFaceLabel(name, labels).value_or(label);
+        return toInnerWords("Button " + getFaceLabel(name, labels).value_or(label));
     }
 
     if (kind == "stick") {
-        return label + " Stick";
+        return toInnerWords(label + " stick");
     }
 
-    return label + sign;
+    return toInnerWords(label + sign);
+}
+
+// Lowers the capital that starts each word after the first, except a word of one letter, such as the X of Left X, which names an axis or a key.
+std::string KeyCapture::toInnerWords(std::string label) {
+    for (std::size_t index = 1; index + 1 < label.size(); ++index) {
+        const bool wordStart = label[index - 1] == ' ';
+        const bool longWord = std::isalpha(static_cast<unsigned char>(label[index + 1])) != 0;
+        if (wordStart && longWord) {
+            label[index] = static_cast<char>(std::tolower(static_cast<unsigned char>(label[index])));
+        }
+    }
+
+    return label;
 }
 
 // A face button reads as the letter or the shape the gamepad prints on it, and by its place while the labels are unknown.

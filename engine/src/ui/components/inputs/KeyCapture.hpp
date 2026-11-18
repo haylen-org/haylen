@@ -25,7 +25,7 @@ class KeyCapture final : public Component {
     }
     [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
-    // Writes a binding for people, such as Left Shift for `key:leftShift`, and a face button by the labels of the gamepad, such as Button A for `button:south` on a gamepad with letters.
+    // Writes a binding for people in the case of a sentence, such as Left shift for `key:leftShift`, and a face button by the labels of the gamepad, such as Button A for `button:south` on a gamepad with letters.
     [[nodiscard]] static std::string describeBinding(std::string_view binding, input::GamepadLabels labels);
 
   protected:
@@ -57,6 +57,7 @@ class KeyCapture final : public Component {
     static constexpr float kAxisTravel = 0.6F;
     static constexpr std::string_view kEllipsis = "\xE2\x80\xA6";
 
+    [[nodiscard]] static std::string toInnerWords(std::string label);
     [[nodiscard]] static std::optional<std::string> getFaceLabel(std::string_view place, input::GamepadLabels labels);
     [[nodiscard]] static input::GamepadLabels getLabels(const input::Input& devices);
     [[nodiscard]] static std::vector<std::string> readBindings(PropertyReader& reader, std::string_view key, const core::Json& listed);

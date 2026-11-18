@@ -522,18 +522,18 @@ TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     stick({});
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "axis:leftX+"}}));
     EXPECT_THROW(gui->set("jump", {{"value", "key:nothing"}}), std::invalid_argument);
-    EXPECT_EQ(KeyCapture::describeBinding("key:leftShift", input::GamepadLabels::Unknown), "Left Shift");
+    EXPECT_EQ(KeyCapture::describeBinding("key:leftShift", input::GamepadLabels::Unknown), "Left shift");
     EXPECT_EQ(KeyCapture::describeBinding("axis:leftX+", input::GamepadLabels::Unknown), "Left X +");
     EXPECT_EQ(KeyCapture::describeBinding("key:keypad0", input::GamepadLabels::Unknown), "Keypad 0");
     EXPECT_EQ(KeyCapture::describeBinding("key:digit1", input::GamepadLabels::Unknown), "1");
     EXPECT_EQ(KeyCapture::describeBinding("key:f12", input::GamepadLabels::Unknown), "F12");
-    EXPECT_EQ(KeyCapture::describeBinding("mouse:right", input::GamepadLabels::Unknown), "Mouse Right");
-    EXPECT_EQ(KeyCapture::describeBinding("button:south", input::GamepadLabels::Unknown), "Button South");
-    EXPECT_EQ(KeyCapture::describeBinding("button:dpadUp", input::GamepadLabels::Unknown), "D-pad Up");
+    EXPECT_EQ(KeyCapture::describeBinding("mouse:right", input::GamepadLabels::Unknown), "Mouse right");
+    EXPECT_EQ(KeyCapture::describeBinding("button:south", input::GamepadLabels::Unknown), "Button south");
+    EXPECT_EQ(KeyCapture::describeBinding("button:dpadUp", input::GamepadLabels::Unknown), "D-pad up");
     EXPECT_EQ(KeyCapture::describeBinding("button:south", input::GamepadLabels::Letters), "Button A");
     EXPECT_EQ(KeyCapture::describeBinding("button:west", input::GamepadLabels::SwappedLetters), "Button Y");
-    EXPECT_EQ(KeyCapture::describeBinding("button:east", input::GamepadLabels::Shapes), "Button Circle");
-    EXPECT_EQ(KeyCapture::describeBinding("button:start", input::GamepadLabels::Letters), "Button Start");
+    EXPECT_EQ(KeyCapture::describeBinding("button:east", input::GamepadLabels::Shapes), "Button circle");
+    EXPECT_EQ(KeyCapture::describeBinding("button:start", input::GamepadLabels::Letters), "Button start");
 }
 
 TEST_F(GameComponentTest, SnapsScrolledItemsIntoPlace) {
