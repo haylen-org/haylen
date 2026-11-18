@@ -128,6 +128,7 @@ math::Color Light::apply(math::Color below, math::Vec2 point) const noexcept {
     case Blend::Max:
         return {std::max(below.r, light.r * strength), std::max(below.g, light.g * strength), std::max(below.b, light.b * strength), below.a};
     }
+
     return below;
 }
 

@@ -96,6 +96,7 @@ std::vector<Occluder> Occluder::fromBody(const physics2d::World& world, const ph
         default:
             continue;
         }
+
         occluders.push_back(std::move(occluder));
     }
 
