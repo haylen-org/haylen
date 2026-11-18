@@ -155,7 +155,7 @@ Azure rents the AMD Radeon PRO V620, which covers AMD GPUs. The tool is the Azur
 
 | Size | GPU | Tests | Approximate cost |
 | --- | --- | --- | --- |
-| `Standard_NG8ads_V620_v1`, Linux | AMD Radeon PRO V620 | None at the moment, as the note below says | About US$ 0.70 to 1.00 an hour |
+| `Standard_NG8ads_V620_v1`, Linux | AMD Radeon PRO V620 | Vulkan on RADV and on the AMD driver, and OpenGL on the AMD driver, with the kernel that the note below names | About US$ 0.70 to 1.00 an hour |
 | `Standard_NG8ads_V620_v1`, Windows | AMD Radeon PRO V620 | Direct3D 12, Direct3D 11, Vulkan and OpenGL on the AMD driver | A little more, for the Windows license |
 
 Prepare the subscription once:
@@ -171,7 +171,7 @@ az quota update --resource-name StandardNGADSV620v1Family \
 
 The quota of 8 virtual processors holds one machine at a time, so run the Linux machine and the Windows machine one after the other.
 
-The V620 of these machines is a virtual function of a shared GPU, whose driver must load firmware through the host. The Ubuntu 24.04 image of Azure blacklists `amdgpu`, and both the `amdgpu` of its kernel and the `amdgpu-dkms` that AMD's `amdgpu-install` builds fail there with `PSP firmware loading failed`, so the Linux machine has no GPU device for Mesa. Check the driver version that Azure supports for the size before renting it again.
+The V620 of these machines is a virtual function of a shared GPU, whose driver must load firmware through the host. The Ubuntu 24.04 image of Azure blacklists `amdgpu`, and the `amdgpu` of the newest kernel of the image fails there with `PSP firmware loading failed`. The `amdgpu` of the Azure kernel `6.8.0-1071-azure` loads the firmware, so install that kernel, take `amdgpu` off the blacklist and add Mesa RADV and the Vulkan and OpenGL drivers of AMD. The `amdgpu-dkms` that Azure names does not compile for that kernel, so the module of the kernel is the driver. The OpenGL driver of AMD takes over the EGL of the machine, so Mesa radeonsi does not run beside it. Check the driver version that Azure supports for the size before renting it again.
 
 ## What the hardware covers
 
@@ -185,6 +185,8 @@ These machines and devices ran the whole battery on real GPUs, beyond what conti
 | Device Farm, Google Pixel 9, Android 16 | ARM Mali-G715 | The same as the Galaxy S25. |
 | Device Farm, Google Pixel 10, Android 17 | Imagination PowerVR D-Series DXT-48 | The GPU tests on Vulkan and OpenGL ES, the system keyboard of a field and the back key. |
 | Device Farm, Xiaomi Redmi Note 13, Android 15 | ARM Mali-G57 MC2 | The same as the Pixel 10. |
+| Azure `Standard_NG8ads_V620_v1`, Ubuntu 24.04 | AMD Radeon PRO V620, Mesa RADV 25.2 and the AMD driver 25.10 | The GPU tests on Vulkan on RADV and on the AMD driver with the validation layers, and on OpenGL through EGL without a display. The benchmarks and the stress tours on both APIs. |
+| Azure `Standard_NG8ads_V620_v1`, Windows Server 2025 | AMD Radeon PRO V620, AMD driver 25.1 | The GPU tests on Direct3D 12, Direct3D 11, Vulkan and OpenGL. The benchmarks and the stress tours in a window on the four APIs. |
 
 The stress samples show how much each phone carries on Vulkan, as frames per second and the mean time of a frame:
 
@@ -199,7 +201,7 @@ What the hardware cannot show yet:
 
 - The Mali-G57 measures no time on the GPU, since its OpenGL ES has no timer queries and its Vulkan driver offers no timestamps that the Vulkan device reads, so the readouts say "Not measured" there.
 - A server of Windows has no touch screen, so the touch keyboard of Windows, which shows for a field only on a touch device, needs a tablet or a laptop with a touch screen.
-- The AMD V620 of Azure has no working Linux driver, as [Microsoft Azure](#microsoft-azure) says, so RADV and radeonsi run on no rented GPU.
+- Mesa radeonsi runs on no rented GPU, since the OpenGL driver of AMD takes over the EGL of the Azure machine, as [Microsoft Azure](#microsoft-azure) says.
 
 ## Saving money
 
