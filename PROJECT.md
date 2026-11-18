@@ -2461,6 +2461,7 @@ Ferramentas de desenvolvimento (pedido de 18/11):
 - [ ] As janelas de depuração (estatísticas, inspetor) herdam o tema do app, então ficam brancas com botões roxos e difíceis de ler. Elas passam a ter um visual único próprio, escuro e translúcido, igual em todo app, e revisar o comportamento e o texto de todas as opções delas.
 - [ ] O `haylen app run` (e o `app build`) não compila sozinho o que falta: um SDK ausente ou de outras fontes para o build com uma mensagem. Ele passa a compilar o SDK que falta automaticamente antes de compilar o app, sem tirar a regra de que o build do app nunca compila a engine.
 - [ ] A opção `--platform` virou `--target` nos comandos de app, mas o `haylen test` ainda usa `--platform`. Explicar ao dono a razão de `target` (um alvo diz o que se compila e onde: `ios` e `ios-simulator`, o `player` e o executável do Windows, cada um com as suas arquiteturas e o seu backend) e usar uma palavra só em todos os comandos.
+- [ ] No iOS, quando o splash acaba, a tela ainda dá uma piscada antes de mostrar o app. A troca do splash para o primeiro quadro completo tem de ser direta, sem piscada, em todas as plataformas (iOS, iPadOS, tvOS, Mac Catalyst, Android, web e desktops), conferida em gravação quadro a quadro.
 
 Só o dono:
 
