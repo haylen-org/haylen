@@ -376,7 +376,7 @@ local plans = ai.selector({
 
 ### ai.repeater(child, count)
 
-Returns the description of a decorator that runs `child` again after each success, once per tick. After a success it reports `'running'`, so the next tick runs the child again. It succeeds after `count` successes. Without `count`, it repeats forever. A failure of the child fails the repeater and starts its count over.
+Returns the description of a decorator that runs `child` again after each success, once per tick. After a success it reports `'running'`, so the next tick runs the child again. It succeeds after `count` successes. Without `count`, or with a `count` of `0`, it repeats forever. A negative `count` makes `ai.newBehaviorTree` raise `A repeater or a retry needs a count of 0 or more, where 0 repeats it without end.`. A failure of the child fails the repeater and starts its count over.
 
 ```lua
 local ai = require('haylen.ai')
@@ -390,7 +390,7 @@ local pace = ai.repeater(ai.action(function(board) board.direction = -board.dire
 
 ### ai.retry(child, count)
 
-Returns the description of a decorator that runs `child` again after each failure, once per tick. After a failure it reports `'running'`, so the next tick runs the child again. It fails after `count` failures. Without `count`, it retries forever. A success of the child succeeds the retry and starts its count over.
+Returns the description of a decorator that runs `child` again after each failure, once per tick. After a failure it reports `'running'`, so the next tick runs the child again. It fails after `count` failures. Without `count`, or with a `count` of `0`, it retries forever. A negative `count` makes `ai.newBehaviorTree` raise `A repeater or a retry needs a count of 0 or more, where 0 repeats it without end.`. A success of the child succeeds the retry and starts its count over.
 
 ```lua
 local ai = require('haylen.ai')
@@ -935,6 +935,7 @@ print(threat:cellCenter(0, 0)) -- 20.0 20.0
 | `A behavior tree leaf needs a function in "fn", not <type>.` | A condition or action description has no function. |
 | `A behavior tree decorator needs exactly one child.` | A decorator description has no child or several. |
 | `A parallel node needs between one success and as many successes as it has children.` | The `successes` of `ai.parallel`, or the `count` of a parallel description, is below 1 or above the number of children. |
+| `A repeater or a retry needs a count of 0 or more, where 0 repeats it without end.` | The `count` of `ai.repeater`, `ai.retry` or their descriptions is negative. |
 | `A behavior tree description contains itself.` | A description holds itself among its children, at any depth. |
 | `A behavior tree nests deeper than 256 levels.` | A description has more than 256 levels of nodes from the root to a leaf. |
 | `A behavior tree action returned the unknown status "<name>".` | An action returned a string other than the three statuses. |

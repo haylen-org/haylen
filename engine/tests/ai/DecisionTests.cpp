@@ -164,6 +164,8 @@ TEST_F(BehaviorTreeTest, RejectsMalformedTrees) {
     EXPECT_THROW(BehaviorTree{bare}, std::invalid_argument);
     EXPECT_THROW(BehaviorTree(BehaviorTree::action(nullptr)), std::invalid_argument);
     EXPECT_THROW(BehaviorTree(BehaviorTree::parallel({BehaviorTree::wait(1.0F)}, 2)), std::invalid_argument);
+    EXPECT_THROW(BehaviorTree(BehaviorTree::repeater(BehaviorTree::wait(1.0F), -1)), std::invalid_argument);
+    EXPECT_THROW(BehaviorTree(BehaviorTree::retry(BehaviorTree::wait(1.0F), -2)), std::invalid_argument);
     EXPECT_EQ(BehaviorTree::statusFromName("running"), Status::Running);
     EXPECT_EQ(BehaviorTree::statusName(Status::Failure), "failure");
 }

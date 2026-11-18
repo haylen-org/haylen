@@ -95,6 +95,10 @@ std::uint32_t BehaviorTree::compile(Node node) {
         throw std::invalid_argument("A parallel node needs between one success and as many successes as it has children.");
     }
 
+    if ((node.kind == Kind::Repeater || node.kind == Kind::Retry) && node.count < 0) {
+        throw std::invalid_argument("A repeater or a retry needs a count of 0 or more, where 0 repeats it without end.");
+    }
+
     const auto index = static_cast<std::uint32_t>(nodes.size());
     nodes.push_back({.kind = node.kind, .action = std::move(node.action), .condition = std::move(node.condition), .count = node.count, .seconds = node.seconds});
     std::vector<std::uint32_t> children;

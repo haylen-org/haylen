@@ -78,7 +78,7 @@ class BehaviorTree final {
     [[nodiscard]] static std::optional<Status> statusFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view statusName(Status value) noexcept;
 
-    // Throws `std::invalid_argument` for decorators without exactly one child, leaves without a function or a parallel node whose success count does not fit its children.
+    // Throws `std::invalid_argument` for decorators without exactly one child, leaves without a function, a parallel node whose success count does not fit its children or a repeater or a retry with a negative count.
     explicit BehaviorTree(Node root);
 
     // Advances the tree time and ticks the root, which returns to its first child after it finishes. Throws `std::logic_error` when a leaf ticks the tree it runs in.
