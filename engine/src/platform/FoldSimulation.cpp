@@ -30,13 +30,13 @@ FoldSimulation FoldSimulation::fromJson(const core::Json& value) {
     }
 
     core::JsonValidator::requireKnownKeys(value, {"axis", "state", "hinge"}, "a simulated fold");
-    const std::string axisName = value.value("axis", std::string("vertical"));
+    const std::string axisName = readName(value, "axis", "vertical");
     const auto axis = std::ranges::find(Fold::kAxisNames, axisName, &std::pair<std::string_view, Fold::Axis>::first);
     if (axis == Fold::kAxisNames.end()) {
         throw std::invalid_argument("The axis of a simulated fold is \"vertical\" or \"horizontal\", not \"" + axisName + "\".");
     }
 
-    const std::string stateName = value.value("state", std::string("flat"));
+    const std::string stateName = readName(value, "state", "flat");
     const auto state = std::ranges::find(Fold::kStateNames, stateName, &std::pair<std::string_view, Fold::State>::first);
     if (state == Fold::kStateNames.end()) {
         throw std::invalid_argument("The state of a simulated fold is \"flat\" or \"halfOpened\", not \"" + stateName + "\".");
@@ -51,6 +51,12 @@ FoldSimulation FoldSimulation::fromJson(const core::Json& value) {
     simulation.state = state->second;
     simulation.hinge = core::JsonNumber::toFloat(hinge);
     return simulation;
+}
+
+// A name that is not a string reads as its JSON text, so the sentence of a wrong name names it too.
+std::string FoldSimulation::readName(const core::Json& object, const char* key, const char* fallback) {
+    const core::Json name = object.value(key, core::Json(fallback));
+    return name.is_string() ? name.get<std::string>() : name.dump();
 }
 
 Fold FoldSimulation::getFold(math::Vec2 framebuffer, float dpiScale) const noexcept {

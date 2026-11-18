@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "haylen/core/Json.hpp"
@@ -41,6 +42,8 @@ class FoldSimulation final {
     [[nodiscard]] bool operator==(const FoldSimulation&) const = default;
 
   private:
+    [[nodiscard]] static std::string readName(const core::Json& object, const char* key, const char* fallback);
+
     std::optional<std::size_t> preset;
     Fold::Axis axis = Fold::Axis::Vertical;
     Fold::State state = Fold::State::Flat;

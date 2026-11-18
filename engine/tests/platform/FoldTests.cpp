@@ -50,6 +50,8 @@ TEST(FoldSimulationTest, PlacesTheFoldOfAPresetOrAnObjectInTheMiddleOfTheWindow)
 
     EXPECT_THROW((void)FoldSimulation::fromJson("laptop"), std::invalid_argument);
     EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"axis": "diagonal"})")), std::invalid_argument);
+    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"axis": 1})")), std::invalid_argument);
+    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"state": true})")), std::invalid_argument);
     EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"hinge": -1})")), std::invalid_argument);
     EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"width": 4})")), std::invalid_argument);
     EXPECT_THROW((void)FoldSimulation::fromJson(core::Json(3)), std::invalid_argument);
