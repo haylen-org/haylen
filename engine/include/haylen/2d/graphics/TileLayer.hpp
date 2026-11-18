@@ -44,7 +44,7 @@ class TileLayer final {
     void defineFrame(int id, const Frame& frame);
     void setCell(int column, int row, int frame);
 
-    // Sets the cells of a rectangle from rows of `width` frame ids, which changes each chunk it touches once.
+    // Sets the cells of a rectangle from rows of `width` frame ids, which changes each chunk it touches once. Throws `std::invalid_argument` for ids that are not whole numbers from 0 to `kMaxFrame`, and for a rectangle that reaches past the last cell of a 32-bit integer.
     void setCells(int column, int row, int width, std::span<const float> ids);
     [[nodiscard]] int getCell(int column, int row) const noexcept;
     void clear() noexcept;
@@ -77,7 +77,7 @@ class TileLayer final {
     [[nodiscard]] static std::uint64_t keyOf(int column, int row) noexcept;
     [[nodiscard]] static std::int32_t columnOf(std::uint64_t key) noexcept;
     [[nodiscard]] static std::int32_t rowOf(std::uint64_t key) noexcept;
-    [[nodiscard]] static int floorDivide(int value, int divisor) noexcept;
+    [[nodiscard]] static std::int64_t floorDivide(std::int64_t value, std::int64_t divisor) noexcept;
     [[nodiscard]] static bool drawsBefore(std::uint64_t lhs, std::uint64_t rhs) noexcept;
     [[nodiscard]] Place locate(int column, int row) const noexcept;
     [[nodiscard]] math::Rect boundsOf(std::uint64_t key) const noexcept;

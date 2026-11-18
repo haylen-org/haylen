@@ -1,6 +1,8 @@
 #include "haylen/2d/graphics/TileLayer.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -37,15 +39,17 @@ bool TileLayer::drawsBefore(std::uint64_t lhs, std::uint64_t rhs) noexcept {
     return rowOf(lhs) != rowOf(rhs) ? rowOf(lhs) < rowOf(rhs) : columnOf(lhs) < columnOf(rhs);
 }
 
-int TileLayer::floorDivide(int value, int divisor) noexcept {
+// The arithmetic runs on 64 bits, so the cells at the ends of the range of a 32-bit integer find their chunks too.
+std::int64_t TileLayer::floorDivide(std::int64_t value, std::int64_t divisor) noexcept {
     return value >= 0 ? value / divisor : -((-value + divisor - 1) / divisor);
 }
 
 TileLayer::Place TileLayer::locate(int column, int row) const noexcept {
-    const int size = options.chunkSize;
-    const int chunkColumn = floorDivide(column, size);
-    const int chunkRow = floorDivide(row, size);
-    return {.chunk = keyOf(chunkColumn, chunkRow), .cell = static_cast<std::size_t>((row - chunkRow * size) * size + (column - chunkColumn * size))};
+    const std::int64_t size = options.chunkSize;
+    const std::int64_t chunkColumn = floorDivide(column, size);
+    const std::int64_t chunkRow = floorDivide(row, size);
+    const std::int64_t cell = (row - chunkRow * size) * size + (column - chunkColumn * size);
+    return {.chunk = keyOf(static_cast<int>(chunkColumn), static_cast<int>(chunkRow)), .cell = static_cast<std::size_t>(cell)};
 }
 
 math::Rect TileLayer::boundsOf(std::uint64_t key) const noexcept {
@@ -123,8 +127,19 @@ void TileLayer::setCells(int column, int row, int width, std::span<const float> 
         throw std::invalid_argument("The frames of a rectangle of a tile layer come in whole rows of its width.");
     }
 
+    const auto rows = static_cast<std::int64_t>(ids.size() / static_cast<std::size_t>(width));
+    if (column + std::int64_t{width} - 1 > std::numeric_limits<int>::max() || row + rows - 1 > std::numeric_limits<int>::max()) {
+        throw std::invalid_argument("A rectangle of a tile layer reaches past the cell 2147483647.");
+    }
+
+    if (!std::ranges::all_of(ids, [](float id) { return id >= 0.0F && id <= static_cast<float>(kMaxFrame) && id == std::floor(id); })) {
+        throw std::invalid_argument("The frames of a rectangle of a tile layer are whole numbers from 0 to 1048576.");
+    }
+
     for (std::size_t index = 0; index < ids.size(); ++index) {
-        write(column + static_cast<int>(index % static_cast<std::size_t>(width)), row + static_cast<int>(index / static_cast<std::size_t>(width)), static_cast<int>(ids[index]));
+        const int cellColumn = column + static_cast<int>(index % static_cast<std::size_t>(width));
+        const int cellRow = row + static_cast<int>(index / static_cast<std::size_t>(width));
+        write(cellColumn, cellRow, static_cast<int>(ids[index]));
     }
 }
 

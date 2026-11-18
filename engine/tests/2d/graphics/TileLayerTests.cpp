@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -141,6 +142,35 @@ TEST_F(TileLayerTest, DrawsFramesAtTheirSizeOrTheSizeOfTheirSource) {
     // The chunk bakes into one batch, which reaches from the 16 unit tile of the first cell to the end of the 40 by 24 unit frame of the second.
     ASSERT_EQ(sizes.size(), 1U);
     EXPECT_EQ(sizes[0], math::Vec2(56.0F, 24.0F));
+}
+
+TEST_F(TileLayerTest, KeepsTheCellsAtTheEndsOfTheIntegerRangeAndTheIdsOfARectangleInRange) {
+    TileLayer layer = makeLayer(3);
+    const int lowest = std::numeric_limits<int>::min();
+    const int highest = std::numeric_limits<int>::max();
+    layer.setCell(lowest, lowest, 1);
+    layer.setCell(highest, highest, 2);
+    EXPECT_EQ(layer.getCell(lowest, lowest), 1);
+    EXPECT_EQ(layer.getCell(highest, highest), 2);
+    EXPECT_EQ(layer.getCell(lowest + 1, lowest), 0);
+    EXPECT_EQ(layer.getChunkCount(), 2U);
+
+    // clang-format off
+    const auto failure = [&layer](int column, int width, std::vector<float> ids) {
+        try {
+            layer.setCells(column, 0, width, ids);
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+
+        return std::string("no error");
+    };
+    // clang-format on
+    EXPECT_EQ(failure(0, 1, {std::numeric_limits<float>::quiet_NaN()}), "The frames of a rectangle of a tile layer are whole numbers from 0 to 1048576.");
+    EXPECT_EQ(failure(0, 1, {1.5F}), "The frames of a rectangle of a tile layer are whole numbers from 0 to 1048576.");
+    EXPECT_EQ(failure(0, 1, {-1.0F}), "The frames of a rectangle of a tile layer are whole numbers from 0 to 1048576.");
+    EXPECT_EQ(failure(highest, 2, {1.0F, 1.0F}), "A rectangle of a tile layer reaches past the cell 2147483647.");
+    EXPECT_EQ(failure(highest - 1, 2, {1.0F, 1.0F}), "no error");
 }
 
 TEST_F(TileLayerTest, RejectsBrokenFramesAndOptions) {

@@ -2275,7 +2275,7 @@ print(layer:cell(2, 2), layer:cell(9, 9))
 
 ### layer:setCells(column, row, width, buffer)
 
-Sets the cells of a rectangle whose top-left cell is `column`, `row` from a [`FloatBuffer`](collections.md#float-buffers) of frame ids, in rows of `width` cells. It fills a large area with one call across the Lua boundary. A buffer that is not whole rows raises `The frames of a rectangle of a tile layer come in whole rows of its width.`.
+Sets the cells of a rectangle whose top-left cell is `column`, `row` from a [`FloatBuffer`](collections.md#float-buffers) of frame ids, in rows of `width` cells. It fills a large area with one call across the Lua boundary. A buffer that is not whole rows raises `The frames of a rectangle of a tile layer come in whole rows of its width.`. An id that is not a whole number from 0 to 1048576 raises `The frames of a rectangle of a tile layer are whole numbers from 0 to 1048576.`, and a rectangle that ends past the cell 2147483647 raises `A rectangle of a tile layer reaches past the cell 2147483647.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -4142,6 +4142,8 @@ These messages come from the functions and methods of the module, besides the er
 | `A frame of a tile layer uses one of its <count> textures.` | The texture of a frame is past the list. |
 | `The tile layer has no frame <id>.` | A cell names a frame that was never defined. |
 | `The frames of a rectangle of a tile layer come in whole rows of its width.` | The buffer of `layer:setCells` is not whole rows. |
+| `The frames of a rectangle of a tile layer are whole numbers from 0 to 1048576.` | The buffer of `layer:setCells` holds another value. |
+| `A rectangle of a tile layer reaches past the cell 2147483647.` | The rectangle of `layer:setCells` ends past the last cell of a 32-bit integer. |
 | `A stroke needs at least two points.` | A stroke has fewer than two points. |
 | `The type "haylen.<Type>" has no member "<key>".` | A script read a key that the value does not have. |
 | `The type "haylen.<Type>" has no writable property "<key>".` | A script wrote a key that the value does not have or that is read only. |
