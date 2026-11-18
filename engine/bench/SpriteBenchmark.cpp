@@ -168,7 +168,13 @@ class SpriteBenchmark final : public core::Application {
             textures.clear();
             for (int index = 0; index < count; ++index) {
                 // clang-format off
-                engine.getAssets().loadAsync("noise", "noise.json", [this](std::shared_ptr<void> asset, const std::string&) {
+                engine.getAssets().loadAsync("noise", "noise.json", [this, &engine](std::shared_ptr<void> asset, const std::string& error) {
+                    if (!asset) {
+                        core::Log::error("A texture of the benchmark failed to load: {}", error);
+                        engine.quit(1);
+                        return;
+                    }
+
                     textures.push_back(std::move(asset));
                     --loading;
                 }, core::Json{{"seed", index + 1}});

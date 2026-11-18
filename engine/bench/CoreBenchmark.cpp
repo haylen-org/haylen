@@ -2,10 +2,12 @@
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <exception>
 #include <filesystem>
 #include <functional>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -51,21 +53,30 @@ class CoreBenchmark final {
         engine.start();
 
         std::printf("%-58s %12s %8s\n", "Measurement", "Average ms", "Runs");
-        measureFrames(engine);
-        measureEvents(engine);
-        measureOwners(engine);
-        measureTimers();
-        measureTweens();
-        measureLuaTweens(engine);
-        measureJobs(engine);
-        measureAssets(engine);
-        const bool failed = engine.getError() != nullptr;
-        if (failed) {
-            std::fprintf(stderr, "%s\n", engine.getError()->what());
+        std::string failure;
+        try {
+            measureFrames(engine);
+            measureEvents(engine);
+            measureOwners(engine);
+            measureTimers();
+            measureTweens();
+            measureLuaTweens(engine);
+            measureJobs(engine);
+            measureAssets(engine);
+        } catch (const std::exception& error) {
+            failure = error.what();
+        }
+
+        if (failure.empty() && engine.getError() != nullptr) {
+            failure = engine.getError()->what();
+        }
+
+        if (!failure.empty()) {
+            std::fprintf(stderr, "%s\n", failure.c_str());
         }
 
         engine.stop();
-        return failed ? 1 : 0;
+        return failure.empty() ? 0 : 1;
     }
 
   private:
@@ -268,11 +279,16 @@ class CoreBenchmark final {
         assets::Manager& assets = engine.getAssets();
         measure("1000 JSON assets loaded in the background", 5, [&engine, &assets] {
             int loaded = 0;
+            std::string failure;
             std::vector<std::shared_ptr<void>> held;
             held.reserve(kAssets);
             for (int index = 0; index < kAssets; ++index) {
                 // clang-format off
-                assets.loadAsync("json", "data/item-" + std::to_string(index) + ".json", [&loaded, &held](std::shared_ptr<void> asset, const std::string&) {
+                assets.loadAsync("json", "data/item-" + std::to_string(index) + ".json", [&loaded, &failure, &held](std::shared_ptr<void> asset, const std::string& error) {
+                    if (!asset && failure.empty()) {
+                        failure = error;
+                    }
+
                     held.push_back(std::move(asset));
                     ++loaded;
                 });
@@ -281,6 +297,10 @@ class CoreBenchmark final {
 
             while (loaded < kAssets) {
                 engine.frame(kFrameSeconds);
+            }
+
+            if (!failure.empty()) {
+                throw std::runtime_error("An asset of the benchmark failed to load: " + failure);
             }
 
             held.clear();
