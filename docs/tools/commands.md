@@ -381,7 +381,7 @@ Result: `folder`, the key folder, and `report`.
 ### test
 
 ```sh
-haylen test [--platform <platform>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--target <cmake target>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--app <folder>] [--port]
+haylen test [--platform <platform>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--app <folder>] [--port]
 ```
 
 Builds and runs the engine tests of this machine by default. The [testing guide](testing.md#running-the-tests) explains each mode.
@@ -392,6 +392,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--config` | The configuration of the build tree, or of the app of `--ui` or `--app`, `Debug` by default. |
 | `--sanitizers` | A tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer. |
 | `--target` | The CMake target that builds before CTest runs, `haylen-tests` by default. |
+| `--shard` | Runs one of the equal parts of the engine tests of this machine, or of the checks of the web with `--platform web`, such as `2/4`, so several machines run them side by side and together run each test once. |
 | `--gpu` | Runs the GPU tests instead of the engine tests. |
 | `--graphics-api` | A name of `gpu::Device::kApiNames` that the GPU tests, or the pages of the checks of the web, use alone. |
 | `--device` | The device, simulator or emulator of the platform. |
@@ -399,7 +400,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--app` | With `--platform web`, builds the app of this folder for the web in the configuration of `--config` and checks instead that its page starts it, on WebGPU and WebGL2 or on the API of `--graphics-api`. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
-Result: the build tree with what ran, such as `tree`, `configuration` and `sanitizers` for the engine tests, `tree`, `graphicsApi` and `output` for the GPU tests, `graphicsApi` and `memory` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `platform`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
+Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree`, `graphicsApi` and `output` for the GPU tests, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `platform`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
 
 ### engine configure
 

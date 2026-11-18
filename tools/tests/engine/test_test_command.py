@@ -3,9 +3,11 @@ import pytest
 from haylen.cli.application import Application
 from haylen.cli.command_session import CommandSession
 from haylen.cli.commands.test import TestCommand
+from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.host import Host
 from haylen.engine.engine_tests import EngineTests
+from haylen.engine.suite_shard import SuiteShard
 from haylen.engine.web_app_check import WebAppCheck
 from haylen.engine.web_checks import WebChecks
 from haylen.engine.web_gpu_tests import WebGpuTests
@@ -37,7 +39,7 @@ class TestCommandTest:
 
     def test_on_the_web_a_graphics_api_names_the_api_of_the_checks_unless_the_gpu_tests_run(self, tmp_path, monkeypatch):
         called = []
-        monkeypatch.setattr(WebChecks, "run", lambda self, api: called.append(("checks", api)) or {})
+        monkeypatch.setattr(WebChecks, "run", lambda self, api, shard: called.append(("checks", api)) or {})
         monkeypatch.setattr(WebGpuTests, "run", lambda self, configuration, api: called.append(("gpu", api)) or {})
         TestCommandTest.run(tmp_path, "--platform", "web", "--graphics-api", "webGl2")
         TestCommandTest.run(tmp_path, "--gpu", "--platform", "web", "--graphics-api", "webGl2")
@@ -67,3 +69,29 @@ class TestCommandTest:
         TestCommandTest.run(tmp_path, "--app", "samples/tests", "--platform", "web", "--config", "Release", "--graphics-api", "webGl2")
         TestCommandTest.run(tmp_path, "--app", "samples/tests", "--platform", "web")
         assert called == [("samples/tests", "Release", "webGl2"), ("samples/tests", "Debug", None)]
+
+    def test_a_shard_runs_its_part_of_the_engine_tests_through_the_numbers_of_ctest(self, tmp_path, monkeypatch):
+        called = []
+        monkeypatch.setattr(EngineTests, "run", lambda self, configuration, sanitizers, target, shard: called.append((sanitizers, shard)) or {})
+        TestCommandTest.run(tmp_path, "--sanitizers", "address", "--shard", "2/4")
+        assert called == [("address", SuiteShard(2, 4))]
+        assert SuiteShard(2, 4).ctest_arguments() == ["--tests-information", "2,,4"]
+
+    def test_a_shard_names_a_part_that_exists_of_the_engine_tests_alone(self, tmp_path):
+        for text in ("0/4", "5/4", "2", "two/four"):
+            with pytest.raises(InvalidOption):
+                SuiteShard.parse(text)
+        with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
+            TestCommandTest.run(tmp_path, "--gpu", "--shard", "1/2")
+        with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
+            TestCommandTest.run(tmp_path, "--platform", "android", "--shard", "1/2")
+        with pytest.raises(UnsupportedTarget, match='"--shard" splits the engine tests'):
+            TestCommandTest.run(tmp_path, "--graphics-api", "vulkan", "--shard", "1/2")
+
+    def test_the_shards_of_the_checks_of_the_web_run_each_check_once(self, tmp_path, monkeypatch):
+        ran = []
+        for name in ("error_screen", "wake_lock", "fullscreen", "plugins", "editor", "memory"):
+            monkeypatch.setattr(WebChecks, name, lambda self, api, name=name: ran.append(name) or {})
+        for index in (1, 2):
+            TestCommandTest.run(tmp_path, "--platform", "web", "--shard", f"{index}/2")
+        assert ran == ["error_screen", "fullscreen", "editor", "wake_lock", "plugins", "memory"]

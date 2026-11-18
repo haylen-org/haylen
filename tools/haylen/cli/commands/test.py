@@ -12,6 +12,7 @@ from haylen.engine.desktop_gpu_tests import DesktopGpuTests
 from haylen.engine.engine_tests import EngineTests
 from haylen.engine.engine_tree import EngineTree
 from haylen.engine.port_test import PortTest
+from haylen.engine.suite_shard import SuiteShard
 from haylen.engine.ui_tests import UiTests
 from haylen.engine.web_app_check import WebAppCheck
 from haylen.engine.web_checks import WebChecks
@@ -37,6 +38,12 @@ class TestCommand(Command):
         parser.add_argument("--config", default="Debug", choices=EngineTree.CONFIGURATIONS, help='The configuration of the build tree, or of the app of "--ui" or "--app", "Debug" by default.')
         parser.add_argument("--sanitizers", choices=EngineTree.SANITIZERS, help="Build in a tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer.")
         parser.add_argument("--target", default=EngineTests.TARGET, help=f'The CMake target that the engine tests build before CTest runs them, "{EngineTests.TARGET}" by default.')
+        parser.add_argument(
+            "--shard",
+            type=SuiteShard.parse,
+            metavar="index/count",
+            help='Run one of the equal parts of the engine tests of this machine, or of the checks of the web with "--platform web", such as "2/4", so several machines run them side by side and together run each test once.',
+        )
         parser.add_argument(
             "--gpu",
             action="store_true",
@@ -69,6 +76,12 @@ class TestCommand(Command):
         context = session.context
         platform = arguments.platform
         gpu = arguments.gpu or arguments.graphics_api is not None
+        # On the web "--graphics-api" names the API of the pages of the checks, and on a desktop it asks for the GPU tests.
+        shardable = (platform == "web" and not arguments.gpu) or (platform in TestCommand.DESKTOPS and not gpu)
+        if arguments.shard and (not shardable or arguments.app or arguments.ui or arguments.port):
+            raise UnsupportedTarget(
+                'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--platform" other than a desktop or "web".'
+            )
         if arguments.app:
             if platform != "web":
                 raise UnsupportedTarget('The option "--app" checks that the page of an app starts on the web, so it takes "--platform web".')
@@ -88,7 +101,7 @@ class TestCommand(Command):
         if platform == "web":
             if arguments.gpu:
                 return WebGpuTests(context).run(arguments.config, arguments.graphics_api)
-            return WebChecks(context, session.pipeline).run(arguments.graphics_api)
+            return WebChecks(context, session.pipeline).run(arguments.graphics_api, arguments.shard)
         if platform not in TestCommand.DESKTOPS and not gpu:
             raise UnsupportedTarget(f'The platform "{platform}" runs only the GPU tests. Add "--gpu", or a name of "gpu::Device::kApiNames" with "--graphics-api".')
         if platform == "android":
@@ -102,4 +115,4 @@ class TestCommand(Command):
             raise UnsupportedTarget(f'The tests of "{platform}" run on a "{platform}" machine, and this one runs "{Host.system()}".')
         if gpu:
             return DesktopGpuTests(context).run(arguments.config, arguments.sanitizers, arguments.graphics_api)
-        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.target)
+        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.target, arguments.shard)

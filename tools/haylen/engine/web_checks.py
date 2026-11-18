@@ -16,6 +16,7 @@ from haylen.core.target_id import TargetId
 from haylen.core.tooling_context import ToolingContext
 from haylen.engine.headless_browser import HeadlessBrowser
 from haylen.engine.served_site import ServedSite
+from haylen.engine.suite_shard import SuiteShard
 from haylen.sdk.sdk_catalog import SdkCatalog
 from haylen.sdk.sdk_selector import SdkSelector
 from haylen.toolchains.emscripten import Emscripten
@@ -112,16 +113,16 @@ class WebChecks:
         joined = [*([f"graphicsApi={api}"] if api else []), *parameters]
         return f"?{'&'.join(joined)}" if joined else ""
 
-    def run(self, api: str | None) -> dict[str, object]:
+    def run(self, api: str | None, shard: SuiteShard | None) -> dict[str, object]:
+        """Runs every check, or the checks of a shard, which take their places in the order of the checks."""
         if api is not None and api not in WebChecks.GRAPHICS_APIS:
             raise UnsupportedTarget(f'The checks of the web draw through "{WebChecks.GRAPHICS_APIS[0]}" or "{WebChecks.GRAPHICS_APIS[1]}", not "{api}".')
-        self.error_screen(api)
-        self.wake_lock(api)
-        self.fullscreen(api)
-        self.plugins(api)
-        self.editor(api)
-        memory = self.memory(api)
-        return {"graphicsApi": api, "memory": memory}
+        checks = {"errorScreen": self.error_screen, "wakeLock": self.wake_lock, "fullscreen": self.fullscreen, "plugins": self.plugins, "editor": self.editor, "memory": self.memory}
+        reports = {}
+        for place, (name, check) in enumerate(checks.items()):
+            if shard is None or shard.takes(place):
+                reports[name] = check(api)
+        return {"graphicsApi": api, "memory": reports.get("memory"), "shard": shard.describe() if shard else None}
 
     def web_player(self) -> Path:
         """The web player of the installed web SDK of the current engine sources, which the target of the web takes for a Debug build of a Lua app."""
