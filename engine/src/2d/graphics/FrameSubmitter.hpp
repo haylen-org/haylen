@@ -231,6 +231,7 @@ class FrameSubmitter final {
     [[nodiscard]] math::Rect getClipScissor(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     [[nodiscard]] bool showsPixels(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);
+
     // Draws the commands of a canvas into the pass, which draws into the image, or into the swapchain without one, where no glass draws.
     void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect, const graphics::RenderTarget* image);
     [[nodiscard]] static bool isPaired(Program program) noexcept;

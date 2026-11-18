@@ -188,10 +188,9 @@ struct RendererState {
     // The number of the submission the frame goes into, unique across every renderer of the process, which a resource the frame already keeps alive carries so it is kept once.
     std::uint64_t epoch = ++submissions;
 
-    // Reused by the draws that build their instances, vertices or nine-slice patches before recording them, so drawing allocates nothing once they have grown.
+    // Reused by the draws that build their instances, vertices, outlines, curves or nine-slice patches before recording them, so drawing allocates nothing once they have grown.
     std::vector<GpuInstance> scratchInstances;
     std::vector<GpuVertex> scratchVertices;
-    std::vector<std::uint32_t> scratchIndices;
     std::vector<math::Vec2> polygonPoints;
     std::vector<std::uint32_t> polygonCounts;
     std::vector<NineSlice::Patch> patches;
@@ -362,7 +361,6 @@ struct RendererState {
     struct Targets {
         std::array<gpu::Device::ColorTarget, gpu::Device::kMaxColorTargets> colors{};
         std::size_t count = 1;
-        int sampleCount = 1;
     };
 
     static const std::array<std::span<const std::uint8_t> (*)(), 12> kPackages;
