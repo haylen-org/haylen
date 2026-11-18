@@ -58,7 +58,6 @@ class Nodes2DLua final {
     static constexpr std::array<std::string_view, 2> kTextFields{"font", "text"};
     static constexpr std::array<std::string_view, 6> kFrameFields{"slice", "width", "height", "pivotX", "pivotY", "borderScale"};
     static constexpr std::array<std::string_view, 1> kFrameColorFields{"color"};
-    static constexpr std::array<std::string_view, 1> kListenerFields{"owner"};
 
     // The trees of the state by their address, held weakly, so a node of a tree that C++ hands out finds the userdata of its tree.
     static constexpr const char* kTrees = "haylen.nodeTrees";

@@ -195,41 +195,20 @@ int ConversationLua::on(lua_State* L) {
         return luaL_error(L, "Unknown conversation event \"%s\". Conversations report \"command\".", std::string(event).c_str());
     }
 
-    luaL_checktype(L, 3, LUA_TFUNCTION);
-    int owner = 0;
-    if (!lua_isnoneornil(L, 4)) {
-        luaL_checktype(L, 4, LUA_TTABLE);
-        lua::Table::checkFields(L, 4, {kListenerFields});
-        if (lua_getfield(L, 4, "owner") != LUA_TNIL) {
-            lua::Owners::checkOwner(L, -1);
-            owner = lua_gettop(L);
-        }
-    }
-
-    if (owner == 0) {
-        owner = lua::Owners::pushDefault(L);
-    }
-
     // Without an owner the state holds the listener itself, so a listener that refers to the state never keeps it alive.
-    if (owner == 0) {
-        owner = 1;
-    }
-
-    const std::weak_ptr<const void> lifetime = lua::Owners::getLifetime(L, owner);
-    auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
+    const lua::Owners::Listener listener = lua::Owners::readListener(L, 3, 4, 1);
     lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    core::Connection connection = state->commanded.connect([function, main](std::string_view name, const core::Json& arguments) {
+    core::Connection connection = state->commanded.connect([function = listener.function, main](std::string_view name, const core::Json& arguments) {
         if (function->push(main)) {
             lua::Stack::push(main, name);
             lua::JsonConverter::push(main, arguments);
             lua::Runtime::protectedCall(main, 2, 0);
         }
-    }, {.owner = lifetime});
+    }, {.owner = listener.lifetime});
     // clang-format on
-    lua::Owners::add(L, owner, connection);
-    lua::Userdata::emplace<core::Connection>(L, std::move(connection));
+    lua::Owners::pushConnection(L, listener, std::move(connection));
     deliver(*state);
     return 1;
 }

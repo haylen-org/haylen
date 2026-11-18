@@ -2,7 +2,9 @@
 
 #include <lua.hpp>
 
+#include <array>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include "haylen/core/Connection.hpp"
@@ -53,8 +55,21 @@ class Owners final {
         Reference previous;
     };
 
+    // A listener that a binding registers: its owner on the stack, or 0 without one, the lifetime its connection ends with and its function.
+    struct Listener {
+        int owner = 0;
+        std::weak_ptr<const void> lifetime;
+        std::shared_ptr<Function> function;
+    };
+
     // Raises a Lua error unless the value at index can own things, which tables and userdata can.
     static void checkOwner(lua_State* L, int index);
+
+    // Reads a listener from the function at `function` and the optional `{owner = owner}` table at `options`, taking the default owner without one, which it pushes, or the value at `fallback` when there is no default owner either, or none with a `fallback` of 0.
+    [[nodiscard]] static Listener readListener(lua_State* L, int function, int options, int fallback = 0);
+
+    // Ends the connection of the listener with its owner and pushes the connection, which the binding returns.
+    static void pushConnection(lua_State* L, const Listener& listener, core::Connection connection);
 
     // Pushes the owner that a registration without an `owner` option belongs to and returns its index, or returns 0 and pushes nothing when it belongs to none. In development, what a module registers while it runs its top level belongs to the owner of the module, so a reload of the module ends it.
     static int pushDefault(lua_State* L);
@@ -84,6 +99,7 @@ class Owners final {
     static void pushWeakTable(lua_State* L, const char* name, const char* mode);
 
   private:
+    static constexpr std::array<std::string_view, 1> kListenerFields{"owner"};
     static constexpr const char* kScopes = "haylen.owners";
     static constexpr const char* kFunctions = "haylen.ownedFunctions";
     static constexpr const char* kFunctionScopes = "haylen.ownedFunctionScopes";

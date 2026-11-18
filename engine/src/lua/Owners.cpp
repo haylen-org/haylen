@@ -7,6 +7,8 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FrameQueue.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Task.hpp"
 
@@ -146,6 +148,45 @@ std::weak_ptr<const void> Owners::getLifetime(lua_State* L, int owner) {
     const std::weak_ptr<const void> lifetime = pushScope(L, owner).lifetime;
     lua_pop(L, 1);
     return lifetime;
+}
+
+Owners::Listener Owners::readListener(lua_State* L, int function, int options, int fallback) {
+    luaL_checktype(L, function, LUA_TFUNCTION);
+    Listener listener;
+    if (!lua_isnoneornil(L, options)) {
+        luaL_checktype(L, options, LUA_TTABLE);
+        Table::checkFields(L, options, {kListenerFields});
+
+        if (lua_getfield(L, options, "owner") != LUA_TNIL) {
+            checkOwner(L, -1);
+            listener.owner = lua_gettop(L);
+        } else {
+            lua_pop(L, 1);
+        }
+    }
+
+    if (listener.owner == 0) {
+        listener.owner = pushDefault(L);
+    }
+
+    if (listener.owner == 0) {
+        listener.owner = fallback;
+    }
+
+    if (listener.owner != 0) {
+        listener.lifetime = getLifetime(L, listener.owner);
+    }
+
+    listener.function = std::make_shared<Function>(L, function, listener.owner);
+    return listener;
+}
+
+void Owners::pushConnection(lua_State* L, const Listener& listener, core::Connection connection) {
+    if (listener.owner != 0) {
+        add(L, listener.owner, connection);
+    }
+
+    Userdata::emplace<core::Connection>(L, std::move(connection));
 }
 
 void Owners::add(lua_State* L, int owner, core::Connection connection) {

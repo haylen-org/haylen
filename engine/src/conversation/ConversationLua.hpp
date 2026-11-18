@@ -34,7 +34,6 @@ class ConversationLua final {
 
   private:
     static constexpr std::array<std::string_view, 2> kStartFields{"variables", "seed"};
-    static constexpr std::array<std::string_view, 1> kListenerFields{"owner"};
 
     static void pushState(lua_State* L, std::shared_ptr<ConversationState> state);
     static void pushText(lua_State* L, const std::string& key, const core::Json& variables);

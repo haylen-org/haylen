@@ -578,35 +578,15 @@ int Nodes2DLua::nodeOn(lua_State* L) {
         return luaL_error(L, "Unknown node event \"%s\". Nodes report \"destroyed\".", std::string(event).c_str());
     }
 
-    luaL_checktype(L, 3, LUA_TFUNCTION);
-    int owner = 0;
-    if (!lua_isnoneornil(L, 4)) {
-        luaL_checktype(L, 4, LUA_TTABLE);
-        lua::Table::checkFields(L, 4, {kListenerFields});
-        if (lua_getfield(L, 4, "owner") != LUA_TNIL) {
-            lua::Owners::checkOwner(L, -1);
-            owner = lua_gettop(L);
-        }
-    }
-
-    if (owner == 0) {
-        owner = lua::Owners::pushDefault(L);
-    }
-
-    const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
-    auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
+    const lua::Owners::Listener listener = lua::Owners::readListener(L, 3, 4);
     lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    core::Connection connection = node.getTree().onDestroyed(node, [function, main](const Node& gone) {
+    core::Connection connection = node.getTree().onDestroyed(node, [function = listener.function, main](const Node& gone) {
         notifyDestroyed(*function, main, gone);
-    }, {.owner = lifetime});
+    }, {.owner = listener.lifetime});
     // clang-format on
-    if (owner != 0) {
-        lua::Owners::add(L, owner, connection);
-    }
-
-    lua::Userdata::emplace<core::Connection>(L, std::move(connection));
+    lua::Owners::pushConnection(L, listener, std::move(connection));
     return 1;
 }
 

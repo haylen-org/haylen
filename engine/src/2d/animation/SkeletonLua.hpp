@@ -42,7 +42,6 @@ class SkeletonLua final {
   private:
     static constexpr std::array<std::string_view, 7> kSkeletonFields{"skin", "x", "y", "rotation", "scaleX", "scaleY", "color"};
     static constexpr std::array<std::string_view, 3> kPlayFields{"track", "loop", "fade"};
-    static constexpr std::array<std::string_view, 1> kListenerFields{"owner"};
 
     // The state of the Lua call that updates a skeleton, where its event listeners run.
     inline static lua_State* updating = nullptr;
