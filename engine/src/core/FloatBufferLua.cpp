@@ -121,6 +121,7 @@ int FloatBufferLua::create(lua_State* L) {
     if (static_cast<std::uint64_t>(size) > FloatBuffer::kMaxSize) {
         return luaL_error(L, "A float buffer holds at most %d floats.", static_cast<int>(FloatBuffer::kMaxSize));
     }
+
     lua::Userdata::emplace<FloatBuffer>(L, std::make_shared<FloatBuffer>(static_cast<std::size_t>(size), lua::Converter<float>::readOr(L, 2, 0.0)));
     return 1;
 }

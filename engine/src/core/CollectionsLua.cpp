@@ -96,6 +96,7 @@ bool CollectionsLua::releaseObject(lua_State* L, Pool& pool, int object) {
     lua_rawset(L, slots);
     lua_pushnil(L);
     lua_rawseti(L, active, last);
+
     lua_pushvalue(L, object);
     lua_pushnil(L);
     lua_rawset(L, slots);
@@ -170,6 +171,7 @@ int CollectionsLua::poolAcquire(lua_State* L) {
     lua::Userdata::pushField(L, 1, "active");
     lua_pushvalue(L, object);
     lua_rawseti(L, -2, slot);
+
     lua::Userdata::pushField(L, 1, "slots");
     lua_pushvalue(L, object);
     lua_pushinteger(L, slot);
@@ -245,6 +247,7 @@ int CollectionsLua::newRingBuffer(lua_State* L) {
     if (capacity > kMaxRingCapacity) {
         return luaL_error(L, "A ring buffer holds at most %d values.", static_cast<int>(kMaxRingCapacity));
     }
+
     lua::Userdata::emplace<ValueBuffer>(L, capacity);
     return 1;
 }
