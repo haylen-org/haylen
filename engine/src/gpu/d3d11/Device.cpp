@@ -1122,8 +1122,9 @@ void Device::commit() {
         }
     }
 
-    if (!lost && FAILED(device->GetDeviceRemovedReason())) {
-        loseDevice(device->GetDeviceRemovedReason());
+    const HRESULT removed = device->GetDeviceRemovedReason();
+    if (FAILED(removed)) {
+        loseDevice(removed);
     }
 
     drainMessages();
