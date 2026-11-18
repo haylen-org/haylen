@@ -12,13 +12,14 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "" CACHE STRING "Mac Catalyst takes its minimum 
 execute_process(COMMAND xcrun --sdk macosx --show-sdk-path OUTPUT_VARIABLE sdk OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ERROR_IS_FATAL ANY)
 set(ios_support "${sdk}/System/iOSSupport")
 
+# The flags reach the command lines as they are, so each path is quoted, since the folder of Xcode may hold a space.
 foreach(language C CXX OBJC OBJCXX ASM)
   set(CMAKE_${language}_COMPILER_TARGET "${CMAKE_OSX_ARCHITECTURES}-apple-ios${HAYLEN_CATALYST_MINIMUM}-macabi")
-  set(CMAKE_${language}_FLAGS_INIT "-iframework ${ios_support}/System/Library/Frameworks -isystem ${ios_support}/usr/include")
+  set(CMAKE_${language}_FLAGS_INIT "-iframework \"${ios_support}/System/Library/Frameworks\" -isystem \"${ios_support}/usr/include\"")
 endforeach()
 # Swift sources, such as those of plugins, compile for the same target, with the frameworks and the Swift modules of the iOSSupport folder.
 set(CMAKE_Swift_COMPILER_TARGET "${CMAKE_OSX_ARCHITECTURES}-apple-ios${HAYLEN_CATALYST_MINIMUM}-macabi")
-set(CMAKE_Swift_FLAGS_INIT "-Fsystem ${ios_support}/System/Library/Frameworks -I ${ios_support}/usr/lib/swift")
+set(CMAKE_Swift_FLAGS_INIT "-Fsystem \"${ios_support}/System/Library/Frameworks\" -I \"${ios_support}/usr/lib/swift\"")
 # The links find the frameworks and libraries of the iOSSupport folder through the options that both the C++ driver and the Swift driver take.
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-F ${ios_support}/System/Library/Frameworks -L${ios_support}/usr/lib")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-F \"${ios_support}/System/Library/Frameworks\" \"-L${ios_support}/usr/lib\"")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT}")
