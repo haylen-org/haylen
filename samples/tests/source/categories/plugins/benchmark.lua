@@ -159,7 +159,7 @@ function Benchmark:throughput()
     local started = Benchmark.now()
     local calls = {}
     for index = 1, Benchmark.parallel do
-        calls[index] = demo.echo(index)
+        calls[index] = demo.echo(index).promise
     end
     local _, err = async.all(calls):await()
     if err then
@@ -181,7 +181,7 @@ function Benchmark:callsPerFrame()
         local pending = {}
         local work = Benchmark.frameWork(Benchmark.frames, function()
             for index = 1, count do
-                pending[#pending + 1] = demo.echo(index)
+                pending[#pending + 1] = demo.echo(index).promise
             end
         end)
         async.all(pending):await()
