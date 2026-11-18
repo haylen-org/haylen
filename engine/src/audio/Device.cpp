@@ -165,6 +165,7 @@ ma_ios_session_category Device::toSessionCategory(Session::Category category) no
     case Session::Category::Playback:
         return ma_ios_session_category_playback;
     }
+
     return ma_ios_session_category_ambient;
 }
 
@@ -257,6 +258,7 @@ void Device::connect(bool warn) {
     waited = 0.0F;
     warnRefusal = warn;
     warnedWaiting = false;
+
     // A platform without threads besides the one of the frames, such as a page, opens the device on that thread, where it never blocks.
     if (!port::Contract::hasThreads()) {
         open(*next, setup);

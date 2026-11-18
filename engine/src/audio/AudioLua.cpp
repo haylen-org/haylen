@@ -175,7 +175,6 @@ int AudioLua::newSound(lua_State* L) {
     throw std::invalid_argument("The format of raw samples is \"float32\" or \"int16\", not \"" + format + "\".");
 }
 
-// Plays a sound with `play(sound, {bus, volume, pitch, pan, loop, fadeIn, startAt, x, y, processMode, effects})` and returns the voice id.
 int AudioLua::play(lua_State* L) {
     lua::Stack::push(L, getMixer(L).play(lua::Stack::read<Sound>(L, 1), readPlayOptions(L, 2, kPlayFields)));
     return 1;
@@ -331,7 +330,6 @@ int AudioLua::effects(lua_State* L) {
     return 1;
 }
 
-// Crossfades to a music track with `playMusic(sound, {bus, volume, fade, loop, startAt})` and returns the voice id of the track.
 int AudioLua::playMusic(lua_State* L) {
     Mixer::MusicOptions options;
     if (!lua_isnoneornil(L, 2)) {

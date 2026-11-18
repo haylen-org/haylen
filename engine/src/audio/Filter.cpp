@@ -136,6 +136,7 @@ Filter::Coefficients Filter::design(Kind type, float rate, float frequency, floa
         a2 = (amplitude + 1.0) - (amplitude - 1.0) * cosine - shelf;
         break;
     }
+
     return {static_cast<float>(b0 / a0), static_cast<float>(b1 / a0), static_cast<float>(b2 / a0), static_cast<float>(a1 / a0), static_cast<float>(a2 / a0)};
 }
 

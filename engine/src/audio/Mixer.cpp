@@ -42,6 +42,7 @@ float Mixer::Spatialization::getGain(float distance) const noexcept {
     case Model::Exponential:
         return std::pow(clamped / minDistance, -rolloff);
     }
+
     return 1.0F;
 }
 
