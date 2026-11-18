@@ -19,25 +19,30 @@ namespace haylen::text {
 
 MarkupParser::MarkupParser(std::string_view source) : markup(source) {}
 
-// Lines end where paragraphs do, at every paragraph separator, with the carriage return of CRLF belonging to its line feed.
+// Lines end where paragraphs do, at every paragraph separator, with the carriage return of CRLF belonging to its line feed. The count goes on from the last place it reached, since the parser finds its tags in order, so locating every tag reads the markup once.
 std::pair<std::size_t, std::size_t> MarkupParser::locate(std::size_t offset) const {
-    const std::u32string before = core::Utf8::decode(markup.substr(0, offset));
-    std::size_t line = 1;
-    std::size_t column = 1;
-    for (std::size_t index = 0; index < before.size(); ++index) {
-        if (before[index] == U'\r' && index + 1 < before.size() && before[index + 1] == U'\n') {
+    if (offset < located.offset) {
+        located = {};
+    }
+
+    std::size_t index = located.offset;
+    while (index < offset) {
+        const char32_t codePoint = core::Utf8::decode(markup, index);
+        const bool joined = codePoint == U'\r' && index < markup.size() && markup[index] == '\n';
+        if (joined) {
             continue;
         }
 
-        if (Segmenter::isParagraphSeparator(before[index])) {
-            ++line;
-            column = 1;
+        if (Segmenter::isParagraphSeparator(codePoint)) {
+            ++located.line;
+            located.column = 1;
         } else {
-            ++column;
+            ++located.column;
         }
     }
 
-    return {line, column};
+    located.offset = index;
+    return {located.line, located.column};
 }
 
 void MarkupParser::fail(std::size_t offset, const std::string& problem) const {
@@ -430,6 +435,10 @@ void MarkupParser::handleTag(const Tag& tag) {
 }
 
 void MarkupParser::pushTag(const Tag& tag, TagKind kind) {
+    if (openTags.size() >= kMaxOpenTags) {
+        fail(tag.offset, "Rich text nests at most " + std::to_string(kMaxOpenTags) + " tags inside each other.");
+    }
+
     openTags.push_back({.name = tag.name, .kind = kind, .offset = tag.offset, .style = style, .styleIndex = styleIndex});
 }
 
@@ -566,6 +575,10 @@ void MarkupParser::openBlock(const Tag& tag) {
         checkAttributes(tag, {"bullet"});
         block.list = Kind::Bullet;
         block.bullet = core::Utf8::decode(tag.attributes.contains("bullet") ? std::string_view(tag.attributes.at("bullet")) : kBullet);
+        if (std::ranges::any_of(block.bullet, &Segmenter::isParagraphSeparator)) {
+            fail(tag.offset, "The \"bullet\" of \"[ul]\" is one line of text.");
+        }
+
         block.indent += 1.0F;
     } else if (name == "ol") {
         requireNoValue(tag);

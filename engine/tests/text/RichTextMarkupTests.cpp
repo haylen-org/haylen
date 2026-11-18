@@ -46,6 +46,13 @@ TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {
     EXPECT_FALSE(Style::alignmentFromName("justify").has_value());
     EXPECT_FALSE(Style::directionFromName("up").has_value());
     EXPECT_NE(errorOf("[p dir=up]x[/p]").find("The \"dir\" of \"[p]\" must be \"auto\", \"leftToRight\" or \"rightToLeft\"."), std::string::npos);
+    std::string nested;
+    for (int depth = 0; depth < 300; ++depth) {
+        nested += "[wave]";
+    }
+
+    EXPECT_NE(errorOf(nested).find("Rich text nests at most 256 tags inside each other."), std::string::npos);
+    EXPECT_EQ(errorOf("[ul bullet=\"a\nb\"]x[/ul]"), "Rich text markup at line 1, column 1: The \"bullet\" of \"[ul]\" is one line of text.");
 }
 
 TEST_F(RichTextMarkupTest, NestsInlineStylesAndMergesRuns) {

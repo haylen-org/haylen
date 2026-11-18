@@ -231,13 +231,14 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
     return glyph;
 }
 
-// A color glyph draws its own image instead of a distance field, so it takes no room in the atlas. Its box is the extent of what its layers paint.
+// A color glyph draws its own image instead of a distance field, so it takes no room in the atlas. Its box is the extent of what its layers paint, which the bounds of every glyph box apply to.
 Font::Glyph TrueTypeFont::paintColors(Glyph glyph, std::uint32_t index) const {
-    hb_glyph_extents_t extents{};
-    if (!hb_font_get_glyph_extents(&face->file.getFont(), index, &extents) || extents.width <= 0 || extents.height >= 0) {
+    const std::optional<hb_glyph_extents_t> found = face->file.getExtents(index);
+    if (!found || found->width <= 0 || found->height >= 0) {
         return glyph;
     }
 
+    const hb_glyph_extents_t& extents = *found;
     glyph.image = graphics::VectorImage(std::make_shared<ColorGlyphImage>(face->file.getFont(), index, extents, face->scale));
     glyph.source = {0.0F, 0.0F, glyph.image.getSize().x, glyph.image.getSize().y};
     glyph.offset = {static_cast<float>(extents.x_bearing) * face->scale, static_cast<float>(-extents.y_bearing) * face->scale};

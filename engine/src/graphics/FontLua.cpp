@@ -34,11 +34,29 @@ std::shared_ptr<text::FontFamily> FontLua::readFamily(lua_State* L, int index) {
     }
 
     if (lua::Userdata::test<text::Font>(L, index) != nullptr) {
-        return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = lua::Userdata::checkShared<text::Font>(L, index), .systemFonts = getSystemFonts(L)});
+        return wrapFont(L, index);
     }
 
     luaL_argerror(L, index, "expected a FontFamily or a Font");
     return nullptr;
+}
+
+// A font that stands for a family keeps the family it made in its user value, so every draw with the font finds the same family with the layouts it keeps.
+std::shared_ptr<text::FontFamily> FontLua::wrapFont(lua_State* L, int index) {
+    const int font = lua_absindex(L, index);
+    lua::Userdata::pushField(L, font, "family");
+    if (lua::Userdata::test<text::FontFamily>(L, -1) != nullptr) {
+        std::shared_ptr<text::FontFamily> kept = lua::Userdata::checkShared<text::FontFamily>(L, -1);
+        lua_pop(L, 1);
+        return kept;
+    }
+
+    lua_pop(L, 1);
+    auto family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = lua::Userdata::checkShared<text::Font>(L, font), .systemFonts = getSystemFonts(L)});
+    lua::Stack::push(L, family);
+    lua::Userdata::setField(L, font, "family", -1);
+    lua_pop(L, 1);
+    return family;
 }
 
 char32_t FontLua::readCharacter(lua_State* L, int index) {

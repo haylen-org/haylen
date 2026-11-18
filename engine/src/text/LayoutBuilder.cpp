@@ -551,10 +551,10 @@ void LayoutBuilder::keepLastWords(Flow& flow, float available) {
     }
 }
 
-// The narrowest width that keeps the count of lines, which halving the range between the widest unbreakable run and the available width finds.
+// The narrowest width that keeps the count of lines, which halving the range between the widest unbreakable run and the available width finds. A run wider than the available width splits, so the search never goes past that width.
 void LayoutBuilder::evenLines(Flow& flow, float available) {
     const std::size_t count = flow.lines.size();
-    float narrow = flow.minimumWidth;
+    float narrow = std::min(flow.minimumWidth, available);
     float wide = available;
     for (int step = 0; step < kBalanceSteps; ++step) {
         const float middle = (narrow + wide) * 0.5F;

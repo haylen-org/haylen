@@ -349,6 +349,10 @@ TEST_F(ShapingTest, BalancesTheLinesOfParagraphs) {
     ASSERT_EQ(alone.lines.size(), 2U);
     EXPECT_EQ(alone.lines[1].begin, 28U);
 
+    // Even lines never grow past the width when a word is wider than it.
+    const Layout& narrow = lay("a supercalifragilisticexpialidocious b c", {.size = 32.0F, .maxWidth = 120.0F, .balance = Balance::AllLines});
+    EXPECT_LE(widest(narrow), 120.0F);
+
     const std::shared_ptr<RichTextRegistry> registry = fixture.engine().getPlugin<plugins::TextPlugin>().getRegistry();
     RichText broken("one two three four five six seven[br]eight", {.family = family, .size = 32.0F, .maxWidth = width}, registry);
     ASSERT_EQ(broken.getLayout().lines.size(), 3U);

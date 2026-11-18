@@ -288,7 +288,7 @@ std::size_t TextPlugin::hashDrawn(std::string_view markup, const text::RichTextO
 
 bool TextPlugin::isSameDrawn(const DrawnText& drawn, std::string_view markup, const text::RichTextOptions& options, std::span<const FontName> fonts) noexcept {
     const text::RichTextOptions& kept = drawn.options;
-    const bool sameOptions = kept.family == options.family && kept.size == options.size && kept.bold == options.bold && kept.italic == options.italic && kept.color == options.color && kept.maxWidth == options.maxWidth && kept.align == options.align && kept.direction == options.direction && kept.language == options.language && kept.lineSpacing == options.lineSpacing && kept.scale == options.scale && kept.revealSpeed == options.revealSpeed && kept.underlineLinks == options.underlineLinks;
+    const bool sameOptions = kept.family == options.family && kept.size == options.size && kept.bold == options.bold && kept.italic == options.italic && kept.color == options.color && kept.maxWidth == options.maxWidth && kept.align == options.align && kept.direction == options.direction && kept.language == options.language && kept.lineSpacing == options.lineSpacing && kept.scale == options.scale && kept.revealSpeed == options.revealSpeed && kept.underlineLinks == options.underlineLinks && kept.balance == options.balance && kept.ligatures == options.ligatures && kept.code == options.code;
     return sameOptions && drawn.markup == markup && std::ranges::equal(drawn.fonts, fonts);
 }
 

@@ -284,6 +284,7 @@ TEST_F(RichTextLayoutTest, RunsEffectsDeterministically) {
     EXPECT_THROW((void)broken.getFrame(), std::invalid_argument);
     EXPECT_THROW(registry()->registerEffect("wave", [](Effect::Glyph&, const Effect::Parameters&) {}), std::invalid_argument);
     EXPECT_THROW(registry()->registerEffect("b", [](Effect::Glyph&, const Effect::Parameters&) {}), std::invalid_argument);
+    EXPECT_THROW(registry()->registerEffect("gradient", [](Effect::Glyph&, const Effect::Parameters&) {}), std::invalid_argument);
 }
 
 // The attributes of an effect take only finite numbers, so an infinite or undefined amplitude is reported like any other value that is no number.

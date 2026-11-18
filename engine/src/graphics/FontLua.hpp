@@ -38,6 +38,8 @@ class FontLua final {
     [[nodiscard]] static std::shared_ptr<text::FontFamily> readFamily(lua_State* L, int index);
 
   private:
+    [[nodiscard]] static std::shared_ptr<text::FontFamily> wrapFont(lua_State* L, int index);
+
     static constexpr std::array<std::string_view, 7> kFamilyFields{"regular", "bold", "italic", "boldItalic", "mono", "fallbacks", "systemFonts"};
     static constexpr std::array<std::string_view, 8> kGridFields{"characters", "cellWidth", "cellHeight", "spacing", "margin", "advance", "lineHeight", "baseline"};
     static constexpr std::array<std::string_view, 3> kStyleFields{"bold", "italic", "mono"};

@@ -11,6 +11,9 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
+#include "haylen/text/RichText.hpp"
+#include "haylen/text/RichTextOptions.hpp"
+#include "haylen/text/RichTextRegistry.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
@@ -66,6 +69,23 @@ TEST_F(TextLuaTest, BalancesWrappedLines) {
     lua("function widest(layout) local width = 0 for _, quad in ipairs(layout.quads) do width = math.max(width, quad.position.x + quad.size.x) end return width end");
     EXPECT_EQ(lua("local width = font:layout('one two three four five six', {size = 32}).size.x + 4 local greedy = font:layout('one two three four five six seven', {size = 32, maxWidth = width, balance = 'none'}) local last = font:layout('one two three four five six seven', {size = 32, maxWidth = width}) local even = font:layout('one two three four five six seven', {size = 32, maxWidth = width, balance = 'allLines'}) return tostring(widest(last) < widest(greedy)) .. ' ' .. tostring(widest(even) < widest(last)) .. ' ' .. even.lineCount"), "true true 2");
     EXPECT_EQ(lua("local rich = graphics2d.newRichText('one two', {balance = 'allLines'}) local before = rich.balance rich.balance = 'none' return before .. ' ' .. rich.balance"), "allLines none");
+}
+
+// Rich text drawn twice in one frame with options that lay it out apart keeps a layout for each.
+TEST_F(TextLuaTest, KeepsADrawnLayoutForEachWayOfLayingItOut) {
+    plugins::TextPlugin& plugin = fixture.engine().getPlugin<plugins::TextPlugin>();
+    const text::RichTextOptions prose{.family = plugin.getRegistry()->getDefaultFamily(), .maxWidth = 200.0F};
+    text::RichTextOptions balanced = prose;
+    balanced.balance = text::Balance::AllLines;
+    text::RichTextOptions joined = prose;
+    joined.ligatures = false;
+    text::RichTextOptions code = prose;
+    code.code = true;
+
+    const text::RichText* first = &plugin.getDrawnText("office of the ffi", prose, {}, 0.0);
+    EXPECT_NE(&plugin.getDrawnText("office of the ffi", balanced, {}, 0.0), first);
+    EXPECT_NE(&plugin.getDrawnText("office of the ffi", joined, {}, 0.0), first);
+    EXPECT_NE(&plugin.getDrawnText("office of the ffi", code, {}, 0.0), first);
 }
 
 TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
@@ -176,6 +196,9 @@ TEST_F(TextLuaTest, KeepsTheLayoutOfRichTextDrawnEveryFrame) {
     EXPECT_EQ(measure("graphics2d.drawRichText('[wave]Party[/wave] \\u{1F389} [b]\\u{1F525}[/b]', 10, 20, {family = emoji, size = 24}) graphics2d.drawText(emoji, 'Ship \\u{1F680}\\u{2B50}', 10, 80, {size = 32, shadowOffset = {2, 2}, shadowColor = '#80000000'})"), empty);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_GT(lua("return graphics2d.stats().sprites"), "0");
+
+    // A font given where a family goes stands for the same family every frame.
+    EXPECT_EQ(measure("graphics2d.drawRichText('[b]Plain[/b] font', 10, 20, {family = font, size = 24})"), empty);
 
     // Markup that changes every frame still draws, as a new layout each time.
     EXPECT_GT(measure("frameCount = (frameCount or 0) + 1 graphics2d.drawRichText('Frame ' .. frameCount, 10, 20)"), empty);

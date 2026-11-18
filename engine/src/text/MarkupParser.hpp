@@ -69,6 +69,13 @@ class MarkupParser final {
         std::string captured;
     };
 
+    // A byte offset of the markup with its line and column, both counted from one.
+    struct Place {
+        std::size_t offset = 0;
+        std::size_t line = 1;
+        std::size_t column = 1;
+    };
+
     static constexpr std::array<std::pair<std::string_view, std::uint32_t>, 18> kNamedColors{{
         {"black", 0x000000FFU},
         {"white", 0xFFFFFFFFU},
@@ -89,9 +96,12 @@ class MarkupParser final {
         {"gold", 0xFFD700FFU},
         {"transparent", 0x00000000U},
     }};
-    static constexpr std::array<std::string_view, 33> kTags{"b", "i", "u", "s", "code", "color", "bgcolor", "font", "size", "outline", "shadow", "glow", "alpha", "url", "hint", "speed", "pause", "br", "lb", "rb", "img", "icon", "hr", "p", "center", "left", "right", "fill", "ul", "ol", "table", "cell", "dropcap"};
+    static constexpr std::array<std::string_view, 34> kTags{"b", "i", "u", "s", "code", "color", "bgcolor", "font", "size", "outline", "shadow", "glow", "gradient", "alpha", "url", "hint", "speed", "pause", "br", "lb", "rb", "img", "icon", "hr", "p", "center", "left", "right", "fill", "ul", "ol", "table", "cell", "dropcap"};
     static constexpr std::string_view kBullet = "\xE2\x80\xA2";
     static constexpr std::size_t kMaxTableColumns = 64;
+
+    // How deep tags nest, which bounds the styles a hostile markup makes the parser keep.
+    static constexpr std::size_t kMaxOpenTags = 256;
 
     [[nodiscard]] static std::u32string listMarker(RichTextDocument::ListKind kind, std::size_t number);
     [[nodiscard]] static std::u32string romanNumeral(std::size_t number, bool upper);
@@ -139,6 +149,9 @@ class MarkupParser final {
     RichTextDocument::Style style;
     std::optional<std::size_t> styleIndex;
     std::vector<OpenTag> openTags;
+
+    // The place that the last location reached, which the next one goes on from.
+    mutable Place located;
     std::vector<Block> blocks;
     RichTextDocument::Paragraph paragraph;
     bool paragraphFromNewline = false;
