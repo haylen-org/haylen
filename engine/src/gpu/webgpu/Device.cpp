@@ -861,6 +861,22 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         return;
     }
 
+    if (currentPipeline == 0) {
+        throw std::logic_error("Uniforms were applied before a pipeline.");
+    }
+
+    const ProgramRecord& program = programs.get(pipelines.get(currentPipeline).program);
+    const auto slots = std::span(program.blockSlots).first(program.blockCount);
+    const auto found = std::ranges::find(slots, slot);
+    if (found == slots.end()) {
+        throw std::logic_error(std::format("The program has no uniform block at slot {}.", slot));
+    }
+
+    const std::uint32_t size = program.blocks->blocks[static_cast<std::size_t>(found - slots.begin())].second;
+    if (data.size() != size) {
+        throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, size, data.size()));
+    }
+
     if (data.size() > std::min<std::uint64_t>(connection->getLimits().maxUniformBufferBindingSize, UniformRing::kMaxBlockSize)) {
         throw std::logic_error(std::format("A uniform block of {} bytes is larger than WebGPU binds.", data.size()));
     }

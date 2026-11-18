@@ -1716,8 +1716,8 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     }
 
     const VkDeviceSize size = bound.program->uniformBlocks[static_cast<std::size_t>(index)].size;
-    if (data.size() > size) {
-        throw std::invalid_argument(std::format("The uniforms of {} bytes do not fit the block of {} bytes at slot {}.", data.size(), size, slot));
+    if (data.size() != size) {
+        throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, size, data.size()));
     }
 
     const UploadRing::Allocation allocation = allocateUniform(static_cast<std::size_t>(index), size);

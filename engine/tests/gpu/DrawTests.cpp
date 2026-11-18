@@ -257,6 +257,21 @@ TEST_P(GpuDrawTest, RefusesPipelinesBeyondTheLimitsOfTheContract) {
     EXPECT_THROW((void)device().makePipeline({.program = program("plane"), .buffers = buffers, .colors = color, .label = "haylen-test-buffers"}), std::logic_error);
 }
 
+// Uniforms fill the block of their slot exactly, so every device refuses a block that the program lacks and data of another size.
+TEST_P(GpuDrawTest, RefusesUniformsThatDoNotFillTheirBlock) {
+    const Device::Pipeline pipeline = makeColorPipeline("tinted");
+    const std::array<float, 4> block{};
+    const std::array<float, 2> half{};
+
+    beginPass();
+    device().applyPipeline(pipeline);
+    EXPECT_THROW(device().applyUniforms(0, std::as_bytes(std::span(half))), std::logic_error);
+    EXPECT_THROW(device().applyUniforms(2, std::as_bytes(std::span(block))), std::logic_error);
+    device().applyUniforms(0, std::as_bytes(std::span(block)));
+    static_cast<void>(finish());
+    device().destroy(pipeline);
+}
+
 // A line across the middle of the target lights the pixels it passes.
 TEST_P(GpuDrawTest, DrawsLines) {
     const Device::Pipeline pipeline = makeColorPipeline("color", Device::Primitive::Lines);
