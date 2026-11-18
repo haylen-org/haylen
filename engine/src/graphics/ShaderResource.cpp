@@ -1,6 +1,7 @@
 #include "graphics/ShaderResource.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <format>
 #include <stdexcept>
 #include <utility>
@@ -241,12 +242,13 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
                     throw std::invalid_argument(std::format("The block \"{}\" is read as \"{}\", and OpenGL reads blocks as arrays of \"vec4\" or \"ivec4\".", block.name, type));
                 }
 
-                const int count = flattened.at("count").get<int>();
-                if (count * 16 != static_cast<int>(block.size)) {
+                // The count compares in 64 bits with the vectors the block holds, so no count of a hostile file wraps around to a size that matches.
+                const auto count = flattened.at("count").get<std::int64_t>();
+                if (count != static_cast<std::int64_t>(block.size / 16)) {
                     throw std::invalid_argument(std::format("The array of the block \"{}\" does not fill its {} bytes.", block.name, block.size));
                 }
 
-                read.glslBlocks.push_back({.slot = block.slot, .name = flattened.at("name").get<std::string>(), .integers = type == "ivec4", .count = count});
+                read.glslBlocks.push_back({.slot = block.slot, .name = flattened.at("name").get<std::string>(), .integers = type == "ivec4", .count = static_cast<int>(count)});
             }
         } else {
             read.blockBindings = readBindings(target, "blocks", blockSlots, "uniform block", *language);

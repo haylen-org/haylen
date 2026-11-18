@@ -1,6 +1,7 @@
 #include "graphics/SvgDocument.hpp"
 
 #include <cstddef>
+#include <new>
 #include <utility>
 #include <vector>
 
@@ -18,6 +19,10 @@ Image SvgDocument::rasterize(float scale) const {
     const auto [width, height] = VectorImage::getRasterSize(getSize(), scale);
     std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
     const std::unique_ptr<NSVGrasterizer, decltype(&nsvgDeleteRasterizer)> rasterizer(nsvgCreateRasterizer(), &nsvgDeleteRasterizer);
+    if (!rasterizer) {
+        throw std::bad_alloc();
+    }
+
     nsvgRasterize(rasterizer.get(), document.get(), 0.0F, 0.0F, scale, pixels.data(), width, height, width * 4);
     return {width, height, std::move(pixels)};
 }

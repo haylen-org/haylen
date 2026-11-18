@@ -130,6 +130,7 @@ TEST(ImageFiltersLuaTest, AppliesEffectsInPlaceAndOnTheTaskPool) {
     EXPECT_EQ(fixture.lua("local inverted, original = done:match('(%S+) (%S+)') return tostring(inverted ~= original)"), "true");
     EXPECT_NE(fixture.lua("image:applyAsync({{effect = 'melt'}})").find("The image effect \"melt\" is unknown."), std::string::npos);
     EXPECT_NE(fixture.lua("image:applyAsync({{effect = 'blur', radius = 2, sigma = 1}})").find("Unknown option \"sigma\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:applyAsync({{effect = 'pixelate', size = 1e20}})").find("size"), std::string::npos);
     EXPECT_NE(fixture.lua("image:adjust({gamma = 2})").find("Unknown option \"gamma\"."), std::string::npos);
     EXPECT_NE(fixture.lua("image:blur(-1)").find("A blur has a radius from 0 to 64 pixels."), std::string::npos);
 }

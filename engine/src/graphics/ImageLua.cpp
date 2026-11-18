@@ -2,6 +2,8 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
@@ -40,13 +42,18 @@ Image& ImageLua::checkWritable(lua_State* L, int index) {
     return *storage;
 }
 
-// Reads a rectangle into whole pixels, or the whole image for `nil`.
+// Reads a rectangle into whole pixels, or the whole image for `nil`. A corner or a size past the pixels that whole numbers reach is an error, since no image reaches it.
 Image::Area ImageLua::readArea(lua_State* L, int index, const Image& image) {
     if (lua_isnoneornil(L, index)) {
         return image.getArea();
     }
 
     const auto area = lua::Stack::read<math::Rect>(L, index);
+    const std::array<float, 4> values{area.x, area.y, area.width, area.height};
+    if (std::ranges::any_of(values, [](float value) { return !std::isfinite(value) || std::fabs(value) > kMaxAreaPixels; })) {
+        throw std::invalid_argument("The corner and the size of an area of an image are numbers of pixels from -1073741824 to 1073741824.");
+    }
+
     return {static_cast<int>(std::lround(area.x)), static_cast<int>(std::lround(area.y)), static_cast<int>(std::lround(area.width)), static_cast<int>(std::lround(area.height))};
 }
 
@@ -499,7 +506,9 @@ std::function<void(Image&)> ImageLua::readEffect(lua_State* L, int index) {
 
     if (effect == "pixelate") {
         lua::Table::checkFields(L, index, {kPixelateEffectFields});
-        return [size = static_cast<int>(number("size", 1.0F))](Image& image) { ImageFilters::pixelate(image, size); };
+        int size = 1;
+        lua::Table::readField(L, index, "size", size);
+        return [size](Image& image) { ImageFilters::pixelate(image, size); };
     }
 
     if (effect == "outline") {

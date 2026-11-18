@@ -111,6 +111,10 @@ TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
     EXPECT_NE(fixture.lua("graphics.newImage(0, 4)").find("An image needs a width and a height of one pixel or more."), std::string::npos);
     EXPECT_NE(fixture.lua("canvas:crop({10, 4, 8, 8})").find("is not inside the image of 16 by 8 pixels."), std::string::npos);
     EXPECT_NE(fixture.lua("canvas:blit(tile, 0, 0, {mode = 'add'})").find("Unknown option \"mode\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("canvas:fill('#000000', {0, 0, 1e12, 4})").find("The corner and the size of an area of an image are numbers of pixels from -1073741824 to 1073741824."), std::string::npos);
+
+    // Areas and places far outside the image clip to nothing instead of wrapping around onto its pixels.
+    EXPECT_EQ(fixture.lua("canvas:blit(tile, 2000000000, 0, {source = {-1000000000, 0, 4, 4}}) canvas:fillGradient({colors = {'#000000'}}, {-1073741824, 0, 1073741824, 4}) return canvas:pixel(13, 1):toHex()"), "#FFFF0000");
     EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image could not be decoded"), std::string::npos);
     EXPECT_EQ(fixture.lua("return graphics.maxImageSize()"), "16384");
     EXPECT_EQ(fixture.lua("return graphics.decodeImage(png, {maxSize = 6}).width"), "6");

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <stdexcept>
 
 #include "haylen/math/Math.hpp"
@@ -72,10 +73,11 @@ math::Color Gradient::getColor(float at) const noexcept {
 }
 
 void Gradient::paint(Image& image, const Image::Area& area) const {
+    // The ends of the area reckon in 64 bits, so an area far outside the image never wraps around onto it.
     const int left = std::max(area.x, 0);
     const int top = std::max(area.y, 0);
-    const int right = std::min(area.x + area.width, image.getWidth());
-    const int bottom = std::min(area.y + area.height, image.getHeight());
+    const auto right = static_cast<int>(std::min<std::int64_t>(std::int64_t{area.x} + area.width, image.getWidth()));
+    const auto bottom = static_cast<int>(std::min<std::int64_t>(std::int64_t{area.y} + area.height, image.getHeight()));
     if (left >= right || top >= bottom) {
         return;
     }
@@ -84,7 +86,9 @@ void Gradient::paint(Image& image, const Image::Area& area) const {
     const std::span<std::uint8_t> pixels = image.getWritablePixels();
     for (int row = top; row < bottom; ++row) {
         for (int column = left; column < right; ++column) {
-            const math::Color color = getColor(positionOf({static_cast<float>(column - area.x) + 0.5F, static_cast<float>(row - area.y) + 0.5F}, size));
+            const auto across = static_cast<float>(std::int64_t{column} - area.x);
+            const auto down = static_cast<float>(std::int64_t{row} - area.y);
+            const math::Color color = getColor(positionOf({across + 0.5F, down + 0.5F}, size));
             const float offset = dithered ? (kDither[static_cast<std::size_t>((row & 3) * 4 + (column & 3))] + 0.5F) / 16.0F : 0.5F;
             std::uint8_t* pixel = &pixels[static_cast<std::size_t>(row * image.getWidth() + column) * 4U];
             const std::array<float, 4> channels{color.r, color.g, color.b, color.a};

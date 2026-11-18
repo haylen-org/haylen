@@ -256,6 +256,7 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     // Blocks hold whole vectors, OpenGL reads each one as an array that fills it, and every other language binds every slot.
     EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), malformed + "The uniform block \"params\" holds 24 bytes, which is not a multiple of 16.");
     EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 2}}), malformed + "The array of the block \"params\" does not fill its 16 bytes.");
+    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 268435457}}), malformed + "The array of the block \"params\" does not fill its 16 bytes.");
     EXPECT_EQ(parseError({{glsl + "/blocks/1/type", "mat4"}}), malformed + "The block \"params\" is read as \"mat4\", and OpenGL reads blocks as arrays of \"vec4\" or \"ivec4\".");
     EXPECT_EQ(parseError({{metal + "/textures", core::Json::object()}}), malformed + "The texture at slot 1 has no binding number.");
     EXPECT_EQ(parseError({{metal + "/samplers/1", 256}}), malformed + "The binding number 256 of the sampler at slot 1 is out of range.");

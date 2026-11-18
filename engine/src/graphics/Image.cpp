@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 #include <new>
@@ -125,35 +126,43 @@ std::vector<std::uint8_t> Image::encodePng() const {
 
     std::vector<std::uint8_t> encoded;
     // clang-format off
-    stbi_write_png_to_func([](void* context, void* data, int size) {
+    const int written = stbi_write_png_to_func([](void* context, void* data, int size) {
         auto* target = static_cast<std::vector<std::uint8_t>*>(context);
         target->insert(target->end(), static_cast<const std::uint8_t*>(data), static_cast<const std::uint8_t*>(data) + size);
     }, &encoded, width, height, 4, pixels.data(), width * 4);
     // clang-format on
+    if (written == 0) {
+        throw std::bad_alloc();
+    }
+
     return encoded;
 }
 
-// Rows are swapped when the GPU device stores the bottom row first, and colors are divided by their alpha.
+// Rows are swapped when the GPU device stores the bottom row first, and colors are divided by their alpha, once the image checked that the data fills it.
 Image Image::fromRendered(std::vector<std::uint8_t> data, int columns, int rows, bool bottomUp) {
+    Image image(columns, rows, std::move(data));
+    const std::span<std::uint8_t> pixels = image.getWritablePixels();
     const auto rowBytes = static_cast<std::size_t>(columns) * 4U;
     if (bottomUp) {
         for (int row = 0; row < rows / 2; ++row) {
-            std::swap_ranges(data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row) * rowBytes), data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(row + 1) * rowBytes), data.begin() + static_cast<std::ptrdiff_t>(static_cast<std::size_t>(rows - 1 - row) * rowBytes));
+            const std::span<std::uint8_t> top = pixels.subspan(static_cast<std::size_t>(row) * rowBytes, rowBytes);
+            const std::span<std::uint8_t> bottom = pixels.subspan(static_cast<std::size_t>(rows - 1 - row) * rowBytes, rowBytes);
+            std::ranges::swap_ranges(top, bottom);
         }
     }
 
-    for (std::size_t offset = 0; offset < data.size(); offset += 4) {
-        const unsigned alpha = data[offset + 3];
+    for (std::size_t offset = 0; offset < pixels.size(); offset += 4) {
+        const unsigned alpha = pixels[offset + 3];
         if (alpha == 0U || alpha == 255U) {
             continue;
         }
 
         for (std::size_t channel = 0; channel < 3; ++channel) {
-            data[offset + channel] = static_cast<std::uint8_t>(std::min(255U, (static_cast<unsigned>(data[offset + channel]) * 255U + alpha / 2U) / alpha));
+            pixels[offset + channel] = static_cast<std::uint8_t>(std::min(255U, (static_cast<unsigned>(pixels[offset + channel]) * 255U + alpha / 2U) / alpha));
         }
     }
 
-    return Image(columns, rows, std::move(data));
+    return image;
 }
 
 Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options options) {
@@ -198,9 +207,16 @@ void Image::blit(const Image& source, const Area& from, int x, int y, BlitMode m
         return;
     }
 
+    // The place of the copy reckons in 64 bits, so no position or source area wraps around, and a copy that lands wholly outside this image draws nothing.
     const Area region = clip(from, source.width, source.height);
-    const int shiftX = x + region.x - from.x;
-    const int shiftY = y + region.y - from.y;
+    const std::int64_t placedX = std::int64_t{x} + region.x - from.x;
+    const std::int64_t placedY = std::int64_t{y} + region.y - from.y;
+    if (placedX >= width || placedY >= height || placedX + region.width <= 0 || placedY + region.height <= 0) {
+        return;
+    }
+
+    const auto shiftX = static_cast<int>(placedX);
+    const auto shiftY = static_cast<int>(placedY);
     const Area target = clip({shiftX, shiftY, region.width, region.height}, width, height);
     for (int row = 0; row < target.height; ++row) {
         const int sourceRow = region.y + (target.y - shiftY) + row;

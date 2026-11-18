@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -52,7 +53,7 @@ int GraphicsLua::newTexture(lua_State* L) {
     const int width = lua::Stack::read<int>(L, 1);
     const int height = lua::Stack::read<int>(L, 2);
     math::Color fill = math::Color::white();
-    std::string_view pixels;
+    std::optional<std::string_view> pixels;
     bool dynamic = false;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
@@ -66,12 +67,12 @@ int GraphicsLua::newTexture(lua_State* L) {
 
     Device& device = lua::Runtime::getEngine(L).getGraphics();
     const Texture::Options options = lua::TypeConverter::readTextureOptions(L, 3, {kTextureContentFields});
-    if (pixels.empty()) {
+    if (!pixels) {
         lua::Stack::push(L, dynamic ? device.createDynamicTexture(width, height, fill, options) : device.createTexture(width, height, fill, options));
         return 1;
     }
 
-    const Image image(width, height, std::vector<std::uint8_t>(pixels.begin(), pixels.end()));
+    const Image image(width, height, std::vector<std::uint8_t>(pixels->begin(), pixels->end()));
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
     return 1;
 }

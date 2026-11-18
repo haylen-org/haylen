@@ -69,6 +69,9 @@ class ImageLua final {
 
   private:
     static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
+
+    // The farthest that the corner or the size of an area of an image reaches, so their sums stay whole numbers.
+    static constexpr float kMaxAreaPixels = 1073741824.0F;
     static constexpr std::array<std::string_view, 1> kDecodeFields{"maxSize"};
     static constexpr std::array<std::string_view, 2> kPlaceholderFields{"columns", "rows"};
     static constexpr std::array<std::string_view, 7> kGradientFields{"kind", "stops", "colors", "angle", "center", "radius", "dither"};
