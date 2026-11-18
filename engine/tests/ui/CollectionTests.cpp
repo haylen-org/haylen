@@ -530,6 +530,20 @@ TEST_F(CollectionTest, AnimatesMovesInsertionsAndRemovals) {
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).y, top);
 }
 
+// Items that arrive while the collection is hidden show at once when it shows again, without fading in.
+TEST_F(CollectionTest, ShowsTheItemsThatArrivedWhileHiddenAtOnce) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    const std::shared_ptr<CountingSource> source = show(list, makeItems(20));
+
+    gui->set("list", core::Json::parse(R"({"visible": false})"));
+    frames(2);
+    source->insert(0, makeItems(1, 100));
+    gui->set("list", core::Json::parse(R"({"visible": true})"));
+    frames(2);
+    EXPECT_FLOAT_EQ(getTextAlpha("i100"), getTextAlpha("i1"));
+}
+
 // A feed that sticks to its end and drops its first item as a new one arrives moves the new row in with the row before it, so the two never overlap while they slide.
 TEST_F(CollectionTest, MovesANewItemInWithTheItemBeforeIt) {
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "prefetch": 0, "stickToEnd": true, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}, "estimatedSize": 60}}})");

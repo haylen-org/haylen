@@ -227,6 +227,7 @@ class Collection final : public Component {
     [[nodiscard]] std::size_t findFirstFrom(double offset) const;
 
     void rebuildTypes();
+    void setEstimates(float fallback);
 
     // The types of items read against a table of types, the one of the collection or new ones it checks before it takes them.
     void checkType(std::string_view item, std::string_view type, const CellTypes& table) const;
@@ -340,7 +341,6 @@ class Collection final : public Component {
     std::unique_ptr<CollectionLayout> layout;
     std::optional<Arrangement> builtLayout;
     std::unique_ptr<SizeCache> sizes;
-    bool estimatesDirty = true;
     float estimateFallback = 0.0F;
     std::unique_ptr<Scroller> scroller;
     std::unique_ptr<Scrollbar> scrollbar;
@@ -359,9 +359,10 @@ class Collection final : public Component {
     bool binding = false;
     bool requesting = false;
 
-    // Cells of removed items that fade out where they were, and the ids of inserted items that fade in.
+    // Cells of removed items that fade out where they were, and the ids of inserted items that fade in, which only a collection that draws keeps.
     std::vector<std::shared_ptr<CollectionCell>> leaving;
     std::vector<std::string> entering;
+    bool drawing = false;
 
     math::Rect viewport;
     float crossLength = -1.0F;

@@ -132,6 +132,20 @@ TEST_F(CollectionLuaTest, ReloadsAndReplacesItemsAtTheCostOfTheItemsItChanges) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
+// Types that join a collection that drew take their estimates before the next frame arranges the items.
+TEST_F(CollectionLuaTest, EstimatesTheTypesThatJoinADrawnCollection) {
+    fixture.runLua("ui = require('haylen.ui') items = {} for i = 1, 30 do items[i] = {id = 'i' .. i, type = 'row', title = 'Item ' .. i} end");
+    fixture.runLua("gui = ui.mount(ui.column{ui.collection{id = 'list', height = 600, gap = 0, prefetch = 0, types = {row = {template = ui.label{part = 'title', bind = {text = 'title'}, height = 60}}}}}, {placement = 'screen'}) list = gui:collection('list') list:setItems(items)");
+    fixture.frames(3);
+    fixture.runLua("gui:set('list', {types = {row = {template = ui.label{part = 'title', bind = {text = 'title'}, height = 60}}, tall = {template = ui.label{}, estimatedSize = 200}, wide = {template = ui.label{}, estimatedSize = 100}}})");
+    fixture.runLua("local extra = {} for i = 1, 1000 do extra[i] = {id = 'b' .. i, type = 'tall'} end list:insert(31, extra)");
+    fixture.frames(2);
+    const float length = std::stof(fixture.lua("return list.contentLength"));
+    EXPECT_GE(length, 1000.0F * 200.0F);
+    EXPECT_LT(length, 1000.0F * 200.0F + 30.0F * 200.0F);
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 TEST_F(CollectionLuaTest, ReportsTheErrorsOfItsMethods) {
     mountRows(100);
     const auto error = [this](const std::string& source) { return fixture.lua(source); };
@@ -193,6 +207,10 @@ TEST_F(CollectionLuaTest, ReadsItsStateThroughProperties) {
     fixture.runLua("state = list:saveState() list.scrollOffset = 3000 list:restoreState(state)");
     fixture.frames(4);
     EXPECT_EQ(fixture.lua("return state.item .. ' ' .. state.distance .. ' ' .. state.focused .. ' ' .. list.scrollOffset"), "i4 0.0 i7 180.0");
+
+    // A state saved right after every item left keeps no item, and the empty id of an item that did not load names none.
+    fixture.runLua("list:remove(1, list.count) emptied = list:saveState()");
+    EXPECT_EQ(fixture.lua("return tostring(emptied.item) .. ' ' .. tostring(list:indexOf(''))"), "nil nil");
 }
 
 // A binder that removes itself while cells wait for it leaves the other cells unbound instead of calling a binder that is gone.
@@ -249,6 +267,29 @@ TEST_F(CollectionLuaTest, RunsNoLuaWhileIdle) {
     fixture.frames(120);
     EXPECT_EQ(fixture.lua("return binds .. ' ' .. loads .. ' ' .. events"), settled);
     EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+// A page whose loader failed loads again once the app resumes, such as after a fix in development, instead of showing nothing for good.
+TEST_F(CollectionLuaTest, LoadsAPageAgainAfterItsLoaderFailed) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        loads = 0
+        gui = ui.mount(ui.column{ui.collection{id = 'pages', height = 600, gap = 0, prefetch = 0, types = {entry = {template = ui.label{part = 'title', bind = {text = 'title'}, height = 60}}}}})
+        pages = gui:collection('pages')
+        pages:setPages({count = 100, pageSize = 50, load = function(first, count)
+            loads = loads + 1
+            if loads == 1 then error('The server is away.') end
+            local page = {}
+            for i = 1, count do page[i] = {id = 'e' .. (first + i - 1), title = 'Entry ' .. (first + i - 1)} end
+            return page
+        end})
+    )");
+    // clang-format on
+    EXPECT_NE(waitForError().find("The server is away."), std::string::npos);
+    ASSERT_TRUE(getEngine().clearError());
+    fixture.frames(5);
+    EXPECT_EQ(fixture.lua("return loads .. ' ' .. pages:cellOf(1).item"), "2 e1");
 }
 
 TEST_F(CollectionLuaTest, PagesItemsFromTheLuaLoader) {
@@ -313,7 +354,7 @@ TEST_F(CollectionLuaTest, ShowsPlaceholdersUntilAPromiseResolves) {
     )");
     // clang-format on
     fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return pages:cellOf(1).type"), "wait");
+    EXPECT_EQ(fixture.lua("return pages:cellOf(1).type .. ' ' .. tostring(pages:indexOf(''))"), "wait nil");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("local cell = pages:cellOf(1) return cell and cell.type") == "entry"; }));
     EXPECT_EQ(fixture.lua("return pages:cellOf(1).item .. ' ' .. pages:indexOf('e2')"), "e1 2");
     EXPECT_EQ(getEngine().getError(), nullptr);

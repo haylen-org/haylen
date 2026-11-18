@@ -103,14 +103,19 @@ void LuaPageSource::load(std::size_t page) {
     CollectionLua::pushValue(L, gui, collection, "load");
     lua_pushinteger(L, static_cast<lua_Integer>(page * options.pageSize + 1));
     lua_pushinteger(L, static_cast<lua_Integer>(getPageLength(page)));
-    lua::Runtime::protectedCall(L, 2, 1);
-    if (lua_istable(L, -1)) {
-        store(L, page, ticket, -1);
-        return;
-    }
+    try {
+        lua::Runtime::protectedCall(L, 2, 1);
+        if (lua_istable(L, -1)) {
+            store(L, page, ticket, -1);
+            return;
+        }
 
-    if (!lua::Promise::isPromise(L, -1)) {
-        throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" must return a list of items or a promise of one.");
+        if (!lua::Promise::isPromise(L, -1)) {
+            throw std::invalid_argument("The page loader of the collection \"" + collection.getId() + "\" must return a list of items or a promise of one.");
+        }
+    } catch (...) {
+        dropPending(page, ticket);
+        throw;
     }
 
     // The task runs a closure over the request, which awaits the promise and stores the page while the source is still there.
@@ -153,14 +158,28 @@ int LuaPageSource::finishPage(lua_State* L, int, lua_KContext) {
             return 0;
         }
 
-        if (!lua_isnil(L, -1)) {
-            throw std::runtime_error("The page loader of the collection \"" + source->collection.getId() + "\" failed. " + luaL_tolstring(L, -1, nullptr));
+        try {
+            if (!lua_isnil(L, -1)) {
+                throw std::runtime_error("The page loader of the collection \"" + source->collection.getId() + "\" failed. " + luaL_tolstring(L, -1, nullptr));
+            }
+
+            source->store(L, request.page, request.ticket, -2);
+        } catch (...) {
+            source->dropPending(request.page, request.ticket);
+            throw;
         }
 
-        source->store(L, request.page, request.ticket, -2);
         return 0;
     });
     // clang-format on
+}
+
+// A page that failed to load leaves the pages it keeps, so the next request of its items loads it again.
+void LuaPageSource::dropPending(std::size_t page, std::uint64_t ticket) {
+    const auto found = pages.find(page);
+    if (found != pages.end() && found->second.ticket == ticket && !found->second.loaded) {
+        pages.erase(found);
+    }
 }
 
 int LuaPageSource::collectRequest(lua_State* L) {

@@ -169,8 +169,8 @@ void Collection::rebuildTypes() {
     types = std::move(built);
     placeholderType = placeholderIndex;
     typesChanged = false;
-    estimatesDirty = true;
     layoutDirty = true;
+    setEstimates(estimateFallback);
 
     if (source) {
         sizes->assign(typeScratch);
@@ -589,15 +589,8 @@ double Collection::getViewStart() const noexcept {
 void Collection::updateGeometry(Context& context, float cross) {
     rebuildTypes();
     const float fallback = context.getMetric(Theme::Metric::ListRowHeight);
-    if (estimatesDirty || fallback != estimateFallback) {
-        std::vector<float> declared(types->size());
-        for (std::uint16_t type = 0; type < types->size(); ++type) {
-            declared[type] = types->get(type).getEstimatedSize();
-        }
-
-        sizes->setEstimates(declared, fallback);
-        estimateFallback = fallback;
-        estimatesDirty = false;
+    if (fallback != estimateFallback) {
+        setEstimates(fallback);
     }
 
     const float spacing = getGap(context);
@@ -609,6 +602,17 @@ void Collection::updateGeometry(Context& context, float cross) {
     }
 
     ensureArranged();
+}
+
+// The estimates follow the table of types at once, so every type that an item takes has its estimate before the next arrangement.
+void Collection::setEstimates(float fallback) {
+    std::vector<float> declared(types->size());
+    for (std::uint16_t type = 0; type < types->size(); ++type) {
+        declared[type] = types->get(type).getEstimatedSize();
+    }
+
+    sizes->setEstimates(declared, fallback);
+    estimateFallback = fallback;
 }
 
 void Collection::ensureArranged() {
@@ -811,7 +815,7 @@ bool Collection::isAnimating(const CollectionCell& cell) const noexcept {
 
 // Items inserted near the cells that show fade in once they are bound, and items far from them simply appear, so a whole new list costs nothing more.
 void Collection::noteEntering(std::size_t first, std::size_t count) {
-    if (!animateChanges || cells.empty() || renderedFrame == 0) {
+    if (!animateChanges || cells.empty() || !drawing) {
         return;
     }
 
@@ -1044,6 +1048,7 @@ math::Vec2 Collection::measureContent(Context& context, float availableWidth) {
 
 void Collection::render(Context& context, const math::Rect& bounds) {
     renderedFrame = context.getFrame();
+    drawing = true;
     delta = context.getDeltaSeconds();
     viewport = bounds;
     rightToLeft = context.isRightToLeft();
@@ -1837,6 +1842,7 @@ void Collection::noticeHiddenCells(Context& context) {
     }
 }
 
+// Changes that arrive while the collection does not draw apply at once once it shows again, so no item fades in for them.
 void Collection::drawingStopped(Context& context) {
     lift.reset();
     FocusNavigator& focus = context.getFocus();
@@ -1849,6 +1855,8 @@ void Collection::drawingStopped(Context& context) {
     }
 
     leaving.clear();
+    entering.clear();
+    drawing = false;
     noticeReleasedCells(context);
 
     for (const std::shared_ptr<CollectionCell>& cell : cells) {
@@ -1910,7 +1918,12 @@ void Collection::setBinder(std::string_view type, Binder binder) {
     }
 }
 
+// The items of pages that did not load have no id yet, so an empty id names no item.
 std::optional<std::size_t> Collection::findItem(std::string_view itemId) const {
+    if (itemId.empty()) {
+        return std::nullopt;
+    }
+
     for (std::size_t index = 0; source && index < source->getCount(); ++index) {
         if (source->getId(index) == itemId) {
             return index;
@@ -1974,9 +1987,10 @@ std::vector<std::size_t> Collection::getSelected() const {
     return indices;
 }
 
+// The range that showed may hold items that a change removed before the next draw, and then no item keeps the place.
 Collection::State Collection::saveState() const {
     State saved;
-    if (visibleRange && source) {
+    if (visibleRange && source && visibleRange->first < source->getCount()) {
         const std::size_t first = visibleRange->first;
         saved.item = source->getId(first);
         saved.distance = static_cast<float>(getItemStart(first) - scroller->getOffset());

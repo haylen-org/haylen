@@ -77,6 +77,7 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     [[nodiscard]] std::size_t getDistance(std::size_t page) const noexcept;
     [[nodiscard]] const Page* findLoaded(std::size_t index) const;
     void load(std::size_t page);
+    void dropPending(std::size_t page, std::uint64_t ticket);
     void dropFarthest();
     void drop(std::size_t page);
 
