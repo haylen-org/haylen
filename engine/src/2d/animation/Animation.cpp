@@ -40,15 +40,18 @@ Animation Animation::fromGrid(graphics::Texture image, const GridOptions& option
     if (!(step.x > 0.0F && step.y > 0.0F)) {
         throw std::invalid_argument("A grid animation needs frames that a spacing never overlaps.");
     }
+
     const math::Vec2 usable = image.getSize() - options.margin * 2.0F + options.spacing;
     const double columnCount = std::floor(static_cast<double>(usable.x) / step.x);
     const double rowCount = std::floor(static_cast<double>(usable.y) / step.y);
     if (columnCount < 1.0 || rowCount < 1.0) {
         throw std::invalid_argument("The frame size does not fit the texture.");
     }
+
     if (columnCount * rowCount > static_cast<double>(kMaxGridFrames)) {
         throw std::invalid_argument("A grid animation has at most " + std::to_string(kMaxGridFrames) + " frames.");
     }
+
     const int columns = static_cast<int>(columnCount);
     const int cellCount = columns * static_cast<int>(rowCount);
 

@@ -7,6 +7,7 @@
 #include "haylen/2d/animation/Skeleton.hpp"
 #include "haylen/2d/animation/SkeletonData.hpp"
 #include "haylen/lua/Type.hpp"
+#include "lua/Owners.hpp"
 
 struct lua_State;
 
@@ -49,6 +50,8 @@ class SkeletonLua final {
     [[nodiscard]] static Skeleton& check(lua_State* L);
     [[nodiscard]] static Skeleton::PlayOptions readPlayOptions(lua_State* L, int index);
     [[nodiscard]] static std::size_t readTrack(lua_State* L, int index);
+    static void notifyEvent(const lua::Owners::Function& function, lua_State* main, const Skeleton::Event& fired);
+    static void callEvent(const lua::Owners::Function& function, lua_State* state, const Skeleton::Event& fired, bool reported);
 
     static int dataNames(lua_State* L, int kind);
     static int dataBones(lua_State* L);

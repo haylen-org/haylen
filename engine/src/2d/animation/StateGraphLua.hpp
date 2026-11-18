@@ -7,6 +7,7 @@
 #include "haylen/2d/animation/StateGraph.hpp"
 #include "haylen/2d/animation/StateGraphPlayer.hpp"
 #include "haylen/lua/Type.hpp"
+#include "lua/Owners.hpp"
 
 struct lua_State;
 
@@ -42,6 +43,8 @@ class StateGraphLua final {
     inline static lua_State* moving = nullptr;
 
     template <typename Move> static void move(lua_State* L, Move&& body);
+    static void notifyStateChanged(const lua::Owners::Function& function, lua_State* main, std::string_view from, std::string_view to);
+    static void callStateChanged(const lua::Owners::Function& function, lua_State* state, std::string_view from, std::string_view to, bool reported);
 
     static int states(lua_State* L);
     static int parameters(lua_State* L);

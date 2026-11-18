@@ -398,6 +398,7 @@ bool StateGraph::evaluate(std::size_t condition, const std::vector<float>& value
     case Term::Op::GreaterEqual:
         break;
     }
+
     return valueOf(node.left, values) >= valueOf(node.right, values);
 }
 

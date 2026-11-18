@@ -19,6 +19,7 @@ float SkeletonAnimation::Curve::apply(float t) const noexcept {
     case Kind::Bezier:
         break;
     }
+
     return math::Easing::cubicBezier(t, bezier[0], bezier[1], bezier[2], bezier[3]);
 }
 

@@ -3,10 +3,12 @@
 #include <array>
 #include <cstddef>
 #include <memory>
+#include <span>
 #include <string_view>
 
 #include "haylen/2d/animation/AnimatedBatch.hpp"
 #include "haylen/lua/Type.hpp"
+#include "lua/Owners.hpp"
 
 struct lua_State;
 
@@ -42,6 +44,8 @@ class AnimatedBatchLua final {
     // Applies the animation keys of a sprite table to the sprite at the index.
     static void readAnimationFields(lua_State* L, int table, AnimatedBatch& batch, std::size_t index);
     template <typename Advance> static void advance(lua_State* L, Advance&& body);
+    static void notifyEnded(const lua::Owners::Function& function, lua_State* main, std::span<const std::size_t> ended);
+    static void callEnded(const lua::Owners::Function& function, lua_State* state, std::span<const std::size_t> ended, bool reported);
 
     static int add(lua_State* L);
     static int set(lua_State* L);

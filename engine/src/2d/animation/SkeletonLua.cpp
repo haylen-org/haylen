@@ -110,6 +110,7 @@ int SkeletonLua::dataNames(lua_State* L, int kind) {
 
         break;
     }
+
     lua::Stack::push(L, names);
     return 1;
 }
@@ -293,6 +294,41 @@ int SkeletonLua::data(lua_State* L) {
     return 1;
 }
 
+// A skeleton that fires events while Lua updates it calls the listener on that call, so an error reaches its caller, and otherwise the main thread reports the error.
+void SkeletonLua::notifyEvent(const lua::Owners::Function& function, lua_State* main, const Skeleton::Event& fired) {
+    if (updating != nullptr) {
+        callEvent(function, updating, fired, false);
+        return;
+    }
+
+    lua::Runtime::runReporting(main, [&] { callEvent(function, main, fired, true); });
+}
+
+void SkeletonLua::callEvent(const lua::Owners::Function& function, lua_State* state, const Skeleton::Event& fired, bool reported) {
+    if (!function.push(state)) {
+        return;
+    }
+
+    lua_createtable(state, 0, 5);
+    lua::Stack::push(state, fired.name);
+    lua_setfield(state, -2, "name");
+    lua::Stack::push(state, fired.track + 1);
+    lua_setfield(state, -2, "track");
+    lua::Stack::push(state, fired.animation);
+    lua_setfield(state, -2, "animation");
+    lua::Stack::push(state, fired.text);
+    lua_setfield(state, -2, "text");
+    lua::Stack::push(state, fired.number);
+    lua_setfield(state, -2, "number");
+
+    if (reported) {
+        lua::Runtime::protectedCall(state, 1, 0);
+        return;
+    }
+
+    lua_call(state, 1, 0);
+}
+
 // Listens with `on('event', function, {owner = owner})`, called with the name, the track counted from one, the animation, the text and the number of every event the tracks pass. A listener ends with its owner, and without one it takes the default owner.
 int SkeletonLua::on(lua_State* L) {
     Skeleton& skeleton = check(L);
@@ -322,35 +358,7 @@ int SkeletonLua::on(lua_State* L) {
 
     // clang-format off
     core::Connection connection = skeleton.eventFired.connect([function, main](const Skeleton::Event& fired) {
-        const auto call = [&](lua_State* state, bool reported) {
-            if (!function->push(state)) {
-                return;
-            }
-
-            lua_createtable(state, 0, 5);
-            lua::Stack::push(state, fired.name);
-            lua_setfield(state, -2, "name");
-            lua::Stack::push(state, fired.track + 1);
-            lua_setfield(state, -2, "track");
-            lua::Stack::push(state, fired.animation);
-            lua_setfield(state, -2, "animation");
-            lua::Stack::push(state, fired.text);
-            lua_setfield(state, -2, "text");
-            lua::Stack::push(state, fired.number);
-            lua_setfield(state, -2, "number");
-
-            if (reported) {
-                lua::Runtime::protectedCall(state, 1, 0);
-            } else {
-                lua_call(state, 1, 0);
-            }
-        };
-        if (updating != nullptr) {
-            call(updating, false);
-            return;
-        }
-
-        lua::Runtime::runReporting(main, [&] { call(main, true); });
+        notifyEvent(*function, main, fired);
     }, {.owner = lifetime});
     // clang-format on
     if (owner != 0) {

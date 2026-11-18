@@ -227,6 +227,35 @@ int AnimatedBatchLua::texture(lua_State* L) {
     return 1;
 }
 
+// A batch that ends sprites while Lua advances it calls the listener on that call, so an error reaches its caller, and otherwise the main thread reports the error.
+void AnimatedBatchLua::notifyEnded(const lua::Owners::Function& function, lua_State* main, std::span<const std::size_t> ended) {
+    if (advancing != nullptr) {
+        callEnded(function, advancing, ended, false);
+        return;
+    }
+
+    lua::Runtime::runReporting(main, [&] { callEnded(function, main, ended, true); });
+}
+
+void AnimatedBatchLua::callEnded(const lua::Owners::Function& function, lua_State* state, std::span<const std::size_t> ended, bool reported) {
+    if (!function.push(state)) {
+        return;
+    }
+
+    lua_createtable(state, static_cast<int>(ended.size()), 0);
+    for (std::size_t place = 0; place < ended.size(); ++place) {
+        lua_pushinteger(state, static_cast<lua_Integer>(ended[place] + 1));
+        lua_rawseti(state, -2, static_cast<lua_Integer>(place + 1));
+    }
+
+    if (reported) {
+        lua::Runtime::protectedCall(state, 1, 0);
+        return;
+    }
+
+    lua_call(state, 1, 0);
+}
+
 // Listens with `on('complete', function, {owner = owner})`, called with the list of the sprites whose one-shot animation ended in an update. A listener ends with its owner, and without one it takes the default owner.
 int AnimatedBatchLua::on(lua_State* L) {
     AnimatedBatch& batch = check(L);
@@ -256,30 +285,7 @@ int AnimatedBatchLua::on(lua_State* L) {
 
     // clang-format off
     core::Connection connection = batch.completed.connect([function, main](std::span<const std::size_t> ended) {
-        const auto call = [&](lua_State* state, bool reported) {
-            if (!function->push(state)) {
-                return;
-            }
-
-            lua_createtable(state, static_cast<int>(ended.size()), 0);
-
-            for (std::size_t place = 0; place < ended.size(); ++place) {
-                lua_pushinteger(state, static_cast<lua_Integer>(ended[place] + 1));
-                lua_rawseti(state, -2, static_cast<lua_Integer>(place + 1));
-            }
-
-            if (reported) {
-                lua::Runtime::protectedCall(state, 1, 0);
-            } else {
-                lua_call(state, 1, 0);
-            }
-        };
-        if (advancing != nullptr) {
-            call(advancing, false);
-            return;
-        }
-
-        lua::Runtime::runReporting(main, [&] { call(main, true); });
+        notifyEnded(*function, main, ended);
     }, {.owner = lifetime});
     // clang-format on
     if (owner != 0) {

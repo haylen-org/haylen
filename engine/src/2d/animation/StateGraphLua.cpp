@@ -109,6 +109,7 @@ int StateGraphLua::set(lua_State* L) {
         player.setVector(name, lua::Stack::read<math::Vec2>(L, 3));
         break;
     }
+
     return 0;
 }
 
@@ -132,6 +133,7 @@ int StateGraphLua::get(lua_State* L) {
         lua::Stack::push(L, parameter->kind == StateGraph::Kind::Boolean ? player.getBoolean(name) : false);
         break;
     }
+
     return 1;
 }
 
@@ -180,6 +182,32 @@ int StateGraphLua::animation(lua_State* L) {
     return 1;
 }
 
+// A player that changes state while Lua moves it calls the listener on that call, so an error reaches its caller, and otherwise the main thread reports the error.
+void StateGraphLua::notifyStateChanged(const lua::Owners::Function& function, lua_State* main, std::string_view from, std::string_view to) {
+    if (moving != nullptr) {
+        callStateChanged(function, moving, from, to, false);
+        return;
+    }
+
+    lua::Runtime::runReporting(main, [&] { callStateChanged(function, main, from, to, true); });
+}
+
+void StateGraphLua::callStateChanged(const lua::Owners::Function& function, lua_State* state, std::string_view from, std::string_view to, bool reported) {
+    if (!function.push(state)) {
+        return;
+    }
+
+    lua::Stack::push(state, from);
+    lua::Stack::push(state, to);
+
+    if (reported) {
+        lua::Runtime::protectedCall(state, 2, 0);
+        return;
+    }
+
+    lua_call(state, 2, 0);
+}
+
 // Listens with `on('stateChanged', function, {owner = owner})`, called with the state left and the state entered. A listener ends with its owner, and without one it takes the default owner.
 int StateGraphLua::on(lua_State* L) {
     StateGraphPlayer& player = lua::Userdata::check<StateGraphPlayer>(L, 1);
@@ -209,23 +237,7 @@ int StateGraphLua::on(lua_State* L) {
 
     // clang-format off
     core::Connection connection = player.stateChanged.connect([function, main](std::string_view from, std::string_view to) {
-        if (moving != nullptr) {
-            if (function->push(moving)) {
-                lua::Stack::push(moving, from);
-                lua::Stack::push(moving, to);
-                lua_call(moving, 2, 0);
-            }
-
-            return;
-        }
-
-        lua::Runtime::runReporting(main, [&] {
-            if (function->push(main)) {
-                lua::Stack::push(main, from);
-                lua::Stack::push(main, to);
-                lua::Runtime::protectedCall(main, 2, 0);
-            }
-        });
+        notifyStateChanged(*function, main, from, to);
     }, {.owner = lifetime});
     // clang-format on
     if (owner != 0) {
