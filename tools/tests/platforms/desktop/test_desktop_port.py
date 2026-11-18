@@ -49,6 +49,11 @@ class DesktopPortTest:
         report = DesktopPort(fixture.context).check_environment(f"desktop-{foreign}")
         assert any(f'only on a "{foreign}" machine' in problem for problem in report.problems)
 
+    def test_the_desktop_port_of_windows_needs_perl_and_nasm_for_openssl(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(Host, "system", staticmethod(lambda: "windows"))
+        report = DesktopPort(ToolingFixture(tmp_path).context).check_environment("desktop-windows")
+        assert [tool.name for tool in report.tools] == ["cmake", "perl", "nasm"]
+
     @staticmethod
     def slice_of(architecture: str) -> SdkSlice:
         return SdkSlice("linux", TargetEnvironment.HOST, (architecture,), f"{architecture}-linux-gnu", "gnu", "libstdc++", "2.39", ("vulkan",), frozenset(), MappingProxyType({}))

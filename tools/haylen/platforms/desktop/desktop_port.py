@@ -56,7 +56,10 @@ class DesktopPort(EnginePort):
         if port_target is not None and port_target.system != Host.system():
             problems.append(f'The engine port "{DesktopPort.NAME}" builds the SDK of "{port_target.system}" only on a "{port_target.system}" machine, and this one runs "{Host.system()}".')
         tools = [BuildTools.CMAKE.status()]
-        if Host.system() != "windows":
+        # The build of Windows runs through Visual Studio, and the OpenSSL of its network configures itself with Perl and assembles with NASM, which other systems do not need.
+        if Host.system() == "windows":
+            tools.extend((BuildTools.PERL.status(), BuildTools.NASM.status()))
+        else:
             tools.append(BuildTools.NINJA.status())
         return EnvironmentReport(tuple(tools), tuple(problems))
 
