@@ -12,7 +12,7 @@ class AudioStream;
 
 namespace haylen::audio {
 
-// The miniaudio data source through which a voice reads an audio stream, as floats in the rate and channels of the stream, which the voice converts to the mixer. It takes the stream over from the voice that read it before, never ends, and reads silence where samples have not arrived.
+// The miniaudio data source through which a voice reads an audio stream, as floats in the rate and channels of the stream, which the voice converts to the mixer. It never ends, and reads silence until it claims the stream and where samples have not arrived.
 class StreamSource final {
   public:
     explicit StreamSource(platform::AudioStream& value);
@@ -24,6 +24,9 @@ class StreamSource final {
     [[nodiscard]] ma_data_source* get() noexcept {
         return &base;
     }
+
+    // Takes the stream over from the voice that read it before, which reads silence from then on.
+    void claim() noexcept;
 
   private:
     static const ma_data_source_vtable kVtable;
@@ -37,7 +40,9 @@ class StreamSource final {
     // The base stays the first member of this standard-layout class, because miniaudio reaches the source through it.
     ma_data_source_base base{};
     platform::AudioStream* stream;
-    std::uint64_t token;
+
+    // The token of the claim, which the mixing thread reads, and 0 before the claim, which reads silence.
+    std::atomic<std::uint64_t> token{0};
 
     // The mixing thread counts the frames it read and the frame thread reads the count as the cursor of the voice.
     std::atomic<ma_uint64> framesRead{0};

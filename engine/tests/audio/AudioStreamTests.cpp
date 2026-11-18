@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
+#include "haylen/audio/Filter.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/platform/AudioStream.hpp"
 
@@ -64,6 +65,19 @@ TEST_F(AudioStreamTest, HandsTheStreamToTheNewestVoice) {
     EXPECT_NEAR(settledPeak(512), 0.25F, 0.01F);
     mixer.stop(second);
     EXPECT_EQ(settledPeak(512), 0.0F);
+    EXPECT_TRUE(mixer.isActive(first));
+}
+
+TEST_F(AudioStreamTest, LeavesTheStreamWithItsVoiceWhenANewVoiceFailsToStart) {
+    auto stream = std::make_shared<platform::AudioStream>(kRate, 1, platform::AudioStream::Format::Float32, kRate);
+    stream->push(std::vector<float>(toFrames(1.0F), 0.5F));
+    const Mixer::VoiceId first = mixer.play(stream);
+    EXPECT_NEAR(settledPeak(512), 0.5F, 0.01F);
+
+    const auto attached = std::make_shared<Filter>(Filter::Kind::Lowpass, Filter::Settings{.cutoff = 500.0F});
+    mixer.addBusEffect("ui", attached);
+    EXPECT_THROW(mixer.play(stream, {.effects = {attached}}), std::invalid_argument);
+    EXPECT_NEAR(settledPeak(512), 0.5F, 0.01F);
     EXPECT_TRUE(mixer.isActive(first));
 }
 

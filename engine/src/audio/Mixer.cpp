@@ -220,7 +220,11 @@ Mixer::VoiceId Mixer::play(const std::shared_ptr<platform::AudioStream>& stream,
     voice->stream = stream;
     voice->streamSource = std::make_unique<StreamSource>(*stream);
     ma_data_source* source = voice->streamSource->get();
-    return state->start(std::move(voice), source, options)->id;
+
+    // A stream has no sound whose limit could refuse its voice, and the voice claims the stream only once it started, so a play that throws leaves the stream with its voice.
+    MixerState::Voice& started = *state->start(std::move(voice), source, options);
+    started.streamSource->claim();
+    return started.id;
 }
 
 void Mixer::stop(VoiceId id, float fadeOutSeconds) {

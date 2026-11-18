@@ -1,5 +1,6 @@
 #include "audio/StreamSource.hpp"
 
+#include <algorithm>
 #include <span>
 #include <stdexcept>
 
@@ -9,7 +10,7 @@ namespace haylen::audio {
 
 const ma_data_source_vtable StreamSource::kVtable{&StreamSource::read, &StreamSource::seek, &StreamSource::getFormat, &StreamSource::getCursor, &StreamSource::getLength, nullptr, 0};
 
-StreamSource::StreamSource(platform::AudioStream& value) : stream(&value), token(value.claim()) {
+StreamSource::StreamSource(platform::AudioStream& value) : stream(&value) {
     ma_data_source_config config = ma_data_source_config_init();
     config.vtable = &kVtable;
     if (ma_data_source_init(&config, get()) != MA_SUCCESS) {
@@ -21,10 +22,21 @@ StreamSource::~StreamSource() {
     ma_data_source_uninit(get());
 }
 
+void StreamSource::claim() noexcept {
+    token.store(stream->claim(), std::memory_order_release);
+}
+
 // Every read fills the whole block, so the voice plays until it is stopped.
 ma_result StreamSource::read(ma_data_source* source, void* frames, ma_uint64 frameCount, ma_uint64* framesRead) {
     auto& self = *static_cast<StreamSource*>(source);
-    self.stream->read(self.token, std::span(static_cast<float*>(frames), static_cast<std::size_t>(frameCount) * self.stream->getChannels()));
+    const std::span output(static_cast<float*>(frames), static_cast<std::size_t>(frameCount) * self.stream->getChannels());
+    const std::uint64_t owner = self.token.load(std::memory_order_acquire);
+    if (owner == 0) {
+        std::ranges::fill(output, 0.0F);
+    } else {
+        self.stream->read(owner, output);
+    }
+
     self.framesRead.fetch_add(frameCount, std::memory_order_relaxed);
 
     if (framesRead != nullptr) {
