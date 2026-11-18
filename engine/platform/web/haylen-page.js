@@ -155,6 +155,9 @@ Module.haylen = Module.haylen || {};
     // Work that needs the WebAssembly runtime waits for it, and events wait for the first app, so plugins may call in while they load before the runtime starts.
     const waiting = { runtime: [], events: [], runtimeReady: false, appStarted: false };
 
+    // The events of each name that wait for the first app, the newest of them, so a plugin that goes on sending while no app starts never fills the memory.
+    const kKeptEventsPerName = 32;
+
     const whenRuntimeReady = (work) => {
         if (waiting.runtimeReady) {
             work();
@@ -223,11 +226,17 @@ Module.haylen = Module.haylen || {};
         engine.call("haylen_web_emit", null, ["string", "string", "buffers", "number"], [event, json, buffers, flags]);
     };
 
-    // Sends an event to the app, which receives it through `haylen.platform.on`, with `ArrayBuffer` and `Uint8Array` values as bytes. An event that nothing listens to is dropped, unless `options.retain` is `true`: then it waits for the first listener of its name. The events of a name with `options.batched` that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts.
+    // Sends an event to the app, which receives it through `haylen.platform.on`, with `ArrayBuffer` and `Uint8Array` values as bytes. An event that nothing listens to is dropped, unless `options.retain` is `true`: then it waits for the first listener of its name. The events of a name with `options.batched` that arrive in one frame reach the app as one list in order. Events sent before the first app started reach it once it starts, up to 32 of each name with the oldest dropped first.
     haylen.emit = function (event, payload, options) {
         const encoded = encodePayload(payload);
         const flags = (options && options.retain ? 1 : 0) | (options && options.batched ? 2 : 0);
         if (!waiting.appStarted) {
+            const kept = waiting.events.filter((entry) => entry.event === event);
+            if (kept.length === kKeptEventsPerName) {
+                releaseViews(kept[0].views);
+                waiting.events.splice(waiting.events.indexOf(kept[0]), 1);
+            }
+
             waiting.events.push({ event, json: encoded.json, buffers: encoded.buffers.map((buffer) => buffer.slice()), views: encoded.views.map((view) => view.retain()), flags });
             return;
         }

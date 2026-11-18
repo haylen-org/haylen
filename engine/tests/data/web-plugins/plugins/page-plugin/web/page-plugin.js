@@ -1,5 +1,10 @@
-// Web part of the plugin of the plugin check, which answers with what the context of a web module gives a plugin: the features of the permissions policy that the page lacks, the failure of an error of the page, the failure of a permission whose request ended without a prompt and the failure of a permission that the plugin never registered.
+// Web part of the plugin of the plugin check, which answers with what the context of a web module gives a plugin: the features of the permissions policy that the page lacks, the failure of an error of the page, the failure of a permission whose request ended without a prompt, the failure of a permission that the plugin never registered and the events that it sends before the app starts.
 export default function load(context) {
+    // The page keeps the newest events of each name until the first app starts, so the app hears 32 of these 40.
+    for (let index = 0; index < 40; ++index) {
+        context.emit("sample", { index });
+    }
+
     context.register("check", (params) => {
         try {
             context.require({ permissionsPolicy: params.features });

@@ -1665,7 +1665,7 @@ The web module of a plugin exports `default function load(context)`. The loader 
 | `context.registerPermission(permission)` | Registers a permission that the plugin declares, so the runtime answers `<id>.permission` and `<id>.requestPermission` for it, as [web permissions](#web-permissions) describes. It throws for a permission that it registered before or a key it does not know. |
 | `context.requirePermission(name)` | Resolves once the page holds a permission that the plugin registered, or rejects with an error whose `code` is `denied` or `unsupported`. |
 
-A module may register, emit, cover and place elements from `load` already. The runtime keeps the events until the first app starts, and the covers and reservations until the WebAssembly runtime is ready.
+A module may register, emit, cover and place elements from `load` already. The runtime keeps the events until the first app starts, up to 32 of each name with the oldest dropped first, and the covers and reservations until the WebAssembly runtime is ready.
 
 ```js
 // plugins/banner-kit/web/banner-kit.js

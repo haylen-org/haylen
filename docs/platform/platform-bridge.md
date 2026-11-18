@@ -431,7 +431,7 @@ The page side of the bridge lives in `engine/platform/web/haylen-page.js`. Every
 | --- | --- |
 | `Module.haylen.register(method, handler)` | Adds or replaces the handler of a method. |
 | `Module.haylen.unregister(method)` | Removes a handler. |
-| `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, with `ArrayBuffer` and `Uint8Array` values as bytes. The option `retain` keeps the event for the first listener of its name, and `batched` sends it in the list of its frame. Events sent before the first app starts reach it once it starts. |
+| `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, with `ArrayBuffer` and `Uint8Array` values as bytes. The option `retain` keeps the event for the first listener of its name, and `batched` sends it in the list of its frame. Events sent before the first app starts reach it once it starts, up to 32 of each name with the oldest dropped first. |
 | `Module.haylen.createPluginContext(id, config)` | Makes the context that the web module of a plugin receives. Its `register` and `emit` put the id of the plugin in front of the name, as the [plugin guide](plugins.md#web-modules) describes. |
 
 The runtime calls a handler after the frame that made the call. The handler receives two arguments:

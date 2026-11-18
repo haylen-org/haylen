@@ -54,6 +54,7 @@ class WebChecks:
         "fails an error of the page as an exception",
         "fails a use without a prompt as denied",
         "fails an unregistered permission as unsupported",
+        "kept the newest events before the app started",
     ]
     # The editor check: a page of the web player of the web SDK in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, keeps the budget of the project, stops code that never ends through the execution budget, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page.
     EDITOR_PAGE = "editor-check.html"

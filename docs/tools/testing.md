@@ -304,6 +304,7 @@ The context that the web module of a plugin receives answers what the page offer
 4. The plugin throws the `DOMException` `NotAllowedError`, whose call must fail with the code `exception` and `NotAllowedError` in `data.type`.
 5. The plugin requires a permission whose request ends in `prompt`, as in a browser that asks only during a tap, and the call must fail with the code `denied` and the sentence that says the system did not show its prompt.
 6. The plugin requires a permission that it never registered, and the call must fail with the code `unsupported` and the sentence of Apple platforms, which names the plugin and the permission.
+7. The web module of the plugin sends 40 events of one name as it loads, before the app starts, and the app must hear the newest 32, the events that the page keeps of each name until the first app starts.
 
 ## The editor check of the web
 
