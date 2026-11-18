@@ -65,6 +65,9 @@ class Effect final {
     // Positions along the line shift the phase of the moving effects, one full turn every this many pixels times tau.
     static constexpr float kPhaseSpan = 50.0F;
 
+    // The steps of a shake count around this many, so the step of any time and rate is a whole number that a 64-bit integer holds.
+    static constexpr double kShakeSteps = 4611686018427387904.0;
+
     [[nodiscard]] static float ease(float value, float curve) noexcept;
     [[nodiscard]] static float pingPong(float value, float length) noexcept;
     [[nodiscard]] static float randomAngle(std::size_t character, std::int64_t step) noexcept;

@@ -295,6 +295,15 @@ TEST_F(RichTextLayoutTest, RefusesEffectNumbersThatAreNotFinite) {
     EXPECT_FLOAT_EQ(parameters.getNumber("speed", 1.0F), 2.0F);
 }
 
+// A shake of any rate over any time steps through whole steps, so its glyphs stay at finite places.
+TEST_F(RichTextLayoutTest, ShakesAtAnyRateOverAnyTime) {
+    RichText shaking = make("[shake rate=3e38]ab[/shake]");
+    shaking.update(10.0F);
+    const Layout& frame = shaking.getFrame();
+    EXPECT_TRUE(std::isfinite(frame.glyphs[0].position.x));
+    EXPECT_TRUE(std::isfinite(frame.glyphs[0].position.y));
+}
+
 // A hanging indent keeps the first line of a paragraph at its start and moves the lines it wraps onto further in, as wrapped code reads.
 TEST_F(RichTextLayoutTest, HangsTheWrappedLinesOfAParagraph) {
     RichText hung = make("[p hang=2]first words wrap onto more lines that start further in than the first[/p]", {.size = 20.0F, .maxWidth = 240.0F});

@@ -99,9 +99,10 @@ void Effect::wave(Glyph& glyph, const Parameters& parameters) {
 void Effect::shake(Glyph& glyph, const Parameters& parameters) {
     const float rate = std::max(parameters.getNumber("rate", 20.0F), 0.001F);
     const float level = parameters.getNumber("level", 5.0F);
-    const float steps = glyph.time * rate;
-    const auto step = static_cast<std::int64_t>(std::floor(steps));
-    const float blend = std::min((steps - std::floor(steps)) * 2.0F, 1.0F);
+    const double steps = static_cast<double>(glyph.time) * static_cast<double>(rate);
+    const double whole = std::floor(steps);
+    const auto step = static_cast<std::int64_t>(std::fmod(whole, kShakeSteps));
+    const auto blend = static_cast<float>(std::min((steps - whole) * 2.0, 1.0));
     const float previous = randomAngle(glyph.character, step - 1);
     const float current = randomAngle(glyph.character, step);
     const math::Vec2 from{std::sin(previous), std::cos(previous)};
