@@ -78,8 +78,6 @@ function Xml:run()
 
     local ok, failure = pcall(xml.decode, '<open>')
     self:check('invalid', 'Invalid text', not ok and failure ~= nil, 'The call raised, and "pcall" caught it: ' .. tostring(failure))
-
-    self:check('aliases', 'Aliases', xml.parse('<a/>').name == 'a' and xml.stringify({name = 'b'}):find('<b', 1, true) ~= nil, 'The functions "xml.parse" and "xml.stringify" are the same as "xml.decode" and "xml.encode".')
 end
 
 -- Draws a strip of sea with its shallow band and its waves, and every prop of the decoded level at the place and the size of its attributes, with its name on a dark pill under it.

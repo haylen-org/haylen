@@ -73,7 +73,7 @@ function localServer.start()
     end)
 
     app:post('/upload', function(ctx)
-        local body = ctx.req.body
+        local body = ctx.request.body
         ctx:json({received = #body, intact = body == string.rep('u', #body)})
     end)
 

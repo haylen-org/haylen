@@ -96,8 +96,6 @@ function Json:run()
     self:nulls()
     self:markers()
     self:errors()
-
-    self:check('aliases', 'Aliases', json.stringify({1}) == '[1]' and json.parse('[2]')[1] == 2, 'The functions "json.stringify" and "json.parse" are the same as "json.encode" and "json.decode".')
 end
 
 -- The sentinel "json.null" keeps the nulls that "nil" would drop, so an object keeps its keys and an array its length.
