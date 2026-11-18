@@ -14,6 +14,10 @@ namespace haylen::animation2d {
 class Chain final {
   public:
     static constexpr std::size_t kMaxSegments = 4096;
+
+    // A reach bends the chain at most this many times, so its work stays bounded whatever a script asks for.
+    static constexpr int kMaxIterations = 1000;
+
     struct Options {
         math::Vec2 root;
         std::vector<float> lengths;

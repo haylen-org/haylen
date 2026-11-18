@@ -73,7 +73,7 @@ int ChainLua::reach(lua_State* L) {
             }
         });
         // clang-format on
-        luaL_argcheck(L, options.iterations >= 1, 4, "a reach needs at least one iteration");
+        luaL_argcheck(L, options.iterations >= 1 && options.iterations <= Chain::kMaxIterations, 4, "a reach needs from 1 to 1000 iterations");
     }
 
     lua::Stack::push(L, chain.reach(target, options));

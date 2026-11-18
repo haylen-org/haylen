@@ -1296,7 +1296,7 @@ Bends the chain from its root toward the point and returns whether its end reach
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `pole` | vector | none | A point on the side the joints bend toward. Without it, the joints keep the side they bend to. |
-| `iterations` | integer | `10` | The most passes of the solver, at least 1. Fewer raise an argument error that says `a reach needs at least one iteration`. |
+| `iterations` | integer | `10` | The most passes of the solver, from 1 to 1000. Another count raises an argument error that says `a reach needs from 1 to 1000 iterations`. |
 | `tolerance` | number | `0.01` | How near the end must come to the point. |
 
 ### chain:follow(x, y)
