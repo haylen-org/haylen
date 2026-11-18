@@ -1,6 +1,7 @@
 #include "haylen/core/PropertyTween.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -74,6 +75,10 @@ void PropertyTween::renderLoop(float loopTime, float, int loops, bool) {
 
     if (!isAlive()) {
         return;
+    }
+
+    if (!std::isfinite(easedProgress)) {
+        throw std::runtime_error("The easing of a tween returned a value that is not a finite number.");
     }
 
     for (const std::unique_ptr<TweenTrack>& track : tracks) {

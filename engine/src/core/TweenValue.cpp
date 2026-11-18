@@ -16,11 +16,13 @@ void TweenValue::requireSameKind(const TweenValue& first, const TweenValue& seco
 }
 
 std::string TweenValue::mixText(const std::string& from, const std::string& to, float t) {
+    // A share that is NaN reveals nothing, since every comparison with it is false.
+    const float share = t > 0.0F ? std::min(t, 1.0F) : 0.0F;
     const std::size_t total = Utf8::countCodePoints(to);
-    const auto revealed = static_cast<std::size_t>(std::lround(std::clamp(t, 0.0F, 1.0F) * static_cast<float>(total)));
+    const auto revealed = static_cast<std::size_t>(std::lround(share * static_cast<float>(total)));
 
     std::size_t toOffset = 0;
-    for (std::size_t index = 0; index < revealed; ++index) {
+    for (std::size_t index = 0; index < revealed && toOffset < to.size(); ++index) {
         (void)Utf8::decode(to, toOffset);
     }
 

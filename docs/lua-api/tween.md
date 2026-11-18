@@ -898,3 +898,4 @@ These messages stop the app and show the error screen, because they happen while
 | `Cannot tween the field "<name>" because a "Color" has only "r", "g", "b" and "a".` | The field that holds a part became a `Color` without that part. |
 | `An easing function must return a number.` | The easing function returned another value. |
 | `An easing function must return a number from -3.4028234663853e+38 to 3.4028234663853e+38.` | The easing function returned a finite number that a float cannot hold. |
+| `The easing of a tween returned a value that is not a finite number.` | The easing function returned NaN or an infinity. |

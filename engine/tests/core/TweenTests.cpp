@@ -98,6 +98,7 @@ TEST(TweenValueTest, MixesEveryKind) {
     EXPECT_EQ(TweenValue::mix(std::string(), std::string("héllo"), 0.4F, Interpolation::Linear).getText(), "hé");
     EXPECT_EQ(TweenValue::mix(std::string("abcd"), std::string("wxyz"), 0.5F, Interpolation::Linear).getText(), "wxcd");
     EXPECT_FLOAT_EQ(TweenValue::distance(std::string(), std::string("héllo"), Interpolation::Linear), 5.0F);
+    EXPECT_EQ(TweenValue::mix(std::string("abc"), std::string("xyz"), std::numeric_limits<float>::quiet_NaN(), Interpolation::Linear).getText(), "abc");
 
     EXPECT_DOUBLE_EQ(TweenValue::add(2.0, 3.0, 2.0F).getNumber(), 8.0);
     EXPECT_FLOAT_EQ(TweenValue::difference(math::Vec2{5.0F, 1.0F}, math::Vec2{2.0F, 1.0F}).getVector().x, 3.0F);

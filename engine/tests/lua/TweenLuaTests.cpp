@@ -231,6 +231,16 @@ TEST(TweenLuaTest, AStaggerThatFailsLeavesItsTweensPlaying) {
     EXPECT_EQ(fixture.lua("shared:kill() return tostring(shared.alive)"), "false");
 }
 
+// An easing whose value is not a finite number stops the app with the reason instead of tweening to nowhere.
+TEST(TweenLuaTest, RefusesAnEasingThatIsNotFinite) {
+    test::EngineFixture fixture;
+    fixture.runLua("label = {s = 'abc'} require('haylen.tween').to(label, 1, {s = 'xyz'}, {ease = function() return 0 / 0 end})");
+    fixture.frames(1, 0.25);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("The easing of a tween returned a value that is not a finite number."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return label.s"), "abc");
+}
+
 TEST(TweenLuaTest, PlaysReadyMadeTweens) {
     test::EngineFixture fixture;
     // clang-format off
