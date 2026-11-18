@@ -8,6 +8,7 @@
 #include "haylen/2d/nodes/NodeProperties.hpp"
 #include "haylen/2d/nodes/NodeSerializer.hpp"
 #include "haylen/lua/Type.hpp"
+#include "lua/Owners.hpp"
 
 struct lua_State;
 
@@ -88,6 +89,8 @@ class Nodes2DLua final {
     static bool pushTree(lua_State* L, const NodeTree* tree);
     static void pushNode(lua_State* L, const Node& node);
     static void pushNodes(lua_State* L, const std::vector<Node>& nodes);
+    static void notifyDestroyed(const lua::Owners::Function& function, lua_State* main, const Node& gone);
+    static void callDestroyed(const lua::Owners::Function& function, lua_State* state, const Node& gone, bool reported);
 
     // Pushes the table of the tree of the node at index under `field`, creating it when asked.
     static bool pushTreeTable(lua_State* L, int node, const char* field, bool create);

@@ -545,6 +545,31 @@ int Nodes2DLua::nodeDestroy(lua_State* L) {
     return 0;
 }
 
+// A node that goes while Lua destroys nodes calls the listener on that call, so an error reaches its caller, and otherwise the main thread reports the error.
+void Nodes2DLua::notifyDestroyed(const lua::Owners::Function& function, lua_State* main, const Node& gone) {
+    if (destroying != nullptr) {
+        callDestroyed(function, destroying, gone, false);
+        return;
+    }
+
+    lua::Runtime::runReporting(main, [&] { callDestroyed(function, main, gone, true); });
+}
+
+void Nodes2DLua::callDestroyed(const lua::Owners::Function& function, lua_State* state, const Node& gone, bool reported) {
+    if (!function.push(state)) {
+        return;
+    }
+
+    pushNode(state, gone);
+
+    if (reported) {
+        lua::Runtime::protectedCall(state, 1, 0);
+        return;
+    }
+
+    lua_call(state, 1, 0);
+}
+
 // Listens with `on('destroyed', function, {owner = owner})`, called with the node right before it goes. A listener ends with its owner, and without one it takes the default owner.
 int Nodes2DLua::nodeOn(lua_State* L) {
     const Node& node = lua::Userdata::check<Node>(L, 1);
@@ -574,20 +599,7 @@ int Nodes2DLua::nodeOn(lua_State* L) {
 
     // clang-format off
     core::Connection connection = node.getTree().onDestroyed(node, [function, main](const Node& gone) {
-        if (destroying == nullptr) {
-            lua::Runtime::runReporting(main, [&] {
-                if (function->push(main)) {
-                    pushNode(main, gone);
-                    lua::Runtime::protectedCall(main, 1, 0);
-                }
-            });
-            return;
-        }
-
-        if (function->push(destroying)) {
-            pushNode(destroying, gone);
-            lua_call(destroying, 1, 0);
-        }
+        notifyDestroyed(*function, main, gone);
     }, {.owner = lifetime});
     // clang-format on
     if (owner != 0) {
