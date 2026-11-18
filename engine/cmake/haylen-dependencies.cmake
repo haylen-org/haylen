@@ -86,8 +86,8 @@ endif()
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/6bf20297d75b98a04e2e791073c9eb230cd31bcd.tar.gz"
-  URL_HASH SHA256=db80f99c59f65e2750a40aa59ee8e150e9d7d428b8c2f5fa2a36c67836146612
+  URL "https://github.com/varn-org/varn/archive/fb540bda736f29a03fe1b5cf81bb3cad01838594.tar.gz"
+  URL_HASH SHA256=c989875214547d2e6ebf40a57cc697ced6cd25c793936bd26d47b381a9c29985
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
@@ -102,11 +102,6 @@ if(TARGET uv_a)
   list(APPEND varn_compiled_targets uv_a)
 endif()
 haylen_disable_warnings(${varn_compiled_targets})
-
-# Poco, which Varn builds on desktops, forces the library suffixes of its own naming into the cache, such as "md" for the release libraries of MSVC and "d" for every debug library, which would rename each library that the build defines after it, so the libraries keep the names their targets give.
-foreach(config DEBUG RELEASE MINSIZEREL RELWITHDEBINFO)
-  set(CMAKE_${config}_POSTFIX "" CACHE STRING "The suffix of the library files of the configuration." FORCE)
-endforeach()
 
 # The headers of Poco ask MSVC to link every Poco library by its file name, which no longer exists once the SDK merges the libraries into one, while CMake links them by their targets anyway.
 if(MSVC AND TARGET Poco::Foundation)

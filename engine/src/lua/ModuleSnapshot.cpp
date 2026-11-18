@@ -37,8 +37,8 @@ bool ModuleSnapshot::isPrototype(lua_State* L, int index) {
 }
 
 bool ModuleSnapshot::isJsonMarker(lua_State* L, int metatable) {
-    luaL_getmetatable(L, varn::json::JsonSerializer::arrayMetatable);
-    luaL_getmetatable(L, varn::json::JsonSerializer::objectMetatable);
+    luaL_getmetatable(L, varn::json::JsonSerializer::kArrayMetatable);
+    luaL_getmetatable(L, varn::json::JsonSerializer::kObjectMetatable);
     const bool marker = lua_rawequal(L, metatable, -2) != 0 || lua_rawequal(L, metatable, -1) != 0;
     lua_pop(L, 2);
     return marker;

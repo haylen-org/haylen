@@ -61,7 +61,11 @@ function Processes:environment()
     local separator = Processes.windows and ';' or ':'
     local folders = select(2, path:gsub(separator, '')) + 1
     local missing = process.getenv('HAYLEN_MISSING', 'none')
-    self:check('env', 'Environment', path ~= '' and missing == 'none' and type(process.env) == 'table', string.format('The variable "PATH" lists %d folders, and "HAYLEN_MISSING" falls back to "%s".', folders, missing))
+    local variables = 0
+    for _ in pairs(process.environment()) do
+        variables = variables + 1
+    end
+    self:check('env', 'Environment', path ~= '' and missing == 'none' and variables > 0, string.format('The variable "PATH" lists %d folders among %d variables, and "HAYLEN_MISSING" falls back to "%s".', folders, variables, missing))
     self.results:set('cwd', 'info', 'Working folder and arguments', string.format('The app runs in "%s" with %d %s in "process.argv".', process.cwd(), #process.argv, #process.argv == 1 and 'argument' or 'arguments'))
 end
 

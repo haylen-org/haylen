@@ -21,7 +21,9 @@ HttpStreaming.excerpts = {
 app:get('/events', function(ctx)
     local stream = ctx:sse()
     for tick = 1, 6 do
-        stream:send('tick', tostring(tick))
+        if not stream:send('tick', tostring(tick)):await() then
+            return
+        end
         async.sleep(150):await()
     end
     stream:close()
