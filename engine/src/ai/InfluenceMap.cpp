@@ -18,6 +18,7 @@ InfluenceMap::InfluenceMap(int columns, int rows, float size, math::Vec2 corner)
     if (columns < 1 || rows < 1 || !std::isfinite(size) || size <= 0.0F) {
         throw std::invalid_argument("An influence map needs at least one cell on each side and a finite cell size above 0.");
     }
+
     if (static_cast<std::int64_t>(columns) * rows > kMaxCells) {
         throw std::invalid_argument("An influence map holds at most " + std::to_string(kMaxCells) + " cells.");
     }

@@ -718,7 +718,7 @@ Creates an [`InfluenceMap`](#influencemap) and returns it. Every cell starts at 
 | `x` | number | `0` | The world `x` where the first column starts. |
 | `y` | number | `0` | The world `y` where the first row starts. |
 
-A side below 1 or a wrong cell size raises `An influence map needs at least one cell on each side and a finite cell size above 0.`. An unknown option raises `Unknown option "<key>".`, and an option of the wrong type, such as a `columns` of `2.5`, raises `The option "<key>" of "newInfluenceMap" is invalid: <reason>.`.
+A side below 1 or a wrong cell size raises `An influence map needs at least one cell on each side and a finite cell size above 0.`, and more than 16777216 cells in all raise `An influence map holds at most 16777216 cells.`. An unknown option raises `Unknown option "<key>".`, and an option of the wrong type, such as a `columns` of `2.5`, raises `The option "<key>" of "newInfluenceMap" is invalid: <reason>.`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -952,6 +952,7 @@ print(threat:cellCenter(0, 0)) -- 20.0 20.0
 | `bad argument #1 to 'score' (unknown option)` | The method `selector:score` names an unknown option. |
 | `bad argument #1 to 'score' (no option with this number)` | The position given to `selector:score` is outside the list. |
 | `An influence map needs at least one cell on each side and a finite cell size above 0.` | The `columns`, `rows` or `cellSize` of `ai.newInfluenceMap` are out of range. |
+| `An influence map holds at most 16777216 cells.` | The `columns` times the `rows` of `ai.newInfluenceMap` are more than 16777216. |
 | `bad argument #5 to 'stamp' (unknown value '<falloff>')` | The falloff of `map:stamp` is unknown. |
 | `Only influence maps of the same size add up.` | The maps of `map:add` have different numbers of columns or rows. |
 | `The cell (<column>, <row>) is outside the influence map, whose columns go from 0 to <last column> and rows from 0 to <last row>.` | The methods `map:get` or `map:set` name a cell outside the map. |

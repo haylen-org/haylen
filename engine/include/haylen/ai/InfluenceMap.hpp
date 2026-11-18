@@ -18,6 +18,7 @@ class InfluenceMap final {
   public:
     // The most cells of a map.
     static constexpr std::int64_t kMaxCells = std::int64_t{1} << 24;
+
     enum class Falloff : std::uint8_t {
         Constant,
         Linear,
@@ -30,7 +31,7 @@ class InfluenceMap final {
         float value = 0.0F;
     };
 
-    // Throws `std::invalid_argument` for a side below 1 or a cell size that is not finite and above 0.
+    // Throws `std::invalid_argument` for a side below 1, more than `kMaxCells` cells or a cell size that is not finite and above 0.
     InfluenceMap(int columns, int rows, float size, math::Vec2 corner = {});
 
     [[nodiscard]] static std::optional<Falloff> falloffFromName(std::string_view name) noexcept;
