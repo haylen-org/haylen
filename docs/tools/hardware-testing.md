@@ -60,6 +60,20 @@ Run the test project with `haylen app run samples/tests --target <target>`. Star
 
 Each run installs a signed test app, runs it, copies the results back and uninstalls it.
 
+#### Plugins on real devices
+
+The plugin tests of the test project and the samples of the plugins run on a device only for what a simulator or an emulator cannot show: the prompts of the system, the camera, the microphone, the location, the haptics, the motion sensors, Bluetooth, the notifications tapped from the background or after the app was closed, the back button of Android and the remote of a TV. Start a test from the developer console of the run, such as `lua require('harness.navigation').openTest(require('harness.catalog').byCode['PLG-016'])`. The log of the app reaches the terminal of the run on every device, since the launch of an Apple device mirrors the unified log of the app to its error output.
+
+An iPhone 13 has shown these checks passing:
+
+| Test | What the device showed |
+| --- | --- |
+| PLG-011 | The prompts of the camera, the microphone, the location and notifications. The camera of the plugin after the answer. A notification tapped while the app is open, one tapped from the background and one that launched the closed app, which reached `notificationOpened` of the next app. |
+| PLG-016 | The back and the front cameras at 640 by 480, a photo as JPEG bytes that decodes into a texture, and the microphone at 48000 Hz with its level. |
+| PLG-017 | A location within 5 meters, and the MapKit map over the app. |
+
+Two parts of a device still need a person: the system prompts, and the gestures of the system, such as going home and closing the app. These parts move to UI tests, which tap the prompts and the notifications with the tools of each platform, as [Testing](testing.md) describes for the simulators.
+
 ## Browser
 
 The web runs in Chrome, which `haylen test` starts without a window. Install Chrome or Chromium first.
