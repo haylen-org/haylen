@@ -251,7 +251,7 @@ Starts a new walk at the node named `node` and returns its [`ConversationState`]
 | `variables` | table | `{}` | Values that replace the values of the file for this walk. A variable that the file lacks is added. |
 | `seed` | integer | random | The seed of the generator that picks variants. The same seed picks the same variants. |
 
-A missing node raises `The conversation has no node "<node>".`. An unknown option raises `Unknown option "<key>".`, and `variables` that are not a table of values by name, such as a list, raise `The variables of a conversation are an object of values by name.`. A `seed` that is not an integer raises a `bad argument` error. Commands that run during the start wait for the first listener of [`state:on`](#stateonevent-listener-options).
+A missing node raises `The conversation has no node "<node>".`. An unknown option raises `Unknown option "<key>".`, and `variables` that are not a table of values by name, such as a list, raise `The variables of a conversation are an object of values by name.`. A `seed` that is not an integer raises `The option "seed" of "start" is invalid: <reason>.`. Commands that run during the start wait for the first listener of [`state:on`](#stateonevent-listener-options).
 
 ```lua
 local assets = require('haylen.assets')
@@ -471,7 +471,7 @@ Calls `listener` for every command that the walk runs, and returns a [`Connectio
 
 A listener runs at the end of the call that ran the command, such as `state:advance()`, so the walk already stands at its next line or choices, and the listener may call `advance` or `choose` itself. The commands of the steps that such a call runs reach the listeners after the commands that already waited, so every command arrives in the order the walk ran it. Commands wait until something listens, so the commands that ran before the first listener reach it during the call to `on`. An error raised in a listener is raised by the call that delivered the command.
 
-The table `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module adds at its top level in development belongs to that module, so a [reload](hotReload.md) of the module ends it.
+The table `options` may hold an `owner`, a table or a userdata such as a scene, and the listener ends with it, as [subscription scopes](../core/lifecycle.md#subscription-scopes) describe. Without an `owner`, a listener that a module adds at its top level in development belongs to that module, so a [reload](hotReload.md) of the module ends it. Any other listener without an `owner` belongs to the state, so it ends with the state, and a listener that refers to the state never keeps it alive.
 
 An unknown event raises `Unknown conversation event "<event>". Conversations report "command".`. An unknown option raises `Unknown option "<key>".`, and an owner of another type raises `An owner must be a table or a userdata, not <type>.`.
 
@@ -543,6 +543,7 @@ These messages are raised by the functions and methods. The [file errors](#file-
 | --- | --- |
 | `The conversation has no node "<node>".` | The method `talk:start` names a node that does not exist. |
 | `The variables of a conversation are an object of values by name.` | The option `variables` of `talk:start` is a list or not a table. |
+| `The option "seed" of "start" is invalid: <reason>.` | The option `seed` of `talk:start` is not an integer. |
 | `The saved conversation does not fit this conversation: <reason>.` | The save of `talk:restore` is broken or belongs to another conversation. |
 | `The conversation waits for a choice. Call "choose" with one of its choices.` | The method `state:advance` ran while choices wait. |
 | `The conversation has finished. Start it again to go on.` | The method `state:advance` ran after the walk ended. |

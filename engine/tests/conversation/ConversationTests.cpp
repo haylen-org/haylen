@@ -330,6 +330,28 @@ TEST(ConversationLuaTest, LoadsAssetsLocalizesLinesAndEndsListenersWithTheirOwne
     EXPECT_EQ(fixture.lua("return table.concat(talk.texts, ',') .. ' ' .. talk.nodes[1]"), "smith.hello,Plain text.,choice.buy,choice.leave start");
 }
 
+TEST(ConversationLuaTest, ListenersWithoutAnOwnerEndWithTheirStateAndNeverKeepItAlive) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        talk = require('haylen.conversation').new({nodes = {start = {steps = {{text = 'one'}, {command = 'wave'}, {text = 'two'}}}}})
+        heard = 0
+        walk = talk:start('start')
+        walk:on('command', function() heard = heard + 1 return walk end)
+        walk:advance()
+        collected = setmetatable({}, {__mode = 'v'})
+        do
+            local other = talk:start('start')
+            other:on('command', function() return other end)
+            collected[1] = other
+        end
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return heard"), "1");
+    EXPECT_EQ(fixture.lua("collectgarbage() collectgarbage() return tostring(collected[1])"), "nil");
+    EXPECT_NE(fixture.lua("talk:start('start', {seed = 1.5})").find("The option \"seed\" of \"start\" is invalid: number has no integer representation."), std::string::npos);
+}
+
 TEST(ConversationLuaTest, FillsThePlaceholdersOfTextsThatAreNotKeys) {
     // clang-format off
     test::EngineFixture fixture({{"content/talk/smith.conversation", R"({

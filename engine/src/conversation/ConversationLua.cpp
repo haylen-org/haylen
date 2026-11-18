@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <utility>
@@ -62,8 +63,10 @@ int ConversationLua::start(lua_State* L) {
             values = lua::JsonConverter::read(L, -1);
         }
 
-        if (lua_getfield(L, 3, "seed") != LUA_TNIL) {
-            seed = static_cast<std::uint64_t>(luaL_checkinteger(L, -1));
+        std::optional<std::int64_t> chosen;
+        lua::Table::readField(L, 3, "seed", chosen);
+        if (chosen) {
+            seed = static_cast<std::uint64_t>(*chosen);
         }
     }
 
@@ -207,7 +210,12 @@ int ConversationLua::on(lua_State* L) {
         owner = lua::Owners::pushDefault(L);
     }
 
-    const std::weak_ptr<const void> lifetime = owner != 0 ? lua::Owners::getLifetime(L, owner) : std::weak_ptr<const void>();
+    // Without an owner the state holds the listener itself, so a listener that refers to the state never keeps it alive.
+    if (owner == 0) {
+        owner = 1;
+    }
+
+    const std::weak_ptr<const void> lifetime = lua::Owners::getLifetime(L, owner);
     auto function = std::make_shared<lua::Owners::Function>(L, 3, owner);
     lua_State* main = lua::Runtime::getMainThread(L);
 
@@ -220,10 +228,7 @@ int ConversationLua::on(lua_State* L) {
         }
     }, {.owner = lifetime});
     // clang-format on
-    if (owner != 0) {
-        lua::Owners::add(L, owner, connection);
-    }
-
+    lua::Owners::add(L, owner, connection);
     lua::Userdata::emplace<core::Connection>(L, std::move(connection));
     deliver(*state);
     return 1;
