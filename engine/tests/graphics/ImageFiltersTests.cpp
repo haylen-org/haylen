@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -104,6 +105,22 @@ TEST(ImageFiltersTest, OutlinesWhatShows) {
     EXPECT_THROW(ImageFilters::outline(image, math::Color::black(), ImageFilters::kMaxThickness + 1.0F), std::invalid_argument);
 }
 
+// An amount or a color that is not finite would write no number into the pixels, so the effects refuse it and leave the image as it was.
+TEST(ImageFiltersTest, RefusesValuesThatAreNotFinite) {
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float infinity = std::numeric_limits<float>::infinity();
+    Image image = makeFlat(4, 4, 0x336699FFU);
+    EXPECT_THROW(ImageFilters::adjust(image, {.brightness = nan}), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::adjust(image, {.hue = infinity}), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::grayscale(image, nan), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::tint(image, math::Color::white(), nan), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::tint(image, {nan, 1.0F, 1.0F, 1.0F}, 1.0F), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::outline(image, {1.0F, 1.0F, 1.0F, nan}, 1.0F), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::sharpen(image, infinity), std::invalid_argument);
+    EXPECT_THROW(ImageFilters::blur(image, nan), std::invalid_argument);
+    EXPECT_EQ(image.getPixel(1, 1).toHex(), "#FF336699");
+}
+
 // An effect changes the pixels the mipmaps were made from, so the image drops them and a texture made from it makes them again.
 TEST(ImageFiltersTest, DropsTheMipmapsOfTheImageItChanges) {
     Image image(8, 8, math::Color::white());
@@ -133,6 +150,9 @@ TEST(ImageFiltersLuaTest, AppliesEffectsInPlaceAndOnTheTaskPool) {
     EXPECT_NE(fixture.lua("image:applyAsync({{effect = 'pixelate', size = 1e20}})").find("size"), std::string::npos);
     EXPECT_NE(fixture.lua("image:adjust({gamma = 2})").find("Unknown option \"gamma\"."), std::string::npos);
     EXPECT_NE(fixture.lua("image:blur(-1)").find("A blur has a radius from 0 to 64 pixels."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:adjust({contrast = 0 / 0})").find("An adjustment of the colors has a finite brightness, contrast, saturation and hue."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:grayscale(math.huge)").find("A grayscale has a finite amount."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:tint('#FF000000', 0 / 0)").find("A tint has a finite amount and a color of finite channels."), std::string::npos);
 }
 
 } // namespace haylen::graphics

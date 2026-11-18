@@ -356,7 +356,7 @@ Device::ReadCallback ImageLua::settle(const std::shared_ptr<varn::async::Promise
 
 int ImageLua::palette(lua_State* L) {
     const Image& image = lua::Userdata::check<Image>(L, 1);
-    const std::vector<ImagePalette::Swatch> colors = ImagePalette::extract(image, static_cast<int>(luaL_optinteger(L, 2, kPaletteColors)));
+    const std::vector<ImagePalette::Swatch> colors = ImagePalette::extract(image, luaL_optinteger(L, 2, kPaletteColors));
     lua_createtable(L, static_cast<int>(colors.size()), 0);
     for (std::size_t index = 0; index < colors.size(); ++index) {
         lua_createtable(L, 0, 2);
@@ -372,7 +372,7 @@ int ImageLua::palette(lua_State* L) {
 
 int ImageLua::swatches(lua_State* L) {
     const Image& image = lua::Userdata::check<Image>(L, 1);
-    const ImagePalette::Swatches found = ImagePalette::choose(ImagePalette::extract(image, static_cast<int>(luaL_optinteger(L, 2, kSwatchColors))));
+    const ImagePalette::Swatches found = ImagePalette::choose(ImagePalette::extract(image, luaL_optinteger(L, 2, kSwatchColors)));
     lua_createtable(L, 0, 7);
     lua::Stack::push(L, found.dominant);
     lua_setfield(L, -2, "dominant");

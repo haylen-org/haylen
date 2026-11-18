@@ -697,7 +697,9 @@ The first color holds before the first stop, and the last one after the last sto
 | `A gradient needs at least one color stop.` | The list of stops or colors is empty. |
 | `The stops of a gradient are a list of offset and color pairs, such as {{0, '#FF000000'}, {1, '#FFFFFFFF'}}.` | A stop is not a pair. |
 | `The stops of a gradient need offsets from 0 to 1 in increasing order.` | An offset is out of range or out of order. |
-| `A radial gradient needs a radius above 0 on both axes.` | The radius is not above 0. |
+| `A radial gradient needs a finite radius above 0 on both axes.` | The radius is not above 0 or not finite. |
+| `A gradient needs a finite angle.` | The angle is not finite. |
+| `A gradient needs a center of finite coordinates.` | The center is not finite. |
 | `Unknown option "<key>".` | The table has another key. |
 
 ```lua
@@ -1209,7 +1211,11 @@ These messages come from the functions and methods of the module.
 | `The corner and the size of an area of an image are numbers of pixels from -1073741824 to 1073741824.` | An area of `image:fill`, `image:fillGradient`, `image:blit`, `image:crop` or another method of an image is not finite or lies farther away. |
 | `An empty image has no PNG file.` | The image of `image:encodePng` has no pixels. |
 | `A blur has a radius from 0 to 64 pixels.` | The radius of `image:blur` is out of range. |
-| `A sharpening has an amount of 0 or more.` | The amount of `image:sharpen` is negative. |
+| `A sharpening has an amount of 0 or more.` | The amount of `image:sharpen` is negative or not finite. |
+| `An adjustment of the colors has a finite brightness, contrast, saturation and hue.` | An option of `image:adjust` is not finite. |
+| `A grayscale has a finite amount.` | The amount of `image:grayscale` is not finite. |
+| `A tint has a finite amount and a color of finite channels.` | The amount or the color of `image:tint` is not finite. |
+| `An outline has a color of finite channels.` | The color of `image:outline` is not finite. |
 | `A pixelation has squares of 1 pixel or more.` | The size of `image:pixelate` is below 1. |
 | `An outline has a thickness from 0 to 32 pixels.` | The thickness of `image:outline` is out of range. |
 | `The image effect "<name>" is unknown. It is "blur", "sharpen", "adjust", "grayscale", "invert", "tint", "pixelate" or "outline".` | The method `image:applyAsync` got another effect. |

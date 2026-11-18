@@ -168,6 +168,7 @@ struct ShaderResource {
     [[nodiscard]] static bool isBinary(gpu::Device::Language language) noexcept;
     [[nodiscard]] static gpu::Device::Stage readStage(const core::Json& value);
     [[nodiscard]] static int readSlot(const core::Json& value, std::string_view kind, std::size_t limit);
+    [[nodiscard]] static std::uint32_t readBlockSize(const core::Json& value, std::string_view block);
     [[nodiscard]] static gpu::Device::TextureType readTextureType(const core::Json& value);
     [[nodiscard]] static gpu::Device::SampleType readSampleType(const core::Json& value);
     [[nodiscard]] static gpu::Device::SamplerType readSamplerType(const core::Json& value);

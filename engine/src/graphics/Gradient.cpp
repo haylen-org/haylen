@@ -41,9 +41,25 @@ std::string_view Gradient::kindName(Kind value) noexcept {
     return found != kKindNames.end() ? found->first : std::string_view{};
 }
 
+void Gradient::setAngle(float value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("A gradient needs a finite angle.");
+    }
+
+    angle = value;
+}
+
+void Gradient::setCenter(math::Vec2 value) {
+    if (!std::isfinite(value.x) || !std::isfinite(value.y)) {
+        throw std::invalid_argument("A gradient needs a center of finite coordinates.");
+    }
+
+    center = value;
+}
+
 void Gradient::setRadius(math::Vec2 value) {
-    if (!(value.x > 0.0F && value.y > 0.0F)) {
-        throw std::invalid_argument("A radial gradient needs a radius above 0 on both axes.");
+    if (!(value.x > 0.0F && value.y > 0.0F) || !std::isfinite(value.x) || !std::isfinite(value.y)) {
+        throw std::invalid_argument("A radial gradient needs a finite radius above 0 on both axes.");
     }
 
     radius = value;

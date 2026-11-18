@@ -34,7 +34,7 @@ class ImagePalette final {
     static constexpr int kMaxColors = 64;
 
     // Returns up to `count` colors of the visible pixels of the image, the most common first, or none for an image without visible pixels. Throws `std::invalid_argument` for a count outside 1 to `kMaxColors`.
-    [[nodiscard]] static std::vector<Swatch> extract(const Image& image, int count);
+    [[nodiscard]] static std::vector<Swatch> extract(const Image& image, std::int64_t count);
 
     [[nodiscard]] static Swatches choose(std::span<const Swatch> palette);
 

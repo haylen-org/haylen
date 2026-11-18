@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <format>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -54,6 +55,20 @@ int ShaderResource::readSlot(const core::Json& value, std::string_view kind, std
     }
 
     return static_cast<int>(slot);
+}
+
+// The size reads in 64 bits, so no size of a hostile file wraps around to one that a block holds.
+std::uint32_t ShaderResource::readBlockSize(const core::Json& value, std::string_view block) {
+    const auto size = value.get<std::int64_t>();
+    if (size <= 0 || size % 16 != 0) {
+        throw std::invalid_argument(std::format("The uniform block \"{}\" holds {} bytes, which is not a multiple of 16.", block, size));
+    }
+
+    if (std::cmp_greater(size, std::numeric_limits<std::uint32_t>::max())) {
+        throw std::invalid_argument(std::format("The uniform block \"{}\" holds {} bytes, more than a block holds.", block, size));
+    }
+
+    return static_cast<std::uint32_t>(size);
 }
 
 gpu::Device::TextureType ShaderResource::readTextureType(const core::Json& value) {
@@ -176,11 +191,9 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
 
     std::vector<int> blockSlots;
     for (const core::Json& block : value.at("blocks")) {
-        Block read{.name = block.at("name").get<std::string>(), .stage = readStage(block.at("stage")), .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = block.at("size").get<std::uint32_t>()};
-        if (read.size == 0 || read.size % 16 != 0) {
-            throw std::invalid_argument(std::format("The uniform block \"{}\" holds {} bytes, which is not a multiple of 16.", read.name, read.size));
-        }
-
+        std::string blockName = block.at("name").get<std::string>();
+        const std::uint32_t size = readBlockSize(block.at("size"), blockName);
+        Block read{.name = std::move(blockName), .stage = readStage(block.at("stage")), .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = size};
         if (std::ranges::find(blockSlots, read.slot) != blockSlots.end()) {
             throw std::invalid_argument(std::format("Two uniform blocks of the program \"{}\" share the slot {}.", program, read.slot));
         }
@@ -212,7 +225,7 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
     }
 
     for (const core::Json& pair : value.at("pairs")) {
-        Pair read{.stage = readStage(pair.at("stage")), .texture = pair.at("texture").get<int>(), .sampler = pair.at("sampler").get<int>(), .name = pair.at("name").get<std::string>()};
+        Pair read{.stage = readStage(pair.at("stage")), .texture = readSlot(pair.at("texture"), "texture", gpu::Device::kMaxTextures), .sampler = readSlot(pair.at("sampler"), "sampler", gpu::Device::kMaxSamplers), .name = pair.at("name").get<std::string>()};
         if (std::ranges::find(textureSlots, read.texture) == textureSlots.end() || std::ranges::find(samplerSlots, read.sampler) == samplerSlots.end()) {
             throw std::invalid_argument(std::format("The texture sampler pair \"{}\" names a texture or sampler the program does not declare.", read.name));
         }
@@ -220,10 +233,12 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
         info.pairs.push_back(std::move(read));
     }
 
-    info.outputs = value.at("outputs").get<int>();
-    if (info.outputs < 1 || info.outputs > static_cast<int>(gpu::Device::kMaxColorTargets)) {
-        throw std::invalid_argument(std::format("The program \"{}\" writes {} colors, and draws write one to {}.", program, info.outputs, gpu::Device::kMaxColorTargets));
+    const auto outputs = value.at("outputs").get<std::int64_t>();
+    if (outputs < 1 || std::cmp_greater(outputs, gpu::Device::kMaxColorTargets)) {
+        throw std::invalid_argument(std::format("The program \"{}\" writes {} colors, and draws write one to {}.", program, outputs, gpu::Device::kMaxColorTargets));
     }
+
+    info.outputs = static_cast<int>(outputs);
 
     for (const auto& [languageName, target] : value.at("targets").items()) {
         const std::optional<gpu::Device::Language> language = languageFromName(languageName);
@@ -335,7 +350,7 @@ void ShaderResource::read(const core::Json& document) {
                 continue;
             }
 
-            blocks.push_back({.name = blockName, .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = block.at("size").get<std::uint32_t>()});
+            blocks.push_back({.name = blockName, .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = readBlockSize(block.at("size"), blockName)});
             for (const core::Json& member : block.at("members")) {
                 const std::string& typeName = member.at("type").get_ref<const std::string&>();
                 const std::optional<Shader::UniformType> type = Shader::uniformTypeFromName(typeName);
@@ -343,14 +358,18 @@ void ShaderResource::read(const core::Json& document) {
                     throw std::invalid_argument(std::format("The uniform \"{}\" has the type \"{}\", which materials do not set.", member.at("name").get<std::string>(), typeName));
                 }
 
-                Shader::Uniform uniform{.name = member.at("name").get<std::string>(), .type = *type, .count = member.at("count").get<int>(), .offset = member.at("offset").get<std::uint32_t>(), .block = blocks.size() - 1};
-                const std::uint64_t element = static_cast<std::uint64_t>(Shader::getComponentCount(uniform.type)) * 4U;
-                const std::uint64_t bytes = uniform.count < 1 ? 0U : (static_cast<std::uint64_t>(uniform.count) - 1U) * Shader::getArrayStride(uniform.type) + element;
-                if (uniform.count < 1 || uniform.offset + bytes > blocks.back().size) {
-                    throw std::invalid_argument(std::format("The uniform \"{}\" does not fit in the block \"{}\".", uniform.name, blockName));
+                // The count and the offset read in 64 bits, and neither goes past the bytes of the block, so the bytes of the uniform never wrap around.
+                std::string uniformName = member.at("name").get<std::string>();
+                const auto count = member.at("count").get<std::int64_t>();
+                const auto offset = member.at("offset").get<std::int64_t>();
+                const std::uint32_t size = blocks.back().size;
+                const std::uint64_t element = static_cast<std::uint64_t>(Shader::getComponentCount(*type)) * 4U;
+                const bool bounded = count >= 1 && offset >= 0 && std::cmp_less_equal(count, size) && std::cmp_less_equal(offset, size);
+                if (!bounded || static_cast<std::uint64_t>(offset) + (static_cast<std::uint64_t>(count) - 1U) * Shader::getArrayStride(*type) + element > size) {
+                    throw std::invalid_argument(std::format("The uniform \"{}\" does not fit in the block \"{}\".", uniformName, blockName));
                 }
 
-                uniforms.push_back(std::move(uniform));
+                uniforms.push_back({.name = std::move(uniformName), .type = *type, .count = static_cast<int>(count), .offset = static_cast<std::uint32_t>(offset), .block = blocks.size() - 1});
             }
         }
     }

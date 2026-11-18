@@ -109,6 +109,8 @@ TEST(ImagePaletteLuaTest, ReadsThePaletteSwatchesAndPlaceholdersOfAnImage) {
     EXPECT_NE(fixture.lua("cover:placeholder({colums = 3})").find("Unknown option \"colums\"."), std::string::npos);
     EXPECT_NE(fixture.lua("graphics.decodePlaceholder('nope!', 8, 8)").find("The text is not an image placeholder."), std::string::npos);
     EXPECT_NE(fixture.lua("cover:palette(0)").find("A palette has from 1 to 64 colors, not 0."), std::string::npos);
+    EXPECT_NE(fixture.lua("cover:palette(4294967297)").find("A palette has from 1 to 64 colors, not 4294967297."), std::string::npos);
+    EXPECT_NE(fixture.lua("cover:swatches(-4294967288)").find("A palette has from 1 to 64 colors, not -4294967288."), std::string::npos);
 }
 
 } // namespace haylen::graphics

@@ -31,24 +31,26 @@ class ImageFilters final {
     // Raises the contrast of the details by the amount, 1 for a clear sharpening, by subtracting a blur of one pixel. A negative amount throws `std::invalid_argument`.
     static void sharpen(Image& image, float amount);
 
-    static void adjust(Image& image, const Adjustment& adjustment) noexcept;
+    // Throws `std::invalid_argument` for a value of the adjustment that is not finite.
+    static void adjust(Image& image, const Adjustment& adjustment);
 
-    // Moves the colors toward their gray by the amount, from 0 to 1.
-    static void grayscale(Image& image, float amount) noexcept;
+    // Moves the colors toward their gray by the amount, from 0 to 1. An amount that is not finite throws `std::invalid_argument`.
+    static void grayscale(Image& image, float amount);
     static void invert(Image& image) noexcept;
 
-    // Moves the colors toward the color by the amount, from 0 to 1, weighed by the alpha of the color.
-    static void tint(Image& image, math::Color color, float amount) noexcept;
+    // Moves the colors toward the color by the amount, from 0 to 1, weighed by the alpha of the color. An amount or a channel of the color that is not finite throws `std::invalid_argument`.
+    static void tint(Image& image, math::Color color, float amount);
 
     // Fills every square of the size in pixels with the average of its colors. A size below 1 throws `std::invalid_argument`.
     static void pixelate(Image& image, int size);
 
-    // Draws an outline of the color and the thickness in pixels around the pixels that show, under them and inside the image, solid within the thickness and fading over the pixel past it. A thickness out of 0 to `kMaxThickness` throws `std::invalid_argument`.
+    // Draws an outline of the color and the thickness in pixels around the pixels that show, under them and inside the image, solid within the thickness and fading over the pixel past it. A thickness out of 0 to `kMaxThickness` or a channel of the color that is not finite throws `std::invalid_argument`.
     static void outline(Image& image, math::Color color, float thickness);
 
   private:
     using Pixels = std::vector<std::array<float, 4>>;
 
+    [[nodiscard]] static bool isFinite(const math::Color& color) noexcept;
     [[nodiscard]] static std::uint8_t toByte(float value) noexcept;
     [[nodiscard]] static Pixels premultiplied(const Image& image);
     static void store(Image& image, const Pixels& pixels) noexcept;

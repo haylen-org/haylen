@@ -6,11 +6,12 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace haylen::graphics {
 
 // Each box is a range of the samples. The box whose widest channel spans the most, weighed by how many samples it holds, splits at the median of that channel, until the palette has its colors or no box holds two different colors.
-std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, int count) {
+std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, std::int64_t count) {
     if (count < 1 || count > kMaxColors) {
         throw std::invalid_argument("A palette has from 1 to " + std::to_string(kMaxColors) + " colors, not " + std::to_string(count) + ".");
     }
@@ -21,7 +22,7 @@ std::vector<ImagePalette::Swatch> ImagePalette::extract(const Image& image, int 
     }
 
     std::vector<std::span<Sample>> boxes{std::span(samples)};
-    while (static_cast<int>(boxes.size()) < count) {
+    while (std::cmp_less(boxes.size(), count)) {
         auto widest = boxes.end();
         long best = 0;
         for (auto box = boxes.begin(); box != boxes.end(); ++box) {

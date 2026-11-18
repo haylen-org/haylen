@@ -265,6 +265,14 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
     EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 2}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
     EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 0}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+
+    // Counts, sizes, offsets and slots read in 64 bits, so a number past 32 bits never wraps around to one that fits.
+    EXPECT_EQ(parseError({{program + "/outputs", 4294967297}}), malformed + "The program \"sprite\" writes 4294967297 colors, and draws write one to 4.");
+    EXPECT_EQ(parseError({{program + "/pairs/0/texture", 4294967297}}), malformed + "The texture slot 4294967297 is out of range.");
+    EXPECT_EQ(parseError({{program + "/pairs/0/sampler", -4294967295}}), malformed + "The sampler slot -4294967295 is out of range.");
+    EXPECT_EQ(parseError({{program + "/blocks/0/size", 4294967312}}), malformed + "The uniform block \"params\" holds 4294967312 bytes, more than a block holds.");
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4294967296}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 4294967297}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
 }
 
 // The renderer makes each of its programs the first time a draw needs it, so starting an engine compiles no shader and a frame of sprites compiles only the sprite program.

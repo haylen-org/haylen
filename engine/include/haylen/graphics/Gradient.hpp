@@ -45,23 +45,19 @@ class Gradient final {
         return stops;
     }
 
-    // The direction of a linear gradient and the start of a conic one, in radians clockwise from the x axis.
+    // The direction of a linear gradient and the start of a conic one, in radians clockwise from the x axis. Throws `std::invalid_argument` for an angle that is not finite.
     [[nodiscard]] float getAngle() const noexcept {
         return angle;
     }
-    void setAngle(float value) noexcept {
-        angle = value;
-    }
+    void setAngle(float value);
 
-    // The center of a radial or conic gradient as a share of the area on each axis.
+    // The center of a radial or conic gradient as a share of the area on each axis. Throws `std::invalid_argument` for a center that is not finite.
     [[nodiscard]] math::Vec2 getCenter() const noexcept {
         return center;
     }
-    void setCenter(math::Vec2 value) noexcept {
-        center = value;
-    }
+    void setCenter(math::Vec2 value);
 
-    // The radius of a radial gradient as a share of the width and of the height of the area, so the default reaches the middle of every side. Throws `std::invalid_argument` for a radius that is not above 0.
+    // The radius of a radial gradient as a share of the width and of the height of the area, so the default reaches the middle of every side. Throws `std::invalid_argument` for a radius that is not finite and above 0.
     [[nodiscard]] math::Vec2 getRadius() const noexcept {
         return radius;
     }

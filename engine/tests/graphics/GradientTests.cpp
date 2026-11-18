@@ -121,7 +121,10 @@ TEST(GradientLuaTest, FillsImagesWithGradients) {
     EXPECT_NE(fixture.lua("image:fillGradient({colors = {'#FFFFFFFF'}, stops = {}})").find("either"), std::string::npos);
     EXPECT_NE(fixture.lua("image:fillGradient({stops = {{0}}})").find("The stops of a gradient are a list of offset and color pairs"), std::string::npos);
     EXPECT_NE(fixture.lua("image:fillGradient({stops = {{1, '#FFFFFFFF'}, {0, '#FF000000'}}})").find("The stops of a gradient need offsets from 0 to 1 in increasing order."), std::string::npos);
-    EXPECT_NE(fixture.lua("image:fillGradient({kind = 'radial', colors = {'#FFFFFFFF'}, radius = 0})").find("A radial gradient needs a radius above 0 on both axes."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:fillGradient({kind = 'radial', colors = {'#FFFFFFFF'}, radius = 0})").find("A radial gradient needs a finite radius above 0 on both axes."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:fillGradient({kind = 'radial', colors = {'#FFFFFFFF'}, radius = math.huge})").find("A radial gradient needs a finite radius above 0 on both axes."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:fillGradient({colors = {'#FFFFFFFF'}, angle = 0 / 0})").find("A gradient needs a finite angle."), std::string::npos);
+    EXPECT_NE(fixture.lua("image:fillGradient({kind = 'conic', colors = {'#FFFFFFFF'}, center = {math.huge, 0.5}})").find("A gradient needs a center of finite coordinates."), std::string::npos);
     EXPECT_NE(fixture.lua("image:fillGradient({kind = 'diamond', colors = {'#FFFFFFFF'}})").find("diamond"), std::string::npos);
     EXPECT_NE(fixture.lua("image:fillGradient({colors = {'#FFFFFFFF'}, spread = 1})").find("Unknown option \"spread\"."), std::string::npos);
 }

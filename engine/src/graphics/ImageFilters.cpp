@@ -53,7 +53,11 @@ void ImageFilters::sharpen(Image& image, float amount) {
     store(image, blurred);
 }
 
-void ImageFilters::adjust(Image& image, const Adjustment& adjustment) noexcept {
+void ImageFilters::adjust(Image& image, const Adjustment& adjustment) {
+    if (!std::isfinite(adjustment.brightness) || !std::isfinite(adjustment.contrast) || !std::isfinite(adjustment.saturation) || !std::isfinite(adjustment.hue)) {
+        throw std::invalid_argument("An adjustment of the colors has a finite brightness, contrast, saturation and hue.");
+    }
+
     const std::span<std::uint8_t> bytes = image.getWritablePixels();
     for (std::size_t offset = 0; offset < bytes.size(); offset += 4) {
         math::Color color = math::Color::fromRgba8(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
@@ -74,7 +78,11 @@ void ImageFilters::adjust(Image& image, const Adjustment& adjustment) noexcept {
     }
 }
 
-void ImageFilters::grayscale(Image& image, float amount) noexcept {
+void ImageFilters::grayscale(Image& image, float amount) {
+    if (!std::isfinite(amount)) {
+        throw std::invalid_argument("A grayscale has a finite amount.");
+    }
+
     adjust(image, {.saturation = 1.0F - std::clamp(amount, 0.0F, 1.0F)});
 }
 
@@ -87,7 +95,11 @@ void ImageFilters::invert(Image& image) noexcept {
     }
 }
 
-void ImageFilters::tint(Image& image, math::Color color, float amount) noexcept {
+void ImageFilters::tint(Image& image, math::Color color, float amount) {
+    if (!std::isfinite(amount) || !isFinite(color)) {
+        throw std::invalid_argument("A tint has a finite amount and a color of finite channels.");
+    }
+
     const float share = std::clamp(amount, 0.0F, 1.0F) * std::clamp(color.a, 0.0F, 1.0F);
     const std::array<float, 3> target{color.r * 255.0F, color.g * 255.0F, color.b * 255.0F};
     const std::span<std::uint8_t> bytes = image.getWritablePixels();
@@ -144,6 +156,10 @@ void ImageFilters::pixelate(Image& image, int size) {
 void ImageFilters::outline(Image& image, math::Color color, float thickness) {
     if (!(thickness >= 0.0F) || thickness > kMaxThickness) {
         throw std::invalid_argument("An outline has a thickness from 0 to " + std::to_string(static_cast<int>(kMaxThickness)) + " pixels.");
+    }
+
+    if (!isFinite(color)) {
+        throw std::invalid_argument("An outline has a color of finite channels.");
     }
 
     if (thickness == 0.0F || image.isEmpty()) {
@@ -208,6 +224,10 @@ void ImageFilters::outline(Image& image, math::Color color, float thickness) {
 
         pixel[3] = toByte(total);
     }
+}
+
+bool ImageFilters::isFinite(const math::Color& color) noexcept {
+    return std::isfinite(color.r) && std::isfinite(color.g) && std::isfinite(color.b) && std::isfinite(color.a);
 }
 
 std::uint8_t ImageFilters::toByte(float value) noexcept {
