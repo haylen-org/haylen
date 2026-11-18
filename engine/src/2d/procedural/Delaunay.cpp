@@ -107,6 +107,7 @@ class Delaunay::Builder final {
     [[nodiscard]] double orient(double px, double py, double qx, double qy, double rx, double ry) const noexcept {
         return (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
     }
+
     [[nodiscard]] double orient(std::size_t p, std::size_t q, std::size_t r) const noexcept {
         return orient(xs[p], ys[p], xs[q], ys[q], xs[r], ys[r]);
     }

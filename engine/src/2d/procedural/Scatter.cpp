@@ -102,6 +102,7 @@ std::vector<math::Vec2> Scatter::place(const Region& region, const Options& opti
     case Method::Random:
         break;
     }
+
     return placeRandom(region, options, random);
 }
 

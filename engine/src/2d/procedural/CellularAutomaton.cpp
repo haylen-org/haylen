@@ -47,6 +47,7 @@ spatial2d::CellGrid CellularAutomaton::generate(const Options& options, math::Ra
     if (options.steps < 0 || options.steps > kMaxSteps) {
         throw std::invalid_argument("A cellular automaton takes from 0 to " + std::to_string(kMaxSteps) + " steps.");
     }
+
     spatial2d::CellGrid grid(options.width, options.height, kFloor);
     for (int y = 0; y < options.height; ++y) {
         for (int x = 0; x < options.width; ++x) {

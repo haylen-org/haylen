@@ -368,12 +368,15 @@ std::optional<spatial2d::CellGrid> WaveFunctionCollapse::generate(const Rules& r
     if (options.width < 1 || options.height < 1) {
         throw std::invalid_argument("Wave function collapse needs at least one cell on each side.");
     }
+
     if (static_cast<std::size_t>(options.width) * static_cast<std::size_t>(options.height) * rules.getTileCount() > kMaxStates) {
         throw std::invalid_argument("Wave function collapse tracks at most " + std::to_string(kMaxStates) + " cells times tiles, so the output or the tile set is too large.");
     }
+
     if (options.attempts < 1 || options.attempts > kMaxAttempts) {
         throw std::invalid_argument("Wave function collapse takes from 1 to " + std::to_string(kMaxAttempts) + " attempts.");
     }
+
     if (options.fixed && (options.fixed->getWidth() != options.width || options.fixed->getHeight() != options.height)) {
         throw std::invalid_argument("The fixed cells must match the size of the output.");
     }

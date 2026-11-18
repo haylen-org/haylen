@@ -32,6 +32,7 @@ template <> struct EnumNames<procedural2d::Scatter::Method> {
     static std::optional<procedural2d::Scatter::Method> fromName(std::string_view name) {
         return procedural2d::Scatter::methodFromName(name);
     }
+
     static std::string_view name(procedural2d::Scatter::Method value) {
         return procedural2d::Scatter::methodName(value);
     }

@@ -287,6 +287,7 @@ void Placement::validateShape(const Shape& shape) {
         sized = shape.points.size() >= 3 && math::Geometry::signedArea(shape.points) != 0.0F;
         break;
     }
+
     if (!finite || !sized) {
         throw std::invalid_argument("A placement shape needs finite values and a size: a positive radius, a positive width and height, or a polygon of at least three points around an area.");
     }

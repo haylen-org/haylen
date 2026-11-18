@@ -33,6 +33,7 @@ template <> struct EnumNames<procedural2d::Dungeon::Method> {
     static std::optional<procedural2d::Dungeon::Method> fromName(std::string_view name) {
         return procedural2d::Dungeon::methodFromName(name);
     }
+
     static std::string_view name(procedural2d::Dungeon::Method value) {
         return procedural2d::Dungeon::methodName(value);
     }
@@ -42,6 +43,7 @@ template <> struct EnumNames<procedural2d::Maze::Algorithm> {
     static std::optional<procedural2d::Maze::Algorithm> fromName(std::string_view name) {
         return procedural2d::Maze::algorithmFromName(name);
     }
+
     static std::string_view name(procedural2d::Maze::Algorithm value) {
         return procedural2d::Maze::algorithmName(value);
     }
@@ -51,6 +53,7 @@ template <> struct EnumNames<procedural2d::WaveFunctionCollapse::Direction> {
     static std::optional<procedural2d::WaveFunctionCollapse::Direction> fromName(std::string_view name) {
         return procedural2d::WaveFunctionCollapse::directionFromName(name);
     }
+
     static std::string_view name(procedural2d::WaveFunctionCollapse::Direction value) {
         return procedural2d::WaveFunctionCollapse::directionName(value);
     }

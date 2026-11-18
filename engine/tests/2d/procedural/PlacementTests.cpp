@@ -217,6 +217,7 @@ TEST(PlacementLuaTest, PlacesKindsFromLua) {
             },
             forbidden = {{kind = 'circle', center = {200, 150}, radius = 60}},
         }
+
         result = procedural.place(options)
     )");
     // clang-format on

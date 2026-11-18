@@ -202,6 +202,7 @@ Maze Maze::generate(int columns, int rows, Algorithm algorithm, math::Random& ra
         maze.carveBacktracker(random);
         break;
     }
+
     return maze;
 }
 

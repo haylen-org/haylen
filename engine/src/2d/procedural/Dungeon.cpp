@@ -164,6 +164,7 @@ Dungeon::Result Dungeon::generate(const Options& options, math::Random& random) 
     if (options.minimumRoomSize < 1 || options.maximumRoomSize < options.minimumRoomSize || options.padding < 0) {
         throw std::invalid_argument("Dungeon rooms need a positive minimum size, a maximum size of at least the minimum and a padding of at least zero.");
     }
+
     if (options.roomAttempts > kMaxRoomAttempts || options.maximumRooms > kMaxRooms) {
         throw std::invalid_argument("A dungeon takes at most " + std::to_string(kMaxRoomAttempts) + " room attempts and " + std::to_string(kMaxRooms) + " rooms.");
     }

@@ -142,6 +142,7 @@ math::Vec2 Region::getRandomPoint(math::Random& random) const noexcept {
     case Kind::Polygon:
         break;
     }
+
     return getRandomPolygonPoint(random);
 }
 
