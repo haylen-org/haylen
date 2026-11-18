@@ -18,10 +18,11 @@ FloatBuffer& FloatBufferLua::check(lua_State* L) {
     return lua::Userdata::check<FloatBuffer>(L, 1);
 }
 
-std::size_t FloatBufferLua::checkPosition(lua_State* L, const FloatBuffer& buffer, int index, std::size_t count) {
+// The range is checked in 64 bits before any number narrows to a size, which holds only 32 bits on the web.
+std::size_t FloatBufferLua::checkPosition(lua_State* L, const FloatBuffer& buffer, int index, std::uint64_t count) {
     int isInteger = 0;
     const lua_Integer position = lua_tointegerx(L, index, &isInteger);
-    if (isInteger == 0 || position < 1 || static_cast<std::size_t>(position - 1) + count > buffer.size()) {
+    if (isInteger == 0 || position < 1 || static_cast<std::uint64_t>(position - 1) + count > buffer.size()) {
         // The last position follows the integer arithmetic of Lua, which wraps around, so a range that starts near the largest integer never overflows.
         const auto last = static_cast<lua_Integer>(static_cast<lua_Unsigned>(position) + count - 1);
         luaL_error(L, "Float buffer positions %I to %I fall outside its size of %I.", position, last, static_cast<lua_Integer>(buffer.size()));
@@ -54,8 +55,10 @@ int FloatBufferLua::length(lua_State* L) {
 int FloatBufferLua::set(lua_State* L) {
     FloatBuffer& buffer = check(L);
     const bool list = lua_istable(L, 3);
-    const auto count = list ? static_cast<std::size_t>(lua_rawlen(L, 3)) : static_cast<std::size_t>(lua_gettop(L) - 2);
-    const std::span<float> values = buffer.getValues().subspan(checkPosition(L, buffer, 2, count), count);
+    const std::uint64_t requested = list ? lua_rawlen(L, 3) : static_cast<std::uint64_t>(lua_gettop(L) - 2);
+    const std::size_t first = checkPosition(L, buffer, 2, requested);
+    const auto count = static_cast<std::size_t>(requested);
+    const std::span<float> values = buffer.getValues().subspan(first, count);
     for (std::size_t index = 0; index < count; ++index) {
         if (!list) {
             values[index] = lua::Stack::read<float>(L, static_cast<int>(index) + 3);
@@ -81,8 +84,9 @@ int FloatBufferLua::get(lua_State* L) {
     const FloatBuffer& buffer = check(L);
     const lua_Integer requested = luaL_optinteger(L, 3, 1);
     luaL_argcheck(L, requested >= 0, 3, "the count cannot be negative");
+    const std::size_t first = checkPosition(L, buffer, 2, static_cast<std::uint64_t>(requested));
     const auto count = static_cast<std::size_t>(requested);
-    const std::span<const float> values = buffer.getValues().subspan(checkPosition(L, buffer, 2, count), count);
+    const std::span<const float> values = buffer.getValues().subspan(first, count);
     luaL_checkstack(L, static_cast<int>(count), "too many float buffer values to return at once");
     for (const float value : values) {
         lua_pushnumber(L, static_cast<lua_Number>(value));
@@ -102,8 +106,9 @@ int FloatBufferLua::fill(lua_State* L) {
 
     const lua_Integer requested = luaL_checkinteger(L, 4);
     luaL_argcheck(L, requested >= 0, 4, "the count cannot be negative");
+    const std::size_t first = checkPosition(L, buffer, 3, static_cast<std::uint64_t>(requested));
     const auto count = static_cast<std::size_t>(requested);
-    for (float& target : buffer.getValues().subspan(checkPosition(L, buffer, 3, count), count)) {
+    for (float& target : buffer.getValues().subspan(first, count)) {
         target = value;
     }
 

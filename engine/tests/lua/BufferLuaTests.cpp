@@ -50,6 +50,10 @@ TEST(FloatBufferLuaTest, ReadsAndWritesFromLua) {
     EXPECT_NE(fixture.lua("buffer[1] = 'x'").find("number expected"), std::string::npos);
     EXPECT_NE(fixture.lua("buffer:get(1, -1)").find("the count cannot be negative"), std::string::npos);
     EXPECT_NE(fixture.lua("buffer:fill(0, 6, 2)").find("fall outside"), std::string::npos);
+
+    // Positions and counts past what a size of 32 bits holds fall outside too, on the web as everywhere.
+    EXPECT_NE(fixture.lua("buffer:fill(1, 4294967296, 2)").find("positions 4294967296 to 4294967297 fall outside its size of 6"), std::string::npos);
+    EXPECT_NE(fixture.lua("return buffer:get(1, 4294967296)").find("positions 1 to 4294967296 fall outside its size of 6"), std::string::npos);
     EXPECT_NE(fixture.lua("require('haylen.collections').newFloatBuffer(-1)").find("the size cannot be negative"), std::string::npos);
     EXPECT_NE(fixture.lua("return buffer.missing").find("has no member \"missing\""), std::string::npos);
 }

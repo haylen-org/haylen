@@ -2,6 +2,8 @@
 
 #include <lua.hpp>
 
+#include <cstdint>
+
 #include "core/FloatBufferLua.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
@@ -292,7 +294,7 @@ int CollectionsLua::bufferBack(lua_State* L) {
 int CollectionsLua::bufferGet(lua_State* L) {
     const ValueBuffer& buffer = lua::Userdata::check<ValueBuffer>(L, 1);
     const lua_Integer position = luaL_checkinteger(L, 2);
-    if (position < 1 || static_cast<std::size_t>(position) > buffer.size()) {
+    if (position < 1 || static_cast<std::uint64_t>(position) > buffer.size()) {
         lua_pushnil(L);
         return 1;
     }

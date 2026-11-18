@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 
 #include "haylen/core/FloatBuffer.hpp"
@@ -30,7 +32,7 @@ class FloatBufferLua final {
     [[nodiscard]] static FloatBuffer& check(lua_State* L);
 
     // Reads the one-based position at the stack index and returns it counted from zero, raising an error when `count` values from it do not fit in the buffer.
-    [[nodiscard]] static std::size_t checkPosition(lua_State* L, const FloatBuffer& buffer, int index, std::size_t count);
+    [[nodiscard]] static std::size_t checkPosition(lua_State* L, const FloatBuffer& buffer, int index, std::uint64_t count);
 
     static int at(lua_State* L);
     static int assign(lua_State* L);
