@@ -67,9 +67,6 @@ class WindowsAccessibilityTree final : public std::enable_shared_from_this<Windo
     // Lets go of every provider, so clients that still hold one hear that its element is gone.
     void disconnect();
 
-    // Converts UTF-8 to the UTF-16 of Windows, with a replacement character for every byte that is no UTF-8.
-    [[nodiscard]] static std::wstring toWide(std::string_view text);
-
   private:
     // A change of an element whose event goes out once the lock is released: a property that changed, or an event of its own when `event` names one.
     struct Change {

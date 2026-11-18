@@ -27,7 +27,6 @@ class WindowsMediaSession final {
     static void showTimeline(ABI::Windows::Media::ISystemMediaTransportControls& target, const MediaSession::NowPlaying& value);
     static void showArtwork(ABI::Windows::Media::ISystemMediaTransportControlsDisplayUpdater& updater, const MediaSession::NowPlaying& value);
     static void receiveButton(ABI::Windows::Media::SystemMediaTransportControlsButton button);
-    [[nodiscard]] static std::wstring toWide(const std::string& text);
 
     // Media Foundation and the transport controls count time in units of 100 nanoseconds.
     static constexpr double kUnitsPerSecond = 10000000.0;

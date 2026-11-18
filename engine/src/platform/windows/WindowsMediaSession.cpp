@@ -12,6 +12,7 @@
 #include <cmath>
 
 #include "platform/NativeWindow.hpp"
+#include "platform/windows/WindowsText.hpp"
 
 namespace haylen::platform {
 
@@ -27,17 +28,6 @@ using Microsoft::WRL::Wrappers::HStringReference;
 ComPtr<ISystemMediaTransportControls>& WindowsMediaSession::controls = *new ComPtr<ISystemMediaTransportControls>();
 bool WindowsMediaSession::attempted = false;
 std::atomic<MediaSession::Commands> WindowsMediaSession::offered = 0;
-
-std::wstring WindowsMediaSession::toWide(const std::string& text) {
-    if (text.empty()) {
-        return {};
-    }
-
-    const int length = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
-    std::wstring wide(static_cast<std::size_t>(length), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), length);
-    return wide;
-}
 
 // The play and pause buttons send the toggle of an app that offers only the toggle, since the controls have no toggle button and the play and pause key sends the one the status shows.
 void WindowsMediaSession::receiveButton(SystemMediaTransportControlsButton button) {
@@ -154,9 +144,9 @@ void WindowsMediaSession::show(ISystemMediaTransportControls& target, const Medi
         return;
     }
 
-    const std::wstring title = toWide(value.title);
-    const std::wstring artist = toWide(value.artist);
-    const std::wstring album = toWide(value.album);
+    const std::wstring title = WindowsText::toWide(value.title);
+    const std::wstring artist = WindowsText::toWide(value.artist);
+    const std::wstring album = WindowsText::toWide(value.album);
     music->put_Title(HStringReference(title.c_str(), static_cast<unsigned int>(title.size())).Get());
     music->put_Artist(HStringReference(artist.c_str(), static_cast<unsigned int>(artist.size())).Get());
     ComPtr<ABI::Windows::Media::IMusicDisplayProperties2> albums;

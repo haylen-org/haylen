@@ -7,6 +7,7 @@
 
 #include "platform/windows/WindowsAccessibilityElement.hpp"
 #include "platform/windows/WindowsAccessibilityRoot.hpp"
+#include "platform/windows/WindowsText.hpp"
 
 namespace haylen::platform {
 
@@ -75,7 +76,7 @@ void WindowsAccessibilityTree::announce(std::string_view text, bool interrupt) {
         return;
     }
 
-    const std::wstring wide = toWide(text);
+    const std::wstring wide = WindowsText::toWide(text);
     BSTR displayString = SysAllocString(wide.c_str());
     BSTR activityId = SysAllocString(L"haylen.announcement");
     UiaRaiseNotificationEvent(getRoot().Get(), NotificationKind_Other, interrupt ? NotificationProcessing_ImportantMostRecent : NotificationProcessing_All, displayString, activityId);
@@ -177,26 +178,15 @@ void WindowsAccessibilityTree::disconnect() {
     }
 }
 
-std::wstring WindowsAccessibilityTree::toWide(std::string_view text) {
-    if (text.empty()) {
-        return {};
-    }
-
-    const int length = MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), nullptr, 0);
-    std::wstring wide(static_cast<std::size_t>(length), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), wide.data(), length);
-    return wide;
-}
-
 // The name, the value and the states that screen readers follow, each as the property of UI Automation that carries it.
 std::vector<WindowsAccessibilityTree::Change> WindowsAccessibilityTree::compare(const AccessibilityElement& before, const AccessibilityElement& after) {
     std::vector<Change> changes;
     if (before.label != after.label) {
-        changes.push_back({.id = after.id, .property = UIA_NamePropertyId, .before = toWide(before.label), .after = toWide(after.label)});
+        changes.push_back({.id = after.id, .property = UIA_NamePropertyId, .before = WindowsText::toWide(before.label), .after = WindowsText::toWide(after.label)});
     }
 
     if (before.value != after.value && WindowsAccessibilityElement::hasPattern(after, UIA_ValuePatternId)) {
-        changes.push_back({.id = after.id, .property = UIA_ValueValuePropertyId, .before = toWide(before.value), .after = toWide(after.value)});
+        changes.push_back({.id = after.id, .property = UIA_ValueValuePropertyId, .before = WindowsText::toWide(before.value), .after = WindowsText::toWide(after.value)});
     }
 
     if (before.value != after.value && WindowsAccessibilityElement::hasRange(after)) {

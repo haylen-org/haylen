@@ -11,6 +11,7 @@
 
 #include "platform/windows/WindowsAccessibilityRoot.hpp"
 #include "platform/windows/WindowsAccessibilityTree.hpp"
+#include "platform/windows/WindowsText.hpp"
 
 namespace haylen::platform {
 
@@ -85,7 +86,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::GetPropertyValue(PROPERTYID property
     // clang-format off
     const auto text = [value](const std::string& source) {
         value->vt = VT_BSTR;
-        value->bstrVal = SysAllocString(WindowsAccessibilityTree::toWide(source).c_str());
+        value->bstrVal = SysAllocString(WindowsText::toWide(source).c_str());
     };
     const auto flag = [value](bool on) {
         value->vt = VT_BOOL;
@@ -338,7 +339,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::SetValue(LPCWSTR value) {
 
 IFACEMETHODIMP WindowsAccessibilityElement::get_Value(BSTR* value) {
     const std::optional<AccessibilityElement> element = read();
-    *value = SysAllocString(element ? WindowsAccessibilityTree::toWide(element->value).c_str() : L"");
+    *value = SysAllocString(element ? WindowsText::toWide(element->value).c_str() : L"");
     return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
 }
 
