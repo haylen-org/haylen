@@ -129,7 +129,7 @@ endif()
 # SDL reads the keys of the whole page on the web, so a page that hosts the app next to elements of its own, such as an editor, could keep their keys from the app only by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks.
 # The Direct3D devices compose transparent windows of Windows through DirectComposition, whose visual the redirection surface of the window covers, so the last patch creates such windows without one.
 if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
-  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-view-frame.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-tvos-mouse.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-frame-rate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-composition.patch")
+  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-view-frame.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-tvos-mouse.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-frame-rate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-composition.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-x11-quick-clicks.patch")
   set(sdl_hash 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3)
   haylen_patched_package_key(sdl_cache_key ${sdl_hash} ${sdl_patches})
   # SDL picks its UIKit backend by the system name, which Mac Catalyst builds name Darwin for the macOS SDK they compile against, so SDL configures with the name of iOS there.

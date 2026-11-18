@@ -441,6 +441,10 @@ SDL listens for the keys of the whole page on the window of the browser. So a pa
 
 The Direct3D devices compose a transparent window of Windows with the desktop through a swapchain of DirectComposition with premultiplied alpha. SDL creates every window with a redirection surface, which covers the visual of that swapchain. The patch creates the transparent windows that draw through neither OpenGL nor Vulkan with `WS_EX_NOREDIRECTIONBITMAP`, so the visual shows. The windows of OpenGL keep the redirection surface, through which SDL makes them transparent.
 
+#### sdl-x11-quick-clicks.patch
+
+On X11, SDL hears every press and release of a mouse twice, once from the device itself and once from the virtual pointer that merges every device, and it counts on the state of the buttons to drop the second copy. The X server may deliver the press and the release of a quick click from the device before those of the virtual pointer. So a tap of a touchpad, a click that an assistive tool or a remote desktop makes through the XTEST extension, or a mouse that releases its button at once reached the app as a double click. The patch remembers the last press and the last release that SDL took from a device, and drops the event of the virtual pointer with the same source, button and time, while a press of the virtual pointer whose device event SDL skipped still reaches the app.
+
 #### box2d-material-contacts.patch
 
 Box2D recycles a contact between two shapes that moved less than about 5 centimeters or 11 degrees against each other since its last update. A recycled contact keeps its points and also the friction, restitution, rolling resistance and tangent speed it mixed from the shapes then. So a crate at rest on a belt that starts to run, or on a ramp that turns to ice, never felt the new material. The patch makes `b2Shape_SetFriction`, `b2Shape_SetRestitution` and `b2Shape_SetSurfaceMaterial` clear the recycling of every contact of the shape, so the next step updates those contacts with the new material.
