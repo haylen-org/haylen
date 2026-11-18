@@ -10,7 +10,7 @@
 
 namespace haylen::platform {
 
-std::vector<AppleBridge::WaitingEvent>& AppleBridge::waiting = *new std::vector<WaitingEvent>();
+KeptEvents& AppleBridge::waiting = *new KeptEvents();
 bool AppleBridge::running = false;
 
 void AppleBridge::setHandler(NSString* method, HaylenCancellableHandler handler) {
@@ -93,7 +93,7 @@ void AppleBridge::emit(NSString* event, id payload, const Bridge::EmitOptions& o
     // The event reaches the bridge under the lock, so an app that stops meanwhile never drops it: it waits for the next app instead.
     @synchronized([HaylenBridge class]) {
         if (!running) {
-            waiting.push_back({.event = event.UTF8String, .payload = std::move(*encoded), .options = options});
+            waiting.keep({.name = event.UTF8String, .json = std::move(encoded->json), .buffers = std::move(encoded->buffers), .views = std::move(encoded->views), .options = options});
             return;
         }
 
@@ -109,11 +109,9 @@ void AppleBridge::setAppRunning(bool value) {
             return;
         }
 
-        for (WaitingEvent& entry : waiting) {
-            BridgeRelay::emit(entry.event, entry.payload.json, std::move(entry.payload.buffers), entry.options);
+        for (KeptEvents::Event& entry : waiting.take()) {
+            BridgeRelay::emit(entry.name, entry.json, std::move(entry.buffers), entry.options);
         }
-
-        waiting.clear();
     }
 }
 

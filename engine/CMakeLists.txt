@@ -534,6 +534,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/ConsoleRelay.cpp
   src/platform/DevelopmentConnection.cpp
   src/platform/DevelopmentSession.cpp
+  src/platform/KeptEvents.cpp
   src/platform/native/NativeApi.cpp
   src/platform/native/NativeCallback.cpp
   src/platform/native/NativeCallbacks.cpp

@@ -189,6 +189,7 @@ set(HAYLEN_TEST_SOURCES
   platform/FrameTimerTests.cpp
   platform/GraphicsApiOrderTests.cpp
   platform/HeadlessPlayerTests.cpp
+  platform/KeptEventsTests.cpp
   platform/LaunchOptionsTests.cpp
   platform/LinuxSystemReaderTests.cpp
   platform/LinuxVisualColorTests.cpp

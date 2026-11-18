@@ -1231,7 +1231,7 @@ The same plugin in Objective-C:
 | `viewController`, `windowScene` | The topmost view controller that the window of the app presents, or the root view controller while nothing is presented, and the window scene of the app, on iOS, tvOS and Mac Catalyst. SDKs that present UI or need a scene take them. Both are `nil` until the scene connects. |
 | `window` | The window of the app on macOS, `nil` until the app finished launching. |
 
-Events that native code sends while no app runs, such as while the app launches or restarts, wait in the runtime and reach the next app in order once it starts. So a link that opens the app, which the plugin sends retained, reaches the first Lua listener of its name however late it comes.
+Events that native code sends while no app runs, such as while the app launches or restarts, wait in the runtime, up to 32 of each name with the oldest dropped first, and reach the next app in order once it starts. So a link that opens the app, which the plugin sends retained, reaches the first Lua listener of its name however late it comes.
 
 ### Events of the app
 

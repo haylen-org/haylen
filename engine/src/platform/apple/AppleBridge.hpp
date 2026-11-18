@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "haylen/platform/Bridge.hpp"
+#include "platform/KeptEvents.hpp"
 
 namespace haylen::platform {
 
@@ -27,7 +28,7 @@ class AppleBridge final {
     // Runs the cancel block that the handler of a pending call returned, and drops the answer that may still come.
     static void cancel(std::uint64_t call);
 
-    // Sends a native event to the engine, where NSData values anywhere inside the payload cross as byte buffers, and drops a payload that JSON cannot hold. Events sent while no app runs, such as while the app launches or restarts, wait for the next app.
+    // Sends a native event to the engine, where NSData values anywhere inside the payload cross as byte buffers, and drops a payload that JSON cannot hold. Events sent while no app runs, such as while the app launches or restarts, wait for the next app, up to `KeptEvents::kLimitPerName` of each name.
     static void emit(NSString* event, id payload, const Bridge::EmitOptions& options);
 
     // Follows whether an app runs. When one starts, the events that waited reach its bridge in order.
@@ -49,12 +50,6 @@ class AppleBridge final {
     [[nodiscard]] static id decode(std::string_view json, std::span<const std::vector<std::byte>> buffers);
 
   private:
-    struct WaitingEvent {
-        std::string event;
-        Encoded payload;
-        Bridge::EmitOptions options;
-    };
-
     [[nodiscard]] static NSMutableDictionary<NSString*, HaylenCancellableHandler>* getHandlers();
 
     // The calls that wait for their answer, each with the cancel block its handler returned or NSNull.
@@ -70,7 +65,7 @@ class AppleBridge final {
     static void answer(std::uint64_t call, NSString* method, BOOL ok, id result);
 
     // The events sent while no app runs, such as the link that opened the app, which native plugins send while it launches.
-    static std::vector<WaitingEvent>& waiting;
+    static KeptEvents& waiting;
     static bool running;
 };
 
