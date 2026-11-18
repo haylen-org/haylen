@@ -78,6 +78,7 @@ std::optional<double> Scrollbar::interact(Context& context, const math::Rect& ar
 
     const ImGuiID id = ImGui::GetID("##scrollbar");
     const ImRect box = ImGuiConverter::toImRect(hit);
+    context.takePointer(hit);
     if (!ImGui::ItemAdd(box, id)) {
         hovered = held = grabbing = false;
         return std::nullopt;

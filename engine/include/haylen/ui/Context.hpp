@@ -267,6 +267,7 @@ class Context final {
     }
     void emit(const Component& component, std::string name, core::Json value = core::Json::object());
     void blockPointer(const math::Rect& area);
+    void takePointer(const math::Rect& area);
 
     // A rounded surface pushes its area and corner radius around the drawing of the nodes inside it, so their highlights round concentric with its corners. Popups, dialogs and the other windows of their own never take the corners of a surface around them.
     void pushEnclosure(const math::Rect& bounds, float radius);

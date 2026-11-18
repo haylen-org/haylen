@@ -3506,7 +3506,7 @@ Builds a GUI from the node table `tree`, shows it and returns its [`Gui`](#gui).
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `placement` | string | `'safe'` | The value `'safe'` lays out the root inside the safe area of the screen, away from notches and system bars. The value `'screen'` lays it out over the whole visible screen. A screen of the [navigation](#navigation) lays out in the area of its stack instead. |
-| `layer` | integer | `0` | GUIs draw in ascending layer order. GUIs on the same layer draw in the order they were mounted, so a later GUI covers an earlier one with everything it holds, the content of its scrolls included. |
+| `layer` | integer | `0` | GUIs draw in ascending layer order. GUIs on the same layer draw in the order they were mounted, so a later GUI covers an earlier one with everything it holds, the content of its scrolls included. It also takes the pointer over its controls, its surfaces, such as cards and panels, and its scroll areas, so a press there never reaches the GUIs under it, while a press elsewhere still does. |
 | `owner` | table or userdata | none | Unmounts the GUI when the owner is released, such as a scene when it unloads, or collected, like the other [owners of `haylen.events`](events.md#owners). |
 | `sharedFocus` | boolean | `false` | Joins the navigation space of the other GUIs that share the focus, as [`gui.sharedFocus`](#guisharedfocus) describes. |
 

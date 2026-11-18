@@ -349,6 +349,10 @@ void Context::blockPointer(const math::Rect& area) {
     backend.blockPointer(area);
 }
 
+void Context::takePointer(const math::Rect& area) {
+    backend.takePointer(area);
+}
+
 void Context::pushEnclosure(const math::Rect& bounds, float radius) {
     enclosures.push_back({.bounds = bounds, .radius = radius, .window = ImGui::GetCurrentWindow()->RootWindow});
 }

@@ -141,7 +141,16 @@ class Backend final {
     // True while the pointer is over an ImGui window, an interactive element or a region a component blocked, so the app can ignore that input.
     [[nodiscard]] bool isUsingPointer() const;
     [[nodiscard]] bool isUsingKeyboard() const;
+
+    // Keeps the pointer from the app over an area of a surface, which also takes the pointer from the GUIs drawn under it.
     void blockPointer(const math::Rect& area);
+
+    // Takes the pointer over an area in UI coordinates of the GUI being drawn, such as an item, from the GUIs drawn under it.
+    void takePointer(const math::Rect& area);
+
+    // Each GUI of the window of app GUIs draws between these calls. The pointer belongs to the GUI that drew last over it in the last frame, or to the GUI that holds a press, so the items and the scroll areas of a GUI never take it from a GUI drawn above them.
+    void beginGuiPointer(const void* gui);
+    void endGuiPointer();
 
     // Shows a cursor shape for this frame while the UI has the pointer, such as the cursor a node asks for, in place of the one ImGui chooses.
     void setCursor(platform::Window::Cursor value) noexcept {
@@ -401,6 +410,23 @@ class Backend final {
     math::Rect safeRect;
     std::vector<math::Rect> blocked;
     std::vector<math::Rect> blockedPrevious;
+
+    // An area of a GUI that takes the pointer, in the window that its items hover in.
+    struct PointerArea {
+        math::Rect area;
+        const void* gui = nullptr;
+        ImGuiID window = 0;
+    };
+    void addPointerArea(const math::Rect& area, ImGuiID window);
+    void findPointerOwner();
+    std::vector<PointerArea> pointerAreas;
+    std::vector<PointerArea> pointerAreasPrevious;
+    std::optional<PointerArea> pointerOwner;
+    const void* drawingGui = nullptr;
+    const void* pressingGui = nullptr;
+    const void* pressingGuiPrevious = nullptr;
+    ImGuiWindow* hoveredWindow = nullptr;
+    ImGuiID aliveBefore = 0;
     ImGuiID transparentWindow = 0;
     ImGuiID dragKeeper = 0;
     int inertDepth = 0;

@@ -127,6 +127,7 @@ bool RangeSlider::follow(Context& context, const math::Rect& bounds, const math:
     const ImGuiID itemId = ImGui::GetID("##range");
     const ImRect box = ImGuiConverter::toImRect(bounds);
     const bool shown = ImGui::ItemAdd(box, itemId);
+    context.takePointer(bounds);
     context.getFocus().addTarget(itemId, bounds);
 
     if (!shown) {

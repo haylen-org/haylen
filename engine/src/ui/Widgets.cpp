@@ -73,6 +73,7 @@ Widgets::Interaction Widgets::interact(Context& context, const math::Rect& bound
 
     // Items scrolled out of view still register, so navigation can reach them and scroll them in. Items that never take the focus, such as the arrows of a stepper, stay out of navigation.
     const bool shown = ImGui::ItemAdd(box, id);
+    context.takePointer(bounds);
 
     if ((flags & ImGuiButtonFlags_NoNavFocus) == 0) {
         context.getFocus().addTarget(id, bounds);
@@ -432,6 +433,7 @@ bool Widgets::slider(Context& context, const math::Rect& bounds, double& value, 
     const ImGuiID id = ImGui::GetID("##slider");
     const ImRect box = ImGuiConverter::toImRect(bounds);
     const bool shown = ImGui::ItemAdd(box, id);
+    context.takePointer(bounds);
     context.getFocus().addTarget(id, bounds);
 
     if (!shown) {

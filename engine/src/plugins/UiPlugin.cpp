@@ -448,10 +448,13 @@ void UiPlugin::beginWindow(const char* name, ImGuiWindowFlags flags) {
     ImGui::PopStyleVar(2);
 }
 
-// Every GUI moves up together while the on-screen keyboard would cover the focused text field.
+// Every GUI moves up together while the on-screen keyboard would cover the focused text field. The GUIs share one window, so the backend gives the pointer to the GUI that drew last over it.
 void UiPlugin::drawGuis(std::size_t first, std::size_t last, bool inert) {
     for (std::size_t index = first; index < last; ++index) {
-        drawGui(*drawnGuis[index], inert);
+        const Mounted& entry = *drawnGuis[index];
+        backend->beginGuiPointer(entry.gui.get());
+        drawGui(entry, inert);
+        backend->endGuiPointer();
     }
 }
 

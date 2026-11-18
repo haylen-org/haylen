@@ -25,6 +25,7 @@ void PlayArea::readProperties(PropertyReader& reader) {
 void PlayArea::render(Context& context, const math::Rect& bounds) {
     const ImGuiID itemId = ImGui::GetID("##play");
     ImGui::ItemAdd(ImGuiConverter::toImRect(bounds), itemId);
+    context.takePointer(bounds);
     context.getFocus().addPlayArea(itemId, bounds);
 
     const ImGuiContext& state = *GImGui;

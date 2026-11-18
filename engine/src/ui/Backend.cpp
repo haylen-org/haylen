@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstring>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 
@@ -800,8 +801,89 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     deferredLists.clear();
     ImGui::NewFrame();
     scrollArbiter->beginFrame(deltaSeconds);
+    findPointerOwner();
     ImGui::ErrorRecoveryStoreState(&recovery->state);
     frameActive = true;
+}
+
+// The areas of the last frame tell which GUI the pointer is over now, since the GUIs share one window, where an item or a child window of a GUI drawn first would otherwise keep the pointer from the GUIs drawn over it. A press stays with the GUI that holds it, and a press of no GUI, such as on empty space, leaves the pointer to ImGui, as does a window above the GUIs, such as a window component.
+void Backend::findPointerOwner() {
+    std::swap(pointerAreasPrevious, pointerAreas);
+    pointerAreas.clear();
+    pressingGuiPrevious = std::exchange(pressingGui, nullptr);
+    pointerOwner.reset();
+
+    const ImGuiContext& state = *imguiContext;
+    if (state.HoveredWindow == nullptr || state.HoveredWindow->RootWindow->ID != transparentWindow) {
+        return;
+    }
+
+    const void* holder = state.ActiveId != 0 ? pressingGuiPrevious : nullptr;
+    if (state.ActiveId != 0 && holder == nullptr) {
+        return;
+    }
+
+    const math::Vec2 pointer{state.IO.MousePos.x, state.IO.MousePos.y};
+    for (const PointerArea& candidate : pointerAreasPrevious | std::views::reverse) {
+        if (holder != nullptr && candidate.gui != holder) {
+            continue;
+        }
+
+        if (candidate.area.contains(pointer)) {
+            pointerOwner = candidate;
+            return;
+        }
+    }
+
+    // A press that left the areas of its GUI hovers nothing, so its release clicks nothing.
+    if (holder != nullptr) {
+        pointerOwner = PointerArea{.gui = holder};
+    }
+}
+
+void Backend::beginGuiPointer(const void* gui) {
+    drawingGui = gui;
+    ImGuiContext& state = *imguiContext;
+    aliveBefore = state.ActiveIdIsAlive;
+    if (!pointerOwner) {
+        return;
+    }
+
+    hoveredWindow = state.HoveredWindow;
+    state.HoveredWindow = gui == pointerOwner->gui ? ImGui::FindWindowByID(pointerOwner->window) : nullptr;
+}
+
+void Backend::endGuiPointer() {
+    ImGuiContext& state = *imguiContext;
+    if (aliveBefore == 0 && state.ActiveIdIsAlive != 0) {
+        pressingGui = drawingGui;
+    }
+
+    if (pointerOwner) {
+        state.HoveredWindow = hoveredWindow;
+    }
+
+    drawingGui = nullptr;
+}
+
+void Backend::takePointer(const math::Rect& area) {
+    addPointerArea(area, ImGui::GetCurrentWindow()->ID);
+}
+
+// Only the GUIs of the window of app GUIs share their window, and an area counts where its window shows it.
+void Backend::addPointerArea(const math::Rect& area, ImGuiID window) {
+    const ImGuiWindow& current = *ImGui::GetCurrentWindow();
+    if (drawingGui == nullptr || current.RootWindow->ID != transparentWindow) {
+        return;
+    }
+
+    const math::Rect clip = math::Rect::fromMinMax({current.ClipRect.Min.x, current.ClipRect.Min.y}, {current.ClipRect.Max.x, current.ClipRect.Max.y});
+    const math::Rect shown = area.intersection(clip);
+    if (shown.isEmpty()) {
+        return;
+    }
+
+    pointerAreas.push_back({.area = shown, .gui = drawingGui, .window = window});
 }
 
 math::Rect Backend::getDisplayRect() const noexcept {
@@ -836,6 +918,7 @@ void Backend::releaseTravelledTouch() {
 
 void Backend::blockPointer(const math::Rect& area) {
     blocked.push_back(area);
+    takePointer(area);
 }
 
 bool Backend::isUsingPointer() const {
@@ -869,6 +952,9 @@ bool Backend::beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childF
     const ImGuiWindowFlags inputs = inertDepth > 0 ? ImGuiWindowFlags_NoMouseInputs : ImGuiWindowFlags_None;
     const bool visible = ImGui::BeginChild(id, {size.x, size.y}, childFlags, windowFlags | inputs);
     const ImGuiWindow& child = *ImGui::GetCurrentWindow();
+    if (inertDepth == 0) {
+        addPointerArea(math::Rect::fromMinMax({child.Pos.x, child.Pos.y}, {child.Pos.x + child.Size.x, child.Pos.y + child.Size.y}), child.ID);
+    }
     ChildCall call{.owner = this, .window = &child};
     child.ParentWindow->DrawList->AddCallback(&runChildCall, &call, sizeof(call));
     return visible;

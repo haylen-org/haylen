@@ -360,6 +360,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         options.scrollbar->draw(context, 1.0F);
     }
 
+    context.takePointer(bounds);
     context.getFocus().addTarget(id, bounds);
     Widgets::drawFocusRing(context, bounds, id, context.getMetric(Theme::Metric::ControlRadius));
     return {.changed = edited || shortened, .submitted = submitted};

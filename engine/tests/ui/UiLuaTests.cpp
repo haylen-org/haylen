@@ -111,6 +111,31 @@ TEST_F(UiLuaTest, MountsTreesAndCallsHandlers) {
     EXPECT_EQ(fixture.lua("return clicks[#clicks] .. ' ' .. hud:get('day').text .. ' ' .. hud:get('play').text"), "changed Day 2 Go");
 }
 
+TEST_F(UiLuaTest, GivesThePointerToTheGuiOfTheHigherLayer) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        clicks = {}
+        local function record(event) clicks[#clicks + 1] = event.id end
+        page = ui.mount(ui.column{
+            ui.button{id = 'under', text = 'Under', width = 600, height = 200, onClick = record},
+            ui.scroll{id = 'list', width = 600, height = 400, ui.column{ui.button{id = 'row', text = 'Row', width = 600, height = 120, onClick = record}}},
+        }, {placement = 'screen'})
+        card = ui.mount(ui.column{
+            ui.button{id = 'overButton', text = 'Over', width = 300, height = 120, onClick = record},
+            ui.card{id = 'overList', width = 400, height = 300, ui.button{id = 'overRow', text = 'Over the list', onClick = record}},
+        }, {placement = 'screen', layer = 100})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    ASSERT_EQ(fixture.lua("local b = card:bounds('overList') local l = page:bounds('list') return tostring(b.y < l.y + l.height and b.y + b.height > l.y)"), "true");
+
+    click("card", "overButton");
+    click("card", "overRow");
+    click("page", "row");
+    EXPECT_EQ(fixture.lua("return table.concat(clicks, ', ')"), "overButton, overRow");
+}
+
 TEST_F(UiLuaTest, PublishesMountsAndEndsWhatGuisOwn) {
     // clang-format off
     fixture.runLua(R"(
