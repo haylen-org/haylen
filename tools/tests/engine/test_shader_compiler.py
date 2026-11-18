@@ -93,6 +93,15 @@ class ShaderCompilerTest:
         assert rebuilt == tmp_path / "cache" / "haylen-shaderc-1234567" / executable
         assert rebuilt.read_text(encoding="utf-8") == "rebuilt"
 
+    @pytest.mark.skipif(Host.system() != "windows", reason="Only Windows runs a 32-bit CMake on a 64-bit processor.")
+    def test_a_32_bit_cmake_on_64_bit_windows_downloads_the_binary_of_the_machine(self, tmp_path):
+        url, digest = ShaderCompilerTest.archive(tmp_path, "haylen-shaderc-9.9.9-windows-x64.zip", {"haylen-shaderc.exe": "compiler"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": "file:///missing.tar.gz", "sha256": "0" * 64}, "binaries": {"windows-x64": {"url": url, "sha256": digest}}}
+        # Windows hands a 32-bit process, such as the CMake of Visual Studio, the processor of its emulation and the one of the machine in a second variable.
+        run, compiler = ShaderCompilerTest.provide(tmp_path, pins, {"PROCESSOR_ARCHITECTURE": "x86", "PROCESSOR_ARCHITEW6432": "AMD64"})
+        assert run.returncode == 0, run.stderr
+        assert compiler.read_text(encoding="utf-8") == "compiler"
+
     def test_a_download_that_differs_from_its_digest_fails_and_keeps_nothing(self, tmp_path):
         url, digest = ShaderCompilerTest.archive(tmp_path, "haylen-shaderc-9.9.9-host.tar.gz", {"haylen-shaderc": "compiler"})
         pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": url, "sha256": digest}, "binaries": {ShaderCompilerTest.host(): {"url": url, "sha256": "0" * 64}}}
