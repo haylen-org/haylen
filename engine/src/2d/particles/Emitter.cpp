@@ -496,6 +496,7 @@ math::Vec2 Emitter::pickShapePoint(std::size_t& pixel) {
         return {point.x * scaleOfPixel.x, point.y * scaleOfPixel.y};
     }
     }
+
     return {};
 }
 
@@ -520,6 +521,7 @@ Emitter::Spawn Emitter::pickSpawn() {
         result.angle = outward + math::Math::kPi * 0.5F + jitter;
         break;
     }
+
     if (config.shape == EmitterConfig::Shape::Cone) {
         result.offset = math::Vec2::fromAngle(result.angle, config.shapeSize.x * scale * std::sqrt(random.nextFloat()));
     }
@@ -1040,6 +1042,7 @@ math::Rect Emitter::frameAt(std::size_t index, float life) const noexcept {
     case Mode::Random:
         return frames[particles.frames[index] % count];
     }
+
     return frames.front();
 }
 

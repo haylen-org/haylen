@@ -89,6 +89,7 @@ struct EnumNames<Enum> {
     static std::optional<Enum> fromName(std::string_view name) {
         return particles2d::EmitterConfig::fromName(ParticleEnum<Enum>::kNames, name);
     }
+
     static std::string_view name(Enum value) {
         return particles2d::EmitterConfig::nameOf(ParticleEnum<Enum>::kNames, value);
     }
@@ -103,6 +104,7 @@ template <> struct Converter<particles2d::EmitterConfig::CountRange> {
         Stack::push(L, value.max);
         lua_rawseti(L, -2, 2);
     }
+
     static particles2d::EmitterConfig::CountRange read(lua_State* L, int index) {
         if (lua_istable(L, index)) {
             const std::vector<std::size_t> pair = Stack::read<std::vector<std::size_t>>(L, index);
