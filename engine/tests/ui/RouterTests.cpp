@@ -292,6 +292,43 @@ TEST_F(RouterTest, KeepsTheStateWhenItsTabsCloseFirstAndClosesWhenItFailsToBuild
     EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"9\"");
 }
 
+// A plus sign stands for a space only in a query, so a segment of a path keeps it.
+TEST_F(RouterTest, ReadsAPlusSignAsASpaceOnlyInTheQuery) {
+    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack({.gui = frame, .node = "middle"}, make("root"));
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = {{.name = "search", .path = "search/{term}", .query = {{"q", Router::Type::String}}}}, .stack = stack});
+    EXPECT_EQ(router->match("search/rock+roll?q=rock+roll")->parameters, (core::Json{{"term", "rock+roll"}, {"q", "rock roll"}}));
+}
+
+// A saved location whose query no longer reads as its type is left out, and the rest of the state builds again.
+TEST_F(RouterTest, LeavesOutASavedLocationThatNoRouteReads) {
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs});
+    frames(2);
+    router->restore({{"tab", "search"}, {"stacks", {{"search", {"artist/42", "artist/42/album/7?track=first"}}}}});
+    frames(30);
+    EXPECT_EQ(tabs->getSelected(), "search");
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"42\"");
+}
+
+// A router whose tabs closed shows nothing, so the links, the one that launched the app among them, go to a router that still shows.
+TEST_F(RouterTest, LeavesLinksToTheRoutersThatStillShow) {
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/12"}});
+    frames(2);
+    const std::shared_ptr<NavigationTabs> gone = createTabs();
+    const std::shared_ptr<Router> stale = getNavigation().createRouter({.routes = createRoutes(), .tabs = gone, .schemes = {"music"}});
+    gone->close();
+
+    const std::shared_ptr<NavigationTabs> tabs = createTabs();
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = createRoutes(), .tabs = tabs, .schemes = {"music"}});
+    frames(30);
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"12\"");
+
+    getEngine().getEvents().emit(core::LifecycleEvent::kLinkOpened, {{"url", "music://artist/7"}});
+    frames(30);
+    EXPECT_EQ(describe(*tabs->getCurrent()), "search artist:\"7\"");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 TEST_F(RouterTest, RefusesRoutesThatCannotWork) {
     const std::shared_ptr<NavigationTabs> tabs = createTabs();
     EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = createRoutes()})), std::invalid_argument);
@@ -299,6 +336,8 @@ TEST_F(RouterTest, RefusesRoutesThatCannotWork) {
     EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a", .tab = "lost"}}, .tabs = tabs})), std::invalid_argument);
     EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a", .parent = "b"}, {.name = "b", .path = "b", .parent = "a"}}, .tabs = tabs})), std::invalid_argument);
     EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a/{id:color}"}}, .tabs = tabs})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "a", .path = "a", .detail = true, .presentation = Presentation::Options{}}}, .tabs = tabs})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().createRouter({.routes = {{.name = "artist", .path = "artist/{artist}"}, {.name = "album", .path = "album/{id}", .parent = "artist"}}, .tabs = tabs})), std::invalid_argument);
 }
 
 } // namespace haylen::ui

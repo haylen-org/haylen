@@ -274,7 +274,7 @@ The screen that a pop or a dismissal would take away hears `back` first and may 
 
 ## Routes for links
 
-A link that opens the app, such as a link to an album that a friend sent, lands on the screen it names, with the screens the person would have reached by hand under it. The routes of the app decide that state. A route has a path whose segments may be typed parameters, such as `album/{id:integer}`, and typed query parameters. It names the tab it shows in, the route whose screens lie under it, and whether its screen is a detail or a presentation.
+A link that opens the app, such as a link to an album that a friend sent, lands on the screen it names, with the screens the person would have reached by hand under it. The routes of the app decide that state. A route has a path whose segments may be typed parameters, such as `album/{id:integer}`, and typed query parameters. It names the tab it shows in, the route whose screens lie under it, and whether its screen is a detail or a presentation. The screens of the parents come from the parameters of the route, so its path holds every path parameter of its parents. A plus sign stands for a space only in a query.
 
 ```lua
 local router = ui.router{tabs = tabs, schemes = {'music'}, hosts = {'music.example.com'}, restore = true, routes = {

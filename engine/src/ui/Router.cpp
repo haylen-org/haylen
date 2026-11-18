@@ -38,12 +38,16 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
         if (!route.tab.empty() && (!options.tabs || !options.tabs->hasTab(route.tab))) {
             throw std::invalid_argument("The route \"" + route.name + "\" shows in the tab \"" + route.tab + "\", which the router has no tabs with.");
         }
+        if (route.detail && route.presentation) {
+            throw std::invalid_argument("The route \"" + route.name + "\" shows its screen as a detail or as a presentation, not as both.");
+        }
 
         patterns.push_back(compile(route));
     }
 
-    // Every parent is a route of a stack, and following the parents never comes back to a route.
+    // Every parent is a route of a stack whose path parameters the route has too, since its screens come from the parameters of the route, and following the parents never comes back to a route.
     for (const Route& route : options.routes) {
+        const std::vector<Segment>& own = patterns[static_cast<std::size_t>(&route - options.routes.data())];
         std::set<std::string, std::less<>> visited{route.name};
         for (const Route* step = &route; !step->parent.empty();) {
             const auto parent = std::ranges::find(options.routes, step->parent, &Route::name);
@@ -55,6 +59,13 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
             }
             if (!visited.insert(parent->name).second) {
                 throw std::invalid_argument("The parents of the route \"" + route.name + "\" lead back to a route they passed.");
+            }
+
+            for (const Segment& segment : patterns[static_cast<std::size_t>(parent - options.routes.begin())]) {
+                const bool held = !segment.parameter || std::ranges::any_of(own, [&segment](const Segment& entry) { return entry.parameter && entry.text == segment.text; });
+                if (!held) {
+                    throw std::invalid_argument("The path of the route \"" + route.name + "\" lacks the parameter \"" + segment.text + "\" of its parent \"" + parent->name + "\".");
+                }
             }
 
             step = &*parent;
@@ -81,8 +92,12 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
 
 Router::~Router() = default;
 
-// A link comes from outside the app, so a link that no route reads is told like one that no route matches, and a screen that fails to open reaches the error screen instead of the code that delivered the link.
+// A link comes from outside the app, so a link that no route reads is told like one that no route matches, and a screen that fails to open reaches the error screen instead of the code that delivered the link. A router whose tabs or stack closed shows nothing, so it leaves links to the routers that still show.
 void Router::follow(const std::string& url) {
+    if (!isShowing()) {
+        return;
+    }
+
     std::optional<Match> found;
     try {
         found = match(url);
@@ -142,12 +157,13 @@ std::vector<Router::Segment> Router::compile(const Route& route) {
     return segments;
 }
 
-std::string Router::decode(std::string_view text) {
+// Only a query writes a space as a plus sign, so a plus sign of a path stays one.
+std::string Router::decode(std::string_view text, bool query) {
     std::string decoded;
     decoded.reserve(text.size());
     for (std::size_t index = 0; index < text.size(); ++index) {
         const char character = text[index];
-        if (character == '+') {
+        if (query && character == '+') {
             decoded.push_back(' ');
             continue;
         }
@@ -240,7 +256,7 @@ std::optional<Router::Address> Router::parse(std::string_view link) const {
         const std::string_view part = path.substr(0, slash);
         path = slash == std::string_view::npos ? std::string_view{} : path.substr(slash + 1);
         if (!part.empty()) {
-            address.segments.push_back(decode(part));
+            address.segments.push_back(decode(part, false));
         }
     }
 
@@ -255,7 +271,7 @@ std::optional<Router::Address> Router::parse(std::string_view link) const {
 
         const std::size_t equals = pair.find('=');
         const std::string_view value = equals == std::string_view::npos ? std::string_view{} : pair.substr(equals + 1);
-        address.query.emplace_back(decode(pair.substr(0, equals)), decode(value));
+        address.query.emplace_back(decode(pair.substr(0, equals), true), decode(value, true));
     }
 
     return address;
@@ -536,7 +552,7 @@ core::Json Router::save() const {
     return state;
 }
 
-// A saved location that no route matches anymore, such as after an update of the app, is left out with a warning.
+// A saved location that no route matches or reads anymore, such as after an update of the app, is left out with a warning.
 void Router::restore(const core::Json& state) {
     if (closed) {
         throw std::logic_error("The router is closed.");
@@ -551,7 +567,14 @@ void Router::restore(const core::Json& state) {
         return found != state.end() && found->is_array() ? *found : core::Json::array();
     };
     const auto find = [this](const core::Json& location) -> std::optional<Match> {
-        std::optional<Match> found = location.is_string() ? match(location.get<std::string>()) : std::nullopt;
+        std::optional<Match> found;
+        try {
+            found = location.is_string() ? match(location.get<std::string>()) : std::nullopt;
+        } catch (const std::invalid_argument& error) {
+            core::Log::warning("No route reads the saved location {}, so the navigation starts without it. {}", location.dump(), error.what());
+            return std::nullopt;
+        }
+
         if (!found) {
             core::Log::warning("The saved location {} matches no route, so the navigation starts without it.", location.dump());
         }
@@ -596,6 +619,10 @@ void Router::restore(const core::Json& state) {
     }
 }
 
+bool Router::isShowing() const noexcept {
+    return options.tabs ? !options.tabs->isClosed() : !options.stack->isClosed();
+}
+
 void Router::persist() const {
     engine.getPlugin<plugins::StoragePlugin>().getNavigationState().set(save());
 }
@@ -606,8 +633,7 @@ void Router::close() {
     }
 
     // The stacks of the router may have closed first, such as when one owner ends both, and then the state they kept stays as the app stopping or the background left it.
-    const bool showing = options.tabs ? !options.tabs->isClosed() : !options.stack->isClosed();
-    if (options.restores && showing) {
+    if (options.restores && isShowing()) {
         persist();
     }
 

@@ -213,6 +213,9 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
     static constexpr float kFlingSpeed = 1800.0F;
     static constexpr float kCarrySeconds = 0.2F;
 
+    // Whether a width or a height is a finite size above 0.
+    [[nodiscard]] static bool isMeasured(float value) noexcept;
+
     // Opens the presentation: its screen joins, builds its GUI and appears.
     void open();
     void advance(float deltaSeconds);

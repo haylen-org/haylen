@@ -430,6 +430,23 @@ TEST_F(NavigationTest, FinishesAChangeWhoseHandlerChangesTheStack) {
     EXPECT_TRUE(hasEntry("artist:disappeared"));
 }
 
+// A hook that only hides the stack finishes the change, and the handlers of the stack still hear it.
+TEST_F(NavigationTest, TellsAChangeWhoseHookHidesTheStack) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        frame = ui.mount(ui.column{ui.column{id = 'middle', grow = 1, align = 'stretch'}}, {placement = 'screen'})
+        changes = {}
+        Home = {build = function() return ui.column{ui.label{text = 'Home'}} end, disappear = function() stack.shown = false end}
+        Next = {build = function() return ui.column{ui.label{text = 'Next'}} end}
+        stack = ui.navigationStack{gui = frame, id = 'middle', root = Home, onChange = function(event) changes[#changes + 1] = event.size end}
+    )");
+    // clang-format on
+    frames(2);
+    getFixture().runLua("stack:push(Next)");
+    EXPECT_EQ(getFixture().lua("return table.concat(changes, ' ') .. ' ' .. tostring(stack.shown) .. ' ' .. tostring(stack.top == Next)"), "1 2 false true");
+}
+
 // A stack in the GUI of a screen shows and hides with that screen, and closes once that screen leaves.
 TEST_F(NavigationTest, ShowsAStackInAScreenWithThatScreen) {
     const std::string hosting = R"({"kind": "column", "children": [{"kind": "column", "id": "inner", "grow": 1}]})";
@@ -863,6 +880,49 @@ TEST_F(NavigationTest, LetsGoOfTheFactoriesOfWhatCloses) {
     EXPECT_EQ(getFixture().lua("return tostring(next(held))"), "nil");
 }
 
+// A presentation dismissed while it arrives tells its screen that it appeared first, and a dismissal from that hook is the one that stands.
+TEST_F(NavigationTest, KeepsTheDismissalOfTheHookThatTellsTheScreenItAppeared) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        hooks = {}
+        Page = {
+            build = function() return ui.column{ui.label{text = 'Page'}} end,
+            appeared = function() hooks[#hooks + 1] = 'appeared' sheet:dismiss({result = 'inner'}) end,
+            disappear = function() hooks[#hooks + 1] = 'disappear' end,
+        }
+        sheet = ui.present(Page, {onDismiss = function(event) hooks[#hooks + 1] = 'dismissed ' .. event.result end})
+        sheet:dismiss({result = 'outer'})
+    )");
+    // clang-format on
+    frames(40);
+    EXPECT_EQ(getFixture().lua("return table.concat(hooks, ', ')"), "appeared, disappear, dismissed inner");
+    EXPECT_TRUE(getNavigation().getPresentations().empty());
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
+// A stack whose root fails to join closes, so it lets go of its handler.
+TEST_F(NavigationTest, ClosesAStackFromLuaWhoseRootFails) {
+    // clang-format off
+    getFixture().runLua(R"(
+        ui = require('haylen.ui')
+        frame = ui.mount(ui.column{ui.column{id = 'left', grow = 1, align = 'stretch'}, ui.column{id = 'right', grow = 1, align = 'stretch'}}, {placement = 'screen'})
+        shown = {build = function() return ui.column{ui.label{text = 'Shown'}} end}
+        first = ui.navigationStack{gui = frame, id = 'left', root = shown}
+        held = setmetatable({}, {__mode = 'k'})
+        do
+            local token = {}
+            held[token] = true
+            created, failure = pcall(ui.navigationStack, {gui = frame, id = 'right', root = shown, onChange = function() return token end})
+        end
+    )");
+    // clang-format on
+    EXPECT_EQ(getFixture().lua("return tostring(created)"), "false");
+    EXPECT_NE(getFixture().lua("return failure").find("The screen already shows in another navigation stack or in a presentation."), std::string::npos);
+    getFixture().runLua("collectgarbage() collectgarbage()");
+    EXPECT_EQ(getFixture().lua("return tostring(next(held))"), "nil");
+}
+
 // A sheet reports its detents and changes them from Lua, a presented flow hands its result to the promise of its presentation, and an alert resolves with the action the person chose.
 TEST_F(NavigationTest, PresentsSheetsAlertsAndTheirResultsFromLua) {
     // clang-format off
@@ -914,6 +974,14 @@ TEST_F(NavigationTest, ReportsMistakesFromLua) {
     EXPECT_NE(getFixture().lua("stack:push({build = function() end}, {speed = 1})").find("Unknown option \"speed\""), std::string::npos);
     EXPECT_NE(getFixture().lua("ui.navigationTabs{gui = frame, id = 'middle', tabs = {}}").find("at least one tab"), std::string::npos);
     EXPECT_NE(getFixture().lua("ui.present({build = function() end}, {style = 'popup'})").find("error: "), std::string::npos);
+
+    // Durations, widths and heights are finite numbers.
+    EXPECT_NE(getFixture().lua("stack:push({build = function() end}, {duration = 0 / 0})").find("The \"duration\" of a navigation transition is a finite number of seconds, 0 or more."), std::string::npos);
+    EXPECT_NE(getFixture().lua("stack:push({build = function() end}, {duration = math.huge})").find("The \"duration\" of a navigation transition is a finite number of seconds, 0 or more."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.present({build = function() end}, {detents = {0 / 0}})").find("The height of a detent must be finite and positive."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.present({build = function() end}, {style = 'drawer', width = math.huge})").find("The widths and heights of a presentation must be finite and positive."), std::string::npos);
+    EXPECT_NE(getFixture().lua("ui.present({build = function() end}, {maxHeight = 0 / 0})").find("The widths and heights of a presentation must be finite and positive."), std::string::npos);
+    EXPECT_TRUE(getNavigation().getPresentations().empty());
 }
 
 } // namespace haylen::ui

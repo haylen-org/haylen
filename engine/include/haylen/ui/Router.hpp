@@ -90,7 +90,7 @@ class Router final : public std::enable_shared_from_this<Router> {
         core::Json parameters = core::Json::object();
     };
 
-    // Navigation creates routers. Throws `std::invalid_argument` for no tabs and no stack or both, a route without a name or a path, a repeated name, a parent that no route has, that leads back to the route or that is not a route of a stack, a path with an unknown type or an empty parameter, and a tab that the tabs lack.
+    // Navigation creates routers. Throws `std::invalid_argument` for no tabs and no stack or both, a route without a name or a path, a repeated name, a route that is both a detail and a presentation, a parent that no route has, that leads back to the route, that is not a route of a stack or whose path has a parameter that the path of the route lacks, a path with an unknown type or an empty parameter, and a tab that the tabs lack.
     Router(Navigation& owner, core::Engine& running, Options settings);
     ~Router();
 
@@ -146,7 +146,7 @@ class Router final : public std::enable_shared_from_this<Router> {
     };
 
     [[nodiscard]] static std::vector<Segment> compile(const Route& route);
-    [[nodiscard]] static std::string decode(std::string_view text);
+    [[nodiscard]] static std::string decode(std::string_view text, bool query);
     [[nodiscard]] static std::string encode(std::string_view text);
     [[nodiscard]] static std::optional<core::Json> read(std::string_view text, Type type);
     [[nodiscard]] std::optional<Address> parse(std::string_view link) const;
@@ -167,6 +167,9 @@ class Router final : public std::enable_shared_from_this<Router> {
     void select(const Route& route) const;
     void showDetail(const Route& route, const std::shared_ptr<Screen>& screen, const NavigationTransition& transition) const;
     void present(const Route& route, std::shared_ptr<Screen> screen) const;
+
+    // Whether the tabs or the stack where the routes show are still open.
+    [[nodiscard]] bool isShowing() const noexcept;
 
     // Keeps the state of the navigation for the next start, as the app goes to the background or stops.
     void persist() const;

@@ -584,13 +584,13 @@ void Navigation::update(float deltaSeconds) {
     updateMessages();
 }
 
-// The link that launched the app reaches the first router that opens links once the app registered its handlers, after the router built the state it restored.
+// The link that launched the app reaches the first router that opens links and still shows once the app registered its handlers, after the router built the state it restored.
 void Navigation::followLaunchLink() {
     if (!launchLink || !routed) {
         return;
     }
 
-    const auto found = std::ranges::find_if(routers, [](const std::shared_ptr<Router>& router) { return router->options.links && !router->isClosed(); });
+    const auto found = std::ranges::find_if(routers, [](const std::shared_ptr<Router>& router) { return router->options.links && !router->isClosed() && router->isShowing(); });
     const std::string link = *std::exchange(launchLink, std::nullopt);
     if (found == routers.end()) {
         return;

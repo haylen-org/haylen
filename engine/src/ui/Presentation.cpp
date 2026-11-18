@@ -17,8 +17,8 @@ Presentation::Presentation(Navigation& owner, std::shared_ptr<Screen> presented,
     if (screen->getStack() || screen->getPresentation()) {
         throw std::invalid_argument("The screen already shows in a navigation stack or in a presentation.");
     }
-    if (options.maxWidth <= 0.0F || options.maxHeight <= 0.0F || (options.width && *options.width <= 0.0F)) {
-        throw std::invalid_argument("The widths and heights of a presentation must be positive.");
+    if (!isMeasured(options.maxWidth) || !isMeasured(options.maxHeight) || (options.width && !isMeasured(*options.width))) {
+        throw std::invalid_argument("The widths and heights of a presentation must be finite and positive.");
     }
     if (options.detents.empty()) {
         throw std::invalid_argument("A sheet needs at least one detent.");
@@ -26,8 +26,8 @@ Presentation::Presentation(Navigation& owner, std::shared_ptr<Screen> presented,
     if (options.detent >= options.detents.size()) {
         throw std::invalid_argument("The detent a sheet opens at must be one of its detents.");
     }
-    if (std::ranges::any_of(options.detents, [](const Detent& entry) { return entry.kind == Detent::Kind::Height && entry.height <= 0.0F; })) {
-        throw std::invalid_argument("The height of a detent must be positive.");
+    if (std::ranges::any_of(options.detents, [](const Detent& entry) { return entry.kind == Detent::Kind::Height && !isMeasured(entry.height); })) {
+        throw std::invalid_argument("The height of a detent must be finite and positive.");
     }
     if (!options.modal && options.style != Style::Sheet) {
         throw std::invalid_argument("Only a sheet can leave the input of the app under it, so only a sheet can be not modal.");
@@ -49,6 +49,10 @@ Presentation::Presentation(Navigation& owner, std::shared_ptr<Screen> presented,
 
 Presentation::~Presentation() = default;
 
+bool Presentation::isMeasured(float value) noexcept {
+    return value > 0.0F && std::isfinite(value);
+}
+
 std::optional<Presentation::Style> Presentation::styleFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kStyleNames, name, &std::pair<std::string_view, Style>::first);
     return found != kStyleNames.end() ? std::optional(found->second) : std::nullopt;
@@ -66,13 +70,19 @@ void Presentation::open() {
     }
 }
 
+// The hook that tells the screen it appeared may dismiss the presentation itself, and then that dismissal stands.
 void Presentation::dismiss(core::Json value, const std::optional<NavigationTransition>& leaving) {
     if (isDismissed()) {
         return;
     }
 
+    const std::shared_ptr<Presentation> self = shared_from_this();
     if (phase == Phase::Arriving) {
         finishArriving();
+    }
+
+    if (isDismissed()) {
+        return;
     }
 
     phase = Phase::Leaving;

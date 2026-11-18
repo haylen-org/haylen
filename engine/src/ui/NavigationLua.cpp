@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <optional>
 #include <string>
@@ -203,8 +204,8 @@ NavigationTransition NavigationLua::readTransition(lua_State* L, int index, cons
     lua::Table::readField(L, index, "effect", transition.effect);
     lua::Table::readField(L, index, "duration", transition.duration);
     lua::Table::readField(L, index, "ease", transition.ease);
-    if (transition.duration < 0.0F) {
-        luaL_error(L, "The \"duration\" of a navigation transition cannot be negative.");
+    if (!(transition.duration >= 0.0F) || !std::isfinite(transition.duration)) {
+        luaL_error(L, "The \"duration\" of a navigation transition is a finite number of seconds, 0 or more.");
     }
 
     return transition;
@@ -294,8 +295,14 @@ int NavigationLua::navigationStack(lua_State* L) {
         }
     }
 
+    // A root that fails leaves no open stack behind, which would keep its handler and take part in the system back.
     if (root) {
-        stack->push(std::move(root), {.effect = NavigationTransition::Effect::None});
+        try {
+            stack->push(std::move(root), {.effect = NavigationTransition::Effect::None});
+        } catch (...) {
+            stack->close();
+            throw;
+        }
     }
 
     pushStack(L, stack);

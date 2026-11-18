@@ -166,20 +166,18 @@ void NavigationStack::apply(std::vector<std::shared_ptr<Screen>> next, const Nav
         navigation.beginDisappear(*change->outgoing);
     }
 
-    // A hook or a handler of the change that changed the stack or showed or hid it finished this change already.
-    if (generation != started || !change) {
-        return;
-    }
-
-    if (isActive() && change->incoming) {
+    if (generation == started && change && isActive() && change->incoming) {
         navigation.beginAppear(*change->incoming);
     }
 
-    if (generation != started || !change) {
+    // A hook that changed the stack told the handlers of its own change, while one that only showed or hid the stack finished this change, which the handlers still hear.
+    if (generation != started) {
         return;
     }
 
     changed.emit(*this);
+
+    // A handler of the change that changed the stack or showed or hid it finished this change already.
     if (generation != started || !change) {
         return;
     }
