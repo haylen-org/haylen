@@ -25,6 +25,7 @@ int GlassLua::drawGlass(lua_State* L) {
         });
         // clang-format on
     }
+
     lua::Runtime::getEngine(L).getRenderer2D().drawGlass(shape, glass, lua::TypeConverter::readDrawOrder(L, 2, {kGlassFields}));
     return 0;
 }

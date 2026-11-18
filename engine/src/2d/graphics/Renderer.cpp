@@ -992,6 +992,7 @@ void Renderer::beginGroup(const GroupOptions& options) {
     if (!(options.opacity >= 0.0F && options.opacity <= 1.0F)) {
         throw std::invalid_argument("A group needs an opacity from 0 to 1.");
     }
+
     if (!(options.dither >= 0.0F)) {
         throw std::invalid_argument("A group needs a dither of zero or more.");
     }

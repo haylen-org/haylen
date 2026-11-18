@@ -51,14 +51,8 @@ void Mesh::checkIndices(std::size_t vertexCount, std::span<const std::uint32_t> 
 }
 
 void Mesh::setIndices(std::vector<std::uint32_t> value) {
-    std::swap(indices, value);
-
-    try {
-        checkIndices(vertices.size(), indices);
-    } catch (...) {
-        std::swap(indices, value);
-        throw;
-    }
+    checkIndices(vertices.size(), value);
+    indices = std::move(value);
 }
 
 void Mesh::checkPairs(std::size_t count, std::size_t first) const {

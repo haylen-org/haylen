@@ -26,6 +26,7 @@ template <> struct EnumNames<graphics2d::SpriteLayout::Field> {
     static std::optional<graphics2d::SpriteLayout::Field> fromName(std::string_view name) {
         return graphics2d::SpriteLayout::fieldFromName(name);
     }
+
     static std::string_view name(graphics2d::SpriteLayout::Field value) {
         return graphics2d::SpriteLayout::fieldName(value);
     }
