@@ -10,6 +10,7 @@ from haylen.core.tooling_context import ToolingContext
 from haylen.native.cmake_tree import CMakeTree
 from haylen.native.native_library import NativeLibrary
 from haylen.native.static_linking import StaticLinking
+from haylen.native.xc_framework import XcFramework
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
 from haylen.platforms.apple.apple_target import AppleTarget
 from haylen.toolchains.apple_sdk import AppleSdk
@@ -57,9 +58,9 @@ class AppleNativeLibraries:
         path = library.files[self.target.platform]
         if path.suffix != ".xcframework":
             return path
-        for entry in plistlib.loads((path / "Info.plist").read_bytes())["AvailableLibraries"]:
-            if entry["SupportedPlatform"] == self.target.xcframework_platform and entry.get("SupportedPlatformVariant") == self.target.xcframework_variant:
-                return path / entry["LibraryIdentifier"] / entry["LibraryPath"]
+        library_path = XcFramework.library(path, self.target.xcframework_platform, self.target.xcframework_variant)
+        if library_path is not None:
+            return library_path
         raise UnsupportedTarget(
             f'The xcframework `{Repository.shown(path)}` of the native library "{library.name}" has no slice for "{self.target.name}". Add that slice to it, or leave "{self.target.platform}" out of the platforms of the library.'
         )

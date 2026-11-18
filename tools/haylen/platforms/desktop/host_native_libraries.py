@@ -1,4 +1,3 @@
-import plistlib
 import shutil
 from pathlib import Path
 
@@ -11,6 +10,7 @@ from haylen.core.resolved_project import ResolvedProject
 from haylen.core.tooling_context import ToolingContext
 from haylen.native.cmake_tree import CMakeTree
 from haylen.native.native_library import NativeLibrary
+from haylen.native.xc_framework import XcFramework
 from haylen.toolchains.apple_sdk import AppleSdk
 
 
@@ -71,9 +71,9 @@ class HostNativeLibraries:
         path = library.files[platform]
         if path.suffix != ".xcframework":
             return path
-        for entry in plistlib.loads((path / "Info.plist").read_bytes())["AvailableLibraries"]:
-            if entry["SupportedPlatform"] == "macos" and entry.get("SupportedPlatformVariant") is None:
-                return path / entry["LibraryIdentifier"] / entry["LibraryPath"]
+        library_path = XcFramework.library(path, "macos", None)
+        if library_path is not None:
+            return library_path
         raise InvalidManifest(
             f'The xcframework `{Repository.shown(path)}` of the native library "{library.name}" has no slice of macOS. Add that slice, or leave "macos" out of the platforms of the library.'
         )
