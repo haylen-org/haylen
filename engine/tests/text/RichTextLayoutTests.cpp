@@ -17,6 +17,7 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::text {
@@ -190,6 +191,29 @@ TEST_F(RichTextLayoutTest, LinesTheTopOfADropCapUpWithTheCapitalsOfItsFirstLine)
             EXPECT_EQ(line.box.x > capital.position.x + capital.size.x, beside) << "Drop cap of size " << size << ".";
         }
     }
+}
+
+// A layout that waits for an image stays until the image arrives, so the frames in between lay nothing out again.
+TEST_F(RichTextLayoutTest, LaysOutAgainOnlyOnceAWaitedImageArrives) {
+    const graphics::Texture square = fixture.engine().getGraphics().createTexture(graphics::Image(10, 10, math::Color::white()));
+    bool loaded = false;
+    RichText pictured = make("a[img=x.png]b", {.size = 20.0F, .images = [&](std::string_view) { return loaded ? square : graphics::Texture{}; }});
+    ASSERT_TRUE(pictured.getLayout().waitingForImages);
+
+    {
+        const test::AllocationTracker allocations;
+        for (int frame = 0; frame < 3; ++frame) {
+            pictured.update(1.0F / 60.0F);
+            static_cast<void>(pictured.getLayout());
+        }
+
+        EXPECT_EQ(allocations.getTotal(), 0U);
+    }
+
+    loaded = true;
+    pictured.update(0.0F);
+    EXPECT_FALSE(pictured.getLayout().waitingForImages);
+    EXPECT_EQ(pictured.getLayout().images.size(), 1U);
 }
 
 TEST_F(RichTextLayoutTest, PlacesImagesAndIconsAgainstTheText) {

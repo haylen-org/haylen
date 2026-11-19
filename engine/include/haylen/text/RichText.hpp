@@ -74,11 +74,14 @@ class RichText final {
     [[nodiscard]] bool isRevealing();
 
   private:
+    // A layout with what it waited for when it was built: the revisions of the fonts of the system of its families and how many images of the markup were ready.
     struct CachedLayout {
         float maxWidth = 0.0F;
         float scale = 1.0F;
         std::uint64_t generation = 0;
         Layout layout;
+        std::uint64_t fontRevisions = 0;
+        std::size_t readyImages = 0;
     };
 
     static constexpr std::size_t kCachedLayouts = 4;
@@ -92,6 +95,11 @@ class RichText final {
     void requireIdle() const;
     void resetReveal() noexcept;
     [[nodiscard]] CachedLayout& getCachedLayout(float maxWidth);
+
+    // Returns whether a font or an image that a layout waited for arrived since it was built.
+    [[nodiscard]] bool hasArrived(const CachedLayout& entry) const;
+    [[nodiscard]] static std::uint64_t countFontRevisions(const Layout& laid) noexcept;
+    [[nodiscard]] std::size_t countReadyImages() const;
     [[nodiscard]] const std::vector<float>& getRevealTimes();
     [[nodiscard]] std::size_t countRevealed(float clock);
     void applyEffects(Layout& moved);

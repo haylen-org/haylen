@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/text/FontFamily.hpp"
+#include "haylen/text/SystemFonts.hpp"
 #include "text/LayoutBuilder.hpp"
 #include "text/MarkupParser.hpp"
 
@@ -127,8 +129,8 @@ void RichText::update(float deltaSeconds) {
 
     time += deltaSeconds;
 
-    // A layout that waited for an image or a font of the system is built again at the next use, until it arrives.
-    std::erase_if(layouts, [](const CachedLayout& entry) { return entry.layout.waitingForImages || entry.layout.waitingForFonts; });
+    // A layout that waited for an image or a font of the system is built again at its next use once one of them arrived.
+    std::erase_if(layouts, [this](const CachedLayout& entry) { return hasArrived(entry); });
 
     if (options.revealSpeed > 0.0F && visibleCharacters) {
         revealClock += deltaSeconds;
@@ -151,13 +153,39 @@ RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
 
     RichTextOptions at = options;
     at.maxWidth = maxWidth;
-    layouts.push_front({.maxWidth = maxWidth, .scale = options.scale, .generation = ++builds, .layout = LayoutBuilder(document, at, *registry).build()});
+    Layout built = LayoutBuilder(document, at, *registry).build();
+    const std::uint64_t fontRevisions = built.waitingForFonts ? countFontRevisions(built) : 0;
+    const std::size_t readyImages = built.waitingForImages ? countReadyImages() : 0;
+    layouts.push_front({.maxWidth = maxWidth, .scale = options.scale, .generation = ++builds, .layout = std::move(built), .fontRevisions = fontRevisions, .readyImages = readyImages});
 
     if (layouts.size() > kCachedLayouts) {
         layouts.pop_back();
     }
 
     return layouts.front();
+}
+
+bool RichText::hasArrived(const CachedLayout& entry) const {
+    if (entry.layout.waitingForFonts && countFontRevisions(entry.layout) != entry.fontRevisions) {
+        return true;
+    }
+
+    return entry.layout.waitingForImages && countReadyImages() != entry.readyImages;
+}
+
+// The revisions only grow, so their sum changes once any font of the system of the families arrives.
+std::uint64_t RichText::countFontRevisions(const Layout& laid) noexcept {
+    std::uint64_t sum = 0;
+    for (const std::shared_ptr<FontFamily>& family : laid.families) {
+        const std::shared_ptr<SystemFonts>& system = family->getFaces().systemFonts;
+        sum += system ? system->getRevision() : 0;
+    }
+
+    return sum;
+}
+
+std::size_t RichText::countReadyImages() const {
+    return static_cast<std::size_t>(std::ranges::count_if(document.images, [this](const RichTextDocument::Image& image) { return options.images(image.path).isValid(); }));
 }
 
 const Layout& RichText::getLayout() {
