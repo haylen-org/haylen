@@ -33,7 +33,7 @@ void NavigationStack::pop(const NavigationTransition& transition) {
 
 void NavigationStack::popTo(const Screen& screen, const NavigationTransition& transition) {
     checkOpen();
-    const auto found = std::ranges::find(screens, &screen, &std::shared_ptr<Screen>::get);
+    const auto found = std::ranges::find(screens, &screen, [](const std::shared_ptr<Screen>& entry) { return entry.get(); });
     if (found == screens.end()) {
         throw std::invalid_argument("The navigation stack does not hold the screen to pop to.");
     }
