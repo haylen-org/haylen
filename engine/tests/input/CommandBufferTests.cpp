@@ -274,4 +274,9 @@ TEST(CommandBufferLuaTest, TypesCommandsFromMasksAndMaps) {
     EXPECT_NE(fixture.lua("commands:settle(256)").find("The mask of a step presses a button that the command buffer does not have."), std::string::npos);
 }
 
+TEST(CommandBufferLuaTest, NamesTheOptionThatIsNotATable) {
+    test::EngineFixture fixture;
+    EXPECT_NE(fixture.lua("require('haylen.input').newCommandBuffer({buttons = {'a'}, commands = 'none'})").find("The option \"commands\" of \"newCommandBuffer\" is invalid: table expected, got string."), std::string::npos);
+}
+
 } // namespace haylen::input

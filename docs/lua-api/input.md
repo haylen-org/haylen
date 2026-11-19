@@ -2171,6 +2171,7 @@ The face buttons are named by their place, so `south` is the bottom button whate
 | `gamepad index out of range` | A gamepad index is outside `1` to `8`. It comes inside a bad argument error. |
 | `expected left or right` | The function `input.gamepadStick` got another side. It comes inside a bad argument error. |
 | `Unknown option "<key>".` | An options table has a key that the function does not take, such as the options of `input.newActionMap`, `map.devices`, `input.setGestureSettings`, `input.rumble`, `input.startGamepadMotion`, `input.editText`, `input.newCommandBuffer`, its `directions` and commands, and `input.newRecorder`. |
+| `The option "<option>" of "<function>" is invalid: <reason>.` | The `lifetimes`, `directions` or `commands` of `input.newCommandBuffer` are not tables, such as `The option "commands" of "newCommandBuffer" is invalid: table expected, got string.`. |
 | `The gamepad dead zone must be at least 0 and below 1.` | The function `input.setGamepadDeadzone` got a value out of range. |
 | `The gesture setting "<key>" must be a finite number from 0.` | The function `input.setGestureSettings` got a distance or a time that is negative or not finite. |
 | `The scroll speed must be a positive number.` | The function `input.setScrollSpeed` got `0` or less. |

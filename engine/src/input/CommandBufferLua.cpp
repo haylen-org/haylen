@@ -62,7 +62,7 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
     options.lifetimes.assign(options.buttons.size(), lifetime);
 
     if (lua_getfield(L, 1, "lifetimes") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "lifetimes", LUA_TTABLE);
         lua_pushnil(L);
         while (lua_next(L, -2) != 0) {
             const std::string_view button = lua_type(L, -2) == LUA_TSTRING ? lua_tostring(L, -2) : "";
@@ -83,7 +83,7 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
     lua_pop(L, 1);
 
     if (lua_getfield(L, 1, "directions") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "directions", LUA_TTABLE);
         const int directions = lua_gettop(L);
         lua::Table::checkFields(L, directions, {kDirectionOptions});
         lua_getfield(L, directions, "back");
@@ -99,7 +99,7 @@ int CommandBufferLua::newCommandBuffer(lua_State* L) {
     lua_pop(L, 1);
 
     if (lua_getfield(L, 1, "commands") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "commands", LUA_TTABLE);
         const int commands = lua_gettop(L);
         const auto count = static_cast<lua_Integer>(lua_rawlen(L, commands));
         for (lua_Integer entry = 1; entry <= count; ++entry) {
