@@ -2,15 +2,14 @@
 
 #include <algorithm>
 #include <array>
-#include <fstream>
-#include <iterator>
-#include <string>
+#include <filesystem>
+
+#include "support/TestFiles.hpp"
 
 namespace haylen::test {
 
 std::vector<std::uint8_t> FontCollection::read(std::string_view name) {
-    std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
-    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+    return TestFiles::read(std::filesystem::path(HAYLEN_TEST_FONTS) / name);
 }
 
 std::vector<std::uint8_t> FontCollection::build(std::span<const std::vector<std::uint8_t>> fonts) {

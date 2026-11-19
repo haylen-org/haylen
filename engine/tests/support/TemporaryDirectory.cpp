@@ -1,8 +1,9 @@
 #include "support/TemporaryDirectory.hpp"
 
 #include <atomic>
-#include <fstream>
 #include <random>
+
+#include "support/TestFiles.hpp"
 
 namespace haylen::test {
 
@@ -18,8 +19,7 @@ TemporaryDirectory::~TemporaryDirectory() {
 void TemporaryDirectory::write(const std::string& relative, const std::string& content) const {
     const std::filesystem::path file = path / relative;
     std::filesystem::create_directories(file.parent_path());
-    std::ofstream stream(file, std::ios::binary);
-    stream << content;
+    TestFiles::write(file, content);
 }
 
 std::filesystem::path TemporaryDirectory::makeUniquePath() {

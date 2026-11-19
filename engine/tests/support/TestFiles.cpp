@@ -2,11 +2,67 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
+#include <iterator>
+#include <stdexcept>
 
 #include "haylen/graphics/Image.hpp"
 #include "haylen/math/Color.hpp"
 
 namespace haylen::test {
+
+std::vector<std::uint8_t> TestFiles::read(const std::filesystem::path& file) {
+    const std::string text = readText(file);
+    return {text.begin(), text.end()};
+}
+
+std::string TestFiles::readText(const std::filesystem::path& file) {
+    std::ifstream stream(file, std::ios::binary);
+    if (!stream) {
+        throw std::runtime_error("The test could not open the file \"" + file.string() + "\".");
+    }
+
+    std::string text{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+    if (stream.bad()) {
+        throw std::runtime_error("The test could not read the file \"" + file.string() + "\".");
+    }
+
+    return text;
+}
+
+void TestFiles::write(const std::filesystem::path& file, std::span<const std::uint8_t> bytes) {
+    std::ofstream stream(file, std::ios::binary | std::ios::trunc);
+    stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    stream.close();
+    if (!stream) {
+        throw std::runtime_error("The test could not write the file \"" + file.string() + "\".");
+    }
+}
+
+void TestFiles::write(const std::filesystem::path& file, std::string_view text) {
+    write(file, std::span(reinterpret_cast<const std::uint8_t*>(text.data()), text.size()));
+}
+
+void TestFiles::append(const std::filesystem::path& file, std::string_view text) {
+    std::ofstream stream(file, std::ios::binary | std::ios::app);
+    stream.write(text.data(), static_cast<std::streamsize>(text.size()));
+    stream.close();
+    if (!stream) {
+        throw std::runtime_error("The test could not append to the file \"" + file.string() + "\".");
+    }
+}
+
+void TestFiles::damage(const std::filesystem::path& file, std::uintmax_t offset) {
+    std::fstream stream(file, std::ios::binary | std::ios::in | std::ios::out);
+    stream.seekg(static_cast<std::streamoff>(offset));
+    const int byte = stream.get();
+    stream.seekp(static_cast<std::streamoff>(offset));
+    stream.put(static_cast<char>(byte ^ 0x01));
+    stream.close();
+    if (byte == std::char_traits<char>::eof() || !stream) {
+        throw std::runtime_error("The test could not damage the byte " + std::to_string(offset) + " of the file \"" + file.string() + "\".");
+    }
+}
 
 std::vector<std::uint8_t> TestFiles::bytes(const std::string& text) {
     return {text.begin(), text.end()};
