@@ -982,6 +982,7 @@ Applies the rules to the map and returns how many times they matched. The layers
 These errors can happen, some when the rules load and some when they apply:
 
 - A rule map without input or output layers raises `The rule map "<path>" needs an input layer and an output layer.`.
+- A rule map with `regions` layers raises `The rule map "<path>" has "regions" layers, which rule maps do not take. Remove them, so its rules follow the tiles of their input and output layers.`.
 - An unknown `MatchType` raises `The automapping tile type "<name>" is unknown. It is "Empty", "Ignore", "NonEmpty", "Other" or "Negate".`.
 - A rules file that includes itself raises `The automapping rules file "<path>" includes itself.`.
 - A rule map that outputs a tile of no tileset raises `A rule map outputs the tile "<id>", which no tileset of the rule map holds.`.
@@ -1073,6 +1074,7 @@ The functions and methods raise these errors:
 | `The Wang set "<name>" has the colors 1 to <count>, and 0 erases.` | The method `map:paintTerrain` got a color outside the set. |
 | `A Tiled layer blends with "normal", "add", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference" or "exclusion", not "<blend>".` | The method `map:toJson` met a layer whose blend has no mode in Tiled. |
 | `The rule map "<path>" needs an input layer and an output layer.` | A rule map lacks input or output layers. |
+| `The rule map "<path>" has "regions" layers, which rule maps do not take. Remove them, so its rules follow the tiles of their input and output layers.` | A rule map has `regions` layers. |
 | `The automapping tile type "<name>" is unknown. It is "Empty", "Ignore", "NonEmpty", "Other" or "Negate".` | A tile of a rule map has an unknown `MatchType`. |
 | `The automapping rules file "<path>" includes itself.` | A rules file includes itself. |
 | `A rule map outputs the tile "<id>", which no tileset of the rule map holds.` | A rule map outputs a gid of no tileset. |

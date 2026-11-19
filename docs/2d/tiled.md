@@ -67,7 +67,7 @@ A map drawn smaller than its tiles reads the mipmaps of the tileset, smaller cop
 - **Templates**: The `.tj` object templates. Their fields and properties are defaults that each instance overrides one by one. A tile template maps its tile to the map's own copy of the tileset of the template.
 - **Properties**: The `string`, `int`, `float`, `bool`, `color`, `file`, `object`, `class` and `list` values, with classes inside classes, and lists inside lists up to 64 levels deep. Colors become `Color` values, files become paths inside the `content/` folder, object references become object ids, class values become nested tables and lists become sequences. With the `project` option, the classes of the `.tiled-project` file fill in the members that Tiled leaves out because they keep their defaults.
 - **Worlds**: `.world` files with listed maps and file name patterns.
-- **Automapping**: Rules files and rule maps of the current rule system, applied at run time, as [Automapping](#automapping) describes.
+- **Automapping**: Rules files and rule maps of the current rule system, applied at run time, as [Automapping](#automapping) describes. A rule map with `regions` layers fails with an error, because its rules follow the tiles of their input and output layers.
 
 ## Loading maps
 
