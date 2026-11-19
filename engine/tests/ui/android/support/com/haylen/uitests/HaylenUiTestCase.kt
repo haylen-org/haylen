@@ -33,8 +33,8 @@ abstract class HaylenUiTestCase {
         const val POLL = 250L
         // The extra of the launch intent that the engine reads its launch arguments from.
         const val ARGUMENTS_EXTRA = "dev.haylen.arguments"
-        // The package of the permission controller, which shows the dialogs and the settings of the permissions: "com.android.permissioncontroller" on the images of the emulator and "com.google.android.permissioncontroller" on the devices with the services of Google.
-        const val PERMISSION_CONTROLLER = "(com\\.android|com\\.google\\.android)\\.permissioncontroller"
+        // The package of the resources of the permission controller, which shows the dialogs and the settings of the permissions, and keeps this name on the devices with the services of Google too.
+        const val PERMISSION_CONTROLLER = "com.android.permissioncontroller"
         // How often a simulated location reaches the system, the way a receiver reports its fixes.
         const val LOCATION_INTERVAL = 500L
         // The longest that UI Automator waits for the screen to settle before a search or a tap.
@@ -185,7 +185,7 @@ abstract class HaylenUiTestCase {
     }
 
     fun waitFor(selector: BySelector, description: String, timeout: Long = TIMEOUT): UiObject2 {
-        return device.wait(Until.findObject(selector), timeout) ?: throw AssertionError("The screen shows no $description after ${timeout / 1000} seconds.")
+        return device.wait(Until.findObject(selector), timeout) ?: throw AssertionError("The screen does not show $description after ${timeout / 1000} seconds. ${describeScreen()}")
     }
 
     fun tap(label: String) {
@@ -213,8 +213,24 @@ abstract class HaylenUiTestCase {
     // Waits until the condition holds and fails with the message when it never does.
     fun waitUntil(message: String, timeout: Long = TIMEOUT, condition: () -> Boolean) {
         if (!poll(timeout, condition)) {
-            fail(message)
+            fail("$message ${describeScreen()}")
         }
+    }
+
+    // Lists what the screen shows when a wait fails, the resource id, the text and the content description of every node that has one, so the report of a run on a machine that nobody watches, such as continuous integration, tells why.
+    fun describeScreen(): String {
+        val nodes = mutableListOf<String>()
+        for (node in device.findObjects(By.pkg(Pattern.compile(".*")))) {
+            val described = try {
+                listOfNotNull(node.resourceName, node.text, node.contentDescription).filter { it.isNotEmpty() }
+            } catch (stale: StaleObjectException) {
+                emptyList()
+            }
+            if (described.isNotEmpty()) {
+                nodes.add(described.joinToString(" "))
+            }
+        }
+        return "The screen shows ${nodes.size} nodes: ${nodes.joinToString(" | ") { "\"$it\"" }}."
     }
 
     // Taps the button of the permission dialog of the system with one of the resource ids of the permission controller, such as "permission_allow_foreground_only_button", "permission_allow_button" or "permission_deny_button". The dialog names a button by the state of the permission, such as "permission_deny_and_dont_ask_again_button" for a refusal that the person made before, so a test names every id of the answer.
@@ -225,7 +241,7 @@ abstract class HaylenUiTestCase {
     }
 
     // The control of the permission controller with one of the resource ids, in a dialog or on a page of the settings of a permission.
-    fun permissionControl(vararg ids: String): BySelector = By.res(Pattern.compile("$PERMISSION_CONTROLLER:id/(${ids.joinToString("|")})"))
+    fun permissionControl(vararg ids: String): BySelector = By.res(Pattern.compile("${Pattern.quote(PERMISSION_CONTROLLER)}:id/(${ids.joinToString("|")})"))
 
     // Opens the notification shade and taps the notification whose text holds the words, which brings the app to the front or launches it. Do Not Disturb, which the person may set or schedule, can hide every notification from the shade, and the test then fails with that reason instead of a notification that never shows.
     fun tapNotification(text: String) {
@@ -255,11 +271,19 @@ abstract class HaylenUiTestCase {
         assertTrue("The app stays in front after Home.", device.wait(Until.gone(By.pkg(identifier).depth(0)), TIMEOUT))
     }
 
+    // Waits until the keyboard of the system shows, the window of the input method that the device uses, so the keys that a test types reach the field that edits instead of the controls of the app.
+    fun waitForKeyboard() {
+        val method = device.executeShellCommand("settings get secure default_input_method").trim()
+        assertTrue("The device names no input method.", method.contains("/"))
+        waitFor(By.pkg(method.substringBefore("/")), "the keyboard of the input method \"$method\"")
+    }
+
     // Removes the task of the app from the recent apps, which the system does when a person swipes its card away, whatever the launcher draws, and ends the process once it holds no activity, as the system does when it needs the memory, so the next launch starts a new process. The alarms and notifications of the app stay, which a force stop would cancel.
     fun removeFromRecents() {
         device.pressHome()
         val recents = device.executeShellCommand("dumpsys activity recents")
-        val task = Regex("Recent #\\d+: Task\\{\\w+ #(\\d+) type=standard A=\\d+:${Regex.escape(identifier)}\\}").find(recents)?.groupValues?.get(1)
+        // Android 12 writes more fields after the package of the task, such as "U=0 visible=true", and later versions end the task there.
+        val task = Regex("Recent #\\d+: Task\\{\\w+ #(\\d+) type=standard A=\\d+:${Regex.escape(identifier)}[ }]").find(recents)?.groupValues?.get(1)
             ?: throw AssertionError("The recent apps hold no task of \"$identifier\".")
         device.executeShellCommand("am stack remove $task")
         waitUntil("The activity of the app stays after its task left the recent apps.") {

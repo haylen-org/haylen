@@ -33,6 +33,7 @@ class NotificationTests : TestProjectCase() {
         removeFromRecents()
         tapNotification(NOTIFICATION)
         waitFor(Pattern.compile("Search by code or title.*")).click()
+        waitForKeyboard()
         device.executeShellCommand("input text plg%snotifications")
         waitFor(Pattern.compile("PLG-025\\s+Local notifications")).click()
         expectCheck(TAP_NAME, containing = "received 1 taps")

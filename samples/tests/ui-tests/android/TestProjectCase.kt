@@ -10,7 +10,10 @@ abstract class TestProjectCase : HaylenUiTestCase() {
     companion object {
         // The resource ids of the buttons of the permission dialog that allow what the plugin asks for.
         val ALLOW = arrayOf("permission_allow_button")
-        val ALLOW_WHILE_USING = arrayOf("permission_allow_foreground_only_button")
+        // The camera and the microphone, which Android 11 and later offer while the app is in use and Android 10 with a plain "Allow".
+        val ALLOW_WHILE_USING = arrayOf("permission_allow_foreground_only_button", "permission_allow_button")
+        // The location, which every version offers while the app is in use.
+        val ALLOW_LOCATION_WHILE_USING = arrayOf("permission_allow_foreground_only_button")
     }
 
     // The code of the test that the app opens, such as "PLG-016".
