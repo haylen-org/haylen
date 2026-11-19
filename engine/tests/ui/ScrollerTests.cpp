@@ -14,14 +14,18 @@ class ScrollerTest : public ::testing::Test {
 
     static constexpr float kStep = 1.0F / 60.0F;
 
+    // A motion that has not rested after this many steps, more than half a minute, never rests.
+    static constexpr int kMaxSteps = 2000;
+
     // Runs the scroller until it rests and returns the steps it took.
     int settle() {
         int steps = 0;
-        while (!scroller.isResting() && steps < 2000) {
+        while (!scroller.isResting() && steps < kMaxSteps) {
             scroller.update(kStep);
             ++steps;
         }
 
+        EXPECT_TRUE(scroller.isResting()) << "The scroller did not rest within " << kMaxSteps << " steps.";
         return steps;
     }
 
@@ -41,7 +45,7 @@ TEST_F(ScrollerTest, FlingsAndComesToRest) {
 
     double offset = scroller.getOffset();
     double speed = scroller.getVelocity();
-    while (!scroller.isResting()) {
+    for (int step = 0; step < kMaxSteps && !scroller.isResting(); ++step) {
         ASSERT_TRUE(scroller.update(kStep));
         EXPECT_GT(scroller.getOffset(), offset);
         EXPECT_LE(std::fabs(scroller.getVelocity()), speed);
@@ -49,6 +53,7 @@ TEST_F(ScrollerTest, FlingsAndComesToRest) {
         speed = std::fabs(scroller.getVelocity());
     }
 
+    ASSERT_TRUE(scroller.isResting());
     EXPECT_GT(scroller.getOffset(), 1000.0);
     EXPECT_LT(scroller.getOffset(), 100000.0);
 }
@@ -104,13 +109,14 @@ TEST_F(ScrollerTest, GlidesThroughTheStepsOfAWheel) {
     scroller.follow({.distance = 64.0F, .motion = Motion::Glide}, 1.0, kStep);
     EXPECT_DOUBLE_EQ(scroller.getTarget(), 128.0);
     double offset = scroller.getOffset();
-    while (!scroller.isResting()) {
+    for (int step = 0; step < kMaxSteps && !scroller.isResting(); ++step) {
         scroller.update(kStep);
         EXPECT_GE(scroller.getOffset(), offset);
         EXPECT_LE(scroller.getOffset(), 128.0);
         offset = scroller.getOffset();
     }
 
+    ASSERT_TRUE(scroller.isResting());
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 128.0);
 }
 
@@ -189,13 +195,14 @@ TEST_F(ScrollerTest, FollowsATargetThatMovesWithoutOvershooting) {
 
     scroller.animateTo(800.0);
     double offset = scroller.getOffset();
-    while (!scroller.isResting()) {
+    for (int step = 0; step < kMaxSteps && !scroller.isResting(); ++step) {
         scroller.update(kStep);
         EXPECT_GE(scroller.getOffset(), offset);
         EXPECT_LE(scroller.getOffset(), 800.0);
         offset = scroller.getOffset();
     }
 
+    ASSERT_TRUE(scroller.isResting());
     EXPECT_DOUBLE_EQ(scroller.getOffset(), 800.0);
 }
 

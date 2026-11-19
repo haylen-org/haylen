@@ -55,6 +55,16 @@ class MessageTest : public ::testing::Test, public test::UiFixture {
         return std::nullopt;
     }
 
+    // The frame of the message that says the label, which the test needs to have drawn in the last frame.
+    [[nodiscard]] math::Rect requireMessage(std::string_view label) {
+        const std::optional<math::Rect> found = findMessage(label);
+        if (!found) {
+            throw std::runtime_error("The message \"" + std::string(label) + "\" did not draw in the last frame.");
+        }
+
+        return *found;
+    }
+
     [[nodiscard]] std::vector<math::Rect> getMessageFrames() {
         std::vector<math::Rect> found;
         for (const platform::AccessibilityElement& element : getAlerts()) {
@@ -191,9 +201,9 @@ TEST_F(MessageTest, StacksToastsThatShowTogetherWithoutCoveringThem) {
     static_cast<void>(show(R"({"text": "At the bottom", "position": "bottomEnd", "duration": 0})"));
     frames(getTransitionFrames() * 3);
 
-    const math::Rect top = *findMessage("The first message");
-    const math::Rect second = *findMessage("The second message");
-    const math::Rect bottom = *findMessage("At the bottom");
+    const math::Rect top = requireMessage("The first message");
+    const math::Rect second = requireMessage("The second message");
+    const math::Rect bottom = requireMessage("At the bottom");
     EXPECT_GE(second.y, top.getBottom());
     EXPECT_NEAR(second.getCenter().x, top.getCenter().x, 1.0F);
     EXPECT_GT(bottom.y, second.getBottom());
@@ -202,7 +212,7 @@ TEST_F(MessageTest, StacksToastsThatShowTogetherWithoutCoveringThem) {
     // Once the first message leaves, the second one moves up into its place.
     first->dismiss();
     frames(getTransitionFrames() * 3);
-    EXPECT_EQ(findMessage("The second message")->y, top.y);
+    EXPECT_EQ(requireMessage("The second message").y, top.y);
     EXPECT_FALSE(findMessage("The first message").has_value());
     EXPECT_EQ(first->getReason(), Message::Reason::Dismissed);
 }
@@ -277,9 +287,9 @@ TEST_F(MessageTest, FitsToastsToTheirTextAndLinesUpTheMessagesOfADeck) {
     static_cast<void>(show(R"({"text": "Stored", "position": "topEnd", "arrangement": "deck", "duration": 0})"));
     frames(getTransitionFrames());
     const float width = getMetric(Theme::Metric::ToastWidth);
-    EXPECT_LT(findMessage("Saved")->width, findMessage("Two new items arrived in the chest by the dock")->width);
-    EXPECT_LT(findMessage("Two new items arrived in the chest by the dock")->width, width + 0.5F);
-    EXPECT_FLOAT_EQ(findMessage("Stored")->width, width);
+    EXPECT_LT(requireMessage("Saved").width, requireMessage("Two new items arrived in the chest by the dock").width);
+    EXPECT_LT(requireMessage("Two new items arrived in the chest by the dock").width, width + 0.5F);
+    EXPECT_FLOAT_EQ(requireMessage("Stored").width, width);
 }
 
 // The indicator of a pill nests in its round end, as far from the start as from the top and the bottom.
@@ -323,7 +333,7 @@ TEST_F(MessageTest, PutsTheNewestMessageOfADeckInFrontAndOpensTheDeckUnderThePoi
     EXPECT_LT(closed[0].y - closed[1].y, peek * 1.5F);
 
     // The pointer over the deck opens it into a list, and the time of its messages stops meanwhile.
-    pointer(platform::Event::Type::MouseMove, findMessage("Three")->getCenter());
+    pointer(platform::Event::Type::MouseMove, requireMessage("Three").getCenter());
     frames(getTransitionFrames() * 3);
     const std::vector<math::Rect> opened = drawTexts();
     ASSERT_EQ(opened.size(), 3U);
@@ -340,7 +350,7 @@ TEST_F(MessageTest, KeepsADeckOpenWhileThePointerStaysInIt) {
     }
 
     frames(getTransitionFrames() * 3);
-    const math::Rect front = *findMessage("Three");
+    const math::Rect front = requireMessage("Three");
     const float peek = getMetric(Theme::Metric::ToastPeek);
     pointer(platform::Event::Type::MouseMove, {front.getCenter().x, front.y - peek * 0.5F});
     frames(getTransitionFrames() * 3);
@@ -369,7 +379,7 @@ TEST_F(MessageTest, TakesTheFrontMessageOfADeckThatNeverOpensAwayWithEachTap) {
     }
 
     frames(getTransitionFrames() * 3);
-    const math::Rect front = *findMessage("Three");
+    const math::Rect front = requireMessage("Three");
     const float peek = getMetric(Theme::Metric::ToastPeek);
     pointer(platform::Event::Type::MouseMove, front.getCenter());
     frames(getTransitionFrames() * 3);
@@ -392,7 +402,7 @@ TEST_F(MessageTest, TakesTheFrontMessageOfADeckThatNeverOpensAwayWithEachTap) {
 TEST_F(MessageTest, StopsTheTimeOfMessagesUnderThePointer) {
     const std::shared_ptr<Message> held = show(R"({"text": "Hold me", "duration": 0.5})");
     frames(getTransitionFrames());
-    pointer(platform::Event::Type::MouseMove, findMessage("Hold me")->getCenter());
+    pointer(platform::Event::Type::MouseMove, requireMessage("Hold me").getCenter());
     frames(60);
     EXPECT_FALSE(held->isDismissed());
 
@@ -457,7 +467,7 @@ TEST_F(MessageTest, ClosesMessagesWithTheirButtonsAndSwipesThemAway) {
     const std::shared_ptr<Message> tapped = show(R"({"text": "Open the cart", "duration": 0})");
     static_cast<void>(tapped->tapped.connect([&heard](Message&) { heard.emplace_back("tapped"); }));
     frames(getTransitionFrames() * 2);
-    click(findMessage("Open the cart")->getCenter());
+    click(requireMessage("Open the cart").getCenter());
     frames(getTransitionFrames() * 2);
     EXPECT_EQ(tapped->getReason(), Message::Reason::Tapped);
     EXPECT_TRUE(getMessageFrames().empty());
@@ -465,7 +475,7 @@ TEST_F(MessageTest, ClosesMessagesWithTheirButtonsAndSwipesThemAway) {
     // The close button sits at the end of the message.
     const std::shared_ptr<Message> closed = show(R"({"text": "The file was deleted", "closable": true, "duration": 0})");
     frames(getTransitionFrames() * 2);
-    math::Rect frame = *findMessage("The file was deleted");
+    math::Rect frame = requireMessage("The file was deleted");
     click({frame.getRight() - padding - 6.0F, frame.getCenter().y});
     frames(getTransitionFrames() * 2);
     EXPECT_EQ(closed->getReason(), Message::Reason::Closed);
@@ -474,7 +484,7 @@ TEST_F(MessageTest, ClosesMessagesWithTheirButtonsAndSwipesThemAway) {
     const std::shared_ptr<Message> undo = show(R"({"style": "snackbar", "text": "The file was deleted", "action": "Undo", "duration": 0})");
     static_cast<void>(undo->actionPressed.connect([&heard](Message&) { heard.emplace_back("action"); }));
     frames(getTransitionFrames() * 2);
-    frame = *findMessage("The file was deleted. Undo");
+    frame = requireMessage("The file was deleted. Undo");
     click({frame.getRight() - padding - 6.0F, frame.getCenter().y});
     frames(getTransitionFrames() * 2);
     EXPECT_EQ(undo->getReason(), Message::Reason::Action);
@@ -483,11 +493,11 @@ TEST_F(MessageTest, ClosesMessagesWithTheirButtonsAndSwipesThemAway) {
     // A short swipe springs back, and a long one sends the message away.
     const std::shared_ptr<Message> swiped = show(R"({"text": "Swipe me away", "duration": 0})");
     frames(getTransitionFrames() * 2);
-    frame = *findMessage("Swipe me away");
+    frame = requireMessage("Swipe me away");
     drag(frame.getCenter(), frame.getCenter() + math::Vec2{frame.width * 0.15F, 0.0F});
     frames(30);
     EXPECT_FALSE(swiped->isDismissed());
-    EXPECT_NEAR(findMessage("Swipe me away")->x, frame.x, 1.0F);
+    EXPECT_NEAR(requireMessage("Swipe me away").x, frame.x, 1.0F);
     drag(frame.getCenter(), frame.getCenter() + math::Vec2{frame.width * 0.6F, 0.0F});
     frames(30);
     EXPECT_TRUE(getMessageFrames().empty());
@@ -515,9 +525,9 @@ TEST_F(MessageTest, FollowsTheDirectionAndReducedMotion) {
     frames(2);
     static_cast<void>(show(R"({"text": "Saved", "position": "topStart", "duration": 0})"));
     frames(2);
-    const math::Rect arriving = *findMessage("Saved");
+    const math::Rect arriving = requireMessage("Saved");
     frames(getTransitionFrames());
-    const math::Rect rested = *findMessage("Saved");
+    const math::Rect rested = requireMessage("Saved");
     const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
     EXPECT_NEAR(rested.getRight(), safe.getRight() - getMetric(Theme::Metric::PanelPadding), 1.0F);
     EXPECT_EQ(arriving, rested);
@@ -560,7 +570,7 @@ TEST_F(MessageTest, ShowsMessagesFromLua) {
     EXPECT_EQ(getFixture().lua("return undo.style .. ' ' .. tostring(undo.shown) .. ' ' .. tostring(undo.dismissed) .. ' ' .. tostring(undo.result == undo.result)"), "snackbar true false true");
 
     const float padding = getMetric(Theme::Metric::ControlPaddingX);
-    const math::Rect frame = *findMessage("Photo deleted. Undo");
+    const math::Rect frame = requireMessage("Photo deleted. Undo");
     click({frame.getRight() - padding - 6.0F, frame.getCenter().y});
     frames(getTransitionFrames());
     EXPECT_EQ(getFixture().lua("return table.concat(heard, ' ') .. ' ' .. tostring(reason)"), "show:true action dismiss:action action");
@@ -568,7 +578,7 @@ TEST_F(MessageTest, ShowsMessagesFromLua) {
     getFixture().runLua("upload:update({text = 'Sent', tone = 'success', indicator = 'icon'})");
     frames(2);
     EXPECT_TRUE(findMessage("Sent").has_value());
-    click(findMessage("Sent")->getCenter());
+    click(requireMessage("Sent").getCenter());
     frames(getTransitionFrames());
     EXPECT_EQ(getFixture().lua("return heard[#heard]"), "tap");
 
@@ -608,20 +618,20 @@ TEST_F(MessageTest, KeepsTheMessagesInsideTheAreaOfTheApp) {
     const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
     const float margin = getMetric(Theme::Metric::PanelPadding);
     ASSERT_TRUE(findMessage("Photo deleted"));
-    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - 160.0F - margin, 1.0F);
+    EXPECT_NEAR(requireMessage("Photo deleted").getBottom(), safe.getBottom() - 160.0F - margin, 1.0F);
 
     getFixture().runLua("sheet = ui.present({build = function() return ui.column{ui.label{text = 'Queue'}} end})");
     frames(40);
-    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - margin, 1.0F);
+    EXPECT_NEAR(requireMessage("Photo deleted").getBottom(), safe.getBottom() - margin, 1.0F);
 
     getFixture().runLua("sheet:dismiss()");
     frames(40);
-    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - 160.0F - margin, 1.0F);
+    EXPECT_NEAR(requireMessage("Photo deleted").getBottom(), safe.getBottom() - 160.0F - margin, 1.0F);
 
     getFixture().runLua("frame:unmount()");
     frames(2);
     EXPECT_FALSE(getUi().getNavigation().getMessageArea().has_value());
-    EXPECT_NEAR(findMessage("Photo deleted")->getBottom(), safe.getBottom() - margin, 1.0F);
+    EXPECT_NEAR(requireMessage("Photo deleted").getBottom(), safe.getBottom() - margin, 1.0F);
 
     getFixture().runLua("other = ui.mount(ui.column{ui.label{text = 'Other'}})");
     EXPECT_NE(getFixture().lua("ui.setMessageArea{gui = other, id = 'nowhere'}").find("The GUI of the region has no node with the id \"nowhere\"."), std::string::npos);
