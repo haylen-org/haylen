@@ -1,4 +1,5 @@
 import http.server
+import json
 import re
 import urllib.parse
 from pathlib import Path
@@ -9,7 +10,9 @@ from haylen.development.file_range import FileRange
 
 
 class WebHandler(http.server.SimpleHTTPRequestHandler):
-    """Serves a folder with the headers WebAssembly pages need: explicit media types, no caching, precompressed files and byte ranges. The web runtime is single-threaded, so the page stays in one browsing context group with the popups it opens, such as sign-in and payment pages, unless a page asks for cross-origin isolation with the opener policy `same-origin`. With a development server, the handler also serves its development path."""
+    """Serves a folder with the headers WebAssembly pages need: explicit media types, no caching, precompressed files and byte ranges. The web runtime is single-threaded, so the page stays in one browsing context group with the popups it opens, such as sign-in and payment pages, unless a page asks for cross-origin isolation with the opener policy `same-origin`. With a development server, the handler also serves its development path and adds where it is to the `config.json` of the site."""
+
+    CONFIG = "/config.json"
 
     MEDIA_TYPES = {
         ".wasm": "application/wasm",
@@ -34,10 +37,25 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*arguments, directory=directory, **keywords)
 
     def do_GET(self) -> None:
-        if self.development is not None and urllib.parse.urlsplit(self.path).path == DevelopmentServer.PATH:
+        path = urllib.parse.urlsplit(self.path).path
+        if self.development is not None and path == DevelopmentServer.PATH:
             self.development.accept(self)
             return
+        if self.development is not None and path == WebHandler.CONFIG:
+            self.send_development_config()
+            return
         super().do_GET()
+
+    def send_development_config(self) -> None:
+        """Answers the `config.json` of the site with the path and the token of the development server, which the page connects to, so the site of the build stays the same in Debug and Release and nothing of the run stays in it."""
+        config = json.loads(Path(self.translate_path(WebHandler.CONFIG)).read_text(encoding="utf-8"))
+        config["development"] = {"path": DevelopmentServer.PATH, "token": self.development.token}
+        body = (json.dumps(config, indent=4) + "\n").encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self) -> None:
         if self.development is None or urllib.parse.urlsplit(self.path).path != DevelopmentServer.GPU_CAPTURE_PATH:

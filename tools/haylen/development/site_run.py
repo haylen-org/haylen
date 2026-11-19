@@ -1,4 +1,3 @@
-import json
 import webbrowser
 from pathlib import Path
 
@@ -14,7 +13,7 @@ from haylen.platforms.launch_request import LaunchRequest
 
 
 class SiteRun:
-    """The run of a built web site that the web backend serves from `PlatformBackend.run`. In development, the development server answers on the same port as the site, and the page connects to it, since entering the run writes the path and the token of the server into the `config.json` of the site. Its manifest holds the files of the `app.zip` of the site, so a page that loads late gets only what changed since. The headers of the site come from the options `coep` and `coop` of the launch, and the option `open` opens the page in the default browser.
+    """The run of a built web site that the web backend serves from `PlatformBackend.run`. In development, the development server answers on the same port as the site, and the page connects to it, since the site server answers its `config.json` with the path and the token of the server, while the file of the site stays as the build wrote it. Its manifest holds the files of the `app.zip` of the site, so a page that loads late gets only what changed since. The headers of the site come from the options `coep` and `coop` of the launch, and the option `open` opens the page in the default browser.
 
     ```python
     with SiteRun(self.context, product, launch, product.path) as run:
@@ -51,10 +50,6 @@ class SiteRun:
             server.close()
             raise
 
-        config_path = self.site / SiteRun.CONFIG
-        config = json.loads(config_path.read_text(encoding="utf-8"))
-        config["development"] = {"path": DevelopmentServer.PATH, "token": development.token}
-        config_path.write_text(json.dumps(config, indent=4) + "\n", encoding="utf-8")
         self.development = development
         self.server = server
         self.session = RunSession(self.context, development)

@@ -877,7 +877,7 @@ So apps launched by hand, shipped apps, the sites that `app build` makes and the
 
 ### The development server
 
-The development server of a run listens on the port of `--port`, 8000 by default, at `/haylen/development`, and the app connects with a random token of the run, without which the server refuses it. A web page reaches it on the same port as the site, through the token that `config.json` hands the page. The server works like this:
+The development server of a run listens on the port of `--port`, 8000 by default, at `/haylen/development`, and the app connects with a random token of the run, without which the server refuses it. A web page reaches it on the same port as the site, through the token that the site server adds to the `config.json` it answers, while the file of the site stays as the build wrote it, the same in Debug and Release. The server works like this:
 
 - It scans the package of the app and the folders of its plugins twice a second with the rules of the player. It leaves out hidden files, backup files and files under `source/` that are not Lua, and waits for the next scan with files that are still being written.
 - It compiles the shaders whose sources changed.
@@ -910,7 +910,7 @@ The file `loader.js` runs when the page loads:
 7. Before the app starts, a `Module.preRun` callback holds the start with a run dependency. Meanwhile it calls `load(context)` of every plugin in load order, with the context of `Module.haylen.createPluginContext`, as the [plugin guide](../platform/plugins.md#web) describes. A plugin that fails to import or to load replaces the progress bar with its error, and the app does not start.
 8. `Module.haylen.onSplashEnded` fades the splash out once the runtime ends it, and `Module.haylen.onStarted` tells the page that the app runs. `Module.haylen.onError` writes every error to the console. An error that happens before the app starts replaces the progress bar with the message and the Lua stack trace. Later errors show on the error screen of the runtime.
 
-When `config.json` holds the `development` entry, which only a Debug run of `app run` writes, the loader sets `Module.haylen.development`, and the address of the development server with its token in `Module.haylen.developmentServer`. The [build guide](build.md#page-setup) lists every field that a page sets and the whole [runtime API](build.md#runtime-api) with its [editor contract](build.md#the-editor-contract), whose request `loadZip` replaces the running app later.
+When `config.json` holds the `development` entry, which only the site server of a Debug run of `app run` adds as it answers the file, the loader sets `Module.haylen.development`, and the address of the development server with its token in `Module.haylen.developmentServer`. The [build guide](build.md#page-setup) lists every field that a page sets and the whole [runtime API](build.md#runtime-api) with its [editor contract](build.md#the-editor-contract), whose request `loadZip` replaces the running app later.
 
 ### Changing the splash
 
