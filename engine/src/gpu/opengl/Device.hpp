@@ -12,13 +12,13 @@
 #include <vector>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/HandleTable.hpp"
 #include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Conversions.hpp"
 #include "gpu/opengl/DebugOutput.hpp"
 #include "gpu/opengl/FramebufferCache.hpp"
 #include "gpu/opengl/GpuTimer.hpp"
 #include "gpu/opengl/LayerClear.hpp"
-#include "gpu/opengl/ObjectTable.hpp"
 #include "gpu/opengl/ScaledDrawable.hpp"
 #include "gpu/opengl/ShaderProgram.hpp"
 #include "gpu/opengl/UploadRing.hpp"
@@ -235,11 +235,11 @@ class Device final : public gpu::Device {
     std::unique_ptr<LayerClear> layerClear;
     Gl::Uint uploadVertexArray = 0;
 
-    ObjectTable<BufferRecord> buffers{"buffers"};
-    ObjectTable<ImageRecord> images{"images"};
-    ObjectTable<Gl::Uint> samplers{"samplers"};
-    ObjectTable<std::shared_ptr<ShaderProgram>> programs{"programs"};
-    ObjectTable<PipelineRecord> pipelines{"pipelines"};
+    HandleTable<BufferRecord> buffers{"buffer"};
+    HandleTable<ImageRecord> images{"image"};
+    HandleTable<Gl::Uint> samplers{"sampler"};
+    HandleTable<std::shared_ptr<ShaderProgram>> programs{"program"};
+    HandleTable<PipelineRecord> pipelines{"pipeline"};
 
     std::array<Gl::Sync, kFramesInFlight> frameFences{};
     std::size_t frameIndex = 0;

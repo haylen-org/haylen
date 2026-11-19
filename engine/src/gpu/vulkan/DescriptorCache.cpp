@@ -17,15 +17,15 @@ DescriptorCache::~DescriptorCache() {
 std::size_t DescriptorCache::KeyHash::operator()(const ResourceKey& key) const noexcept {
     std::uint64_t hash = 14695981039346656037ULL ^ Context::toHandle(key.layout);
     // clang-format off
-    const auto mix = [&hash](std::uint32_t value) {
+    const auto mix = [&hash](std::uint64_t value) {
         hash = (hash ^ value) * 1099511628211ULL;
     };
     // clang-format on
-    for (std::uint32_t image : key.images) {
+    for (std::uint64_t image : key.images) {
         mix(image);
     }
 
-    for (std::uint32_t sampler : key.samplers) {
+    for (std::uint64_t sampler : key.samplers) {
         mix(sampler);
     }
 
@@ -88,11 +88,11 @@ template <typename Predicate> void DescriptorCache::forget(Predicate&& holds, st
     }
 }
 
-void DescriptorCache::forgetImage(std::uint32_t id, std::uint64_t serial) {
+void DescriptorCache::forgetImage(std::uint64_t id, std::uint64_t serial) {
     forget([id](const ResourceKey& key) { return std::ranges::find(key.images, id) != key.images.end(); }, serial);
 }
 
-void DescriptorCache::forgetSampler(std::uint32_t id, std::uint64_t serial) {
+void DescriptorCache::forgetSampler(std::uint64_t id, std::uint64_t serial) {
     forget([id](const ResourceKey& key) { return std::ranges::find(key.samplers, id) != key.samplers.end(); }, serial);
 }
 

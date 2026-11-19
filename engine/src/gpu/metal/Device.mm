@@ -15,17 +15,16 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "gpu/HandleTable.hpp"
 #include "gpu/metal/EncoderState.hpp"
 #include "gpu/metal/Formats.hpp"
 #include "gpu/metal/Graveyard.hpp"
 #include "gpu/metal/ImageReadback.hpp"
 #include "gpu/metal/LibraryCache.hpp"
-#include "gpu/metal/ObjectPool.hpp"
 #include "gpu/metal/Swapchain.hpp"
 #include "gpu/metal/UploadRing.hpp"
 #include "haylen/core/Log.hpp"
@@ -173,11 +172,11 @@ struct Device::Native {
     LibraryCache libraries;
     std::vector<UploadRing> rings;
 
-    ObjectPool<BufferEntry> buffers;
-    ObjectPool<ImageEntry> images;
-    ObjectPool<id<MTLSamplerState>> samplers;
-    ObjectPool<ProgramEntry> programs;
-    ObjectPool<PipelineEntry> pipelines;
+    HandleTable<BufferEntry> buffers{"buffer"};
+    HandleTable<ImageEntry> images{"image"};
+    HandleTable<id<MTLSamplerState>> samplers{"sampler"};
+    HandleTable<ProgramEntry> programs{"program"};
+    HandleTable<PipelineEntry> pipelines{"pipeline"};
     std::unordered_map<std::uint64_t, id<MTLDepthStencilState>> depthStencilStates;
 
     MTLCommandBufferDescriptor* commandsDesc = nil;
@@ -356,7 +355,7 @@ std::unique_ptr<Swapchain>& Device::Native::requireAddedSurface(int surface) {
 }
 
 Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
-    BufferEntry* entry = buffers.get(buffer.id);
+    BufferEntry* entry = buffers.find(buffer.id);
     if (entry == nullptr) {
         throw std::logic_error(std::format("The buffer {} does not exist.", buffer.id));
     }
@@ -365,7 +364,7 @@ Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
 }
 
 Device::Native::ImageEntry& Device::Native::requireImage(Image image) {
-    ImageEntry* entry = images.get(image.id);
+    ImageEntry* entry = images.find(image.id);
     if (entry == nullptr) {
         throw std::logic_error(std::format("The image {} does not exist.", image.id));
     }
@@ -374,7 +373,7 @@ Device::Native::ImageEntry& Device::Native::requireImage(Image image) {
 }
 
 Device::Native::ProgramEntry& Device::Native::requireProgram(Program program) {
-    ProgramEntry* entry = programs.get(program.id);
+    ProgramEntry* entry = programs.find(program.id);
     if (entry == nullptr) {
         throw std::logic_error(std::format("The program {} does not exist.", program.id));
     }
@@ -640,7 +639,7 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
 
 std::vector<gpu::Device::Pool> Device::getPools() const {
     return {
-        {.name = "images", .used = native->images.size(), .size = native->images.getCapacity()}, {.name = "buffers", .used = native->buffers.size(), .size = native->buffers.getCapacity()}, {.name = "samplers", .used = native->samplers.size(), .size = native->samplers.getCapacity()}, {.name = "programs", .used = native->programs.size(), .size = native->programs.getCapacity()}, {.name = "pipelines", .used = native->pipelines.size(), .size = native->pipelines.getCapacity()},
+        {.name = "images", .used = native->images.size(), .size = native->images.capacity()}, {.name = "buffers", .used = native->buffers.size(), .size = native->buffers.capacity()}, {.name = "samplers", .used = native->samplers.size(), .size = native->samplers.capacity()}, {.name = "programs", .used = native->programs.size(), .size = native->programs.capacity()}, {.name = "pipelines", .used = native->pipelines.size(), .size = native->pipelines.capacity()},
     };
 }
 
@@ -780,7 +779,7 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         throw std::runtime_error(std::format("Metal could not make the sampler \"{}\".", desc.label));
     }
 
-    return {native->samplers.add(sampler)};
+    return {native->samplers.add(std::move(sampler))};
 }
 
 // The stages come from the library cache, where a program that `prepareProgram` announced finds its libraries made or in the making on the I/O pool.
@@ -1201,7 +1200,7 @@ void Device::applyScissor(const math::Rect& pixels) {
 
 void Device::applyPipeline(Pipeline pipeline) {
     requirePass("applyPipeline");
-    const Native::PipelineEntry* entry = native->pipelines.get(pipeline.id);
+    const Native::PipelineEntry* entry = native->pipelines.find(pipeline.id);
     if (entry == nullptr) {
         throw std::logic_error(std::format("The pipeline {} does not exist.", pipeline.id));
     }
@@ -1219,14 +1218,13 @@ void Device::applyPipeline(Pipeline pipeline) {
 
 // Bindings equal to the ones the pass applied last with the same pipeline change nothing, and the others reach Metal only where they differ from what the encoder holds.
 void Device::applyBindings(const Bindings& bindings) {
-    static_assert(std::has_unique_object_representations_v<Bindings>, "Bindings compare as bytes.");
     requirePass("applyBindings");
 
     if (!native->applied.valid) {
         throw std::logic_error("Bindings were applied before a pipeline.");
     }
 
-    if (native->encoder.get() == nil || (native->bindingsApplied && std::memcmp(&bindings, &native->bindings, sizeof(Bindings)) == 0)) {
+    if (native->encoder.get() == nil || (native->bindingsApplied && bindings == native->bindings)) {
         return;
     }
 
@@ -1251,7 +1249,7 @@ void Device::applyBindings(const Bindings& bindings) {
     }
 
     for (const Native::ResourceSlot& sampler : program.samplers) {
-        const id<MTLSamplerState>* state = native->samplers.get(bindings.samplers[sampler.slot].id);
+        const id<MTLSamplerState>* state = native->samplers.find(bindings.samplers[sampler.slot].id);
         if (state == nullptr) {
             throw std::logic_error(std::format("The sampler slot {} of the program is empty.", sampler.slot));
         }

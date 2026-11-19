@@ -16,11 +16,11 @@ std::size_t BindGroupCache::KeyHash::operator()(const Key& key) const noexcept {
     constexpr std::uint64_t kPrime = 1099511628211ULL;
     std::uint64_t hash = 14695981039346656037ULL;
     hash = (hash ^ static_cast<std::uint64_t>(std::bit_cast<std::uintptr_t>(key.layout))) * kPrime;
-    for (const std::uint32_t id : key.images) {
+    for (const std::uint64_t id : key.images) {
         hash = (hash ^ id) * kPrime;
     }
 
-    for (const std::uint32_t id : key.samplers) {
+    for (const std::uint64_t id : key.samplers) {
         hash = (hash ^ id) * kPrime;
     }
 
@@ -52,11 +52,11 @@ template <typename Matches> void BindGroupCache::forgetWhere(Matches&& matches) 
     }
 }
 
-void BindGroupCache::forgetImage(std::uint32_t id) noexcept {
+void BindGroupCache::forgetImage(std::uint64_t id) noexcept {
     forgetWhere([id](const Key& key, const Entry&) { return std::ranges::find(key.images, id) != key.images.end(); });
 }
 
-void BindGroupCache::forgetSampler(std::uint32_t id) noexcept {
+void BindGroupCache::forgetSampler(std::uint64_t id) noexcept {
     forgetWhere([id](const Key& key, const Entry&) { return std::ranges::find(key.samplers, id) != key.samplers.end(); });
 }
 

@@ -69,7 +69,7 @@ Gl::Uint FramebufferCache::make(const Key& key, std::string_view label) {
     return framebuffer;
 }
 
-void FramebufferCache::forgetImage(std::uint32_t image) {
+void FramebufferCache::forgetImage(std::uint64_t image) {
     // clang-format off
     std::erase_if(entries, [&](const Entry& entry) {
         bool holds = entry.key.depthStencil.image == image;

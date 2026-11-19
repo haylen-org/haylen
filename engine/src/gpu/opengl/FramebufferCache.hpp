@@ -17,7 +17,7 @@ class FramebufferCache final {
   public:
     // An image attached at a mip level and a layer. The target is the one its texture binds to, or `Gl::kRenderbuffer` for a multisampled image.
     struct Attachment {
-        std::uint32_t image = 0;
+        std::uint64_t image = 0;
         Gl::Uint name = 0;
         Gl::Enum target = Gl::kTexture2d;
         int mipLevel = 0;
@@ -44,7 +44,7 @@ class FramebufferCache final {
     [[nodiscard]] Gl::Uint get(const Key& key, std::string_view label);
 
     // Deletes the framebuffers that hold the image.
-    void forgetImage(std::uint32_t image);
+    void forgetImage(std::uint64_t image);
 
   private:
     struct Entry {

@@ -17,10 +17,10 @@
 #include <vector>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/HandleTable.hpp"
 #include "gpu/webgpu/BindGroupCache.hpp"
 #include "gpu/webgpu/Connection.hpp"
 #include "gpu/webgpu/FrameTimer.hpp"
-#include "gpu/webgpu/HandlePool.hpp"
 #include "gpu/webgpu/Swapchain.hpp"
 #include "gpu/webgpu/UniformRing.hpp"
 #include "haylen/gpu/Device.hpp"
@@ -165,7 +165,7 @@ class Device final : public gpu::Device {
 
     struct PipelineRecord {
         WGPURenderPipeline pipeline = nullptr;
-        std::uint32_t program = 0;
+        std::uint64_t program = 0;
         WGPUIndexFormat indexFormat = WGPUIndexFormat_Undefined;
         std::optional<SwapchainPipeline> swapchain;
     };
@@ -248,11 +248,11 @@ class Device final : public gpu::Device {
     std::unique_ptr<FrameTimer> timer;
     BindGroupCache imageGroups;
 
-    HandlePool<BufferRecord> buffers{"buffer"};
-    HandlePool<ImageRecord> images{"image"};
-    HandlePool<SamplerRecord> samplers{"sampler"};
-    HandlePool<ProgramRecord> programs{"program"};
-    HandlePool<PipelineRecord> pipelines{"pipeline"};
+    HandleTable<BufferRecord> buffers{"buffer"};
+    HandleTable<ImageRecord> images{"image"};
+    HandleTable<SamplerRecord> samplers{"sampler"};
+    HandleTable<ProgramRecord> programs{"program"};
+    HandleTable<PipelineRecord> pipelines{"pipeline"};
     std::unordered_map<std::string, ShaderModule> modules;
     std::map<std::vector<std::uint64_t>, std::unique_ptr<BlockLayout>> blockLayouts;
     std::map<std::vector<std::uint64_t>, WGPUBindGroupLayout> imageLayouts;
@@ -267,7 +267,7 @@ class Device final : public gpu::Device {
     int passHeight = 0;
     int encoderGroups = 0;
     int passGroups = 0;
-    std::uint32_t currentPipeline = 0;
+    std::uint64_t currentPipeline = 0;
     Bindings bindings;
     std::array<UniformBlock, kMaxBlocks> uniforms{};
     bool blocksDirty = true;

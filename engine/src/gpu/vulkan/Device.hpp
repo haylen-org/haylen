@@ -16,9 +16,9 @@
 #include <vk_mem_alloc.h>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/HandleTable.hpp"
 #include "gpu/renderdoc/Capturer.hpp"
 #include "gpu/vulkan/DescriptorCache.hpp"
-#include "gpu/vulkan/HandlePool.hpp"
 #include "gpu/vulkan/LayoutCache.hpp"
 #include "gpu/vulkan/ReadbackQueue.hpp"
 #include "gpu/vulkan/ReleaseQueue.hpp"
@@ -208,7 +208,7 @@ class Device final : public gpu::Device {
 
     struct PipelineRecord {
         VkPipeline pipeline = VK_NULL_HANDLE;
-        std::uint32_t program = 0;
+        std::uint64_t program = 0;
         VkPipelineLayout layout = VK_NULL_HANDLE;
         IndexType indexType = IndexType::None;
         std::uint32_t bufferCount = 0;
@@ -313,9 +313,7 @@ class Device final : public gpu::Device {
     void updateSwapchainTarget();
     [[nodiscard]] bool acquireSwapchainImage(SurfaceChain& chain);
 
-    [[nodiscard]] BufferRecord& requireBuffer(Buffer buffer) const;
     static void checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported);
-    [[nodiscard]] ImageRecord& requireImage(Image image) const;
     [[nodiscard]] VkFormat resolveFormat(PixelFormat format) const noexcept;
     [[nodiscard]] VkImageView getAttachmentView(ImageRecord& record, int mipLevel, int layer);
     void uploadLevels(const ImageRecord& record, std::span<const std::span<const std::byte>> levels);
@@ -323,7 +321,7 @@ class Device final : public gpu::Device {
     void uploadBuffer(const BufferRecord& record, std::span<const std::byte> data);
     void releaseImage(ImageRecord& record, std::uint64_t serial);
     void releaseProgram(ProgramRecord& record, std::uint64_t serial);
-    void forgetProgramUse(std::uint32_t program, std::uint64_t serial) noexcept;
+    void forgetProgramUse(std::uint64_t program, std::uint64_t serial) noexcept;
 
     [[nodiscard]] VkPipeline buildPipeline(const PipelineDesc& desc, const ProgramRecord& program);
     [[nodiscard]] static std::unique_ptr<StoredPipeline> storePipeline(const PipelineDesc& desc);
@@ -368,11 +366,11 @@ class Device final : public gpu::Device {
     bool storeKeptDepth = false;
     Capabilities capabilities;
 
-    HandlePool<BufferRecord> buffers;
-    HandlePool<ImageRecord> images;
-    HandlePool<SamplerRecord> samplers;
-    HandlePool<ProgramRecord> programs;
-    HandlePool<PipelineRecord> pipelines;
+    HandleTable<BufferRecord> buffers{"buffer"};
+    HandleTable<ImageRecord> images{"image"};
+    HandleTable<SamplerRecord> samplers{"sampler"};
+    HandleTable<ProgramRecord> programs{"program"};
+    HandleTable<PipelineRecord> pipelines{"pipeline"};
 
     std::array<Frame, kFramesInFlight> frames{};
     std::size_t frameIndex = 0;

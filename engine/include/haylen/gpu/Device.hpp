@@ -264,7 +264,7 @@ class Device {
 
     // The handles of the objects of a device, whose id 0 names nothing.
     struct Buffer {
-        std::uint32_t id = 0;
+        std::uint64_t id = 0;
         [[nodiscard]] bool isValid() const noexcept {
             return id != 0;
         }
@@ -272,7 +272,7 @@ class Device {
     };
 
     struct Image {
-        std::uint32_t id = 0;
+        std::uint64_t id = 0;
         [[nodiscard]] bool isValid() const noexcept {
             return id != 0;
         }
@@ -280,7 +280,7 @@ class Device {
     };
 
     struct Sampler {
-        std::uint32_t id = 0;
+        std::uint64_t id = 0;
         [[nodiscard]] bool isValid() const noexcept {
             return id != 0;
         }
@@ -288,7 +288,7 @@ class Device {
     };
 
     struct Program {
-        std::uint32_t id = 0;
+        std::uint64_t id = 0;
         [[nodiscard]] bool isValid() const noexcept {
             return id != 0;
         }
@@ -296,7 +296,7 @@ class Device {
     };
 
     struct Pipeline {
-        std::uint32_t id = 0;
+        std::uint64_t id = 0;
         [[nodiscard]] bool isValid() const noexcept {
             return id != 0;
         }
@@ -548,6 +548,8 @@ class Device {
         int indexOffset = 0;
         std::array<Image, kMaxTextures> textures{};
         std::array<Sampler, kMaxSamplers> samplers{};
+
+        friend bool operator==(const Bindings&, const Bindings&) = default;
     };
 
     // New pixels for a dynamic image, which replace the pixels of its first mip level, every layer at once.

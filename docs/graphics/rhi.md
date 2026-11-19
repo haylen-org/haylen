@@ -51,7 +51,7 @@ log.info('This frame draws through ' .. haylen.graphicsApi .. '.')
 
 ## Objects
 
-A device makes five kinds of objects. Each `make` method returns a small handle, a struct with a 32-bit `id`, and `id` 0 names nothing. Devices give each id a generation, so the handle of a destroyed object never finds the object that takes its place later.
+A device makes five kinds of objects. Each `make` method returns a small handle, a struct with a 64-bit `id`, and `id` 0 names nothing. Every device keeps its objects in a `gpu::HandleTable`, whose ids hold the slot of an object in 24 bits and the generation of the slot in 40 bits, so the handle of a destroyed object never finds the object that takes its place later, however often the slot is taken again.
 
 | Object | Made with | What it is |
 | --- | --- | --- |

@@ -194,7 +194,7 @@ class NullDevice final : public Device {
 
     struct OpenPass {
         Targets targets;
-        std::array<std::uint32_t, kMaxColorTargets + 1> images{};
+        std::array<std::uint64_t, kMaxColorTargets + 1> images{};
         std::size_t debugGroups = 0;
     };
 
@@ -234,16 +234,16 @@ class NullDevice final : public Device {
     static void checkSurface(const Surface& surface, int maxSampleCount);
     static void checkSize(const Surface::Size& size);
 
-    std::unordered_map<std::uint32_t, BufferState> buffers;
-    std::unordered_map<std::uint32_t, ImageDesc> images;
-    std::unordered_map<std::uint32_t, SamplerDesc> samplers;
-    std::unordered_map<std::uint32_t, ProgramRecord> programs;
-    std::unordered_map<std::uint32_t, PipelineState> pipelines;
+    std::unordered_map<std::uint64_t, BufferState> buffers;
+    std::unordered_map<std::uint64_t, ImageDesc> images;
+    std::unordered_map<std::uint64_t, SamplerDesc> samplers;
+    std::unordered_map<std::uint64_t, ProgramRecord> programs;
+    std::unordered_map<std::uint64_t, PipelineState> pipelines;
     Language language = Language::None;
     Api api = Api::None;
     Capabilities features;
     int preparedPrograms = 0;
-    std::uint32_t nextId = 1;
+    std::uint64_t nextId = 1;
 
     // The frame that records, counted from 1, and the pass, pipeline, bindings and uniform blocks it applied last.
     std::uint64_t frame = 1;

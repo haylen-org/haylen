@@ -20,8 +20,8 @@ class BindGroupCache final {
     // A layout with the ids of the images at their texture slots and of the samplers at their sampler slots, zero where the program binds none.
     struct Key {
         WGPUBindGroupLayout layout = nullptr;
-        std::array<std::uint32_t, Device::kMaxTextures> images{};
-        std::array<std::uint32_t, Device::kMaxSamplers> samplers{};
+        std::array<std::uint64_t, Device::kMaxTextures> images{};
+        std::array<std::uint64_t, Device::kMaxSamplers> samplers{};
 
         friend bool operator==(const Key&, const Key&) = default;
     };
@@ -35,8 +35,8 @@ class BindGroupCache final {
     [[nodiscard]] WGPUBindGroup find(const Key& key, std::uint64_t frame) noexcept;
     void add(const Key& key, WGPUBindGroup group, std::uint64_t frame);
 
-    void forgetImage(std::uint32_t id) noexcept;
-    void forgetSampler(std::uint32_t id) noexcept;
+    void forgetImage(std::uint64_t id) noexcept;
+    void forgetSampler(std::uint64_t id) noexcept;
 
     // Releases the groups that no frame used for `kIdleFrames`, once in that many frames.
     void trim(std::uint64_t frame) noexcept;

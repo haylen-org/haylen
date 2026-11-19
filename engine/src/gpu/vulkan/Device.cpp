@@ -157,11 +157,11 @@ void Device::shutdown() noexcept {
         vk.vkDestroyShaderModule(device, record.fragment, nullptr);
     });
     // clang-format on
-    buffers = {};
-    images = {};
-    samplers = {};
-    pipelines = {};
-    programs = {};
+    buffers.clear();
+    images.clear();
+    samplers.clear();
+    pipelines.clear();
+    programs.clear();
 
     for (const Frame& frame : frames) {
         vk.vkDestroyQueryPool(device, frame.timestamps, nullptr);
@@ -603,24 +603,6 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
     return true;
 }
 
-Device::BufferRecord& Device::requireBuffer(Buffer buffer) const {
-    BufferRecord* record = buffers.find(buffer.id);
-    if (record == nullptr) {
-        throw std::logic_error(std::format("The buffer {} does not exist.", buffer.id));
-    }
-
-    return *record;
-}
-
-Device::ImageRecord& Device::requireImage(Image image) const {
-    ImageRecord* record = images.find(image.id);
-    if (record == nullptr) {
-        throw std::logic_error(std::format("The image {} does not exist.", image.id));
-    }
-
-    return *record;
-}
-
 VkFormat Device::resolveFormat(PixelFormat format) const noexcept {
     return format == PixelFormat::Depth24Stencil8 ? context->getDepthStencilFormat() : Conversions::toFormat(format);
 }
@@ -636,34 +618,34 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         throw std::invalid_argument(std::format("A buffer of {} bytes cannot hold {} bytes of data.", size, desc.data.size()));
     }
 
-    auto record = std::make_unique<BufferRecord>(BufferRecord{.size = size, .usage = desc.usage});
+    BufferRecord record{.size = size, .usage = desc.usage};
     const bool dynamic = desc.usage == Usage::Dynamic;
-    record->copies = dynamic ? static_cast<std::uint32_t>(kFramesInFlight) : 1U;
-    record->stride = dynamic ? (size + kDynamicBufferAlignment - 1) / kDynamicBufferAlignment * kDynamicBufferAlignment : size;
+    record.copies = dynamic ? static_cast<std::uint32_t>(kFramesInFlight) : 1U;
+    record.stride = dynamic ? (size + kDynamicBufferAlignment - 1) / kDynamicBufferAlignment * kDynamicBufferAlignment : size;
     VkBufferUsageFlags usage = desc.index ? VK_BUFFER_USAGE_INDEX_BUFFER_BIT : VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     if (!dynamic) {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
-    const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = record->stride * record->copies, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+    const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = record.stride * record.copies, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
     VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO};
     if (!dynamic) {
         memory.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
     }
 
     VmaAllocationInfo allocated{};
-    Context::check(vmaCreateBuffer(context->getAllocator(), &info, &memory, &record->buffer, &record->allocation, &allocated), std::format("make a buffer of {} bytes", size));
-    record->mapped = static_cast<std::byte*>(allocated.pMappedData);
-    context->setName(VK_OBJECT_TYPE_BUFFER, record->buffer, desc.label);
+    Context::check(vmaCreateBuffer(context->getAllocator(), &info, &memory, &record.buffer, &record.allocation, &allocated), std::format("make a buffer of {} bytes", size));
+    record.mapped = static_cast<std::byte*>(allocated.pMappedData);
+    context->setName(VK_OBJECT_TYPE_BUFFER, record.buffer, desc.label);
 
     try {
         if (!desc.data.empty()) {
-            uploadBuffer(*record, desc.data);
+            uploadBuffer(record, desc.data);
         }
 
         return {buffers.add(std::move(record))};
     } catch (...) {
-        releases.push(ReleaseQueue::Buffer{.buffer = record->buffer, .allocation = record->allocation}, nextSerial);
+        releases.push(ReleaseQueue::Buffer{.buffer = record.buffer, .allocation = record.allocation}, nextSerial);
         throw;
     }
 }
@@ -771,22 +753,22 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 
     checkImageLimits(desc, info, supported);
 
-    auto record = std::make_unique<ImageRecord>(ImageRecord{.format = format, .pixelFormat = desc.format, .kind = desc.kind, .type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .samples = samples, .aspects = Conversions::getAspects(format)});
+    ImageRecord record{.format = format, .pixelFormat = desc.format, .kind = desc.kind, .type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .samples = samples, .aspects = Conversions::getAspects(format)};
     if (!sampled) {
-        record->restLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        record.restLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 
     const VmaAllocationCreateInfo memory{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
-    Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &record->image, &record->allocation, nullptr), std::format("make the image \"{}\"", desc.label));
-    context->setName(VK_OBJECT_TYPE_IMAGE, record->image, desc.label);
+    Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &record.image, &record.allocation, nullptr), std::format("make the image \"{}\"", desc.label));
+    context->setName(VK_OBJECT_TYPE_IMAGE, record.image, desc.label);
 
     try {
         if (sampled) {
             // A view that shaders sample reads the depth of a depth and stencil image.
             const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-            const VkImageViewCreateInfo viewInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = record->image, .viewType = Conversions::toViewType(desc.type), .format = format, .subresourceRange = {.aspectMask = aspect, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
-            Context::check(vk.vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &record->sampleView), "make the view of an image");
-            context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, record->sampleView, desc.label);
+            const VkImageViewCreateInfo viewInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = record.image, .viewType = Conversions::toViewType(desc.type), .format = format, .subresourceRange = {.aspectMask = aspect, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
+            Context::check(vk.vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &record.sampleView), "make the view of an image");
+            context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, record.sampleView, desc.label);
         }
 
         if (!ensureFrame()) {
@@ -794,14 +776,14 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         }
 
         if (desc.kind == ImageKind::Texture && !desc.levels.empty()) {
-            uploadLevels(*record, desc.levels);
+            uploadLevels(record, desc.levels);
         } else {
-            clearImage(*record);
+            clearImage(record);
         }
 
         return {images.add(std::move(record))};
     } catch (...) {
-        releaseImage(*record, nextSerial);
+        releaseImage(record, nextSerial);
         throw;
     }
 }
@@ -893,13 +875,13 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         .maxLod = desc.maxLod,
         .borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
     };
-    auto record = std::make_unique<SamplerRecord>();
-    Context::check(vk.vkCreateSampler(context->getDevice(), &info, nullptr, &record->sampler), "make a sampler");
-    context->setName(VK_OBJECT_TYPE_SAMPLER, record->sampler, desc.label);
+    SamplerRecord record;
+    Context::check(vk.vkCreateSampler(context->getDevice(), &info, nullptr, &record.sampler), "make a sampler");
+    context->setName(VK_OBJECT_TYPE_SAMPLER, record.sampler, desc.label);
     try {
         return {samplers.add(std::move(record))};
     } catch (...) {
-        vk.vkDestroySampler(context->getDevice(), record->sampler, nullptr);
+        vk.vkDestroySampler(context->getDevice(), record.sampler, nullptr);
         throw;
     }
 }
@@ -916,11 +898,11 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         }
     }
 
-    auto record = std::make_unique<ProgramRecord>();
-    record->label = desc.label;
-    record->vertexEntry = desc.vertex.entry.empty() ? "main" : std::string(desc.vertex.entry);
-    record->fragmentEntry = desc.fragment.entry.empty() ? "main" : std::string(desc.fragment.entry);
-    record->blockIndices.fill(-1);
+    ProgramRecord record;
+    record.label = desc.label;
+    record.vertexEntry = desc.vertex.entry.empty() ? "main" : std::string(desc.vertex.entry);
+    record.fragmentEntry = desc.fragment.entry.empty() ? "main" : std::string(desc.fragment.entry);
+    record.blockIndices.fill(-1);
 
     std::vector<LayoutCache::Binding> uniformBindings;
     for (const BlockBinding& block : desc.blocks) {
@@ -928,68 +910,68 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
             throw std::invalid_argument(std::format("The uniform block at slot {} of the program \"{}\" is larger than the {} bytes that the GPU binds.", block.slot, desc.label, context->getProperties().limits.maxUniformBufferRange));
         }
 
-        if (record->uniformSet != kNoSet && record->uniformSet != static_cast<std::uint32_t>(block.set)) {
+        if (record.uniformSet != kNoSet && record.uniformSet != static_cast<std::uint32_t>(block.set)) {
             throw std::invalid_argument(std::format("The uniform blocks of the program \"{}\" lie in more than one descriptor set.", desc.label));
         }
 
-        record->uniformSet = static_cast<std::uint32_t>(block.set);
+        record.uniformSet = static_cast<std::uint32_t>(block.set);
         uniformBindings.push_back({.binding = static_cast<std::uint32_t>(block.binding), .type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .stages = Conversions::toStage(block.stage)});
-        record->uniformBlocks.push_back({.binding = static_cast<std::uint32_t>(block.binding), .size = block.size});
+        record.uniformBlocks.push_back({.binding = static_cast<std::uint32_t>(block.binding), .size = block.size});
     }
 
     std::ranges::sort(uniformBindings);
-    std::ranges::sort(record->uniformBlocks, {}, &DescriptorCache::UniformBlock::binding);
+    std::ranges::sort(record.uniformBlocks, {}, &DescriptorCache::UniformBlock::binding);
     for (const BlockBinding& block : desc.blocks) {
-        const auto found = std::ranges::find(record->uniformBlocks, static_cast<std::uint32_t>(block.binding), &DescriptorCache::UniformBlock::binding);
-        record->blockIndices[static_cast<std::size_t>(block.slot)] = static_cast<int>(found - record->uniformBlocks.begin());
+        const auto found = std::ranges::find(record.uniformBlocks, static_cast<std::uint32_t>(block.binding), &DescriptorCache::UniformBlock::binding);
+        record.blockIndices[static_cast<std::size_t>(block.slot)] = static_cast<int>(found - record.uniformBlocks.begin());
     }
 
     std::vector<LayoutCache::Binding> resourceBindings;
     // clang-format off
     const auto addResource = [&](int set, int binding, VkDescriptorType type, Stage stage) {
-        if (record->resourceSet != kNoSet && record->resourceSet != static_cast<std::uint32_t>(set)) {
+        if (record.resourceSet != kNoSet && record.resourceSet != static_cast<std::uint32_t>(set)) {
             throw std::invalid_argument(std::format("The textures and samplers of the program \"{}\" lie in more than one descriptor set.", desc.label));
         }
 
-        record->resourceSet = static_cast<std::uint32_t>(set);
+        record.resourceSet = static_cast<std::uint32_t>(set);
         resourceBindings.push_back({.binding = static_cast<std::uint32_t>(binding), .type = type, .stages = Conversions::toStage(stage)});
     };
     // clang-format on
     for (const TextureBinding& texture : desc.textures) {
         addResource(texture.set, texture.binding, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, texture.stage);
-        record->textures.push_back({.slot = texture.slot, .binding = static_cast<std::uint32_t>(texture.binding)});
+        record.textures.push_back({.slot = texture.slot, .binding = static_cast<std::uint32_t>(texture.binding)});
     }
 
     for (const SamplerBinding& sampler : desc.samplers) {
         addResource(sampler.set, sampler.binding, VK_DESCRIPTOR_TYPE_SAMPLER, sampler.stage);
-        record->samplers.push_back({.slot = sampler.slot, .binding = static_cast<std::uint32_t>(sampler.binding)});
+        record.samplers.push_back({.slot = sampler.slot, .binding = static_cast<std::uint32_t>(sampler.binding)});
     }
 
     std::ranges::sort(resourceBindings);
 
-    if (record->uniformSet != kNoSet && record->uniformSet == record->resourceSet) {
+    if (record.uniformSet != kNoSet && record.uniformSet == record.resourceSet) {
         throw std::invalid_argument(std::format("The program \"{}\" puts its uniform blocks and its textures in the same descriptor set.", desc.label));
     }
 
-    if (record->uniformSet != kNoSet) {
-        record->uniformLayout = layouts.getSetLayout(uniformBindings);
+    if (record.uniformSet != kNoSet) {
+        record.uniformLayout = layouts.getSetLayout(uniformBindings);
     }
 
-    if (record->resourceSet != kNoSet) {
-        record->resourceLayout = layouts.getSetLayout(resourceBindings);
+    if (record.resourceSet != kNoSet) {
+        record.resourceLayout = layouts.getSetLayout(resourceBindings);
     }
 
-    const std::uint32_t setCount = std::max(record->uniformSet == kNoSet ? 0U : record->uniformSet + 1, record->resourceSet == kNoSet ? 0U : record->resourceSet + 1);
+    const std::uint32_t setCount = std::max(record.uniformSet == kNoSet ? 0U : record.uniformSet + 1, record.resourceSet == kNoSet ? 0U : record.resourceSet + 1);
     std::vector<VkDescriptorSetLayout> sets(setCount, layouts.getSetLayout({}));
-    if (record->uniformSet != kNoSet) {
-        sets[record->uniformSet] = record->uniformLayout;
+    if (record.uniformSet != kNoSet) {
+        sets[record.uniformSet] = record.uniformLayout;
     }
 
-    if (record->resourceSet != kNoSet) {
-        sets[record->resourceSet] = record->resourceLayout;
+    if (record.resourceSet != kNoSet) {
+        sets[record.resourceSet] = record.resourceLayout;
     }
 
-    record->layout = layouts.getPipelineLayout(sets);
+    record.layout = layouts.getPipelineLayout(sets);
 
     // The bytes of a module may lie anywhere, while Vulkan reads it as aligned words.
     // clang-format off
@@ -1007,13 +989,13 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
         return module;
     };
     // clang-format on
-    record->vertex = makeModule(desc.vertex.bytecode);
+    record.vertex = makeModule(desc.vertex.bytecode);
     try {
-        record->fragment = makeModule(desc.fragment.bytecode);
+        record.fragment = makeModule(desc.fragment.bytecode);
         return {programs.add(std::move(record))};
     } catch (...) {
-        vk.vkDestroyShaderModule(context->getDevice(), record->vertex, nullptr);
-        vk.vkDestroyShaderModule(context->getDevice(), record->fragment, nullptr);
+        vk.vkDestroyShaderModule(context->getDevice(), record.vertex, nullptr);
+        vk.vkDestroyShaderModule(context->getDevice(), record.fragment, nullptr);
         throw;
     }
 }
@@ -1047,18 +1029,18 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         throw std::logic_error(std::format("The pipeline \"{}\" draws into at most {} color targets from at most {} vertex buffers with {} attributes.", desc.label, kMaxColorTargets, kMaxVertexBuffers, kMaxAttributes));
     }
 
-    auto record = std::make_unique<PipelineRecord>(PipelineRecord{.program = desc.program.id, .layout = program->layout, .indexType = desc.indexType, .bufferCount = static_cast<std::uint32_t>(desc.buffers.size()), .generation = swapchainTarget.generation});
+    PipelineRecord record{.program = desc.program.id, .layout = program->layout, .indexType = desc.indexType, .bufferCount = static_cast<std::uint32_t>(desc.buffers.size()), .generation = swapchainTarget.generation};
     if (desc.swapchain) {
-        record->stored = storePipeline(desc);
+        record.stored = storePipeline(desc);
     }
 
-    record->pipeline = buildPipeline(desc, *program);
+    record.pipeline = buildPipeline(desc, *program);
     try {
-        const std::uint32_t id = pipelines.add(std::move(record));
+        const std::uint64_t id = pipelines.add(std::move(record));
         ++program->pipelines;
         return {id};
     } catch (...) {
-        vk.vkDestroyPipeline(context->getDevice(), record->pipeline, nullptr);
+        vk.vkDestroyPipeline(context->getDevice(), record.pipeline, nullptr);
         throw;
     }
 }
@@ -1180,14 +1162,14 @@ void Device::rebuildPipeline(PipelineRecord& record) {
 }
 
 void Device::destroy(Buffer buffer) noexcept {
-    std::unique_ptr<BufferRecord> record = buffers.remove(buffer.id);
+    std::optional<BufferRecord> record = buffers.remove(buffer.id);
     if (record) {
         releases.push(ReleaseQueue::Buffer{.buffer = record->buffer, .allocation = record->allocation}, nextSerial);
     }
 }
 
 void Device::destroy(Image image) noexcept {
-    std::unique_ptr<ImageRecord> record = images.remove(image.id);
+    std::optional<ImageRecord> record = images.remove(image.id);
     if (!record) {
         return;
     }
@@ -1210,7 +1192,7 @@ void Device::releaseImage(ImageRecord& record, std::uint64_t serial) {
 }
 
 void Device::destroy(Sampler sampler) noexcept {
-    std::unique_ptr<SamplerRecord> record = samplers.remove(sampler.id);
+    std::optional<SamplerRecord> record = samplers.remove(sampler.id);
     if (!record) {
         return;
     }
@@ -1238,7 +1220,7 @@ void Device::releaseProgram(ProgramRecord& record, std::uint64_t serial) {
     releases.push(ReleaseQueue::ShaderModule{.module = record.fragment}, serial);
 }
 
-void Device::forgetProgramUse(std::uint32_t program, std::uint64_t serial) noexcept {
+void Device::forgetProgramUse(std::uint64_t program, std::uint64_t serial) noexcept {
     ProgramRecord* record = programs.find(program);
     if (record == nullptr) {
         return;
@@ -1252,25 +1234,26 @@ void Device::forgetProgramUse(std::uint32_t program, std::uint64_t serial) noexc
 }
 
 void Device::destroy(Pipeline pipeline) noexcept {
-    std::unique_ptr<PipelineRecord> record = pipelines.remove(pipeline.id);
-    if (!record) {
+    PipelineRecord* found = pipelines.find(pipeline.id);
+    if (found == nullptr) {
         return;
     }
 
-    if (bound.pipeline == record.get()) {
+    if (bound.pipeline == found) {
         bound.pipeline = nullptr;
         bound.program = nullptr;
         bound.uniformSetProgram = nullptr;
         bound.uniformSet = VK_NULL_HANDLE;
     }
 
+    const std::optional<PipelineRecord> record = pipelines.remove(pipeline.id);
     releases.push(ReleaseQueue::Pipeline{.pipeline = record->pipeline}, nextSerial);
     forgetProgramUse(record->program, nextSerial);
 }
 
 // The first write of a frame moves a dynamic buffer to its next copy, which the GPU finished reading once the frame waited for the fence of the frame before the last, since a frame in flight reads every other copy at most.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
-    BufferRecord& record = requireBuffer(buffer);
+    BufferRecord& record = buffers.get(buffer.id);
     if (record.usage != Usage::Dynamic) {
         throw std::logic_error(std::format("The buffer {} is immutable, so it takes no writes.", buffer.id));
     }
@@ -1305,7 +1288,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     std::vector<VkBuffer>& sourceBuffers = stagingSources;
     sourceBuffers.clear();
     for (const ImageWrite& write : writes) {
-        const ImageRecord& record = requireImage(write.image);
+        const ImageRecord& record = images.get(write.image.id);
         if (record.kind != ImageKind::Dynamic) {
             throw std::logic_error(std::format("The image {} is not dynamic, so it takes no new pixels.", write.image.id));
         }
@@ -1448,7 +1431,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     PassTarget target{.colorCount = static_cast<std::uint32_t>(desc.colors.size())};
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorAttachment& attachment = desc.colors[index];
-        ImageRecord& record = requireImage(attachment.image);
+        ImageRecord& record = images.get(attachment.image.id);
         if (record.kind != ImageKind::RenderTarget) {
             throw std::logic_error(std::format("The image {} is not a render target, so no pass draws into it.", attachment.image.id));
         }
@@ -1463,7 +1446,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         }
 
         if (attachment.resolve.isValid()) {
-            ImageRecord& resolve = requireImage(attachment.resolve);
+            ImageRecord& resolve = images.get(attachment.resolve.id);
             color.resolveView = getAttachmentView(resolve, 0, 0);
             color.resolveFormat = resolve.format;
             addTransition(resolve, 0, 0, false);
@@ -1472,7 +1455,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
 
     if (desc.depthStencil) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
-        ImageRecord& record = requireImage(attachment.image);
+        ImageRecord& record = images.get(attachment.image.id);
         if (record.kind != ImageKind::DepthStencil) {
             throw std::logic_error(std::format("The image {} is not a depth stencil image, so no pass tests against it.", attachment.image.id));
         }
@@ -1863,7 +1846,7 @@ void Device::bindVertexBuffers() {
     std::array<VkBuffer, kMaxVertexBuffers> handles{};
     std::array<VkDeviceSize, kMaxVertexBuffers> offsets{};
     for (std::uint32_t index = 0; index < count; ++index) {
-        const BufferRecord& record = requireBuffer(bound.bindings.vertexBuffers[index]);
+        const BufferRecord& record = buffers.get(bound.bindings.vertexBuffers[index].id);
         handles[index] = record.buffer;
         offsets[index] = record.stride * record.current + static_cast<VkDeviceSize>(bound.bindings.vertexOffsets[index]);
     }
@@ -1876,7 +1859,7 @@ void Device::bindVertexBuffers() {
 }
 
 void Device::bindIndexBuffer() {
-    const BufferRecord& record = requireBuffer(bound.bindings.indexBuffer);
+    const BufferRecord& record = buffers.get(bound.bindings.indexBuffer.id);
     const VkDeviceSize offset = record.stride * record.current + static_cast<VkDeviceSize>(bound.bindings.indexOffset);
     vk.vkCmdBindIndexBuffer(frames[frameIndex].graphics, record.buffer, offset, Conversions::toIndexType(bound.pipeline->indexType));
     bound.indexDirty = false;
@@ -1987,7 +1970,7 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
         throw std::runtime_error("The Vulkan device stopped working, so it reads back no image.");
     }
 
-    const ImageRecord& record = requireImage(image);
+    const ImageRecord& record = images.get(image.id);
     if (record.kind != ImageKind::RenderTarget || record.samples != VK_SAMPLE_COUNT_1_BIT) {
         throw std::invalid_argument(std::format("The image {} is not a render target of one sample, so it cannot be read back.", image.id));
     }

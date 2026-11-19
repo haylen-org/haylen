@@ -169,7 +169,7 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
 }
 
 std::vector<gpu::Device::Pool> Device::getPools() const {
-    const auto pool = [](std::string_view name, std::size_t used, std::size_t size) { return Pool{.name = name, .used = static_cast<int>(used), .size = static_cast<int>(size)}; };
+    const auto pool = [](std::string_view name, int used, int size) { return Pool{.name = name, .used = used, .size = size}; };
     return {pool("images", images.size(), images.capacity()), pool("buffers", buffers.size(), buffers.capacity()), pool("samplers", samplers.size(), samplers.capacity()), pool("programs", programs.size(), programs.capacity()), pool("pipelines", pipelines.size(), pipelines.capacity())};
 }
 
@@ -213,7 +213,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     BufferRecord record{.size = size, .usage = desc.usage};
     HResult::check(device->CreateBuffer(&made, desc.data.empty() ? nullptr : &initial, record.buffer.GetAddressOf()), std::format("create a buffer of {} bytes", size));
     setName(*record.buffer.Get(), desc.label);
-    return {buffers.insert(std::move(record))};
+    return {buffers.add(std::move(record))};
 }
 
 // Direct3D orders the subresources of a texture by layer and then by mip level, and those of a volume by mip level alone.
@@ -331,13 +331,13 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     record.resource.As(&child);
     setName(*child.Get(), desc.label);
     record.view = makeTextureView(*record.resource.Get(), desc);
-    return {images.insert(std::move(record))};
+    return {images.add(std::move(record))};
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     ComPtr<ID3D11SamplerState> sampler = StateObjects::makeSampler(*device.Get(), desc);
     setName(*sampler.Get(), desc.label);
-    return {samplers.insert(std::move(sampler))};
+    return {samplers.add(std::move(sampler))};
 }
 
 std::vector<Device::Register> Device::readRegisters(std::span<const TextureBinding> textures) {
@@ -385,7 +385,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     HResult::check(device->CreatePixelShader(fragmentCode->GetBufferPointer(), fragmentCode->GetBufferSize(), nullptr, record.fragment.GetAddressOf()), std::format("create the pixel shader of \"{}\"", desc.label));
     setName(*record.vertex.Get(), desc.label);
     setName(*record.fragment.Get(), desc.label);
-    return {programs.insert(std::move(record))};
+    return {programs.add(std::move(record))};
 }
 
 void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem&) {
@@ -425,27 +425,27 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     }
 
     record.indexFormat = Formats::getIndexFormat(desc.indexType);
-    return {pipelines.insert(std::move(record))};
+    return {pipelines.add(std::move(record))};
 }
 
 void Device::destroy(Buffer buffer) noexcept {
-    buffers.erase(buffer.id);
+    buffers.remove(buffer.id);
 }
 
 void Device::destroy(Image image) noexcept {
-    images.erase(image.id);
+    images.remove(image.id);
 }
 
 void Device::destroy(Sampler sampler) noexcept {
-    samplers.erase(sampler.id);
+    samplers.remove(sampler.id);
 }
 
 void Device::destroy(Program program) noexcept {
-    programs.erase(program.id);
+    programs.remove(program.id);
 }
 
 void Device::destroy(Pipeline pipeline) noexcept {
-    pipelines.erase(pipeline.id);
+    pipelines.remove(pipeline.id);
 
     if (bound.pipeline == pipeline.id) {
         bound.pipeline = 0;

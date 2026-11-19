@@ -83,7 +83,7 @@ Device::Buffer NullDevice::makeBuffer(const BufferDesc& desc) {
     }
 
     requireRoom(buffers.size(), kBufferPoolSize, "The graphics device has no room for another buffer. At most {} baked sprite batches and draw buffers can exist at once.");
-    const std::uint32_t id = nextId++;
+    const std::uint64_t id = nextId++;
     buffers.emplace(id, BufferState{.size = size, .usage = desc.usage, .index = desc.index});
     return {id};
 }
@@ -168,7 +168,7 @@ Device::Image NullDevice::makeImage(const ImageDesc& desc) {
     }
 
     requireRoom(images.size(), kImagePoolSize, "The graphics device has no room for another texture. At most {} textures and render targets can exist at once.");
-    const std::uint32_t id = nextId++;
+    const std::uint64_t id = nextId++;
     ImageDesc kept = desc;
     kept.levels = {};
     kept.label = {};
@@ -186,7 +186,7 @@ Device::Sampler NullDevice::makeSampler(const SamplerDesc& desc) {
     }
 
     requireRoom(samplers.size(), kSamplerPoolSize, "The graphics device has no room for another sampler. At most {} samplers can exist at once.");
-    const std::uint32_t id = nextId++;
+    const std::uint64_t id = nextId++;
     SamplerDesc kept = desc;
     kept.label = {};
     samplers.emplace(id, kept);
@@ -227,7 +227,7 @@ Device::Program NullDevice::makeProgram(const ProgramDesc& desc) {
     }
 
     requireRoom(programs.size(), kProgramPoolSize, "The graphics device has no room for another shader. At most {} shader programs can exist at once.");
-    const std::uint32_t id = nextId++;
+    const std::uint64_t id = nextId++;
     programs.emplace(id, std::move(program));
     return {id};
 }
@@ -320,7 +320,7 @@ Device::Pipeline NullDevice::makePipeline(const PipelineDesc& desc) {
     }
 
     requireRoom(pipelines.size(), kPipelinePoolSize, "The graphics device has no room for another pipeline. At most {} pipelines can exist at once.");
-    const std::uint32_t id = nextId++;
+    const std::uint64_t id = nextId++;
     pipelines.emplace(id, std::move(state));
     return {id};
 }

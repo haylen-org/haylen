@@ -205,7 +205,7 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
 
 std::vector<Device::Pool> Device::getPools() const {
     return {
-        {.name = images.getName(), .used = images.size(), .size = images.capacity()}, {.name = buffers.getName(), .used = buffers.size(), .size = buffers.capacity()}, {.name = samplers.getName(), .used = samplers.size(), .size = samplers.capacity()}, {.name = programs.getName(), .used = programs.size(), .size = programs.capacity()}, {.name = pipelines.getName(), .used = pipelines.size(), .size = pipelines.capacity()},
+        {.name = "images", .used = images.size(), .size = images.capacity()}, {.name = "buffers", .used = buffers.size(), .size = buffers.capacity()}, {.name = "samplers", .used = samplers.size(), .size = samplers.capacity()}, {.name = "programs", .used = programs.size(), .size = programs.capacity()}, {.name = "pipelines", .used = pipelines.size(), .size = pipelines.capacity()},
     };
 }
 
@@ -239,7 +239,7 @@ Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     }
 
     debug.label(Gl::kBuffer, name, desc.label);
-    return {buffers.add({.name = name, .size = size, .usage = desc.usage, .index = desc.index})};
+    return {buffers.add(BufferRecord{.name = name, .size = size, .usage = desc.usage, .index = desc.index})};
 }
 
 void Device::checkLevels(const ImageDesc& desc, const Conversions::Pixel& pixel) const {
@@ -406,7 +406,7 @@ Device::Image Device::makeImage(const ImageDesc& desc) {
     if (record.target == Gl::kRenderbuffer) {
         record.name = makeRenderbuffer(desc, pixel);
         debug.label(Gl::kRenderbuffer, record.name, desc.label);
-        return {images.add(record)};
+        return {images.add(std::move(record))};
     }
 
     record.name = makeTexture(desc, pixel, record.target);
@@ -415,7 +415,7 @@ Device::Image Device::makeImage(const ImageDesc& desc) {
     }
 
     debug.label(Gl::kTexture, record.name, desc.label);
-    return {images.add(record)};
+    return {images.add(std::move(record))};
 }
 
 Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
@@ -439,7 +439,7 @@ Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     }
 
     debug.label(Gl::kSampler, name, desc.label);
-    return {samplers.add(name)};
+    return {samplers.add(std::move(name))};
 }
 
 Device::Program Device::makeProgram(const ProgramDesc& desc) {

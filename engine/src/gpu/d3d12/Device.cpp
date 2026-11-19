@@ -195,7 +195,7 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
 }
 
 std::vector<gpu::Device::Pool> Device::getPools() const {
-    const auto pool = [](std::string_view name, std::size_t used, std::size_t size) { return Pool{.name = name, .used = static_cast<int>(used), .size = static_cast<int>(size)}; };
+    const auto pool = [](std::string_view name, int used, int size) { return Pool{.name = name, .used = used, .size = size}; };
     return {pool("images", images.size(), images.capacity()), pool("buffers", buffers.size(), buffers.capacity()), pool("samplers", samplers.size(), samplers.capacity()), pool("programs", programs.size(), programs.capacity()), pool("pipelines", pipelines.size(), pipelines.capacity())};
 }
 
@@ -374,7 +374,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         list.CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, size);
     }
 
-    return {buffers.insert(std::move(record))};
+    return {buffers.add(std::move(record))};
 }
 
 void Device::makeTextureView(ImageRecord& image) {
@@ -502,21 +502,21 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         stagePixels(record, desc.levels);
     }
 
-    return {images.insert(std::move(record))};
+    return {images.add(std::move(record))};
 }
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     const D3D12_SAMPLER_DESC made = StateDescriptions::makeSampler(desc);
     const D3D12_CPU_DESCRIPTOR_HANDLE handle = samplerViews->allocate();
     device->CreateSampler(&made, handle);
-    return {samplers.insert(handle)};
+    return {samplers.add(std::move(handle))};
 }
 
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     ProgramRecord record{.layout = rootSignatures->make(desc)};
     record.vertexCode = compiler->compile(desc.vertex, desc.label);
     record.fragmentCode = compiler->compile(desc.fragment, desc.label);
-    return {programs.insert(std::move(record))};
+    return {programs.add(std::move(record))};
 }
 
 void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem&) {
@@ -592,7 +592,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         record.description = {};
     }
 
-    return {pipelines.insert(std::move(record))};
+    return {pipelines.add(std::move(record))};
 }
 
 void Device::rebuildSwapchainPipelines() {
@@ -613,13 +613,13 @@ void Device::rebuildSwapchainPipelines() {
 }
 
 void Device::destroy(Buffer buffer) noexcept {
-    if (std::optional<BufferRecord> record = buffers.erase(buffer.id)) {
+    if (std::optional<BufferRecord> record = buffers.remove(buffer.id)) {
         garbage.push_back({.fence = fenceValue + 1, .object = std::move(record->resource), .range = record->range});
     }
 }
 
 void Device::destroy(Image image) noexcept {
-    std::optional<ImageRecord> record = images.erase(image.id);
+    std::optional<ImageRecord> record = images.remove(image.id);
     if (!record) {
         return;
     }
@@ -634,17 +634,17 @@ void Device::destroy(Image image) noexcept {
 }
 
 void Device::destroy(Sampler sampler) noexcept {
-    if (std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> handle = samplers.erase(sampler.id)) {
+    if (std::optional<D3D12_CPU_DESCRIPTOR_HANDLE> handle = samplers.remove(sampler.id)) {
         retire(nullptr, samplerViews.get(), *handle);
     }
 }
 
 void Device::destroy(Program program) noexcept {
-    programs.erase(program.id);
+    programs.remove(program.id);
 }
 
 void Device::destroy(Pipeline pipeline) noexcept {
-    if (std::optional<PipelineRecord> record = pipelines.erase(pipeline.id)) {
+    if (std::optional<PipelineRecord> record = pipelines.remove(pipeline.id)) {
         retire(std::move(record->state));
     }
 

@@ -16,10 +16,10 @@
 #include <vector>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/HandleTable.hpp"
 #include "gpu/d3d11/DynamicRing.hpp"
 #include "gpu/d3d11/FrameTimer.hpp"
 #include "gpu/direct3d/DebugMessages.hpp"
-#include "gpu/direct3d/Slots.hpp"
 #include "gpu/direct3d/WideText.hpp"
 #include "gpu/renderdoc/Capturer.hpp"
 #include "haylen/gpu/Device.hpp"
@@ -166,7 +166,7 @@ class Device final : public gpu::Device {
 
     // The state that the context holds, so a call that would set what it holds already is skipped. Bound objects stay alive in the context, so no other object takes the address of one of them while it is bound.
     struct ContextState {
-        std::uint32_t pipeline = 0;
+        std::uint64_t pipeline = 0;
         ID3D11InputLayout* layout = nullptr;
         D3D11_PRIMITIVE_TOPOLOGY topology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
         ID3D11VertexShader* vertex = nullptr;
@@ -255,11 +255,11 @@ class Device final : public gpu::Device {
     Capabilities capabilities;
     bool lost = false;
 
-    direct3d::Slots<BufferRecord> buffers{"buffer"};
-    direct3d::Slots<ImageRecord> images{"image"};
-    direct3d::Slots<Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers{"sampler"};
-    direct3d::Slots<ProgramRecord> programs{"program"};
-    direct3d::Slots<PipelineRecord> pipelines{"pipeline"};
+    HandleTable<BufferRecord> buffers{"buffer"};
+    HandleTable<ImageRecord> images{"image"};
+    HandleTable<Microsoft::WRL::ComPtr<ID3D11SamplerState>> samplers{"sampler"};
+    HandleTable<ProgramRecord> programs{"program"};
+    HandleTable<PipelineRecord> pipelines{"pipeline"};
 
     std::unique_ptr<DynamicRing> uniforms;
     // The bytes of the uniform blocks applied since the pipeline, which the blocks take again when the ring starts over.

@@ -27,8 +27,8 @@ class DescriptorCache final {
     // The ids of the images and samplers in the slots that a layout reads, with 0 in the others.
     struct ResourceKey {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-        std::array<std::uint32_t, Device::kMaxTextures> images{};
-        std::array<std::uint32_t, Device::kMaxSamplers> samplers{};
+        std::array<std::uint64_t, Device::kMaxTextures> images{};
+        std::array<std::uint64_t, Device::kMaxSamplers> samplers{};
 
         friend bool operator==(const ResourceKey&, const ResourceKey&) = default;
     };
@@ -54,8 +54,8 @@ class DescriptorCache final {
     [[nodiscard]] VkDescriptorSet getUniformSet(VkDescriptorSetLayout layout, VkBuffer buffer, std::span<const UniformBlock> blocks);
 
     // Lets go of the sets that hold a destroyed image or sampler once the frames that may use them finished.
-    void forgetImage(std::uint32_t id, std::uint64_t serial);
-    void forgetSampler(std::uint32_t id, std::uint64_t serial);
+    void forgetImage(std::uint64_t id, std::uint64_t serial);
+    void forgetSampler(std::uint64_t id, std::uint64_t serial);
 
     // Frees the sets that no unfinished frame uses while the cache holds more than its bound.
     void trim(std::uint64_t completed);

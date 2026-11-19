@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/HandleTable.hpp"
 #include "gpu/d3d12/BufferArena.hpp"
 #include "gpu/d3d12/DescriptorHeap.hpp"
 #include "gpu/d3d12/DescriptorRing.hpp"
@@ -26,7 +27,6 @@
 #include "gpu/d3d12/RootSignatures.hpp"
 #include "gpu/d3d12/UploadAllocator.hpp"
 #include "gpu/direct3d/DebugMessages.hpp"
-#include "gpu/direct3d/Slots.hpp"
 #include "gpu/direct3d/Swapchain.hpp"
 #include "gpu/renderdoc/Capturer.hpp"
 #include "haylen/gpu/Device.hpp"
@@ -178,7 +178,7 @@ class Device final : public gpu::Device {
 
     // The state that the list of the frame holds, so a call that would set what it holds already is skipped.
     struct ListState {
-        std::uint32_t pipeline = 0;
+        std::uint64_t pipeline = 0;
         ID3D12PipelineState* state = nullptr;
         ID3D12RootSignature* signature = nullptr;
         D3D12_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
@@ -279,11 +279,11 @@ class Device final : public gpu::Device {
     std::unique_ptr<RootSignatures> rootSignatures;
     std::unique_ptr<FrameTimer> timer;
 
-    direct3d::Slots<BufferRecord> buffers{"buffer"};
-    direct3d::Slots<ImageRecord> images{"image"};
-    direct3d::Slots<D3D12_CPU_DESCRIPTOR_HANDLE> samplers{"sampler"};
-    direct3d::Slots<ProgramRecord> programs{"program"};
-    direct3d::Slots<PipelineRecord> pipelines{"pipeline"};
+    HandleTable<BufferRecord> buffers{"buffer"};
+    HandleTable<ImageRecord> images{"image"};
+    HandleTable<D3D12_CPU_DESCRIPTOR_HANDLE> samplers{"sampler"};
+    HandleTable<ProgramRecord> programs{"program"};
+    HandleTable<PipelineRecord> pipelines{"pipeline"};
     std::deque<Garbage> garbage;
 
     std::array<Frame, kFramesInFlight> frames;
