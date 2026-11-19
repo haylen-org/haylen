@@ -100,11 +100,21 @@ class UiTestsTest:
             ["shell", "settings", "delete", "secure", "immersive_mode_confirmations"],
         ]
 
-    def test_the_unified_log_keeps_the_errors_it_relays(self):
-        events = [json.dumps({"messageType": "Default", "eventMessage": "Started."}), json.dumps({"messageType": "Error", "eventMessage": "The view parted."}), "Filtering the log data."]
+    def test_the_unified_log_keeps_the_errors_it_relays_by_the_level_of_their_record(self):
+        started = "[2026-11-19 10:00:00.000] [info] Started."
+        silent = "[2026-11-19 10:00:00.100] [warning] The audio output does not answer, so the app runs without sound until the system opens it."
+        parted = "[2026-11-19 10:00:00.200] [error] The view parted."
+        # The unified log gives a warning of the engine the type of an error, so only the level of the record tells them apart.
+        events = [
+            json.dumps({"messageType": "Info", "eventMessage": started}),
+            json.dumps({"messageType": "Error", "eventMessage": silent}),
+            json.dumps({"messageType": "Error", "eventMessage": parted}),
+            json.dumps({"messageType": "Info", "eventMessage": "[error] printed by a script"}),
+            "Filtering the log data.",
+        ]
         errors: list[str] = []
         stdout, stderr = io.StringIO(), io.StringIO()
         UnifiedLog.relay(iter(line + "\n" for line in events), errors, Terminal(stdout, stderr, {}, Path("test.log")))
-        assert errors == ["The view parted."]
-        assert stderr.getvalue() == "The view parted.\n"
-        assert stdout.getvalue() == "Started.\nFiltering the log data.\n"
+        assert errors == [parted]
+        assert stderr.getvalue() == f"{silent}\n{parted}\n"
+        assert stdout.getvalue() == f"{started}\n[error] printed by a script\nFiltering the log data.\n"

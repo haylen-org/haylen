@@ -1,4 +1,5 @@
 import json
+import re
 import subprocess
 import threading
 import time
@@ -11,6 +12,10 @@ class UnifiedLog:
     """Relays what the engine of an app process writes to the unified log of Apple platforms while the block runs, and keeps the errors it logged, which fill as they arrive. The engine logs under the bundle identifier of the app as the subsystem and the category `haylen`. The prefix runs `log` inside a simulator."""
 
     CATEGORY = "haylen"
+    # A record of the engine carries its time and its level before its message, while the unified log has no type for a warning and takes the type of an error for it, so the level comes from the record.
+    RECORD = re.compile(r"\[[^\]]*\] \[(?P<level>[a-z]+)\] ")
+    WARNINGS = ("warning",)
+    ERRORS = ("error", "critical")
     # Events reach the stream a moment after the app writes them, so the last lines of an app that ended still arrive within this time.
     GRACE_SECONDS = 1.0
 
@@ -37,7 +42,7 @@ class UnifiedLog:
 
     @staticmethod
     def relay(lines: Iterable[str], errors: list[str], terminal: Terminal) -> None:
-        """Prints the message of every event of a stream in the `ndjson` style, with warnings and errors on the error output like the engine on a desktop, and keeps the errors."""
+        """Prints the message of every event of a stream in the `ndjson` style, with warnings and errors on the error output like the engine on a desktop, and keeps the errors. The level of an event is the level of its record, and a line without one, such as what a script prints, is neither."""
         for line in lines:
             try:
                 event = json.loads(line)
@@ -45,7 +50,8 @@ class UnifiedLog:
                 terminal.verbatim(line.rstrip())
                 continue
             message = event.get("eventMessage", "")
-            failed = event.get("messageType") in ("Error", "Fault")
-            if failed:
+            record = UnifiedLog.RECORD.match(message)
+            level = record["level"] if record else None
+            if level in UnifiedLog.ERRORS:
                 errors.append(message)
-            terminal.verbatim(message, error=failed)
+            terminal.verbatim(message, error=level in (*UnifiedLog.WARNINGS, *UnifiedLog.ERRORS))

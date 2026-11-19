@@ -13,6 +13,11 @@ class NotificationTests: TestProjectCase {
         "PLG-025"
     }
 
+    override func tearDown() async throws {
+        XCUIDevice.shared.orientation = .portrait
+        try await super.tearDown()
+    }
+
     func testTheNotificationTapsReachTheApp() throws {
         notify()
         tapNotification(containing: Self.notification)
@@ -24,16 +29,13 @@ class NotificationTests: TestProjectCase {
         tapNotification(containing: Self.notification)
         expectCheck(Self.tapName, containing: "received 2 taps")
 
-        // The system starts the app without launch arguments, so the test opens again through the search of the menu.
+        // The system starts the app without launch arguments, so the test opens again through the search of the menu. The device turns to the landscape of the app first, so the system opens the app in its orientation, since a window that turns after the launch drops the touches that reach it while it turns.
         notify()
         app.terminate()
+        XCUIDevice.shared.orientation = .landscapeLeft
         tapNotification(containing: Self.notification)
         waitFor(element(matching: "Search by code or title.*")).tap()
-        waitFor(app.keyboards.firstMatch)
-        for character in Self.search {
-            let key = character == " " ? "space" : String(character)
-            waitFor(app.keyboards.keys.matching(NSPredicate(format: "label ==[c] %@", key)).firstMatch).tap()
-        }
+        typeOnKeyboard(Self.search)
         waitFor(element(matching: "PLG-025\\s+Local notifications")).tap()
         expectCheck(Self.tapName, containing: "received 1 taps")
         try saveScreenshot("notification-launched")
@@ -50,7 +52,7 @@ class NotificationTests: TestProjectCase {
             alert.exists || answered()
         }
         if alert.exists {
-            answerAlert(Self.allow)
+            answerAlert(.allow)
         }
         waitUntil("The plugin does not schedule another notification.", answered)
         expectCheck(Self.scheduledName)

@@ -245,6 +245,18 @@ class HaylenUITestCase: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: timeout), "The tap on the notification does not bring the app to the front.", file: file, line: line)
     }
 
+    // Types the text on the software keyboard of the system one key at a time, as a person does. A key is in the tree of the app before the keyboard is on the screen, and a tap there types nothing, so each key waits until it takes a tap. The match ignores the case of a letter, whose key the keyboard names in the case it types, such as "P" while it capitalizes.
+    func typeOnKeyboard(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        for character in text {
+            let label = character == " " ? "space" : String(character)
+            let key = app.keyboards.keys.matching(NSPredicate(format: "label ==[c] %@ OR identifier ==[c] %@", label, label)).firstMatch
+            waitUntil("The key \"\(label)\" of the keyboard takes no tap: it is \(key.exists ? "at \(key.frame)" : "missing") and the keyboard is \(app.keyboards.firstMatch.exists ? "at \(app.keyboards.firstMatch.frame)" : "closed").", file: file, line: line) {
+                key.exists && key.isHittable
+            }
+            key.tap()
+        }
+    }
+
     // Leaves the app for the Home Screen, which sends it to the background, where it runs or the system suspends it.
     func goHome(file: StaticString = #filePath, line: UInt = #line) {
         XCUIDevice.shared.press(.home)

@@ -8,7 +8,7 @@ class TextInputTests: HaylenUITestCase {
         // The search of the menu finds the test, and typing its words takes the keyboard too.
         waitFor(element(matching: "Search by code or title.*")).tap()
         waitFor(app.keyboards.firstMatch)
-        press("text fields")
+        typeOnKeyboard("text fields")
         waitFor(element(matching: "GUI-005\\s+Text fields.*")).tap()
         waitFor(element("https://haylen.dev"))
     }
@@ -20,11 +20,11 @@ class TextInputTests: HaylenUITestCase {
 
     func testEachKeyTypesOnceAndBackspaceDeletes() throws {
         startTyping()
-        press("oi")
+        typeOnKeyboard("oi")
         expectReport("oi")
         waitFor(app.keyboards.keys["delete"]).tap()
         expectReport("o")
-        press("la")
+        typeOnKeyboard("la")
         expectReport("ola")
         try saveScreenshot("text-typed")
     }
@@ -45,12 +45,12 @@ class TextInputTests: HaylenUITestCase {
 
     func testTheTextAndTheKeyboardStayWhenTheDeviceTurns() throws {
         startTyping()
-        press("mar")
+        typeOnKeyboard("mar")
         expectReport("mar")
         XCUIDevice.shared.orientation = .landscapeRight
         RunLoop.current.run(until: Date().addingTimeInterval(1.5))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when the device turns.")
-        press("e")
+        typeOnKeyboard("e")
         expectReport("mare")
         try saveScreenshot("text-turned")
     }
@@ -61,7 +61,7 @@ class TextInputTests: HaylenUITestCase {
         tap("Crew size")
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when another field takes over.")
-        press("42")
+        typeOnKeyboard("42")
         waitFor(element("The field \"number\" reported \"change\" with \"42\"."), timeout: 10)
 
         startTyping()
@@ -69,7 +69,7 @@ class TextInputTests: HaylenUITestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         app.activate()
         waitFor(app.keyboards.firstMatch)
-        press("ilha")
+        typeOnKeyboard("ilha")
         expectReport("ilha")
         try saveScreenshot("keyboard-back")
         waitFor(app.keyboards.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "go")).firstMatch).tap()
@@ -91,7 +91,7 @@ class TextInputTests: HaylenUITestCase {
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when a finger scrolls the page from outside the field.")
         XCTAssertLessThan(field.frame.minY, top - 20, "The page does not scroll under the finger.")
-        press("mar")
+        typeOnKeyboard("mar")
         expectReport("mar")
         try saveScreenshot("scrolled-while-editing")
 
@@ -107,13 +107,13 @@ class TextInputTests: HaylenUITestCase {
         for _ in 0..<"text fields".count {
             waitFor(app.keyboards.keys["delete"]).tap()
         }
-        press("text input")
+        typeOnKeyboard("text input")
         waitFor(element(matching: "GUI-018\\s+Text input.*")).tap()
         tap("Show the plain keyboard")
         waitFor(app.keyboards.firstMatch)
 
         tap("Say hello to the keeper")
-        press("oi")
+        typeOnKeyboard("oi")
         waitFor(app.keyboards.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "send")).firstMatch).tap()
         waitFor(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Submitted \"oi\"")).firstMatch, timeout: 10)
         RunLoop.current.run(until: Date().addingTimeInterval(1))
@@ -133,13 +133,6 @@ class TextInputTests: HaylenUITestCase {
     func startTyping() {
         tap("https://haylen.dev")
         waitFor(app.keyboards.firstMatch)
-    }
-
-    // Taps the keys of the software keyboard one by one, as a person types.
-    func press(_ text: String) {
-        for character in text {
-            waitFor(app.keyboards.keys[character == " " ? "space" : String(character)]).tap()
-        }
     }
 
     // The test reports every change of a field on its status line.
