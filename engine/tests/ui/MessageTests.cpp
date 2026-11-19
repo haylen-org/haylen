@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -8,6 +9,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <imgui_internal.h>
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
@@ -17,6 +20,7 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/text/Direction.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Message.hpp"
 #include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/Theme.hpp"
@@ -429,6 +433,20 @@ TEST_F(MessageTest, UpdatesAndDismissesMessagesAndTellsWhyEachLeft) {
     EXPECT_THROW(upload->update({{"variant", "glass"}}), std::invalid_argument);
     EXPECT_THROW(upload->update({{"progress", 2}}), std::invalid_argument);
     EXPECT_THROW(upload->update({{"title", ""}, {"text", ""}}), std::invalid_argument);
+}
+
+// Each message takes the window of a message that left, so ImGui keeps only as many windows as messages showed at once.
+TEST_F(MessageTest, ReusesTheWindowsOfMessagesThatLeft) {
+    for (int index = 0; index < 12; ++index) {
+        const std::shared_ptr<Message> message = show(R"({"text": "Saved", "duration": 0})");
+        frames(getTransitionFrames());
+        message->dismiss();
+        frames(getTransitionFrames());
+    }
+
+    getUi().getBackend().makeCurrent();
+    const std::ptrdiff_t windows = std::ranges::count_if(GImGui->Windows, [](const ImGuiWindow* window) { return std::string_view(window->Name).starts_with("##haylen-message"); });
+    EXPECT_EQ(windows, 1);
 }
 
 TEST_F(MessageTest, ClosesMessagesWithTheirButtonsAndSwipesThemAway) {

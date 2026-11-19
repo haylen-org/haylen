@@ -28,11 +28,37 @@ namespace haylen::ui {
 MessageView::MessageView(Context& drawingContext, platform::Accessibility& screenReaders) : context(drawingContext), accessibility(screenReaders) {}
 
 void MessageView::draw(const std::vector<std::shared_ptr<Message>>& messages, const math::Rect& area) {
+    releaseWindowSlots(messages);
     for (const std::shared_ptr<Message>& message : messages) {
         if (message->phase != Message::Phase::Gone) {
             drawMessage(*message, area);
         }
     }
+}
+
+void MessageView::releaseWindowSlots(const std::vector<std::shared_ptr<Message>>& messages) {
+    for (std::uint64_t& slot : windowSlots) {
+        const bool living = std::ranges::any_of(messages, [slot](const std::shared_ptr<Message>& message) { return message->key == slot && message->phase != Message::Phase::Gone; });
+        if (!living) {
+            slot = 0;
+        }
+    }
+}
+
+std::size_t MessageView::takeWindowSlot(std::uint64_t key) {
+    const auto owned = std::ranges::find(windowSlots, key);
+    if (owned != windowSlots.end()) {
+        return static_cast<std::size_t>(owned - windowSlots.begin());
+    }
+
+    const auto free = std::ranges::find(windowSlots, std::uint64_t{0});
+    if (free != windowSlots.end()) {
+        *free = key;
+        return static_cast<std::size_t>(free - windowSlots.begin());
+    }
+
+    windowSlots.push_back(key);
+    return windowSlots.size() - 1;
 }
 
 // A message waits while the list of its stack is full, and its time runs from the frame it comes on screen, while nothing holds its stack. A message behind the front of a closed deck shrinks toward the edge and fades once more messages than the limit of the theme lie in front of it.
@@ -142,7 +168,7 @@ void MessageView::drawMessage(Message& message, const math::Rect& area) {
     const float alpha = message.appear * fade * (1.0F - std::min(1.0F, std::fabs(message.swipe) / std::max(1.0F, layout.size.x)));
 
     std::array<char, 40> name{};
-    std::snprintf(name.data(), name.size(), "##haylen-message%llu", static_cast<unsigned long long>(message.key));
+    std::snprintf(name.data(), name.size(), "##haylen-message%zu", takeWindowSlot(message.key));
     ImGui::SetNextWindowPos(ImGuiConverter::toImVec2(frame.getMin()));
     ImGui::SetNextWindowSize(ImGuiConverter::toImVec2(frame.getSize()));
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * alpha);

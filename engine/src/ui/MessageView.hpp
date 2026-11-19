@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -24,7 +26,6 @@ class MessageView final {
   public:
     MessageView(Context& drawingContext, platform::Accessibility& screenReaders);
 
-    // Draws the messages that wait or show, in the window being built.
     // Draws the messages in the stacks of the edges of an area in UI coordinates, the safe area or the area of the app that keeps clear of its bars.
     void draw(const std::vector<std::shared_ptr<Message>>& messages, const math::Rect& area);
 
@@ -64,6 +65,10 @@ class MessageView final {
 
     void drawMessage(Message& message, const math::Rect& area);
 
+    // Frees the window slots of the messages that are gone, and returns the slot of a message, the first free one the first time it draws.
+    void releaseWindowSlots(const std::vector<std::shared_ptr<Message>>& messages);
+    [[nodiscard]] std::size_t takeWindowSlot(std::uint64_t key);
+
     // Lays out the parts of a message no wider than `width`, or exactly as wide when it fills the width, as a snackbar, a banner and the messages of a deck do.
     [[nodiscard]] Layout layOut(const Message& message, float width, bool fill);
     [[nodiscard]] Colors getColors(const Message::Content& content) const;
@@ -79,6 +84,9 @@ class MessageView final {
     Context& context;
     platform::Accessibility& accessibility;
     std::string spoken;
+
+    // The key of the message that each window slot names, or zero for a free slot, so ImGui keeps only as many windows as messages show at once.
+    std::vector<std::uint64_t> windowSlots;
 };
 
 } // namespace haylen::ui
