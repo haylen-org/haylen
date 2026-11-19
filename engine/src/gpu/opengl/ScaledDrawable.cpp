@@ -31,14 +31,15 @@ const Device::ProgramDesc ScaledDrawable::kProgram{
     .label = "haylen-scaled-drawable",
 };
 
+// The targets are made first, since only they can fail, and a constructor that throws runs no destructor.
 ScaledDrawable::ScaledDrawable(Gl& functions, StateCache& cache, const Surface::Size& value, int sampleCount) : gl(functions), state(cache), program(functions, cache, kProgram), size(value), samples(sampleCount) {
+    makeTargets();
     gl.genVertexArrays(1, &vertexArray);
     gl.genSamplers(1, &sampler);
     gl.samplerParameteri(sampler, Gl::kTextureMinFilter, static_cast<Gl::Int>(Gl::kLinear));
     gl.samplerParameteri(sampler, Gl::kTextureMagFilter, static_cast<Gl::Int>(Gl::kLinear));
     gl.samplerParameteri(sampler, Gl::kTextureWrapS, static_cast<Gl::Int>(Gl::kClampToEdge));
     gl.samplerParameteri(sampler, Gl::kTextureWrapT, static_cast<Gl::Int>(Gl::kClampToEdge));
-    makeTargets();
 }
 
 ScaledDrawable::~ScaledDrawable() {
@@ -49,8 +50,9 @@ ScaledDrawable::~ScaledDrawable() {
     state.forgetVertexArray(vertexArray);
 }
 
+// A size whose targets could not be made has no framebuffer, so asking for it again makes them again.
 void ScaledDrawable::resize(const Surface::Size& value) {
-    if (value == size) {
+    if (value == size && framebuffer != 0) {
         return;
     }
 
@@ -79,6 +81,7 @@ void ScaledDrawable::makeTargets() {
     gl.framebufferRenderbuffer(Gl::kDrawFramebuffer, Gl::kDepthStencilAttachment, Gl::kRenderbuffer, depthStencil);
 
     if (gl.checkFramebufferStatus(Gl::kDrawFramebuffer) != Gl::kFramebufferComplete) {
+        destroyTargets();
         throw std::runtime_error("The OpenGL device cannot draw into a framebuffer of the size of the drawable, so it cannot show the window with fewer pixels than it has.");
     }
 

@@ -38,6 +38,7 @@ else()
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DeviceTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/GpuTimerTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/LayerClearTests.cpp"
+    "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ScaledDrawableTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ShaderProgramTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/StateCacheTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/UploadRingTests.cpp"

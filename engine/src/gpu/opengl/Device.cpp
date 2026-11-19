@@ -49,11 +49,11 @@ Device::Device(Api flavour, const Surface& surface, bool validation) : context(m
         ring = std::make_unique<UploadRing>(gl, state, kFramesInFlight);
     }
 
-    gl.genVertexArrays(1, &uploadVertexArray);
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
     applyDriverIssues();
     readCapabilities();
     scaleDrawable(surfaceScaled, surfaceSize);
+    gl.genVertexArrays(1, &uploadVertexArray);
 }
 
 Device::~Device() {
