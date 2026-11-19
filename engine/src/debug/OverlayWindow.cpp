@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <format>
 #include <iterator>
 #include <string>
@@ -38,13 +39,14 @@ ImVec4 OverlayWindow::getLevelColor(core::Log::Level level) noexcept {
 // Writes the text into the buffer, which holds the longest count of bytes, and returns it.
 const char* OverlayWindow::formatBytes(ByteText& text, std::int64_t bytes) noexcept {
     const auto value = static_cast<double>(bytes);
+    const auto limit = static_cast<std::ptrdiff_t>(text.size() - 1);
     std::format_to_n_result<char*> written{};
     if (value >= 1024.0 * 1024.0) {
-        written = std::format_to_n(text.data(), text.size() - 1, "{:.1f} MB", value / (1024.0 * 1024.0));
+        written = std::format_to_n(text.data(), limit, "{:.1f} MB", value / (1024.0 * 1024.0));
     } else if (value >= 1024.0) {
-        written = std::format_to_n(text.data(), text.size() - 1, "{:.1f} KB", value / 1024.0);
+        written = std::format_to_n(text.data(), limit, "{:.1f} KB", value / 1024.0);
     } else {
-        written = std::format_to_n(text.data(), text.size() - 1, "{} B", bytes);
+        written = std::format_to_n(text.data(), limit, "{} B", bytes);
     }
 
     *written.out = '\0';
