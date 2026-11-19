@@ -16,20 +16,19 @@
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/UiFixture.hpp"
 
 namespace haylen::ui {
 
-namespace {
-
-// What the GUIs drew in the last frame: the box around every vertex and shape and the strongest value of two color channels.
-struct Drawn {
-    math::Rect box;
-    std::uint32_t alpha = 0;
-    std::uint32_t green = 0;
-};
-
 class UiTransformTest : public ::testing::Test {
   protected:
+    // What the GUIs drew in the last frame: the box around every vertex and shape and the strongest value of two color channels.
+    struct Drawn {
+        math::Rect box;
+        std::uint32_t alpha = 0;
+        std::uint32_t green = 0;
+    };
+
     [[nodiscard]] static Drawn getDrawn(plugins::UiPlugin& plugin) {
         plugin.getBackend().makeCurrent();
         const ImDrawData& data = *ImGui::GetDrawData();
@@ -60,30 +59,11 @@ class UiTransformTest : public ::testing::Test {
         return drawn;
     }
 
-    // Returns whether a command of the last frame clips to the rectangle, within a pixel.
-    [[nodiscard]] static bool hasClip(plugins::UiPlugin& plugin, const math::Rect& expected) {
-        plugin.getBackend().makeCurrent();
-        const ImDrawData& data = *ImGui::GetDrawData();
-        for (const ImDrawList* list : data.CmdLists) {
-            for (const ImDrawCmd& command : list->CmdBuffer) {
-                const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
-                const bool near = std::fabs(clip.x - expected.x) <= 1.0F && std::fabs(clip.y - expected.y) <= 1.0F && std::fabs(clip.getRight() - expected.getRight()) <= 1.0F && std::fabs(clip.getBottom() - expected.getBottom()) <= 1.0F;
-                if (near) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     // Returns where a scale around a center moves a rectangle.
     [[nodiscard]] static math::Rect scaleAround(const math::Rect& rect, math::Vec2 center, float scale) {
         return math::Rect::fromMinMax(center + (rect.getMin() - center) * scale, center + (rect.getMax() - center) * scale);
     }
 };
-
-} // namespace
 
 // The offset moves the node where input finds it, while scale, opacity and tint reshape only what it drew.
 TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
@@ -144,13 +124,15 @@ TEST_F(UiTransformTest, ScalesTheClipsOfTheNodesInsideItOnce) {
     const math::Rect panel = gui->find("panel")->getBounds();
     const math::Rect outside = gui->find("outside")->getBounds();
     const math::Rect inside = gui->find("inside")->getBounds();
-    ASSERT_TRUE(hasClip(plugin, outside));
-    ASSERT_TRUE(hasClip(plugin, inside));
+    plugin.getBackend().makeCurrent();
+    ASSERT_TRUE(test::UiFixture::hasClip(outside));
+    ASSERT_TRUE(test::UiFixture::hasClip(inside));
 
     gui->find("panel")->getTransform()->scale = {0.75F, 0.75F};
     fixture.frames(2);
-    EXPECT_TRUE(hasClip(plugin, scaleAround(outside, panel.getCenter(), 0.75F)));
-    EXPECT_TRUE(hasClip(plugin, scaleAround(inside, panel.getCenter(), 0.75F)));
+    plugin.getBackend().makeCurrent();
+    EXPECT_TRUE(test::UiFixture::hasClip(scaleAround(outside, panel.getCenter(), 0.75F), 1.0F));
+    EXPECT_TRUE(test::UiFixture::hasClip(scaleAround(inside, panel.getCenter(), 0.75F), 1.0F));
 }
 
 // A negative scale mirrors the node, and its corners and borders keep the size of the magnitude of the scale.

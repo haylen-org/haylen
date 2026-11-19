@@ -12,6 +12,10 @@ std::vector<std::uint8_t> TestFiles::bytes(const std::string& text) {
     return {text.begin(), text.end()};
 }
 
+std::string TestFiles::toText(std::span<const std::uint8_t> data) {
+    return {data.begin(), data.end()};
+}
+
 std::vector<std::uint8_t> TestFiles::pngImage(int width, int height, std::uint32_t rgba) {
     return graphics::Image(width, height, math::Color::fromHex(rgba)).encodePng();
 }

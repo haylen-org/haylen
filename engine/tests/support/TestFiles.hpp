@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,9 @@ namespace haylen::test {
 class TestFiles final {
   public:
     [[nodiscard]] static std::vector<std::uint8_t> bytes(const std::string& text);
+
+    // Returns the bytes of a file as the text that a package of files in memory holds.
+    [[nodiscard]] static std::string toText(std::span<const std::uint8_t> data);
 
     // Encodes a PNG image of one color, given as `0xRRGGBBAA`.
     [[nodiscard]] static std::vector<std::uint8_t> pngImage(int width, int height, std::uint32_t rgba);

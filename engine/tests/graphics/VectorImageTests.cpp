@@ -15,8 +15,6 @@
 
 namespace haylen::graphics {
 
-namespace {
-
 class VectorImageTest : public ::testing::Test {
   protected:
     // A view box of 20 by 10 units drawn into a document 40 by 20 pixels wide: a red square on the left, a stroked circle in the color of the draw on the right, and a gradient bar along the bottom inside a moved group.
@@ -31,8 +29,6 @@ class VectorImageTest : public ::testing::Test {
         return VectorImage::parse(test::TestFiles::bytes(text));
     }
 };
-
-} // namespace
 
 TEST_F(VectorImageTest, ReadsTheSizeOfTheDocument) {
     const VectorImage image = parse(kIcon);

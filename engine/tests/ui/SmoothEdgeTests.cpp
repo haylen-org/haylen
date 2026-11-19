@@ -22,8 +22,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class SmoothEdgeTest : public ::testing::Test, public test::UiFixture {
   protected:
     // The last shape of the frame that matches, or nothing.
@@ -31,10 +29,6 @@ class SmoothEdgeTest : public ::testing::Test, public test::UiFixture {
         const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
         const auto found = std::find_if(shapes.rbegin(), shapes.rend(), match);
         return found != shapes.rend() ? std::optional(*found) : std::nullopt;
-    }
-
-    [[nodiscard]] float getMetric(Theme::Metric role) {
-        return getUi().getTheme().getMetric(role);
     }
 
     [[nodiscard]] math::Color getColor(Theme::Color role) {
@@ -45,8 +39,6 @@ class SmoothEdgeTest : public ::testing::Test, public test::UiFixture {
         return {radius, radius, radius, radius};
     }
 };
-
-} // namespace
 
 // The ring of a focused control that a transform scales stays inside the clip around it, which scales with it, where the edge of the screen cuts the ring.
 TEST_F(SmoothEdgeTest, ClipsTheFocusRingOfAScaledControlAroundItsShape) {

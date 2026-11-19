@@ -10,19 +10,8 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class WheelTest : public ::testing::Test, public test::UiFixture {
   protected:
-    [[nodiscard]] static std::string labels(int count) {
-        std::string list;
-        for (int index = 1; index <= count; ++index) {
-            list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
-        }
-
-        return list;
-    }
-
     // Scrolls over an area, waits until the gesture ends and the content rests, and returns how far the content moved up.
     float scrolled(const Gui& gui, std::string_view area, std::string_view content, float delta, bool precise) {
         const float before = getBounds(gui, content).y;
@@ -31,8 +20,6 @@ class WheelTest : public ::testing::Test, public test::UiFixture {
         return before - getBounds(gui, content).y;
     }
 };
-
-} // namespace
 
 TEST_F(WheelTest, WheelsScrollByLinesOfTheThemeAndTrackpadsByTheirPoints) {
     // A step of a wheel scrolls by `scrollLine` of the theme or the style of the area, and a trackpad by the points it moved, which are UI units on this screen.

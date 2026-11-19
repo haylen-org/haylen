@@ -22,8 +22,6 @@
 
 namespace haylen::text {
 
-namespace {
-
 // Loads the color test fonts: a subset of an emoji font whose `COLR` table has version 1, with gradients, transforms and the ligatures of emoji sequences, and a subset of a display font whose letters are the layers of version 0.
 class ColorGlyphTest : public ::testing::Test {
   protected:
@@ -65,8 +63,6 @@ class ColorGlyphTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 // A glyph of the version 1 table paints its gradients in many shades, fills the box of its image, and leaves the corners around its round face clear.
 TEST_F(ColorGlyphTest, PaintsTheGradientsOfColorGlyphs) {

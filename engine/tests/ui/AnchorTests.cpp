@@ -19,8 +19,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class AnchorTest : public ::testing::Test, public test::UiFixture {
   protected:
     AnchorTest() {
@@ -28,8 +26,6 @@ class AnchorTest : public ::testing::Test, public test::UiFixture {
         frames();
     }
 };
-
-} // namespace
 
 TEST_F(AnchorTest, AnchorsNodesToTheSafeAreaOrTheScreenOutsideTheLayout) {
     // clang-format off

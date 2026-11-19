@@ -21,24 +21,8 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class LayoutTest : public ::testing::Test, public test::UiFixture {
   protected:
-    // Whether a draw of the last frame is cut to the area.
-    [[nodiscard]] static bool hasClip(const math::Rect& area) {
-        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
-            for (const ImDrawCmd& command : list->CmdBuffer) {
-                const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
-                if (command.UserCallback != nullptr && clip == area) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
     // The fade that the last frame pushed over the area, or none.
     [[nodiscard]] const Backend::Fade* findFade(const math::Rect& area) {
         const std::span<const Backend::Fade> fades = getUi().getBackend().getFades();
@@ -46,8 +30,6 @@ class LayoutTest : public ::testing::Test, public test::UiFixture {
         return found != fades.end() ? &*found : nullptr;
     }
 };
-
-} // namespace
 
 TEST_F(LayoutTest, DistributesFreeSpaceWithEveryJustify) {
     // clang-format off

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -12,23 +13,22 @@
 
 namespace haylen::graphics {
 
-namespace {
+class GradientTest : public ::testing::Test {
+  protected:
+    // A gradient from black to white without dithering, whose pixels read back as the position they were painted at.
+    [[nodiscard]] static Gradient plain(Gradient::Kind kind) {
+        Gradient gradient({{0.0F, math::Color::black()}, {1.0F, math::Color::white()}}, kind);
+        gradient.setDithered(false);
+        return gradient;
+    }
 
-// A gradient from black to white without dithering, whose pixels read back as the position they were painted at.
-Gradient plain(Gradient::Kind kind) {
-    Gradient gradient({{0.0F, math::Color::black()}, {1.0F, math::Color::white()}}, kind);
-    gradient.setDithered(false);
-    return gradient;
-}
-
-int red(const Image& image, int x, int y) {
-    return image.getPixels()[static_cast<std::size_t>(y * image.getWidth() + x) * 4U];
-}
-
-} // namespace
+    [[nodiscard]] static int red(const Image& image, int x, int y) {
+        return image.getPixels()[static_cast<std::size_t>(y * image.getWidth() + x) * 4U];
+    }
+};
 
 // Colors blend premultiplied between the stops around a position, hold the first and last colors past them, and switch at a hard stop.
-TEST(GradientTest, BlendsTheColorsOfTheStopsAroundAPosition) {
+TEST_F(GradientTest, BlendsTheColorsOfTheStopsAroundAPosition) {
     const Gradient gradient({{0.25F, math::Color::fromHex(0xFF0000FFU)}, {0.5F, math::Color::fromHex(0x0000FFFFU)}, {0.5F, math::Color::fromHex(0x00FF00FFU)}, {1.0F, math::Color::fromHex(0x00FF0000U)}});
     EXPECT_EQ(gradient.getColor(0.0F), math::Color::fromHex(0xFF0000FFU));
     EXPECT_EQ(gradient.getColor(0.375F).toHex(), "#FF800080");
@@ -49,7 +49,7 @@ TEST(GradientTest, BlendsTheColorsOfTheStopsAroundAPosition) {
 }
 
 // A linear gradient spans the area from the corner behind its direction to the corner ahead of it, at the centers of the pixels.
-TEST(GradientTest, PaintsALinearGradientAcrossTheArea) {
+TEST_F(GradientTest, PaintsALinearGradientAcrossTheArea) {
     Image row(4, 1);
     plain(Gradient::Kind::Linear).paint(row, row.getArea());
     EXPECT_EQ(red(row, 0, 0), 32);
@@ -74,7 +74,7 @@ TEST(GradientTest, PaintsALinearGradientAcrossTheArea) {
 }
 
 // A radial gradient grows from its center to its radius, a share of each side, and a conic one turns clockwise from its angle.
-TEST(GradientTest, PaintsRadialAndConicGradientsAroundTheirCenter) {
+TEST_F(GradientTest, PaintsRadialAndConicGradientsAroundTheirCenter) {
     Image disc(5, 5);
     plain(Gradient::Kind::Radial).paint(disc, disc.getArea());
     EXPECT_EQ(red(disc, 2, 2), 0);
@@ -97,7 +97,7 @@ TEST(GradientTest, PaintsRadialAndConicGradientsAroundTheirCenter) {
 }
 
 // Dithering spreads the rounding of a color between two steps over a pattern, so its average stays the color without bands.
-TEST(GradientTest, DithersTheRoundingOfEveryPixel) {
+TEST_F(GradientTest, DithersTheRoundingOfEveryPixel) {
     Image gray(4, 4);
     Gradient::fromColors(std::vector{math::Color(127.5F / 255.0F, 0.0F, 0.0F, 1.0F)}).paint(gray, gray.getArea());
     int sum = 0;

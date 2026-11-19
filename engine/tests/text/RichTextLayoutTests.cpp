@@ -22,8 +22,6 @@
 
 namespace haylen::text {
 
-namespace {
-
 class RichTextLayoutTest : public ::testing::Test {
   protected:
     // A second copy of the default font, which stands in for a real bold or italic face.
@@ -66,8 +64,6 @@ class RichTextLayoutTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 // Prose joins the letters of ffi into the ligatures of the default font, while text without ligatures and code keep a glyph for every letter, so a name such as ffi reads as its letters.
 TEST_F(RichTextLayoutTest, JoinsLigaturesOutsideCodeUnlessTurnedOff) {

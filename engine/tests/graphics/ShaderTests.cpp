@@ -41,8 +41,6 @@
 
 namespace haylen {
 
-namespace {
-
 class ShaderTest : public ::testing::Test {
   protected:
     // A material with uniform blocks of every kind of member, floats and integers in blocks of their own, and a texture of its own.
@@ -156,8 +154,6 @@ void main() {
 class MaterialTest : public ShaderTest {};
 
 class MaterialLuaTest : public ShaderTest {};
-
-} // namespace
 
 TEST_F(ShaderTest, CompilesWithAppShadersIntoEveryProgramWithItsReflection) {
     const graphics::Shader shader = graphics::Shader::parse(tintShader());

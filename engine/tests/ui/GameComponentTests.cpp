@@ -29,8 +29,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class GameComponentTest : public ::testing::Test, public test::UiFixture {
   protected:
     void focus(Gui& gui, const std::string& id) {
@@ -42,13 +40,7 @@ class GameComponentTest : public ::testing::Test, public test::UiFixture {
         const std::vector<std::string> names = getEventNames();
         return static_cast<std::size_t>(std::ranges::count_if(names, [&](const std::string& entry) { return entry.ends_with(":" + name); }));
     }
-
-    [[nodiscard]] float getMetric(Theme::Metric role) {
-        return getUi().getTheme().getMetric(role);
-    }
 };
-
-} // namespace
 
 TEST_F(GameComponentTest, DrawsRingsAndCooldowns) {
     // clang-format off

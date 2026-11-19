@@ -6,8 +6,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class ScrollerTest : public ::testing::Test {
   protected:
     using Motion = Context::WheelScroll::Motion;
@@ -31,8 +29,6 @@ class ScrollerTest : public ::testing::Test {
 
     Scroller scroller;
 };
-
-} // namespace
 
 TEST_F(ScrollerTest, FlingsAndComesToRest) {
     scroller.setRange(100000.0, 600.0);

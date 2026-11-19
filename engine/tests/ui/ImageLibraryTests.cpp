@@ -21,8 +21,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
   protected:
     static constexpr std::string_view kBadge = R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><rect width="24" height="12" rx="6" fill="#FF3366"/><circle cx="6" cy="6" r="4" fill="currentColor"/></svg>)";
@@ -82,8 +80,6 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
         return ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer.Size;
     }
 };
-
-} // namespace
 
 TEST_F(ImageLibraryTest, ShowsSvgDocumentsAtTheSizeTheyGiveThemselves) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "image", "id": "badge", "image": "icons/badge.svg", "scale": 2}, {"kind": "imageButton", "id": "button", "image": "icons/badge.svg"}]})");

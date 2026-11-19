@@ -24,15 +24,9 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class StyleTest : public ::testing::Test, public test::UiFixture {
   protected:
-    StyleTest() : UiFixture({{"content/ui/frame.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))}, {"content/ui/dot.png", toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))}}) {}
-
-    [[nodiscard]] static std::string toText(const std::vector<std::uint8_t>& bytes) {
-        return {bytes.begin(), bytes.end()};
-    }
+    StyleTest() : UiFixture({{"content/ui/frame.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))}, {"content/ui/dot.png", test::TestFiles::toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))}}) {}
 
     [[nodiscard]] math::Color getThemeColor(Theme::Color role) {
         return getUi().getTheme().getColor(role);
@@ -62,8 +56,6 @@ class StyleTest : public ::testing::Test, public test::UiFixture {
         return found;
     }
 };
-
-} // namespace
 
 TEST_F(StyleTest, OverridesTheThemeForANodeAndTheNodesInsideIt) {
     // clang-format off

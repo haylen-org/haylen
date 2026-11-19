@@ -30,8 +30,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 // The messages show over an empty screen, and screen readers read the tree, where each message is an alert whose frame the tests find by what it says.
 class MessageTest : public ::testing::Test, public test::UiFixture {
   protected:
@@ -98,14 +96,6 @@ class MessageTest : public ::testing::Test, public test::UiFixture {
         return blocks;
     }
 
-    [[nodiscard]] float getMetric(Theme::Metric metric) {
-        return getUi().getTheme().getMetric(metric);
-    }
-
-    [[nodiscard]] int getTransitionFrames() {
-        return static_cast<int>(getMetric(Theme::Metric::TransitionDuration) * 60.0F) + 2;
-    }
-
     // Runs frames for a number of seconds.
     void wait(float seconds) {
         frames(static_cast<int>(seconds * 60.0F));
@@ -134,8 +124,6 @@ class MessageTest : public ::testing::Test, public test::UiFixture {
         return math::Rect::fromMinMax(viewport.toDesign(framebuffer.getMin()) - origin, viewport.toDesign(framebuffer.getMax()) - origin);
     }
 };
-
-} // namespace
 
 // A toast is a pill at the bottom middle that fits its text, a snackbar fills the width at the bottom, and a banner fills the width at the top of the safe area, under the status bar.
 TEST_F(MessageTest, GivesEachStyleItsPlaceAndShape) {
@@ -306,6 +294,7 @@ TEST_F(MessageTest, NestsTheIndicatorOfAToastInTheRoundEndOfItsPill) {
         if (shape.color == theme.getColor(Theme::Color::Tooltip) && (!frame || area > frame->width * frame->height)) {
             frame = shape.bounds;
         }
+
         if (shape.color == theme.getColor(Theme::Color::OnTooltip) && (!indicator || area > indicator->width * indicator->height)) {
             indicator = shape.bounds;
         }

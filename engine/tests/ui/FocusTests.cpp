@@ -22,16 +22,12 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class FocusTest : public ::testing::Test, public test::UiFixture {
   protected:
     [[nodiscard]] bool isRingVisible() {
         return getUi().getFocus().isRingVisible();
     }
 };
-
-} // namespace
 
 // Native UI that covers the app leaves the GUIs undrawn while it shows, and the control that held the focus keeps it, so the remote of a TV moves on from it once the cover ends.
 TEST_F(FocusTest, KeepsTheFocusWhileNativeUiCoversTheApp) {

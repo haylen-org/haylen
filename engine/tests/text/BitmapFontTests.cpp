@@ -21,8 +21,6 @@
 
 namespace haylen::text {
 
-namespace {
-
 class BitmapFontTest : public ::testing::Test {
   protected:
     // A BMFont with two pages, a quoted face name holding spaces, and a kerning pair.
@@ -111,8 +109,6 @@ class BitmapFontTest : public ::testing::Test {
         return {text.begin(), text.end()};
     }
 };
-
-} // namespace
 
 TEST_F(BitmapFontTest, ReadsTextAndBinaryBmFonts) {
     expectPixelFont(BitmapFont::parse(bytesOf(kTextFont)));

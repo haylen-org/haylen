@@ -14,29 +14,28 @@
 
 namespace haylen::ui {
 
-namespace {
+class ThemeTest : public ::testing::Test {
+  protected:
+    // Hands every theme image the same texture and remembers what was asked for.
+    struct Loader {
+        graphics::Texture texture;
+        std::vector<std::string> paths;
+        std::vector<graphics::Texture::Options> options;
 
-// Hands every theme image the same texture and remembers what was asked for.
-struct Loader {
-    graphics::Texture texture;
-    std::vector<std::string> paths;
-    std::vector<graphics::Texture::Options> options;
-
-    Theme::TextureLoader function() {
-        // clang-format off
-        return [this](std::string_view path, graphics::Texture::Options requested) {
-            paths.emplace_back(path);
-            options.push_back(requested);
-            return texture;
-        };
-        // clang-format on
-    }
+        Theme::TextureLoader function() {
+            // clang-format off
+            return [this](std::string_view path, graphics::Texture::Options requested) {
+                paths.emplace_back(path);
+                options.push_back(requested);
+                return texture;
+            };
+            // clang-format on
+        }
+    };
 };
 
-} // namespace
-
 // The last name of every family reads as its last role, so no role is left without a name.
-TEST(ThemeTest, ReadsEveryRoleByName) {
+TEST_F(ThemeTest, ReadsEveryRoleByName) {
     EXPECT_EQ(Theme::colorFromName("background"), Theme::Color::Background);
     EXPECT_EQ(Theme::colorFromName("window"), Theme::Color::Window);
     EXPECT_EQ(Theme::colorFromName("accentText"), Theme::Color::AccentText);
@@ -54,7 +53,7 @@ TEST(ThemeTest, ReadsEveryRoleByName) {
     EXPECT_FALSE(Theme::soundFromName("click").has_value());
 }
 
-TEST(ThemeTest, ShipsDarkAndLightThemes) {
+TEST_F(ThemeTest, ShipsDarkAndLightThemes) {
     const Theme dark = Theme::dark();
     const Theme light = Theme::light();
     EXPECT_EQ(dark.getName(), "dark");
@@ -69,7 +68,7 @@ TEST(ThemeTest, ShipsDarkAndLightThemes) {
 }
 
 // Toasts and tooltips carry text over whatever lies under them, so nothing under them shows through their surfaces.
-TEST(ThemeTest, PaintsTheSurfacesUnderTextOpaque) {
+TEST_F(ThemeTest, PaintsTheSurfacesUnderTextOpaque) {
     for (const Theme& theme : {Theme::dark(), Theme::light(), Theme::darkHighContrast(), Theme::lightHighContrast()}) {
         for (const Theme::Color role : {Theme::Color::Window, Theme::Color::Panel, Theme::Color::Raised, Theme::Color::Tooltip}) {
             EXPECT_EQ(theme.getColor(role).a, 1.0F) << theme.getName() << " " << static_cast<int>(role);
@@ -77,7 +76,7 @@ TEST(ThemeTest, PaintsTheSurfacesUnderTextOpaque) {
     }
 }
 
-TEST(ThemeTest, ReadsThemesOnTopOfABase) {
+TEST_F(ThemeTest, ReadsThemesOnTopOfABase) {
     test::EngineFixture fixture;
     Loader loader{.texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32, math::Color::white())), .paths = {}, .options = {}};
 
@@ -129,7 +128,7 @@ TEST(ThemeTest, ReadsThemesOnTopOfABase) {
     EXPECT_EQ(loader.options[0].filter, graphics::Texture::Filter::Nearest);
 }
 
-TEST(ThemeTest, RejectsBrokenThemes) {
+TEST_F(ThemeTest, RejectsBrokenThemes) {
     test::EngineFixture fixture;
     Loader loader{.texture = fixture.engine().getGraphics().createTexture(graphics::Image(16, 16, math::Color::white())), .paths = {}, .options = {}};
     const auto read = [&](const std::string& text) { return Theme::fromJson(core::Json::parse(text), Theme::dark(), loader.function()); };
@@ -186,7 +185,7 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     EXPECT_THROW(theme.setSound(Theme::Sound::Press, Theme::Cue{.sound = "ui/tap.wav", .volume = -1.0F}), std::invalid_argument);
 }
 
-TEST(ThemeTest, SyncsTheImGuiStyle) {
+TEST_F(ThemeTest, SyncsTheImGuiStyle) {
     ImGuiContext* context = ImGui::CreateContext();
     const Theme theme = Theme::light();
     ImGuiStyle style;

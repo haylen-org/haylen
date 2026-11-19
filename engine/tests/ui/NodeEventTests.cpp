@@ -17,12 +17,10 @@
 
 namespace haylen::ui {
 
-namespace {
-
-using Notice = Component::Notice;
-
 class NodeEventTest : public ::testing::Test, public test::UiFixture {
   protected:
+    using Notice = Component::Notice;
+
     // Mounts a GUI whose listed nodes report the given events from the moment it mounts.
     std::shared_ptr<Gui> mountListening(const std::string& json, const std::vector<std::pair<std::string, std::vector<Notice>>>& listening) {
         std::shared_ptr<Gui> gui = getUi().createGui(core::Json::parse(json), Placement::Screen);
@@ -57,8 +55,6 @@ class NodeEventTest : public ::testing::Test, public test::UiFixture {
         frames(2);
     }
 };
-
-} // namespace
 
 TEST_F(NodeEventTest, ReportsWhenNodesJoinShowHideAndLeave) {
     const std::vector<Notice> lifecycle{Notice::Mount, Notice::Unmount, Notice::Show, Notice::Hide};

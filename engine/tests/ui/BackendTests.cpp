@@ -31,8 +31,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class BackendTest : public ::testing::Test {
   protected:
     BackendTest() : backend(getEngine().getGraphics(), getEngine().getWindow(), getEngine().getSystem(), core::EmbeddedFiles::getDefaultFont(), core::EmbeddedFiles::getMonospaceFont()) {}
@@ -76,8 +74,6 @@ class BackendTest : public ::testing::Test {
     Backend backend;
     NavigationInput navigation;
 };
-
-} // namespace
 
 TEST_F(BackendTest, DrawsMeshesAndReportsClicks) {
     int clicks = 0;

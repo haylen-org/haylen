@@ -17,8 +17,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class GuiTest : public ::testing::Test {
   protected:
     GuiTest() {
@@ -42,8 +40,6 @@ class GuiTest : public ::testing::Test {
 
     ComponentRegistry registry;
 };
-
-} // namespace
 
 TEST_F(GuiTest, BuildsTreesWithUniqueIds) {
     // clang-format off

@@ -8,8 +8,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class MessageStackTest : public ::testing::Test {
   protected:
     static constexpr float kPeek = 10.0F;
@@ -26,8 +24,6 @@ class MessageStackTest : public ::testing::Test {
 
     MessageStack stack;
 };
-
-} // namespace
 
 TEST_F(MessageStackTest, StacksMessagesInTheOrderTheyCameOnScreen) {
     const std::uint64_t first = stack.createKey();

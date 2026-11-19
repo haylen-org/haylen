@@ -22,8 +22,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class RightToLeftTest : public ::testing::Test {
   protected:
     [[nodiscard]] std::shared_ptr<text::Font> load(const std::string& name) {
@@ -44,8 +42,6 @@ class RightToLeftTest : public ::testing::Test {
     std::deque<std::u32string> codePoints;
     std::shared_ptr<text::FontFamily> family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = ui.getEngine().getDefaultFont(), .fallbacks = {load("noto-sans-hebrew-regular.ttf"), load("noto-sans-devanagari-regular.ttf")}});
 };
-
-} // namespace
 
 // Right-to-left text starts at the right, so the caret before its first letter stands at the right end and the left arrow moves it forward, while the left-to-right run inside keeps its own order.
 TEST_F(RightToLeftTest, PlacesTheCaretOnTheRightClusterOfRightToLeftText) {

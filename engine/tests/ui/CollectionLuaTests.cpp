@@ -14,8 +14,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class CollectionLuaTest : public ::testing::Test {
   protected:
     // Mounts `gui` with the collection `list` of rows 60 units tall at the top of the screen, ten of which show, and gives it `count` items in the global `items`.
@@ -90,8 +88,6 @@ class CollectionLuaTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 TEST_F(CollectionLuaTest, ChangesTheListAndTheCollectionTogether) {
     mountRows(100);

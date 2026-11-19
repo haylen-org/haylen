@@ -11,8 +11,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class SizeCacheTest : public ::testing::Test {
   protected:
     // Lays out items of one type with a declared estimate in a list and measures each one at its length.
@@ -37,8 +35,6 @@ class SizeCacheTest : public ::testing::Test {
     LinearLayout layout;
     SizeCache sizes;
 };
-
-} // namespace
 
 TEST_F(SizeCacheTest, FindsLinesByOffset) {
     std::mt19937 random(7);

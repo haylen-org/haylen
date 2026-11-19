@@ -15,8 +15,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class RichTextComponentTest : public ::testing::Test, public test::UiFixture {
   protected:
     RichTextComponentTest() : UiFixture(imageFiles()) {}
@@ -30,8 +28,6 @@ class RichTextComponentTest : public ::testing::Test, public test::UiFixture {
         return getEngine().getRenderer2D().getStats().sprites;
     }
 };
-
-} // namespace
 
 TEST_F(RichTextComponentTest, ReportsLinksAndTheirHover) {
     auto gui = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "richText", "id": "story", "text": "[url=go]Go on now[/url]"}]})");

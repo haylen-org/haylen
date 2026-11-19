@@ -35,8 +35,6 @@
 
 namespace haylen::text {
 
-namespace {
-
 // Reads the test fonts next to the built-in font, and opens them with HarfBuzz to compare against.
 class FontFileTest : public ::testing::Test {
   protected:
@@ -157,8 +155,6 @@ class FontFileTest : public ::testing::Test {
         return regions;
     }
 };
-
-} // namespace
 
 // A minimum scale lays text out at the largest size that fits its box, keeps text that fits at its size, and takes the smallest size for text that never fits.
 TEST(FontTest, FitsTextInItsBox) {

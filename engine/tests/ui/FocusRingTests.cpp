@@ -21,20 +21,10 @@
 
 namespace haylen::ui {
 
-namespace {
-
 // A UI with an image for the focus frame of a theme, whose ring the shapes of the backend show.
 class FocusRingTest : public ::testing::Test, public test::UiFixture {
   protected:
-    FocusRingTest() : UiFixture({{"content/ui/frame.png", toText(test::TestFiles::pngImage(12, 12, 0xFFFFFFFFU))}}) {}
-
-    [[nodiscard]] static std::string toText(const std::vector<std::uint8_t>& bytes) {
-        return {bytes.begin(), bytes.end()};
-    }
-
-    [[nodiscard]] float getMetric(Theme::Metric role) {
-        return getUi().getTheme().getMetric(role);
-    }
+    FocusRingTest() : UiFixture({{"content/ui/frame.png", test::TestFiles::toText(test::TestFiles::pngImage(12, 12, 0xFFFFFFFFU))}}) {}
 
     [[nodiscard]] bool drawsRing() {
         const math::Color focus = getUi().getTheme().getColor(Theme::Color::Focus);
@@ -42,8 +32,6 @@ class FocusRingTest : public ::testing::Test, public test::UiFixture {
         return std::ranges::any_of(shapes, [focus](const graphics2d::Shape& shape) { return shape.borderColor == focus && shape.borderWidth > 0.0F; });
     }
 };
-
-} // namespace
 
 // A node that turns the ring off leaves it out for itself and its children, so the app draws the focus its own way, while the focus still moves to them.
 TEST_F(FocusRingTest, LeavesTheRingOutOfNodesThatDrawTheirOwnFocus) {

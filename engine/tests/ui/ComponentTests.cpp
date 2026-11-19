@@ -41,8 +41,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class ComponentTest : public ::testing::Test {
   protected:
     explicit ComponentTest(std::map<std::string, std::string> files = {}) : fixture(std::move(files)) {
@@ -54,10 +52,6 @@ class ComponentTest : public ::testing::Test {
             }
         });
         // clang-format on
-    }
-
-    [[nodiscard]] static std::string toText(std::span<const std::uint8_t> bytes) {
-        return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
     }
 
     core::Engine& getEngine() {
@@ -156,8 +150,6 @@ class ComponentTest : public ::testing::Test {
     std::vector<Event> events;
     core::Connection connection;
 };
-
-} // namespace
 
 TEST_F(ComponentTest, DrawsEveryKind) {
     // clang-format off
@@ -1339,21 +1331,21 @@ class ComponentAssetTest : public ComponentTest {
   protected:
     ComponentAssetTest()
         : ComponentTest({
-              {"content/ui/icon.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
-              {"content/ui/panel.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
-              {"content/ui/fill.png", toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))},
-              {"content/fonts/ui.ttf", toText(core::EmbeddedFiles::getDefaultFont())},
+              {"content/ui/icon.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
+              {"content/ui/panel.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/fill.png", test::TestFiles::toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))},
+              {"content/fonts/ui.ttf", test::TestFiles::toText(core::EmbeddedFiles::getDefaultFont())},
               {"content/themes/wood.json", R"({"name": "wood", "fontFiles": {"ui": "fonts/ui.ttf"}, "fonts": {"title": {"font": "ui", "size": 64}},
                   "surfaces": {"panel": {"image": "ui/panel.png", "slice": 8}, "button": {"image": "ui/panel.png", "slice": 8, "padding": 4}, "track": {"image": "ui/panel.png", "slice": 4, "padding": 4},
                       "trackFill": {"image": "ui/fill.png", "slice": 2, "colorize": true}, "stickBase": {"image": "ui/panel.png", "slice": 8, "colorize": true}, "tooltip": {"image": "ui/panel.png", "slice": 8, "padding": 6}}})"},
-              {"content/ui/mark.png", toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
-              {"content/ui/dot.png", toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
-              {"content/ui/row.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
-              {"content/ui/hover.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
-              {"content/ui/bar.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
-              {"content/ui/body.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
-              {"content/ui/close.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
-              {"content/ui/closing.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
+              {"content/ui/mark.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
+              {"content/ui/dot.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFFFFFFFFU))},
+              {"content/ui/row.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/hover.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/bar.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/body.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/close.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
+              {"content/ui/closing.png", test::TestFiles::toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
               {"content/themes/plates.json", R"({"name": "plates", "surfaces": {"radio": {"image": "ui/mark.png"}, "radioSelected": {"image": "ui/dot.png"}, "cellSelected": {"image": "ui/row.png", "slice": 8},
                   "cellHover": {"image": "ui/hover.png", "slice": 8}, "titleBar": {"image": "ui/bar.png", "slice": 8, "padding": [10, 16, 12, 16]}, "toast": {"image": "ui/panel.png", "slice": 8, "padding": 20},
                   "window": {"image": "ui/body.png", "slice": 8}, "close": {"image": "ui/close.png"}, "closeHover": {"image": "ui/closing.png"}}})"},

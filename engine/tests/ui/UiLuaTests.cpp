@@ -25,8 +25,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class UiLuaTest : public ::testing::Test {
   protected:
     core::Engine& getEngine() {
@@ -75,8 +73,6 @@ class UiLuaFontTest : public ::testing::Test {
         return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     }
 };
-
-} // namespace
 
 TEST_F(UiLuaTest, MountsTreesAndCallsHandlers) {
     // clang-format off

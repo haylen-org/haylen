@@ -21,8 +21,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class LabelTest : public ::testing::Test, public test::UiFixture {
   protected:
     // Runs a frame and returns the bounds of the blocks of text the renderer drew on the screen, in UI coordinates.
@@ -48,8 +46,6 @@ class LabelTest : public ::testing::Test, public test::UiFixture {
         return blocks;
     }
 };
-
-} // namespace
 
 // A label that does not wrap keeps the line breaks of its text, shortens each line to its width and centers the block of lines in its height, instead of drawing every line from a box of one line.
 TEST_F(LabelTest, KeepsTheLinesOfATextThatDoesNotWrapInsideTheLabel) {

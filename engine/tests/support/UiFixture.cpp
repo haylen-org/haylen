@@ -1,8 +1,11 @@
 #include "support/UiFixture.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <stdexcept>
 #include <utility>
+
+#include <imgui.h>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
@@ -31,6 +34,37 @@ std::shared_ptr<ui::Gui> UiFixture::mount(const std::string& json, ui::Placement
 
 void UiFixture::frames(int count) {
     fixture.frames(count);
+}
+
+float UiFixture::getMetric(ui::Theme::Metric role) {
+    return getUi().getTheme().getMetric(role);
+}
+
+int UiFixture::getTransitionFrames() {
+    return static_cast<int>(getMetric(ui::Theme::Metric::TransitionDuration) * 60.0F) + 2;
+}
+
+std::string UiFixture::labels(int count) {
+    std::string list;
+    for (int index = 1; index <= count; ++index) {
+        list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
+    }
+
+    return list;
+}
+
+bool UiFixture::hasClip(const math::Rect& area, float tolerance) {
+    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+        for (const ImDrawCmd& command : list->CmdBuffer) {
+            const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+            const bool near = std::fabs(clip.x - area.x) <= tolerance && std::fabs(clip.y - area.y) <= tolerance && std::fabs(clip.getRight() - area.getRight()) <= tolerance && std::fabs(clip.getBottom() - area.getBottom()) <= tolerance;
+            if (command.UserCallback != nullptr && near) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 void UiFixture::pointer(platform::Event::Type type, math::Vec2 point, input::MouseButton pressed) {

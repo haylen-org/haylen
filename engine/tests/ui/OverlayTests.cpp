@@ -14,8 +14,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class OverlayTest : public ::testing::Test, public test::UiFixture {
   protected:
     // The bounds of the element with the label in the last accessibility tree the platform received.
@@ -25,13 +23,7 @@ class OverlayTest : public ::testing::Test, public test::UiFixture {
         EXPECT_NE(found, elements.end()) << label;
         return found == elements.end() ? math::Rect{} : found->bounds;
     }
-
-    [[nodiscard]] int getTransitionFrames() {
-        return static_cast<int>(getUi().getTheme().getMetric(Theme::Metric::TransitionDuration) * 60.0F) + 2;
-    }
 };
-
-} // namespace
 
 // Answers that fit line up in one row at the end of the dialog, and answers that do not fit stack across its width with the main answer on top, so none passes the edges of the dialog.
 TEST_F(OverlayTest, StacksTheAnswersOfADialogThatDoNotFitInOneRow) {

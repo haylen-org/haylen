@@ -17,8 +17,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 // A test screen: a Back button, the play area and a panel with two controls, over an app that moves with the arrows, WASD, the d-pad and the left stick, jumps with Space and the south button, shoots with the left mouse button and pauses with Escape.
 class PlayAreaTest : public ::testing::Test, public test::UiFixture {
   protected:
@@ -72,8 +70,6 @@ class PlayAreaTest : public ::testing::Test, public test::UiFixture {
 
     std::shared_ptr<Gui> gui;
 };
-
-} // namespace
 
 TEST_F(PlayAreaTest, GivesTheKeyboardToTheGameWhileItHasTheFocus) {
     focus("stage");

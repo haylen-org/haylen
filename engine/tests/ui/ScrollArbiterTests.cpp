@@ -14,21 +14,10 @@
 
 namespace haylen::ui {
 
-namespace {
-
 class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
   protected:
     // A frame time long enough for a gesture of the wheel to end and for every motion to settle.
     static constexpr int kRest = 60;
-
-    [[nodiscard]] static std::string labels(int count) {
-        std::string list;
-        for (int index = 1; index <= count; ++index) {
-            list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
-        }
-
-        return list;
-    }
 
     // A vertical page with a horizontal strip wider than the page, and content around it that makes the page scroll.
     std::shared_ptr<Gui> mountPage() {
@@ -97,8 +86,6 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         frames(kRest);
     }
 };
-
-} // namespace
 
 TEST_F(ScrollArbiterTest, AVerticalGestureOverAHorizontalAreaScrollsTheVerticalAreaAroundIt) {
     auto gui = mountPage();

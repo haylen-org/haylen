@@ -16,8 +16,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 // A menu scene with a GUI of its own, which tests cover with another scene through transitions.
 class SceneGuiTest : public ::testing::Test, public test::UiFixture {
   protected:
@@ -50,8 +48,6 @@ class SceneGuiTest : public ::testing::Test, public test::UiFixture {
     std::shared_ptr<Gui> gui;
     std::shared_ptr<test::RecordingEffect> effect;
 };
-
-} // namespace
 
 TEST_F(SceneGuiTest, LeavesWithItsSceneThroughAnEffectThatShowsBothScenes) {
     ASSERT_TRUE(hasDrawn("##haylen-guis"));

@@ -26,8 +26,6 @@
 
 namespace haylen::ui {
 
-namespace {
-
 // Drives text fields as a native field of the platform would, through the recording text input of the headless host.
 class TextInputTest : public ::testing::Test {
   protected:
@@ -108,8 +106,6 @@ class TextInputTest : public ::testing::Test {
     std::vector<std::string> events;
     core::Connection connection;
 };
-
-} // namespace
 
 TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     // clang-format off

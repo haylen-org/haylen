@@ -27,21 +27,19 @@
 
 namespace haylen::ui {
 
-namespace {
-
-// A source that counts the fields its cells read, which tells how many items were bound.
-class CountingSource final : public CollectionItems {
-  public:
-    [[nodiscard]] core::Json getValue(std::size_t index, std::string_view field) const override {
-        ++reads;
-        return CollectionItems::getValue(index, field);
-    }
-
-    mutable std::size_t reads = 0;
-};
-
 class CollectionTest : public ::testing::Test, public test::UiFixture {
   protected:
+    // A source that counts the fields its cells read, which tells how many items were bound.
+    class CountingSource final : public CollectionItems {
+      public:
+        [[nodiscard]] core::Json getValue(std::size_t index, std::string_view field) const override {
+            ++reads;
+            return CollectionItems::getValue(index, field);
+        }
+
+        mutable std::size_t reads = 0;
+    };
+
     // A list 600 units tall of rows 60 units tall, which shows ten rows.
     static constexpr const char* kRows = R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "prefetch": 0, "poolSize": 4, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}, "estimatedSize": 60}}})";
 
@@ -109,8 +107,6 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
         return static_cast<std::size_t>(std::ranges::count(names, "list:" + std::string(name)));
     }
 };
-
-} // namespace
 
 TEST_F(CollectionTest, KeepsTheCellsBoundedWhileScrollingOneHundredThousandItems) {
     auto gui = mountCollection(kRows);

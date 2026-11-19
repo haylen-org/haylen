@@ -12,20 +12,22 @@
 
 namespace haylen::graphics {
 
-namespace {
+class ImagePaletteTest : public ::testing::Test {
+  protected:
+    // A cover of three bands, a wide deep blue, a vivid orange and a pale sand, over a transparent border that shows nothing.
+    [[nodiscard]] static Image makeCover() {
+        Image image(120, 100);
+        image.fill({10, 10, 100, 50}, math::Color::fromHex(0x1E3A8AFFU));
+        image.fill({10, 60, 100, 25}, math::Color::fromHex(0xF97316FFU));
+        image.fill({10, 85, 100, 10}, math::Color::fromHex(0xE8E2D6FFU));
+        return image;
+    }
+};
 
-// A cover of three bands, a wide deep blue, a vivid orange and a pale sand, over a transparent border that shows nothing.
-Image makeCover() {
-    Image image(120, 100);
-    image.fill({10, 10, 100, 50}, math::Color::fromHex(0x1E3A8AFFU));
-    image.fill({10, 60, 100, 25}, math::Color::fromHex(0xF97316FFU));
-    image.fill({10, 85, 100, 10}, math::Color::fromHex(0xE8E2D6FFU));
-    return image;
-}
+// The placeholders of the images read the same cover.
+class ImagePlaceholderTest : public ImagePaletteTest {};
 
-} // namespace
-
-TEST(ImagePaletteTest, FindsTheColorsOfTheVisiblePixelsTheMostCommonFirst) {
+TEST_F(ImagePaletteTest, FindsTheColorsOfTheVisiblePixelsTheMostCommonFirst) {
     const std::vector<ImagePalette::Swatch> palette = ImagePalette::extract(makeCover(), 8);
     ASSERT_EQ(palette.size(), 3U);
     EXPECT_EQ(palette[0].color.toHex(), "#FF1E3A8A");
@@ -40,7 +42,7 @@ TEST(ImagePaletteTest, FindsTheColorsOfTheVisiblePixelsTheMostCommonFirst) {
     EXPECT_THROW((void)ImagePalette::extract(makeCover(), ImagePalette::kMaxColors + 1), std::invalid_argument);
 }
 
-TEST(ImagePaletteTest, ChoosesTheSwatchesThatInterfacesTakeTheirColorsFrom) {
+TEST_F(ImagePaletteTest, ChoosesTheSwatchesThatInterfacesTakeTheirColorsFrom) {
     const ImagePalette::Swatches swatches = ImagePalette::choose(ImagePalette::extract(makeCover(), 8));
     EXPECT_EQ(swatches.dominant.toHex(), "#FF1E3A8A");
     ASSERT_TRUE(swatches.vibrant.has_value());
@@ -57,7 +59,7 @@ TEST(ImagePaletteTest, ChoosesTheSwatchesThatInterfacesTakeTheirColorsFrom) {
 }
 
 // A placeholder keeps the average color and the layout of the colors, so the blurred image shows the blue above and the orange below.
-TEST(ImagePlaceholderTest, EncodesAShortTextThatDecodesToABlurredImage) {
+TEST_F(ImagePlaceholderTest, EncodesAShortTextThatDecodesToABlurredImage) {
     const std::string code = ImagePlaceholder::encode(makeCover(), {});
     EXPECT_EQ(code.size(), 36U);
     EXPECT_EQ(code.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), std::string::npos);
@@ -79,7 +81,7 @@ TEST(ImagePlaceholderTest, EncodesAShortTextThatDecodesToABlurredImage) {
 }
 
 // A placeholder may come from a server, so every malformed text and every size out of range is refused without reading past its bytes.
-TEST(ImagePlaceholderTest, RefusesHostileTextsAndSizes) {
+TEST_F(ImagePlaceholderTest, RefusesHostileTextsAndSizes) {
     const std::string code = ImagePlaceholder::encode(makeCover(), {});
 
     for (const std::string& hostile : {std::string(), std::string("AAAA"), code.substr(0, code.size() - 3), code + "AAAA", std::string(code).replace(0, 1, "*"), std::string("_") + code.substr(1), std::string(500, 'A')}) {

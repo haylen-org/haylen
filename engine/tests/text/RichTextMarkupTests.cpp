@@ -12,12 +12,10 @@
 
 namespace haylen::text {
 
-namespace {
-
-using Kind = RichTextDocument::Inline::Kind;
-
 class RichTextMarkupTest : public ::testing::Test {
   protected:
+    using Kind = RichTextDocument::Inline::Kind;
+
     [[nodiscard]] static std::string errorOf(const std::string& markup) {
         try {
             (void)RichText::parse(markup);
@@ -28,8 +26,6 @@ class RichTextMarkupTest : public ::testing::Test {
         return "no error";
     }
 };
-
-} // namespace
 
 // Paragraph markup reads the alignment and direction names that Lua and GUIs use, from the one table the text style keeps.
 TEST_F(RichTextMarkupTest, ReadsTheAlignmentAndDirectionNamesOfTheTextStyle) {

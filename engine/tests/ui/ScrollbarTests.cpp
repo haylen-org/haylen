@@ -32,26 +32,24 @@
 
 namespace haylen::ui {
 
-namespace {
-
-// A screen the bars are measured on: its framebuffer, its pixels per point, the scaling of the design area and the scaling of the UI.
-struct Display {
-    const char* name = "";
-    math::Vec2 framebuffer;
-    float pixelsPerPoint = 1.0F;
-    graphics::Viewport::ScalingPolicy policy = graphics::Viewport::ScalingPolicy::Fit;
-    Scaling scaling;
-};
-
-// Where the bar lies against the content: after it along the width, before it in a right-to-left UI, or below it.
-enum class Side : std::uint8_t {
-    End,
-    Start,
-    Below,
-};
-
 class ScrollbarTest : public ::testing::Test, public test::UiFixture {
   protected:
+    // A screen the bars are measured on: its framebuffer, its pixels per point, the scaling of the design area and the scaling of the UI.
+    struct Display {
+        const char* name = "";
+        math::Vec2 framebuffer;
+        float pixelsPerPoint = 1.0F;
+        graphics::Viewport::ScalingPolicy policy = graphics::Viewport::ScalingPolicy::Fit;
+        Scaling scaling;
+    };
+
+    // Where the bar lies against the content: after it along the width, before it in a right-to-left UI, or below it.
+    enum class Side : std::uint8_t {
+        End,
+        Start,
+        Below,
+    };
+
     // The bars draw in magenta and the selected rows of popups in cyan, which nothing else in these GUIs draws, and the tests that mark a groove mark it in green.
     static constexpr const char* kMarks = R"("style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF", "selection": "#00FFFF"}})";
     static constexpr std::uint32_t kBarColor = 0xFF00FFU;
@@ -62,36 +60,16 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
     static constexpr const char* kNotes = R"(Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12\nLine 13\nLine 14\nLine 15\nLine 16\nLine 17\nLine 18\nLine 19\nLine 20)";
 
     // Design units on a desktop, twice as large, a window so small that the theme gap spans fewer than four points, a dense screen in the physical mode, the physical mode at half its size, and a design area that is not scaled on a dense screen.
-    static constexpr std::array<Display, 6> kScreens{{
-        {.name = "design", .framebuffer = {1920.0F, 1080.0F}},
-        {.name = "design 2x", .framebuffer = {1920.0F, 1080.0F}, .scaling = {.mode = Scaling::Mode::Design, .factor = 2.0F}},
-        {.name = "small window", .framebuffer = {640.0F, 360.0F}},
-        {.name = "physical", .framebuffer = {3840.0F, 2160.0F}, .pixelsPerPoint = 2.0F, .scaling = {.mode = Scaling::Mode::Physical, .factor = 1.0F}},
-        {.name = "physical 0.5x", .framebuffer = {3840.0F, 2160.0F}, .pixelsPerPoint = 2.0F, .scaling = {.mode = Scaling::Mode::Physical, .factor = 0.5F}},
-        {.name = "unscaled", .framebuffer = {2560.0F, 1440.0F}, .pixelsPerPoint = 2.0F, .policy = graphics::Viewport::ScalingPolicy::None},
-    }};
+    static const std::array<Display, 6> kScreens;
 
-    ScrollbarTest() : UiFixture({{"content/ui/thumb.png", toText(test::TestFiles::pngImage(12, 12, 0xFFFFFFFFU))}, {"content/ui/groove.png", toText(test::TestFiles::pngImage(12, 12, 0x808080FFU))}}) {
+    ScrollbarTest() : UiFixture({{"content/ui/thumb.png", test::TestFiles::toText(test::TestFiles::pngImage(12, 12, 0xFFFFFFFFU))}, {"content/ui/groove.png", test::TestFiles::toText(test::TestFiles::pngImage(12, 12, 0x808080FFU))}}) {
         // Without antialiasing every vertex of a bar lies on its outline, so the box of its vertices is the bar.
         getUi().getBackend().makeCurrent();
         ImGui::GetStyle().AntiAliasedFill = false;
     }
 
-    [[nodiscard]] static std::string toText(const std::vector<std::uint8_t>& bytes) {
-        return {bytes.begin(), bytes.end()};
-    }
-
     [[nodiscard]] static std::string marked(const std::string& node) {
         return R"({"kind": "column", )" + std::string(kMarks) + R"(, "children": [)" + node + "]}";
-    }
-
-    [[nodiscard]] static std::string labels(int count) {
-        std::string list;
-        for (int index = 1; index <= count; ++index) {
-            list += (index > 1 ? ", " : "") + std::string(R"({"kind": "label", "text": "Line )") + std::to_string(index) + R"("})";
-        }
-
-        return list;
     }
 
     void use(const Display& screen) {
@@ -220,7 +198,14 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
     }
 };
 
-} // namespace
+const std::array<ScrollbarTest::Display, 6> ScrollbarTest::kScreens{{
+    {.name = "design", .framebuffer = {1920.0F, 1080.0F}},
+    {.name = "design 2x", .framebuffer = {1920.0F, 1080.0F}, .scaling = {.mode = Scaling::Mode::Design, .factor = 2.0F}},
+    {.name = "small window", .framebuffer = {640.0F, 360.0F}},
+    {.name = "physical", .framebuffer = {3840.0F, 2160.0F}, .pixelsPerPoint = 2.0F, .scaling = {.mode = Scaling::Mode::Physical, .factor = 1.0F}},
+    {.name = "physical 0.5x", .framebuffer = {3840.0F, 2160.0F}, .pixelsPerPoint = 2.0F, .scaling = {.mode = Scaling::Mode::Physical, .factor = 0.5F}},
+    {.name = "unscaled", .framebuffer = {2560.0F, 1440.0F}, .pixelsPerPoint = 2.0F, .policy = graphics::Viewport::ScalingPolicy::None},
+}};
 
 TEST_F(ScrollbarTest, KeepsTheBarOfAScrollInALaneBesideItsContentAtEveryScale) {
     auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + "]}]}"));

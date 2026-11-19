@@ -22,8 +22,6 @@
 
 namespace haylen::text {
 
-namespace {
-
 // Lays out text in the default font with the test fonts as fallbacks for Arabic, Hebrew, Devanagari, Thai and Japanese.
 class ShapingTest : public ::testing::Test {
   protected:
@@ -87,8 +85,6 @@ class ShapingTest : public ::testing::Test {
     std::shared_ptr<FontFamily> family;
     std::shared_ptr<const Layout> laid;
 };
-
-} // namespace
 
 // Arabic letters join, so each one takes the form of its place in the word, and lam followed by alef becomes one ligature.
 TEST_F(ShapingTest, JoinsArabicLettersAndFormsTheLamAlefLigature) {

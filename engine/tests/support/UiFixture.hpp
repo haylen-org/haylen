@@ -16,6 +16,7 @@
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Event.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::test {
@@ -50,6 +51,17 @@ class UiFixture {
     void button(input::GamepadButton pressed);
     void stick(math::Vec2 value);
     void type(std::u32string_view text);
+
+    [[nodiscard]] float getMetric(ui::Theme::Metric role);
+
+    // The frames that a transition of the theme takes, with two to spare.
+    [[nodiscard]] int getTransitionFrames();
+
+    // Labels of the text "Line 1" and on, as JSON nodes separated by commas.
+    [[nodiscard]] static std::string labels(int count);
+
+    // Whether a draw of the last frame that goes around the ImGui vertices, such as a shape or a text, is cut to the area, within a distance.
+    [[nodiscard]] static bool hasClip(const math::Rect& area, float tolerance = 0.0F);
 
     [[nodiscard]] const math::Rect& getBounds(const ui::Gui& gui, std::string_view id) const;
     [[nodiscard]] bool isFocused(const ui::Gui& gui, std::string_view id);

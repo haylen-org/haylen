@@ -95,6 +95,7 @@ class RouterTest : public ::testing::Test, public test::UiFixture {
         for (const std::shared_ptr<Screen>& screen : stack.getScreens()) {
             names += (names.empty() ? "" : " ") + std::static_pointer_cast<test::RecordingScreen>(screen)->getName();
         }
+
         return names;
     }
 

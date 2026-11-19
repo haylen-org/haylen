@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -11,16 +12,15 @@
 
 namespace haylen::graphics {
 
-namespace {
-
-Image makeFlat(int width, int height, std::uint32_t color) {
-    return Image(width, height, math::Color::fromHex(color));
-}
-
-} // namespace
+class ImageFiltersTest : public ::testing::Test {
+  protected:
+    [[nodiscard]] static Image makeFlat(int width, int height, std::uint32_t color) {
+        return Image(width, height, math::Color::fromHex(color));
+    }
+};
 
 // A blur spreads a block over its surroundings, and since it mixes premultiplied colors the transparent pixels around a red block never turn its edge dark.
-TEST(ImageFiltersTest, BlursWithoutDarkeningTransparentEdges) {
+TEST_F(ImageFiltersTest, BlursWithoutDarkeningTransparentEdges) {
     Image image(21, 21);
     image.fill({8, 8, 5, 5}, math::Color::fromHex(0xFF0000FFU));
     ImageFilters::blur(image, 2.0F);
@@ -41,7 +41,7 @@ TEST(ImageFiltersTest, BlursWithoutDarkeningTransparentEdges) {
     EXPECT_THROW(ImageFilters::blur(flat, ImageFilters::kMaxRadius + 1.0F), std::invalid_argument);
 }
 
-TEST(ImageFiltersTest, SharpensTheEdgesBetweenColors) {
+TEST_F(ImageFiltersTest, SharpensTheEdgesBetweenColors) {
     Image image = makeFlat(10, 4, 0x808080FFU);
     image.fill({5, 0, 5, 4}, math::Color::fromHex(0x404040FFU));
     ImageFilters::sharpen(image, 1.0F);
@@ -51,7 +51,7 @@ TEST(ImageFiltersTest, SharpensTheEdgesBetweenColors) {
     EXPECT_THROW(ImageFilters::sharpen(image, -1.0F), std::invalid_argument);
 }
 
-TEST(ImageFiltersTest, AdjustsBrightnessContrastSaturationAndHue) {
+TEST_F(ImageFiltersTest, AdjustsBrightnessContrastSaturationAndHue) {
     Image gray = makeFlat(1, 1, 0x808080FFU);
     ImageFilters::adjust(gray, {.brightness = 0.1F});
     EXPECT_NEAR(gray.getPixel(0, 0).r, 0.6F, 0.004F);
@@ -72,7 +72,7 @@ TEST(ImageFiltersTest, AdjustsBrightnessContrastSaturationAndHue) {
     EXPECT_EQ(luma.g, luma.b);
 }
 
-TEST(ImageFiltersTest, InvertsTintsAndPixelates) {
+TEST_F(ImageFiltersTest, InvertsTintsAndPixelates) {
     Image image = makeFlat(1, 1, 0x0A141E80U);
     ImageFilters::invert(image);
     EXPECT_EQ(image.getPixel(0, 0).toHex(), "#80F5EBE1");
@@ -93,7 +93,7 @@ TEST(ImageFiltersTest, InvertsTintsAndPixelates) {
 }
 
 // The outline covers the pixels within its thickness of what shows, fades over the pixel past it, and stays under the pixels that show.
-TEST(ImageFiltersTest, OutlinesWhatShows) {
+TEST_F(ImageFiltersTest, OutlinesWhatShows) {
     Image image(9, 9);
     image.setPixel(4, 4, math::Color::fromHex(0xFFFFFFFFU));
     ImageFilters::outline(image, math::Color::fromHex(0x000000FFU), 1.0F);
@@ -106,7 +106,7 @@ TEST(ImageFiltersTest, OutlinesWhatShows) {
 }
 
 // An amount or a color that is not finite would write no number into the pixels, so the effects refuse it and leave the image as it was.
-TEST(ImageFiltersTest, RefusesValuesThatAreNotFinite) {
+TEST_F(ImageFiltersTest, RefusesValuesThatAreNotFinite) {
     const float nan = std::numeric_limits<float>::quiet_NaN();
     const float infinity = std::numeric_limits<float>::infinity();
     Image image = makeFlat(4, 4, 0x336699FFU);
@@ -122,7 +122,7 @@ TEST(ImageFiltersTest, RefusesValuesThatAreNotFinite) {
 }
 
 // An effect changes the pixels the mipmaps were made from, so the image drops them and a texture made from it makes them again.
-TEST(ImageFiltersTest, DropsTheMipmapsOfTheImageItChanges) {
+TEST_F(ImageFiltersTest, DropsTheMipmapsOfTheImageItChanges) {
     Image image(8, 8, math::Color::white());
     image.buildMipmaps();
     ASSERT_FALSE(image.getMipmaps().empty());
