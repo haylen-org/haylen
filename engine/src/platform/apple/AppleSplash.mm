@@ -3,29 +3,32 @@
 #if !TARGET_OS_OSX
 namespace haylen::platform {
 
-UIView* AppleSplash::view = nil;
+UIViewController* AppleSplash::launch = nil;
 
 // The system of visionOS shows no launch screen, so nothing covers its window.
-void AppleSplash::cover(UIView* content) {
+void AppleSplash::cover(UIViewController* root) {
 #if TARGET_OS_VISION
-    static_cast<void>(content);
+    static_cast<void>(root);
 #else
     NSString* name = [NSBundle.mainBundle objectForInfoDictionaryKey:@"UILaunchStoryboardName"];
     if (name == nil || [NSBundle.mainBundle pathForResource:name ofType:@"storyboardc"] == nil) {
         return;
     }
 
-    UIViewController* launch = [[UIStoryboard storyboardWithName:name bundle:nil] instantiateInitialViewController];
-    view = launch.view;
-    view.frame = content.bounds;
+    launch = [[UIStoryboard storyboardWithName:name bundle:nil] instantiateInitialViewController];
+    [root addChildViewController:launch];
+
+    UIView* view = launch.view;
+    view.frame = root.view.bounds;
     view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [content addSubview:view];
+    [root.view addSubview:view];
+    [launch didMoveToParentViewController:root];
 #endif
 }
 
 void AppleSplash::end(float fadeOutSeconds) {
-    UIView* cover = view;
-    view = nil;
+    UIViewController* cover = launch;
+    launch = nil;
 
     if (cover == nil) {
         return;
@@ -33,9 +36,11 @@ void AppleSplash::end(float fadeOutSeconds) {
 
     // clang-format off
     [UIView animateWithDuration:fadeOutSeconds animations:^{
-        cover.alpha = 0.0;
+        cover.view.alpha = 0.0;
     } completion:^(BOOL) {
-        [cover removeFromSuperview];
+        [cover willMoveToParentViewController:nil];
+        [cover.view removeFromSuperview];
+        [cover removeFromParentViewController];
     }];
     // clang-format on
 }

@@ -1,0 +1,23 @@
+Starts the app of a UIKit scene on iOS, iPadOS, Mac Catalyst, tvOS and visionOS while the scene connects, so the window of the app is in the first frame of the scene and takes over from the launch screen of the system directly. SDL otherwise covered the scene with a launch window of its own and opened the window of the app only after the connection, and the scene showed a black frame when that window took over. The main callbacks return once the app started, so the connection waits only for the start.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -2692,7 +2692,6 @@
+       set(SDL_FRAMEWORK_QUARTZCORE 1)
+       set(SDL_FRAMEWORK_UIKIT 1)
+       set(SDL_IPHONE_KEYBOARD 1)
+-      set(SDL_IPHONE_LAUNCHSCREEN 1)
+       set(SDL_FRAMEWORK_GAMECONTROLLER 1)
+       sdl_glob_sources(
+         "${SDL3_SOURCE_DIR}/src/video/uikit/*.m"
+--- a/src/video/uikit/SDL_uikitappdelegate.m
++++ b/src/video/uikit/SDL_uikitappdelegate.m
+@@ -454,7 +454,7 @@
+
+     SDL_SetMainReady();
+     SDL_main_started = true;
+-    [self performSelector:@selector(postFinishLaunch) withObject:nil afterDelay:0.0];
++    [self postFinishLaunch];
+ }
+
+ #if !defined(SDL_PLATFORM_TVOS) && !defined(SDL_PLATFORM_VISIONOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 270000

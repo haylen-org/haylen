@@ -427,7 +427,11 @@ SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS 
 
 #### sdl-uikit-status-bar.patch
 
-SDL hides and shows the status bar through `UIApplication` whenever it creates a window or the window changes its border or fullscreen, and the view controller of its launch screen sets the visibility and the style of the status bar there too. Those calls do nothing while view controllers decide the status bar, which is the default of UIKit and the way the runtime applies [`window.setStatusBar`](../lua-api/window.md#windowsetstatusbarvalue), and iOS 27 logs a misuse at each of them. The patch removes those calls on iOS, iPadOS and Mac Catalyst, so the view controller of the window and the one of the launch screen alone decide the status bar.
+SDL hides and shows the status bar through `UIApplication` whenever it creates a window or the window changes its border or fullscreen. Those calls do nothing while view controllers decide the status bar, which is the default of UIKit and the way the runtime applies [`window.setStatusBar`](../lua-api/window.md#windowsetstatusbarvalue), and iOS 27 logs a misuse at each of them. The patch removes those calls on iOS, iPadOS and Mac Catalyst, so the view controller of the window alone decides the status bar.
+
+#### sdl-uikit-scene-launch.patch
+
+SDL connects the scene of a UIKit app on iOS, iPadOS, Mac Catalyst, tvOS and visionOS without the window of the app. It covers the scene with a launch window of its own, which shows the launch storyboard, and it starts the app only after the connection, so the window of the app opens later and takes over from that launch window. The scene then shows a black frame, and the logo of the launch window could stand elsewhere than the logo of the cover of the runtime. The patch starts the app while the scene connects and leaves the launch window out. The engine runs SDL through its main callbacks, whose start returns once the app opened its window, so the connection waits only for that start, as the connection of any UIKit app waits for its window. The window of the app with the cover of the launch screen is then in the first frame of the scene, and the system fades it in over its own launch screen.
 
 #### sdl-uikit-tvos-mouse.patch
 

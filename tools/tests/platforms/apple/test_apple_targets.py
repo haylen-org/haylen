@@ -82,6 +82,13 @@ class AppleTargetsTest:
             text = path.read_text(encoding="utf-8")
             assert ('targetRuntime="AppleTV"' in text) == ('type="com.apple.InterfaceBuilder.AppleTV.Storyboard"' in text), path
 
+    def test_launch_screens_center_the_logo_in_the_whole_view(self):
+        # The engine covers the window with the same storyboard, whose safe area differs from the one of the system launch screen on an iPad, so a logo placed by the safe area would move as the cover takes over.
+        for path in AppleProject.TEMPLATE.rglob("*.storyboard"):
+            text = path.read_text(encoding="utf-8")
+            assert 'secondItem="safe"' not in text, path
+            assert 'firstItem="logo" firstAttribute="centerY" secondItem="root" secondAttribute="centerY"' in text, path
+
     def test_the_dark_background_becomes_the_dark_appearance(self):
         colorset = SplashCatalog.colorset((16, 20, 24, 255), (0, 0, 0, 255))
         assert len(colorset["colors"]) == 2

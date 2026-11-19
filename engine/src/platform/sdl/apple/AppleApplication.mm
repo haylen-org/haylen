@@ -70,7 +70,7 @@ void AppleApplication::finishLaunching(Runtime&) {
     UIView* content = window.rootViewController.view;
     [HaylenAccessibilityView.shared attachToView:content];
     [HaylenOverlayLayer.shared attachToView:content];
-    AppleSplash::cover(content);
+    AppleSplash::cover(window.rootViewController);
     AppleTheme::observe(window);
     [static_cast<HaylenSceneDelegate*>(window.windowScene.delegate) connectPlugins];
 }

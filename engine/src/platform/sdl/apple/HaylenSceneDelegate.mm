@@ -83,7 +83,7 @@ using haylen::platform::NativeWindow;
     return configuration;
 }
 
-// SDL runs the app in the first scene that connects, which opens the window of the app once SDL starts it, and the plugins hear the connection once the window is in the scene. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once. The window outlives a scene of the app that disconnected, such as the Mac Catalyst window that the person closed while the process goes on, so the next scene of the app takes the window over with the app as it was.
+// SDL starts the app while the first scene connects, so the window of the app with the cover of the launch screen is in the first frame of the scene, and the plugins hear the connection once the window is in the scene. The app draws in one window, so a scene that connects while the window of the app has a scene, such as a second window that the person opens on an iPad, goes away at once. The window outlives a scene of the app that disconnected, such as the Mac Catalyst window that the person closed while the process goes on, so the next scene of the app takes the window over with the app as it was.
 - (void)scene:(UIScene*)scene willConnectToSession:(UISceneSession*)session options:(UISceneConnectionOptions*)options {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     if (window.windowScene != nil) {

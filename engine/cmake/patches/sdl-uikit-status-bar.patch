@@ -1,19 +1,5 @@
-Stops SDL from hiding, showing and styling the status bar through UIApplication on iOS, iPadOS and Mac Catalyst, which does nothing once view controllers decide the status bar, as they do by default, and which iOS 27 reports as a misuse at every call. The view controllers of the window and of the launch screen keep deciding the status bar.
+Stops SDL from hiding, showing and styling the status bar through UIApplication on iOS, iPadOS and Mac Catalyst, which does nothing once view controllers decide the status bar, as they do by default, and which iOS 27 reports as a misuse at every call. The view controller of the window keeps deciding the status bar.
 
---- a/src/video/uikit/SDL_uikitappdelegate.m
-+++ b/src/video/uikit/SDL_uikitappdelegate.m
-@@ -125,11 +125,6 @@
-     self.storyboardViewController.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-     self.storyboardViewController.view.frame = self.view.bounds;
-     [self.storyboardViewController didMoveToParentViewController:self];
--
--#ifndef SDL_PLATFORM_VISIONOS
--    UIApplication.sharedApplication.statusBarHidden = self.prefersStatusBarHidden;
--    UIApplication.sharedApplication.statusBarStyle = self.preferredStatusBarStyle;
--#endif
- }
- 
- - (BOOL)prefersStatusBarHidden
 --- a/src/video/uikit/SDL_uikitwindow.m
 +++ b/src/video/uikit/SDL_uikitwindow.m
 @@ -236,14 +236,6 @@
