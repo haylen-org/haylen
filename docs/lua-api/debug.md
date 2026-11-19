@@ -18,19 +18,21 @@ The engine shows its statistics in one of three modes:
 | `'compact'` | One line for each [compact item](#compact-items) that is on, in the bottom left corner of the safe area. By default those are the frame rate, the draw calls and the geometry. The 2D renderer draws the lines above everything else, scene transitions and the error screen included, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames in between allocate nothing. |
 | `'full'` | The statistics window, drawn over the app. Its close button turns the statistics off. |
 
+The statistics window and the [inspector](#inspector) window have one look of their own in every app, dark and translucent with light text in the default font of the engine, which the theme of the app never changes, so they read the same over a light app and a dark one.
+
 The statistics window shows:
 
 - The frame rate, the fastest, slowest and one percent low frame times, the fixed steps of the frame and a graph of recent frame times.
 - The budget of the poll of the event loop, whether work ran and what it waits for.
 - The profiler scopes of the last frame.
 - The scenes of the stack from the bottom up, with their names, states and process modes, and whether the scenes below them keep rendering.
-- A checkbox for every [drawing](#drawings) and for every [compact item](#compact-items).
+- A checkbox for every [drawing](#drawings), which draws over every canvas of the app while it is on.
 - The rendering statistics, and the memory of Lua, textures, render targets, static batches, the buffers of the renderer and sounds.
 - The counts of scenes, tweens, timers, voices by bus, sockets, assets, bodies, contacts and particles, and the use of the GPU pools.
 - The reads and downloads of the [content](content.md#contentstats), the object counts, and the signals and event listeners with their emissions.
 - Warnings about listeners whose owner is gone, the monitors with their graphs, and the recent log.
 
-The key F3 cycles through `off`, `compact` and `full`, and so does the key `s` in the terminal of `haylen app run`, which reaches a phone or a TV too. So they also open the statistics window, where the player ticks what the drawings and the compact mode show. The window moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its content. The function `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `haylen.json` starts the app in a mode, as the [Lua guide](../core/lua.md#haylenjson) lists. The statistics describe the frame before, because the renderer knows its numbers only once it has submitted a frame.
+The key F3 cycles through `off`, `compact` and `full`, and so does the key `s` in the terminal of `haylen app run`, which reaches a phone or a TV too. So they also open the statistics window, where the player ticks the drawings that draw over the app. The window moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its content. The function `debug.setToggleKey` picks another key, and `debug.setStatsMode` picks a mode from Lua. The setting `"debug": {"stats": "compact"}` in `haylen.json` starts the app in a mode, as the [Lua guide](../core/lua.md#haylenjson) lists. The statistics describe the frame before, because the renderer knows its numbers only once it has submitted a frame.
 
 ### Compact items
 
@@ -47,7 +49,7 @@ The compact mode shows one line for each item that is on, in this order:
 | `'particles'` | The live particles. |
 | `'audio'` | The voices that play. |
 
-The first three are on, unless the list `"debug": {"statsItems": ["frameRate", "physics"]}` of `haylen.json` picks others. The checkboxes of the statistics window and the functions below change them while the app runs.
+The first three are on, unless the list `"debug": {"statsItems": ["frameRate", "physics"]}` of `haylen.json` picks others. The functions below change them while the app runs.
 
 ### debug.setStatsMode(mode)
 
@@ -802,7 +804,7 @@ The inspector lists the values of the running app by paths of keys from its root
 
 A table lists its keys, at most 200 of them, in order, integer keys first, and describes itself by how many values it holds, such as `3 values`, after its `name` when it holds a string under that key, such as `play, 6 values` for a scene. An object of a bound type, such as a camera, a sprite or a body, lists the properties that its type declares, which the engine records for every type, those of plugins too. A path joins keys with dots, such as `watched.player.items.2`, where a key that reads as an integer names the item of a sequence. Numbers, booleans and strings are editable. An edit goes through the same setter that Lua uses, with its checks, so `set watched.camera.minZoom -1` fails with the error of the camera.
 
-The inspector window shows the roots as rows of a table, with the scenes open. A tap or a click on the name of a row opens the values it holds below it. A boolean shows a check box, and a number or a string shows a field, which sets the value once Enter confirms it or the field lets go of the focus. An edit that the setter refuses shows its error at the top of the window. The open rows read their values again four times per second, so the window follows the app as it runs.
+The inspector window shows the roots as rows of a table, with the scenes open. A tap or a click on the name of a row opens the values it holds below it. A boolean shows a check box, and a number or a string shows a field, which sets the value once Enter confirms it or the field lets go of the focus. A line at the top of the window says what the window holds and that an edit changes the value of the app at once, which the app shows where it reads that value. After an edit, the line says what it set, such as `Set "watched.player.speed" to 300.`, or shows the error of a setter that refused it. The open rows read their values again four times per second, so the window follows the app as it runs.
 
 The window opens with F2, which `debug.setInspectorKey` changes, with the key `i` in the terminal of `haylen app run`, which reaches a phone or a TV too, with the console command `inspector` or with `debug.setInspectorVisible(true)`. It moves by its title bar and resizes by its corner, with the mouse or a finger, stays inside the safe area, and scrolls under a finger that drags its rows. It follows the console: it is on in development runs and with `"debug": {"console": true}` in `haylen.json`. The console commands `inspect` and `set` reach the same values as text. Nothing of the inspector runs while its window is closed. The inspector does not pick objects on the screen or move them with handles.
 

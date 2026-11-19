@@ -4,18 +4,21 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 #include "haylen/ui/Backend.hpp"
 #include "ui/ScrollArbiter.hpp"
+#include "ui/Scrollbar.hpp"
 
 namespace haylen::debug {
 
 bool DebugWindow::begin(const char* title, bool* open, ui::Backend& backend, const math::Rect& initial) {
+    pushStyle(backend);
+
     const math::Rect safe = backend.getSafeRect();
     ImGui::SetNextWindowPos({initial.x, initial.y}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize({initial.width, initial.height}, ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSizeConstraints({std::min(kMinimumWidth, safe.width), std::min(kMinimumHeight, safe.height)}, {safe.width, safe.height});
-    ImGui::SetNextWindowBgAlpha(kBackgroundAlpha);
     const bool visible = ImGui::Begin(title, open, ImGuiWindowFlags_NoCollapse);
 
     ImGuiWindow& window = *ImGui::GetCurrentWindow();
@@ -27,6 +30,35 @@ bool DebugWindow::begin(const char* title, bool* open, ui::Backend& backend, con
 void DebugWindow::end() {
     followFinger(*ImGui::GetCurrentWindow());
     ImGui::End();
+    popStyle();
+}
+
+// The look replaces every color and metric that the theme of the app gives ImGui, and the scroll bar keeps the gap of the UI between the content and the bar, which spans the fewest points on any screen.
+void DebugWindow::pushStyle(ui::Backend& backend) {
+    for (const auto& [color, value] : kColors) {
+        ImGui::PushStyleColor(color, value);
+    }
+
+    for (const auto& [variable, value] : kSizes) {
+        ImGui::PushStyleVar(variable, value);
+    }
+
+    for (const auto& [variable, value] : kSpacings) {
+        ImGui::PushStyleVar(variable, value);
+    }
+
+    const float padding = std::ceil(std::max(ui::Scrollbar::getGap(kScrollbarGap, backend.getPointsPerUnit()), kScrollbarInset));
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, kScrollbarSize + padding * 2.0F);
+    ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarPadding, padding);
+
+    const std::string_view font = ui::Backend::kDefaultFontName;
+    ImGui::PushFont(backend.getFont(font), backend.getFontHeight(font, kTextSize));
+}
+
+void DebugWindow::popStyle() {
+    ImGui::PopFont();
+    ImGui::PopStyleVar(static_cast<int>(kSizes.size() + kSpacings.size()) + 2);
+    ImGui::PopStyleColor(static_cast<int>(kColors.size()));
 }
 
 // A window that the player moved, or that a rotation or a smaller screen left outside the safe area, moves back inside it.

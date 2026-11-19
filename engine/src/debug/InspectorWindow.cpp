@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <format>
 #include <utility>
 
 #include "debug/DebugWindow.hpp"
@@ -18,11 +19,9 @@ bool InspectorWindow::draw(lua_State* L, ui::Backend& backend, double now) {
     const math::Rect initial{safe.x + safe.width - width - DebugWindow::kMargin, safe.y + DebugWindow::kMargin, width, safe.height - DebugWindow::kMargin * 2.0F};
     bool open = true;
     if (DebugWindow::begin("Inspector", &open, backend, initial)) {
-        if (!failure.empty()) {
-            ImGui::PushStyleColor(ImGuiCol_Text, DebugWindow::kErrorColor);
-            ImGui::TextWrapped("%s", failure.c_str());
-            ImGui::PopStyleColor();
-        }
+        ImGui::PushStyleColor(ImGuiCol_Text, failed ? DebugWindow::kErrorColor : DebugWindow::kMutedColor);
+        ImGui::TextWrapped("%s", status.empty() ? kHint.data() : status.c_str());
+        ImGui::PopStyleColor();
 
         if (std::exchange(expired, false)) {
             for (auto& [key, snapshot] : snapshots) {
@@ -52,7 +51,8 @@ bool InspectorWindow::draw(lua_State* L, ui::Backend& backend, double now) {
 void InspectorWindow::reset() {
     snapshots.clear();
     edits.clear();
-    failure.clear();
+    status.clear();
+    failed = false;
     activeField.clear();
 }
 
@@ -142,9 +142,11 @@ void InspectorWindow::drawField(lua_State* L, const std::vector<std::string>& pa
 void InspectorWindow::edit(lua_State* L, const std::vector<std::string>& path, std::string_view text) {
     try {
         Inspector::set(L, path, text);
-        failure.clear();
+        status = std::format("Set \"{}\" to {}.", Inspector::joinPath(path), text);
+        failed = false;
     } catch (const std::exception& error) {
-        failure = error.what();
+        status = error.what();
+        failed = true;
     }
 
     expired = true;

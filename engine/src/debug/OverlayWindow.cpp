@@ -22,16 +22,16 @@ namespace haylen::debug {
 ImVec4 OverlayWindow::getLevelColor(core::Log::Level level) noexcept {
     switch (level) {
     case core::Log::Level::Debug:
-        return {0.6F, 0.65F, 0.75F, 1.0F};
+        return DebugWindow::kMutedColor;
     case core::Log::Level::Warning:
-        return {0.97F, 0.8F, 0.44F, 1.0F};
+        return DebugWindow::kWarningColor;
     case core::Log::Level::Error:
-        return {1.0F, 0.54F, 0.52F, 1.0F};
+        return DebugWindow::kErrorColor;
     case core::Log::Level::Info:
         break;
     }
 
-    return {0.91F, 0.92F, 0.95F, 1.0F};
+    return DebugWindow::kTextColor;
 }
 
 std::string OverlayWindow::formatBytes(std::int64_t bytes) {
@@ -116,7 +116,7 @@ void OverlayWindow::drawResources(const Stats& stats) {
     for (const graphics::Device::Pool& pool : stats.pools) {
         const float fraction = pool.size > 0 ? static_cast<float>(pool.used) / static_cast<float>(pool.size) : 0.0F;
         const std::string label = std::format("Pool \"{}\" {} / {}", pool.name, pool.used, pool.size);
-        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, fraction > 0.9F ? ImVec4(0.9F, 0.35F, 0.3F, 1.0F) : ImVec4(0.35F, 0.6F, 0.9F, 1.0F));
+        ImGui::PushStyleColor(ImGuiCol_PlotHistogram, fraction > 0.9F ? DebugWindow::kErrorColor : DebugWindow::kAccentColor);
         ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, label.c_str());
         ImGui::PopStyleColor();
     }
@@ -185,7 +185,7 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
     ImGui::TableSetupColumn("Scene", ImGuiTableColumnFlags_WidthStretch, 3.0F);
     ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthStretch, 1.2F);
     ImGui::TableSetupColumn("Mode", ImGuiTableColumnFlags_WidthStretch, 1.2F);
-    ImGui::TableSetupColumn("Transparent", ImGuiTableColumnFlags_WidthStretch, 1.0F);
+    ImGui::TableSetupColumn("Transparent", ImGuiTableColumnFlags_WidthStretch, 1.6F);
     ImGui::TableHeadersRow();
 
     for (std::size_t index = 0; index < scenes.size(); ++index) {
@@ -206,27 +206,15 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
 
 // A checkbox for every drawing the engine and the app know, which switches it like the API does. The checkboxes take their ids inside the section, since the app names its drawings and a name may match another item of the window.
 void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
+    ImGui::PushStyleColor(ImGuiCol_Text, DebugWindow::kMutedColor);
+    ImGui::TextWrapped("%s", kDrawingsHint.data());
+    ImGui::PopStyleColor();
+
     ImGui::PushID("drawings");
     for (const std::string& name : plugin.getDrawingNames()) {
         bool enabled = plugin.isDrawing(name);
         if (ImGui::Checkbox(name.c_str(), &enabled)) {
             plugin.setDrawing(name, enabled);
-        }
-
-        ImGui::SameLine();
-    }
-
-    ImGui::NewLine();
-    ImGui::PopID();
-}
-
-// A checkbox for every item of the compact statistics, which the display shows once the overlay closes into compact mode.
-void OverlayWindow::drawItems(StatsDisplay& display) {
-    ImGui::PushID("items");
-    for (const auto& [name, item] : StatsDisplay::kItemNames) {
-        bool showing = display.isShowing(item);
-        if (ImGui::Checkbox(std::string(name).c_str(), &showing)) {
-            display.setShowing(item, showing);
         }
 
         ImGui::SameLine();
@@ -335,10 +323,6 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats
 
     if (ImGui::CollapsingHeader("Drawings", ImGuiTreeNodeFlags_DefaultOpen)) {
         drawDrawings(engine.getPlugin<plugins::DebugPlugin>());
-    }
-
-    if (ImGui::CollapsingHeader("Compact statistics", ImGuiTreeNodeFlags_DefaultOpen)) {
-        drawItems(engine.getPlugin<plugins::DebugPlugin>().getStatsDisplay());
     }
 
     if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {

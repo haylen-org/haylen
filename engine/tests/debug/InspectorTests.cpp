@@ -156,9 +156,11 @@ TEST_F(InspectorWindowTest, FollowsAFingerAndStaysInsideTheSafeArea) {
     EXPECT_EQ(window->Pos.x, kept.x);
     EXPECT_EQ(window->Pos.y, kept.y);
 
-    // The first row is the root of the watched values, and the row under it the watched table.
-    const float row = ImGui::GetTextLineHeight() + ImGui::GetStyle().CellPadding.y * 2.0F;
-    const ImVec2 first{window->DC.CursorStartPos.x + 60.0F, window->DC.CursorStartPos.y + row * 0.5F};
+    // The first row is the root of the watched values, and the row under it the watched table. The table starts with five rows of one height, the four roots and the scene that the open root of the scenes lists.
+    const ImGuiTable* table = ImGui::TableFindByID(window->GetID("##values"));
+    ASSERT_NE(table, nullptr);
+    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 5.0F;
+    const ImVec2 first{table->OuterRect.Min.x + 60.0F, table->OuterRect.Min.y + row * 0.5F};
     tap(place(first));
     tap(place({first.x, first.y + row}));
     ASSERT_GT(window->ScrollMax.y, 0.0F);

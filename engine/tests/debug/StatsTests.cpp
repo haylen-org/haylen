@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "2d/graphics/GpuInstance.hpp"
+#include "debug/DebugWindow.hpp"
 #include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
@@ -497,7 +498,7 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
 }
 
-// The checkboxes of the drawings take their ids inside their section, so a drawing named like another item of the window, such as the compact item "physics" or the section "Scenes", never shares its id, which ImGui reports as an error under the pointer.
+// The checkboxes of the drawings take their ids inside their section, so a drawing named like another item of the window, such as the section "Scenes", never shares its id, which ImGui reports as an error under the pointer.
 TEST(StatsTest, GivesTheDrawingsOfTheOverlayIdsOfTheirOwn) {
     test::EngineFixture fixture;
     plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
@@ -554,6 +555,29 @@ TEST(StatsTest, GivesTheDrawingsOfTheOverlayIdsOfTheirOwn) {
     EXPECT_GT(hovered, 0U);
     EXPECT_LE(conflicts, 1U);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// The debug windows draw in their own colors whatever the theme of the app, so a light theme leaves them dark.
+TEST(StatsTest, DrawsTheDebugWindowsInTheirOwnColorsWhateverTheTheme) {
+    test::EngineFixture fixture;
+    fixture.runLua("require('haylen.ui').setTheme('light')");
+    fixture.engine().getPlugin<plugins::DebugPlugin>().setStatsMode(StatsDisplay::Mode::Full);
+    fixture.frames(2);
+
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    const ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
+    ASSERT_NE(window, nullptr);
+    const ImU32 theme = ImGui::GetColorU32(ImGuiCol_WindowBg);
+    const ImU32 own = ImGui::ColorConvertFloat4ToU32(DebugWindow::kBackgroundColor);
+    // clang-format off
+    const auto drawn = [window](ImU32 color) {
+        return std::ranges::any_of(window->DrawList->VtxBuffer, [color](const ImDrawVert& vertex) { return vertex.col == color; });
+    };
+    // clang-format on
+
+    EXPECT_NE(theme, own);
+    EXPECT_TRUE(drawn(own));
+    EXPECT_FALSE(drawn(theme));
 }
 
 } // namespace haylen::debug

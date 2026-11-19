@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/core/EventBus.hpp"
@@ -11,7 +12,6 @@
 #include "haylen/debug/LogLine.hpp"
 #include "haylen/debug/Monitor.hpp"
 #include "haylen/debug/Stats.hpp"
-#include "haylen/debug/StatsDisplay.hpp"
 
 struct ImVec4;
 
@@ -36,11 +36,12 @@ namespace haylen::debug {
 
 class Profiler;
 
-// Draws the full debug overlay window with ImGui: frame times, profiler scopes, the scenes on the stack, the debug drawings, the items of the compact statistics, rendering, memory, GPU pools, counters, the reads and downloads of the content, object counts, signals and event listeners, monitors and the recent log.
+// Draws the full debug overlay window with ImGui: frame times, profiler scopes, the scenes on the stack, the debug drawings, rendering, memory, GPU pools, counters, the reads and downloads of the content, object counts, signals and event listeners, monitors and the recent log.
 class OverlayWindow final {
   public:
     static constexpr float kWidth = 720.0F;
     static constexpr float kHeight = 860.0F;
+    static constexpr std::string_view kDrawingsHint = "Each drawing that is on draws over every canvas of the app.";
 
     // Draws the window and returns `false` once the player closed it.
     static bool draw(core::Engine& engine, ui::Backend& backend, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log);
@@ -55,7 +56,6 @@ class OverlayWindow final {
     static void drawProfiler(const Profiler& profiler);
     static void drawScenes(const core::SceneManager& scenes);
     static void drawDrawings(plugins::DebugPlugin& plugin);
-    static void drawItems(StatsDisplay& display);
     static void drawRendering(const graphics2d::Renderer::Stats& rendering);
     static void drawResources(const Stats& stats);
     static void drawContent(const content::ContentManager& content);
