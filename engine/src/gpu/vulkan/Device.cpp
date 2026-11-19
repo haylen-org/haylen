@@ -21,6 +21,7 @@
 #include "gpu/vulkan/PreparedModules.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/gpu/SurfaceTurn.hpp"
 
 namespace haylen::gpu::vulkan {
 
@@ -1372,6 +1373,7 @@ void Device::beginPass(const PassDesc& desc) {
     if (toSwapchain && !continues) {
         beginSwapchainPass(desc);
     } else if (!toSwapchain) {
+        pass.turns = 0;
         beginOffscreenPass(desc);
     }
 
@@ -1407,6 +1409,8 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     }
 
     const Swapchain& swapchain = *chain.swapchain;
+    pass.turns = swapchain.getTurns();
+    pass.window = swapchain.getWindowExtent();
     const std::uint32_t imageIndex = chain.imageIndex;
     const VkCommandBuffer commands = frames[frameIndex].graphics;
     const bool multisampled = swapchain.getSamples() != VK_SAMPLE_COUNT_1_BIT;
@@ -1649,21 +1653,23 @@ void Device::endSwapchainRendering() {
     }
 }
 
-void Device::applyViewport(const math::Rect& pixels) {
+void Device::applyViewport(const math::Rect& window) {
     if (!pass.open || pass.skipped) {
         return;
     }
 
+    const math::Rect pixels = getPassPixels(window);
     const VkViewport viewport{.x = pixels.x, .y = pixels.y + pixels.height, .width = pixels.width, .height = -pixels.height, .minDepth = 0.0F, .maxDepth = 1.0F};
     vk.vkCmdSetViewport(frames[frameIndex].graphics, 0, 1, &viewport);
 }
 
 // Vulkan takes a scissor inside the attachments with a positive origin, so the rectangle is rounded to pixels and clipped to them.
-void Device::applyScissor(const math::Rect& pixels) {
+void Device::applyScissor(const math::Rect& window) {
     if (!pass.open || pass.skipped) {
         return;
     }
 
+    const math::Rect pixels = getPassPixels(window);
     const auto width = static_cast<long>(pass.extent.width);
     const auto height = static_cast<long>(pass.extent.height);
     const long left = std::clamp(std::lround(pixels.x), 0L, width);
@@ -1672,6 +1678,12 @@ void Device::applyScissor(const math::Rect& pixels) {
     const long bottom = std::clamp(std::lround(pixels.y + pixels.height), top, height);
     const VkRect2D scissor{.offset = {static_cast<std::int32_t>(left), static_cast<std::int32_t>(top)}, .extent = {static_cast<std::uint32_t>(right - left), static_cast<std::uint32_t>(bottom - top)}};
     vk.vkCmdSetScissor(frames[frameIndex].graphics, 0, 1, &scissor);
+}
+
+// The renderer gives viewports and scissors in the pixels of the window, which the turned images of a swapchain pass hold turned.
+math::Rect Device::getPassPixels(const math::Rect& window) const noexcept {
+    const math::Vec2 size{static_cast<float>(pass.window.width), static_cast<float>(pass.window.height)};
+    return pass.turns != 0 ? SurfaceTurn::turnPixels(window, size, pass.turns) : window;
 }
 
 void Device::applyPipeline(Pipeline pipeline) {

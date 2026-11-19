@@ -82,6 +82,7 @@ struct RendererState {
     static constexpr int kDrawBlock = 6;
     static constexpr std::uint32_t kDrawBlockSize = 112;
     static constexpr int kLitBlock = 7;
+    static constexpr int kTurnBlock = 1;
     static constexpr int kSpriteTexture = 0;
     static constexpr int kSpriteSampler = 0;
     static constexpr int kNormalTexture = 1;

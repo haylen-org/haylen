@@ -100,12 +100,42 @@ VkCompositeAlphaFlagBitsKHR Swapchain::chooseCompositeAlpha(VkCompositeAlphaFlag
     return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 }
 
-// A surface that leaves the size to the swapchain takes the size of the window. The images keep the size of the window as it shows, since the compositor turns them where the display turns.
-VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept {
+// The images take the turn of the display, which the window system then shows without turning them itself, so it never composites the window with the GPU and every present matches the surface. A display that mirrors keeps the images as the window shows them.
+VkSurfaceTransformFlagBitsKHR Swapchain::chooseTransform(const VkSurfaceCapabilitiesKHR& capabilities) noexcept {
+    const VkSurfaceTransformFlagBitsKHR current = capabilities.currentTransform;
+    const bool turned = current == VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR || current == VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR || current == VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR;
+    if (turned || (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) == 0) {
+        return current;
+    }
+
+    return VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+}
+
+int Swapchain::toTurns(VkSurfaceTransformFlagBitsKHR transform) noexcept {
+    switch (transform) {
+    case VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR:
+        return 1;
+    case VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR:
+        return 2;
+    case VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR:
+        return 3;
+    default:
+        return 0;
+    }
+}
+
+VkExtent2D Swapchain::turnExtent(VkExtent2D size, int quarterTurns) noexcept {
+    return (quarterTurns & 1) != 0 ? VkExtent2D{size.height, size.width} : size;
+}
+
+// A surface that leaves the size to the swapchain takes the size of the window. A surface of a turned display reports the size of the window as it shows, so the images take it turned.
+VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings, int quarterTurns) noexcept {
     VkExtent2D chosen = capabilities.currentExtent;
     if (chosen.width == 0xFFFFFFFFU) {
         chosen = {static_cast<std::uint32_t>(std::max(settings.size.windowWidth, 0)), static_cast<std::uint32_t>(std::max(settings.size.windowHeight, 0))};
     }
+
+    chosen = turnExtent(chosen, quarterTurns);
 
     if (chosen.width == 0 || chosen.height == 0) {
         return {};
@@ -129,9 +159,8 @@ bool Swapchain::configure(const Settings& settings) {
 
     Context::check(described, "read the surface of the window");
 
-    // The compositor turns the images when the surface allows it, so the frames draw as the window shows them.
-    const VkSurfaceTransformFlagBitsKHR transform = (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0 ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : capabilities.currentTransform;
-    const VkExtent2D chosen = chooseExtent(capabilities, settings);
+    const VkSurfaceTransformFlagBitsKHR transform = chooseTransform(capabilities);
+    const VkExtent2D chosen = chooseExtent(capabilities, settings, toTurns(transform));
     destroyImages();
 
     if (chosen.width == 0) {
@@ -139,11 +168,12 @@ bool Swapchain::configure(const Settings& settings) {
         return false;
     }
 
+    turns = toTurns(transform);
     presentedExtent = chosen;
     extent = chosen;
 
     // A window that shows a smaller drawable, whose surface fixes the size of the images, takes the drawable through a copy into each image.
-    const VkExtent2D wanted{static_cast<std::uint32_t>(std::max(settings.size.width, 1)), static_cast<std::uint32_t>(std::max(settings.size.height, 1))};
+    const VkExtent2D wanted = turnExtent({static_cast<std::uint32_t>(std::max(settings.size.width, 1)), static_cast<std::uint32_t>(std::max(settings.size.height, 1))}, turns);
     const bool scaled = settings.size.isScaled() && (wanted.width != chosen.width || wanted.height != chosen.height);
     if (scaled && !canScale(capabilities)) {
         throw std::runtime_error("The Vulkan surface of the window takes no copies into its images, so this GPU cannot draw the window with fewer pixels than it shows. Remove the limit of the pixel density, or draw with another graphics API.");

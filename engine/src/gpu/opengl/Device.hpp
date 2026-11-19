@@ -66,6 +66,11 @@ class Device final : public gpu::Device {
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
+
+    [[nodiscard]] int getPassTurns() const noexcept override {
+        return 0;
+    }
+
     void applyViewport(const math::Rect& pixels) override;
     void applyScissor(const math::Rect& pixels) override;
     void applyPipeline(Pipeline pipeline) override;

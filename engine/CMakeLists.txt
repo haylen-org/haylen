@@ -400,6 +400,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/TraceRecorder.cpp
   src/debug/TraceSpan.cpp
   src/debug/Tracer.cpp
+  src/gpu/SurfaceTurn.cpp
   src/graphics/BlendMode.cpp
   src/graphics/Device.cpp
   src/graphics/DeviceState.cpp

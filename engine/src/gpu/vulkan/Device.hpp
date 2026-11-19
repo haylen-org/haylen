@@ -81,8 +81,13 @@ class Device final : public gpu::Device {
     void writeImages(std::span<const ImageWrite> writes) override;
 
     void beginPass(const PassDesc& desc) override;
-    void applyViewport(const math::Rect& pixels) override;
-    void applyScissor(const math::Rect& pixels) override;
+
+    [[nodiscard]] int getPassTurns() const noexcept override {
+        return pass.turns;
+    }
+
+    void applyViewport(const math::Rect& window) override;
+    void applyScissor(const math::Rect& window) override;
     void applyPipeline(Pipeline pipeline) override;
     void applyBindings(const Bindings& bindings) override;
     void applyUniforms(int slot, std::span<const std::byte> data) override;
@@ -274,6 +279,9 @@ class Device final : public gpu::Device {
         bool swapchain = false;
         bool labeled = false;
         VkExtent2D extent{};
+        // The quarter turns of the images of a swapchain pass and the size of its window before them.
+        int turns = 0;
+        VkExtent2D window{};
         std::array<Transition, RenderPassCache::kMaxViews> transitions{};
         std::size_t transitionCount = 0;
     };
@@ -319,6 +327,7 @@ class Device final : public gpu::Device {
     static void checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported);
     [[nodiscard]] VkFormat resolveFormat(PixelFormat format) const noexcept;
     [[nodiscard]] VkImageView getAttachmentView(ImageRecord& record, int mipLevel, int layer);
+    [[nodiscard]] math::Rect getPassPixels(const math::Rect& window) const noexcept;
     void uploadLevels(const ImageRecord& record, std::span<const std::span<const std::byte>> levels);
     void clearImage(const ImageRecord& record);
     void uploadBuffer(const BufferRecord& record, std::span<const std::byte> data);

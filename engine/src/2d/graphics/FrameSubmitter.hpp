@@ -50,6 +50,8 @@ class FrameSubmitter final {
     using Matrix = std::array<float, 16>;
     using Vector = std::array<float, 4>;
 
+    static constexpr Matrix kIdentity{1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F};
+
     // The uniform blocks of the programs of the renderer, laid out as their sources declare them under the std140 rules.
     struct VertexParams {
         Matrix viewProjection{};
@@ -103,6 +105,10 @@ class FrameSubmitter final {
     struct FilterParams {
         Vector settings{};
         Vector offset{};
+    };
+
+    struct TurnParams {
+        Vector turn{};
     };
 
     struct BlendVertexParams {
@@ -251,6 +257,7 @@ class FrameSubmitter final {
     void drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect, const graphics::RenderTarget& image);
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
+    void applyTurn();
 
     // Applies the fragment parameters of a draw: the edges of a fade of the frame, or of none for 0, moved with draws that the offset moves, and the form of its texture.
     void applyDraw(std::uint32_t fade, math::Vec2 offset, TextureForm form);

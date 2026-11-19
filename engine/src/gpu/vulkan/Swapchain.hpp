@@ -75,9 +75,19 @@ class Swapchain final {
         return samples;
     }
 
-    // The size that the passes draw, which is the size of the drawable when the swapchain scales it.
+    // The size that the passes draw, which is the size of the drawable when the swapchain scales it, turned with the images.
     [[nodiscard]] VkExtent2D getExtent() const noexcept {
         return extent;
+    }
+
+    // The quarter turns of the images from the window, as `SurfaceTurn` describes.
+    [[nodiscard]] int getTurns() const noexcept {
+        return turns;
+    }
+
+    // The size that the passes draw as the window shows it, before the turn of the images.
+    [[nodiscard]] VkExtent2D getWindowExtent() const noexcept {
+        return turnExtent(extent, turns);
     }
 
     // Whether the passes draw into images of their own, which `recordScale` scales into the images of the swapchain.
@@ -137,7 +147,10 @@ class Swapchain final {
     [[nodiscard]] static VkSurfaceFormatKHR chooseFormat(std::span<const VkSurfaceFormatKHR> formats) noexcept;
     [[nodiscard]] std::vector<VkPresentModeKHR> readPresentModes() const;
     [[nodiscard]] static VkCompositeAlphaFlagBitsKHR chooseCompositeAlpha(VkCompositeAlphaFlagsKHR supported, bool transparent) noexcept;
-    [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept;
+    [[nodiscard]] static VkSurfaceTransformFlagBitsKHR chooseTransform(const VkSurfaceCapabilitiesKHR& capabilities) noexcept;
+    [[nodiscard]] static int toTurns(VkSurfaceTransformFlagBitsKHR transform) noexcept;
+    [[nodiscard]] static VkExtent2D turnExtent(VkExtent2D size, int quarterTurns) noexcept;
+    [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings, int quarterTurns) noexcept;
     [[nodiscard]] bool canScale(const VkSurfaceCapabilitiesKHR& capabilities) const;
     [[nodiscard]] VkImageView makeView(VkImage image, VkFormat viewFormat) const;
     [[nodiscard]] Attachment makeAttachment(VkFormat attachmentFormat, VkImageUsageFlags usage) const;
@@ -162,6 +175,7 @@ class Swapchain final {
     Attachment color;
     Attachment depth;
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    int turns = 0;
     bool warnedOpaque = false;
     bool warnedVsync = false;
 };

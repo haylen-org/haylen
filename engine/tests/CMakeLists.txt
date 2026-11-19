@@ -149,6 +149,7 @@ set(HAYLEN_TEST_SOURCES
   gpu/GpuPreferenceTests.cpp
   gpu/HandleTableTests.cpp
   gpu/NullDeviceTests.cpp
+  gpu/SurfaceTurnTests.cpp
   graphics/GradientTests.cpp
   graphics/GraphicsLuaTests.cpp
   graphics/GraphicsTests.cpp

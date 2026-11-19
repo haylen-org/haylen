@@ -50,7 +50,7 @@ The swapchain takes eight bits a channel without the conversion of sRGB formats,
 | Vertical sync off | The mailbox mode, which replaces the waiting frame without tearing, or else the immediate mode, or else FIFO, which the log tells once, since the frames then wait for the refresh of the display. The method `vulkan::Device::getPresentMode(surface)` gives the mode that a surface presents with. |
 | Transparent window | The premultiplied composite alpha of the surface, or the alpha that the surface inherits. A surface with neither logs a warning once and stays opaque. |
 | New size | The swapchain is made again before the next frame. A swapchain that presents out of date or suboptimal is made again once. |
-| Turned display | The images keep the size of the window as it shows, and the compositor turns them where the display turns, as on Android. |
+| Turned display | The swapchain takes the turn of the display as its pre-transform, with the images as wide as the window is tall for a quarter turn, as on an Android phone held across its panel. The window system then shows the images as they are, so it never composites the window with the GPU and every present matches the surface, which would otherwise answer suboptimal and make the swapchain again in every frame. The passes into the swapchain draw turned: the device turns their viewports and scissors, and the renderer turns the positions of their draws in clip space by `getPassTurns`, as the [render hardware interface](rhi.md#passes-and-draws) says. |
 | Window taken back | A surface that the window system took back, such as the window of an Android app in the background, gives no swapchain and the frames draw nothing until the platform hands over a new one. |
 
 ## Shaders

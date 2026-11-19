@@ -13,6 +13,7 @@
 #include "graphics/RenderTargetResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/gpu/SurfaceTurn.hpp"
 #include "haylen/graphics/Device.hpp"
 
 namespace haylen::graphics2d {
@@ -20,7 +21,7 @@ namespace haylen::graphics2d {
 const PostProcess FrameSubmitter::kNoPostProcess{};
 
 template <typename Block> void FrameSubmitter::applyBlock(int slot, const Block& block) {
-    static_assert(sizeof(VertexParams) == RendererState::kVertexBlockSize && sizeof(DrawParams) == RendererState::kDrawBlockSize && sizeof(LitParams) == RendererState::kLitBlockSize && sizeof(LightParams) == 64 && sizeof(CompositeParams) == 176 && sizeof(FilterParams) == 32);
+    static_assert(sizeof(VertexParams) == RendererState::kVertexBlockSize && sizeof(DrawParams) == RendererState::kDrawBlockSize && sizeof(LitParams) == RendererState::kLitBlockSize && sizeof(LightParams) == 64 && sizeof(CompositeParams) == 176 && sizeof(FilterParams) == 32 && sizeof(TurnParams) == 16);
     static_assert(sizeof(BlendVertexParams) == 112 && sizeof(BlendFragmentParams) == 80 && sizeof(BackdropVertexParams) == 96 && sizeof(BackdropFragmentParams) == 32 && sizeof(MetaballVertexParams) == 96 && sizeof(MetaballFragmentParams) == 48 && sizeof(GlassParams) == 48);
     state.getGpu().applyUniforms(slot, std::as_bytes(std::span(&block, 1)));
 }
@@ -668,6 +669,7 @@ void FrameSubmitter::renderPresentations() {
         bindings.samplers[0] = state.device.getState().getSampler({.filter = shown == image ? graphics::Texture::Filter::Nearest : graphics::Texture::Filter::Linear});
         state.getGpu().applyBindings(bindings);
         const FilterParams params{.settings = {2.0F, 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F}, .offset = {}};
+        applyTurn();
         applyBlock(0, params);
         state.getGpu().draw(0, 3, 1);
         ++state.stats.drawCalls;
@@ -684,6 +686,7 @@ void FrameSubmitter::drawScreenImage(graphics::PassTarget pass) {
     state.getGpu().applyBindings(bindings);
 
     const FilterParams params{.settings = {2.0F, 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F}, .offset = {}};
+    applyTurn();
     applyBlock(0, params);
     state.getGpu().draw(0, 3, 1);
     ++state.stats.drawCalls;
@@ -789,6 +792,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
         .visionBlue = {vision[2][0], vision[2][1], vision[2][2], 0.0F},
         .grain = {post.grain, post.dither ? 1.0F : 0.0F, static_cast<float>(state.epoch % kGrainFrames), 0.0F},
     };
+    applyTurn();
     applyBlock(0, params);
     state.getGpu().draw(0, 3, 1);
     ++state.stats.drawCalls;
@@ -813,6 +817,7 @@ void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics
         .settings = {shrinks ? 0.0F : 1.0F, threshold, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F},
         .offset = {step.x / size.x, step.y / size.y, 0.5F / size.x, 0.5F / size.y},
     };
+    applyTurn();
     applyBlock(0, params);
     state.getGpu().draw(0, 3, 1);
     ++state.stats.drawCalls;
@@ -831,6 +836,7 @@ void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::
     bindings.samplers[0] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Nearest});
     state.getGpu().applyBindings(bindings);
     const FilterParams params{.settings = {2.0F, 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F}, .offset = {}};
+    applyTurn();
     applyBlock(0, params);
     state.getGpu().draw(0, 3, 1);
     ++state.stats.drawCalls;
@@ -883,7 +889,7 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     const Shade& shade = state.shades[shadeIndex];
     const graphics::TextureResource& resource = *image.getResource();
     state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
-    applyUniforms(projection(math::Transform2D::identity(), {1.0F, 1.0F}), graphics::BlendMode::Type::Premultiplied);
+    applyUniforms(gpu::SurfaceTurn::turnClip(projection(math::Transform2D::identity(), {1.0F, 1.0F}), state.getGpu().getPassTurns()), graphics::BlendMode::Type::Premultiplied);
     applyDraw(0, {}, getTextureForm(resource));
     applyShade(shade, pass, Program::Sprite, graphics::BlendMode::Type::Premultiplied);
 
@@ -936,7 +942,7 @@ void FrameSubmitter::applyClip(const Canvas& canvas, std::uint32_t clip, const m
 }
 
 void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect, const graphics::RenderTarget* image) {
-    const Matrix matrix = projection(canvas.view, canvas.viewSize);
+    const Matrix matrix = gpu::SurfaceTurn::turnClip(projection(canvas.view, canvas.viewSize), state.getGpu().getPassTurns());
     gpu::Device::Pipeline currentPipeline;
     graphics::TextureResource* currentTexture = nullptr;
     std::optional<std::uint32_t> currentClip;
@@ -1246,6 +1252,13 @@ void FrameSubmitter::drawMetaball(const Command& command, const Matrix& matrix) 
     applyBlock(RendererState::kFragmentBlock, fragment);
     state.getGpu().draw(0, 4, 1);
     ++state.stats.drawCalls;
+}
+
+// The triangle of the composite and filter programs covers the viewport, and turns with the images of a swapchain pass.
+void FrameSubmitter::applyTurn() {
+    const Matrix turned = gpu::SurfaceTurn::turnClip(kIdentity, state.getGpu().getPassTurns());
+    const TurnParams params{.turn = {turned[0], turned[1], turned[4], turned[5]}};
+    applyBlock(RendererState::kTurnBlock, params);
 }
 
 void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend) {

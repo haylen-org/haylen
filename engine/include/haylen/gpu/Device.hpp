@@ -622,6 +622,9 @@ class Device {
     virtual void writeImages(std::span<const ImageWrite> writes) = 0;
 
     virtual void beginPass(const PassDesc& desc) = 0;
+
+    // The quarter turns of the images of the pass that is open, as `SurfaceTurn` describes, by which its draws turn the positions they write in clip space, while the device turns their viewports and scissors itself. Only a swapchain pass whose window system turns the images back as it shows them, such as a phone of Android held across its panel, has turns.
+    [[nodiscard]] virtual int getPassTurns() const noexcept = 0;
     virtual void applyViewport(const math::Rect& pixels) = 0;
     virtual void applyScissor(const math::Rect& pixels) = 0;
     virtual void applyPipeline(Pipeline pipeline) = 0;
