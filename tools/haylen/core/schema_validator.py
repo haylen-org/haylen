@@ -21,6 +21,8 @@ class SchemaValidator:
         "boolean": "true or false",
         "null": "null",
     }
+    # The schemas ship with the tooling like its code, so a process reads each one once and keeps validating with it while the files change on disk.
+    LOADED: dict[str, SchemaValidator] = {}
 
     def __init__(self, schema: Mapping[str, object]) -> None:
         plain = Frozen.thaw(schema)
@@ -30,9 +32,13 @@ class SchemaValidator:
 
     @staticmethod
     def of(name: str) -> SchemaValidator:
-        """Returns the validator of a schema of the tooling, such as `haylen.schema.json`."""
-        text = resources.files("haylen.schemas").joinpath(name).read_text(encoding="utf-8")
-        return SchemaValidator(json.loads(text))
+        """Returns the validator of a schema of the tooling, such as `haylen.schema.json`, which the process reads the first time it is asked for."""
+        loaded = SchemaValidator.LOADED.get(name)
+        if loaded is None:
+            text = resources.files("haylen.schemas").joinpath(name).read_text(encoding="utf-8")
+            loaded = SchemaValidator(json.loads(text))
+            SchemaValidator.LOADED[name] = loaded
+        return loaded
 
     def problems(self, document: object) -> list[str]:
         errors = sorted(self.validator.iter_errors(document), key=lambda error: [str(part) for part in error.absolute_path])
