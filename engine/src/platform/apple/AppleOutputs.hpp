@@ -30,6 +30,9 @@ class AppleOutputs final {
     // Ends the outputs in a scene that disconnected, whose display went away.
     static void disconnect(UIScene* scene);
 
+    // Shows black in the window of the scene of an external display, which shows no output.
+    static void clear(UIWindow* window);
+
     // Registers on the view controller of the window of the app, or unregisters, the scene accessory through which iOS 27 and later connect the scene of an external display to an app, which earlier releases connect on their own. An external display shows the scene of the app while the accessory is registered, and a mirror of its window otherwise.
     static void setAccessory(bool value);
 

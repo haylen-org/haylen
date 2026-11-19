@@ -10,6 +10,9 @@ using haylen::platform::AppleOutputs;
 @implementation HaylenDisplaySceneDelegate
 
 - (void)scene:(UIScene*)scene willConnectToSession:(UISceneSession*)session options:(UISceneConnectionOptions*)connectionOptions {
+    self.window = [[UIWindow alloc] initWithWindowScene:static_cast<UIWindowScene*>(scene)];
+    AppleOutputs::clear(self.window);
+    self.window.hidden = NO;
     AppleDisplays::changed();
 }
 

@@ -16,7 +16,12 @@ class SecondDisplayTests: TestProjectCase {
         }
         try XCTSkipIf(alone.exists, "The device has no external display. Turn the one of a simulator on with \"xcrun simctl io <device> screenConfig --display=external power on\".")
 
-        waitFor(element(matching: "The output is shown, \\d+ by \\d+ pixels at [0-9.]+x\\."))
+        let status = element(matching: "(The output is .*|No output is open\\.)")
+        var reported = ""
+        waitUntil("The output does not show on the external display. The app reads \"\(reported)\".") {
+            reported = status.exists ? status.label : ""
+            return reported.range(of: "^The output is shown, \\d+ by \\d+ pixels at [0-9.]+x\\.$", options: .regularExpression) != nil
+        }
         try saveScreenshot("second-display")
     }
 }

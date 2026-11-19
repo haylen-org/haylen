@@ -36,15 +36,13 @@ void AppleOutputs::open(std::uint32_t number, std::string_view display, const gp
         return;
     }
 
-    UIScreen* screen = entry.scene.screen;
-    entry.window = [[UIWindow alloc] initWithWindowScene:entry.scene];
+    entry.window = static_cast<HaylenDisplaySceneDelegate*>(entry.scene.delegate).window;
     entry.view = [[HaylenOutputView alloc] initWithOutput:number frame:entry.window.bounds];
-    entry.view.contentScaleFactor = screen.scale;
+    entry.view.contentScaleFactor = entry.scene.screen.scale;
     entry.view.backgroundColor = UIColor.blackColor;
     UIViewController* controller = [UIViewController new];
     controller.view = entry.view;
     entry.window.rootViewController = controller;
-    entry.window.hidden = NO;
 
     entry.report.surface = surface;
     entry.report.surface->kind = gpu::Surface::Kind::MetalLayer;
@@ -59,8 +57,16 @@ void AppleOutputs::close(std::uint32_t number) {
         return;
     }
 
-    found->second.window.hidden = YES;
+    if (found->second.window != nil) {
+        clear(found->second.window);
+    }
     entries.erase(found);
+}
+
+void AppleOutputs::clear(UIWindow* window) {
+    UIViewController* controller = [UIViewController new];
+    controller.view.backgroundColor = UIColor.blackColor;
+    window.rootViewController = controller;
 }
 
 Host::OutputReport AppleOutputs::getReport(std::uint32_t number) {
@@ -113,7 +119,6 @@ void AppleOutputs::setAccessory(bool value) {
 void AppleOutputs::disconnect(UIScene* scene) {
     for (auto& [number, entry] : entries) {
         if (entry.scene == scene && !entry.report.ending) {
-            entry.window.hidden = YES;
             entry.window = nil;
             entry.view = nil;
             entry.report = {.ending = Output::Ending::Disconnected};
