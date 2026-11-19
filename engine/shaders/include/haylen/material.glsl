@@ -7,6 +7,8 @@ layout(binding=0) uniform haylen_vs_params {
     mat4 view_projection;
     // 1 when the blend mode of the draw expects colors premultiplied by their alpha, as `multiply` and `screen` do.
     float haylen_premultiply;
+    // The size of the viewport of the pass in pixels, which turns lengths of the canvas into pixels.
+    vec2 haylen_viewport;
 };
 
 #ifdef HAYLEN_MESH
@@ -94,7 +96,7 @@ void haylen_vertex_main() {
     haylen_source = vec4(0.0, 0.0, 1.0, 1.0);
     haylen_data = vec4(0.0);
 #elif defined(HAYLEN_SHAPE)
-    // The quad reaches past the edge by the margin, where the edge fades out, and turns with the shape around its center, while the texture coordinates go from 0 to 1 across the rectangle of the shape, upright on a flipped texture. The flags of the form say whether the shape is an ellipse and whether its texture is flipped. The fragment stage measures from the center in the frame of the shape, where the border and the radii of the corners take their shares of the shorter half side, and from the same point turned so the sector lies around the x axis.
+    // The quad reaches past the edge by the margin, where the edge fades out, and turns with the shape around its center, while the texture coordinates go from 0 to 1 across the rectangle of the shape, upright on a flipped texture. The flags of the form say whether the shape is an ellipse and whether its texture is flipped. The fragment stage measures from the center in the frame of the shape, where the border and the radii of the corners take their shares of the shorter half side, and from the same point turned so the sector lies around the x axis. The edge fades over the softness, or over one pixel, the mean of how far the point of the shape moves from one pixel to the next across and down, which the canvas fixes for the whole shape since it maps the canvas to the pixels without bending it.
     vec2 local = (corner * 2.0 - 1.0) * (shape_half_size + shape_reach.y);
     float sine = sin(shape_rotation);
     float cosine = cos(shape_rotation);
@@ -116,7 +118,10 @@ void haylen_vertex_main() {
     float middle = (shape_form.z + shape_form.y * 0.5) * 6.28318531;
     haylen_shape_frame = vec4(local, shape_half_size);
     haylen_shape_sector_point = vec4(local.x * cos(middle) + local.y * sin(middle), local.y * cos(middle) - local.x * sin(middle), shape_form.y, 0.0);
-    haylen_shape_form = vec4(shape_form.x * shorter, shape_reach.x, shorter, mod(flags, 2.0));
+    vec2 across = 0.5 * haylen_viewport.x * vec2(view_projection[0].x, view_projection[1].x);
+    vec2 down = 0.5 * haylen_viewport.y * vec2(view_projection[0].y, view_projection[1].y);
+    float pixel = 0.5 * (length(across) + length(down)) / max(abs(across.x * down.y - across.y * down.x), 0.000001);
+    haylen_shape_form = vec4(shape_form.x * shorter, max(max(pixel, shape_reach.x), 0.000001), shorter, mod(flags, 2.0));
     haylen_shape_radii = shape_radii * shorter;
     haylen_shape_border = shape_border_color;
 #else
@@ -278,15 +283,14 @@ float haylen_shape_sector() {
 vec2 haylen_shape_coverage = vec2(0.0);
 bool haylen_shape_covered = false;
 
-// How much of the pixel the shape covers, and how much of it its fill covers inside the border. Each edge fades over one pixel of the screen, or over the softness, so the coverage of a pixel follows how far its center lies inside the edge. The coverage past the far side of a thin shape is taken away again, so shapes thinner than a pixel cover only what they cross. The slopes of the point come first, where every pixel takes them, as derivatives need.
+// How much of the pixel the shape covers, and how much of it its fill covers inside the border. Each edge fades over the ramp of the form, one pixel of the screen or the softness, so the coverage of a pixel follows how far its center lies inside the edge. The coverage past the far side of a thin shape is taken away again, so shapes thinner than a pixel cover only what they cross.
 vec2 haylen_shape_cover() {
-    vec2 point = haylen_shape_frame.xy;
-    float pixel = 0.5 * (length(dFdx(point)) + length(dFdy(point)));
     if (haylen_shape_covered) {
         return haylen_shape_coverage;
     }
 
-    float ramp = max(max(pixel, haylen_shape_form.y), 0.000001);
+    vec2 point = haylen_shape_frame.xy;
+    float ramp = haylen_shape_form.y;
     float box = haylen_shape_box(point);
     float sector = haylen_shape_sector();
     float beyond = clamp(0.5 - (box + 2.0 * haylen_shape_form.z) / ramp, 0.0, 1.0);

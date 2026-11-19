@@ -464,7 +464,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
         const MetaballDraw& draw = state.metaballs[index];
         beginOffscreenPass(state.fields[draw.field], math::Color::transparent());
         state.getGpu().applyPipeline(state.getPipeline(Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive), graphics::PassTarget::Offscreen));
-        applyUniforms(matrix, graphics::BlendMode::Type::Additive);
+        applyUniforms(matrix, graphics::BlendMode::Type::Additive, state.fields[draw.field].getSize());
         applyDraw(0, {}, getTextureForm(kernel));
 
         gpu::Device::Bindings bindings;
@@ -889,7 +889,7 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     const Shade& shade = state.shades[shadeIndex];
     const graphics::TextureResource& resource = *image.getResource();
     state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
-    applyUniforms(gpu::SurfaceTurn::turnClip(projection(math::Transform2D::identity(), {1.0F, 1.0F}), state.getGpu().getPassTurns()), graphics::BlendMode::Type::Premultiplied);
+    applyUniforms(gpu::SurfaceTurn::turnClip(projection(math::Transform2D::identity(), {1.0F, 1.0F}), state.getGpu().getPassTurns()), graphics::BlendMode::Type::Premultiplied, image.getSize());
     applyDraw(0, {}, getTextureForm(resource));
     applyShade(shade, pass, Program::Sprite, graphics::BlendMode::Type::Premultiplied);
 
@@ -1014,7 +1014,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
 
         const TextureForm form = command.program == Program::Batch ? TextureForm::Levels : getTextureForm(*command.texture);
         if (fresh || command.offset != currentOffset || command.fade != currentFade || form != currentForm) {
-            applyUniforms(translated(matrix, command.offset), command.blend);
+            applyUniforms(translated(matrix, command.offset), command.blend, passRect.getSize());
             applyDraw(command.fade, command.offset, form);
             currentOffset = command.offset;
             currentFade = command.fade;
@@ -1196,7 +1196,7 @@ void FrameSubmitter::drawGlass(const Canvas& canvas, const Command& command, con
     state.getGpu().applyPipeline(shade.material != nullptr ? state.getMaterialPipeline(*shade.material, Program::Glass, blend, pass) : state.getPipeline(Program::Glass, blend, pass));
     applyClip(canvas, command.clip, passRect);
     const graphics::TextureResource& behind = *targets.image.getTexture().getResource();
-    applyUniforms(matrix, command.blend);
+    applyUniforms(matrix, command.blend, passRect.getSize());
     applyDraw(command.fade, {}, getTextureForm(behind));
     applyShade(shade, pass, Program::Glass, command.blend);
 
@@ -1261,8 +1261,11 @@ void FrameSubmitter::applyTurn() {
     applyBlock(RendererState::kTurnBlock, params);
 }
 
-void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend) {
-    const VertexParams params{.viewProjection = matrix, .premultiply = RendererState::expectsPremultiplied(blend) ? 1.0F : 0.0F};
+// The viewport of a pass whose images are turned a quarter takes the width of the window as its height.
+void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend, math::Vec2 viewport) {
+    const bool across = (state.getGpu().getPassTurns() & 1) != 0;
+    const std::array<float, 2> pixels = across ? std::array{viewport.y, viewport.x} : std::array{viewport.x, viewport.y};
+    const VertexParams params{.viewProjection = matrix, .premultiply = RendererState::expectsPremultiplied(blend) ? 1.0F : 0.0F, .viewport = pixels};
     applyBlock(RendererState::kVertexBlock, params);
 }
 

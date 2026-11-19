@@ -56,7 +56,8 @@ class FrameSubmitter final {
     struct VertexParams {
         Matrix viewProjection{};
         float premultiply = 0.0F;
-        std::array<float, 3> padding{};
+        float padding = 0.0F;
+        std::array<float, 2> viewport{};
     };
 
     // The parameters of the fragment stage of a draw as the shader library reads them: the slopes along x, the slopes along y and the offsets of the first four edges of its fade, then of the next four, where the slots past the last edge cover every point, the count of its edges and the form of its texture.
@@ -256,7 +257,7 @@ class FrameSubmitter final {
     void drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
     void drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect, const graphics::RenderTarget& image);
     void drawMetaball(const Command& command, const Matrix& matrix);
-    void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
+    void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend, math::Vec2 viewport);
     void applyTurn();
 
     // Applies the fragment parameters of a draw: the edges of a fade of the frame, or of none for 0, moved with draws that the offset moves, and the form of its texture.
