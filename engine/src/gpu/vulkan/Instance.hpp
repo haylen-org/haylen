@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <mutex>
+#include <span>
 
 #include <volk.h>
 
@@ -36,6 +37,7 @@ class Instance final {
     static constexpr const char* kValidationLayer = "VK_LAYER_KHRONOS_validation";
 
     static void openLoader();
+    [[nodiscard]] static bool hasExtension(std::span<const VkExtensionProperties> available, const char* name);
     [[nodiscard]] static bool hasLayer(const char* name);
     static VKAPI_ATTR VkBool32 VKAPI_CALL report(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT types, const VkDebugUtilsMessengerCallbackDataEXT* data, void* user);
     [[nodiscard]] static VkDebugUtilsMessengerCreateInfoEXT describeMessenger() noexcept;

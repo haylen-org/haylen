@@ -36,11 +36,6 @@ Instance::Instance(bool validation) {
     vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
     std::vector<VkExtensionProperties> available(count);
     vkEnumerateInstanceExtensionProperties(nullptr, &count, available.data());
-    // clang-format off
-    const auto has = [&](const char* name) {
-        return std::ranges::any_of(available, [name](const VkExtensionProperties& extension) { return std::strcmp(extension.extensionName, name) == 0; });
-    };
-    // clang-format on
 
     // The extensions of every surface the platform may hand over are on whenever the loader has them, so a device made offscreen takes a window later.
     std::vector<const char*> extensions;
@@ -58,23 +53,26 @@ Instance::Instance(bool validation) {
                              VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
 #endif
                              VK_EXT_DEBUG_UTILS_EXTENSION_NAME}) {
-        if (has(name)) {
+        if (hasExtension(available, name)) {
             extensions.push_back(name);
         }
     }
 
-    debugUtils = has(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    debugUtils = hasExtension(available, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
+    // The validation layers report only through the messenger of the debug utils, which turns their messages into errors of the engine log.
+    const bool validating = validation && debugUtils && hasLayer(kValidationLayer);
+    if (validation && !validating) {
+        core::Log::warning("The Vulkan validation layers or the extension \"{}\" that reports their messages are not installed, so the Vulkan device runs without validation.", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
 
     std::vector<const char*> layers;
-    if (validation && hasLayer(kValidationLayer)) {
+    if (validating) {
         layers.push_back(kValidationLayer);
-    } else if (validation) {
-        core::Log::warning("The Vulkan validation layers are not installed, so the Vulkan device runs without them.");
     }
 
     const VkApplicationInfo application{.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pApplicationName = "Haylen", .pEngineName = "Haylen", .apiVersion = apiVersion};
     const VkDebugUtilsMessengerCreateInfoEXT messengerInfo = describeMessenger();
-    const bool validating = !layers.empty() && debugUtils;
     const VkInstanceCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = validating ? &messengerInfo : nullptr,
@@ -91,8 +89,14 @@ Instance::Instance(bool validation) {
 
     volkLoadInstanceOnly(handle);
 
-    if (validating && vkCreateDebugUtilsMessengerEXT(handle, &messengerInfo, nullptr, &messenger) != VK_SUCCESS) {
-        messenger = VK_NULL_HANDLE;
+    if (!validating) {
+        return;
+    }
+
+    const VkResult messengerResult = vkCreateDebugUtilsMessengerEXT(handle, &messengerInfo, nullptr, &messenger);
+    if (messengerResult != VK_SUCCESS) {
+        vkDestroyInstance(handle, nullptr);
+        throw std::runtime_error(std::format("The Vulkan validation layers could not report to the engine log ({}).", Conversions::describe(messengerResult)));
     }
 }
 
@@ -106,6 +110,10 @@ Instance::~Instance() {
 
 void Instance::openLoader() {
     std::call_once(loaderOpened, [] { loaderResult = volkInitialize(); });
+}
+
+bool Instance::hasExtension(std::span<const VkExtensionProperties> available, const char* name) {
+    return std::ranges::any_of(available, [name](const VkExtensionProperties& extension) { return std::strcmp(extension.extensionName, name) == 0; });
 }
 
 bool Instance::hasLayer(const char* name) {

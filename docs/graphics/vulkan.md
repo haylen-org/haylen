@@ -71,7 +71,7 @@ Shader packages carry SPIR-V modules, the `spirv` language, with the descriptor 
 
 ## Debugging
 
-With validation on, the device turns on the validation layers when the machine has them, such as through the Vulkan SDK, and logs a warning that it runs without them otherwise. Errors of the layers and their warnings about broken rules become errors of the engine log, which fail the tests. Every object takes its label and debug groups become labels of the command buffer through `VK_EXT_debug_utils`, which RenderDoc and other GPU debuggers show.
+With validation on, the device turns on the validation layers when the machine has them, such as through the Vulkan SDK, together with the messenger of `VK_EXT_debug_utils` that carries their messages, and logs a warning that it runs without them otherwise. A messenger that the instance refuses stops the device with the reason. Errors of the layers and their warnings about broken rules become errors of the engine log, which fail the tests. Every object takes its label and debug groups become labels of the command buffer through `VK_EXT_debug_utils`, which RenderDoc and other GPU debuggers show.
 
 ```sh
 haylen test --graphics-api vulkan
