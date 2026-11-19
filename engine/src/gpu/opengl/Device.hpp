@@ -95,6 +95,8 @@ class Device final : public gpu::Device {
     [[nodiscard]] std::filesystem::path endCapture() override;
 
   private:
+    static constexpr Gl::Uint64 kWaitStep = 100'000'000;
+    static constexpr Gl::Uint64 kFrameTimeout = 10'000'000'000;
     static constexpr std::string_view kMissingWebCaptureTool = "Browsers give a page no capture tool for WebGL 2, so the engine cannot capture its frames. Capture them on a desktop, where RenderDoc captures OpenGL, Vulkan and Direct3D and Metal captures its own.";
 
     struct BufferRecord {

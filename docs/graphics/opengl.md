@@ -52,7 +52,7 @@ The ring grows when a frame needs more room, and a frame that writes what the fr
 
 ## Frames in flight
 
-Three frames can be in flight. At the end of each frame the device places a fence. Before a frame writes its region of the upload ring, the device waits for the fence of the frame that used that region last. This also stops the CPU from running too far ahead of the GPU.
+On OpenGL and OpenGL ES, three frames can be in flight. At the end of each frame the device places a fence. Before a frame writes its region of the upload ring, the device waits for the fence of the frame that used that region last. This also stops the CPU from running too far ahead of the GPU. A frame that the GPU did not finish within ten seconds loses the device, since a context without robustness never reports a GPU that stopped. WebGL2 has no upload ring and places no fences, since the browser orders the frames of the page.
 
 OpenGL keeps an object alive while a queued command still uses it, so `destroy` deletes objects at once and the GPU still finishes the frames that use them.
 
@@ -82,7 +82,7 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 | Blend per target | On OpenGL, on OpenGL ES 3.2 and with `GL_OES_draw_buffers_indexed` or `GL_EXT_draw_buffers_indexed`. WebGL2 applies the blend and write mask of the first target to all of them. |
 | Float render targets | Always on OpenGL. OpenGL ES and WebGL2 draw into 16-bit float targets with `GL_EXT_color_buffer_half_float` or `GL_EXT_color_buffer_float`, and into 32-bit float targets with `GL_EXT_color_buffer_float`. Blending into 32-bit float targets needs `GL_EXT_float_blend`, and filtering 32-bit float textures linearly needs `GL_OES_texture_float_linear`. |
 | GPU time | On OpenGL, on OpenGL ES with `GL_EXT_disjoint_timer_query` and on WebGL2 with `EXT_disjoint_timer_query_webgl2`, as the sum of a query around each pass of the frame, so no query spans the flush that ends a pass. A frame whose timing the GPU disturbed is dropped, except on a driver of the [driver issues](rhi.md#driver-issues) that refuses to say so. |
-| Lost context | Reported by `isLost` through `glGetGraphicsResetStatus` where the context has robustness, and on WebGL2 through the lost state of the WebGL context. |
+| Lost context | Reported by `isLost` through `glGetGraphicsResetStatus` where the context has robustness, after a frame that the GPU did not finish within ten seconds, and on WebGL2 through the lost state of the WebGL context. |
 | Multisampling | Render targets and depth stencil images of up to `GL_MAX_SAMPLES` samples, fewer where a format allows fewer. Multisampled images are resolved, never sampled. |
 | Origin | The first row of a render target is its bottom row, so `originTopLeft` is `false`. Viewports and scissors still take rectangles from the top left. |
 | Validation | With validation on, `KHR_debug` sends the messages of the driver to the log, errors as errors, and names objects and debug groups for GPU debuggers. Contexts without it, such as WebGL2, report errors through `glGetError` at the end of each pass and frame. |

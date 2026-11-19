@@ -108,7 +108,8 @@ The CPU records a frame while the GPU still draws the frames before it. Each dev
 | Direct3D 12 | 2 |
 | Direct3D 11 | 2 |
 | Vulkan | 2 |
-| OpenGL, OpenGL ES and WebGL2 | 3 |
+| OpenGL and OpenGL ES | 3 |
+| WebGL2 | The browser orders the frames of the page. |
 | WebGPU | The browser orders the frames through its queue. |
 
 `destroy` never frees an object that a frame on the GPU may still use. Metal, Direct3D 12 and Vulkan keep it until the frames that may use it finished. Direct3D 11, OpenGL and WebGPU hand it to their API, which keeps it alive while queued commands use it. The engine itself destroys objects only between frames, through the graveyard of `graphics::Device`, and only on the frame thread.

@@ -565,17 +565,24 @@ void Device::beginFrame() {
 }
 
 // The region of the upload ring that the frame writes was read by the frame that ran as many frames ago as there are frames in flight, so the CPU waits for its fence, which bounds how far it runs ahead of the GPU.
+// A context without robustness never reports a GPU that stopped, so a frame that the GPU did not finish within `kFrameTimeout` loses the device.
 void Device::waitForFrame(std::size_t slot) {
     Gl::Sync& fence = frameFences[slot];
     if (fence == nullptr) {
         return;
     }
 
-    constexpr Gl::Uint64 kWaitNanoseconds = 100'000'000;
-    Gl::Enum result = gl.clientWaitSync(fence, Gl::kSyncFlushCommandsBit, kWaitNanoseconds);
-    while (result == Gl::kTimeoutExpired && !lost) {
+    Gl::Uint64 waited = kWaitStep;
+    Gl::Enum result = gl.clientWaitSync(fence, Gl::kSyncFlushCommandsBit, kWaitStep);
+    while (result == Gl::kTimeoutExpired && !lost && waited < kFrameTimeout) {
         checkLost();
-        result = gl.clientWaitSync(fence, 0, kWaitNanoseconds);
+        result = gl.clientWaitSync(fence, 0, kWaitStep);
+        waited += kWaitStep;
+    }
+
+    if (result == Gl::kTimeoutExpired && !lost) {
+        lost = true;
+        core::Log::error("The GPU did not finish a frame within {} seconds, so the OpenGL device stops drawing.", kFrameTimeout / 1'000'000'000);
     }
 
     gl.deleteSync(fence);
