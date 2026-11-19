@@ -71,7 +71,7 @@ int CameraRigLua::create(lua_State* L) {
     auto rig = std::make_shared<CameraRig>(options);
     if (!lua_isnoneornil(L, 1)) {
         if (lua_getfield(L, 1, "zones") != LUA_TNIL) {
-            luaL_checktype(L, -1, LUA_TTABLE);
+            lua::Table::requireType(L, "zones", LUA_TTABLE);
             const int list = lua_gettop(L);
             for (lua_Integer place = 1; place <= luaL_len(L, list); ++place) {
                 lua_rawgeti(L, list, place);

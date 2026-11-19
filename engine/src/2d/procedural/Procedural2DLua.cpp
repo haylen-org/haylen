@@ -190,7 +190,7 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
     }
 
     if (lua_getfield(L, index, "exclude") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "exclude", LUA_TTABLE);
         const lua_Integer count = luaL_len(L, -1);
         for (lua_Integer zone = 1; zone <= count; ++zone) {
             lua_rawgeti(L, -1, zone);
@@ -202,11 +202,11 @@ Scatter::Options Procedural2DLua::readScatter(lua_State* L, int index, bool asyn
     lua_pop(L, 1);
 
     if (lua_getfield(L, index, "layers") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "layers", LUA_TTABLE);
         const lua_Integer count = luaL_len(L, -1);
         for (lua_Integer layer = 1; layer <= count; ++layer) {
             lua_rawgeti(L, -1, layer);
-            luaL_checktype(L, -1, LUA_TTABLE);
+            lua::Table::requireItemType(L, "layers", layer, LUA_TTABLE);
             lua::Table::checkFields(L, -1, {kLayerFields});
             Scatter::Layer& entry = options.layers.emplace_back();
             lua::Table::readField(L, lua_gettop(L), "minimum", entry.minimum);

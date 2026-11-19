@@ -860,7 +860,8 @@ These messages come from the functions and methods of the module. Messages that 
 | Message | Cause |
 | --- | --- |
 | `Unknown option "<key>".` | An options table, a circle region or a noise table has a key that it does not take. |
-| `The option "<option>" of "<function>" is invalid: <reason>.` | An option has the wrong type or an unknown name, such as `The option "method" of "dungeon" is invalid: unknown value 'cave'.`. |
+| `The option "<option>" of "<function>" is invalid: <reason>.` | An option has the wrong type or an unknown name, such as `The option "method" of "dungeon" is invalid: unknown value 'cave'.` or `The option "kinds" of "place" is invalid: table expected, got nil.`. |
+| `The item <n> of "<list>" of "<function>" is invalid: <reason>.` | An item of a list option, such as a layer of `layers` or a pair of `allow`, is not a table. |
 | `A ring needs an inner radius between zero and its outer radius.` | The `innerRadius` of a region is below 0 or above its `radius`. |
 | `A polygon region needs an outline with an area.` | The `polygon` of a region covers no area. |
 | `Only rectangle, ellipse and polygon objects have an area.` | A Tiled object of another shape was given as a region. |

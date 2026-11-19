@@ -102,4 +102,9 @@ TEST(PixelCanvasTest, RendersAtWholePixelsAndShiftsByThePartBetween) {
     EXPECT_THROW(PixelCanvas(fixture.engine().getGraphics(), 0, 10, {}), std::invalid_argument);
 }
 
+TEST(CameraRigLuaTest, NamesTheZonesThatAreNotAList) {
+    test::EngineFixture fixture;
+    EXPECT_NE(fixture.lua("require('haylen.graphics2d').newCameraRig({zones = 1})").find("The option \"zones\" of \"newCameraRig\" is invalid: table expected, got number."), std::string::npos);
+}
+
 } // namespace haylen::graphics2d

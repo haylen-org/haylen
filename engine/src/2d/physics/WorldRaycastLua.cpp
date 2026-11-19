@@ -62,7 +62,7 @@ Raycaster::Filter WorldRaycastLua::readFilter(lua_State* L, int index, bool with
         return filter;
     }
 
-    luaL_checktype(L, -1, LUA_TFUNCTION);
+    lua::Table::requireType(L, "accept", LUA_TFUNCTION);
     const int function = lua_gettop(L);
     // clang-format off
     filter.accept = [L, function](const RaycastHit& hit) {

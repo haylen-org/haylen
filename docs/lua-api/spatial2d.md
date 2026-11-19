@@ -928,6 +928,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `A visibility polygon needs finite walls and bounds.` | A wall or the bounds of `spatial2d.visibilityPolygon` are not finite. |
 | `A visibility polygon needs an origin inside its bounds.` | The origin of `spatial2d.visibilityPolygon` lies outside its bounds. |
 | `Unknown option "<key>".` | An options table or a box has a key that it does not take. |
+| `The item <n> of "boxes" of "defineSet" is invalid: <reason>.` | A box of the list of `world:defineSet` is not a table. |
 | `The option "<option>" of "<function>" is invalid: <reason>.` | An option has the wrong type, such as `The option "maxDepth" of "newQuadTree" is invalid: number has no integer representation.`. |
 | `bad argument #1 to 'find' (union-find elements count from 1)` | A method of a `UnionFind` got an element below 1. |
 | `Element <element> is outside the union-find of <size> elements.` | A method of a `UnionFind` got an element above its size. |

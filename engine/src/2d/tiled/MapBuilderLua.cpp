@@ -119,7 +119,7 @@ int MapBuilderLua::addTileset(lua_State* L) {
     lua::Table::readField(L, 2, "tileCount", tileset->tileCount);
 
     if (lua_getfield(L, 2, "wangSets") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "wangSets", LUA_TTABLE);
         const int sets = lua_gettop(L);
         for (lua_Integer index = 1; index <= static_cast<lua_Integer>(luaL_len(L, sets)); ++index) {
             lua_rawgeti(L, sets, index);

@@ -82,7 +82,7 @@ int OverlapWorldLua::defineSet(lua_State* L) {
     const auto count = static_cast<lua_Integer>(lua_rawlen(L, 2));
     for (lua_Integer entry = 1; entry <= count; ++entry) {
         lua_rawgeti(L, 2, entry);
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "boxes", entry, LUA_TTABLE);
         lua::Table::checkFields(L, -1, {kBoxFields});
         OverlapWorld::Box box;
         lua::Table::readField(L, -1, "x", box.rect.x);

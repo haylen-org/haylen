@@ -1420,7 +1420,7 @@ The ray casts, the shape casts, `world:lineOfSight()` and `world:raycastBatch()`
 | `category` | integer | `1` | The category of the cast. A shape is seen when its category shares a bit with the mask, and its mask shares a bit with this category, like a collision. |
 | `mask` | integer | all bits | The categories the cast sees. |
 | `group` | integer | `0` | A shape that shares a nonzero group is always seen when the group is positive, and never seen when it is negative. So a ragdoll can look past its own limbs. |
-| `accept` | function | none | Called with each candidate hit table, in order from the start of the cast, after the other fields. A `true` result takes the hit. A `false` result skips it and keeps looking. An error raised by it propagates out of the cast. |
+| `accept` | function | none | Called with each candidate hit table, in order from the start of the cast, after the other fields. A `true` result takes the hit. A `false` result skips it and keeps looking. An error raised by it propagates out of the cast. Another value raises `The option "accept" of "<function>" is invalid: function expected, got <type>.`. |
 
 ```lua
 local physics2d = require('haylen.physics2d')

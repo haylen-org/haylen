@@ -18,7 +18,7 @@ Functions accept these forms wherever the reference names the type:
 
 The y axis points down. Angles are in radians, and a positive rotation turns clockwise on the screen. Pivots are shares of a size, so `pivotX = 0.5, pivotY = 0.5` is the center and `0, 0` is the top-left corner.
 
-A malformed color string raises `invalid color text, expected #RRGGBB or #AARRGGBB`. Option tables reject keys they do not know with `Unknown option "<key>".` and keys that are not strings with `Option tables only accept string keys.`. An unknown name for an enum option raises an argument error that contains `unknown value '<name>'`.
+A malformed color string raises `invalid color text, expected #RRGGBB or #AARRGGBB`. Option tables reject keys they do not know with `Unknown option "<key>".` and keys that are not strings with `Option tables only accept string keys.`. An unknown name for an enum option raises an argument error that contains `unknown value '<name>'`. An option that must be a table or a function, such as the `data` of a sprite table, the `fonts` of rich text or the `zones` of a camera rig, raises `The option "<option>" of "<function>" is invalid: <reason>.` for another value, and a sprite of the list of `graphics2d.drawBatch` that is not a table raises `The item <n> of "sprites" of "drawBatch" is invalid: table expected, got <type>.`.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

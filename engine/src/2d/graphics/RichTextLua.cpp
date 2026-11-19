@@ -89,7 +89,7 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
 
 // Reads the table on top of the stack, which maps font names to families, sorted by name, so the same fonts read the same every frame. The names are the keys of the table, which lives while the call reads them.
 void RichTextLua::readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>& fontNames) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "fonts", LUA_TTABLE);
     fontNames.clear();
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {

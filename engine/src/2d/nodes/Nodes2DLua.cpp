@@ -225,7 +225,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
     }
 
     if (lua_getfield(L, table, "data") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "data", LUA_TTABLE);
         pushTreeTable(L, pushed, "data", true);
         lua_pushvalue(L, -2);
         lua_rawseti(L, -2, static_cast<lua_Integer>(node.getKey()));
@@ -235,7 +235,7 @@ Node Nodes2DLua::addNode(lua_State* L, NodeTree& tree, const Node& parent, int p
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "children") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "children", LUA_TTABLE);
         const int children = lua_gettop(L);
         const auto count = static_cast<lua_Integer>(lua_rawlen(L, children));
         for (lua_Integer child = 1; child <= count; ++child) {

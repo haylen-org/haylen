@@ -185,4 +185,9 @@ TEST(OverlapWorldLuaTest, RejectsPlacementsWhoseIdsAreNotWholeNumbersOf32Bits) {
     fixture.runLua("placements:set(1, {entity, 4, 0, 0, 1, set}) world:placeAll(placements)");
 }
 
+TEST(OverlapWorldLuaTest, NamesTheBoxOfASetThatIsNotATable) {
+    test::EngineFixture fixture;
+    EXPECT_NE(fixture.lua("require('haylen.spatial2d').newOverlapWorld({kinds = {'body'}}):defineSet({1})").find("The item 1 of \"boxes\" of \"defineSet\" is invalid: table expected, got number."), std::string::npos);
+}
+
 } // namespace haylen::spatial2d

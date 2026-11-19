@@ -35,7 +35,7 @@ Placement::Options PlacementLua::readOptions(lua_State* L, int index) {
     lua::Table::readField(L, index, "attempts", options.attempts);
 
     lua_getfield(L, index, "kinds");
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "kinds", LUA_TTABLE);
     const lua_Integer kinds = luaL_len(L, -1);
     for (lua_Integer place = 1; place <= kinds; ++place) {
         lua_rawgeti(L, -1, place);
@@ -55,7 +55,7 @@ Placement::Options PlacementLua::readOptions(lua_State* L, int index) {
     lua_pop(L, 1);
 
     if (lua_getfield(L, index, "forbidden") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "forbidden", LUA_TTABLE);
         const lua_Integer count = luaL_len(L, -1);
         for (lua_Integer area = 1; area <= count; ++area) {
             lua_rawgeti(L, -1, area);

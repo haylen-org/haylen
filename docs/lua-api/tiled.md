@@ -1002,7 +1002,7 @@ print(map:automap(assets.load('maps/rules/cave-rules.tmj', 'tiledRules'), {seed 
 
 ## Errors
 
-Loading a map raises these errors:
+Loading a map raises these errors, and the builders raise `The option "<option>" of "<function>" is invalid: <reason>.` for an option of the wrong type, such as `The option "wangSets" of "addTileset" is invalid: table expected, got number.`:
 
 | Message | Cause |
 | --- | --- |

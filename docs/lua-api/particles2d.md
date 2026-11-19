@@ -219,7 +219,7 @@ Lights draw only in lit canvases, so the same emitter works in every canvas.
 
 ### Errors of emitter options
 
-Unknown keys raise `Unknown option "<key>".`, and an unknown name raises an error that contains `unknown value '<name>'`. A count that is not an integer or a pair raises an argument error that says `a count needs an integer or the pair {min, max}`. The options are checked, and these errors can come up:
+Unknown keys raise `Unknown option "<key>".`, and an unknown name raises an error that contains `unknown value '<name>'`. A count that is not an integer or a pair raises an argument error that says `a count needs an integer or the pair {min, max}`. An option that must be a table, such as `turbulence`, `frameGrid`, `bursts`, `attractors`, `collision`, `subEmitters`, `light`, its `flicker`, `particleLights` and `trail`, raises `The option "<option>" of "<function>" is invalid: <reason>.` for another value, and an item of `bursts`, `attractors` or `subEmitters` that is not a table raises `The item <n> of "<list>" of "<function>" is invalid: <reason>.`. The options are checked, and these errors can come up:
 
 - `A particle emitter needs a texture, room for particles and at least one color.`
 - `A particle emitter holds at most 1000000 particles.`

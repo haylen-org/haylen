@@ -38,7 +38,7 @@ print(idle.frameCount, slash.duration)
 
 Builds an [`Animation`](#animation) from a list of frames in `texture`. A frame is a source rectangle, or a table with `source`, the rectangle, and its [frame data](#frame-data): `pivot` (`{x, y}`), `duration` in seconds, `ticks`, `boxes` (a list of `{name, x, y, width, height}`), `points` (a list of `{name, x, y}`) and `events` (a list of names). The optional table `options` takes `framesPerSecond` (default `10`), which gives the frames without a `duration` theirs, and `loop` (default `'loop'`).
 
-An empty list raises an argument error that says `expected at least one frame`. A key that a frame table does not know raises `Unknown option "<key>".` A frame that lasts no time raises `A frame lasts a positive number of seconds.`, and a mix of frames with and without ticks raises `Every frame of an animation counts ticks, or none does.`
+An empty list raises an argument error that says `expected at least one frame`. A key that a frame table does not know raises `Unknown option "<key>".` The `boxes` or `points` of a frame that are not a table raise `The option "<option>" of "<function>" is invalid: <reason>.`, and an item of them that is not a table raises `The item <n> of "<list>" of "<function>" is invalid: <reason>.`. A frame that lasts no time raises `A frame lasts a positive number of seconds.`, and a mix of frames with and without ticks raises `Every frame of an animation counts ticks, or none does.`
 
 ```lua
 local animation2d = require('haylen.animation2d')

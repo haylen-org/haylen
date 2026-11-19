@@ -129,11 +129,11 @@ WaveFunctionCollapse::Rules MapGeneratorsLua::readRules(lua_State* L, int index)
         lua::Table::readField(L, index, "tiles", tiles);
         rules.emplace(tiles);
         if (lua_getfield(L, index, "allow") != LUA_TNIL) {
-            luaL_checktype(L, -1, LUA_TTABLE);
+            lua::Table::requireType(L, "allow", LUA_TTABLE);
             const lua_Integer count = luaL_len(L, -1);
             for (lua_Integer pair = 1; pair <= count; ++pair) {
                 lua_rawgeti(L, -1, pair);
-                luaL_checktype(L, -1, LUA_TTABLE);
+                lua::Table::requireItemType(L, "allow", pair, LUA_TTABLE);
                 lua_rawgeti(L, -1, 1);
                 lua_rawgeti(L, -2, 2);
                 lua_rawgeti(L, -3, 3);
@@ -456,7 +456,7 @@ int MapGeneratorsLua::autotileWang(lua_State* L) {
     tiled::WangSet set;
     lua::Table::readField(L, 2, "kind", set.kind);
     lua_getfield(L, 2, "tiles");
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "tiles", LUA_TTABLE);
     const lua_Integer count = luaL_len(L, -1);
     for (lua_Integer tile = 1; tile <= count; ++tile) {
         lua_rawgeti(L, -1, tile);

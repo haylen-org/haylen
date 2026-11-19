@@ -355,7 +355,7 @@ int Graphics2DLua::drawBatch(lua_State* L) {
     data.clear();
     for (std::size_t index = 0; index < sprites.size(); ++index) {
         lua_rawgeti(L, 2, static_cast<lua_Integer>(index + 1));
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "sprites", static_cast<lua_Integer>(index + 1), LUA_TTABLE);
         const std::optional<SpriteData> spriteData = SpriteBatchLua::readSpriteData(L, -1, textures.size());
         if (spriteData) {
             data.resize(sprites.size());

@@ -76,7 +76,7 @@ std::optional<SpriteData> SpriteBatchLua::readSpriteData(lua_State* L, int index
     }
 
     if (values != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "data", LUA_TTABLE);
         const auto count = static_cast<std::size_t>(lua_rawlen(L, -1));
         if (count > base.values.size()) {
             throw std::invalid_argument(std::format("The data of a sprite holds up to 4 numbers, and this one has {}.", count));

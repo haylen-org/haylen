@@ -107,11 +107,11 @@ SpriteFrame Animation2DLua::readFrame(lua_State* L, int index, float duration) {
     lua::Table::readField(L, table, "events", frame.events);
 
     if (lua_getfield(L, table, "boxes") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "boxes", LUA_TTABLE);
         const int boxes = lua_gettop(L);
         for (lua_Integer place = 1; place <= static_cast<lua_Integer>(luaL_len(L, boxes)); ++place) {
             lua_rawgeti(L, boxes, place);
-            luaL_checktype(L, -1, LUA_TTABLE);
+            lua::Table::requireItemType(L, "boxes", place, LUA_TTABLE);
             lua::Table::checkFields(L, -1, {kBoxFields});
             SpriteFrame::Box box;
             lua::Table::readField(L, -1, "name", box.name);
@@ -127,11 +127,11 @@ SpriteFrame Animation2DLua::readFrame(lua_State* L, int index, float duration) {
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "points") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "points", LUA_TTABLE);
         const int points = lua_gettop(L);
         for (lua_Integer place = 1; place <= static_cast<lua_Integer>(luaL_len(L, points)); ++place) {
             lua_rawgeti(L, points, place);
-            luaL_checktype(L, -1, LUA_TTABLE);
+            lua::Table::requireItemType(L, "points", place, LUA_TTABLE);
             lua::Table::checkFields(L, -1, {kPointFields});
             SpriteFrame::Point point;
             lua::Table::readField(L, -1, "name", point.name);

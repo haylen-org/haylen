@@ -207,7 +207,7 @@ void Particles2DLua::readSimulation(lua_State* L, std::string_view key, EmitterC
     } else if (key == "damping") {
         lua::Table::readValue(L, key, config.damping);
     } else if (key == "turbulence") {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, key, LUA_TTABLE);
         const int table = lua_gettop(L);
         lua::Table::checkFields(L, table, {kTurbulenceFields});
         lua::Table::readField(L, table, "strength", config.turbulence.strength);
@@ -243,7 +243,7 @@ void Particles2DLua::readLook(lua_State* L, std::string_view key, EmitterConfig&
     } else if (key == "frames") {
         lua::Table::readValue(L, key, config.frames);
     } else if (key == "frameGrid") {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, key, LUA_TTABLE);
         const int table = lua_gettop(L);
         lua::Table::checkFields(L, table, {kGridFields});
         config.frameGrid = {.columns = 1, .rows = 1, .count = 0};
@@ -333,12 +333,12 @@ void Particles2DLua::readCurve(lua_State* L, std::string_view key, std::optional
 
 // Bursts are a list of `{time = seconds, count = particles or {min, max}, cycles, interval, probability}`.
 void Particles2DLua::readBursts(lua_State* L, std::vector<EmitterConfig::Burst>& bursts) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "bursts", LUA_TTABLE);
     const int list = lua_gettop(L);
     bursts.clear();
     for (lua_Integer entry = 1; entry <= static_cast<lua_Integer>(lua_rawlen(L, list)); ++entry) {
         lua_rawgeti(L, list, entry);
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "bursts", entry, LUA_TTABLE);
         const int burst = lua_gettop(L);
         lua::Table::checkFields(L, burst, {kBurstFields});
         EmitterConfig::Burst parsed;
@@ -353,12 +353,12 @@ void Particles2DLua::readBursts(lua_State* L, std::vector<EmitterConfig::Burst>&
 }
 
 void Particles2DLua::readAttractors(lua_State* L, std::vector<EmitterConfig::Attractor>& attractors) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "attractors", LUA_TTABLE);
     const int list = lua_gettop(L);
     attractors.clear();
     for (lua_Integer entry = 1; entry <= static_cast<lua_Integer>(lua_rawlen(L, list)); ++entry) {
         lua_rawgeti(L, list, entry);
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "attractors", entry, LUA_TTABLE);
         const int table = lua_gettop(L);
         lua::Table::checkFields(L, table, {kAttractorFields});
         EmitterConfig::Attractor attractor;
@@ -374,7 +374,7 @@ void Particles2DLua::readAttractors(lua_State* L, std::vector<EmitterConfig::Att
 }
 
 void Particles2DLua::readCollision(lua_State* L, EmitterConfig::Collision& collision) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "collision", LUA_TTABLE);
     const int table = lua_gettop(L);
     lua::Table::checkFields(L, table, {kCollisionFields});
     lua::Table::readField(L, table, "type", collision.type);
@@ -389,12 +389,12 @@ void Particles2DLua::readCollision(lua_State* L, EmitterConfig::Collision& colli
 
 // Each sub-emitter takes a `ParticleEffect` or an options table as its effect, with overrides on top of an effect.
 void Particles2DLua::readSubEmitters(lua_State* L, std::vector<EmitterConfig::SubEmitter>& subEmitters, const OpenTable& open) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "subEmitters", LUA_TTABLE);
     const int list = lua_gettop(L);
     subEmitters.clear();
     for (lua_Integer entry = 1; entry <= static_cast<lua_Integer>(lua_rawlen(L, list)); ++entry) {
         lua_rawgeti(L, list, entry);
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "subEmitters", entry, LUA_TTABLE);
         const int table = lua_gettop(L);
         lua::Table::checkFields(L, table, {kSubEmitterFields});
         EmitterConfig::SubEmitter sub;
@@ -455,7 +455,7 @@ void Particles2DLua::readLight(lua_State* L, EmitterConfig& config) {
         return;
     }
 
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "light", LUA_TTABLE);
     const int table = lua_gettop(L);
     lua::Table::checkFields(L, table, {kLightFields});
     EmitterConfig::Light light;
@@ -467,7 +467,7 @@ void Particles2DLua::readLight(lua_State* L, EmitterConfig& config) {
     lua::Table::readField(L, table, "fade", light.fade);
     lua_getfield(L, table, "flicker");
     if (!lua_isnil(L, -1)) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "flicker", LUA_TTABLE);
         const int flicker = lua_gettop(L);
         lua::Table::checkFields(L, flicker, {kFlickerFields});
         lua::Table::readField(L, flicker, "speed", light.flicker.speed);
@@ -484,7 +484,7 @@ void Particles2DLua::readParticleLights(lua_State* L, EmitterConfig& config) {
         return;
     }
 
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "particleLights", LUA_TTABLE);
     const int table = lua_gettop(L);
     lua::Table::checkFields(L, table, {kParticleLightFields});
     EmitterConfig::ParticleLights lights;
@@ -495,7 +495,7 @@ void Particles2DLua::readParticleLights(lua_State* L, EmitterConfig& config) {
 }
 
 void Particles2DLua::readTrail(lua_State* L, EmitterConfig::ParticleTrail& trail) {
-    luaL_checktype(L, -1, LUA_TTABLE);
+    lua::Table::requireType(L, "trail", LUA_TTABLE);
     const int table = lua_gettop(L);
     lua::Table::checkFields(L, table, {kTrailFields});
     lua::Table::readField(L, table, "length", trail.length);

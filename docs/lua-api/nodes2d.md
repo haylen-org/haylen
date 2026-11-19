@@ -117,6 +117,7 @@ Every error names the node by its path of names, written here as `<path>`, and t
 - `The key "<key>" of the node "<path>" must be <kind>.` for a value of the wrong type, where `<kind>` is `a number`, `an integer from -2147483648 to 2147483647` for a `layer`, `true or false`, `a string`, `a color such as "#FFFFFFFF"`, `a list of two numbers` or `a list of four numbers: x, y, width and height`.
 - `The key "filter" of the sprite of the node "<path>" must be "nearest" or "linear".` and `The key "wrap" of the sprite of the node "<path>" must be "clamp", "repeat" or "mirror".`, the same for frames.
 - `The key "children" of the node "<path>" must be a list of descriptions.`
+- `The option "<option>" of "<function>" is invalid: <reason>.` for a `data` or a `children` of a Lua table that is not a table, such as `The option "data" of "<function>" is invalid: table expected, got string.`.
 - `The description of the node "<path>" nests deeper than 64 levels.` for a node below 64 levels of descriptions.
 - `The node "<path>" shows more than one of "sprite", "text", "frame" and "particles".`
 - `The sprite of the node "<path>" needs the path of its texture.` and `The frame of the node "<path>" needs the path of its texture.`
