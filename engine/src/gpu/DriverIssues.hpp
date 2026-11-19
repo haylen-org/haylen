@@ -30,6 +30,8 @@ class DriverIssues final {
         ClearLayersByDrawing,
         // Textures filter without anisotropy, since the anisotropic filtering of the driver ignores the slopes that a shader gives a lookup.
         NoAnisotropy,
+        // The swapchain waits for its next image without a timeout, since its platform takes no other wait and warns at every bounded one.
+        UnboundedAcquire,
     };
 
     // A driver as its graphics API describes it: the name of its GPU, its version text and its version number, which is 0 where the API gives none.
@@ -56,7 +58,7 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 8> kEntries;
+    static const std::array<Entry, 9> kEntries;
 
     // Mesa numbers its Vulkan drivers with 10 bits for the minor version and 12 bits for the patch, so larger parts saturate there.
     [[nodiscard]] static constexpr std::uint64_t makeMesaVersion(std::uint64_t major, std::uint64_t minor, std::uint64_t patch) noexcept {

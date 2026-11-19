@@ -285,8 +285,8 @@ void Swapchain::recordScale(VkCommandBuffer commands, std::uint32_t index) const
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &toPresent);
 }
 
-VkResult Swapchain::acquire(std::size_t frame, std::uint32_t& index) const {
-    return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, kAcquireTimeout, acquired[frame], VK_NULL_HANDLE, &index);
+VkResult Swapchain::acquire(std::size_t frame, std::uint64_t timeout, std::uint32_t& index) const {
+    return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, timeout, acquired[frame], VK_NULL_HANDLE, &index);
 }
 
 VkResult Swapchain::present(std::uint32_t index) const {

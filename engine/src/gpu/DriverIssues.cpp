@@ -6,13 +6,20 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 8> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 9> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
         .renderer = "PowerVR Rogue GE8320",
         .lastVersionNumber = 5776728,
         .reason = "The Vulkan driver of the PowerVR Rogue GE8320 fails some pipelines with \"VK_ERROR_OUT_OF_HOST_MEMORY\" and stops for good inside \"vkCreateGraphicsPipelines\" on others, which the driver 1.13@5776728 of Android 13 showed.",
+    },
+    {
+        .api = Device::Api::Vulkan,
+        .issue = Issue::UnboundedAcquire,
+        .renderer = "Adreno (TM) 610",
+        .lastVersionNumber = 0x8019F000,
+        .reason = "The Vulkan swapchain of the Adreno 610 with the driver 512.415 takes no timeout in \"vkAcquireNextImageKHR\" but an endless one, which it waits for whatever the call asks, and logs \"non-infinite timeouts not yet implemented\" at every other timeout, which a phone of Android 11 showed in every frame.",
     },
     {
         .api = Device::Api::Vulkan,

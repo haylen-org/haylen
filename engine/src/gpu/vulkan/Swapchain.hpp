@@ -43,8 +43,8 @@ class Swapchain final {
     // Makes the swapchain again for the settings once the GPU finished every frame, and gives whether it has images, which a window without pixels lacks.
     bool configure(const Settings& settings);
 
-    // Acquires the next image for the frame in flight, whose semaphore `getAcquired` gives to the submission that waits for it. It waits at most `kAcquireTimeout` nanoseconds and gives `VK_TIMEOUT` when the window system kept every image that long.
-    [[nodiscard]] VkResult acquire(std::size_t frame, std::uint32_t& index) const;
+    // Acquires the next image for the frame in flight, whose semaphore `getAcquired` gives to the submission that waits for it. It waits at most `timeout` nanoseconds and gives `VK_TIMEOUT` when the window system kept every image that long.
+    [[nodiscard]] VkResult acquire(std::size_t frame, std::uint64_t timeout, std::uint32_t& index) const;
     [[nodiscard]] VkResult present(std::uint32_t index) const;
 
     [[nodiscard]] VkSemaphore getAcquired(std::size_t frame) const noexcept {

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstring>
 #include <format>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -68,6 +69,12 @@ void Device::readDriverIssues() {
     }
 
     storeKeptDepth = keptDepth.has_value();
+
+    const std::optional<std::string_view> unboundedAcquire = DriverIssues::find(driver, DriverIssues::Issue::UnboundedAcquire);
+    if (unboundedAcquire) {
+        core::Log::info("The Vulkan device works around its driver. {}", *unboundedAcquire);
+        acquireTimeout = std::numeric_limits<std::uint64_t>::max();
+    }
 }
 
 Device::~Device() {
@@ -586,7 +593,7 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
         return false;
     }
 
-    VkResult result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
+    VkResult result = chain.swapchain->acquire(frameIndex, acquireTimeout, chain.imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         reconfigureSwapchain(chain);
 
@@ -594,7 +601,7 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
             return false;
         }
 
-        result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
+        result = chain.swapchain->acquire(frameIndex, acquireTimeout, chain.imageIndex);
     }
 
     // A window system that keeps every image, such as the compositor of a hidden window, leaves this frame without an image of the swapchain, and the next frame asks again.

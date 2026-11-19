@@ -39,6 +39,14 @@ TEST(DriverIssuesTest, StoresKeptDepthOnlyOnTheAdreno630DriverThatLostIt) {
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 630", .versionNumber = 0x8014B000}, Issue::StoreKeptDepth).has_value());
 }
 
+// Only the swapchain of the Adreno 610 up to the driver that waited without end whatever timeout it got waits for its images without a timeout, while newer drivers and other GPUs keep the bounded wait.
+TEST(DriverIssuesTest, AcquiresWithoutATimeoutOnlyOnTheAdreno610DriverThatIgnoredIt) {
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Adreno (TM) 610", .versionNumber = 0x8019F000}, Issue::UnboundedAcquire).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Adreno (TM) 610", .versionNumber = 0x8019F001}, Issue::UnboundedAcquire).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Adreno (TM) 630", .versionNumber = 0x8014B000}, Issue::UnboundedAcquire).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 610", .versionNumber = 0x8019F000}, Issue::UnboundedAcquire).has_value());
+}
+
 // Only the OpenGL ES driver 25.10 of AMD, which refuses the disjoint state of the timer queries it names, reads none, while Mesa on the same GPU and other drivers read it.
 TEST(DriverIssuesTest, ReadsNoDisjointStateOnlyOnTheOpenGlEsDriverOfAmdThatRefusesIt) {
     EXPECT_TRUE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "AMD Radeon Pro V620 MxGPU", .version = "OpenGL ES 3.2.0 25.10.251024 "}, Issue::NoGpuDisjoint).has_value());

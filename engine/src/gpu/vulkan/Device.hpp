@@ -367,6 +367,8 @@ class Device final : public gpu::Device {
     bool labels = false;
     // Whether a pass that keeps the depth of a format without stencil also stores it and keeps the stencil, which the driver issues ask of a driver that reads such depth as cleared otherwise.
     bool storeKeptDepth = false;
+    // The longest wait for the next image of a swapchain, which is endless where the driver issues say the platform takes no other.
+    std::uint64_t acquireTimeout = Swapchain::kAcquireTimeout;
     Capabilities capabilities;
 
     HandleTable<BufferRecord> buffers{"buffer"};
