@@ -316,12 +316,15 @@ abstract class HaylenUiTestCase {
     fun removeFromRecents() {
         device.pressHome()
         val recents = device.executeShellCommand("dumpsys activity recents")
-        // Android 12 writes more fields after the package of the task, such as "U=0 visible=true", and later versions end the task there.
-        val task = Regex("Recent #\\d+: Task\\{\\w+ #(\\d+) type=standard A=\\d+:${Regex.escape(identifier)}[ }]").find(recents)?.groupValues?.get(1)
-            ?: throw AssertionError("The recent apps hold no task of \"$identifier\".")
-        device.executeShellCommand("am stack remove $task")
+        // Android 10 lists a task as "TaskRecord{3e246ca #13 A=<package> U=0 StackId=100 sz=1}" in the stack whose id "am stack remove" takes, and Android 12 and later list a root task as "Task{cd74af5 #550 type=standard A=10307:<package> U=0 visible=true ...}", whose own id it takes.
+        val taskRecord = Regex("Recent #\\d+: TaskRecord\\{\\w+ #\\d+ A=${Regex.escape(identifier)} U=\\d+ StackId=(\\d+)").find(recents)
+        val rootTask = Regex("Recent #\\d+: Task\\{\\w+ #(\\d+) type=standard A=\\d+:${Regex.escape(identifier)}[ }]").find(recents)
+        val stack = (taskRecord ?: rootTask)?.groupValues?.get(1) ?: throw AssertionError("The recent apps hold no task of \"$identifier\".")
+        device.executeShellCommand("am stack remove $stack")
+        // Every version lists each activity of the system as "Hist #0: ActivityRecord{76b0bf u0 <package>/<activity> t113}".
+        val activity = Regex("Hist\\s+#\\d+: ActivityRecord\\{\\w+ u\\d+ ${Regex.escape(identifier)}/")
         waitUntil("The activity of the app stays after its task left the recent apps.") {
-            device.executeShellCommand("dumpsys activity processes $identifier").contains("(cch-empty)")
+            !activity.containsMatchIn(device.executeShellCommand("dumpsys activity activities"))
         }
         device.executeShellCommand("am kill $identifier")
         waitUntil("The process of the app stays after its task left the recent apps.") {
