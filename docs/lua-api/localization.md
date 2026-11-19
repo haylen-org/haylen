@@ -135,8 +135,8 @@ print(localization.direction(), localization.direction('ar')) -- leftToRight rig
 The current language is the added language closest to what is wanted. While the app follows the system, what is wanted is each language of [`system.languages()`](system.md#systemlanguages) in turn, most preferred first, and the first one with a close language wins. Once the app picks a language with `localization.setLanguage`, what is wanted is that language alone, and it stays wanted when the system changes or the app adds languages. For each wanted tag the engine tries these steps in order:
 
 1. The same tag, so `pt-BR` finds `pt-BR`.
-2. The tag without its last subtag, again and again, so `zh-Hans-CN` finds `zh-Hans` and then `zh`, and `pt-BR` finds `pt`.
-3. Another region of the same language, the first one added, so `pt-PT` finds `pt-BR` and `es` finds `es-MX`. A tag with a script only matches languages without a script or with the same one, so `zh-Hant-HK` finds `zh-Hant-TW` but never `zh-Hans`.
+2. The tag without its last subtag, again and again, so `zh-Hans-CN` finds `zh-Hans` and then `zh`, and `pt-BR` finds `pt`. A tag without a script whose region decides it takes that script first, so `zh-TW`, `zh-HK` and `zh-MO` look for `zh-Hant`, and `zh-CN` and `zh-SG` for `zh-Hans`.
+3. Another region of the same language, the first one added, so `pt-PT` finds `pt-BR` and `es` finds `es-MX`. A tag with a script, written or decided by its region, only matches languages without a script or with the same one, so `zh-Hant-HK` and `zh-HK` find `zh-Hant-TW` but never `zh-Hans`, and they find `zh-TW` among `zh-CN` and `zh-TW`.
 
 When no wanted tag finds a language, the current language is the fallback language, which is the first language added until [`localization.setFallback`](#localizationsetfallbacklanguage) or `haylen.json` names another. The event [`languageChanged`](#events) tells the app of every change of the current language.
 

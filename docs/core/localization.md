@@ -85,8 +85,8 @@ The engine keeps one current language. It comes from one of two places.
 In both cases the wanted tag may not be one of the files of the app, so the engine looks for the closest one. Say the app has `en`, `pt-BR`, `es-MX` and `zh-Hans`.
 
 1. The same tag wins. A device in `es-MX` gets `es-MX`.
-2. Then a shorter tag, made by dropping the last part, again and again. A device in `zh-Hans-SG` gets `zh-Hans`.
-3. Then another region of the same language, the one the app added first. A device in `pt-PT` gets `pt-BR`, and one in `es-ES` gets `es-MX`. Scripts must agree where both tags name one, so a device in `zh-Hant-TW` does not get `zh-Hans`.
+2. Then a shorter tag, made by dropping the last part, again and again. A device in `zh-Hans-SG` gets `zh-Hans`. A tag without a script whose region decides it takes that script first, so a device in `zh-TW`, `zh-HK` or `zh-MO` looks for `zh-Hant`, and one in `zh-CN` or `zh-SG` for `zh-Hans`.
+3. Then another region of the same language, the one the app added first. A device in `pt-PT` gets `pt-BR`, and one in `es-ES` gets `es-MX`. Scripts must agree where both tags name one or have a region that decides it, so a device in `zh-Hant-TW` or `zh-HK` does not get `zh-Hans`, and an app that writes its languages as `zh-CN` and `zh-TW` gives `zh-TW` to a device in `zh-Hant-HK`.
 4. Then the fallback language. A device in `de-DE` gets `en`.
 
 While the app follows the device, the engine tries the steps for the first language of the person, then for the second, and so on, before it takes the fallback. So a person who prefers `de-DE` and then `es-ES` gets `es-MX`, not English.

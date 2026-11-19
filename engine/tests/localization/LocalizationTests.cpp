@@ -140,7 +140,7 @@ TEST_F(CatalogTest, NormalizesLanguageTags) {
     }
 }
 
-// The tag itself wins, then the tag without its last subtags, then the first language added of the same language whose script agrees.
+// The tag itself wins, then the tag with the script that its region implies and without its last subtags, then the first language added of the same language whose script agrees.
 TEST_F(CatalogTest, MatchesLanguageTagsInOrder) {
     Catalog catalog;
     for (const char* language : {"en", "pt", "pt-PT", "es-MX", "es-AR", "zh-Hans", "zh-Hant-TW"}) {
@@ -154,9 +154,26 @@ TEST_F(CatalogTest, MatchesLanguageTagsInOrder) {
     EXPECT_EQ(catalog.findBestMatch("es-CL"), "es-MX");
     EXPECT_EQ(catalog.findBestMatch("zh-Hans-CN"), "zh-Hans");
     EXPECT_EQ(catalog.findBestMatch("zh-Hant-HK"), "zh-Hant-TW");
-    EXPECT_EQ(catalog.findBestMatch("zh-TW"), "zh-Hans");
+    EXPECT_EQ(catalog.findBestMatch("zh-TW"), "zh-Hant-TW");
+    EXPECT_EQ(catalog.findBestMatch("zh-HK"), "zh-Hant-TW");
+    EXPECT_EQ(catalog.findBestMatch("zh-MO"), "zh-Hant-TW");
+    EXPECT_EQ(catalog.findBestMatch("zh-CN"), "zh-Hans");
+    EXPECT_EQ(catalog.findBestMatch("zh"), "zh-Hans");
     EXPECT_EQ(catalog.findBestMatch("de-DE"), std::nullopt);
     EXPECT_THROW((void)catalog.findBestMatch("pt BR"), std::invalid_argument);
+}
+
+// A language that the app writes with a region alone has the script of its region too, so a device in traditional Chinese never gets the simplified one.
+TEST_F(CatalogTest, MatchesTheScriptThatARegionImplies) {
+    Catalog catalog;
+    for (const char* language : {"zh-CN", "zh-TW"}) {
+        catalog.add(language, core::Json::object());
+    }
+
+    EXPECT_EQ(catalog.findBestMatch("zh-Hant-HK"), "zh-TW");
+    EXPECT_EQ(catalog.findBestMatch("zh-HK"), "zh-TW");
+    EXPECT_EQ(catalog.findBestMatch("zh-Hans-SG"), "zh-CN");
+    EXPECT_EQ(catalog.findBestMatch("zh"), "zh-CN");
 }
 
 // Without a choice of the app, the first language of the system with a close language wins, then the fallback, which is the first language added until the app names another.

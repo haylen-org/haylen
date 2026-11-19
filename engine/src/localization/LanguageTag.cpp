@@ -119,24 +119,47 @@ std::string_view LanguageTag::getScript(std::string_view tag) noexcept {
 }
 
 std::optional<std::size_t> LanguageTag::findBestMatch(std::string_view tag, std::span<const std::string> candidates) {
-    for (std::string_view wanted = tag; !wanted.empty(); wanted = getParent(wanted)) {
+    const auto same = std::ranges::find(candidates, tag);
+    if (same != candidates.end()) {
+        return static_cast<std::size_t>(same - candidates.begin());
+    }
+
+    const std::string expanded = addLikelyScript(tag);
+    for (std::string_view wanted = expanded; !wanted.empty(); wanted = getParent(wanted)) {
         const auto found = std::ranges::find(candidates, wanted);
         if (found != candidates.end()) {
             return static_cast<std::size_t>(found - candidates.begin());
         }
     }
 
-    const std::string_view language = getLanguage(tag);
-    const std::string_view script = getScript(tag);
+    const std::string_view language = getLanguage(expanded);
+    const std::string_view script = getScript(expanded);
     for (std::size_t index = 0; index < candidates.size(); ++index) {
-        const std::string_view candidateScript = getScript(candidates[index]);
+        const std::string candidate = addLikelyScript(candidates[index]);
+        const std::string_view candidateScript = getScript(candidate);
         const bool scriptsAgree = script.empty() || candidateScript.empty() || script == candidateScript;
-        if (getLanguage(candidates[index]) == language && scriptsAgree) {
+        if (getLanguage(candidate) == language && scriptsAgree) {
             return index;
         }
     }
 
     return std::nullopt;
+}
+
+std::string LanguageTag::addLikelyScript(std::string_view tag) {
+    const std::string_view language = getLanguage(tag);
+    if (language.size() == tag.size() || !getScript(tag).empty()) {
+        return std::string(tag);
+    }
+
+    const std::string_view rest = tag.substr(language.size() + 1);
+    const std::string_view region = rest.substr(0, rest.find('-'));
+    const auto likely = std::ranges::find_if(kLikelyScripts, [language, region](const LikelyScript& entry) { return entry.language == language && entry.region == region; });
+    if (likely == kLikelyScripts.end()) {
+        return std::string(tag);
+    }
+
+    return std::string(language) + "-" + std::string(likely->script) + std::string(tag.substr(language.size()));
 }
 
 } // namespace haylen::localization

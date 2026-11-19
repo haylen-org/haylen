@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -21,7 +22,7 @@ class LanguageTag final {
     // Returns the canonical tag without its last subtag, such as `zh-Hans` for `zh-Hans-CN`, and an empty text for a language alone.
     [[nodiscard]] static std::string_view getParent(std::string_view tag) noexcept;
 
-    // Finds among canonical tags the one closest to a canonical tag: the tag itself, then each of its parents, then the first of the same language whose script agrees, where a tag without a script agrees with every script.
+    // Finds among canonical tags the one closest to a canonical tag: the tag itself, then the tag with the script that its region implies and each of its parents, then the first of the same language whose script agrees, where a tag without a script that its region implies agrees with every script.
     [[nodiscard]] static std::optional<std::size_t> findBestMatch(std::string_view tag, std::span<const std::string> candidates);
 
   private:
@@ -30,6 +31,14 @@ class LanguageTag final {
         Region,
         Variant,
     };
+
+    // A language whose regions write it in different scripts, such as Chinese, which Taiwan writes in traditional characters and mainland China in simplified ones.
+    struct LikelyScript {
+        std::string_view language;
+        std::string_view region;
+        std::string_view script;
+    };
+    static constexpr std::array<LikelyScript, 5> kLikelyScripts{{{"zh", "CN", "Hans"}, {"zh", "SG", "Hans"}, {"zh", "HK", "Hant"}, {"zh", "MO", "Hant"}, {"zh", "TW", "Hant"}}};
 
     [[nodiscard]] static bool isLetters(std::string_view subtag) noexcept;
     [[nodiscard]] static bool isDigits(std::string_view subtag) noexcept;
@@ -40,6 +49,9 @@ class LanguageTag final {
     static void toUpper(std::string& text) noexcept;
     [[nodiscard]] static std::string_view getLanguage(std::string_view tag) noexcept;
     [[nodiscard]] static std::string_view getScript(std::string_view tag) noexcept;
+
+    // Returns the canonical tag with the script that its language and region imply where the tag names none and the region decides it, such as `zh-Hant-TW` for `zh-TW`, and the tag as it is otherwise.
+    [[nodiscard]] static std::string addLikelyScript(std::string_view tag);
 };
 
 } // namespace haylen::localization
