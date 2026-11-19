@@ -74,14 +74,18 @@ final class NativeDemoAccess: NSObject, CLLocationManagerDelegate {
     // Core Location also reports the authorization when the manager starts, which ends no request while the person has not decided.
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
-            if self.locations.authorizationStatus == .notDetermined {
-                return
-            }
-            let waiting = self.deciding
-            self.deciding.removeAll()
-            for continuation in waiting {
-                continuation.resume()
-            }
+            self.finishDeciding()
+        }
+    }
+
+    private func finishDeciding() {
+        if locations.authorizationStatus == .notDetermined {
+            return
+        }
+        let waiting = deciding
+        deciding.removeAll()
+        for continuation in waiting {
+            continuation.resume()
         }
     }
 
