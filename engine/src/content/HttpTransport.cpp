@@ -20,9 +20,9 @@ struct HttpTransport::Transfer::State {
     client::Handle handle;
     bool cancelled = false;
 
-    // The request keeps its state alive until it completes, and the fields below change only on the thread that polls the loop.
+    // The request keeps its state alive until it completes, and the fields below change only on the thread that polls the loop. The answer must deliver `expected` bytes, those of the range or of the whole file that the server sent in its place.
     std::uint64_t received = 0;
-    bool restarting = false;
+    std::uint64_t expected = 0;
     std::optional<Error> failure;
 };
 
@@ -95,15 +95,16 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
 
     // A range takes no limit from the client, which would refuse a whole file before its head arrives, so its head reports a server that sends the whole file, and the bytes are counted here instead.
     http.maxResponseBytes = request.size ? std::numeric_limits<std::uint64_t>::max() : expected;
-    http.timeout = request.timeout.value_or(getTimeout(expected));
+    http.timeout = request.timeout.value_or(getTimeout(request.fileSize.value_or(expected)));
     state->received = 0;
+    state->expected = expected;
 
     client::HttpClient::Callbacks callbacks;
     // clang-format off
     callbacks.onHead = [state](const client::ResponseHead& head) {
         const std::optional<client::ContentRange> range = head.contentRange();
         std::optional<std::uint64_t> fileSize = range ? range->completeLength : std::nullopt;
-        if (!state->request.size && head.status == 200) {
+        if (head.status == 200) {
             fileSize = head.contentLength;
         }
 
@@ -115,12 +116,6 @@ void HttpTransport::send(const std::shared_ptr<Transfer::State>& state) {
     callbacks.onComplete = [this, state](const std::optional<client::Error>& error) {
         if (state->failure) {
             complete(state, std::move(state->failure));
-            return;
-        }
-
-        if (state->restarting) {
-            state->restarting = false;
-            send(state);
             return;
         }
 
@@ -151,17 +146,16 @@ void HttpTransport::receiveHead(Transfer::State& state, int status, std::optiona
         return;
     }
 
-    // A server answers a range it does not serve, or a resumed range of a file that changed, with the whole file, which is never read: a changed file starts its range again, and a server without ranges stops the download.
-    if (status == 200 && request.held > 0) {
-        state.restarting = true;
-        state.request.held = 0;
-        state.request.validator.clear();
-        stop(state, std::nullopt);
-        return;
-    }
-
+    // A server answers a range that it does not serve now, such as one of a file that a content delivery network has not cached yet, or a resumed range of a file that changed, with the whole file, which streams to the caller from its first byte. A whole file of another size than the caller knows is another file.
     if (status == 200) {
-        stop(state, Error(Error::Code::RangeUnsupported, std::format("The server of \"{}\" answered a byte range with the whole file, and protected content needs a server that serves byte ranges.", request.url), {.httpStatus = status}));
+        const bool sized = fileSize && (!request.fileSize || *fileSize == *request.fileSize);
+        if (!sized || *fileSize < request.offset + *request.size) {
+            stop(state, Error(Error::Code::RangeUnsupported, std::format("The server of \"{}\" answered a byte range with a whole file of an unknown or another size, so the range cannot come from it.", request.url), {.httpStatus = status}));
+            return;
+        }
+
+        state.expected = *fileSize;
+        state.callbacks.onStart({.whole = true, .validator = std::move(validator), .fileSize = fileSize});
         return;
     }
 
@@ -181,13 +175,13 @@ void HttpTransport::receiveHead(Transfer::State& state, int status, std::optiona
 }
 
 void HttpTransport::receiveBytes(Transfer::State& state, std::span<const std::uint8_t> bytes) {
-    if (state.failure || state.restarting) {
+    if (state.failure) {
         return;
     }
 
     state.received += bytes.size();
-    if (state.request.size && state.received > *state.request.size - state.request.held) {
-        stop(state, Error(Error::Code::RangeUnsupported, std::format("The server sent more than the {} bytes asked for of \"{}\".", *state.request.size - state.request.held, state.request.url)));
+    if (state.request.size && state.received > state.expected) {
+        stop(state, Error(Error::Code::RangeUnsupported, std::format("The server sent more than the {} bytes it announced of \"{}\".", state.expected, state.request.url)));
         return;
     }
 
@@ -200,7 +194,7 @@ void HttpTransport::receiveBytes(Transfer::State& state, std::span<const std::ui
     }
 }
 
-void HttpTransport::stop(Transfer::State& state, std::optional<Error> failure) {
+void HttpTransport::stop(Transfer::State& state, Error failure) {
     state.failure = std::move(failure);
     std::scoped_lock lock(state.mutex);
     state.handle.cancel();
@@ -208,8 +202,8 @@ void HttpTransport::stop(Transfer::State& state, std::optional<Error> failure) {
 
 void HttpTransport::complete(const std::shared_ptr<Transfer::State>& state, std::optional<Error> failure) {
     const Request& request = state->request;
-    if (!failure && request.size && state->received != *request.size - request.held) {
-        failure = Error(Error::Code::UpdateInterrupted, std::format("The download of \"{}\" ended after {} of {} bytes.", request.url, state->received, *request.size - request.held));
+    if (!failure && request.size && state->received != state->expected) {
+        failure = Error(Error::Code::UpdateInterrupted, std::format("The download of \"{}\" ended after {} of {} bytes.", request.url, state->received, state->expected));
     }
 
     const std::function<void(std::optional<Error>)> onComplete = std::move(state->callbacks.onComplete);

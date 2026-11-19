@@ -20,6 +20,7 @@
 #include "content/crypto/Digest.hpp"
 #include "content/format/Catalog.hpp"
 #include "content/format/PartialRecord.hpp"
+#include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "content/format/ShardReference.hpp"
 #include "haylen/content/Error.hpp"
@@ -30,7 +31,7 @@ class JobSystem;
 
 namespace haylen::content {
 
-// Brings the chunks that the device lacks into the local store. It asks each shard for its header and its encrypted index once, which the store keeps, then downloads only the records it needs, in few ranges, with a bounded number of requests at once. Every record is verified against the signed catalog and the index of its shard on the task pool before the store keeps it, so nothing unverified reaches the store, and nothing plain is ever written. Requests for the same record share one download, a record whose download stopped resumes from its staged first bytes, and cancelling one request leaves the downloads that others still need running. It runs on the thread that polls the event loop, and its callbacks run there.
+// Brings the chunks that the device lacks into the local store. It asks each shard for its header and its encrypted index once, which the store keeps, then downloads only the records it needs, in few ranges, with a bounded number of requests at once. A server that answers a range with the whole shard, as a content delivery network does with a shard it has not cached yet, hands over every record of the shard, which the store keeps as they arrive, so no later request asks for the shard again. Every record is verified against the signed catalog and the index of its shard on the task pool before the store keeps it, so nothing unverified reaches the store, and nothing plain is ever written. Requests for the same record share one download, a record whose download stopped resumes from its staged first bytes, and cancelling one request leaves the downloads that others still need running. It runs on the thread that polls the event loop, and its callbacks run there.
 class Downloader final {
   public:
     // At most this many requests run at once, so a few large records never wait behind many small ones and a slow network is not flooded.
@@ -161,20 +162,43 @@ class Downloader final {
         std::string validator;
         HttpTransport::Transfer handle;
         bool abandoned = false;
+
+        // Whether the server answered the range with the whole shard, which the downloader keeps to its end.
+        bool whole = false;
+    };
+
+    // A whole shard that a server sent in place of a range, read in the order of its file: the header, the header and the rest of each record, and then the index. Each piece waits whole in `piece`, between `pieceStart` and `pieceEnd` of the file, so one record at a time stays in memory.
+    struct WholeShard {
+        std::uint64_t position = 0;
+        std::uint64_t pieceStart = 0;
+        std::uint64_t pieceEnd = ShardHeader::kSize;
+        std::vector<std::uint8_t> piece;
+        std::vector<std::uint8_t> headerBytes;
+        std::optional<ShardHeader> header;
+        bool indexed = false;
+        std::optional<Error> failure;
     };
 
     void loadHeld(std::vector<Digest> storedIds);
     void indexShard(Shard& shard);
     void receiveIndex(const Digest& shard, std::vector<std::uint8_t> bytes);
     void failShard(const Digest& shard, const Error& error);
-    void fetchRange(const std::string& url, std::uint64_t offset, std::uint64_t size, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
+    // Downloads a range of the file of a shard, or keeps the whole shard when the server sends all of it, which then calls `done` with no bytes, since the shard itself brings its index.
+    void fetchRange(const Digest& shard, std::uint64_t offset, std::uint64_t size, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
     void plan(Shard& shard);
     void pump();
     [[nodiscard]] bool isForeground(const Transfer& transfer) const;
     void start(std::shared_ptr<Transfer> transfer);
     void receive(Transfer& transfer, std::span<const std::uint8_t> bytes);
     void finishTransfer(const std::shared_ptr<Transfer>& transfer, std::optional<Error> failure);
+    void finishWholeTransfer(const Transfer& transfer, std::optional<Error> failure);
     void verify(const Digest& shard, const Digest& storedId, std::vector<std::uint8_t> record);
+    void beginWhole(const Digest& shard);
+    void receiveWhole(const Digest& shard, std::span<const std::uint8_t> bytes);
+    void receiveWholePiece(const Digest& shard, WholeShard& whole);
+    static void startWholePiece(WholeShard& whole);
+    void keepRecord(const Digest& shard, const Digest& keyId, std::uint64_t recordOffset, std::vector<std::uint8_t> record);
+    void finishWhole(const Digest& shard, std::optional<Error> failure);
     void stored(const Digest& storedId, std::optional<Error> failure);
     void rejected(const Digest& storedId, const Error& error);
     void discardPartial(const Digest& shard, std::uint64_t recordOffset);
@@ -194,6 +218,7 @@ class Downloader final {
     std::deque<std::shared_ptr<Transfer>> waitingTransfers;
     std::vector<std::shared_ptr<Transfer>> activeTransfers;
     std::map<std::pair<Digest, std::uint64_t>, PartialRecord> partials;
+    std::unordered_map<Digest, WholeShard, Digest::Hash> wholes;
     Statistics statistics;
     std::uint64_t verifyingBytes = 0;
 };

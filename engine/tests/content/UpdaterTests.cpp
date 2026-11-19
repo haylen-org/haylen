@@ -261,6 +261,34 @@ TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
     EXPECT_FALSE(error);
 }
 
+// A server that answers every range with the whole file, as a content delivery network does with a shard that it has not cached yet, still installs an update, and each shard downloads once, since the store keeps every record of a whole shard.
+TEST_F(UpdaterTest, InstallsFromAServerThatAnswersRangesWithWholeShards) {
+    publish(makeUpdate(2));
+    server.setIgnoresRanges(true);
+    {
+        const std::unique_ptr<Client> client = connect();
+        const UpdateOffer offer = requireOffer(*client);
+        server.clearExchanges();
+        ASSERT_FALSE(install(*client, offer));
+
+        std::map<std::string, int> shardRequests;
+        for (const test::ContentServer::Exchange& exchange : server.getExchanges()) {
+            if (exchange.path.ends_with(".hpak")) {
+                ++shardRequests[exchange.path];
+            }
+        }
+
+        EXPECT_FALSE(shardRequests.empty());
+        for (const auto& [path, count] : shardRequests) {
+            EXPECT_EQ(count, 1) << path;
+        }
+    }
+
+    const std::unique_ptr<Client> client = connect();
+    EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
+    EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
+}
+
 // An online game hands out the key of an update from its service, so the app plays the content it has until the service gives the key, and the update installs once it does.
 TEST_F(UpdaterTest, AsksTheKeyProviderForTheKeyOfAnUpdate) {
     const KeyProvider::Key rotatedKey = test::ReleaseFixture::makeKey(2);

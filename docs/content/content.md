@@ -516,9 +516,9 @@ Content that is not on the device arrives over HTTP or HTTPS through `content::H
 | --- | --- |
 | Status | A whole file needs the status 200 and a range the status 206. Any other status fails with `UnexpectedHttpStatus` and the status in its details. |
 | Range | A partial response must cover exactly the bytes asked for, as its `Content-Range` says. A server that sends another range fails with `RangeUnsupported`. |
-| Whole file instead of a range | A server that answers a range with the whole file fails with `RangeUnsupported` as soon as its head arrives. So a server without byte ranges never makes an app download a whole shard. |
+| Whole file instead of a range | HTTP lets a server answer a range with the status 200 and the whole file, as a content delivery network does with a shard that it has not cached yet. The whole file then streams from its first byte, and its `Content-Length` must be the size of the shard, which the manifest names, or the answer fails with `RangeUnsupported`. The downloader keeps the whole shard, as [whole shards](#whole-shards) describes, so it never asks for that shard again. |
 | Length | A range delivers exactly its size. More fails with `RangeUnsupported`, and a body that ends early fails with `UpdateInterrupted`. |
-| Validator | A download that resumes asks only for the bytes it lacks, with `If-Range` and the strong entity tag of the response that sent the bytes it holds, so the server sends the rest of the same file. When the file changed, the server answers with the whole file, and the range starts again from its first byte instead of mixing two files. A response without a strong entity tag never resumes. |
+| Validator | A download that resumes asks only for the bytes it lacks, with `If-Range` and the strong entity tag of the response that sent the bytes it holds, so the server sends the rest of the same file. When the file changed, the server answers with the whole file, which the downloader keeps whole instead of mixing two files. A response without a strong entity tag never resumes. |
 | Deadline | One deadline covers a whole request: 30 seconds plus the time the bytes take at 32 KiB per second. |
 | Certificates | HTTPS verifies the certificate of the server, and a failure is `TlsFailed`. |
 
@@ -526,9 +526,13 @@ The class `content::RangePlanner` turns the records that an app needs from one s
 
 A download that fails, such as when the connection drops in the middle of a range, keeps what it received. The records that arrived whole are still checked and written to the store, and the download reports its failure only once they are there, so an attempt right after it, even by an app that starts again, never downloads them again. The record that stopped keeps its first bytes for a resume, as the validator above describes.
 
+### Whole shards
+
+A shard that a server sends whole in place of a range, also in place of the range of its header, arrives in the order of its file: the header, every record and the index at the end. The downloader reads it one piece at a time, so it holds one record at a time in memory. It checks every record that the store lacks, against the signed catalog when a request waits for it and by its authenticated encryption in every case, and the store keeps it, also when no request waits for it yet. It takes the index of the shard from the same answer and keeps it. So a later request for any record of the shard finds it on the device and asks the server for nothing, and the ranges of the shard that waited for it start no request of their own. A record whose header reaches into the index, or a header of the shard that does not match its size, fails the shard with `CorruptChunk` or `CorruptHeader`, while the records that arrived before stay on the device.
+
 ### What a content server needs
 
-A server of protected content serves byte ranges of its files, sends `ETag` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers. So packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows the requests of the page with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
+A server of protected content serves byte ranges of its files, sends `ETag` and `Content-Length` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers. So packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows the requests of the page with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
 
 ## Delivery
 
@@ -703,7 +707,7 @@ The page asks the browser to keep its storage with `navigator.storage.persist()`
 
 ### Serving a release
 
-A server of the site serves the files of `app/` by byte range, with `206` and `Content-Range`, a strong `ETag` and `If-Range`, and without content encoding for `.hpak` files, which are encrypted and do not compress. The command `haylen app run --target web --config Release` serves the site that way on this machine. A content delivery network does it by default. The files take long cache lifetimes, since a shard and a manifest never change under their name:
+A server of the site serves the files of `app/` by byte range, with `206` and `Content-Range`, a strong `ETag` and `If-Range`, and without content encoding for `.hpak` files, which are encrypted and do not compress. The command `haylen app run --target web --config Release` serves the site that way on this machine. A content delivery network does it by default, and the answer of a whole shard to a range, which a network may send for a shard that it has not cached yet, keeps the whole shard on the device, as [whole shards](#whole-shards) describes. The files take long cache lifetimes, since a shard and a manifest never change under their name:
 
 ```text
 app/*.hpak, app/*.hmanifest      Cache-Control: public, max-age=31536000, immutable
@@ -854,7 +858,7 @@ The method `isRetryable` tells whether trying again may succeed without a new bu
 | `NetworkCancelled` | A download was cancelled. |
 | `NetworkFailed` | A request failed in another way, such as an address that the transport refuses or a redirect that it does not follow. |
 | `TlsFailed` | The secure connection failed, such as a certificate that does not verify. |
-| `RangeUnsupported` | The server does not serve byte ranges as protected content needs. |
+| `RangeUnsupported` | The server answered a range with another range, with more bytes than it announced, or with a whole file of another size than the shard. |
 | `UnexpectedHttpStatus` | The server answered with a status other than the file or the range. |
 | `UpdateInterrupted` | A download ended before all of its bytes arrived, or a collection of the store stopped before it finished, which leaves the store as it was. |
 | `DiskFull` | The device has no room for what the store writes. |

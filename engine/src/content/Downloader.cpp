@@ -196,7 +196,7 @@ void Downloader::indexShard(Shard& shard) {
             }
 
             // The header comes first, since it says where the index lies at the end of the shard.
-            fetchRange(indexed.url, 0, ShardHeader::kSize, [this, reference](std::vector<std::uint8_t> header, std::optional<Error> failure) {
+            fetchRange(reference.shardId, 0, ShardHeader::kSize, [this, reference](std::vector<std::uint8_t> header, std::optional<Error> failure) {
                 if (failure) {
                     failShard(reference.shardId, *failure);
                     return;
@@ -210,7 +210,7 @@ void Downloader::indexShard(Shard& shard) {
                     return;
                 }
 
-                fetchRange(shards.at(reference.shardId).url, parsed->indexOffset, parsed->indexSize, [this, reference, header = std::move(header)](std::vector<std::uint8_t> indexBytes, std::optional<Error> indexFailure) mutable {
+                fetchRange(reference.shardId, parsed->indexOffset, parsed->indexSize, [this, reference, header = std::move(header)](std::vector<std::uint8_t> indexBytes, std::optional<Error> indexFailure) mutable {
                     if (indexFailure) {
                         failShard(reference.shardId, *indexFailure);
                         return;
@@ -257,29 +257,51 @@ void Downloader::receiveIndex(const Digest& shardId, std::vector<std::uint8_t> b
     // clang-format on
 }
 
-void Downloader::fetchRange(const std::string& url, std::uint64_t offset, std::uint64_t size, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done) {
+void Downloader::fetchRange(const Digest& shardId, std::uint64_t offset, std::uint64_t size, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done) {
+    const Shard& shard = shards.at(shardId);
     auto bytes = std::make_shared<std::vector<std::uint8_t>>();
     bytes->reserve(static_cast<std::size_t>(size));
+    auto whole = std::make_shared<bool>(false);
     ++statistics.requests;
     // clang-format off
-    transport.fetch({.url = url, .offset = offset, .size = size}, {
-        .onStart = [](const HttpTransport::Start&) {},
-        .onBytes = [this, owner = std::weak_ptr(alive), bytes](std::span<const std::uint8_t> chunk) {
-            if (!owner.expired()) {
-                statistics.downloadedBytes += chunk.size();
-                bytes->insert(bytes->end(), chunk.begin(), chunk.end());
+    transport.fetch({.url = shard.url, .offset = offset, .size = size, .fileSize = shard.reference.fileSize}, {
+        .onStart = [this, owner = std::weak_ptr(alive), shardId, whole](const HttpTransport::Start& started) {
+            if (!owner.expired() && started.whole) {
+                *whole = true;
+                beginWhole(shardId);
             }
         },
-        .onComplete = [owner = std::weak_ptr(alive), bytes, done = std::move(done)](std::optional<Error> failure) {
-            if (!owner.expired()) {
-                done(std::move(*bytes), std::move(failure));
+        .onBytes = [this, owner = std::weak_ptr(alive), shardId, bytes, whole](std::span<const std::uint8_t> chunk) {
+            if (owner.expired()) {
+                return;
             }
+
+            if (*whole) {
+                receiveWhole(shardId, chunk);
+                return;
+            }
+
+            statistics.downloadedBytes += chunk.size();
+            bytes->insert(bytes->end(), chunk.begin(), chunk.end());
+        },
+        .onComplete = [this, owner = std::weak_ptr(alive), shardId, bytes, whole, done = std::move(done)](std::optional<Error> failure) {
+            if (owner.expired()) {
+                return;
+            }
+
+            if (*whole) {
+                finishWhole(shardId, std::move(failure));
+                return;
+            }
+
+            done(std::move(*bytes), std::move(failure));
         },
     });
     // clang-format on
 }
 
 void Downloader::failShard(const Digest& shardId, const Error& error) {
+    wholes.erase(shardId);
     Shard& shard = shards.at(shardId);
     shard.indexing = false;
     const std::vector<Digest> queued = std::exchange(shard.queued, {});
@@ -294,7 +316,7 @@ void Downloader::failShard(const Digest& shardId, const Error& error) {
 void Downloader::plan(Shard& shard) {
     std::vector<std::pair<Digest, ShardIndex::Entry>> records;
     for (const Digest& storedId : std::exchange(shard.queued, {})) {
-        if (!wanted.contains(storedId)) {
+        if (!wanted.contains(storedId) || wanted.at(storedId).verifying) {
             continue;
         }
 
@@ -355,15 +377,14 @@ bool Downloader::isForeground(const Transfer& transfer) const {
 
 void Downloader::pump() {
     while (activeTransfers.size() < kMaximumTransfers && !waitingTransfers.empty() && verifyingBytes + store->getUnwrittenBytes() <= kMaximumHeldBytes) {
-        // The foreground goes first, and background work takes a request only while nothing in the foreground waits and it holds fewer than its share.
-        auto next = std::ranges::find_if(waitingTransfers, [this](const std::shared_ptr<Transfer>& waiting) { return isForeground(*waiting); });
+        // The foreground goes first, and background work takes a request only while nothing in the foreground waits and it holds fewer than its share. The ranges of a shard that comes whole wait for it, since it brings their records.
+        auto next = std::ranges::find_if(waitingTransfers, [this](const std::shared_ptr<Transfer>& waiting) { return !wholes.contains(waiting->shard) && isForeground(*waiting); });
         if (next == waitingTransfers.end()) {
             const auto background = std::ranges::count_if(activeTransfers, [this](const std::shared_ptr<Transfer>& active) { return !isForeground(*active); });
-            if (static_cast<std::size_t>(background) >= kMaximumBackgroundTransfers) {
+            next = std::ranges::find_if(waitingTransfers, [this](const std::shared_ptr<Transfer>& waiting) { return !wholes.contains(waiting->shard); });
+            if (static_cast<std::size_t>(background) >= kMaximumBackgroundTransfers || next == waitingTransfers.end()) {
                 return;
             }
-
-            next = waitingTransfers.begin();
         }
 
         std::shared_ptr<Transfer> transfer = std::move(*next);
@@ -397,7 +418,7 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
     const std::uint64_t size = last.recordOffset + ChunkRecord::kHeaderSize + last.encodedSize - offset;
 
     // A record whose download stopped before goes on from its staged bytes, and its range starts with it.
-    HttpTransport::Request request{.url = shard.url, .offset = offset, .size = size};
+    HttpTransport::Request request{.url = shard.url, .offset = offset, .size = size, .fileSize = shard.reference.fileSize};
     if (const auto partial = partials.find({transfer->shard, offset}); partial != partials.end()) {
         request.held = partial->second.bytes.size();
         request.validator = partial->second.validator;
@@ -416,6 +437,13 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
             }
 
             transfer->validator = started.validator;
+            if (started.whole) {
+                transfer->whole = true;
+                transfer->buffer.clear();
+                beginWhole(transfer->shard);
+                return;
+            }
+
             if (started.resumed) {
                 ++statistics.resumedRecords;
 
@@ -430,9 +458,16 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
             transfer->position = offset;
         },
         .onBytes = [this, owner = std::weak_ptr(alive), transfer](std::span<const std::uint8_t> bytes) {
-            if (!owner.expired()) {
-                receive(*transfer, bytes);
+            if (owner.expired()) {
+                return;
             }
+
+            if (transfer->whole) {
+                receiveWhole(transfer->shard, bytes);
+                return;
+            }
+
+            receive(*transfer, bytes);
         },
         .onComplete = [this, owner = std::weak_ptr(alive), transfer](std::optional<Error> failure) {
             if (!owner.expired()) {
@@ -480,6 +515,10 @@ void Downloader::receive(Transfer& transfer, std::span<const std::uint8_t> bytes
 
 void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::optional<Error> failure) {
     std::erase(activeTransfers, transfer);
+    if (transfer->whole) {
+        finishWholeTransfer(*transfer, std::move(failure));
+        return;
+    }
 
     if (failure && !transfer->abandoned && transfer->current < transfer->records.size()) {
         // The first bytes of the record that stopped stay for a resume, as long as they are worth a request of their own.
@@ -525,6 +564,32 @@ void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::
         } else if (!shard.indexing) {
             indexShard(shard);
         }
+    }
+
+    dropUnwanted();
+    pump();
+}
+
+// The records of the range that the whole shard did not bring fail with what stopped it, or are planned again, which a shard that lacks them reports.
+void Downloader::finishWholeTransfer(const Transfer& transfer, std::optional<Error> failure) {
+    const std::optional<Error> stopped = failure ? failure : wholes.contains(transfer.shard) ? wholes.at(transfer.shard).failure : std::nullopt;
+    finishWhole(transfer.shard, std::move(failure));
+    for (const auto& [storedId, entry] : transfer.records) {
+        const auto found = wanted.find(storedId);
+        if (found == wanted.end() || found->second.verifying) {
+            continue;
+        }
+
+        found->second.transferring = false;
+        if (stopped) {
+            fail(storedId, *stopped);
+        } else if (shards.contains(found->second.shard)) {
+            shards.at(found->second.shard).queued.push_back(storedId);
+        }
+    }
+
+    if (shards.contains(transfer.shard) && shards.at(transfer.shard).index) {
+        plan(shards.at(transfer.shard));
     }
 
     dropUnwanted();
@@ -589,6 +654,155 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
         });
     });
     // clang-format on
+}
+
+void Downloader::beginWhole(const Digest& shardId) {
+    wholes.try_emplace(shardId);
+}
+
+// The pieces of the file arrive in its order: the header first, the records up to the index and the index at the end of the file, whose size the transport checked against the shard.
+void Downloader::receiveWhole(const Digest& shardId, std::span<const std::uint8_t> bytes) {
+    statistics.downloadedBytes += bytes.size();
+    const auto found = wholes.find(shardId);
+    if (found == wholes.end()) {
+        return;
+    }
+
+    WholeShard& whole = found->second;
+    while (!bytes.empty() && !whole.failure) {
+        const auto taken = static_cast<std::size_t>(std::min<std::uint64_t>(whole.pieceEnd - whole.position, bytes.size()));
+        whole.piece.insert(whole.piece.end(), bytes.begin(), bytes.begin() + static_cast<std::ptrdiff_t>(taken));
+        whole.position += taken;
+        bytes = bytes.subspan(taken);
+        if (whole.position < whole.pieceEnd) {
+            continue;
+        }
+
+        try {
+            receiveWholePiece(shardId, whole);
+        } catch (const Error& error) {
+            whole.failure = error;
+        }
+    }
+}
+
+// A record header names how long its record is, and a record that would reach into the index belongs to no shard that the publisher wrote.
+void Downloader::receiveWholePiece(const Digest& shardId, WholeShard& whole) {
+    if (!whole.header) {
+        whole.header = ShardHeader::parse(std::span(whole.piece).first<ShardHeader::kSize>(), shards.at(shardId).reference.fileSize);
+        whole.headerBytes = std::exchange(whole.piece, {});
+        startWholePiece(whole);
+        return;
+    }
+
+    const ShardHeader& header = *whole.header;
+    if (whole.pieceStart >= header.indexOffset) {
+        std::vector<std::uint8_t> index = std::move(whole.headerBytes);
+        index.insert(index.end(), whole.piece.begin(), whole.piece.end());
+        whole.piece.clear();
+        whole.indexed = true;
+        if (!shards.at(shardId).index) {
+            receiveIndex(shardId, std::move(index));
+        }
+
+        return;
+    }
+
+    if (whole.piece.size() == ChunkRecord::kHeaderSize) {
+        const ChunkRecord record = ChunkRecord::parse(std::span(whole.piece).first<ChunkRecord::kHeaderSize>());
+        whole.pieceEnd = whole.pieceStart + ChunkRecord::kHeaderSize + record.encodedSize;
+        if (whole.pieceEnd > header.indexOffset) {
+            throw Error(Error::Code::CorruptChunk, "A record of the shard \"" + shardId.toHex() + "\" reaches past the start of its index.");
+        }
+
+        return;
+    }
+
+    keepRecord(shardId, header.keyId, whole.pieceStart, std::exchange(whole.piece, {}));
+    startWholePiece(whole);
+}
+
+// The next piece is the header of a record, or the index once the records end.
+void Downloader::startWholePiece(WholeShard& whole) {
+    const ShardHeader& header = *whole.header;
+    whole.pieceStart = whole.position;
+    whole.pieceEnd = whole.position < header.indexOffset ? whole.position + ChunkRecord::kHeaderSize : header.indexOffset + header.indexSize;
+}
+
+// Every record of a whole shard that the store lacks stays on the device, also one that no request waits for yet, so a later request finds it there. A record that a request waits for is checked against the signed catalog too, and its transfer, if one was planned, no longer needs it.
+void Downloader::keepRecord(const Digest& shardId, const Digest& keyId, std::uint64_t recordOffset, std::vector<std::uint8_t> record) {
+    const ChunkRecord header = ChunkRecord::parse(std::span(record).first<ChunkRecord::kHeaderSize>());
+    discardPartial(shardId, recordOffset);
+    const auto found = wanted.find(header.storedId);
+    if (store->holds(header.storedId) || (found != wanted.end() && found->second.verifying)) {
+        return;
+    }
+
+    std::optional<Catalog::Chunk> chunk;
+    if (found != wanted.end()) {
+        chunk = found->second.chunk;
+        found->second.verifying = true;
+        found->second.transferring = true;
+        std::erase(shards.at(shardId).queued, header.storedId);
+        for (const std::uint64_t id : found->second.requests) {
+            Request& request = requests.at(id);
+            request.progress.receivedBytes += record.size();
+            request.changed = true;
+        }
+    }
+
+    const std::uint64_t size = record.size();
+    verifyingBytes += size;
+    // clang-format off
+    jobs.post([this, &pool = jobs, owner = std::weak_ptr(alive), localStore = store, chunk, keys = shards.at(shardId).keys, keyId, header, size, record = std::move(record)]() mutable {
+        std::optional<Error> failure;
+        try {
+            if (chunk && !header.describes(*chunk)) {
+                throw Error(Error::Code::CorruptChunk, "The downloaded record of the chunk \"" + chunk->storedId.toHex() + "\" does not match its catalog.");
+            }
+
+            std::vector<std::uint8_t> ciphertext(record.begin() + ChunkRecord::kHeaderSize, record.end());
+            std::vector<std::uint8_t> plain;
+            header.open(*keys->get(keyId), ciphertext, plain);
+            crypto_wipe(plain.data(), plain.size());
+            localStore->addRecord(keyId, record);
+        } catch (const Error& error) {
+            failure = error;
+        }
+
+        pool.postToFrame([this, owner, storedId = header.storedId, size, failure] {
+            if (!owner.expired()) {
+                verifyingBytes -= size;
+                stored(storedId, failure);
+            }
+        });
+    });
+    // clang-format on
+}
+
+// A whole shard that stopped keeps the records that arrived whole, and one that stopped before its index fails the records that wait for the index.
+void Downloader::finishWhole(const Digest& shardId, std::optional<Error> failure) {
+    const auto found = wholes.find(shardId);
+    if (found == wholes.end()) {
+        return;
+    }
+
+    const std::optional<Error> stopped = failure ? std::move(failure) : std::move(found->second.failure);
+    const bool indexed = found->second.indexed;
+    wholes.erase(found);
+
+    Shard& shard = shards.at(shardId);
+    if (stopped && !indexed && !shard.index) {
+        failShard(shardId, *stopped);
+        pump();
+        return;
+    }
+
+    if (shard.index) {
+        plan(shard);
+    }
+
+    pump();
 }
 
 void Downloader::stored(const Digest& storedId, std::optional<Error> failure) {
@@ -764,7 +978,7 @@ void Downloader::dropUnwanted() {
             return found != wanted.end() && !found->second.requests.empty();
         });
         // clang-format on
-        if (!needed && !transfer->abandoned) {
+        if (!needed && !transfer->abandoned && !transfer->whole) {
             transfer->abandoned = true;
             transfer->handle.cancel();
         }

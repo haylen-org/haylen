@@ -22,16 +22,17 @@ class HttpClient;
 
 namespace haylen::content {
 
-// Downloads the immutable files that serve protected content, whole or by byte range, through the streaming HTTP client of Varn, so no response is ever held whole. Every response is checked before a byte reaches the caller: its status, the range the server sent and the length. A server that ignores ranges never sends a whole shard where a range was asked for, and a download that resumes appends only to the same file, which the validator of its first response names. Callbacks run on the thread that polls the event loop of the runtime.
+// Downloads the immutable files that serve protected content, whole or by byte range, through the streaming HTTP client of Varn, so no response is ever held whole. Every response is checked before a byte reaches the caller: its status, the range the server sent and the length. HTTP lets a server answer a range with the whole file, as a content delivery network does with a file it has not cached yet, so such an answer streams the whole file to the caller, which takes the range out of it or keeps all of it, and a download that resumes appends only to the same file, which the validator of its first response names. Callbacks run on the thread that polls the event loop of the runtime.
 class HttpTransport final {
   public:
     struct Request {
         std::string url;
 
-        // The first byte and the length of a range, or the whole file without a size, which may hold at most `maximumSize` bytes.
+        // The first byte and the length of a range, or the whole file without a size, which may hold at most `maximumSize` bytes. A range of a file whose size the caller knows, such as a shard, names it, so an answer with the whole file must have that size.
         std::uint64_t offset = 0;
         std::optional<std::uint64_t> size;
         std::uint64_t maximumSize = std::uint64_t{64} << 20;
+        std::optional<std::uint64_t> fileSize;
 
         // A download that resumes names the bytes of the range it holds already and the validator that the response that sent them had.
         std::uint64_t held = 0;
@@ -41,9 +42,10 @@ class HttpTransport final {
         std::optional<std::chrono::milliseconds> timeout;
     };
 
-    // What the server answered before the body: whether it continues the bytes held or sends the range again from its start, the validator of the file, empty when the server named none that resuming can use, and the size of the whole file when the server said it.
+    // What the server answered before the body: whether it continues the bytes held or sends the range again from its start, or sends the whole file in place of the range, whose bytes then arrive from its first one, the validator of the file, empty when the server named none that resuming can use, and the size of the whole file when the server said it.
     struct Start {
         bool resumed = false;
+        bool whole = false;
         std::string validator;
         std::optional<std::uint64_t> fileSize;
     };
@@ -92,8 +94,8 @@ class HttpTransport final {
     static void receiveHead(Transfer::State& state, int status, std::optional<std::uint64_t> first, std::optional<std::uint64_t> last, std::optional<std::uint64_t> fileSize, std::string validator);
     static void receiveBytes(Transfer::State& state, std::span<const std::uint8_t> bytes);
 
-    // Ends the request with the failure that its completion reports, or with none when the request starts again.
-    static void stop(Transfer::State& state, std::optional<Error> failure);
+    // Ends the request with the failure that its completion reports.
+    static void stop(Transfer::State& state, Error failure);
     void complete(const std::shared_ptr<Transfer::State>& state, std::optional<Error> failure);
     [[nodiscard]] static Error describeFailure(const Transfer::State& state, int code, const std::string& message);
     [[nodiscard]] static std::string readValidator(std::optional<std::string_view> etag);

@@ -112,23 +112,23 @@ TEST_F(HttpTransportTest, ResumesARangeFromTheBytesItHolds) {
     EXPECT_EQ(exchanges.back().first, 32000U);
 }
 
-TEST_F(HttpTransportTest, StartsARangeAgainWhenTheFileChanged) {
+// The server answers the resumed range of a file that changed with the whole new file, which streams from its first byte without a second request.
+TEST_F(HttpTransportTest, TakesTheWholeFileWhenTheFileChanged) {
     const Outcome first = run({.url = url(), .offset = 0, .size = 4096});
     ASSERT_TRUE(first.start);
     server.touch("packs/ab/pack.hpak");
     server.clearExchanges();
 
-    const Outcome outcome = run({.url = url(), .offset = 2000, .size = 50000, .held = 30000, .validator = first.start->validator});
+    const Outcome outcome = run({.url = url(), .offset = 2000, .size = 50000, .fileSize = kFileSize, .held = 30000, .validator = first.start->validator});
 
     ASSERT_FALSE(outcome.error) << outcome.error->what();
     ASSERT_TRUE(outcome.start);
     EXPECT_FALSE(outcome.start->resumed);
-    EXPECT_EQ(outcome.bytes, slice(2000, 50000));
-    // The server records an exchange when its answer ends, and the whole file that the client stopped reading may end after the range that followed it.
+    EXPECT_TRUE(outcome.start->whole);
+    EXPECT_EQ(outcome.bytes, file);
     const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
-    ASSERT_EQ(exchanges.size(), 2U);
-    EXPECT_TRUE(std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.status == 200 && !exchange.first; }));
-    EXPECT_TRUE(std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.status == 206 && exchange.first == 2000U; }));
+    ASSERT_EQ(exchanges.size(), 1U);
+    EXPECT_EQ(exchanges[0].status, 200);
 }
 
 TEST_F(HttpTransportTest, NeverResumesWithoutAValidator) {
@@ -140,14 +140,28 @@ TEST_F(HttpTransportTest, NeverResumesWithoutAValidator) {
     EXPECT_EQ(outcome.bytes, slice(2000, 50000));
 }
 
-TEST_F(HttpTransportTest, RefusesAServerThatIgnoresRanges) {
+// A server may answer a range with the whole file, as a content delivery network does with a file that it has not cached yet, so the whole file streams to the caller, which takes the range out of it.
+TEST_F(HttpTransportTest, TakesTheWholeFileThatAServerSendsForARange) {
     server.setIgnoresRanges(true);
-    const Outcome outcome = run({.url = url(), .offset = 1000, .size = 2000});
+    const Outcome outcome = run({.url = url(), .offset = 1000, .size = 2000, .fileSize = kFileSize});
 
-    ASSERT_TRUE(outcome.error);
-    EXPECT_EQ(outcome.error->getCode(), Error::Code::RangeUnsupported);
-    EXPECT_FALSE(outcome.error->isRetryable());
-    EXPECT_TRUE(outcome.bytes.empty());
+    ASSERT_FALSE(outcome.error) << outcome.error->what();
+    ASSERT_TRUE(outcome.start);
+    EXPECT_TRUE(outcome.start->whole);
+    EXPECT_EQ(outcome.start->fileSize, kFileSize);
+    EXPECT_EQ(outcome.bytes, file);
+    ASSERT_EQ(server.getExchanges().size(), 1U);
+}
+
+// A whole file of another size than the caller knows is another file, and one shorter than the range cannot hold it.
+TEST_F(HttpTransportTest, RefusesAWholeFileOfAnotherSize) {
+    server.setIgnoresRanges(true);
+    for (const HttpTransport::Request& request : {HttpTransport::Request{.url = url(), .offset = 1000, .size = 2000, .fileSize = kFileSize + 1}, HttpTransport::Request{.url = url(), .offset = kFileSize - 10, .size = 2000}}) {
+        const Outcome outcome = run(request);
+        ASSERT_TRUE(outcome.error);
+        EXPECT_EQ(outcome.error->getCode(), Error::Code::RangeUnsupported);
+        EXPECT_TRUE(outcome.bytes.empty());
+    }
 }
 
 TEST_F(HttpTransportTest, RefusesAnotherRangeThanItAskedFor) {
