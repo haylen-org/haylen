@@ -512,6 +512,14 @@ jobs:
       - name: Start the protected release of the test project
         if: matrix.shard == '1/2'
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --app samples/tests --config Release --graphics-api webGl2
+      - name: Keep the logs of the failed pages
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-page-logs-${{ strategy.job-index }}
+          path: build/logs/web-checks
+          retention-days: 3
+          if-no-files-found: ignore
       - uses: ./.github/actions/compiler-cache
         if: always()
 

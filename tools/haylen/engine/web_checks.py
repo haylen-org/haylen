@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
@@ -26,6 +27,9 @@ class WebChecks:
     """The checks of the web: apps of `engine/tests/data` that the web backend builds in Release, whose pages a headless browser opens while a driver of `engine/tests/web` follows the steps that each page reports. The error screen check runs on WebGPU and on WebGL2, or on the API that `api` names, and the others draw through the first API that starts, or through the one that `api` names."""
 
     TARGET = "web"
+    # The whole log of every page whose check failed, which the error of the check names and continuous integration keeps with the failed job, and the lines of it that the error shows.
+    PAGE_LOGS = Repository.LOGS / "web-checks"
+    SHOWN_LOG_LINES = 20
     DATA = Repository.ENGINE / "tests" / "data"
     DRIVERS = Repository.ENGINE / "tests" / "web"
     GRAPHICS_APIS = ("webGpu", "webGl2")
@@ -159,15 +163,25 @@ class WebChecks:
 
     @staticmethod
     def check_steps(report: dict, steps: list[str], page: str) -> None:
-        """Fails on a page that reported an error or missed one of the steps of its mode, with the last lines of its log."""
+        """Fails on a page that reported an error or missed one of the steps of its mode, with the last lines of its log, and keeps its whole log in a file of `PAGE_LOGS`, which continuous integration keeps with the failed job."""
         reached = [entry["name"] for entry in report["steps"] if entry["reached"]]
         if not report["failure"] and reached == steps:
             return
-        log = "\n".join(report["log"][-20:])
+        kept = WebChecks.keep_log(report["log"], page)
+        log = "\n".join(report["log"][-WebChecks.SHOWN_LOG_LINES :])
         if report["failure"]:
-            raise BuildFailed(f"{page} reported an error: {report['failure']} The last lines of its log follow.", details=log)
+            raise BuildFailed(f"{page} reported an error: {report['failure']} The last lines of its log follow, and `{kept}` holds all of it.", details=log)
         missed = next(step for step in steps if step not in reached)
-        raise BuildFailed(f'{page} missed the step "{missed}". The last lines of its log follow.', details=log)
+        raise BuildFailed(f'{page} missed the step "{missed}". The last lines of its log follow, and `{kept}` holds all of it.', details=log)
+
+    @staticmethod
+    def keep_log(lines: list[str], page: str) -> Path:
+        """Writes the whole log of a page into a file named after the page and returns its path."""
+        name = re.sub(r"[^a-z0-9]+", "-", page.lower()).strip("-")
+        path = WebChecks.PAGE_LOGS / f"{name}.log"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path
 
     def error_screen(self, api: str | None) -> None:
         """The browsers of this check draw through SwiftShader like the GPU tests of the web, so WebGPU starts on a machine without a GPU for it."""

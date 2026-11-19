@@ -295,6 +295,8 @@ A web page writes the clipboard only through the asynchronous clipboard API of t
 
 Headless Chrome on Linux cannot present a WebGPU canvas, so it takes the device away from such a page and the app ends after the one replacement of its device, as the [WebGPU guide](../graphics/webgpu.md#lost-devices) explains. On Linux, run the checks with `--graphics-api webGl2`, and run those of WebGPU on a Mac, where Chrome draws WebGPU through Metal. The GPU tests of the web present no canvas, so they run on WebGPU on Linux too.
 
+A page whose check fails, in any of the checks of the web, writes its whole log into a file of `build/logs/web-checks`, named after the page, such as `the-page-of-the-editor-check-in-the-worker-mode.log`. The error shows the last 20 lines and names that file, so a failure whose cause lies earlier in the log, such as the first failure of a page that restarts its app, can still be read.
+
 ## The wake lock check of the web
 
 A web page keeps the screen on through the Screen Wake Lock API of the browser, which releases the lock whenever the page hides. So `haylen test --target web` then runs this check in a browser:
@@ -739,6 +741,8 @@ Ninja names every compile it starts, such as `Building CXX object`, whether the 
 The jobs of a run hand the SDKs that one of them built to the others through the action `.github/actions/sdk`, as an artifact of the run that nothing outside the run reads and that GitHub deletes after a day, so no SDK builds twice in a run. The `linux-sdk` and `windows-sdk` jobs hand over the desktop SDKs of Linux and Windows, with the player and the content tool, to the jobs that build apps, so no job waits for the SDK of another system. The `web-sdk` job hands over the web SDK to the `web` and `apple` jobs, the `android-sdk` job the Android SDK to the `android` job, and the `macos-sdk` job the desktop SDK of macOS to the `apple` job. The `apple-slices` jobs build the slices of `Haylen.xcframework` side by side, one slice each, with `sdk build --output build/slices/<slice>`, and the `apple` job joins them with `sdk join`, as the [commands](commands.md#sdk-join) describe.
 
 ### The browser of the pages
+
+A `web` job whose checks fail keeps the logs of its failed pages, the folder `build/logs/web-checks`, as an artifact of the job that GitHub deletes after three days.
 
 The `web-sdk`, `web` and `apple` jobs open pages in the headless Chrome of the runner. A runner reads a program from its disk page by page the first time the program runs, and the first start of Chrome there reads about 150 MB in some 1,600 page faults. That start took from under a second to more than 30 seconds, while every start after it answers within a second. So each of these jobs runs the action `.github/actions/browser` right before its first page, which reads the whole browser in one pass of a few seconds. The tooling waits 30 seconds for a browser to listen for its driver, and a browser that ends before it listens fails at once with the last lines of its output.
 
