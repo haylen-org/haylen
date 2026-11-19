@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "content/UpdateScreen.hpp"
@@ -16,6 +17,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/core/ScopedConnection.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
@@ -248,6 +250,35 @@ TEST_F(ContentManagerTest, RefusesToBringAnAssetWithoutRoomForIt) {
     EXPECT_FALSE(loaded);
     EXPECT_NE(failure.find("1024 are free"), std::string::npos) << failure;
     EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json"));
+}
+
+TEST_F(ContentManagerTest, LogsAPrefetchThatFailsWhileNothingAwaitsItAndKeepsTheAppRunning) {
+    run(ship());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+    setPacksStatus(503);
+
+    std::vector<std::string> lines;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level level, std::string_view line) {
+        if (level == core::Log::Level::Warning && line.find("ahead of time") != std::string_view::npos) {
+            lines.emplace_back(line);
+        }
+    });
+    // clang-format on
+    lua_State* L = engine->getLuaState();
+    ASSERT_EQ(luaL_dostring(L, "require('haylen.content').prefetch({'levels/forest.json'})"), LUA_OK) << lua_tostring(L, -1);
+    const bool logged = frameUntil([&lines] { return !lines.empty(); });
+
+    for (int frame = 0; frame < 30; ++frame) {
+        engine->frame(1.0 / 60.0);
+    }
+
+    core::Log::removeListener(listener);
+    ASSERT_TRUE(logged);
+    ASSERT_EQ(lines.size(), 1U);
+    EXPECT_NE(lines.front().find("The asset \"levels/forest.json\" did not reach the device ahead of time: "), std::string::npos) << lines.front();
+    EXPECT_NE(lines.front().find("503"), std::string::npos) << lines.front();
+    EXPECT_EQ(engine->getError(), nullptr) << "A prefetch that nothing awaits never stops the app.";
 }
 
 TEST_F(ContentManagerTest, RejectsAPrefetchWithTheFailureThatDescribesIt) {

@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <string>
 #include <vector>
@@ -11,6 +12,7 @@
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -62,6 +64,18 @@ void ContentLua::reject(lua_State* L, const lua::Promise& promise, const Error& 
     lua::Stack::push(L, std::string(failure.what()));
     lua_setfield(L, -2, "error");
     promise.rejectHandledFailure(L);
+}
+
+std::string ContentLua::describeAssets(const std::string& group, const std::vector<std::string>& paths) {
+    if (!group.empty()) {
+        return std::format("The asset group \"{}\"", group);
+    }
+
+    if (paths.size() == 1) {
+        return std::format("The asset \"{}\"", paths.front());
+    }
+
+    return std::format("The asset \"{}\" and {} more", paths.front(), paths.size() - 1);
 }
 
 void ContentLua::setInteger(lua_State* L, const char* field, std::uint64_t value) {
@@ -211,8 +225,10 @@ int ContentLua::addPackSource(lua_State* L) {
 int ContentLua::prefetch(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     std::vector<std::string> paths;
+    std::string group;
     if (lua_type(L, 1) == LUA_TSTRING) {
-        paths = engine.getAssets().getGroupPaths(lua::Stack::read<std::string_view>(L, 1));
+        group = lua::Stack::read<std::string>(L, 1);
+        paths = engine.getAssets().getGroupPaths(group);
     } else {
         luaL_checktype(L, 1, LUA_TTABLE);
         paths = lua::Stack::read<std::vector<std::string>>(L, 1);
@@ -220,10 +236,12 @@ int ContentLua::prefetch(lua_State* L) {
 
     ContentManager::ProgressCallback onProgress = readProgress(L, 2);
 
+    // An app often prefetches without awaiting, so the log tells of the failure that its promise rejects with as handled.
     const lua::Promise promise(engine);
     // clang-format off
-    engine.getContent().prefetch(paths, std::move(onProgress), [&engine, promise](std::optional<Error> failure) {
+    engine.getContent().prefetch(paths, std::move(onProgress), [&engine, promise, group, paths](std::optional<Error> failure) {
         if (failure) {
+            core::Log::warning("{} did not reach the device ahead of time: {}", describeAssets(group, paths), failure->what());
             reject(engine.getLuaState(), promise, *failure);
             return;
         }

@@ -3,7 +3,9 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <vector>
 
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/content/Error.hpp"
@@ -28,6 +30,9 @@ class ContentLua final {
     static void pushError(lua_State* L, const Error& error);
     static void reject(lua_State* L, const lua::Promise& promise, const Error& failure);
     static void pushProgress(lua_State* L, const ContentManager::Progress& progress);
+
+    // Names the assets of a prefetch that failed, which hold at least one asset, in its log line: the group, the one asset, or the first asset with the count of the others.
+    [[nodiscard]] static std::string describeAssets(const std::string& group, const std::vector<std::string>& paths);
 
     // Sets a field of the table on top of the stack to a count, which Lua keeps as an integer.
     static void setInteger(lua_State* L, const char* field, std::uint64_t value);

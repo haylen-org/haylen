@@ -202,7 +202,7 @@ Brings assets onto the device without loading them, and returns a promise that r
 - The optional `progress` function receives a table with `receivedBytes` and `totalBytes` as bytes arrive.
 - The optional `options` table takes `owner`, which ends the progress function with its owner. Any other key raises `Unknown option "<key>".`.
 
-The assets download as foreground work, ahead of the prefetched content of `haylen.json`. In development they are there in the next frame. The promise rejects with the failure, its message and the table of [`content.error`](#contenterror), such as for a device that is offline, or one without room for the assets and the margin that the store keeps free. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`.
+The assets download as foreground work, ahead of the prefetched content of `haylen.json`. In development they are there in the next frame. The promise rejects with the failure, its message and the table of [`content.error`](#contenterror), such as for a device that is offline, or one without room for the assets and the margin that the store keeps free. That rejection never stops the app, so an app may prefetch without awaiting, and the log tells of every failure once with a warning that names the assets and the reason, such as `The asset group "asia" did not reach the device ahead of time: <reason>`. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`.
 
 ```lua
 local async = require('async')
