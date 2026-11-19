@@ -42,7 +42,7 @@ The viewport of every pass flips the vertical axis, so clip space and the rows o
 
 ## Windows and swapchains
 
-The swapchain takes eight bits a channel without the conversion of sRGB formats, since the engine blends in the values it stores. A window with multisampling draws into a multisampled image that resolves into the swapchain image, and the depth and stencil of the window live in memory that tile GPUs never allocate, since no pass stores them. A swapchain pass that keeps what the pass before it drew keeps that depth, stencil and multisampled color too.
+The swapchain takes eight bits a channel without the conversion of sRGB formats, since the engine blends in the values it stores. A window with multisampling draws into a multisampled image that resolves into the swapchain image, and the depth and stencil of the window live in memory that tile GPUs never allocate, since no pass stores them. A swapchain pass that keeps the contents and directly follows the swapchain pass of the same surface keeps that depth, stencil and multisampled color too, and after any other pass they start anew. An acquire of an image of the swapchain waits for at most a second, and a frame that gets none in that time draws nothing into the window, which a compositor that keeps every image of a hidden window can cause.
 
 | Setting | What the device does |
 | --- | --- |

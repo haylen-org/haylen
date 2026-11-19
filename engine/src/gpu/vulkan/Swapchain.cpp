@@ -276,7 +276,7 @@ void Swapchain::recordScale(VkCommandBuffer commands, std::uint32_t index) const
 }
 
 VkResult Swapchain::acquire(std::size_t frame, std::uint32_t& index) const {
-    return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, UINT64_MAX, acquired[frame], VK_NULL_HANDLE, &index);
+    return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, kAcquireTimeout, acquired[frame], VK_NULL_HANDLE, &index);
 }
 
 VkResult Swapchain::present(std::uint32_t index) const {

@@ -584,6 +584,11 @@ bool Device::acquireSwapchainImage(SurfaceChain& chain) {
         result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
     }
 
+    // A window system that keeps every image, such as the compositor of a hidden window, leaves this frame without an image of the swapchain, and the next frame asks again.
+    if (result == VK_TIMEOUT || result == VK_NOT_READY) {
+        return false;
+    }
+
     if (result == VK_SUBOPTIMAL_KHR) {
         chain.dirty = true;
     } else if (result == VK_ERROR_DEVICE_LOST) {

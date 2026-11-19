@@ -18,6 +18,8 @@ class Context;
 // The swapchain of the surface of a window, with the multisampled color image that resolves into its images when the window draws with several samples and the depth and stencil image of its passes. Those two images last for one pass, so they live in memory that tile GPUs never allocate. A drawable smaller than the images that the surface takes, as when the app caps its pixel density on a window whose surface fixes their size, draws into an image of its own for each image of the swapchain, which the frame scales into the image of the swapchain before it presents it.
 class Swapchain final {
   public:
+    static constexpr std::uint64_t kAcquireTimeout = 1'000'000'000;
+
     struct Settings {
         Surface::Size size;
         int sampleCount = 1;
@@ -41,7 +43,7 @@ class Swapchain final {
     // Makes the swapchain again for the settings once the GPU finished every frame, and gives whether it has images, which a window without pixels lacks.
     bool configure(const Settings& settings);
 
-    // Acquires the next image for the frame in flight, whose semaphore `getAcquired` gives to the submission that waits for it.
+    // Acquires the next image for the frame in flight, whose semaphore `getAcquired` gives to the submission that waits for it. It waits at most `kAcquireTimeout` nanoseconds and gives `VK_TIMEOUT` when the window system kept every image that long.
     [[nodiscard]] VkResult acquire(std::size_t frame, std::uint32_t& index) const;
     [[nodiscard]] VkResult present(std::uint32_t index) const;
 
