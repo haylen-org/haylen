@@ -695,7 +695,7 @@ async function save(path, content) {
 
 One runtime plays one app at a time, and a page holds one runtime, since the runtime keeps its state in the global `Module` of the page. Two players coexist only in two frames or windows of their own, each with its own runtime. A page that names `Module.haylen.storageNamespace` before the runtime loads, such as `project-42`, keeps the user data of its apps in the IndexedDB database `/persistent/project-42`, apart from every other namespace and from pages without one, and the editor deletes the data of a project with `indexedDB.deleteDatabase("/persistent/project-42")` while no runtime uses it. A namespace is 1 to 64 letters, digits, dots, dashes and underscores, and it starts with a letter or a digit.
 
-An editor runs the runtime in the Worker mode, in a dedicated worker that it ends when the code of a project stops answering, or in a frame of its own. A page asks for the Worker mode with `Module.haylen.hosting = "worker"` and loads `haylen-page.js`, the page side of the runtime, instead of the runtime script:
+An editor that must keep answering whatever the code of a project does runs the runtime in the Worker mode, in a dedicated worker that it ends when the code of a project stops answering. A page asks for the Worker mode with `Module.haylen.hosting = "worker"` and loads `haylen-page.js`, the page side of the runtime, instead of the runtime script:
 
 ```html
 <canvas id="canvas"></canvas>
@@ -720,7 +720,7 @@ Everything else stays in the worker: the user data in IndexedDB, the WebSockets 
 
 | Function | Meaning |
 | --- | --- |
-| `Module.haylen.editor.heartbeat()` | The milliseconds since the worker last answered, which grow while code of the app holds the worker, such as a finalizer of Lua that never ends, which runs without the hooks of the [execution budget](../core/lua.md#the-execution-budget). |
+| `Module.haylen.editor.heartbeat()` | The milliseconds since the worker last answered, which grow while code of the app holds the worker, such as code whose [execution budget](../core/lua.md#the-execution-budget) has not run out yet, code outside development, which has no budget, or a native function that runs long. |
 | `Module.haylen.editor.terminate()` | Ends the worker at once, rejects every request that waits with the code `terminated` and releases what the page holds for the runtime: its audio contexts, text fields, videos, outputs and locks. It resolves once the audio contexts closed, and the page then starts a new runtime for the next project. |
 
 A `dispose` ends the worker too, once the user data reached its database. The Worker mode has limits that come from the browser:
@@ -730,7 +730,7 @@ A `dispose` ends the worker too, once the user data reached its database. The Wo
 - A browser opens popups, fullscreen, the pointer lock and the windows of outputs only shortly after an input of the person, so the request of the app reaches the page while that input still counts.
 - The worker needs the animation frames of workers and the `OffscreenCanvas` of WebGPU or WebGL2. Chromium and Safari offer both. A browser without the animation frames of workers reports the reason to `onError` instead of starting.
 
-A frame of the same origin shares the thread of the editor, so code of the app that never ends in a frame would freeze the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops such code after `debug.executionBudget`, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. A frame of another site, such as a sandbox on a domain of its own, runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, and the editor talks to it with `postMessage`. The Worker mode keeps the editor answering without such a site, since the worker runs on a thread of its own in every browser.
+A runtime on the page, or in a frame of the same origin, shares the thread of the editor, so code of the app that holds that thread freezes the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops Lua code that runs longer than `debug.executionBudget`, finalizers included, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. Those bounds stop the app, but only after its time ran out, and nothing bounds code outside development. So an editor that needs isolation uses the Worker mode, whose worker runs on a thread of its own in every browser and which `terminate()` ends at once. A frame of another site, such as a sandbox on a domain of its own, also runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, but not in every browser, and the editor then talks to it with `postMessage`.
 
 ## Android
 

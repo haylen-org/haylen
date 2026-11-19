@@ -83,6 +83,9 @@ class ExecutionBudget final {
     // Replaces `xpcall` with one whose message handler of the app no longer runs once the budget ran out. Lua calls a message handler with the hooks off when the error rises inside a hook, so a handler that never ends would otherwise escape the budget.
     static void guardMessageHandlers(lua_State* L);
 
+    // Replaces `setmetatable` and `debug.setmetatable` with versions that wrap the `__gc` function of the metatable they set in a function that runs it in a coroutine of its own. Lua turns the hooks of a thread off while it runs a finalizer, and a new coroutine starts with them on, so the budget stops a finalizer that never ends like any other code.
+    static void guardFinalizers(lua_State* L);
+
   private:
     using Clock = std::chrono::steady_clock;
 
@@ -93,6 +96,9 @@ class ExecutionBudget final {
     static int callGuarded(lua_State* L);
     static int finishGuarded(lua_State* L, int status, lua_KContext context);
     static int handleGuarded(lua_State* L);
+    static void guardMetatableFunction(lua_State* L, int table, const char* name);
+    static int setGuardedMetatable(lua_State* L);
+    static int runFinalizer(lua_State* L);
     static void* allocate(void* data, void* block, std::size_t oldSize, std::size_t newSize);
     void exhaust(lua_State* L, const std::string& reason, lua::Error::Code code);
     [[nodiscard]] std::string readCurrentStage() const;

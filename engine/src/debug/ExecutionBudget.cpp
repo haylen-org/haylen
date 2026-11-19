@@ -234,6 +234,73 @@ int ExecutionBudget::handleGuarded(lua_State* L) {
     return 1;
 }
 
+void ExecutionBudget::guardFinalizers(lua_State* L) {
+    lua_pushglobaltable(L);
+    guardMetatableFunction(L, -1, "setmetatable");
+    lua_getglobal(L, "debug");
+    guardMetatableFunction(L, -1, "setmetatable");
+    lua_pop(L, 2);
+}
+
+// Replaces the function of the table at index with a guarded one that holds it as its upvalue.
+void ExecutionBudget::guardMetatableFunction(lua_State* L, int table, const char* name) {
+    const int library = lua_absindex(L, table);
+    lua_getfield(L, library, name);
+    lua_pushcclosure(L, &setGuardedMetatable, 1);
+    lua_setfield(L, library, name);
+}
+
+// Sets the metatable with the original function, held as the upvalue, and then wraps the finalizer that the metatable holds, so a metatable that the original refuses stays as it was. A finalizer wrapped before stays as it is.
+int ExecutionBudget::setGuardedMetatable(lua_State* L) {
+    const int arguments = lua_gettop(L);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    for (int index = 1; index <= arguments; ++index) {
+        lua_pushvalue(L, index);
+    }
+
+    lua_call(L, arguments, 1);
+
+    if (!lua_istable(L, 2)) {
+        return 1;
+    }
+
+    lua_pushliteral(L, "__gc");
+    lua_rawget(L, 2);
+    const bool wrapped = lua_tocfunction(L, -1) == &runFinalizer;
+    if (!lua_isfunction(L, -1) || wrapped) {
+        lua_pop(L, 1);
+        return 1;
+    }
+
+    lua_pushcclosure(L, &runFinalizer, 1);
+    lua_pushliteral(L, "__gc");
+    lua_insert(L, -2);
+    lua_rawset(L, 2);
+    return 1;
+}
+
+// Runs the finalizer of the app, held as the upvalue, in a new coroutine, which takes the hooks of the thread that collects. An error of the finalizer, also the one of a budget that ran out, goes on to Lua, which reports it as a warning of the finalizer.
+int ExecutionBudget::runFinalizer(lua_State* L) {
+    lua_State* thread = lua_newthread(L);
+    lua_pushvalue(L, lua_upvalueindex(1));
+    lua_pushvalue(L, 1);
+    lua_xmove(L, thread, 2);
+
+    int results = 0;
+    const int status = lua_resume(thread, L, 1, &results);
+    if (status == LUA_OK) {
+        return 0;
+    }
+
+    if (status == LUA_YIELD) {
+        return luaL_error(L, "A finalizer cannot yield, since Lua runs it while it collects garbage.");
+    }
+
+    lua_closethread(thread, L);
+    lua_xmove(thread, L, 1);
+    return lua_error(L);
+}
+
 std::string ExecutionBudget::readCurrentStage() const {
     std::string stage = readStage ? std::string(readStage()) : std::string();
     return stage.empty() ? std::string(entryStage) : stage;

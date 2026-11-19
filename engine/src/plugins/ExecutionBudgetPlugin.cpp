@@ -51,6 +51,7 @@ void ExecutionBudgetPlugin::installLua(core::Engine& engine, lua_State* L) {
     session->getExecutionBudget().attach(L, {.time = debug.executionBudget, .memory = debug.memoryBudget}, cancel, stage);
 
     debug::ExecutionBudget::guardMessageHandlers(L);
+    debug::ExecutionBudget::guardFinalizers(L);
     lua_getglobal(L, "debug");
     lua_pushcfunction(L, &refuseHook);
     lua_setfield(L, -2, "sethook");

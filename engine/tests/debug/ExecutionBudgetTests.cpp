@@ -98,6 +98,37 @@ TEST_F(ExecutionBudgetTest, CannotBeCaughtByProtectedCallsOrCoroutines) {
     }
 }
 
+// Lua runs a finalizer with the hooks of its thread off, so the budget runs it in a coroutine of its own, whatever set the metatable and whatever triggers the collection.
+TEST_F(ExecutionBudgetTest, CancelsAFinalizerThatNeverEnds) {
+    const std::vector<std::string> attempts{
+        "setmetatable({}, {__gc = function() while true do end end}) collectgarbage()",
+        "debug.setmetatable({}, {__gc = function() while true do end end}) collectgarbage()",
+        "local finalizer = {__gc = function() local count = 0 while true do count = count + 1 end end} for index = 1, 100000 do setmetatable({}, finalizer) end",
+    };
+    for (const std::string& attempt : attempts) {
+        SCOPED_TRACE(attempt);
+        start("require('haylen.scene').push({update = function() " + attempt + " end})");
+        runUntilCancelled();
+        EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+        EXPECT_EQ(error().getCallback(), "update");
+        EXPECT_EQ(error().getFile(), "source/main.lua");
+    }
+}
+
+// The guarded finalizer runs the one of the app with its object, keeps a finalizer that is no function, and reports an error of the finalizer as Lua does.
+TEST_F(ExecutionBudgetTest, KeepsWhatFinalizersDo) {
+    start("");
+    EXPECT_EQ(fixture->lua("local finalizer = {__gc = function(object) collected = (collected or '') .. object.name end} setmetatable({name = 'first'}, finalizer) setmetatable({name = 'second'}, finalizer) collectgarbage() collectgarbage() return collected"), "secondfirst");
+    EXPECT_EQ(fixture->lua("local marker = {__gc = true} setmetatable({}, marker) return tostring(marker.__gc)"), "true");
+
+    std::vector<std::string> lines;
+    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level, std::string_view line) { lines.emplace_back(line); });
+    fixture->lua("setmetatable({}, {__gc = function() error('broken finalizer') end}) collectgarbage()");
+    core::Log::removeListener(listener);
+    EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("broken finalizer") != std::string::npos; })) << ::testing::PrintToString(lines);
+    EXPECT_FALSE(fixture->engine().isCancelled());
+}
+
 TEST_F(ExecutionBudgetTest, NamesTheStepThatRanTooLong) {
     const std::vector<std::pair<std::string, std::string>> cases{
         {"while true do end", "start"}, {"require('looping')", "start"}, {"require('haylen.timer').after(0, function() while true do end end)", "update"}, {"require('haylen.scene').push({fixedUpdate = function() while true do end end})", "fixedUpdate"}, {"require('haylen.scene').push({render = function() while true do end end})", "render"}, {"local events = require('haylen.events') events.on('ping', function() while true do end end) require('haylen.timer').after(0, function() events.emit('ping') end)", "update"}, {"local async = require('async') async.spawn(function() async.sleep(0):await() while true do end end)", "scripts"}, {"require('haylen.scene').push({update = function() require('haylen.debug').profile('findPath', function() while true do end end) end})", "update"},

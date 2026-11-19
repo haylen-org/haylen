@@ -69,7 +69,7 @@ class WebChecks:
         "reaches the module of its dependency",
         "kept the newest events before the app started",
     ]
-    # The editor check: a page of the web player of the web SDK in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, keeps the budget of the project, stops code that never ends through the execution budget, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page.
+    # The editor check: a page of the web player of the web SDK in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, keeps the budget of the project, stops code and a finalizer that never end through the execution budget, pauses and resumes the app, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page.
     EDITOR_PAGE = "editor-check.html"
     EDITOR_STEPS = [
         "ready",
@@ -80,6 +80,8 @@ class WebChecks:
         "applied atomically",
         "kept the project budget",
         "stopped endless code",
+        "stopped an endless finalizer",
+        "paused and resumed",
         "inspected",
         "ran again in place",
         "stopped early",
@@ -103,6 +105,8 @@ class WebChecks:
         "applied atomically",
         "kept the project budget",
         "stopped endless code",
+        "stopped an endless finalizer",
+        "paused and resumed",
         "inspected",
         "ran again in place",
         "stopped early",

@@ -347,8 +347,8 @@ A website edits and runs projects through the [editor contract](build.md#the-edi
 4. It saves a valid module and then a module with a syntax error, which the answer of `applyChanges` rejects with an error record of the code `syntax`, the phase `reload`, the file and the line. Saving the text that runs again restores the module, and the app resumes.
 5. A batch whose remove finds no file fails with `missingFile` and a path outside the package with `invalidPath`, and neither makes a revision.
 6. A file larger than the budget of the project and a batch of more files than it allows fail with `projectBudget`, and bytes that are not a zip archive fail `loadZip` with `package`.
-7. An update that never ends, inside a `pcall` that catches every error, stops through the execution budget with the code `executionBudget` and the callback `update`, while the page goes on answering.
-8. The editor inspects the globals of the app, runs it again in place four times while its looping sound opens the audio output, and stops it while the output may still open.
+7. An update that never ends, inside a `pcall` that catches every error, stops through the execution budget with the code `executionBudget` and the callback `update`, while the page goes on answering. So does an update whose finalizer never ends.
+8. The editor pauses the app, whose console line then waits for the `resume`, and inspects the globals of the app, runs it again in place four times while its looping sound opens the audio output, and stops it while the output may still open.
 9. The editor disposes of the runtime, and a later request fails with `disposed`. The page must log no error of its own during the whole check, such as one of the audio output.
 
 The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on a page whose address asks for it with `hosting=worker` and with the mode `worker` of the driver. There `hello` reports `workerHosting`, and more parts run:
@@ -359,7 +359,7 @@ The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on
 4. A project shows a button of the UI, and the check activates the element of the button in the mirror of screen readers on the page, which the app hears as a click.
 5. The page creates the context of a plugin whose web module answers a method, opens a screen and pushes a video stream and an audio stream, and a project of the plugin calls the method, opens the screen and shows the stream, whose frames reach the app.
 6. A project plays the clip of `engine/tests/data/video`, which the driver hands the page, and the app sees its pictures.
-7. After the dispose, the page loads again and runs a project whose finalizer never ends, which the execution budget cannot stop. The heartbeat of the worker falls silent while the page goes on answering, and `terminate()` ends the worker, rejects the request that waited with `terminated` and makes every later request fail with `terminated`.
+7. After the dispose, the page loads again and runs a project whose update never ends under an execution budget of ten minutes, longer than the check waits. The heartbeat of the worker falls silent while the page goes on answering, and `terminate()` ends the worker, rejects the request that waited with `terminated` and makes every later request fail with `terminated`.
 8. The page loads a third time with `hold=1` in its address, so `Module.preRun` holds the start of the worker with a dependency of `Module.addRunDependency`. The editor calls `terminate()` before the worker exists, which rejects the request that waited with `terminated`, and once the check releases the dependency no worker starts and the canvas stays with the page.
 
 ## The memory check of the web
