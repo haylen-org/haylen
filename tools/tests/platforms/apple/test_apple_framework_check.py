@@ -61,6 +61,12 @@ _haylen_draw T 0 10
         with pytest.raises(BuildFailed, match=re.escape('The engine links "MetalKit.framework", "Umbrella.framework" on the slice of the SDK "iphoneos"')):
             check.check(tmp_path / "libhaylen.a", "iphoneos", ("Metal.framework", "MetalKit.framework", "Umbrella.framework"))
 
+    def test_the_frameworks_of_mac_catalyst_come_from_the_ios_support_of_the_sdk_of_macos(self, check, tmp_path):
+        folder = tmp_path / "iPhoneOS.sdk" / "System" / "iOSSupport" / "System" / "Library" / "Frameworks" / "Touch.framework"
+        folder.mkdir(parents=True)
+        (folder / "Touch.tbd").write_text(AppleFrameworkCheckTest.STUB.format(name="Touch", symbols="_haylen_touch_unused, _MTLCreateSystemDefaultDevice", classes=""), encoding="utf-8")
+        check.check(tmp_path / "libhaylen.a", "macosx", ("Touch.framework",))
+
     def test_a_stub_gives_only_what_it_exports_itself(self):
         symbols = AppleFrameworkCheck.symbols(AppleFrameworkCheckTest.STUB.format(name="Kit", symbols="_KitStart, _KitStop", classes="KitView"))
         assert symbols == {"_KitStart", "_KitStop", "_OBJC_CLASS_$_KitView", "_OBJC_METACLASS_$_KitView"}

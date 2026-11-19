@@ -13,6 +13,7 @@ class AppleFrameworkCheck:
     SECTIONS = re.compile(r"^(exports|reexports|undefineds):", re.MULTILINE)
     SYMBOL_LISTS = re.compile(r"\b(symbols|weak-symbols|thread-local-symbols|objc-classes|objc-eh-types|objc-ivars):\s*\[([^\]]*)\]")
     CLASS_PREFIXES = ("_OBJC_CLASS_$_", "_OBJC_METACLASS_$_")
+    FRAMEWORK_FOLDERS = (("System", "Library", "Frameworks"), ("System", "iOSSupport", "System", "Library", "Frameworks"))
     IVAR_PREFIX = "_OBJC_IVAR_$_"
     EH_TYPE_PREFIX = "_OBJC_EHTYPE_$_"
 
@@ -43,12 +44,14 @@ class AppleFrameworkCheck:
 
     @staticmethod
     def exports(root: Path, framework: str) -> set[str]:
-        """The symbols that the stub of a framework of the SDK exports itself, without the frameworks that it re-exports, or nothing for a framework that the SDK lacks."""
+        """The symbols that the stubs of a framework of the SDK export themselves, without the frameworks that they re-export, or nothing for a framework that the SDK lacks. The SDK of macOS holds the frameworks of UIKit that Mac Catalyst links under `System/iOSSupport`, so the stubs of both folders count."""
         name = framework.removesuffix(".framework")
-        stub = root / "System" / "Library" / "Frameworks" / f"{name}.framework" / f"{name}.tbd"
-        if not stub.is_file():
-            return set()
-        return AppleFrameworkCheck.symbols(stub.read_text(encoding="utf-8"))
+        exported: set[str] = set()
+        for folder in AppleFrameworkCheck.FRAMEWORK_FOLDERS:
+            stub = root.joinpath(*folder) / f"{name}.framework" / f"{name}.tbd"
+            if stub.is_file():
+                exported |= AppleFrameworkCheck.symbols(stub.read_text(encoding="utf-8"))
+        return exported
 
     @staticmethod
     def symbols(stub: str) -> set[str]:
