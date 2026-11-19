@@ -209,9 +209,10 @@ bool Swapchain::configure(const Settings& settings) {
     }
 
     std::uint32_t count = 0;
-    vk.vkGetSwapchainImagesKHR(context->getDevice(), handle, &count, nullptr);
+    Context::check(vk.vkGetSwapchainImagesKHR(context->getDevice(), handle, &count, nullptr), "read the images of the swapchain");
     std::vector<VkImage> made(count);
-    vk.vkGetSwapchainImagesKHR(context->getDevice(), handle, &count, made.data());
+    Context::check(vk.vkGetSwapchainImagesKHR(context->getDevice(), handle, &count, made.data()), "read the images of the swapchain");
+
     images.resize(count);
     const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     for (std::uint32_t index = 0; index < count; ++index) {
