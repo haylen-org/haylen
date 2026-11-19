@@ -1489,7 +1489,7 @@ Module.haylen = Module.haylen || {};
         status.addEventListener("change", follow);
         follow();
     };
-    followScreensPermission();
+    followScreensPermission().catch((error) => console.warn("The browser did not tell whether the page may see every screen: " + error.message));
 
     // The outputs of the app on other screens, each a window of the browser that `window.open` places on its screen through the Window Management API, with a canvas that fills the window and that the WebGPU device presents into. A browser opens such a window only shortly after a click or a key of the person, so the app opens an output from a button, and a window that the browser blocks ends the output with the reason. The window covers the work area of its screen when the output asks for fullscreen, since a page cannot make another window fullscreen without a gesture inside it. The endings are those of `platform::Output::Ending`, in its order.
     const outputEndings = { person: 1, disconnected: 2, unsupported: 3 };
