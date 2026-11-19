@@ -556,7 +556,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch'
     name: Apple UI tests
     needs: apple-slices
-    runs-on: macos-latest
+    runs-on: xcode-27
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
