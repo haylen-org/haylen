@@ -16,7 +16,10 @@ class Monitor final {
     // Returns the value of this frame, or nothing to skip the frame, such as when the Lua function behind the monitor went away with its owner.
     using Sampler = std::function<std::optional<double>()>;
 
-    Monitor(std::string monitorName, Sampler source, std::size_t historySize = 240);
+    // The values that the history keeps by default, the newest ones.
+    static constexpr std::size_t kHistoryValues = 240;
+
+    Monitor(std::string monitorName, Sampler source, std::size_t historySize = kHistoryValues);
 
     void sample();
 

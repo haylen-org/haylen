@@ -23,7 +23,9 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "haylen/debug/Monitor.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
+#include "haylen/debug/Profiler.hpp"
 #include "haylen/debug/Stats.hpp"
 #include "haylen/debug/TrackedCount.hpp"
 #include "haylen/debug/TrackedObject.hpp"
@@ -516,14 +518,14 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
 }
 
-// The statistics window reads what it shows into storage it keeps, so frames that show the same rows with every section open allocate no more than frames without the window.
+// The statistics window reads what it shows into storage it keeps, so frames that show the same rows with every section open allocate no more than frames without the window. The plots of the frames and the monitors draw one more point each frame until their histories are full, so the frames that repeat come after that.
 TEST(StatsTest, DrawsTheOverlayWithoutAllocating) {
     std::vector<std::string> entries;
     test::EngineFixture fixture;
     plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
     // clang-format off
     const auto measure = [&fixture] {
-        fixture.frames(5, 1.0 / 240.0);
+        fixture.frames(static_cast<int>(std::max(Profiler::kHistoryFrames, Monitor::kHistoryValues)), 1.0 / 240.0);
         const test::AllocationTracker tracker;
         fixture.frames(10, 1.0 / 240.0);
         return tracker.getTotal();

@@ -19,7 +19,10 @@ class Profiler final {
     // Returns the current time in seconds. Without one, the profiler reads the steady clock.
     using Clock = std::function<double()>;
 
-    explicit Profiler(std::size_t historySize = 240, Clock source = {});
+    // The frames that the history keeps by default, the newest ones.
+    static constexpr std::size_t kHistoryFrames = 240;
+
+    explicit Profiler(std::size_t historySize = kHistoryFrames, Clock source = {});
 
     // Starts a frame that the display showed `shownSeconds` after the one before, where zero records no interval, such as for the first frame.
     void beginFrame(double shownSeconds);
