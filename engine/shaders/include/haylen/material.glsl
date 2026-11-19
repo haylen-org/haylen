@@ -398,11 +398,12 @@ vec2 haylen_texture_size() {
     return vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
 }
 
-#if !defined(HAYLEN_MESH) && !defined(HAYLEN_SHAPE)
-// The texels of the source rectangle that points move inside, which every lookup of a pixel shares, so each pixel works them out once.
-vec4 haylen_inside_bounds = vec4(0.0);
-bool haylen_inside_known = false;
-#endif
+// The texels of the source rectangle of the draw, half a texel in from its sides, as the smallest corner in `xy` and the largest in `zw`.
+vec4 haylen_source_texels() {
+    vec2 margin = 0.5 / haylen_texture_size();
+    vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;
+    return vec4(min(haylen_source.xy + margin, middle), max(haylen_source.zw - margin, middle));
+}
 
 // Moves a point inside the texels of the source rectangle of the draw, so filtering never reads the texels around it, such as the neighbours of a region of an atlas or the borders of a stretched nine-slice center. Meshes keep their texture coordinates, and shapes keep theirs inside the texture, so the fade past their edge never wraps around a repeating texture.
 vec2 haylen_inside(vec2 point) {
@@ -411,13 +412,8 @@ vec2 haylen_inside(vec2 point) {
 #elif defined(HAYLEN_SHAPE)
     return clamp(point, 0.0, 1.0);
 #else
-    if (!haylen_inside_known) {
-        vec2 margin = 0.5 / haylen_texture_size();
-        vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;
-        haylen_inside_bounds = vec4(min(haylen_source.xy + margin, middle), max(haylen_source.zw - margin, middle));
-        haylen_inside_known = true;
-    }
-    return clamp(point, haylen_inside_bounds.xy, haylen_inside_bounds.zw);
+    vec4 texels = haylen_source_texels();
+    return clamp(point, texels.xy, texels.zw);
 #endif
 }
 
@@ -436,23 +432,37 @@ vec4 haylen_sprite(vec2 point) {
 #endif
 }
 
+// The distance field of the glyph at a point, moved inside the texels of the source of the glyph. Glyphs join the atlas of the text programs while the app runs, so the atlas has a single level, which the lookups of a glyph read without the slopes that would pick one. The other programs read their texture like any lookup, and pass no texels.
+float haylen_text_field(vec2 point, vec4 texels) {
+#ifdef HAYLEN_TEXT
+    return textureLod(sampler2D(sprite_texture, sprite_sampler), clamp(point, texels.xy, texels.zw), 0.0).r;
+#else
+    return haylen_texture(haylen_inside(point)).r;
+#endif
+}
+
 // How much the distance of the field changes across one pixel of the screen, as `fwidth` measures it, taken from the field half a pixel to each side of the point. The point moves linearly across the quad, so its derivatives give the same pixel on GPUs that take derivatives once for each block of four pixels and on those that take them for each pixel, while the derivatives of the distance itself would differ between them.
-float haylen_text_smoothing(vec2 point) {
+float haylen_text_smoothing(vec2 point, vec4 texels) {
     vec2 across = 0.5 * dFdx(point);
     vec2 down = 0.5 * dFdy(point);
-    float horizontal = haylen_texture(haylen_inside(point + across)).r - haylen_texture(haylen_inside(point - across)).r;
-    float vertical = haylen_texture(haylen_inside(point + down)).r - haylen_texture(haylen_inside(point - down)).r;
+    float horizontal = haylen_text_field(point + across, texels) - haylen_text_field(point - across, texels);
+    float vertical = haylen_text_field(point + down, texels) - haylen_text_field(point - down, texels);
     return abs(horizontal) + abs(vertical);
 }
 
 // A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. A synthetic bold spreads the glyph along its baseline by a share of its quad to each side, the union of the glyph moved left and moved right, so its strokes widen while the gaps above and below them, such as the one between the dot of an i and its stem, stay as open as the font draws them. The softness widens the edge into a blur for soft shadows and glows. With the smoothing of the edge on screen the outline and the softness shrink together to stop a sixteenth of the field short of 0, which the border of the quad of the glyph reaches, so a glyph never shows its quad at any size. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
 vec4 haylen_text(vec2 point) {
-    float distance = haylen_texture(haylen_inside(point)).r;
+#ifdef HAYLEN_TEXT
+    vec4 texels = haylen_source_texels();
+#else
+    vec4 texels = vec4(0.0);
+#endif
+    float distance = haylen_text_field(point, texels);
     if (haylen_text_style.y > 0.0) {
         vec2 spread = vec2(haylen_text_style.y * (haylen_source.z - haylen_source.x), 0.0);
-        distance = max(haylen_texture(haylen_inside(point - spread)).r, haylen_texture(haylen_inside(point + spread)).r);
+        distance = max(haylen_text_field(point - spread, texels), haylen_text_field(point + spread, texels));
     }
-    float smoothing = max(haylen_text_smoothing(point) * 0.7, 0.0001);
+    float smoothing = max(haylen_text_smoothing(point, texels) * 0.7, 0.0001);
     float reach = haylen_text_style.x + haylen_text_style.z;
     float room = max(0.4375 - smoothing, 0.0);
     float fit = reach > room ? room / reach : 1.0;
