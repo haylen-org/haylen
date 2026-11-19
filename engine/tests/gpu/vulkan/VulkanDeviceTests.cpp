@@ -50,8 +50,7 @@ class VulkanDeviceTest : public ::testing::Test {
             device->commit();
         }
 
-        ADD_FAILURE() << "The copy of the render target did not finish.";
-        return {};
+        throw std::runtime_error("The copy of the render target did not finish.");
     }
 
     void clear(gpu::Device::Image image, math::Color color, gpu::Device::Image resolve = {}) {

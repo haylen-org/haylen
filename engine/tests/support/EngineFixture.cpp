@@ -73,6 +73,15 @@ void EngineFixture::launch(std::unique_ptr<core::Application> application) {
     runningEngine->start();
 }
 
+platform::DevelopmentSession& EngineFixture::developmentSession() {
+    platform::DevelopmentSession* session = headlessHost.getDevelopmentSession();
+    if (session == nullptr) {
+        throw std::logic_error("The fixture runs outside development, so it has no development session. Give it the option \"development\".");
+    }
+
+    return *session;
+}
+
 void EngineFixture::restart() {
     stop();
     launch(nullptr);

@@ -29,14 +29,22 @@ class JobSystemTest : public ::testing::Test {
         std::atomic<bool> open{false};
     };
 
+    // A worker that the gate holds leaves at this bound even when the test never opens the gate, so a test that fails early never hangs on its workers.
+    static constexpr std::chrono::seconds kGateBound{10};
+
     static void occupyWorkers(JobSystem& jobs, Gate& gate) {
         for (std::size_t worker = 0; worker < jobs.getWorkerCount(); ++worker) {
             // clang-format off
             jobs.post([&gate] {
                 ++gate.started;
 
-                while (!gate.open) {
+                const auto deadline = std::chrono::steady_clock::now() + kGateBound;
+                while (!gate.open && std::chrono::steady_clock::now() < deadline) {
                     std::this_thread::yield();
+                }
+
+                if (!gate.open) {
+                    ADD_FAILURE() << "The gate held a worker for longer than its bound.";
                 }
 
                 ++gate.left;
@@ -54,7 +62,7 @@ TEST_F(JobSystemTest, RunDeliversValuesOnTheFrameThread) {
     std::atomic<bool> done{false};
     // clang-format off
     jobs.run([] { return 21 * 2; }, [&](JobSystem::Result<int> result) {
-        EXPECT_TRUE(result.isOk());
+        ASSERT_TRUE(result.isOk());
         EXPECT_EQ(*result.value, 42);
         EXPECT_EQ(std::this_thread::get_id(), frameThread);
         done = true;

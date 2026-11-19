@@ -53,7 +53,7 @@ class ObjectCounterTest : public ::testing::Test {
             }
         }
 
-        return {};
+        throw std::runtime_error("The device has no pool \"" + std::string(name) + "\".");
     }
 };
 

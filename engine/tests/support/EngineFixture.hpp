@@ -53,6 +53,9 @@ class EngineFixture final {
         return runningEngine->getLuaState();
     }
 
+    // The development session of the host, which only a fixture in development has, and which throws for a fixture that runs outside development.
+    [[nodiscard]] platform::DevelopmentSession& developmentSession();
+
     // Replaces the engine with a new one that runs the package on the same host with a Lua application, the way the runtime restarts an app, so what the host keeps outlives the app.
     void restart();
 

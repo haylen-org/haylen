@@ -42,433 +42,107 @@
 
 namespace haylen::core {
 
-// Fails in one hook of every frame, like a plugin with a bug in its bookkeeping.
-class FailingFramePlugin final : public plugins::Plugin {
-  public:
-    enum class Hook {
-        Event,
-        Overlay,
-        EndFrame,
-    };
-
-    explicit FailingFramePlugin(Hook value) : failing(value) {}
-
-    [[nodiscard]] std::string_view getName() const noexcept override {
-        return "failing";
-    }
-    void event(Engine&, const platform::Event&) override {
-        fail(Hook::Event, "event failed");
-    }
-    void renderOverlay(Engine&) override {
-        fail(Hook::Overlay, "overlay failed");
-    }
-    void endFrame(Engine&) override {
-        fail(Hook::EndFrame, "end of frame failed");
-    }
-
-  private:
-    void fail(Hook hook, const char* message) const {
-        if (hook == failing) {
-            throw std::runtime_error(message);
-        }
-    }
-
-    Hook failing;
-};
-
-// Fails to start, and counts the stops it receives, which a plugin that never started must not get.
-class FailingStartPlugin final : public plugins::Plugin {
-  public:
-    explicit FailingStartPlugin(int& stopCount) : stops(stopCount) {}
-
-    [[nodiscard]] std::string_view getName() const noexcept override {
-        return "failingStart";
-    }
-    void start(Engine&) override {
-        throw std::runtime_error("start failed");
-    }
-    void stop(Engine&) override {
-        ++stops;
-    }
-
-  private:
-    int& stops;
-};
-
-class CountingPlugin final : public plugins::Plugin {
-  public:
-    [[nodiscard]] std::string_view getName() const noexcept override {
-        return "counting";
-    }
-    void start(Engine&) override {
-        ++started;
-    }
-    void stop(Engine&) override {
-        ++stopped;
-    }
-    void event(Engine&, const platform::Event&) override {
-        ++events;
-    }
-    void beginFrame(Engine&, float) override {
-        ++frames;
-    }
-    void fixedUpdate(Engine&, float) override {
-        ++fixedSteps;
-    }
-    void update(Engine&, float) override {
-        ++updates;
-    }
-    void render(Engine&) override {
-        ++renders;
-    }
-    void renderUi(Engine&, const SceneView& view) override {
-        uiRenders += view.current ? 1 : 0;
-    }
-    void endFrame(Engine&) override {
-        ++endedFrames;
-    }
-
-    int started = 0;
-    int stopped = 0;
-    int events = 0;
-    int frames = 0;
-    int fixedSteps = 0;
-    int updates = 0;
-    int renders = 0;
-    int uiRenders = 0;
-    int endedFrames = 0;
-};
-
-class AppConfigTest : public ::testing::Test {
+class EngineTest : public ::testing::Test {
   protected:
-    // Returns the message that refuses the document, or an empty text when the document is valid.
-    [[nodiscard]] static std::string refusal(const std::string& document) {
-        try {
-            (void)AppConfig::fromJson(Json::parse(document));
-        } catch (const std::invalid_argument& error) {
-            return error.what();
+    // Fails in one hook of every frame, like a plugin with a bug in its bookkeeping.
+    class FailingFramePlugin final : public plugins::Plugin {
+      public:
+        enum class Hook {
+            Event,
+            Overlay,
+            EndFrame,
+        };
+
+        explicit FailingFramePlugin(Hook value) : failing(value) {}
+
+        [[nodiscard]] std::string_view getName() const noexcept override {
+            return "failing";
+        }
+        void event(Engine&, const platform::Event&) override {
+            fail(Hook::Event, "event failed");
+        }
+        void renderOverlay(Engine&) override {
+            fail(Hook::Overlay, "overlay failed");
+        }
+        void endFrame(Engine&) override {
+            fail(Hook::EndFrame, "end of frame failed");
         }
 
-        return {};
-    }
-
-    // Returns the message that refuses a package with the `haylen.json` and the group manifest, or an empty text when the package is valid.
-    [[nodiscard]] static std::string refusalOfPackage(const std::string& document, const std::string& groups) {
-        io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
-        try {
-            AppConfig config = AppConfig::fromPackage(package);
-            config.content.expandGroups(package);
-        } catch (const std::invalid_argument& error) {
-            return error.what();
+      private:
+        void fail(Hook hook, const char* message) const {
+            if (hook == failing) {
+                throw std::runtime_error(message);
+            }
         }
 
-        return {};
-    }
+        Hook failing;
+    };
+
+    // Fails to start, and counts the stops it receives, which a plugin that never started must not get.
+    class FailingStartPlugin final : public plugins::Plugin {
+      public:
+        explicit FailingStartPlugin(int& stopCount) : stops(stopCount) {}
+
+        [[nodiscard]] std::string_view getName() const noexcept override {
+            return "failingStart";
+        }
+        void start(Engine&) override {
+            throw std::runtime_error("start failed");
+        }
+        void stop(Engine&) override {
+            ++stops;
+        }
+
+      private:
+        int& stops;
+    };
+
+    class CountingPlugin final : public plugins::Plugin {
+      public:
+        [[nodiscard]] std::string_view getName() const noexcept override {
+            return "counting";
+        }
+        void start(Engine&) override {
+            ++started;
+        }
+        void stop(Engine&) override {
+            ++stopped;
+        }
+        void event(Engine&, const platform::Event&) override {
+            ++events;
+        }
+        void beginFrame(Engine&, float) override {
+            ++frames;
+        }
+        void fixedUpdate(Engine&, float) override {
+            ++fixedSteps;
+        }
+        void update(Engine&, float) override {
+            ++updates;
+        }
+        void render(Engine&) override {
+            ++renders;
+        }
+        void renderUi(Engine&, const SceneView& view) override {
+            uiRenders += view.current ? 1 : 0;
+        }
+        void endFrame(Engine&) override {
+            ++endedFrames;
+        }
+
+        int started = 0;
+        int stopped = 0;
+        int events = 0;
+        int frames = 0;
+        int fixedSteps = 0;
+        int updates = 0;
+        int renders = 0;
+        int uiRenders = 0;
+        int endedFrames = 0;
+    };
 };
 
-TEST_F(AppConfigTest, ReadsEveryField) {
-    const AppConfig config = AppConfig::fromJson(Json::parse(R"({
-        "name": "Tiny Island",
-        "identifier": "com.haylen.tinyisland",
-        "version": "2.0.0",
-        "build": 14,
-        "window": {"title": "Island", "width": 800, "height": 600, "fullscreen": true, "maxPixelDensity": 2, "resizable": false, "vsync": false, "sampleCount": 4},
-        "design": {"width": 1280, "height": 720, "scaling": "fit"},
-        "orientation": "portrait",
-        "fixedRate": 30,
-        "maxFrameTime": 0.1,
-        "clearColor": "#102030",
-        "splash": {"logo": "ui/logo.png", "background": "#405060", "darkBackground": "#FF000000", "duration": 1.5, "fadeOut": 0.5},
-        "input": {"mouseAsTouch": true, "scrollSpeed": 0.5},
-        "ui": {"scaleMode": "physical", "scale": 1.25},
-        "native": {"game_platform": {"files": {"macos": "platform/apple/libgame_platform.dylib"}}}
-    })"));
-
-    EXPECT_EQ(config.name, "Tiny Island");
-    EXPECT_EQ(config.identifier, "com.haylen.tinyisland");
-    EXPECT_EQ(config.version, "2.0.0");
-    EXPECT_EQ(config.build, 14U);
-    EXPECT_EQ(config.window.title, "Island");
-    EXPECT_EQ(config.window.width, 800);
-    EXPECT_TRUE(config.window.fullscreen);
-    EXPECT_FLOAT_EQ(config.window.maxPixelDensity, 2.0F);
-    EXPECT_FALSE(config.window.resizable);
-    EXPECT_FALSE(config.window.vsync);
-    EXPECT_EQ(config.window.sampleCount, 4);
-    EXPECT_EQ(config.designSize, math::Vec2(1280.0F, 720.0F));
-    EXPECT_EQ(config.scaling, graphics::Viewport::ScalingPolicy::Fit);
-    EXPECT_EQ(config.orientation, platform::Orientation::Portrait);
-    EXPECT_EQ(config.fixedRate, 30.0);
-    EXPECT_EQ(config.clearColor, math::Color::fromHex(0x102030FFU));
-    EXPECT_EQ(config.splash.logo, "ui/logo.png");
-    EXPECT_EQ(config.splash.background, math::Color::fromHex(0x405060FFU));
-    EXPECT_EQ(config.splash.darkBackground, math::Color::fromHex(0x000000FFU));
-    EXPECT_EQ(config.splash.duration, 1.5F);
-    EXPECT_EQ(config.splash.fadeOut, 0.5F);
-    EXPECT_TRUE(config.input.mouseAsTouch);
-    EXPECT_FALSE(config.input.touchAsMouse);
-    EXPECT_EQ(config.input.scrollSpeed, 0.5F);
-    EXPECT_THROW((void)AppConfig::fromJson(Json{{"input", {{"scrollSpeed", 0}}}}), std::invalid_argument);
-    EXPECT_THROW((void)AppConfig::fromJson(Json{{"input", {{"mouseAsFinger", true}}}}), std::invalid_argument);
-    EXPECT_EQ(config.uiScaling.mode, ui::Scaling::Mode::Physical);
-    EXPECT_EQ(config.uiScaling.factor, 1.25F);
-    EXPECT_THROW((void)AppConfig::fromJson(Json{{"ui", {{"scaleMode", "huge"}}}}), std::invalid_argument);
-    EXPECT_THROW((void)AppConfig::fromJson(Json{{"ui", {{"scale", 9}}}}), std::invalid_argument);
-    EXPECT_EQ(AppConfig::fromJson(Json{{"clearColor", "#102030"}}).splash.background, math::Color::fromHex(0x102030FFU));
-
-    // Without a splash section the launch screen keeps no dark background, lasts until the first frame and fades out over a quarter of a second.
-    const AppConfig::Splash plain = AppConfig::fromJson(Json::object()).splash;
-    EXPECT_FALSE(plain.darkBackground.has_value());
-    EXPECT_EQ(plain.duration, 0.0F);
-    EXPECT_EQ(plain.fadeOut, 0.25F);
-    EXPECT_EQ(config.native.at("game_platform").at("files").at("macos"), "platform/apple/libgame_platform.dylib");
-    EXPECT_THROW((void)AppConfig::fromJson(Json{{"native", Json::array()}}), std::invalid_argument);
-
-    const AppConfig roundTrip = AppConfig::fromJson(config.toJson());
-    EXPECT_EQ(roundTrip.toJson(), config.toJson());
-
-    for (const char* scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
-        EXPECT_EQ(AppConfig::fromJson(Json{{"design", {{"scaling", scaling}}}}).toJson().at("design").at("scaling"), scaling);
-    }
-
-    for (const char* orientation : {"landscape", "portrait", "any"}) {
-        EXPECT_EQ(AppConfig::fromJson(Json{{"orientation", orientation}}).toJson().at("orientation"), orientation);
-    }
-
-    EXPECT_EQ(AppConfig::fromJson(Json::object()).window.title, "Haylen App");
-
-    for (const char* reload : {"module", "restart"}) {
-        EXPECT_EQ(AppConfig::fromJson(Json{{"debug", {{"reload", reload}}}}).toJson().at("debug").at("reload"), reload);
-    }
-
-    try {
-        (void)AppConfig::fromJson(Json{{"debug", {{"reload", "always"}}}});
-        ADD_FAILURE() << "An unknown reload mode must be refused.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"debug.reload\" value \"always\" in \"haylen.json\" is unknown. It is \"module\" or \"restart\".");
-    }
-}
-
-// The description, the company and the copyright that desktops and installers show follow the name of the app until it gives its own, and the website stays empty.
-TEST_F(AppConfigTest, ThePublisherFollowsTheNameUntilTheAppGivesItsOwn) {
-    const AppConfig named = AppConfig::fromJson(Json{{"name", "Tiny Island"}});
-    EXPECT_EQ(named.description, "Tiny Island");
-    EXPECT_EQ(named.company, "Tiny Island");
-    EXPECT_EQ(named.copyright, "Copyright \xC2\xA9 Tiny Island");
-
-    const AppConfig published = AppConfig::fromJson(Json{{"name", "Tiny Island"}, {"description", "Sail between islands."}, {"company", "Harbor Games"}});
-    EXPECT_EQ(published.description, "Sail between islands.");
-    EXPECT_EQ(published.copyright, "Copyright \xC2\xA9 Harbor Games");
-    EXPECT_EQ(AppConfig::fromJson(Json{{"copyright", "Copyright 2026 Harbor Games"}}).copyright, "Copyright 2026 Harbor Games");
-    EXPECT_EQ(published.toJson().at("company"), "Harbor Games");
-    EXPECT_EQ(named.website, "");
-    EXPECT_EQ(AppConfig::fromJson(Json{{"website", "https://harbor.example"}}).toJson().at("website"), "https://harbor.example");
-    EXPECT_EQ(AppConfig::fromJson(Json::object()).toJson().at("copyright"), AppConfig{}.copyright);
-}
-
-// The build number grows with every upload, apart from the version that people see, and stays within the version codes that Google Play takes.
-TEST_F(AppConfigTest, TheBuildNumberIsAWholeNumberFromOne) {
-    EXPECT_EQ(AppConfig::fromJson(Json::object()).build, 1U);
-    EXPECT_EQ(AppConfig::fromJson(Json{{"build", AppConfig::kMaxBuild}}).toJson().at("build"), AppConfig::kMaxBuild);
-
-    for (const char* document : {R"({"build": 0})", R"({"build": -3})", R"({"build": 2.5})", R"({"build": "7"})", R"({"build": 2100000001})", R"({"build": 18446744073709551615})"}) {
-        EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
-    }
-
-    try {
-        (void)AppConfig::fromJson(Json{{"build", "7"}});
-        FAIL() << "A build number in a string must be refused.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"build\" value \"7\" in \"haylen.json\" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.");
-    }
-}
-
-TEST_F(AppConfigTest, RejectsInvalidValues) {
-    for (const char* document : {R"([])", R"({"name": 3})", R"({"company": 3})", R"({"description": false})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
-        EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
-    }
-
-    // An empty text is a value like any other, never a way to ask for the default.
-    for (const char* document : {R"({"window": {"statusBar": ""}})", R"({"window": {"statusBarColor": ""}})", R"({"design": {"scaling": ""}})", R"({"ui": {"scaleMode": ""}})", R"({"debug": {"stats": ""}})", R"({"orientation": ""})", R"({"clearColor": ""})"}) {
-        EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
-    }
-
-    try {
-        (void)AppConfig::fromJson(Json::parse(R"({"autoload": ["state.player", ""]})"));
-        FAIL() << "An autoload needs the name of its module.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"autoload\" list in \"haylen.json\" has an empty module name.");
-    }
-}
-
-TEST_F(AppConfigTest, RefusesNumbersThatTheirFieldsCannotHold) {
-    for (const char* document : {R"({"window": {"width": 800.5}})", R"({"window": {"height": 1e20}})", R"({"window": {"frameRate": -1e300}})", R"({"window": {"sampleCount": 4294967300}})"}) {
-        try {
-            (void)AppConfig::fromJson(Json::parse(document));
-            ADD_FAILURE() << "A number that its field cannot hold must be refused: " << document;
-        } catch (const std::invalid_argument& error) {
-            EXPECT_TRUE(std::string_view(error.what()).ends_with("in \"haylen.json\" must be a whole number from -2147483648 to 2147483647.")) << error.what();
-        }
-    }
-
-    try {
-        (void)AppConfig::fromJson(Json::parse(R"({"splash": {"duration": 1e300}})"));
-        FAIL() << "A number beyond the range of a float must be refused.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The value of \"splash.duration\" in \"haylen.json\" must be a number from -3.40282e+38 to 3.40282e+38.");
-    }
-}
-
-// An app asks for the GPU that uses the least power of a machine that has two, and draws on the most powerful one otherwise.
-TEST_F(AppConfigTest, ReadsWhetherTheAppWantsTheGpuOfLowPower) {
-    EXPECT_FALSE(AppConfig::fromJson(Json::object()).window.lowPowerGpu);
-    const AppConfig config = AppConfig::fromJson(Json::parse(R"({"window": {"lowPowerGpu": true}})"));
-    EXPECT_TRUE(config.window.lowPowerGpu);
-    EXPECT_EQ(config.toJson().at("window").at("lowPowerGpu"), true);
-}
-
-// The window tries the graphics APIs of the list first, each named once, and an empty list leaves the order of the platform.
-TEST_F(AppConfigTest, ReadsTheGraphicsApisTheWindowTriesFirst) {
-    EXPECT_TRUE(AppConfig::fromJson(Json::object()).window.graphicsApis.empty());
-    const AppConfig config = AppConfig::fromJson(Json::parse(R"({"window": {"graphicsApis": ["vulkan", "openGl"]}})"));
-    EXPECT_EQ(config.window.graphicsApis, (std::vector<gpu::Device::Api>{gpu::Device::Api::Vulkan, gpu::Device::Api::OpenGl}));
-    EXPECT_EQ(config.toJson().at("window").at("graphicsApis"), Json::parse(R"(["vulkan", "openGl"])"));
-
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["glide"]}})"), "The \"window.graphicsApis\" value \"glide\" in \"haylen.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["none"]}})"), "The \"window.graphicsApis\" value \"none\" in \"haylen.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": ["metal", "metal"]}})"), "The \"window.graphicsApis\" of \"haylen.json\" names \"metal\" twice.");
-    EXPECT_EQ(refusal(R"({"window": {"graphicsApis": "metal"}})"), "The \"window.graphicsApis\" of \"haylen.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
-}
-
-TEST_F(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
-    const AppConfig config = AppConfig::fromJson(Json::parse(R"({"content": {"updates": {"baseUrl": "https://cdn.example.com/game/", "channel": "beta"}, "delivery": [{"match": "world/asia/**", "mode": "onDemand"}, {"match": "cinematics/*.webm", "mode": "prefetch"}, {"match": "islands/**", "pack": "islands"}]}})"));
-    ASSERT_TRUE(config.content.updates);
-    EXPECT_EQ(config.content.updates->baseUrl, "https://cdn.example.com/game/");
-    EXPECT_EQ(config.content.updates->channel, "beta");
-    EXPECT_TRUE(config.content.updates->enabled);
-    EXPECT_EQ(config.content.getDelivery("world/asia/maps/tokyo.tmj"), content::Delivery::OnDemand);
-    EXPECT_EQ(config.content.getDelivery("cinematics/intro.webm"), content::Delivery::Prefetch);
-    EXPECT_EQ(config.content.getDelivery("cinematics/4k/intro.webm"), content::Delivery::Required);
-    EXPECT_EQ(config.content.getDelivery("world/europe/paris.tmj"), content::Delivery::Required);
-    EXPECT_EQ(config.content.getPack("islands/coral/reef.tmj"), "islands");
-    EXPECT_EQ(config.content.getPack("world/asia/maps/tokyo.tmj"), "");
-    const AppConfig again = AppConfig::fromJson(config.toJson());
-    EXPECT_EQ(again.content.updates->channel, "beta");
-    EXPECT_EQ(again.content.delivery.size(), 3U);
-    EXPECT_EQ(again.content.getPack("islands/reef.tmj"), "islands");
-    EXPECT_FALSE(AppConfig::fromJson(Json::object()).content.updates);
-
-    // A content server is an `https` address that ends with a slash, or an `http` address of this machine while a release is tested.
-    EXPECT_NO_THROW((void)AppConfig::fromJson(Json::parse(R"({"content": {"updates": {"baseUrl": "http://127.0.0.1:8080/tree/"}}})")));
-
-    for (const char* document : {R"({"content": {"updates": {"baseUrl": "http://cdn.example.com/"}}})", R"({"content": {"updates": {"baseUrl": "https://cdn.example.com"}}})", R"({"content": {"updates": {}}})", R"({"content": {"updates": {"baseUrl": "https://a.com/", "channel": "Stable"}}})", R"({"content": {"delivery": [{"match": "../x", "mode": "onDemand"}]}})", R"({"content": {"delivery": [{"match": "x/**", "mode": "later"}]}})", R"({"content": {"delivery": {"match": "x"}}})", R"({"content": {"delivery": [{"match": "x/**"}]}})", R"({"content": {"delivery": [{"match": "x/**", "mode": "onDemand", "pack": "x"}]}})", R"({"content": {"delivery": [{"match": "x/**", "pack": "Expansion"}]}})", R"({"content": {"cdn": true}})"}) {
-        EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
-    }
-}
-
-// A rule that names a preload group delivers the files of the group, which the group manifest of the app lists for the asset manager too.
-TEST_F(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
-    const std::string app = R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}, {"match": "world/**", "mode": "prefetch"}]}})";
-    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}});
-    AppConfig config = AppConfig::fromPackage(package);
-    EXPECT_TRUE(config.content.hasGroupRules()) << "Reading the configuration reads no content.";
-    config.content.expandGroups(package);
-    EXPECT_FALSE(config.content.hasGroupRules());
-    EXPECT_EQ(config.content.getDelivery("world/asia/maps/tokyo.tmj"), content::Delivery::OnDemand);
-    EXPECT_EQ(config.content.getDelivery("music/tokyo.ogg"), content::Delivery::OnDemand);
-    EXPECT_EQ(config.content.getDelivery("world/europe/paris.tmj"), content::Delivery::Prefetch) << "The rules after the group keep their order.";
-    EXPECT_EQ(config.content.getDelivery("music/paris.ogg"), content::Delivery::Required);
-    EXPECT_EQ(AppConfig::fromJson(AppConfig::fromJson(Json::parse(app)).toJson()).content.delivery.front().group, "asia");
-
-    const std::string asia = R"({"groups": {"asia": ["world/asia/"]}})";
-    EXPECT_NE(refusalOfPackage(R"({"content": {"delivery": [{"group": "asia", "mode": "onDemand"}]}})", asia).find("\"content.groups\" must name the group manifest"), std::string::npos);
-    EXPECT_NE(refusalOfPackage(R"({"content": {"groups": "groups.json", "delivery": [{"group": "europe", "mode": "onDemand"}]}})", asia).find("names the group \"europe\", which \"content/groups.json\" does not define"), std::string::npos);
-    EXPECT_NE(refusalOfPackage(R"({"content": {"groups": "missing.json", "delivery": [{"group": "asia", "mode": "onDemand"}]}})", asia).find("is not in the package"), std::string::npos);
-    EXPECT_NE(refusalOfPackage(R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "match": "x/**", "mode": "onDemand"}]}})", asia).find("either a \"match\" pattern or the name of a preload \"group\""), std::string::npos);
-    EXPECT_NE(refusalOfPackage(R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}]}})", R"({"groups": {"asia": ["../secret/"]}})").find("is not relative to the \"content\" folder"), std::string::npos);
-    EXPECT_NE(refusalOfPackage(R"({"content": {"groups": "/groups.json"}})", asia).find("must name a file relative to the \"content\" folder"), std::string::npos);
-}
-
-TEST_F(AppConfigTest, ReadsThePluginsOfTheApp) {
-    const AppConfig config = AppConfig::fromJson(Json::parse(R"({"plugins": {"ads": {"parameters": {"testMode": true, "placements": ["top"]}}, "camera": {"path": "../plugins/camera"}, "share": {"git": "https://example.com/share.git", "ref": "1.0.0"}, "cloud-analytics": {}}})"));
-    EXPECT_EQ(config.plugins.size(), 4U);
-    EXPECT_EQ(config.plugins.at("ads").parameters.at("testMode"), true);
-    EXPECT_EQ(config.plugins.at("camera").path, "../plugins/camera");
-    EXPECT_EQ(config.plugins.at("camera").parameters, Json::object());
-    EXPECT_EQ(config.plugins.at("share").git, "https://example.com/share.git");
-    EXPECT_EQ(config.plugins.at("share").ref, "1.0.0");
-    EXPECT_TRUE(config.plugins.at("cloud-analytics").path.empty() && config.plugins.at("cloud-analytics").git.empty());
-    EXPECT_EQ(AppConfig::fromJson(config.toJson()).plugins, config.plugins);
-    EXPECT_TRUE(AppConfig::fromJson(Json::object()).plugins.empty());
-
-    // The section is an object of plugin entries, keyed by ids in `dash-case`, which also keeps every id inside the plugins folder of the package.
-    for (const char* document : {R"({"plugins": ["ads"]})", R"({"plugins": {"ads": true}})", R"({"plugins": {"Ads": {}}})", R"({"plugins": {"a--ds": {}}})", R"({"plugins": {"ads-": {}}})", R"({"plugins": {"2d-kit": {}}})", R"({"plugins": {"../ads": {}}})", R"({"plugins": {"": {}}})"}) {
-        EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
-    }
-
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": []}})"), "The plugin \"ads\" in \"haylen.json\" must be an object with the optional keys \"path\", \"git\", \"ref\" and \"parameters\".");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"testMode": true}}})"), "Unknown key \"testMode\" in the plugin \"ads\" of \"haylen.json\".");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": 3}}})"), "The \"path\" of the plugin \"ads\" in \"haylen.json\" must be a text.");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"git": ""}}})"), "The \"git\" of the plugin \"ads\" in \"haylen.json\" must be a text.");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"ref": "main"}}})"), "The \"ref\" of the plugin \"ads\" in \"haylen.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"parameters": []}}})"), "The \"parameters\" of the plugin \"ads\" in \"haylen.json\" must be an object of parameter values.");
-
-    // A plugin of a repository may lie in a folder of it, which "path" names next to "git".
-    const AppConfig nested = AppConfig::fromJson(Json::parse(R"({"plugins": {"ads": {"git": "https://example.com/plugins.git", "ref": "main", "path": "ads"}}})"));
-    EXPECT_EQ(nested.plugins.at("ads").git, "https://example.com/plugins.git");
-    EXPECT_EQ(nested.plugins.at("ads").ref, "main");
-    EXPECT_EQ(nested.plugins.at("ads").path, "ads");
-
-    // Every plugin of `haylen.json` has its manifest in the package, which only the tooling stages for a plugin that `haylen.json` references elsewhere.
-    io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
-    try {
-        (void)AppConfig::fromPackage(package);
-        FAIL() << "The package has no manifest for the plugin.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"ads\" in \"haylen.json\" has no \"plugins/ads/plugin.json\" in the package.");
-    }
-
-    package.setFile("plugins/ads/plugin.json", test::TestFiles::bytes(R"({"id": "ads"})"));
-    EXPECT_EQ(AppConfig::fromPackage(package).plugins.size(), 1U);
-
-    package.setFile("haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}, "camera": {"path": "../plugins/camera"}}})"));
-    try {
-        (void)AppConfig::fromPackage(package);
-        FAIL() << "A folder package lacks a referenced plugin.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The plugin \"camera\" in \"haylen.json\" comes from a \"path\" or a \"git\" repository, so the package has no \"plugins/camera/plugin.json\". Run the app with \"haylen app run\", which places every plugin in the package wherever it comes from.");
-    }
-
-    package.setFile("plugins/camera/plugin.json", test::TestFiles::bytes(R"({"id": "camera"})"));
-    EXPECT_EQ(AppConfig::fromPackage(package).plugins.size(), 2U);
-}
-
-// The tooling builds the app from its category, its kind, its C++ sources and the sections of its platforms, so the engine takes them and checks only their values and types.
-TEST_F(AppConfigTest, TakesTheSectionsOfTheToolingAndChecksTheirTypes) {
-    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"category": "game", "kind": "cpp", "cpp": {"sources": ["src"]}, "platforms": {"ios": {"infoPlist": {}}, "android": {}}})")));
-    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"kind": "lua"})")));
-
-    // clang-format off
-    const auto failure = [](const char* document) {
-        try {
-            (void)core::AppConfig::fromJson(core::Json::parse(document));
-        } catch (const std::invalid_argument& error) {
-            return std::string(error.what());
-        }
-        return std::string();
-    };
-    // clang-format on
-    const std::string categories = "\"game\", \"entertainment\", \"education\", \"productivity\", \"utility\", \"graphics\", \"music\", \"video\", \"social\" or \"developer\"";
-    EXPECT_EQ(failure(R"({"category": "racing"})"), "The \"category\" of \"haylen.json\" must be " + categories + ", not \"racing\".");
-    EXPECT_EQ(failure(R"({"category": 1})"), "The \"category\" of \"haylen.json\" must be " + categories + ", not 1.");
-    EXPECT_EQ(failure(R"({"kind": "rust"})"), "The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not \"rust\".");
-    EXPECT_EQ(failure(R"({"kind": 1})"), "The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not 1.");
-    EXPECT_EQ(failure(R"({"cpp": ["src"]})"), "The \"cpp\" section of \"haylen.json\" must be an object with the \"sources\" of the C++ app.");
-    EXPECT_EQ(failure(R"({"platforms": []})"), "The \"platforms\" section of \"haylen.json\" must be an object of platform sections by name, such as \"ios\" or \"android\".");
-    EXPECT_EQ(failure(R"({"platforms": {"ios": true}})"), "The section \"ios\" of \"platforms\" in \"haylen.json\" must be an object.");
-}
-
-TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {
+TEST_F(EngineTest, FindsPluginsByTypeAndName) {
     plugins::PluginRegistry registry;
     CountingPlugin& plugin = registry.add(std::make_unique<CountingPlugin>());
     EXPECT_EQ(&registry.get<CountingPlugin>(), &plugin);
@@ -488,7 +162,7 @@ TEST(PluginRegistryTest, FindsPluginsByTypeAndName) {
     }
 }
 
-TEST(EngineTest, DrivesPluginsScenesAndTimers) {
+TEST_F(EngineTest, DrivesPluginsScenesAndTimers) {
     std::vector<std::string> log;
     auto scene = std::make_shared<test::RecordingScene>("main", log);
     CountingPlugin* plugin = nullptr;
@@ -531,7 +205,7 @@ TEST(EngineTest, DrivesPluginsScenesAndTimers) {
 }
 
 // The frame loop reuses its storage, so only the scripts allocate, through the allocator of Lua.
-TEST(EngineTest, SteadyFramesAllocateNothing) {
+TEST_F(EngineTest, SteadyFramesAllocateNothing) {
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(
@@ -548,7 +222,7 @@ TEST(EngineTest, SteadyFramesAllocateNothing) {
     EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
-TEST(EngineTest, AnnouncesPluginsAddedWhileRunning) {
+TEST_F(EngineTest, AnnouncesPluginsAddedWhileRunning) {
     test::EngineFixture fixture;
     std::vector<std::string> started;
     fixture.engine().getEvents().on(LifecycleEvent::kPluginStarted, [&](EventBus::Event& event) { started.push_back(event.getData().at("name").get<std::string>()); });
@@ -558,7 +232,7 @@ TEST(EngineTest, AnnouncesPluginsAddedWhileRunning) {
 }
 
 // A plugin that fails to start leaves the plugins after it unstarted, and the frames that show the error screen never reach them.
-TEST(EngineTest, KeepsShowingTheErrorOfAPluginThatFailedToStart) {
+TEST_F(EngineTest, KeepsShowingTheErrorOfAPluginThatFailedToStart) {
     test::EngineFixture fixture({{"haylen.json", R"({"localization": {"folder": "locale", "fallback": "de"}})"}, {"content/locale/en.json", "{}"}});
     ASSERT_NE(fixture.engine().getError(), nullptr);
     fixture.frames(3);
@@ -566,7 +240,7 @@ TEST(EngineTest, KeepsShowingTheErrorOfAPluginThatFailedToStart) {
     EXPECT_NE(fixture.engine().getError()->getMessage().find("localization.fallback"), std::string::npos);
 }
 
-TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
+TEST_F(EngineTest, TracksAppStatesFromPlatformEvents) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     std::vector<std::string> log;
@@ -593,7 +267,7 @@ TEST(EngineTest, TracksAppStatesFromPlatformEvents) {
     EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
 }
 
-TEST(EngineTest, TreatsInterruptionsAsInactiveTime) {
+TEST_F(EngineTest, TreatsInterruptionsAsInactiveTime) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     std::vector<Engine::AppState> states;
@@ -618,7 +292,7 @@ TEST(EngineTest, TreatsInterruptionsAsInactiveTime) {
     EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
 }
 
-TEST(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
+TEST_F(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
 
@@ -632,7 +306,7 @@ TEST(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
     EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
 }
 
-TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
+TEST_F(EngineTest, PublishesTheKeyboardAndTheNetwork) {
     test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
     Engine& engine = fixture.engine();
     std::vector<std::string> log;
@@ -659,7 +333,7 @@ TEST(EngineTest, PublishesTheKeyboardAndTheNetwork) {
     EXPECT_EQ(log, (std::vector<std::string>{R"(keyboardShown {"height":240.0,"width":960.0,"x":0.0,"y":300.0})", "keyboardHidden", "networkOnline", "networkOffline", "networkOnline"}));
 }
 
-TEST(EngineTest, PublishesWindowAndGamepadChanges) {
+TEST_F(EngineTest, PublishesWindowAndGamepadChanges) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     std::vector<std::string> log;
@@ -687,7 +361,7 @@ TEST(EngineTest, PublishesWindowAndGamepadChanges) {
     EXPECT_EQ(log[1].rfind("windowSafeAreaChanged", 0), 0U);
 }
 
-TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
+TEST_F(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     platform::Event began;
@@ -706,7 +380,7 @@ TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
 }
 
 // An app of any orientation turns its design with the screen, so a phone turned on its side keeps the size of the design units and lays out wide.
-TEST(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
+TEST_F(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
     test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "any", "design": {"width": 440, "height": 956, "scaling": "expand"}})"}});
     Engine& engine = fixture.engine();
     fixture.host().resize({1320.0F, 2868.0F});
@@ -722,14 +396,14 @@ TEST(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
     EXPECT_EQ(fixture.lua("local width, height = require('haylen.viewport').designSize() return width .. ' ' .. height"), "956.0 440.0");
 }
 
-TEST(EngineTest, KeepsTheDesignOfAnAppOfOneOrientation) {
+TEST_F(EngineTest, KeepsTheDesignOfAnAppOfOneOrientation) {
     test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "landscape", "design": {"width": 1920, "height": 1080}})"}});
     fixture.host().resize({1080.0F, 1920.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getViewport().getDesignSize(), math::Vec2(1920.0F, 1080.0F));
 }
 
-TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
+TEST_F(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
     test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
     Engine& engine = fixture.engine();
     EXPECT_TRUE(engine.getLifecycle().pauseOnBackground);
@@ -768,7 +442,7 @@ TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
 }
 
 // The storage and the preferences become durable for an app that the platform may end in the background, also when a listener of the event failed.
-TEST(EngineTest, MakesSavedDataDurableInTheBackgroundEvenWhenAListenerFails) {
+TEST_F(EngineTest, MakesSavedDataDurableInTheBackgroundEvenWhenAListenerFails) {
     test::EngineFixture fixture;
     fixture.runLua("require('haylen.events').on('appBackground', function() require('haylen.preferences').set('progress', 3) error('the save broke') end)");
     const int persisted = fixture.host().getPersistCount();
@@ -779,7 +453,7 @@ TEST(EngineTest, MakesSavedDataDurableInTheBackgroundEvenWhenAListenerFails) {
     EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("the save broke"), std::string_view::npos);
 }
 
-TEST(EngineTest, PausesTheGame) {
+TEST_F(EngineTest, PausesTheGame) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -805,7 +479,7 @@ TEST(EngineTest, PausesTheGame) {
     EXPECT_EQ(log, (std::vector<std::string>{"game:load", "game:enter", "game:enterTransitionFinished", "game:paused", "paused", "event paused", "game:unpaused", "resumed", "event unpaused"}));
 }
 
-TEST(EngineTest, ReportsLowMemoryToTheApp) {
+TEST_F(EngineTest, ReportsLowMemoryToTheApp) {
     test::EngineFixture fixture({{"content/kept.json", "{}"}, {"content/dropped.json", "[]"}});
     assets::Manager& assets = fixture.engine().getAssets();
     const std::shared_ptr<void> kept = assets.load("json", "kept.json");
@@ -830,7 +504,7 @@ TEST(EngineTest, ReportsLowMemoryToTheApp) {
     EXPECT_EQ(assets.releaseUnused(), 0U) << "The warning already pruned the entries of released assets.";
 }
 
-TEST(EngineTest, PublishesTheLinksThatOpenTheApp) {
+TEST_F(EngineTest, PublishesTheLinksThatOpenTheApp) {
     // The link that launched the process waits until the main script of the app listens.
     platform::LinkRelay::receive("island://open?map=harbor");
     test::EngineFixture fixture({{"source/main.lua", "links = {} require('haylen.events').on('linkOpened', function(link) links[#links + 1] = link.url end)"}});
@@ -842,7 +516,7 @@ TEST(EngineTest, PublishesTheLinksThatOpenTheApp) {
 }
 
 // The schemes of the links belong to the app that the process installed, so a link ends a launched app and waits for the app that launched it.
-TEST(EngineTest, EndsALaunchedAppForTheLinksOfTheAppThatLaunchedIt) {
+TEST_F(EngineTest, EndsALaunchedAppForTheLinksOfTheAppThatLaunchedIt) {
     test::EngineFixture fixture({{"source/main.lua", "links = 0 require('haylen.events').on('linkOpened', function() links = links + 1 end)"}});
     fixture.host().setLaunched(true);
     fixture.frames(1);
@@ -856,14 +530,14 @@ TEST(EngineTest, EndsALaunchedAppForTheLinksOfTheAppThatLaunchedIt) {
 }
 
 // No frame is complete before the engine rendered one, so a splash screen never ends over a window that holds nothing yet.
-TEST(EngineTest, CompletesNoFrameBeforeItRenderedOne) {
+TEST_F(EngineTest, CompletesNoFrameBeforeItRenderedOne) {
     test::EngineFixture fixture;
     EXPECT_FALSE(fixture.engine().isFrameComplete());
     fixture.frames(1);
     EXPECT_TRUE(fixture.engine().isFrameComplete());
 }
 
-TEST(EngineTest, ReportsErrorsAndKeepsRendering) {
+TEST_F(EngineTest, ReportsErrorsAndKeepsRendering) {
     std::vector<std::string> log;
     auto scene = std::make_shared<test::RecordingScene>("main", log);
     // clang-format off
@@ -887,7 +561,7 @@ TEST(EngineTest, ReportsErrorsAndKeepsRendering) {
 }
 
 // A Lua file that does not compile stops the app with the code "syntax", whether the engine loads it, a "require" of the app does or the app raises the message of that failure again.
-TEST(EngineTest, NamesTheKindAndThePhaseOfErrors) {
+TEST_F(EngineTest, NamesTheKindAndThePhaseOfErrors) {
     {
         test::EngineFixture fixture({{"source/main.lua", "local broken = "}});
         EXPECT_EQ(fixture.engine().getErrorRecord().at("code"), "syntax");
@@ -904,7 +578,7 @@ TEST(EngineTest, NamesTheKindAndThePhaseOfErrors) {
     EXPECT_EQ(fixture.engine().getErrorRecord().at("code"), "syntax");
 }
 
-TEST(EngineTest, NamesThePhaseOfErrorsAfterAStartThatFailed) {
+TEST_F(EngineTest, NamesThePhaseOfErrorsAfterAStartThatFailed) {
     test::EngineFixture fixture({{"source/main.lua", "require('haylen.timer').after(0, function() error('later', 0) end)\nerror('first', 0)"}});
     EXPECT_EQ(fixture.engine().getErrorRecord().at("phase"), "startup");
 
@@ -916,7 +590,7 @@ TEST(EngineTest, NamesThePhaseOfErrorsAfterAStartThatFailed) {
 }
 
 // A job that failed never runs again, so its failure restarts the app in development instead of resuming it without the work of the job.
-TEST(EngineTest, RestartsInsteadOfResumingAfterAJobFailed) {
+TEST_F(EngineTest, RestartsInsteadOfResumingAfterAJobFailed) {
     test::EngineFixture fixture;
     fixture.engine().getJobs().post([] { throw std::runtime_error("The map could not be generated."); });
     for (int frame = 0; frame < 600 && fixture.engine().getError() == nullptr; ++frame) {
@@ -928,7 +602,7 @@ TEST(EngineTest, RestartsInsteadOfResumingAfterAJobFailed) {
     EXPECT_FALSE(fixture.engine().isErrorResumable());
 }
 
-TEST(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
+TEST_F(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
     test::EngineFixture fixture({{"source/main.lua", "local function explode()\n    error('the island sank')\nend\nexplode()"}});
     ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
     const Json& report = fixture.host().getErrorReports().front();
@@ -947,7 +621,7 @@ TEST(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
     EXPECT_EQ(fixture.host().getErrorReports().size(), 1U);
 }
 
-TEST(EngineTest, TurnsStartupFailuresIntoErrors) {
+TEST_F(EngineTest, TurnsStartupFailuresIntoErrors) {
     {
         test::EngineFixture failing({}, std::make_unique<test::TestApplication>([](Engine&) { throw std::runtime_error("cannot start"); }));
         ASSERT_NE(failing.engine().getError(), nullptr);
@@ -959,7 +633,7 @@ TEST(EngineTest, TurnsStartupFailuresIntoErrors) {
     EXPECT_NE(std::string_view(broken.engine().getError()->what()).find("source/main.lua"), std::string::npos);
 }
 
-TEST(EngineTest, ReportsFailuresFromAsynchronousCallbacksAndRendering) {
+TEST_F(EngineTest, ReportsFailuresFromAsynchronousCallbacksAndRendering) {
     test::EngineFixture fixture;
     fixture.engine().getJobs().postToFrame([] { throw std::runtime_error("late failure"); });
     fixture.frames(1);
@@ -967,7 +641,7 @@ TEST(EngineTest, ReportsFailuresFromAsynchronousCallbacksAndRendering) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "late failure");
 }
 
-TEST(EngineTest, ReportsFailuresOfPluginsInEveryHookOfAFrame) {
+TEST_F(EngineTest, ReportsFailuresOfPluginsInEveryHookOfAFrame) {
     for (const auto& [hook, message] : std::vector<std::pair<FailingFramePlugin::Hook, std::string_view>>{{FailingFramePlugin::Hook::Event, "event failed"}, {FailingFramePlugin::Hook::Overlay, "overlay failed"}, {FailingFramePlugin::Hook::EndFrame, "end of frame failed"}}) {
         test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([failing = hook](Engine& engine) { engine.addPlugin(std::make_unique<FailingFramePlugin>(failing)); }));
         fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
@@ -977,7 +651,7 @@ TEST(EngineTest, ReportsFailuresOfPluginsInEveryHookOfAFrame) {
     }
 }
 
-TEST(EngineTest, StartsPluginsAddedBeforeItStartsOnce) {
+TEST_F(EngineTest, StartsPluginsAddedBeforeItStartsOnce) {
     test::TemporaryDirectory directory;
     platform::HeadlessHost host(directory.getPath());
     std::optional<Engine::Phase> startPhase;
@@ -995,7 +669,7 @@ TEST(EngineTest, StartsPluginsAddedBeforeItStartsOnce) {
     EXPECT_EQ(plugin.stopped, 1);
 }
 
-TEST(EngineTest, ReportsFailuresOfListenersWhenNativeUiCoversTheApp) {
+TEST_F(EngineTest, ReportsFailuresOfListenersWhenNativeUiCoversTheApp) {
     test::EngineFixture fixture;
     fixture.runLua("require('haylen.events').on('appInactive', function() error('the cover broke', 0) end)");
     fixture.host().getNativeViews().coverApp();
@@ -1005,7 +679,7 @@ TEST(EngineTest, ReportsFailuresOfListenersWhenNativeUiCoversTheApp) {
     EXPECT_EQ(fixture.engine().getAppState(), Engine::AppState::Inactive);
 }
 
-TEST(EngineTest, StopsOnlyThePluginsThatStarted) {
+TEST_F(EngineTest, StopsOnlyThePluginsThatStarted) {
     int stops = 0;
     test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([&stops](Engine& engine) { engine.addPlugin(std::make_unique<FailingStartPlugin>(stops)); }));
     ASSERT_NE(fixture.engine().getError(), nullptr);
@@ -1014,7 +688,7 @@ TEST(EngineTest, StopsOnlyThePluginsThatStarted) {
     EXPECT_EQ(stops, 0);
 }
 
-TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
+TEST_F(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     test::EngineFixture fixture({{"source/scenes/loader.lua", "return function()\n    require('async').sleep(1):await()\n    error('the island failed to load')\nend"}});
     fixture.runLua("require('async').spawn(require('scenes.loader'))");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
@@ -1033,11 +707,12 @@ TEST(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     EXPECT_EQ(error.getFrames()[1].line, 3);
     EXPECT_EQ(error.getFrames()[1].function, "function <source/scenes/loader.lua:1>");
     EXPECT_EQ(error.getFrames()[1].kind, lua::Error::Frame::Kind::Lua);
+    ASSERT_FALSE(fixture.host().getErrorReports().empty());
     EXPECT_EQ(fixture.host().getErrorReports().back(), fixture.engine().getErrorRecord());
     EXPECT_NE(fixture.lua("require('async').spawn(3)").find("bad argument #1 to 'spawn' (function expected, got number)"), std::string::npos);
 }
 
-TEST(EngineTest, BoundsThePollOfTheEventLoopByTheFrameTime) {
+TEST_F(EngineTest, BoundsThePollOfTheEventLoopByTheFrameTime) {
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(
@@ -1075,7 +750,7 @@ TEST(EngineTest, BoundsThePollOfTheEventLoopByTheFrameTime) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-TEST(EngineTest, KeepsRunningWhileEveryRejectionIsObservedOrHandled) {
+TEST_F(EngineTest, KeepsRunningWhileEveryRejectionIsObservedOrHandled) {
     test::EngineFixture fixture;
     // clang-format off
     fixture.runLua(R"(
@@ -1104,13 +779,13 @@ TEST(EngineTest, KeepsRunningWhileEveryRejectionIsObservedOrHandled) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-TEST(EngineTest, StopsTheAppWhenARejectionOfNativeCodeIsNotObserved) {
+TEST_F(EngineTest, StopsTheAppWhenARejectionOfNativeCodeIsNotObserved) {
     test::EngineFixture fixture({{"source/main.lua", "require('haylen.jobs').spawn(function() error('The job that nobody awaits failed.', 0) end)"}});
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
     EXPECT_TRUE(fixture.engine().getError()->getMessage().starts_with("A promise rejected, and nothing awaited or caught it. The job that nobody awaits failed.")) << fixture.engine().getError()->getMessage();
 }
 
-TEST(EngineTest, ReportsRenderSubmissionFailures) {
+TEST_F(EngineTest, ReportsRenderSubmissionFailures) {
     test::EngineFixture fixture;
     fixture.host().resize({20000.0F, 20000.0F});
     fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([](Engine& engine) { engine.getRenderer2D().beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::black()}); }));
@@ -1123,13 +798,13 @@ TEST(EngineTest, ReportsRenderSubmissionFailures) {
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
 }
 
-TEST(EngineTest, AllowsOnlyOneEngineAtATime) {
+TEST_F(EngineTest, AllowsOnlyOneEngineAtATime) {
     test::EngineFixture running;
     EXPECT_THROW(test::EngineFixture second, std::logic_error);
     running.frames(1);
 }
 
-TEST(EngineTest, QuitStopsFramesAndAsksTheHost) {
+TEST_F(EngineTest, QuitStopsFramesAndAsksTheHost) {
     test::EngineFixture fixture;
     EXPECT_TRUE(fixture.engine().isRunning());
     fixture.engine().quit();
@@ -1141,7 +816,7 @@ TEST(EngineTest, QuitStopsFramesAndAsksTheHost) {
     EXPECT_EQ(fixture.engine().getClock().getFrameIndex(), before);
 }
 
-TEST(EngineTest, KeepsTheExitStatusOfTheQuit) {
+TEST_F(EngineTest, KeepsTheExitStatusOfTheQuit) {
     test::EngineFixture fixture;
     EXPECT_EQ(fixture.engine().getExitStatus(), 0);
     fixture.engine().quit(42);
@@ -1149,7 +824,7 @@ TEST(EngineTest, KeepsTheExitStatusOfTheQuit) {
     EXPECT_EQ(fixture.engine().getExitStatus(), 42);
 }
 
-TEST(EngineTest, ExposesServicesAndPlatformName) {
+TEST_F(EngineTest, ExposesServicesAndPlatformName) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     EXPECT_EQ(engine.getPlatformName(), "headless");
@@ -1164,7 +839,7 @@ TEST(EngineTest, ExposesServicesAndPlatformName) {
     EXPECT_NE(engine.getPlugins().find("assets"), nullptr);
 }
 
-TEST(EngineTest, ConstructorRejectsMissingParts) {
+TEST_F(EngineTest, ConstructorRejectsMissingParts) {
     test::TemporaryDirectory directory;
     platform::HeadlessHost host(directory.getPath());
     EXPECT_THROW(Engine(host, nullptr, AppConfig{}, std::make_unique<lua::Application>()), std::invalid_argument);

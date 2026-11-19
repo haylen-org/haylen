@@ -3,6 +3,7 @@
 #include <any>
 #include <functional>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -94,6 +95,14 @@ class RecordingScene final : public core::Scene {
         return name;
     }
 
+    // Completes or fails the load that waits for its deferral, and throws when no load waits, so a test never acts on a load that did not defer.
+    void completeLoad() {
+        getDeferral().complete();
+    }
+    void failLoad(const lua::Error& failure) {
+        getDeferral().fail(failure);
+    }
+
     Load loading = Load::Instant;
     std::vector<std::string> groups;
     std::optional<core::SceneLoad::Deferral> deferral;
@@ -108,6 +117,14 @@ class RecordingScene final : public core::Scene {
     std::function<void(const std::string& entry)> onHook;
 
   private:
+    [[nodiscard]] core::SceneLoad::Deferral& getDeferral() {
+        if (!deferral) {
+            throw std::logic_error("The scene \"" + name + "\" holds no deferred load.");
+        }
+
+        return *deferral;
+    }
+
     void record(std::string_view hook) {
         const std::string entry = name + ":" + std::string(hook);
         log.push_back(entry);

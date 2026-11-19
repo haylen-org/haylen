@@ -134,6 +134,7 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     profiler.beginScope("broken");
     now += 0.002;
     profiler.endFrame();
+    ASSERT_FALSE(profiler.getLastFrame().empty());
     EXPECT_EQ(profiler.getLastFrame().front().name, "broken");
     EXPECT_NEAR(profiler.getLastFrame().front().milliseconds, 2.0, 1e-6);
 
@@ -204,13 +205,15 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
         std::unique_lock lock(mutex);
         entered = true;
         changed.notify_all();
-        changed.wait(lock, [&] { return released; });
+        if (!changed.wait_for(lock, std::chrono::seconds(10), [&] { return released; })) {
+            ADD_FAILURE() << "The test never released the listener.";
+        }
     });
     // clang-format on
     std::thread writer([] { core::Log::warning("a line from another thread"); });
     {
         std::unique_lock lock(mutex);
-        changed.wait(lock, [&] { return entered; });
+        EXPECT_TRUE(changed.wait_for(lock, std::chrono::seconds(10), [&] { return entered; })) << "The listener never received the line.";
     }
 
     // A plugin removes its listener before it goes away, so the removal must not return while the listener still runs.
@@ -242,8 +245,14 @@ TEST(LogTest, KeepsWorkingWhileAnotherThreadExits) {
         static std::atomic<int> iterations = 0;
         std::atexit([] {
             const int seen = iterations.load();
-            while (iterations.load() < seen + 1000) {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            while (iterations.load() < seen + 1000 && std::chrono::steady_clock::now() < deadline) {
                 std::this_thread::yield();
+            }
+
+            // A loop that stopped while the process exits ends it with another code, which fails the test.
+            if (iterations.load() < seen + 1000) {
+                std::_Exit(1);
             }
         });
         std::thread([] {

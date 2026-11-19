@@ -4,20 +4,13 @@
 #include <string>
 #include <string_view>
 
+#include "core/FailingCode.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/lua/Error.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::core {
-
-// One way app code fails: the module `fault` of a recoverable app that raises from one kind of code, the message the error screen shows first and the line of the module it points at.
-struct FailingCode {
-    std::string_view name;
-    std::string_view module;
-    std::string_view message;
-    int line = 0;
-};
 
 // Every kind of code that runs on behalf of the app reports its error the same way: the error screen, the host, which hands it to the web page, and `appError` get the message, the file, the line and a stack through the failing line, and the app runs on after `haylen.recover()`.
 class ErrorReportTest : public ::testing::TestWithParam<FailingCode> {

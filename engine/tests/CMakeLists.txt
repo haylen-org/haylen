@@ -104,6 +104,7 @@ set(HAYLEN_TEST_SOURCES
   content/ReleaseStreamingTests.cpp
   content/ShardTests.cpp
   content/UpdaterTests.cpp
+  core/AppConfigTests.cpp
   core/Base64Tests.cpp
   core/ContainerTests.cpp
   conversation/ConversationTests.cpp
@@ -116,16 +117,22 @@ set(HAYLEN_TEST_SOURCES
   core/SceneManagerTests.cpp
   core/SignalTests.cpp
   core/TweenTests.cpp
+  debug/AssetReloadTests.cpp
   debug/ConsoleTests.cpp
   debug/DebugTests.cpp
   debug/DebuggerConnectionTests.cpp
+  debug/DebuggerErrorTests.cpp
+  debug/DebuggerStepTests.cpp
   debug/DebuggerTests.cpp
+  debug/DebuggerWebTests.cpp
   debug/DrawingTests.cpp
   debug/EvaluationTests.cpp
   debug/ExecutionBudgetTests.cpp
   debug/GpuCaptureTests.cpp
   debug/HotReloadTests.cpp
   debug/InspectorTests.cpp
+  debug/InspectorWindowTests.cpp
+  debug/PackageWatcherTests.cpp
   debug/StatsTests.cpp
   debug/ThreadWalkTests.cpp
   debug/TraceRecorderTests.cpp

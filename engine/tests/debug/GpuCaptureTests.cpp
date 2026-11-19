@@ -90,6 +90,7 @@ TEST_F(GpuCaptureTest, TheConsoleCapturesAndLogsTheFileOnceTheFramesWereSubmitte
     EXPECT_EQ(console.run("gpuCapture").output, "A GPU capture is already recording. Wait for it to end before capturing again.");
     fixture.frames(2);
     EXPECT_FALSE(fixture.engine().getGraphics().isCapturing());
+    ASSERT_FALSE(plugin.getRecentLog().empty());
     EXPECT_NE(plugin.getRecentLog().back().text.find("The GPU capture of 2 frames is in \""), std::string::npos);
     EXPECT_EQ(device->getCapturedFrames(), std::vector<std::uint64_t>{2});
 }
@@ -104,7 +105,7 @@ TEST_F(GpuCaptureTest, TheConsoleSaysWhatADeviceWithoutACaptureToolLacks) {
 TEST_F(GpuCaptureTest, ADevelopmentRunReportsTheCaptureToTheDevelopmentServer) {
     test::EngineFixture fixture({}, nullptr, withCaptureTool(true));
     std::vector<core::Json> reports;
-    fixture.host().getDevelopmentSession()->addReporter([&reports](const core::Json& report) { reports.push_back(report); });
+    fixture.developmentSession().addReporter([&reports](const core::Json& report) { reports.push_back(report); });
 
     ASSERT_TRUE(fixture.engine().getPlugin<plugins::DebugPlugin>().getConsole().run("gpuCapture").ok);
     fixture.frames(1);

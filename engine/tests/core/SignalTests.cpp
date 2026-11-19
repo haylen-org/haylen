@@ -400,11 +400,17 @@ TEST(EventBusTest, TypedEventsAndNativeValues) {
     FrameQueue queue;
     EventBus bus(queue);
     int total = 0;
-    bus.on<Scored>([&](EventBus::Event& event) { total += event.get<Scored>()->points; });
     // clang-format off
+    bus.on<Scored>([&](EventBus::Event& event) {
+        const Scored* scored = event.get<Scored>();
+        ASSERT_NE(scored, nullptr);
+        total += scored->points;
+    });
     bus.on("bonus", [&](EventBus::Event& event) {
         EXPECT_EQ(event.get<int>(), nullptr);
-        total += event.get<Scored>()->points * 100;
+        const Scored* scored = event.get<Scored>();
+        ASSERT_NE(scored, nullptr);
+        total += scored->points * 100;
     });
     // clang-format on
 
@@ -422,7 +428,13 @@ TEST(EventBusTest, PostedEventsArriveWhenTheQueueFlushes) {
     EventBus bus(queue);
     std::vector<std::string> received;
     bus.on("saved", [&](EventBus::Event& event) { received.push_back("saved " + event.getData().get<std::string>()); });
-    bus.on<Loaded>([&](EventBus::Event& event) { received.push_back("loaded " + event.get<Loaded>()->name); });
+    // clang-format off
+    bus.on<Loaded>([&](EventBus::Event& event) {
+        const Loaded* loaded = event.get<Loaded>();
+        ASSERT_NE(loaded, nullptr);
+        received.push_back("loaded " + loaded->name);
+    });
+    // clang-format on
 
     // clang-format off
     std::thread worker([&bus] {

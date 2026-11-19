@@ -2,7 +2,9 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -392,7 +394,9 @@ TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     EXPECT_THROW((void)device.readImage(target, 2, 2), std::logic_error);
     const std::unique_ptr<Device::Readback> copy = device.readImage(target, 4, 2);
     EXPECT_FALSE(copy->poll().has_value());
-    EXPECT_EQ(copy->poll()->size(), 4U * 2U * 4U);
+    const std::optional<std::vector<std::uint8_t>> pixels = copy->poll();
+    ASSERT_TRUE(pixels.has_value());
+    EXPECT_EQ(pixels->size(), 4U * 2U * 4U);
     EXPECT_FALSE(copy->poll().has_value());
 }
 

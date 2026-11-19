@@ -21,6 +21,7 @@ TEST(ObjectPoolTest, ReusesSlotsAndDetectsReleasedHandles) {
     std::string* address = pool.get(first);
     ASSERT_NE(address, nullptr);
     EXPECT_EQ(*address, "bullet");
+    ASSERT_NE(pool.get(second), nullptr);
     EXPECT_EQ(*pool.get(second), "xxx");
     EXPECT_EQ(pool.size(), 2U);
 
@@ -40,6 +41,7 @@ TEST(ObjectPoolTest, ReusesSlotsAndDetectsReleasedHandles) {
     EXPECT_EQ(third.index, first.index);
     EXPECT_NE(third, first);
     EXPECT_FALSE(pool.isAlive(first));
+    ASSERT_NE(pool.get(third), nullptr);
     EXPECT_EQ(*pool.get(third), "rocket");
 
     int live = 0;

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "core/TweenRig.hpp"
 #include "haylen/core/ConnectionScope.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/PropertyTrack.hpp"
@@ -22,54 +23,6 @@
 #include "support/EngineFixture.hpp"
 
 namespace haylen::core {
-
-struct Box {
-    double x = 0.0;
-    math::Vec2 position{};
-};
-
-// Plays tweens on a clock that accepts long frames, so a test can jump through time in one step.
-class TweenRig final {
-  public:
-    void step(double seconds) {
-        clock.advance(seconds);
-        tweens.update(clock);
-    }
-
-    // Returns a tween of the `x` of the box, added to the manager unless told otherwise.
-    std::shared_ptr<PropertyTween> tweenX(Box& box, float duration, TweenProperty property, bool add = true) {
-        auto tween = std::make_shared<PropertyTween>(duration);
-        tween->addTrack(numberTrack(box, std::move(property)));
-
-        if (add) {
-            tweens.add(tween);
-        }
-
-        return tween;
-    }
-
-    static std::unique_ptr<PropertyTrack> numberTrack(Box& box, TweenProperty property, std::function<bool()> alive = {}) {
-        return std::make_unique<PropertyTrack>(&box, std::vector<std::string>{"x"}, [&box] { return TweenValue(box.x); }, [&box](const TweenValue& value) { box.x = value.getNumber(); }, std::move(property), std::move(alive));
-    }
-
-    FrameClock clock{1.0 / 60.0, 100.0};
-    TweenManager tweens;
-};
-
-// A tween of two seconds that only remembers where it played to, the way a project extends the engine with its own kind of tween.
-class PlayheadTween final : public Tween {
-  public:
-    [[nodiscard]] float getDuration() const noexcept override {
-        return 2.0F;
-    }
-
-    float playhead = 0.0F;
-
-  protected:
-    void renderLoop(float loopTime, float, int, bool) override {
-        playhead = loopTime;
-    }
-};
 
 TEST(TweenValueTest, MixesEveryKind) {
     using Interpolation = TweenValue::Interpolation;
@@ -119,7 +72,7 @@ TEST(TweenValueTest, MixesEveryKind) {
 
 TEST(TweenManagerTest, RejectsTimesThatAreNotNumbers) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     const float nan = std::numeric_limits<float>::quiet_NaN();
     auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
     EXPECT_THROW(tween->setDelay(nan), std::invalid_argument);
@@ -233,7 +186,7 @@ TEST(TweenMotionTest, FollowsShapesAndComesBack) {
 
 TEST(TweenManagerTest, PlaysEasedProgressWithDelayAndCallbacks) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     std::vector<std::string> log;
     auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
     tween->setDelay(0.5F);
@@ -268,10 +221,10 @@ TEST(TweenManagerTest, PlaysEasedProgressWithDelayAndCallbacks) {
 
 TEST(TweenManagerTest, ShortensOrSkipsTweensUnderReducedMotion) {
     TweenRig rig;
-    Box kept;
-    Box shortened;
-    Box skipped;
-    Box forever;
+    TweenRig::Box kept;
+    TweenRig::Box shortened;
+    TweenRig::Box skipped;
+    TweenRig::Box forever;
     rig.tweenX(kept, 1.0F, TweenProperty::to(10.0));
     rig.tweenX(shortened, 1.0F, TweenProperty::to(10.0))->setMotionReduction(MotionReduction::Shorten);
     bool completed = false;
@@ -306,9 +259,9 @@ TEST(TweenManagerTest, ShortensOrSkipsTweensUnderReducedMotion) {
 
 TEST(TweenManagerTest, RepeatsWithEveryLoopMode) {
     TweenRig rig;
-    Box restart;
-    Box yoyo;
-    Box incremental;
+    TweenRig::Box restart;
+    TweenRig::Box yoyo;
+    TweenRig::Box incremental;
     std::vector<int> loops;
     auto first = rig.tweenX(restart, 1.0F, TweenProperty::to(10.0));
     first->setRepeatCount(2);
@@ -353,7 +306,7 @@ TEST(TweenManagerTest, RepeatsWithEveryLoopMode) {
 // A tween that repeats forever moves by every frame after days of play, and a step across countless loops reports only its last loops.
 TEST(TweenManagerTest, RepeatsForeverWithoutLosingSteps) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto tween = rig.tweenX(box, 0.1F, TweenProperty::to(1.0));
     tween->setRepeatCount(-1);
     int loops = 0;
@@ -373,7 +326,7 @@ TEST(TweenManagerTest, RepeatsForeverWithoutLosingSteps) {
 // A tween that repeats as often as an int holds reports its last loop, the largest int, and ends where its last loop of a yoyo ends.
 TEST(TweenManagerTest, RepeatsAsOftenAsAnIntHolds) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
     tween->setRepeatCount(std::numeric_limits<int>::max());
     tween->setLoopMode(Tween::LoopMode::Yoyo);
@@ -389,7 +342,7 @@ TEST(TweenManagerTest, RepeatsAsOftenAsAnIntHolds) {
 
 TEST(TweenManagerTest, ControlsPlayback) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     int completions = 0;
     auto tween = rig.tweenX(box, 2.0F, TweenProperty::to(20.0));
     tween->setAutoKill(false);
@@ -449,13 +402,13 @@ TEST(TweenManagerTest, CallbacksThatKillTheTweenStopItWhereItIs) {
     TweenRig rig;
 
     // A loop callback that kills the tween leaves the target where the loop ended, without rewinding it for the next loop.
-    Box looping;
+    TweenRig::Box looping;
     auto tween = rig.tweenX(looping, 1.0F, TweenProperty::to(10.0));
     tween->setRepeatCount(2);
     tween->getCallbacks().loop = [&tween](int) { tween->kill(); };
 
     // A call at the end of a loop of a timeline that kills the timeline stops it there, before the next loop begins.
-    Box timed;
+    TweenRig::Box timed;
     int loops = 0;
     auto timeline = std::make_shared<Timeline>();
     timeline->append(rig.tweenX(timed, 1.0F, TweenProperty::to(10.0), false));
@@ -465,14 +418,14 @@ TEST(TweenManagerTest, CallbacksThatKillTheTweenStopItWhereItIs) {
     rig.tweens.add(timeline);
 
     // A complete callback that kills the tween ends it once.
-    Box finishing;
+    TweenRig::Box finishing;
     int kills = 0;
     auto completing = rig.tweenX(finishing, 1.0F, TweenProperty::to(10.0));
     completing->getCallbacks().complete = [&completing] { completing->kill(); };
     completing->getCallbacks().kill = [&kills] { ++kills; };
 
     // A loop callback that lets the target go stops the tween before it rewinds the target for the next loop.
-    Box abandoned;
+    TweenRig::Box abandoned;
     bool alive = true;
     auto releasing = std::make_shared<PropertyTween>(1.0F);
     releasing->addTrack(TweenRig::numberTrack(abandoned, TweenProperty::to(10.0), [&alive] { return alive; }));
@@ -497,7 +450,7 @@ TEST(TweenManagerTest, CallbacksThatKillTheTweenStopItWhereItIs) {
 // The finished signal fires and the tween ends even when its kill callback fails, so nothing waits for it forever.
 TEST(TweenManagerTest, EndsEvenWhenTheKillCallbackFails) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
     tween->getCallbacks().kill = [] { throw std::runtime_error("the kill callback failed"); };
     std::vector<bool> finished;
@@ -514,8 +467,23 @@ TEST(TweenManagerTest, EndsEvenWhenTheKillCallbackFails) {
 
 // A tween of a project runs in the manager like the tweens of the engine, and kills by target and overwrites leave it alone, since it animates no target the engine knows.
 TEST(TweenManagerTest, PlaysTweensThatProjectsDefine) {
+    // A tween of two seconds that only remembers where it played to, the way a project extends the engine with its own kind of tween.
+    class PlayheadTween final : public Tween {
+      public:
+        [[nodiscard]] float getDuration() const noexcept override {
+            return 2.0F;
+        }
+
+        float playhead = 0.0F;
+
+      protected:
+        void renderLoop(float loopTime, float, int, bool) override {
+            playhead = loopTime;
+        }
+    };
+
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto custom = std::make_shared<PlayheadTween>();
     std::vector<float> progress;
     custom->getCallbacks().update = [&progress](float value) { progress.push_back(value); };
@@ -532,7 +500,7 @@ TEST(TweenManagerTest, PlaysTweensThatProjectsDefine) {
 
 TEST(TweenManagerTest, KillingBeforeTheEndReportsNoCompletion) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(1.0));
     bool completed = true;
     tween->finished.connect([&](bool value) { completed = value; });
@@ -549,11 +517,11 @@ TEST(TweenManagerTest, KillingBeforeTheEndReportsNoCompletion) {
 
 TEST(TweenManagerTest, RunsByProcessModeTimeKindAndGroup) {
     TweenRig rig;
-    Box pausable;
-    Box menu;
-    Box unscaled;
-    Box fixed;
-    Box grouped;
+    TweenRig::Box pausable;
+    TweenRig::Box menu;
+    TweenRig::Box unscaled;
+    TweenRig::Box fixed;
+    TweenRig::Box grouped;
     rig.tweenX(pausable, 1.0F, TweenProperty::to(1.0));
     rig.tweenX(menu, 1.0F, TweenProperty::to(1.0))->setProcessMode(ProcessMode::WhenPaused);
     auto real = rig.tweenX(unscaled, 1.0F, TweenProperty::to(1.0), false);
@@ -593,7 +561,7 @@ TEST(TweenManagerTest, RunsByProcessModeTimeKindAndGroup) {
 // A tag keeps its time scale for the tweens that come later, while the tags that only tweens used leave no trace once those tweens end.
 TEST(TweenManagerTest, ForgetsTagsThatNoTweenUses) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     rig.tweens.setTimeScale("slow", 0.5F);
     // clang-format off
     const auto playTagged = [&rig, &box](const std::string& tag) {
@@ -626,7 +594,7 @@ TEST(TweenManagerTest, ForgetsTagsThatNoTweenUses) {
 
 TEST(TweenManagerTest, InheritingTweensFollowTheModeOfTheirParent) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     ProcessMode parent = ProcessMode::Pausable;
     const auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(1.0));
     tween->setParentMode([&parent] { return parent; });
@@ -648,8 +616,8 @@ TEST(TweenManagerTest, InheritingTweensFollowTheModeOfTheirParent) {
 
 TEST(TweenManagerTest, ActsOnTagsTargetsAndOverwrites) {
     TweenRig rig;
-    Box first;
-    Box second;
+    TweenRig::Box first;
+    TweenRig::Box second;
     auto a = rig.tweenX(first, 1.0F, TweenProperty::to(10.0), false);
     a->setTag("ui");
     rig.tweens.add(a);
@@ -690,7 +658,7 @@ TEST(TweenManagerTest, ActsOnTagsTargetsAndOverwrites) {
 
 TEST(TweenManagerTest, StopsWhenTheTargetDies) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     bool alive = true;
     auto tween = std::make_shared<PropertyTween>(1.0F);
     tween->addTrack(TweenRig::numberTrack(box, TweenProperty::to(10.0), [&alive] { return alive; }));
@@ -706,7 +674,7 @@ TEST(TweenManagerTest, StopsWhenTheTargetDies) {
 
 TEST(TweenManagerTest, SpeedBasedTweensFindTheirDuration) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     box.x = 10.0;
     auto tween = std::make_shared<PropertyTween>(20.0F, true);
     tween->addTrack(TweenRig::numberTrack(box, TweenProperty::to(50.0)));
@@ -718,8 +686,8 @@ TEST(TweenManagerTest, SpeedBasedTweensFindTheirDuration) {
 
 TEST(TweenManagerTest, CallbacksMayChangeTweensWhileUpdating) {
     TweenRig rig;
-    Box box;
-    Box other;
+    TweenRig::Box box;
+    TweenRig::Box other;
     std::shared_ptr<PropertyTween> added;
     auto tween = rig.tweenX(box, 0.5F, TweenProperty::to(1.0));
     auto victim = rig.tweenX(other, 1.0F, TweenProperty::to(1.0));
@@ -745,7 +713,7 @@ TEST(TweenManagerTest, CallbacksMayChangeTweensWhileUpdating) {
     EXPECT_FALSE(self->isAlive());
 
     // A tween that a callback moves into a timeline leaves the manager before the update reaches it.
-    Box moved;
+    TweenRig::Box moved;
     auto taker = std::make_shared<Timeline>();
     auto trigger = rig.tweenX(box, 1.0F, TweenProperty::to(5.0));
     auto runner = rig.tweenX(moved, 1.0F, TweenProperty::to(5.0));
@@ -766,8 +734,8 @@ TEST(TweenManagerTest, CallbacksMayChangeTweensWhileUpdating) {
 
 TEST(TimelineTest, PlacesStepsJoinsInsertsAndLabels) {
     TweenRig rig;
-    Box first;
-    Box second;
+    TweenRig::Box first;
+    TweenRig::Box second;
     std::vector<std::string> log;
     auto timeline = std::make_shared<Timeline>();
     timeline->append(rig.tweenX(first, 1.0F, TweenProperty::to(10.0), false));
@@ -801,7 +769,7 @@ TEST(TimelineTest, PlacesStepsJoinsInsertsAndLabels) {
 
 TEST(TimelineTest, SeeksAndReversesEverythingInside) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     std::vector<std::string> calls;
     auto timeline = std::make_shared<Timeline>();
     timeline->append(rig.tweenX(box, 1.0F, TweenProperty::to(10.0), false));
@@ -831,8 +799,8 @@ TEST(TimelineTest, SeeksAndReversesEverythingInside) {
 
 TEST(TimelineTest, RepeatsNestsAndStaggers) {
     TweenRig rig;
-    Box outer;
-    std::vector<Box> boxes(3);
+    TweenRig::Box outer;
+    std::vector<TweenRig::Box> boxes(3);
     int calls = 0;
     auto inner = std::make_shared<Timeline>();
     inner->appendCall([&] { ++calls; });
@@ -851,7 +819,7 @@ TEST(TimelineTest, RepeatsNestsAndStaggers) {
     EXPECT_EQ(calls, 3);
 
     std::vector<std::shared_ptr<Tween>> tweens;
-    for (Box& box : boxes) {
+    for (TweenRig::Box& box : boxes) {
         tweens.push_back(rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false));
     }
 
@@ -872,7 +840,7 @@ TEST(TimelineTest, RepeatsNestsAndStaggers) {
 
 TEST(TimelineTest, RejectsInvalidChildrenAndKillsTheirTweens) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto timeline = std::make_shared<Timeline>();
     auto started = rig.tweenX(box, 1.0F, TweenProperty::to(1.0));
     rig.step(0.1);
@@ -906,7 +874,7 @@ TEST(TimelineTest, RejectsInvalidChildrenAndKillsTheirTweens) {
 
 TEST(TimelineTest, AStaggerThatFailsLeavesItsTweensWhereTheyWere) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto playing = rig.tweenX(box, 1.0F, TweenProperty::to(10.0));
     auto staggered = std::make_shared<Timeline>();
     EXPECT_THROW(staggered->stagger({playing, playing}, 0.1F), std::logic_error);
@@ -922,7 +890,7 @@ TEST(TimelineTest, AStaggerThatFailsLeavesItsTweensWhereTheyWere) {
 // A tween that outlives the timeline that held it belongs to no timeline anymore, and a killed timeline lets go of the timelines inside it.
 TEST(TimelineTest, TweensOutliveTheirTimeline) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto orphan = rig.tweenX(box, 1.0F, TweenProperty::to(1.0), false);
     auto first = std::make_shared<Timeline>();
     first->append(orphan);
@@ -942,8 +910,8 @@ TEST(TimelineTest, TweensOutliveTheirTimeline) {
 
 TEST(TimelineTest, JoinsIntoTheFirstStepAndPlaysCallsAtOnce) {
     TweenRig rig;
-    Box first;
-    Box second;
+    TweenRig::Box first;
+    TweenRig::Box second;
 
     // Joining into an empty timeline starts its first step, and the update callback receives the progress through the loop.
     auto parallel = std::make_shared<Timeline>();
@@ -978,8 +946,8 @@ TEST(TimelineTest, JoinsIntoTheFirstStepAndPlaysCallsAtOnce) {
 
 TEST(TimelineTest, CallsMayChangeTheTimelineWhileItPlays) {
     TweenRig rig;
-    Box first;
-    Box second;
+    TweenRig::Box first;
+    TweenRig::Box second;
     std::vector<std::string> log;
     float duringCall = 0.0F;
     auto timeline = std::make_shared<Timeline>();
@@ -1013,8 +981,8 @@ TEST(TimelineTest, CallsMayChangeTheTimelineWhileItPlays) {
 
 TEST(TimelineTest, TweensInsideGiveUpTheFieldsThatANewerTweenOverwrites) {
     TweenRig rig;
-    Box box;
-    Box other;
+    TweenRig::Box box;
+    TweenRig::Box other;
     auto timeline = std::make_shared<Timeline>();
     auto inside = rig.tweenX(box, 1.0F, TweenProperty::to(10.0), false);
     timeline->append(inside).join(rig.tweenX(other, 1.0F, TweenProperty::to(10.0), false));
@@ -1038,7 +1006,7 @@ TEST(TimelineTest, TweensInsideGiveUpTheFieldsThatANewerTweenOverwrites) {
 
 TEST(TweenManagerTest, OwnerScopesKillTweens) {
     TweenRig rig;
-    Box box;
+    TweenRig::Box box;
     auto tween = rig.tweenX(box, 1.0F, TweenProperty::to(1.0));
     {
         ConnectionScope scope;

@@ -34,38 +34,38 @@
 
 namespace haylen::core {
 
-// Passes a package through but fails to read one of its files, like a package whose storage went away after the app started.
-class UnreadablePackage final : public io::Package {
-  public:
-    UnreadablePackage(std::shared_ptr<const io::Package> innerPackage, std::string path) : inner(std::move(innerPackage)), unreadable(std::move(path)) {}
-
-    [[nodiscard]] std::string_view getName() const noexcept override {
-        return inner->getName();
-    }
-    [[nodiscard]] bool exists(std::string_view path) const override {
-        return inner->exists(path);
-    }
-    [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
-        return inner->getFileSize(path);
-    }
-    [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
-        if (path == unreadable) {
-            throw std::runtime_error("The storage of the package is gone.");
-        }
-
-        return inner->openReader(path);
-    }
-    [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override {
-        return inner->list(directory);
-    }
-
-  private:
-    std::shared_ptr<const io::Package> inner;
-    std::string unreadable;
-};
-
 class ErrorScreenTest : public ::testing::Test {
   protected:
+    // Passes a package through but fails to read one of its files, like a package whose storage went away after the app started.
+    class UnreadablePackage final : public io::Package {
+      public:
+        UnreadablePackage(std::shared_ptr<const io::Package> innerPackage, std::string path) : inner(std::move(innerPackage)), unreadable(std::move(path)) {}
+
+        [[nodiscard]] std::string_view getName() const noexcept override {
+            return inner->getName();
+        }
+        [[nodiscard]] bool exists(std::string_view path) const override {
+            return inner->exists(path);
+        }
+        [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
+            return inner->getFileSize(path);
+        }
+        [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
+            if (path == unreadable) {
+                throw std::runtime_error("The storage of the package is gone.");
+            }
+
+            return inner->openReader(path);
+        }
+        [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override {
+            return inner->list(directory);
+        }
+
+      private:
+        std::shared_ptr<const io::Package> inner;
+        std::string unreadable;
+    };
+
     static constexpr std::string_view kBattle = "local function strike(enemy)\n\treturn enemy.health\nend\n\nreturn function()\n\tlocal damage = strike(nil)\n\treturn damage\nend\n";
 
     // Starts an app whose scene fails on its first update, in the `strike` function on line 2 of `source/scenes/battle.lua`.
@@ -487,6 +487,7 @@ TEST_F(ErrorScreenTest, DrawsAndScrollsInTheHeadlessEngine) {
 
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
+    ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "source/scenes/battle.lua:2: attempt to index a nil value (local 'enemy')");
 }
 

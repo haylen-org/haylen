@@ -55,6 +55,7 @@ TEST(HandleTableTest, KeepsTheGenerationsOfItsSlotsThroughAClear) {
     const std::uint64_t after = table.add(2);
     EXPECT_NE(after, before);
     EXPECT_EQ(table.find(before), nullptr);
+    ASSERT_NE(table.find(after), nullptr);
     EXPECT_EQ(*table.find(after), 2);
 }
 

@@ -12,7 +12,17 @@
 
 namespace haylen::gpu::direct3d {
 
-TEST(CompileQueueTest, RunsEveryJobItIsGiven) {
+class CompileQueueTest : public ::testing::Test {
+  protected:
+    // Holds a job until the test releases its gate, and fails the test when the release never comes within the bound.
+    static void hold(const std::shared_future<void>& gate) {
+        if (gate.wait_for(std::chrono::seconds(10)) != std::future_status::ready) {
+            ADD_FAILURE() << "The test never released the job.";
+        }
+    }
+};
+
+TEST_F(CompileQueueTest, RunsEveryJobItIsGiven) {
     CompileQueue queue(2);
     std::atomic<int> ran = 0;
     std::promise<void> done;
@@ -31,7 +41,7 @@ TEST(CompileQueueTest, RunsEveryJobItIsGiven) {
 }
 
 // A compilation that runs while the app quits never holds the quit up, and the ones that did not start never run.
-TEST(CompileQueueTest, GoesAwayWithoutWaitingForTheJobThatRuns) {
+TEST_F(CompileQueueTest, GoesAwayWithoutWaitingForTheJobThatRuns) {
     auto release = std::make_shared<std::promise<void>>();
     auto started = std::make_shared<std::promise<void>>();
     auto finished = std::make_shared<std::promise<void>>();
@@ -42,7 +52,7 @@ TEST(CompileQueueTest, GoesAwayWithoutWaitingForTheJobThatRuns) {
     // clang-format off
     queue->post([gate, started, finished] {
         started->set_value();
-        gate.wait();
+        hold(gate);
         finished->set_value();
     });
     // clang-format on
@@ -59,7 +69,7 @@ TEST(CompileQueueTest, GoesAwayWithoutWaitingForTheJobThatRuns) {
 }
 
 // A job queued while the only free thread is about to take another one starts a thread of its own, so it never waits for a long compilation that runs.
-TEST(CompileQueueTest, StartsAThreadWhenTheJobsOutnumberTheFreeThreads) {
+TEST_F(CompileQueueTest, StartsAThreadWhenTheJobsOutnumberTheFreeThreads) {
     CompileQueue queue(2);
     std::promise<void> warmed;
     queue.post([&warmed] { warmed.set_value(); });
@@ -73,11 +83,11 @@ TEST(CompileQueueTest, StartsAThreadWhenTheJobsOutnumberTheFreeThreads) {
     // clang-format off
     queue.post([gate, first] {
         first->set_value();
-        gate.wait();
+        hold(gate);
     });
     queue.post([gate, second] {
         second->set_value();
-        gate.wait();
+        hold(gate);
     });
     // clang-format on
 
@@ -87,7 +97,7 @@ TEST(CompileQueueTest, StartsAThreadWhenTheJobsOutnumberTheFreeThreads) {
 }
 
 // A job that waits behind a running one comes back to its caller, which runs it at once, while a job that started stays with its thread.
-TEST(CompileQueueTest, WithdrawsOnlyTheJobsThatDidNotStart) {
+TEST_F(CompileQueueTest, WithdrawsOnlyTheJobsThatDidNotStart) {
     CompileQueue queue(1);
     auto release = std::make_shared<std::promise<void>>();
     std::shared_future<void> gate = release->get_future().share();
@@ -97,7 +107,7 @@ TEST(CompileQueueTest, WithdrawsOnlyTheJobsThatDidNotStart) {
     // clang-format off
     const std::uint64_t running = queue.post([gate, started] {
         started->set_value();
-        gate.wait();
+        hold(gate);
     });
     // clang-format on
     const std::uint64_t queued = queue.post([waiting] { *waiting = true; });

@@ -45,14 +45,14 @@ class ModuleReloadTest : public ::testing::Test {
             paths.push_back(path);
         }
 
-        fixture->host().getDevelopmentSession()->addChanges(paths);
+        fixture->developmentSession().addChanges(paths);
         fixture->frames(1);
     }
 
     void remove(const std::string& path) {
         fixture->package().removeFile(path);
         const std::vector<std::string> paths{path};
-        fixture->host().getDevelopmentSession()->addChanges(paths);
+        fixture->developmentSession().addChanges(paths);
         fixture->frames(1);
     }
 
@@ -88,8 +88,6 @@ class ModuleReloadTest : public ::testing::Test {
     std::mutex logMutex;
     std::vector<std::string> lines;
 };
-
-class HotReloadLuaTest : public ModuleReloadTest {};
 
 // clang-format off
 TEST_F(ModuleReloadTest, ReplacesFunctionsAndKeepsUpvalueState) {
@@ -1002,7 +1000,7 @@ TEST_F(ModuleReloadTest, ReloadsASaveMadeWhileTheModuleFirstLoads) {
     fixture->runLua("slow = require('slow')");
 
     const std::vector<std::string> changed{"source/slow.lua"};
-    fixture->host().getDevelopmentSession()->addChanges(changed);
+    fixture->developmentSession().addChanges(changed);
     fixture->frames(1);
     EXPECT_EQ(lua("return slow.version"), "2");
 }
@@ -1020,7 +1018,7 @@ end)
     EXPECT_EQ(lua("local searchers = package.searchers package.searchers = nil local ok, message = pcall(require, 'missing') package.searchers = searchers return message"), "The field \"package.searchers\" must be a table.");
 }
 
-TEST_F(HotReloadLuaTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
+TEST_F(ModuleReloadTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
     start({{"source/main.lua", "hotReload = require('haylen.hotReload')"}});
     EXPECT_EQ(lua("return hotReload.active()"), "true");
     EXPECT_EQ(lua("return hotReload.mode()"), "module");

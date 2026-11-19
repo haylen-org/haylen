@@ -36,6 +36,9 @@ class GpuFixture : public ::testing::TestWithParam<gpu::Device::Api> {
     // How long a copy of a render target, or the first measure of the GPU, may take before a test gives up on it.
     static constexpr std::chrono::seconds kReadTimeout{10};
 
+    // How long a device whose API hands it over in a later turn of the event loop may take to arrive.
+    static constexpr std::chrono::seconds kPrepareTimeout{10};
+
     // The APIs the tests run on, which `INSTANTIATE_TEST_SUITE_P` takes, and the name each run of a test takes after its API.
     [[nodiscard]] static std::vector<gpu::Device::Api> getTestedApis();
     [[nodiscard]] static std::string nameApi(const ::testing::TestParamInfo<gpu::Device::Api>& info);

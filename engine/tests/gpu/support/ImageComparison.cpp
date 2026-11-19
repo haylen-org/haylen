@@ -5,15 +5,13 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
-#include <iterator>
 #include <span>
 #include <string>
-#include <vector>
 
 #include "gpu/support/GpuTestFiles.hpp"
 #include "support/Environment.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::test {
 
@@ -62,9 +60,7 @@ graphics::Image ImageComparison::makeDifference(const graphics::Image& actual, c
 
 void ImageComparison::write(const graphics::Image& image, const std::filesystem::path& path) {
     std::filesystem::create_directories(path.parent_path());
-    const std::vector<std::uint8_t> encoded = image.encodePng();
-    std::ofstream file(path, std::ios::binary);
-    file.write(reinterpret_cast<const char*>(encoded.data()), static_cast<std::streamsize>(encoded.size()));
+    TestFiles::write(path, image.encodePng());
 }
 
 void ImageComparison::expectReference(const graphics::Image& actual, std::string_view name, int tolerance, int allowedPixels) {
@@ -80,9 +76,7 @@ void ImageComparison::expectReference(const graphics::Image& actual, std::string
         return;
     }
 
-    std::ifstream file(reference, std::ios::binary);
-    const std::vector<std::uint8_t> encoded{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-    const graphics::Image expected = graphics::Image::decode(encoded);
+    const graphics::Image expected = graphics::Image::decode(TestFiles::read(reference));
     const Result result = compare(actual, expected, tolerance);
     if (result.differing <= allowedPixels) {
         return;

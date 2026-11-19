@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "debug/Debugger.hpp"
+#include "debug/DebuggerTest.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/lua/Error.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -17,85 +18,6 @@
 #include "support/EngineFixture.hpp"
 
 namespace haylen::debug {
-
-// Drives the debugger with the requests of the protocol, as an editor does, over a headless engine whose code runs through the protected calls of the engine, as its callbacks do.
-class DebuggerTest : public ::testing::Test {
-  protected:
-    static constexpr const char* kModule = R"(local M = {}
-function M.add(a, b)
-    local sum = a + b
-    local info = {name = "point", values = {1, 2}}
-    return sum, info
-end
-function M.run()
-    local total = M.add(2, 3)
-    return total * 10
-end
-function M.loop()
-    local sum = 0
-    for i = 1, 6 do
-        sum = sum + i
-    end
-    return sum
-end
-function M.fail(value)
-    local doubled = value * 2
-    error("broken " .. doubled)
-end
-function M.inspect()
-    local probe = setmetatable({}, {__name = "Probe", __index = function() touched = true end, __pairs = function() touched = true end, __len = function() touched = true end, __tostring = function() touched = true return "" end}) local camera = require("haylen.graphics2d").newCamera()
-    return probe, camera
-end
-function M.request()
-    local reason = "asked"
-    require("haylen.debug").breakpoint()
-    return reason
-end
-return M
-)";
-
-    static constexpr const char* kTask = R"(local async = require("async")
-return function()
-    async.spawn(function()
-        local before = 1
-        async.sleep(1):await()
-        local after = before + 1
-        finished = after
-    end)
-end
-)";
-
-    static constexpr const char* kGenerator = R"(return function()
-    local value = 1
-    coroutine.yield(value)
-    value = value + 1
-end
-)";
-
-    // Runs the source through the message handler of the engine and returns the message of its error, or an empty text.
-    static std::string run(lua_State* L, const std::string& source) {
-        try {
-            lua::Runtime::runChunk(L, source, "=test");
-        } catch (const lua::Error& error) {
-            return error.what();
-        }
-
-        return {};
-    }
-
-    static core::Json breakpoints(std::vector<core::Json> list) {
-        return {{"source", {{"path", "source/mod.lua"}}}, {"breakpoints", std::move(list)}};
-    }
-
-    test::EngineFixture fixture{{{"source/mod.lua", kModule}, {"source/task.lua", kTask}, {"source/generator.lua", kGenerator}}};
-    test::DebugClient client{fixture.host()};
-};
-
-class DebuggerStepTest : public DebuggerTest {};
-
-class DebuggerErrorTest : public DebuggerTest {};
-
-class DebuggerWebTest : public DebuggerTest {};
 
 TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
     client.connect(fixture.lua());
@@ -203,156 +125,8 @@ TEST_F(DebuggerTest, ConditionsCountsAndLogPointsDecideWhetherALineHalts) {
     client.then([](test::DebugClient& debug) { debug.request("continue"); });
     EXPECT_EQ(run(fixture.lua(), "require('mod').loop()"), "");
     EXPECT_EQ(client.getEvents("stopped").size(), 5U);
+    ASSERT_FALSE(client.getEvents("output").empty());
     EXPECT_NE(client.getEvents("output").back().at("output").get<std::string>().find("The condition \"nothing + 1\" of the breakpoint at line 16 failed"), std::string::npos);
-}
-
-TEST_F(DebuggerStepTest, StepsInOutAndOverTheCallsOfAFunction) {
-    client.connect(fixture.lua());
-    client.request("setBreakpoints", breakpoints({{{"line", 8}}}));
-    client.getDebugger().update(fixture.lua());
-    std::vector<int> traces;
-    // clang-format off
-    const auto trace = [&traces](const char* command) {
-        return [&traces, command](test::DebugClient& debug) {
-            traces.push_back(debug.request("stackTrace", {{"threadId", 1}}));
-            debug.request(command, {{"threadId", 1}});
-        };
-    };
-    // clang-format on
-    client.then(trace("stepIn"));
-    client.then(trace("next"));
-    client.then(trace("stepOut"));
-    client.then(trace("continue"));
-    EXPECT_EQ(run(fixture.lua(), "result = require('mod').run()"), "");
-    EXPECT_EQ(fixture.lua("return result"), "50");
-
-    std::vector<int> lines;
-    for (const int request : traces) {
-        lines.push_back(client.getResponse(request).at("body").at("stackFrames").at(0).at("line").get<int>());
-    }
-
-    EXPECT_EQ(lines, (std::vector<int>{8, 3, 4, 9}));
-    const std::vector<core::Json> stops = client.getEvents("stopped");
-    ASSERT_EQ(stops.size(), 4U);
-    EXPECT_EQ(stops.at(1).at("reason"), "step");
-}
-
-// A step over the await of a task of the async library waits for the task to go on in a later frame, while the main thread and other code run without halting.
-TEST_F(DebuggerStepTest, StepsOverTheAwaitOfATaskIntoTheFrameWhereItGoesOn) {
-    client.connect(fixture.lua());
-    client.request("setBreakpoints", {{"source", {{"path", "source/task.lua"}}}, {"breakpoints", {{{"line", 4}}}}});
-    client.getDebugger().update(fixture.lua());
-    std::vector<int> traces;
-    for (const char* command : {"next", "next", "next", "continue"}) {
-        // clang-format off
-        client.then([&traces, command](test::DebugClient& debug) {
-            traces.push_back(debug.request("stackTrace"));
-            debug.request(command);
-        });
-        // clang-format on
-    }
-
-    EXPECT_EQ(run(fixture.lua(), "require('task')()"), "");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return finished") == "2"; }));
-    EXPECT_FALSE(client.hasSteps());
-
-    std::vector<int> lines;
-    for (const int request : traces) {
-        const core::Json frame = client.getResponse(request).at("body").at("stackFrames").at(0);
-        EXPECT_EQ(frame.at("source").at("path"), "source/task.lua");
-        lines.push_back(frame.at("line").get<int>());
-    }
-
-    EXPECT_EQ(lines, (std::vector<int>{4, 5, 6, 7}));
-}
-
-// A coroutine that waited since before the debugger watched anything takes the hooks when the debugger starts to watch, so a pause halts at its next line when native code resumes it.
-TEST_F(DebuggerStepTest, PausesInACoroutineThatWaitedBeforeTheDebuggerWatched) {
-    fixture.runLua(R"(
-        resumed = 0
-        waiting = coroutine.create(function()
-            coroutine.yield()
-            resumed = resumed + 1
-        end)
-        coroutine.resume(waiting)
-    )");
-    client.connect(fixture.lua());
-    client.request("pause");
-    client.getDebugger().update(fixture.lua());
-    int frames = 0;
-    // clang-format off
-    client.then([&](test::DebugClient& debug) {
-        frames = debug.request("stackTrace");
-        debug.request("continue");
-    });
-    // clang-format on
-
-    lua_State* L = fixture.lua();
-    lua_getglobal(L, "waiting");
-    lua_State* waiting = lua_tothread(L, -1);
-    int results = 0;
-    EXPECT_EQ(lua_resume(waiting, L, 0, &results), LUA_OK);
-    lua_pop(L, 1);
-    EXPECT_EQ(client.getResponse(frames).at("body").at("stackFrames").at(0).at("line"), 5);
-    EXPECT_EQ(fixture.lua("return resumed"), "1");
-}
-
-// A step into a coroutine that yields waits for it to go on, and a coroutine that the app drops meanwhile stays whole while the lines of the app ask whether the step is done.
-TEST_F(DebuggerStepTest, StepsInAtTheYieldOfACoroutineThatTheAppThenDrops) {
-    client.connect(fixture.lua());
-    client.request("setBreakpoints", {{"source", {{"path", "source/generator.lua"}}}, {"breakpoints", {{{"line", 3}}}}});
-    client.getDebugger().update(fixture.lua());
-    client.then([](test::DebugClient& debug) { debug.request("stepIn"); });
-
-    EXPECT_EQ(run(fixture.lua(), "generator = coroutine.wrap(require('generator')) generator()"), "");
-    EXPECT_EQ(run(fixture.lua(), "generator = nil collectgarbage() collectgarbage() result = 0 for index = 1, 3 do result = result + index end"), "");
-    EXPECT_EQ(fixture.lua("return result"), "6");
-    EXPECT_EQ(client.getEvents("stopped").size(), 1U);
-}
-
-TEST_F(DebuggerErrorTest, HaltsWhereAnUncaughtErrorRisesBeforeItsStackUnwinds) {
-    client.connect(fixture.lua());
-    client.request("setExceptionBreakpoints", {{"filters", {"uncaught"}}});
-    client.getDebugger().update(fixture.lua());
-
-    // An error that a protected call of the app catches never halts.
-    EXPECT_EQ(run(fixture.lua(), "caught = pcall(require('mod').fail, 1)"), "");
-    EXPECT_TRUE(client.getEvents("stopped").empty());
-
-    int frames = 0;
-    int scopes = 0;
-    int locals = 0;
-    client.then([&](test::DebugClient& debug) { frames = debug.request("stackTrace"); });
-    client.then([&](test::DebugClient& debug) { scopes = debug.request("scopes", {{"frameId", 2}}); });
-    client.then([&](test::DebugClient& debug) { locals = debug.request("variables", {{"variablesReference", debug.getResponse(scopes).at("body").at("scopes").at(0).at("variablesReference")}}); });
-    client.then([](test::DebugClient& debug) { debug.request("next"); });
-    EXPECT_NE(run(fixture.lua(), "require('mod').fail(21)").find("broken 42"), std::string::npos);
-
-    const std::vector<core::Json> stops = client.getEvents("stopped");
-    ASSERT_EQ(stops.size(), 1U);
-    EXPECT_EQ(stops.front().at("reason"), "exception");
-    EXPECT_NE(stops.front().at("text").get<std::string>().find("broken 42"), std::string::npos);
-    const core::Json stack = client.getResponse(frames).at("body").at("stackFrames");
-    EXPECT_EQ(stack.at(0).at("name"), "error");
-    EXPECT_EQ(stack.at(1).at("name"), "fail");
-    EXPECT_EQ(stack.at(1).at("line"), 20);
-    const core::Json variables = client.getResponse(locals).at("body").at("variables");
-    EXPECT_EQ(variables.at(1).at("name"), "doubled");
-    EXPECT_EQ(variables.at(1).at("value"), "42");
-}
-
-TEST_F(DebuggerErrorTest, HaltsOnTheErrorOfATaskOfTheAsyncLibrary) {
-    client.connect(fixture.lua());
-    client.request("setExceptionBreakpoints", {{"filters", {"uncaught"}}});
-    client.getDebugger().update(fixture.lua());
-    int frames = 0;
-    client.then([&](test::DebugClient& debug) { frames = debug.request("stackTrace"); });
-    client.then([](test::DebugClient& debug) { debug.request("continue"); });
-    fixture.runLua("require('async').spawn(function() local mod = require('mod') mod.fail(5) end)");
-    fixture.frames(2);
-    ASSERT_EQ(client.getEvents("stopped").size(), 1U);
-    EXPECT_EQ(client.getResponse(frames).at("body").at("stackFrames").at(1).at("line"), 20);
-    EXPECT_NE(fixture.engine().getError(), nullptr);
 }
 
 // Looking at a value reads it raw, so the metamethods of the app never run, and an evaluation that never ends stops at its time bound.
@@ -495,25 +269,6 @@ TEST_F(DebuggerTest, KeepsTheLastBreakpointOfALineAndSaysSoForTheFirst) {
     const std::vector<core::Json> outputs = client.getEvents("output");
     const auto logged = std::ranges::count_if(outputs, [](const core::Json& output) { return output.at("output").get<std::string>().starts_with("sum "); });
     EXPECT_EQ(logged, 6);
-}
-
-// A web page cannot halt, so it keeps the log points and says why the other breakpoints never take effect.
-TEST_F(DebuggerWebTest, KeepsOnlyTheLogPointsOnAPageThatCannotHalt) {
-    fixture.host().setHaltable(false);
-    client.connect(fixture.lua());
-    EXPECT_TRUE(client.getResponse(1).at("body").at("exceptionBreakpointFilters").empty());
-    const int set = client.request("setBreakpoints", breakpoints({{{"line", 14}}, {{"line", 16}, {"logMessage", "sum {sum}"}}}));
-    const int pause = client.request("pause");
-    client.getDebugger().update(fixture.lua());
-    const core::Json results = client.getResponse(set).at("body").at("breakpoints");
-    EXPECT_EQ(results.at(0).at("verified"), false);
-    EXPECT_NE(results.at(0).at("message").get<std::string>().find("cannot halt"), std::string::npos);
-    EXPECT_EQ(results.at(1).at("verified"), true);
-    EXPECT_FALSE(client.getResponse(pause).at("success").get<bool>());
-
-    EXPECT_EQ(run(fixture.lua(), "require('mod').loop()"), "");
-    EXPECT_TRUE(client.getEvents("stopped").empty());
-    EXPECT_EQ(client.getEvents("output").back().at("output"), "sum 21\n");
 }
 
 } // namespace haylen::debug

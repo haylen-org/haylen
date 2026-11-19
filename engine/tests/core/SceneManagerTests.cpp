@@ -34,93 +34,99 @@
 
 namespace haylen::core {
 
-// Writes the scene events of the engine to a log next to the hooks of the scenes, as the event name followed by the scenes it carries.
-class EventRecorder final {
-  public:
-    EventRecorder(Engine& engine, std::vector<std::string>& entries) : log(entries) {
-        for (const std::string_view name : {LifecycleEvent::kSceneLoading, LifecycleEvent::kSceneLoaded, LifecycleEvent::kSceneEntered, LifecycleEvent::kSceneExited, LifecycleEvent::kSceneUnloaded, LifecycleEvent::kScenePaused, LifecycleEvent::kSceneResumed, LifecycleEvent::kSceneExitTransitionStarted, LifecycleEvent::kSceneEnterTransitionFinished}) {
-            connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) { log.push_back(std::string(name) + " " + describe(event.get<Scene>())); }));
-        }
+class SceneManagerTest : public ::testing::Test {
+  protected:
+    // Writes the scene events of the engine to a log next to the hooks of the scenes, as the event name followed by the scenes it carries.
+    class EventRecorder final {
+      public:
+        EventRecorder(Engine& engine, std::vector<std::string>& entries) : log(entries) {
+            for (const std::string_view name : {LifecycleEvent::kSceneLoading, LifecycleEvent::kSceneLoaded, LifecycleEvent::kSceneEntered, LifecycleEvent::kSceneExited, LifecycleEvent::kSceneUnloaded, LifecycleEvent::kScenePaused, LifecycleEvent::kSceneResumed, LifecycleEvent::kSceneExitTransitionStarted, LifecycleEvent::kSceneEnterTransitionFinished}) {
+                connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) { log.push_back(std::string(name) + " " + describe(event.get<Scene>())); }));
+            }
 
-        for (const std::string_view name : {LifecycleEvent::kTransitionOutStarted, LifecycleEvent::kTransitionOutFinished, LifecycleEvent::kTransitionInStarted, LifecycleEvent::kTransitionInFinished}) {
+            for (const std::string_view name : {LifecycleEvent::kTransitionOutStarted, LifecycleEvent::kTransitionOutFinished, LifecycleEvent::kTransitionInStarted, LifecycleEvent::kTransitionInFinished}) {
+                // clang-format off
+                connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) {
+                    const auto* transfer = event.get<SceneManager::Transfer>();
+                    ASSERT_NE(transfer, nullptr);
+                    log.push_back(std::string(name) + " " + describe(transfer->from) + ">" + describe(transfer->to));
+                }));
+                // clang-format on
+            }
+
             // clang-format off
-            connections.add(engine.getEvents().on(name, [this, name](EventBus::Event& event) {
-                const SceneManager::Transfer& transfer = *event.get<SceneManager::Transfer>();
-                log.push_back(std::string(name) + " " + describe(transfer.from) + ">" + describe(transfer.to));
+            connections.add(engine.getEvents().on(LifecycleEvent::kSceneLoadFailed, [this](EventBus::Event& event) {
+                const auto* failure = event.get<SceneManager::LoadFailure>();
+                ASSERT_NE(failure, nullptr);
+                ASSERT_NE(failure->error, nullptr);
+                log.push_back("sceneLoadFailed " + describe(failure->scene) + " " + failure->error->what());
             }));
             // clang-format on
         }
 
-        // clang-format off
-        connections.add(engine.getEvents().on(LifecycleEvent::kSceneLoadFailed, [this](EventBus::Event& event) {
-            const SceneManager::LoadFailure& failure = *event.get<SceneManager::LoadFailure>();
-            log.push_back("sceneLoadFailed " + describe(failure.scene) + " " + failure.error->what());
-        }));
-        // clang-format on
-    }
-
-  private:
-    [[nodiscard]] static std::string describe(const Scene* scene) {
-        const auto* recorded = dynamic_cast<const test::RecordingScene*>(scene);
-        return recorded != nullptr ? recorded->getName() : "none";
-    }
-
-    std::vector<std::string>& log;
-    ConnectionScope connections;
-};
-
-// Scene whose load runs a function of the test with the load context.
-class LoadScene final : public Scene {
-  public:
-    explicit LoadScene(std::function<void(SceneLoad&)> body) : run(std::move(body)) {}
-
-    void load(Engine&, SceneLoad& context) override {
-        run(context);
-    }
-    void unload(Engine&) override {
-        if (!unloadFailure.empty()) {
-            throw lua::Error(unloadFailure);
+      private:
+        [[nodiscard]] static std::string describe(const Scene* scene) {
+            const auto* recorded = dynamic_cast<const test::RecordingScene*>(scene);
+            return recorded != nullptr ? recorded->getName() : "none";
         }
-    }
 
-    std::string unloadFailure;
+        std::vector<std::string>& log;
+        ConnectionScope connections;
+    };
 
-  private:
-    std::function<void(SceneLoad&)> run;
+    // Scene whose load runs a function of the test with the load context.
+    class LoadScene final : public Scene {
+      public:
+        explicit LoadScene(std::function<void(SceneLoad&)> body) : run(std::move(body)) {}
+
+        void load(Engine&, SceneLoad& context) override {
+            run(context);
+        }
+        void unload(Engine&) override {
+            if (!unloadFailure.empty()) {
+                throw lua::Error(unloadFailure);
+            }
+        }
+
+        std::string unloadFailure;
+
+      private:
+        std::function<void(SceneLoad&)> run;
+    };
+
+    // Loading view that writes its hooks to a log and keeps the last progress it received.
+    class RecordingView final : public LoadingView {
+      public:
+        explicit RecordingView(std::vector<std::string>& entries) : log(entries) {}
+
+        void enter(Engine&) override {
+            log.emplace_back("view:enter");
+        }
+        void exit(Engine&) override {
+            log.emplace_back("view:exit");
+        }
+        void update(Engine&, float, const SceneLoad::Progress& progress) override {
+            ++updates;
+            last = progress;
+        }
+        void render(Engine&, const SceneLoad::Progress&) override {
+            ++renders;
+        }
+        void renderUi(Engine&, const SceneLoad::Progress&) override {
+            ++uiRenders;
+        }
+
+        int updates = 0;
+        int renders = 0;
+        int uiRenders = 0;
+        SceneLoad::Progress last;
+
+      private:
+        std::vector<std::string>& log;
+    };
 };
 
-// Loading view that writes its hooks to a log and keeps the last progress it received.
-class RecordingView final : public LoadingView {
-  public:
-    explicit RecordingView(std::vector<std::string>& entries) : log(entries) {}
-
-    void enter(Engine&) override {
-        log.emplace_back("view:enter");
-    }
-    void exit(Engine&) override {
-        log.emplace_back("view:exit");
-    }
-    void update(Engine&, float, const SceneLoad::Progress& progress) override {
-        ++updates;
-        last = progress;
-    }
-    void render(Engine&, const SceneLoad::Progress&) override {
-        ++renders;
-    }
-    void renderUi(Engine&, const SceneLoad::Progress&) override {
-        ++uiRenders;
-    }
-
-    int updates = 0;
-    int renders = 0;
-    int uiRenders = 0;
-    SceneLoad::Progress last;
-
-  private:
-    std::vector<std::string>& log;
-};
-
-TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
+TEST_F(SceneManagerTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
     std::optional<SceneLoad::Deferral> first;
@@ -143,6 +149,8 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     EXPECT_THROW(context->setProgress(1.5F), std::invalid_argument);
 
     // The load waits for every deferral, whichever object holds it by then.
+    ASSERT_TRUE(first.has_value());
+    ASSERT_TRUE(second.has_value());
     first->complete();
     first->complete();
     fixture.frames(1);
@@ -165,6 +173,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     scenes.preload(std::make_shared<LoadScene>([](SceneLoad& load) { const SceneLoad::Deferral forgotten = load.defer(); }), {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
+    ASSERT_TRUE(result->error.has_value());
     EXPECT_STREQ(result->error->what(), "The scene load was dropped before it finished.");
 
     // A hook that throws while it holds a deferral fails the load with its own error, which explains why the deferral went away.
@@ -178,6 +187,7 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
 
     scenes.preload(throwing, {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(result.has_value());
+    ASSERT_TRUE(result->error.has_value());
     EXPECT_STREQ(result->error->what(), "The level file is damaged.");
 
     // A load fails with its first failure, and the failures and drops after it change nothing.
@@ -194,12 +204,15 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     // clang-format on
 
     scenes.preload(twice, {}, [&](const SceneManager::Result& value) { result = value; });
+    ASSERT_TRUE(early.has_value());
+    ASSERT_TRUE(late.has_value());
     early->fail(lua::Error("the first failure"));
     dropped.reset();
     late->fail(lua::Error("the second failure"));
     fixture.frames(1);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
+    ASSERT_TRUE(result->error.has_value());
     EXPECT_STREQ(result->error->what(), "the first failure");
 
     // A group the asset manager does not know fails the load with the reason of the manager.
@@ -207,10 +220,11 @@ TEST(SceneLoadTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     scenes.preload(std::make_shared<LoadScene>([](SceneLoad& load) { load.preload("missing"); }), {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
+    ASSERT_TRUE(result->error.has_value());
     EXPECT_STREQ(result->error->what(), "The asset group \"missing\" is not defined.");
 }
 
-TEST(SceneManagerTest, UsesTheDefaultHooksOfALoadingView) {
+TEST_F(SceneManagerTest, UsesTheDefaultHooksOfALoadingView) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -219,12 +233,12 @@ TEST(SceneManagerTest, UsesTheDefaultHooksOfALoadingView) {
     scenes.push(slow, {.transition = SceneManager::Transition::fade(0.2F), .loading = std::make_shared<LoadingView>()});
     fixture.frames(3, 0.1);
     EXPECT_TRUE(scenes.isLoadingViewShown());
-    slow->deferral->complete();
+    slow->completeLoad();
     fixture.frames(5, 0.1);
     EXPECT_EQ(slow->getState(), Scene::State::Active);
 }
 
-TEST(SceneManagerTest, PushesReplacesAndPopsThroughTheLifecycle) {
+TEST_F(SceneManagerTest, PushesReplacesAndPopsThroughTheLifecycle) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -277,7 +291,7 @@ TEST(SceneManagerTest, PushesReplacesAndPopsThroughTheLifecycle) {
     EXPECT_THROW(scenes.preload(nullptr), std::invalid_argument);
 }
 
-TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
+TEST_F(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -317,7 +331,7 @@ TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
 
     // Once loaded, the game enters and the reveal plays the rest of the effect.
     log.clear();
-    game->deferral->complete();
+    game->completeLoad();
     fixture.frames(1, 0.25);
     EXPECT_EQ(log, (std::vector<std::string>{"sceneLoaded game", "game:enter", "sceneEntered game", "transitionInStarted menu>game"}));
     EXPECT_EQ(game->getState(), Scene::State::Entering);
@@ -335,7 +349,7 @@ TEST(SceneManagerTest, CoversHoldsWhileTheNextSceneLoadsAndReveals) {
     EXPECT_FALSE(scenes.isTransitioning());
 }
 
-TEST(SceneManagerTest, KeepsTheReplacedSceneUntilTheNextOneLoadedWhenAsked) {
+TEST_F(SceneManagerTest, KeepsTheReplacedSceneUntilTheNextOneLoadedWhenAsked) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -353,7 +367,7 @@ TEST(SceneManagerTest, KeepsTheReplacedSceneUntilTheNextOneLoadedWhenAsked) {
     EXPECT_EQ(log.size(), 2U);
     EXPECT_EQ(scenes.getTop(), nullptr);
 
-    game->deferral->complete();
+    game->completeLoad();
     fixture.frames(1, 0.25);
     EXPECT_EQ(log, (std::vector<std::string>{"menu:exitTransitionStarted", "game:load", "menu:exit", "menu:unload", "game:enter"}));
 
@@ -367,7 +381,7 @@ TEST(SceneManagerTest, KeepsTheReplacedSceneUntilTheNextOneLoadedWhenAsked) {
     EXPECT_EQ(log, (std::vector<std::string>{"game:exitTransitionStarted", "map:load", "game:pause", "map:enter", "map:enterTransitionFinished", "map:exitTransitionStarted", "map:exit", "map:unload", "game:resume", "game:enterTransitionFinished"}));
 }
 
-TEST(SceneManagerTest, LoadsFirstForEffectsThatShowBothScenes) {
+TEST_F(SceneManagerTest, LoadsFirstForEffectsThatShowBothScenes) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -391,7 +405,7 @@ TEST(SceneManagerTest, LoadsFirstForEffectsThatShowBothScenes) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().passes, 1U);
 
     // Then both scenes play the effect alive, each in its image, and the menu exits at the exit point.
-    game->deferral->complete();
+    game->completeLoad();
     fixture.frames(1, 0.25);
     EXPECT_EQ(log, (std::vector<std::string>{"game:load", "menu:exitTransitionStarted", "game:enter"}));
     EXPECT_EQ(menu->getState(), Scene::State::Exiting);
@@ -407,7 +421,7 @@ TEST(SceneManagerTest, LoadsFirstForEffectsThatShowBothScenes) {
 }
 
 // An effect that shows both scenes hides the current scenes while it shows the next ones, so its two halves start together, and the out half ends at its exit point.
-TEST(SceneManagerTest, ReportsBothHalvesOfAnEffectThatShowsBothScenes) {
+TEST_F(SceneManagerTest, ReportsBothHalvesOfAnEffectThatShowsBothScenes) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -431,7 +445,7 @@ TEST(SceneManagerTest, ReportsBothHalvesOfAnEffectThatShowsBothScenes) {
     EXPECT_EQ(transitions(), (std::vector<std::string>{"transitionOutStarted menu>game", "transitionInStarted menu>game", "transitionOutFinished menu>game", "transitionInFinished menu>game"}));
 }
 
-TEST(SceneManagerTest, LoadsBeforeSwitchingWithoutATransition) {
+TEST_F(SceneManagerTest, LoadsBeforeSwitchingWithoutATransition) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -448,13 +462,13 @@ TEST(SceneManagerTest, LoadsBeforeSwitchingWithoutATransition) {
     EXPECT_EQ(scenes.getTop(), menu.get());
     EXPECT_TRUE(scenes.isInputBlocked());
 
-    game->deferral->complete();
+    game->completeLoad();
     fixture.frames(1);
     EXPECT_EQ(log, (std::vector<std::string>{"game:load", "menu:exitTransitionStarted", "menu:exit", "menu:unload", "game:enter", "game:enterTransitionFinished"}));
     EXPECT_FALSE(scenes.isTransitioning());
 }
 
-TEST(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
+TEST_F(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -482,7 +496,7 @@ TEST(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().passes, 1U);
 
     // A load that finished early still shows the view for its minimum time.
-    game->deferral->complete();
+    game->completeLoad();
     fixture.frames(1, 0.125);
     EXPECT_TRUE(scenes.isLoadingViewShown());
     EXPECT_EQ(view->last.value, 1.0F);
@@ -504,7 +518,7 @@ TEST(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
     cave->loading = test::RecordingScene::Load::Deferred;
     scenes.replace(cave, {.transition = SceneManager::Transition::fade(0.5F), .loading = view, .loadingFadeOut = 0.0F});
     ASSERT_TRUE(fixture.frameUntil([&scenes] { return scenes.isLoadingViewShown(); }));
-    cave->deferral->complete();
+    cave->completeLoad();
     fixture.frames(1, 0.125);
     EXPECT_FALSE(scenes.isLoadingViewShown());
     EXPECT_EQ(log.back(), "cave:enter");
@@ -523,13 +537,13 @@ TEST(SceneManagerTest, ShowsTheLoadingViewAfterItsDelayForItsMinimumTime) {
     fixture.frames(1);
     EXPECT_EQ(quick->renders, quickRenders + 1);
     EXPECT_EQ(std::count(log.begin(), log.end(), "view:enter"), 3);
-    slow->deferral->complete();
+    slow->completeLoad();
     fixture.frames(1);
     EXPECT_EQ(scenes.getTop(), slow.get());
     EXPECT_FALSE(scenes.isLoadingViewShown());
 }
 
-TEST(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
+TEST_F(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
     std::vector<std::string> log;
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(4, 4, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/world/grass.png", std::string(image.begin(), image.end())}, {"content/world/stone.png", std::string(image.begin(), image.end())}});
@@ -557,6 +571,7 @@ TEST(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
     scenes.push(broken, {.completion = [&](const SceneManager::Result& value) { result = value; }});
     ASSERT_TRUE(fixture.frameUntil([&] { return result.has_value(); }));
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
+    ASSERT_TRUE(result->error.has_value());
     const std::string failure = result->error->what();
     EXPECT_TRUE(failure.starts_with("The asset group \"broken\" could not load world/")) << failure;
     EXPECT_NE(failure.find("world/missing.png"), std::string::npos) << failure;
@@ -566,7 +581,7 @@ TEST(SceneManagerTest, PreloadsAssetGroupsIntoTheProgressOfTheLoad) {
     EXPECT_EQ(broken->getState(), Scene::State::Unloaded);
 }
 
-TEST(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
+TEST_F(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -587,6 +602,7 @@ TEST(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
     EXPECT_EQ(log, (std::vector<std::string>{"menu:exitTransitionStarted", "sceneExitTransitionStarted menu", "transitionOutStarted menu>broken", "sceneLoading broken", "broken:load", "sceneLoadFailed broken broken cannot load", "broken:unload", "sceneUnloaded broken", "transitionOutFinished menu>broken", "transitionInStarted menu>menu", "transitionInFinished menu>menu", "menu:enterTransitionFinished", "sceneEnterTransitionFinished menu"}));
     ASSERT_EQ(results.size(), 1U);
     EXPECT_EQ(results[0].outcome, SceneManager::Outcome::Failed);
+    ASSERT_TRUE(results[0].error.has_value());
     EXPECT_STREQ(results[0].error->what(), "broken cannot load");
     EXPECT_EQ(broken->getState(), Scene::State::Unloaded);
     EXPECT_EQ(menu->getState(), Scene::State::Active);
@@ -601,14 +617,14 @@ TEST(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
     fixture.frames(2, 0.125);
     EXPECT_EQ(menu->getState(), Scene::State::Exiting);
     log.clear();
-    late->deferral->fail(lua::Error("late failed"));
+    late->failLoad(lua::Error("late failed"));
     fixture.frames(3, 0.125);
     EXPECT_EQ(log, (std::vector<std::string>{"sceneLoadFailed late late failed", "late:unload", "sceneUnloaded late", "transitionInStarted menu>menu", "transitionInFinished menu>menu", "menu:enterTransitionFinished", "sceneEnterTransitionFinished menu"}));
     EXPECT_EQ(scenes.getTop(), menu.get());
     EXPECT_EQ(menu->getState(), Scene::State::Active);
 }
 
-TEST(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
+TEST_F(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -627,7 +643,7 @@ TEST(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
     EXPECT_EQ(menu->getState(), Scene::State::Covered);
     EXPECT_TRUE(scenes.isLoadingViewShown());
     log.clear();
-    shop->deferral->fail(lua::Error("closed"));
+    shop->failLoad(lua::Error("closed"));
     fixture.frames(3, 0.125);
     EXPECT_EQ(log, (std::vector<std::string>{"shop:unload", "view:exit", "menu:resume", "error closed", "menu:enterTransitionFinished"}));
     EXPECT_EQ(menu->getState(), Scene::State::Active);
@@ -638,7 +654,7 @@ TEST(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
     scenes.replace(cave, {.transition = SceneManager::Transition::fade(0.5F)});
     fixture.frames(2, 0.125);
     log.clear();
-    cave->deferral->fail(lua::Error("flooded"));
+    cave->failLoad(lua::Error("flooded"));
     fixture.frames(1, 0.125);
     EXPECT_EQ(log, (std::vector<std::string>{"cave:unload", "base:resume"}));
     EXPECT_EQ(scenes.getTop(), base.get());
@@ -646,7 +662,7 @@ TEST(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "flooded");
 }
 
-TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
+TEST_F(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
     std::vector<std::string> log;
     {
         // Without a handler, a failure after the menu unloaded leaves nothing to show but the error screen.
@@ -658,7 +674,7 @@ TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
         broken->loading = test::RecordingScene::Load::Deferred;
         scenes.replace(broken, {.transition = SceneManager::Transition::fade(0.5F)});
         fixture.frames(2, 0.125);
-        broken->deferral->fail(lua::Error("no map"));
+        broken->failLoad(lua::Error("no map"));
         fixture.frames(1, 0.125);
         ASSERT_NE(fixture.engine().getError(), nullptr);
         EXPECT_STREQ(fixture.engine().getError()->what(), "no map");
@@ -692,7 +708,7 @@ TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
     // clang-format on
 
     fixture.frames(2, 0.125);
-    broken->deferral->fail(lua::Error("no map"));
+    broken->failLoad(lua::Error("no map"));
     fixture.frames(1, 0.125);
     EXPECT_EQ(errors, std::vector<std::string>{"no map"});
     EXPECT_TRUE(scenes.empty());
@@ -703,7 +719,7 @@ TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
 }
 
 // A load whose failure the app handles is no failure of the app, so an error later in the frame resumes once a fix reloads, like any error of frame code.
-TEST(SceneManagerTest, LeavesLaterErrorsResumableWhenTheAppHandlesAFailedLoad) {
+TEST_F(SceneManagerTest, LeavesLaterErrorsResumableWhenTheAppHandlesAFailedLoad) {
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
     std::vector<std::string> errors;
@@ -719,7 +735,7 @@ TEST(SceneManagerTest, LeavesLaterErrorsResumableWhenTheAppHandlesAFailedLoad) {
 }
 
 // The first scene that loads without a loading view leaves nothing of the app on the screen, so a splash screen stays over those frames until it entered.
-TEST(SceneManagerTest, LeavesTheFrameIncompleteWhileTheFirstSceneLoads) {
+TEST_F(SceneManagerTest, LeavesTheFrameIncompleteWhileTheFirstSceneLoads) {
     std::optional<SceneLoad::Deferral> reading;
     auto first = std::make_shared<LoadScene>([&](SceneLoad& load) { reading.emplace(load.defer()); });
     test::EngineFixture fixture({}, std::make_unique<test::TestApplication>([&](Engine& engine) { engine.getScenes().push(first); }));
@@ -727,13 +743,14 @@ TEST(SceneManagerTest, LeavesTheFrameIncompleteWhileTheFirstSceneLoads) {
     EXPECT_EQ(first->getState(), Scene::State::Loading);
     EXPECT_FALSE(fixture.engine().isFrameComplete());
 
+    ASSERT_TRUE(reading.has_value());
     reading->complete();
     fixture.frames(1);
     EXPECT_EQ(first->getState(), Scene::State::Active);
     EXPECT_TRUE(fixture.engine().isFrameComplete());
 }
 
-TEST(SceneManagerTest, QueuesChangesInRequestOrder) {
+TEST_F(SceneManagerTest, QueuesChangesInRequestOrder) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -752,7 +769,7 @@ TEST(SceneManagerTest, QueuesChangesInRequestOrder) {
     EXPECT_EQ(log, std::vector<std::string>{"first:load"});
     EXPECT_TRUE(order.empty());
 
-    first->deferral->complete();
+    first->completeLoad();
     fixture.frames(1);
     EXPECT_EQ(order, (std::vector<std::string>{"replace", "push", "pop"}));
     EXPECT_EQ(log, (std::vector<std::string>{"first:load", "menu:exitTransitionStarted", "menu:exit", "menu:unload", "first:enter", "first:enterTransitionFinished", "second:load", "first:exitTransitionStarted", "first:pause", "second:enter", "second:enterTransitionFinished", "second:exitTransitionStarted", "second:exit", "second:unload", "first:resume", "first:enterTransitionFinished"}));
@@ -760,7 +777,7 @@ TEST(SceneManagerTest, QueuesChangesInRequestOrder) {
 }
 
 // A change whose hook fails ends there, so once the app recovers no step runs again and pops one scene more.
-TEST(SceneManagerTest, ChangesWhoseHookFailsEndWhereTheyFailed) {
+TEST_F(SceneManagerTest, ChangesWhoseHookFailsEndWhereTheyFailed) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -793,7 +810,7 @@ TEST(SceneManagerTest, ChangesWhoseHookFailsEndWhereTheyFailed) {
     EXPECT_EQ(std::count(log.begin(), log.end(), "menu:exit"), 0);
 }
 
-TEST(SceneManagerTest, ChangesThatCannotStartFailWithoutHoldingTheQueue) {
+TEST_F(SceneManagerTest, ChangesThatCannotStartFailWithoutHoldingTheQueue) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -808,6 +825,7 @@ TEST(SceneManagerTest, ChangesThatCannotStartFailWithoutHoldingTheQueue) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "The scene is already on the stack.");
     ASSERT_TRUE(rejected.has_value());
     EXPECT_EQ(rejected->outcome, SceneManager::Outcome::Failed);
+    ASSERT_TRUE(rejected->error.has_value());
     EXPECT_STREQ(rejected->error->what(), "The scene is already on the stack.");
 
     // Once the app recovers, the change queued behind the rejected one runs.
@@ -818,7 +836,7 @@ TEST(SceneManagerTest, ChangesThatCannotStartFailWithoutHoldingTheQueue) {
     EXPECT_FALSE(scenes.isTransitioning());
 }
 
-TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
+TEST_F(SceneManagerTest, PreloadsScenesInTheBackground) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -837,7 +855,7 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     fixture.frames(2);
     EXPECT_EQ(menu->updates, updates + 2);
     EXPECT_THROW(scenes.preload(game), std::invalid_argument);
-    game->deferral->complete();
+    game->completeLoad();
     fixture.frames(1);
     EXPECT_EQ(game->getState(), Scene::State::Loaded);
     EXPECT_EQ(preloads, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Completed});
@@ -857,7 +875,7 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     fixture.frames(3, 0.125);
     EXPECT_EQ(next->getState(), Scene::State::Loading);
     EXPECT_EQ(std::count(log.begin(), log.end(), "next:load"), 1);
-    next->deferral->complete();
+    next->completeLoad();
     fixture.frames(1, 0.125);
     EXPECT_EQ(log.back(), "next:enter");
 
@@ -875,7 +893,7 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     EXPECT_EQ(preloads.back(), SceneManager::Outcome::Dropped);
     EXPECT_TRUE(others.empty());
     EXPECT_THROW(scenes.cancelPreload(*spare), std::invalid_argument);
-    other->deferral->complete();
+    other->completeLoad();
     fixture.frames(1);
     EXPECT_EQ(others, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Completed});
 
@@ -888,7 +906,7 @@ TEST(SceneManagerTest, PreloadsScenesInTheBackground) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "A preloaded scene keeps the \"params\" of its preload.");
 }
 
-TEST(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
+TEST_F(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
     std::optional<SceneLoad::Deferral> deferral;
@@ -903,6 +921,7 @@ TEST(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
     auto failing = std::make_shared<LoadScene>([&](SceneLoad& context) { deferral.emplace(context.defer()); });
     failing->unloadFailure = "the unload broke";
     scenes.preload(failing, {}, [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); });
+    ASSERT_TRUE(deferral.has_value());
     deferral->fail(lua::Error("the load broke"));
     fixture.frames(1);
     EXPECT_EQ(outcomes, (std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped, SceneManager::Outcome::Failed}));
@@ -910,7 +929,7 @@ TEST(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "the unload broke");
 }
 
-TEST(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {
+TEST_F(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -919,14 +938,14 @@ TEST(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {
     scenes.preload(broken);
     const Connection listener = fixture.engine().getEvents().on(LifecycleEvent::kSceneLoadFailed, [&](EventBus::Event&) { scenes.cancelPreload(*broken); });
 
-    broken->deferral->fail(lua::Error("broken cannot load"));
+    broken->failLoad(lua::Error("broken cannot load"));
     fixture.frames(1);
     EXPECT_EQ(std::count(log.begin(), log.end(), "broken:unload"), 1);
     EXPECT_EQ(broken->getState(), Scene::State::Unloaded);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-TEST(SceneManagerTest, LoadsThroughThePauseAndHaltsWithTheApp) {
+TEST_F(SceneManagerTest, LoadsThroughThePauseAndHaltsWithTheApp) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -947,7 +966,7 @@ TEST(SceneManagerTest, LoadsThroughThePauseAndHaltsWithTheApp) {
     // A halted app lets no time pass for the change, and its load settles once the app runs again.
     engine.handleEvent({.type = platform::Event::Type::Suspended});
     ASSERT_TRUE(engine.isHalted());
-    game->deferral->complete();
+    game->completeLoad();
     const int updates = view->updates;
     fixture.frames(3, 0.125);
     EXPECT_EQ(game->getState(), Scene::State::Loading);
@@ -961,7 +980,7 @@ TEST(SceneManagerTest, LoadsThroughThePauseAndHaltsWithTheApp) {
     EXPECT_EQ(game->updates, 0);
 }
 
-TEST(SceneManagerTest, FocusLossHaltsTheCoverAndTheLoadingDelay) {
+TEST_F(SceneManagerTest, FocusLossHaltsTheCoverAndTheLoadingDelay) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -997,7 +1016,7 @@ TEST(SceneManagerTest, FocusLossHaltsTheCoverAndTheLoadingDelay) {
     EXPECT_TRUE(scenes.isLoadingViewShown());
 }
 
-TEST(SceneManagerTest, StoppingTheEngineDuringALoadUnloadsEveryScene) {
+TEST_F(SceneManagerTest, StoppingTheEngineDuringALoadUnloadsEveryScene) {
     std::vector<std::string> log;
     auto game = std::make_shared<test::RecordingScene>("game", log);
     game->loading = test::RecordingScene::Load::Deferred;
@@ -1018,12 +1037,12 @@ TEST(SceneManagerTest, StoppingTheEngineDuringALoadUnloadsEveryScene) {
     EXPECT_EQ(game->getState(), Scene::State::Unloaded);
 
     // A deferral that finishes after the engine is gone changes nothing.
-    game->deferral->complete();
-    spare->deferral->fail(lua::Error("too late"));
+    game->completeLoad();
+    spare->failLoad(lua::Error("too late"));
     EXPECT_EQ(game->getState(), Scene::State::Unloaded);
 }
 
-TEST(SceneManagerTest, ClearingDropsPendingChangesAndEndsConnections) {
+TEST_F(SceneManagerTest, ClearingDropsPendingChangesAndEndsConnections) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -1056,7 +1075,7 @@ TEST(SceneManagerTest, ClearingDropsPendingChangesAndEndsConnections) {
     EXPECT_EQ(events, (std::vector<std::string>{"sceneExited scene", "sceneUnloaded scene", "sceneUnloaded scene"}));
 }
 
-TEST(SceneManagerTest, ProcessModesInheritDownTheStack) {
+TEST_F(SceneManagerTest, ProcessModesInheritDownTheStack) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -1095,7 +1114,7 @@ TEST(SceneManagerTest, ProcessModesInheritDownTheStack) {
     EXPECT_EQ(log, (std::vector<std::string>{"game:unpaused", "menu:paused", "settings:paused"}));
 }
 
-TEST(SceneManagerTest, ChangesHoldInputBack) {
+TEST_F(SceneManagerTest, ChangesHoldInputBack) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -1125,7 +1144,7 @@ TEST(SceneManagerTest, ChangesHoldInputBack) {
     EXPECT_TRUE(engine.getActions().isPressed("jump"));
 }
 
-TEST(SceneManagerTest, EasesTransitionsOnRealTime) {
+TEST_F(SceneManagerTest, EasesTransitionsOnRealTime) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -1145,7 +1164,7 @@ TEST(SceneManagerTest, EasesTransitionsOnRealTime) {
     EXPECT_FALSE(engine.getScenes().isTransitioning());
 }
 
-TEST(SceneManagerTest, ShortensOrSkipsTransitionsUnderReducedMotion) {
+TEST_F(SceneManagerTest, ShortensOrSkipsTransitionsUnderReducedMotion) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     fixture.host().setAccessibilitySettings({.reducedMotion = true});
@@ -1176,7 +1195,7 @@ TEST(SceneManagerTest, ShortensOrSkipsTransitionsUnderReducedMotion) {
     EXPECT_TRUE(scenes.isTransitioning());
 }
 
-TEST(SceneManagerTest, CustomEffectsChooseWhereTheyCoverTheScreen) {
+TEST_F(SceneManagerTest, CustomEffectsChooseWhereTheyCoverTheScreen) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     auto effect = std::make_shared<test::RecordingEffect>(0.25F, 0.25F);
@@ -1195,7 +1214,7 @@ TEST(SceneManagerTest, CustomEffectsChooseWhereTheyCoverTheScreen) {
     EXPECT_THROW(fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("other", log), {.loadingDelay = -1.0F}), std::invalid_argument);
 }
 
-TEST(SceneManagerTest, PopsToLevelsAndListsTheStack) {
+TEST_F(SceneManagerTest, PopsToLevelsAndListsTheStack) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -1239,7 +1258,7 @@ TEST(SceneManagerTest, PopsToLevelsAndListsTheStack) {
     EXPECT_STREQ(fixture.engine().getError()->what(), "The scene is already on the stack.");
 }
 
-TEST(SceneManagerTest, PopsWithLeavingScenesAndClearsThem) {
+TEST_F(SceneManagerTest, PopsWithLeavingScenesAndClearsThem) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -1266,7 +1285,7 @@ TEST(SceneManagerTest, PopsWithLeavingScenesAndClearsThem) {
 }
 
 // Every step of a change runs hooks and listeners that may clear the stack, which drops the change, so no step goes on with a change that is gone.
-TEST(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
+TEST_F(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
     struct Case {
         std::string_view trigger;
         bool push = false;
@@ -1329,9 +1348,9 @@ TEST(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
         fixture.frames(2, 0.125);
 
         if (game->deferral && entry.failing) {
-            game->deferral->fail(lua::Error("the game cannot load"));
+            game->failLoad(lua::Error("the game cannot load"));
         } else if (game->deferral) {
-            game->deferral->complete();
+            game->completeLoad();
         }
 
         fixture.frames(4, 0.125);
@@ -1350,7 +1369,7 @@ TEST(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
     }
 }
 
-TEST(SceneManagerTest, TellsThePauseOnlyToScenesStillOnTheStack) {
+TEST_F(SceneManagerTest, TellsThePauseOnlyToScenesStillOnTheStack) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
@@ -1375,7 +1394,7 @@ TEST(SceneManagerTest, TellsThePauseOnlyToScenesStillOnTheStack) {
     EXPECT_TRUE(scenes.empty());
 }
 
-TEST(SceneManagerTest, ScenesThatFailToLeaveStillUnloadAndRaiseTheFirstFailure) {
+TEST_F(SceneManagerTest, ScenesThatFailToLeaveStillUnloadAndRaiseTheFirstFailure) {
     struct Case {
         std::vector<std::string> failing;
         bool keepCurrent = false;
@@ -1416,7 +1435,7 @@ TEST(SceneManagerTest, ScenesThatFailToLeaveStillUnloadAndRaiseTheFirstFailure) 
     }
 }
 
-TEST(SceneManagerTest, ASceneThatClearsTheStackWhileItRendersEndsTheTransition) {
+TEST_F(SceneManagerTest, ASceneThatClearsTheStackWhileItRendersEndsTheTransition) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
@@ -1445,7 +1464,7 @@ TEST(SceneManagerTest, ASceneThatClearsTheStackWhileItRendersEndsTheTransition) 
 }
 
 // A scene overrides only the hooks it needs, and the connections added to its scope end when it unloads.
-TEST(SceneManagerTest, EndsTheConnectionsInTheScopeOfASceneWhenItUnloads) {
+TEST_F(SceneManagerTest, EndsTheConnectionsInTheScopeOfASceneWhenItUnloads) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     auto scene = std::make_shared<LoadScene>([](SceneLoad&) {});

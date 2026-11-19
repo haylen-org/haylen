@@ -93,6 +93,7 @@ TEST_F(TraceRecorderTest, WritesNamesThatAreNotUtf8) {
                  0.0, 1.0);
 
     const core::Json parsed = core::Json::parse(trace.toJson());
+    ASSERT_FALSE(spansOf(parsed).empty());
     EXPECT_EQ(spansOf(parsed).front().at("name"), "a\xEF\xBF\xBD"
                                                   "b");
 }
@@ -107,6 +108,7 @@ TEST_F(TraceRecorderTest, DropsSpansBeyondItsCapacity) {
     EXPECT_EQ(trace.getDropped(), 2U);
     const core::Json parsed = core::Json::parse(trace.toJson());
     EXPECT_EQ(parsed.at("otherData").at("dropped"), 2);
+    ASSERT_FALSE(spansOf(parsed).empty());
     EXPECT_EQ(spansOf(parsed).front().at("name"), "say \"hi\"");
 }
 

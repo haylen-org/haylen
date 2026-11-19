@@ -3,6 +3,7 @@
 #include <chrono>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -42,7 +43,12 @@ class ExecutionBudgetTest : public ::testing::Test {
     }
 
     [[nodiscard]] const lua::Error& error() const {
-        return *fixture->engine().getError();
+        const lua::Error* stopped = fixture->engine().getError();
+        if (stopped == nullptr) {
+            throw std::runtime_error("The app holds no error.");
+        }
+
+        return *stopped;
     }
 
     std::unique_ptr<test::EngineFixture> fixture;
@@ -104,7 +110,7 @@ TEST_F(ExecutionBudgetTest, CancelsAReloadThatNeverEnds) {
     fixture->frames(1);
     fixture->package().setFile("source/settings.lua", test::TestFiles::bytes("while true do end return {speed = 2}"));
     const std::vector<std::string> paths{"source/settings.lua"};
-    fixture->host().getDevelopmentSession()->addChanges(paths);
+    fixture->developmentSession().addChanges(paths);
     runUntilCancelled();
     EXPECT_EQ(error().getCallback(), "reload");
     EXPECT_EQ(error().getFile(), "source/settings.lua");

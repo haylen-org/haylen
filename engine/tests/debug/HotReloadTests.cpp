@@ -3,11 +3,9 @@
 #include <lua.hpp>
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -17,11 +15,11 @@
 #include <thread>
 #include <vector>
 
+#include "debug/PackageEditTest.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/io/PackageWatcher.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/DevelopmentSession.hpp"
@@ -34,225 +32,47 @@
 
 namespace haylen::debug {
 
-// Edits package files the way an editor does while a test watches them.
-class PackageEditTest : public ::testing::Test {
+class HotReloadPluginTest : public PackageEditTest {
   protected:
-    [[nodiscard]] static std::string toText(const std::vector<std::uint8_t>& bytes) {
-        return {reinterpret_cast<const char*>(bytes.data()), bytes.size()};
-    }
+    // Scans run on the I/O pool, so a watched engine runs frames until what a scan found reached it.
+    class WatchedEngine final {
+      public:
+        explicit WatchedEngine(const std::filesystem::path& folder, std::unique_ptr<core::Application> application = std::make_unique<test::TestApplication>(nullptr)) : host(folder.parent_path() / "data") {
+            host.enableDevelopment(folder);
+            const std::shared_ptr<io::Package> package = io::Package::openDirectory(folder);
+            core::AppConfig config = core::AppConfig::fromPackage(*package);
+            application->configure(config);
+            engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
+            engine->start();
+        }
 
-    // File times can be coarser than a test runs, so changes move the time forward explicitly.
-    static void touch(const std::filesystem::path& file, int seconds) {
-        std::filesystem::last_write_time(file, std::filesystem::last_write_time(file) + std::chrono::seconds(seconds));
-    }
-};
+        [[nodiscard]] core::Engine& get() noexcept {
+            return *engine;
+        }
 
-class PackageWatcherTest : public PackageEditTest {};
-
-class AssetReloadTest : public PackageEditTest {};
-
-class HotReloadPluginTest : public PackageEditTest {};
-
-TEST_F(PackageWatcherTest, ReportsAddedChangedAndRemovedFiles) {
-    const test::TemporaryDirectory directory;
-    directory.write("haylen.json", "{}");
-    directory.write("source/main.lua", "print(1)");
-    directory.write("content/a.json", "{}");
-    directory.write("native/android/App.kt", "");
-    directory.write("plugins/ads/plugin.json", "{}");
-    directory.write("plugins/ads/source/init.lua", "return {}");
-    directory.write("plugins/ads/android/build.gradle.kts", "");
-    io::PackageWatcher watcher(directory.getPath());
-    EXPECT_TRUE(watcher.scan().empty());
-
-    // Only `haylen.json`, `source`, `content` and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
-    directory.write("content/b.json", "[]");
-    directory.write("README.md", "# Notes");
-    directory.write("native/web/app.js", "");
-    directory.write("plugins/README.md", "# Plugins");
-    directory.write("plugins/ads/android/src/main/AndroidManifest.xml", "");
-    directory.write("plugins/ads/source/banner.lua", "return {}");
-    touch(directory.getPath() / "source/main.lua", 5);
-    touch(directory.getPath() / "haylen.json", 5);
-    touch(directory.getPath() / "plugins/ads/plugin.json", 5);
-    std::filesystem::remove(directory.getPath() / "content/a.json");
-    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/a.json", "content/b.json", "haylen.json", "plugins/ads/plugin.json", "plugins/ads/source/banner.lua", "source/main.lua"}));
-    EXPECT_TRUE(watcher.scan().empty());
-}
-
-TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
-    const test::TemporaryDirectory directory;
-    directory.write("haylen.json", "{}");
-    directory.write("source/main.lua", "");
-    directory.write("plugins/ads/plugin.json", "{}");
-    io::PackageWatcher watcher(directory.getPath());
-
-    // Editors write swap, backup and lock files next to the file they save, which must never restart the app.
-    directory.write("source/.level.lua.swp", "swap");
-    directory.write("source/level.lua~", "backup");
-    directory.write("source/#level.lua#", "autosave");
-    directory.write("source/level.lua.orig", "merge");
-    directory.write("source/notes.txt", "notes");
-    directory.write("source/.cache/level.lua", "cache");
-    directory.write("content/.cache", "cache");
-    directory.write("content/hero.png.tmp", "half");
-    directory.write("plugins/ads/source/notes.md", "notes");
-    directory.write("source/level.lua", "return {}");
-    directory.write("content/hero.png", "png");
-    directory.write("plugins/ads/source/banner.lua", "return {}");
-    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/hero.png", "plugins/ads/source/banner.lua", "source/level.lua"}));
-
-    EXPECT_TRUE(io::PackageWatcher::isWatched("haylen.json"));
-    EXPECT_TRUE(io::PackageWatcher::isWatched("plugins/ads/plugin.json"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/ads/android/build.gradle.kts"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/README.md"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("native/web/app.js"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("source/.level.lua.swp"));
-}
-
-TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
-    const test::TemporaryDirectory directory;
-    directory.write("content/level.json", "{}");
-    io::PackageWatcher watcher(directory.getPath());
-
-    // A file that grows while the scan looks at it is still being written, so the scan leaves it for later, whether it changes or is new. The writer appends to the files, since a file truncated and written again can make the file system flush it when it closes and hold the writer up for longer than the scan waits.
-    std::atomic<bool> writing = true;
-    // clang-format off
-    std::thread writer([&directory, &writing] {
-        while (writing) {
-            for (const char* file : {"content/level.json", "content/added.json"}) {
-                std::ofstream(directory.getPath() / file, std::ios::app) << ' ';
+        bool runUntil(const std::function<bool()>& condition) {
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+            while (!condition() && std::chrono::steady_clock::now() < deadline) {
+                engine->frame(0.1);
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            return condition();
         }
-    });
-    // clang-format on
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    const std::vector<std::string> busy = watcher.scan();
-    writing = false;
-    writer.join();
-    EXPECT_TRUE(busy.empty());
-    EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/added.json", "content/level.json"}));
-    EXPECT_TRUE(watcher.scan().empty());
-}
 
-TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
-    test::EngineFixture fixture({{"content/hero.png", toText(test::TestFiles::pngImage(4, 4, 0xFF0000FFU))}, {"content/data.json", R"({"level": 1})"}});
-    assets::Manager& assets = fixture.engine().getAssets();
-    const graphics::Texture hero = assets.texture("hero.png");
-    EXPECT_EQ(assets.json("data.json").at("level"), 1);
-    EXPECT_EQ(hero.getWidth(), 4);
-
-    fixture.package().setFile("content/hero.png", test::TestFiles::pngImage(8, 2, 0x00FF00FFU));
-    fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
-    EXPECT_EQ(assets.reload("hero.png"), 1U);
-    EXPECT_EQ(hero.getWidth(), 8);
-    EXPECT_EQ(hero.getHeight(), 2);
-    EXPECT_EQ(assets.reload("data.json"), 0U);
-    EXPECT_EQ(assets.json("data.json").at("level"), 2);
-    EXPECT_EQ(assets.reload("missing.png"), 0U);
-
-    fixture.package().setFile("content/hero.png", test::TestFiles::bytes("broken"));
-    EXPECT_THROW((void)assets.reload("hero.png"), std::runtime_error);
-}
-
-TEST_F(AssetReloadTest, UpdatesJsonInPlaceAndAnnouncesStaleAssets) {
-    test::EngineFixture fixture({{"content/data.json", R"({"level": 1})"}, {"content/icon.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><path d="M0 0h24v12z"/></svg>)"}});
-    // clang-format off
-    fixture.runLua(R"(
-        heard = {}
-        local events = require('haylen.events')
-        events.on('assetReloaded', function(event) heard[#heard + 1] = 'reloaded ' .. event.type .. ' ' .. event.path end)
-        events.on('assetChanged', function(event) heard[#heard + 1] = 'changed ' .. event.type .. ' ' .. event.path end)
-        icon = require('haylen.assets').vectorImage('icon.svg')
-    )");
-    // clang-format on
-    assets::Manager& assets = fixture.engine().getAssets();
-    const std::shared_ptr<void> held = assets.load("json", "data.json");
-
-    fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
-    fixture.package().setFile("content/icon.svg", test::TestFiles::bytes(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 12"><path d="M0 0h48v12z"/></svg>)"));
-    EXPECT_EQ(assets.reload("data.json"), 1U);
-    EXPECT_EQ(assets.reload("icon.svg"), 1U);
-    EXPECT_EQ(assets.json("data.json").at("level"), 2);
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "reloaded json data.json, changed vectorImage icon.svg");
-}
-
-TEST_F(AssetReloadTest, RebuildsCatalogsAndThemesFromChangedFiles) {
-    // clang-format off
-    test::EngineFixture fixture({
-        {"content/locale/en.json", R"({"greeting": "Hello"})"},
-        {"content/themes/wood.json", R"({"name": "wood", "colors": {"accent": "#FF102030"}})"},
-        {"source/main.lua", R"(
-            localization = require('haylen.localization')
-            ui = require('haylen.ui')
-            localization.loadFolder('locale')
-            ui.setTheme(ui.loadTheme('themes/wood.json', 'light'))
-        )"},
-    }, nullptr, {.development = true});
-    // clang-format on
-    EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hello");
-
-    fixture.package().setFile("content/locale/en.json", test::TestFiles::bytes(R"({"greeting": "Hi again"})"));
-    fixture.package().setFile("content/themes/wood.json", test::TestFiles::bytes(R"({"name": "wood", "colors": {"accent": "#FF405060"}})"));
-    const std::vector<std::string> changed{"content/locale/en.json", "content/themes/wood.json"};
-    fixture.host().getDevelopmentSession()->addChanges(changed);
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hi again");
-    EXPECT_EQ(fixture.lua("return ui.theme() .. ' ' .. ui.themeColor('accent'):toHex()"), "wood #FF405060");
-    EXPECT_FALSE(fixture.engine().isRestartRequested());
-
-    // An editor may still be writing, so texts that are not JSON yet and a theme that does not build yet keep what the app had.
-    fixture.package().setFile("content/locale/en.json", test::TestFiles::bytes("{"));
-    fixture.package().setFile("content/themes/wood.json", test::TestFiles::bytes(R"({"name": "wood", "colors": {"accent": "teal"}})"));
-    fixture.host().getDevelopmentSession()->addChanges(changed);
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return localization.text('greeting')"), "Hi again");
-    EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex()"), "#FF405060");
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_FALSE(fixture.engine().isRestartRequested());
-}
+      private:
+        platform::HeadlessHost host;
+        std::unique_ptr<core::Engine> engine;
+    };
+};
 
 TEST_F(HotReloadPluginTest, RestartsForChangedFonts) {
     test::EngineFixture fixture({}, nullptr, {.development = true});
     const std::vector<std::string> changed{"content/fonts/title.ttf"};
-    fixture.host().getDevelopmentSession()->addChanges(changed);
+    fixture.developmentSession().addChanges(changed);
     fixture.frames(1);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
-
-// Scans run on the I/O pool, so a watched engine runs frames until what a scan found reached it.
-class WatchedEngine final {
-  public:
-    explicit WatchedEngine(const std::filesystem::path& folder, std::unique_ptr<core::Application> application = std::make_unique<test::TestApplication>(nullptr)) : host(folder.parent_path() / "data") {
-        host.enableDevelopment(folder);
-        const std::shared_ptr<io::Package> package = io::Package::openDirectory(folder);
-        core::AppConfig config = core::AppConfig::fromPackage(*package);
-        application->configure(config);
-        engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
-        engine->start();
-    }
-
-    [[nodiscard]] core::Engine& get() noexcept {
-        return *engine;
-    }
-
-    bool runUntil(const std::function<bool()>& condition) {
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-        while (!condition() && std::chrono::steady_clock::now() < deadline) {
-            engine->frame(0.1);
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-
-        return condition();
-    }
-
-  private:
-    platform::HeadlessHost host;
-    std::unique_ptr<core::Engine> engine;
-};
 
 TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     const test::TemporaryDirectory directory;
@@ -374,7 +194,7 @@ TEST_F(HotReloadPluginTest, StaysIdleForShippedApps) {
 
 TEST_F(HotReloadPluginTest, KeepsChangesThatArriveDuringARestart) {
     test::EngineFixture fixture({}, nullptr, {.development = true});
-    platform::DevelopmentSession& session = *fixture.host().getDevelopmentSession();
+    platform::DevelopmentSession& session = fixture.developmentSession();
 
     // The session belongs to the host, so a change queued while the engine is replaced reaches the next engine.
     fixture.engine().requestRestart();

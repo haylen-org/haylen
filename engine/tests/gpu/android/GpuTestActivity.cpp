@@ -10,9 +10,9 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "gpu/support/GpuTestFiles.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::test {
 
@@ -109,13 +110,30 @@ void GpuTestActivity::copyReferences(AAssetManager* assets) {
     std::filesystem::create_directories(references);
 
     const std::unique_ptr<AAssetDir, decltype(&AAssetDir_close)> folder(AAssetManager_openDir(assets, "gpu"), AAssetDir_close);
-    std::array<char, 65536> buffer{};
+    if (folder == nullptr) {
+        throw std::runtime_error("The GPU test app has no folder \"gpu\" of reference images in its assets.");
+    }
+
+    std::array<std::uint8_t, 65536> buffer{};
     while (const char* name = AAssetDir_getNextFileName(folder.get())) {
-        const std::unique_ptr<AAsset, decltype(&AAsset_close)> asset(AAssetManager_open(assets, (std::string("gpu/") + name).c_str(), AASSET_MODE_STREAMING), AAsset_close);
-        std::ofstream file(references / name, std::ios::binary);
-        for (int read = AAsset_read(asset.get(), buffer.data(), buffer.size()); read > 0; read = AAsset_read(asset.get(), buffer.data(), buffer.size())) {
-            file.write(buffer.data(), read);
+        const std::string path = std::string("gpu/") + name;
+        const std::unique_ptr<AAsset, decltype(&AAsset_close)> asset(AAssetManager_open(assets, path.c_str(), AASSET_MODE_STREAMING), AAsset_close);
+        if (asset == nullptr) {
+            throw std::runtime_error("The GPU test app could not open its asset \"" + path + "\".");
         }
+
+        std::vector<std::uint8_t> bytes;
+        int read = AAsset_read(asset.get(), buffer.data(), buffer.size());
+        while (read > 0) {
+            bytes.insert(bytes.end(), buffer.begin(), buffer.begin() + read);
+            read = AAsset_read(asset.get(), buffer.data(), buffer.size());
+        }
+
+        if (read < 0) {
+            throw std::runtime_error("The GPU test app could not read its asset \"" + path + "\".");
+        }
+
+        TestFiles::write(references / name, bytes);
     }
 }
 
@@ -126,15 +144,21 @@ void GpuTestActivity::forwardOutput() {
         throw std::runtime_error("The GPU test app could not make the pipe of its output.");
     }
 
-    dup2(ends[1], STDOUT_FILENO);
-    dup2(ends[1], STDERR_FILENO);
+    if (dup2(ends[1], STDOUT_FILENO) < 0 || dup2(ends[1], STDERR_FILENO) < 0) {
+        throw std::runtime_error("The GPU test app could not send its output into the pipe.");
+    }
+
     close(ends[1]);
+    FILE* stream = fdopen(ends[0], "r");
+    if (stream == nullptr) {
+        throw std::runtime_error("The GPU test app could not read the pipe of its output.");
+    }
+
     std::setvbuf(stdout, nullptr, _IOLBF, 0);
     std::setvbuf(stderr, nullptr, _IONBF, 0);
 
     // clang-format off
-    output = std::thread([reading = ends[0]] {
-        FILE* stream = fdopen(reading, "r");
+    output = std::thread([stream] {
         std::array<char, 4096> line{};
         while (std::fgets(line.data(), static_cast<int>(line.size()), stream) != nullptr) {
             std::string text(line.data());

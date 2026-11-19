@@ -25,70 +25,14 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "lua/Probe.hpp"
+#include "lua/ProbeLua.hpp"
 #include "lua/WeakReference.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
 namespace haylen::lua {
-
-// A bound type of the tests with fields of the kinds that `ClassBuilder` records as native properties and of kinds it does not, an accessor pair and integer keys.
-struct Probe {
-    struct Order {
-        float depth = 0.0F;
-        int layer = 0;
-    };
-
-    [[nodiscard]] float getScale() const noexcept {
-        return scale;
-    }
-    void setScale(float value) noexcept {
-        scale = value;
-    }
-
-    float speed = 0.0F;
-    math::Vec2 position;
-    math::Color tint;
-    Order order;
-    bool visible = true;
-    float scale = 1.0F;
-    std::array<float, 2> values{};
-};
-
-template <> struct Type<Probe> {
-    static constexpr const char* name = "haylen.test.Probe";
-    using Storage = std::shared_ptr<Probe>;
-};
-
-// Binds `Probe` with the toolkit the bindings of the engine use, together with a function that takes the shared object.
-class ProbeLua final {
-  public:
-    static void install(lua_State* L) {
-        ClassBuilder<Probe>(L).field<&Probe::speed>("speed").field<&Probe::position>("position").field<&Probe::tint>("tint").field<&Probe::visible>("visible").nestedField<&Probe::order, &Probe::Order::depth>("depth").nestedField<&Probe::order, &Probe::Order::layer>("layer").accessor<&Probe::getScale, &Probe::setScale>("scale").indexer(&at, &assign).install();
-        lua_register(L, "probeSpeed", &Binding::function<&speedOf>);
-    }
-
-  private:
-    static float speedOf(const std::shared_ptr<Probe>& probe) {
-        return probe->speed;
-    }
-
-    static std::size_t checkIndex(lua_State* L) {
-        const lua_Integer index = luaL_checkinteger(L, 2);
-        luaL_argcheck(L, index >= 1 && index <= 2, 2, "index out of range");
-        return static_cast<std::size_t>(index - 1);
-    }
-
-    static int at(lua_State* L) {
-        lua_pushnumber(L, static_cast<lua_Number>(Userdata::check<Probe>(L, 1).values[checkIndex(L)]));
-        return 1;
-    }
-
-    static int assign(lua_State* L) {
-        Userdata::check<Probe>(L, 1).values[checkIndex(L)] = static_cast<float>(luaL_checknumber(L, 3));
-        return 0;
-    }
-};
 
 TEST(EnvironmentTest, RequiresModulesFromThePackageOnly) {
     // clang-format off
@@ -485,6 +429,7 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
     test::EngineFixture fixture;
     fixture.runLua("require('async').spawn(load('error(\"chunk failure\")', '=chunk'))");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
+    ASSERT_FALSE(fixture.engine().getError()->getFrames().empty());
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, Error::Frame::Kind::Main);
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().function, "main chunk");
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().getLocation(), "chunk:1");

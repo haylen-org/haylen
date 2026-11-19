@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <map>
 #include <regex>
 #include <set>
@@ -13,6 +12,7 @@
 #include <vector>
 
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::lua {
 
@@ -38,7 +38,7 @@ class LuaReferenceTest : public ::testing::Test {
             }
 
             Page& page = pages[entry.path().stem().string()];
-            std::ifstream file(entry.path());
+            std::istringstream file(test::TestFiles::readText(entry.path()));
             std::string line;
             std::string example;
             bool inside = false;
