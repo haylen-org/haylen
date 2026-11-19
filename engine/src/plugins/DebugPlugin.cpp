@@ -502,7 +502,7 @@ void DebugPlugin::detachTrace() {
 void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
     using Kind = debug::Console::Kind;
     // clang-format off
-    builtInCommands.push_back(console.addCommand({.name = "stats", .help = "Shows the statistics as \"off\", \"compact\" or \"full\", or moves them to the next mode when the line leaves the mode out.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "stats", .help = "Shows the statistics in the mode \"off\", \"compact\" or \"full\", or in the next mode when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) {
         if (arguments.empty()) {
             cycleStatsMode();
             return std::format("The statistics are \"{}\".", debug::StatsDisplay::modeName(statsMode));
@@ -517,25 +517,30 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         statsMode = *mode;
         return std::format("The statistics are \"{}\".", name);
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "draw", .help = "Turns a debug drawing on or off, or switches it when the line leaves the state out, and switches every drawing when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}, {.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "draw", .help = "Turns the debug drawing it names on or off, such as \"physics\" or \"bounds\", or switches it when the line leaves the state out. Without a name it switches every drawing.", .parameters = {{.kind = Kind::String, .optional = true}, {.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
         if (arguments.empty()) {
             toggleDrawings();
             return std::string(drawings.empty() ? "The drawings are off." : "The drawings are on.");
         }
 
         const std::string& name = arguments[0].get_ref<const std::string&>();
+        const std::vector<std::string> names = getDrawingNames();
+        if (std::ranges::find(names, name) == names.end()) {
+            throw std::invalid_argument(std::format("There is no drawing \"{}\". The drawings are {}.", name, describeNames(names)));
+        }
+
         const bool enabled = arguments.size() > 1 ? arguments[1].get<bool>() : !isDrawing(name);
         setDrawing(name, enabled);
         return std::format("The drawing \"{}\" is {}.", name, enabled ? "on" : "off");
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "timeScale", .help = "Shows the time scale, or sets it.", .parameters = {{.kind = Kind::Number, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "timeScale", .help = "Sets the time scale of the app, such as 0.5 for half speed, or shows it when the line leaves it out.", .parameters = {{.kind = Kind::Number, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
         if (!arguments.empty()) {
             engine.getClock().setTimeScale(arguments[0].get<double>());
         }
 
         return std::format("The time scale is {:g}.", engine.getClock().getTimeScale());
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "pause", .help = "Pauses the app or resumes it, or switches when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "pause", .help = "Pauses or resumes the app, or switches between the two when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
         engine.setPaused(arguments.empty() ? !engine.isPaused() : arguments[0].get<bool>());
         return std::string(engine.isPaused() ? "The app is paused." : "The app runs.");
     }}));
@@ -543,7 +548,7 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         engine.requestRestart();
         return std::string("The app restarts.");
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "inspect", .help = "Lists the values at a path of the inspector, such as \"watched.player\", or its roots.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "inspect", .help = "Lists the values at a path of the inspector, such as \"scenes.1\", or its roots when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
         const std::vector<std::string> path = debug::Inspector::splitPath(arguments.empty() ? std::string_view() : arguments[0].get_ref<const std::string&>());
         std::string text;
         for (const debug::Inspector::Entry& entry : debug::Inspector::list(engine.getLuaState(), path)) {
@@ -552,12 +557,12 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
 
         return text;
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets the number, boolean or string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets a number, a boolean or a string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
         const std::string& path = arguments[0].get_ref<const std::string&>();
         debug::Inspector::set(engine.getLuaState(), debug::Inspector::splitPath(path), arguments[1].get_ref<const std::string&>());
         return std::format("Set \"{}\".", path);
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "inspector", .help = "Shows or hides the inspector, or switches it when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "inspector", .help = "Shows or hides the inspector window, or switches it when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
         setInspectorVisible(arguments.empty() ? !inspectorVisible : arguments[0].get<bool>());
         return std::string(inspectorVisible ? "The inspector shows." : "The inspector is hidden.");
     }}));
@@ -568,11 +573,22 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         return std::format("Capturing the next {} {} with \"{}\".", frames, frames == 1 ? "frame" : "frames", tool);
     }}));
     if (development) {
-        builtInCommands.push_back(console.addCommand({.name = "lua", .help = "Runs Lua code and prints what it returns, in development runs only.", .parameters = {{.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
+        builtInCommands.push_back(console.addCommand({.name = "lua", .help = "Runs Lua code in the app and prints what it returns.", .parameters = {{.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
             return runLua(engine, arguments[0].get_ref<const std::string&>());
         }}));
     }
     // clang-format on
+}
+
+// Names a list of names as a sentence does, such as `"bounds" and "physics"`.
+std::string DebugPlugin::describeNames(const std::vector<std::string>& names) {
+    std::string text;
+    for (std::size_t index = 0; index < names.size(); ++index) {
+        const std::string_view separator = index == 0 ? "" : (index + 1 == names.size() ? " and " : ", ");
+        text += std::format("{}\"{}\"", separator, names[index]);
+    }
+
+    return text;
 }
 
 // The code runs as an expression first, so `player.speed` prints its value, and as statements when it is not one.

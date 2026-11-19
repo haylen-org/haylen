@@ -76,7 +76,7 @@ TEST_F(ConsoleTest, FailsWithTheErrorOfAHandlerAndRemovesCommandsWithTheirConnec
     EXPECT_FALSE(console.run("broken").ok);
     broken.disconnect();
     EXPECT_FALSE(console.hasCommand("broken"));
-    EXPECT_EQ(console.run("help").output, "gold <integer> [word]  Adds gold.\nhelp [word]            Lists the commands, or shows how to type one.");
+    EXPECT_EQ(console.run("help").output, "gold <integer> [word]  Adds gold.\nhelp [word]            Lists the commands, or shows how to type the one it names.");
     EXPECT_EQ(console.run("help gold").output, "gold <integer> [word]\nAdds gold.");
     EXPECT_TRUE(console.removeCommand("gold"));
     EXPECT_FALSE(gold.isConnected());
@@ -157,6 +157,8 @@ TEST(ConsoleLuaTest, CyclesTheStatisticsAndSwitchesEveryDrawingWithoutArguments)
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('stats') return output"), "The statistics are \"full\".");
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('stats') return output"), "The statistics are \"off\".");
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw physics') return output"), "The drawing \"physics\" is on.");
+    EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw floor') return tostring(ok) .. ' ' .. output"), "false There is no drawing \"floor\". The drawings are \"bounds\" and \"physics\".");
+    EXPECT_FALSE(plugin.isDrawing("floor"));
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw') return output"), "The drawings are off.");
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('draw') return output"), "The drawings are on.");
     EXPECT_TRUE(plugin.isDrawing("bounds"));

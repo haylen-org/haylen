@@ -14,7 +14,7 @@
 namespace haylen::debug {
 
 Console::Console() {
-    helpCommand = addCommand({.name = "help", .help = "Lists the commands, or shows how to type one.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) { return help(arguments); }});
+    helpCommand = addCommand({.name = "help", .help = "Lists the commands, or shows how to type the one it names.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) { return help(arguments); }});
 }
 
 void Console::Entry::disconnect() {

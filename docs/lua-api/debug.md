@@ -694,17 +694,17 @@ The engine registers these commands:
 
 | Command | Meaning |
 | --- | --- |
-| `help [word]` | Lists the commands with how to type them and what they do, or shows one. |
-| `stats [word]` | Shows the [statistics](#statistics) as `off`, `compact` or `full`, or moves them to the next mode when the line leaves the mode out, as F3 does. |
-| `draw [word] [boolean]` | Turns a [debug drawing](#drawings) on or off, or switches it when the line leaves the state out. Without a name, it switches every drawing, as F4 does. |
-| `timeScale [number]` | Shows the time scale, or sets it, such as `timeScale 0.25` for slow motion. |
-| `pause [boolean]` | Pauses the app or resumes it, or switches when the line leaves the state out. |
+| `help [word]` | Lists the commands with how to type them and what they do, or shows the one it names. |
+| `stats [word]` | Shows the [statistics](#statistics) in the mode `off`, `compact` or `full`, or in the next mode when the line names none, as F3 does. |
+| `draw [word] [boolean]` | Turns the [debug drawing](#drawings) it names on or off, such as `draw physics`, or switches it when the line leaves the state out. Without a name, it switches every drawing, as F4 does. A name that no drawing has fails with `There is no drawing "<name>". The drawings are "bounds" and "physics".`, which lists the drawings of the app. |
+| `timeScale [number]` | Sets the time scale of the app, such as `timeScale 0.25` for slow motion, or shows it when the line leaves it out. |
+| `pause [boolean]` | Pauses or resumes the app, or switches between the two when the line leaves the state out. |
 | `restart` | Restarts the app. |
 | `inspector [boolean]` | Shows or hides the [inspector](#inspector) window, or switches it when the line leaves the state out. |
-| `inspect [word]` | Lists the values at a path of the inspector, such as `inspect watched.player`, or its roots. |
-| `set <word> <text>` | Sets the number, boolean or string at a path of the inspector, such as `set watched.player.speed 300`. |
+| `inspect [word]` | Lists the values at a path of the inspector, such as `inspect scenes.1`, or its roots when the line names none. |
+| `set <word> <text>` | Sets a number, a boolean or a string at a path of the inspector, such as `set watched.player.speed 300`. |
 | `gpuCapture [integer]` | Captures the next frames of the GPU, 1 unless the line names more, with the capture tool of the graphics API, as [GPU captures](#gpu-captures) describes, and prints the path of the file once it ends. |
-| `lua <text>` | Runs Lua code and prints what it returns, such as `lua player.speed`, only in development runs. |
+| `lua <text>` | Runs Lua code in the app and prints what it returns, such as `lua player.speed`. Only development runs have it. |
 
 ### debug.addCommand(name, fn, options)
 

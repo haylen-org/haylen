@@ -226,6 +226,7 @@ class DebugPlugin final : public Plugin {
     void readLastCrash(core::Engine& engine);
     void publishCrashContext(core::Engine& engine);
     [[nodiscard]] static std::string cut(std::string_view text);
+    [[nodiscard]] static std::string describeNames(const std::vector<std::string>& names);
     [[nodiscard]] static std::string runLua(core::Engine& engine, const std::string& chunk);
     [[nodiscard]] static std::string makeCaptureName();
     void reportCapture(int frames, const std::optional<std::filesystem::path>& path, const std::string& error);
