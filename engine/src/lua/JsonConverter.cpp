@@ -12,6 +12,7 @@
 #include "haylen/lua/Userdata.hpp"
 #include "varn/dataview/DataViewJson.h"
 #include "varn/dataview/DataViewModule.h"
+#include "varn/json/JsonSerializer.h"
 
 namespace haylen::lua {
 
@@ -35,6 +36,25 @@ bool JsonConverter::isSequence(lua_State* L, int table) {
     }
 
     return count == length;
+}
+
+// Reads the metatable without metamethods, so the marker of Varn's `json.array` or `json.object` decides the kind of a table that its keys leave open, such as an empty one.
+JsonConverter::Marker JsonConverter::marker(lua_State* L, int table) {
+    if (lua_getmetatable(L, table) == 0) {
+        return Marker::None;
+    }
+
+    luaL_getmetatable(L, varn::json::JsonSerializer::kArrayMetatable);
+    luaL_getmetatable(L, varn::json::JsonSerializer::kObjectMetatable);
+    Marker found = Marker::None;
+    if (lua_rawequal(L, -3, -2) != 0) {
+        found = Marker::Array;
+    } else if (lua_rawequal(L, -3, -1) != 0) {
+        found = Marker::Object;
+    }
+
+    lua_pop(L, 3);
+    return found;
 }
 
 std::string JsonConverter::objectKey(lua_State* L, int index) {
@@ -104,7 +124,8 @@ core::Json JsonConverter::convert(lua_State* L, int index, int depth, std::vecto
     }
 
     const int table = lua_absindex(L, index);
-    if (isSequence(L, table)) {
+    const Marker kind = marker(L, table);
+    if (kind == Marker::Array || (kind == Marker::None && isSequence(L, table))) {
         core::Json array = core::Json::array();
         const auto length = static_cast<lua_Integer>(lua_rawlen(L, table));
         for (lua_Integer element = 1; element <= length; ++element) {
@@ -168,7 +189,10 @@ void JsonConverter::pushConverted(lua_State* L, const core::Json& value, int dep
         return;
     }
     case core::Json::value_t::array:
+        // An array carries the array marker of Varn, as the arrays of `json.decode` do, so it converts back to an array even when it is empty.
         lua_createtable(L, static_cast<int>(value.size()), 0);
+        luaL_newmetatable(L, varn::json::JsonSerializer::kArrayMetatable);
+        lua_setmetatable(L, -2);
         for (std::size_t element = 0; element < value.size(); ++element) {
             pushConverted(L, value[element], depth + 1, buffers, views);
             lua_rawseti(L, -2, static_cast<lua_Integer>(element + 1));

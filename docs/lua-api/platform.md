@@ -11,11 +11,12 @@ local platform = require('haylen.platform')
 Parameters, results and event payloads cross the bridge as JSON. Lua values become JSON by these rules:
 
 - A table whose keys are the integers from `1` up, with no gaps, becomes an array. Any other table becomes an object, and an empty table becomes an empty object.
+- A table that `json.array` or `json.object` of the `json` module marks becomes that kind, so `json.array()` sends an empty array.
 - The keys of an object are strings. A number key becomes its text, and a key of another type raises `A <type> key cannot be converted to JSON.`.
 - A function, a userdata or another value that JSON cannot hold raises `A <type> cannot be converted to JSON.`. The userdata that cross are the [`Bytes`](#bytes) mark and the views of [`dataview`](#data-views).
 - A table nested deeper than 128 levels raises `Value is nested too deeply to convert to JSON.`.
 
-JSON comes back to Lua by the same rules in reverse. A JSON `null` arrives as `nil`, and an integer too large for a Lua integer arrives as a float.
+JSON comes back to Lua by the same rules in reverse. A JSON `null` arrives as `nil`, and an integer too large for a Lua integer arrives as a float. Every array arrives with the marker of `json.array`, as the arrays of `json.decode` do, so an empty list stays an array when `json.encode` writes it or when it crosses the bridge again.
 
 A string crosses as text, so it must hold UTF-8 to reach native code. Binary data, such as an image or a recording, crosses as a byte buffer next to the JSON instead. Mark the string with [`platform.bytes(data)`](#platformbytesdata), and it crosses as a buffer in its place. Every buffer that native code sends arrives as a Lua string in its place, in results and in events alike. Large data that changes often crosses as a [data view](#data-views) instead, memory that Lua and native code share without a copy.
 

@@ -580,6 +580,16 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
     EXPECT_TRUE(JsonConverter::read(L, -1).is_object());
     lua_pop(L, 1);
 
+    // Arrays keep the marker of Varn's `json` module, so an empty one encodes and converts back as an array, and the markers of `json.array` and `json.object` decide the kind of a table.
+    EXPECT_EQ(fixture.lua("return require('json').encode(document.empty) .. require('json').encode(document.tags)"), R"([]["a","b"])");
+    lua_getglobal(L, "document");
+    EXPECT_EQ(JsonConverter::read(L, -1).at("empty"), core::Json::array());
+    lua_pop(L, 1);
+    fixture.runLua("marked = {list = require('json').array(), map = require('json').object({1, 2})}");
+    lua_getglobal(L, "marked");
+    EXPECT_EQ(JsonConverter::read(L, -1), core::Json::parse(R"({"list": [], "map": {"1": 1, "2": 2}})"));
+    lua_pop(L, 1);
+
     fixture.runLua("sparse = {[1] = 'a', [3] = 'c'}");
     lua_getglobal(L, "sparse");
     EXPECT_TRUE(JsonConverter::read(L, -1).is_object());
