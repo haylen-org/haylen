@@ -178,6 +178,11 @@ void UiPlugin::event(core::Engine& engine, const platform::Event& event) {
 }
 
 void UiPlugin::beginFrame(core::Engine& engine, float) {
+    // The UI runs a frame of ImGui only when the frame draws, since ImGui lets go of the windows that a frame leaves out, and with them the focus that the remote of a TV moves on from, such as while native UI covers the app.
+    if (!engine.isDrawing()) {
+        return;
+    }
+
     // The UI keeps real time, so menus still animate while the time scale pauses the world.
     const auto delta = static_cast<float>(engine.getClock().getUnscaledDelta());
     elapsed += delta;

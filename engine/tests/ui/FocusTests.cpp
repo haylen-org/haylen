@@ -8,11 +8,13 @@
 #include <imgui_internal.h>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/Presentation.hpp"
+#include "platform/NativeViews.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/RecordingScreen.hpp"
@@ -30,6 +32,25 @@ class FocusTest : public ::testing::Test, public test::UiFixture {
 };
 
 } // namespace
+
+// Native UI that covers the app leaves the GUIs undrawn while it shows, and the control that held the focus keeps it, so the remote of a TV moves on from it once the cover ends.
+TEST_F(FocusTest, KeepsTheFocusWhileNativeUiCoversTheApp) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "open", "text": "Open"}, {"kind": "button", "id": "cancel", "text": "Cancel"}]})");
+    gui->command(getUi().getContext(), "open", "focus", core::Json::object());
+    frames(1);
+    key(input::Key::Down);
+    ASSERT_TRUE(isRingVisible());
+    ASSERT_TRUE(isFocused(*gui, "open"));
+
+    platform::NativeViews& views = getFixture().host().getNativeViews();
+    views.coverApp();
+    frames(4);
+    views.uncoverApp();
+    frames(1);
+    EXPECT_TRUE(isFocused(*gui, "open"));
+    key(input::Key::Down);
+    EXPECT_TRUE(isFocused(*gui, "cancel"));
+}
 
 TEST_F(FocusTest, MovesBetweenNeighborsWithArrowsTheDirectionalPadAndTheStick) {
     // clang-format off

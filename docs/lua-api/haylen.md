@@ -451,6 +451,16 @@ local haylen = require('haylen')
 print('Halted: ' .. tostring(haylen.halted()) .. '.')
 ```
 
+### haylen.drawing()
+
+Returns `true` while the current frame draws the app. A frame draws nothing while the app is in the background and while an opaque screen of a plugin hides it, and a covered app draws one frame once the cover began, which stays on screen, and no more while the cover lasts. Work that only prepares what a frame shows can skip the frames that draw nothing.
+
+```lua
+local haylen = require('haylen')
+
+print('Drawing: ' .. tostring(haylen.drawing()) .. '.')
+```
+
 ### haylen.lifecycle()
 
 Returns a new table with the current lifecycle options: `pauseOnBackground`, `pauseOnFocusLoss` and `muteOnFocusLoss`. They start with the `lifecycle` section of `haylen.json`, whose [table](#lifecycle) says what each one does.

@@ -327,9 +327,10 @@ void Engine::frame(double frameSeconds) {
         reportError(exception);
     }
 
-    // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work.
+    // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work. A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts, and an opaque screen of a plugin hides the app, which draws nothing under it.
     const bool halted = isHalted();
     const bool hidden = current.appState == AppState::Background;
+    current.drawing = !hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn);
     remapViewport();
     current.gamepadMotion->update(!hidden);
     current.host.pollGamepads(current.gamepads);
@@ -388,8 +389,7 @@ void Engine::frame(double frameSeconds) {
         reportError(exception);
     }
 
-    // A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts. An opaque screen of a plugin hides the app, which draws nothing under it.
-    if (!hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn)) {
+    if (current.drawing) {
         render(plugins);
         current.coveredFrameDrawn = current.covered;
         current.frameComplete = checkFrameComplete();
@@ -1191,6 +1191,10 @@ bool Engine::isBackCaptured() const {
 
 bool Engine::isFrameComplete() const noexcept {
     return state->frameComplete;
+}
+
+bool Engine::isDrawing() const noexcept {
+    return state->drawing;
 }
 
 // The first scene that loads without a loading view leaves the screen to the clear color until it enters.

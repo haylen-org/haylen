@@ -92,6 +92,23 @@ TEST(CoreLuaTest, ReturnsTheLaunchArgumentsOfTheApp) {
     EXPECT_EQ(fixture.lua("local arguments = require('haylen').launchArguments() arguments[3] = 'changed' return table.concat(require('haylen').launchArguments(), ' ')"), "--test PLG-011");
 }
 
+// A covered app draws the one frame that stays on screen under the cover, and draws again once the cover ends.
+TEST(CoreLuaTest, TellsWhetherTheFrameDraws) {
+    test::EngineFixture fixture;
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').drawing())"), "true");
+
+    fixture.host().getNativeViews().coverApp();
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').drawing())"), "true");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').drawing())"), "false");
+
+    fixture.host().getNativeViews().uncoverApp();
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return tostring(require('haylen').drawing())"), "true");
+}
+
 // A list of downloaded apps shows each one by what its package says, read on the I/O pool.
 TEST(CoreLuaTest, ReadsWhatAnAppPackageSaysAboutItself) {
     test::TemporaryDirectory guest;

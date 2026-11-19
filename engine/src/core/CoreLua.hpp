@@ -64,6 +64,7 @@ class CoreLua final {
     static int rootAppCovered(lua_State* L);
     static int rootNetworkState(lua_State* L);
     static int rootHalted(lua_State* L);
+    static int rootDrawing(lua_State* L);
     static int rootLifecycle(lua_State* L);
     static int rootSetLifecycle(lua_State* L);
     static int rootAutoload(lua_State* L);

@@ -154,6 +154,9 @@ struct EngineState {
     // Whether the covered app drew the frame that stays on screen under the cover, which a halted app would only draw again the same, until the window changes size or the app comes back from the background.
     bool coveredFrameDrawn = false;
 
+    // Whether the current frame draws the app, which it decides before the plugins begin it.
+    bool drawing = false;
+
     // Whether the frame that rendered last drew the app complete, which no frame did before the first one rendered.
     bool frameComplete = false;
 
