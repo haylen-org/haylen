@@ -202,15 +202,13 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin, UNUserNotificationCenterDe
             throw HaylenFailure("The native demo failed on purpose.", code: "demoFailure", data: Failure(reason: "requested", language: Self.language))
         }
 
-        // The call never answers by itself, so only a cancel or a timeout of the app ends the sleep, and the plugin tells the app that it heard it.
+        // The call never answers by itself, so only a cancel or a timeout of the app ends the wait, and the plugin tells the app that it heard it. The wait is a stream that never yields, which ends once the task of the call is cancelled, since a sleep of the longest duration ends at once on iOS 17.
         context.register("wait") { (params: Wait) async throws -> Empty in
-            do {
-                try await Task.sleep(nanoseconds: UInt64.max)
-            } catch {
-                context.emit("waitCancelled", payload: ["token": params.token, "language": Self.language])
-                throw error
-            }
-            return Empty()
+            let (never, continuation) = AsyncStream<Never>.makeStream()
+            for await _ in never {}
+            continuation.finish()
+            context.emit("waitCancelled", payload: ["token": params.token, "language": Self.language])
+            throw CancellationError()
         }
 
         context.registerHandler("config") { _, reply in
