@@ -413,6 +413,14 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target android --app samples/tests --config Release
       - name: UI tests on the emulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target android
+      - name: Keep the results of the UI tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-ui-results
+          path: build/apps/*/ui-tests/android
+          retention-days: 3
+          if-no-files-found: ignore
       - uses: ./.github/actions/compiler-cache
         if: always()
 

@@ -16,7 +16,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class UiTestsTest:
-    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run gives every setting it changed its value back, each runner takes the tests of its own folder, and a simulator run fails on the errors that the engine logs meanwhile."""
+    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run gives every setting it changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, and a failed simulator run keeps the log of the simulator over the whole run."""
 
     def test_the_runner_runs_the_scheme_of_the_platform_and_its_info_names_the_app(self):
         project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "SIMULATOR-ID", Path("/build/derived"))
@@ -34,6 +34,11 @@ class UiTestsTest:
             "HAYLEN_UI_APP": "com.haylen.tests",
             "HAYLEN_UI_OUTPUT": "/build/screenshots",
         }
+
+    def test_the_log_of_a_failed_simulator_run_covers_the_whole_run(self):
+        show = ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "log", "show", "--last"]
+        assert UiTests.log_command("SIMULATOR-ID", 59.0) == [*show, "2m", "--style", "compact"]
+        assert UiTests.log_command("SIMULATOR-ID", 61.0) == [*show, "3m", "--style", "compact"]
 
     def test_the_runner_of_a_device_is_signed_for_the_team_that_signed_the_app(self):
         description = "Executable=/build/App.app/App\nAuthority=Apple Development: Someone (ABCDE12345)\nTeamIdentifier=FGHIJ67890\n"

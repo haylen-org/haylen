@@ -1,6 +1,8 @@
+import math
 import plistlib
 import re
 import subprocess
+import time
 import zipfile
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -46,6 +48,8 @@ class UiTests:
     DEVICE_OUTPUT = "Library/Caches/ui-tests"
     # The development team in the signature of an app, as "codesign" describes it.
     TEAM = re.compile(r"^TeamIdentifier=(\w+)$", re.MULTILINE)
+    # The file of the unified log of a simulator during a failed run, next to the result bundles of the run.
+    SIMULATOR_LOG = "simulator.log"
 
     def __init__(self, context: ToolingContext, pipeline: AppPipeline) -> None:
         self.context = context
@@ -143,15 +147,33 @@ class UiTests:
             self.context.process.run(UiTests.command("build-for-testing", *project))
             self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
             self.context.terminal.step(f'Running the UI tests on the simulator "{simulator["name"]}"')
+            started = time.monotonic()
             try:
                 with UnifiedLog(self.context.terminal, info["CFBundleExecutable"], ["xcrun", "simctl", "spawn", udid]) as errors:
                     UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
+            except BuildFailed:
+                self.keep_simulator_log(udid, time.monotonic() - started, runner / "derived" / "Logs" / "Test")
+                raise
             finally:
                 for identifier in (info["CFBundleIdentifier"], UiTests.RUNNER):
                     subprocess.run(["xcrun", "simctl", "uninstall", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         if errors:
             raise BuildFailed(f"The UI tests passed, but the engine logged {len(errors)} errors meanwhile, the first being: {errors[0]}")
         return simulator["name"]
+
+    @staticmethod
+    def log_command(udid: str, seconds: float) -> list[str]:
+        """The command that writes the unified log of a simulator over the last whole minutes that cover a run of that many seconds."""
+        minutes = math.ceil(seconds / 60) + 1
+        return ["xcrun", "simctl", "spawn", udid, "log", "show", "--last", f"{minutes}m", "--style", "compact"]
+
+    def keep_simulator_log(self, udid: str, seconds: float, folder: Path) -> None:
+        """Keeps the unified log of the simulator during a failed run next to the result bundles of the run, so a run on a machine that nobody watches, such as continuous integration, tells what the system did meanwhile, such as an answer of a daemon that never came."""
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / UiTests.SIMULATOR_LOG
+        with path.open("w", encoding="utf-8") as output:
+            subprocess.run(UiTests.log_command(udid, seconds), stdout=output, stderr=subprocess.STDOUT, check=False)
+        self.context.terminal.info(f"The log of the simulator during the UI tests is in `{Repository.shown(path)}`.")
 
     def run_on_device(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         """Runs the tests on a device, which gives the Mac no stream of its unified log, so the checks of the tests are the results. The tests write their screenshots into the container of the runner on the device, which the run copies back."""

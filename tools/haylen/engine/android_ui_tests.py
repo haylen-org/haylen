@@ -33,6 +33,8 @@ class AndroidUiTests:
     INSTRUMENTATION = f"{RUNNER}/androidx.test.runner.AndroidJUnitRunner"
     # The folder of the screenshots in the files of the runner on the device.
     DEVICE_OUTPUT = "ui-tests"
+    # The file of the log of the device after a failed run, next to the screenshots of the run.
+    DEVICE_LOG = "logcat.txt"
     # The line of the output of "am instrument -r" that starts the status of a test, which the bound of the start of the run waits for.
     STARTED = re.compile(r"INSTRUMENTATION_STATUS: (test|class)=")
     FARM_ABI = "arm64-v8a"
@@ -95,6 +97,9 @@ class AndroidUiTests:
             self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", AndroidUiTests.IMMERSIVE_CONFIRMATIONS, "confirmed"))
             try:
                 self.instrument_on(serial, classes)
+            except BuildFailed:
+                self.keep_log(serial, output)
+                raise
             finally:
                 self.restore_setting(serial, AndroidUiTests.IMMERSIVE_CONFIRMATIONS, confirmations)
                 self.copy_screenshots(serial, output)
@@ -127,6 +132,13 @@ class AndroidUiTests:
         """Whether the report of "am instrument -r" says that the run ended and that no test failed, which a status code of -2 marks."""
         stripped = [line.strip() for line in lines]
         return AndroidUiTests.PASSED in stripped and AndroidUiTests.FAILED not in stripped
+
+    def keep_log(self, serial: str, output: Path) -> None:
+        """Keeps the log of the device after a failed run next to the screenshots, so a run on a machine that nobody watches, such as continuous integration, tells what the app and the system did meanwhile."""
+        path = output / AndroidUiTests.DEVICE_LOG
+        with path.open("w", encoding="utf-8") as log:
+            subprocess.run([str(part) for part in self.bridge.command(serial, "logcat", "-d", "-v", "threadtime")], stdout=log, stderr=subprocess.STDOUT, check=False)
+        self.context.terminal.info(f"The log of the device during the UI tests is in `{Repository.shown(path)}`.")
 
     def copy_screenshots(self, serial: str, output: Path) -> None:
         """Copies the screenshots that the tests saved in the files of the runner, which a debuggable app lets adb read. A run whose tests saved none, such as one that failed before its first screenshot, leaves no folder to copy."""
