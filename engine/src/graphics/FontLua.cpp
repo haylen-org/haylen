@@ -376,8 +376,18 @@ int FontLua::familySystemFonts(lua_State* L) {
 int FontLua::familyFace(lua_State* L) {
     const text::FontFamily::Faces& faces = lua::Userdata::check<text::FontFamily>(L, 1).getFaces();
     const std::string_view key = lua::Stack::read<std::string_view>(L, 2);
-    const std::shared_ptr<text::Font>& face = key == "bold" ? faces.bold : (key == "italic" ? faces.italic : (key == "boldItalic" ? faces.boldItalic : (key == "mono" ? faces.mono : faces.regular)));
-    lua::Stack::push(L, face);
+    const std::shared_ptr<text::Font>* face = &faces.regular;
+    if (key == "bold") {
+        face = &faces.bold;
+    } else if (key == "italic") {
+        face = &faces.italic;
+    } else if (key == "boldItalic") {
+        face = &faces.boldItalic;
+    } else if (key == "mono") {
+        face = &faces.mono;
+    }
+
+    lua::Stack::push(L, *face);
     return 1;
 }
 

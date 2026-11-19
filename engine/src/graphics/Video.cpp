@@ -174,6 +174,7 @@ void Video::seek(double seconds) {
 
         shared->queued.clear();
     }
+
     if (state == State::Ready) {
         restartSound();
     }
@@ -275,6 +276,7 @@ void Video::update(double seconds, bool running) {
             error = shared->failure;
         }
     }
+
     if (!error.empty()) {
         fail();
         return;
@@ -308,6 +310,7 @@ void Video::update(double seconds, bool running) {
 
         exhausted = shared->framesEnded && shared->queued.empty();
     }
+
     if (shown) {
         try {
             present(*shown);

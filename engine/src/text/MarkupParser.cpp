@@ -299,6 +299,7 @@ std::u32string MarkupParser::listMarker(RichTextDocument::ListKind kind, std::si
         label = romanNumeral(number, kind == Kind::UpperRoman);
         break;
     }
+
     return label + U".";
 }
 
@@ -595,7 +596,14 @@ void MarkupParser::openBlock(const Tag& tag) {
     } else {
         requireNoValue(tag);
         checkAttributes(tag, {});
-        block.align = name == "center" ? Alignment::Center : (name == "right" ? Alignment::Right : (name == "fill" ? Alignment::Fill : Alignment::Left));
+        block.align = Alignment::Left;
+        if (name == "center") {
+            block.align = Alignment::Center;
+        } else if (name == "right") {
+            block.align = Alignment::Right;
+        } else if (name == "fill") {
+            block.align = Alignment::Fill;
+        }
     }
 
     discardOrFinishParagraph();

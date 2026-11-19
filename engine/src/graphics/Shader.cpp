@@ -42,6 +42,7 @@ int Shader::getComponentCount(UniformType type) noexcept {
     case UniformType::Mat4:
         return 16;
     }
+
     return 1;
 }
 

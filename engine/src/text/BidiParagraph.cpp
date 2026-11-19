@@ -23,7 +23,13 @@ BidiParagraph::BidiParagraph(std::u32string_view text, Direction direction) : an
 
     const SBCodepointSequence sequence{SBStringEncodingUTF32, text.data(), text.size()};
     analysis->algorithm.reset(SBAlgorithmCreate(&sequence));
-    const SBLevel base = direction == Direction::RightToLeft ? 1 : (direction == Direction::LeftToRight ? 0 : SBLevelDefaultLTR);
+    SBLevel base = SBLevelDefaultLTR;
+    if (direction == Direction::RightToLeft) {
+        base = 1;
+    } else if (direction == Direction::LeftToRight) {
+        base = 0;
+    }
+
     analysis->paragraph.reset(SBAlgorithmCreateParagraph(analysis->algorithm.get(), 0, text.size(), base));
 
     if (SBParagraphGetLength(analysis->paragraph.get()) != text.size()) {

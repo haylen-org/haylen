@@ -18,6 +18,7 @@ gpu::Device::Wrap DeviceState::toWrap(Texture::Wrap wrap) noexcept {
     case Texture::Wrap::Mirror:
         return gpu::Device::Wrap::MirroredRepeat;
     }
+
     return gpu::Device::Wrap::ClampToEdge;
 }
 

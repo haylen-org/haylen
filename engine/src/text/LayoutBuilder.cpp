@@ -66,6 +66,7 @@ Alignment LayoutBuilder::resolveAlign(Alignment align, bool rightToLeft, bool la
     case Alignment::Right:
         break;
     }
+
     return align;
 }
 
