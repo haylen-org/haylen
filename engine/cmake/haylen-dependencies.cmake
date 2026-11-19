@@ -417,6 +417,8 @@ if(ANDROID)
   target_compile_definitions(haylen-miniaudio PUBLIC MA_NO_OPENSL)
   target_link_libraries(haylen-miniaudio PUBLIC log)
 elseif(APPLE)
+  # The miniaudio library links the audio frameworks of the system instead of opening them while it runs, which it does on macOS otherwise, so the engine references the frameworks that it lists.
+  target_compile_definitions(haylen-miniaudio PUBLIC MA_NO_RUNTIME_LINKING)
   target_link_libraries(haylen-miniaudio PUBLIC "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")
   if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
     # The miniaudio library manages the `AVAudioSession` on iOS and tvOS, so its implementation compiles as Objective-C there.

@@ -3,8 +3,9 @@
 # Xcode builds the apps of every Apple platform from the projects of the tooling, so the function builds only plain macOS executables there, such as those of CMake projects that consume the engine.
 
 # The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple SDK publishes them in haylen-apple.json, from which the Xcode projects of apps link them.
+# On macOS the engine sends the Metal layer of the window only messages of Objective-C, so it references no symbol of QuartzCore, which AppKit loads, and miniaudio links CoreAudio and AudioToolbox instead of opening them while it runs.
 # Every Apple platform finds the fonts of the system through CoreText, Mac Catalyst reads the battery of the Mac from the power sources of IOKit, every Apple platform decodes videos with AVFoundation and CoreMedia, and SDL reads the keyboard layouts of macOS through Carbon and its controllers through IOKit, GameController, CoreHaptics and ForceFeedback.
-set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreFoundation CoreGraphics CoreText QuartzCore Metal GameController CoreHaptics ForceFeedback AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
+set(HAYLEN_APPLE_FRAMEWORKS_MACOS AppKit Foundation Carbon CoreFoundation CoreGraphics CoreText Metal GameController CoreHaptics ForceFeedback AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics CoreText QuartzCore Metal GameController AVFoundation AudioToolbox CoreMedia Network CoreVideo UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})

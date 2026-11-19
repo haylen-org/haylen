@@ -741,16 +741,17 @@ The engine links only the frameworks and the libraries of the system that every 
 
 | Framework or library | Platforms | Why the engine links it |
 | --- | --- | --- |
-| `Cocoa` | macOS | The windows, the menus and the views of AppKit with Foundation. |
+| `AppKit`, `Foundation` | macOS | The application, the windows, the menus, the views and the strings of the system. |
 | `Foundation`, `UIKit` | iOS, iPadOS, Mac Catalyst, tvOS, visionOS | The application, the scenes, the views and the strings of the system. |
 | `Carbon` | macOS | The keyboard layouts that SDL reads. |
 | `CoreFoundation`, `CoreGraphics` | macOS, and `CoreGraphics` on every Apple platform | The displays, the geometry and the collections of the system. |
 | `CoreText` | Every Apple platform | The fonts of the system that text falls back on. |
-| `QuartzCore`, `Metal` | Every Apple platform | The Metal layer of the window, the display link and the GPU device of Metal. |
+| `Metal` | Every Apple platform | The GPU device of Metal. |
+| `QuartzCore` | iOS, iPadOS, Mac Catalyst, tvOS, visionOS | The Metal layer of the views and the display link. On macOS the engine sends the Metal layer of the window only messages of Objective-C and references no symbol of `QuartzCore`, which AppKit loads. |
 | `GameController` | Every Apple platform | Gamepads, the keyboards and mice of iPads and TV remotes. |
 | `CoreHaptics`, `ForceFeedback` | macOS | The rumble of gamepads, through GameController and SDL. |
 | `AVFoundation`, `AudioToolbox`, `CoreMedia`, `CoreVideo` | Every Apple platform | The audio session, the audio output and the decoding of videos. |
-| `CoreAudio` | macOS | The audio devices of the Mac. |
+| `CoreAudio` | macOS | The audio devices of the Mac, which miniaudio links with `AudioToolbox` instead of opening them while it runs. |
 | `Network` | Every Apple platform | The state of the network. |
 | `IOKit` | macOS, Mac Catalyst | The battery and the devices of HID that SDL reads. |
 | `UniformTypeIdentifiers` | Every Apple platform | The type of a video file that AVFoundation opens. |
