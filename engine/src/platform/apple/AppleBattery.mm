@@ -17,7 +17,13 @@ namespace haylen::platform {
 #if TARGET_OS_OSX || TARGET_OS_MACCATALYST
 void AppleBattery::observe() {
     NativeHost::getSystemState().setBattery(readPowerSources());
+
+    // A Mac that reports no power sources gives no source of their changes either, and its battery stays as it was read.
     CFRunLoopSourceRef source = IOPSNotificationCreateRunLoopSource(&powerSourcesChanged, nullptr);
+    if (source == nullptr) {
+        return;
+    }
+
     CFRunLoopAddSource(CFRunLoopGetMain(), source, kCFRunLoopDefaultMode);
     CFRelease(source);
 }
@@ -26,11 +32,20 @@ void AppleBattery::powerSourcesChanged(void*) {
     NativeHost::getSystemState().setBattery(readPowerSources());
 }
 
-// A Mac on mains power that holds its battery below full, as optimized charging does, neither charges nor discharges, which counts as full.
+// A Mac on mains power that holds its battery below full, as optimized charging does, neither charges nor discharges, which counts as full. IOKit gives no information on a Mac whose power sources it cannot read, which counts as no battery.
 Battery AppleBattery::readPowerSources() {
-    CFTypeRef info = IOPSCopyPowerSourcesInfo();
-    CFArrayRef sources = IOPSCopyPowerSourcesList(info);
     Battery battery{.state = Battery::State::None};
+    CFTypeRef info = IOPSCopyPowerSourcesInfo();
+    if (info == nullptr) {
+        return battery;
+    }
+
+    CFArrayRef sources = IOPSCopyPowerSourcesList(info);
+    if (sources == nullptr) {
+        CFRelease(info);
+        return battery;
+    }
+
     for (CFIndex index = 0; index < CFArrayGetCount(sources); ++index) {
         NSDictionary* values = (__bridge NSDictionary*)IOPSGetPowerSourceDescription(info, CFArrayGetValueAtIndex(sources, index));
         if (![values[@kIOPSTypeKey] isEqualToString:@kIOPSInternalBatteryType]) {
