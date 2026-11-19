@@ -41,7 +41,7 @@ void main() {
     float yellow = min(mask.r, mask.g);
     vec4 weights = vec4(mask.r - yellow, mask.g - yellow, mask.b, yellow) * mask.a;
     vec3 tint = recolor_part(recolor_red) * weights.x + recolor_part(recolor_green) * weights.y + recolor_part(recolor_blue) * weights.z + recolor_part(recolor_yellow) * weights.w + vec3(max(0.0, 1.0 - dot(weights, vec4(1.0))));
-    vec4 base = haylen_texture(point);
+    vec4 base = texture(sampler2D(sprite_texture, sprite_sampler), point);
     vec4 shaded = vec4(base.rgb * tint, base.a) * color;
     shaded.rgb = mix(shaded.rgb, haylen_flash.rgb, haylen_flash.a);
     haylen_output(shaded);

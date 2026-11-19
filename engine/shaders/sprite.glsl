@@ -7,7 +7,7 @@ layout(binding=1) uniform texture2D normal_texture;
 #endif
 
 void main() {
-    vec4 base = haylen_sprite(uv);
+    vec4 base = haylen_draw_sprite();
 #ifdef HAYLEN_LIT
     // A normal-mapped draw has a shininess, and the alpha of its normal map scales its specular strength.
     if (haylen_info.z > 0.0) {

@@ -4,7 +4,7 @@
 @include_block haylen_fragment
 
 void main() {
-    haylen_output(haylen_sprite(uv));
+    haylen_output(haylen_draw_sprite());
 }
 @end
 

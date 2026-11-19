@@ -421,12 +421,8 @@ vec2 haylen_inside(vec2 point) {
 #endif
 }
 
-// The texture color inside the source of the draw multiplied by the draw color and mixed toward the flash color by its alpha, which a shape paints with its border. A draw of the white texture, whose texels are all 1, skips the lookup, and shapes never flash.
-vec4 haylen_sprite(vec2 point) {
-    vec4 texel = vec4(1.0);
-    if (haylen_texture_form < 1.5) {
-        texel = haylen_texture(haylen_inside(point));
-    }
+// A texel of the draw multiplied by the draw color and mixed toward the flash color by its alpha, which a shape paints with its border, since shapes never flash.
+vec4 haylen_tint(vec4 texel) {
 #ifdef HAYLEN_SHAPE
     return haylen_shape_paint(texel * color);
 #else
@@ -434,6 +430,28 @@ vec4 haylen_sprite(vec2 point) {
     shaded.rgb = mix(shaded.rgb, haylen_flash.rgb, haylen_flash.a);
     return shaded;
 #endif
+}
+
+// The texture color inside the source of the draw at a point, tinted by the draw. A draw of the white texture, whose texels are all 1, skips the lookup.
+vec4 haylen_sprite(vec2 point) {
+    vec4 texel = vec4(1.0);
+    if (haylen_texture_form < 1.5) {
+        texel = haylen_texture(haylen_inside(point));
+    }
+    return haylen_tint(texel);
+}
+
+// The sprite at the texture coordinate of the draw, which is how sprites, meshes and shapes draw. The coordinate moves linearly across the draw and the move inside the source only stops it, so the texture takes the mip level from the coordinate itself, the level that `haylen_texture` picks for it, without the slopes and the lookup by gradients that a point which jumps needs. A draw of the white texture skips the lookup, and the several textures of a batch keep the lookup of `haylen_texture`, which picks one of them.
+vec4 haylen_draw_sprite() {
+    vec4 texel = vec4(1.0);
+    if (haylen_texture_form < 1.5) {
+#ifdef HAYLEN_BATCH
+        texel = haylen_texture(haylen_inside(uv));
+#else
+        texel = texture(sampler2D(sprite_texture, sprite_sampler), haylen_inside(uv));
+#endif
+    }
+    return haylen_tint(texel);
 }
 
 // The distance field of the glyph at a point, moved inside the texels of the source of the glyph. Glyphs join the atlas of the text programs while the app runs, so the atlas has a single level, which the lookups of a glyph read without the slopes that would pick one. The other programs read their texture like any lookup, and pass no texels.
