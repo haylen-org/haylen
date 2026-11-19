@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
@@ -27,6 +28,7 @@
 #include "haylen/debug/TrackedObject.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "haylen/platform/Event.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -493,6 +495,65 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
+}
+
+// The checkboxes of the drawings take their ids inside their section, so a drawing named like another item of the window, such as the compact item "physics" or the section "Scenes", never shares its id, which ImGui reports as an error under the pointer.
+TEST(StatsTest, GivesTheDrawingsOfTheOverlayIdsOfTheirOwn) {
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    const core::Connection drawer = plugin.addDrawer("Scenes", [](graphics2d::Renderer&) {});
+    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    fixture.frames(2);
+
+    ui::Backend& backend = fixture.engine().getPlugin<plugins::UiPlugin>().getBackend();
+    std::size_t conflicts = 0;
+    // clang-format off
+    const auto hover = [&](float x, float y) {
+        platform::Event event;
+        event.type = platform::Event::Type::MouseMove;
+        event.position = fixture.engine().getViewport().toFramebuffer(backend.toDesign({x, y}));
+        fixture.engine().handleEvent(event);
+        fixture.frames(1);
+        backend.makeCurrent();
+        conflicts = std::max(conflicts, static_cast<std::size_t>(GImGui->HoveredIdPreviousFrameItemCount));
+        return GImGui->HoveredId;
+    };
+    // clang-format on
+
+    backend.makeCurrent();
+    ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
+    ASSERT_NE(window, nullptr);
+    const ImGuiID header = window->GetID("Drawings");
+    const ImVec2 origin = window->Pos;
+    const ImVec2 size = window->Size;
+
+    // The header of the section spans the width of the window, and the row of its checkboxes follows it.
+    float below = -1.0F;
+    for (float y = origin.y; y < origin.y + size.y; y += 2.0F) {
+        if (hover(origin.x + size.x * 0.5F, y) == header) {
+            below = y;
+        }
+    }
+
+    ASSERT_GE(below, 0.0F);
+    const float left = origin.x + window->WindowPadding.x + 4.0F;
+    float row = -1.0F;
+    for (float y = below; y < below + 80.0F && row < 0.0F; y += 2.0F) {
+        const ImGuiID item = hover(left, y);
+        if (item != 0 && item != header) {
+            row = y;
+        }
+    }
+
+    ASSERT_GE(row, 0.0F);
+    std::size_t hovered = 0;
+    for (float x = origin.x; x < origin.x + size.x; x += 3.0F) {
+        hovered += hover(x, row) != 0 ? 1 : 0;
+    }
+
+    EXPECT_GT(hovered, 0U);
+    EXPECT_LE(conflicts, 1U);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 } // namespace haylen::debug

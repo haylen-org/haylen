@@ -204,8 +204,9 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
     ImGui::EndTable();
 }
 
-// A checkbox for every drawing the engine and the app know, which switches it like the API does.
+// A checkbox for every drawing the engine and the app know, which switches it like the API does. The checkboxes take their ids inside the section, since the app names its drawings and a name may match another item of the window.
 void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
+    ImGui::PushID("drawings");
     for (const std::string& name : plugin.getDrawingNames()) {
         bool enabled = plugin.isDrawing(name);
         if (ImGui::Checkbox(name.c_str(), &enabled)) {
@@ -216,10 +217,12 @@ void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
     }
 
     ImGui::NewLine();
+    ImGui::PopID();
 }
 
 // A checkbox for every item of the compact statistics, which the display shows once the overlay closes into compact mode.
 void OverlayWindow::drawItems(StatsDisplay& display) {
+    ImGui::PushID("items");
     for (const auto& [name, item] : StatsDisplay::kItemNames) {
         bool showing = display.isShowing(item);
         if (ImGui::Checkbox(std::string(name).c_str(), &showing)) {
@@ -230,6 +233,7 @@ void OverlayWindow::drawItems(StatsDisplay& display) {
     }
 
     ImGui::NewLine();
+    ImGui::PopID();
 }
 
 std::size_t OverlayWindow::countStale(const std::vector<core::EventBus::Topic>& topics) noexcept {
