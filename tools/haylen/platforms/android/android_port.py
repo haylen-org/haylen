@@ -33,7 +33,7 @@ class AndroidPort(EnginePort):
     PLAYERS_FOLDER = "jniLibs"
     MAVEN_FOLDER = "maven"
     # The tests of the `haylen` library that need no device, which run before the libraries publish.
-    UNIT_TESTS = ":haylen:testReleaseUnitTest"
+    UNIT_TESTS = ":haylen:testDebugUnitTest"
 
     def describe(self) -> PortDescription:
         target = PortTarget(
