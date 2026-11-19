@@ -1134,9 +1134,45 @@ int UiLua::kinds(lua_State* L) {
 }
 
 int UiLua::open(lua_State* L) {
+    // clang-format off
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeSound", &lua::Binding::native<&themeSound>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"setTextScale", &lua::Binding::native<&setTextScale>}, {"textScale", &lua::Binding::native<&textScale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>},
+        {"node", &lua::Binding::native<&node>},
+        {"setTheme", &lua::Binding::native<&setTheme>},
+        {"theme", &lua::Binding::native<&theme>},
+        {"themes", &lua::Binding::native<&themes>},
+        {"loadTheme", &lua::Binding::native<&loadTheme>},
+        {"addTheme", &lua::Binding::native<&addTheme>},
+        {"themeColor", &lua::Binding::native<&themeColor>},
+        {"themeMetric", &lua::Binding::native<&themeMetric>},
+        {"themeFont", &lua::Binding::native<&themeFont>},
+        {"themeSurface", &lua::Binding::native<&themeSurface>},
+        {"themeSound", &lua::Binding::native<&themeSound>},
+        {"themeImageFilter", &lua::Binding::native<&themeImageFilter>},
+        {"setImage", &lua::Binding::native<&setImage>},
+        {"removeImage", &lua::Binding::native<&removeImage>},
+        {"addFont", &lua::Binding::native<&addFont>},
+        {"usingPointer", &lua::Binding::native<&usingPointer>},
+        {"usingKeyboard", &lua::Binding::native<&usingKeyboard>},
+        {"focused", &lua::Binding::native<&focused>},
+        {"focusOwner", &lua::Binding::native<&focusOwner>},
+        {"clearFocus", &lua::Binding::native<&clearFocus>},
+        {"focusRingVisible", &lua::Binding::native<&focusRingVisible>},
+        {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>},
+        {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>},
+        {"setDirection", &lua::Binding::native<&setDirection>},
+        {"direction", &lua::Binding::native<&direction>},
+        {"setScaleMode", &lua::Binding::native<&setScaleMode>},
+        {"scaleMode", &lua::Binding::native<&scaleMode>},
+        {"setScale", &lua::Binding::native<&setScale>},
+        {"scale", &lua::Binding::native<&scale>},
+        {"setTextScale", &lua::Binding::native<&setTextScale>},
+        {"textScale", &lua::Binding::native<&textScale>},
+        {"kinds", &lua::Binding::native<&kinds>},
+        {"onEvent", &lua::Binding::native<&onEvent>},
+        {nullptr, nullptr},
     };
+    // clang-format on
     lua::Binding::newModule(L, functions);
     NavigationLua::addTo(L, -1);
     lua_createtable(L, 0, 1);
@@ -1153,7 +1189,24 @@ void UiLua::install(lua_State* L) {
     TransformLua::install(L);
     CollectionLua::install(L);
     NavigationLua::install(L);
-    lua::ClassBuilder<Gui>(L).function("set", &lua::Binding::native<&guiSet>).function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>).function("get", &lua::Binding::native<&guiGet>).function("has", &lua::Binding::native<&guiHas>).function("bounds", &lua::Binding::native<&guiBounds>).function("command", &lua::Binding::native<&guiCommand>).function("removeHandler", &lua::Binding::native<&guiRemoveHandler>).function("unmount", &lua::Binding::native<&guiUnmount>).property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>).property("sharedFocus", &guiSharedFocus, &lua::Binding::native<&guiSetSharedFocus>).property("mounted", &guiMounted).property("placement", &guiPlacement).function("transform", &lua::Binding::native<&guiTransform>).function("collection", &lua::Binding::native<&guiCollection>).install();
+    // clang-format off
+    lua::ClassBuilder<Gui>(L)
+        .function("set", &lua::Binding::native<&guiSet>)
+        .function("replaceChildren", &lua::Binding::native<&guiReplaceChildren>)
+        .function("get", &lua::Binding::native<&guiGet>)
+        .function("has", &lua::Binding::native<&guiHas>)
+        .function("bounds", &lua::Binding::native<&guiBounds>)
+        .function("command", &lua::Binding::native<&guiCommand>)
+        .function("removeHandler", &lua::Binding::native<&guiRemoveHandler>)
+        .function("unmount", &lua::Binding::native<&guiUnmount>)
+        .property("visible", &guiVisible, &lua::Binding::native<&guiSetVisible>)
+        .property("sharedFocus", &guiSharedFocus, &lua::Binding::native<&guiSetSharedFocus>)
+        .property("mounted", &guiMounted)
+        .property("placement", &guiPlacement)
+        .function("transform", &lua::Binding::native<&guiTransform>)
+        .function("collection", &lua::Binding::native<&guiCollection>)
+        .install();
+    // clang-format on
     lua::Binding::preload(L, "haylen.ui", &open);
 }
 

@@ -1242,9 +1242,22 @@ int NavigationLua::messageResult(lua_State* L) {
 
 void NavigationLua::addTo(lua_State* L, int module) {
     const int target = lua_absindex(L, module);
+    // clang-format off
     const luaL_Reg functions[] = {
-        {"navigationStack", &lua::Binding::native<&navigationStack>}, {"navigationTabs", &lua::Binding::native<&navigationTabs>}, {"navigationSplit", &lua::Binding::native<&navigationSplit>}, {"present", &lua::Binding::native<&present>}, {"presentAlert", &lua::Binding::native<&presentAlert>}, {"showMessage", &lua::Binding::native<&showMessage>}, {"setMessageArea", &lua::Binding::native<&setMessageArea>}, {"router", &lua::Binding::native<&router>}, {"goBack", &lua::Binding::native<&goBack>}, {"canGoBack", &lua::Binding::native<&canGoBack>}, {"screenState", &lua::Binding::native<&screenState>}, {nullptr, nullptr},
+        {"navigationStack", &lua::Binding::native<&navigationStack>},
+        {"navigationTabs", &lua::Binding::native<&navigationTabs>},
+        {"navigationSplit", &lua::Binding::native<&navigationSplit>},
+        {"present", &lua::Binding::native<&present>},
+        {"presentAlert", &lua::Binding::native<&presentAlert>},
+        {"showMessage", &lua::Binding::native<&showMessage>},
+        {"setMessageArea", &lua::Binding::native<&setMessageArea>},
+        {"router", &lua::Binding::native<&router>},
+        {"goBack", &lua::Binding::native<&goBack>},
+        {"canGoBack", &lua::Binding::native<&canGoBack>},
+        {"screenState", &lua::Binding::native<&screenState>},
+        {nullptr, nullptr},
     };
+    // clang-format on
     for (const luaL_Reg* entry = functions; entry->name != nullptr; ++entry) {
         lua_pushcfunction(L, entry->func);
         lua_setfield(L, target, entry->name);
@@ -1258,12 +1271,75 @@ void NavigationLua::addTo(lua_State* L, int module) {
 }
 
 void NavigationLua::install(lua_State* L) {
-    lua::ClassBuilder<NavigationStack>(L).function("push", &lua::Binding::native<&stackPush>).function("pop", &lua::Binding::native<&stackPop>).function("popTo", &lua::Binding::native<&stackPopTo>).function("popToRoot", &lua::Binding::native<&stackPopToRoot>).function("replace", &lua::Binding::native<&stackReplace>).function("setScreens", &lua::Binding::native<&stackSetScreens>).function("close", &lua::Binding::native<&stackClose>).property("screens", &stackScreens).property("top", &stackTop).property("size", &stackSize).property("canGoBack", &stackCanGoBack).property("transitioning", &stackTransitioning).property("shown", &stackShown, &lua::Binding::native<&stackSetShown>).property("closed", &stackClosed).install();
-    lua::ClassBuilder<NavigationTabs>(L).function("select", &lua::Binding::native<&tabsSelect>).function("stack", &lua::Binding::native<&tabsStack>).function("close", &lua::Binding::native<&tabsClose>).property("selected", &tabsSelected).property("current", &lua::Binding::native<&tabsCurrent>).property("closed", &tabsClosed).install();
-    lua::ClassBuilder<NavigationSplit>(L).function("showDetail", &lua::Binding::native<&splitShowDetail>).function("clearDetail", &lua::Binding::native<&splitClearDetail>).function("close", &lua::Binding::native<&splitClose>).property("collapsed", &splitCollapsed, &lua::Binding::native<&splitSetCollapsed>).property("hasDetail", &splitHasDetail).property("primary", &splitPrimary).property("detail", &splitDetail).property("closed", &splitClosed).install();
-    lua::ClassBuilder<Presentation>(L).function("dismiss", &lua::Binding::native<&presentationDismiss>).property("screen", &presentationScreen).property("style", &presentationStyle).property("dismissible", &presentationDismissible).property("dismissed", &presentationDismissed).property("modal", &presentationModal).property("result", &lua::Binding::native<&presentationResult>).property("detent", &presentationDetent, &lua::Binding::native<&presentationSetDetent>).install();
-    lua::ClassBuilder<Message>(L).function("update", &lua::Binding::native<&messageUpdate>).function("dismiss", &lua::Binding::native<&messageDismiss>).property("style", &messageStyle).property("shown", &messageShown).property("dismissed", &messageDismissed).property("result", &lua::Binding::native<&messageResult>).install();
-    lua::ClassBuilder<Router>(L).function("open", &lua::Binding::native<&routerOpen>).function("push", &lua::Binding::native<&routerPush>).function("match", &lua::Binding::native<&routerMatch>).function("location", &lua::Binding::native<&routerLocation>).function("save", &lua::Binding::native<&routerSave>).function("restore", &lua::Binding::native<&routerRestore>).function("close", &lua::Binding::native<&routerClose>).property("closed", &routerClosed).install();
+    // clang-format off
+    lua::ClassBuilder<NavigationStack>(L)
+        .function("push", &lua::Binding::native<&stackPush>)
+        .function("pop", &lua::Binding::native<&stackPop>)
+        .function("popTo", &lua::Binding::native<&stackPopTo>)
+        .function("popToRoot", &lua::Binding::native<&stackPopToRoot>)
+        .function("replace", &lua::Binding::native<&stackReplace>)
+        .function("setScreens", &lua::Binding::native<&stackSetScreens>)
+        .function("close", &lua::Binding::native<&stackClose>)
+        .property("screens", &stackScreens)
+        .property("top", &stackTop)
+        .property("size", &stackSize)
+        .property("canGoBack", &stackCanGoBack)
+        .property("transitioning", &stackTransitioning)
+        .property("shown", &stackShown, &lua::Binding::native<&stackSetShown>)
+        .property("closed", &stackClosed)
+        .install();
+
+    lua::ClassBuilder<NavigationTabs>(L)
+        .function("select", &lua::Binding::native<&tabsSelect>)
+        .function("stack", &lua::Binding::native<&tabsStack>)
+        .function("close", &lua::Binding::native<&tabsClose>)
+        .property("selected", &tabsSelected)
+        .property("current", &lua::Binding::native<&tabsCurrent>)
+        .property("closed", &tabsClosed)
+        .install();
+
+    lua::ClassBuilder<NavigationSplit>(L)
+        .function("showDetail", &lua::Binding::native<&splitShowDetail>)
+        .function("clearDetail", &lua::Binding::native<&splitClearDetail>)
+        .function("close", &lua::Binding::native<&splitClose>)
+        .property("collapsed", &splitCollapsed, &lua::Binding::native<&splitSetCollapsed>)
+        .property("hasDetail", &splitHasDetail)
+        .property("primary", &splitPrimary)
+        .property("detail", &splitDetail)
+        .property("closed", &splitClosed)
+        .install();
+
+    lua::ClassBuilder<Presentation>(L)
+        .function("dismiss", &lua::Binding::native<&presentationDismiss>)
+        .property("screen", &presentationScreen)
+        .property("style", &presentationStyle)
+        .property("dismissible", &presentationDismissible)
+        .property("dismissed", &presentationDismissed)
+        .property("modal", &presentationModal)
+        .property("result", &lua::Binding::native<&presentationResult>)
+        .property("detent", &presentationDetent, &lua::Binding::native<&presentationSetDetent>)
+        .install();
+
+    lua::ClassBuilder<Message>(L)
+        .function("update", &lua::Binding::native<&messageUpdate>)
+        .function("dismiss", &lua::Binding::native<&messageDismiss>)
+        .property("style", &messageStyle)
+        .property("shown", &messageShown)
+        .property("dismissed", &messageDismissed)
+        .property("result", &lua::Binding::native<&messageResult>)
+        .install();
+
+    lua::ClassBuilder<Router>(L)
+        .function("open", &lua::Binding::native<&routerOpen>)
+        .function("push", &lua::Binding::native<&routerPush>)
+        .function("match", &lua::Binding::native<&routerMatch>)
+        .function("location", &lua::Binding::native<&routerLocation>)
+        .function("save", &lua::Binding::native<&routerSave>)
+        .function("restore", &lua::Binding::native<&routerRestore>)
+        .function("close", &lua::Binding::native<&routerClose>)
+        .property("closed", &routerClosed)
+        .install();
+    // clang-format on
 }
 
 } // namespace haylen::ui

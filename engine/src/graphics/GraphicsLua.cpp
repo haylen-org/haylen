@@ -248,16 +248,45 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
 }
 
 int GraphicsLua::open(lua_State* L) {
+    // clang-format off
     const luaL_Reg functions[] = {
-        {"newTexture", &lua::Binding::native<&newTexture>}, {"newRenderTarget", &lua::Binding::native<&newRenderTarget>}, {"newVectorImage", &lua::Binding::native<&newVectorImage>}, {"newImage", &lua::Binding::native<&ImageLua::create>}, {"decodeImage", &lua::Binding::native<&ImageLua::decode>}, {"maxImageSize", &ImageLua::maxSize}, {"decodeImageAsync", &lua::Binding::native<&ImageLua::decodeAsync>}, {"decodePlaceholder", &lua::Binding::native<&ImageLua::decodePlaceholder>}, {"readTarget", &lua::Binding::native<&ImageLua::readTarget>}, {"captureScreen", &lua::Binding::native<&ImageLua::captureScreen>}, {"whiteTexture", &whiteTexture}, {"apiName", &apiName}, {"maxTextureSize", &maxTextureSize}, {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>}, {"systemFonts", &FontLua::systemFonts}, {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>}, {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>}, {nullptr, nullptr},
+        {"newTexture", &lua::Binding::native<&newTexture>},
+        {"newRenderTarget", &lua::Binding::native<&newRenderTarget>},
+        {"newVectorImage", &lua::Binding::native<&newVectorImage>},
+        {"newImage", &lua::Binding::native<&ImageLua::create>},
+        {"decodeImage", &lua::Binding::native<&ImageLua::decode>},
+        {"maxImageSize", &ImageLua::maxSize},
+        {"decodeImageAsync", &lua::Binding::native<&ImageLua::decodeAsync>},
+        {"decodePlaceholder", &lua::Binding::native<&ImageLua::decodePlaceholder>},
+        {"readTarget", &lua::Binding::native<&ImageLua::readTarget>},
+        {"captureScreen", &lua::Binding::native<&ImageLua::captureScreen>},
+        {"whiteTexture", &whiteTexture},
+        {"apiName", &apiName},
+        {"maxTextureSize", &maxTextureSize},
+        {"newFontFamily", &lua::Binding::native<&FontLua::newFontFamily>},
+        {"systemFonts", &FontLua::systemFonts},
+        {"newBitmapFont", &lua::Binding::native<&FontLua::newBitmapFont>},
+        {"newGridFont", &lua::Binding::native<&FontLua::newGridFont>},
+        {nullptr, nullptr},
     };
+    // clang-format on
     lua::Binding::newModule(L, functions);
     return 1;
 }
 
 void GraphicsLua::install(lua_State* L) {
     ImageLua::install(L);
-    lua::ClassBuilder<Texture>(L).function("update", &lua::Binding::native<&updateTexture>).property("width", &textureWidth).property("height", &textureHeight).property("filter", &textureFilter).property("wrap", &textureWrap).property("mipmaps", &textureMipmaps).meta("__eq", &lua::Userdata::equal<Texture>).install();
+    // clang-format off
+    lua::ClassBuilder<Texture>(L)
+        .function("update", &lua::Binding::native<&updateTexture>)
+        .property("width", &textureWidth)
+        .property("height", &textureHeight)
+        .property("filter", &textureFilter)
+        .property("wrap", &textureWrap)
+        .property("mipmaps", &textureMipmaps)
+        .meta("__eq", &lua::Userdata::equal<Texture>)
+        .install();
+    // clang-format on
     lua::ClassBuilder<RenderTarget>(L).property("width", &targetWidth).property("height", &targetHeight).property("texture", &targetTexture).meta("__eq", &lua::Userdata::equal<RenderTarget>).install();
     lua::ClassBuilder<Shader>(L).property("name", &shaderName).property("uniforms", &shaderUniforms).property("textures", &shaderTextures).meta("__eq", &lua::Userdata::equal<Shader>).install();
     lua::ClassBuilder<VectorImage>(L).property("width", &vectorWidth).property("height", &vectorHeight).function("rasterize", &lua::Binding::native<&rasterizeVector>).meta("__eq", &lua::Userdata::equal<VectorImage>).install();

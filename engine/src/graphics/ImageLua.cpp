@@ -571,7 +571,36 @@ int ImageLua::height(lua_State* L) {
 }
 
 void ImageLua::install(lua_State* L) {
-    lua::ClassBuilder<Image>(L).function("pixel", &lua::Binding::native<&pixel>).function("setPixel", &lua::Binding::native<&setPixel>).function("fill", &lua::Binding::native<&fill>).function("fillGradient", &lua::Binding::native<&fillGradient>).function("blit", &lua::Binding::native<&blit>).function("blitAsync", &lua::Binding::native<&blitAsync>).function("crop", &lua::Binding::native<&crop>).function("bleed", &lua::Binding::native<&bleed>).function("visibleArea", &lua::Binding::native<&visibleArea>).function("clone", &lua::Binding::native<&clone>).function("encodePng", &lua::Binding::native<&encodePng>).function("encodePngAsync", &lua::Binding::native<&encodePngAsync>).function("palette", &lua::Binding::native<&palette>).function("swatches", &lua::Binding::native<&swatches>).function("placeholder", &lua::Binding::native<&placeholder>).function("blur", &lua::Binding::native<&blur>).function("sharpen", &lua::Binding::native<&sharpen>).function("adjust", &lua::Binding::native<&adjust>).function("grayscale", &lua::Binding::native<&grayscale>).function("invert", &lua::Binding::native<&invert>).function("tint", &lua::Binding::native<&tint>).function("pixelate", &lua::Binding::native<&pixelate>).function("outline", &lua::Binding::native<&outline>).function("applyAsync", &lua::Binding::native<&applyAsync>).property("width", &width).property("height", &height).install();
+    // clang-format off
+    lua::ClassBuilder<Image>(L)
+        .function("pixel", &lua::Binding::native<&pixel>)
+        .function("setPixel", &lua::Binding::native<&setPixel>)
+        .function("fill", &lua::Binding::native<&fill>)
+        .function("fillGradient", &lua::Binding::native<&fillGradient>)
+        .function("blit", &lua::Binding::native<&blit>)
+        .function("blitAsync", &lua::Binding::native<&blitAsync>)
+        .function("crop", &lua::Binding::native<&crop>)
+        .function("bleed", &lua::Binding::native<&bleed>)
+        .function("visibleArea", &lua::Binding::native<&visibleArea>)
+        .function("clone", &lua::Binding::native<&clone>)
+        .function("encodePng", &lua::Binding::native<&encodePng>)
+        .function("encodePngAsync", &lua::Binding::native<&encodePngAsync>)
+        .function("palette", &lua::Binding::native<&palette>)
+        .function("swatches", &lua::Binding::native<&swatches>)
+        .function("placeholder", &lua::Binding::native<&placeholder>)
+        .function("blur", &lua::Binding::native<&blur>)
+        .function("sharpen", &lua::Binding::native<&sharpen>)
+        .function("adjust", &lua::Binding::native<&adjust>)
+        .function("grayscale", &lua::Binding::native<&grayscale>)
+        .function("invert", &lua::Binding::native<&invert>)
+        .function("tint", &lua::Binding::native<&tint>)
+        .function("pixelate", &lua::Binding::native<&pixelate>)
+        .function("outline", &lua::Binding::native<&outline>)
+        .function("applyAsync", &lua::Binding::native<&applyAsync>)
+        .property("width", &width)
+        .property("height", &height)
+        .install();
+    // clang-format on
 }
 
 } // namespace haylen::graphics
