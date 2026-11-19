@@ -39,6 +39,9 @@ class Table final {
     // Raises the error of the option named `field` when the value on top of the stack is not of the Lua type, and leaves the value there.
     static void requireType(lua_State* L, std::string_view field, int type);
 
+    // Raises the error of the item at the place `item` of the list named `field`, an option or an argument, when the value on top of the stack is not of the Lua type, and leaves the value there.
+    static void requireItemType(lua_State* L, std::string_view field, lua_Integer item, int type);
+
     // Reads the option table at index in one pass over the keys it holds, which suits options read for every draw: `read` receives each key that `own` names with its value on top of the stack, the keys that `extras` name belong to another reader of the same table, and any other key raises the unknown option error.
     template <typename Read> static void readFields(lua_State* L, int index, FieldNames own, std::initializer_list<FieldNames> extras, Read&& read) {
         const int table = lua_absindex(L, index);
@@ -99,6 +102,9 @@ class Table final {
 
     // Raises the error at the top of the stack again as a problem with the option named `field` of the running function.
     static int raiseFieldError(lua_State* L, std::string_view field);
+
+    // Raises the error at the top of the stack again as a problem with what `subject` names, such as `The option "size"`, in the running function.
+    static int raiseError(lua_State* L, const std::string& subject);
 };
 
 } // namespace haylen::lua

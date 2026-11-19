@@ -318,7 +318,10 @@ math::EasingCurve Converter<math::EasingCurve>::read(lua_State* L, int index) {
     lua_pop(L, 1);
 
     if (lua_getfield(L, table, "points") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        if (!lua_istable(L, -1)) {
+            luaL_error(L, "The \"points\" of an easing curve are a list of heights or of {x, y} points, not a %s.", luaL_typename(L, -1));
+        }
+
         std::vector<math::Vec2> points;
         const auto count = static_cast<lua_Integer>(lua_rawlen(L, -1));
         for (lua_Integer point = 1; point <= count; ++point) {

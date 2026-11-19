@@ -1,6 +1,7 @@
 #include "haylen/lua/Table.hpp"
 
 #include <algorithm>
+#include <format>
 #include <string>
 
 namespace haylen::lua {
@@ -50,7 +51,20 @@ void Table::requireType(lua_State* L, std::string_view field, int type) {
     raiseFieldError(L, field);
 }
 
+void Table::requireItemType(lua_State* L, std::string_view field, lua_Integer item, int type) {
+    if (lua_type(L, -1) == type) {
+        return;
+    }
+
+    lua_pushfstring(L, "%s expected, got %s", lua_typename(L, type), luaL_typename(L, -1));
+    raiseError(L, std::format("The item {} of \"{}\"", item, field));
+}
+
 int Table::raiseFieldError(lua_State* L, std::string_view field) {
+    return raiseError(L, std::format("The option \"{}\"", field));
+}
+
+int Table::raiseError(lua_State* L, const std::string& subject) {
     // The protected reader failed as an anonymous function, so only the reason in the parentheses of its argument error is kept. A reason that is a sentence of its own keeps its period.
     std::string reason = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : "its value cannot be read";
     if (const std::size_t open = reason.find(" ("); reason.starts_with("bad argument") && open != std::string::npos && reason.ends_with(')')) {
@@ -65,7 +79,7 @@ int Table::raiseFieldError(lua_State* L, std::string_view field) {
 
     lua_Debug frame{};
     const char* name = lua_getstack(L, 0, &frame) != 0 && lua_getinfo(L, "n", &frame) != 0 && frame.name != nullptr ? frame.name : "?";
-    return luaL_error(L, "The option \"%s\" of \"%s\" is invalid: %s", std::string(field).c_str(), name, reason.c_str());
+    return luaL_error(L, "%s of \"%s\" is invalid: %s", subject.c_str(), name, reason.c_str());
 }
 
 } // namespace haylen::lua

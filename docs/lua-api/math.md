@@ -1262,7 +1262,7 @@ These errors come from wrong curves:
 - An `amplitude` or a `period` on another curve raises `An amplitude and a period only apply to the elastic curves.`, and a period that is not positive raises `An elastic curve needs a positive period.`
 - A step count outside `1` to `16777216` raises `A steps curve needs between 1 and 16777216 steps.`
 - A `cubicBezier` list without four numbers raises `A "cubicBezier" curve needs the four numbers "x1", "y1", "x2" and "y2".`, and an x outside `0` to `1` raises `The x coordinates of a cubic Bézier curve must be between 0 and 1.`
-- Fewer than two points raise `A points curve needs at least two points.`, and points out of order raise `The points of a curve must be ordered by x.`
+- A `points` that is not a list raises `The "points" of an easing curve are a list of heights or of {x, y} points, not a <type>.`, fewer than two points raise `A points curve needs at least two points.`, and points out of order raise `The points of a curve must be ordered by x.`
 - A function that returns anything but a number raises `An easing function must return a number.`, and a finite number past the floats of the engine raises `An easing function must return a number from -3.4028234663853e+38 to 3.4028234663853e+38.`
 
 ## EasingCurve
@@ -2624,6 +2624,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `A steps curve needs between 1 and 16777216 steps.` | The `steps` of a curve are out of range. |
 | `A "cubicBezier" curve needs the four numbers "x1", "y1", "x2" and "y2".` | The `cubicBezier` list does not hold four numbers. |
 | `The x coordinates of a cubic Bézier curve must be between 0 and 1.` | An x handle of a Bézier curve is out of range. |
+| `The "points" of an easing curve are a list of heights or of {x, y} points, not a <type>.` | The `points` of a curve are not a table. |
 | `A points curve needs at least two points.` | The `points` of a curve hold fewer than two points. |
 | `The points of a curve must be ordered by x.` | The `points` of a curve are out of order. |
 | `An easing function must return a number.` | A curve function returned something else. |

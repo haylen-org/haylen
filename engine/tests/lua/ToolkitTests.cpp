@@ -171,6 +171,14 @@ TEST(EnvironmentTest, NamesTheOptionThatHoldsABadValue) {
     EXPECT_EQ(fixture.lua("tween.to(box, 1, {x = 1}, {delay = 0.5}) return 'ok'"), "ok");
 }
 
+// A value of the wrong type inside the options names the option or the item of a list that holds it, never the place of the value on the stack.
+TEST(EnvironmentTest, NamesTheOptionOrTheItemOfANestedValueOfTheWrongType) {
+    test::EngineFixture fixture;
+    fixture.runLua("tween = require('haylen.tween') box = {x = 0}");
+
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {ease = {points = 3}})").find("The option \"ease\" of \"to\" is invalid: The \"points\" of an easing curve are a list of heights or of {x, y} points, not a number."), std::string::npos);
+}
+
 TEST(EnvironmentTest, LoadsChunksOnlyAsText) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();
