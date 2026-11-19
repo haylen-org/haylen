@@ -11,6 +11,7 @@
 #include "graphics/TextureResource.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
@@ -89,12 +90,12 @@ int AssetsLua::bytesAsync(lua_State* L) {
     const lua::Promise promise(engine);
     // clang-format off
     auto settle = [promise](std::vector<std::uint8_t> data, std::string error) {
-        if (!error.empty()) {
-            promise.reject(std::move(error));
-            return;
+        core::JobSystem::Result<std::vector<std::uint8_t>> result{.error = std::move(error)};
+        if (result.error.empty()) {
+            result.value = std::move(data);
         }
 
-        promise.resolveWith([data = std::move(data)](lua_State* state) { lua_pushlstring(state, reinterpret_cast<const char*>(data.data()), data.size()); });
+        promise.settle(std::move(result), &pushBytes);
     };
     // clang-format on
     if (lua_isnoneornil(L, 2)) {
@@ -105,6 +106,10 @@ int AssetsLua::bytesAsync(lua_State* L) {
 
     promise.push(L);
     return 1;
+}
+
+void AssetsLua::pushBytes(lua_State* L, const std::vector<std::uint8_t>& data) {
+    lua_pushlstring(L, reinterpret_cast<const char*>(data.data()), data.size());
 }
 
 int AssetsLua::fileSize(lua_State* L) {

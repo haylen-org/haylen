@@ -1,8 +1,10 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "haylen/core/Json.hpp"
 
@@ -32,6 +34,7 @@ class AssetsLua final {
     static int text(lua_State* L);
     static int bytes(lua_State* L);
     static int bytesAsync(lua_State* L);
+    static void pushBytes(lua_State* L, const std::vector<std::uint8_t>& data);
     static int fileSize(lua_State* L);
     static int exists(lua_State* L);
     static int typeForPath(lua_State* L);
