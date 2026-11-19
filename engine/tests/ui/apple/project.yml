@@ -48,7 +48,7 @@ targets:
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "7"
-# The test action of every scheme runs the runner without a debugger, since a runner that xcodebuild launches under the debugger waits for it to attach, and nothing attaches in a run from the command line.
+# The test action of every scheme runs the runner without a debugger, since a runner that xcodebuild launches under the debugger waits for it to attach, and nothing attaches in a run from the command line. It captures the screen as screenshots, since the test manager of iOS 17 ends when Xcode asks it for a screen recording.
 schemes:
   iOS:
     build:
@@ -57,6 +57,7 @@ schemes:
     test:
       targets: [iOS]
       debugEnabled: false
+      preferredScreenCaptureFormat: screenshots
   tvOS:
     build:
       targets:
@@ -64,6 +65,7 @@ schemes:
     test:
       targets: [tvOS]
       debugEnabled: false
+      preferredScreenCaptureFormat: screenshots
   visionOS:
     build:
       targets:
@@ -71,3 +73,4 @@ schemes:
     test:
       targets: [visionOS]
       debugEnabled: false
+      preferredScreenCaptureFormat: screenshots
