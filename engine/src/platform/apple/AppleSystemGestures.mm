@@ -5,7 +5,7 @@
 
 namespace haylen::platform {
 
-Window::SystemGestures AppleSystemGestures::current = Window::SystemGestures::Deferred;
+Window::SystemGestures AppleSystemGestures::current = Window::SystemGestures::System;
 
 void AppleSystemGestures::set(Window::SystemGestures value) {
     current = value;

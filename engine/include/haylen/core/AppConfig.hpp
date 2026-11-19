@@ -60,7 +60,7 @@ struct AppConfig {
         std::optional<platform::WindowPlacement> position;
         platform::Window::StatusBar statusBar = platform::Window::StatusBar::Hidden;
         std::optional<math::Color> statusBarColor;
-        platform::Window::SystemGestures systemGestures = platform::Window::SystemGestures::Deferred;
+        platform::Window::SystemGestures systemGestures = platform::Window::SystemGestures::System;
 
         // The graphics APIs the window tries first, in order, before the other APIs of the build in the order of the platform, which an empty list leaves as it is.
         std::vector<gpu::Device::Api> graphicsApis;

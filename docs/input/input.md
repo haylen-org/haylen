@@ -490,8 +490,8 @@ App code can write virtual inputs itself, for controls of its own, with `input.s
 
 Phones and tablets keep some swipes from the edges of the screen for the system. On an iPhone or an iPad a swipe up from the bottom goes home, and on Android a swipe in from a side also goes back. A thumb that slides off a stick near an edge can leave the game by accident. The option `window.systemGestures` of `haylen.json`, and [`window.setSystemGestures`](../lua-api/window.md#windowsetsystemgesturesvalue) while the app runs, choose how those swipes answer.
 
-- `'deferred'`, the default, lets the first swipe from an edge reach the app, and the system acts only on a second swipe. It suits games with touch controls, so a game keeps it during play.
-- `'system'` lets the system act on the first swipe and shows the home indicator or the navigation bar. It suits apps such as a shop, a reader or the menus of a game, where people expect to leave with one swipe.
+- `'system'`, the default, lets the system act on the first swipe and shows the home indicator or the navigation bar. It suits apps such as a shop, a reader or the menus of a game, where people expect to leave with one swipe.
+- `'deferred'` lets the first swipe from an edge reach the app, and the system acts only on a second swipe. It suits games with touch controls, so a game sets it in `haylen.json` and keeps it during play.
 - `'autoHideIndicator'` acts on the first swipe too, and hides the home indicator until the person touches the screen. It suits videos and cutscenes that nobody touches.
 
 On Android every value except `'system'` hides the navigation bar, so a first swipe only shows the bars. Android limits how much of each side edge an app can keep from the back gesture, so `'deferred'` keeps the lowest 200 dp of each side, where the thumbs hold the controls of a game, and a second swipe higher on the edge still goes back. Place controls that a thumb drags near a side edge in the lower part of the screen. The [reference](../lua-api/window.md#system-gestures) says what each platform does.

@@ -299,7 +299,7 @@ end
 Hides the status bar with `'hidden'`, or shows it with `'auto'`, `'light'` or `'dark'` content. The value `'auto'` takes dark content in the light theme of the system and light content in its dark theme. Light content suits a dark background, and dark content suits a light one. An unknown name raises a bad argument error.
 
 - iPhones and iPads show it through the view controller of the window. UIKit also hides it in landscape on an iPhone.
-- Android shows it over the app, which keeps drawing from edge to edge. A hidden status bar shows for a while after a swipe from the top edge, like the navigation bar.
+- Android shows it over the app, which keeps drawing from edge to edge. The activity gives the status bar and the navigation bar no color of their own on every version of Android, so the drawing of the app shows behind them, as Android 15 and later always do. A hidden status bar shows for a while after a swipe from the top edge, like the navigation bar.
 - Desktops, Mac Catalyst, TVs and browsers ignore it. The status bar of a browser belongs to the browser.
 
 The [safe area](viewport.md#viewportsaferect) leaves the status bar out while it shows. So UI anchored to the safe area moves below it, and the event `windowSafeAreaChanged` reports the change.
@@ -340,7 +340,7 @@ Phones and tablets take some swipes that start at an edge of the screen for the 
 
 ### window.systemGestures()
 
-Returns how the system gestures at the edges of the screen answer a swipe. The key `window.systemGestures` of `haylen.json` sets it when the app starts, and it is `'deferred'` by default. Platforms without such gestures keep reporting the value that was set.
+Returns how the system gestures at the edges of the screen answer a swipe. The key `window.systemGestures` of `haylen.json` sets it when the app starts, and it is `'system'` by default. Platforms without such gestures keep reporting the value that was set.
 
 ```lua
 local window = require('haylen.window')
@@ -361,7 +361,7 @@ Decides how the system gestures at the edges of the screen answer a swipe. An un
 Each platform does this.
 
 - iPhones and iPads answer through the view controller of the window. With `'deferred'`, every edge defers its gesture, so the first swipe up from the bottom only wakes the home indicator, and the first swipe down from the top only shows a tab for the notification and control centers. With `'autoHideIndicator'`, the home indicator fades out a few seconds after the last touch. A native screen of a plugin that covers the app decides for itself while it shows.
-- Android shows the navigation bar with `'system'`, so a swipe from the bottom goes home and a swipe from a side goes back at once. The other values hide the navigation bar, so the first swipe from the bottom or a side only shows the system bars for a while, and a second swipe acts. With `'deferred'`, Android also keeps the back gesture off the lowest 200 dp of each side edge, which is the most that Android lets an app keep, so every swipe there reaches the app, while a swipe higher on the edge still goes back on the second swipe. The [safe area](viewport.md#viewportsaferect) leaves the navigation bar out while it shows.
+- Android shows the navigation bar with `'system'`, so a swipe from the bottom goes home and a swipe from a side goes back at once. The other values hide the navigation bar in the immersive mode of Android, so the first swipe from the bottom or a side only shows the system bars for a while, and a second swipe acts. Android tells the person how to leave that mode with a notice the first time an app enters it. With `'deferred'`, Android also keeps the back gesture off the lowest 200 dp of each side edge, which is the most that Android lets an app keep, so every swipe there reaches the app, while a swipe higher on the edge still goes back on the second swipe. The [safe area](viewport.md#viewportsaferect) leaves the navigation bar out while it shows.
 - Desktops, Mac Catalyst, TVs, Apple Vision Pro and browsers ignore it. Desktops and TVs have no such gestures. Windows only lets a fullscreen window turn the swipes of a touch screen off for good, which none of the values asks for. A page has no say over the gestures of the system and the browser.
 
 ```lua

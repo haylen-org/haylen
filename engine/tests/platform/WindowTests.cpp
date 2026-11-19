@@ -143,8 +143,8 @@ TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfHaylenJson) {
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
 
     const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
-    EXPECT_EQ(defaults.window.systemGestures, Window::SystemGestures::Deferred);
-    EXPECT_EQ(defaults.toJson().at("window").at("systemGestures"), "deferred");
+    EXPECT_EQ(defaults.window.systemGestures, Window::SystemGestures::System);
+    EXPECT_EQ(defaults.toJson().at("window").at("systemGestures"), "system");
 
     try {
         (void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "hidden"}})"));

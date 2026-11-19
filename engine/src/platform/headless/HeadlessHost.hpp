@@ -748,7 +748,7 @@ class HeadlessHost final : public Host {
     float maxPixelDensity = 0.0F;
     math::Insets safeAreaInsets{};
     StatusBar statusBar = StatusBar::Hidden;
-    SystemGestures systemGestures = SystemGestures::Deferred;
+    SystemGestures systemGestures = SystemGestures::System;
     float statusBarHeight = 0.0F;
     std::optional<Fold> fold;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};

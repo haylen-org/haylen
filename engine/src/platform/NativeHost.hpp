@@ -240,7 +240,7 @@ class NativeHost : public Host {
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;
     StatusBar statusBar = StatusBar::Hidden;
-    SystemGestures systemGestures = SystemGestures::Deferred;
+    SystemGestures systemGestures = SystemGestures::System;
     bool focusable = true;
     bool screenKeptOn = false;
     int frameRate = 0;

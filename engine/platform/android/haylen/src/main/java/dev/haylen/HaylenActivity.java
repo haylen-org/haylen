@@ -32,6 +32,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import androidx.activity.BackEventCompat;
+import androidx.activity.EdgeToEdge;
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
@@ -95,7 +96,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     // Whether the app keeps the screen on, which outlives the activity, so an activity that the system creates again keeps the screen on too.
     private static volatile boolean screenKeptOn;
     // How the system gestures at the edges answer, which outlives the activity like the screen that stays on.
-    private static volatile int systemGestures = SYSTEM_GESTURES_DEFERRED;
+    private static volatile int systemGestures = SYSTEM_GESTURES_SYSTEM;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -181,16 +182,13 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, besides the status bar and the navigation bar that the app shows, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
+    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under every cutout that the version of Android lets a window cover and under system bars without a color of their own, so the drawing of the app shows behind them on every version of Android, with the system bars hidden until a swipe shows them, besides the status bar and the navigation bar that the app shows, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
     @Override
     protected void onSetUpWindow() {
         Window window = getWindow();
         window.setFormat(PixelFormat.RGBX_8888);
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING);
-        WindowCompat.setDecorFitsSystemWindows(window, false);
-        WindowManager.LayoutParams attributes = window.getAttributes();
-        coverCutouts(attributes);
-        window.setAttributes(attributes);
+        EdgeToEdge.enable(this);
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         controller.hide(WindowInsetsCompat.Type.systemBars());
         controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
@@ -703,15 +701,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     private static boolean isDark(Configuration configuration) {
         return (configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-    }
-
-    // Android 11 lets a window cover every cutout, Android 9 and 10 only those on the short edges, and earlier versions have no cutouts.
-    private static void coverCutouts(WindowManager.LayoutParams attributes) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            attributes.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
-        }
     }
 
     // The surface the app draws on. The class `GameActivity` focuses it whenever its window gains the focus, which would take the focus and the keyboard from a text field over the app, such as the hidden field that edits a field of the UI or a form of a plugin, so it declines the focus while such a field has it.
