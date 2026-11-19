@@ -215,7 +215,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 | `TXT-014` | Fitting text in a box | A name that shrinks to fit the width of its plate and a story that shrinks until its lines fit the height of its box, down to the smallest scale. |  |
 | `TXT-015` | Color emoji | Color emoji in labels, a field, buttons and rich text, emoji sequences joined into one glyph, the variation selectors of symbols and emoji, and a font whose letters are color layers. |  |
 | `TXT-016` | Gradient text | Titles, a turning damage number, rich text and a label of the interface filled with gradients of two to four color stops across each line. |  |
-| `TXT-017` | Fonts of the system | Chinese, Japanese, Korean, Thai, Hindi and a field to type in, drawn with the fonts of the system that the default font lacks, beside a family that keeps the missing glyph box. |  |
+| `TXT-017` | Fonts of the system | Chinese, Japanese, Korean, Thai, Hindi and a field to type in, drawn with the fonts of the system that the default font lacks, beside a family that keeps the missing glyph box. | web |
 
 #### Lighting (LIT)
 

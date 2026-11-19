@@ -20,6 +20,6 @@ return {
         {code = 'TXT-014', title = 'Fitting text in a box', description = 'A name that shrinks to fit the width of its plate and a story that shrinks until its lines fit the height of its box, down to the smallest scale.', module = 'fitting'},
         {code = 'TXT-015', title = 'Color emoji', description = 'Color emoji in labels, a field, buttons and rich text, emoji sequences joined into one glyph, the variation selectors of symbols and emoji, and a font whose letters are color layers.', module = 'color-emoji'},
         {code = 'TXT-016', title = 'Gradient text', description = 'Titles, a turning damage number, rich text and a label of the interface filled with gradients of two to four color stops across each line.', module = 'gradient'},
-        {code = 'TXT-017', title = 'Fonts of the system', description = 'Chinese, Japanese, Korean, Thai, Hindi and a field to type in, drawn with the fonts of the system that the default font lacks, beside a family that keeps the missing glyph box.', module = 'system-fonts'},
+        {code = 'TXT-017', title = 'Fonts of the system', description = 'Chinese, Japanese, Korean, Thai, Hindi and a field to type in, drawn with the fonts of the system that the default font lacks, beside a family that keeps the missing glyph box.', module = 'system-fonts', platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'headless'}, unsupported = {web = 'A web page reads no font of the system, so both columns would only show the missing glyph box. A page that needs a script ships a font for it.'}},
     },
 }

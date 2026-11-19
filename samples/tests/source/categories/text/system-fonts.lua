@@ -1,4 +1,4 @@
--- Fonts of the system: the default family of the engine holds Latin letters alone, so it draws Chinese, Japanese, Korean, Thai and Hindi, and what a person types into the field, with the fonts of the system, which the engine finds through the API of each platform and loads once each. A family made with "systemFonts = false" keeps the missing glyph box beside it, and a web page, which has no fonts of the system, shows the box on both sides.
+-- Fonts of the system: the default family of the engine holds Latin letters alone, so it draws Chinese, Japanese, Korean, Thai and Hindi, and what a person types into the field, with the fonts of the system, which the engine finds through the API of each platform and loads once each. A family made with "systemFonts = false" keeps the missing glyph box beside it. A web page has no fonts of the system, so the test does not run there.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -49,7 +49,7 @@ function SystemFonts:update(dt)
     SystemFonts.super.update(self, dt)
     local names = graphics.systemFonts()
     if #names == 0 then
-        self:status('No font of the system arrived yet, and a platform without fonts of the system, such as the web, never gives one.')
+        self:status('No font of the system arrived yet.')
     else
         self:status(string.format('%d faces of the system arrived: %s.', #names, table.concat(names, ', ')))
     end
