@@ -48,6 +48,11 @@ std::shared_ptr<const Layout> LayoutCache::store(std::string_view text, const St
     return layout;
 }
 
+void LayoutCache::clear() noexcept {
+    index.clear();
+    entries.clear();
+}
+
 void LayoutCache::dropWaitingForFonts() {
     for (auto entry = entries.begin(); entry != entries.end();) {
         if (!entry->layout->waitingForFonts) {

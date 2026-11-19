@@ -443,8 +443,14 @@ int WebPage::applyChanges(double request) {
             return 1;
         }
 
+        const std::string reason = "The page outside development restarts the app with its changes.";
+        core::Json files = core::Json::array();
+        for (const std::string& path : changed) {
+            files.push_back({{"path", path}, {"change", "restart"}, {"reason", reason}});
+        }
+
         Player::restart();
-        completeRequest(request, true, {{"revision", revision}, {"report", {{"restarted", true}, {"reason", "The page outside development restarts the app with its changes."}}}});
+        completeRequest(request, true, {{"revision", revision}, {"report", {{"restarted", true}, {"reason", reason}, {"files", std::move(files)}}}});
         return 1;
     });
     // clang-format on

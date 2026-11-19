@@ -144,6 +144,9 @@ void RichText::update(float deltaSeconds) {
 RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
     requireIdle();
 
+    // A font of a family that changed, such as one that hot reload read again, lays every layout of the text out again.
+    std::erase_if(layouts, [](const CachedLayout& entry) { return countFacesRevisions(entry.layout) != entry.facesRevision; });
+
     for (auto entry = layouts.begin(); entry != layouts.end(); ++entry) {
         if (entry->maxWidth == maxWidth && entry->scale == options.scale) {
             layouts.splice(layouts.begin(), layouts, entry);
@@ -156,7 +159,8 @@ RichText::CachedLayout& RichText::getCachedLayout(float maxWidth) {
     Layout built = LayoutBuilder(document, at, *registry).build();
     const std::uint64_t fontRevisions = built.waitingForFonts ? countFontRevisions(built) : 0;
     const std::size_t readyImages = built.waitingForImages ? countReadyImages() : 0;
-    layouts.push_front({.maxWidth = maxWidth, .scale = options.scale, .generation = ++builds, .layout = std::move(built), .fontRevisions = fontRevisions, .readyImages = readyImages});
+    const std::uint64_t facesRevision = countFacesRevisions(built);
+    layouts.push_front({.maxWidth = maxWidth, .scale = options.scale, .generation = ++builds, .layout = std::move(built), .facesRevision = facesRevision, .fontRevisions = fontRevisions, .readyImages = readyImages});
 
     if (layouts.size() > kCachedLayouts) {
         layouts.pop_back();
@@ -179,6 +183,15 @@ std::uint64_t RichText::countFontRevisions(const Layout& laid) noexcept {
     for (const std::shared_ptr<FontFamily>& family : laid.families) {
         const std::shared_ptr<SystemFonts>& system = family->getFaces().systemFonts;
         sum += system ? system->getRevision() : 0;
+    }
+
+    return sum;
+}
+
+std::uint64_t RichText::countFacesRevisions(const Layout& laid) noexcept {
+    std::uint64_t sum = 0;
+    for (const std::shared_ptr<FontFamily>& family : laid.families) {
+        sum += family->getRevision();
     }
 
     return sum;

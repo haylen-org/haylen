@@ -104,6 +104,24 @@ TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Fac
 
 TrueTypeFont::~TrueTypeFont() = default;
 
+// The glyphs of the earlier file go with a new atlas, so text queued for drawing before keeps the image it was measured on.
+void TrueTypeFont::replace(std::vector<std::uint8_t> ttf) {
+    std::unique_ptr<Face> opened = open(std::move(ttf), options);
+    const Metrics fresh = readMetrics(*opened, options);
+    face = std::move(opened);
+    glyphs.clear();
+    coverage.clear();
+    atlasWidth = options.atlasSize;
+    atlasHeight = options.atlasSize;
+    atlas.assign(static_cast<std::size_t>(atlasWidth) * static_cast<std::size_t>(atlasHeight), 0);
+    cursorX = 1;
+    cursorY = 1;
+    rowHeight = 0;
+    dirty = false;
+    texture = device.createDynamicDistanceTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
+    change(fresh);
+}
+
 std::span<const std::uint8_t> TrueTypeFont::getData() const noexcept {
     return face->file.getBytes();
 }

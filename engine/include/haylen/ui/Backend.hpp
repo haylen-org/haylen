@@ -234,6 +234,9 @@ class Backend final {
     // Adds a font under a name and returns its regular face. Fonts are sized when drawn, so one font serves every size, and a fallback draws the characters a face lacks with its em square as large as the em square of that face.
     ImFont* addFont(const std::string& name, FontFiles files);
 
+    // Puts the files of a font that changed, such as one that hot reload saw saved, in place of the files its faces read. It runs between frames of ImGui, whose atlas a frame holds, and a broken file keeps the font as it was.
+    void replaceFont(const std::string& name, FontFiles files);
+
     // Returns the face of a font for a style, which is the regular face for a style the font has no face for.
     [[nodiscard]] ImFont* getFont(std::string_view name, bool bold = false, bool italic = false) const;
 
@@ -267,12 +270,13 @@ class Backend final {
         float height = 1.0F;
     };
 
-    // The faces of a UI font, without a font for a style it has no face for.
+    // The faces of a UI font, without a font for a style it has no face for, and the files they and their fallbacks read.
     struct Typeface {
         Face regular;
         Face bold;
         Face italic;
         Face boldItalic;
+        std::vector<const std::uint8_t*> files;
     };
 
     // ImGui copies the data of a callback command into the draw list byte by byte, so a command carries the index of its function instead of the function.
@@ -340,6 +344,9 @@ class Backend final {
     [[nodiscard]] static graphics::Image toImage(ImTextureData& texture);
     [[nodiscard]] static math::Color toColor(ImU32 value) noexcept;
     [[nodiscard]] static float readHeight(const std::string& name, std::span<const std::uint8_t> data);
+
+    // Checks every file of a font before any reaches ImGui, so a broken one registers nothing.
+    static void checkFiles(const std::string& name, const FontFiles& files);
     [[nodiscard]] static Backend& getOwner(ImGuiContext* context);
     template <typename Call> [[nodiscard]] static Call readCall(const ImDrawList* list, const ImDrawCmd* command);
     [[nodiscard]] static math::Rect getClip(const ImDrawCmd& command) noexcept;

@@ -11,7 +11,7 @@ class PackageReader;
 
 namespace haylen::audio {
 
-struct SoundData;
+class SoundData;
 
 // Shared handle to audio. Decoded sounds keep 32-bit float frames in memory, which suits short effects. Streamed sounds keep only a reader of the encoded file and decode it while they play, which suits long music, so a file of any size plays in bounded memory.
 class Sound final {
@@ -32,11 +32,11 @@ class Sound final {
     [[nodiscard]] bool isValid() const noexcept {
         return data != nullptr;
     }
-    [[nodiscard]] bool isStreamed() const noexcept;
-    [[nodiscard]] std::uint32_t getChannels() const noexcept;
-    [[nodiscard]] std::uint32_t getSampleRate() const noexcept;
-    [[nodiscard]] std::uint64_t getFrameCount() const noexcept;
-    [[nodiscard]] float getDuration() const noexcept;
+    [[nodiscard]] bool isStreamed() const;
+    [[nodiscard]] std::uint32_t getChannels() const;
+    [[nodiscard]] std::uint32_t getSampleRate() const;
+    [[nodiscard]] std::uint64_t getFrameCount() const;
+    [[nodiscard]] float getDuration() const;
     [[nodiscard]] const std::shared_ptr<const SoundData>& getData() const noexcept {
         return data;
     }

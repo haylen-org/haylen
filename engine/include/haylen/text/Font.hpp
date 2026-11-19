@@ -93,6 +93,11 @@ class Font {
     // Converts a length in pixels at a text size to the distance field units the text shader reads, where 0.5 spans the spread of the field. Fonts without a distance field convert everything to zero.
     [[nodiscard]] float toDistance(float pixels, float size) const noexcept;
 
+    // Counts the changes of the font itself, such as a font file that hot reload read again, so text laid out before a change lays out again.
+    [[nodiscard]] std::uint64_t getRevision() const noexcept {
+        return revision;
+    }
+
   protected:
     // Line metrics at the native size, with the height of the capital H above the baseline, or the ascent of a font without one. The spread is the reach of the distance field in native pixels, zero for a font without one, and the counter is the width of the counter of the letter o across its middle in native pixels, zero for a font without one.
     struct Metrics {
@@ -106,11 +111,15 @@ class Font {
 
     explicit Font(Metrics fontMetrics);
 
+    // Takes the metrics of the font that changed, drops its layouts and counts a new revision.
+    void change(Metrics value) noexcept;
+
   private:
     static debug::ObjectCounter& counter;
 
     Metrics metrics;
     std::unique_ptr<LayoutCache> layouts;
+    std::uint64_t revision = 0;
     debug::TrackedObject tracked{counter};
 };
 

@@ -12,6 +12,12 @@ Font::Font(Metrics fontMetrics) : metrics(fontMetrics), layouts(std::make_unique
 
 Font::~Font() = default;
 
+void Font::change(Metrics value) noexcept {
+    metrics = value;
+    layouts->clear();
+    ++revision;
+}
+
 float Font::getLineHeight(float size) const noexcept {
     return metrics.lineHeight * size / metrics.nativeSize;
 }

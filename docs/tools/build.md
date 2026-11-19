@@ -634,7 +634,7 @@ The request `clearFiles` stops the app and empties the package, for a project th
 
 #### Applying changes
 
-The request `applyChanges` hands the changed files to the app as one batch at the start of the next frame. Its answer comes once that frame ended and carries the revision that the batch applied. A page in development reloads them the way [hot reload](../core/lua.md#hot-reload) applies saved files, and the `report` is the [reload report](#reload-reports) of the batch, or `null` when the batch touched no file that the app uses, such as a Lua file that no module loaded yet. Any other page restarts the app, and the `report` is `{restarted: true, reason}`. A paused app applies no changes, so the answer comes once it resumed, and a request without a playing app fails with `notRunning`.
+The request `applyChanges` hands the changed files to the app as one batch at the start of the next frame. Its answer comes once that frame ended and carries the revision that the batch applied. A page in development reloads them the way [hot reload](../core/lua.md#hot-reload) applies saved files, and the `report` is the [reload report](#reload-reports) of the batch, which tells for every file whether it applied in place or restarts the app and why, or `null` when no file changed since the last `applyChanges`. The engine restarts the app itself for a file that needs it, so an editor never restarts it on its own and never guesses from the extension of a file. Any other page restarts the app, and the `report` is `{restarted: true, reason, files}` with every file restarting for that reason. A paused app applies no changes, so the answer comes once it resumed, and a request without a playing app fails with `notRunning`.
 
 A module that fails to reload keeps running the code it had, while the package keeps the new file, so the report rejects the file with its error and the error screen shows it. Nothing rolls the file back. The next batch that fixes the module, or that writes the exact text that the module runs, resumes the app. An error of a lifecycle step, or the execution budget, is no error a reload fixes, so the next batch restarts the app.
 
@@ -670,7 +670,17 @@ The machine fields never change with the language of the person, while `message`
 
 ### Reload reports
 
-A report of hot reload is `{restarted: false, mode, modules, restored, assets, rejected, resumed, milliseconds}`. The `modules` and `assets` are the files that reloaded in place, the `restored` are modules whose file holds again the code that runs after a reload of them failed, and the `rejected` are `{path, error}` for every file that could not apply, with its [error record](#error-records). The `resumed` tells whether the app left the error screen. Right before a restart the report is `{restarted: true, reason}`.
+A report of hot reload is `{restarted: false, mode, files, modules, restored, assets, rejected, resumed, milliseconds}`. The `files` hold one `{path, change, reason}` for every file of the batch, whose `change` says what the batch did with it and whose `reason` is the sentence that tells why:
+
+| Change | Meaning |
+| --- | --- |
+| `inPlace` | The file applied while the app runs on with its state: a module that reloaded, a module whose file holds again the code that runs, a removed module that no code requires, which left the app, or an asset that changed in place, such as a texture, a shader, JSON, a font or a sound. |
+| `nextLoad` | Nothing of the app uses the file now, such as a Lua file that no module loaded yet or an asset that nothing holds, or the file holds assets of a type that cannot change in place, which announced `assetChanged`. The next load reads it. |
+| `ignored` | Hot reload never reads the file, such as a hidden file, a backup file or a file under `source/` that is not Lua. |
+| `rejected` | The file could not apply, and `rejected` holds its error record. |
+| `restart` | The app restarts for the file, such as for `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app requires or a module that cannot change in place, or the restart that another file asked for applies it too. |
+
+The `modules` and `assets` are the files that reloaded in place, the `restored` are modules whose file holds again the code that runs after a reload of them failed, and the `rejected` are `{path, error}` for every file that could not apply, with its [error record](#error-records). The `resumed` tells whether the app left the error screen. Right before a restart the report is `{restarted: true, reason, files}`, whose `reason` is the reason of the restart.
 
 ```js
 const editor = Module.haylen.editor;
@@ -687,7 +697,10 @@ async function play(files) {
 async function save(path, content) {
     await editor.request("edit", { operations: [{ op: "write", path, content }] });
     const { report } = await editor.request("applyChanges");
-    return report === null ? [] : report.rejected;
+    for (const file of report.files) {
+        console.log(file.path + " " + file.change + ": " + file.reason);
+    }
+    return report.restarted ? [] : report.rejected;
 }
 ```
 

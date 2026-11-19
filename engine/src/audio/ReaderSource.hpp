@@ -8,9 +8,9 @@
 #include <functional>
 #include <memory>
 
-namespace haylen::audio {
+#include "audio/SoundData.hpp"
 
-struct SoundData;
+namespace haylen::audio {
 
 // The miniaudio data source through which a voice plays a streamed sound, as floats in the rate and channels of the file, which the voice converts to the mixer. Fills on the I/O pool decode the file through its package reader into a ring of frames ahead of the voice, and the audio thread only takes frames from the ring, so it never reads the package or waits: it plays silence where the frames have not arrived, and a seek only tells the next fill where to decode from. A looping voice loops without a gap, because the fill decodes the start of its loop again right after the end of the loop.
 class ReaderSource final {
@@ -19,7 +19,7 @@ class ReaderSource final {
     static constexpr double kBufferSeconds = 1.0;
     static constexpr std::uint64_t kFillDivisor = 4;
 
-    explicit ReaderSource(const SoundData& sound);
+    explicit ReaderSource(const SoundData::Content& sound);
     ~ReaderSource();
 
     ReaderSource(const ReaderSource&) = delete;

@@ -285,6 +285,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/audio/Reverb.cpp
   src/audio/Session.cpp
   src/audio/Sound.cpp
+  src/audio/SoundData.cpp
   src/audio/StreamSource.cpp
   src/audio/VorbisDecoder.cpp
   src/content/Bootstrap.cpp

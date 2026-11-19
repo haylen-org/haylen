@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 #include "audio/SoundData.hpp"
 
@@ -9,7 +10,7 @@ namespace haylen::audio {
 
 const ma_data_source_vtable BufferSource::kVtable{&BufferSource::read, &BufferSource::seek, &BufferSource::getFormat, &BufferSource::getCursor, &BufferSource::getLength, nullptr, 0};
 
-BufferSource::BufferSource(const SoundData& value) : sound(&value) {
+BufferSource::BufferSource(std::shared_ptr<const SoundData::Content> value) : sound(std::move(value)) {
     ma_data_source_config config = ma_data_source_config_init();
     config.vtable = &kVtable;
     if (ma_data_source_init(&config, get()) != MA_SUCCESS) {
@@ -24,7 +25,7 @@ BufferSource::~BufferSource() {
 // A read that reaches the end of the sound comes up short, which the base of the source answers by looping or by ending the voice.
 ma_result BufferSource::read(ma_data_source* source, void* frames, ma_uint64 frameCount, ma_uint64* framesRead) {
     auto& self = *static_cast<BufferSource*>(source);
-    const SoundData& data = *self.sound;
+    const SoundData::Content& data = *self.sound;
     const ma_uint64 start = self.cursor.load(std::memory_order_relaxed);
     const ma_uint64 count = std::min(frameCount, data.frames - start);
     const auto first = data.samples.begin() + static_cast<std::ptrdiff_t>(start * data.channels);
@@ -49,7 +50,7 @@ ma_result BufferSource::seek(ma_data_source* source, ma_uint64 frame) {
 }
 
 ma_result BufferSource::getFormat(ma_data_source* source, ma_format* format, ma_uint32* channels, ma_uint32* sampleRate, ma_channel* channelMap, std::size_t channelMapCapacity) {
-    const SoundData& data = *static_cast<BufferSource*>(source)->sound;
+    const SoundData::Content& data = *static_cast<BufferSource*>(source)->sound;
     *format = ma_format_f32;
     *channels = data.channels;
     *sampleRate = data.sampleRate;

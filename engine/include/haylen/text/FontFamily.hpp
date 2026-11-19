@@ -54,7 +54,10 @@ class FontFamily final {
     // Picks the font that draws one character, a letter with the marks and joiners of its cluster: the selected face when it has every code point that shows, otherwise the first fallback that has them all, which synthesizes the requested styles, then the first font that has the letter itself, and otherwise the selected face, which draws its missing glyph. The fonts of the system that arrived count as fallbacks after those of the family, and a letter that no font holds asks the fonts of the system for one. A character that shows as an emoji by default, such as a face or a star, or through the variation selector U+FE0F first looks for a font that draws it as a color glyph, and one with U+FE0E for a font that draws it in the color of the text. Spaces, punctuation and digits pass the font of the text before them, which they keep when it is a fallback that has them, so a run of another script keeps its own spaces and punctuation.
     [[nodiscard]] Selection resolve(const Selection& face, std::u32string_view cluster, bool bold, bool italic, Font* previous = nullptr) const;
 
-    // Lays UTF-8 text out like a font does, with the faces the bold and italic of the style pick and the fallbacks for what they lack. Layouts are cached by text and style, and a layout that waited for a font of the system is laid out again once one arrives.
+    // The sum of the revisions of the faces and fallbacks of the family, which grows whenever one of them changes.
+    [[nodiscard]] std::uint64_t getRevision() const noexcept;
+
+    // Lays UTF-8 text out like a font does, with the faces the bold and italic of the style pick and the fallbacks for what they lack. Layouts are cached by text and style, a layout that waited for a font of the system is laid out again once one arrives, and every layout is laid out again once a font of the family changed.
     [[nodiscard]] std::shared_ptr<const Layout> layout(std::string_view text, const Style& style);
     // Returns the size of the block that drawing the text covers, stretched by the scale of the style.
     [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
@@ -73,6 +76,7 @@ class FontFamily final {
     Faces faces;
     std::unique_ptr<LayoutCache> layouts;
     std::uint64_t systemRevision = 0;
+    std::uint64_t facesRevision = 0;
     debug::TrackedObject tracked{counter};
 };
 

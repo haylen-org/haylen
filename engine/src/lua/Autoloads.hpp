@@ -34,6 +34,9 @@ class Autoloads final {
     // Pushes a list of the autoload tables in the order they loaded.
     void pushList(lua_State* L) const;
 
+    // Whether an autoload is the module of the name.
+    [[nodiscard]] bool hasModule(std::string_view module) const noexcept;
+
     void event(core::Engine& engine, const platform::Event& event);
     void fixedUpdate(core::Engine& engine, float stepSeconds);
     void update(core::Engine& engine, float deltaSeconds);

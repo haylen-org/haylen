@@ -145,8 +145,16 @@ class Manager final {
     [[nodiscard]] std::size_t getPendingCount() const noexcept;
     std::size_t releaseUnused();
 
-    // Reloads every live asset read from a changed file, a path relative to the content folder, and returns how many there were. Assets nobody holds anymore just leave the cache.
-    std::size_t reload(std::string_view path);
+    // What a reload did with the live assets of a file: the ones that changed in place and the stale ones of types that cannot, which left the cache and announced `assetChanged`.
+    struct Reload {
+        std::size_t inPlace = 0;
+        std::size_t stale = 0;
+
+        friend bool operator==(const Reload&, const Reload&) = default;
+    };
+
+    // Reloads every live asset read from a changed file, a path relative to the content folder. Assets nobody holds anymore just leave the cache.
+    Reload reload(std::string_view path);
 
     // Drops every pending callback and group listener without running them, before the systems they point into shut down.
     void cancelAll() noexcept;

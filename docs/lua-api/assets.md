@@ -565,9 +565,8 @@ scene.push({
 
 While an app runs in development, a changed file reloads the assets read from it.
 
-- Textures, shaders and JSON update in place. So every sprite that uses a texture shows the new pixels, and `assets.json` returns the new data even while a preload group holds it. Each updated asset publishes `assetReloaded`.
-- The other types leave the cache, so the next load reads the new file. A live asset of such a type, such as a sound, a sprite atlas, a particle effect, a map or a vector image, publishes `assetChanged` with its type and path, so the app loads it again where it uses it.
-- A changed font file restarts the app, because the text and the UI bake their fonts into atlases.
+- Textures, shaders, JSON, TrueType and OpenType fonts and sounds update in place. So every sprite that uses a texture shows the new pixels, `assets.json` returns the new data even while a preload group holds it, text drawn with a font lays out again with the glyphs of the new file, a UI font that `ui.addFont` or a theme read from the file draws with it from the next frame, and a sound plays the new samples from its next voice on, while the voices that play keep the samples they started with. Each updated asset publishes `assetReloaded`.
+- The other types leave the cache, so the next load reads the new file. A live asset of such a type, such as a sprite atlas, a particle effect, a map or a vector image, publishes `assetChanged` with its type and path, so the app loads it again where it uses it.
 
 The [Lua guide](../core/lua.md#hot-reload) describes the rest of hot reload.
 

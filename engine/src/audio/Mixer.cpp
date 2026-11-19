@@ -165,7 +165,8 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
     }
 
     requirePlayOptions(options);
-    const SoundData& data = *sound.getData();
+    const std::shared_ptr<const SoundData::Content> content = sound.getData()->getContent();
+    const SoundData::Content& data = *content;
     const bool region = options.loopStart > 0.0F || options.loopEnd.has_value();
     if (region) {
         requireLoop(options, sound.getDuration(), data.sampleRate);
@@ -190,7 +191,7 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         return id;
     }
 
-    voice->bufferSource = std::make_unique<BufferSource>(data);
+    voice->bufferSource = std::make_unique<BufferSource>(content);
     ma_data_source* source = voice->bufferSource->get();
     if (region) {
         ma_data_source_set_loop_point_in_pcm_frames(source, toFrame(options.loopStart, data.sampleRate), std::min<ma_uint64>(toFrame(options.loopEnd.value_or(sound.getDuration()), data.sampleRate), data.frames));

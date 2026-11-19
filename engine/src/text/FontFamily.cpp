@@ -127,7 +127,25 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
     return missing;
 }
 
+std::uint64_t FontFamily::getRevision() const noexcept {
+    std::uint64_t sum = 0;
+    for (const std::shared_ptr<Font>& face : {faces.regular, faces.bold, faces.italic, faces.boldItalic, faces.mono}) {
+        sum += face ? face->getRevision() : 0;
+    }
+
+    for (const std::shared_ptr<Font>& fallback : faces.fallbacks) {
+        sum += fallback->getRevision();
+    }
+
+    return sum;
+}
+
 std::shared_ptr<const Layout> FontFamily::layout(std::string_view text, const Style& style) {
+    if (const std::uint64_t revision = getRevision(); revision != facesRevision) {
+        facesRevision = revision;
+        layouts->clear();
+    }
+
     if (faces.systemFonts && faces.systemFonts->getRevision() != systemRevision) {
         systemRevision = faces.systemFonts->getRevision();
         layouts->dropWaitingForFonts();

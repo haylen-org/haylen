@@ -1,5 +1,6 @@
 #include "plugins/HotReloadPlugin.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <exception>
 #include <optional>
@@ -29,8 +30,13 @@
 namespace haylen::plugins {
 
 core::Json HotReloadPlugin::Report::toJson() const {
+    core::Json changes = core::Json::array();
+    for (const File& file : files) {
+        changes.push_back({{"path", file.path}, {"change", kChangeNames[static_cast<std::size_t>(file.change)]}, {"reason", file.reason}});
+    }
+
     if (restarted) {
-        return {{"restarted", true}, {"reason", reason}};
+        return {{"restarted", true}, {"reason", reason}, {"files", std::move(changes)}};
     }
 
     core::Json rejections = core::Json::array();
@@ -39,7 +45,7 @@ core::Json HotReloadPlugin::Report::toJson() const {
         error["phase"] = core::Engine::kPhaseNames[static_cast<std::size_t>(core::Engine::Phase::Reload)];
         rejections.push_back({{"path", rejection.path}, {"error", std::move(error)}});
     }
-    return {{"restarted", false}, {"mode", core::AppConfig::reloadName(mode)}, {"modules", modules}, {"restored", restored}, {"assets", assets}, {"rejected", std::move(rejections)}, {"resumed", resumed}, {"milliseconds", milliseconds}};
+    return {{"restarted", false}, {"mode", core::AppConfig::reloadName(mode)}, {"files", std::move(changes)}, {"modules", modules}, {"restored", restored}, {"assets", assets}, {"rejected", std::move(rejections)}, {"resumed", resumed}, {"milliseconds", milliseconds}};
 }
 
 void HotReloadPlugin::start(core::Engine& engine) {
@@ -86,19 +92,13 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     }
 }
 
-// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. A batch restarts the app for `haylen.json`, `source/main.lua` and plugin manifests, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
-HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std::vector<std::string>& changed) const {
+// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. Every file of the batch gets its entry in the report, and a batch restarts the app for `haylen.json`, `source/main.lua` and plugin manifests, for a removed module that code of the app still requires, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
+HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std::vector<std::string>& changed, Report& report) const {
     Batch batch;
     for (const std::string& path : changed) {
         if (!io::PackageWatcher::isWatched(path)) {
+            report.files.push_back({.path = path, .change = Change::Ignored, .reason = "Hot reload never reads hidden files, backup files and files under \"source/\" that are not Lua."});
             continue;
-        }
-
-        const std::string_view extension = io::Path::extension(path);
-        const bool font = extension == ".ttf" || extension == ".otf" || extension == ".ttc";
-        if (io::Path::isInside(path, io::Path::kContentDirectory) && font) {
-            batch.restart = "The font file \"" + path + "\" changed, restarting the app, because the text and the UI bake their fonts into atlases.";
-            return batch;
         }
 
         if (io::Path::isInside(path, io::Path::kContentDirectory)) {
@@ -107,24 +107,36 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
             continue;
         }
 
-        const bool manifest = path == io::Path::kAppConfigFile || path.ends_with(std::string("/") + std::string(io::Path::kPluginManifestFile));
-        const bool main = path == std::string(io::Path::kSourceDirectory) + "/main.lua";
-        const bool loaded = graph != nullptr && graph->find(path) != nullptr;
-        if (manifest || main || (loaded && mode == core::AppConfig::Debug::Reload::Restart)) {
-            batch.restart = "The file \"" + path + "\" changed, restarting the app.";
-            return batch;
+        const std::string restartReason = findRestartReason(engine, path);
+        if (!restartReason.empty()) {
+            report.files.push_back({.path = path, .change = Change::Restart, .reason = restartReason});
+            if (batch.restart.empty()) {
+                batch.restart = restartReason;
+                batch.restartFile = path;
+            }
+
+            continue;
         }
 
-        if (loaded) {
+        const bool loaded = graph != nullptr && graph->find(path) != nullptr;
+        if (loaded && !engine.getPackage().exists(path)) {
+            batch.removed.push_back(path);
+        } else if (loaded) {
             batch.modules.push_back(path);
         } else if (engine.getError() != nullptr) {
             batch.retry = true;
+            report.files.push_back({.path = path, .change = Change::NextLoad, .reason = "No module of the app loaded the file, and the app resumes, so the code that failed requires it again."});
         } else {
             core::Log::info("The file \"{}\" changed, and no module of the app loaded it yet, so the next \"require\" reads it.", path);
+            report.files.push_back({.path = path, .change = Change::NextLoad, .reason = "No module of the app loaded the file yet, so the next \"require\" reads it."});
         }
     }
 
-    const bool relevant = !batch.assets.empty() || !batch.modules.empty() || batch.retry;
+    if (!batch.restart.empty()) {
+        return batch;
+    }
+
+    const bool relevant = !batch.assets.empty() || !batch.modules.empty() || !batch.removed.empty() || batch.retry;
     if (relevant && engine.getError() != nullptr && !engine.isErrorResumable()) {
         batch.restart = "The app stopped in a step of its lifecycle, so the change restarts it.";
     } else if (batch.modules.size() > kRestartModules) {
@@ -134,20 +146,82 @@ HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std
     return batch;
 }
 
+// A removed module leaves the app in place only while no code of the app requires it: no other module, no file that is no module, such as `source/main.lua`, and no autoload.
+std::string HotReloadPlugin::findRestartReason(core::Engine& engine, const std::string& path) const {
+    if (path == io::Path::kAppConfigFile) {
+        return "The file \"haylen.json\" configures the app before any Lua runs, so the app restarts.";
+    }
+
+    if (path.ends_with(std::string("/") + std::string(io::Path::kPluginManifestFile))) {
+        return "The plugin manifest \"" + path + "\" configures the app before any Lua runs, so the app restarts.";
+    }
+
+    if (path == std::string(io::Path::kSourceDirectory) + "/main.lua") {
+        return "The file \"source/main.lua\" starts the app, so the app restarts.";
+    }
+
+    const lua::ModuleGraph::Module* module = graph != nullptr ? graph->find(path) : nullptr;
+    if (module == nullptr) {
+        return {};
+    }
+
+    if (mode == core::AppConfig::Debug::Reload::Restart) {
+        return "The module \"" + module->names.front() + "\" changed while \"debug.reload\" of \"haylen.json\" is \"restart\", so the app restarts.";
+    }
+
+    if (engine.getPackage().exists(path)) {
+        return {};
+    }
+
+    const std::vector<std::string> dependents = graph->findDependents({path});
+    if (!dependents.empty()) {
+        return "The module file \"" + path + "\" was removed, and \"" + dependents.front() + "\" requires it, so the app restarts.";
+    }
+
+    if (graph->isRequiredOutsideModules(path)) {
+        return "The module file \"" + path + "\" was removed, and a file of the app that is no module, such as \"source/main.lua\", requires it, so the app restarts.";
+    }
+
+    const lua::Autoloads& autoloads = engine.getPlugin<CorePlugin>().getAutoloads();
+    const bool autoload = std::ranges::any_of(module->names, [&autoloads](const std::string& name) { return autoloads.hasModule(name); });
+    if (autoload) {
+        return "The module file \"" + path + "\" was removed, and the app keeps it as an autoload, so the app restarts.";
+    }
+
+    return {};
+}
+
+void HotReloadPlugin::restart(core::Engine& engine, const Batch& batch, Report& report, const std::string& reason, const std::string& file) {
+    const std::string applied = file.empty() ? reason : "The app restarts for \"" + file + "\", which applies this file too.";
+    for (File& entry : report.files) {
+        if (entry.change != Change::Ignored && entry.change != Change::Restart) {
+            entry.change = Change::Restart;
+            entry.reason = applied;
+        }
+    }
+
+    for (const std::vector<std::string>* paths : {&batch.files, &batch.modules, &batch.removed}) {
+        for (const std::string& path : *paths) {
+            const bool listed = std::ranges::any_of(report.files, [&path](const File& entry) { return entry.path == path; });
+            if (!listed) {
+                report.files.push_back({.path = path, .change = Change::Restart, .reason = applied});
+            }
+        }
+    }
+
+    core::Log::info("{}", reason);
+    report.restarted = true;
+    report.reason = reason;
+    engine.requestRestart();
+    finish(report);
+}
+
 void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>& changed) {
     const auto started = std::chrono::steady_clock::now();
     Report report{.mode = mode};
-    const Batch batch = classify(engine, changed);
+    const Batch batch = classify(engine, changed, report);
     if (!batch.restart.empty()) {
-        core::Log::info("{}", batch.restart);
-        report.restarted = true;
-        report.reason = batch.restart;
-        engine.requestRestart();
-        finish(report);
-        return;
-    }
-
-    if (batch.assets.empty() && batch.modules.empty() && !batch.retry) {
+        restart(engine, batch, report, batch.restart, batch.restartFile);
         return;
     }
 
@@ -157,10 +231,12 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         plugin->packageChanged(engine, batch.files);
     }
 
-    const bool applied = batch.modules.empty() || reloadModules(engine, batch.modules, report);
+    removeModules(engine, batch, report);
+    std::string restartFile;
+    const bool applied = batch.modules.empty() || reloadModules(engine, batch.modules, report, restartFile);
 
     if (report.restarted) {
-        finish(report);
+        restart(engine, batch, report, report.reason, restartFile);
         return;
     }
 
@@ -178,7 +254,7 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
         core::Log::info("The file \"{}\" holds the code that runs again.", path);
     }
 
-    const bool changedCode = !report.modules.empty() || !report.restored.empty() || !report.assets.empty() || batch.retry;
+    const bool changedCode = !report.modules.empty() || !report.restored.empty() || !report.assets.empty() || !batch.removed.empty() || batch.retry;
     if (applied && changedCode && engine.clearError()) {
         report.resumed = true;
         core::Log::info("The app resumed after the reload.");
@@ -187,26 +263,43 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
     finish(report);
 }
 
-// An editor may still be writing a file when it is seen, so a failed reload waits for the next save instead of stopping the app, and the report rejects the file with its reason.
+// An editor may still be writing a file when it is seen, so a failed reload waits for the next save instead of stopping the app, and the report rejects the file with its reason. Assets of a type that cannot change in place leave the cache and announce `assetChanged`, so the next load reads the file.
 void HotReloadPlugin::reloadAssets(core::Engine& engine, const Batch& batch, Report& report) const {
     for (std::size_t index = 0; index < batch.assets.size(); ++index) {
         const std::string& asset = batch.assets[index];
+        const std::string& path = batch.files[index];
         try {
-            if (engine.getAssets().reload(asset) > 0) {
+            const assets::Manager::Reload result = engine.getAssets().reload(asset);
+            if (result.stale > 0) {
+                report.files.push_back({.path = path, .change = Change::NextLoad, .reason = "Assets of a type that cannot change in place were read from the file, so they announced \"assetChanged\", and the next load reads the file."});
+            } else if (result.inPlace > 0) {
                 core::Log::info("Reloaded \"{}\".", asset);
                 report.assets.push_back(asset);
+                report.files.push_back({.path = path, .change = Change::InPlace, .reason = "The assets read from the file changed in place."});
+            } else {
+                report.files.push_back({.path = path, .change = Change::NextLoad, .reason = "No live asset was read from the file, so the next load reads it, and what the app built from it, such as its texts and themes, builds again."});
             }
         } catch (const std::exception& error) {
             core::Log::warning("The asset \"{}\" could not be reloaded yet: {}", asset, error.what());
             lua::Error rejection(std::string("The asset \"") + asset + "\" could not be reloaded: " + error.what());
             rejection.setCode(lua::Error::Code::Asset);
-            report.rejected.push_back({.path = batch.files[index], .error = std::move(rejection)});
+            report.files.push_back({.path = path, .change = Change::Rejected, .reason = rejection.getMessage()});
+            report.rejected.push_back({.path = path, .error = std::move(rejection)});
         }
     }
 }
 
+// A removed module that no code of the app requires leaves `package.loaded`, and what it registered ends with it, so the next `require` of it fails as for a module that never existed.
+void HotReloadPlugin::removeModules(core::Engine& engine, const Batch& batch, Report& report) {
+    for (const std::string& path : batch.removed) {
+        graph->remove(engine.getLuaState(), path);
+        core::Log::info("The module file \"{}\" was removed, and no code of the app requires it, so it left the app.", path);
+        report.files.push_back({.path = path, .change = Change::InPlace, .reason = "The module file was removed, and no code of the app requires it, so the module left the app."});
+    }
+}
+
 // A module that fails, or whose file cannot be read, changes nothing, while the other modules of the batch still reload. Once the reload finished what it started, the first error of a module or of a hook replaces the one the reload was meant to fix, so the error screen shows the latest one.
-bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report) {
+bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report, std::string& restartFile) {
     lua_State* L = engine.getLuaState();
     const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Reload);
     const int top = lua_gettop(L);
@@ -222,16 +315,18 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
         }
 
         if (result.status == lua::ModuleReloader::Status::Restart) {
-            core::Log::info("{} The app restarts.", result.reason);
+            const std::string reason = result.reason + " The app restarts.";
+            report.files.push_back({.path = path, .change = Change::Restart, .reason = reason});
             report.restarted = true;
-            report.reason = result.reason;
-            engine.requestRestart();
+            report.reason = reason;
+            restartFile = path;
             return false;
         }
 
         lua::ModuleGraph::Module& module = *graph->find(path);
         if (result.status == lua::ModuleReloader::Status::Failed) {
             module.failed = true;
+            report.files.push_back({.path = path, .change = Change::Rejected, .reason = result.error->getMessage()});
             report.rejected.push_back({.path = path, .error = *result.error});
             if (!failure) {
                 failure = std::move(result.error);
@@ -241,10 +336,14 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
         if (result.status == lua::ModuleReloader::Status::Patched) {
             module.failed = false;
             report.modules.push_back(path);
+            report.files.push_back({.path = path, .change = Change::InPlace, .reason = "The module reloaded in place, and the app keeps its state."});
         }
 
         if (result.status == lua::ModuleReloader::Status::Unchanged && std::exchange(module.failed, false)) {
             report.restored.push_back(path);
+            report.files.push_back({.path = path, .change = Change::InPlace, .reason = "The file holds again the code that runs, after a reload of it failed."});
+        } else if (result.status == lua::ModuleReloader::Status::Unchanged) {
+            report.files.push_back({.path = path, .change = Change::InPlace, .reason = "The file holds the code that runs."});
         }
     }
 

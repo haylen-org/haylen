@@ -41,6 +41,12 @@ class ModuleGraph final {
     // Returns the loaded modules that require any of the paths, directly or through other modules, in load order.
     [[nodiscard]] std::vector<std::string> findDependents(const std::vector<std::string>& paths) const;
 
+    // Whether code of a file of the app that is no module, such as `source/main.lua`, required the module.
+    [[nodiscard]] bool isRequiredOutsideModules(std::string_view path) const;
+
+    // Forgets a module whose file the app no longer has: its names leave `package.loaded`, what its top level and its kept values registered ends, and its records go.
+    void remove(lua_State* L, const std::string& path);
+
     // The path of the module that runs its top level now, or an empty text.
     [[nodiscard]] std::string_view getLoading() const noexcept;
 
@@ -109,6 +115,9 @@ class ModuleGraph final {
     std::map<std::string, std::string, std::less<>> pathsByName;
     std::vector<std::string> loadOrder;
     std::vector<Loading> loading;
+
+    // The modules that code of a file of the app that is no module required.
+    std::set<std::string, std::less<>> requiredOutsideModules;
 };
 
 } // namespace haylen::lua

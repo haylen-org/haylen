@@ -183,6 +183,8 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
         return;
     }
 
+    replaceChangedFonts();
+
     // The UI keeps real time, so menus still animate while the time scale pauses the world.
     const auto delta = static_cast<float>(engine.getClock().getUnscaledDelta());
     elapsed += delta;
@@ -1035,6 +1037,13 @@ void UiPlugin::packageChanged(core::Engine& engine, std::span<const std::string>
 
         const std::string_view asset = std::string_view(path).substr(io::Path::kContentDirectory.size() + 1);
         sounds->reload(asset);
+
+        for (const auto& [name, file] : fontPaths) {
+            if (file == asset && engine.getPackage().exists(path)) {
+                changedFonts.emplace_back(name, ui::Backend::FontFiles{.regular = engine.getAssets().bytes(asset)});
+            }
+        }
+
         const auto theme = themeFiles.find(asset);
         if (theme == themeFiles.end() || !engine.getPackage().exists(path)) {
             continue;
@@ -1045,6 +1054,15 @@ void UiPlugin::packageChanged(core::Engine& engine, std::span<const std::string>
             core::Log::info("Reloaded the theme \"{}\" from \"{}\".", name, theme->first);
         } catch (const std::exception& error) {
             core::Log::warning("The theme \"{}\" could not be reloaded yet: {}", theme->first, error.what());
+        }
+    }
+
+    // A family whose fonts hot reload read again hands ImGui their new files.
+    for (auto& [name, revision] : familyRevisions) {
+        const text::FontFamily& family = *fontFamilies.at(name);
+        if (family.getRevision() != revision) {
+            revision = family.getRevision();
+            changedFonts.emplace_back(name, readFamilyFiles(family));
         }
     }
 }
@@ -1069,19 +1087,47 @@ void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::Font
     }
 
     // ImGui draws the TrueType faces of the family, each with the TrueType fallbacks, while rich text draws every face and fallback it has.
-    const text::FontFamily::Faces& faces = family->getFaces();
-    ui::Backend::FontFiles files{.regular = getTrueTypeData(faces.regular), .bold = getTrueTypeData(faces.bold), .italic = getTrueTypeData(faces.italic), .boldItalic = getTrueTypeData(faces.boldItalic)};
+    ui::Backend::FontFiles files = readFamilyFiles(*family);
     if (!files.regular.empty()) {
-        for (const std::shared_ptr<text::Font>& fallback : faces.fallbacks) {
-            if (std::vector<std::uint8_t> data = getTrueTypeData(fallback); !data.empty()) {
-                files.fallbacks.push_back(std::move(data));
-            }
-        }
-
         getBackend().addFont(name, std::move(files));
+        familyRevisions.insert_or_assign(name, family->getRevision());
     }
 
     fontFamilies.emplace(name, std::move(family));
+}
+
+ui::Backend::FontFiles UiPlugin::readFamilyFiles(const text::FontFamily& family) {
+    const text::FontFamily::Faces& faces = family.getFaces();
+    ui::Backend::FontFiles files{.regular = getTrueTypeData(faces.regular), .bold = getTrueTypeData(faces.bold), .italic = getTrueTypeData(faces.italic), .boldItalic = getTrueTypeData(faces.boldItalic)};
+    if (files.regular.empty()) {
+        return files;
+    }
+
+    for (const std::shared_ptr<text::Font>& fallback : faces.fallbacks) {
+        if (std::vector<std::uint8_t> data = getTrueTypeData(fallback); !data.empty()) {
+            files.fallbacks.push_back(std::move(data));
+        }
+    }
+
+    return files;
+}
+
+// A file that is still being written keeps the font as it was until the next save.
+void UiPlugin::replaceChangedFonts() {
+    if (changedFonts.empty()) {
+        return;
+    }
+
+    for (auto& [name, files] : std::exchange(changedFonts, {})) {
+        try {
+            backend->replaceFont(name, std::move(files));
+            core::Log::info("Reloaded the UI font \"{}\".", name);
+        } catch (const std::exception& error) {
+            core::Log::warning("The UI font \"{}\" could not be reloaded yet: {}", name, error.what());
+        }
+    }
+
+    applyTheme(shownHighContrast, shownOpaque);
 }
 
 // A font registered from a file becomes a family with that font as its regular face the first time text asks for it, and the built-in monospace font is the mono face of the default family of the engine. Each draws what it lacks with the fonts of the system.

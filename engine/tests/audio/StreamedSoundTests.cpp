@@ -139,7 +139,7 @@ TEST_F(StreamedSoundTest, PlaysSeeksAndLoopsAFileOfSeveralMegabytesInBoundedMemo
     EXPECT_TRUE(sound.isStreamed());
     EXPECT_EQ(sound.getFrameCount(), kLongFrames);
     EXPECT_EQ(sound.getChannels(), 2U);
-    EXPECT_TRUE(sound.getData()->samples.empty());
+    EXPECT_TRUE(sound.getData()->getContent()->samples.empty());
 
     // This thread mixes, as the audio thread does, and never reads the package.
     package->watch(std::this_thread::get_id());
@@ -299,10 +299,10 @@ TEST_F(StreamedSoundTest, StreamsEveryCompressedFormatLikeItsDecodedSound) {
         EXPECT_EQ(streamed.getSampleRate(), decoded.getSampleRate());
 
         ReaderDecoder decoder(makeReader(file));
-        std::vector<float> samples(decoded.getData()->samples.size() + 1024);
+        std::vector<float> samples(decoded.getData()->getContent()->samples.size() + 1024);
         const std::uint64_t frames = decoder.read(samples);
         samples.resize(frames * decoder.getChannels());
-        EXPECT_EQ(samples, decoded.getData()->samples);
+        EXPECT_EQ(samples, decoded.getData()->getContent()->samples);
     }
 }
 
@@ -311,7 +311,7 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
         SCOPED_TRACE(name);
         const std::vector<std::uint8_t> file = test::AudioFiles::read(name);
         const Sound decoded = Sound::decode(file);
-        const std::vector<float>& expected = decoded.getData()->samples;
+        const std::vector<float>& expected = decoded.getData()->getContent()->samples;
         const std::uint64_t length = decoded.getFrameCount();
         const std::uint32_t channels = decoded.getChannels();
         const auto reader = std::make_shared<LowestReadReader>(file);
@@ -351,7 +351,7 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
 TEST_F(StreamedSoundTest, LoopsAnOggVorbisFileBetweenLoopPointsExactly) {
     const std::vector<std::uint8_t> file = test::AudioFiles::read("notes.ogg");
     const Sound decoded = Sound::decode(file);
-    const std::vector<float>& expected = decoded.getData()->samples;
+    const std::vector<float>& expected = decoded.getData()->getContent()->samples;
     const std::uint32_t channels = decoded.getChannels();
     const std::uint64_t loopStart = decoded.getFrameCount() / 5 + 17;
     const std::uint64_t loopEnd = decoded.getFrameCount() * 3 / 4 + 5;

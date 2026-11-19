@@ -185,6 +185,10 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             const std::shared_ptr<text::Font> font = std::make_shared<text::TrueTypeFont>(device, std::move(data), fontOptionsFromJson(request.options));
             return font;
         },
+        .reload = [](const std::shared_ptr<void>& asset, Request& request) {
+            const std::shared_ptr<text::Font> font = std::static_pointer_cast<text::Font>(asset);
+            static_cast<text::TrueTypeFont&>(*font).replace(std::move(request.bytes));
+        },
     });
     registerType({
         .name = "shader",
@@ -277,7 +281,7 @@ const Manager::Type& Manager::getType(std::string_view name) const {
     return found->second;
 }
 
-std::size_t Manager::reload(std::string_view path) {
+Manager::Reload Manager::reload(std::string_view path) {
     const std::string changed = io::Path::normalize(path);
 
     // A type may load other assets while it reloads one, so the entries of the file are taken before any of them reloads.
@@ -288,7 +292,7 @@ std::size_t Manager::reload(std::string_view path) {
         }
     }
 
-    std::size_t reloaded = 0;
+    Reload reloaded;
     for (const auto& [key, entry] : entries) {
         const std::shared_ptr<void> asset = entry.asset.lock();
         if (!asset) {
@@ -296,9 +300,9 @@ std::size_t Manager::reload(std::string_view path) {
             continue;
         }
 
-        ++reloaded;
         const Type& kind = getType(entry.type);
         if (!kind.reload) {
+            ++reloaded.stale;
             publisher->publish(core::LifecycleEvent::kAssetChanged, entry.type, changed);
             cache.erase(key);
             continue;
@@ -307,6 +311,7 @@ std::size_t Manager::reload(std::string_view path) {
         Request fresh{.type = entry.type, .path = changed, .options = entry.options, .package = &package};
         readFile(fresh, isStreamed(fresh, kind));
         kind.reload(asset, fresh);
+        ++reloaded.inPlace;
         publisher->publish(core::LifecycleEvent::kAssetReloaded, entry.type, changed);
     }
 

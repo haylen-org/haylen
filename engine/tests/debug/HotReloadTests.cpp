@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include <lua.hpp>
 
@@ -17,15 +19,21 @@
 
 #include "debug/PackageEditTest.hpp"
 #include "haylen/assets/Manager.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/text/Font.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "plugins/HotReloadPlugin.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestApplication.hpp"
 #include "support/TestFiles.hpp"
@@ -66,12 +74,37 @@ class HotReloadPluginTest : public PackageEditTest {
     };
 };
 
-TEST_F(HotReloadPluginTest, RestartsForChangedFonts) {
-    test::EngineFixture fixture({}, nullptr, {.development = true});
-    const std::vector<std::string> changed{"content/fonts/title.ttf"};
-    fixture.developmentSession().addChanges(changed);
+// A changed font file and a changed sound file change in place: the font asset takes the new file and lays its text out again, the UI font read from the file reaches ImGui before its next frame, and the sound plays the new samples from its next voice on.
+TEST_F(HotReloadPluginTest, ReloadsFontsAndSoundsInPlace) {
+    test::EngineFixture fixture({{"source/main.lua", ""}}, nullptr, {.development = true});
+    fixture.package().setFile("content/fonts/title.ttf", test::FontCollection::read("lilita-one-regular.ttf"));
+    fixture.package().setFile("content/sounds/beep.wav", test::TestFiles::wav(22050, 1, std::vector<float>(2205, 0.5F)));
+    fixture.runLua("require('haylen.ui').addFont('title', 'fonts/title.ttf') beep = require('haylen.assets').load('sounds/beep.wav')");
     fixture.frames(1);
-    EXPECT_TRUE(fixture.engine().isRestartRequested());
+    core::Engine& engine = fixture.engine();
+    const std::shared_ptr<text::Font> font = engine.getAssets().font("fonts/title.ttf");
+    const math::Vec2 before = font->measure("Hello", {.size = 32.0F});
+    const int uiFontSize = engine.getPlugin<plugins::UiPlugin>().getBackend().getFont("title")->Sources[0]->FontDataSize;
+    core::Json report;
+    const core::Connection connection = engine.getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&report](const plugins::HotReloadPlugin::Report& value) { report = value.toJson(); });
+
+    fixture.package().setFile("content/fonts/title.ttf", test::FontCollection::read("crimson-text-regular.ttf"));
+    fixture.package().setFile("content/sounds/beep.wav", test::TestFiles::wav(22050, 1, std::vector<float>(22050, 0.5F)));
+    const std::vector<std::string> changed{"content/fonts/title.ttf", "content/sounds/beep.wav"};
+    fixture.developmentSession().addChanges(changed);
+    fixture.frames(2);
+
+    EXPECT_FALSE(engine.isRestartRequested());
+    ASSERT_TRUE(report.contains("files"));
+    for (const core::Json& file : report.at("files")) {
+        EXPECT_EQ(file.at("change"), "inPlace") << file.dump();
+    }
+
+    EXPECT_EQ(font->getRevision(), 1U);
+    EXPECT_EQ(engine.getAssets().font("fonts/title.ttf"), font);
+    EXPECT_NE(font->measure("Hello", {.size = 32.0F}).x, before.x);
+    EXPECT_NE(engine.getPlugin<plugins::UiPlugin>().getBackend().getFont("title")->Sources[0]->FontDataSize, uiFontSize);
+    EXPECT_EQ(fixture.lua("return string.format('%.1f', beep.duration)"), "1.0");
 }
 
 TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {

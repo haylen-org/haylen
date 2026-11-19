@@ -24,6 +24,9 @@ class LayoutCache final {
     // Drops the layouts that waited for a font of the system, so they are laid out again with the faces that arrived since.
     void dropWaitingForFonts();
 
+    // Drops every layout, such as once a font they were laid out with changed.
+    void clear() noexcept;
+
   private:
     // The text and the language are views: a lookup views what it is given, and a cached key views the strings of its entry, which stays where the list built it.
     struct Key {

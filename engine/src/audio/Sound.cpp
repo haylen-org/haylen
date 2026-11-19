@@ -17,37 +17,32 @@
 
 namespace haylen::audio {
 
-debug::ObjectCounter& SoundData::counter = *new debug::ObjectCounter("Sound", debug::ObjectCounter::Kind::Native);
-
 Sound Sound::decode(std::span<const std::uint8_t> encoded) {
     MemoryDecoder decoder(encoded);
-    auto decoded = std::make_shared<SoundData>();
-    decoded->channels = decoder.get().outputChannels;
-    decoded->sampleRate = decoder.get().outputSampleRate;
+    SoundData::Content decoded{.channels = decoder.get().outputChannels, .sampleRate = decoder.get().outputSampleRate};
 
     // Some formats only know their length after a full scan, so frames are read in chunks until the decoder runs dry.
     std::array<float, 4096> chunk{};
-    const ma_uint64 framesPerChunk = chunk.size() / decoded->channels;
+    const ma_uint64 framesPerChunk = chunk.size() / decoded.channels;
     for (;;) {
         ma_uint64 read = 0;
         const ma_result result = ma_decoder_read_pcm_frames(&decoder.get(), chunk.data(), framesPerChunk, &read);
-        if (decoded->samples.size() + read * decoded->channels > kMaxSamples) {
+        if (decoded.samples.size() + read * decoded.channels > kMaxSamples) {
             throw std::runtime_error("The audio decodes to more than " + std::to_string(kMaxSamples) + " samples, so it plays only as a stream.");
         }
-        decoded->samples.insert(decoded->samples.end(), chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(read * decoded->channels));
+        decoded.samples.insert(decoded.samples.end(), chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(read * decoded.channels));
 
         if (result != MA_SUCCESS || read < framesPerChunk) {
             break;
         }
     }
 
-    decoded->frames = decoded->samples.size() / decoded->channels;
-    if (decoded->frames == 0) {
+    decoded.frames = decoded.samples.size() / decoded.channels;
+    if (decoded.frames == 0) {
         throw std::runtime_error("Audio data contains no samples.");
     }
 
-    decoded->tracked.setBytes(decoded->samples.size() * sizeof(float));
-    return Sound(std::move(decoded));
+    return Sound(std::make_shared<SoundData>(std::move(decoded)));
 }
 
 Sound Sound::fromSamples(std::span<const float> samples, std::uint32_t channels, std::uint32_t sampleRate) {
@@ -63,13 +58,8 @@ Sound Sound::fromSamples(std::span<const float> samples, std::uint32_t channels,
         throw std::runtime_error("Audio data contains no samples.");
     }
 
-    auto decoded = std::make_shared<SoundData>();
-    decoded->samples.assign(samples.begin(), samples.end());
-    decoded->channels = channels;
-    decoded->sampleRate = sampleRate;
-    decoded->frames = samples.size() / channels;
-    decoded->tracked.setBytes(decoded->samples.size() * sizeof(float));
-    return Sound(std::move(decoded));
+    SoundData::Content decoded{.samples = std::vector<float>(samples.begin(), samples.end()), .channels = channels, .sampleRate = sampleRate, .frames = samples.size() / channels};
+    return Sound(std::make_shared<SoundData>(std::move(decoded)));
 }
 
 Sound Sound::fromSamples(std::span<const std::int16_t> samples, std::uint32_t channels, std::uint32_t sampleRate) {
@@ -83,43 +73,48 @@ Sound Sound::stream(std::shared_ptr<io::PackageReader> reader) {
         throw std::invalid_argument("A streamed sound needs a reader of its file.");
     }
 
-    auto streamed = std::make_shared<SoundData>();
+    SoundData::Content streamed;
     {
         ReaderDecoder decoder(reader);
-        streamed->channels = decoder.getChannels();
-        streamed->sampleRate = decoder.getSampleRate();
+        streamed.channels = decoder.getChannels();
+        streamed.sampleRate = decoder.getSampleRate();
 
         // Every voice of the sound keeps a second of its frames ahead, so the header of the file bounds what a voice allocates.
         const auto maxSampleRate = static_cast<std::uint32_t>(ma_standard_sample_rate_max);
         const auto maxChannels = static_cast<std::uint32_t>(MA_MAX_CHANNELS);
-        if (streamed->sampleRate > maxSampleRate || streamed->channels > maxChannels) {
+        if (streamed.sampleRate > maxSampleRate || streamed.channels > maxChannels) {
             throw std::runtime_error("The audio file declares a sample rate above " + std::to_string(maxSampleRate) + " or more than " + std::to_string(maxChannels) + " channels, which a streamed sound cannot play.");
         }
 
-        streamed->frames = decoder.getLength();
+        streamed.frames = decoder.getLength();
     }
-    streamed->reader = std::move(reader);
-    return Sound(std::move(streamed));
+    streamed.reader = std::move(reader);
+    return Sound(std::make_shared<SoundData>(std::move(streamed)));
 }
 
-bool Sound::isStreamed() const noexcept {
-    return data != nullptr && data->reader != nullptr;
+bool Sound::isStreamed() const {
+    return data != nullptr && data->getContent()->reader != nullptr;
 }
 
-std::uint32_t Sound::getChannels() const noexcept {
-    return data != nullptr ? data->channels : 0;
+std::uint32_t Sound::getChannels() const {
+    return data != nullptr ? data->getContent()->channels : 0;
 }
 
-std::uint32_t Sound::getSampleRate() const noexcept {
-    return data != nullptr ? data->sampleRate : 0;
+std::uint32_t Sound::getSampleRate() const {
+    return data != nullptr ? data->getContent()->sampleRate : 0;
 }
 
-std::uint64_t Sound::getFrameCount() const noexcept {
-    return data != nullptr ? data->frames : 0;
+std::uint64_t Sound::getFrameCount() const {
+    return data != nullptr ? data->getContent()->frames : 0;
 }
 
-float Sound::getDuration() const noexcept {
-    return data != nullptr && data->sampleRate > 0 ? static_cast<float>(static_cast<double>(data->frames) / data->sampleRate) : 0.0F;
+float Sound::getDuration() const {
+    if (data == nullptr) {
+        return 0.0F;
+    }
+
+    const std::shared_ptr<const SoundData::Content> content = data->getContent();
+    return content->sampleRate > 0 ? static_cast<float>(static_cast<double>(content->frames) / content->sampleRate) : 0.0F;
 }
 
 } // namespace haylen::audio

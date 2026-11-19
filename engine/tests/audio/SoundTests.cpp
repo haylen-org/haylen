@@ -47,10 +47,10 @@ TEST_F(SoundTest, MakesSoundsFromRawSamples) {
     EXPECT_EQ(floats.getChannels(), 2U);
     EXPECT_EQ(floats.getSampleRate(), 24000U);
     EXPECT_EQ(floats.getFrameCount(), 2U);
-    EXPECT_EQ(floats.getData()->samples, (std::vector<float>{0.5F, -0.5F, 0.25F, -0.25F}));
+    EXPECT_EQ(floats.getData()->getContent()->samples, (std::vector<float>{0.5F, -0.5F, 0.25F, -0.25F}));
 
     const Sound shorts = Sound::fromSamples(std::vector<std::int16_t>{16384, -32768, 0}, 1, 8000);
-    EXPECT_EQ(shorts.getData()->samples, (std::vector<float>{0.5F, -1.0F, 0.0F}));
+    EXPECT_EQ(shorts.getData()->getContent()->samples, (std::vector<float>{0.5F, -1.0F, 0.0F}));
     EXPECT_NEAR(shorts.getDuration(), 3.0F / 8000.0F, 1e-7F);
 
     EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{0.5F, 0.5F, 0.5F}, 2, 8000), std::invalid_argument);

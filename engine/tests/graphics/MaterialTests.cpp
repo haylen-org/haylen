@@ -213,7 +213,7 @@ TEST_F(MaterialTest, ReloadsItsShaderInPlace) {
 
     // A reload keeps every handle and the values that still fit, and the next draws create the programs again.
     fixture.package().setFile("content/shaders/tint.shader", test::TestFiles::bytes(compiled));
-    EXPECT_EQ(assets.reload("shaders/tint.shader"), 1U);
+    EXPECT_EQ(assets.reload("shaders/tint.shader"), (assets::Manager::Reload{.inPlace = 1}));
     EXPECT_EQ(shader.getVersion(), 2U);
     EXPECT_EQ(material.get("strength"), std::vector<float>{0.25F});
     fixture.package().setFile("content/shaders/tint.shader", test::TestFiles::bytes("{}"));

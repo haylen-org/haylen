@@ -62,7 +62,7 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] bool isCapturingBack() const override;
     [[nodiscard]] bool isFrameComplete() const override;
 
-    // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme, and loads the sounds of the UI read from changed files again.
+    // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme, loads the sounds of the UI read from changed files again, and reads a changed font file of a UI font again, which reaches ImGui before its next frame.
     void packageChanged(core::Engine& engine, std::span<const std::string> paths) override;
 
     [[nodiscard]] ui::Backend& getBackend();
@@ -228,6 +228,12 @@ class UiPlugin final : public Plugin {
     // Returns the file of a TrueType face, or nothing for a bitmap face or a style the family has no face for.
     [[nodiscard]] static std::vector<std::uint8_t> getTrueTypeData(const std::shared_ptr<text::Font>& face);
 
+    // The TrueType files of the faces and fallbacks of a family that ImGui draws, without fallbacks for a family whose regular face is no TrueType font.
+    [[nodiscard]] static ui::Backend::FontFiles readFamilyFiles(const text::FontFamily& family);
+
+    // Hands ImGui the fonts that changed, between its frames, and applies the theme again for the faces that took their place.
+    void replaceChangedFonts();
+
     ui::ComponentRegistry components;
     ui::FocusNavigator focus;
     ui::NavigationInput navigationInput;
@@ -264,6 +270,10 @@ class UiPlugin final : public Plugin {
     // The base of every theme file that `loadTheme` read, by its asset path.
     std::map<std::string, std::string, std::less<>> themeFiles;
     std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fontFamilies;
+
+    // The revisions of the families that `addFontFamily` gave ImGui, and the fonts whose files changed since the last frame of ImGui.
+    std::map<std::string, std::uint64_t, std::less<>> familyRevisions;
+    std::vector<std::pair<std::string, ui::Backend::FontFiles>> changedFonts;
     double elapsed = 0.0;
     text::Direction direction = text::Direction::LeftToRight;
     bool safeAreaVisible = false;

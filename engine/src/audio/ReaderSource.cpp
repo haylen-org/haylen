@@ -13,7 +13,7 @@ namespace haylen::audio {
 
 // What a voice shares with its fills, which may outlive it. A fill writes frames at `written` and the audio thread takes them at `taken`, so each side moves only its own count. A seek of the audio thread raises `generation`, and from then on the audio thread takes nothing until a fill dropped the frames it never took, moved the decoder and set `ready` to the generation it served.
 struct ReaderSource::Feed {
-    explicit Feed(const SoundData& sound) : reader(sound.reader), channels(sound.channels), sampleRate(sound.sampleRate), length(sound.frames), capacity(std::max<std::size_t>(1, static_cast<std::size_t>(sound.sampleRate * kBufferSeconds))), ring(capacity * channels), loopEnd(sound.frames > 0 ? sound.frames : std::numeric_limits<std::uint64_t>::max()) {}
+    explicit Feed(const SoundData::Content& sound) : reader(sound.reader), channels(sound.channels), sampleRate(sound.sampleRate), length(sound.frames), capacity(std::max<std::size_t>(1, static_cast<std::size_t>(sound.sampleRate * kBufferSeconds))), ring(capacity * channels), loopEnd(sound.frames > 0 ? sound.frames : std::numeric_limits<std::uint64_t>::max()) {}
 
     // Runs on the I/O pool, one fill at a time.
     void fill() {
@@ -138,7 +138,7 @@ struct ReaderSource::Feed {
 
 const ma_data_source_vtable ReaderSource::kVtable{&ReaderSource::read, &ReaderSource::seek, &ReaderSource::getFormat, &ReaderSource::getCursor, &ReaderSource::getLength, &ReaderSource::setLooping, MA_DATA_SOURCE_SELF_MANAGED_RANGE_AND_LOOP_POINT};
 
-ReaderSource::ReaderSource(const SoundData& sound) : feed(std::make_shared<Feed>(sound)) {
+ReaderSource::ReaderSource(const SoundData::Content& sound) : feed(std::make_shared<Feed>(sound)) {
     ma_data_source_config config = ma_data_source_config_init();
     config.vtable = &kVtable;
     if (ma_data_source_init(&config, get()) != MA_SUCCESS) {

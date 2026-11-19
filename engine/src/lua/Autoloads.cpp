@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <cctype>
 #include <exception>
 #include <stdexcept>
@@ -110,6 +111,10 @@ void Autoloads::add(lua_State* L, const std::string& name, const std::string& mo
     }
 
     Runtime::getEngine(main).getEvents().emit(core::LifecycleEvent::kAutoloadStarted, {{"name", name}});
+}
+
+bool Autoloads::hasModule(std::string_view module) const noexcept {
+    return std::ranges::any_of(entries, [module](const Entry& entry) { return entry.module == module; });
 }
 
 void Autoloads::call(const Entry& entry, const char* method, int arguments, const std::function<void(lua_State*)>& pushArguments) {

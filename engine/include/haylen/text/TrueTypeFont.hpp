@@ -51,6 +51,9 @@ class TrueTypeFont final : public Font {
     // The font file itself, which the UI hands to Dear ImGui for the widgets it draws.
     [[nodiscard]] std::span<const std::uint8_t> getData() const noexcept;
 
+    // Reads a changed font file in place of the one the font has, with the same options, such as when hot reload sees the file saved, so text laid out with the font lays out again with the new glyphs. Throws like the constructor and keeps the font as it was.
+    void replace(std::vector<std::uint8_t> ttf);
+
   private:
     struct Face;
 

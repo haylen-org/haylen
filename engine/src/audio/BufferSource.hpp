@@ -4,15 +4,16 @@
 
 #include <atomic>
 #include <cstddef>
+#include <memory>
+
+#include "audio/SoundData.hpp"
 
 namespace haylen::audio {
-
-struct SoundData;
 
 // The miniaudio data source through which a voice reads the samples of a decoded sound, which every voice of the sound shares. The mixing thread moves the cursor of the voice while the frame thread reads it, so the cursor is atomic.
 class BufferSource final {
   public:
-    explicit BufferSource(const SoundData& value);
+    explicit BufferSource(std::shared_ptr<const SoundData::Content> value);
     ~BufferSource();
 
     BufferSource(const BufferSource&) = delete;
@@ -33,7 +34,7 @@ class BufferSource final {
 
     // The base stays the first member of this standard-layout class, because miniaudio reaches the source through it.
     ma_data_source_base base{};
-    const SoundData* sound;
+    std::shared_ptr<const SoundData::Content> sound;
     std::atomic<ma_uint64> cursor{0};
 };
 

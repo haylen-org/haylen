@@ -339,10 +339,64 @@ void ModuleGraph::recordRequire(lua_State* L, const std::string& name) {
     }
 
     const auto required = pathsByName.find(name);
+    if (required == pathsByName.end()) {
+        return;
+    }
+
     Module* module = find(caller.source + 1);
-    if (required != pathsByName.end() && module != nullptr && required->second != module->path) {
+    if (module == nullptr) {
+        requiredOutsideModules.insert(required->second);
+        return;
+    }
+
+    if (required->second != module->path) {
         module->dependencies.insert(required->second);
     }
+}
+
+bool ModuleGraph::isRequiredOutsideModules(std::string_view path) const {
+    return requiredOutsideModules.contains(path);
+}
+
+void ModuleGraph::remove(lua_State* L, const std::string& path) {
+    const auto found = modules.find(path);
+    if (found == modules.end()) {
+        return;
+    }
+
+    lua_getfield(L, LUA_REGISTRYINDEX, LUA_LOADED_TABLE);
+    for (const std::string& name : found->second.names) {
+        lua_pushnil(L);
+        lua_setfield(L, -2, name.c_str());
+        pathsByName.erase(name);
+    }
+
+    lua_pop(L, 1);
+
+    // What the top level registered without an owner ends with the owner of the module, and what each kept value registered with the owner of that value.
+    pushOwner(L, path);
+    Owners::release(L, -1);
+    lua_pop(L, 1);
+    pushModuleTable(L, "keptOwners", path);
+    lua_pushnil(L);
+    while (lua_next(L, -2) != 0) {
+        Owners::release(L, -1);
+        lua_pop(L, 1);
+    }
+
+    lua_pop(L, 1);
+
+    for (const char* section : {"owners", "snapshots", "kept", "keptOwners"}) {
+        pushSection(L, section);
+        lua_pushlstring(L, path.data(), path.size());
+        lua_pushnil(L);
+        lua_rawset(L, -3);
+        lua_pop(L, 1);
+    }
+
+    std::erase(loadOrder, path);
+    requiredOutsideModules.erase(path);
+    modules.erase(found);
 }
 
 // Runs the top level of a module for the first time with a fresh owner and an environment that writes through to the globals while it records what the module writes, so its globals have a snapshot too. Each step runs in a protected call, so a load that fails, in a coroutine too, leaves no record, no registrations and no recording environment behind at once. The top level runs in a kept call, so its error rises again unchanged with the stack of where it rose. The table `package.loaded` takes the module only once the graph recorded it. The text is read before the module runs, so a save while its top level runs reaches the next reload.

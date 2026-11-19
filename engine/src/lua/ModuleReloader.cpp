@@ -33,10 +33,6 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     path = file;
     name = module.names.front();
 
-    if (!package.exists(file)) {
-        return {.status = Status::Restart, .reason = "The module file \"" + file + "\" was removed."};
-    }
-
     const std::string source = package.readText(file);
     if (source == module.source) {
         return {};

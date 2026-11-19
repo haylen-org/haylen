@@ -24,12 +24,12 @@ TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
 
     fixture.package().setFile("content/hero.png", test::TestFiles::pngImage(8, 2, 0x00FF00FFU));
     fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
-    EXPECT_EQ(assets.reload("hero.png"), 1U);
+    EXPECT_EQ(assets.reload("hero.png"), (assets::Manager::Reload{.inPlace = 1}));
     EXPECT_EQ(hero.getWidth(), 8);
     EXPECT_EQ(hero.getHeight(), 2);
-    EXPECT_EQ(assets.reload("data.json"), 0U);
+    EXPECT_EQ(assets.reload("data.json"), assets::Manager::Reload{});
     EXPECT_EQ(assets.json("data.json").at("level"), 2);
-    EXPECT_EQ(assets.reload("missing.png"), 0U);
+    EXPECT_EQ(assets.reload("missing.png"), assets::Manager::Reload{});
 
     fixture.package().setFile("content/hero.png", test::TestFiles::bytes("broken"));
     EXPECT_THROW((void)assets.reload("hero.png"), std::runtime_error);
@@ -51,8 +51,8 @@ TEST_F(AssetReloadTest, UpdatesJsonInPlaceAndAnnouncesStaleAssets) {
 
     fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
     fixture.package().setFile("content/icon.svg", test::TestFiles::bytes(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 12"><path d="M0 0h48v12z"/></svg>)"));
-    EXPECT_EQ(assets.reload("data.json"), 1U);
-    EXPECT_EQ(assets.reload("icon.svg"), 1U);
+    EXPECT_EQ(assets.reload("data.json"), (assets::Manager::Reload{.inPlace = 1}));
+    EXPECT_EQ(assets.reload("icon.svg"), (assets::Manager::Reload{.stale = 1}));
     EXPECT_EQ(assets.json("data.json").at("level"), 2);
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "reloaded json data.json, changed vectorImage icon.svg");

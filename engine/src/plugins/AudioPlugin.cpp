@@ -33,6 +33,10 @@ void AudioPlugin::start(core::Engine& engine) {
         },
         .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
         .streams = [](const core::Json& options) { return options.at("stream").get<bool>(); },
+        .reload = [](const std::shared_ptr<void>& asset, assets::Manager::Request& request) {
+            const audio::Sound fresh = request.reader ? audio::Sound::stream(std::move(request.reader)) : audio::Sound::decode(request.bytes);
+            std::static_pointer_cast<audio::SoundData>(asset)->replace(*fresh.getData());
+        },
     });
     engine.getPlugin<AssetsPlugin>().registerLuaPusher("sound", [](lua_State* L, const std::shared_ptr<void>& asset) {
         lua::Stack::push(L, audio::Sound(std::static_pointer_cast<const audio::SoundData>(asset)));

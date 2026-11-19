@@ -10,10 +10,13 @@
 #include <mutex>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
+#include "haylen/assets/Manager.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -49,15 +52,28 @@ class ModuleReloadTest : public ::testing::Test {
         fixture->frames(1);
     }
 
-    void remove(const std::string& path) {
-        fixture->package().removeFile(path);
-        const std::vector<std::string> paths{path};
-        fixture->developmentSession().addChanges(paths);
-        fixture->frames(1);
-    }
-
     std::string lua(const std::string& source) {
         return fixture->lua(source);
+    }
+
+    // Saves the files, removes the removed ones and returns the report of the batch that applied both.
+    core::Json applyAndReport(const std::map<std::string, std::string>& files, const std::vector<std::string>& removed = {}) {
+        core::Json report;
+        const core::Connection connection = fixture->engine().getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&report](const plugins::HotReloadPlugin::Report& value) { report = value.toJson(); });
+        std::vector<std::string> paths;
+        for (const auto& [path, source] : files) {
+            fixture->package().setFile(path, test::TestFiles::bytes(source));
+            paths.push_back(path);
+        }
+
+        for (const std::string& path : removed) {
+            fixture->package().removeFile(path);
+            paths.push_back(path);
+        }
+
+        fixture->developmentSession().addChanges(paths);
+        fixture->frames(1);
+        return report;
     }
 
     [[nodiscard]] bool restarted() const {
@@ -861,13 +877,17 @@ TEST_F(ModuleReloadTest, RestartsOnceAModuleWhoseFirstLoadFailedInALifecycleStep
 }
 
 TEST_F(ModuleReloadTest, RestartsForHaylenJsonMainAndPluginManifests) {
-    for (const std::string path : {"haylen.json", "source/main.lua", "plugins/ads/plugin.json"}) {
-        start({{"source/main.lua", ""}});
-        recordLog();
-        edit({{path, "{}"}});
+    const std::vector<std::pair<std::string, std::string>> cases{
+        {"haylen.json", "The file \"haylen.json\" configures the app before any Lua runs, so the app restarts."},
+        {"source/main.lua", "The file \"source/main.lua\" starts the app, so the app restarts."},
+        {"plugins/ads/plugin.json", "The plugin manifest \"plugins/ads/plugin.json\" configures the app before any Lua runs, so the app restarts."},
+    };
+    for (const auto& [path, reason] : cases) {
+        start({{"source/main.lua", ""}, {"source/settings.lua", "return {}"}});
+        const core::Json report = applyAndReport({{path, "{}"}, {"source/settings.lua", "return {edited = true}"}});
         EXPECT_TRUE(restarted()) << path;
-        EXPECT_TRUE(logged("The file \"" + path + "\" changed, restarting the app.")) << path;
-        core::Log::removeListener(listener);
+        EXPECT_EQ(report.at("reason"), reason);
+        EXPECT_EQ(report.at("files"), (core::Json{{{"path", path}, {"change", "restart"}, {"reason", reason}}, {{"path", "source/settings.lua"}, {"change", "restart"}, {"reason", "The app restarts for \"" + path + "\", which applies this file too."}}})) << path;
     }
 }
 
@@ -919,10 +939,33 @@ TEST_F(ModuleReloadTest, RestartsWhenAModuleReturnsAnotherPlainValue) {
     EXPECT_TRUE(logged("The module \"level\" returns a string, which cannot change in place."));
 }
 
-TEST_F(ModuleReloadTest, RestartsForRemovedModules) {
-    start({{"source/gone.lua", "return {}"}, {"source/main.lua", "require('gone')"}});
-    remove("source/gone.lua");
-    EXPECT_TRUE(restarted());
+// A removed module leaves the app in place only while no code of the app requires it, and what its top level registered ends with it.
+TEST_F(ModuleReloadTest, RemovesAModuleThatNoCodeRequiresInPlace) {
+    start({{"source/gone.lua", "ticks = 0 require('haylen.timer').every(0.01, function() ticks = ticks + 1 end) return {}"}, {"source/main.lua", ""}});
+    fixture->runLua("require('gone')");
+    const core::Json report = applyAndReport({}, {"source/gone.lua"});
+    EXPECT_FALSE(restarted());
+    EXPECT_EQ(report.at("files"), (core::Json{{{"path", "source/gone.lua"}, {"change", "inPlace"}, {"reason", "The module file was removed, and no code of the app requires it, so the module left the app."}}}));
+    EXPECT_EQ(lua("return tostring(package.loaded.gone)"), "nil");
+    const std::string ticks = lua("return ticks");
+    fixture->frames(3);
+    EXPECT_EQ(lua("return ticks"), ticks);
+    EXPECT_NE(lua("return select(2, pcall(require, 'gone'))").find("module 'gone' not found"), std::string::npos);
+}
+
+TEST_F(ModuleReloadTest, RestartsForRemovedModulesThatCodeRequires) {
+    const std::vector<std::pair<std::map<std::string, std::string>, std::string>> cases{
+        {{{"source/gone.lua", "return {}"}, {"source/main.lua", "require('gone')"}}, "The module file \"source/gone.lua\" was removed, and a file of the app that is no module, such as \"source/main.lua\", requires it, so the app restarts."},
+        {{{"source/gone.lua", "return {}"}, {"source/user.lua", "require('gone') return {}"}, {"source/main.lua", "require('user')"}}, "The module file \"source/gone.lua\" was removed, and \"source/user.lua\" requires it, so the app restarts."},
+        {{{"source/gone.lua", "return {}"}, {"source/setup.lua", "require('haylen').autoload('gone', 'gone') return {}"}, {"source/main.lua", "require('setup')"}}, "The module file \"source/gone.lua\" was removed, and the app keeps it as an autoload, so the app restarts."},
+    };
+    for (const auto& [files, reason] : cases) {
+        SCOPED_TRACE(reason);
+        start(files);
+        const core::Json report = applyAndReport({}, {"source/gone.lua"});
+        EXPECT_TRUE(restarted());
+        EXPECT_EQ(report.at("reason"), reason);
+    }
 }
 
 TEST_F(ModuleReloadTest, AddsTheSameAutoloadAgain) {
@@ -1083,13 +1126,20 @@ TEST_F(ModuleReloadTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
     EXPECT_EQ(shipped.lua("hotReload.restartOnChange() return 'ignored'"), "ignored");
 }
 
-TEST_F(ModuleReloadTest, ReportsNothingForSavesThatTouchNoLoadedFile) {
-    start({{"source/main.lua", ""}});
-    int reports = 0;
-    const core::Connection connection = fixture->engine().getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&reports](const plugins::HotReloadPlugin::Report&) { ++reports; });
-    edit({{"source/.main.lua.swp", "swap"}, {"source/later.lua", "return {value = 'new'}"}});
-    EXPECT_EQ(reports, 0);
+// Every file of a save has its entry in the report, also one that no module loaded and one that hot reload never reads.
+TEST_F(ModuleReloadTest, ReportsWhatASaveDidWithEachFile) {
+    start({{"source/main.lua", "settings = require('settings')"}, {"source/settings.lua", "return {speed = 1}"}, {"content/data.json", R"({"level": 1})"}, {"content/maps/room.json", R"({"size": 1})"}});
+    const std::shared_ptr<void> data = fixture->engine().getAssets().load("json", "data.json");
+    const core::Json report = applyAndReport({{"source/.main.lua.swp", "swap"}, {"source/later.lua", "return {value = 'new'}"}, {"source/settings.lua", "return {speed = 2}"}, {"content/data.json", R"({"level": 2})"}, {"content/maps/room.json", R"({"size": 2})"}});
     EXPECT_FALSE(restarted());
+    std::map<std::string, std::string> changes;
+    for (const core::Json& file : report.at("files")) {
+        changes[file.at("path").get<std::string>()] = file.at("change").get<std::string>();
+        EXPECT_FALSE(file.at("reason").get<std::string>().empty());
+    }
+
+    EXPECT_EQ(changes, (std::map<std::string, std::string>{{"content/data.json", "inPlace"}, {"content/maps/room.json", "nextLoad"}, {"source/.main.lua.swp", "ignored"}, {"source/later.lua", "nextLoad"}, {"source/settings.lua", "inPlace"}}));
+    EXPECT_EQ(lua("return settings.speed"), "2");
 }
 
 TEST_F(ModuleReloadTest, RestartsWhenASaveTouchesMoreModulesThanReloadInPlace) {

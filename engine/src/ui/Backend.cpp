@@ -400,18 +400,7 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
         throw std::invalid_argument("The UI already has a font named \"" + name + "\".");
     }
 
-    // Every file is checked before any reaches ImGui, so a broken one registers nothing.
-    (void)readHeight(name, files.regular);
-
-    for (const std::vector<std::uint8_t>* face : {&files.bold, &files.italic, &files.boldItalic}) {
-        if (!face->empty()) {
-            (void)readHeight(name, *face);
-        }
-    }
-
-    for (const std::vector<std::uint8_t>& fallback : files.fallbacks) {
-        (void)readHeight(name, fallback);
-    }
+    checkFiles(name, files);
 
     // ImGui reads the font data for as long as the atlas lives, so the bytes stay owned here, and every face shares the fallbacks.
     std::vector<std::span<std::uint8_t>> fallbacks;
@@ -419,6 +408,7 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
         fallbacks.emplace_back(fontData.emplace_back(std::move(fallback)));
     }
 
+    const std::size_t firstFile = fontData.size() - fallbacks.size();
     Typeface typeface{.regular = addFace(name, std::move(files.regular), fallbacks)};
     if (!files.bold.empty()) {
         typeface.bold = addFace(name, std::move(files.bold), fallbacks);
@@ -432,8 +422,49 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
         typeface.boldItalic = addFace(name, std::move(files.boldItalic), fallbacks);
     }
 
-    fonts.emplace(name, typeface);
-    return typeface.regular.font;
+    for (std::size_t index = firstFile; index < fontData.size(); ++index) {
+        typeface.files.push_back(fontData[index].data());
+    }
+
+    ImFont* regular = typeface.regular.font;
+    fonts.emplace(name, std::move(typeface));
+    return regular;
+}
+
+void Backend::checkFiles(const std::string& name, const FontFiles& files) {
+    (void)readHeight(name, files.regular);
+
+    for (const std::vector<std::uint8_t>* face : {&files.bold, &files.italic, &files.boldItalic}) {
+        if (!face->empty()) {
+            (void)readHeight(name, *face);
+        }
+    }
+
+    for (const std::vector<std::uint8_t>& fallback : files.fallbacks) {
+        (void)readHeight(name, fallback);
+    }
+}
+
+// ImGui lets go of the data of a font it removed, so the bytes of the earlier files go with it.
+void Backend::replaceFont(const std::string& name, FontFiles files) {
+    makeCurrent();
+    const auto found = fonts.find(name);
+    if (found == fonts.end()) {
+        throw std::invalid_argument("The UI has no font named \"" + name + "\".");
+    }
+
+    checkFiles(name, files);
+    const Typeface earlier = std::move(found->second);
+    fonts.erase(found);
+
+    for (const Face& face : {earlier.regular, earlier.bold, earlier.italic, earlier.boldItalic}) {
+        if (face.font != nullptr) {
+            ImGui::GetIO().Fonts->RemoveFont(face.font);
+        }
+    }
+
+    std::erase_if(fontData, [&earlier](const std::vector<std::uint8_t>& bytes) { return std::ranges::find(earlier.files, bytes.data()) != earlier.files.end(); });
+    (void)addFont(name, std::move(files));
 }
 
 // ImGui draws each fallback at the size of the face it merges into, measured from ascent to descent, so a fallback scales by how much its em square differs from the em square of the face.

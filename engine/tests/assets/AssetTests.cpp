@@ -98,7 +98,7 @@ TEST_F(AssetsManagerTest, PublishesLoadedUnloadedAndReloadedEvents) {
         EXPECT_EQ(log, (std::vector<std::string>{"loaded texture images/red.png"}));
 
         fixture.package().setFile("content/images/red.png", test::TestFiles::pngImage(8, 8, 0x00FF00FFU));
-        EXPECT_EQ(assets.reload("images/red.png"), 1U);
+        EXPECT_EQ(assets.reload("images/red.png"), (assets::Manager::Reload{.inPlace = 1}));
         fixture.frames(1);
         EXPECT_EQ(log.back(), "reloaded texture images/red.png");
         EXPECT_EQ(red.getSize(), math::Vec2(8.0F, 8.0F));
@@ -411,7 +411,7 @@ TEST_F(AssetsManagerTest, ReloadsFilesWhosePathsHoldAnyCharacter) {
 
     const std::shared_ptr<void> held = assets.load("json", "data/a|b.json");
     fixture.package().setFile("content/data/a|b.json", test::TestFiles::bytes(R"({"level": 2})"));
-    EXPECT_EQ(assets.reload("data/a|b.json"), 1U);
+    EXPECT_EQ(assets.reload("data/a|b.json"), (assets::Manager::Reload{.inPlace = 1}));
     EXPECT_EQ(assets.json("data/a|b.json").at("level"), 2);
 }
 
