@@ -46,7 +46,7 @@ void Tabs::render(Context& context, const math::Rect& bounds) {
         ImGui::PushID(static_cast<int>(index));
         ImGui::BeginDisabled(!item.enabled);
         const Widgets::Interaction state = Widgets::interact(context, tab, context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##tab");
-        context.getAccessibility().addPart(ImGui::GetItemID(), tab, platform::AccessibilityElement::Role::Tab, context.getText(item.text), (current ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
+        context.getAccessibility().addPart(context, ImGui::GetItemID(), tab, platform::AccessibilityElement::Role::Tab, context.getText(item.text), (current ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
         ImGui::EndDisabled();
         ImGui::PopID();
 

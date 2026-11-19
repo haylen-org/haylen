@@ -64,7 +64,7 @@ Returns the elements of the [screen reader tree](#screen-readers) of the last fr
 | `label` | string | What the screen reader says the element is. |
 | `value` | string | What the element holds, such as the number of a slider or the text of a field. |
 | `hint` | string | What the element does, which screen readers say after a pause. |
-| `bounds` | `Rect` | Where the element lies, in design units. |
+| `bounds` | `Rect` | The part of the element that shows, in design units. An element that a scroll area hides has a line without area on the edge of the area toward it. |
 | `disabled`, `checked`, `selected`, `focused`, `expanded`, `busy` | boolean | The states of the element. |
 | `actions` | list of strings | What a screen reader can do with it: `'focus'`, `'activate'`, `'increment'` and `'decrement'`. |
 
@@ -140,6 +140,7 @@ The UI of [`haylen.ui`](ui.md) draws itself, so the engine describes it to scree
 - **Parts.** The options of a `radioGroup`, the tabs of `tabs`, the rows of a `list`, a `tree` and a `table`, the headers of an `accordion` and the buttons of a `dialog` are elements of their own. A row of a table reads its cells separated by commas, and a row of a tree tells whether it is open.
 - **Containers.** Containers are no elements, so their children join the element around them. An `image` or an `icon` is decorative until it has a label.
 - **Properties.** The [common properties](ui.md#common-properties) `accessibilityLabel`, `accessibilityHint`, `accessibilityRole` and `accessibilityHidden` give a node the label, the hint and the role that screen readers say instead of what its kind describes, or leave the node and its children out. A node with a label or a role of its own is an element even when its kind is not, such as a `card` that stands for one thing. A disabled node is disabled for screen readers too. A tooltip is the hint of its node, unless the node has a hint of its own.
+- **Place.** An element covers only the part of its node that shows. A scroll area hides the rest, so exploring the screen by touch, the outline of the screen reader and the taps of UI tests find only what shows. A node scrolled out of sight keeps its element as a line without area on the edge of the scroll area toward the node. A screen reader still moves to it, and the focus that follows scrolls it into view.
 - **Focus.** The focus stays in step. The element of the control that holds the focus of the UI holds the focus of the screen reader. A screen reader that moves its focus to an element, presses it or adjusts it moves the focus of the UI there. So the player who listens and the player who looks share one focus.
 
 ```lua

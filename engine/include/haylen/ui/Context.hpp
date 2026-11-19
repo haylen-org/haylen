@@ -288,6 +288,9 @@ class Context final {
     // Returns the transforms of the nodes that began drawing in the current window. The clip rectangles of the window lie where they apply, since the nodes around the window move its whole draw list onto the screen once they drew it, while the vertices of the node itself move only with the node.
     [[nodiscard]] Reshape getWindowReshape() const;
 
+    // Returns the clip of the current window in the units of the nodes being drawn, which is the part of the screen where they show, or nothing while the transforms drawn in the window scale them to nothing.
+    [[nodiscard]] std::optional<math::Rect> getClip() const;
+
     // Clips what the node draws next to a rectangle in its units until `popClip`.
     void pushClip(const math::Rect& bounds) const;
     static void popClip();

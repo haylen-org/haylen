@@ -105,21 +105,19 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
         return;
     }
 
-    ImGuiWindow* window = GImGui->CurrentWindow;
-    const Context::Reshape shape = context.getWindowReshape();
-    if (shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
+    const std::optional<math::Rect> clip = context.getClip();
+    if (!clip) {
         return;
     }
 
     // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole. The ring lies in the units of the control, which the transforms drawn in the window move to where the clip of the window lies.
+    ImGuiWindow* window = GImGui->CurrentWindow;
     const float width = context.getMetric(Theme::Metric::FocusWidth);
     const float distance = context.getMetric(Theme::Metric::FocusGap) + width;
-    const Context::Reshape toControl{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale};
-    const math::Rect clip = toControl.apply(ImGuiConverter::toRect(window->ClipRect));
-    const math::Rect ring = bounds.intersection(clip).expanded(distance);
-    const bool clipped = !clip.contains(ring);
+    const math::Rect ring = bounds.intersection(*clip).expanded(distance);
+    const bool clipped = !clip->contains(ring);
     if (clipped) {
-        const math::Rect shown = shape.apply(ring);
+        const math::Rect shown = context.getWindowReshape().apply(ring);
         window->DrawList->PushClipRect(ImGuiConverter::toImVec2(shown.getMin()), ImGuiConverter::toImVec2(shown.getMax()));
     }
 

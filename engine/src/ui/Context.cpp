@@ -471,6 +471,16 @@ Context::Reshape Context::getWindowReshape() const {
     return reshapes.back().inWindow;
 }
 
+std::optional<math::Rect> Context::getClip() const {
+    const Reshape shape = getWindowReshape();
+    if (shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
+        return std::nullopt;
+    }
+
+    const Reshape toNodes{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale};
+    return toNodes.apply(ImGuiConverter::toRect(ImGui::GetCurrentWindow()->ClipRect));
+}
+
 void Context::pushClip(const math::Rect& bounds) const {
     const math::Rect clip = getWindowReshape().apply(bounds);
     ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);

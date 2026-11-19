@@ -62,7 +62,7 @@ void Accordion::render(Context& context, const math::Rect& bounds) {
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
         const Widgets::Interaction state = ListRow::draw(context, row, false);
-        context.getAccessibility().addPart(ImGui::GetItemID(), row, platform::AccessibilityElement::Role::Button, context.getText(item.text), (open ? platform::AccessibilityElement::Expanded : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
+        context.getAccessibility().addPart(context, ImGui::GetItemID(), row, platform::AccessibilityElement::Role::Button, context.getText(item.text), (open ? platform::AccessibilityElement::Expanded : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
 
         if (item.id == focused) {
             Widgets::focusItem(context);

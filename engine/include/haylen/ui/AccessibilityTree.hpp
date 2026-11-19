@@ -20,7 +20,7 @@ class Component;
 class Context;
 class FocusNavigator;
 
-// Builds the elements that screen readers read from the GUIs as they draw. Every component that describes itself becomes an element inside the nearest element around it, the first focus target it registers is the one its actions reach, and parts of a component that are elements of their own, such as the options of a radio group, join with their own targets. The tree keeps its elements from frame to frame, so a frame that draws what the frame before drew allocates nothing.
+// Builds the elements that screen readers read from the GUIs as they draw. Every component that describes itself becomes an element inside the nearest element around it, the first focus target it registers is the one its actions reach, and parts of a component that are elements of their own, such as the options of a radio group, join with their own targets. An element covers only the part of its node that the clip of the window shows, so what looks for an element by its place, such as touch exploration or the tap of a UI test, never finds one that a scroll area hides. A node scrolled out of sight keeps its element as a line without area on the edge of the clip toward it, which a screen reader still moves to. The tree keeps its elements from frame to frame, so a frame that draws what the frame before drew allocates nothing.
 class AccessibilityTree final {
   public:
     // Builds the elements of the frames that follow, which the UI does while the platform or the app wants them.
@@ -38,13 +38,13 @@ class AccessibilityTree final {
     void leave(const FocusNavigator& focus);
 
     // Adds an element that no focus target answers, such as a message that the navigation draws over every GUI, while the tree is enabled.
-    void addElement(std::uint64_t id, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label);
+    void addElement(const Context& context, std::uint64_t id, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label);
 
     // Adds a part of the component being drawn as an element of its own, with the focus target that its actions reach, while the tree is enabled.
-    void addPart(ImGuiID target, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label, std::uint8_t states);
+    void addPart(const Context& context, ImGuiID target, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label, std::uint8_t states);
 
     // Adds a button of the component being drawn that takes no focus, such as the grabber of a sheet or the action of a message, while the tree is enabled. A screen reader presses it through `press`, and the code that draws it hears the press from `takePress` in the next frame.
-    void addButton(ImGuiID item, const math::Rect& bounds, std::string_view label);
+    void addButton(const Context& context, ImGuiID item, const math::Rect& bounds, std::string_view label);
 
     // Presses the button of `addButton` that an element of the last frame is, and returns whether the element is one.
     bool press(std::uint64_t element) noexcept;
@@ -81,7 +81,7 @@ class AccessibilityTree final {
     };
 
     // Takes the next element of the frame, reusing the one an earlier frame kept in that place.
-    platform::AccessibilityElement& add(std::uint64_t id, const math::Rect& bounds);
+    platform::AccessibilityElement& add(const Context& context, std::uint64_t id, const math::Rect& bounds);
     [[nodiscard]] std::uint64_t getParent() const noexcept;
 
     std::vector<platform::AccessibilityElement> elements;

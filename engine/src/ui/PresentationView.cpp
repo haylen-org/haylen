@@ -100,7 +100,7 @@ void PresentationView::drawChrome(Presentation& presentation, const Presentation
         const bool clicked = ImGui::InvisibleButton("##grabber", ImGuiConverter::toImVec2(reach.getSize()));
         const ImGuiID item = ImGui::GetItemID();
         AccessibilityTree& tree = context.getAccessibility();
-        tree.addButton(item, reach, "Sheet grabber");
+        tree.addButton(context, item, reach, "Sheet grabber");
         const bool pressed = clicked || tree.takePress(item);
         if (pressed && !presentation.dragging) {
             requests.cycled = presentation.weak_from_this();

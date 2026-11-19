@@ -208,7 +208,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
 
         ImGui::PushID(button.id.c_str());
         const bool pressed = Widgets::button(context, place, text, nullptr, button.variant, false, {}, {});
-        context.getAccessibility().addPart(ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
+        context.getAccessibility().addPart(context, ImGui::GetItemID(), place, platform::AccessibilityElement::Role::Button, text, 0);
 
         if (index == count - 1 && !focused) {
             focused = true;

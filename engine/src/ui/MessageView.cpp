@@ -173,6 +173,9 @@ void MessageView::drawMessage(Message& message, const math::Rect& area) {
     ImGui::SetNextWindowSize(ImGuiConverter::toImVec2(frame.getSize()));
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * alpha);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
+
+    // The message draws its own border, so its window keeps none, and the clip of the window, which screen readers read the message within, spans the whole frame.
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
     ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
     // The messages behind the front of a deck that never opens leave every press to the front one.
     if (fade < 1.0F || going || (deck && !content.expandable && place->depth > 0)) {
@@ -185,7 +188,7 @@ void MessageView::drawMessage(Message& message, const math::Rect& area) {
         AccessibilityTree& tree = context.getAccessibility();
         if (tree.isEnabled()) {
             describe(message);
-            tree.addElement(window.ID, frame, platform::AccessibilityElement::Role::Alert, spoken);
+            tree.addElement(context, window.ID, frame, platform::AccessibilityElement::Role::Alert, spoken);
         }
 
         context.pushPlainReshape();
@@ -216,7 +219,7 @@ void MessageView::drawMessage(Message& message, const math::Rect& area) {
     }
 
     ImGui::End();
-    ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar(3);
 }
 
 // The parts of a message line up along its middle, inside the padding of the image of a theme that paints messages with one: the picture or the indicator at the start, the title over the text, then the action and the close button at the end. A message that does not fill the width is as wide as its parts within it.
@@ -359,7 +362,7 @@ void MessageView::drawParts(Message& message, const Layout& layout, math::Vec2 o
         const std::string_view action = context.getText(content.action);
         const Widgets::Interaction pressed = Widgets::interact(context, area, radius, "##action", ImGuiButtonFlags_NoNavFocus);
         const ImGuiID item = ImGui::GetItemID();
-        tree.addButton(item, area, action);
+        tree.addButton(context, item, area, action);
         if (pressed.hovered) {
             Surfaces::fill(context, area, colors.ink.withAlpha(colors.ink.a * (pressed.held ? 0.24F : 0.14F)), radius);
         }
@@ -385,7 +388,7 @@ void MessageView::drawParts(Message& message, const Layout& layout, math::Vec2 o
 
     const Widgets::Interaction pressed = Widgets::interact(context, area, area.height * 0.5F, "##close", ImGuiButtonFlags_NoNavFocus);
     const ImGuiID item = ImGui::GetItemID();
-    tree.addButton(item, area, "Close");
+    tree.addButton(context, item, area, "Close");
     if (!Widgets::closeImage(context, area, pressed)) {
         Widgets::cross(context, area.getCenter(), area.height * 0.28F, context.getMetric(Theme::Metric::StrokeWidth), colors.ink.withAlpha(colors.ink.a * (pressed.hovered ? 1.0F : 0.75F)));
     }

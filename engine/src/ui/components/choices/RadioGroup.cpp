@@ -47,7 +47,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
         const bool picked = Widgets::radio(context, option, item.id == selected, text, "##option");
-        context.getAccessibility().addPart(ImGui::GetItemID(), option, platform::AccessibilityElement::Role::RadioButton, text, (item.id == selected ? platform::AccessibilityElement::Checked : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
+        context.getAccessibility().addPart(context, ImGui::GetItemID(), option, platform::AccessibilityElement::Role::RadioButton, text, (item.id == selected ? platform::AccessibilityElement::Checked : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
 
         if (!focused.empty() && item.id == focused) {
             Widgets::focusItem(context);

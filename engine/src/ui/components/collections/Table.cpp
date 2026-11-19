@@ -210,7 +210,7 @@ void Table::addPart(Context& context, const Row& entry, const math::Rect& area) 
     }
 
     const std::uint8_t states = entry.id == selected ? platform::AccessibilityElement::Selected : 0U;
-    context.getAccessibility().addPart(ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, label, states);
+    context.getAccessibility().addPart(context, ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, label, states);
 }
 
 bool Table::describe(Context&, platform::AccessibilityElement& element) const {

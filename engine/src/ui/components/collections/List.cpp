@@ -70,14 +70,13 @@ void List::render(Context& context, const math::Rect& bounds) {
 
 // The rows of the visible part of the clip of the window, in the units of the list, which the transforms drawn in the window may scale.
 std::pair<std::size_t, std::size_t> List::findRowRange(const Context& context, const math::Rect& bounds, float height) const {
-    const Context::Reshape shape = context.getWindowReshape();
-    if (height <= 0.0F || shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
+    const std::optional<math::Rect> clip = context.getClip();
+    if (height <= 0.0F || !clip) {
         return {0, 0};
     }
 
-    const math::Rect clip = Context::Reshape{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale}.apply(ImGuiConverter::toRect(GImGui->CurrentWindow->ClipRect));
-    const float top = std::floor((clip.y - bounds.y) / height) - 1.0F;
-    const float bottom = std::ceil((clip.getBottom() - bounds.y) / height) + 1.0F;
+    const float top = std::floor((clip->y - bounds.y) / height) - 1.0F;
+    const float bottom = std::ceil((clip->getBottom() - bounds.y) / height) + 1.0F;
     const auto limit = static_cast<float>(items.size());
     return {static_cast<std::size_t>(std::clamp(top, 0.0F, limit)), static_cast<std::size_t>(std::clamp(bottom, 0.0F, limit))};
 }
@@ -90,7 +89,7 @@ void List::drawRow(Context& context, const math::Rect& bounds, float height, std
     ImGui::BeginDisabled(!item.enabled);
     const Widgets::Interaction state = ListRow::draw(context, area, item.id == selected);
     const ImGuiID row = ImGui::GetItemID();
-    context.getAccessibility().addPart(row, area, platform::AccessibilityElement::Role::Button, context.getText(item.text), (item.id == selected ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
+    context.getAccessibility().addPart(context, row, area, platform::AccessibilityElement::Role::Button, context.getText(item.text), (item.id == selected ? platform::AccessibilityElement::Selected : 0) | (item.enabled ? 0 : platform::AccessibilityElement::Disabled));
     const bool activated = GImGui->NavActivatePressedId == row;
     const bool choosing = draggable && activated && item.id != selected && !context.getFocus().getCarried();
 

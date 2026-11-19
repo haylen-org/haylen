@@ -63,7 +63,7 @@ struct AccessibilityElement {
     std::uint64_t id = 0;
     std::uint64_t parent = 0;
 
-    // Where the element lies on the screen, in framebuffer pixels from the top left corner.
+    // The part of the element that shows on the screen, in framebuffer pixels from the top left corner.
     math::Rect bounds;
     Role role = Role::Group;
     std::string label;

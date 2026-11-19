@@ -26,7 +26,7 @@ void AccessibilityTree::enter(Context& context, const Component& component, ImGu
     }
 
     const std::size_t index = count;
-    Element& element = add(node, bounds);
+    Element& element = add(context, node, bounds);
     const bool described = component.describe(context, element);
     if (!described && common.accessibilityLabel.isEmpty() && !common.accessibilityRole) {
         --count;
@@ -81,19 +81,19 @@ void AccessibilityTree::leave(const FocusNavigator& focus) {
     element.actions |= Element::Focus;
 }
 
-void AccessibilityTree::addElement(std::uint64_t id, const math::Rect& bounds, Element::Role role, std::string_view label) {
+void AccessibilityTree::addElement(const Context& context, std::uint64_t id, const math::Rect& bounds, Element::Role role, std::string_view label) {
     if (!enabled || (!levels.empty() && levels.back().hidden)) {
         return;
     }
 
-    Element& element = add(id, bounds);
+    Element& element = add(context, id, bounds);
     element.role = role;
     element.label.assign(label);
 }
 
-void AccessibilityTree::addPart(ImGuiID target, const math::Rect& bounds, Element::Role role, std::string_view label, std::uint8_t states) {
+void AccessibilityTree::addPart(const Context& context, ImGuiID target, const math::Rect& bounds, Element::Role role, std::string_view label, std::uint8_t states) {
     const std::size_t before = count;
-    addElement(target, bounds, role, label);
+    addElement(context, target, bounds, role, label);
     if (count == before) {
         return;
     }
@@ -106,9 +106,9 @@ void AccessibilityTree::addPart(ImGuiID target, const math::Rect& bounds, Elemen
     }
 }
 
-void AccessibilityTree::addButton(ImGuiID item, const math::Rect& bounds, std::string_view label) {
+void AccessibilityTree::addButton(const Context& context, ImGuiID item, const math::Rect& bounds, std::string_view label) {
     const std::size_t before = count;
-    addElement(item, bounds, Element::Role::Button, label);
+    addElement(context, item, bounds, Element::Role::Button, label);
     if (count == before) {
         return;
     }
@@ -185,17 +185,21 @@ std::optional<ImGuiID> AccessibilityTree::findTarget(std::uint64_t element) cons
     return std::nullopt;
 }
 
-Element& AccessibilityTree::add(std::uint64_t id, const math::Rect& bounds) {
+// The bounds clamp into the clip of the window, which keeps the part that shows and turns bounds wholly outside it into a line on its nearest edge. Nodes that the transforms of the window scale to nothing show nowhere, so their element has no area.
+Element& AccessibilityTree::add(const Context& context, std::uint64_t id, const math::Rect& bounds) {
     if (count == elements.size()) {
         elements.emplace_back();
         targets.push_back(0);
         buttons.push_back(0);
     }
 
+    const std::optional<math::Rect> clip = context.getClip();
+    const math::Rect shown = clip ? math::Rect::fromMinMax(clip->clamp(bounds.getMin()), clip->clamp(bounds.getMax())) : math::Rect{bounds.getCenter().x, bounds.getCenter().y, 0.0F, 0.0F};
+
     Element& element = elements[count];
     element.id = id;
     element.parent = getParent();
-    element.bounds = bounds;
+    element.bounds = shown;
     element.role = Element::Role::Group;
     element.label.clear();
     element.value.clear();

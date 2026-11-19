@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/math/Rect.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/headless/HeadlessHost.hpp"
@@ -201,6 +202,50 @@ TEST_F(AccessibilityTreeTest, PerformsTheActionsOfScreenReadersAndFollowsTheFocu
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.lua("accessibility.perform(1, 'shake')").find("The accessibility action \"shake\" is unknown."), std::string::npos);
+}
+
+// Elements cover only what their scroll area shows, so a touch or a tap that looks for a row by its place never lands on the button above the area, while the rows out of sight stay in the tree and come into view when a screen reader moves to them.
+TEST_F(AccessibilityTreeTest, CoversOnlyWhatTheScrollAreaShows) {
+    // clang-format off
+    fixture.runLua(R"(
+        local rows = {}
+        for index = 1, 10 do
+            rows[index] = ui.button{id = 'row' .. index, text = 'Row ' .. index, height = 40}
+        end
+        gui = ui.mount(ui.column{gap = 0,
+            ui.button{text = 'Search', height = 40},
+            ui.scroll{id = 'list', height = 100, ui.column{gap = 0, children = rows}},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(3);
+    fixture.runLua("gui:command('list', 'scrollTo', {offset = 60, animated = false})");
+    fixture.frames(3);
+
+    // The area shows the bottom half of the second row, the third and fourth rows whole, and nothing of the first and the last rows, which lie on its edges.
+    const math::Rect search = get("Search").bounds;
+    const math::Rect first = get("Row 1").bounds;
+    const math::Rect second = get("Row 2").bounds;
+    const math::Rect third = get("Row 3").bounds;
+    const math::Rect fourth = get("Row 4").bounds;
+    const math::Rect last = get("Row 10").bounds;
+    EXPECT_FLOAT_EQ(first.height, 0.0F);
+    EXPECT_FLOAT_EQ(first.y, second.y);
+    EXPECT_GE(first.y, search.getBottom());
+    EXPECT_FLOAT_EQ(second.height * 2.0F, third.height);
+    EXPECT_FLOAT_EQ(second.getBottom(), third.y);
+    EXPECT_FLOAT_EQ(fourth.height, third.height);
+    EXPECT_FLOAT_EQ(last.height, 0.0F);
+    EXPECT_FLOAT_EQ(last.y, fourth.getBottom());
+    EXPECT_TRUE(search.intersection(first).isEmpty());
+    EXPECT_EQ(get("Row 1").actions, Element::Focus | Element::Activate);
+
+    // A screen reader that moves to the first row focuses it, and the focus scrolls it into view.
+    platform::AccessibilityRelay::perform({.element = get("Row 1").id, .action = Element::Focus});
+    fixture.frames(30);
+    EXPECT_EQ(fixture.lua("return ui.focused().id"), "row1");
+    EXPECT_FLOAT_EQ(get("Row 1").bounds.height, third.height);
+    EXPECT_FLOAT_EQ(get("Row 1").bounds.y, search.getBottom());
 }
 
 // A modal presentation hides the GUIs under it from screen readers, which reach its screen, the messages above it, the grabber of its sheet and the action of a message, though neither takes the focus.

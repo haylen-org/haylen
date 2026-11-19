@@ -164,7 +164,7 @@ void Tree::addPart(Context& context, const ChoiceItem& item, const math::Rect& a
         states |= platform::AccessibilityElement::Expanded;
     }
 
-    context.getAccessibility().addPart(ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, context.getText(item.text), states);
+    context.getAccessibility().addPart(context, ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, context.getText(item.text), states);
 }
 
 bool Tree::describe(Context&, platform::AccessibilityElement& element) const {
