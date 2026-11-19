@@ -32,6 +32,8 @@ Terrain.hills = {scale = 110, persistence = 0.3, octaves = 2, height = 140}
 Terrain.caves = {{-560, 250, 46}, {90, 310, 58}, {600, 270, 40}}
 -- The earth behind the ground is the same soil in the shade.
 Terrain.shade = '#FF8C6E5E'
+-- The dark rim along the walls of every cave and crater, the outline color of the art, so a hole reads as a hole in the ground.
+Terrain.rim = '#FF1E1B33'
 Terrain.white = '#FFFFFFFF'
 
 function Terrain:enter()
@@ -138,6 +140,7 @@ function Terrain:rebuild()
     self.rebuilt = self.rebuilt + rebuilt
     self.ground = self.terrain:outlines()
     self:growGrass()
+    self:traceRims()
     return rebuilt
 end
 
@@ -207,6 +210,52 @@ function Terrain:growGrass()
     end
 end
 
+-- Returns whether the sample nearest to a point of the world is air. Above the grid is air, and past its other edges is ground, which needs no rim.
+function Terrain:isAir(x, y)
+    local column = math.floor((x - Terrain.origin.x) / Terrain.cellSize + 0.5)
+    local row = math.floor((y - Terrain.origin.y) / Terrain.cellSize + 0.5)
+    if row < 0 then
+        return true
+    end
+    if column < 0 or column >= Terrain.columns or row >= Terrain.rows then
+        return false
+    end
+    return self.terrain:sample(column, row) < 0.5
+end
+
+-- Returns whether the edge from `a` to `b` of a solid outline is a wall that a bomb, the shovel or a cave carved: it is no lawn, and air lies on one of its sides. The edges where the outlines of two chunks meet have ground on both sides.
+function Terrain:isWall(a, b)
+    if self:isLawn(a, b) then
+        return false
+    end
+    local length = math.max(1e-6, math.sqrt((b.x - a.x) ^ 2 + (b.y - a.y) ^ 2))
+    local reach = Terrain.cellSize * 1.5
+    local normalX, normalY = -(b.y - a.y) / length * reach, (b.x - a.x) / length * reach
+    local middleX, middleY = (a.x + b.x) / 2, (a.y + b.y) / 2
+    return self:isAir(middleX + normalX, middleY + normalY) or self:isAir(middleX - normalX, middleY - normalY)
+end
+
+-- Keeps one path of the walls of every cave, crater and tunnel along the solid outlines.
+function Terrain:traceRims()
+    self.rims = self.rims or graphics2d.newPath()
+    self.rims:clear()
+    for _, outline in ipairs(self.ground) do
+        local count = #outline
+        local drawing = false
+        for index = 1, count do
+            local a, b = outline[index], outline[index % count + 1]
+            local wall = self:isWall(a, b)
+            if wall and not drawing then
+                self.rims:moveTo(a.x, a.y)
+            end
+            if wall then
+                self.rims:lineTo(b.x, b.y)
+            end
+            drawing = wall
+        end
+    end
+end
+
 function Terrain:update(dt)
     Terrain.super.update(self, dt)
     if input.pressed('reset') then
@@ -235,6 +284,7 @@ function Terrain:draw(area)
     Scenery.drawPattern('soil', nil, 0)
     Scenery.drawLayers(self.layers, 1)
     graphics2d.popMask()
+    self.rims:stroke(0, 0, {width = 4 * Look.pixel, color = Terrain.rim, join = 'round', cap = 'round', layer = 2})
     graphics2d.pushMask(self.drawGrassMask, self.grassMask)
     for _, lawn in ipairs(self.lawns) do
         Scenery.drawGrass(lawn, 0)
