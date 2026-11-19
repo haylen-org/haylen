@@ -124,6 +124,14 @@ class AndroidProjectTest:
         assert json.loads(lua_parts[1]) == {"plugins": [{"id": "kit", "version": "1.0.0", "parameters": {"scheme": "game"}}]}
         assert '            "kitScheme" to "game",' in lua_parts[2]
 
+    def test_an_app_without_plugins_declares_only_the_normal_permissions_of_the_engine(self, tmp_path):
+        fixture = AndroidFixture(tmp_path)
+        manifest = (fixture.prepare(fixture.resolve(fixture.app({}))).project / "app" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
+
+        assert re.findall(r'<uses-permission android:name="([^"]+)"', manifest) == ["android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE"]
+        assert "<service" not in manifest
+        assert "<receiver" not in manifest
+
     def test_the_module_of_a_plugin_reaches_the_modules_of_the_plugins_it_depends_on(self, tmp_path):
         fixture = AndroidFixture(tmp_path)
         app = fixture.app({"plugins": {"camera": {}, "permissions": {}, "theme": {}}})

@@ -56,16 +56,6 @@ class AndroidVideoDecoder final : public VideoDecoder {
     // The `COLOR_FormatYUV420Flexible` of `MediaCodecInfo.CodecCapabilities`, which the NDK does not name.
     static constexpr std::int32_t kFlexibleYuv = 0x7F420888;
 
-    // The media data source and the extractor that reads from it came with Android 9, after the oldest version the engine runs on, so the decoder finds them in `libmediandk.so` when the first video opens.
-    static AMediaDataSource* (*newSource)();
-    static void (*setSourceData)(AMediaDataSource* source, void* data);
-    static void (*setSourceReadAt)(AMediaDataSource* source, AMediaDataSourceReadAt callback);
-    static void (*setSourceGetSize)(AMediaDataSource* source, AMediaDataSourceGetSize callback);
-    static void (*setSourceClose)(AMediaDataSource* source, AMediaDataSourceClose callback);
-    static void (*deleteSource)(AMediaDataSource* source);
-    static media_status_t (*setExtractorSource)(AMediaExtractor* extractor, AMediaDataSource* source);
-    [[nodiscard]] static bool load() noexcept;
-
     static ssize_t readAt(void* data, off64_t offset, void* buffer, size_t size);
     static ssize_t getSize(void* data);
     static void close(void* data);
@@ -74,6 +64,9 @@ class AndroidVideoDecoder final : public VideoDecoder {
 
     // Opens the extractor of the first track whose MIME type starts with the prefix, and returns its format, or null without one.
     [[nodiscard]] AMediaFormat* openTrack(Track& track, std::string_view prefix);
+
+    // Reads the track through a media data source over the package, which came with Android 9.
+    void attachSource(Track& track) __attribute__((availability(android, introduced = 28)));
     // Starts the codec of a track with its format, which it deletes.
     void startCodec(Track& track, AMediaFormat* format, bool picture);
     void feed(Track& track);

@@ -1,3 +1,4 @@
+import json
 import plistlib
 import re
 from pathlib import Path
@@ -10,6 +11,7 @@ from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.repository import Repository
 from haylen.native.engine_sdk_tree import EngineSdkTree
 from haylen.platforms.apple.apple_engine_port import AppleEnginePort
+from haylen.platforms.apple.apple_framework_check import AppleFrameworkCheck
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
 from haylen.platforms.apple.apple_targets import AppleTargets
 from haylen.platforms.sdk_join_request import SdkJoinRequest
@@ -30,6 +32,7 @@ class AppleEnginePortTest:
         monkeypatch.setattr(EngineSdkTree, "is_current", lambda tree: True)
         recorded = RecordedCommands(tmp_path)
         recorded.context.process.run = lambda command, **options: self.run(recorded, [str(part) for part in command])
+        monkeypatch.setattr(AppleFrameworkCheck, "check", lambda check, library, sdk, frameworks: recorded.commands.append(["check", sdk, *frameworks]))
         return AppleEnginePort(recorded.context), recorded
 
     def run(self, recorded: RecordedCommands, command: list[str]) -> None:
@@ -40,9 +43,12 @@ class AppleEnginePortTest:
             if command[command.index("--component") + 1] == "haylen-sdk":
                 (prefix / "include" / "haylen").mkdir(parents=True)
                 return
-            for name in ("lib/libhaylen.a", "lib/libhaylen-player.a", "lib/cmake/haylen/haylen-config.cmake", f"share/haylen/{AppleSdkFiles.SETTINGS_NAME}"):
+            for name in ("lib/libhaylen.a", "lib/libhaylen-player.a", "lib/cmake/haylen/haylen-config.cmake"):
                 (prefix / name).parent.mkdir(parents=True, exist_ok=True)
                 (prefix / name).write_text(name, encoding="utf-8")
+            frameworks = {platform: [f"{platform}Kit.framework"] for platform in ("iOS", "macCatalyst", "tvOS", "visionOS", "macOS")}
+            (prefix / "share" / "haylen").mkdir(parents=True, exist_ok=True)
+            (prefix / "share" / "haylen" / AppleSdkFiles.SETTINGS_NAME).write_text(json.dumps({"frameworks": frameworks}), encoding="utf-8")
         elif command[0] == "lipo":
             Path(command[-1]).parent.mkdir(parents=True, exist_ok=True)
             Path(command[-1]).write_text("joined", encoding="utf-8")
@@ -66,6 +72,11 @@ class AppleEnginePortTest:
 
     def request(self, tmp_path: Path, targets: tuple[str, ...], folder: str = "sdk") -> SdkRequest:
         return SdkRequest(targets, Configuration.RELEASE, ("arm64",), ToolingFixture.REVISION, tmp_path / folder)
+
+    def test_every_built_slice_checks_the_system_frameworks_of_its_platform(self, port, tmp_path):
+        engine_port, recorded = port
+        engine_port.build_sdk(self.request(tmp_path, ("macos", "ios-simulator")))
+        assert [command for command in recorded.commands if command[0] == "check"] == [["check", "macosx", "macOSKit.framework"], ["check", "iphonesimulator", "iOSKit.framework"]]
 
     def test_the_sdk_holds_both_frameworks_and_a_slice_per_system_and_environment(self, port, tmp_path):
         engine_port, recorded = port

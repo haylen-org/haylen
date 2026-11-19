@@ -1,6 +1,5 @@
 #include "platform/android/AndroidVideoDecoder.hpp"
 
-#include <dlfcn.h>
 #include <media/NdkImage.h>
 #include <media/NdkMediaFormat.h>
 
@@ -15,34 +14,13 @@
 
 namespace haylen::platform {
 
-AMediaDataSource* (*AndroidVideoDecoder::newSource)() = nullptr;
-void (*AndroidVideoDecoder::setSourceData)(AMediaDataSource*, void*) = nullptr;
-void (*AndroidVideoDecoder::setSourceReadAt)(AMediaDataSource*, AMediaDataSourceReadAt) = nullptr;
-void (*AndroidVideoDecoder::setSourceGetSize)(AMediaDataSource*, AMediaDataSourceGetSize) = nullptr;
-void (*AndroidVideoDecoder::setSourceClose)(AMediaDataSource*, AMediaDataSourceClose) = nullptr;
-void (*AndroidVideoDecoder::deleteSource)(AMediaDataSource*) = nullptr;
-media_status_t (*AndroidVideoDecoder::setExtractorSource)(AMediaExtractor*, AMediaDataSource*) = nullptr;
-
+// The media data source and the extractor that reads from it came with Android 9, after the oldest version the engine runs on, so the engine links them weakly and opens videos only where the system has them.
 bool AndroidVideoDecoder::isAvailable() noexcept {
-    static const bool available = load();
-    return available;
-}
-
-// The library stays loaded for the process, like the functions it hands out.
-bool AndroidVideoDecoder::load() noexcept {
-    void* library = dlopen("libmediandk.so", RTLD_NOW | RTLD_LOCAL);
-    if (library == nullptr) {
-        return false;
+    if (__builtin_available(android 28, *)) {
+        return true;
     }
 
-    newSource = reinterpret_cast<decltype(newSource)>(dlsym(library, "AMediaDataSource_new"));
-    setSourceData = reinterpret_cast<decltype(setSourceData)>(dlsym(library, "AMediaDataSource_setUserdata"));
-    setSourceReadAt = reinterpret_cast<decltype(setSourceReadAt)>(dlsym(library, "AMediaDataSource_setReadAt"));
-    setSourceGetSize = reinterpret_cast<decltype(setSourceGetSize)>(dlsym(library, "AMediaDataSource_setGetSize"));
-    setSourceClose = reinterpret_cast<decltype(setSourceClose)>(dlsym(library, "AMediaDataSource_setClose"));
-    deleteSource = reinterpret_cast<decltype(deleteSource)>(dlsym(library, "AMediaDataSource_delete"));
-    setExtractorSource = reinterpret_cast<decltype(setExtractorSource)>(dlsym(library, "AMediaExtractor_setDataSourceCustom"));
-    return newSource != nullptr && setSourceData != nullptr && setSourceReadAt != nullptr && setSourceGetSize != nullptr && setSourceClose != nullptr && deleteSource != nullptr && setExtractorSource != nullptr;
+    return false;
 }
 
 // A failure on the way releases what opened before it, since the destructor of a decoder that never opened does not run.
@@ -121,15 +99,24 @@ ssize_t AndroidVideoDecoder::getSize(void* data) {
 
 void AndroidVideoDecoder::close(void*) {}
 
-AMediaFormat* AndroidVideoDecoder::openTrack(Track& track, std::string_view prefix) {
-    track.source = newSource();
-    setSourceData(track.source, this);
-    setSourceReadAt(track.source, &readAt);
-    setSourceGetSize(track.source, &getSize);
-    setSourceClose(track.source, &close);
+void AndroidVideoDecoder::attachSource(Track& track) {
+    track.source = AMediaDataSource_new();
+    AMediaDataSource_setUserdata(track.source, this);
+    AMediaDataSource_setReadAt(track.source, &readAt);
+    AMediaDataSource_setGetSize(track.source, &getSize);
+    AMediaDataSource_setClose(track.source, &close);
     track.extractor = AMediaExtractor_new();
-    if (setExtractorSource(track.extractor, track.source) != AMEDIA_OK) {
+    if (AMediaExtractor_setDataSourceCustom(track.extractor, track.source) != AMEDIA_OK) {
         throw std::runtime_error("The video \"" + path + "\" is no file that this platform plays.");
+    }
+}
+
+// The services open a decoder only where `isAvailable` holds, and the guard tells the compiler so for the functions of Android 9.
+AMediaFormat* AndroidVideoDecoder::openTrack(Track& track, std::string_view prefix) {
+    if (__builtin_available(android 28, *)) {
+        attachSource(track);
+    } else {
+        throw std::runtime_error("The video \"" + path + "\" needs Android 9 or later, whose media data source the decoder reads the package through.");
     }
 
     const std::size_t count = AMediaExtractor_getTrackCount(track.extractor);
@@ -388,10 +375,15 @@ void AndroidVideoDecoder::release(Track& track) noexcept {
         track.extractor = nullptr;
     }
 
-    if (track.source != nullptr) {
-        deleteSource(track.source);
-        track.source = nullptr;
+    if (track.source == nullptr) {
+        return;
     }
+
+    if (__builtin_available(android 28, *)) {
+        AMediaDataSource_delete(track.source);
+    }
+
+    track.source = nullptr;
 }
 
 } // namespace haylen::platform

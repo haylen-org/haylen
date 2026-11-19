@@ -735,6 +735,36 @@ When the system ends the app with `SIGTERM`, such as when the Simulator quits wh
 
 The bridge handlers of an app register before `main` runs, when their classes load, such as `AppBridgeLoader` of the starter app, which calls `[AppBridge registerHandlers]` in `+load`. Native plugins register theirs through their context, as the [plugin guide](../platform/plugins.md#the-apple-part) describes. Plain macOS executables of CMake projects, and the macOS desktop player, get the same `main` from `engine/src/platform/apple/AppleMain.cpp`.
 
+### The system libraries of the engine
+
+The engine links only the frameworks and the libraries of the system that every app needs to run, which `haylen_link_runtime_platform` of `engine/cmake/haylen-app.cmake` gives the runtime, CMake apps and the settings `haylen-apple.json` of the Apple SDK. A capability that only some apps use, such as the camera, notifications or the controls of what plays, brings its frameworks with the plugin that serves it. The build of every slice of the Apple SDK checks with `nm` that each framework of its list gives the merged `libhaylen.a` at least one symbol that the library leaves undefined, from the stubs of the framework in the SDK of Xcode, and fails with the frameworks that give none, so no framework stays linked once the code that used it leaves.
+
+| Framework or library | Platforms | Why the engine links it |
+| --- | --- | --- |
+| `Cocoa` | macOS | The windows, the menus and the views of AppKit with Foundation. |
+| `Foundation`, `UIKit` | iOS, iPadOS, Mac Catalyst, tvOS, visionOS | The application, the scenes, the views and the strings of the system. |
+| `Carbon` | macOS | The keyboard layouts that SDL reads. |
+| `CoreFoundation`, `CoreGraphics` | macOS, and `CoreGraphics` on every Apple platform | The displays, the geometry and the collections of the system. |
+| `CoreText` | Every Apple platform | The fonts of the system that text falls back on. |
+| `QuartzCore`, `Metal` | Every Apple platform | The Metal layer of the window, the display link and the GPU device of Metal. |
+| `GameController` | Every Apple platform | Gamepads, the keyboards and mice of iPads and TV remotes. |
+| `CoreHaptics`, `ForceFeedback` | macOS | The rumble of gamepads, through GameController and SDL. |
+| `AVFoundation`, `AudioToolbox`, `CoreMedia`, `CoreVideo` | Every Apple platform | The audio session, the audio output and the decoding of videos. |
+| `CoreAudio` | macOS | The audio devices of the Mac. |
+| `Network` | Every Apple platform | The state of the network. |
+| `IOKit` | macOS, Mac Catalyst | The battery and the devices of HID that SDL reads. |
+| `UniformTypeIdentifiers` | Every Apple platform | The type of a video file that AVFoundation opens. |
+| `shell32`, `shcore`, `shlwapi`, `ole32`, `oleaut32`, `advapi32`, `uuid` | Windows | The shell, the DPI awareness, COM and the registry that the runtime uses. |
+| `dwrite` | Windows | The fonts of the system. |
+| `mfplat`, `mfreadwrite`, `mfuuid` | Windows | The decoding of videos through Media Foundation. |
+| `uiautomationcore` | Windows | The accessibility of the UI for screen readers. |
+| `android`, `log` | Android | The native activity, the window, the assets and the log. |
+| `EGL` | Android | The context of OpenGL ES. |
+| `jnigraphics` | Android | The pixels of the bitmaps of the video streams of plugins. |
+| `mediandk` | Android | The decoding of videos, whose functions of Android 9 the decoder references weakly behind a check of the version, so apps run on Android 8.1 without videos. |
+
+On Linux the runtime links no library of the desktop and opens `libgio-2.0.so.0` and `libfontconfig.so.1` while it runs, where the system has them, as the libraries that SDL and miniaudio open.
+
 ### The Android libraries
 
 The folder `engine/platform/android` is a Gradle project with five modules. The module `haylen` is the Android library (AAR) with the namespace `dev.haylen`. It holds:

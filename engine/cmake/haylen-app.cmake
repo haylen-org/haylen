@@ -4,8 +4,8 @@
 
 # The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple SDK publishes them in haylen-apple.json, from which the Xcode projects of apps link them.
 # Every Apple platform finds the fonts of the system through CoreText, Mac Catalyst reads the battery of the Mac from the power sources of IOKit, every Apple platform decodes videos with AVFoundation and CoreMedia, and SDL reads the keyboard layouts of macOS through Carbon and its controllers through IOKit, GameController, CoreHaptics and ForceFeedback.
-set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreFoundation CoreGraphics CoreText QuartzCore Metal MetalKit GameController CoreHaptics ForceFeedback AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
-set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics CoreText QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo UniformTypeIdentifiers)
+set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreFoundation CoreGraphics CoreText QuartzCore Metal GameController CoreHaptics ForceFeedback AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
+set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics CoreText QuartzCore Metal GameController AVFoundation AudioToolbox CoreMedia Network CoreVideo UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
 set(HAYLEN_APPLE_FRAMEWORKS_VISIONOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
@@ -27,7 +27,7 @@ function(haylen_link_runtime_platform target scope)
   elseif(HAYLEN_PLATFORM STREQUAL "windows")
     target_link_libraries(${target} ${scope} shell32 shcore shlwapi ole32 oleaut32 advapi32 uuid dwrite mfplat mfreadwrite mfuuid uiautomationcore)
   elseif(HAYLEN_PLATFORM STREQUAL "android")
-    # The context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`.
+    # The context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`, whose functions of Android 9 the runtime references weakly behind checks of the version, as `__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__` makes the headers of the NDK declare them.
     target_link_libraries(${target} ${scope} android log EGL jnigraphics mediandk)
     # Java finds the native sides of GameActivity and of the runtime through JNI entries that nothing in the library references, so every library that links the runtime takes the entry of GameActivity and `JNI_OnLoad`, whose file holds every JNI entry of the runtime.
     target_link_options(${target} INTERFACE "LINKER:-u,Java_com_google_androidgamesdk_GameActivity_initializeNativeCode" "LINKER:-u,JNI_OnLoad")

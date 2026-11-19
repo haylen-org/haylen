@@ -1,3 +1,4 @@
+import json
 import plistlib
 import shutil
 from pathlib import Path
@@ -11,6 +12,7 @@ from haylen.core.host import Host
 from haylen.core.repository import Repository
 from haylen.native.cmake_tree import CMakeTree
 from haylen.native.engine_sdk_tree import EngineSdkTree
+from haylen.platforms.apple.apple_framework_check import AppleFrameworkCheck
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
 from haylen.platforms.apple.apple_target import AppleTarget
 from haylen.platforms.apple.apple_targets import AppleTargets
@@ -64,6 +66,7 @@ class AppleEnginePort(EnginePort):
             component = component or components[0]
             joined = Repository.ENGINE_BUILDS / f"apple-{target.slice}-{configuration.lower()}"
             library = self.join([path / "lib" / AppleSdkFiles.LIBRARY_NAME for path in components], joined / AppleSdkFiles.LIBRARY_NAME)
+            self.check_frameworks(target, library, components[0])
             player = self.join([path / "lib" / AppleSdkFiles.PLAYER_LIBRARY_NAME for path in components], joined / AppleSdkFiles.PLAYER_LIBRARY_NAME)
             built[target.slice] = (target, library, player)
         if component is None:
@@ -196,6 +199,12 @@ class AppleEnginePort(EnginePort):
         Folders.remove(installed)
         tree.tree.install(AppleEnginePort.FRAMEWORK_COMPONENT, installed, configuration)
         return installed
+
+    def check_frameworks(self, target: AppleTarget, library: Path, component: Path) -> None:
+        """Checks that the merged library of a slice uses every system framework that the settings of the slice list for its platform."""
+        settings = json.loads((component / "share" / "haylen" / AppleSdkFiles.SETTINGS_NAME).read_text(encoding="utf-8"))
+        self.context.terminal.step(f'Checking the system frameworks of the slice "{target.slice}"')
+        AppleFrameworkCheck(self.context).check(library, target.sdk, settings["frameworks"][target.frameworks])
 
     def install_headers(self, tree: Path, configuration: str) -> Path:
         """Installs the SDK component of an engine tree beside it, whose headers, the same in every slice, go into the frameworks and the SDK folder."""
