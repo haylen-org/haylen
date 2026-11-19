@@ -291,11 +291,11 @@ int ModuleGraph::require(lua_State* L) {
     return 2;
 }
 
-// Asks every searcher of `package.searchers` in order and raises an error that lists what each searcher reported when none finds the module.
+// Asks every searcher of `package.searchers` in order and raises the error of the `require` of Lua, which lists what each searcher reported, when none finds the module, so a missing module reads the same in development and in a shipped app.
 void ModuleGraph::findLoader(lua_State* L, const char* name) {
     lua_getfield(L, 2, "package");
     if (lua_type(L, -1) != LUA_TTABLE || lua_getfield(L, -1, "searchers") != LUA_TTABLE) {
-        luaL_error(L, "The field \"package.searchers\" must be a table.");
+        luaL_error(L, "'package.searchers' must be a table");
     }
 
     const int searchers = lua_gettop(L);
@@ -307,7 +307,7 @@ void ModuleGraph::findLoader(lua_State* L, const char* name) {
             lua_pop(L, 1);
             luaL_buffsub(&message, 2);
             luaL_pushresult(&message);
-            luaL_error(L, "The module \"%s\" was not found.%s", name, lua_tostring(L, -1));
+            luaL_error(L, "module '%s' not found:%s", name, lua_tostring(L, -1));
         }
 
         lua_pushstring(L, name);

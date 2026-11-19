@@ -1057,9 +1057,14 @@ table.insert(package.searchers, 1, function(name)
     end
 end)
 )"}});
-    EXPECT_NE(lua("require('missing')").find("The module \"missing\" was not found."), std::string::npos);
+    const std::string missing = "local ok, message = pcall(require, 'missing') return message";
+    EXPECT_EQ(lua(missing), "module 'missing' not found:\n\tno field package.preload['missing']\n\tno file 'source/missing.lua' or 'source/missing/init.lua' in the app package");
     EXPECT_EQ(lua("local ok, message = pcall(require, 'ghost') return tostring(ok) .. ' ' .. message .. ' ' .. tostring(package.loaded.ghost)"), "false The package file \"test/source/ghost.lua\" was not found. nil");
-    EXPECT_EQ(lua("local searchers = package.searchers package.searchers = nil local ok, message = pcall(require, 'missing') package.searchers = searchers return message"), "The field \"package.searchers\" must be a table.");
+    EXPECT_EQ(lua("local searchers = package.searchers package.searchers = nil local ok, message = pcall(require, 'missing') package.searchers = searchers return message"), "'package.searchers' must be a table");
+
+    fixture.reset();
+    test::EngineFixture shipped({{"source/main.lua", ""}});
+    EXPECT_EQ(shipped.lua(missing), "module 'missing' not found:\n\tno field package.preload['missing']\n\tno file 'source/missing.lua' or 'source/missing/init.lua' in the app package");
 }
 
 TEST_F(ModuleReloadTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
