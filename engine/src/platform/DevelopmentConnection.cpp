@@ -186,13 +186,13 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
     }
 }
 
-// The developer types a line of the console on the machine that runs the development server, and the result goes back with the identifier of the line.
+// The developer types a line of the console on the machine that runs the development server, and the result goes back with the identifier of the line. The output of a command of the app may hold bytes that are not UTF-8, which the server receives replaced.
 void DevelopmentConnection::submitLine(const core::Json& message) {
     core::Json id = message.contains("id") ? message.at("id") : core::Json();
     // clang-format off
     ConsoleRelay::submit(readText(message, "line"), [this, id = std::move(id)](const debug::Console::Result& result) {
         if (socket->getState() == net::WebSocket::State::Open) {
-            socket->send(core::Json{{"type", "consoleResult"}, {"id", id}, {"ok", result.ok}, {"output", result.output}}.dump());
+            socket->send(core::Json{{"type", "consoleResult"}, {"id", id}, {"ok", result.ok}, {"output", result.output}}.dump(-1, ' ', false, core::Json::error_handler_t::replace));
         }
     }, this);
     // clang-format on
@@ -203,7 +203,7 @@ void DevelopmentConnection::listCommands() {
     // clang-format off
     ConsoleRelay::requestCommands([this](const core::Json& commands) {
         if (socket->getState() == net::WebSocket::State::Open) {
-            socket->send(core::Json{{"type", "consoleCommands"}, {"commands", commands}}.dump());
+            socket->send(core::Json{{"type", "consoleCommands"}, {"commands", commands}}.dump(-1, ' ', false, core::Json::error_handler_t::replace));
         }
     }, this);
     // clang-format on

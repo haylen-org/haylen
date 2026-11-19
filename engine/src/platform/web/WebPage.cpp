@@ -273,8 +273,9 @@ void WebPage::finishFrame() {
     }
 }
 
+// A result may hold text of the app that is not UTF-8, such as the output of a console line or a value of the inspector, whose wrong bytes the page receives replaced.
 void WebPage::completeRequest(double request, bool ok, const core::Json& result) {
-    haylen_js_complete_request(request, ok ? 1 : 0, result.dump().c_str());
+    haylen_js_complete_request(request, ok ? 1 : 0, result.dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str());
 }
 
 const char* WebPage::getLastError() noexcept {

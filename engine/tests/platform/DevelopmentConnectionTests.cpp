@@ -87,7 +87,7 @@ class PushingServer final {
       private:
         // Messages of the wrong shape come first, and the app drops them without stopping.
         static void push(Poco::Net::WebSocket& socket) {
-            for (const std::string console : {R"({"type": "console", "id": 1, "line": "help"})", R"({"type": "consoleCommands"})"}) {
+            for (const std::string console : {R"({"type": "console", "id": 1, "line": "help"})", R"({"type": "console", "id": 2, "line": "lua '\\255'"})", R"({"type": "consoleCommands"})"}) {
                 socket.sendFrame(console.data(), static_cast<int>(console.size()), Poco::Net::WebSocket::FRAME_TEXT);
             }
 
@@ -159,6 +159,13 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     const auto report = std::ranges::find_if(messages, [](const core::Json& message) { return message.at("type") == "report"; });
     EXPECT_EQ(report->at("revision"), 1);
     EXPECT_EQ(report->at("modules"), core::Json::array({"source/counter.lua"}));
+
+    // A console result that holds bytes that are not UTF-8, such as a Lua string of raw bytes, reaches the server as valid JSON with each wrong byte replaced.
+    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; }); }));
+    const std::vector<core::Json> results = server.getMessages();
+    const auto bytes = std::ranges::find_if(results, [](const core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; });
+    EXPECT_TRUE(bytes->at("ok").get<bool>());
+    EXPECT_NE(bytes->at("output").get<std::string>().find("\xEF\xBF\xBD"), std::string::npos);
 
     // The restart that the server asks for restarts the app, which tells the server why.
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().isRestartRequested(); }));
