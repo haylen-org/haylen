@@ -11,7 +11,7 @@ layout(binding=0) uniform metaball_vs_params {
 
 in vec2 corner;
 out vec2 field_uv;
-out float haylen_output_premultiply;
+flat out float haylen_output_premultiply;
 out vec2 haylen_output_point;
 
 void main() {

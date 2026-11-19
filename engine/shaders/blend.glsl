@@ -13,7 +13,7 @@ layout(binding=0) uniform blend_vs_params {
 
 in vec2 corner;
 out vec2 uv;
-out float haylen_output_premultiply;
+flat out float haylen_output_premultiply;
 out vec2 haylen_output_point;
 
 void main() {

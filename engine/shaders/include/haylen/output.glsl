@@ -33,7 +33,7 @@ float haylen_fade() {
 // Writes the result of a fragment shader, which a shape fades by how much of the pixel it covers and every draw by its fade. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
 @block haylen_output
 @include_block haylen_draw
-in float haylen_output_premultiply;
+flat in float haylen_output_premultiply;
 
 vec3 haylen_output_color(vec4 result) {
     return result.rgb * mix(1.0, result.a, haylen_output_premultiply);

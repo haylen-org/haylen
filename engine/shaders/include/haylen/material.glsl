@@ -40,24 +40,29 @@ in float instance_texture;
 #endif
 #endif
 
+// The values of an instance hold across its quad, so they reach the fragment stage flat, without the work of interpolating them, while the vertices of a mesh each have their own color.
 out vec2 uv;
+#ifdef HAYLEN_MESH
 out vec4 color;
-out vec4 haylen_flash;
-out vec3 haylen_text_style;
-out vec2 haylen_transform;
-out vec4 haylen_source;
-out vec4 haylen_data;
+#else
+flat out vec4 color;
+#endif
+flat out vec4 haylen_flash;
+flat out vec3 haylen_text_style;
+flat out vec2 haylen_transform;
+flat out vec4 haylen_source;
+flat out vec4 haylen_data;
 #ifdef HAYLEN_BATCH
-out float haylen_texture_index;
+flat out float haylen_texture_index;
 #endif
 #ifdef HAYLEN_SHAPE
 out vec4 haylen_shape_frame;
 out vec4 haylen_shape_sector_point;
-out vec4 haylen_shape_form;
-out vec4 haylen_shape_radii;
-out vec4 haylen_shape_border;
+flat out vec4 haylen_shape_form;
+flat out vec4 haylen_shape_radii;
+flat out vec4 haylen_shape_border;
 #endif
-out float haylen_output_premultiply;
+flat out float haylen_output_premultiply;
 out vec2 haylen_output_point;
 
 // Decodes a two's complement byte of the instance parameters.
@@ -189,22 +194,26 @@ layout(binding=31) uniform texture2D sprite_texture_7;
 #endif
 
 in vec2 uv;
+#ifdef HAYLEN_MESH
 in vec4 color;
-in vec4 haylen_flash;
-in vec3 haylen_text_style;
-in vec2 haylen_transform;
-in vec4 haylen_source;
-in vec4 haylen_data;
+#else
+flat in vec4 color;
+#endif
+flat in vec4 haylen_flash;
+flat in vec3 haylen_text_style;
+flat in vec2 haylen_transform;
+flat in vec4 haylen_source;
+flat in vec4 haylen_data;
 #ifdef HAYLEN_BATCH
-in float haylen_texture_index;
+flat in float haylen_texture_index;
 #endif
 
 #ifdef HAYLEN_SHAPE
 in vec4 haylen_shape_frame;
 in vec4 haylen_shape_sector_point;
-in vec4 haylen_shape_form;
-in vec4 haylen_shape_radii;
-in vec4 haylen_shape_border;
+flat in vec4 haylen_shape_form;
+flat in vec4 haylen_shape_radii;
+flat in vec4 haylen_shape_border;
 
 // The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, exact at any ratio of its radii. A circle measures from its center. With the longer radius along x and the point in the first quarter, the nearest point of the edge is `(r x / (t + r - 1), y / t)` for the ratio `r` of the squared radii and the root `t` of the equation of the edge, which the bisection finds between bounds that always hold it, while a point on the long axis has the nearest point in closed form.
 float haylen_shape_ellipse(vec2 point) {
