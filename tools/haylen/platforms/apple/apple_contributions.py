@@ -62,6 +62,10 @@ class AppleContributions:
             "script": {"type": "string", "minLength": 1},
             "inputFiles": names,
             "outputFiles": names,
+            "basedOnDependencyAnalysis": {
+                "type": "boolean",
+                "description": "Whether the script runs only when its inputs changed or its outputs are missing, true by default. A script that writes no file sets it to false, so it runs on every build.",
+            },
         }
         package = {
             "name": {"type": "string", "minLength": 1},

@@ -4,6 +4,7 @@ import pytest
 
 from haylen.core.errors.invalid_contribution import InvalidContribution
 from haylen.core.errors.invalid_manifest import InvalidManifest
+from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.folders import Folders
 from haylen.platforms.apple.apple_project import AppleProject
 from haylen.platforms.generated_tree import GeneratedTree
@@ -94,6 +95,26 @@ class AppleProjectTest:
             apple.plugin(app, name, {"implementations": {"ios": "native"}, "contributions": [package]})
         with pytest.raises(InvalidContribution, match=r'"first" .* and "second"'):
             apple.resolve(app)
+
+    def test_a_build_script_runs_on_every_build_only_when_its_plugin_says_so(self, apple):
+        app = apple.app({"plugins": {"upload": {}, "stamp": {}}})
+        upload = {"type": "buildScript", "platforms": ["ios"], "name": "Upload", "script": "echo upload", "basedOnDependencyAnalysis": False}
+        stamp = {"type": "buildScript", "platforms": ["ios"], "name": "Stamp", "script": "echo stamp"}
+        apple.plugin(app, "upload", {"implementations": {"ios": "native"}, "contributions": [upload]})
+        apple.plugin(app, "stamp", {"implementations": {"ios": "native"}, "contributions": [stamp]})
+        scripts = AppleFixture.spec(apple.prepare(app))["targets"]["App"]["postBuildScripts"]
+        assert scripts == [
+            {"name": "Upload", "script": "echo upload", "basedOnDependencyAnalysis": False},
+            {"name": "Stamp", "script": "echo stamp"},
+        ]
+
+    def test_a_build_script_takes_only_a_boolean_for_its_dependency_analysis(self, apple):
+        app = apple.app({"plugins": {"upload": {}}})
+        upload = {"type": "buildScript", "platforms": ["ios"], "name": "Upload", "script": "echo upload", "basedOnDependencyAnalysis": "no"}
+        apple.plugin(app, "upload", {"implementations": {"ios": "native"}, "contributions": [upload]})
+        with pytest.raises(UnsupportedTarget) as raised:
+            apple.resolve(app)
+        assert 'has a problem: The key "basedOnDependencyAnalysis" must be true or false.' in raised.value.message
 
     def test_the_files_of_the_app_replace_the_files_of_the_template(self, apple):
         app = apple.app({"platforms": {"apple": {"files": {"Assets.xcassets": "icons", "main.m": "native/main.m"}}}})
