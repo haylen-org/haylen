@@ -118,19 +118,27 @@ class DeviceFarmUiTests:
         for job in self.aws("list-jobs", "--arn", run)["jobs"]:
             name = job["device"]["name"]
             message = job.get("message", "")
-            failures = self.failures(job["arn"])
+            folder = output / DeviceFarmUiTests.folder_name(name)
+            failures = self.failures(job["arn"], folder)
             results.append({"device": name, "result": job["result"], "message": " ".join([message, *failures]).strip()})
             self.context.terminal.info(f'"{name}" ended with {job["result"]}.')
-            self.download(job["arn"], output / name.replace(" ", "-").lower())
+            self.download(job["arn"], folder)
         return results
 
-    def failures(self, job: str) -> list[str]:
-        """The tests of a job that did not pass, with the message that each one failed with."""
+    @staticmethod
+    def folder_name(name: str) -> str:
+        """The name of the folder of a device or a test, in lowercase with dashes."""
+        return name.replace(" ", "-").lower()
+
+    def failures(self, job: str, folder: Path) -> list[str]:
+        """The tests of a job that did not pass, with the message that each one failed with. Device Farm runs each test on its own, so the files of the job hold the output of its last test alone, and the files of each test that did not pass go into a folder of their own."""
         found = []
         for suite in self.aws("list-suites", "--arn", job)["suites"]:
             for test in self.aws("list-tests", "--arn", suite["arn"])["tests"]:
-                if test["result"] not in ("PASSED", "SKIPPED"):
-                    found.append(f'The test "{test["name"]}" ended with {test["result"]}: {test.get("message", "")}')
+                if test["result"] in ("PASSED", "SKIPPED"):
+                    continue
+                found.append(f'The test "{test["name"]}" ended with {test["result"]}: {test.get("message", "")}')
+                self.download(test["arn"], folder / DeviceFarmUiTests.folder_name(test["name"]))
         return found
 
     def download(self, job: str, folder: Path) -> None:

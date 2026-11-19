@@ -10,7 +10,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class DeviceFarmUiTestsTest:
-    """Device Farm runs the tests on the available devices that the request names, the newest system of each, and the run deletes its project and checks that it is gone."""
+    """Device Farm runs the tests on the available devices that the request names, the newest system of each, the run keeps the files of every test that did not pass, and it deletes its project and checks that it is gone."""
 
     DEVICES = [
         {"arn": "arn:pixel-14", "name": "Google Pixel 9", "os": "14", "availability": "AVAILABLE"},
@@ -31,3 +31,13 @@ class DeviceFarmUiTestsTest:
         assert recorded.commands[0] == ["aws", "devicefarm", "delete-project", "--arn", "arn:project", "--region", "us-west-2", "--output", "json"]
         remaining["projects"] = []
         DeviceFarmUiTests(recorded.context).delete("arn:project")
+
+    def test_the_files_of_every_test_that_did_not_pass_go_into_a_folder_of_their_own(self, tmp_path, monkeypatch):
+        tests = [{"arn": "arn:passed", "name": "testA", "result": "PASSED"}, {"arn": "arn:failed", "name": "testB", "result": "FAILED", "message": "PermissionTests failed"}]
+        answers = {"list-suites": {"suites": [{"arn": "arn:suite"}]}, "list-tests": {"tests": tests}}
+        recorded = RecordedCommands(tmp_path, answer=lambda command: json.dumps(answers[command[2]]))
+        farm = DeviceFarmUiTests(recorded.context)
+        downloaded = []
+        monkeypatch.setattr(farm, "download", lambda arn, folder: downloaded.append((arn, folder)))
+        assert farm.failures("arn:job", tmp_path / "apple-iphone-13") == ['The test "testB" ended with FAILED: PermissionTests failed']
+        assert downloaded == [("arn:failed", tmp_path / "apple-iphone-13" / "testb")]
