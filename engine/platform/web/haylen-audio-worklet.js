@@ -89,12 +89,16 @@ class HaylenAudioProcessor extends AudioWorkletProcessor {
 
 registerProcessor("haylen-audio", HaylenAudioProcessor);
 
-// Hands the sound of a video element back to the page as interleaved stereo blocks of 1024 frames, which the page passes to the mixer of the engine. It outputs silence, so the element is heard only through the engine.
+// Hands the sound of a video element back to the page as interleaved stereo blocks of 1024 frames, which the page passes to the mixer of the engine. It outputs silence, so the element is heard only through the engine. The page posts it a message when the video closes, which ends it, so the browser can release its node.
 class HaylenVideoTapProcessor extends AudioWorkletProcessor {
     constructor() {
         super();
         this.block = new Float32Array(1024 * 2);
         this.filled = 0;
+        this.ended = false;
+        this.port.onmessage = () => {
+            this.ended = true;
+        };
     }
 
     process(inputs, outputs) {
@@ -118,7 +122,7 @@ class HaylenVideoTapProcessor extends AudioWorkletProcessor {
             channel.fill(0);
         }
 
-        return true;
+        return !this.ended;
     }
 }
 

@@ -2066,6 +2066,8 @@ Module.haylen = Module.haylen || {};
             video.element.load();
 
             if (video.tap) {
+                video.tap.tap.port.postMessage({ ended: true });
+                video.tap.tap.port.onmessage = null;
                 video.tap.source.disconnect();
                 video.tap.tap.disconnect();
                 video.tap.silence.disconnect();
