@@ -185,6 +185,19 @@ class HaylenUITestCase: XCTestCase {
         }
     }
 
+    // The labels of the buttons of a snapshot of an element in the order of the screen, each once. One snapshot holds still, while the system may still add buttons to an alert as a test reads it, such as the map and the toggle of the precise location of iOS.
+    func buttonLabels(of snapshot: XCUIElementSnapshot) -> [String] {
+        var labels: [String] = []
+        var pending = [snapshot]
+        while let node = pending.popLast() {
+            if node.elementType == .button && !labels.contains(node.label) {
+                labels.append(node.label)
+            }
+            pending.append(contentsOf: node.children.reversed())
+        }
+        return labels
+    }
+
     // Makes the simulator or the device report the place until the test ends. A device keeps a simulated place after the run otherwise, with the time zone that the place sets.
     func simulateLocation(_ place: CLLocation) {
         XCUIDevice.shared.location = XCUILocation(location: place)
@@ -196,13 +209,15 @@ class HaylenUITestCase: XCTestCase {
         let alert = Self.system.alerts.firstMatch
         waitFor(alert, timeout: timeout, file: file, line: line)
 
-        // The buttons of the choices come first, and tvOS nests a copy of each one in it and adds a button that reads the prompt after them.
-        var labels: [String] = []
-        for label in alert.buttons.allElementsBoundByIndex.map(\.label) where !labels.contains(label) {
-            labels.append(label)
+        // The choices are the last buttons of the alert, after the toggle of the precise location of iOS and the button of tvOS that reads the prompt, and tvOS nests a copy of each choice in it.
+        guard let snapshot = try? alert.snapshot() else {
+            XCTFail("The alert \"\(alert.label)\" went away before the test read its buttons.", file: file, line: line)
+            return
         }
+        let labels = buttonLabels(of: snapshot)
         XCTAssertGreaterThanOrEqual(labels.count, answer.choices, "The alert \"\(alert.label)\" offers \(labels), fewer than the \(answer.choices) choices of a prompt that offers \"\(answer.rawValue)\".", file: file, line: line)
-        let button = alert.buttons[labels[answer.place]].firstMatch
+        let choices = labels.suffix(answer.choices)
+        let button = alert.buttons[choices[choices.startIndex + answer.place]].firstMatch
 #if os(tvOS)
         focus(button, in: Self.system, file: file, line: line)
         XCUIRemote.shared.press(.select)
