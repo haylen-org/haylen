@@ -1,3 +1,4 @@
+import CoreLocation
 import XCTest
 
 // The base of the UI tests of a Haylen app. The command "haylen test --ui" installs the app on a simulator or a device and names it to the runner, and each test starts it again with the launch arguments of its class. The GUIs of the app expose their components to the tests through the accessibility tree, by the text they show.
@@ -20,6 +21,8 @@ class HaylenUITestCase: XCTestCase {
     var resetResources: [XCUIProtectedResource] {
         []
     }
+
+    var simulatesLocation = false
 #endif
 
     // The tests drive the app on the main actor, as XCUIApplication requires. XCTest declares the synchronous setUp and tearDown without an actor, so the class overrides their async variants, which run on the main actor.
@@ -34,14 +37,20 @@ class HaylenUITestCase: XCTestCase {
 #endif
         app.launchArguments = launchArguments.isEmpty ? [] : ["--"] + launchArguments
 #if os(tvOS)
-        // An Apple TV that sleeps launches no app, and a press of its remote wakes it, as the press of a person does.
-        XCUIRemote.shared.press(.home)
+        // An Apple TV that sleeps launches no app, and a press of its remote wakes it, as the press of a person does. The press is an arrow, which moves only the focus of the screen in front, since tvOS acts on the Home button a moment later, when it would send the app that just launched to the background.
+        XCUIRemote.shared.press(.down)
 #endif
         app.launch()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: Self.timeout), "The app does not come to the front after its launch.")
     }
 
     override func tearDown() async throws {
         app.terminate()
+#if !os(visionOS)
+        if simulatesLocation {
+            XCUIDevice.shared.location = nil
+        }
+#endif
     }
 
     // The first element of the app whose label or identifier is the text.
@@ -157,13 +166,44 @@ class HaylenUITestCase: XCTestCase {
     static let system = XCUIApplication(bundleIdentifier: "com.apple.springboard")
 #endif
 
-    // Presses the button with one of the labels on the alert of the system that shows over the app, such as the prompt of a permission, and fails when no such alert shows. The labels are the words of the language of the device, such as "Allow" and "Don't Allow".
-    func answerAlert(_ labels: [String], timeout: TimeInterval = HaylenUITestCase.timeout, file: StaticString = #filePath, line: UInt = #line) {
+    // An answer to the prompt of a permission. The device writes the buttons of a prompt in its own language and always in the same order, so an answer is the place of its button among the choices of its prompt: a prompt of access offers "Don't Allow" and "Allow", the prompt of the location "Allow Once", "Allow While Using App" and "Don't Allow", and the prompt that offers the location always "Keep Only While Using" and "Change to Always Allow".
+    enum Answer: String {
+        case allow = "Allow"
+        case deny = "Don't Allow"
+        case allowWhileUsing = "Allow While Using App"
+
+        var choices: Int {
+            self == .allowWhileUsing ? 3 : 2
+        }
+
+        var place: Int {
+            switch self {
+            case .allow, .allowWhileUsing:
+                return 1
+            case .deny:
+                return 0
+            }
+        }
+    }
+
+    // Makes the simulator or the device report the place until the test ends. A device keeps a simulated place after the run otherwise, with the time zone that the place sets.
+    func simulateLocation(_ place: CLLocation) {
+        XCUIDevice.shared.location = XCUILocation(location: place)
+        simulatesLocation = true
+    }
+
+    // Presses the button of the answer on the alert of the system that shows over the app, such as the prompt of a permission, and fails when no such alert shows.
+    func answerAlert(_ answer: Answer, timeout: TimeInterval = HaylenUITestCase.timeout, file: StaticString = #filePath, line: UInt = #line) {
         let alert = Self.system.alerts.firstMatch
         waitFor(alert, timeout: timeout, file: file, line: line)
-        let button = alert.buttons.matching(NSPredicate(format: "label IN %@", labels)).firstMatch
-        let shown = alert.buttons.allElementsBoundByIndex.map(\.label)
-        XCTAssertTrue(button.exists, "The alert \"\(alert.label)\" offers \(shown) and none of \(labels).", file: file, line: line)
+
+        // The buttons of the choices come first, and tvOS nests a copy of each one in it and adds a button that reads the prompt after them.
+        var labels: [String] = []
+        for label in alert.buttons.allElementsBoundByIndex.map(\.label) where !labels.contains(label) {
+            labels.append(label)
+        }
+        XCTAssertGreaterThanOrEqual(labels.count, answer.choices, "The alert \"\(alert.label)\" offers \(labels), fewer than the \(answer.choices) choices of a prompt that offers \"\(answer.rawValue)\".", file: file, line: line)
+        let button = alert.buttons[labels[answer.place]].firstMatch
 #if os(tvOS)
         focus(button, in: Self.system, file: file, line: line)
         XCUIRemote.shared.press(.select)

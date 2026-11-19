@@ -16,7 +16,7 @@ class CameraTests: TestProjectCase {
         throw XCTSkip("The simulator has no camera, and the Mac guards its microphone with a prompt that no test answers.")
 #else
         tap("Start the back camera")
-        answerAlert(PermissionTests.allow)
+        answerAlert(.allow)
         expectCheck("The frames of the camera reach the texture", containing: "of the back camera")
         tap("Take a photo")
         expectCheck("A photo arrives as JPEG bytes", containing: "decoded into a texture")
@@ -28,7 +28,7 @@ class CameraTests: TestProjectCase {
         tap("Stop the camera")
 
         tap("Start the microphone")
-        answerAlert(PermissionTests.allow)
+        answerAlert(.allow)
         expectCheck("The microphone fills its stream and reports its level", containing: "level reports arrived")
         try saveScreenshot("microphone")
 #endif

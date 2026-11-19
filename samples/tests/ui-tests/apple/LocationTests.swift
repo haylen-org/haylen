@@ -15,9 +15,9 @@ class LocationTests: TestProjectCase {
     }
 
     func testThePlaceAndTheMapReachTheApp() throws {
-        XCUIDevice.shared.location = XCUILocation(location: Self.place)
+        simulateLocation(Self.place)
         activate("Find the location")
-        answerAlert(["Allow While Using App"])
+        answerAlert(.allowWhileUsing)
         expectCheck("The platform tells where the device is", containing: String(format: "found %.5f, %.5f", Self.place.coordinate.latitude, Self.place.coordinate.longitude))
         activate("Show the map", after: [.down])
         expectCheck("A native map shows over the app", containing: "placed a map drawn with")

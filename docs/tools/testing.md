@@ -478,7 +478,7 @@ The command `haylen test --ui <app>` with an Apple platform runs these steps:
 - It builds the app for the target of the platform through the Apple backend and verifies it, as `haylen app build` does, in the configuration of `--config`, `Debug` by default, against the Release SDK of the target.
 - It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/engine/<platform>-ui-tests`, with the tests of the app. The Info.plist of the runner names the app it drives and the folder of its screenshots, so the runner needs nothing from the command that runs it.
 - On a simulator it boots the simulator that `--device` names without a window, or else a booted one or the first iPhone, Apple TV or Apple Vision Pro, builds the runner with `xcodebuild build-for-testing` and installs the app.
-- On a device, `ios`, `tvos` or `visionos`, it builds the runner for the device with the development team that signed the app, which Xcode makes the profiles of, and installs the app with `devicectl`. The device stays unlocked during the run. tvOS launches no app while the Apple TV sleeps, so `HaylenUITestCase` presses the remote before it launches the app, which wakes it.
+- On a device, `ios`, `tvos` or `visionos`, it builds the runner for the device with the development team that signed the app, which Xcode makes the profiles of, and installs the app with `devicectl`. The device stays unlocked during the run. tvOS launches no app while the Apple TV sleeps, so `HaylenUITestCase` presses an arrow of the remote before it launches the app, which wakes the Apple TV and moves only the focus of the screen in front. The Home button would wake it too, but tvOS acts on it a moment later and sends the app that just launched to the background. Each test launches the app itself and checks that it comes to the front, so no person opens it.
 - It runs the tests with `xcodebuild test-without-building`, which prints each test and each failure. A test that runs longer than 10 minutes stops and fails.
 - On a simulator it relays the log of the app meanwhile and fails when the engine logged an error, even when every test passed, so a layout that leaves the drawable behind the window fails the run. A device gives the Mac no stream of its log, so there the checks of the tests are the results.
 - It copies the screenshots back from a device, uninstalls the app and the runner, and shuts the simulator down when it booted it.
@@ -496,7 +496,8 @@ The class `HaylenUITestCase` starts the app again for each test, with the launch
 | `focus(_:in:)` | Moves the focus of UIKit onto a native view of the app or of the system UI over it, pressing the arrow that points from the view that holds the focus toward it. |
 | `waitUntil(_:_:)` | Waits until a condition holds, and fails with the message when it never does. |
 | `saveScreenshot(_:)` | Saves a picture of the window of the app, never the whole screen, in `ui-tests/<platform>` of the build folder of the app. |
-| `answerAlert(_:)` | Taps the button with one of the labels on the alert of the system over the app, such as the prompt of a permission, in the language of the device. |
+| `answerAlert(_:)` | Answers the alert of the system over the app, such as the prompt of a permission, with `.allow`, `.deny` or `.allowWhileUsing`. The device writes the buttons in its own language and always in the same order, so the answer is the place of its button among the choices of the prompt. |
+| `simulateLocation(_:)` | Makes the simulator or the device report a place until the test ends, so a test of the location knows what to expect. A device keeps a simulated place after the run otherwise, with the time zone that the place sets. |
 | `tapNotification(containing:)` | Taps the banner of a notification over the app, the Home Screen or another app, and waits until the app is in front. |
 | `goHome()` | Sends the app to the background through the Home Screen. |
 | `setMultitasking(_:)` | Chooses Full Screen Apps, Windowed Apps or Stage Manager in the settings of iPadOS, and returns the mode it replaced, so a test puts it back. |
@@ -504,7 +505,7 @@ The class `HaylenUITestCase` starts the app again for each test, with the launch
 | `resizeWindow(by:)` | Drags the bottom right corner of the window of the app, which resizes it. |
 | `turnDevice(_:)` | Turns the iPhone or the iPad to an orientation and waits until the window of the app turns with it. |
 
-A test closes the app with `app.terminate()`, and `XCUIDevice.shared.location` gives the simulator and the device a place to report, so a test of the location knows what to expect.
+A test closes the app with `app.terminate()`.
 
 The runner compiles the tests in the Swift 6 language mode. The class `HaylenUITestCase` runs on the main actor, as `XCUIApplication` does, so a test that prepares or cleans up more overrides `setUp() async throws` and `tearDown() async throws` and calls them on `super` with `try await`.
 
