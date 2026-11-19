@@ -29,10 +29,11 @@
             </intent-filter>
         </activity>
 
-        <!-- The confirm screen, which only the app starts. -->
+        <!-- The confirm screen, which only the app starts. It keeps the orientation of the app under it, so it never turns the device away from the orientation of the app while it shows. -->
         <activity
             android:name="com.haylen.plugins.nativedemo.NativeDemoConfirmActivity"
             android:exported="false"
+            android:screenOrientation="behind"
             android:theme="@style/Theme.AppCompat.DayNight.NoActionBar" />
 
         <!-- Posts the notification of `notify` when its alarm goes off. -->
