@@ -24,10 +24,14 @@ void Swapchain::attach(const Context& owner, std::size_t frames) {
     }
 
     std::uint32_t count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), surface, &count, nullptr);
+    Context::check(vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), surface, &count, nullptr), "read the formats of the surface");
     std::vector<VkSurfaceFormatKHR> formats(count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), surface, &count, formats.data());
-    const VkSurfaceFormatKHR chosen = chooseFormat(count, formats.data());
+    Context::check(vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), surface, &count, formats.data()), "read the formats of the surface");
+    if (count == 0) {
+        throw std::runtime_error("The surface of the window offers the Vulkan device no color format.");
+    }
+
+    const VkSurfaceFormatKHR chosen = chooseFormat(std::span(formats.data(), count));
     format = chosen.format;
     colorSpace = chosen.colorSpace;
 }
@@ -49,20 +53,16 @@ Swapchain::~Swapchain() {
 }
 
 // The engine blends in the values it stores, so the swapchain takes eight bits a channel without the conversion of sRGB formats.
-VkSurfaceFormatKHR Swapchain::chooseFormat(std::uint32_t count, const VkSurfaceFormatKHR* formats) noexcept {
+VkSurfaceFormatKHR Swapchain::chooseFormat(std::span<const VkSurfaceFormatKHR> formats) noexcept {
     for (const VkFormat preferred : {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM}) {
-        for (std::uint32_t index = 0; index < count; ++index) {
-            if (formats[index].format == preferred && formats[index].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-                return formats[index];
+        for (const VkSurfaceFormatKHR& offered : formats) {
+            if (offered.format == preferred && offered.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+                return offered;
             }
         }
     }
 
-    if (count == 0 || formats[0].format == VK_FORMAT_UNDEFINED) {
-        return {.format = VK_FORMAT_B8G8R8A8_UNORM, .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
-    }
-
-    return formats[0];
+    return formats.front();
 }
 
 // Without vsync the frames replace the waiting one without tearing where the surface allows it, and reach the screen at once otherwise.

@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 #include <volk.h>
@@ -123,7 +124,7 @@ class Swapchain final {
         VkImageView view = VK_NULL_HANDLE;
     };
 
-    [[nodiscard]] static VkSurfaceFormatKHR chooseFormat(std::uint32_t count, const VkSurfaceFormatKHR* formats) noexcept;
+    [[nodiscard]] static VkSurfaceFormatKHR chooseFormat(std::span<const VkSurfaceFormatKHR> formats) noexcept;
     [[nodiscard]] VkPresentModeKHR choosePresentMode(bool vsync) const;
     [[nodiscard]] static VkCompositeAlphaFlagBitsKHR chooseCompositeAlpha(VkCompositeAlphaFlagsKHR supported, bool transparent) noexcept;
     [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept;
