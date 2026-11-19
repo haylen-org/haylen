@@ -18,8 +18,8 @@ class GpuShaderPackageTest : public test::GpuFixture {};
 
 // The code that the shader compiler writes for the language of each device compiles, links and fits the bindings of the device for every program and variant of the renderer, including the ones no reference scene draws.
 TEST_P(GpuShaderPackageTest, MakesEveryProgramOfTheRenderer) {
-    const std::array<std::span<const std::uint8_t>, 12> packages{
-        core::EmbeddedFiles::getSpriteShader(), core::EmbeddedFiles::getTextShader(), core::EmbeddedFiles::getMeshShader(), core::EmbeddedFiles::getBlendShader(), core::EmbeddedFiles::getCompositeShader(), core::EmbeddedFiles::getLightShader(), core::EmbeddedFiles::getMetaballShader(), core::EmbeddedFiles::getRecolorShader(), core::EmbeddedFiles::getEffectShader(), core::EmbeddedFiles::getShapeShader(), core::EmbeddedFiles::getBackdropShader(), core::EmbeddedFiles::getGlassShader(),
+    const std::array<std::span<const std::uint8_t>, 13> packages{
+        core::EmbeddedFiles::getSpriteShader(), core::EmbeddedFiles::getTextShader(), core::EmbeddedFiles::getMeshShader(), core::EmbeddedFiles::getBlendShader(), core::EmbeddedFiles::getCompositeShader(), core::EmbeddedFiles::getLightShader(), core::EmbeddedFiles::getMetaballShader(), core::EmbeddedFiles::getRecolorShader(), core::EmbeddedFiles::getEffectShader(), core::EmbeddedFiles::getShapeShader(), core::EmbeddedFiles::getBackdropShader(), core::EmbeddedFiles::getGlassShader(), core::EmbeddedFiles::getFilterShader(),
     };
     const auto programGraveyard = std::make_shared<graphics::ResourceGraveyard>();
     int programs = 0;

@@ -1,18 +1,5 @@
-@vs composite_vs
-layout(binding=1) uniform composite_vs_params {
-    // The columns of the turn of the positions in clip space, which the turned images of a swapchain pass need and which is the identity elsewhere.
-    vec4 turn;
-};
-
-out vec2 uv;
-
-void main() {
-    // A single triangle covers the viewport with texture coordinates whose origin is the top-left corner.
-    vec2 corner = vec2(float((gl_VertexIndex << 1) & 2), float(gl_VertexIndex & 2));
-    gl_Position = vec4(mat2(turn.xy, turn.zw) * (corner * 2.0 - 1.0), 0.0, 1.0);
-    uv = vec2(corner.x, 1.0 - corner.y);
-}
-@end
+// Composites the image of a canvas with lighting or post-processing into its destination. The program compiles three times, since a modest GPU reads the textures that a branch guards even where the branch does not run: `composite` with every step, `composite_lit` with the light map and the emission alone and `composite_plain` with neither, which a canvas takes when it needs no more.
+@include screen.glsl
 
 @fs composite_fs
 layout(binding=0) uniform composite_fs_params {
@@ -48,11 +35,13 @@ vec2 source_point(vec2 point) {
 vec4 lit_scene(vec2 point) {
     vec2 at = source_point(point);
     vec4 scene = texture(sampler2D(scene_texture, composite_sampler), at);
+#ifdef HAYLEN_COMPOSITE_LIGHTING
     if (flags.x > 0.5) {
         vec3 emission = texture(sampler2D(emission_texture, composite_sampler), at).rgb;
         scene.rgb = scene.rgb * texture(sampler2D(light_texture, composite_sampler), at).rgb + emission;
         scene.a = max(scene.a, max(emission.r, max(emission.g, emission.b)));
     }
+#endif
     return scene;
 }
 
@@ -63,6 +52,7 @@ vec4 first_stage() {
         vec2 cells = max(view.xy / shape.x, vec2(1.0));
         point = (floor(point * cells) + 0.5) / cells;
     }
+#ifdef HAYLEN_COMPOSITE_EFFECTS
     if (flags.w > 0.5) {
         // The slope of the coverage across the deviation `shape.z` of its blur on each side, which spans 0.6827 of the step where a draw goes from nothing to full coverage, so the bend reaches `view.z` units at that edge and fades smoothly around it.
         vec2 reach = max(shape.z, 1.0) / view.xy;
@@ -72,14 +62,15 @@ vec4 first_stage() {
         float above = texture(sampler2D(distortion_texture, composite_sampler), source_point(point - vec2(0.0, reach.y))).a;
         point -= vec2(right - left, below - above) * view.z / (0.6827 * view.xy);
     }
-    if (view.w <= 0.0) {
-        return lit_scene(point);
+    if (view.w > 0.0) {
+        vec2 shift = (uv - 0.5) * 2.0 * view.w / view.xy;
+        vec4 red = lit_scene(point + shift);
+        vec4 green = lit_scene(point);
+        vec4 blue = lit_scene(point - shift);
+        return vec4(red.r, green.g, blue.b, max(green.a, max(red.a, blue.a)));
     }
-    vec2 shift = (uv - 0.5) * 2.0 * view.w / view.xy;
-    vec4 red = lit_scene(point + shift);
-    vec4 green = lit_scene(point);
-    vec4 blue = lit_scene(point - shift);
-    return vec4(red.r, green.g, blue.b, max(green.a, max(red.a, blue.a)));
+#endif
+    return lit_scene(point);
 }
 
 // Interleaved gradient noise from 0 to 1, which neighboring pixels spread evenly.
@@ -87,6 +78,7 @@ float pixel_noise(vec2 pixel) {
     return fract(52.9829189 * fract(dot(pixel, vec2(0.06711056, 0.00583715))));
 }
 
+#ifdef HAYLEN_COMPOSITE_EFFECTS
 // Looks the color up in a lookup texture of `shape.y` square cells side by side, one cell for each step of blue, with red across a cell and green down it.
 vec3 graded(vec3 color) {
     float cells = shape.y;
@@ -99,22 +91,29 @@ vec3 graded(vec3 color) {
     vec3 second = texture(sampler2D(lut_texture, composite_sampler), inside + vec2(upper / cells, 0.0)).rgb;
     return mix(first, second, slice - lower);
 }
+#endif
 
 void main() {
+#ifdef HAYLEN_COMPOSITE_EFFECTS
     vec4 image = flags.z > 1.5 ? texture(sampler2D(scene_texture, composite_sampler), source_point(uv)) : first_stage();
     if (flags.z > 0.5 && flags.z < 1.5) {
         frag_color = image;
         return;
     }
+#else
+    vec4 image = first_stage();
+#endif
     vec3 color = image.rgb;
     float alpha = image.a;
 
+#ifdef HAYLEN_COMPOSITE_EFFECTS
     // Bloom adds the bright parts of the image, blurred, by `vignette.w`.
     if (vignette.w > 0.0) {
         vec3 glow = texture(sampler2D(bloom_texture, composite_sampler), source_point(uv)).rgb * vignette.w;
         color += glow;
         alpha = max(alpha, max(glow.r, max(glow.g, glow.b)));
     }
+#endif
 
     // Grading: x is saturation, y is brightness and z is contrast, which pivots on the middle gray of the coverage, and w mixes in the lookup texture.
     float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
@@ -122,9 +121,11 @@ void main() {
     color = (color - 0.5 * alpha) * grading.z + 0.5 * alpha;
     color *= grading.y;
     color *= tint.rgb;
+#ifdef HAYLEN_COMPOSITE_EFFECTS
     if (grading.w > 0.0 && alpha > 0.0) {
         color = mix(color, graded(color / alpha) * alpha, grading.w);
     }
+#endif
 
     // The rows of the matrix of the color vision option, which shows or corrects a deficiency of color vision.
     color = max(vec3(dot(vision_red.rgb, color), dot(vision_green.rgb, color), dot(vision_blue.rgb, color)), vec3(0.0));
@@ -149,46 +150,5 @@ void main() {
 }
 @end
 
-@fs filter_fs
-layout(binding=0) uniform filter_fs_params {
-    vec4 settings;
-    vec4 offset;
-};
-layout(binding=0) uniform texture2D source_texture;
-layout(binding=0) uniform sampler filter_sampler;
 
-in vec2 uv;
-out vec4 frag_color;
-
-vec4 read_source(vec2 point) {
-    return texture(sampler2D(source_texture, filter_sampler), settings.z > 0.5 ? vec2(point.x, 1.0 - point.y) : point);
-}
-
-// Settings: x is 0 to shrink the image to half its size, keeping only what passes the threshold in y when y is not negative, 1 to blur it along `offset.xy` or 2 to copy it, and z flips rows. A shrink averages the four texels around each point, half a texel away in `offset.zw`, and a blur weighs nine taps of a Gaussian curve.
-void main() {
-    if (settings.x > 1.5) {
-        frag_color = read_source(uv);
-        return;
-    }
-    if (settings.x < 0.5) {
-        vec2 texel = offset.zw;
-        vec4 sum = read_source(uv + vec2(-texel.x, -texel.y)) + read_source(uv + vec2(texel.x, -texel.y)) + read_source(uv + vec2(-texel.x, texel.y)) + read_source(uv + texel);
-        vec4 average = sum * 0.25;
-        if (settings.y >= 0.0) {
-            float brightness = max(average.r, max(average.g, average.b));
-            average *= max(brightness - settings.y, 0.0) / max(brightness, 0.0001);
-        }
-        frag_color = average;
-        return;
-    }
-    vec4 sum = read_source(uv) * 0.2270270;
-    sum += (read_source(uv + offset.xy) + read_source(uv - offset.xy)) * 0.1945946;
-    sum += (read_source(uv + offset.xy * 2.0) + read_source(uv - offset.xy * 2.0)) * 0.1216216;
-    sum += (read_source(uv + offset.xy * 3.0) + read_source(uv - offset.xy * 3.0)) * 0.0540540;
-    sum += (read_source(uv + offset.xy * 4.0) + read_source(uv - offset.xy * 4.0)) * 0.0162162;
-    frag_color = sum;
-}
-@end
-
-@program composite composite_vs composite_fs
-@program filter composite_vs filter_fs
+@program composite screen_vs composite_fs

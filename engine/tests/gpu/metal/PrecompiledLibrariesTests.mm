@@ -47,8 +47,8 @@ TEST_P(GpuPrecompiledLibrariesTest, HoldsALibraryForEveryStageOfTheRenderer) {
         GTEST_SKIP() << "Only the Metal device loads precompiled libraries.";
     }
 
-    const std::array<std::span<const std::uint8_t>, 12> packages{
-        core::EmbeddedFiles::getSpriteShader(), core::EmbeddedFiles::getTextShader(), core::EmbeddedFiles::getMeshShader(), core::EmbeddedFiles::getBlendShader(), core::EmbeddedFiles::getCompositeShader(), core::EmbeddedFiles::getLightShader(), core::EmbeddedFiles::getMetaballShader(), core::EmbeddedFiles::getRecolorShader(), core::EmbeddedFiles::getEffectShader(), core::EmbeddedFiles::getShapeShader(), core::EmbeddedFiles::getBackdropShader(), core::EmbeddedFiles::getGlassShader(),
+    const std::array<std::span<const std::uint8_t>, 13> packages{
+        core::EmbeddedFiles::getSpriteShader(), core::EmbeddedFiles::getTextShader(), core::EmbeddedFiles::getMeshShader(), core::EmbeddedFiles::getBlendShader(), core::EmbeddedFiles::getCompositeShader(), core::EmbeddedFiles::getLightShader(), core::EmbeddedFiles::getMetaballShader(), core::EmbeddedFiles::getRecolorShader(), core::EmbeddedFiles::getEffectShader(), core::EmbeddedFiles::getShapeShader(), core::EmbeddedFiles::getBackdropShader(), core::EmbeddedFiles::getGlassShader(), core::EmbeddedFiles::getFilterShader(),
     };
     const auto language = static_cast<std::size_t>(device().getLanguage());
     id<MTLDevice> metal = MTLCreateSystemDefaultDevice();

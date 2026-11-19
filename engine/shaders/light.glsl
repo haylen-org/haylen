@@ -1,4 +1,4 @@
-// Draws the lights of a lit canvas as instances of one quad, each with its values as attributes that stay the same across its quad.
+// Draws the lights of a lit canvas as instances of one quad, each with its values as attributes that stay the same across its quad. The program compiles as `light`, and as `light_shadowed` with `HAYLEN_SHADOWS` for the lights that cast shadows, since a modest GPU reads the shadow map that a branch guards even for a light without shadows.
 @vs light_vs
 layout(binding=0) uniform light_vs_params {
     mat4 view_projection;
@@ -76,6 +76,7 @@ out vec4 frag_color;
 
 const float PI = 3.14159265;
 
+#ifdef HAYLEN_SHADOWS
 // The 1D shadow map of point and spot lights stores the nearest occluder of each direction around the light, and the map of directional lights the nearest occluder along the light at each point across it, both as a fraction of their range. After the base row come smaller copies, each half as wide as the one before, whose texels keep the nearest occluder of the two texels they cover.
 // The shadow is the share of a window centered on the point that lies behind its occluders, where every texel counts by how much of it the window covers, so the edge moves smoothly with the point instead of in steps of whole texels. The window is as wide as the filter and never narrower than the texels one pixel spans, and the smallest copy that still gives it at most 16 texels carries it, so a wide soft edge costs as little as a sharp one.
 float shadow_amount(vec2 offset, float reach_distance, float pixel) {
@@ -114,10 +115,13 @@ float shadow_amount(vec2 offset, float reach_distance, float pixel) {
     }
     return blocked / (high - low);
 }
+#endif
 
 void main() {
+#ifdef HAYLEN_SHADOWS
     // The size of a pixel in the world, taken before any branch, where the derivatives of every pixel are still known.
     float world_pixel = 0.5 * (length(dFdx(world)) + length(dFdy(world)));
+#endif
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     vec4 info = texelFetch(sampler2D(info_texture, surface_sampler), pixel, 0);
     int mask = int(info.x * 255.0 + 0.5);
@@ -150,7 +154,11 @@ void main() {
         specular = surface.z * pow(max(dot(normal, normalize(toward + vec3(0.0, 0.0, 1.0))), 0.0), shininess);
     }
 
-    float shadowed = shape.w >= 0.0 ? shadow_amount(offset, along, world_pixel) * shadow_color.a : 0.0;
+#ifdef HAYLEN_SHADOWS
+    float shadowed = shadow_amount(offset, along, world_pixel) * shadow_color.a;
+#else
+    float shadowed = 0.0;
+#endif
     vec3 tint = color.rgb * shaped.rgb;
     if (color.a > 1.5 && color.a < 2.5) {
         frag_color = vec4(tint, clamp(falloff * (diffuse + specular) * (1.0 - shadowed), 0.0, 1.0));

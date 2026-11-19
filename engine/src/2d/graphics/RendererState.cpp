@@ -22,7 +22,7 @@ debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("
 
 std::uint64_t RendererState::submissions = 0;
 
-const std::array<std::span<const std::uint8_t> (*)(), 12> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader, &core::EmbeddedFiles::getGlassShader};
+const std::array<std::span<const std::uint8_t> (*)(), 13> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader, &core::EmbeddedFiles::getGlassShader, &core::EmbeddedFiles::getFilterShader};
 
 const std::array<RendererState::ProgramSource, RendererState::kProgramCount> RendererState::kPrograms{{
     {.package = 0, .program = "sprite", .lit = "sprite_lit"},
@@ -33,13 +33,16 @@ const std::array<RendererState::ProgramSource, RendererState::kProgramCount> Ren
     {.package = 5, .program = "light", .lit = ""},
     {.package = 6, .program = "metaball", .lit = "metaball_lit"},
     {.package = 7, .program = "recolor", .lit = "recolor_lit"},
-    {.package = 4, .program = "filter", .lit = ""},
+    {.package = 12, .program = "filter", .lit = ""},
     {.package = 8, .program = "effect", .lit = "effect_lit"},
     {.package = 9, .program = "shape", .lit = "shape_lit"},
     {.package = 0, .program = "batch", .lit = "batch_lit"},
     {.package = 10, .program = "backdrop", .lit = ""},
     {.package = 1, .program = "text_gradient", .lit = "text_gradient_lit"},
     {.package = 11, .program = "glass", .lit = ""},
+    {.package = 4, .program = "composite_lit", .lit = ""},
+    {.package = 4, .program = "composite_plain", .lit = ""},
+    {.package = 5, .program = "light_shadowed", .lit = ""},
 }};
 
 // The vertex layouts below read these records at fixed offsets.
@@ -794,12 +797,15 @@ RendererState::Layout RendererState::describeLayout(Program program) {
         layout.inputs = kQuadInputs;
         return layout;
     case Program::Light:
+    case Program::ShadowedLight:
         layout.buffers[0] = {.stride = kCorner};
         layout.buffers[1] = {.stride = static_cast<int>(sizeof(LightInstance)), .perInstance = true};
         layout.bufferCount = 2;
         layout.inputs = kLightInputs;
         return layout;
     case Program::Composite:
+    case Program::LitComposite:
+    case Program::PlainComposite:
     case Program::Filter:
         layout.primitive = gpu::Device::Primitive::Triangles;
         return layout;
@@ -955,7 +961,10 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::ImageBlend:
     case Program::Backdrop:
     case Program::Composite:
+    case Program::LitComposite:
+    case Program::PlainComposite:
     case Program::Light:
+    case Program::ShadowedLight:
     case Program::Metaball:
     case Program::Recolor:
     case Program::Filter:

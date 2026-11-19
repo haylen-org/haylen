@@ -529,7 +529,7 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     }
 }
 
-// Neighbouring lights that share a blend mode and a shape draw as the instances of one call, in the order the app drew them.
+// Neighbouring lights that share a blend mode, a shape and whether they cast shadows draw as the instances of one call, in the order the app drew them, where only the lights with shadows take the program that reads the shadow map.
 void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& targets) {
     beginOffscreenPass(targets.light, *canvas.options.ambientLight);
     const Matrix matrix = projection(canvas.view, canvas.viewSize);
@@ -540,12 +540,14 @@ void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& target
     while (first < canvas.lightEnd) {
         const lighting2d::Light& light = state.lights[first].light;
         const graphics::TextureResource& shape = getLightShape(light);
+        const bool shadowed = state.lights[first].shadowRow >= 0;
         std::size_t end = first + 1;
-        while (end < canvas.lightEnd && state.lights[end].light.blend == light.blend && &getLightShape(state.lights[end].light) == &shape) {
+        while (end < canvas.lightEnd && state.lights[end].light.blend == light.blend && &getLightShape(state.lights[end].light) == &shape && (state.lights[end].shadowRow >= 0) == shadowed) {
             ++end;
         }
 
-        state.getGpu().applyPipeline(state.getPipeline(Program::Light, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap));
+        const Program program = shadowed ? Program::ShadowedLight : Program::Light;
+        state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap));
         gpu::Device::Bindings bindings;
         bindings.vertexBuffers[0] = state.quad;
         bindings.vertexBuffers[1] = state.lightBuffer;
@@ -766,7 +768,10 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     const graphics::RenderTarget& image = stage != Stage::Finish ? targets.scene : (canvas.hasBlur() ? targets.blur.front()[0] : targets.post[0]);
     const auto viewOf = [](const graphics::RenderTarget& used) { return used.getTexture().getResource()->image; };
 
-    state.getGpu().applyPipeline(state.getPipeline(Program::Composite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
+    // A canvas without distortion, chromatic aberration, bloom, blur or a lookup texture takes the program without those steps, and one without lighting also the program without the light map.
+    const bool effects = distorts || blooms || grades || stage != Stage::Whole || post.chromaticAberration > 0.0F;
+    const Program program = effects ? Program::Composite : (lit ? Program::LitComposite : Program::PlainComposite);
+    state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
     gpu::Device::Bindings bindings;
     bindings.textures[RendererState::kCompositeScene] = viewOf(image);
     bindings.textures[RendererState::kCompositeLight] = viewOf(lit ? targets.light : image);

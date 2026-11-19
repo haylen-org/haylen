@@ -23,6 +23,7 @@ class EmbeddedFiles final {
     [[nodiscard]] static std::span<const std::uint8_t> getMeshShader();
     [[nodiscard]] static std::span<const std::uint8_t> getBlendShader();
     [[nodiscard]] static std::span<const std::uint8_t> getCompositeShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getFilterShader();
     [[nodiscard]] static std::span<const std::uint8_t> getLightShader();
     [[nodiscard]] static std::span<const std::uint8_t> getMetaballShader();
     [[nodiscard]] static std::span<const std::uint8_t> getRecolorShader();
