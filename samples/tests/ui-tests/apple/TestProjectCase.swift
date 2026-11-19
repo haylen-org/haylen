@@ -11,8 +11,8 @@ class TestProjectCase: HaylenUITestCase {
         ["--test", code]
     }
 
-    override func setUpWithError() throws {
-        try super.setUpWithError()
+    override func setUp() async throws {
+        try await super.setUp()
         waitFor(element(code))
     }
 

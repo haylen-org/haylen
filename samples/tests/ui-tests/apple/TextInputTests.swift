@@ -3,8 +3,8 @@ import XCTest
 #if os(iOS)
 // The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns and while a finger scrolls the page, and the keyboard follows the field that edits.
 class TextInputTests: HaylenUITestCase {
-    override func setUpWithError() throws {
-        try super.setUpWithError()
+    override func setUp() async throws {
+        try await super.setUp()
         // The search of the menu finds the test, and typing its words takes the keyboard too.
         waitFor(element(matching: "Search by code or title.*")).tap()
         waitFor(app.keyboards.firstMatch)
@@ -13,9 +13,9 @@ class TextInputTests: HaylenUITestCase {
         waitFor(element("https://haylen.dev"))
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         XCUIDevice.shared.orientation = .landscapeLeft
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testEachKeyTypesOnceAndBackspaceDeletes() throws {

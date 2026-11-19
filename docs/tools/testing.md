@@ -506,6 +506,8 @@ The class `HaylenUITestCase` starts the app again for each test, with the launch
 
 A test closes the app with `app.terminate()`, and `XCUIDevice.shared.location` gives the simulator and the device a place to report, so a test of the location knows what to expect.
 
+The runner compiles the tests in the Swift 6 language mode. The class `HaylenUITestCase` runs on the main actor, as `XCUIApplication` does, so a test that prepares or cleans up more overrides `setUp() async throws` and `tearDown() async throws` and calls them on `super` with `try await`.
+
 ### Android
 
 The command `haylen test --ui <app> --target android` runs these steps:

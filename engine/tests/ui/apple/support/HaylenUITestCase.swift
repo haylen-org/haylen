@@ -1,6 +1,7 @@
 import XCTest
 
 // The base of the UI tests of a Haylen app. The command "haylen test --ui" installs the app on a simulator or a device and names it to the runner, and each test starts it again with the launch arguments of its class. The GUIs of the app expose their components to the tests through the accessibility tree, by the text they show.
+@MainActor
 class HaylenUITestCase: XCTestCase {
     // The Info.plist of the runner names the app it drives and the folder of its screenshots, which "haylen test --ui" writes into it.
     static let info = Bundle(for: HaylenUITestCase.self).infoDictionary ?? [:]
@@ -21,7 +22,8 @@ class HaylenUITestCase: XCTestCase {
     }
 #endif
 
-    override func setUpWithError() throws {
+    // The tests drive the app on the main actor, as XCUIApplication requires. XCTest declares the synchronous setUp and tearDown without an actor, so the class overrides their async variants, which run on the main actor.
+    override func setUp() async throws {
         continueAfterFailure = false
         identifier = try XCTUnwrap(Self.info["HaylenUIApp"] as? String, "Build the UI tests with \"haylen test --ui\", which names the app they drive.")
         app = XCUIApplication(bundleIdentifier: identifier)
@@ -38,7 +40,7 @@ class HaylenUITestCase: XCTestCase {
         app.launch()
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         app.terminate()
     }
 

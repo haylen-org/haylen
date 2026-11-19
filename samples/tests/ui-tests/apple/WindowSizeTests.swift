@@ -5,8 +5,8 @@ import XCTest
 class WindowSizeTests: HaylenUITestCase {
     var multitasking: Multitasking?
 
-    override func setUpWithError() throws {
-        try super.setUpWithError()
+    override func setUp() async throws {
+        try await super.setUp()
         try XCTSkipUnless(isPad, "Only an iPad resizes the windows of apps.")
         multitasking = setMultitasking(.windowedApps)
         tap("Platform")
@@ -14,13 +14,13 @@ class WindowSizeTests: HaylenUITestCase {
         expectFramebufferFollowsWindow("full")
     }
 
-    override func tearDown() {
+    override func tearDown() async throws {
         if let multitasking {
             setMultitasking(.windowedApps)
             arrangeWindow("Fill")
             setMultitasking(multitasking)
         }
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testTheFramebufferFollowsTheWindowInSplitView() throws {

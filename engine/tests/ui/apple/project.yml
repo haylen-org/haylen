@@ -10,7 +10,7 @@ settings:
     PRODUCT_NAME: HaylenUITests
     PRODUCT_BUNDLE_IDENTIFIER: com.haylen.uitests
     GENERATE_INFOPLIST_FILE: YES
-    SWIFT_VERSION: "5.0"
+    SWIFT_VERSION: "6.0"
     CODE_SIGN_IDENTITY: "-"
 targets:
   iOS:

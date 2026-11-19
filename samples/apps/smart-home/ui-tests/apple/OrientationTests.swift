@@ -3,9 +3,9 @@ import XCTest
 #if os(iOS)
 // The panel turns with the device and lays its cards out again in landscape and in portrait.
 class OrientationTests: HaylenUITestCase {
-    override func tearDown() {
+    override func tearDown() async throws {
         XCUIDevice.shared.orientation = .portrait
-        super.tearDown()
+        try await super.tearDown()
     }
 
     func testThePanelTurnsWithTheDevice() throws {
