@@ -44,6 +44,11 @@ class LuaReferenceTest : public ::testing::Test {
             bool inside = false;
             bool lua = false;
             while (std::getline(file, line)) {
+                // A checkout on Windows ends the lines of the pages with a carriage return and a line feed.
+                if (line.ends_with('\r')) {
+                    line.pop_back();
+                }
+
                 if (line.starts_with("```")) {
                     if (inside && lua) {
                         page.examples.push_back(example);
