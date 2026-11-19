@@ -71,7 +71,7 @@ void StoreFile::sync() {
     }
 }
 
-// A native->handle that only appends may not move the end of its file, so the end moves through a native->handle of its own that writes.
+// A handle that only appends may not move the end of its file, so the end moves through a handle of its own that writes.
 void StoreFile::truncate(std::uint64_t size) {
     HANDLE writer = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (writer == INVALID_HANDLE_VALUE) {

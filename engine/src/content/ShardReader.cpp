@@ -36,9 +36,16 @@ ShardIndex ShardReader::readIndex(io::PackageReader& source, const ShardHeader& 
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(parsed.indexSize));
     source.readExactly(parsed.indexOffset, bytes);
     parsed.openIndex(indexKey, bytes);
-    ShardIndex entries = ShardIndex::parse(bytes, ShardHeader::kSize, parsed.indexOffset);
-    crypto_wipe(bytes.data(), bytes.size());
-    return entries;
+
+    // The decrypted index leaves memory whether or not it parses.
+    try {
+        ShardIndex entries = ShardIndex::parse(bytes, ShardHeader::kSize, parsed.indexOffset);
+        crypto_wipe(bytes.data(), bytes.size());
+        return entries;
+    } catch (...) {
+        crypto_wipe(bytes.data(), bytes.size());
+        throw;
+    }
 }
 
 void ShardReader::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {

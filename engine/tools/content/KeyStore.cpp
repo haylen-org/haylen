@@ -12,9 +12,7 @@
 
 #include <algorithm>
 #include <fstream>
-#include <iterator>
 #include <stdexcept>
-#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -121,16 +119,19 @@ std::vector<EmbeddedKeyProvider::SealedKey> KeyStore::sealContentKeys() const {
 }
 
 KeyStore::Secret KeyStore::readSecret(const std::filesystem::path& file) {
-    std::ifstream stream(file, std::ios::binary);
-    std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-    if (!stream.is_open() || bytes.size() != std::tuple_size_v<Secret>) {
-        crypto_wipe(bytes.data(), bytes.size());
+    // The stream reads without a buffer of its own, so the key lands only in the secret, which the caller wipes.
+    std::ifstream stream;
+    stream.rdbuf()->pubsetbuf(nullptr, 0);
+    stream.open(file, std::ios::binary);
+
+    Secret secret{};
+    stream.read(reinterpret_cast<char*>(secret.data()), static_cast<std::streamsize>(secret.size()));
+    const bool whole = stream.gcount() == static_cast<std::streamsize>(secret.size()) && stream.peek() == std::ifstream::traits_type::eof();
+    if (!whole) {
+        crypto_wipe(secret.data(), secret.size());
         throw std::runtime_error("The key file \"" + file.generic_string() + "\" is missing or does not hold the 32 bytes of a key.");
     }
 
-    Secret secret{};
-    std::ranges::copy(bytes, secret.begin());
-    crypto_wipe(bytes.data(), bytes.size());
     return secret;
 }
 

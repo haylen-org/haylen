@@ -28,6 +28,10 @@ Updater::~Updater() {
     for (const HttpTransport::Transfer& transfer : transfers) {
         transfer.cancel();
     }
+
+    if (download) {
+        downloader.cancel(*download);
+    }
 }
 
 std::string Updater::locate(const ShardReference& pack) const {
@@ -150,6 +154,10 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
         } catch (const Error& error) {
             offer.reset();
             failure = error;
+        } catch (const std::exception& error) {
+            // The files of the release that the measure opens can fail to read, such as a pack folder that went away.
+            offer.reset();
+            failure = Error(Error::Code::CacheCorrupt, error.what());
         }
 
         // An update encrypted under a key the app does not hold yet asks the key provider for it once, and reads the offer again with it.
@@ -236,7 +244,11 @@ void Updater::install(const UpdateOffer& offer, std::function<void(const Downloa
 
             download = downloader.fetch(offer.content->shards, offer.missing, [this](const ShardReference& pack) { return locate(pack); }, {
                 .onProgress = std::move(progress),
-                .onComplete = [this, offer, done = std::move(done)](std::optional<Error> downloadFailure) mutable {
+                .onComplete = [this, owner, offer, done = std::move(done)](std::optional<Error> downloadFailure) mutable {
+                    if (owner.expired()) {
+                        return;
+                    }
+
                     download.reset();
 
                     if (downloadFailure) {

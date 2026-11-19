@@ -298,17 +298,20 @@ void ContentManager::bringRequired() {
 
     // Finding what the device lacks opens the shard files it looks into, so it runs away from the frame thread.
     // clang-format off
-    engine.getJobs().run([content, rules = settings] { return Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, rules)); }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) {
+    engine.getJobs().run([content, rules = settings, store = release->getStore()] {
+        return std::pair(Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, rules)), store->getAvailableSpace());
+    }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::pair<std::vector<Catalog::Chunk>, std::uint64_t>> found) {
         if (owner.expired()) {
             return;
         }
 
-        if (!missing.isOk()) {
-            fail(Error(Error::Code::CacheCorrupt, missing.error));
+        if (!found.isOk()) {
+            fail(Error(Error::Code::CacheCorrupt, found.error));
             return;
         }
 
-        if (missing.value->empty()) {
+        const std::vector<Catalog::Chunk>& missing = found.value->first;
+        if (missing.empty()) {
             bringStartFiles();
             return;
         }
@@ -318,8 +321,14 @@ void ContentManager::bringRequired() {
             return;
         }
 
-        progress = {.totalBytes = Downloader::measure(*missing.value, *release->getStore())};
-        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
+        const std::uint64_t downloadBytes = Downloader::measure(missing, *release->getStore());
+        if (const std::optional<Error> lacking = checkRoom(downloadBytes, missing.size(), found.value->second)) {
+            fail(*lacking);
+            return;
+        }
+
+        progress = {.totalBytes = downloadBytes};
+        downloader->fetch(content->shards, missing, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [this](const Downloader::Progress& received) { progress = {.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes}; },
             .onComplete = [this, owner](std::optional<Error> failure) {
                 if (owner.expired()) {
@@ -743,8 +752,12 @@ void ContentManager::check(std::function<void(std::optional<Update>, std::option
         throw std::logic_error("The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.");
     }
 
-    if (!updater || !settings.updates) {
+    if (!settings.updates) {
         throw std::logic_error("The app names no content server, so it has no updates. Name one in \"content.updates\" of \"haylen.json\".");
+    }
+
+    if (!updater) {
+        throw std::runtime_error("The content store of the app could not be opened on this device, so it has no updates. The log of the app tells why.");
     }
 
     status = Status::Checking;

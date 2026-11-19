@@ -612,7 +612,7 @@ The class `content::Updater` updates the content of an installed app from the ch
 2. The check downloads the manifest that the pointer names and verifies it. It checks the manifest against the build of the app, which raises `ManifestIncompatible` for content of another app, profile or range of builds and keeps the content as it is. It decrypts the catalog and finds the chunks of the required files that the device lacks, in the shard files that the app ships with or in the store. A chunk that the app already holds, because the new content keeps a shard or holds the same bytes, is never downloaded again.
 3. An install first checks that the device has room for the download. That room covers the records it downloads, their journal entries, the indexes of their shards, the manifest, the records that download at once, and a margin of 64 MiB or a twentieth of the download, whichever is larger. A device without that room raises `InsufficientStorage` with the bytes needed and available before a byte is written, and the content stays as it was.
 4. The install downloads the header and the encrypted index of every shard that it needs records from, once, and the store keeps them. Then it downloads the records alone, in ranges that `RangePlanner` joins, with four requests at once. Every record is checked against the signed catalog and the index of its shard, authenticated and decoded on the task pool before the store keeps it, so nothing unverified enters the store.
-5. Only once every record is verified does the install write the manifest and a new state. The state names the new content as active and the content before it as previous, and it is written after the records and the manifest are on the disk. The new content plays from the next start of the app.
+5. Only once every record is verified does the install write a new state. The state names the new content as active and the content before it as previous, and it is written after the records and the manifest are on the disk. The new content plays from the next start of the app.
 
 ### Shared and interrupted downloads
 
@@ -625,7 +625,7 @@ A download that stops keeps the first bytes of the record it was receiving in th
 
 ### Recovery at the start
 
-When the app starts, the release opens the content that the state names as active. It verifies its manifest again, checks it against the build and decrypts its catalog. Content that fails any of these, such as a manifest that the device damaged or lost, falls back to the previous content and then to the content that ships with the app. The release records why in `getRecovery`, so damaged downloads never keep an app from starting. A store that the device refuses to open leaves the app with the content that it ships. A collection keeps the records of the content that ships with the app, of the active and the previous content and of the content that an install is bringing, and it removes the rest.
+When the app starts, the release opens the content that the state names as active. It verifies its manifest again, checks it against the build and decrypts its catalog. Content that fails any of these, such as a manifest that the device damaged or lost, falls back to the previous content and then to the content that ships with the app. The release records why in `takeRecovery`, so damaged downloads never keep an app from starting. A store that the device refuses to open leaves the app with the content that it ships. A collection keeps the records of the content that ships with the app, of the active and the previous content and of the content that an install is bringing, and it removes the rest.
 
 ## The content manager
 
@@ -659,7 +659,7 @@ if (!content.isLocal("world/asia/maps/tokyo.tmj")) {
 
 ### What the manager does on its own
 
-When the app starts, the manager looks on a worker thread for required content that the device lacks, while the engine holds the start of the app with `Engine::holdStart`. Content that ships with the app is there, so the app starts in the next frames. Content that is not there, as on a web page or on a device that cleared its downloads, downloads from the server first, and the app starts once all of it is verified. When downloaded content cannot come back, the manager plays the content that ships with the app instead.
+When the app starts, the manager looks on a worker thread for required content that the device lacks, while the engine holds the start of the app with `Engine::holdStart`. Content that ships with the app is there, so the app starts in the next frames. Content that is not there, as on a web page or on a device that cleared its downloads, downloads from the server first, and the app starts once all of it is verified. The download starts only on a device with room for it and the margin of an install, and otherwise fails with `InsufficientStorage` and the room it needs. When downloaded content cannot come back, the manager plays the content that ships with the app instead.
 
 The engine reads a few files of the content before any Lua runs, and it reads each of them only once the manager has it on the device:
 
@@ -679,7 +679,7 @@ The manager publishes `contentUpdateAvailable`, `contentUpdateReady`, `contentUp
 
 ### The update screen
 
-While the app waits for required content that downloads, the engine draws the update screen in the background color, with the name and the logo of the [splash screen](../tools/distribution.md) of `haylen.json`. It shows the logo only once the logo is on the device. A round bar fills as the download goes on, with the bytes received and the size of the download under it. After a failure, the screen gives the reason in plain words, such as an offline device, or a device without room and the room it needs. It then offers a button that tries again and a button that quits, except on iOS, iPadOS and tvOS, which never let apps close themselves.
+While the app waits for required content that downloads, the engine draws the update screen in the background color, with the name and the logo of the [splash screen](../tools/distribution.md) of `haylen.json`. It shows the logo only once the logo is on the device. A round bar fills as the download goes on, with the bytes received and the size of the download under it. After a failure, the screen gives the reason in plain words, such as an offline device, or a device without room and the room it needs. It then offers a button that tries again and a button that quits where the window of the platform lets an app close itself, which iOS, iPadOS and tvOS never do.
 
 A mouse, a finger, Enter, the south button of a gamepad and the select button of a TV remote press the focused button, and the arrow keys and the directional pad move the focus. No screen shows while the manager only finds the content on the device, and apps never draw a screen of their own to download their required content.
 
@@ -845,7 +845,7 @@ The method `isRetryable` tells whether trying again may succeed without a new bu
 | `ManifestRollbackRejected` | A descriptor offers an older generation, or the same generation with another manifest. |
 | `UnknownKeyId` | The app has no content key with the ID that a shard or a manifest names. |
 | `KeyUnavailable` | The provider of the app cannot give a key that it lists, the app ships a release and its build holds no bootstrap, or no provider gives the key of an update, which `keyId` names. |
-| `MissingChunk` | A shard does not hold a chunk that its catalog places in it. |
+| `MissingChunk` | A shard does not hold a chunk that its catalog places in it, or a chunk or a part of a shard is not on the device yet and must be downloaded before it is read. |
 | `MissingShard` | The file of a shard that a manifest names is missing. |
 | `MissingManifest` | A publication tree lacks a manifest that a channel names, or a release build finds plain files or nothing in the place of the protected release it plays. |
 | `LuaBytecodeIncompatible` | The app manifest holds Lua bytecode of another ABI than the Lua of the running build loads. |
@@ -856,7 +856,7 @@ The method `isRetryable` tells whether trying again may succeed without a new bu
 | `TlsFailed` | The secure connection failed, such as a certificate that does not verify. |
 | `RangeUnsupported` | The server does not serve byte ranges as protected content needs. |
 | `UnexpectedHttpStatus` | The server answered with a status other than the file or the range. |
-| `UpdateInterrupted` | A download ended before all of its bytes arrived. |
+| `UpdateInterrupted` | A download ended before all of its bytes arrived, or a collection of the store stopped before it finished, which leaves the store as it was. |
 | `DiskFull` | The device has no room for what the store writes. |
 | `QuotaExceeded` | The browser refused a change of the store past the quota of the site. The worker then keeps no later change, so the files of the browser stay at the last state they hold whole, and the page plays the content it held before. |
 | `PermissionDenied` | The device does not let the store write its folder. |

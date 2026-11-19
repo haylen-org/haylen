@@ -266,7 +266,7 @@ An app with a content server and `enabled` updates checks its channel when it st
 
 Asks the channel for newer content and returns a promise. It resolves to a table with `generation` and `downloadBytes`, or to `nil` when the app plays the newest content. It rejects with the failure, its message and the table of [`content.error`](#contenterror), such as `manifestRollbackRejected` for a server that offers an older generation, or `manifestIncompatible` for content that needs a newer build of the app.
 
-In development it raises `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.`. In a release without a content server it raises `The app names no content server, so it has no updates. Name one in "content.updates" of "haylen.json".`.
+In development it raises `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.`. In a release without a content server it raises `The app names no content server, so it has no updates. Name one in "content.updates" of "haylen.json".`. On a device that refused the content store of the app it raises `The content store of the app could not be opened on this device, so it has no updates. The log of the app tells why.`.
 
 ```lua
 local async = require('async')
@@ -374,6 +374,7 @@ These messages are raised by the functions, or reach the promise of a load throu
 | `The pack folder "<path>" does not exist.` | The function `content.addPackFolder` names a path that is no folder, in a release. |
 | `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.` | The functions `content.check` or `content.download` ran in development. |
 | `The app names no content server, so it has no updates. Name one in "content.updates" of "haylen.json".` | The functions `content.check` or `content.download` ran in a release without a content server. |
+| `The content store of the app could not be opened on this device, so it has no updates. The log of the app tells why.` | The functions `content.check` or `content.download` ran on a device that refused the content store, which the app plays without. |
 | `No content update is ready to apply. Download one first.` | The function `content.apply` ran before an update was installed. |
 | `The source of packs must return the folder of the pack, nil or a promise of either.` | A function of `content.addPackSource` returned another value. |
 | `The source of packs failed to deliver the pack "<pack>". <reason>` | A function of `content.addPackSource` raised an error, or its promise rejected. The load fails with `storeAssetUnavailable`. |

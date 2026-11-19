@@ -17,6 +17,7 @@
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/ReleaseStager.hpp"
+#include "content/UpdateScreen.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -116,7 +117,7 @@ class ContentManagerTest : public ::testing::Test {
             storeFiles = std::make_unique<FolderStoreFiles>(storeFolder.getPath());
         }
 
-        auto store = std::make_shared<LocalStore>(std::move(storeFiles), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
+        auto store = storeRefused ? nullptr : std::make_shared<LocalStore>(std::move(storeFiles), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
         package = ReleasePackage::open(std::move(files), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
         core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
@@ -164,6 +165,7 @@ class ContentManagerTest : public ::testing::Test {
     platform::HeadlessHost host{data.getPath()};
     int ships = 0;
     std::optional<std::uint64_t> storeRoom;
+    bool storeRefused = false;
     std::shared_ptr<ReleasePackage> package;
     std::unique_ptr<core::Engine> engine;
 };
@@ -202,6 +204,36 @@ TEST_F(ContentManagerTest, ShowsWhyTheRequiredContentCannotDownloadAndTriesAgain
     engine->handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::Enter});
     EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Downloading);
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+}
+
+// A device without room for the content that the app needs to start says how much room it needs before the download fills it.
+TEST_F(ContentManagerTest, RefusesToDownloadTheRequiredContentWithoutRoomForIt) {
+    storeRoom = 1024;
+    run(shipWithoutContent());
+
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
+    const std::optional<Error>& error = engine->getContent().getError();
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->getCode(), Error::Code::InsufficientStorage) << error->what();
+    ASSERT_TRUE(error->getDetails().requiredBytes);
+
+    const UpdateScreen screen(*engine);
+    const std::string expected = "The device needs " + UpdateScreen::formatBytes(*error->getDetails().requiredBytes) + " of free room";
+    EXPECT_NE(screen.getStatus().find(expected), std::string::npos) << screen.getStatus();
+}
+
+// A device that refused the content store leaves the app without updates, and a check says so instead of asking for a server that the app already names.
+TEST_F(ContentManagerTest, TellsThatAnAppWithoutItsStoreHasNoUpdates) {
+    storeRefused = true;
+    run(ship());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+
+    try {
+        engine->getContent().check([](std::optional<ContentManager::Update>, std::optional<Error>) { ADD_FAILURE() << "A check that cannot start never answers."; });
+        FAIL() << "A check without the store raises.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "The content store of the app could not be opened on this device, so it has no updates. The log of the app tells why.");
+    }
 }
 
 TEST_F(ContentManagerTest, LoadsAnAssetOnDemandOnlyAsynchronously) {
@@ -671,7 +703,7 @@ TEST_F(ContentPackTest, TakesPacksFromTheSourcesThatLuaGives) {
     lua::Stack::push(L, (shipped.getPath() / "packs" / "expansion").string());
     lua_setglobal(L, "packFolder");
 
-    // A source that returns something else than a folder and one whose promise rejects fail the load, while a source that answers at once with nothing passes the pack on to one that waits for the store in a promise.
+    // A source that returns something else than a folder and one whose promise rejects fail the load, while a source that answers at once with nothing passes the pack on to one that waits for the store itself and then in a promise, so a yield passes through both continuations of the source.
     // clang-format off
     ASSERT_EQ(luaL_dostring(L, R"lua(
         local content = require('haylen.content')
@@ -690,6 +722,7 @@ TEST_F(ContentPackTest, TakesPacksFromTheSourcesThatLuaGives) {
             content.addPackSource(function(pack) skipped = pack end)
             content.addPackSource(function(pack, progress)
                 progress({receivedBytes = 5, totalBytes = 10})
+                async.sleep(5):await()
                 return async.promise(function()
                     async.sleep(10):await()
                     return packFolder

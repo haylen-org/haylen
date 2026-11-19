@@ -4,6 +4,7 @@
 #include <charconv>
 #include <format>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include "content/format/ChunkRecord.hpp"
@@ -152,7 +153,14 @@ void LocalStore::commit(const std::function<void(StoreState&)>& change) {
 
 void LocalStore::commit(const Digest& manifestId, std::span<const std::uint8_t> manifest, const std::function<void(StoreState&)>& change) {
     std::scoped_lock write(writeMutex);
-    files->write(std::format("{}/{}.hmanifest", kManifestFolder, manifestId.toHex()), manifest);
+
+    // A file of the store is never written again in place once a state may name it, so a manifest that the store holds whole stays as it is.
+    const std::string name = std::format("{}/{}.hmanifest", kManifestFolder, manifestId.toHex());
+    const std::optional<std::vector<std::uint8_t>> stored = files->read(name);
+    if (!stored || !std::ranges::equal(*stored, manifest)) {
+        files->write(name, manifest);
+    }
+
     commitLocked(change);
 }
 

@@ -49,6 +49,9 @@ class UpdateScreen final {
     // Whether the platform lets an app close itself, which iOS, iPadOS and tvOS do not.
     [[nodiscard]] bool canQuit() const;
 
+    // The sentence under the progress bar: what downloads, or why the content could not come.
+    [[nodiscard]] std::string getStatus() const;
+
     // The bytes in the units people read, such as `12.4 MB`.
     [[nodiscard]] static std::string formatBytes(std::uint64_t bytes);
 
@@ -70,7 +73,6 @@ class UpdateScreen final {
 
     [[nodiscard]] float getUnit() const;
     [[nodiscard]] math::Color getTextColor() const;
-    [[nodiscard]] std::string getStatus() const;
     [[nodiscard]] bool hasFailed() const;
     void run(Action action);
     void press(math::Vec2 point);

@@ -10,7 +10,9 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "content/ChannelPublisher.hpp"
@@ -22,6 +24,7 @@
 #include "content/Updater.hpp"
 #include "content/format/PartialRecord.hpp"
 #include "content/format/ShardHeader.hpp"
+#include "content/format/ShardReference.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/io/MemoryPackage.hpp"
@@ -49,10 +52,10 @@ class UpdaterTest : public ::testing::Test {
 
     // An installed app: its release with the local store of its downloads and the parts that update it.
     struct Client {
-        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles, std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr) : jobs(test.jobSystems.emplace_back(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; })), transport(test.runtime.getRuntime()) {
+        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles, std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr, std::shared_ptr<const io::Package> releaseFiles = nullptr) : jobs(test.jobSystems.emplace_back(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; })), transport(test.runtime.getRuntime()) {
             const VerifyingKey trusted = test.release.getSigningKey().getVerifyingKey();
             auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
-            package = std::make_shared<ReleasePackage>(test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
+            package = std::make_shared<ReleasePackage>(releaseFiles ? std::move(releaseFiles) : test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
             downloader = std::make_unique<Downloader>(jobs, transport, package->getStore());
             settings.updates = core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()};
             updater = std::make_unique<Updater>(package, jobs, transport, *downloader, settings);
@@ -64,6 +67,35 @@ class UpdaterTest : public ::testing::Test {
         HttpTransport transport;
         std::unique_ptr<Downloader> downloader;
         std::unique_ptr<Updater> updater;
+    };
+
+    // The files of a release whose shard files go away once the release opened, as a pack folder that the system removes between the check that a file exists and its opening.
+    class VanishingShards final : public io::Package {
+      public:
+        explicit VanishingShards(std::shared_ptr<const io::Package> innerPackage) : inner(std::move(innerPackage)) {}
+
+        [[nodiscard]] std::string_view getName() const noexcept override {
+            return inner->getName();
+        }
+        [[nodiscard]] bool exists(std::string_view path) const override {
+            return inner->exists(path);
+        }
+        [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
+            return inner->getFileSize(path);
+        }
+        [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
+            if (path.ends_with(ShardReference::kExtension)) {
+                throw std::runtime_error("The package file \"" + std::string(path) + "\" could not be opened.");
+            }
+
+            return inner->openReader(path);
+        }
+        [[nodiscard]] std::vector<std::string> list(std::string_view directory) const override {
+            return inner->list(directory);
+        }
+
+      private:
+        std::shared_ptr<const io::Package> inner;
     };
 
     UpdaterTest() {
@@ -309,6 +341,25 @@ TEST_F(UpdaterTest, KeepsTheContentWhenThePowerFailsAsTheUpdateBecomesActive) {
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
 }
 
+// The install names its manifest as pending before the records arrive and as active once they did, so the manifest that the state names is never written again, and a loss of power at that moment leaves it whole.
+TEST_F(UpdaterTest, NeverWritesAgainTheManifestThatTheStateNames) {
+    publish(makeUpdate(2));
+    {
+        auto files = std::make_unique<test::CrashingStoreFiles>(store.getPath());
+        test::CrashingStoreFiles& crashing = *files;
+        const auto client = std::make_unique<Client>(*this, std::move(files));
+        const UpdateOffer offer = requireOffer(*client);
+
+        crashing.crashOnWrite("manifests/", 1);
+        ASSERT_FALSE(install(*client, offer));
+        EXPECT_FALSE(crashing.hasCrashed());
+    }
+
+    const std::unique_ptr<Client> client = connect();
+    EXPECT_FALSE(client->package->takeRecovery());
+    EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
+}
+
 // A store of the web lets go of the records of a large download past its budget, so a download that a load waits for reads its records in again before it ends, while a download that only keeps content on the device, such as a prefetch, reads nothing in.
 TEST_F(UpdaterTest, ReadsInTheRecordsOfADownloadThatALoadWaitsFor) {
     publish(makeUpdate(2));
@@ -398,6 +449,32 @@ TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {
     EXPECT_LT(server.getSentBytes(), 300U * 1024U);
 
     EXPECT_GE(server.getSentBytes(), offer.downloadBytes);
+}
+
+// An updater that goes away while its install downloads lets go of the download, whose end never reaches it.
+TEST_F(UpdaterTest, LetsGoOfTheDownloadOfAnInstallWhenItGoesAway) {
+    publish(makeUpdate(2));
+    const std::unique_ptr<Client> client = connect();
+    const UpdateOffer offer = requireOffer(*client);
+
+    server.setStalls(true);
+    client->updater->install(offer, {}, [](std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
+    ASSERT_TRUE(runtime.pumpUntil([this] { return server.getAnswering() > 0; }));
+    client->updater.reset();
+    server.setStalls(false);
+    (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(500));
+}
+
+// A shard file of the release that cannot be read while the updater measures an offer ends the check with an error instead of leaving it waiting forever.
+TEST_F(UpdaterTest, AnswersACheckWhoseReleaseFilesCannotBeRead) {
+    publish(makeUpdate(2));
+    const auto client = std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()), nullptr, nullptr, std::make_shared<VanishingShards>(release.getFiles()));
+
+    auto [offer, error] = check(*client);
+    EXPECT_FALSE(offer);
+    ASSERT_TRUE(error);
+    EXPECT_EQ(error->getCode(), Error::Code::CacheCorrupt);
+    EXPECT_NE(std::string(error->what()).find("could not be opened"), std::string::npos) << error->what();
 }
 
 TEST_F(UpdaterTest, RefusesAChannelThatGoesBack) {

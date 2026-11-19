@@ -8,6 +8,7 @@
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
@@ -22,13 +23,14 @@ UpdateScreen::UpdateScreen(core::Engine& owner) : engine(owner), content(owner.g
     if (!logoPath.empty() && content.isLocal(logoPath)) {
         try {
             logo = engine.getAssets().texture(logoPath);
-        } catch (const std::exception&) {}
+        } catch (const std::exception& error) {
+            core::Log::warning("The update screen shows no logo, since the logo \"{}\" could not be loaded: {}", logoPath, error.what());
+        }
     }
 }
 
 bool UpdateScreen::canQuit() const {
-    const std::string_view platform = engine.getPlatformName();
-    return platform != "ios" && platform != "tvos";
+    return engine.getWindow().canQuit();
 }
 
 bool UpdateScreen::hasFailed() const {
@@ -75,8 +77,9 @@ std::string UpdateScreen::getStatus() const {
         case Error::Code::UpdateInterrupted:
             return "The device is offline or the server cannot be reached. Connect to the internet and try again.";
         case Error::Code::InsufficientStorage:
+            return std::format("The device needs {} of free room for the content. Free some room and try again.", formatBytes(error->getDetails().requiredBytes.value()));
         case Error::Code::DiskFull:
-            return std::format("The device needs {} of free room for the content. Free some room and try again.", formatBytes(error->getDetails().requiredBytes.value_or(0)));
+            return "The device ran out of room while the content downloaded. Free some room and try again.";
         case Error::Code::QuotaExceeded:
             return "The browser keeps no more content for this site. Free some of its storage and try again.";
         default:
@@ -134,8 +137,9 @@ void UpdateScreen::render() {
     y = bar.getBottom() + kGap * unit;
 
     const text::Style status{.size = kBodySize * unit, .color = hasFailed() ? kErrorColor : textColor, .align = text::Alignment::Center, .maxWidth = safe.width - kMargin * 2.0F * unit};
-    renderer.drawText(font, getStatus(), {center.x, y}, status);
-    y += font.measure(getStatus(), status).y + kGap * 1.5F * unit;
+    const std::string statusText = getStatus();
+    renderer.drawText(font, statusText, {center.x, y}, status);
+    y += font.measure(statusText, status).y + kGap * 1.5F * unit;
 
     retryButton = {};
     quitButton = {};

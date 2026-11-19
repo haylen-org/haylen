@@ -99,8 +99,12 @@ TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
     std::filesystem::copy_file(getFolder() / KeyStore::kSigningKeyFile, contentKey, std::filesystem::copy_options::overwrite_existing);
     EXPECT_THROW((void)KeyStore::open(getFolder()), std::runtime_error);
 
+    // A key file shorter or longer than a key is never read as one.
+    const std::string sizeError = "The key file \"" + contentKey.generic_string() + "\" is missing or does not hold the 32 bytes of a key.";
+    std::filesystem::resize_file(contentKey, 33);
+    expectError(sizeError, [&] { (void)KeyStore::open(getFolder()); });
     std::filesystem::resize_file(contentKey, 16);
-    EXPECT_THROW((void)KeyStore::open(getFolder()), std::runtime_error);
+    expectError(sizeError, [&] { (void)KeyStore::open(getFolder()); });
 
     std::ofstream(getFolder() / KeyStore::kIndexFile) << "{\"identifier\": \"com.haylen.tests\"}";
     EXPECT_THROW((void)KeyStore::open(getFolder()), std::runtime_error);
