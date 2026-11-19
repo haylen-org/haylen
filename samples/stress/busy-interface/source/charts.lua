@@ -41,8 +41,9 @@ function Charts.lineChart(rect, values, target)
     for _, value in ipairs(values) do
         low, high = math.min(low, value), math.max(high, value)
     end
+    -- The axis keeps a margin around the values, and never goes below zero, since the chart counts moves.
     local span = math.max(1, high - low)
-    low, high = low - span * 0.1, high + span * 0.1
+    low, high = math.max(0, low - span * 0.1), high + span * 0.1
 
     for line = 0, 3 do
         local lineY = y + height * line / 3
