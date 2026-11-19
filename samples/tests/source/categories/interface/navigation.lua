@@ -56,9 +56,9 @@ function Places:build()
     end
     return ui.column{gap = 8, padding = 16,
         ui.label{text = 'Places', font = 'title'},
-        ui.list{id = 'places', grow = 1, items = items, onSelect = function(event)
+        ui.scroll{grow = 1, height = 0, ui.list{id = 'places', items = items, onSelect = function(event)
             self.stack:push(Place(self.test, event.item, 2))
-        end},
+        end}},
     }
 end
 
@@ -106,9 +106,9 @@ function People:build()
     end
     return ui.column{gap = 8, padding = 16,
         ui.label{text = 'Messages', font = 'title'},
-        ui.list{id = 'people', grow = 1, items = items, onSelect = function(event)
+        ui.scroll{grow = 1, height = 0, ui.list{id = 'people', items = items, onSelect = function(event)
             self.messages.split:showDetail(Chat(self.messages.test, event.item))
-        end},
+        end}},
     }
 end
 

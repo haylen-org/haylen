@@ -127,6 +127,15 @@ function GameControls.bindingName(value)
     return #words == 1 and words:upper() or words
 end
 
+-- Names a binding inside a sentence: a key keeps the name on its cap, such as "Press Space", and a button, a mouse button or an axis reads as a thing, such as "Press the west button".
+function GameControls.bindingPhrase(value)
+    local name = GameControls.bindingName(value)
+    if value:match('^key:') then
+        return name
+    end
+    return 'the ' .. name:sub(1, 1):lower() .. name:sub(2)
+end
+
 -- One key cap per action, pressed while the action is down and glowing for a moment after it fires, with the action, its binding and how often it fired, in a block centered in the play area.
 function GameControls:draw(area)
     local count = #GameControls.bindings
@@ -153,7 +162,7 @@ function GameControls:draw(area)
         local textX = x + width + 32
         Test.caption(binding.label, textX, y - 38, {size = 32, color = Test.ink})
         local times = fired.count == 1 and 'once' or (fired.count == 2 and 'twice' or fired.count .. ' times')
-        Test.caption(fired.count == 0 and 'Press ' .. name .. ' to fire it' or 'Fired ' .. times, textX, y + 6, {size = 26, color = fired.count == 0 and Test.muted or Test.green, maxWidth = area.width - textX - 24})
+        Test.caption(fired.count == 0 and 'Press ' .. GameControls.bindingPhrase(fired.value) .. ' to fire it' or 'Fired ' .. times, textX, y + 6, {size = 26, color = fired.count == 0 and Test.muted or Test.green, maxWidth = area.width - textX - 24})
     end
 end
 

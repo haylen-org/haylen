@@ -131,7 +131,8 @@ function Routes.describe(state)
 end
 
 function Routes:app(scheme)
-    local links = {gap = 8, wrap = true}
+    -- Links have no frame of their own, so a wide gap keeps each one apart from the next.
+    local links = {gap = 28, lineGap = 4, wrap = true, grow = 1}
     for _, entry in ipairs({{'place', 'place/harbor?zoom=3'}, {'mill', 'place/mill'}, {'chat', 'chat/ana'}, {'post', 'post'}, {'lost', 'nowhere/7'}}) do
         local link = scheme .. '://' .. entry[2]
         links[#links + 1] = ui.button{id = 'link-' .. entry[1], text = link, variant = 'link', onClick = function() self:follow(link) end}

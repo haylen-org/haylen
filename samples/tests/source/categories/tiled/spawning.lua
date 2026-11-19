@@ -147,7 +147,8 @@ function Spawning:draw(area)
         if entity.kind == 'start' then
             graphics2d.drawShape({entity.x - 20, entity.y - 7, 40, 14}, {kind = 'ellipse', color = '#40000000', layer = 4})
             graphics2d.draw(self.texture, entity.x, entity.y, {source = self.map:tileInfo(self.flag).source, width = 48, height = 48, pivotX = 0.3, pivotY = 0.95, layer = 5})
-            MapTest.pill('Start', entity.x + 30, entity.y - 52, {size = 16})
+            -- The label of the start stands on the side of the flag away from the sign next to it, so the two labels never cover each other.
+            MapTest.pill('Start', entity.x - 14, entity.y - 30, {size = 16, anchor = {1, 1}})
         else
             -- A coin floats over its shadow, which shrinks as the coin rises, while the others stand on theirs.
             local coin = entity.kind == 'coin'

@@ -153,7 +153,7 @@ function Sleeping:draw(area)
         if sleepers > #half.blocks / 2 then
             for index = 0, 2 do
                 local rise = (time * 0.6 + index / 3) % 1
-                self:tag('z', half.origin + 110 + rise * 50 + index * 6, -40 - rise * 70, {size = 22 + index * 6, color = {1, 1, 1, 1 - rise}})
+                self:tag('z', half.origin + 110 + rise * 50 + index * 6, -40 - rise * 70, {size = 22 + index * 6, opacity = 1 - rise})
             end
         end
         half.grab:draw()

@@ -38,6 +38,8 @@ function PhysicsTest:init(entry)
     self.labelPlate = {kind = 'rectangle', radius = 0, color = PhysicsTest.plate, borderWidth = 0, borderColor = PhysicsTest.plateEdge, layer = 0}
     self.labelRect = {0, 0, 0, 0}
     self.tagText = {size = 1, color = '#FFFFFFFF', outlineWidth = 1, outlineColor = Look.ink, anchor = {0.5, 0.5}, align = 'center', layer = 0}
+    -- The white letters and the outline of the ink of a tag that fades, whose alpha the draw sets.
+    self.fadedTag, self.fadedOutline = {1, 1, 1, 1}, {0x1E / 255, 0x1B / 255, 0x33 / 255, 1}
     self.divider = {0, 0, 0, 0}
     self.dividerStroke = {width = 1, color = '#B3FFFFFF', dashes = {1, 1}, cap = 'round', layer = 35}
 end
@@ -90,7 +92,7 @@ function PhysicsTest:label(text, x, y, options)
     graphics2d.drawText(self.labelFont, text, left + plateWidth / 2, top + plateHeight / 2, style)
 end
 
--- Draws a short text with the bold outline of the art at `x`, `y` of the world, such as the value written on a body, which keeps its size on the screen at any zoom. The table `options` takes the `anchor` of the text, `{0.5, 0.5}` by default, the `size` in pixels of the screen, a `color` and the `layer`.
+-- Draws a short text with the bold outline of the art at `x`, `y` of the world, such as the value written on a body, which keeps its size on the screen at any zoom. The table `options` takes the `anchor` of the text, `{0.5, 0.5}` by default, the `size` in pixels of the screen, a `color`, an `opacity` from 0 to 1 that fades white letters and their outline together, and the `layer`.
 function PhysicsTest:tag(text, x, y, options)
     options = options or {}
     local unit = Look.pixel
@@ -99,7 +101,13 @@ function PhysicsTest:tag(text, x, y, options)
     style.size = (options.size or 18) * unit
     style.outlineWidth = 3.5 * unit
     style.color = options.color or '#FFFFFFFF'
+    style.outlineColor = Look.ink
     style.layer = options.layer or 40
+    if options.opacity then
+        local fill, outline = self.fadedTag, self.fadedOutline
+        fill[4], outline[4] = options.opacity, options.opacity
+        style.color, style.outlineColor = fill, outline
+    end
     graphics2d.drawText(self.labelFont, text, x, y, style)
 end
 

@@ -123,7 +123,7 @@ function Seeking:draw(area)
     AudioTest.lockNote(left + width, 26)
 
     -- The timeline of the track, with its sections and the place that plays.
-    local top = 100
+    local top = 128
     AudioTest.bar(left, top, width, 24, cursor / duration, Test.accent)
     for index, name in ipairs(kSections) do
         local x = left + width * (index - 1) / #kSections

@@ -100,7 +100,7 @@ function Shake:update(dt)
     end
     local offset = camera:shakeOffset()
     if trauma > 0 then
-        self:status(string.format('The view shakes by %d units at %d percent of the trauma.', math.floor(offset:length() + 0.5), math.floor(trauma * 100 + 0.5)))
+        self:status(string.format('The view shakes by %.1f units at %d percent of the trauma.', offset:length(), math.floor(trauma * 100 + 0.5)))
     else
         self:status('The view rests until the next hit adds trauma.')
     end
