@@ -12,10 +12,9 @@
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/math/Random.hpp"
+#include "support/TiledHelper.hpp"
 
 namespace haylen::tiled {
-
-namespace {
 
 // Small maps of a terrain tileset, whose tiles 1 to 8 are grass, edge, flower, rock, sand, water, mark and tree, and rule maps that also hold the special tiles of automapping from 101: empty, ignore, non-empty, other and negate.
 class AutoMapperTest : public ::testing::Test {
@@ -69,9 +68,9 @@ class AutoMapperTest : public ::testing::Test {
 
     [[nodiscard]] static std::vector<std::uint32_t> row(const Map& map, std::string_view name, int y) {
         std::vector<std::uint32_t> cells;
-        const Layer* found = map.findLayer(name);
+        const Layer& found = test::TiledHelper::layer(map, name);
         for (int x = 0; x < map.width; ++x) {
-            cells.push_back(found != nullptr ? found->getGid(x, y) : 0U);
+            cells.push_back(found.getGid(x, y));
         }
 
         return cells;
@@ -79,8 +78,6 @@ class AutoMapperTest : public ::testing::Test {
 
     math::Random random{7};
 };
-
-} // namespace
 
 // A rule writes its output wherever its input matches, onto an output layer it creates when the map lacks it.
 TEST_F(AutoMapperTest, WritesTheOutputWhereTheInputMatches) {
@@ -197,7 +194,7 @@ TEST_F(AutoMapperTest, BringsTheTilesetOfAnOutputTheMapLacks) {
     mapper(document(1, 1, core::Json::array({layer("input_ground", 1, 1, {kNonEmpty}), layer("output_decor", 1, 1, {kRock})}))).apply(map, random);
     ASSERT_EQ(map.tilesets.size(), 3U);
     EXPECT_EQ(map.tilesets[2].tileset->name, "terrain");
-    EXPECT_EQ(map.findLayer("decor")->getGid(0, 0), map.tilesets[2].firstGid + kRock - 1);
+    EXPECT_EQ(test::TiledHelper::layer(map, "decor").getGid(0, 0), map.tilesets[2].firstGid + kRock - 1);
 }
 
 // Each rule takes only the input layers that hold its tiles, so the input layers of other rules, of other indexes, never let it match everywhere.

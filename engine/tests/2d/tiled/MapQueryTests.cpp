@@ -14,10 +14,9 @@
 #include "haylen/math/Geometry.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
+#include "support/TiledHelper.hpp"
 
-namespace haylen {
-
-namespace {
+namespace haylen::tiled {
 
 class MapQueryTest : public ::testing::Test {
   protected:
@@ -48,8 +47,6 @@ class MapQueryTest : public ::testing::Test {
         return map;
     }
 };
-
-} // namespace
 
 TEST_F(MapQueryTest, CastsRaysOverTileLayers) {
     const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
@@ -136,7 +133,7 @@ TEST_F(MapQueryTest, CastsRaysOverIsometricAndObliqueTiles) {
 TEST_F(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
     const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
     const tiled::MapQuery query(map);
-    const std::vector<tiled::Object>& objects = map.findLayer("rocks")->objects;
+    const std::vector<tiled::Object>& objects = test::TiledHelper::layer(map, "rocks").objects;
     const math::Vec2 offset{4.0F, 2.0F};
 
     std::vector<math::Vec2> outline;
@@ -170,9 +167,15 @@ TEST_F(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
     EXPECT_EQ(crate->object->name, "crate");
     EXPECT_NEAR(crate->point.x, 24.0F, 1e-3F);
     EXPECT_EQ(crate->normal, (math::Vec2{-1.0F, 0.0F}));
-    EXPECT_EQ(query.castObjects("", math::Ray::between({85.0F, 27.0F}, {200.0F, 27.0F}))->object->name, "fence");
-    EXPECT_EQ(query.castObjects("", math::Ray::between({100.0F, 40.0F}, {60.0F, 40.0F}))->object->name, "fence");
-    EXPECT_EQ(query.castObjects("", math::Ray::between({150.0F, 27.0F}, {88.0F, 27.0F}))->distance, 0.0F);
+    const std::optional<tiled::MapQuery::ObjectHit> fenceFromLeft = query.castObjects("", math::Ray::between({85.0F, 27.0F}, {200.0F, 27.0F}));
+    ASSERT_TRUE(fenceFromLeft.has_value());
+    EXPECT_EQ(fenceFromLeft->object->name, "fence");
+    const std::optional<tiled::MapQuery::ObjectHit> fenceFromRight = query.castObjects("", math::Ray::between({100.0F, 40.0F}, {60.0F, 40.0F}));
+    ASSERT_TRUE(fenceFromRight.has_value());
+    EXPECT_EQ(fenceFromRight->object->name, "fence");
+    const std::optional<tiled::MapQuery::ObjectHit> fromInside = query.castObjects("", math::Ray::between({150.0F, 27.0F}, {88.0F, 27.0F}));
+    ASSERT_TRUE(fromInside.has_value());
+    EXPECT_EQ(fromInside->distance, 0.0F);
     EXPECT_FALSE(query.castObjects("rocks", math::Ray::between({0.0F, 100.0F}, {200.0F, 100.0F})).has_value());
     EXPECT_THROW((void)query.castObjects("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
 }
@@ -181,7 +184,7 @@ TEST_F(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
     // The tree tileset aligns its objects by their bottom center, so the tree at 100, 40 covers 92 to 108 across.
     tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
     map.tilesets.front().tileset->objectAlignment = "bottom";
-    const tiled::Object& tree = map.findLayer("rocks")->objects[4];
+    const tiled::Object& tree = test::TiledHelper::layer(map, "rocks").objects[4];
     std::vector<math::Vec2> outline;
     tiled::MapQuery(map).getOutline(tree, {}, outline);
     EXPECT_EQ(outline, (std::vector<math::Vec2>{{92.0F, 8.0F}, {108.0F, 8.0F}, {108.0F, 40.0F}, {92.0F, 40.0F}}));
@@ -189,7 +192,7 @@ TEST_F(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
     // On isometric maps the image stands upright on the world position of the object, centered by the unspecified alignment.
     const tiled::Map isometric = queryMap(tiled::Map::Orientation::Isometric);
     const math::Vec2 anchor = isometric.objectToWorld(tree.position);
-    tiled::MapQuery(isometric).getOutline(isometric.findLayer("rocks")->objects[4], {}, outline);
+    tiled::MapQuery(isometric).getOutline(test::TiledHelper::layer(isometric, "rocks").objects[4], {}, outline);
     EXPECT_EQ(outline.front(), anchor - math::Vec2(8.0F, 32.0F));
     EXPECT_EQ(outline[2], anchor + math::Vec2(8.0F, 0.0F));
 
@@ -230,4 +233,4 @@ TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
     EXPECT_EQ(fixture.lua("local hit = map:raycastTiles('walls', 8, 8, 200, 8, function(gid) map:setTile('walls', 6, 0, 2) return gid == 2 end) return tostring(hit) .. ' ' .. map:tile('walls', 6, 0)"), "nil 2");
 }
 
-} // namespace haylen
+} // namespace haylen::tiled

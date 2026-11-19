@@ -9,8 +9,6 @@
 
 namespace haylen::physics2d {
 
-namespace {
-
 // A crate flung at the floor at 10 meters per second, in a world without gravity, so its impact is the only thing that stops it.
 class ContactTest : public ::testing::Test {
   protected:
@@ -39,8 +37,6 @@ class ContactTest : public ::testing::Test {
     World world{{.gravity = {}, .pixelsPerMeter = 64.0F}};
     Body crate = world.createBody({.position = {0.0F, 0.0F}, .velocity = {0.0F, kSpeed}});
 };
-
-} // namespace
 
 // A contact that begins reports the impact the step solved: the approach speed of its points before the solve, the impulse that stopped the crate and the force it stands for, and how the bodies move after it.
 TEST_F(ContactTest, ReportsTheImpactOfAContactThatBegins) {

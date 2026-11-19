@@ -3,8 +3,10 @@
 #include <cmath>
 #include <memory>
 #include <numbers>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/2d/animation/Skeleton.hpp"
@@ -19,6 +21,7 @@
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
 #include "support/TestFiles.hpp"
+#include "support/VectorExpectations.hpp"
 
 namespace haylen::animation2d {
 
@@ -72,13 +75,17 @@ class SkeletonTest : public ::testing::Test {
         return std::make_shared<SkeletonData>(SkeletonData::parse(core::Json::parse(document), atlas));
     }
 
-    static void expectNear(math::Vec2 actual, math::Vec2 expected) {
-        EXPECT_NEAR(actual.x, expected.x, 1.0e-3F);
-        EXPECT_NEAR(actual.y, expected.y, 1.0e-3F);
+    [[nodiscard]] static std::size_t findBone(const Skeleton& skeleton, std::string_view name) {
+        const std::optional<std::size_t> bone = skeleton.findBone(name);
+        if (!bone) {
+            throw std::runtime_error("The skeleton has no bone \"" + std::string(name) + "\".");
+        }
+
+        return *bone;
     }
 };
 
-class SkeletonLuaTest : public SkeletonTest {};
+using SkeletonLuaTest = SkeletonTest;
 
 TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
     test::EngineFixture fixture;
@@ -87,17 +94,19 @@ TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
     skeleton.pose();
 
     // The upper arm turns a quarter down from the body, so the forearm starts 30 below the shoulder.
-    const std::size_t lower = *skeleton.findBone("lower");
-    expectNear(skeleton.getBoneWorld(*skeleton.findBone("upper")).getTranslation(), {210.0F, 248.0F});
-    expectNear(skeleton.getBoneWorld(lower).getTranslation(), {210.0F, 278.0F});
-    expectNear(*skeleton.getPoint("tip"), {210.0F, 308.0F});
+    const std::size_t lower = findBone(skeleton, "lower");
+    test::VectorExpectations::expectNear(skeleton.getBoneWorld(findBone(skeleton, "upper")).getTranslation(), {210.0F, 248.0F});
+    test::VectorExpectations::expectNear(skeleton.getBoneWorld(lower).getTranslation(), {210.0F, 278.0F});
+    const std::optional<math::Vec2> tip = skeleton.getPoint("tip");
+    ASSERT_TRUE(tip.has_value());
+    test::VectorExpectations::expectNear(*tip, {210.0F, 308.0F});
 
     // Halfway through the wave the arm turned back by 45 degrees, and the event fires once per pass.
     std::vector<std::string> heard;
     skeleton.eventFired.connect([&heard](const Skeleton::Event& event) { heard.push_back(std::string(event.name) + ":" + std::string(event.text) + ":" + std::to_string(event.track)); });
     skeleton.play("wave", {.track = 0, .loop = true});
     skeleton.update(0.5F);
-    EXPECT_NEAR(skeleton.getBonePose(*skeleton.findBone("upper")).rotation, std::numbers::pi_v<float> * 0.25F, 1.0e-4F);
+    EXPECT_NEAR(skeleton.getBonePose(findBone(skeleton, "upper")).rotation, std::numbers::pi_v<float> * 0.25F, 1.0e-4F);
     skeleton.update(0.75F);
     skeleton.update(2.0F);
     EXPECT_EQ(heard, (std::vector<std::string>{"step:left:0", "step:left:0", "step:left:0"}));
@@ -106,7 +115,7 @@ TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
     skeleton.play("lift", {.track = 1, .loop = false});
     skeleton.setTrackWeight(1, 0.5F);
     skeleton.update(1.0F);
-    expectNear(skeleton.getBonePose(*skeleton.findBone("body")).position, {0.0F, -37.0F});
+    test::VectorExpectations::expectNear(skeleton.getBonePose(findBone(skeleton, "body")).position, {0.0F, -37.0F});
     EXPECT_EQ(skeleton.getTrackAnimation(1), "lift");
 }
 
@@ -146,7 +155,7 @@ TEST_F(SkeletonTest, CrossfadesBetweenAnimations) {
     Skeleton skeleton(makeData(fixture));
     skeleton.play("wave", {.track = 0, .loop = false});
     skeleton.update(1.0F);
-    const std::size_t upper = *skeleton.findBone("upper");
+    const std::size_t upper = findBone(skeleton, "upper");
     EXPECT_NEAR(skeleton.getBonePose(upper).rotation, 0.0F, 1.0e-4F);
 
     // The lift starts while the wave fades out over a second, so the arm returns to its setup halfway.
@@ -165,22 +174,22 @@ TEST_F(SkeletonTest, ReachesTargetsWithTwoBones) {
     skeleton.pose();
 
     // The shoulder sits at (10, -52) and the arm is 60 long, so a target 30 away bends the elbow while the end of the forearm lands on it.
-    const std::size_t lower = *skeleton.findBone("lower");
+    const std::size_t lower = findBone(skeleton, "lower");
     const math::Vec2 end = skeleton.getBoneWorld(lower).apply({30.0F, 0.0F});
-    expectNear(end, {40.0F, -52.0F});
+    test::VectorExpectations::expectNear(end, {40.0F, -52.0F});
     const float bentUp = skeleton.getBoneWorld(lower).getTranslation().y;
 
     skeleton.setIkTarget("reach", {40.0F, -52.0F});
     Skeleton other(makeData(fixture, R"({"atlas": "a", "bones": [{"name": "root"}, {"name": "body", "parent": "root", "y": -32}, {"name": "upper", "parent": "body", "x": 10, "y": -20, "rotation": 90, "length": 30}, {"name": "lower", "parent": "upper", "x": 30, "length": 30}, {"name": "aim", "parent": "root"}], "ik": [{"name": "reach", "bones": ["upper", "lower"], "target": "aim", "bendPositive": false}]})"));
     other.setIkTarget("reach", {40.0F, -52.0F});
     other.pose();
-    expectNear(other.getBoneWorld(*other.findBone("lower")).apply({30.0F, 0.0F}), {40.0F, -52.0F});
-    EXPECT_NEAR(other.getBoneWorld(*other.findBone("lower")).getTranslation().y, -52.0F - (bentUp + 52.0F), 1.0e-3F);
+    test::VectorExpectations::expectNear(other.getBoneWorld(findBone(other, "lower")).apply({30.0F, 0.0F}), {40.0F, -52.0F});
+    EXPECT_NEAR(other.getBoneWorld(findBone(other, "lower")).getTranslation().y, -52.0F - (bentUp + 52.0F), 1.0e-3F);
 
     // A target out of reach stretches the arm straight toward it.
     skeleton.setIkTarget("reach", {200.0F, -52.0F});
     skeleton.pose();
-    expectNear(skeleton.getBoneWorld(lower).apply({30.0F, 0.0F}), {70.0F, -52.0F});
+    test::VectorExpectations::expectNear(skeleton.getBoneWorld(lower).apply({30.0F, 0.0F}), {70.0F, -52.0F});
 }
 
 TEST_F(SkeletonTest, SwapsSkinsAttachmentsAndDeformsMeshes) {

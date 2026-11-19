@@ -20,7 +20,7 @@
 #include "haylen/math/Random.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
+namespace haylen::spatial2d {
 
 using Cells = std::vector<spatial2d::Cell>;
 
@@ -342,4 +342,4 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     EXPECT_NE(fixture.lua("spatial2d.newCellGrid(0, 3)").find("positive size"), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::spatial2d

@@ -4,7 +4,7 @@
 
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
+namespace haylen::physics2d {
 
 class PhysicsFeaturesLuaTest : public ::testing::Test {
   protected:
@@ -432,4 +432,4 @@ TEST_F(PhysicsFeaturesLuaTest, PushesBodiesWithFieldsAndDrivesTopDownCars) {
     EXPECT_NE(lua("physics2d.newTopDownVehicle(space, {grip = 0})").find("A top-down vehicle needs"), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::physics2d

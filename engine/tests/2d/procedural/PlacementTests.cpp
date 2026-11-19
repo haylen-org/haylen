@@ -19,8 +19,6 @@
 
 namespace haylen::procedural2d {
 
-namespace {
-
 // Places entities and checks them against the shapes they occupy, in map coordinates.
 class PlacementTest : public ::testing::Test {
   protected:
@@ -57,8 +55,6 @@ class PlacementTest : public ::testing::Test {
         return math::Geometry::contains(lhs, rhs.front()) || math::Geometry::contains(rhs, lhs.front());
     }
 };
-
-} // namespace
 
 // Every circle lies inside the area, keeps the larger gap of the two kinds from every other circle and the margin of its kind from the forbidden lake.
 TEST_F(PlacementTest, KeepsEveryFootprintApartAndInsideTheArea) {

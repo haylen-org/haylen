@@ -27,7 +27,7 @@
 
 namespace haylen::graphics2d {
 
-// Reads the fields of a packed shape at the offsets the vertex layout of the shape program gives them.
+// Reads the fields of a packed shape at the offsets the vertex layout of the shape program gives them, and opens the canvases that shapes are packed for.
 class ShapeRecordTest : public ::testing::Test {
   protected:
     template <typename T> [[nodiscard]] static T at(const GpuInstance& packed, std::size_t offset) {
@@ -48,20 +48,16 @@ class ShapeRecordTest : public ::testing::Test {
         const float mantissa = static_cast<float>(bits & 0x3FFU);
         return exponent == 0 ? std::ldexp(mantissa, -24) : std::ldexp(1.0F + mantissa / 1024.0F, exponent - 15);
     }
-};
 
-// A renderer state with a world canvas over a destination of the size, whose view scales canvas units by the zoom.
-class ShapeCanvasTest : public ShapeRecordTest {
-  protected:
-    void open(math::Vec2 pixels, math::Vec2 view, float zoom) {
+    // Opens a world canvas over a destination of the size, whose view scales canvas units by the zoom.
+    static void openCanvas(RendererState& state, math::Vec2 pixels, math::Vec2 view, float zoom) {
         state.pixelRect = {0.0F, 0.0F, pixels.x, pixels.y};
         state.visibleRect = {0.0F, 0.0F, view.x, view.y};
         state.openCanvas({.kind = Canvas::Kind::World, .viewSize = view, .view = math::Transform2D::scaling({zoom, zoom})});
     }
-
-    test::EngineFixture fixture;
-    RendererState state{fixture.engine().getGraphics(), fixture.engine().getJobs()};
 };
+
+using ShapeCanvasTest = ShapeRecordTest;
 
 TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
     const Shape shape{
@@ -120,6 +116,8 @@ TEST_F(ShapeRecordTest, PacksTheKindAndTheFlipOfItsTexture) {
 
 // The fade of an edge spans one pixel of the destination, so the quad of a shape reaches one pixel past its edge, plus half its softness, whatever the zoom of the canvas and the density of the screen.
 TEST_F(ShapeCanvasTest, ReachesOnePixelPastTheEdgeAtEveryScale) {
+    test::EngineFixture fixture;
+    RendererState state{fixture.engine().getGraphics(), fixture.engine().getJobs()};
     state.white = fixture.engine().getGraphics().getWhiteTexture();
     struct Case {
         math::Vec2 pixels;
@@ -128,7 +126,7 @@ TEST_F(ShapeCanvasTest, ReachesOnePixelPastTheEdgeAtEveryScale) {
     };
 
     for (const Case& scale : {Case{{1280.0F, 720.0F}, {1920.0F, 1080.0F}, 1.0F}, Case{{2560.0F, 1440.0F}, {1920.0F, 1080.0F}, 2.0F}, Case{{960.0F, 540.0F}, {960.0F, 540.0F}, 0.5F}, Case{{3200.0F, 1800.0F}, {800.0F, 450.0F}, 3.0F}}) {
-        open(scale.pixels, scale.view, scale.zoom);
+        openCanvas(state, scale.pixels, scale.view, scale.zoom);
         const float pixelsPerUnit = scale.pixels.x / scale.view.x * scale.zoom;
         for (const float softness : {0.0F, 6.0F}) {
             state.addShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .radii = {5.0F, 5.0F, 5.0F, 5.0F}, .softness = softness}, {});

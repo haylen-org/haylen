@@ -882,10 +882,15 @@ TEST_F(ParticlesTest, SystemsMoveScaleAndRestartTheirEmitters) {
     system.rotation = 1.5707964F;
     system.update(0.05F);
     EXPECT_EQ(system.getCount(), 2U);
-    EXPECT_EQ(system.findEmitter("core")->getPositions().front(), math::Vec2(100.0F, 50.0F));
+    const std::shared_ptr<Emitter> coreEmitter = system.findEmitter("core");
+    ASSERT_NE(coreEmitter, nullptr);
+    ASSERT_FALSE(coreEmitter->getPositions().empty());
+    EXPECT_EQ(coreEmitter->getPositions().front(), math::Vec2(100.0F, 50.0F));
     system.update(0.3F);
     EXPECT_EQ(system.getCount(), 5U);
     const std::shared_ptr<Emitter> ring = system.findEmitter("ring");
+    ASSERT_NE(ring, nullptr);
+    ASSERT_FALSE(ring->getPositions().empty());
     EXPECT_NEAR(ring->getPositions().front().x, 100.0F, 1e-3F);
     EXPECT_NEAR(ring->getPositions().front().y, 60.0F, 1e-3F);
     EXPECT_FLOAT_EQ(ring->scale, 2.0F);

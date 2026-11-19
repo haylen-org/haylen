@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <numbers>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -64,7 +65,9 @@ TEST_F(FrameDataTest, ReadsBoxesPointsPivotsAndEventsFromAtlases) {
     EXPECT_EQ(atlas.getFrame("punch 3").findBox("hit"), nullptr);
     EXPECT_EQ(atlas.getFrame("punch 2").pivot, math::Vec2(16.0F, 30.0F));
     EXPECT_FALSE(atlas.getFrame("punch 0").pivot.has_value());
-    EXPECT_EQ(atlas.getFrame("punch 3").findPoint("hand")->position, math::Vec2(20.0F, 14.0F));
+    const auto* hand = atlas.getFrame("punch 3").findPoint("hand");
+    ASSERT_NE(hand, nullptr);
+    EXPECT_EQ(hand->position, math::Vec2(20.0F, 14.0F));
     EXPECT_EQ(atlas.getFrame("punch 1").events, (std::vector<std::string>{"swing", "whoosh"}));
     EXPECT_FALSE(atlas.hasSlice("hit"));
 
@@ -191,25 +194,28 @@ TEST_F(FrameDataTest, PlacesBoxesAndPointsWithTheSprite) {
     graphics2d::Sprite sprite{.position = {100.0F, 200.0F}};
     animator.apply(sprite);
     EXPECT_EQ(sprite.pivot, math::Vec2(8.0F / 24.0F, 30.0F / 32.0F));
-    const math::Rect box = *animator.getBox("hit", sprite);
-    EXPECT_FLOAT_EQ(box.x, 104.0F);
-    EXPECT_FLOAT_EQ(box.y, 178.0F);
-    EXPECT_FLOAT_EQ(box.width, 10.0F);
+    const std::optional<math::Rect> box = animator.getBox("hit", sprite);
+    ASSERT_TRUE(box.has_value());
+    EXPECT_FLOAT_EQ(box->x, 104.0F);
+    EXPECT_FLOAT_EQ(box->y, 178.0F);
+    EXPECT_FLOAT_EQ(box->width, 10.0F);
 
     sprite.flip.horizontal = true;
     animator.apply(sprite);
-    const math::Rect mirrored = *animator.getBox("hit", sprite);
-    EXPECT_FLOAT_EQ(mirrored.x, 86.0F);
-    EXPECT_FLOAT_EQ(mirrored.getRight(), 96.0F);
+    const std::optional<math::Rect> mirrored = animator.getBox("hit", sprite);
+    ASSERT_TRUE(mirrored.has_value());
+    EXPECT_FLOAT_EQ(mirrored->x, 86.0F);
+    EXPECT_FLOAT_EQ(mirrored->getRight(), 96.0F);
 
     // A quarter turn and a double scale turn the hand around the feet.
     sprite.flip.horizontal = false;
     animator.apply(sprite);
     sprite.rotation = std::numbers::pi_v<float> * 0.5F;
     sprite.scale = {2.0F, 2.0F};
-    const math::Vec2 hand = *animator.getPoint("hand", sprite);
-    EXPECT_NEAR(hand.x, 100.0F + 32.0F, 1.0e-3F);
-    EXPECT_NEAR(hand.y, 200.0F + 8.0F, 1.0e-3F);
+    const std::optional<math::Vec2> hand = animator.getPoint("hand", sprite);
+    ASSERT_TRUE(hand.has_value());
+    EXPECT_NEAR(hand->x, 100.0F + 32.0F, 1.0e-3F);
+    EXPECT_NEAR(hand->y, 200.0F + 8.0F, 1.0e-3F);
     EXPECT_FALSE(animator.getBox("guard", sprite).has_value());
 }
 

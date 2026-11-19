@@ -20,9 +20,7 @@
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
-
-namespace {
+namespace haylen::physics2d {
 
 class PhysicsWorldTest : public ::testing::Test {
   protected:
@@ -32,8 +30,6 @@ class PhysicsWorldTest : public ::testing::Test {
         }
     }
 };
-
-} // namespace
 
 TEST_F(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
     physics2d::World world({.gravity = {0.0F, 980.0F}, .pixelsPerMeter = 64.0F});
@@ -791,4 +787,4 @@ TEST(Physics2DLuaTest, DestroysWorldsFromLua) {
     EXPECT_EQ(fixture.lua("crate:destroy() return tostring(physics2d.newWorld().destroyed)"), "false");
 }
 
-} // namespace haylen
+} // namespace haylen::physics2d

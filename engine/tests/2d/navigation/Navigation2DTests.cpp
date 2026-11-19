@@ -13,15 +13,13 @@
 #include "haylen/2d/navigation/Wanderer.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
-
-namespace {
-
-using Cell = navigation2d::Grid::Cell;
-using Path = std::vector<Cell>;
+namespace haylen::navigation2d {
 
 class GridTest : public ::testing::Test {
   protected:
+    using Cell = navigation2d::Grid::Cell;
+    using Path = std::vector<Cell>;
+
     // Checks that every step moves to a walkable neighbor and that diagonal steps never cut a blocked corner.
     static void expectWalkable(const navigation2d::Grid& grid, const Path& path) {
         for (std::size_t index = 1; index < path.size(); ++index) {
@@ -47,8 +45,6 @@ class GridTest : public ::testing::Test {
         return {path.begin(), path.end()};
     }
 };
-
-} // namespace
 
 TEST_F(GridTest, FindsShortestPathsWithAndWithoutDiagonals) {
     navigation2d::Grid grid(6, 6);
@@ -257,4 +253,4 @@ TEST(Navigation2DLuaTest, FindsPathsAndSteersAgents) {
     EXPECT_NE(fixture.lua("grid:smoothPath({{x = 'a'}})").find("error: "), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::navigation2d

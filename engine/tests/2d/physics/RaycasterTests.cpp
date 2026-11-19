@@ -17,32 +17,32 @@
 #include "haylen/core/SceneManager.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/Physics2DHelper.hpp"
 
-namespace haylen {
+namespace haylen::physics2d {
 
-namespace {
+class RaycasterTest : public ::testing::Test {
+  protected:
+    // Builds three thin posts along x at 100, 200 and 300 and two mirrors at x = -400 and x = 400, with the given categories and groups.
+    struct Range {
+        physics2d::World world{{.gravity = {}}};
+        std::vector<physics2d::Shape> posts;
+        physics2d::Shape leftMirror;
+        physics2d::Shape rightMirror;
 
-// Builds three thin posts along x at 100, 200 and 300 and two mirrors at x = -400 and x = 400, with the given categories and groups.
-struct Range {
-    physics2d::World world{{.gravity = {}}};
-    std::vector<physics2d::Shape> posts;
-    physics2d::Shape leftMirror;
-    physics2d::Shape rightMirror;
+        Range() {
+            for (int index = 0; index < 3; ++index) {
+                physics2d::Body post = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F * static_cast<float>(index + 1), 0.0F}});
+                posts.push_back(post.addBox({10.0F, 100.0F}, {.filter = {.category = index == 1 ? 2U : 1U, .group = index == 2 ? -3 : 0}}));
+            }
 
-    Range() {
-        for (int index = 0; index < 3; ++index) {
-            physics2d::Body post = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F * static_cast<float>(index + 1), 0.0F}});
-            posts.push_back(post.addBox({10.0F, 100.0F}, {.filter = {.category = index == 1 ? 2U : 1U, .group = index == 2 ? -3 : 0}}));
+            leftMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {-400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
+            rightMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
         }
-
-        leftMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {-400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
-        rightMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
-    }
+    };
 };
 
-} // namespace
-
-TEST(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
+TEST_F(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
     Range range;
     const physics2d::Raycaster caster(range.world);
 
@@ -68,14 +68,14 @@ TEST(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
     // A limit pierces a number of shapes, and masks, groups and `accept` functions pick what the ray sees.
     caster.castRayAll({0.0F, 0.0F}, {1000.0F, 0.0F}, {}, 2, hits);
     EXPECT_EQ(hits.size(), 2U);
-    EXPECT_EQ(caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 2}})->shape, range.posts[1]);
-    EXPECT_EQ(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = -3}})->shape, range.rightMirror);
-    EXPECT_EQ(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = 3}})->shape, range.rightMirror);
-    EXPECT_EQ(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 2, .group = -3}})->shape, range.posts[1]);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 2}})).shape, range.posts[1]);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = -3}})).shape, range.rightMirror);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = 3}})).shape, range.rightMirror);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 2, .group = -3}})).shape, range.posts[1]);
     EXPECT_EQ(caster.castRay({250.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.category = 0, .mask = 0, .group = -3}}), std::nullopt);
     physics2d::Shape ownPost = range.posts[2];
     ownPost.setFilter({.category = 1, .group = 3});
-    EXPECT_EQ(caster.castRay({250.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = 3}})->shape, range.posts[2]);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({250.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = 3}})).shape, range.posts[2]);
 
     std::vector<float> offered;
     // clang-format off
@@ -84,7 +84,7 @@ TEST(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
         return hit.shape.getFilter().category == 4;
     }};
     // clang-format on
-    EXPECT_EQ(caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F}, picky)->shape, range.rightMirror);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F}, picky)).shape, range.rightMirror);
     EXPECT_EQ(offered.size(), 4U);
     caster.castRayAll({0.0F, 0.0F}, {1000.0F, 0.0F}, picky, 0, hits);
     EXPECT_EQ(hits.size(), 1U);
@@ -92,10 +92,10 @@ TEST(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
     EXPECT_TRUE(caster.hasLineOfSight({0.0F, 200.0F}, {300.0F, 200.0F}));
     EXPECT_FALSE(caster.hasLineOfSight({0.0F, 0.0F}, {300.0F, 0.0F}));
     EXPECT_TRUE(caster.hasLineOfSight({0.0F, 0.0F}, {300.0F, 0.0F}, {.collision = {.mask = 4}}));
-    EXPECT_EQ(range.world.raycast({0.0F, 0.0F}, {1000.0F, 0.0F})->shape, range.posts[0]);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(range.world.raycast({0.0F, 0.0F}, {1000.0F, 0.0F})).shape, range.posts[0]);
 }
 
-TEST(RaycasterTest, SweepsShapesUntilTheyTouch) {
+TEST_F(RaycasterTest, SweepsShapesUntilTheyTouch) {
     Range range;
     const physics2d::Raycaster caster(range.world);
 
@@ -105,11 +105,11 @@ TEST(RaycasterTest, SweepsShapesUntilTheyTouch) {
     EXPECT_NEAR(circle->distance, 85.0F, 0.5F);
     EXPECT_NEAR(circle->normal.x, -1.0F, 1e-3F);
 
-    EXPECT_NEAR(caster.castBox({0.0F, 0.0F}, {40.0F, 20.0F}, 0.0F, {500.0F, 0.0F})->distance, 75.0F, 0.5F);
-    EXPECT_NEAR(caster.castBox({0.0F, 0.0F}, {40.0F, 20.0F}, std::numbers::pi_v<float> * 0.5F, {500.0F, 0.0F})->distance, 85.0F, 0.5F);
-    EXPECT_NEAR(caster.castCapsule({-20.0F, 0.0F}, {20.0F, 0.0F}, 5.0F, {500.0F, 0.0F})->distance, 70.0F, 0.5F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castBox({0.0F, 0.0F}, {40.0F, 20.0F}, 0.0F, {500.0F, 0.0F})).distance, 75.0F, 0.5F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castBox({0.0F, 0.0F}, {40.0F, 20.0F}, std::numbers::pi_v<float> * 0.5F, {500.0F, 0.0F})).distance, 85.0F, 0.5F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castCapsule({-20.0F, 0.0F}, {20.0F, 0.0F}, 5.0F, {500.0F, 0.0F})).distance, 70.0F, 0.5F);
     const std::vector<math::Vec2> wedge{{0.0F, -10.0F}, {30.0F, 0.0F}, {0.0F, 10.0F}};
-    EXPECT_NEAR(caster.castPolygon(wedge, {500.0F, 0.0F})->distance, 65.0F, 0.5F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castPolygon(wedge, {500.0F, 0.0F})).distance, 65.0F, 0.5F);
 
     // Shapes that pass over or start inside behave as expected.
     EXPECT_FALSE(caster.castCircle({0.0F, 200.0F}, 10.0F, {300.0F, 0.0F}).has_value());
@@ -117,7 +117,7 @@ TEST(RaycasterTest, SweepsShapesUntilTheyTouch) {
     ASSERT_TRUE(inside.has_value());
     EXPECT_EQ(inside->fraction, 0.0F);
     EXPECT_TRUE(inside->normal.isZero());
-    EXPECT_EQ(caster.castCircle({0.0F, 0.0F}, 10.0F, {500.0F, 0.0F}, {.collision = {.mask = 2}})->shape, range.posts[1]);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castCircle({0.0F, 0.0F}, 10.0F, {500.0F, 0.0F}, {.collision = {.mask = 2}})).shape, range.posts[1]);
 
     EXPECT_THROW((void)caster.castCircle({}, -1.0F, {1.0F, 0.0F}), std::invalid_argument);
     EXPECT_THROW((void)caster.castBox({}, {0.0F, 1.0F}, 0.0F, {1.0F, 0.0F}), std::invalid_argument);
@@ -125,7 +125,7 @@ TEST(RaycasterTest, SweepsShapesUntilTheyTouch) {
     EXPECT_THROW((void)caster.castPolygon(std::vector<math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}}, {1.0F, 0.0F}), std::invalid_argument);
 }
 
-TEST(RaycasterTest, BouncesPiercesAndFansRays) {
+TEST_F(RaycasterTest, BouncesPiercesAndFansRays) {
     Range range;
     const physics2d::Raycaster caster(range.world);
     const physics2d::Raycaster::Filter mirrors{.collision = {.mask = 4}};
@@ -152,7 +152,7 @@ TEST(RaycasterTest, BouncesPiercesAndFansRays) {
     EXPECT_THROW(caster.fan({}, 0.0F, 1.0F, 3, std::numeric_limits<float>::infinity(), mirrors, fan), std::invalid_argument);
 }
 
-TEST(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
+TEST_F(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     test::EngineFixture fixture;
     Range range;
     const physics2d::Raycaster caster(range.world);
@@ -182,12 +182,12 @@ TEST(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     EXPECT_GT(hits, 100U);
 
     caster.castBatch(batch, {.mask = 4});
-    EXPECT_EQ(batch.getHit(250)->shape, range.rightMirror);
+    EXPECT_EQ(test::Physics2DHelper::requireHit(batch.getHit(250)).shape, range.rightMirror);
     EXPECT_THROW((void)batch.getRay(500), std::out_of_range);
     EXPECT_THROW(batch.setRay(500, {}, {}), std::out_of_range);
 }
 
-TEST(RaycasterTest, DrawsRaysHitsAndNormalsForDebugging) {
+TEST_F(RaycasterTest, DrawsRaysHitsAndNormalsForDebugging) {
     test::EngineFixture fixture;
     physics2d::RayDebugDraw rays;
 
@@ -313,4 +313,4 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
     EXPECT_NE(fixture.lua("world:pick(camera, cx, cy, {group = 1})").find("Unknown option \"group\""), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::physics2d

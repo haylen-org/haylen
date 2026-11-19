@@ -6,8 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <span>
 #include <string>
@@ -25,6 +23,7 @@
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 
 namespace haylen::graphics2d {
 
@@ -48,8 +47,7 @@ class TextPainterTest : public ::testing::Test {
 
     // The default font with the color emoji test font as its fallback.
     [[nodiscard]] std::shared_ptr<text::FontFamily> makeEmojiFamily() {
-        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/noto-color-emoji-regular.ttf", std::ios::binary);
-        auto emoji = std::make_shared<text::TrueTypeFont>(fixture.engine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
+        auto emoji = std::make_shared<text::TrueTypeFont>(fixture.engine().getGraphics(), test::FontCollection::read("noto-color-emoji-regular.ttf"));
         return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = fixture.engine().getDefaultFont(), .fallbacks = {emoji}});
     }
 
@@ -324,10 +322,11 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
     unsnapped.paintText(*lines, {10.3F, 20.6F}, centered, {});
     std::size_t line = 0;
     for (std::size_t index = 0; index < lines->glyphs.size(); ++index) {
-        while (lines->glyphs[index].character >= lines->lines[line].endCharacter) {
+        while (line < lines->lines.size() && lines->glyphs[index].character >= lines->lines[line].endCharacter) {
             ++line;
         }
 
+        ASSERT_LT(line, lines->lines.size());
         const float left = 10.3F + lines->lines[line].box.x;
         EXPECT_NEAR(middle.getBatches()[0].instances[index].position[0] - unsnapped.getBatches()[0].instances[index].position[0], std::round(left * 2.0F) / 2.0F - left, 0.0001F);
     }

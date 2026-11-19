@@ -15,6 +15,7 @@
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
+#include "support/VectorExpectations.hpp"
 
 namespace haylen::graphics2d {
 
@@ -42,11 +43,6 @@ class StrokeBuilderTest : public ::testing::Test {
         return builder.getVertices()[section * 4].uv[0];
     }
 
-    static void expectNear(math::Vec2 actual, math::Vec2 expected) {
-        EXPECT_NEAR(actual.x, expected.x, 1e-3F);
-        EXPECT_NEAR(actual.y, expected.y, 1e-3F);
-    }
-
     StrokeBuilder builder;
     const std::array<math::Vec2, 2> line{{{0.0F, 0.0F}, {100.0F, 0.0F}}};
     const std::array<math::Vec2, 3> corner{{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}}};
@@ -58,35 +54,35 @@ TEST_F(StrokeBuilderTest, FadesTheEdgesAndButtEndsOverOnePixel) {
     EXPECT_EQ(builder.getIndices().size(), 3U * 18U);
 
     // The core stops half a pixel inside the edge and the outer vertices fade half a pixel past it, across the line and past each end.
-    expectNear(at(1, 0), {0.0F, 5.5F});
-    expectNear(at(1, 1), {0.0F, 4.5F});
-    expectNear(at(1, 2), {0.0F, -4.5F});
-    expectNear(at(1, 3), {0.0F, -5.5F});
-    expectNear(at(0, 1), {-0.5F, 4.5F});
-    expectNear(at(3, 1), {100.5F, 4.5F});
+    test::VectorExpectations::expectNear(at(1, 0), {0.0F, 5.5F});
+    test::VectorExpectations::expectNear(at(1, 1), {0.0F, 4.5F});
+    test::VectorExpectations::expectNear(at(1, 2), {0.0F, -4.5F});
+    test::VectorExpectations::expectNear(at(1, 3), {0.0F, -5.5F});
+    test::VectorExpectations::expectNear(at(0, 1), {-0.5F, 4.5F});
+    test::VectorExpectations::expectNear(at(3, 1), {100.5F, 4.5F});
     EXPECT_FLOAT_EQ(alpha(1, 0), 0.0F);
     EXPECT_FLOAT_EQ(alpha(1, 1), 1.0F);
     EXPECT_FLOAT_EQ(alpha(0, 1), 0.0F);
 
     // A line thinner than a pixel keeps no core and fades by the share of the pixel it covers.
     build(line, {.width = 0.5F});
-    expectNear(at(1, 1), {0.0F, 0.0F});
-    expectNear(at(1, 0), {0.0F, 1.0F});
+    test::VectorExpectations::expectNear(at(1, 1), {0.0F, 0.0F});
+    test::VectorExpectations::expectNear(at(1, 0), {0.0F, 1.0F});
     EXPECT_NEAR(alpha(1, 1), 0.5F, 0.01F);
 }
 
 TEST_F(StrokeBuilderTest, ExtendsSquareCapsAndRoundsRoundCaps) {
     build(line, {.width = 10.0F, .cap = Stroke::Cap::Square});
     ASSERT_EQ(sections(), 6U);
-    expectNear(at(1, 1), {-5.0F, 4.5F});
-    expectNear(at(0, 1), {-5.5F, 4.5F});
-    expectNear(at(5, 1), {105.5F, 4.5F});
+    test::VectorExpectations::expectNear(at(1, 1), {-5.0F, 4.5F});
+    test::VectorExpectations::expectNear(at(0, 1), {-5.5F, 4.5F});
+    test::VectorExpectations::expectNear(at(5, 1), {105.5F, 4.5F});
 
     build(line, {.width = 10.0F, .cap = Stroke::Cap::Round});
     ASSERT_GT(sections(), 6U);
-    expectNear(at(0, 0), {-5.5F, 0.0F});
-    expectNear(at(0, 1), {-4.5F, 0.0F});
-    expectNear(at(sections() - 1, 3), {105.5F, 0.0F});
+    test::VectorExpectations::expectNear(at(0, 0), {-5.5F, 0.0F});
+    test::VectorExpectations::expectNear(at(0, 1), {-4.5F, 0.0F});
+    test::VectorExpectations::expectNear(at(sections() - 1, 3), {105.5F, 0.0F});
 
     for (std::size_t section = 0; section < sections(); ++section) {
         EXPECT_NEAR((at(section, 0) - (section < sections() / 2 ? line[0] : line[1])).getLength(), 5.5F, 1e-3F) << section;
@@ -97,15 +93,15 @@ TEST_F(StrokeBuilderTest, JoinsTurnsWithMitersBevelsAndArcs) {
     // A right angle mitres at the square root of two of the half width, with the inner corner on the side the stroke turns to.
     build(corner, {.width = 10.0F});
     ASSERT_EQ(sections(), 5U);
-    expectNear(at(2, 1), {95.5F, 4.5F});
-    expectNear(at(2, 2), {104.5F, -4.5F});
-    expectNear(at(2, 3), {105.5F, -5.5F});
+    test::VectorExpectations::expectNear(at(2, 1), {95.5F, 4.5F});
+    test::VectorExpectations::expectNear(at(2, 2), {104.5F, -4.5F});
+    test::VectorExpectations::expectNear(at(2, 3), {105.5F, -5.5F});
 
     build(corner, {.width = 10.0F, .join = Stroke::Join::Bevel});
     ASSERT_EQ(sections(), 6U);
-    expectNear(at(2, 2), {100.0F, -4.5F});
-    expectNear(at(3, 2), {104.5F, 0.0F});
-    expectNear(at(2, 1), at(3, 1));
+    test::VectorExpectations::expectNear(at(2, 2), {100.0F, -4.5F});
+    test::VectorExpectations::expectNear(at(3, 2), {104.5F, 0.0F});
+    test::VectorExpectations::expectNear(at(2, 1), at(3, 1));
 
     build(corner, {.width = 10.0F, .join = Stroke::Join::Round});
     ASSERT_GT(sections(), 6U);
@@ -141,7 +137,7 @@ TEST_F(StrokeBuilderTest, ClosesPathsWithoutASeam) {
     ASSERT_EQ(sections(), 5U);
 
     for (std::size_t lane = 0; lane < 4; ++lane) {
-        expectNear(at(0, lane), at(4, lane));
+        test::VectorExpectations::expectNear(at(0, lane), at(4, lane));
     }
 
     EXPECT_FLOAT_EQ(u(0), 0.0F);
@@ -160,10 +156,10 @@ TEST_F(StrokeBuilderTest, BlendsWidthsAndColorsAndRunsTexturesAlong) {
     const std::array<float, 3> widths{2.0F, 10.0F, 20.0F};
     const std::array<math::Color, 3> colors{math::Color::fromHex(0xFF0000FFU), math::Color::fromHex(0x00FF00FFU), math::Color::fromHex(0x0000FFFFU)};
     build(corner, {.widths = widths, .colors = colors});
-    expectNear(at(1, 1), {0.0F, 0.5F});
+    test::VectorExpectations::expectNear(at(1, 1), {0.0F, 0.5F});
     EXPECT_EQ(builder.getVertices()[1 * 4 + 1].color, colors[0].toRgba8());
     EXPECT_EQ(builder.getVertices()[2 * 4 + 1].color, colors[1].toRgba8());
-    expectNear(at(3, 1), {100.0F - 9.5F, 100.0F});
+    test::VectorExpectations::expectNear(at(3, 1), {100.0F - 9.5F, 100.0F});
 
     // Stretched textures span the length once, and tiled ones repeat every width times the aspect of the texture, or every given length.
     build(line, {.width = 10.0F, .textureMode = Stroke::TextureMode::Stretch});
@@ -178,23 +174,23 @@ TEST_F(StrokeBuilderTest, SplitsDashesAlongTheWholeLength) {
     const std::array<float, 2> pattern{10.0F, 10.0F};
     build(line, {.width = 2.0F, .dashes = pattern});
     ASSERT_EQ(sections(), 5U * 4U);
-    expectNear(at(1, 1), {0.0F, 0.5F});
-    expectNear(at(2, 1), {10.0F, 0.5F});
-    expectNear(at(5, 1), {20.0F, 0.5F});
+    test::VectorExpectations::expectNear(at(1, 1), {0.0F, 0.5F});
+    test::VectorExpectations::expectNear(at(2, 1), {10.0F, 0.5F});
+    test::VectorExpectations::expectNear(at(5, 1), {20.0F, 0.5F});
     EXPECT_EQ(builder.getIndices().size(), 5U * 3U * 18U);
 
     // An odd pattern repeats to pair up, and the offset moves into the pattern.
     const std::array<float, 1> single{10.0F};
     build(line, {.width = 2.0F, .dashes = single, .dashOffset = 15.0F});
     ASSERT_EQ(sections(), 5U * 4U);
-    expectNear(at(1, 1), {5.0F, 0.5F});
-    expectNear(at(sections() - 2, 1), {95.0F, 0.5F});
+    test::VectorExpectations::expectNear(at(1, 1), {5.0F, 0.5F});
+    test::VectorExpectations::expectNear(at(sections() - 2, 1), {95.0F, 0.5F});
 
     // Dashes of no length draw the dots of their round caps, and nothing with butt caps.
     const std::array<float, 2> dots{0.0F, 20.0F};
     build(line, {.width = 6.0F, .cap = Stroke::Cap::Round, .dashes = dots});
     EXPECT_GT(sections(), 0U);
-    expectNear((at(0, 0) + at(sections() / 5 - 1, 3)) * 0.5F, {0.0F, 0.0F});
+    test::VectorExpectations::expectNear((at(0, 0) + at(sections() / 5 - 1, 3)) * 0.5F, {0.0F, 0.0F});
     build(line, {.width = 6.0F, .dashes = dots});
     EXPECT_EQ(sections(), 0U);
 }

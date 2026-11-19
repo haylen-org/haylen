@@ -5,7 +5,7 @@
 
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
+namespace haylen::navigation2d {
 
 class NavigationLuaTest : public ::testing::Test {
   protected:
@@ -267,4 +267,4 @@ TEST_F(NavigationLuaTest, SteersWithFlockingAndAvoidance) {
     EXPECT_EQ(lua("return agent:avoid({{{50, 50}, 10}}, 100):length() .. ' ' .. agent:avoid({{center = {150, 0}, radius = 10}}, 100):length()"), "0.0 0.0");
 }
 
-} // namespace haylen
+} // namespace haylen::navigation2d

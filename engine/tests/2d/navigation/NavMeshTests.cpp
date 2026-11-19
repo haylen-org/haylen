@@ -15,7 +15,7 @@
 #include "haylen/math/Random.hpp"
 #include "haylen/math/Segment.hpp"
 
-namespace haylen {
+namespace haylen::navigation2d {
 
 class NavMeshTest : public ::testing::Test {
   protected:
@@ -381,4 +381,4 @@ TEST_F(NavMeshTest, RejectsBadPolygons) {
     EXPECT_THROW(mesh.setObstacle(7, box(0.0F, 0.0F, 1.0F, 1.0F)), std::out_of_range);
 }
 
-} // namespace haylen
+} // namespace haylen::navigation2d

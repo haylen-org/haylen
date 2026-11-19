@@ -17,84 +17,82 @@
 #include "haylen/math/Raycast.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
+namespace haylen::spatial2d {
 
 using Ids = std::vector<std::uint64_t>;
-
-namespace {
-
-// Answers every query by testing every entry, which the structures must match exactly.
-struct Reference {
-    std::vector<std::pair<std::uint64_t, math::Rect>> entries;
-
-    void set(std::uint64_t id, const math::Rect& bounds) {
-        std::erase_if(entries, [id](const auto& entry) { return entry.first == id; });
-        entries.emplace_back(id, bounds);
-    }
-
-    [[nodiscard]] Ids query(const math::Rect& area) const {
-        Ids ids;
-        for (const auto& [id, bounds] : entries) {
-            if (bounds.getLeft() <= area.getRight() && area.getLeft() <= bounds.getRight() && bounds.getTop() <= area.getBottom() && area.getTop() <= bounds.getBottom()) {
-                ids.push_back(id);
-            }
-        }
-
-        std::ranges::sort(ids);
-        return ids;
-    }
-
-    [[nodiscard]] Ids queryCircle(math::Vec2 center, float radius) const {
-        Ids ids;
-        for (const auto& [id, bounds] : entries) {
-            if (math::Vec2::distanceSquared(bounds.clamp(center), center) <= radius * radius) {
-                ids.push_back(id);
-            }
-        }
-
-        std::ranges::sort(ids);
-        return ids;
-    }
-
-    [[nodiscard]] std::vector<spatial2d::RayHit> raycast(const math::Ray& ray, std::size_t limit) const {
-        std::vector<spatial2d::RayHit> hits;
-        for (const auto& [id, bounds] : entries) {
-            if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, bounds)) {
-                hits.push_back({.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
-            }
-        }
-
-        std::ranges::sort(hits, [](const auto& lhs, const auto& rhs) { return lhs.distance != rhs.distance ? lhs.distance < rhs.distance : lhs.id < rhs.id; });
-
-        if (limit > 0 && hits.size() > limit) {
-            hits.resize(limit);
-        }
-
-        return hits;
-    }
-
-    [[nodiscard]] std::vector<spatial2d::Neighbor> nearest(math::Vec2 point, std::size_t count, float maxDistance) const {
-        std::vector<spatial2d::Neighbor> neighbors;
-        for (const auto& [id, bounds] : entries) {
-            const float distance = std::sqrt(math::Vec2::distanceSquared(bounds.clamp(point), point));
-            if (distance <= maxDistance) {
-                neighbors.push_back({.id = id, .distance = distance});
-            }
-        }
-
-        std::ranges::sort(neighbors, [](const auto& lhs, const auto& rhs) { return lhs < rhs; });
-
-        if (neighbors.size() > count) {
-            neighbors.resize(count);
-        }
-
-        return neighbors;
-    }
-};
 
 // Builds each structure under test and checks that it answers like the reference.
 template <typename Structure> class SpatialStructureTest : public ::testing::Test {
   protected:
+    // Answers every query by testing every entry, which the structures must match exactly.
+    struct Reference {
+        std::vector<std::pair<std::uint64_t, math::Rect>> entries;
+
+        void set(std::uint64_t id, const math::Rect& bounds) {
+            std::erase_if(entries, [id](const auto& entry) { return entry.first == id; });
+            entries.emplace_back(id, bounds);
+        }
+
+        [[nodiscard]] Ids query(const math::Rect& area) const {
+            Ids ids;
+            for (const auto& [id, bounds] : entries) {
+                if (bounds.getLeft() <= area.getRight() && area.getLeft() <= bounds.getRight() && bounds.getTop() <= area.getBottom() && area.getTop() <= bounds.getBottom()) {
+                    ids.push_back(id);
+                }
+            }
+
+            std::ranges::sort(ids);
+            return ids;
+        }
+
+        [[nodiscard]] Ids queryCircle(math::Vec2 center, float radius) const {
+            Ids ids;
+            for (const auto& [id, bounds] : entries) {
+                if (math::Vec2::distanceSquared(bounds.clamp(center), center) <= radius * radius) {
+                    ids.push_back(id);
+                }
+            }
+
+            std::ranges::sort(ids);
+            return ids;
+        }
+
+        [[nodiscard]] std::vector<spatial2d::RayHit> raycast(const math::Ray& ray, std::size_t limit) const {
+            std::vector<spatial2d::RayHit> hits;
+            for (const auto& [id, bounds] : entries) {
+                if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, bounds)) {
+                    hits.push_back({.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
+                }
+            }
+
+            std::ranges::sort(hits, [](const auto& lhs, const auto& rhs) { return lhs.distance != rhs.distance ? lhs.distance < rhs.distance : lhs.id < rhs.id; });
+
+            if (limit > 0 && hits.size() > limit) {
+                hits.resize(limit);
+            }
+
+            return hits;
+        }
+
+        [[nodiscard]] std::vector<spatial2d::Neighbor> nearest(math::Vec2 point, std::size_t count, float maxDistance) const {
+            std::vector<spatial2d::Neighbor> neighbors;
+            for (const auto& [id, bounds] : entries) {
+                const float distance = std::sqrt(math::Vec2::distanceSquared(bounds.clamp(point), point));
+                if (distance <= maxDistance) {
+                    neighbors.push_back({.id = id, .distance = distance});
+                }
+            }
+
+            std::ranges::sort(neighbors, [](const auto& lhs, const auto& rhs) { return lhs < rhs; });
+
+            if (neighbors.size() > count) {
+                neighbors.resize(count);
+            }
+
+            return neighbors;
+        }
+    };
+
     [[nodiscard]] static Structure makeStructure();
 
     [[nodiscard]] static math::Rect randomBounds(math::Random& random) {
@@ -161,14 +159,12 @@ template <> spatial2d::AabbTree SpatialStructureTest<spatial2d::AabbTree>::makeS
     return spatial2d::AabbTree(3.0F);
 }
 
-} // namespace
-
 using SpatialStructures = ::testing::Types<spatial2d::HashGrid, spatial2d::QuadTree, spatial2d::AabbTree>;
 TYPED_TEST_SUITE(SpatialStructureTest, SpatialStructures);
 
 TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
     TypeParam structure = TestFixture::makeStructure();
-    Reference reference;
+    typename TestFixture::Reference reference;
     math::Random random(42);
     for (std::uint64_t id = 1; id <= 300; ++id) {
         const math::Rect bounds = TestFixture::randomBounds(random);
@@ -597,4 +593,4 @@ TEST(Spatial2DLuaTest, NearestNeverOffersValuesThatAcceptRemoved) {
     EXPECT_EQ(fixture.lua("local offered = 0 local found = hash:nearest(0, 0, 500, function() offered = offered + 1 hash:clear() return false end) return tostring(found) .. ' ' .. offered .. ' ' .. hash.size"), "nil 1 0");
 }
 
-} // namespace haylen
+} // namespace haylen::spatial2d

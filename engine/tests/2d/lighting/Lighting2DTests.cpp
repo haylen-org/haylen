@@ -15,55 +15,51 @@
 #include "haylen/math/Math.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
-
-namespace {
-
-// Casts the shadow map row of a light over some occluders, the way the renderer does for a canvas that shows the bounds, and reads it the way the light shader does.
-struct CastRow {
-    std::vector<float> row = std::vector<float>(lighting2d::ShadowMap::kRowTexels);
-    lighting2d::ShadowMap::Axis axis{};
-
-    CastRow(const lighting2d::Light& light, const std::vector<lighting2d::Occluder>& occluders, math::Rect bounds = {0.0F, 0.0F, 1000.0F, 1000.0F}) {
-        std::vector<lighting2d::ShadowMap::Segment> segments;
-        for (const lighting2d::Occluder& occluder : occluders) {
-            lighting2d::ShadowMap::appendSegments(occluder, segments);
-        }
-
-        axis = lighting2d::ShadowMap::cast(light, segments, bounds, row);
-    }
-
-    // The shader finds the texel of the direction or of the place across the light, and a point deeper than the occluder depth there plus the bias is shadowed.
-    [[nodiscard]] bool shadows(const lighting2d::Light& light, math::Vec2 point) const {
-        const auto width = static_cast<float>(lighting2d::ShadowMap::kResolution);
-        float coordinate = 0.0F;
-        float depth = 0.0F;
-        if (light.type == lighting2d::Light::Type::Directional) {
-            const math::Vec2 direction = math::Vec2::fromAngle(light.rotation);
-            coordinate = (math::Vec2::dot(point, direction.getPerpendicular()) - axis.acrossStart) / axis.acrossSpan * width;
-            depth = (math::Vec2::dot(point, direction) - axis.alongStart) / axis.alongSpan;
-        } else {
-            const math::Vec2 offset = point - light.position;
-            coordinate = (std::atan2(offset.y, offset.x) / math::Math::kTau + 0.5F) * width;
-            depth = offset.getLength() / lighting2d::ShadowMap::getRange(light);
-        }
-
-        const auto size = lighting2d::ShadowMap::kResolution;
-        const int texel = static_cast<int>(std::floor(coordinate));
-        const int wrapped = light.type == lighting2d::Light::Type::Directional ? std::clamp(texel, 0, size - 1) : ((texel % size) + size) % size;
-        return depth > row[static_cast<std::size_t>(wrapped)] + lighting2d::ShadowMap::getBias(light, axis);
-    }
-};
+namespace haylen::lighting2d {
 
 class ShadowMapTest : public ::testing::Test {
   protected:
+    // Casts the shadow map row of a light over some occluders, the way the renderer does for a canvas that shows the bounds, and reads it the way the light shader does.
+    struct CastRow {
+        std::vector<float> row = std::vector<float>(lighting2d::ShadowMap::kRowTexels);
+        lighting2d::ShadowMap::Axis axis{};
+
+        CastRow(const lighting2d::Light& light, const std::vector<lighting2d::Occluder>& occluders, math::Rect bounds = {0.0F, 0.0F, 1000.0F, 1000.0F}) {
+            std::vector<lighting2d::ShadowMap::Segment> segments;
+            for (const lighting2d::Occluder& occluder : occluders) {
+                lighting2d::ShadowMap::appendSegments(occluder, segments);
+            }
+
+            axis = lighting2d::ShadowMap::cast(light, segments, bounds, row);
+        }
+
+        // The shader finds the texel of the direction or of the place across the light, and a point deeper than the occluder depth there plus the bias is shadowed.
+        [[nodiscard]] bool shadows(const lighting2d::Light& light, math::Vec2 point) const {
+            const auto width = static_cast<float>(lighting2d::ShadowMap::kResolution);
+            float coordinate = 0.0F;
+            float depth = 0.0F;
+            if (light.type == lighting2d::Light::Type::Directional) {
+                const math::Vec2 direction = math::Vec2::fromAngle(light.rotation);
+                coordinate = (math::Vec2::dot(point, direction.getPerpendicular()) - axis.acrossStart) / axis.acrossSpan * width;
+                depth = (math::Vec2::dot(point, direction) - axis.alongStart) / axis.alongSpan;
+            } else {
+                const math::Vec2 offset = point - light.position;
+                coordinate = (std::atan2(offset.y, offset.x) / math::Math::kTau + 0.5F) * width;
+                depth = offset.getLength() / lighting2d::ShadowMap::getRange(light);
+            }
+
+            const auto size = lighting2d::ShadowMap::kResolution;
+            const int texel = static_cast<int>(std::floor(coordinate));
+            const int wrapped = light.type == lighting2d::Light::Type::Directional ? std::clamp(texel, 0, size - 1) : ((texel % size) + size) % size;
+            return depth > row[static_cast<std::size_t>(wrapped)] + lighting2d::ShadowMap::getBias(light, axis);
+        }
+    };
+
     // A 40 by 40 box around a center, wound clockwise on screen.
     [[nodiscard]] static lighting2d::Occluder box(math::Vec2 center, lighting2d::Occluder::Cull cull = lighting2d::Occluder::Cull::Disabled) {
         return {.points = {{-20.0F, -20.0F}, {20.0F, -20.0F}, {20.0F, 20.0F}, {-20.0F, 20.0F}}, .cull = cull, .position = center};
     }
 };
-
-} // namespace
 
 TEST(LightFlickerTest, WaversBelowOneDeterministically) {
     float lowest = 2.0F;
@@ -446,4 +442,4 @@ TEST(Lighting2DLuaTest, BuildsOccludersFromTablesBodiesAndMaps) {
     EXPECT_NE(fixture.lua("lighting2d.newOccluder({point = {}})").find("Unknown option \"point\""), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::lighting2d

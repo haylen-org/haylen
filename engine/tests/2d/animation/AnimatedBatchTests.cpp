@@ -34,8 +34,6 @@ class AnimatedBatchTest : public ::testing::Test {
     }
 };
 
-class AnimatedBatchLuaTest : public AnimatedBatchTest {};
-
 TEST_F(AnimatedBatchTest, AdvancesEverySpriteAtItsOwnSpeed) {
     test::EngineFixture fixture;
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
@@ -187,7 +185,7 @@ TEST_F(AnimatedBatchTest, RefusesAnimationsItCannotPlay) {
     EXPECT_THROW(steps.update(0.1F), std::logic_error);
 }
 
-TEST_F(AnimatedBatchLuaTest, PlaysCrowdsFromLua) {
+TEST(AnimatedBatchLuaTest, PlaysCrowdsFromLua) {
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(64, 16, 0xFFFFFFFFU);
     test::EngineFixture fixture({{"content/units.png", std::string(image.begin(), image.end())}});
     // clang-format off

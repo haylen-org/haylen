@@ -18,16 +18,14 @@
 #include "haylen/2d/navigation/HierarchicalPathfinder.hpp"
 #include "haylen/math/Random.hpp"
 
-namespace haylen {
-
-namespace {
-
-using Cell = navigation2d::Grid::Cell;
-using Path = std::vector<Cell>;
+namespace haylen::navigation2d {
 
 // Builds random grids and prices paths the way the searches do.
 class PathfindingTest : public ::testing::Test {
   protected:
+    using Cell = navigation2d::Grid::Cell;
+    using Path = std::vector<Cell>;
+
     [[nodiscard]] static navigation2d::Grid randomGrid(int width, int height, float wallChance, std::uint64_t seed, const navigation2d::Grid::Layout& layout = {}) {
         navigation2d::Grid grid(width, height, layout);
         math::Random random(seed);
@@ -53,15 +51,10 @@ class PathfindingTest : public ::testing::Test {
     }
 };
 
-class GridSearchTest : public PathfindingTest {};
-
-class DijkstraMapTest : public PathfindingTest {};
-
-class FlowFieldTest : public PathfindingTest {};
-
-class HierarchicalPathfinderTest : public PathfindingTest {};
-
-} // namespace
+using GridSearchTest = PathfindingTest;
+using DijkstraMapTest = PathfindingTest;
+using FlowFieldTest = PathfindingTest;
+using HierarchicalPathfinderTest = PathfindingTest;
 
 TEST_F(GridSearchTest, FindsCheapestPathsWithEveryAdmissibleHeuristic) {
     navigation2d::Grid grid = randomGrid(40, 30, 0.25F, 3);
@@ -239,11 +232,15 @@ TEST_F(DijkstraMapTest, LeadsDownhillToTheClosestSourceAndAwayWhenFleeing) {
     // Walking downhill from any cell ends on a source along a cheapest path.
     Cell walker{18, 8};
     float spent = 0.0F;
-    for (std::optional<Cell> next = map.getNext(grid, walker); next; next = map.getNext(grid, walker)) {
-        spent += pathCost(grid, std::vector<Cell>{walker, *next}, true);
-        walker = *next;
+    // A downhill walk enters every cell at most once, so it ends within as many steps as the grid has cells.
+    std::optional<Cell> downhill = map.getNext(grid, walker);
+    for (std::size_t step = 0; downhill && step < grid.getCellCount(); ++step) {
+        spent += pathCost(grid, std::vector<Cell>{walker, *downhill}, true);
+        walker = *downhill;
+        downhill = map.getNext(grid, walker);
     }
 
+    ASSERT_FALSE(downhill.has_value());
     EXPECT_EQ(walker, (Cell{17, 2}));
     EXPECT_NEAR(spent + 3.0F, map.getValue({18, 8}), 1e-4F);
 
@@ -291,12 +288,16 @@ TEST_F(FlowFieldTest, PointsEveryCellAlongACheapestPathToAGoal) {
             // Following the steps reaches a goal and spends exactly the distance.
             Cell walker = cell;
             float spent = 0.0F;
-            for (std::optional<Cell> next = field.getNext(walker); next; next = field.getNext(walker)) {
+            std::optional<Cell> next = field.getNext(walker);
+            for (std::size_t step = 0; next && step < grid.getCellCount(); ++step) {
                 const math::Vec2 direction = field.getDirection(walker);
                 EXPECT_NEAR(direction.getLength(), 1.0F, 1e-5F);
                 spent += pathCost(grid, std::vector<Cell>{walker, *next}, true);
                 walker = *next;
+                next = field.getNext(walker);
             }
+
+            ASSERT_FALSE(next.has_value());
 
             if (std::isfinite(cheapest)) {
                 EXPECT_TRUE(walker == goals[0] || walker == goals[1]);
@@ -446,4 +447,4 @@ TEST(GraphTest, FindsPathsThroughEnabledWaypoints) {
     EXPECT_FALSE(graph.getClosestPoint({}).has_value());
 }
 
-} // namespace haylen
+} // namespace haylen::navigation2d

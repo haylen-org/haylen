@@ -22,25 +22,20 @@
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
 #include "support/TestFiles.hpp"
+#include "support/VectorExpectations.hpp"
 
 namespace haylen::nodes2d {
 
 class NodeTreeTest : public ::testing::Test {
   protected:
-    static void expectNear(math::Vec2 actual, math::Vec2 expected) {
-        EXPECT_NEAR(actual.x, expected.x, 1.0e-3F);
-        EXPECT_NEAR(actual.y, expected.y, 1.0e-3F);
-    }
-
     [[nodiscard]] static std::string png(int width, int height) {
         const std::vector<std::uint8_t> bytes = test::TestFiles::pngImage(width, height, 0xFFFFFFFFU);
         return {bytes.begin(), bytes.end()};
     }
 };
 
-class NodeSerializerTest : public NodeTreeTest {};
-
-class Nodes2DLuaTest : public NodeTreeTest {};
+using NodeSerializerTest = NodeTreeTest;
+using Nodes2DLuaTest = NodeTreeTest;
 
 TEST_F(NodeTreeTest, ComposesNestedTransformsLikeTheirProduct) {
     const std::shared_ptr<NodeTree> tree = NodeTree::create();
@@ -50,8 +45,8 @@ TEST_F(NodeTreeTest, ComposesNestedTransformsLikeTheirProduct) {
     tree->update(0.0F);
 
     const math::Transform2D expected = math::Transform2D::compose({100.0F, 50.0F}, 0.5F, {2.0F, 1.5F}) * math::Transform2D::compose({10.0F, -4.0F}, -0.25F, {0.5F, 0.5F}) * math::Transform2D::compose({8.0F, 0.0F}, 0.1F, {1.0F, 1.0F});
-    expectNear(barrel.toWorld({3.0F, 2.0F}), expected.apply({3.0F, 2.0F}));
-    expectNear(barrel.toLocal(expected.apply({3.0F, 2.0F})), {3.0F, 2.0F});
+    test::VectorExpectations::expectNear(barrel.toWorld({3.0F, 2.0F}), expected.apply({3.0F, 2.0F}));
+    test::VectorExpectations::expectNear(barrel.toLocal(expected.apply({3.0F, 2.0F})), {3.0F, 2.0F});
     EXPECT_EQ(barrel.getPath(), "tank/turret/barrel");
     EXPECT_EQ(tree->find("tank/turret/barrel"), barrel);
     EXPECT_EQ(tank.find("turret"), turret);
@@ -63,14 +58,14 @@ TEST_F(NodeTreeTest, ComposesNestedTransformsLikeTheirProduct) {
     tank.setScale({1.0F, 1.0F});
     tree->update(0.0F);
     const math::Transform2D moved = math::Transform2D::compose({10.0F, -4.0F}, -0.25F, {0.5F, 0.5F}) * math::Transform2D::compose({8.0F, 0.0F}, 0.1F, {1.0F, 1.0F});
-    expectNear(barrel.toWorld({}), moved.apply({}));
-    expectNear(turret.getPosition(), {10.0F, -4.0F});
+    test::VectorExpectations::expectNear(barrel.toWorld({}), moved.apply({}));
+    test::VectorExpectations::expectNear(turret.getPosition(), {10.0F, -4.0F});
 
     // A node moved under another parent keeps its local transform.
     const Node other = tree->add({.name = "other", .position = {500.0F, 0.0F}});
     turret.setParent(other);
     tree->update(0.0F);
-    expectNear(turret.toWorld({}), {510.0F, -4.0F});
+    test::VectorExpectations::expectNear(turret.toWorld({}), {510.0F, -4.0F});
     EXPECT_EQ(turret.getPath(), "other/turret");
     EXPECT_EQ(tank.getChildCount(), 0U);
     EXPECT_THROW(other.getTree().find("other").setParent(barrel), std::invalid_argument);
@@ -238,14 +233,14 @@ TEST_F(NodeTreeTest, FollowsBodiesBetweenSteps) {
     tree->update(0.0F, 0.5F);
 
     // Halfway between the steps the body is at 90 in the world, so 10 to the left of its parent.
-    expectNear(follower.toWorld({}), {90.0F, 0.0F});
-    expectNear(follower.getPosition(), {-10.0F, 0.0F});
+    test::VectorExpectations::expectNear(follower.toWorld({}), {90.0F, 0.0F});
+    test::VectorExpectations::expectNear(follower.getPosition(), {-10.0F, 0.0F});
     EXPECT_EQ(follower.getFollowed(), body);
 
     follower.follow({});
     world.step(0.1F);
     tree->update(0.0F, 1.0F);
-    expectNear(follower.toWorld({}), {90.0F, 0.0F});
+    test::VectorExpectations::expectNear(follower.toWorld({}), {90.0F, 0.0F});
 }
 
 TEST_F(NodeTreeTest, RejectsContentItCannotDraw) {
@@ -284,7 +279,7 @@ TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
     const std::shared_ptr<NodeTree> tree = NodeTree::create();
     const Node tank = prefab.instantiate(*tree, {}, core::Json::parse(R"({"x": 300, "y": 40, "name": "first"})"), assets);
     EXPECT_EQ(tank.getName(), "first");
-    expectNear(tank.getPosition(), {300.0F, 40.0F});
+    test::VectorExpectations::expectNear(tank.getPosition(), {300.0F, 40.0F});
     EXPECT_EQ(tank.getSprite().texture.getOptions().filter, graphics::Texture::Filter::Linear);
     EXPECT_EQ(tank.getSprite().source, (math::Rect{0.0F, 0.0F, 16.0F, 16.0F}));
     EXPECT_EQ(tree->find("first/label").getContent().value.index(), 2U);

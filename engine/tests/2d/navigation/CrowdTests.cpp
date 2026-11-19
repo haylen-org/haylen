@@ -12,9 +12,7 @@
 #include "haylen/math/Geometry.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
-
-namespace {
+namespace haylen::navigation2d {
 
 class CrowdTest : public ::testing::Test {
   protected:
@@ -43,8 +41,6 @@ class CrowdTest : public ::testing::Test {
         return closest;
     }
 };
-
-} // namespace
 
 TEST_F(CrowdTest, SwapsSidesWithoutAgentsOverlapping) {
     navigation2d::Crowd crowd;
@@ -188,4 +184,4 @@ TEST(SteeringTest, AlignsCoheresAndAvoidsObstacles) {
     EXPECT_NE(agent.avoid(std::vector<math::Circle>{{{50.0F, 0.0F}, 10.0F}}, 100.0F), math::Vec2());
 }
 
-} // namespace haylen
+} // namespace haylen::navigation2d

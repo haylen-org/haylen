@@ -5,6 +5,7 @@ set(HAYLEN_TEST_SOURCES
   2d/animation/ChainTests.cpp
   2d/animation/FrameDataTests.cpp
   2d/animation/SkeletonTests.cpp
+  2d/animation/SpriteAtlasTests.cpp
   2d/animation/StateGraphTests.cpp
   2d/graphics/CameraRigTests.cpp
   2d/graphics/CameraTests.cpp

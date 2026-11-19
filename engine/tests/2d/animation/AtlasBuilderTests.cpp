@@ -14,8 +14,6 @@
 
 namespace haylen::animation2d {
 
-namespace {
-
 class AtlasBuilderTest : public ::testing::Test {
   protected:
     // An image of the size with a square of the color at the area, transparent around it.
@@ -31,8 +29,6 @@ class AtlasBuilderTest : public ::testing::Test {
 
     test::EngineFixture fixture;
 };
-
-} // namespace
 
 TEST_F(AtlasBuilderTest, PacksTrimmedFramesWithoutOverlapAndKeepsTheirPlace) {
     const math::Color red = math::Color::fromHex(0xFF0000FFU);

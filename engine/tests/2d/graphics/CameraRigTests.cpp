@@ -33,9 +33,11 @@ TEST_F(CameraRigTest, HoldsTheCameraInTheZoneOfTheTargetAndEasesBetweenZones) {
 
     // Entering another zone eases the limits, the zoom and the offset over the blend time.
     rig.update(camera, {500.0F, 150.0F}, 0.5F, screen);
+    ASSERT_NE(rig.getZone(), nullptr);
     EXPECT_EQ(rig.getZone()->name, "arena");
     EXPECT_NEAR(camera.getZoom().x, 0.75F, 0.001F);
     EXPECT_NEAR(camera.offset.y, -10.0F, 0.001F);
+    ASSERT_TRUE(camera.limits.has_value());
     EXPECT_NEAR(camera.limits->getBottom(), 350.0F, 0.001F);
     rig.update(camera, {500.0F, 150.0F}, 0.6F, screen);
     EXPECT_EQ(camera.getZoom(), math::Vec2(0.5F, 0.5F));
@@ -43,6 +45,7 @@ TEST_F(CameraRigTest, HoldsTheCameraInTheZoneOfTheTargetAndEasesBetweenZones) {
 
     // A zone of higher priority wins where zones overlap, and outside every zone the camera takes the limits of the rig.
     rig.update(camera, {750.0F, 50.0F}, 2.0F, screen);
+    ASSERT_NE(rig.getZone(), nullptr);
     EXPECT_EQ(rig.getZone()->name, "boss");
     rig.update(camera, {1500.0F, 500.0F}, 2.0F, screen);
     EXPECT_EQ(rig.getZone(), nullptr);

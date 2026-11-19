@@ -28,11 +28,11 @@
 #include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/Physics2DHelper.hpp"
 #include "support/TestFiles.hpp"
+#include "support/TiledHelper.hpp"
 
-namespace haylen {
-
-namespace {
+namespace haylen::tiled {
 
 // Builds the test maps with their tilesets and templates, and the package that holds them.
 class TiledTest : public ::testing::Test {
@@ -251,13 +251,9 @@ class TiledTest : public ::testing::Test {
     }
 };
 
-class MapTest : public TiledTest {};
-
-class MapRendererTest : public TiledTest {};
-
-class TiledLuaTest : public TiledTest {};
-
-} // namespace
+using MapTest = TiledTest;
+using MapRendererTest = TiledTest;
+using TiledLuaTest = TiledTest;
 
 TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     const tiled::Map map = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
@@ -270,11 +266,11 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(map.properties.getString("title", ""), "Island");
     EXPECT_EQ(map.properties.getNumber("level", 0.0), 3.0);
     EXPECT_TRUE(map.properties.getBool("safe", false));
-    EXPECT_EQ(map.properties.find("music")->value, "audio/theme.ogg");
-    EXPECT_EQ(map.properties.find("spawn")->propertyType, "Spawn");
-    EXPECT_EQ(map.properties.find("spawn")->value.at("kind"), "goblin");
-    const core::Json& loot = map.properties.find("loot")->value;
-    EXPECT_EQ(map.properties.find("loot")->type, "list");
+    EXPECT_EQ(test::TiledHelper::property(map.properties, "music").value, "audio/theme.ogg");
+    EXPECT_EQ(test::TiledHelper::property(map.properties, "spawn").propertyType, "Spawn");
+    EXPECT_EQ(test::TiledHelper::property(map.properties, "spawn").value.at("kind"), "goblin");
+    const core::Json& loot = test::TiledHelper::property(map.properties, "loot").value;
+    EXPECT_EQ(test::TiledHelper::property(map.properties, "loot").type, "list");
     EXPECT_EQ(loot[2].at("value"), "audio/coin.ogg");
     EXPECT_EQ(loot[3].at("value")[1].at("value"), "maps/gem.png");
     EXPECT_EQ(loot[4].at("propertytype"), "Spawn");
@@ -286,10 +282,10 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(terrain.path, "maps/tiles/terrain.tsj");
     EXPECT_EQ(terrain.image, "maps/images/terrain.png");
     EXPECT_EQ(terrain.getSource(5), (math::Rect{16.0F, 16.0F, 16.0F, 16.0F}));
-    EXPECT_EQ(terrain.findTile(1)->type, "water");
-    EXPECT_TRUE(terrain.findTile(1)->properties.getBool("deep", false));
-    EXPECT_EQ(terrain.findTile(2)->animation.size(), 2U);
-    EXPECT_FLOAT_EQ(terrain.findTile(2)->animation[1].duration, 0.1F);
+    EXPECT_EQ(test::TiledHelper::tile(terrain, 1).type, "water");
+    EXPECT_TRUE(test::TiledHelper::tile(terrain, 1).properties.getBool("deep", false));
+    EXPECT_EQ(test::TiledHelper::tile(terrain, 2).animation.size(), 2U);
+    EXPECT_FLOAT_EQ(test::TiledHelper::tile(terrain, 2).animation[1].duration, 0.1F);
     EXPECT_EQ(terrain.wangSets.front().tiles.front().wangId[1], 1U);
     EXPECT_EQ(terrain.wangSets.front().type, "shore");
     EXPECT_EQ(terrain.wangSets.front().colors.front().type, "ground");
@@ -298,24 +294,24 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(terrain.findTile(7), nullptr);
 
     const tiled::Tileset& props = *map.tilesets[1].tileset;
-    EXPECT_EQ(props.findTile(0)->image, "maps/props/tree.png");
+    EXPECT_EQ(test::TiledHelper::tile(props, 0).image, "maps/props/tree.png");
     EXPECT_EQ(props.getSource(0), (math::Rect{0.0F, 0.0F, 16.0F, 32.0F}));
-    EXPECT_EQ(map.findTileset(101)->firstGid, 100U);
-    EXPECT_EQ(map.findTileset(8)->firstGid, 1U);
+    EXPECT_EQ(test::TiledHelper::tileset(map, 101).firstGid, 100U);
+    EXPECT_EQ(test::TiledHelper::tileset(map, 8).firstGid, 1U);
     EXPECT_EQ(map.findTileset(99), nullptr);
     EXPECT_EQ(map.findTileset(102), nullptr);
     EXPECT_EQ(map.findTileset(0), nullptr);
 
-    const tiled::Layer& ground = *map.findLayer("ground");
+    const tiled::Layer& ground = test::TiledHelper::layer(map, "ground");
     EXPECT_EQ(ground.getGid(1, 0), 2U);
     EXPECT_EQ(ground.getGid(3, 2), 5U);
     EXPECT_EQ(ground.getGid(9, 9), 0U);
-    EXPECT_EQ(map.findLayer("decor")->getGid(1, 1), 2147483652U);
-    EXPECT_EQ(map.findLayer("inner")->getGid(1, 1), 1U);
+    EXPECT_EQ(test::TiledHelper::layer(map, "decor").getGid(1, 1), 2147483652U);
+    EXPECT_EQ(test::TiledHelper::layer(map, "inner").getGid(1, 1), 1U);
     EXPECT_EQ(map.findLayer("missing"), nullptr);
-    EXPECT_EQ(map.findLayer("group")->opacity, 0.5F);
+    EXPECT_EQ(test::TiledHelper::layer(map, "group").opacity, 0.5F);
 
-    const tiled::Layer& things = *map.findLayer("things");
+    const tiled::Layer& things = test::TiledHelper::layer(map, "things");
     ASSERT_EQ(things.objects.size(), 9U);
     EXPECT_EQ(things.objects[0].shape, tiled::Object::Shape::Point);
     EXPECT_NEAR(things.objects[1].rotation, math::Math::kPi / 2.0F, 0.0001F);
@@ -335,7 +331,7 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(things.objects[8].properties.getNumber("size", 0.0), 3.0);
     EXPECT_TRUE(things.objects[8].properties.getBool("hard", false));
 
-    const tiled::Layer& sky = *map.findLayer("sky");
+    const tiled::Layer& sky = test::TiledHelper::layer(map, "sky");
     EXPECT_EQ(sky.kind, tiled::Layer::Kind::Image);
     EXPECT_EQ(sky.transparentColor, math::Color::fromHex(0xFF00FFFFU));
     EXPECT_EQ(sky.parallax, math::Vec2(0.5F, 0.5F));
@@ -496,7 +492,7 @@ TEST_F(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
     document["tilesets"][1]["tiles"][1]["id"] = 3;
     tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
 
-    EXPECT_EQ(map.getMap().findTileset(103)->firstGid, 100U);
+    EXPECT_EQ(test::TiledHelper::tileset(map.getMap(), 103).firstGid, 100U);
     EXPECT_EQ(map.getMap().findTileset(101), nullptr);
     EXPECT_EQ(map.getMap().findTileset(104), nullptr);
     map.setTile("inner", 0, 0, 103);
@@ -553,12 +549,12 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     EXPECT_EQ(map.orientation, tiled::Map::Orientation::Oblique);
     EXPECT_EQ(tiled::Map::orientationName(map.orientation), "oblique");
     EXPECT_EQ(map.skew, math::Vec2(8.0F, 4.0F));
-    EXPECT_EQ(map.findLayer("ground")->blend, graphics::BlendMode::Type::Multiply);
-    EXPECT_EQ(map.findLayer("decor")->blend, graphics::BlendMode::Type::Additive);
-    EXPECT_EQ(map.findLayer("things")->blend, graphics::BlendMode::Type::Screen);
-    EXPECT_EQ(map.findLayer("inner")->blend, graphics::BlendMode::Type::Alpha);
+    EXPECT_EQ(test::TiledHelper::layer(map, "ground").blend, graphics::BlendMode::Type::Multiply);
+    EXPECT_EQ(test::TiledHelper::layer(map, "decor").blend, graphics::BlendMode::Type::Additive);
+    EXPECT_EQ(test::TiledHelper::layer(map, "things").blend, graphics::BlendMode::Type::Screen);
+    EXPECT_EQ(test::TiledHelper::layer(map, "inner").blend, graphics::BlendMode::Type::Alpha);
 
-    const std::vector<tiled::Object>& objects = map.findLayer("things")->objects;
+    const std::vector<tiled::Object>& objects = test::TiledHelper::layer(map, "things").objects;
     EXPECT_EQ(objects[6].opacity, 0.25F);
     EXPECT_EQ(objects[0].opacity, 1.0F);
     EXPECT_EQ(objects[9].shape, tiled::Object::Shape::Capsule);
@@ -583,7 +579,7 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     core::Json blended = orthogonalMap();
     for (const auto& [mode, type] : {std::pair{"overlay", graphics::BlendMode::Type::Overlay}, std::pair{"color-dodge", graphics::BlendMode::Type::ColorDodge}, std::pair{"soft-light", graphics::BlendMode::Type::SoftLight}, std::pair{"exclusion", graphics::BlendMode::Type::Exclusion}}) {
         blended["layers"][6]["layers"][0]["mode"] = mode;
-        EXPECT_EQ(tiled::Map::parse(blended, "maps/blended.tmj", reader()).findLayer("inner")->blend, type) << mode;
+        EXPECT_EQ(test::TiledHelper::layer(tiled::Map::parse(blended, "maps/blended.tmj", reader()), "inner").blend, type) << mode;
     }
 
     blended["layers"][6]["layers"][0]["mode"] = "glow";
@@ -607,15 +603,15 @@ TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
     }
 
     blendedGroup["layers"][6]["mode"] = "normal";
-    EXPECT_EQ(tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()).findLayer("group")->blend, graphics::BlendMode::Type::Alpha);
+    EXPECT_EQ(test::TiledHelper::layer(tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()), "group").blend, graphics::BlendMode::Type::Alpha);
 }
 
 TEST_F(MapTest, ReadsInfiniteMapsAndWorlds) {
     const tiled::Map infinite = tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader());
     EXPECT_TRUE(infinite.infinite);
-    EXPECT_EQ(infinite.findLayer("ground")->getGid(-1, 1), 4U);
-    EXPECT_EQ(infinite.findLayer("ground")->getGid(1, 0), 6U);
-    EXPECT_EQ(infinite.findLayer("ground")->getGid(5, 5), 0U);
+    EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(-1, 1), 4U);
+    EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(1, 0), 6U);
+    EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(5, 5), 0U);
 
     const std::vector<std::string> files{"maps/world/level_0_0.tmj", "maps/world/level_1_0.tmj", "maps/world/notes.txt", "maps/other/level_9_9.tmj"};
     const tiled::World world = tiled::World::parse(core::Json::parse(packageFiles().at("content/maps/world/level.world")), "maps/world/level.world", files);
@@ -639,8 +635,8 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     assets::Manager& assets = fixture.engine().getAssets();
     const auto data = std::static_pointer_cast<tiled::Map>(assets.load("tiled", "maps/island.tmj"));
     EXPECT_EQ(data->tilesets[0].tileset->texture, assets.texture("maps/images/terrain.png"));
-    EXPECT_TRUE(data->findLayer("sky")->texture.isValid());
-    EXPECT_NE(data->findLayer("sky")->texture, assets.texture("maps/backgrounds/sky.png")) << "Keyed images stay private.";
+    EXPECT_TRUE(test::TiledHelper::layer(*data, "sky").texture.isValid());
+    EXPECT_NE(test::TiledHelper::layer(*data, "sky").texture, assets.texture("maps/backgrounds/sky.png")) << "Keyed images stay private.";
 
     tiled::MapRenderer map(*data, fixture.engine().getDefaultFont());
     // clang-format off
@@ -908,8 +904,8 @@ TEST_F(MapRendererTest, BuildsCollisionBodies) {
         EXPECT_GT(math::Geometry::signedArea(outline.points), 0.0F);
     }
 
-    EXPECT_NEAR(world.raycast({24.0F, -10.0F}, {24.0F, 30.0F})->point.y, 0.0F, 0.01F);
-    EXPECT_NEAR(world.raycast({70.0F, 40.0F}, {30.0F, 40.0F})->point.x, 64.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({24.0F, -10.0F}, {24.0F, 30.0F})).point.y, 0.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({70.0F, 40.0F}, {30.0F, 40.0F})).point.x, 64.0F, 0.01F);
     EXPECT_FALSE(world.raycast({20.0F, 40.0F}, {28.0F, 40.0F}).has_value());
 
     const std::vector<physics2d::Shape> zone = world.queryPoint({-4.0F, 4.0F});
@@ -940,7 +936,7 @@ TEST_F(MapRendererTest, TracesTileCollisionAgainAfterSetTile) {
     // A slope that stands on the last row merges into its loop, and a one-way ledge stays a shape of its own.
     map.setTile("ground", 1, 1, 200);
     EXPECT_EQ(ground.getOutlines().size(), 2U);
-    EXPECT_NEAR(world.raycast({31.0F, 2.0F}, {31.0F, 40.0F})->point.y, 17.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({31.0F, 2.0F}, {31.0F, 40.0F})).point.y, 17.0F, 0.01F);
     map.setTile("ground", 0, 0, 201);
     const std::vector<physics2d::Shape> ledge = world.queryPoint({8.0F, 2.0F});
     ASSERT_EQ(ledge.size(), 1U);
@@ -1027,10 +1023,10 @@ TEST_F(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
 
     // The two full tiles of the first row fill their cells and merge into one loop, and the half tile covers the lower half of its cell.
     EXPECT_EQ(ground.getOutlines().size(), 2U);
-    EXPECT_NEAR(world.raycast({-10.0F, 8.0F}, {50.0F, 8.0F})->point.x, 4.0F, 0.01F);
-    EXPECT_NEAR(world.raycast({50.0F, 8.0F}, {-10.0F, 8.0F})->point.x, 36.0F, 0.01F);
-    EXPECT_NEAR(world.raycast({44.0F, 17.0F}, {44.0F, 40.0F})->point.y, 24.0F, 0.01F);
-    EXPECT_NEAR(world.raycast({60.0F, 28.0F}, {30.0F, 28.0F})->point.x, 52.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({-10.0F, 8.0F}, {50.0F, 8.0F})).point.x, 4.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({50.0F, 8.0F}, {-10.0F, 8.0F})).point.x, 36.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({44.0F, 17.0F}, {44.0F, 40.0F})).point.y, 24.0F, 0.01F);
+    EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({60.0F, 28.0F}, {30.0F, 28.0F})).point.x, 52.0F, 0.01F);
 }
 
 TEST_F(MapRendererTest, SpawnsObjectsThroughFactories) {
@@ -1242,8 +1238,8 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
     EXPECT_EQ(copy.getPixelBounds(), original.getPixelBounds());
     EXPECT_EQ(copy.backgroundColor, original.backgroundColor);
     EXPECT_EQ(copy.properties.getString("title", ""), "Island");
-    EXPECT_EQ(copy.properties.find("spawn")->value.at("kind"), "goblin");
-    EXPECT_EQ(copy.properties.find("loot")->value[3].at("value")[1].at("value"), "maps/gem.png");
+    EXPECT_EQ(test::TiledHelper::property(copy.properties, "spawn").value.at("kind"), "goblin");
+    EXPECT_EQ(test::TiledHelper::property(copy.properties, "loot").value[3].at("value")[1].at("value"), "maps/gem.png");
 
     ASSERT_EQ(copy.tilesets.size(), original.tilesets.size());
 
@@ -1256,21 +1252,21 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
         EXPECT_EQ(to.wangSets.size(), from.wangSets.size());
     }
 
-    EXPECT_EQ(copy.tilesets[1].tileset->findTile(0)->image, "maps/props/tree.png");
-    EXPECT_EQ(copy.tilesets[0].tileset->findTile(2)->animation.size(), 2U);
+    EXPECT_EQ(test::TiledHelper::tile(*copy.tilesets[1].tileset, 0).image, "maps/props/tree.png");
+    EXPECT_EQ(test::TiledHelper::tile(*copy.tilesets[0].tileset, 2).animation.size(), 2U);
     EXPECT_EQ(copy.tilesets[0].tileset->wangSets.front().tiles.front().wangId, original.tilesets[0].tileset->wangSets.front().tiles.front().wangId);
 
     for (const std::string_view name : {"ground", "decor", "inner"}) {
-        EXPECT_EQ(copy.findLayer(name)->gids, original.findLayer(name)->gids) << name;
-        EXPECT_EQ(copy.findLayer(name)->id, original.findLayer(name)->id) << name;
+        EXPECT_EQ(test::TiledHelper::layer(copy, name).gids, test::TiledHelper::layer(original, name).gids) << name;
+        EXPECT_EQ(test::TiledHelper::layer(copy, name).id, test::TiledHelper::layer(original, name).id) << name;
     }
 
-    EXPECT_EQ(copy.findLayer("group")->opacity, 0.5F);
-    EXPECT_EQ(copy.findLayer("sky")->image, "maps/backgrounds/sky.png");
-    EXPECT_EQ(copy.findLayer("sky")->parallax, math::Vec2(0.5F, 0.5F));
+    EXPECT_EQ(test::TiledHelper::layer(copy, "group").opacity, 0.5F);
+    EXPECT_EQ(test::TiledHelper::layer(copy, "sky").image, "maps/backgrounds/sky.png");
+    EXPECT_EQ(test::TiledHelper::layer(copy, "sky").parallax, math::Vec2(0.5F, 0.5F));
 
-    const tiled::Layer& things = *copy.findLayer("things");
-    const tiled::Layer& before = *original.findLayer("things");
+    const tiled::Layer& things = test::TiledHelper::layer(copy, "things");
+    const tiled::Layer& before = test::TiledHelper::layer(original, "things");
     ASSERT_EQ(things.objects.size(), before.objects.size());
 
     for (std::size_t index = 0; index < things.objects.size(); ++index) {
@@ -1297,8 +1293,8 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
 
     const tiled::Map infinite = tiled::Map::parse(tiled::MapWriter::write(tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader()), "maps/infinite.tmj"), "maps/infinite.tmj", reader());
     EXPECT_TRUE(infinite.infinite);
-    EXPECT_EQ(infinite.findLayer("ground")->getGid(-1, 1), 4U);
-    EXPECT_EQ(infinite.findLayer("ground")->getGid(1, 0), 6U);
+    EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(-1, 1), 4U);
+    EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(1, 0), 6U);
 }
 
 // A project fills in the members the map leaves at their defaults, in the properties of its class and in class values, nested classes and the class items of lists alike, and keeps what the map sets.
@@ -1307,12 +1303,12 @@ TEST_F(MapTest, FillsInTheClassMembersOfItsProject) {
     map.applyPropertyTypes(tiled::PropertyTypes::parse(gameProject()));
     EXPECT_EQ(map.properties.getNumber("difficulty", 0.0), 1.0);
     EXPECT_EQ(map.properties.getString("title", ""), "Island");
-    const core::Json& spawn = map.properties.find("spawn")->value;
+    const core::Json& spawn = test::TiledHelper::property(map.properties, "spawn").value;
     EXPECT_EQ(spawn.at("count"), 2);
     EXPECT_EQ(spawn.at("kind"), "goblin");
     EXPECT_EQ(spawn.at("reward").at("coins"), 5);
     EXPECT_EQ(spawn.at("reward").at("gem"), false);
-    const core::Json& bat = map.properties.find("loot")->value[4].at("value");
+    const core::Json& bat = test::TiledHelper::property(map.properties, "loot").value[4].at("value");
     EXPECT_EQ(bat.at("kind"), "bat");
     EXPECT_EQ(bat.at("count"), 1);
 
@@ -1411,4 +1407,4 @@ TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
     EXPECT_NE(fixture.lua("map:removeLayer('things')").find("The map has no layer named \"things\" at its top level."), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::tiled
