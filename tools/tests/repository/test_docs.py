@@ -8,7 +8,7 @@ from tests.support.tracked_files import TrackedFiles
 
 
 class DocsTest:
-    """The documentation is one tree that a reader walks from the main page: every page starts with its title, names the language of its code blocks and keeps each paragraph on one line, every row of a table has as many cells as its header, every relative link reaches its page and heading, the indexes list their pages in tables of name, description and link, and no long sentence repeats in another page."""
+    """The documentation is one tree that a reader walks from the main page: every page starts with its title, which alone carries an emoji, names the language of its code blocks and keeps each paragraph on one line, every row of a table has as many cells as its header, every relative link reaches its page and heading, the indexes list their pages in tables of name, description and link, and no long sentence repeats in another page."""
 
     DOCS = Repository.ROOT / "docs"
     HEADER = "| Name | Description | Link |"
@@ -35,6 +35,17 @@ class DocsTest:
             title = path.read_text(encoding="utf-8").split("\n", 1)[0]
             if not title.startswith("# ") or unicodedata.category(title[2:3]) != "So":
                 wrong.append(f"{name}: {title}")
+        assert wrong == []
+
+    def test_no_section_heading_carries_an_emoji(self):
+        # Only the title carries an emoji, so the anchors of the sections stay plain.
+        wrong = []
+        for path in DocsTest.pages():
+            for number, line in MarkdownPage(path).prose():
+                if not re.match(r"^#{2,6} ", line):
+                    continue
+                if any(unicodedata.category(character) == "So" for character in line):
+                    wrong.append(f"{DocsTest.shown(path)}:{number}: {line}")
         assert wrong == []
 
     def test_every_code_block_names_its_language(self):
