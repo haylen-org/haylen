@@ -28,7 +28,7 @@ call:cancel()
 | Platform | Native part |
 | --- | --- |
 | iOS, Mac Catalyst, tvOS, visionOS, macOS | `apple/NativeSamplePlugin.swift`, whose handlers are async functions registered with `register` of the Swift helpers of the engine. |
-| Android | The module in `android/`, whose Kotlin `NativeSamplePlugin` registers suspending handlers with `registerSuspend` of the `haylen-coroutines` library and the Java `ExplodeHandler`. |
+| Android | The module in `android/`, whose Kotlin `NativeSamplePlugin` registers suspending handlers with `HaylenCoroutines.register` of the `haylen-coroutines` library and the Java `ExplodeHandler`. |
 | Web | `web/native-sample.js`, whose handlers return promises and follow the `AbortSignal` of their call. |
 | Desktop player, Windows, Linux | None, so calls fail with the code `noHandler`. |
 

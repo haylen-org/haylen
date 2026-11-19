@@ -1401,7 +1401,7 @@ The engine library declares only what every app needs. The parts that only some 
 | `dev.haylen:haylen-plugins` | The provider that loads the plugins when the app process starts, `HaylenPluginProvider`. | Every plugin module. |
 | `dev.haylen:haylen-links` | The activity that receives links and notification taps, `HaylenLinkActivity`, exported so that plugins add their intent filters to it, as [links and notifications](#links-and-notifications) describes. | Plugins that receive links or post notifications. |
 | `dev.haylen:haylen-playback` | The foreground service of the audio that plays in the background, `HaylenPlaybackService`, with its permissions, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. | The app module of an app whose `haylen.json` sets `audio.background`, which the Android backend adds on its own. |
-| `dev.haylen:haylen-coroutines` | Handlers written as suspending functions, `HaylenCoroutines.register` and `registerSuspend`, with `kotlinx-coroutines-android` as an API. | Kotlin plugins and apps with suspending handlers. |
+| `dev.haylen:haylen-coroutines` | Handlers written as suspending functions, `HaylenCoroutines.register` for the app and for a plugin, with `kotlinx-coroutines-android` as an API. | Kotlin plugins and apps with suspending handlers. |
 
 An app whose plugins bring no provider and no link activity has no exported component besides its launcher activity. `HaylenActivity` logs an error with the tag `haylen` when the manifest names plugins in `dev.haylen.plugin.<id>` meta-data while the provider never ran. That happens when no plugin module depends on `dev.haylen:haylen-plugins`.
 
@@ -1510,7 +1510,6 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 | `activity()` | The running `HaylenActivity`, or `null` while there is none, as in `onLoad`. It is a `GameActivity`, and so an `AppCompatActivity`, a `FragmentActivity` and a `ComponentActivity`, which SDKs take as it is. |
 | `config()` | The parameters of the plugin in `haylen.json`, over the `default` of every parameter of `plugin.json`, as a `JSONObject`. These are the same values as `handle.config` in Lua. |
 | `register(method, handler)`, `register(method, handler, threading)` | Answer `<id>.<method>` like `HaylenBridge.register` in the [platform bridge guide](platform-bridge.md#android). The handler runs on the main thread or, with `HaylenBridge.Threading.BACKGROUND`, on the shared background thread that [threads](#threads) describes. |
-| `registerSuspend(method) { params -> result }` | Kotlin only, with `dev.haylen:haylen-coroutines`. Answers `<id>.<method>` with a suspending function, like `HaylenCoroutines.register`. |
 | `registerScreen(name, contract, input, output)`, `registerScreen(name, opener)` | Open the screen `<id>.<name>` through an Activity Result contract or an opener, as [Android screens](#android-screens) describes. |
 | `restoredScreen()` | The `HaylenScreen` of the plugin that showed when the process ended, which the plugin ends once its answer arrives, or `null`. |
 | `openVideoStream(name, width, height, format)`, `openAudioStream(name, sampleRate, channels, format, capacity)` | Open the video or audio [stream](#streams) of a name, or return the one that is open. They throw an `IllegalArgumentException` for arguments that the stream cannot take. |
@@ -1524,14 +1523,14 @@ public final class ShareSheetPlugin extends HaylenPlugin {
 
 Events that native code sends while no app runs wait in the engine library, up to 32 per name with the oldest dropped first. That covers events sent from `onLoad` before the first activity loads the native library, while the app restarts and between two activities. They reach the next app in order once it starts. So a link that opens the app, which the plugin sends retained, reaches the first Lua listener of its name however late it comes.
 
-A plugin with suspending handlers adds `implementation("dev.haylen:haylen-coroutines:$haylenEngineVersion")` to its module:
+A suspending handler of a plugin registers with `HaylenCoroutines.register(context, method) { params -> result }`, which answers `<id>.<method>` like the handlers of the app. A plugin with suspending handlers adds `implementation("dev.haylen:haylen-coroutines:$haylenEngineVersion")` to its module:
 
 ```kotlin
-import dev.haylen.registerSuspend
+import dev.haylen.HaylenCoroutines
 import kotlinx.coroutines.delay
 
 override fun onLoad(context: HaylenPluginContext) {
-    context.registerSuspend("loadProfile") { params ->
+    HaylenCoroutines.register(context, "loadProfile") { params ->
         delay(100)
         mapOf("id" to (params as JSONObject).getString("id"), "name" to "Player")
     }

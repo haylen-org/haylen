@@ -256,6 +256,7 @@ The Android library module `engine/platform/android/haylen` holds `dev.haylen.Ha
 | `Reply.onCancel(Runnable listener)` | Runs the listener on the main thread when the app gives the call up, or at once when that already happened. |
 | `HaylenBridge.Failure(String message, String code, Object data)` | An exception that a handler throws to fail its call with a code and data. |
 | `HaylenCoroutines.register(String method, suspend (Any?) -> Any?)` | Adds a Kotlin handler written as a suspending function. It comes with the `dev.haylen:haylen-coroutines` library. |
+| `HaylenCoroutines.register(HaylenPluginContext context, String method, suspend (Any?) -> Any?)` | Adds a suspending handler of a plugin, which answers `<id>.<method>`. |
 
 ### How a call runs on Android
 

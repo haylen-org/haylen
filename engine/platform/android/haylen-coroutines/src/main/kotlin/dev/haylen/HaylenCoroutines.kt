@@ -15,7 +15,13 @@ object HaylenCoroutines {
         HaylenBridge.register(method, methodHandler(handler))
     }
 
-    internal fun methodHandler(function: suspend (params: Any?) -> Any?) = HaylenBridge.MethodHandler { params, reply ->
+    // Registers `<id>.<method>` of a plugin as a suspending function, which runs like the handlers of the app.
+    @JvmStatic
+    fun register(context: HaylenPluginContext, method: String, handler: suspend (params: Any?) -> Any?) {
+        context.register(method, methodHandler(handler))
+    }
+
+    private fun methodHandler(function: suspend (params: Any?) -> Any?) = HaylenBridge.MethodHandler { params, reply ->
         val job = scope.launch {
             try {
                 reply.success(function(params))
@@ -30,7 +36,3 @@ object HaylenCoroutines {
     }
 }
 
-// Registers `<id>.<method>` of a plugin as a suspending function, which runs like the handlers of `HaylenCoroutines.register`.
-fun HaylenPluginContext.registerSuspend(method: String, handler: suspend (params: Any?) -> Any?) {
-    register(method, HaylenCoroutines.methodHandler(handler))
-}

@@ -754,7 +754,7 @@ The manifest of `haylen` declares only the OpenGL ES 3 requirement, with no perm
 - `haylen-plugins` holds only a manifest, which declares `HaylenPluginProvider` for the modules of plugins.
 - `haylen-links` holds only a manifest, which declares the exported `HaylenLinkActivity` for plugins of links and notifications.
 - `haylen-playback` holds only a manifest, which declares `HaylenPlaybackService` with the type `mediaPlayback` and the permissions `FOREGROUND_SERVICE` and `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, for the apps whose `haylen.json` sets `audio.background`, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. The Android backend adds it to the dependencies of the app module of those apps.
-- `haylen-coroutines` holds `HaylenCoroutines` and `registerSuspend`, with `kotlinx-coroutines-android`, as the [plugin guide](../platform/plugins.md#engine-libraries) describes.
+- `haylen-coroutines` holds `HaylenCoroutines`, with `kotlinx-coroutines-android`, as the [plugin guide](../platform/plugins.md#engine-libraries) describes.
 
 The library packages the player, which the CMake project of the engine builds with `HAYLEN_BUILD_PLAYER` as the shared library `libhaylen.so`. It covers arm64-v8a, armeabi-v7a, for the 32-bit Android TV devices still in use, and x86_64, for emulators, from Android 8.1 (API 27) on. The NDK r30 links the arm64-v8a and x86_64 libraries with 16 KB page alignment, which Android 15 devices with 16 KB pages need, and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES` makes it explicit. 32-bit ARM has no 16 KB pages and keeps 4 KB alignment.
 

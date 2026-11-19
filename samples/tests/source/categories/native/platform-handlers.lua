@@ -19,7 +19,7 @@ call:cancel()  -- The handler hears it and stops.]]
 
 -- How the native part of the plugin `native-sample` registers its handlers on each platform.
 PlatformHandlers.registrations = {
-    android = 'The Android module of the plugin registers its handlers with "registerSuspend" and a handler that throws.',
+    android = 'The Android module of the plugin registers its handlers with "HaylenCoroutines.register" and a handler that throws.',
     ios = 'The Apple class of the plugin registers its async Swift handlers with "register" of its context.',
     tvos = 'The Apple class of the plugin registers its async Swift handlers with "register" of its context.',
     macos = 'The Apple class of the plugin registers its async Swift handlers with "register" of its context.',
