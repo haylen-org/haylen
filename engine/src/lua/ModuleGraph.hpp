@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <cstddef>
 #include <map>
 #include <set>
 #include <string>
@@ -69,12 +70,12 @@ class ModuleGraph final {
 
   private:
     static constexpr const char* kStore = "haylen.modules";
-    static constexpr const char* kLoadType = "haylen.ModuleLoad";
 
-    // A first load in progress, closed when the top level of the module returns or fails, whose user value holds the chunk.
-    struct Load {
+    // A first load in progress, which its steps read through a light userdata.
+    struct FirstLoad {
         ModuleGraph* graph = nullptr;
-        bool finished = false;
+        const std::string* path = nullptr;
+        std::string source;
     };
 
     // A run of the top level of a module, with the owner that registrations without an owner took before it and the keys of the values it kept first.
@@ -91,12 +92,14 @@ class ModuleGraph final {
     static void dropKept(lua_State* L, std::string_view path, const std::vector<std::string>& keys);
     static int require(lua_State* L);
     static int recordGlobal(lua_State* L);
-    static int closeLoad(lua_State* L);
+    static int beginFirstLoad(lua_State* L);
+    static int finishFirstLoad(lua_State* L);
 
     // Finds the loader of a module the way `require` does, leaving the loader and its data on the stack.
     static void findLoader(lua_State* L, const char* name);
     void recordRequire(lua_State* L, const std::string& name);
     int load(lua_State* L, const std::string& name, const std::string& path);
+    void abandonFirstLoad(lua_State* L, const std::string& path, int chunk, int owner, std::size_t depth);
 
     // Gives the chunk at index an environment that writes through to the globals and records every write in a new table, which it leaves on the stack and whose index it returns.
     static int pushRecordingEnvironment(lua_State* L, int chunk);

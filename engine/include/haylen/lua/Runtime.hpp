@@ -60,11 +60,13 @@ class Runtime final {
 
   private:
     friend class Environment;
+    friend class ModuleGraph;
     friend class Task;
     friend class debug::Tracer;
 
     static constexpr const char* kEngineKey = "haylen.engine";
     static constexpr const char* kErrorType = "haylen.Error";
+    static constexpr const char* kKeptFailureKey = "haylen.keptFailure";
     static constexpr const char* kSyntaxErrorsKey = "haylen.syntaxErrors";
     static constexpr int kMaxSyntaxErrors = 64;
 
@@ -84,6 +86,17 @@ class Runtime final {
 
     // The message handler of every protected call: it replaces the error value with an `Error` userdata that holds the stack.
     static int handleMessage(lua_State* L);
+
+    // Calls the function below the arguments under a protected call that keeps the failure where it rises, before its stack unwinds: the error value, the `Error` with that stack and the failure that the tasks of Varn read. It returns the status of the call and leaves the kept failure, or the error value of a memory error, on top, so native code undoes what it started before `raiseKept` raises the same error value again.
+    [[nodiscard]] static int keptCall(lua_State* L, int arguments, int results);
+    static int raiseKept(lua_State* L, int status);
+    static int keepFailure(lua_State* L);
+
+    // Pushes the `Error` of the kept failure whose error value is the value at index, and answers whether it did. The next message handler that an error reaches takes the kept failure, so a call forgets it whatever it answers.
+    [[nodiscard]] static bool takeKept(lua_State* L, int index);
+
+    // Pushes the `Error` of the error value at index 1 of a message handler, with the stack of the code where it rose.
+    static void pushCaptured(lua_State* L);
 
     // Records the message of a module of the package that did not compile, which `require` raises as it is, so the error keeps the code `syntax` once it reaches a protected call of the engine. The record keeps the latest messages only.
     static void recordSyntaxError(lua_State* L, int index);

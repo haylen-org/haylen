@@ -9,6 +9,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Task.hpp"
+#include "varn/async/AsyncModule.h"
 
 namespace haylen::lua {
 
@@ -185,17 +186,96 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
     return Error(text, std::move(frames));
 }
 
+// An error that a kept call raised again keeps the stack of where it first rose, and the tasks of Varn forget the failure they would have taken for it.
 int Runtime::handleMessage(lua_State* L) {
     // clang-format off
     return Binding::guarded(L, [L] {
-        Error error = captureError(L, describeValue(L, 1), 1);
-        if (isSyntaxError(L, 1)) {
-            error.setCode(Error::Code::Syntax);
+        if (!takeKept(L, 1)) {
+            pushCaptured(L);
+            return 1;
         }
-        pushError(L, std::move(error));
+
+        varn::async::AsyncModule::capture(L);
+        lua_pop(L, 1);
         return 1;
     });
     // clang-format on
+}
+
+void Runtime::pushCaptured(lua_State* L) {
+    Error error = captureError(L, describeValue(L, 1), 1);
+    if (isSyntaxError(L, 1)) {
+        error.setCode(Error::Code::Syntax);
+    }
+
+    pushError(L, std::move(error));
+}
+
+int Runtime::keptCall(lua_State* L, int arguments, int results) {
+    const int function = lua_gettop(L) - arguments;
+    lua_pushcfunction(L, &keepFailure);
+    lua_insert(L, function);
+
+    const int status = lua_pcall(L, arguments, results, function);
+    lua_remove(L, function);
+    return status;
+}
+
+// A failure that a kept call inside this one raised again stays the failure it was, for the engine and for the tasks of Varn.
+int Runtime::keepFailure(lua_State* L) {
+    // clang-format off
+    return Binding::guarded(L, [L] {
+        lua_settop(L, 1);
+        varn::async::AsyncModule::capture(L);
+        if (!takeKept(L, 1)) {
+            pushCaptured(L);
+        }
+
+        lua_createtable(L, 0, 3);
+        lua_pushvalue(L, 1);
+        lua_setfield(L, -2, "error");
+        lua_pushvalue(L, 2);
+        lua_setfield(L, -2, "failure");
+        lua_pushvalue(L, 3);
+        lua_setfield(L, -2, "kept");
+        return 1;
+    });
+    // clang-format on
+}
+
+// Lua calls no message handler for a memory error, which rises again as one.
+int Runtime::raiseKept(lua_State* L, int status) {
+    if (status != LUA_ERRRUN) {
+        return lua_error(L);
+    }
+
+    lua_pushvalue(L, -1);
+    lua_setfield(L, LUA_REGISTRYINDEX, kKeptFailureKey);
+    lua_getfield(L, -1, "failure");
+    return varn::async::AsyncModule::raise(L);
+}
+
+bool Runtime::takeKept(lua_State* L, int index) {
+    const int value = lua_absindex(L, index);
+    if (lua_getfield(L, LUA_REGISTRYINDEX, kKeptFailureKey) != LUA_TTABLE) {
+        lua_pop(L, 1);
+        return false;
+    }
+
+    lua_pushnil(L);
+    lua_setfield(L, LUA_REGISTRYINDEX, kKeptFailureKey);
+
+    lua_getfield(L, -1, "error");
+    const bool kept = lua_rawequal(L, -1, value) != 0;
+    lua_pop(L, 1);
+    if (!kept) {
+        lua_pop(L, 1);
+        return false;
+    }
+
+    lua_getfield(L, -1, "kept");
+    lua_remove(L, -2);
+    return true;
 }
 
 // The metatable comes first, so the error is never built inside a userdata that could miss its finalizer.

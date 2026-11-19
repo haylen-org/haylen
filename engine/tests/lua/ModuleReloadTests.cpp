@@ -702,6 +702,38 @@ error('broken on purpose')
     EXPECT_EQ(lua("return tostring(failed) .. ' ' .. heard"), "nil 1");
 }
 
+// A coroutine that dies from an error never closes what it opened, so a first load that fails inside one ends its run at once, and its error is the one a shipped app sees.
+TEST_F(ModuleReloadTest, EndsAFailedFirstLoadInsideACoroutineAtOnce) {
+    const std::map<std::string, std::string> files{{"source/broken.lua", "require('haylen.events').on('ping', function() heard = true end)\nerror('broken on purpose')"},
+        {"source/main.lua", "events = require('haylen.events') hotReload = require('haylen.hotReload') failing = coroutine.create(function() return require('broken') end) ok, message = coroutine.resume(failing)"}};
+    start(files);
+    EXPECT_EQ(lua("return tostring(ok) .. ' ' .. message"), "false source/broken.lua:2: broken on purpose");
+    EXPECT_EQ(lua("return select(2, pcall(hotReload.keep, 'a', function() return 1 end))"), "The function \"keep\" works only while a module loads.");
+
+    fixture->runLua("events.emit('ping')");
+    fixture->frames(2);
+    EXPECT_EQ(lua("return tostring(heard)"), "nil");
+    EXPECT_EQ(fixture->engine().getError(), nullptr);
+
+    fixture.reset();
+    test::EngineFixture shipped(files);
+    EXPECT_EQ(shipped.lua("return tostring(ok) .. ' ' .. message"), "false source/broken.lua:2: broken on purpose");
+}
+
+// The error of a failed first load rises again once the load ended, and the error screen still shows the stack of where it rose, whose innermost script frame gives the position of an error value without one.
+TEST_F(ModuleReloadTest, ShowsTheStackInsideAModuleWhoseFirstLoadFailed) {
+    const std::string broken = "local value = 1\nerror(setmetatable({}, {__tostring = function() return 'broken on purpose' end}))";
+    for (const std::string main : {"require('broken')", "require('async').spawn(function() require('broken') end)"}) {
+        start({{"source/broken.lua", broken}, {"source/main.lua", "\n" + main}});
+        fixture->frames(2);
+        const Error* failure = fixture->engine().getError();
+        ASSERT_NE(failure, nullptr) << main;
+        EXPECT_EQ(failure->getFile(), "source/broken.lua") << main;
+        EXPECT_EQ(failure->getLine(), 2) << main;
+        EXPECT_NE(failure->getTraceback().find("source/main.lua:2"), std::string::npos) << failure->getTraceback();
+    }
+}
+
 TEST_F(ModuleReloadTest, ResumesAfterAFixedUpdateError) {
     start({{"source/level.lua", R"(
 local Level = {}
