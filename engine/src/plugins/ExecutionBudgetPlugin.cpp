@@ -1,7 +1,11 @@
 #include "plugins/ExecutionBudgetPlugin.hpp"
 
 #include "debug/ExecutionBudget.hpp"
+#include <limits>
+
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EventBus.hpp"
+#include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "platform/DevelopmentSession.hpp"
 
@@ -12,6 +16,19 @@ ExecutionBudgetPlugin::~ExecutionBudgetPlugin() {
     if (session != nullptr) {
         session->getExecutionBudget().detach();
     }
+}
+
+// The app stops its scenes and autoloads before the plugins stop, so the budget gives the code that stops the app its whole time and room in memory once the stop begins, before every listener of the app hears it.
+void ExecutionBudgetPlugin::start(core::Engine& engine) {
+    if (session == nullptr) {
+        return;
+    }
+
+    // clang-format off
+    stopping = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kAppStopping, [this](core::EventBus::Event&) {
+        session->getExecutionBudget().finishApp();
+    }, {.priority = std::numeric_limits<int>::max()}));
+    // clang-format on
 }
 
 void ExecutionBudgetPlugin::installLua(core::Engine& engine, lua_State* L) {
@@ -41,9 +58,7 @@ void ExecutionBudgetPlugin::installLua(core::Engine& engine, lua_State* L) {
 }
 
 void ExecutionBudgetPlugin::stop(core::Engine&) {
-    if (session != nullptr) {
-        session->getExecutionBudget().finishApp();
-    }
+    stopping.disconnect();
 }
 
 int ExecutionBudgetPlugin::refuseHook(lua_State* L) {

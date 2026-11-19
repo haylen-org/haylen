@@ -54,8 +54,11 @@ class ExecutionBudget final {
     void attach(lua_State* L, Limits value, Cancel cancel, StageReader stage);
     void detach() noexcept;
 
-    // Keeps timing the Lua state while the app stops and its state closes, but cancels no app any more.
+    // Keeps timing the Lua state while the app stops and its state closes, but cancels no app any more. The code that stops the app gets its whole time again and, beyond what the state holds, room for a share of the memory budget, so an app whose memory ran out can still end what it holds.
     void finishApp() noexcept;
+
+    // The share of the memory budget that the code that stops an app may take beyond what the state holds, as a divisor of the budget.
+    static constexpr std::size_t kStopMemoryShare = 4;
 
     [[nodiscard]] bool isExhausted() const noexcept {
         return exhausted;

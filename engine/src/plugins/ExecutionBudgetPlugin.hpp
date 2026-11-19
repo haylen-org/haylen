@@ -2,6 +2,7 @@
 
 #include <string_view>
 
+#include "haylen/core/ScopedConnection.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
 namespace haylen::platform {
@@ -22,6 +23,7 @@ class ExecutionBudgetPlugin final : public Plugin {
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "executionBudget";
     }
+    void start(core::Engine& engine) override;
     void installLua(core::Engine& engine, lua_State* L) override;
     void stop(core::Engine& engine) override;
 
@@ -29,6 +31,7 @@ class ExecutionBudgetPlugin final : public Plugin {
     static int refuseHook(lua_State* L);
 
     platform::DevelopmentSession* session;
+    core::ScopedConnection stopping;
 };
 
 } // namespace haylen::plugins

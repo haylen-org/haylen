@@ -1,5 +1,6 @@
 #include "debug/ExecutionBudget.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <utility>
 
@@ -86,13 +87,14 @@ void ExecutionBudget::detach() noexcept {
     exhausted = false;
 }
 
-// The code that stops a cancelled app runs with a whole budget again, so it can end what the app holds.
+// The code that stops a cancelled app runs with a whole budget again, so it can end what the app holds, and the memory it may take stays bounded.
 void ExecutionBudget::finishApp() noexcept {
     cancelApp = nullptr;
     readStage = nullptr;
     exhausted = false;
     memoryExhausted = false;
     refusal.reset();
+    limits.memory = std::max(limits.memory, used + limits.memory / kStopMemoryShare);
 
     if (entries > 0) {
         deadline = Clock::now() + limits.time;

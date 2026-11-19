@@ -518,6 +518,8 @@ When the time runs out, the engine stops the app for good. The error screen show
 
 The Lua state of an app in development has a memory budget too, `debug.memoryBudget` megabytes of `haylen.json`, 1024 by default. Once the state holds that much and a full collection of its garbage cannot make room, the allocation fails and the engine stops the app the same way, with the code `memory`.
 
+Once the app stops, such as for a restart, the code that stops it runs again, even after the budget ran out: the listeners of `appStopping`, the hooks of the scenes that unload and the `stop` of its autoloads. That code gets its whole time again, and room for a quarter of the memory budget beyond what the state holds, so it can end what the app holds while its memory stays bounded.
+
 ```json
 {
     "debug": {"executionBudget": 2, "memoryBudget": 256}

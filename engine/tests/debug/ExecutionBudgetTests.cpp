@@ -1,15 +1,19 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
 #include "debug/ExecutionBudget.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/lua/Error.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "support/DebugClient.hpp"
@@ -155,6 +159,20 @@ TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
         EXPECT_EQ(error().getCode(), lua::Error::Code::Memory);
         EXPECT_NE(error().getMessage().find("took more than 32 MB of Lua memory in \"update\""), std::string::npos);
     }
+}
+
+// The code that stops an app whose memory ran out runs with its whole time and room for a share of the memory budget, so the unload of its scene ends what it holds.
+TEST_F(ExecutionBudgetTest, LetsTheStopOfAnAppWhoseMemoryRanOutRun) {
+    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "kept = {} require('haylen.scene').push({update = function() while true do kept[#kept + 1] = string.rep('x', 4096) .. #kept end end, unload = function() local made = {} for index = 1, 2000 do made[index] = string.rep('u', 512) .. index end print('Unloaded with ' .. #made .. ' texts.') end})"}};
+    fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
+    runUntilCancelled();
+    ASSERT_EQ(error().getCode(), lua::Error::Code::Memory);
+
+    std::vector<std::string> lines;
+    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level, std::string_view line) { lines.emplace_back(line); });
+    fixture.reset();
+    core::Log::removeListener(listener);
+    EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("Unloaded with 2000 texts.") != std::string::npos; })) << ::testing::PrintToString(lines);
 }
 
 // Garbage that a full collection frees never runs the budget out, however much the app allocated in total.
