@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -8,14 +9,18 @@
 
 #include <imgui.h>
 
+#include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/Style.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "ui/Scrollbar.hpp"
 #include "ui/Scroller.hpp"
 #include "ui/TextFieldLayout.hpp"
+
+struct ImGuiInputTextState;
 
 namespace haylen::ui {
 
@@ -76,9 +81,36 @@ class TextEditor final {
         std::optional<math::Vec2> tap;
     };
 
+    // Where the parts of a field lie inside its bounds: the frame of its surface and the area of its scroll bar inside it, the box of the ImGui field, which leaves the lane of the bar, the area its text lays out in, and the padding and the font size of the ImGui field.
+    struct Geometry {
+        math::Insets frame;
+        math::Rect barArea;
+        math::Rect inner;
+        math::Rect area;
+        float paddingX = 0.0F;
+        float paddingY = 0.0F;
+        float fontSize = 0.0F;
+    };
+
+    // What the ImGui field did in the frame.
+    struct Input {
+        bool edited = false;
+        bool submitted = false;
+    };
+
     // The caret keeps this far from the edges of the field while the text scrolls under it.
     static constexpr float kCaretMargin = 2.0F;
     static constexpr std::string_view kBullet = "\xE2\x80\xA2";
+
+    [[nodiscard]] static Geometry place(Context& context, const math::Rect& bounds, Theme::Surface surface, const Options& options, bool multiline, bool barShown);
+    [[nodiscard]] static Input edit(Context& context, std::string& value, const Options& options, const Geometry& geometry, Editing& editing, ImGuiID id, bool focused);
+
+    // Returns the scroll of the text in this frame, from the wheel, the caret of a focused field and the scroll bar.
+    [[nodiscard]] static math::Vec2 scrollText(const Editing& editing, const Options& options, const Geometry& geometry, const TextFieldLayout* field, std::optional<std::size_t> caret, ImGuiID id, float overflow, bool barShown);
+
+    [[nodiscard]] static std::optional<float> drawValue(const Editing& editing, std::string_view shown, std::string_view placeholder, math::Vec2 origin);
+    static void drawSelection(Context& context, std::string_view value, const ImGuiInputTextState& state, const TextFieldLayout& field, math::Vec2 origin);
+    static void drawCaret(const Editing& editing, const ImGuiInputTextState& state, const TextFieldLayout& field, std::size_t position, math::Vec2 origin, std::optional<float> placeholderEdge);
 
     // Moves the lines of an editor of many lines by the wheel of the frame and returns how far they scroll.
     [[nodiscard]] static float scrollLines(Context& context, Scrolling& scrolling, ImGuiID id, const math::Rect& bounds, float overflow, float view);

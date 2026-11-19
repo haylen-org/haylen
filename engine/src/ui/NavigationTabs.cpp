@@ -20,9 +20,11 @@ NavigationTabs::NavigationTabs(Navigation& owner, Region value, std::vector<Tab>
         if (tab.id.empty()) {
             throw std::invalid_argument("Every navigation tab needs an id.");
         }
+
         if (!tab.root) {
             throw std::invalid_argument(std::format("The navigation tab \"{}\" needs a root.", tab.id));
         }
+
         if (std::ranges::any_of(entries, [&](const Entry& entry) { return entry.tab.id == tab.id; })) {
             throw std::invalid_argument(std::format("The navigation tab \"{}\" is given more than once.", tab.id));
         }

@@ -94,6 +94,7 @@ void NavigationStack::checkJoining(const std::vector<std::shared_ptr<Screen>>& n
         if (!screen) {
             throw std::invalid_argument("A navigation stack holds screens, and one of them is missing.");
         }
+
         if (std::ranges::count(next, screen) > 1) {
             throw std::invalid_argument("A navigation stack holds each screen once.");
         }

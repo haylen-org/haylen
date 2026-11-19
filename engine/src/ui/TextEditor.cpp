@@ -5,6 +5,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -39,7 +40,11 @@ TextFieldLayout TextEditor::layOut(Context& context, std::string_view shown, con
 
 math::Vec2 TextEditor::getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline, bool centered) {
     const math::Vec2 size = laid.size;
-    const float x = isCentered(size, area, multiline, centered) ? area.x + (area.width - size.x) * 0.5F : rightToLeft ? area.getRight() - size.x : area.x;
+    float x = rightToLeft ? area.getRight() - size.x : area.x;
+    if (isCentered(size, area, multiline, centered)) {
+        x = area.x + (area.width - size.x) * 0.5F;
+    }
+
     const float y = multiline ? area.y : area.y + (area.height - size.y) * 0.5F;
     return {x + scroll.x, y - scroll.y};
 }
@@ -162,73 +167,49 @@ float TextEditor::scrollLines(Context& context, Scrolling& scrolling, ImGuiID id
     return static_cast<float>(std::clamp(motion.getOffset(), 0.0, static_cast<double>(overflow)));
 }
 
-TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, std::string& value, const Options& options) {
-    const ImGuiID id = ImGui::GetID("##field");
-    const bool focused = ImGui::GetActiveID() == id;
-    const bool password = options.input.keyboard == platform::TextInput::Keyboard::Password;
-    const bool multiline = options.input.keyboard == platform::TextInput::Keyboard::Multiline;
-    TextSession& session = context.getBackend().getTextSession();
-    session.addField(id, bounds, options.input);
+// The bar keeps inside the frame of the field, and the text and the ImGui field leave its lane.
+TextEditor::Geometry TextEditor::place(Context& context, const math::Rect& bounds, Theme::Surface surface, const Options& options, bool multiline, bool barShown) {
+    Geometry geometry;
+    geometry.frame = Surfaces::getFrame(context, surface);
+    geometry.barArea = bounds.inset(geometry.frame);
 
-    const Theme::Surface surface = focused ? Theme::Surface::FieldFocused : Theme::Surface::Field;
-    Surfaces::draw(context, surface, bounds, context.getColor(Theme::Color::Raised), context.getColor(focused ? Theme::Color::Focus : Theme::Color::Border));
-
-    // The scroll of the text lives with the field, and so does whether its text was taller than its area in the last frame, which shows the scroll bar of an editor of many lines from the frame after the text grew, so the area never changes while the text lays out.
-    ImGuiStorage& storage = *ImGui::GetStateStorage();
-    const ImGuiID scrollX = ImGui::GetID("##scrollX");
-    const ImGuiID overflowed = ImGui::GetID("##overflowed");
-    const bool barShown = multiline && storage.GetBool(overflowed);
-
-    // The bar keeps inside the frame of the field, and the text and the ImGui field leave its lane.
-    const bool rightToLeft = context.isRightToLeft();
-    const math::Insets frame = Surfaces::getFrame(context, surface);
-    const math::Rect barArea = bounds.inset(frame);
     const math::Rect padded = bounds.inset(Surfaces::getPadding(context, surface));
     const float wholeStart = padded.x + options.reserveStart;
     const math::Rect reserved = math::Rect::fromMinMax({wholeStart, padded.y}, {std::max(wholeStart, padded.getRight() - options.reserveEnd), padded.getBottom()});
     const math::Rect whole = context.mirror(reserved, padded);
-    const math::Rect inner = barShown ? Scrollbar::getContentBox(context, barArea, whole, false) : whole;
-    const float paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
-    const float fontSize = context.getFontHeight(Theme::Font::Body);
-    const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
-    const math::Rect spaced = multiline ? whole.inset({paddingX, paddingY, paddingX, paddingY}) : whole.inset({paddingX, 0.0F, paddingX, 0.0F});
-    const math::Rect area = barShown ? Scrollbar::getContentBox(context, barArea, spaced, false) : spaced;
+    geometry.inner = barShown ? Scrollbar::getContentBox(context, geometry.barArea, whole, false) : whole;
 
-    // Text being typed fills its lines as far as they go, so the lines before the caret keep their words as it moves on.
-    text::Style style = Typography::getStyle(context, Theme::Font::Body, multiline ? std::max(1.0F, area.width) : -1.0F);
-    style.balance = text::Balance::None;
+    // An editor of many lines keeps the padding of a control above its first line, and a field of one line centers its line.
+    geometry.paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
+    geometry.fontSize = context.getFontHeight(Theme::Font::Body);
+    geometry.paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (geometry.inner.height - geometry.fontSize) * 0.5F);
+    const float spacingY = multiline ? geometry.paddingY : 0.0F;
+    const math::Rect spaced = whole.inset({geometry.paddingX, spacingY, geometry.paddingX, spacingY});
+    geometry.area = barShown ? Scrollbar::getContentBox(context, geometry.barArea, spaced, false) : spaced;
+    return geometry;
+}
 
-    // The caret and the selection the field had start the frame.
-    const float storedLines = multiline ? static_cast<float>(std::max(0.0, options.scrolling->motion.getOffset())) : 0.0F;
-    const math::Vec2 storedScroll{storage.GetFloat(scrollX), storedLines};
-    Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = area, .scroll = storedScroll, .rightToLeft = rightToLeft, .password = password, .multiline = multiline, .centered = options.centered};
-
-    // ImGui leaves the start of the last selection behind when the caret moves without selecting, so only a selection anchors a shift press.
-    if (const ImGuiInputTextState* state = ImGui::GetInputTextState(id); focused && state != nullptr) {
-        editing.cursor = state->GetCursorPos();
-        editing.anchor = state->HasSelection() ? state->GetSelectionStart() : editing.cursor;
-    }
-
-    // ImGui edits the text while the field draws it, so everything ImGui would draw of it is transparent.
+// ImGui edits the text while the field draws it, so everything ImGui would draw of it is transparent. A finger edits a field only once it taps it, as on a phone, so while a finger presses a field that is not editing the field waits as a plain button, which a drag lets go of for the area that scrolls, and a tap starts the editing in the next frame with the caret where the finger lifted.
+TextEditor::Input TextEditor::edit(Context& context, std::string& value, const Options& options, const Geometry& geometry, Editing& editing, ImGuiID id, bool focused) {
     const ImVec4 hidden(0.0F, 0.0F, 0.0F, 0.0F);
-    ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(inner.getMin()));
-    ImGui::PushFont(context.getFont(Theme::Font::Body), fontSize);
+    ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(geometry.inner.getMin()));
+    ImGui::PushFont(context.getFont(Theme::Font::Body), geometry.fontSize);
 
     for (const ImGuiCol color : {ImGuiCol_FrameBg, ImGuiCol_Text, ImGuiCol_TextDisabled, ImGuiCol_TextSelectedBg, ImGuiCol_InputTextCursor, ImGuiCol_NavCursor}) {
         ImGui::PushStyleColor(color, hidden);
     }
 
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {paddingX, paddingY});
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {geometry.paddingX, geometry.paddingY});
     ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, 0.0F);
 
-    // A finger edits a field only once it taps it, as on a phone, so while a finger presses a field that is not editing the field waits as a plain button, which a drag lets go of for the area that scrolls, and a tap starts the editing in the next frame with the caret where the finger lifted.
+    ImGuiStorage& storage = *ImGui::GetStateStorage();
     const ImGuiIO& io = ImGui::GetIO();
     const ImGuiID tapped = ImGui::GetID("##tapped");
     const ImGuiID tapX = ImGui::GetID("##tapX");
     const ImGuiID tapY = ImGui::GetID("##tapY");
     const math::Vec2 pressPoint{io.MouseClickedPos[0].x, io.MouseClickedPos[0].y};
-    const bool fingerPress = !focused && io.MouseSource == ImGuiMouseSource_TouchScreen && (io.MouseDown[0] || io.MouseReleased[0]) && bounds.contains(pressPoint);
+    const bool fingerPress = !focused && io.MouseSource == ImGuiMouseSource_TouchScreen && (io.MouseDown[0] || io.MouseReleased[0]) && editing.bounds.contains(pressPoint);
 
     // The focus reaches the field a frame or two after it is asked for, so the tap waits until the field edits and places the caret in the frame the editing starts.
     if (storage.GetBool(tapped) && focused) {
@@ -241,40 +222,162 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     }
 
     ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackAlways | ImGuiInputTextFlags_CallbackEdit;
-    if (password) {
+    if (editing.password) {
         flags |= ImGuiInputTextFlags_Password;
     }
 
-    bool submitted = false;
+    Input input;
     if (fingerPress) {
-        if (ImGui::InvisibleButton("##press", ImGuiConverter::toImVec2(inner.getSize()))) {
+        if (ImGui::InvisibleButton("##press", ImGuiConverter::toImVec2(geometry.inner.getSize()))) {
             storage.SetBool(tapped, true);
             storage.SetFloat(tapX, io.MousePos.x);
             storage.SetFloat(tapY, io.MousePos.y);
         }
-    } else if (multiline) {
-        (void)ImGui::InputTextMultiline("##field", &value, ImGuiConverter::toImVec2(inner.getSize()), flags, &callback, &editing);
+    } else if (editing.multiline) {
+        static_cast<void>(ImGui::InputTextMultiline("##field", &value, ImGuiConverter::toImVec2(geometry.inner.getSize()), flags, &callback, &editing));
     } else {
-        ImGui::SetNextItemWidth(inner.width);
-        submitted = ImGui::InputText("##field", &value, flags | ImGuiInputTextFlags_EnterReturnsTrue, &callback, &editing);
+        ImGui::SetNextItemWidth(geometry.inner.width);
+        input.submitted = ImGui::InputText("##field", &value, flags | ImGuiInputTextFlags_EnterReturnsTrue, &callback, &editing);
     }
 
     // The selection that a press drags keeps its finger, while the press of a field that waits for a tap goes once the finger travels.
-    const bool edited = ImGui::IsItemEdited();
+    input.edited = ImGui::IsItemEdited();
     if (!fingerPress && ImGui::IsItemActive()) {
         context.keepDrag(ImGui::GetItemID());
     }
 
     // A submit, cancel or dismiss of the platform ends the editing, and only a submit reports the text.
-    if (const std::optional<platform::TextInput::Action> action = session.takeAction(id)) {
-        submitted = submitted || action == platform::TextInput::Action::Submit;
+    if (const std::optional<platform::TextInput::Action> action = editing.session->takeAction(id)) {
+        input.submitted = input.submitted || action == platform::TextInput::Action::Submit;
         ImGui::ClearActiveID();
     }
 
     ImGui::PopStyleVar(3);
     ImGui::PopStyleColor(6);
     ImGui::PopFont();
+    return input;
+}
 
+// The wheel scrolls the lines of an editor of many lines, the scroll then keeps the caret of a focused field in view, and the scroll bar moves the lines last. A field of one line that is not focused shows the start of its text.
+math::Vec2 TextEditor::scrollText(const Editing& editing, const Options& options, const Geometry& geometry, const TextFieldLayout* field, std::optional<std::size_t> caret, ImGuiID id, float overflow, bool barShown) {
+    Context& context = *editing.context;
+    math::Vec2 scroll = editing.scroll;
+    if (editing.multiline) {
+        scroll.y = scrollLines(context, *options.scrolling, id, editing.bounds, overflow, geometry.area.height);
+    }
+
+    const float wheeled = scroll.y;
+    if (field != nullptr && caret) {
+        const math::Vec2 origin = getOrigin(field->getLayout(), geometry.area, scroll, editing.rightToLeft, editing.multiline, editing.centered);
+        const math::Rect shownCaret = field->getCaret(*caret).translated(origin);
+        follow(scroll, *field, shownCaret, geometry.area, editing.rightToLeft, editing.multiline);
+    } else if (!editing.multiline) {
+        scroll = {};
+    }
+
+    if (barShown) {
+        const float radius = Surfaces::getInnerRadius(context.getMetric(Theme::Metric::ControlRadius), editing.rightToLeft ? geometry.frame.left : geometry.frame.right);
+        if (const std::optional<double> offset = options.scrolling->bar.interact(context, geometry.barArea, false, false, scroll.y, overflow, geometry.area.height, radius)) {
+            scroll.y = static_cast<float>(*offset);
+        }
+    }
+
+    // The caret and the bar move the lines at once.
+    if (editing.multiline && scroll.y != wheeled) {
+        options.scrolling->motion.jumpTo(scroll.y);
+    }
+
+    return scroll;
+}
+
+// An empty field shows its placeholder where its text would start, and returns the edge where the placeholder starts reading.
+std::optional<float> TextEditor::drawValue(const Editing& editing, std::string_view shown, std::string_view placeholder, math::Vec2 origin) {
+    Context& context = *editing.context;
+    text::Style ink = editing.style;
+    if (!shown.empty()) {
+        ink.color = context.getColor(Theme::Color::Text);
+        Typography::drawLayout(context, Theme::Font::Body, shown, ink, origin);
+        return std::nullopt;
+    }
+
+    ink.color = context.getColor(Theme::Color::TextMuted);
+    const std::shared_ptr<const text::Layout> laid = Typography::layout(context, Theme::Font::Body, placeholder, ink);
+    const math::Vec2 placeholderOrigin = getOrigin(*laid, editing.area, {}, editing.rightToLeft, editing.multiline, editing.centered);
+    const math::Vec2 start{std::floor(placeholderOrigin.x), placeholderOrigin.y};
+    Typography::drawLayout(context, Theme::Font::Body, placeholder, ink, start);
+
+    if (placeholder.empty()) {
+        return std::nullopt;
+    }
+
+    return editing.rightToLeft ? start.x + laid->size.x : start.x;
+}
+
+void TextEditor::drawSelection(Context& context, std::string_view value, const ImGuiInputTextState& state, const TextFieldLayout& field, math::Vec2 origin) {
+    if (!state.HasSelection()) {
+        return;
+    }
+
+    const std::size_t first = toPosition(value, std::min(state.GetSelectionStart(), state.GetSelectionEnd()));
+    const std::size_t last = toPosition(value, std::max(state.GetSelectionStart(), state.GetSelectionEnd()));
+    std::vector<math::Rect>& boxes = context.getSelectionBoxes();
+    field.getSelection(first, last, boxes);
+    for (const math::Rect& box : boxes) {
+        Surfaces::fill(context, box.translated(origin), context.getColor(Theme::Color::Selection), 0.0F);
+    }
+}
+
+// The caret blinks like the one of ImGui, and the platform shows its input method at it. The caret of an empty field stands before its placeholder with a caret width of room between them, so it never touches the first letter.
+void TextEditor::drawCaret(const Editing& editing, const ImGuiInputTextState& state, const TextFieldLayout& field, std::size_t position, math::Vec2 origin, std::optional<float> placeholderEdge) {
+    Context& context = *editing.context;
+    const float width = context.getMetric(Theme::Metric::CaretWidth);
+    math::Rect caret = field.getCaret(position).translated(origin);
+    if (placeholderEdge) {
+        caret.x = *placeholderEdge + (editing.rightToLeft ? width * 1.5F : -width * 1.5F);
+    }
+
+    const bool lit = !ImGui::GetIO().ConfigInputTextCursorBlink || state.CursorAnim <= 0.0F || std::fmod(state.CursorAnim, 1.20F) <= 0.80F;
+    if (lit) {
+        Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Caret), 0.0F);
+    }
+
+    editing.session->setCaret({caret.x, caret.y, 1.0F, caret.height});
+}
+
+TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, std::string& value, const Options& options) {
+    const ImGuiID id = ImGui::GetID("##field");
+    const bool focused = ImGui::GetActiveID() == id;
+    const bool password = options.input.keyboard == platform::TextInput::Keyboard::Password;
+    const bool multiline = options.input.keyboard == platform::TextInput::Keyboard::Multiline;
+    TextSession& session = context.getBackend().getTextSession();
+    session.addField(id, bounds, options.input);
+
+    const Theme::Surface surface = focused ? Theme::Surface::FieldFocused : Theme::Surface::Field;
+    Surfaces::draw(context, surface, bounds, context.getColor(Theme::Color::Raised), context.getColor(focused ? Theme::Color::Focus : Theme::Color::Border));
+
+    // The horizontal scroll of the text lives with the field, and so does whether its text was taller than its area in the last frame, which shows the scroll bar of an editor of many lines from the frame after the text grew, so the area never changes while the text lays out.
+    ImGuiStorage& storage = *ImGui::GetStateStorage();
+    const ImGuiID scrollX = ImGui::GetID("##scrollX");
+    const ImGuiID overflowed = ImGui::GetID("##overflowed");
+    const bool barShown = multiline && storage.GetBool(overflowed);
+    const Geometry geometry = place(context, bounds, surface, options, multiline, barShown);
+
+    // Text being typed fills its lines as far as they go, so the lines before the caret keep their words as it moves on.
+    text::Style style = Typography::getStyle(context, Theme::Font::Body, multiline ? std::max(1.0F, geometry.area.width) : -1.0F);
+    style.balance = text::Balance::None;
+
+    // The caret and the selection the field had start the frame.
+    const float storedLines = multiline ? static_cast<float>(std::max(0.0, options.scrolling->motion.getOffset())) : 0.0F;
+    const math::Vec2 storedScroll{storage.GetFloat(scrollX), storedLines};
+    Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = geometry.area, .scroll = storedScroll, .rightToLeft = context.isRightToLeft(), .password = password, .multiline = multiline, .centered = options.centered};
+
+    // ImGui leaves the start of the last selection behind when the caret moves without selecting, so only a selection anchors a shift press.
+    if (const ImGuiInputTextState* stored = ImGui::GetInputTextState(id); focused && stored != nullptr) {
+        editing.cursor = stored->GetCursorPos();
+        editing.anchor = stored->HasSelection() ? stored->GetSelectionStart() : editing.cursor;
+    }
+
+    const Input input = edit(context, value, options, geometry, editing, id, focused);
     const bool shortened = limit(value, options.input.maxLength);
 
     // The field draws its text from the shaped layout, scrolled so the caret stays in view, and a focused field also its selection and caret from the code points of the text.
@@ -282,96 +385,37 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const std::shared_ptr<const text::Layout> laid = Typography::layout(context, Theme::Font::Body, shown, style);
     const ImGuiInputTextState* state = ImGui::GetActiveID() == id ? ImGui::GetInputTextState(id) : nullptr;
     std::optional<TextFieldLayout> field;
+    std::optional<std::size_t> caret;
     if (state != nullptr) {
         field.emplace(laid, context.getFrameCodePoints(shown));
+        caret = toPosition(value, state->GetCursorPos());
     }
 
-    const float overflow = std::max(0.0F, laid->size.y - area.height);
-    math::Vec2 scroll = editing.scroll;
-    if (multiline) {
-        scroll.y = scrollLines(context, *options.scrolling, id, bounds, overflow, area.height);
-    }
-
-    const float wheeled = scroll.y;
-
-    if (state != nullptr) {
-        const math::Vec2 scrolledOrigin = getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered);
-        const math::Rect caret = field->getCaret(toPosition(value, state->GetCursorPos())).translated(scrolledOrigin);
-        follow(scroll, *field, caret, area, rightToLeft, multiline);
-    } else if (!multiline) {
-        scroll = {};
-    }
-
-    if (barShown) {
-        const float radius = Surfaces::getInnerRadius(context.getMetric(Theme::Metric::ControlRadius), rightToLeft ? frame.left : frame.right);
-        if (const std::optional<double> offset = options.scrolling->bar.interact(context, barArea, false, false, scroll.y, overflow, area.height, radius)) {
-            scroll.y = static_cast<float>(*offset);
-        }
-    }
-
-    // The caret and the bar move the text at once.
+    const float overflow = std::max(0.0F, laid->size.y - geometry.area.height);
+    const math::Vec2 scroll = scrollText(editing, options, geometry, field ? &*field : nullptr, caret, id, overflow, barShown);
     storage.SetFloat(scrollX, scroll.x);
-    if (multiline && scroll.y != wheeled) {
-        options.scrolling->motion.jumpTo(scroll.y);
-    }
 
     if (multiline) {
         storage.SetBool(overflowed, overflow > 0.0F);
     }
 
-    const math::Vec2 origin = getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered);
-
     // Lines that continue past the area fade out along its edges, as the content of the other areas that scroll does.
-    context.pushClip(inner);
-    const bool faded = multiline && ScrollFade::begin(context, inner, false, scroll.y, overflow - scroll.y);
+    const math::Vec2 origin = getOrigin(*laid, geometry.area, scroll, editing.rightToLeft, multiline, options.centered);
+    context.pushClip(geometry.inner);
+    const bool faded = multiline && ScrollFade::begin(context, geometry.inner, false, scroll.y, overflow - scroll.y);
 
-    if (state != nullptr && state->HasSelection()) {
-        const std::size_t first = toPosition(value, std::min(state->GetSelectionStart(), state->GetSelectionEnd()));
-        const std::size_t last = toPosition(value, std::max(state->GetSelectionStart(), state->GetSelectionEnd()));
-        std::vector<math::Rect>& boxes = context.getSelectionBoxes();
-        field->getSelection(first, last, boxes);
-        for (const math::Rect& box : boxes) {
-            Surfaces::fill(context, box.translated(origin), context.getColor(Theme::Color::Selection), 0.0F);
-        }
-    }
-
-    // An empty field shows its placeholder where its text would start, and remembers the edge where the placeholder starts reading.
-    text::Style ink = style;
-    std::optional<float> placeholderEdge;
-    if (value.empty()) {
-        ink.color = context.getColor(Theme::Color::TextMuted);
-        const std::shared_ptr<const text::Layout> placeholder = Typography::layout(context, Theme::Font::Body, options.placeholder, ink);
-        const math::Vec2 size = placeholder->size;
-        const math::Vec2 placeholderOrigin = getOrigin(*placeholder, area, {}, rightToLeft, multiline, options.centered);
-        const math::Vec2 start{std::floor(placeholderOrigin.x), placeholderOrigin.y};
-        Typography::drawLayout(context, Theme::Font::Body, options.placeholder, ink, start);
-
-        if (!options.placeholder.empty()) {
-            placeholderEdge = rightToLeft ? start.x + size.x : start.x;
-        }
-    } else {
-        ink.color = context.getColor(Theme::Color::Text);
-        Typography::drawLayout(context, Theme::Font::Body, shown, ink, origin);
-    }
-
-    // The caret blinks like the one of ImGui, and the platform shows its input method at it. The caret of an empty field stands before its placeholder with a caret width of room between them, so it never touches the first letter.
     if (state != nullptr) {
-        const float width = context.getMetric(Theme::Metric::CaretWidth);
-        math::Rect caret = field->getCaret(toPosition(value, state->GetCursorPos())).translated(origin);
-        if (placeholderEdge) {
-            caret.x = *placeholderEdge + (rightToLeft ? width * 1.5F : -width * 1.5F);
-        }
+        drawSelection(context, value, *state, *field, origin);
+    }
 
-        const bool lit = !ImGui::GetIO().ConfigInputTextCursorBlink || state->CursorAnim <= 0.0F || std::fmod(state->CursorAnim, 1.20F) <= 0.80F;
-        if (lit) {
-            Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Caret), 0.0F);
-        }
+    const std::optional<float> placeholderEdge = drawValue(editing, shown, options.placeholder, origin);
 
-        session.setCaret({caret.x, caret.y, 1.0F, caret.height});
+    if (state != nullptr) {
+        drawCaret(editing, *state, *field, *caret, origin, placeholderEdge);
+    }
 
-        if (!password) {
-            drawComposition(context, session, id, *field, origin);
-        }
+    if (state != nullptr && !password) {
+        drawComposition(context, session, id, *field, origin);
     }
 
     if (faded) {
@@ -387,7 +431,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     context.takePointer(bounds);
     context.getFocus().addTarget(id, bounds);
     Widgets::drawFocusRing(context, bounds, id, context.getMetric(Theme::Metric::ControlRadius));
-    return {.changed = edited || shortened, .submitted = submitted};
+    return {.changed = input.edited || shortened, .submitted = input.submitted};
 }
 
 void TextEditor::drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin) {

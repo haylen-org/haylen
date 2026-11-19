@@ -32,12 +32,15 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
         if (route.name.empty()) {
             throw std::invalid_argument("Every route needs a name.");
         }
+
         if (!names.insert(route.name).second) {
             throw std::invalid_argument("The route \"" + route.name + "\" is given more than once.");
         }
+
         if (!route.tab.empty() && (!options.tabs || !options.tabs->hasTab(route.tab))) {
             throw std::invalid_argument("The route \"" + route.name + "\" shows in the tab \"" + route.tab + "\", which the router has no tabs with.");
         }
+
         if (route.detail && route.presentation) {
             throw std::invalid_argument("The route \"" + route.name + "\" shows its screen as a detail or as a presentation, not as both.");
         }
@@ -54,9 +57,11 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
             if (parent == options.routes.end()) {
                 throw std::invalid_argument("The route \"" + step->name + "\" names the parent \"" + step->parent + "\", which no route has.");
             }
+
             if (parent->detail || parent->presentation) {
                 throw std::invalid_argument("The parent of a route is a route of a stack, which \"" + parent->name + "\" is not.");
             }
+
             if (!visited.insert(parent->name).second) {
                 throw std::invalid_argument("The parents of the route \"" + route.name + "\" lead back to a route they passed.");
             }
@@ -248,7 +253,8 @@ std::optional<Router::Address> Router::parse(std::string_view link) const {
             return std::nullopt;
         }
 
-        path = ownScheme ? rest : (slash == std::string_view::npos ? std::string_view{} : rest.substr(slash));
+        const std::string_view hostPath = slash == std::string_view::npos ? std::string_view{} : rest.substr(slash);
+        path = ownScheme ? rest : hostPath;
     }
 
     while (!path.empty()) {
@@ -585,6 +591,7 @@ void Router::restore(const core::Json& state) {
     if (closed) {
         throw std::logic_error("The router is closed.");
     }
+
     if (!state.is_object()) {
         throw std::invalid_argument("The state of a router is an object that \"save\" returned.");
     }
@@ -606,6 +613,7 @@ void Router::restore(const core::Json& state) {
         if (!found) {
             core::Log::warning("The saved location {} matches no route, so the navigation starts without it.", location.dump());
         }
+
         return found;
     };
     // clang-format on

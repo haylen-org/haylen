@@ -90,6 +90,7 @@ std::optional<std::string> KeyCapture::getFaceLabel(std::string_view place, inpu
     case input::GamepadLabels::Unknown:
         return std::nullopt;
     }
+
     return std::nullopt;
 }
 

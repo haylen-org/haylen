@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "haylen/math/Rect.hpp"
 #include "ui/Widgets.hpp"
 
@@ -13,6 +15,9 @@ class ListRow final {
   public:
     // Paints the row background for its state with rounded corners of the radius, or without one of half the control radius with the corners near a rounded surface around the row concentric with it, and reports a press.
     static Widgets::Interaction draw(Context& context, const math::Rect& bounds, bool selected, float radius = -1.0F);
+
+    // Paints the highlight of a row or a cell that is selected, held or hovered, with the selection over the other states.
+    static void drawHighlight(Context& context, const math::Rect& bounds, const Widgets::Interaction& state, bool selected, const std::array<float, 4>& radii);
 
     // Draws the picture, text and caption of an item inside a row, unless the row is out of view.
     static void drawContent(Context& context, const math::Rect& bounds, const ChoiceItem& item);

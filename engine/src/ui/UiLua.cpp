@@ -87,6 +87,7 @@ template <> struct EnumNames<ui::Placement> {
                 return placement;
             }
         }
+
         return std::nullopt;
     }
 
@@ -96,6 +97,7 @@ template <> struct EnumNames<ui::Placement> {
                 return candidate;
             }
         }
+
         return kPlacements.front().first;
     }
 };

@@ -30,7 +30,8 @@ void ImageButton::render(Context& context, const math::Rect& bounds) {
         Widgets::focusItem(context);
     }
 
-    const std::string& path = state.held && !pressedImage.empty() ? pressedImage : (state.hovered && !hoverImage.empty() ? hoverImage : image);
+    const std::string& hovered = state.hovered && !hoverImage.empty() ? hoverImage : image;
+    const std::string& path = state.held && !pressedImage.empty() ? pressedImage : hovered;
     const bool dimmed = state.hovered && hoverImage.empty() && !(state.held && !pressedImage.empty());
     const math::Color shade = dimmed ? math::Color{tint.r * 0.9F, tint.g * 0.9F, tint.b * 0.9F, tint.a} : tint;
     const float pressed = state.held && pressedImage.empty() ? 2.0F : 0.0F;

@@ -105,7 +105,13 @@ void Typography::drawParagraph(Context& context, Theme::Font font, const math::R
 }
 
 void Typography::drawParagraph(Context& context, Theme::Font font, const math::Rect& bounds, math::Color color, std::string_view text, Alignment horizontal, const Paint& paint, float scale, float minScale) {
-    const text::Alignment align = horizontal == Alignment::Center ? text::Alignment::Center : (horizontal == Alignment::End ? text::Alignment::End : text::Alignment::Start);
+    text::Alignment align = text::Alignment::Start;
+    if (horizontal == Alignment::Center) {
+        align = text::Alignment::Center;
+    } else if (horizontal == Alignment::End) {
+        align = text::Alignment::End;
+    }
+
     text::Style style = getStyle(context, font, bounds.width, align);
     style.size *= scale;
     if (minScale < 1.0F) {

@@ -14,24 +14,31 @@ Presentation::Presentation(Navigation& owner, std::shared_ptr<Screen> presented,
     if (!screen) {
         throw std::invalid_argument("A presentation needs a screen.");
     }
+
     if (screen->getStack() || screen->getPresentation()) {
         throw std::invalid_argument("The screen already shows in a navigation stack or in a presentation.");
     }
+
     if (!isMeasured(options.maxWidth) || !isMeasured(options.maxHeight) || (options.width && !isMeasured(*options.width))) {
         throw std::invalid_argument("The widths and heights of a presentation must be finite and positive.");
     }
+
     if (options.detents.empty()) {
         throw std::invalid_argument("A sheet needs at least one detent.");
     }
+
     if (options.detent >= options.detents.size()) {
         throw std::invalid_argument("The detent a sheet opens at must be one of its detents.");
     }
+
     if (std::ranges::any_of(options.detents, [](const Detent& entry) { return entry.kind == Detent::Kind::Height && !isMeasured(entry.height); })) {
         throw std::invalid_argument("The height of a detent must be finite and positive.");
     }
+
     if (!options.modal && options.style != Style::Sheet) {
         throw std::invalid_argument("Only a sheet can leave the input of the app under it, so only a sheet can be not modal.");
     }
+
     if (options.style == Style::Popover && !options.anchor) {
         throw std::invalid_argument("A popover needs the node it points at as its anchor.");
     }
@@ -422,6 +429,7 @@ void Presentation::release() {
         if (rest > getDetentTop(frame, lowest)) {
             lowest = index;
         }
+
         if (closest < 0.0F || std::fabs(rest - heading) < closest) {
             closest = std::fabs(rest - heading);
             nearest = index;

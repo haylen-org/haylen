@@ -158,7 +158,13 @@ int Carousel::drawArrows(Context& context, const math::Rect& area, std::size_t c
         const Widgets::Interaction state = Widgets::interact(context, button, radius, "##arrow", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
         const math::Color raised = context.getColor(Theme::Color::Raised);
-        const math::Color fill = state.held ? Widgets::mix(raised, context.getColor(Theme::Color::Pressed)) : state.hovered ? Widgets::mix(raised, context.getColor(Theme::Color::Hover)) : raised;
+        math::Color fill = raised;
+        if (state.held) {
+            fill = Widgets::mix(raised, context.getColor(Theme::Color::Pressed));
+        } else if (state.hovered) {
+            fill = Widgets::mix(raised, context.getColor(Theme::Color::Hover));
+        }
+
         Surfaces::draw(context, Theme::Surface::Button, button, fill, context.getColor(Theme::Color::Border), radius);
         Widgets::arrow(context, button.getCenter(), radius * 0.7F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(Theme::Color::Text));
 
@@ -181,7 +187,8 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
         const Widgets::Interaction state = Widgets::interact(context, dot.expanded(size * 0.5F), size, "##dot", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
         const bool current = static_cast<int>(index) + 1 == page;
-        Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong), size * 0.5F);
+        const Theme::Color hovered = state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong;
+        Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : hovered), size * 0.5F);
 
         if (state.clicked) {
             picked = static_cast<int>(index) + 1;

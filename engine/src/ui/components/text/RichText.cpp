@@ -100,7 +100,13 @@ void RichText::render(Context& context, const math::Rect& bounds) {
     const float room = bounds.width - prepared.getSize().x;
     const bool rightToLeft = context.isRightToLeft();
     const bool toRight = textAlign == text::Alignment::Right || (textAlign == text::Alignment::Start && rightToLeft) || (textAlign == text::Alignment::End && !rightToLeft);
-    const float shift = wrap ? 0.0F : (textAlign == text::Alignment::Center ? room * 0.5F : (toRight ? room : 0.0F));
+    float shift = 0.0F;
+    if (!wrap && textAlign == text::Alignment::Center) {
+        shift = room * 0.5F;
+    } else if (!wrap && toRight) {
+        shift = room;
+    }
+
     const math::Vec2 origin{bounds.x + shift, bounds.y};
     interactWithLinks(context, origin);
     showHint(context, origin);
@@ -123,7 +129,11 @@ void RichText::interactWithLinks(Context& context, math::Vec2 origin) {
         const bool first = !reachedLinks[area.index];
         reachedLinks[area.index] = true;
 
-        const ImGuiButtonFlags flags = first ? ImGuiButtonFlags_None : ImGuiButtonFlags_NoNavFocus;
+        ImGuiButtonFlags flags = ImGuiButtonFlags_None;
+        if (!first) {
+            flags = ImGuiButtonFlags_NoNavFocus;
+        }
+
         ImGui::PushID(static_cast<int>(index));
         const Widgets::Interaction state = Widgets::interact(context, area.rect.translated(origin), context.getMetric(Theme::Metric::ControlRadius) * 0.5F, "##link", flags);
         ImGui::PopID();

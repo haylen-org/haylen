@@ -33,13 +33,19 @@ void Progress::render(Context& context, const math::Rect& bounds) {
 
     const float lineHeight = Typography::getLineHeight(context, Theme::Font::Caption);
     const math::Rect line{bounds.x, bounds.getCenter().y - lineHeight * 0.5F, bounds.width, lineHeight};
-    const float edge = filled.isEmpty() ? (context.isRightToLeft() ? bounds.getRight() : bounds.x) : (context.isRightToLeft() ? filled.x : filled.getRight());
+    // The text changes color at the edge of the fill, which an empty bar has where it starts filling.
+    const bool rightToLeft = context.isRightToLeft();
+    float edge = rightToLeft ? filled.x : filled.getRight();
+    if (filled.isEmpty()) {
+        edge = rightToLeft ? bounds.getRight() : bounds.x;
+    }
+
     const math::Rect start = math::Rect::fromMinMax(bounds.getMin(), {edge, bounds.getBottom()});
     const math::Rect end = math::Rect::fromMinMax({edge, bounds.y}, bounds.getMax());
     const math::Color ink = context.getColor(Widgets::getToneColors(tone == Widgets::Tone::Neutral ? Widgets::Tone::Accent : tone).ink);
     const math::Color plain = context.getColor(Theme::Color::Text);
 
-    for (const auto& [part, color] : {std::pair{start, context.isRightToLeft() ? plain : ink}, std::pair{end, context.isRightToLeft() ? ink : plain}}) {
+    for (const auto& [part, color] : {std::pair{start, rightToLeft ? plain : ink}, std::pair{end, rightToLeft ? ink : plain}}) {
         if (part.width <= 0.0F) {
             continue;
         }

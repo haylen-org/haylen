@@ -38,6 +38,7 @@ bool ScrollArbiter::trackTurn() noexcept {
         crossing = {};
         return false;
     }
+
     return across > along * kTurnRatio && (stepped || across >= kTurnPoints);
 }
 

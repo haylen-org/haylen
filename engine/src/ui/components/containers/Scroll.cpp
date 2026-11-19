@@ -304,6 +304,7 @@ std::optional<double> Scroll::findTarget(const Request& value, math::Vec2 origin
 
         break;
     }
+
     return std::clamp(target, 0.0, scroller.getMaximum());
 }
 

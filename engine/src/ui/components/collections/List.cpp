@@ -50,7 +50,8 @@ void List::render(Context& context, const math::Rect& bounds) {
     const bool focusing = takeFocusRequest();
     const auto target = std::ranges::find_if(items, [this](const ChoiceItem& item) { return item.id == selected && item.enabled; });
     const auto first = std::ranges::find_if(items, [](const ChoiceItem& item) { return item.enabled; });
-    const std::string_view focused = !focusing ? std::string_view() : target != items.end() ? std::string_view(target->id) : first != items.end() ? std::string_view(first->id) : std::string_view();
+    const auto focusedItem = target != items.end() ? target : first;
+    const std::string_view focused = focusing && focusedItem != items.end() ? std::string_view(focusedItem->id) : std::string_view();
     const auto focusedIndex = focused.empty() ? items.end() : std::ranges::find(items, focused, &ChoiceItem::id);
 
     const float height = context.getMetric(Theme::Metric::ListRowHeight);

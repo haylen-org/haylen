@@ -265,9 +265,11 @@ void Navigation::showAtOnce(Screen& screen) {
     if (screen.state == Screen::State::Disappearing) {
         endDisappear(screen);
     }
+
     if (screen.state == Screen::State::Created || screen.state == Screen::State::Hidden) {
         beginAppear(screen);
     }
+
     if (screen.state == Screen::State::Appearing) {
         endAppear(screen);
     }
@@ -277,9 +279,11 @@ void Navigation::hideAtOnce(Screen& screen) {
     if (screen.state == Screen::State::Appearing) {
         endAppear(screen);
     }
+
     if (screen.state == Screen::State::Shown) {
         beginDisappear(screen);
     }
+
     if (screen.state == Screen::State::Disappearing) {
         endDisappear(screen);
     }
@@ -675,6 +679,7 @@ void Navigation::collectDrawn(std::vector<std::shared_ptr<Screen>>& found) const
         if (stack->change && stack->change->outgoing) {
             found.push_back(stack->change->outgoing);
         }
+
         if (!stack->empty()) {
             found.push_back(stack->getTop());
         }

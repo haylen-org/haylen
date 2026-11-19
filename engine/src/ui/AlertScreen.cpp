@@ -22,6 +22,7 @@ AlertScreen::AlertScreen(plugins::UiPlugin& plugin, Navigation::Alert shown) : u
         if (action.id.empty()) {
             throw std::invalid_argument("Every action of an alert needs an id.");
         }
+
         if (!ids.insert(action.id).second) {
             throw std::invalid_argument("The alert uses the action id \"" + action.id + "\" more than once.");
         }
@@ -66,6 +67,7 @@ core::Json AlertScreen::buildAlertTree() const {
     if (!alert.title.is_null()) {
         tree["title"] = alert.title;
     }
+
     if (!alert.message.is_null()) {
         tree["message"] = alert.message;
     }
@@ -79,6 +81,7 @@ core::Json AlertScreen::buildSheetTree() const {
     if (!alert.title.is_null()) {
         children.push_back({{"kind", "label"}, {"text", alert.title}, {"font", "button"}, {"color", "textMuted"}, {"textAlign", "center"}});
     }
+
     if (!alert.message.is_null()) {
         children.push_back({{"kind", "label"}, {"text", alert.message}, {"font", "caption"}, {"color", "textMuted"}, {"textAlign", "center"}});
     }

@@ -153,7 +153,13 @@ void CellTemplate::readBindings(const core::Json& bind, std::size_t node) {
 
     for (const auto& [property, field] : bind.items()) {
         const std::string& fieldName = field.get_ref<const std::string&>();
-        const Source source = fieldName == "$index" ? Source::Index : fieldName == "$selected" ? Source::Selected : Source::Field;
+        Source source = Source::Field;
+        if (fieldName == "$index") {
+            source = Source::Index;
+        } else if (fieldName == "$selected") {
+            source = Source::Selected;
+        }
+
         indexBound = indexBound || source == Source::Index;
         selectionBound = selectionBound || source == Source::Selected;
         bindings.push_back({.node = node, .property = property, .field = fieldName, .source = source});

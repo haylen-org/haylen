@@ -26,6 +26,7 @@
 #include "ui/components/collections/CollectionDiff.hpp"
 #include "ui/components/collections/GridLayout.hpp"
 #include "ui/components/collections/LinearLayout.hpp"
+#include "ui/components/collections/ListRow.hpp"
 #include "ui/components/collections/SizeCache.hpp"
 
 namespace haylen::ui {
@@ -1162,12 +1163,15 @@ void Collection::drawContent(Context& context, const math::Rect& bounds) {
 // The wheel moves the collection along its axis while its gesture belongs to it, and a finger that drags along its axis takes over from the control it pressed, unless that control edits text.
 void Collection::takeInput(Context& context) {
     const ImGuiIO& io = ImGui::GetIO();
-    const ImGuiContext& state = *GImGui;
     const bool underPointer = ImGui::IsWindowHovered() && viewport.contains(math::Vec2{io.MousePos.x, io.MousePos.y});
-    const bool mirrored = rightToLeft && !isVertical();
     idle += delta;
+    followWheel(context, underPointer);
+    followPress(context, underPointer);
+}
 
-    // A mirrored collection starts at its right end, so its offset counts from there while the wheel counts from the left.
+// A mirrored collection starts at its right end, so its offset counts from there while the wheel counts from the left.
+void Collection::followWheel(Context& context, bool underPointer) {
+    const bool mirrored = rightToLeft && !isVertical();
     const double position = mirrored ? scroller->getMaximum() - scroller->getOffset() : scroller->getOffset();
     const Context::WheelScroll wheel = context.takeWheel(ImGui::GetID(this), viewport, !isVertical(), position, scroller->getMaximum(), underPointer);
     scroller->follow(wheel, mirrored ? 1.0 : -1.0, delta);
@@ -1184,7 +1188,12 @@ void Collection::takeInput(Context& context) {
         pendingScroll.reset();
         idle = 0.0F;
     }
+}
 
+// A press that lets go drops what the collection carries, a long press lifts an item of a reorderable collection, and a finger that drags along the axis scrolls it.
+void Collection::followPress(Context& context, bool underPointer) {
+    const ImGuiIO& io = ImGui::GetIO();
+    const ImGuiContext& state = *GImGui;
     const ScrollArbiter::Press& press = context.getBackend().getScrollArbiter().getPress();
     if (press.began) {
         pressed = underPointer;
@@ -1672,11 +1681,7 @@ bool Collection::drawInteractive(Context& context, CollectionCell& cell, const m
         Surfaces::draw(context, Theme::Surface::Cell, rect, context.getColor(Theme::Color::Raised), std::nullopt, radius);
     }
 
-    if (chosen || state.held || state.hovered) {
-        const Theme::Surface surface = chosen ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
-        const Theme::Color color = chosen ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
-        Surfaces::draw(context, surface, rect, context.getColor(color), std::nullopt, context.getInnerRadii(rect, radius));
-    }
+    ListRow::drawHighlight(context, rect, state, chosen, context.getInnerRadii(rect, radius));
 
     const bool clicked = state.clicked && !(reorderable && GImGui->NavActivatePressedId == item && takeCarry(context, cell));
     const FocusNavigator& focus = context.getFocus();

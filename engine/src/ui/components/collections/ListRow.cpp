@@ -14,13 +14,24 @@ namespace haylen::ui {
 Widgets::Interaction ListRow::draw(Context& context, const math::Rect& bounds, bool selected, float rounding) {
     const float radius = rounding < 0.0F ? context.getMetric(Theme::Metric::ControlRadius) * 0.5F : rounding;
     const Widgets::Interaction state = Widgets::interact(context, bounds, radius, "##row");
-    if (selected || state.held || state.hovered) {
-        const Theme::Surface surface = selected ? Theme::Surface::CellSelected : state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
-        const Theme::Color color = selected ? Theme::Color::Selection : state.held ? Theme::Color::Pressed : Theme::Color::Hover;
-        Surfaces::draw(context, surface, bounds, context.getColor(color), std::nullopt, rounding < 0.0F ? context.getInnerRadii(bounds, radius) : Surfaces::getRadii(radius, ImDrawFlags_RoundAll));
+    const std::array<float, 4> radii = rounding < 0.0F ? context.getInnerRadii(bounds, radius) : Surfaces::getRadii(radius, ImDrawFlags_RoundAll);
+    drawHighlight(context, bounds, state, selected, radii);
+    return state;
+}
+
+void ListRow::drawHighlight(Context& context, const math::Rect& bounds, const Widgets::Interaction& state, bool selected, const std::array<float, 4>& radii) {
+    if (!selected && !state.held && !state.hovered) {
+        return;
     }
 
-    return state;
+    Theme::Surface surface = state.held ? Theme::Surface::CellPressed : Theme::Surface::CellHover;
+    Theme::Color color = state.held ? Theme::Color::Pressed : Theme::Color::Hover;
+    if (selected) {
+        surface = Theme::Surface::CellSelected;
+        color = Theme::Color::Selection;
+    }
+
+    Surfaces::draw(context, surface, bounds, context.getColor(color), std::nullopt, radii);
 }
 
 // The image stands on the side the UI starts, before the text, and takes the color of the text unless the item sets its icon color.

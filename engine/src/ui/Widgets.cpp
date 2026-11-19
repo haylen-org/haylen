@@ -210,7 +210,8 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
         const Theme::Color heldFill = primary ? Theme::Color::AccentStrong : Theme::Color::DangerStrong;
         const Theme::Color hoverFill = primary ? Theme::Color::AccentHover : Theme::Color::DangerHover;
         const Theme::Color restFill = primary ? Theme::Color::Accent : Theme::Color::Danger;
-        fill = context.getColor(state.held ? heldFill : (state.hovered ? hoverFill : restFill));
+        const Theme::Color hovered = state.hovered ? hoverFill : restFill;
+        fill = context.getColor(state.held ? heldFill : hovered);
         textColor = context.getColor(primary ? Theme::Color::OnAccent : Theme::Color::OnDanger);
         border.reset();
     } else if (variant == ButtonVariant::Toolbar || variant == ButtonVariant::Icon) {
@@ -587,7 +588,15 @@ int Widgets::getStep(const Context& context, FocusDirection direction) noexcept 
 // The chevron is two strokes with round ends that meet at the tip, a quarter of the size ahead of the center, and spread to the full size across it.
 void Widgets::arrow(Context& context, math::Vec2 center, float size, ImGuiDir direction, math::Color color) {
     constexpr float kPi = std::numbers::pi_v<float>;
-    const float pointing = direction == ImGuiDir_Down ? kPi * 0.5F : direction == ImGuiDir_Up ? -kPi * 0.5F : direction == ImGuiDir_Left ? kPi : 0.0F;
+    float pointing = 0.0F;
+    if (direction == ImGuiDir_Down) {
+        pointing = kPi * 0.5F;
+    } else if (direction == ImGuiDir_Up) {
+        pointing = -kPi * 0.5F;
+    } else if (direction == ImGuiDir_Left) {
+        pointing = kPi;
+    }
+
     const math::Vec2 ahead = math::Vec2::fromAngle(pointing, size * 0.25F);
     const math::Vec2 across = math::Vec2::fromAngle(pointing + kPi * 0.5F, size * 0.5F);
     const math::Vec2 tip = center + ahead;
