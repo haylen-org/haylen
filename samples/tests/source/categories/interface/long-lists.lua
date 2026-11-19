@@ -10,7 +10,7 @@ local layout = require('categories.interface.layout')
 local LongLists = haylen.class('LongLists', Test)
 
 LongLists.code = [[
-ui.collection{id = 'entries', placeholder = 'loading', types = {entry = {template = row, estimatedSize = 76}, loading = {template = spinner, interactive = false}}}
+ui.collection{id = 'entries', scrollbar = true, placeholder = 'loading', types = {entry = {template = row, estimatedSize = 76}, loading = {template = spinner, interactive = false}}}
 local entries = gui:collection('entries')
 entries:setPages{count = 100000, pageSize = 100, load = function(first, count)
     return jobs.spawn(function() return buildPage(first, count) end)  -- Its rows show the placeholder until it resolves.
@@ -65,7 +65,7 @@ end
 function LongLists:columns()
     return layout.columns{
         layout.section('A hundred thousand entries', {grow = 3, align = 'stretch',
-            ui.collection{id = 'entries', grow = 1, gap = 4, placeholder = 'loading', focusAlign = 'center', types = {
+            ui.collection{id = 'entries', grow = 1, gap = 4, scrollbar = true, placeholder = 'loading', focusAlign = 'center', types = {
                 entry = {template = ui.panel{padding = {10, 16},
                     ui.row{gap = 16,
                         ui.label{part = 'number', bind = {text = 'number'}, width = 96, textAlign = 'end', color = 'textMuted'},

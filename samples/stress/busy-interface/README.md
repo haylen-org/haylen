@@ -27,7 +27,7 @@ On the headless platform the app runs a short tour by itself: it shows more card
 | Change values every frame, ten times a second or never | R, or the panel | A click of the right stick, or the panel | The panel | The panel |
 | Show or hide the charts | The panel | The panel | The panel | The panel |
 | Move between the controls, the lists and the table | The arrows, Tab, Page Up, Page Down, Home and End | The directional pad, the left stick and the shoulders | A tap | The directions |
-| Scroll the lists | The wheel or the scrollbars | The focus | A drag or a fling | The focus |
+| Scroll the lists | The wheel, or the scroll bar of the event log | The focus | A drag or a fling | The focus |
 
 The panel starts with the focus. Escape and the east button have nothing to close on this screen and do nothing, and on a TV the Menu or Back button leaves the app from it, as the platforms ask.
 

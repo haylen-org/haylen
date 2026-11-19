@@ -66,13 +66,13 @@ end
 function Home:body(wide, roomy)
     local space = Style.space
     local column = ui.column{gap = 0, grow = 1,
-        ui.collection{id = 'stories', axis = 'horizontal', scrollbar = false, gap = space.xs, padding = {space.s, wide and space.xs or space.s}, rememberFocus = true, types = {story = Widgets.story()},
+        ui.collection{id = 'stories', axis = 'horizontal', gap = space.xs, padding = {space.s, wide and space.xs or space.s}, rememberFocus = true, types = {story = Widgets.story()},
             onSelect = function(event)
                 self:openStory(event.item)
             end,
         },
         ui.divider{},
-        ui.collection{id = 'feed', grow = 1, gap = wide and space.l or 0, padding = wide and {space.l, 0, space.xl, 0} or {0, 0, space.l, 0}, scrollbar = wide, rememberFocus = true,
+        ui.collection{id = 'feed', grow = 1, gap = wide and space.l or 0, padding = wide and {space.l, 0, space.xl, 0} or {0, 0, space.l, 0}, rememberFocus = true,
             types = {post = Widgets.post(wide), gallery = Widgets.post(wide, true)},
             onClick = function(event)
                 Widgets.onPostEvent(self, self.feed, event)
@@ -110,7 +110,7 @@ function Home:side()
             ui.column{gap = 0, grow = 1, ui.label{text = me.handle, font = 'button', wrap = false}, ui.label{text = me.name, font = 'caption', color = 'textMuted', wrap = false}},
         },
         ui.label{text = 'People to follow', font = 'button', color = 'textMuted', margin = {space.s, 0, 0, 0}},
-        ui.collection{id = 'suggested', height = 80 * 5, gap = 0, scrollbar = false, types = {person = Widgets.person()},
+        ui.collection{id = 'suggested', height = 80 * 5, gap = 0, types = {person = Widgets.person()},
             onClick = function(event)
                 Widgets.toggleFollow(Social.person(event.cell.item))
             end,

@@ -39,7 +39,7 @@ function ComposeEdit:layoutChanged(wide)
             self:change('crop', event.value)
         end}},
         ui.label{text = 'Filters', font = 'button', color = 'textMuted', margin = {0, space.m}},
-        ui.collection{id = 'filters', axis = wide and 'vertical' or 'horizontal', layout = wide and 'grid' or 'linear', lanes = 3, grow = wide and 1 or 0, scrollbar = false, gap = space.s, padding = {0, space.m}, selection = 'single', selected = {Compose.filter}, rememberFocus = true,
+        ui.collection{id = 'filters', axis = wide and 'vertical' or 'horizontal', layout = wide and 'grid' or 'linear', lanes = 3, grow = wide and 1 or 0, gap = space.s, padding = {0, space.m}, selection = 'single', selected = {Compose.filter}, rememberFocus = true,
             types = {filter = {template = ui.column{gap = space.xs, width = wide and 'auto' or 128, padding = space.xxs,
                 ui.image{part = 'thumb', bind = {image = 'thumb'}, image = Compose.look(), fit = 'cover', aspectRatio = 1, width = wide and 'auto' or 120, align = 'stretch', radius = Style.radius.control},
                 ui.label{part = 'name', bind = {text = 'name'}, font = 'caption', textAlign = 'center', align = 'stretch', wrap = false},

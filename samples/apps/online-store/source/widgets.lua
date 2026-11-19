@@ -37,7 +37,7 @@ Widgets.cellWidth = 200
 
 -- A shelf of products that scrolls sideways, and opens a product when one is picked.
 function Widgets.shelf(id)
-    return ui.collection{id = id, axis = 'horizontal', scrollbar = false, gap = Style.space.m, rememberFocus = true, types = {product = Widgets.productCard(Style.size.card)}, onSelect = function(event)
+    return ui.collection{id = id, axis = 'horizontal', gap = Style.space.m, rememberFocus = true, types = {product = Widgets.productCard(Style.size.card)}, onSelect = function(event)
         Widgets.openProduct(event.item)
     end}
 end

@@ -18,7 +18,7 @@ function Shop:tree()
         Shell.centered(Style.size.page, ui.column{id = 'page', gap = Style.space.m, padding = {Style.space.l, Style.space.l, Style.space.xxl, Style.space.l},
             ui.column{id = 'campaign'},
             Widgets.section('Shop by category'),
-            ui.collection{id = 'categories', axis = 'horizontal', scrollbar = false, gap = Style.space.m, rememberFocus = true, types = {category = {template = ui.column{gap = Style.space.xs, width = Style.size.tile,
+            ui.collection{id = 'categories', axis = 'horizontal', gap = Style.space.m, rememberFocus = true, types = {category = {template = ui.column{gap = Style.space.xs, width = Style.size.tile,
                 ui.stack{width = Style.size.tile, height = Style.size.tile,
                     ui.image{part = 'backdrop', bind = {image = 'backdrop'}, fit = 'cover', align = 'stretch', radius = Style.radius.picture},
                     ui.image{part = 'image', bind = {image = 'image', tint = 'tint'}, fit = 'contain', align = 'stretch', margin = Style.space.l},

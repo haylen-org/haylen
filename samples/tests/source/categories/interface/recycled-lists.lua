@@ -67,7 +67,7 @@ end
 
 function RecycledLists:enter()
     self:frame{
-        hint = 'Scroll with the wheel, the scrollbar or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles. Drag a row, or press it twice with Enter or the south button, to move it. The "More" link of a shell opens its menu.',
+        hint = 'Scroll with the wheel or a finger, which flings the lists. Arrows, the directional pad and remotes move between items, Page Up, Page Down, Home, End and the shoulder buttons page, and Enter or the south button selects tiles. Drag a row, or press it twice with Enter or the south button, to move it. The "More" link of a shell opens its menu.',
         code = RecycledLists.code,
         focus = 'list',
         content = {self:columns()},

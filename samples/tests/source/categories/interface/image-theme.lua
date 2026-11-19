@@ -103,7 +103,7 @@ function ImageTheme:collections()
     end
     return layout.section('Tabs, lists and scroll bars', {
         ui.tabs{items = {{id = 'bag', text = 'Bag'}, {id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}}, selected = 'bag',
-            ui.scroll{height = 280, ui.list{items = rows, selected = 'item-2', onSelect = function(event) self:report('The list picked "' .. event.item .. '".') end}},
+            ui.scroll{height = 280, scrollbar = true, ui.list{items = rows, selected = 'item-2', onSelect = function(event) self:report('The list picked "' .. event.item .. '".') end}},
             ui.label{text = 'No quests yet.', color = 'textMuted'},
             ui.label{text = 'The map is still folded.', color = 'textMuted'},
         },

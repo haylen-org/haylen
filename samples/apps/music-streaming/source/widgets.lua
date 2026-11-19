@@ -63,7 +63,7 @@ end
 -- A shelf of covers or artists that scrolls sideways and opens what is picked.
 function Widgets.shelf(id, kind, width)
     local card = kind == 'artist' and Widgets.artistCard(width or Style.size.artist) or Widgets.coverCard(width or Style.size.cover)
-    return ui.collection{id = id, axis = 'horizontal', scrollbar = false, gap = Style.space.xs, rememberFocus = true, types = {[kind] = card}, onSelect = function(event)
+    return ui.collection{id = id, axis = 'horizontal', gap = Style.space.xs, rememberFocus = true, types = {[kind] = card}, onSelect = function(event)
         Widgets.openItem(event.item)
     end}
 end

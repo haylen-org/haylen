@@ -73,7 +73,7 @@ function Product:tree()
             Shell.centered(Style.size.page, ui.column{gap = Style.space.m, padding = {Style.space.l, Style.space.l, Style.space.xxl, Style.space.l},
                 ui.row{id = 'top', gap = Style.space.xl, align = 'stretch'},
                 Widgets.section('You may also like'),
-                ui.collection{id = 'related', axis = 'horizontal', scrollbar = false, gap = Style.space.m, rememberFocus = true, types = {product = Widgets.productCard(Style.size.card)}, onSelect = function(event)
+                ui.collection{id = 'related', axis = 'horizontal', gap = Style.space.m, rememberFocus = true, types = {product = Widgets.productCard(Style.size.card)}, onSelect = function(event)
                     Widgets.openProduct(event.item)
                 end},
             }),

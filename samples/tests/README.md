@@ -626,7 +626,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-025` | Node events | The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log. |  |
 | `GUI-026` | UI scale | The design and physical scale modes and the scale factor, with the size of a control in points on the screen. |  |
 | `GUI-027` | Custom GUI in Lua | A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list and the focus. |  |
-| `GUI-028` | Scroll bars | Every component that scrolls, each with its scroll bar in a lane of its own at least four points from its content, at every scale. |  |
+| `GUI-028` | Scroll bars | Every component that asks for a scroll bar, each with its bar in a lane of its own at least four points from its content, at every scale, beside a scroll without a bar. |  |
 | `GUI-029` | SVG pictures | SVG documents as icons, buttons, list rows and images, sharp at every size and scale, with tinted icons, rounded corners and surfaces. |  |
 | `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet over a scroll and a form that keeps its maximum width. |  |
 | `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, beside their magnified edges, which fade over one pixel. |  |

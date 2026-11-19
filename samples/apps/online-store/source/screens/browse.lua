@@ -89,7 +89,7 @@ function Browse:tree()
                     self:openFilters()
                 end},
             },
-            ui.scroll{axis = 'horizontal', scrollbar = false, ui.row(chips)},
+            ui.scroll{axis = 'horizontal', ui.row(chips)},
             ui.row{gap = space.s, padding = {0, space.m, 0, space.l},
                 ui.label{id = 'count', text = '', color = 'textMuted', grow = 1, wrap = false},
                 ui.menuButton{id = 'sort', text = self.sort.text, variant = 'toolbar', items = sorts, onSelect = function(event)
