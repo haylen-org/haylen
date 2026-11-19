@@ -22,11 +22,13 @@ import androidx.test.uiautomator.UiObject2
 import androidx.test.uiautomator.Until
 import java.io.File
 import java.util.regex.Pattern
-import org.junit.After
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
+import org.junit.Rule
+import org.junit.rules.TestRule
+import org.junit.runners.model.Statement
 
 // The base of the UI tests of a Haylen app on Android. The command "haylen test --ui" installs the app and names it to the instrumentation of the runner, and each test starts it again with the launch arguments of its class. The GUIs of the app expose their components to the tests through the accessibility tree, each as a node whose content description is the text it shows, a text field as a node whose hint is its label and whose text is its value, and native views show their text.
 abstract class HaylenUiTestCase {
@@ -74,8 +76,27 @@ abstract class HaylenUiTestCase {
 
     private var simulatedLocation: Thread? = null
 
-    @After
-    fun stop() {
+    // Every test ends the app, and a test that fails first keeps a picture of the window of the app as the failure left it, named after the test, so a run that nobody watched shows what the screen held.
+    @get:Rule
+    val ending = TestRule { base, description ->
+        object : Statement() {
+            override fun evaluate() {
+                try {
+                    base.evaluate()
+                } catch (failure: Throwable) {
+                    val window = device.findObject(By.pkg(identifier).depth(0))
+                    if (window != null) {
+                        saveWindow(window, "failed-${description.methodName}")
+                    }
+                    throw failure
+                } finally {
+                    stop()
+                }
+            }
+        }
+    }
+
+    private fun stop() {
         device.executeShellCommand("am force-stop $identifier")
         stopSimulatingLocation()
     }
@@ -319,12 +340,11 @@ abstract class HaylenUiTestCase {
         assertTrue("The app stays in front after Home.", device.wait(Until.gone(By.pkg(identifier).depth(0)), TIMEOUT))
     }
 
-    // Waits until the keyboard of the system shows, the window of the input method, so the keys that a test types reach the field that edits instead of the controls of the app. The window tells it by its type, since an input method may draw its keys without nodes that UI Automator finds, as the keyboard of the Android emulator does.
+    // Waits until the keyboard of the system shows, the window of the input method that the device uses, so the keys that a test types reach the field that edits instead of the controls of the app. A device with a hardware keyboard shows no keyboard of the system, as Android decides, so the tests run on a device without one.
     fun waitForKeyboard() {
         val method = device.executeShellCommand("settings get secure default_input_method").trim()
-        waitUntil("The screen does not show the keyboard of the input method \"$method\" after ${TIMEOUT / 1000} seconds.") {
-            instrumentation.uiAutomation.windows.any { window -> window.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-        }
+        assertTrue("The device names no input method.", method.contains("/"))
+        waitFor(By.pkg(method.substringBefore("/")), "the keyboard of the input method \"$method\"")
     }
 
     // Removes the task of the app from the recent apps, which the system does when a person swipes its card away, whatever the launcher draws, and ends the process once it holds no activity, as the system does when it needs the memory, so the next launch starts a new process. The alarms and notifications of the app stay, which a force stop would cancel.
@@ -349,7 +369,10 @@ abstract class HaylenUiTestCase {
 
     // Saves a picture of the window of the app, never the whole screen, as a PNG named after the text in the folder "ui-tests" of the files of the runner, which the run copies back.
     fun saveScreenshot(name: String) {
-        val window = waitFor(By.pkg(identifier).depth(0), "the window of the app")
+        saveWindow(waitFor(By.pkg(identifier).depth(0), "the window of the app"), name)
+    }
+
+    private fun saveWindow(window: UiObject2, name: String) {
         val bounds: Rect = window.visibleBounds
         val screen = instrumentation.uiAutomation.takeScreenshot() ?: error("The system took no screenshot.")
         val picture = Bitmap.createBitmap(screen, bounds.left, bounds.top, bounds.width(), bounds.height())
