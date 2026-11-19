@@ -537,7 +537,7 @@ void Runtime::updateCallbackRate() {
 
 #if defined(__APPLE__)
 // Apple apps call this from their main function after registering their native HaylenBridge handlers.
-int haylen_main(int argc, char* argv[]) {
+extern "C" int haylen_main(int argc, char* argv[]) {
     haylen::platform::Services::install(haylen::platform::AppleServices::create());
     return haylen::platform::sdl::Runtime::run(argc, argv);
 }
