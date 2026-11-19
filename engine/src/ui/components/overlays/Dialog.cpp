@@ -17,6 +17,7 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/ScrollFade.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -172,7 +173,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
     const math::Rect inner = frame.inset(padding);
     const float buttonsHeight = buttons.empty() ? 0.0F : getButtonsHeight(context, inner.width);
 
-    // The title, the message and the children scroll in the room the buttons leave, across the whole width inside the frame, so the scroll bar keeps to the edge of the dialog while the content keeps its padding.
+    // The title, the message and the children scroll in the room the buttons leave, across the whole width inside the frame, so the content scrolls under the padding of the dialog to its edge.
     const math::Insets edge = Surfaces::getFrame(context, Theme::Surface::Dialog);
     const math::Rect body = math::Rect::fromMinMax({frame.x + edge.left, inner.y}, {frame.getRight() - edge.right, std::max(inner.y, inner.getBottom() - (buttons.empty() ? 0.0F : buttonsHeight + spacing))});
     if (!body.isEmpty()) {
@@ -224,20 +225,13 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
     }
 }
 
-// The content keeps the padding of the dialog, and while it is taller than the body it gives up the part of the lane of the scroll bar that its padding leaves, and draws only outside the lane.
+// The content keeps the padding of the dialog and fades out along the edges of the body where it continues.
 void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect& inner, bool overflowing) {
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
-    const math::Rect padded{inner.x, body.y, inner.width, body.height};
-    const math::Rect column = overflowing ? Scrollbar::getContentBox(context, body, padded, false) : padded;
-    if (overflowing) {
-        const double maximum = std::max(0.0F, getBodyHeight(context, column.width) - body.height);
-        if (const std::optional<double> offset = scrollbar.interact(context, body, false, false, ImGui::GetScrollY(), maximum, body.height)) {
-            ImGui::SetScrollY(static_cast<float>(*offset));
-        }
-    }
-
-    const math::Rect clip = overflowing ? Scrollbar::getContentBox(context, body, body, false) : body;
-    ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+    const math::Rect column{inner.x, body.y, inner.width, body.height};
+    ImGui::PushClipRect(ImGuiConverter::toImVec2(body.getMin()), ImGuiConverter::toImVec2(body.getMax()), true);
+    const double shown = ImGui::GetScrollY();
+    const bool faded = overflowing && ScrollFade::begin(context, body, false, shown, ImGui::GetScrollMaxY() - shown);
     const ImVec2 start = ImGui::GetCursorScreenPos();
     float y = start.y;
     if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
@@ -265,13 +259,16 @@ void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect
         y += size.y + spacing;
     }
 
+    if (faded) {
+        ScrollFade::end(context);
+    }
+
     ImGui::PopClipRect();
     ImGui::SetCursorScreenPos(start);
     ImGui::Dummy({body.width, std::max(0.0F, y - spacing - start.y)});
 
     if (overflowing) {
-        Scrollbar::takeWheel(context);
-        scrollbar.draw(context, 1.0F);
+        scroll.updateWindow(context);
     }
 }
 

@@ -9,6 +9,7 @@ namespace haylen::ui {
 
 void TextArea::readMore(PropertyReader& reader) {
     reader.read("rows", rows, 1, 200);
+    reader.read("scrollbar", scrolling.barWanted);
 }
 
 math::Vec2 TextArea::measureContent(Context& context, float availableWidth) {

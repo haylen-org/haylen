@@ -27,7 +27,7 @@ bool FocusNavigator::wrapsAlong(FocusWrap wrap, FocusDirection direction) noexce
     return wrap == FocusWrap::Both || wrap == (horizontal ? FocusWrap::Horizontal : FocusWrap::Vertical);
 }
 
-// Focus that moves into a draggable window brings it to the front, like a click would, and a scrolled container scrolls the item into view.
+// Focus that moves into a draggable window brings it to the front, like a click would, and a scrolled container or popup scrolls the item into view.
 void FocusNavigator::setFocus(ImGuiID item, ImGuiWindow* window, const math::Rect& bounds) {
     const ImGuiWindow* current = GImGui->NavWindow;
     if ((window->RootWindow->Flags & ImGuiWindowFlags_Popup) == 0 && (current == nullptr || current->RootWindow != window->RootWindow)) {
@@ -36,7 +36,7 @@ void FocusNavigator::setFocus(ImGuiID item, ImGuiWindow* window, const math::Rec
 
     ImGui::SetFocusID(item, window);
 
-    if ((window->Flags & ImGuiWindowFlags_ChildWindow) != 0) {
+    if ((window->Flags & (ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_Popup)) != 0) {
         ImGui::ScrollToRectEx(window, ImGuiConverter::toImRect(bounds), ImGuiScrollFlags_KeepVisibleEdgeX | ImGuiScrollFlags_KeepVisibleEdgeY | ImGuiScrollFlags_NoScrollParent);
     }
 }

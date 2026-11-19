@@ -118,6 +118,20 @@ void UiFixture::drag(math::Vec2 from, math::Vec2 to, int steps) {
     frames(2);
 }
 
+void UiFixture::swipe(math::Vec2 from, math::Vec2 to, int steps) {
+    touch(platform::Event::Type::TouchBegan, 1, from);
+    frames();
+
+    for (int step = 1; step <= steps; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, from + (to - from) * (static_cast<float>(step) / static_cast<float>(steps)));
+        frames();
+    }
+
+    frames(20);
+    touch(platform::Event::Type::TouchEnded, 1, to);
+    frames(kSettleFrames);
+}
+
 void UiFixture::wheel(math::Vec2 point, float delta, float horizontal, bool precise) {
     pointer(platform::Event::Type::MouseMove, point);
     platform::Event event;

@@ -8,7 +8,7 @@ namespace haylen::ui {
 
 class Context;
 
-// A themed scroll bar in a lane of its own along the end edge of an area that scrolls, the right edge or the left one of a right-to-left UI for a vertical area and the bottom edge for a horizontal one. The lane holds the gap that keeps the bar away from the content, the bar and the inset that keeps it away from the edges and the rounded corners of the area, so the bar never covers or touches the content. Its thumb shows which part of the content is in view, a drag of the thumb moves the content and a press on the track moves it by one view.
+// A themed scroll bar in a lane of its own along the end edge of an area that scrolls and asks for one, the right edge or the left one of a right-to-left UI for a vertical area and the bottom edge for a horizontal one. The lane holds the gap that keeps the bar away from the content, the bar and the inset that keeps it away from the edges and the rounded corners of the area, so the bar never covers or touches the content. Its thumb shows which part of the content is in view, a drag of the thumb moves the content and a press on the track moves it by one view.
 class Scrollbar final {
   public:
     // The fewest points of the screen between the content and the bar, whatever scale shrinks the UI.
@@ -32,9 +32,6 @@ class Scrollbar final {
 
     // Places the bar in the lane of the area and takes the pointer there, and returns the offset the player asks for. A reversed bar starts at its far end, as a horizontal bar of a right-to-left UI does, and the ends of the track keep clear of corners of the area rounded by `radius`.
     [[nodiscard]] std::optional<double> interact(Context& context, const math::Rect& area, bool horizontal, bool reversed, double offset, double maximum, float viewLength, float radius = 0.0F);
-
-    // Scrolls the current ImGui window up and down by the wheel of the frame, with the momentum of a trackpad, while a vertical gesture of the wheel belongs to it. Windows that scroll this way set `ImGuiWindowFlags_NoScrollWithMouse`, so the wheel moves them as far as it moves the other areas that scroll.
-    static void takeWheel(Context& context);
 
     // Draws the track and the thumb, faded by `alpha`.
     void draw(Context& context, float alpha) const;

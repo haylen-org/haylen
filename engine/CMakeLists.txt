@@ -714,6 +714,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/components/touch/PointerTracker.cpp
   src/ui/components/touch/TouchButton.cpp
   src/ui/components/touch/TouchStick.cpp
+  src/ui/ClampedScroll.cpp
   src/ui/Collection.cpp
   src/ui/CollectionCell.cpp
   src/ui/CollectionItems.cpp
@@ -751,6 +752,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/ScriptedScreen.cpp
   src/ui/ScrollArbiter.cpp
   src/ui/ScrollFade.cpp
+  src/ui/ScrollFinger.cpp
   src/ui/Scrollbar.cpp
   src/ui/Scroller.cpp
   src/ui/SoundLibrary.cpp

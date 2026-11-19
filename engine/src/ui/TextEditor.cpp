@@ -148,25 +148,6 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
     select(io.KeyShift ? editing.anchor : caret, caret);
 }
 
-// The steps of a wheel glide to their place, while a trackpad moves the text at once and the momentum of the system goes on after its fingers left, since a text area has no fling of its own.
-float TextEditor::scrollLines(Context& context, Scrolling& scrolling, ImGuiID id, const math::Rect& bounds, float overflow, float view) {
-    Scroller& motion = scrolling.motion;
-    motion.setRange(overflow, view);
-    if (overflow > 0.0F) {
-        const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()));
-        const Context::WheelScroll wheel = context.takeWheel(id, bounds, false, motion.getOffset(), overflow, hovered);
-        const double moved = static_cast<double>(wheel.distance + wheel.momentum);
-        if (wheel.motion == Context::WheelScroll::Motion::Glide) {
-            motion.follow(wheel, -1.0, context.getDeltaSeconds());
-        } else if (moved != 0.0) {
-            motion.jumpTo(motion.getOffset() - moved);
-        }
-    }
-
-    motion.update(context.getDeltaSeconds());
-    return static_cast<float>(std::clamp(motion.getOffset(), 0.0, static_cast<double>(overflow)));
-}
-
 // The bar keeps inside the frame of the field, and the text and the ImGui field leave its lane.
 TextEditor::Geometry TextEditor::place(Context& context, const math::Rect& bounds, Theme::Surface surface, const Options& options, bool multiline, bool barShown) {
     Geometry geometry;
@@ -258,12 +239,13 @@ TextEditor::Input TextEditor::edit(Context& context, std::string& value, const O
     return input;
 }
 
-// The wheel scrolls the lines of an editor of many lines, the scroll then keeps the caret of a focused field in view, and the scroll bar moves the lines last. A field of one line that is not focused shows the start of its text.
+// The wheel and a finger scroll the lines of an editor of many lines, the scroll then keeps the caret of a focused field in view, and the scroll bar moves the lines last. A field of one line that is not focused shows the start of its text.
 math::Vec2 TextEditor::scrollText(const Editing& editing, const Options& options, const Geometry& geometry, const TextFieldLayout* field, std::optional<std::size_t> caret, ImGuiID id, float overflow, bool barShown) {
     Context& context = *editing.context;
     math::Vec2 scroll = editing.scroll;
     if (editing.multiline) {
-        scroll.y = scrollLines(context, *options.scrolling, id, editing.bounds, overflow, geometry.area.height);
+        const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(editing.bounds.getMin()), ImGuiConverter::toImVec2(editing.bounds.getMax()));
+        scroll.y = static_cast<float>(options.scrolling->lines.update(context, id, editing.bounds, overflow, geometry.area.height, hovered));
     }
 
     const float wheeled = scroll.y;
@@ -284,7 +266,7 @@ math::Vec2 TextEditor::scrollText(const Editing& editing, const Options& options
 
     // The caret and the bar move the lines at once.
     if (editing.multiline && scroll.y != wheeled) {
-        options.scrolling->motion.jumpTo(scroll.y);
+        options.scrolling->lines.jumpTo(scroll.y);
     }
 
     return scroll;
@@ -355,11 +337,11 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const Theme::Surface surface = focused ? Theme::Surface::FieldFocused : Theme::Surface::Field;
     Surfaces::draw(context, surface, bounds, context.getColor(Theme::Color::Raised), context.getColor(focused ? Theme::Color::Focus : Theme::Color::Border));
 
-    // The horizontal scroll of the text lives with the field, and so does whether its text was taller than its area in the last frame, which shows the scroll bar of an editor of many lines from the frame after the text grew, so the area never changes while the text lays out.
+    // The horizontal scroll of the text lives with the field, and so does whether its text was taller than its area in the last frame, which shows the scroll bar that an editor of many lines asks for from the frame after the text grew, so the area never changes while the text lays out.
     ImGuiStorage& storage = *ImGui::GetStateStorage();
     const ImGuiID scrollX = ImGui::GetID("##scrollX");
     const ImGuiID overflowed = ImGui::GetID("##overflowed");
-    const bool barShown = multiline && storage.GetBool(overflowed);
+    const bool barShown = multiline && options.scrolling->barWanted && storage.GetBool(overflowed);
     const Geometry geometry = place(context, bounds, surface, options, multiline, barShown);
 
     // Text being typed fills its lines as far as they go, so the lines before the caret keep their words as it moves on.
@@ -367,7 +349,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     style.balance = text::Balance::None;
 
     // The caret and the selection the field had start the frame.
-    const float storedLines = multiline ? static_cast<float>(std::max(0.0, options.scrolling->motion.getOffset())) : 0.0F;
+    const float storedLines = multiline ? static_cast<float>(std::max(0.0, options.scrolling->lines.getOffset())) : 0.0F;
     const math::Vec2 storedScroll{storage.GetFloat(scrollX), storedLines};
     Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = geometry.area, .scroll = storedScroll, .rightToLeft = context.isRightToLeft(), .password = password, .multiline = multiline, .centered = options.centered};
 

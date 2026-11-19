@@ -116,8 +116,8 @@ TEST_F(LayoutTest, BoundsAndAlignsTheChildOfAScroll) {
     auto gui = mount(R"({"kind": "column", "gap": 0, "children": [
         {"kind": "scroll", "id": "page", "width": 1000, "height": 200, "children": [{"kind": "column", "id": "form", "maxWidth": 600, "children": [{"kind": "spacer", "height": 50}]}]},
         {"kind": "scroll", "id": "centered", "width": 1000, "height": 200, "children": [{"kind": "column", "id": "card", "width": 400, "align": "center", "children": [{"kind": "spacer", "height": 50}]}]},
-        {"kind": "scroll", "id": "shelf", "axis": "horizontal", "scrollbar": false, "width": 300, "height": 200, "children": [{"kind": "row", "id": "covers", "maxHeight": 120, "children": [{"kind": "spacer", "width": 800, "height": 100}]}]},
-        {"kind": "scroll", "id": "strip", "axis": "horizontal", "scrollbar": false, "width": 300, "height": 200, "children": [{"kind": "row", "id": "tall", "children": [{"kind": "spacer", "width": 800, "height": 100}]}]}
+        {"kind": "scroll", "id": "shelf", "axis": "horizontal", "width": 300, "height": 200, "children": [{"kind": "row", "id": "covers", "maxHeight": 120, "children": [{"kind": "spacer", "width": 800, "height": 100}]}]},
+        {"kind": "scroll", "id": "strip", "axis": "horizontal", "width": 300, "height": 200, "children": [{"kind": "row", "id": "tall", "children": [{"kind": "spacer", "width": 800, "height": 100}]}]}
     ]})");
     // clang-format on
     frames(2);
@@ -154,7 +154,7 @@ TEST_F(LayoutTest, FillsTheAreaOfAScrollWithAShorterChild) {
 
 // An area that scrolls fades the alpha of its content out along each edge where the content continues, and only there, as strongly as the share of the length of the fade that the content continues past that edge.
 TEST_F(LayoutTest, FadesTheEdgesOfAScrollWhereTheContentContinues) {
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "area", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "area", "height": 300, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
     frames(2);
     const math::Rect area = getBounds(*gui, "area");
     const float length = getUi().getTheme().getMetric(Theme::Metric::ScrollFade);
@@ -182,7 +182,7 @@ TEST_F(LayoutTest, FadesTheEdgesOfAScrollWhereTheContentContinues) {
 
 // A scroll fades nothing at an edge where its content rests, and pushes no fade at all while its content fits inside it, so a list that the player has not moved shows nothing at its start and a list that fits costs nothing.
 TEST_F(LayoutTest, DrawsNoFadeWhereTheContentRestsOrFits) {
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "long", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "long", "height": 300, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
     frames(2);
     const Backend::Fade* fade = findFade(getBounds(*gui, "long"));
     ASSERT_NE(fade, nullptr);
@@ -196,8 +196,8 @@ TEST_F(LayoutTest, DrawsNoFadeWhereTheContentRestsOrFits) {
 // A list that scrolls across inside a page that scrolls down fades along its own axis inside the fade of the page, which the renderer multiplies with its own.
 TEST_F(LayoutTest, FadesNestedScrollsAlongTheirOwnAxes) {
     // clang-format off
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "page", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [
-        {"kind": "scroll", "id": "shelf", "axis": "horizontal", "scrollbar": false, "height": 100, "children": [{"kind": "row", "children": [{"kind": "spacer", "width": 3000, "height": 100}]}]},
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "page", "height": 300, "children": [{"kind": "column", "children": [
+        {"kind": "scroll", "id": "shelf", "axis": "horizontal", "height": 100, "children": [{"kind": "row", "children": [{"kind": "spacer", "width": 3000, "height": 100}]}]},
         {"kind": "spacer", "height": 900}
     ]}]}]})");
     // clang-format on

@@ -213,7 +213,7 @@ const std::array<ScrollbarTest::Display, 6> ScrollbarTest::kScreens{{
 }};
 
 TEST_F(ScrollbarTest, KeepsTheBarOfAScrollInALaneBesideItsContentAtEveryScale) {
-    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + "]}]}"));
+    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "scrollbar": true, "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + "]}]}"));
     for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
@@ -235,11 +235,56 @@ TEST_F(ScrollbarTest, KeepsTheBarOfAScrollInALaneBesideItsContentAtEveryScale) {
     EXPECT_FALSE(findDrawn(kBarColor, getBounds(*gui, "area")).has_value());
 }
 
+// Areas that scroll show no bar unless the app asks for one, so their content takes the whole area and a text area keeps the lane for its lines.
+TEST_F(ScrollbarTest, DrawsNoBarUnlessTheAppAsksForOne) {
+    // clang-format off
+    auto gui = mount(marked(R"({"kind": "row", "align": "start", "children": [
+        {"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]},
+        {"kind": "collection", "id": "list", "width": 300, "height": 240, "gap": 0, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 40}}}},
+        {"kind": "column", "children": [
+            {"kind": "textArea", "id": "plain", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("},
+            {"kind": "textArea", "id": "barred", "scrollbar": true, "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("}
+        ]}
+    ]})"));
+    // clang-format on
+    Collection& list = gui->getCollection("list");
+    list.setSource(makeItems(100));
+    frames(3);
+
+    const math::Rect area = getBounds(*gui, "area");
+    EXPECT_FLOAT_EQ(getBounds(*gui, "content").width, area.width);
+    EXPECT_FALSE(findDrawn(kBarColor, area).has_value());
+    EXPECT_FLOAT_EQ(getItemBounds(list, 0).width, list.getBounds().width);
+    EXPECT_FALSE(findDrawn(kBarColor, list.getBounds()).has_value());
+
+    const math::Rect plain = getBounds(*gui, "plain");
+    const math::Rect barred = getBounds(*gui, "barred");
+    EXPECT_FALSE(findDrawn(kBarColor, plain).has_value());
+    EXPECT_TRUE(findDrawn(kBarColor, barred).has_value());
+    EXPECT_GE(findTextClip(plain).width - findTextClip(barred).width, Scrollbar::getLane(getUi().getContext()) - 0.5F);
+}
+
+// A finger scrolls the lines of a text area that shows no bar, and lets go of the field, which does not start editing.
+TEST_F(ScrollbarTest, ScrollsTheTextOfATextAreaWithAFinger) {
+    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
+    frames(2);
+    const math::Rect field = getBounds(*gui, "notes");
+    float top = 0.0F;
+    const std::uint64_t overlay = followTextTop(top);
+    frames();
+    const float before = top;
+
+    swipe(field.getCenter() + math::Vec2{0.0F, 40.0F}, field.getCenter() - math::Vec2{0.0F, 60.0F});
+    getEngine().getRenderer2D().removeCanvasOverlay(overlay);
+    EXPECT_LT(top, before - 60.0F);
+    EXPECT_FALSE(ImGui::GetIO().WantTextInput);
+}
+
 // A flat theme draws the groove the thumb runs in, as wide as the thumb and along the whole bar, in the track color of scroll bars.
 TEST_F(ScrollbarTest, RunsTheThumbInAGrooveOfTheTrackColor) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF", "scrollbarTrack": "#00FF00"}}, "children": [
-        {"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]}
+        {"kind": "scroll", "id": "area", "scrollbar": true, "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]}
     ]})");
     // clang-format on
     const math::Rect area = getBounds(*gui, "area");
@@ -255,8 +300,8 @@ TEST_F(ScrollbarTest, RunsTheThumbInAGrooveOfTheTrackColor) {
 TEST_F(ScrollbarTest, TakesTheGapFromTheStyleOfANodeButNeverLessThanFourPoints) {
     // clang-format off
     auto gui = mount(marked(R"({"kind": "row", "children": [
-        {"kind": "scroll", "id": "wide", "width": 300, "height": 240, "style": {"metrics": {"scrollbarGap": 20, "scrollbarSize": 14, "scrollbarInset": 6}}, "children": [{"kind": "column", "id": "wideContent", "children": [)" + labels(30) + R"(]}]},
-        {"kind": "scroll", "id": "none", "width": 300, "height": 240, "style": {"metrics": {"scrollbarGap": 0}}, "children": [{"kind": "column", "id": "noneContent", "children": [)" + labels(30) + R"(]}]}
+        {"kind": "scroll", "id": "wide", "scrollbar": true, "width": 300, "height": 240, "style": {"metrics": {"scrollbarGap": 20, "scrollbarSize": 14, "scrollbarInset": 6}}, "children": [{"kind": "column", "id": "wideContent", "children": [)" + labels(30) + R"(]}]},
+        {"kind": "scroll", "id": "none", "scrollbar": true, "width": 300, "height": 240, "style": {"metrics": {"scrollbarGap": 0}}, "children": [{"kind": "column", "id": "noneContent", "children": [)" + labels(30) + R"(]}]}
     ]})"));
     // clang-format on
     const math::Rect wide = getBounds(*gui, "wide");
@@ -274,7 +319,7 @@ TEST_F(ScrollbarTest, TakesTheGapFromTheStyleOfANodeButNeverLessThanFourPoints) 
 }
 
 TEST_F(ScrollbarTest, ScrollsAScrollWithTheThumbAndTheTrackOfItsBar) {
-    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + "]}]}"));
+    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "scrollbar": true, "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + "]}]}"));
     const math::Rect area = getBounds(*gui, "area");
     const math::Rect thumb = findBar(area);
 
@@ -293,7 +338,7 @@ TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalScrollBelowItsContent) {
         buttons += (index > 1 ? ", " : "") + std::string(R"({"kind": "button", "text": "Item )") + std::to_string(index) + R"("})";
     }
 
-    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "axis": "horizontal", "width": 300, "align": "start", "children": [{"kind": "row", "id": "content", "children": [)" + buttons + "]}]}"));
+    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "scrollbar": true, "axis": "horizontal", "width": 300, "align": "start", "children": [{"kind": "row", "id": "content", "children": [)" + buttons + "]}]}"));
     for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
@@ -307,7 +352,7 @@ TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalScrollBelowItsContent) {
 
 // A collection drew its bar over the end of its cells, which now end the gap before the lane of the bar.
 TEST_F(ScrollbarTest, KeepsTheCellsOfACollectionOutOfTheLaneOfItsBar) {
-    auto gui = mount(marked(R"({"kind": "collection", "id": "list", "width": 300, "height": 240, "gap": 0, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 40}}}})"));
+    auto gui = mount(marked(R"({"kind": "collection", "id": "list", "scrollbar": true, "width": 300, "height": 240, "gap": 0, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 40}}}})"));
     Collection& list = gui->getCollection("list");
     list.setSource(makeItems(100));
     for (const Display& screen : kScreens) {
@@ -331,7 +376,7 @@ TEST_F(ScrollbarTest, KeepsTheCellsOfACollectionOutOfTheLaneOfItsBar) {
 }
 
 TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalCollectionBelowItsCells) {
-    auto gui = mount(marked(R"({"kind": "collection", "id": "shelf", "axis": "horizontal", "width": 300, "types": {"tile": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 120, "height": 80}}}})"));
+    auto gui = mount(marked(R"({"kind": "collection", "id": "shelf", "scrollbar": true, "axis": "horizontal", "width": 300, "types": {"tile": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 120, "height": 80}}}})"));
     Collection& shelf = gui->getCollection("shelf");
     shelf.setSource(makeItems(40));
     for (const Display& screen : kScreens) {
@@ -346,7 +391,7 @@ TEST_F(ScrollbarTest, PutsTheBarOfAHorizontalCollectionBelowItsCells) {
 
 TEST_F(ScrollbarTest, KeepsListsTreesAndTablesInAScrollApartFromItsBar) {
     // clang-format off
-    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "width": 400, "height": 300, "children": [{"kind": "column", "children": [
+    auto gui = mount(marked(R"({"kind": "scroll", "id": "area", "scrollbar": true, "width": 400, "height": 300, "children": [{"kind": "column", "children": [
         {"kind": "list", "id": "list", "items": [{"id": "a", "text": "Alpha"}, {"id": "b", "text": "Beta"}, {"id": "c", "text": "Gamma"}]},
         {"kind": "tree", "id": "tree", "items": [{"id": "tools", "text": "Tools", "children": [{"id": "hammer", "text": "Hammer"}]}, {"id": "food", "text": "Food"}]},
         {"kind": "table", "id": "table", "columns": [{"text": "Name"}, {"text": "Level"}], "rows": [{"id": "ana", "cells": ["Ana", 4]}, {"id": "bo", "cells": ["Bo", 7]}]}
@@ -365,7 +410,7 @@ TEST_F(ScrollbarTest, KeepsListsTreesAndTablesInAScrollApartFromItsBar) {
 }
 
 TEST_F(ScrollbarTest, KeepsTheTextOfATextAreaApartFromItsBar) {
-    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
+    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "scrollbar": true, "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
     for (const Display& screen : kScreens) {
         SCOPED_TRACE(screen.name);
         use(screen);
@@ -377,7 +422,7 @@ TEST_F(ScrollbarTest, KeepsTheTextOfATextAreaApartFromItsBar) {
 }
 
 TEST_F(ScrollbarTest, ScrollsTheTextOfATextAreaWithItsBar) {
-    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
+    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "scrollbar": true, "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
     frames(2);
     const math::Rect field = getBounds(*gui, "notes");
     const math::Rect thumb = findBar(field);
@@ -466,24 +511,47 @@ TEST_F(ScrollbarTest, GlidesTheTextOfATextAreaByTheStepsOfAWheel) {
     EXPECT_NEAR(settled, getUi().getTheme().getMetric(Theme::Metric::ScrollLine), 0.5F);
 }
 
-TEST_F(ScrollbarTest, ScrollsTheRowsOfALongComboBesideItsBar) {
+// A popup scrolls without a bar: its rows take the whole width inside its padding, fade out along the edge where more of them continue, and move with the wheel, a finger and the focus.
+TEST_F(ScrollbarTest, ScrollsTheRowsOfALongComboWithoutABar) {
     std::string items;
     for (int index = 1; index <= 120; ++index) {
         items += (index > 1 ? ", " : "") + std::string(R"({"id": "i)") + std::to_string(index) + R"(", "text": "Choice )" + std::to_string(index) + R"("})";
     }
 
     auto gui = mount(marked(R"({"kind": "combo", "id": "pick", "width": 300, "selected": "i1", "items": [)" + items + "]}"));
-    for (const Display& screen : kScreens) {
-        SCOPED_TRACE(screen.name);
-        use(screen);
-        clickUi(getBounds(*gui, "pick").getCenter());
-        frames(3);
-        const math::Rect display = getUi().getBackend().getDisplayRect();
-        const std::optional<math::Rect> row = findDrawn(kRowColor, display);
-        ASSERT_TRUE(row.has_value());
-        expectApart(*row, findBar(display), display, Side::End);
-        clickUi(display.getMax() - math::Vec2{1.0F, 1.0F});
+    click(getBounds(*gui, "pick").getCenter());
+    frames(3);
+    ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
+    const ImGuiWindow& window = *GImGui->OpenPopupStack[0].Window;
+    const math::Rect popup{window.Pos.x, window.Pos.y, window.Size.x, window.Size.y};
+    const std::optional<math::Rect> row = findDrawn(kRowColor, popup);
+    ASSERT_TRUE(row.has_value());
+    EXPECT_NEAR(row->width, popup.width - getUi().getTheme().getMetric(Theme::Metric::MenuPadding) * 2.0F, 1.0F);
+    EXPECT_FALSE(findDrawn(kBarColor, popup).has_value());
+    ASSERT_EQ(getUi().getBackend().getFades().size(), 1U);
+    EXPECT_EQ(getUi().getBackend().getFades().front().edges.top, 0.0F);
+    EXPECT_EQ(getUi().getBackend().getFades().front().edges.bottom, 1.0F);
+
+    wheel(popup.getCenter(), -1.0F);
+    frames(30);
+    const float wheeled = window.Scroll.y;
+    EXPECT_NEAR(wheeled, getUi().getTheme().getMetric(Theme::Metric::ScrollLine), 1.0F);
+
+    // A finger that drags the rows scrolls them and picks none of them.
+    clearEvents();
+    swipe(popup.getCenter(), popup.getCenter() - math::Vec2{0.0F, 200.0F});
+    ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
+    EXPECT_GT(window.Scroll.y, wheeled + 150.0F);
+    EXPECT_TRUE(getEventNames().empty());
+
+    // The focus brings the row it moves to into view, and the scroll keeps it there.
+    const float swiped = window.Scroll.y;
+    for (int step = 0; step < 60; ++step) {
+        key(input::Key::Down);
     }
+
+    frames(30);
+    EXPECT_GT(window.Scroll.y, swiped + 200.0F);
 }
 
 // A long list hangs below a combo at the top of the display and above one at the bottom, and both stay inside the display, where their rows scroll.
@@ -505,35 +573,41 @@ TEST_F(ScrollbarTest, KeepsALongPopupInsideTheDisplayOnTheSideOfItsAnchorWithMor
         const math::Rect popup{window.Pos.x, window.Pos.y, window.Size.x, window.Size.y};
         EXPECT_TRUE(display.contains(popup));
         EXPECT_TRUE(std::string(id) == "top" ? popup.y >= anchor.getBottom() : popup.getBottom() <= anchor.y);
-        EXPECT_TRUE(findDrawn(kBarColor, popup).has_value());
+        EXPECT_FALSE(findDrawn(kBarColor, popup).has_value());
         click(display.getMax() - math::Vec2{1.0F, 1.0F});
     }
 }
 
-TEST_F(ScrollbarTest, ScrollsTheBodyOfATallDialogBesideItsBar) {
+// The body of a dialog scrolls without a bar, at the whole width inside the padding of the dialog, with the wheel and with a finger.
+TEST_F(ScrollbarTest, ScrollsTheBodyOfATallDialogWithoutABar) {
     auto gui = mount(marked(R"({"kind": "dialog", "id": "credits", "title": "Credits", "buttons": [{"id": "close", "text": "Close"}], "children": [{"kind": "column", "id": "content", "children": [)" + labels(120) + "]}]}"));
-    for (const Display& screen : kScreens) {
-        SCOPED_TRACE(screen.name);
-        use(screen);
-        frames(12);
-        // The bar keeps the inset from the border of the dialog, which runs inside its bounds.
-        const math::Rect frame = getBounds(*gui, "credits").inset(math::Insets::uniform(getUi().getTheme().getMetric(Theme::Metric::BorderWidth)));
-        expectApart(getBounds(*gui, "content"), findBar(frame), frame, Side::End);
-    }
+    frames(12);
+    const math::Rect frame = getBounds(*gui, "credits");
+    EXPECT_NEAR(getBounds(*gui, "content").width, frame.width - getUi().getTheme().getMetric(Theme::Metric::PanelPadding) * 2.0F, 0.5F);
+    EXPECT_FALSE(findDrawn(kBarColor, frame).has_value());
+
+    const float top = getBounds(*gui, "content").y;
+    wheel(frame.getCenter(), -2.0F);
+    frames(30);
+    const float wheeled = getBounds(*gui, "content").y;
+    EXPECT_LT(wheeled, top - getUi().getTheme().getMetric(Theme::Metric::ScrollLine));
+
+    swipe(frame.getCenter(), frame.getCenter() - math::Vec2{0.0F, 200.0F});
+    EXPECT_LT(getBounds(*gui, "content").y, wheeled - 150.0F);
 }
 
-// A dialog whose content fits the screen draws no bar at any spacing of its theme, whose fractions its sizes add up and subtract in different orders.
-TEST_F(ScrollbarTest, DrawsNoBarBesideTheBodyOfADialogThatFits) {
+// A dialog whose content fits the screen fades none of it at any spacing of its theme, whose fractions its sizes add up and subtract in different orders.
+TEST_F(ScrollbarTest, DrawsNoFadeInTheBodyOfADialogThatFits) {
     for (int tenths = 100; tenths < 160; ++tenths) {
         const std::string spacing = std::to_string(tenths / 10) + "." + std::to_string(tenths % 10);
         SCOPED_TRACE(spacing);
         // clang-format off
-        auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF"}, "metrics": {"itemSpacing": )" + spacing + R"(, "panelPadding": )" + spacing + R"(}, "fonts": {"body": {"size": 21.3}, "heading": {"size": 27.7}}}, "children": [
+        auto gui = mount(R"({"kind": "column", "style": {"metrics": {"itemSpacing": )" + spacing + R"(, "panelPadding": )" + spacing + R"(}, "fonts": {"body": {"size": 21.3}, "heading": {"size": 27.7}}}, "children": [
             {"kind": "dialog", "id": "safety", "title": "Safety", "message": "Share where you are with the people you trust, or call for help at once.", "buttons": [{"id": "close", "text": "Close"}, {"id": "help", "text": "Call for help"}]}
         ]})");
         // clang-format on
         frames(2);
-        EXPECT_FALSE(findDrawn(kBarColor, getBounds(*gui, "safety")).has_value());
+        EXPECT_TRUE(getUi().getBackend().getFades().empty());
         getUi().unmount(*gui);
         frames(2);
     }
@@ -619,7 +693,7 @@ TEST_F(ScrollbarTest, DrawsTheBarsOfImmediateWindowsInAGroove) {
 TEST_F(ScrollbarTest, KeepsTheGapForBarsDrawnWithThemeImages) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "style": {"surfaces": {"scrollbar": {"image": "ui/thumb.png", "slice": 4}, "scrollbarTrack": {"image": "ui/groove.png", "slice": 4}}}, "children": [
-        {"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]}
+        {"kind": "scroll", "id": "area", "scrollbar": true, "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]}
     ]})");
     // clang-format on
     // The renderer names the texture of a draw on its first quad, so the quads after it belong to the same image.

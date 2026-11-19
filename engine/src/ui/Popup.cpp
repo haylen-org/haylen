@@ -10,6 +10,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/ScrollFade.hpp"
 #include "ui/Surfaces.hpp"
 
 namespace haylen::ui {
@@ -25,16 +26,13 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     const bool below = needed <= roomBelow || roomBelow >= roomAbove;
     const float limit = std::max(0.0F, below ? roomBelow : roomAbove);
 
-    const math::Insets edge = Surfaces::getFrame(context, Theme::Surface::Menu);
-    const float barEdge = rightToLeft ? edge.left : edge.right;
     overflowing = needed > limit;
-    const float reserve = overflowing ? Scrollbar::getReserve(context, padding - barEdge) : 0.0F;
 
     const ImVec2 position{rightToLeft ? anchor.getRight() : anchor.x, below ? anchor.getBottom() + kAnchorGap : anchor.y - kAnchorGap};
     const ImVec2 pivot{rightToLeft ? 1.0F : 0.0F, below ? 0.0F : 1.0F};
     ImGui::SetNextWindowPos(position, ImGuiCond_Always, pivot);
     ImGui::SetNextWindowSizeConstraints({std::max(minimumWidth, anchor.width), 0.0F}, {FLT_MAX, limit});
-    ImGui::SetNextWindowContentSize({std::ceil(content.x + reserve), content.y});
+    ImGui::SetNextWindowContentSize({std::ceil(content.x), content.y});
     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
     ImGui::PushStyleVar(ImGuiStyleVar_PopupBorderSize, 0.0F);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {padding, padding});
@@ -54,30 +52,21 @@ std::optional<math::Rect> Popup::begin(Context& context, const char* name, ImGui
     Surfaces::drawShadow(context, frame, radius);
     Surfaces::draw(context, Theme::Surface::Menu, frame, context.getColor(Theme::Color::Raised), context.getColor(Theme::Color::Border), radius);
     const ImVec2 start = ImGui::GetCursorScreenPos();
-    box = {start.x + (rightToLeft ? reserve : 0.0F), start.y, content.x, content.y};
+    box = {start.x, start.y, content.x, content.y};
 
-    // The bar runs inside the frame clear of its rounded corners, and the content draws only outside the lane of the bar, which ImGui may narrow when it rounds the size of the popup down to whole units.
-    if (overflowing) {
-        const math::Rect area = frame.inset(edge);
-        box = Scrollbar::getContentBox(context, area, box, false);
-
-        const float barRadius = Surfaces::getInnerRadius(radius, barEdge);
-        if (const std::optional<double> offset = scrollbar.interact(context, area, false, false, ImGui::GetScrollY(), ImGui::GetScrollMaxY(), frame.height, barRadius)) {
-            ImGui::SetScrollY(static_cast<float>(*offset));
-        }
-
-        const math::Rect clip = Scrollbar::getContentBox(context, area, area, false);
-        ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
-    }
-
+    // The rows fade out along the edges of the frame where more of them continue, as the content of the other areas that scroll does.
+    const double shown = ImGui::GetScrollY();
+    faded = overflowing && ScrollFade::begin(context, frame.inset(Surfaces::getFrame(context, Theme::Surface::Menu)), false, shown, ImGui::GetScrollMaxY() - shown);
     return box;
 }
 
 void Popup::end(Context& context) {
+    if (faded) {
+        ScrollFade::end(context);
+    }
+
     if (overflowing) {
-        ImGui::PopClipRect();
-        Scrollbar::takeWheel(context);
-        scrollbar.draw(context, 1.0F);
+        scroll.updateWindow(context);
     }
 
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(box.getMin()));

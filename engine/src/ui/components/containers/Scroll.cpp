@@ -14,7 +14,6 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/PropertyReader.hpp"
 #include "ui/ImGuiConverter.hpp"
-#include "ui/ScrollArbiter.hpp"
 #include "ui/ScrollFade.hpp"
 
 namespace haylen::ui {
@@ -132,7 +131,9 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             request.reset();
         }
 
-        followFinger(context, bounds, underPointer);
+        if (finger.follow(context, scroller, ImGui::GetCurrentWindow()->ID, bounds, horizontal, underPointer)) {
+            request.reset();
+        }
 
         if (overflowing) {
             if (const std::optional<double> offset = scrollbar.interact(context, bounds, horizontal, false, scroller.getOffset(), scroller.getMaximum(), view)) {
@@ -222,65 +223,10 @@ void Scroll::followWindow() {
     const ImGuiWindow& window = *ImGui::GetCurrentWindow();
     const float shown = horizontal ? window.Scroll.x : window.Scroll.y;
     const float limit = horizontal ? window.ScrollMax.x : window.ScrollMax.y;
-    if (written && !dragging && shown != std::min(*written, limit)) {
+    if (written && !finger.isDragging() && shown != std::min(*written, limit)) {
         scroller.jumpTo(shown);
         request.reset();
     }
-}
-
-void Scroll::followFinger(Context& context, const math::Rect& bounds, bool underPointer) {
-    ScrollArbiter& arbiter = context.getBackend().getScrollArbiter();
-    const ScrollArbiter::Press& press = arbiter.getPress();
-
-    // A finger that lands on content that glides stops it where it is and drags it from there, as the content of a touch screen does.
-    if (press.began) {
-        pressed = underPointer;
-        dragging = false;
-
-        if (pressed && press.touch && scroller.isGliding()) {
-            scroller.stop();
-            request.reset();
-            arbiter.catchDrag(ImGui::GetCurrentWindow()->ID);
-        }
-    }
-
-    if (dragging && press.down) {
-        scroller.drag(-static_cast<double>(horizontal ? press.motion.x : press.motion.y), context.getDeltaSeconds());
-        return;
-    }
-
-    // A finger that flicks past the slop and lifts before the area took it takes the area as it lifts, so the content still flings.
-    if (!dragging && pressed && press.touch && (press.down || press.lifted)) {
-        takeFinger(context, bounds);
-    }
-
-    if (!press.down) {
-        if (dragging) {
-            scroller.release();
-        }
-
-        pressed = false;
-        dragging = false;
-    }
-}
-
-// The content catches up with the finger at once, and a field being edited keeps editing while the finger scrolls the area, while any other item lets the finger go.
-void Scroll::takeFinger(Context& context, const math::Rect& bounds) {
-    if (scroller.getMaximum() <= 0.0 || !context.takeDrag(ImGui::GetCurrentWindow()->ID, bounds, horizontal)) {
-        return;
-    }
-
-    if (GImGui->ActiveId != 0 && !ImGui::GetIO().WantTextInput) {
-        ImGui::ClearActiveID();
-    }
-
-    dragging = true;
-    request.reset();
-
-    const ScrollArbiter& arbiter = context.getBackend().getScrollArbiter();
-    const double travelled = -static_cast<double>(arbiter.getDragTravel(horizontal));
-    const double moved = -static_cast<double>(horizontal ? arbiter.getPress().motion.x : arbiter.getPress().motion.y);
-    scroller.grab(travelled, moved, context.getDeltaSeconds());
 }
 
 // A node scrolls only as far as it needs to show whole with `nearest`, and aligns its start, middle or end with the view otherwise.
@@ -324,7 +270,7 @@ std::optional<double> Scroll::findTarget(const Request& value, math::Vec2 origin
 
 // Once the player lets go and the content rests, it glides to the item of the child nearest to where it stopped.
 void Scroll::settle() {
-    if (!snap || points.empty() || dragging || request || !scroller.isResting() || idle < kSnapDelay) {
+    if (!snap || points.empty() || finger.isDragging() || request || !scroller.isResting() || idle < kSnapDelay) {
         return;
     }
 

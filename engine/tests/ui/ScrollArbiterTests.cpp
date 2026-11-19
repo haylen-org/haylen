@@ -24,7 +24,7 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         // clang-format off
         return mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "gap": 0, "children": [
             {"kind": "spacer", "height": 200},
-            {"kind": "scroll", "id": "strip", "axis": "horizontal", "scrollbar": false, "width": 500, "height": 150, "children": [{"kind": "row", "id": "covers", "children": [{"kind": "spacer", "width": 1500, "height": 100}]}]},
+            {"kind": "scroll", "id": "strip", "axis": "horizontal", "width": 500, "height": 150, "children": [{"kind": "row", "id": "covers", "children": [{"kind": "spacer", "width": 1500, "height": 100}]}]},
             {"kind": "spacer", "height": 1500}
         ]}]})");
         // clang-format on
@@ -69,21 +69,6 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
 
     std::shared_ptr<Gui> mountLongPage() {
         return mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
-    }
-
-    // Drags a finger from one point to another over some frames, rests it until its speed is gone and lifts it.
-    void swipe(math::Vec2 from, math::Vec2 to, int steps = 10) {
-        touch(platform::Event::Type::TouchBegan, 1, from);
-        frames();
-
-        for (int step = 1; step <= steps; ++step) {
-            touch(platform::Event::Type::TouchMoved, 1, from + (to - from) * (static_cast<float>(step) / static_cast<float>(steps)));
-            frames();
-        }
-
-        frames(20);
-        touch(platform::Event::Type::TouchEnded, 1, to);
-        frames(kRest);
     }
 };
 
@@ -448,7 +433,7 @@ TEST_F(ScrollArbiterTest, ASidewaysGestureOverAHorizontalCollectionScrollsTheCol
     // clang-format off
     auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "gap": 0, "children": [
         {"kind": "spacer", "height": 100},
-        {"kind": "collection", "id": "shelf", "axis": "horizontal", "scrollbar": false, "height": 150, "gap": 0, "types": {"cover": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 150}}}},
+        {"kind": "collection", "id": "shelf", "axis": "horizontal", "height": 150, "gap": 0, "types": {"cover": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 150}}}},
         {"kind": "spacer", "height": 1500}
     ]}]})");
     // clang-format on

@@ -86,11 +86,6 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
     }
 
     // The width the cells of a collection that scrolls take, which leave the lane of the scroll bar.
-    [[nodiscard]] float getCellsWidth(const Collection& collection) {
-        const Theme& theme = getUi().getTheme();
-        return collection.getBounds().width - theme.getMetric(Theme::Metric::ScrollbarGap) - theme.getMetric(Theme::Metric::ScrollbarSize) - theme.getMetric(Theme::Metric::ScrollbarInset);
-    }
-
     // The first press of a player who could not see the ring only shows it, so tests that navigate show it with a direction that leads nowhere.
     void showRing() {
         key(input::Key::Left);
@@ -387,7 +382,7 @@ TEST_F(CollectionTest, PlacesGridSpansAndFullWidthHeaders) {
 
     show(list, items);
     const math::Rect area = list.getBounds();
-    const float width = getCellsWidth(list);
+    const float width = area.width;
     const float lane = (width - 20.0F) / 3.0F;
 
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).width, width);
@@ -982,7 +977,7 @@ TEST_F(CollectionTest, SnapsToTheNearestItemOnceItRests) {
 }
 
 TEST_F(CollectionTest, ScrollsWithTheThumbAndTheTrackOfItsScrollbar) {
-    auto gui = mountCollection(kRows);
+    auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "scrollbar": true, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}, "estimatedSize": 60}}})");
     Collection& list = gui->getCollection("list");
     show(list, makeItems(1000));
     const math::Rect area = list.getBounds();
@@ -1065,7 +1060,7 @@ TEST_F(CollectionTest, FitsGridLanesToTheMinimumCellSizeAndCellsToTheAspect) {
     Collection& list = gui->getCollection("list");
     show(list, makeItems(40));
     const math::Rect area = list.getBounds();
-    const float width = getCellsWidth(list);
+    const float width = area.width;
     const auto lanes = static_cast<float>(static_cast<int>((width + 20.0F) / 320.0F));
     const float lane = (width - 20.0F * (lanes - 1.0F)) / lanes;
     EXPECT_NEAR(getItemBounds(list, 0).width, lane, 1.0F);
@@ -1115,7 +1110,7 @@ TEST_F(CollectionTest, AllocatesNothingWhileIdle) {
     const std::size_t without = measure();
     getUi().unmount(*plain);
 
-    auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "scrollbar": false, "types": {"row": {"template": {"kind": "spacer", "height": 60}}}})");
+    auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "types": {"row": {"template": {"kind": "spacer", "height": 60}}}})");
     show(gui->getCollection("list"), makeItems(100000));
     EXPECT_EQ(measure(), without);
 }

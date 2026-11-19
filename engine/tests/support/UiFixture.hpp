@@ -27,6 +27,9 @@ namespace haylen::test {
 // A running engine with GUIs mounted from JSON, the input a player would give them and the events they report.
 class UiFixture {
   public:
+    // The frames after a swipe that let every motion it started settle.
+    static constexpr int kSettleFrames = 60;
+
     explicit UiFixture(std::map<std::string, std::string> files = {});
 
     [[nodiscard]] core::Engine& getEngine() noexcept {
@@ -45,6 +48,9 @@ class UiFixture {
     void click(math::Vec2 point);
     void click(const ui::Gui& gui, std::string_view id);
     void drag(math::Vec2 from, math::Vec2 to, int steps = 4);
+
+    // Drags a finger from one point to another over some frames, rests it until its speed is gone, lifts it and runs the frames that let the content settle.
+    void swipe(math::Vec2 from, math::Vec2 to, int steps = 10);
 
     // Turns the mouse wheel over a point by steps, or moves a trackpad by points when `precise` is set, with positive deltas scrolling up, and runs a frame.
     void wheel(math::Vec2 point, float delta, float horizontal = 0.0F, bool precise = false);

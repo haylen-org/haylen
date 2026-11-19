@@ -20,17 +20,6 @@ float Scrollbar::getGap(const Context& context) {
     return getGap(context.getMetric(Theme::Metric::ScrollbarGap), context.getBackend().getPointsPerUnit());
 }
 
-void Scrollbar::takeWheel(Context& context) {
-    const ImGuiWindow& window = *ImGui::GetCurrentWindow();
-    const math::Rect bounds = ImGuiConverter::toRect(window.InnerRect);
-    const bool windowHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
-    const Context::WheelScroll wheel = context.takeWheel(window.ID, bounds, false, window.Scroll.y, window.ScrollMax.y, windowHovered);
-    const float distance = wheel.distance + wheel.momentum;
-    if (distance != 0.0F) {
-        ImGui::SetScrollY(window.Scroll.y - distance);
-    }
-}
-
 float Scrollbar::getLane(const Context& context) {
     return getGap(context) + context.getMetric(Theme::Metric::ScrollbarSize) + context.getMetric(Theme::Metric::ScrollbarInset);
 }

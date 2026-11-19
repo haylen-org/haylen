@@ -534,7 +534,7 @@ TEST_F(GameComponentTest, SnapsScrolledItemsIntoPlace) {
         buttons += (index > 0 ? ", " : "") + std::string(R"({"kind": "button", "id": "b)") + std::to_string(index) + R"(", "text": "Card", "width": 150})";
     }
 
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "shelf", "axis": "horizontal", "snap": true, "width": 400, "height": 120, "align": "start", "scrollbar": false, "children": [{"kind": "row", "gap": 10, "children": [)" + buttons + R"(]}]}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "shelf", "axis": "horizontal", "snap": true, "width": 400, "height": 120, "align": "start", "children": [{"kind": "row", "gap": 10, "children": [)" + buttons + R"(]}]}]})");
     const math::Rect shelf = getBounds(*gui, "shelf");
     touch(platform::Event::Type::TouchBegan, 1, {shelf.x + 350.0F, shelf.y + 60.0F});
     frames();

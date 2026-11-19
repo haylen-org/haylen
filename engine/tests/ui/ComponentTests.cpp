@@ -323,7 +323,7 @@ TEST_F(ComponentTest, ScrollsAScrollToAnOffsetOrANodeOnCommand) {
         lines.push_back({{"kind", "label"}, {"id", "line-" + std::to_string(index)}, {"text", "Line " + std::to_string(index)}});
     }
 
-    const core::Json tree = {{"kind", "scroll"}, {"id", "log"}, {"scrollbar", false}, {"children", {{{"kind", "column"}, {"gap", 0}, {"children", lines}}}}};
+    const core::Json tree = {{"kind", "scroll"}, {"id", "log"}, {"children", {{{"kind", "column"}, {"gap", 0}, {"children", lines}}}}};
     auto gui = mount(tree.dump());
     Context& context = getUi().getContext();
     const auto distance = [&](const std::string& id) { return getBounds(*gui, id).y - getBounds(*gui, "log").y; };

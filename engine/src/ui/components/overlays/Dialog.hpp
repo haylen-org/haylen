@@ -11,12 +11,12 @@
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
-#include "ui/Scrollbar.hpp"
+#include "ui/ClampedScroll.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {
 
-// The card of a dialog with a title, a message, optional content and answer buttons, which line up in one row while they fit and otherwise stack across its width, on its themed surface or, with the property `glass`, on glass. A presentation of the dialog style shows it over the dimmed screen, which takes the modality, the backdrop, the fades and the back. The card is as wide as the theme `dialogWidth` within the room it has, as tall as its content within the safe area, and content taller than that scrolls beside a scroll bar at the edge of the card. Its last button takes the focus when the card first draws.
+// The card of a dialog with a title, a message, optional content and answer buttons, which line up in one row while they fit and otherwise stack across its width, on its themed surface or, with the property `glass`, on glass. A presentation of the dialog style shows it over the dimmed screen, which takes the modality, the backdrop, the fades and the back. The card is as wide as the theme `dialogWidth` within the room it has, as tall as its content within the safe area, and content taller than that scrolls and fades out along the edges where it continues. Its last button takes the focus when the card first draws.
 class Dialog final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -58,7 +58,7 @@ class Dialog final : public Component {
     TextValue title;
     TextValue message;
     std::vector<Answer> buttons;
-    Scrollbar scrollbar;
+    ClampedScroll scroll;
 };
 
 } // namespace haylen::ui

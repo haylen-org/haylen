@@ -322,7 +322,7 @@ class Collection final : public Component {
     std::string placeholder;
     bool stickToEnd = false;
     Snap snap = Snap::None;
-    bool scrollbarShown = true;
+    bool scrollbarShown = false;
     bool laneReserved = false;
     float prefetch = 0.5F;
     int poolSize = 8;
