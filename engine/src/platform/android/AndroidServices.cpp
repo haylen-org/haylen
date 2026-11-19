@@ -31,7 +31,7 @@ namespace haylen::platform {
 
 port::Services AndroidServices::create() {
     const auto services = std::make_shared<AndroidServices>();
-    return {.platform = services, .displays = services, .screen = services, .bridge = services, .network = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .network = services, .backgroundAudio = services, .accessibility = services, .video = services, .fonts = services};
 }
 
 std::string_view AndroidServices::getName() const noexcept {
@@ -180,18 +180,13 @@ std::string AndroidServices::getNetworkRequirement() {
     return JavaBridge::getNetworkRequirement();
 }
 
-// The process keeps running in the background with the frames of the runtime, and the media session keeps it in the foreground while what plays shows as playing, so Android never freezes it.
-void AndroidServices::setBackgroundAudio(bool value) {
-    JavaBridge::setBackgroundAudio(value);
+// The process keeps running in the background with the frames of the runtime while the foreground service of the type `mediaPlayback` that the app declares runs, so Android never freezes it there.
+bool AndroidServices::isDeclared() {
+    return JavaBridge::isBackgroundAudioDeclared();
 }
 
-void AndroidServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
-    if (!value) {
-        JavaBridge::updateMediaSession({}, {});
-        return;
-    }
-
-    JavaBridge::updateMediaSession(MediaSession::writeNowPlaying(*value), value->artwork);
+void AndroidServices::setEnabled(bool value) {
+    JavaBridge::setBackgroundAudio(value);
 }
 
 bool AndroidServices::isTreeWanted() {

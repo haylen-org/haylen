@@ -23,7 +23,7 @@ from haylen.platforms.verification_report import VerificationReport
 
 
 class AndroidVerifier:
-    """Checks a built Android app against what the engine and every plugin need: the library that the activity loads and the native libraries for every ABI of the product, the JNI functions of every native method of the classes of the engine in the library that the activity loads, the merged manifest with the activity of the engine, the service of background audio, the provider of plugins and what every plugin module declares, and in a release the protected release that the APK holds, its shards stored uncompressed and the asset packs of the bundle."""
+    """Checks a built Android app against what the engine and every plugin need: the library that the activity loads and the native libraries for every ABI of the product, the JNI functions of every native method of the classes of the engine in the library that the activity loads, the merged manifest with the activity of the engine, the provider of plugins and what every plugin module declares, and in a release the protected release that the APK holds, its shards stored uncompressed and the asset packs of the bundle."""
 
     SOURCE = "android"
     # The JNI entry that loads the runtime, which registers the natives of the data views of Varn.
@@ -85,8 +85,6 @@ class AndroidVerifier:
         merged = apk.manifest(self.context)
         removed = AndroidManifestFile.removed_permissions(resolved)
         needs = [("Haylen", "activity", "dev.haylen.HaylenActivity")]
-        if resolved.app.section("audio").get("background") is True:
-            needs.append(('The audio that plays in the background, which "audio.background" of "haylen.json" declares,', "service", "dev.haylen.HaylenPlaybackService"))
         # The provider loads the plugin classes that meta-data name, so a module without one, such as a manifest that only adds an intent filter, needs no provider.
         classes = sorted(name for name in merged.get("meta-data", set()) if name.startswith(AndroidVerifier.PLUGIN_CLASS_PREFIX))
         if classes:

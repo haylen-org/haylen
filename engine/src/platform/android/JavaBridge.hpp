@@ -76,10 +76,10 @@ class JavaBridge final {
     // Whether Android lets the app reach the local network now, from any thread and without a prompt, for the failures that explain why it blocked a request, which an app that targets Android 17 reaches only with the permission `ACCESS_LOCAL_NETWORK`.
     [[nodiscard]] static bool isLocalNetworkAllowed();
 
-    // Hands the media session of the activity what plays, as the JSON of `{title, artist, album, duration, position, playing, commands}` with the bytes of its artwork, or an empty JSON to leave the controls.
-    static void updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork);
+    // Whether the merged manifest of the app declares a service of the type `mediaPlayback`, which lets it play audio in the background.
+    [[nodiscard]] static bool isBackgroundAudioDeclared();
 
-    // Tells the media session whether the app plays audio in the background, which keeps it in the foreground while what plays shows as playing.
+    // Tells the activity whether the app plays audio in the background, which keeps the audio focus there.
     static void setBackgroundAudio(bool value);
     static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
@@ -168,8 +168,8 @@ class JavaBridge final {
     static jclass accessibilityClass;
     static jmethodID updateAccessibilityMethod;
     static jmethodID announceMethod;
-    static jclass mediaSessionClass;
-    static jmethodID updateMediaSessionMethod;
+    static jclass backgroundAudioClass;
+    static jmethodID backgroundAudioDeclaredMethod;
     static jmethodID setBackgroundAudioMethod;
     static jclass outputsClass;
     static jmethodID openOutputMethod;

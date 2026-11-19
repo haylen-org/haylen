@@ -4,12 +4,12 @@
 
 #include "haylen/port/AccessibilityService.hpp"
 #include "haylen/port/AudioOutput.hpp"
+#include "haylen/port/BackgroundAudioService.hpp"
 #include "haylen/port/BridgeService.hpp"
 #include "haylen/port/DesktopService.hpp"
 #include "haylen/port/DisplayService.hpp"
 #include "haylen/port/FontService.hpp"
 #include "haylen/port/LinkService.hpp"
-#include "haylen/port/MediaService.hpp"
 #include "haylen/port/NetworkService.hpp"
 #include "haylen/port/PlatformService.hpp"
 #include "haylen/port/ScreenService.hpp"
@@ -26,7 +26,7 @@ struct Services {
     std::shared_ptr<BridgeService> bridge;
     std::shared_ptr<NetworkService> network;
     std::shared_ptr<LinkService> links;
-    std::shared_ptr<MediaService> media;
+    std::shared_ptr<BackgroundAudioService> backgroundAudio;
     std::shared_ptr<AccessibilityService> accessibility;
     std::shared_ptr<VideoService> video;
     std::shared_ptr<FontService> fonts;

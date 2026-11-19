@@ -605,7 +605,7 @@ void AppConfig::readLifecycle(const Json& section, AppConfig& config) {
 }
 
 void AppConfig::readAudio(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"iosSession", "mixWithOthers", "background", "latency", "limiter"}, "the \"audio\" section of \"haylen.json\"");
+    JsonValidator::requireKnownKeys(section, {"iosSession", "mixWithOthers", "latency", "limiter"}, "the \"audio\" section of \"haylen.json\"");
 
     if (section.contains("latency")) {
         std::string latency;
@@ -630,12 +630,6 @@ void AppConfig::readAudio(const Json& section, AppConfig& config) {
 
     if (config.audioSession.mixWithOthers && config.audioSession.category != audio::Session::Category::Playback) {
         throw std::invalid_argument("The \"audio.mixWithOthers\" option in \"haylen.json\" needs the \"iosSession\" value \"playback\".");
-    }
-
-    readValue(section, "audio", "background", config.audioSession.background);
-
-    if (config.audioSession.background && config.audioSession.category != audio::Session::Category::Playback) {
-        throw std::invalid_argument("The \"audio.background\" option in \"haylen.json\" needs the \"iosSession\" value \"playback\", the only session that iOS and tvOS play in the background.");
     }
 }
 
@@ -961,7 +955,7 @@ Json AppConfig::toJson() const {
     }
 
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"background", audioSession.background}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
     };
 }
 

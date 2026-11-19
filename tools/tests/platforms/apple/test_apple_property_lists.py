@@ -53,12 +53,6 @@ class ApplePropertyListsTest:
         ]
         assert info["UIApplicationSceneManifest"] == {"UIApplicationSupportsMultipleScenes": True}
 
-    def test_apps_that_play_in_the_background_get_the_audio_background_mode(self, apple):
-        audio = {"audio": {"iosSession": "playback", "background": True}}
-        for target in ("ios-simulator", "tvos-simulator", "visionos-simulator"):
-            assert self.info(apple, audio, target)["UIBackgroundModes"] == ["audio"]
-        assert "UIBackgroundModes" not in self.info(apple, audio, "macos")
-
     def test_a_mac_app_that_hides_from_the_dock_is_an_agent(self, apple):
         assert self.info(apple, {"window": {"showInTaskbar": False}}, "macos")["LSUIElement"] is True
 
@@ -74,10 +68,8 @@ class ApplePropertyListsTest:
             apple.prepare(app, "macos")
 
     def test_plugins_and_the_app_add_keys_and_items(self, apple):
-        app = apple.app(
-            {"plugins": {"links": {}}, "platforms": {"ios": {"infoPlist": {"CFBundleURLTypes": [{"CFBundleURLSchemes": ["own"]}], "UIBackgroundModes": ["fetch"]}}}, "audio": {"background": True}}
-        )
-        values = {"CFBundleURLTypes": [{"CFBundleURLSchemes": ["${scheme}"]}]}
+        app = apple.app({"plugins": {"links": {}}, "platforms": {"ios": {"infoPlist": {"CFBundleURLTypes": [{"CFBundleURLSchemes": ["own"]}], "UIBackgroundModes": ["fetch"]}}}})
+        values = {"CFBundleURLTypes": [{"CFBundleURLSchemes": ["${scheme}"]}], "UIBackgroundModes": ["audio"]}
         parameters = {"scheme": {"type": "string", "default": "demo", "description": "The scheme."}}
         apple.plugin(app, "links", {"implementations": {"ios": "native"}, "parameters": parameters, "contributions": [{"type": "infoPlist", "platforms": ["ios"], "values": values}]})
         info = AppleFixture.plist(apple.prepare(app), AppleProject.INFO_PLIST)

@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 6
+  CONTRACT 7
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -117,7 +117,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 6,
+  "contract": 7,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -200,7 +200,7 @@ Every platform, of the engine or of a port, registers the services of the capabi
 | `BridgeService` | The native parts of plugins in the language of the platform, their calls, their screens and the failures that stopped the app. | Calls and screens that fail with the code `noHandler`. |
 | `NetworkService` | Why the platform blocked a connection and what the project lacks for network access. | Nothing to explain. |
 | `LinkService` | The links of a platform that starts a new process of the app for every link. | No process forwards a link. |
-| `MediaService` | The now-playing controls and the audio of an app in the background. | No controls, and frames that keep running in the background. |
+| `BackgroundAudioService` | Whether the app declared to the system that it plays audio in the background, and running its frames there while it plays. | Every app plays in the background, with frames that keep running there. |
 | `AccessibilityService` | The screen reader. | A tree that nobody wants. |
 | `VideoService` | The decoder of video files. | No decoder, so a video fails with the sentence of the video system. |
 | `FontService` | The fonts of the system. | No font of the system. |

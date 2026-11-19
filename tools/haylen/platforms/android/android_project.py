@@ -35,7 +35,6 @@ class AndroidProject:
     # The application id of Android, which also names the package of the app, takes letters, digits and underscores in each part.
     APPLICATION_ID = re.compile(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+")
     PACKAGE_INDEX = "haylen-package-index.json"
-    PLAYBACK_LIBRARY = "haylen-playback"
     LOCAL_PROPERTIES = "local.properties"
 
     @dataclass(frozen=True)
@@ -231,10 +230,7 @@ class AndroidProject:
 
     def dependencies(self) -> str:
         version = self.product.primary.sdk.manifest.engine_version
-        libraries = [AndroidNativeBuild.PLAYER_LIBRARY]
-        if self.product.app.section("audio").get("background") is True:
-            libraries.append(AndroidProject.PLAYBACK_LIBRARY)
-        lines = [f'    implementation("dev.haylen:{library}:{version}")' for library in libraries]
+        lines = [f'    implementation("dev.haylen:{AndroidNativeBuild.PLAYER_LIBRARY}:{version}")']
         lines += [f"    implementation(project({AndroidTemplate.kotlin(':' + identifier)}))" for identifier, _ in self.plugins.modules]
         return "\n".join(lines)
 

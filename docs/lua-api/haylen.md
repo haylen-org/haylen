@@ -161,9 +161,8 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `audio.iosSession` | string | `"ambient"` | The category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |
+| `audio.iosSession` | string | `"ambient"` | The category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. Only `"playback"` plays in the background, which the app declares to the system, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. |
 | `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. The other sessions refuse `true`. |
-| `audio.background` | boolean | `false` | Keeps the sound playing while the app is in the background, such as the music of a player, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It needs the `"playback"` session, and the tools add the background mode of Apple platforms and the playback service of Android to the project. |
 | `audio.latency` | string | `"balanced"` | How the output trades latency for power: `"low"`, `"balanced"` or `"powerSaving"`, as [`audio.outputLatency`](audio.md#audiooutputlatency) describes. |
 | `audio.limiter` | boolean | `true` | Puts a [limiter](audio.md#limiter) on the `master` bus, so the mix never clips. |
 
@@ -935,7 +934,6 @@ The engine checks `haylen.json` before any Lua runs. A package whose `haylen.jso
 | `The orientation "<value>" in "haylen.json" is unknown. It is "landscape", "portrait" or "any".` | The orientation has another value. |
 | `The "audio.iosSession" value "<value>" in "haylen.json" is unknown. It is "ambient", "soloAmbient" or "playback".` | The audio session has another value. |
 | `The "audio.mixWithOthers" option in "haylen.json" needs the "iosSession" value "playback".` | The option `mixWithOthers` is `true` with another session. |
-| `The "audio.background" option in "haylen.json" needs the "iosSession" value "playback", the only session that iOS and tvOS play in the background.` | The option `background` is `true` with another session. |
 | `The "audio.latency" value "<value>" in "haylen.json" is unknown. It is "low", "balanced" or "powerSaving".` | The latency has another value. |
 | `The "input.scrollSpeed" value in "haylen.json" must be a positive number.` | The scroll speed is not a positive finite number. |
 | `The "ui.scaleMode" value "<value>" in "haylen.json" is unknown. It is "design" or "physical".` | The scale mode has another value. |

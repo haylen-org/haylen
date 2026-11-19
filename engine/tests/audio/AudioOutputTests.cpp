@@ -260,7 +260,7 @@ TEST_F(AudioOutputTest, ReportsTheStateAndTheLatencyOfTheOutput) {
 
 TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
     accepting = true;
-    test::EngineFixture fixture({{"haylen.json", R"({"name": "Night Radio", "identifier": "com.haylen.radio", "audio": {"iosSession": "playback", "background": true}})"}}, nullptr, {.audioOutput = testOutput});
+    test::EngineFixture fixture({{"haylen.json", R"({"name": "Night Radio", "identifier": "com.haylen.radio", "audio": {"iosSession": "playback"}})"}}, nullptr, {.audioOutput = testOutput});
     EXPECT_TRUE(fixture.host().isBackgroundAudio());
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
     Mixer& radio = fixture.engine().getAudio();
@@ -287,9 +287,10 @@ TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
     fixture.frames(1);
     EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
 
-    // An app that does not declare it stops its output in the background whatever plays.
+    // An app that does not declare it to the system stops its output in the background whatever plays.
     const std::string_view game = R"({"name": "Tiny Island", "identifier": "com.haylen.tinyisland"})";
     fixture.package().setFile("haylen.json", std::vector<std::uint8_t>(game.begin(), game.end()));
+    fixture.host().setBackgroundAudioDeclared(false);
     fixture.restart();
     EXPECT_FALSE(fixture.host().isBackgroundAudio());
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
@@ -298,7 +299,7 @@ TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
     fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
     fixture.frames(1);
     EXPECT_EQ(island.getOutputState(), Mixer::OutputState::Suspended);
-    EXPECT_NE(fixture.lua("require('haylen.audio').setBackground(true)").find(R"(The app plays in the background only when "audio.background" of "haylen.json" is true, which brings the settings of each platform that it needs.)"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.audio').setBackground(true)").find(R"(The app plays in the background only when it declares that to the system, with the mode "audio" of "UIBackgroundModes" in its "Info.plist" on Apple platforms and a service of the type "mediaPlayback" in its manifest on Android, which a plugin that plays in the background brings.)"), std::string::npos);
 }
 
 TEST_F(AudioOutputTest, PublishesTheUnlockOfTheOutput) {

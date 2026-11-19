@@ -246,15 +246,15 @@ void Services::listenForLinks(std::string_view identifier) {
     }
 }
 
-void Services::setBackgroundAudio(bool value) {
-    if (const auto& media = getInstalled().media) {
-        media->setBackgroundAudio(value);
-    }
+// A platform that keeps every app running in the background lets every app play there.
+bool Services::isBackgroundAudioDeclared() {
+    const auto& backgroundAudio = getInstalled().backgroundAudio;
+    return backgroundAudio == nullptr || backgroundAudio->isDeclared();
 }
 
-void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
-    if (const auto& media = getInstalled().media) {
-        media->setNowPlaying(value);
+void Services::setBackgroundAudio(bool value) {
+    if (const auto& backgroundAudio = getInstalled().backgroundAudio) {
+        backgroundAudio->setEnabled(value);
     }
 }
 

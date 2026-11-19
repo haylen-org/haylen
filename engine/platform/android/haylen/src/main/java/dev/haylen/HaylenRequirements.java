@@ -7,10 +7,12 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import androidx.annotation.RequiresApi;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,13 +76,6 @@ public final class HaylenRequirements {
         public static Requirement urlScheme(String scheme) {
             String filter = "<intent-filter><action android:name=\"android.intent.action.VIEW\" /><category android:name=\"android.intent.category.DEFAULT\" /><category android:name=\"android.intent.category.BROWSABLE\" /><data android:scheme=\"" + scheme + "\" /></intent-filter>";
             return module(Kind.URL_SCHEME, scheme, "an activity that opens the links with the scheme \"" + scheme + "\"", MODULE_MANIFEST, "<activity android:name=\"dev.haylen.HaylenLinkActivity\" android:exported=\"true\">" + filter + "</activity>");
-        }
-
-        // The service of the audio that plays in the background, which the library `haylen-playback` brings to an app that declares `audio.background` in `haylen.json`.
-        static Requirement backgroundAudio() {
-            String snippet = "{\"audio\": {\"background\": true}}";
-            String instructions = "Add \"" + snippet + "\" to \"" + APP_MANIFEST + "\".";
-            return new Requirement(Kind.SERVICE, HaylenPlaybackService.class.getName(), "the service of the audio that plays in the background", APP_MANIFEST, snippet, instructions);
         }
 
         // What only the Android module of a plugin brings, with a file relative to the module.
@@ -199,6 +194,19 @@ public final class HaylenRequirements {
 
     public boolean hasService(String className) {
         return declares(readPackage().services, className);
+    }
+
+    // Whether the merged manifest declares a service of the foreground service type, such as `ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK`, whose types Android 10 and later record.
+    @RequiresApi(Build.VERSION_CODES.Q)
+    boolean hasServiceOfType(int type) {
+        ServiceInfo[] services = readPackage().services;
+        for (int index = 0; services != null && index < services.length; ++index) {
+            if ((services[index].getForegroundServiceType() & type) != 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public boolean hasProvider(String authority) {

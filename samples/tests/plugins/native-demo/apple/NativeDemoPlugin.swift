@@ -9,9 +9,9 @@ import AppKit
 import UIKit
 #endif
 
-// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone, with the simulations of SDKs in `NativeDemoDevice` and `NativeDemoStore`. The runtime creates it by the class name that `plugin.json` gives and loads it while the app launches, and hands it the events of the notification center, since it adopts the notification plugin protocol.
+// Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone, with the simulations of SDKs in `NativeDemoDevice` and `NativeDemoStore`. The runtime creates it by the class name that `plugin.json` gives and loads it while the app launches, and the plugin becomes the delegate of the notification center there, before launching ends, so the tap on a notification that launched the app reaches it.
 @objc(NativeDemoPlugin)
-final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
+final class NativeDemoPlugin: NSObject, HaylenPlugin, UNUserNotificationCenterDelegate {
     struct Empty: Codable {}
 
     struct Compute: Decodable {
@@ -144,7 +144,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     private static var frames = 0
 
     // The notifications of the plugin carry this prefix in their identifiers, so the plugin answers for its own notifications alone.
-    private static let notificationPrefix = "native-demo."
+    private nonisolated static let notificationPrefix = "native-demo."
 
     private var context: HaylenPluginContext!
     private var ticker: Timer?
@@ -496,8 +496,12 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
 
-    // The notifications ask the person through the notification center, which shows its prompt the first time.
+    // The notifications ask the person through the notification center, which shows its prompt the first time. The notification center of a process without a bundle, such as a player run from a terminal, raises an exception, so the plugin leaves it alone there.
     private func registerNotifications(_ context: HaylenPluginContext) {
+        if Bundle.main.bundleIdentifier != nil {
+            UNUserNotificationCenter.current().delegate = self
+        }
+
         // The notification comes after the seconds pass, whether the app runs, waits in the background or was closed.
         context.register("notify") { [unowned self] (params: Notify) async throws -> Scheduled in
             #if os(tvOS)
@@ -531,8 +535,8 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
 
-    // A notification of the plugin shows while the app is in front too, and the notifications of other plugins keep the options those plugins ask for.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    // A notification of the plugin shows while the app is in front too. The notification center may call its delegate on any queue.
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         #if os(tvOS)
         completionHandler([])
         #else
@@ -542,11 +546,15 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
 
     #if !os(tvOS)
     // The tap on a notification of the plugin reaches the app as `notificationOpened`, retained, so the tap that launched the app waits for the first listener.
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let request = response.notification.request
         if request.identifier.hasPrefix(Self.notificationPrefix) {
+            let identifier = request.identifier
+            let title = request.content.title
             let action = response.actionIdentifier == UNNotificationDefaultActionIdentifier ? "open" : response.actionIdentifier
-            context.emitRetained("notificationOpened", payload: ["identifier": request.identifier, "title": request.content.title, "action": action, "language": Self.language])
+            Task { @MainActor in
+                self.context.emitRetained("notificationOpened", payload: ["identifier": identifier, "title": title, "action": action, "language": Self.language])
+            }
         }
         completionHandler()
     }

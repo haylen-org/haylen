@@ -315,12 +315,12 @@ AccessibilitySettings NativeHost::getAccessibilitySettings() const {
     return getSystemState().getAccessibility();
 }
 
-void NativeHost::setBackgroundAudio(bool value) {
-    Services::setBackgroundAudio(value);
+bool NativeHost::isBackgroundAudioDeclared() const {
+    return Services::isBackgroundAudioDeclared();
 }
 
-void NativeHost::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
-    Services::setNowPlaying(value);
+void NativeHost::setBackgroundAudio(bool value) {
+    Services::setBackgroundAudio(value);
 }
 
 bool NativeHost::isAccessibilityTreeWanted() const {

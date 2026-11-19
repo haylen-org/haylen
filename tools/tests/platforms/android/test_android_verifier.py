@@ -46,7 +46,7 @@ class AndroidVerifierTest:
 
     def test_the_merged_manifest_holds_what_the_engine_and_every_plugin_need(self, tmp_path, monkeypatch):
         fixture = AndroidFixture(tmp_path)
-        app = fixture.app({"plugins": {"camera": {}}, "audio": {"background": True}, "platforms": {"android": {"manifest": {"removedPermissions": ["android.permission.CAMERA"]}}}})
+        app = fixture.app({"plugins": {"camera": {}}, "platforms": {"android": {"manifest": {"removedPermissions": ["android.permission.CAMERA"]}}}})
         plugin = fixture.plugin(app, "camera", {})
         manifest = '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <application>\n        <activity android:name=".CameraActivity" />\n        <meta-data android:name="dev.haylen.plugin.camera" android:value="${id}" />\n    </application>\n</manifest>\n'
         (plugin / "android" / "src" / "main" / "AndroidManifest.xml").write_text(manifest, encoding="utf-8")
@@ -57,10 +57,6 @@ class AndroidVerifierTest:
         checks = AndroidVerifierTest.outcomes(AndroidVerifier(fixture.context, lambda: None).verify(product))["manifest"]
 
         assert checks == [
-            (
-                "failed",
-                'The audio that plays in the background, which "audio.background" of "haylen.json" declares, needs the service "dev.haylen.HaylenPlaybackService", which the merged manifest of the built app lacks.',
-            ),
             (
                 "warning",
                 'The plugin "camera" needs the permission "android.permission.CAMERA", which "platforms.android.manifest.removedPermissions" of "haylen.json" removes, so the calls that need it answer "unsupported". Keep the permission to use them.',

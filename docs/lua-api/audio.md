@@ -924,7 +924,7 @@ audio.restartOutput()
 
 ### audio.setBackground(enabled)
 
-Turns on or off whether the sound keeps playing while the app is in the background, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It starts as `audio.background` of `haylen.json` sets it, and only an app that declares `"background": true` there may turn it on, since the settings that each platform needs come from that declaration. Turning it on in another app raises `The app plays in the background only when "audio.background" of "haylen.json" is true, which brings the settings of each platform that it needs.`. An app in the background follows the change at once. Its output stops when the sound may no longer play there, and plays again when a voice plays.
+Turns on or off whether the sound keeps playing while the app is in the background, as the [audio guide](../audio/audio.md#playing-in-the-background) describes. It starts on when the app declared to the system that it plays in the background, and on every platform that keeps every app running there, and only such an app may turn it on. Turning it on in another app raises `The app plays in the background only when it declares that to the system, with the mode "audio" of "UIBackgroundModes" in its "Info.plist" on Apple platforms and a service of the type "mediaPlayback" in its manifest on Android, which a plugin that plays in the background brings.`. An app in the background follows the change at once. Its output stops when the sound may no longer play there, and plays again when a voice plays.
 
 ```lua
 local audio = require('haylen.audio')
@@ -938,7 +938,7 @@ print(audio.background())
 
 ### audio.background()
 
-Returns whether the sound keeps playing while the app is in the background, as `audio.background` of `haylen.json` and [`audio.setBackground`](#audiosetbackgroundenabled) set it.
+Returns whether the sound keeps playing while the app is in the background, as the declaration of the app to the system and [`audio.setBackground`](#audiosetbackgroundenabled) set it.
 
 ```lua
 local audio = require('haylen.audio')

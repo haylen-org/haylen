@@ -16,9 +16,6 @@ NS_ASSUME_NONNULL_BEGIN
 // The entry of `data.missing` that tells the app what it lacks.
 @property(nonatomic, readonly) NSDictionary<NSString*, NSString*>* entry;
 
-// The background mode `audio` of the audio that plays in the background, which the app declares with `audio.background` of `haylen.json`.
-+ (instancetype)backgroundAudio;
-
 - (BOOL)isMetBy:(HaylenRequirements*)requirements;
 
 @end

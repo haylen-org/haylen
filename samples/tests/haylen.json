@@ -19,8 +19,7 @@
     },
     "clearColor": "#FF101418",
     "audio": {
-        "iosSession": "playback",
-        "background": true
+        "iosSession": "playback"
     },
     "debug": {
         "console": true

@@ -15,8 +15,8 @@
 
 namespace haylen::platform {
 
-// The services of the web runtime, which reach the page through `Module.haylen`: the platform, the screens the page knows, the screen of the page with its safe area, orientation and fold, the web parts of plugins, the media session, the mirror of the UI for screen readers and the video decoder of the browser. A page has no desktop, opens no process for a link, since it is the link that opened it, and reads no font of the system.
-class WebServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::MediaService, public port::AccessibilityService, public port::VideoService {
+// The services of the web runtime, which reach the page through `Module.haylen`: the platform, the screens the page knows, the screen of the page with its safe area, orientation and fold, the web parts of plugins, the mirror of the UI for screen readers and the video decoder of the browser. A page has no desktop, opens no process for a link, since it is the link that opened it, and reads no font of the system.
+class WebServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::AccessibilityService, public port::VideoService {
   public:
     [[nodiscard]] static port::Services create();
 
@@ -50,9 +50,6 @@ class WebServices final : public port::PlatformService, public port::DisplayServ
     void openScreen(const ScreenRequest& request) override;
     void cancelScreen(std::uint64_t id) override;
     void reportError(const core::Json& report) override;
-
-    void setBackgroundAudio(bool value) override;
-    void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;
 
     [[nodiscard]] bool isTreeWanted() override;
     void update(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;

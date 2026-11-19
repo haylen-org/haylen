@@ -4,7 +4,7 @@ from haylen.platforms.apple.apple_target import AppleTarget
 
 
 class InfoPlistKeys:
-    """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads every orientation, since the runtime allows the ones of `orientation` and a foldable iPhone shows an app that lists fewer in a box, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, the background mode of the audio that plays in the background, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`."""
+    """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads every orientation, since the runtime allows the ones of `orientation` and a foldable iPhone shows an app that lists fewer in a box, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`."""
 
     PHONE_ORIENTATIONS = ("UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
     PAD_ORIENTATIONS = ("UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
@@ -41,6 +41,4 @@ class InfoPlistKeys:
             keys["UIStatusBarHidden"] = status_bar == "hidden"
             if status_bar != "hidden":
                 keys["UIStatusBarStyle"] = InfoPlistKeys.STATUS_BAR_STYLES[status_bar]
-        if app.section("audio").get("background", False):
-            keys["UIBackgroundModes"] = ["audio"]
         return keys

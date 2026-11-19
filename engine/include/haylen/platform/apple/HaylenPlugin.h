@@ -122,7 +122,7 @@ NS_SWIFT_SENDABLE
 
 @end
 
-// The native part of a plugin on Apple platforms. The runtime creates one instance of the class of every plugin that the bundled package lists for this platform with init, in load order, and loads it while the app launches, before launching ends, so SDKs can set up there. It then hands each plugin the events of the app and its scene on the main thread, and a plugin that also adopts `HaylenNotificationPlugin` the events of the notification center. Every method that takes a completion handler must call it once.
+// The native part of a plugin on Apple platforms. The runtime creates one instance of the class of every plugin that the bundled package lists for this platform with init, in load order, and loads it while the app launches, before launching ends, so SDKs can set up there. It then hands each plugin the events of the app and its scene on the main thread. Every method that takes a completion handler must call it once.
 NS_SWIFT_UI_ACTOR
 @protocol HaylenPlugin <NSObject>
 

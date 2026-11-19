@@ -1,9 +1,8 @@
--- The player: the queue, the song that plays with its voice of haylen.audio, shuffle, repeat, seeking, the sleep timer and the now playing controls of the system. It is an autoload, so music goes on across every screen. Songs are made by the synthesizer in jobs the first time they play and kept for a while, and every change emits "playerChanged" on the event bus.
+-- The player: the queue, the song that plays with its voice of haylen.audio, shuffle, repeat, seeking and the sleep timer. It is an autoload, so music goes on across every screen. Songs are made by the synthesizer in jobs the first time they play and kept for a while, and every change emits "playerChanged" on the event bus.
 local async = require('async')
 local audio = require('haylen.audio')
 local events = require('haylen.events')
 local jobs = require('haylen.jobs')
-local system = require('haylen.system')
 
 local Catalog = require('data.catalog')
 local Random = require('random')
@@ -21,20 +20,6 @@ Player.cache = {}
 Player.cacheOrder = {}
 Player.random = Random(5)
 Player.sleepLeft = nil
-
-function Player:start()
-    events.on('mediaCommand', function(event)
-        if event.command == 'play' or event.command == 'pause' or event.command == 'togglePlayPause' then
-            Player.toggle()
-        elseif event.command == 'next' then
-            Player.next()
-        elseif event.command == 'previous' then
-            Player.previous()
-        elseif event.command == 'seek' then
-            Player.seek(event.position)
-        end
-    end, {owner = Player})
-end
 
 function Player.current()
     return Player.queue[Player.index]
@@ -92,7 +77,6 @@ function Player.load(startAt)
         if not Player.playing then
             audio.pause(Player.voice)
         end
-        Player.showNowPlaying()
         Player.changed()
         local upcoming = Player.queue[Player.index + 1]
         if upcoming then
@@ -131,7 +115,6 @@ function Player.toggle()
             audio.pause(Player.voice)
         end
     end
-    Player.showNowPlaying()
     Player.changed()
 end
 
@@ -164,7 +147,6 @@ end
 function Player.seek(seconds)
     if Player.voice and audio.active(Player.voice) then
         audio.setCursor(Player.voice, seconds)
-        Player.showNowPlaying()
         Player.changed()
     else
         Player.load(seconds)
@@ -254,14 +236,6 @@ end
 function Player.setSleep(value)
     Player.sleepLeft = value
     Player.changed()
-end
-
-function Player.showNowPlaying()
-    local track = Player.current()
-    if not track then
-        return
-    end
-    system.setNowPlaying({title = track.name, artist = track.artistName, album = track.albumName, duration = track.length, position = Player.elapsed(), playing = Player.playing, commands = {'play', 'pause', 'togglePlayPause', 'next', 'previous', 'seek'}})
 end
 
 function Player:update(dt)

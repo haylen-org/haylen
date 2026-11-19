@@ -62,8 +62,7 @@ TEST_F(SoundTest, ReadsTheSessionFromHaylenJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "playback", "mixWithOthers": true}})"));
     EXPECT_EQ(config.audioSession.category, Session::Category::Playback);
     EXPECT_TRUE(config.audioSession.mixWithOthers);
-    EXPECT_EQ(config.toJson().at("audio"), core::Json::parse(R"({"iosSession": "playback", "mixWithOthers": true, "background": false, "latency": "balanced", "limiter": true})"));
-    EXPECT_TRUE(core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "playback", "background": true}})")).audioSession.background);
+    EXPECT_EQ(config.toJson().at("audio"), core::Json::parse(R"({"iosSession": "playback", "mixWithOthers": true, "latency": "balanced", "limiter": true})"));
     const core::AppConfig output = core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"latency": "powerSaving", "limiter": false}})"));
     EXPECT_EQ(output.audioOutput.latency, OutputSettings::Latency::PowerSaving);
     EXPECT_FALSE(output.audioOutput.limiter);

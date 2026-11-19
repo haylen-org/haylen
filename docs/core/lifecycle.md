@@ -88,7 +88,6 @@ The engine names every moment of the system, of the app and of its screen with o
 | The network comes or goes. | `networkOnline`, `networkOffline` | [`haylen.networkState()`](../lua-api/haylen.md#haylennetworkstate) |
 | The accessibility settings change. | `accessibilitySettingsChanged` | [`accessibility.settings()`](../lua-api/accessibility.md#accessibilitysettings) |
 | The system takes the audio and gives it back, or the output moves. | `audioInterrupted`, `audioResumed`, `audioRouteChanged` | [`audio.interrupted()`](../lua-api/audio.md#audiointerrupted) |
-| The controls of the lock screen, a headset or the media keys ask for a change of what plays. | `mediaCommand` | [`system.setNowPlaying`](../lua-api/system.md#systemsetnowplayinginfo) shows what plays. |
 | The window shows or hides. | `appActive` and `appBackground` | `'background'` while it hides. |
 | The window changes size, orientation, fold, safe area or display. | `windowResized`, `windowOrientationChanged`, `windowFoldChanged`, `windowSafeAreaChanged`, `windowDisplayChanged` | [`haylen.window`](../lua-api/window.md) and [`haylen.viewport`](../lua-api/viewport.md) |
 | A display connects, disconnects or changes. | `displayConnected`, `displayDisconnected`, `displayChanged` | [`haylen.display`](../lua-api/display.md) |
@@ -178,7 +177,7 @@ events.on('levelEnded', function() window.setKeepScreenOn(false) end)
 The event loop and the platform bridge run inside the frames of the app. So nothing arrives while the platform runs no frames at all. Each platform runs frames differently while the app is away.
 
 - **Android.** A dialog, a message or the notification shade only takes the focus of the window, and the frames keep running under it. The activity pauses in the background and under every activity over the app, such as a document picker, a permission prompt or a screen that is an activity of its own. The app is then in the background and draws nothing, but it keeps ticking ten times a second, for as long as the process lives. Each tick is a frame of the app in the background. So Varn's event loop runs, Varn timers fire, `call:cancel()` and timeouts take effect, and network callbacks, `async` results and the replies and events of the platform bridge arrive while the other activity shows. An app whose `pauseOnBackground` is `false` also updates at that rate.
-- **iOS, iPadOS, tvOS and Mac Catalyst.** The frames go on while the scene is inactive, such as under the app switcher or Control Center, and they stop while it is in the background.
+- **iOS, iPadOS, tvOS and Mac Catalyst.** The frames go on while the scene is inactive, such as under the app switcher or Control Center, and they stop while it is in the background, except in an app that [plays in the background](../audio/audio.md#playing-in-the-background), whose frames go on ten times a second while its sound plays.
 - **The web.** Browsers stop the frames of a hidden tab.
 
 Where the frames stop, these things wait and arrive in the first frame after the app comes back: the replies and events of the platform bridge, the ends of screens, Varn timers, network callbacks and `async` results.
@@ -832,7 +831,7 @@ C++ code sees the same lifecycle through the engine.
 | `Engine::getReservedInsets()` | Returns the edges that native views reserve, in framebuffer pixels. |
 | `Engine::setPaused`, `Engine::isPaused` and the signal `pausedChanged` | Control the pause. |
 | `Engine::setLifecycle` | Changes the lifecycle options. |
-| `Engine::setBackgroundAudio`, `Engine::isBackgroundAudio` | Turn the sound that plays in the background off and on, as `audio.setBackground` does. |
+| `Engine::setBackgroundAudio`, `Engine::isBackgroundAudio` | Turn the sound that plays in the background off and on within what the app declared to the system, as `audio.setBackground` does. |
 | The signal `lowMemory` | Follows the memory warnings with their `platform::Event::MemoryLevel`. |
 | `platform::System::getPowerSaving()`, `getTimeZone()` | The power saving mode and the time zone, as `haylen.system` reads them. |
 | `TimerScheduler::Options` | Gives a timer a process mode and `unscaled`. |

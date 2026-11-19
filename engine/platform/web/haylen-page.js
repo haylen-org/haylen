@@ -1,4 +1,4 @@
-// Page side of the Haylen web runtime: what needs the document of the page, which are the input and the size of the canvas, the hidden text fields, the overlay of plugins, the mirror of the UI for screen readers, the clipboard, fullscreen, the pointer lock, the wake lock, the now-playing controls, the elements of videos, the windows of outputs, the audio contexts and the web modules of plugins. When the module runs on the page, the build includes this script after the engine side of `haylen-runtime.js`. In the Worker mode the page loads this script alone, and it starts the module in a dedicated worker, which it hands the canvas as an `OffscreenCanvas` and reaches through messages.
+// Page side of the Haylen web runtime: what needs the document of the page, which are the input and the size of the canvas, the hidden text fields, the overlay of plugins, the mirror of the UI for screen readers, the clipboard, fullscreen, the pointer lock, the wake lock, the elements of videos, the windows of outputs, the audio contexts and the web modules of plugins. When the module runs on the page, the build includes this script after the engine side of `haylen-runtime.js`. In the Worker mode the page loads this script alone, and it starts the module in a dedicated worker, which it hands the canvas as an `OffscreenCanvas` and reaches through messages.
 // Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the versioned editor contract of `Module.haylen.editor`, which edits the package of the app and runs it again without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats`, `onReloaded` and `onTurnDevice` callbacks.
 
 Module.haylen = Module.haylen || {};
@@ -92,54 +92,6 @@ Module.haylen = Module.haylen || {};
         const battery = device.battery;
         const full = battery.level >= 1 && battery.chargingTime === 0;
         engine.call("haylen_web_battery", null, ["number", "number", "number"], [battery.level, battery.charging ? 1 : 0, full ? 1 : 0]);
-    };
-
-    // The now-playing controls of the browser through the Media Session API, whose actions the media keys of keyboards and headsets send too. The commands reach the engine in the order of `MediaSession::Command`, and the play and pause actions send the toggle of an app that offers only the toggle, since browsers have no toggle action.
-    const mediaActions = ["play", "pause", null, "stop", "nexttrack", "previoustrack", "seekto"];
-    let mediaArtwork = null;
-    haylen.nowPlaying = function (info, artwork) {
-        if (!("mediaSession" in navigator)) {
-            return;
-        }
-
-        const session = navigator.mediaSession;
-
-        if (mediaArtwork) {
-            URL.revokeObjectURL(mediaArtwork);
-            mediaArtwork = null;
-        }
-
-        const offers = (command) => info !== null && (info.commands & (1 << command)) !== 0;
-        mediaActions.forEach(function (action, command) {
-            if (action === null) {
-                return;
-            }
-
-            const sent = command <= 1 && !offers(command) && offers(2) ? 2 : command;
-            const handler = offers(sent) ? (details) => engine.call("haylen_web_media_command", null, ["number", "number"], [sent, details.seekTime || 0]) : null;
-            // A browser that lacks an action throws, and the action is then not offered there.
-            try {
-                session.setActionHandler(action, handler);
-            } catch (error) {
-                return;
-            }
-        });
-
-        if (info === null) {
-            session.metadata = null;
-            session.playbackState = "none";
-            return;
-        }
-
-        if (artwork.length > 0) {
-            mediaArtwork = URL.createObjectURL(new Blob([artwork]));
-        }
-
-        session.metadata = new MediaMetadata({ title: info.title, artist: info.artist, album: info.album, artwork: mediaArtwork ? [{ src: mediaArtwork }] : [] });
-        session.playbackState = info.playing ? "playing" : "paused";
-        if (info.duration > 0 && session.setPositionState) {
-            session.setPositionState({ duration: info.duration, position: Math.min(info.position, info.duration), playbackRate: 1 });
-        }
     };
 
     // Registers an async handler for a platform method. It receives the parsed params and a context with the id of the call and a signal that aborts when the app cancels the call or its timeout passes, and it returns any JSON value. A thrown error fails the call with its message and its code and data, or with the code `exception` when it has no code.

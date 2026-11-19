@@ -33,10 +33,10 @@ final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener,
         setInterrupted(manager.requestAudioFocus(request) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
     }
 
-    // An app that plays in the background keeps the focus there while it plays, so another app that takes it interrupts the sound.
+    // An app that plays in the background keeps the focus there, so another app that takes it interrupts the sound.
     @Override
     public void onPause(@NonNull LifecycleOwner owner) {
-        if (!HaylenMediaSession.isPlayingInBackground()) {
+        if (!HaylenBackgroundAudio.isEnabled()) {
             manager.abandonAudioFocusRequest(request);
         }
     }

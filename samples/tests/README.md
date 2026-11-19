@@ -391,7 +391,7 @@ Path finding, spatial queries, procedural generation, geometry and game AI, each
 
 #### Audio (AUD)
 
-Music, effects, buses, filters, positional sound, interruptions and many voices with sounds synthesized for these tests. The tests are in `source/categories/audio/`.
+Music, effects, buses, filters, positional sound, interruptions and many voices with sounds synthesized for these tests. The tests are in `source/categories/audio/`. The codes `AUD-010` and `AUD-012`, which showed the now-playing controls of the system and the playback in the background, left the project, since those controls and the background playback that they need are capabilities of plugins.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -404,9 +404,7 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 | `AUD-007` | Many voices | Bursts and rain of voices up to the limit of 128, with the statistics of every bus. |  |
 | `AUD-008` | Voice limits | A hundred coins with and without the limit of their sound, a line whose priority outlasts bursts that fill every voice, and a tone that stops and resumes quickly without clicks. |  |
 | `AUD-009` | Loudness and output | Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser. |  |
-| `AUD-010` | Now playing | A track in the now-playing controls of the system with its artwork, length and position, whose commands from the controls, media keys, headsets and remotes change what plays. |  |
 | `AUD-011` | Seeking a long track | A streamed Ogg Vorbis track of two and a half minutes that jumps to its end, back to its start, ten seconds either way and anywhere at once, with the time each jump took until the sound played on. |  |
-| `AUD-012` | Playing in the background | A playlist of streamed tracks that plays on, track after track, while the app is in the background, with the now-playing controls of the system and how far the music went while the app was away. |  |
 
 #### Components (CMP)
 

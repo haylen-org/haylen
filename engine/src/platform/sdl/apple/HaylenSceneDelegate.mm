@@ -4,7 +4,6 @@
 #include "platform/LinkRelay.hpp"
 #include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleBackgroundAudio.hpp"
-#import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
@@ -15,7 +14,6 @@
 #include "platform/sdl/Runtime.hpp"
 
 using haylen::platform::AppleBackgroundAudio;
-using haylen::platform::AppleNotifications;
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
 using haylen::platform::AppleOrientation;
 #endif
@@ -33,10 +31,9 @@ using haylen::platform::NativeWindow;
     UISceneConnectionOptions* connectionOptions;
 }
 
-// Plugins load before launching ends, so their SDKs set up in time, and the notification center of an app that links UserNotifications gets its delegate as early, so the notification that launched the app reaches the plugins.
+// Plugins load before launching ends, so their SDKs set up in time.
 - (BOOL)application:(UIApplication*)application willFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey, id>*)launchOptions {
     ApplePlugins::load();
-    AppleNotifications::observe(self);
 
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application willFinishLaunchingWithOptions:launchOptions];
@@ -285,16 +282,6 @@ using haylen::platform::NativeWindow;
     });
     // clang-format on
 }
-
-- (void)userNotificationCenter:(id)center willPresentNotification:(id)notification withCompletionHandler:(void (^)(NSUInteger))completionHandler {
-    AppleNotifications::present(center, notification, completionHandler);
-}
-
-#if !TARGET_OS_TV
-- (void)userNotificationCenter:(id)center didReceiveNotificationResponse:(id)response withCompletionHandler:(void (^)(void))completionHandler {
-    AppleNotifications::receiveResponse(center, response, completionHandler);
-}
-#endif
 
 @end
 #endif

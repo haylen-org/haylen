@@ -436,7 +436,7 @@ The variable `HAYLEN_TESTS_SHARD` of the headless player, such as `HAYLEN_TESTS_
 
 ## The tests of the Android libraries
 
-The Java classes of the `haylen` library have tests of their own in `engine/platform/android/haylen/src/androidTest/`. They need Android, such as the ones of the artwork of the now-playing controls and of the tree of accessible elements, and run on a device or the emulator through the task `:haylen:connectedDebugAndroidTest` of the Gradle project in `engine/platform/android`, with the properties that `sdk build --target android` passes to it:
+The Java classes of the `haylen` library have tests of their own in `engine/platform/android/haylen/src/androidTest/`. They need Android, such as the ones of the tree of accessible elements, and run on a device or the emulator through the task `:haylen:connectedDebugAndroidTest` of the Gradle project in `engine/platform/android`, with the properties that `sdk build --target android` passes to it:
 
 ```sh
 gradle -p engine/platform/android :haylen:connectedDebugAndroidTest -PhaylenNativeLibraries=<sdk>/jniLibs -PhaylenVarnSourceDir=<varn sources> -PhaylenMavenDir=<sdk>/maven -PhaylenBuildDirectory=build/engine/android-libraries-debug

@@ -351,7 +351,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         timeZone.unregister();
         accessibility.unregister();
         accessibilityTree.detach();
-        HaylenMediaSession.release();
         fold.unregister();
         displays.unregister();
         outputs.dismissAll();

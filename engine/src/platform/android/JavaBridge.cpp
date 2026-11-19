@@ -52,8 +52,8 @@ jmethodID JavaBridge::cancelScreenMethod = nullptr;
 jclass JavaBridge::accessibilityClass = nullptr;
 jmethodID JavaBridge::updateAccessibilityMethod = nullptr;
 jmethodID JavaBridge::announceMethod = nullptr;
-jclass JavaBridge::mediaSessionClass = nullptr;
-jmethodID JavaBridge::updateMediaSessionMethod = nullptr;
+jclass JavaBridge::backgroundAudioClass = nullptr;
+jmethodID JavaBridge::backgroundAudioDeclaredMethod = nullptr;
 jmethodID JavaBridge::setBackgroundAudioMethod = nullptr;
 std::atomic<bool> JavaBridge::accessibilityWanted{false};
 
@@ -71,10 +71,10 @@ jint JavaBridge::load(JavaVM* vm) {
     activityClass = findClass(*env, "dev/haylen/HaylenActivity");
     screensClass = findClass(*env, "dev/haylen/HaylenScreens");
     accessibilityClass = findClass(*env, "dev/haylen/HaylenAccessibilityTree");
-    mediaSessionClass = findClass(*env, "dev/haylen/HaylenMediaSession");
+    backgroundAudioClass = findClass(*env, "dev/haylen/HaylenBackgroundAudio");
     networkClass = findClass(*env, "dev/haylen/HaylenNetwork");
     outputsClass = findClass(*env, "dev/haylen/HaylenOutputs");
-    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr || networkClass == nullptr || outputsClass == nullptr) {
+    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || backgroundAudioClass == nullptr || networkClass == nullptr || outputsClass == nullptr) {
         return JNI_ERR;
     }
 
@@ -100,14 +100,14 @@ jint JavaBridge::load(JavaVM* vm) {
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
-    updateMediaSessionMethod = findMethod(*env, mediaSessionClass, "update", "([B[B)V");
-    setBackgroundAudioMethod = findMethod(*env, mediaSessionClass, "setBackground", "(Z)V");
+    backgroundAudioDeclaredMethod = findMethod(*env, backgroundAudioClass, "isDeclared", "()Z");
+    setBackgroundAudioMethod = findMethod(*env, backgroundAudioClass, "setEnabled", "(Z)V");
     localNetworkAllowedMethod = findMethod(*env, networkClass, "isLocalNetworkAllowed", "()Z");
     openOutputMethod = findMethod(*env, outputsClass, "open", "(II[B)V");
     closeOutputMethod = findMethod(*env, outputsClass, "close", "(I)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
 
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, launchArgumentsMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, localNetworkAllowedMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, launchArgumentsMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, backgroundAudioDeclaredMethod, setBackgroundAudioMethod, localNetworkAllowedMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -315,21 +315,20 @@ void JavaBridge::announce(std::string_view text, bool interrupt) {
     clearException(env, "dev.haylen.HaylenAccessibilityTree.announce");
 }
 
-void JavaBridge::updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork) {
+bool JavaBridge::isBackgroundAudioDeclared() {
     JNIEnv& env = getEnv();
-    {
-        const JavaLocalRef info = infoJson.empty() ? JavaLocalRef<jbyteArray>(env, nullptr) : toBytes(env, infoJson);
-        const JavaLocalRef bytes = artwork.empty() ? JavaLocalRef<jbyteArray>(env, nullptr) : toBytes(env, std::string_view(reinterpret_cast<const char*>(artwork.data()), artwork.size()));
-        env.CallStaticVoidMethod(mediaSessionClass, updateMediaSessionMethod, info.get(), bytes.get());
+    const jboolean declared = env.CallStaticBooleanMethod(backgroundAudioClass, backgroundAudioDeclaredMethod);
+    if (clearException(env, "dev.haylen.HaylenBackgroundAudio.isDeclared")) {
+        return false;
     }
 
-    clearException(env, "dev.haylen.HaylenMediaSession.update");
+    return declared == JNI_TRUE;
 }
 
 void JavaBridge::setBackgroundAudio(bool value) {
     JNIEnv& env = getEnv();
-    env.CallStaticVoidMethod(mediaSessionClass, setBackgroundAudioMethod, value ? JNI_TRUE : JNI_FALSE);
-    clearException(env, "dev.haylen.HaylenMediaSession.setBackground");
+    env.CallStaticVoidMethod(backgroundAudioClass, setBackgroundAudioMethod, value ? JNI_TRUE : JNI_FALSE);
+    clearException(env, "dev.haylen.HaylenBackgroundAudio.setEnabled");
 }
 
 void JavaBridge::openScreen(const ScreenRequest& request) {

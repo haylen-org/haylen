@@ -22,7 +22,6 @@
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsFonts.hpp"
 #include "platform/windows/WindowsLinks.hpp"
-#include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsMemory.hpp"
 #include "platform/windows/WindowsNetwork.hpp"
 #include "platform/windows/WindowsSystem.hpp"
@@ -32,7 +31,7 @@ namespace haylen::platform {
 
 port::Services WindowsServices::create() {
     const auto services = std::make_shared<WindowsServices>();
-    return {.platform = services, .displays = services, .desktop = services, .links = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+    return {.platform = services, .displays = services, .desktop = services, .links = services, .accessibility = services, .video = services, .fonts = services};
 }
 
 std::string_view WindowsServices::getName() const noexcept {
@@ -170,13 +169,6 @@ bool WindowsServices::forwardLink(std::string_view identifier, std::string_view 
 
 void WindowsServices::listenForLinks(std::string_view identifier) {
     WindowsLinks::listen(identifier);
-}
-
-// A minimized window keeps running its frames, so its sound plays on.
-void WindowsServices::setBackgroundAudio(bool) {}
-
-void WindowsServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
-    WindowsMediaSession::update(value);
 }
 
 bool WindowsServices::isTreeWanted() {

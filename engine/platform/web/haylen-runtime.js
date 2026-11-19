@@ -994,7 +994,6 @@ Module.haylen = Module.haylen || {};
             "reportReloaded",
             "reportLoadProgress",
             "setDrawableWidth",
-            "nowPlaying",
             "dispatch",
             "cancel",
             "openScreen",

@@ -98,6 +98,7 @@ class NativeHost : public Host {
     [[nodiscard]] Theme getTheme() const override;
     [[nodiscard]] Battery getBattery() const override;
     [[nodiscard]] std::optional<bool> getPowerSaving() const override;
+    [[nodiscard]] bool isBackgroundAudioDeclared() const override;
     void setBackgroundAudio(bool value) override;
     [[nodiscard]] std::string getTimeZone() const override;
     [[nodiscard]] std::vector<std::string> getLanguages() const override;
@@ -105,7 +106,6 @@ class NativeHost : public Host {
     [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override;
     [[nodiscard]] bool isAccessibilityTreeWanted() const override;
     void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;
-    void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;
     void announce(std::string_view text, bool interrupt) override;
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override;
     [[nodiscard]] std::optional<SystemFont> findSystemFont(char32_t codePoint) override;

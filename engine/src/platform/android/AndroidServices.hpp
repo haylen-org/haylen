@@ -15,8 +15,8 @@
 
 namespace haylen::platform {
 
-// The services of Android, which reach the activity through JNI: the platform, its displays, the screen of the activity with its insets, orientation, bars, gestures, fold and cutouts, the Android parts of plugins, why it blocked a connection, the media session, the accessibility tree, the video decoder of the media codecs and the fonts of the font matcher. The activity fills its display and hands the links that open the app to the activity that runs.
-class AndroidServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::NetworkService, public port::MediaService, public port::AccessibilityService, public port::VideoService, public port::FontService {
+// The services of Android, which reach the activity through JNI: the platform, its displays, the screen of the activity with its insets, orientation, bars, gestures, fold and cutouts, the Android parts of plugins, why it blocked a connection, the audio in the background that the manifest declares, the accessibility tree, the video decoder of the media codecs and the fonts of the font matcher. The activity fills its display and hands the links that open the app to the activity that runs.
+class AndroidServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::NetworkService, public port::BackgroundAudioService, public port::AccessibilityService, public port::VideoService, public port::FontService {
   public:
     [[nodiscard]] static port::Services create();
 
@@ -54,8 +54,8 @@ class AndroidServices final : public port::PlatformService, public port::Display
     [[nodiscard]] std::string explainBlockedSocket(std::intptr_t socket) override;
     [[nodiscard]] std::string getNetworkRequirement() override;
 
-    void setBackgroundAudio(bool value) override;
-    void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;
+    [[nodiscard]] bool isDeclared() override;
+    void setEnabled(bool value) override;
 
     [[nodiscard]] bool isTreeWanted() override;
     void update(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include "haylen/platform/Event.hpp"
-#include "haylen/platform/MediaSession.hpp"
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/CrashGuard.hpp"
@@ -201,10 +200,6 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenOutputs_nativeTouch(JNIEnv* env, jc
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {
     haylen::platform::AndroidActivity::receiveFold({.present = present == JNI_TRUE, .left = left, .top = top, .right = right, .bottom = bottom, .vertical = vertical == JNI_TRUE, .halfOpened = halfOpened == JNI_TRUE, .separating = separating == JNI_TRUE, .occluding = occluding == JNI_TRUE});
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenMediaSession_nativeCommand(JNIEnv*, jclass, jint command, jdouble position) {
-    haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {

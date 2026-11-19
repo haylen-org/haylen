@@ -36,7 +36,7 @@ NS_SWIFT_SENDABLE
 // A scheme of `CFBundleURLTypes`, whose links open the app.
 + (instancetype)urlScheme:(NSString*)scheme;
 
-// A class that a framework or a library brings, such as `UNUserNotificationCenter` of `UserNotifications.framework`, which the `framework` contribution of a plugin links into the app.
+// A class that a framework or a library brings, such as `CLLocationManager` of `CoreLocation.framework`, which the `framework` contribution of a plugin links into the app.
 + (instancetype)className:(NSString*)name framework:(NSString*)framework;
 
 // A boolean entitlement that the app signs with. Only macOS and Mac Catalyst tell an app its entitlements, so on iOS and tvOS the requirement never counts as missing, and the error of the API that needs it tells instead.

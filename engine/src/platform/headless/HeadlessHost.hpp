@@ -360,11 +360,11 @@ class HeadlessHost final : public Host {
     void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused) override {
         accessibilityTrees.push_back({.elements = {elements.begin(), elements.end()}, .focused = focused});
     }
+    [[nodiscard]] bool isBackgroundAudioDeclared() const override {
+        return backgroundAudioDeclared;
+    }
     void setBackgroundAudio(bool value) override {
         backgroundAudio = value;
-    }
-    void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override {
-        nowPlaying = value;
     }
 
     void announce(std::string_view text, bool interrupt) override {
@@ -596,14 +596,14 @@ class HeadlessHost final : public Host {
         accessibilityWanted = value;
     }
 
+    // Whether the app that starts next declared to the system that it plays audio in the background. The headless platform keeps every app running in the background, as a desktop does, until a test says otherwise.
+    void setBackgroundAudioDeclared(bool value) noexcept {
+        backgroundAudioDeclared = value;
+    }
+
     // Whether the app that started last plays audio in the background, as it told the platform.
     [[nodiscard]] bool isBackgroundAudio() const noexcept {
         return backgroundAudio;
-    }
-
-    // What the engine shows in the now-playing controls of the headless platform, or nothing.
-    [[nodiscard]] const std::optional<MediaSession::NowPlaying>& getNowPlaying() const noexcept {
-        return nowPlaying;
     }
 
     // The trees of accessible elements and the announcements the engine handed the headless platform, in order.
@@ -764,7 +764,7 @@ class HeadlessHost final : public Host {
     std::string blockedReason;
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;
-    std::optional<MediaSession::NowPlaying> nowPlaying;
+    bool backgroundAudioDeclared = true;
     bool backgroundAudio = false;
     bool accessibilityWanted = false;
     VideoOpener videoOpener;

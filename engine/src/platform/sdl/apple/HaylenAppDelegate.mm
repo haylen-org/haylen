@@ -7,7 +7,6 @@
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
 #import "platform/apple/AppleAccessibility.hpp"
-#import "platform/apple/AppleNotifications.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
@@ -15,7 +14,6 @@
 #include "platform/sdl/Runtime.hpp"
 
 using haylen::platform::AppleAccessibility;
-using haylen::platform::AppleNotifications;
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleTheme;
 using haylen::platform::NativeWindow;
@@ -24,13 +22,12 @@ using haylen::platform::sdl::Runtime;
 
 @implementation HaylenAppDelegate
 
-// The main menu comes first, as an app that loads it from a nib has it. Plugins load before launching ends, so their SDKs set up in time, and the notification center gets its delegate as early, so the notification that launched the app reaches the plugins. Apps without plugins, such as the desktop player, and apps that do not link UserNotifications leave the notification center alone. The appearance of the app follows the one of the system, whose every change the delegate observes, and so does the state of VoiceOver, which no notification announces.
+// The main menu comes first, as an app that loads it from a nib has it. Plugins load before launching ends, so their SDKs set up in time. The appearance of the app follows the one of the system, whose every change the delegate observes, and so does the state of VoiceOver, which no notification announces.
 - (void)applicationWillFinishLaunching:(NSNotification*)notification {
     [self installMainMenu];
     [NSApp addObserver:self forKeyPath:@"effectiveAppearance" options:NSKeyValueObservingOptionInitial context:nil];
     [NSWorkspace.sharedWorkspace addObserver:self forKeyPath:@"voiceOverEnabled" options:NSKeyValueObservingOptionNew context:nil];
     ApplePlugins::load();
-    AppleNotifications::observe(self);
 
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin applicationWillFinishLaunching:notification];
@@ -146,14 +143,6 @@ using haylen::platform::sdl::Runtime;
     for (id<HaylenPlugin> plugin in ApplePlugins::getPlugins(_cmd)) {
         [plugin application:application didReceiveRemoteNotification:userInfo];
     }
-}
-
-- (void)userNotificationCenter:(id)center willPresentNotification:(id)notification withCompletionHandler:(void (^)(NSUInteger))completionHandler {
-    AppleNotifications::present(center, notification, completionHandler);
-}
-
-- (void)userNotificationCenter:(id)center didReceiveNotificationResponse:(id)response withCompletionHandler:(void (^)(void))completionHandler {
-    AppleNotifications::receiveResponse(center, response, completionHandler);
 }
 
 @end

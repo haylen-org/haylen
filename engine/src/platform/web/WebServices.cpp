@@ -111,10 +111,6 @@ EM_JS(void, haylen_js_announce, (const char* text, int interrupt), {
     Module.haylen.accessibility.announce(UTF8ToString(text), interrupt > 0);
 });
 
-EM_JS(void, haylen_js_now_playing, (const char* json, const uint8_t* artwork, int size), {
-    Module.haylen.nowPlaying(json ? JSON.parse(UTF8ToString(json)) : null, HEAPU8.slice(artwork, artwork + size));
-});
-
 EM_JS(char*, haylen_js_release_address, (), {
     return stringToNewUTF8(Module.haylen.releaseAddress || "");
 });
@@ -124,7 +120,7 @@ namespace haylen::platform {
 
 port::Services WebServices::create() {
     const auto services = std::make_shared<WebServices>();
-    return {.platform = services, .displays = services, .screen = services, .bridge = services, .media = services, .accessibility = services, .video = services, .audio = std::make_shared<audio::BrowserAudioOutput>()};
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .accessibility = services, .video = services, .audio = std::make_shared<audio::BrowserAudioOutput>()};
 }
 
 std::string_view WebServices::getName() const noexcept {
@@ -271,19 +267,6 @@ SystemInfo WebServices::getSystemInfo() {
         .cpuCores = details.value("cpuCores", 0),
         .memoryBytes = details.value("memoryBytes", std::uint64_t{0}),
     };
-}
-
-// A hidden page keeps running the frames of the app from timers, which browsers do not slow down while the page plays sound.
-void WebServices::setBackgroundAudio(bool) {}
-
-void WebServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
-    if (!value) {
-        haylen_js_now_playing(nullptr, nullptr, 0);
-        return;
-    }
-
-    const std::string json = MediaSession::writeNowPlaying(*value);
-    haylen_js_now_playing(json.c_str(), reinterpret_cast<const std::uint8_t*>(value->artwork.data()), static_cast<int>(value->artwork.size()));
 }
 
 // Browsers never tell whether a screen reader runs, so the page keeps its mirror of the UI current all the time.

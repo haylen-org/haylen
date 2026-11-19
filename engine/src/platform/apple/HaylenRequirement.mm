@@ -43,10 +43,6 @@ typedef NS_ENUM(NSInteger, HaylenRequirementKind) {
     return [[self alloc] initWithType:HaylenRequirementKindBackgroundMode name:mode summary:[NSString stringWithFormat:@"the background mode \"%@\"", mode] file:self.appManifest snippet:snippet];
 }
 
-+ (instancetype)backgroundAudio {
-    return [[self alloc] initWithType:HaylenRequirementKindBackgroundMode name:@"audio" summary:@"the background mode \"audio\"" file:self.appManifest snippet:@"{\"audio\": {\"background\": true}}"];
-}
-
 + (instancetype)urlScheme:(NSString*)scheme {
     NSString* snippet = [self section:@"infoPlist" value:[NSString stringWithFormat:@"{\"CFBundleURLTypes\": [{\"CFBundleURLSchemes\": [%@]}]}", [self quoted:scheme]]];
     return [[self alloc] initWithType:HaylenRequirementKindUrlScheme name:scheme summary:[NSString stringWithFormat:@"the URL scheme \"%@\"", scheme] file:self.appManifest snippet:snippet];

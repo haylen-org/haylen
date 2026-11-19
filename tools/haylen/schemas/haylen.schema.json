@@ -84,7 +84,6 @@
             "properties": {
                 "iosSession": {"enum": ["ambient", "soloAmbient", "playback"]},
                 "mixWithOthers": {"type": "boolean"},
-                "background": {"type": "boolean"},
                 "latency": {"enum": ["low", "balanced", "powerSaving"]},
                 "limiter": {"type": "boolean"}
             }

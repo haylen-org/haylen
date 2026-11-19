@@ -34,7 +34,6 @@
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleKeyboard.hpp"
 #import "platform/apple/AppleLanguages.hpp"
-#import "platform/apple/AppleMediaSession.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
@@ -54,9 +53,11 @@ namespace haylen::platform {
 // Only a Mac has a desktop of windows, which its own service follows.
 port::Services AppleServices::create() {
     const auto services = std::make_shared<AppleServices>();
-    port::Services registered{.platform = services, .displays = services, .screen = services, .bridge = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+    port::Services registered{.platform = services, .displays = services, .screen = services, .bridge = services, .accessibility = services, .video = services, .fonts = services};
 #if TARGET_OS_OSX
     registered.desktop = std::make_shared<AppleDesktopService>();
+#else
+    registered.backgroundAudio = std::make_shared<AppleBackgroundAudio>();
 #endif
     return registered;
 }
@@ -309,17 +310,6 @@ void AppleServices::cancel(std::uint64_t call) {
 
 SystemInfo AppleServices::getSystemInfo() {
     return AppleSystem::getInfo();
-}
-
-// A Mac app keeps running its frames in the background, so its sound plays on.
-void AppleServices::setBackgroundAudio([[maybe_unused]] bool value) {
-#if !TARGET_OS_OSX
-    AppleBackgroundAudio::setEnabled(value);
-#endif
-}
-
-void AppleServices::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
-    AppleMediaSession::update(value);
 }
 
 bool AppleServices::isTreeWanted() {

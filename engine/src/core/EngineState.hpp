@@ -42,7 +42,6 @@
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Displays.hpp"
-#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/Outputs.hpp"
 #include "haylen/platform/Screens.hpp"
@@ -86,7 +85,6 @@ struct EngineState {
     std::unique_ptr<input::GamepadMotion> gamepadMotion;
     std::unique_ptr<platform::Displays> displays;
     std::unique_ptr<platform::Outputs> outputs;
-    std::unique_ptr<platform::MediaSession> mediaSession;
     std::unique_ptr<platform::Accessibility> accessibility;
     std::unique_ptr<platform::Screens> screens;
     std::unique_ptr<graphics2d::Renderer> renderer;
@@ -149,8 +147,9 @@ struct EngineState {
     // Whether the screen of a plugin that covers the app is opaque, so the app draws nothing under it.
     bool hiddenByScreen = false;
 
-    // Whether the output keeps playing in the background, and whether it stands still there because no voice plays, so the system may suspend the app.
-    bool backgroundAudio = config.audioSession.background;
+    // Whether the app declared to the system that it plays audio in the background, which the output then does from the start, whether the output keeps playing there now, and whether it stands still there because no voice plays, so the system may suspend the app.
+    const bool backgroundAudioDeclared = host.isBackgroundAudioDeclared();
+    bool backgroundAudio = backgroundAudioDeclared;
     bool backgroundSilent = false;
 
     // Whether the covered app drew the frame that stays on screen under the cover, which a halted app would only draw again the same, until the window changes size or the app comes back from the background.

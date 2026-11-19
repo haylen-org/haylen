@@ -13,8 +13,8 @@
 
 namespace haylen::platform {
 
-// The services of Windows: the platform, its displays, its windows among other windows, the links that start a new process of the app, the media controls of the system, UI Automation, the fonts of DirectWrite and the video decoder of Media Foundation. Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps, and it gates none of the permissions of the engine for a desktop app.
-class WindowsServices final : public port::PlatformService, public port::DisplayService, public port::DesktopService, public port::LinkService, public port::MediaService, public port::AccessibilityService, public port::VideoService, public port::FontService {
+// The services of Windows: the platform, its displays, its windows among other windows, the links that start a new process of the app, UI Automation, the fonts of DirectWrite and the video decoder of Media Foundation. Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps, and it gates none of the permissions of the engine for a desktop app.
+class WindowsServices final : public port::PlatformService, public port::DisplayService, public port::DesktopService, public port::LinkService, public port::AccessibilityService, public port::VideoService, public port::FontService {
   public:
     [[nodiscard]] static port::Services create();
 
@@ -44,9 +44,6 @@ class WindowsServices final : public port::PlatformService, public port::Display
 
     [[nodiscard]] bool forwardLink(std::string_view identifier, std::string_view url) override;
     void listenForLinks(std::string_view identifier) override;
-
-    void setBackgroundAudio(bool value) override;
-    void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;
 
     [[nodiscard]] bool isTreeWanted() override;
     void update(std::span<const AccessibilityElement> elements, std::uint64_t focused) override;

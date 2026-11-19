@@ -35,7 +35,6 @@ class Bridge;
 class Displays;
 class Outputs;
 class Host;
-class MediaSession;
 class Screens;
 class System;
 class Window;
@@ -196,7 +195,6 @@ class Engine final {
     [[nodiscard]] platform::System& getSystem() noexcept;
     [[nodiscard]] platform::Displays& getDisplays() noexcept;
     [[nodiscard]] platform::Outputs& getOutputs() noexcept;
-    [[nodiscard]] platform::MediaSession& getMediaSession() noexcept;
     [[nodiscard]] platform::Accessibility& getAccessibility() noexcept;
     [[nodiscard]] platform::Screens& getScreens() noexcept;
     [[nodiscard]] plugins::PluginRegistry& getPlugins() noexcept;
@@ -292,7 +290,7 @@ class Engine final {
     [[nodiscard]] const AppConfig::Lifecycle& getLifecycle() const noexcept;
     void setLifecycle(const AppConfig::Lifecycle& value);
 
-    // Whether the output keeps playing while the app is in the background, which `audio.background` of `haylen.json` turns on when the app starts. Only an app that declares it there may turn it on, since the platform settings it needs come from the declaration, and turning it on in another app throws `std::invalid_argument`.
+    // Whether the output keeps playing while the app is in the background, which is on from the start when the app declared it to the system: the mode `audio` of `UIBackgroundModes` in the `Info.plist` of its bundle on Apple platforms and a service of the type `mediaPlayback` in its merged manifest on Android, while a platform that keeps every app running in the background lets every app play there. Turning it on in an app that declared nothing throws `std::invalid_argument`.
     void setBackgroundAudio(bool value);
     [[nodiscard]] bool isBackgroundAudio() const noexcept;
 

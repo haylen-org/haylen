@@ -2,24 +2,18 @@
 
 #include <lua.hpp>
 
-#include <cstring>
-#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <unordered_set>
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
-#include "haylen/core/Log.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
-#include "haylen/lua/Table.hpp"
-#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/platform/SystemAnswer.hpp"
 #include "platform/SystemAnswerLua.hpp"
@@ -89,63 +83,9 @@ int SystemLua::setClipboard(lua_State* L) {
     return 1;
 }
 
-// Shows what plays with `setNowPlaying({title, artist, album, duration, position, playing, artwork, commands})`, where the artwork is the bytes of a PNG or JPEG image and the commands are the names of the controls to offer.
-int SystemLua::setNowPlaying(lua_State* L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
-    lua::Table::checkFields(L, 1, {kNowPlayingFields});
-    MediaSession::NowPlaying value;
-    lua::Table::readField(L, 1, "title", value.title);
-    lua::Table::readField(L, 1, "artist", value.artist);
-    lua::Table::readField(L, 1, "album", value.album);
-    lua::Table::readField(L, 1, "duration", value.duration);
-    lua::Table::readField(L, 1, "position", value.position);
-    lua::Table::readField(L, 1, "playing", value.playing);
-    lua_getfield(L, 1, "artwork");
-    if (!lua_isnil(L, -1)) {
-        if (lua_type(L, -1) != LUA_TSTRING) {
-            return luaL_error(L, "The option \"artwork\" must be the bytes of a PNG or JPEG image.");
-        }
-
-        std::size_t size = 0;
-        const char* bytes = lua_tolstring(L, -1, &size);
-        value.artwork.resize(size);
-        std::memcpy(value.artwork.data(), bytes, size);
-    }
-
-    lua_pop(L, 1);
-    lua_getfield(L, 1, "commands");
-    if (!lua_isnil(L, -1)) {
-        if (!lua_istable(L, -1)) {
-            return luaL_error(L, "The option \"commands\" must be a list of command names.");
-        }
-
-        value.commands = 0;
-        const auto count = static_cast<lua_Integer>(lua_rawlen(L, -1));
-        for (lua_Integer index = 1; index <= count; ++index) {
-            lua_rawgeti(L, -1, index);
-            const std::optional<MediaSession::Command> command = lua_type(L, -1) == LUA_TSTRING ? MediaSession::commandFromName(lua_tostring(L, -1)) : std::nullopt;
-            if (!command) {
-                return luaL_error(L, "The option \"commands\" names \"%s\", which is not \"play\", \"pause\", \"togglePlayPause\", \"stop\", \"next\", \"previous\" or \"seek\".", luaL_tolstring(L, -1, nullptr));
-            }
-
-            value.commands |= MediaSession::bit(*command);
-            lua_pop(L, 1);
-        }
-    }
-
-    lua_pop(L, 1);
-    lua::Runtime::getEngine(L).getMediaSession().setNowPlaying(std::move(value));
-    return 0;
-}
-
-int SystemLua::clearNowPlaying(lua_State* L) {
-    lua::Runtime::getEngine(L).getMediaSession().clear();
-    return 0;
-}
-
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

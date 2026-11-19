@@ -77,7 +77,7 @@ android {
     }
 }
 
-// The `haylen` library brings GameActivity, AppCompat, the activity library and core at the versions it links and builds on, so the app declares none of them. The other engine libraries come with the features of `haylen.json` that need them, such as `haylen-playback` for the audio that plays in the background.
+// The `haylen` library brings GameActivity, AppCompat, the activity library and core at the versions it links and builds on, so the app declares none of them.
 dependencies {
 {{DEPENDENCIES}}
 }

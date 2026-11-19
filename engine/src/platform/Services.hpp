@@ -19,7 +19,6 @@
 #include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/Display.hpp"
 #include "haylen/platform/Fold.hpp"
-#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemAnswer.hpp"
@@ -92,8 +91,8 @@ class Services final {
     [[nodiscard]] static bool forwardLink(std::string_view identifier, std::string_view url);
     static void listenForLinks(std::string_view identifier);
 
+    [[nodiscard]] static bool isBackgroundAudioDeclared();
     static void setBackgroundAudio(bool value);
-    static void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value);
 
     [[nodiscard]] static bool isAccessibilityTreeWanted();
     static void updateAccessibility(std::span<const AccessibilityElement> elements, std::uint64_t focused);

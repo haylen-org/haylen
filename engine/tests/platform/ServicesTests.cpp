@@ -115,6 +115,7 @@ TEST(ServicesTest, AnswersForEveryCapabilityThePlatformLacks) {
     EXPECT_TRUE(cutouts.empty());
     EXPECT_TRUE(Services::getNativePlugins().empty());
     EXPECT_FALSE(Services::forwardLink("com.haylen.minimal", "minimal://open"));
+    EXPECT_TRUE(Services::isBackgroundAudioDeclared());
     EXPECT_FALSE(Services::isAccessibilityTreeWanted());
     EXPECT_EQ(Services::openVideo(nullptr, "intro.mp4"), nullptr);
     EXPECT_FALSE(Services::findSystemFont(U'A'));

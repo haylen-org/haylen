@@ -98,7 +98,6 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.gamepadMotion = std::make_unique<input::GamepadMotion>(host);
     current.displays = std::make_unique<platform::Displays>(host, current.events);
     current.outputs = std::make_unique<platform::Outputs>(host, *current.displays, *current.graphics, current.events);
-    current.mediaSession = std::make_unique<platform::MediaSession>(host, current.events);
     current.accessibility = std::make_unique<platform::Accessibility>(host, current.events);
     current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState(); });
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
@@ -162,7 +161,6 @@ Engine::~Engine() {
     current.gamepadMotion->clear();
     current.outputs.reset();
     current.displays.reset();
-    current.mediaSession.reset();
     current.runtime->stop();
     current.jobs->discardQueued();
     current.runtime.reset();
@@ -422,7 +420,6 @@ void Engine::runScripts(double frameSeconds) {
     const debug::ProfileScope scope(current.profiler, "scripts");
     current.platform->pump();
     current.system->pump();
-    current.mediaSession->pump();
     publishLinks();
     current.accessibility->pump();
     current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
@@ -1014,8 +1011,8 @@ void Engine::setLifecycle(const AppConfig::Lifecycle& value) {
 // The output of an app in the background follows the change at once: it stops when the sound may no longer play there, and plays again in the next frame when a voice plays.
 void Engine::setBackgroundAudio(bool value) {
     EngineState& current = *state;
-    if (value && !current.config.audioSession.background) {
-        throw std::invalid_argument("The app plays in the background only when \"audio.background\" of \"haylen.json\" is true, which brings the settings of each platform that it needs.");
+    if (value && !current.backgroundAudioDeclared) {
+        throw std::invalid_argument("The app plays in the background only when it declares that to the system, with the mode \"audio\" of \"UIBackgroundModes\" in its \"Info.plist\" on Apple platforms and a service of the type \"mediaPlayback\" in its manifest on Android, which a plugin that plays in the background brings.");
     }
 
     if (value == current.backgroundAudio) {
@@ -1515,10 +1512,6 @@ platform::Displays& Engine::getDisplays() noexcept {
 
 platform::Outputs& Engine::getOutputs() noexcept {
     return *state->outputs;
-}
-
-platform::MediaSession& Engine::getMediaSession() noexcept {
-    return *state->mediaSession;
 }
 
 platform::Accessibility& Engine::getAccessibility() noexcept {

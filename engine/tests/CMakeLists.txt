@@ -219,7 +219,6 @@ set(HAYLEN_TEST_SOURCES
   platform/LaunchOptionsTests.cpp
   platform/LinuxSystemReaderTests.cpp
   platform/LinuxVisualColorTests.cpp
-  platform/MediaSessionTests.cpp
   platform/NativeLuaTests.cpp
   platform/AppPluginTests.cpp
   platform/NativeLibrariesTests.cpp

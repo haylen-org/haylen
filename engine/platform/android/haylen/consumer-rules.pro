@@ -55,9 +55,9 @@
     static void close(int);
 }
 
--keep class dev.haylen.HaylenMediaSession {
-    static void update(byte[], byte[]);
-    static void setBackground(boolean);
+-keep class dev.haylen.HaylenBackgroundAudio {
+    static boolean isDeclared();
+    static void setEnabled(boolean);
 }
 
 # The HTTP transport of Varn resolves its Kotlin classes, their fields and methods by name.

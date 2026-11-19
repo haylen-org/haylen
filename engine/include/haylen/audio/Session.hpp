@@ -8,7 +8,7 @@
 
 namespace haylen::audio {
 
-// How the app shares sound with the system and other apps, which `haylen.json` sets in its `audio` object. The category is the audio session category of iOS and tvOS: ambient follows the silent switch and mixes with the audio of other apps, solo ambient follows the silent switch and silences other apps, and playback keeps playing with the silent switch on and silences other apps unless it mixes with them.
+// How the app shares sound with the system and other apps, which `haylen.json` sets in its `audio` object. The category is the audio session category of iOS and tvOS: ambient follows the silent switch and mixes with the audio of other apps, solo ambient follows the silent switch and silences other apps, and playback keeps playing with the silent switch on and in the background and silences other apps unless it mixes with them.
 struct Session {
     enum class Category : std::uint8_t {
         Ambient,
@@ -20,9 +20,6 @@ struct Session {
 
     // Lets the playback category play along with the audio of other apps. Ambient always mixes and solo ambient never does, so only playback accepts it.
     bool mixWithOthers = false;
-
-    // Keeps the output playing while the app is in the background, such as the music of a player, which only the playback category can do on iOS and tvOS. The rest of the app halts there as its lifecycle options decide.
-    bool background = false;
 
     [[nodiscard]] static std::optional<Category> categoryFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view categoryName(Category value) noexcept;

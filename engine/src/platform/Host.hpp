@@ -20,7 +20,6 @@
 #include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/AccessibilitySettings.hpp"
 #include "haylen/platform/Battery.hpp"
-#include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Output.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemAnswer.hpp"
@@ -131,11 +130,11 @@ class Host : public Window {
     // Reads the font file of a face that `findSystemFont` found, on a worker of the I/O pool, which throws `std::runtime_error` when the system does not hand it over.
     [[nodiscard]] virtual std::vector<std::uint8_t> readSystemFont(const SystemFont& font) = 0;
 
-    // Tells the platform whether the app plays audio in the background, as `audio.background` of `haylen.json` declares, when an app starts. The platform then keeps running the frames of the app in the background while the system lets it, and on Android keeps the app in the foreground with its media notification while what plays shows as playing. A project of the app that lacks what the platform needs for it, such as the mode `audio` of `UIBackgroundModes`, logs once what is missing and how to add it.
-    virtual void setBackgroundAudio(bool value) = 0;
+    // Whether the app declared to the system that it plays audio in the background: the mode `audio` of `UIBackgroundModes` in the `Info.plist` of its bundle on Apple platforms and a service of the type `mediaPlayback` in its merged manifest on Android, while a platform that keeps every app running in the background lets every app play there.
+    [[nodiscard]] virtual bool isBackgroundAudioDeclared() const = 0;
 
-    // Shows what the app plays in the now-playing and lock-screen controls of the system, or takes the app out of them with nothing, where the platform has such controls. The platform sends the commands of the controls, the media keys and headset buttons through `MediaSession::receive`.
-    virtual void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) = 0;
+    // Tells the platform whether the app plays audio in the background, within what it declared, when an app starts and whenever the app turns it on or off. The platform then keeps running the frames of the app in the background while the system lets it, and on Android keeps the audio focus there.
+    virtual void setBackgroundAudio(bool value) = 0;
 
     // Asks the screen reader to say a text, after what it says now or interrupting it, where the platform has a screen reader.
     virtual void announce(std::string_view text, bool interrupt) = 0;

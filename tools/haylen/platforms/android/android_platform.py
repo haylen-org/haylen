@@ -21,7 +21,7 @@ class AndroidPlatform:
     RELEASE_PROFILE = "android"
     # The Gradle project of the Android libraries of the engine, and the libraries that it publishes as `dev.haylen:<module>`.
     LIBRARY_PROJECT = Repository.ENGINE / "platform" / "android"
-    LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-playback", "haylen-coroutines")
+    LIBRARIES = ("haylen", "haylen-plugins", "haylen-links", "haylen-coroutines")
     # The names of the files of an Android SDK in its manifest: the CMake package of each ABI, the player library of each ABI and the local Maven repository of the Android libraries.
     CMAKE_FILE = "cmake"
     PLAYER_FILE = "player"

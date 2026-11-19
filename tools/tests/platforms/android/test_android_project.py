@@ -279,12 +279,6 @@ class AndroidProjectTest:
         with pytest.raises(UnsupportedTarget, match="is no application id of Android"):
             fixture.prepare(fixture.resolve(app))
 
-    def test_background_audio_brings_the_playback_library(self, tmp_path):
-        fixture = AndroidFixture(tmp_path)
-        script = fixture.prepare(fixture.resolve(fixture.app({"audio": {"background": True}}))).project / "app" / "build.gradle.kts"
-
-        assert 'implementation("dev.haylen:haylen-playback:0.0.1")' in script.read_text(encoding="utf-8")
-
     def test_the_kotlin_and_java_folders_of_the_app_compile_where_they_lie(self, tmp_path):
         fixture = AndroidFixture(tmp_path)
         app = fixture.app({"platforms": {"android": {"sources": ["native/android"], "applicationClass": "com.haylen.tests.App"}}})
