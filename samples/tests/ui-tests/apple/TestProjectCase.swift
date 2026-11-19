@@ -2,9 +2,6 @@ import XCTest
 
 // The base of the UI tests that open one test of the test project, which the launch arguments "--test <code>" name, and read its checks. Each check is a card whose label is the line of its row, such as "Pass: The camera starts. The camera started at 640 by 480 pixels.".
 class TestProjectCase: HaylenUITestCase {
-    // The button of the prompts of the system that allows what the plugin asks for, in the words of a device in English.
-    static let allow = ["Allow"]
-
     // The code of the test that the app opens, such as "PLG-016".
     var code: String {
         preconditionFailure("A test class of the test project names the code of its test.")
