@@ -19,5 +19,8 @@ return {
     -- The size of the window mode in desktop points, and a smaller design size that draws the quest larger in it.
     window = {width = 1280, height = 400, designWidth = 1024, designHeight = 320},
 
+    -- A page has no desktop for the window to sit on, so the window mode shows as a framed window of its shape in the middle of the page, this far from its edges, with this border and rounding, over a dark backdrop.
+    page = {margin = 48, border = 4, radius = 18, backdropTop = '#FF1B2033', backdropBottom = '#FF0E111C', frame = '#FF1E1B33', shadow = '#99000000'},
+
     layer = {backdrop = 0, ground = 1, props = 2, enemies = 3, hero = 4, coins = 5, effects = 6, text = 7},
 }

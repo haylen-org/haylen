@@ -1,6 +1,8 @@
 -- The two ways the quest sits on the desktop: a frameless transparent strip above the taskbar that lets clicks through its empty parts, or a normal opaque window.
 local events = require('haylen.events')
+local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local m = require('haylen.math')
 local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
@@ -62,6 +64,44 @@ function desktop:showStrip()
     window.setFrame(frame.x, frame.y, frame.width, haylen.config.window.height)
     window.place({anchor = 'bottom', fill = 'width'})
     viewport.setDesignSize(haylen.config.design.width, haylen.config.design.height)
+end
+
+-- Returns the area the quest plays in: the visible area of a desktop window in both modes, or, on a page, a window of the shape of the window mode in the middle of the page, inside its margin.
+function desktop:area()
+    local visible = viewport.visibleRect()
+    if self.canStrip then
+        return visible
+    end
+
+    local margin = config.page.margin
+    local aspect = config.window.width / config.window.height
+    local width = math.min(visible.width - 2 * margin, (visible.height - 2 * margin) * aspect)
+    local height = width / aspect
+    return m.rect(visible.x + (visible.width - width) / 2, visible.y + (visible.height - height) / 2, width, height)
+end
+
+-- Draws the page around the framed window: a dark backdrop over the whole page and a soft shadow under the window.
+function desktop:drawPage(area)
+    local page = config.page
+    local visible = viewport.visibleRect()
+    graphics2d.drawMesh(nil, {
+        {x = visible.x, y = visible.y, color = page.backdropTop},
+        {x = visible:right(), y = visible.y, color = page.backdropTop},
+        {x = visible:right(), y = visible:bottom(), color = page.backdropBottom},
+        {x = visible.x, y = visible:bottom(), color = page.backdropBottom},
+    }, {1, 2, 3, 1, 3, 4}, {layer = config.layer.backdrop})
+    graphics2d.drawShape({area.x, area.y + 12, area.width, area.height}, {radius = page.radius, color = page.shadow, softness = 28, layer = config.layer.backdrop})
+end
+
+-- Draws the shape of the framed window, which masks the quest so nothing of it reaches the page.
+function desktop:drawWindowShape(area)
+    graphics2d.drawShape(area, {radius = config.page.radius, color = '#FFFFFFFF'})
+end
+
+-- Draws the border of the framed window over the edge of the quest.
+function desktop:drawFrame(area)
+    local page = config.page
+    graphics2d.drawShape(area, {radius = page.radius, color = '#00000000', borderWidth = page.border, borderColor = page.frame, layer = config.layer.text + 1})
 end
 
 -- Gives the strip the regions that keep the mouse this frame, so a click anywhere else reaches the desktop behind it.

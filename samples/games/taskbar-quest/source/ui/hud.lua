@@ -3,6 +3,7 @@ local haylen = require('haylen')
 local m = require('haylen.math')
 local tween = require('haylen.tween')
 local ui = require('haylen.ui')
+local viewport = require('haylen.viewport')
 
 local config = require('config')
 
@@ -72,6 +73,20 @@ function hud:refresh(quest, strip)
         icon = strip and 'images/icon-window.png' or 'images/icon-strip.png',
         tooltip = strip and 'Show the quest in a normal window' or 'Send the quest back above the taskbar',
     })
+end
+
+-- Keeps the panels inside the area the quest plays in, whose distances from the edges of the visible area turn into margins in the units of the interface, 8 units inside it.
+function hud:place(area)
+    local visible = viewport.visibleRect()
+    local _, scale = ui.scale()
+    local inset = 8
+    local margins = {(area.y - visible.y) / scale + inset, (visible:right() - area:right()) / scale + inset, (visible:bottom() - area:bottom()) / scale + inset, (area.x - visible.x) / scale + inset}
+    local key = table.concat(margins, ' ')
+    if self.placed ~= key then
+        self.placed = key
+        self.gui:set('stats', {margin = margins})
+        self.gui:set('actions', {margin = margins})
+    end
 end
 
 -- Returns the center of the coin icon, where the coins fly to.

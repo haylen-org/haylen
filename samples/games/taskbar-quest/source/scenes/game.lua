@@ -6,6 +6,7 @@ local ui = require('haylen.ui')
 local window = require('haylen.window')
 
 local art = require('systems.art')
+local config = require('config')
 local desktop = require('systems.desktop')
 local effects = require('systems.effects')
 local hud = require('ui.hud')
@@ -22,7 +23,7 @@ end
 function game:enter()
     local images = art.load()
     self.desktop = desktop.new(self)
-    self.stage = stage.new(images)
+    self.stage = stage.new(images, self.desktop:area())
     self.effects = effects.new(images)
     self.hud = hud.new(self, self.desktop.canStrip, {
         sword = function() self.quest:upgradeSword() end,
@@ -49,7 +50,9 @@ function game:update(dt)
         return
     end
 
-    self.stage:layout()
+    local area = self.desktop:area()
+    self.stage:layout(area)
+    self.hud:place(area)
     if input.pressed('strike') then
         self.quest:strikeAt(input.mousePosition())
     end
@@ -64,8 +67,23 @@ function game:update(dt)
     self.desktop:keepMouse(regions)
 end
 
+-- On a page, the quest draws inside the framed window that the page shows around it.
 function game:render()
     graphics2d.beginScreen()
+    if self.desktop.canStrip then
+        self:drawQuest()
+        return
+    end
+
+    local area = self.desktop:area()
+    self.desktop:drawPage(area)
+    graphics2d.pushMask(function() self.desktop:drawWindowShape(area) end, {layer = config.layer.backdrop})
+    self:drawQuest()
+    graphics2d.popMask()
+    self.desktop:drawFrame(area)
+end
+
+function game:drawQuest()
     self.stage:draw(not self.desktop.strip, self.desktop.canStrip, haylen.elapsed())
     self.quest:draw()
     self.effects:draw()

@@ -1,7 +1,6 @@
--- The ground band along the bottom of the visible area, its flowers, the grip at its left end and, in window mode, a sky behind everything.
+-- The ground band along the bottom of the area the quest plays in, its flowers, the grip at its left end and, in window mode, a sky behind everything.
 local graphics2d = require('haylen.graphics2d')
 local m = require('haylen.math')
-local viewport = require('haylen.viewport')
 
 local config = require('config')
 
@@ -29,15 +28,15 @@ local function scatter(art)
     return decorations
 end
 
-function stage.new(art)
+function stage.new(art, area)
     local self = setmetatable({art = art, decorations = scatter(art)}, stage)
-    self:layout()
+    self:layout(area)
     return self
 end
 
--- Places everything against the visible area of this frame, which follows the window in both modes.
-function stage:layout()
-    local visible = viewport.visibleRect()
+-- Places everything against the area the quest plays in this frame, which follows the window in both modes.
+function stage:layout(area)
+    local visible = area
     local pixel = config.pixel
     self.visible = visible
     self.groundTop = visible:bottom() - config.groundHeight

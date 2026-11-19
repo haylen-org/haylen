@@ -32,7 +32,7 @@ The command `haylen app zip samples/games/taskbar-quest -o taskbar-quest.zip` zi
 | macOS | Everything works, and transparency always does. The strip is unfocusable, so clicking it never activates the game, and the app you were typing in keeps the keyboard and the menu bar. |
 | Windows | Everything works with the Direct3D 11 backend, which is the default. A build with the OpenGL backend opens an opaque window. |
 | Linux | Transparency needs a compositing window manager. The strip hears the mouse only over its regions. |
-| Web | A page has no window that floats above the others, so the quest starts in the window mode and stays in it, with the sky and the hills filling the page. The button of the modes and the grip do not show, since there is no strip and the page does not move, and neither does the cross, since a page closes only through the browser, as [`haylen.canQuit`](../../../docs/lua-api/haylen.md#haylencanquit) tells. |
+| Web | A page has no window that floats above the others, so the quest starts in the window mode and stays in it. With no desktop to sit on, the window mode shows as a framed window of its shape in the middle of the page, over a dark backdrop, and keeps that shape on a page of any size. A phone held upright shows the turn screen of the page, since the quest takes landscape. The button of the modes and the grip do not show, since there is no strip and the page does not move, and neither does the cross, since a page closes only through the browser, as [`haylen.canQuit`](../../../docs/lua-api/haylen.md#haylencanquit) tells. |
 | iOS, iPadOS, tvOS, Android | Apps fill the screen there, so these devices are not the target of the game. |
 
 ## Art
