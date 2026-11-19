@@ -5,10 +5,8 @@
 #include <format>
 
 #include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/assets/Manager.hpp"
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/core/Log.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
@@ -17,17 +15,7 @@
 
 namespace haylen::content {
 
-UpdateScreen::UpdateScreen(core::Engine& owner) : engine(owner), content(owner.getContent()) {
-    // The logo shows when it is on the device already, since the content it comes from may be what the screen waits for.
-    const std::string& logoPath = engine.getConfig().splash.logo;
-    if (!logoPath.empty() && content.isLocal(logoPath)) {
-        try {
-            logo = engine.getAssets().texture(logoPath);
-        } catch (const std::exception& error) {
-            core::Log::warning("The update screen shows no logo, since the logo \"{}\" could not be loaded: {}", logoPath, error.what());
-        }
-    }
-}
+UpdateScreen::UpdateScreen(core::Engine& owner) : engine(owner), content(owner.getContent()) {}
 
 bool UpdateScreen::canQuit() const {
     return engine.getWindow().canQuit();
@@ -106,15 +94,7 @@ void UpdateScreen::render() {
     renderer.beginScreen();
     renderer.drawRect(renderer.getCanvasBounds(), engine.getConfig().splash.background);
 
-    float y = center.y - (kLogoSize * 0.5F + kGap * 2.0F) * unit;
-    if (logo) {
-        const float size = kLogoSize * unit;
-        const math::Vec2 logoSize = logo->getSize();
-        const float scale = size / std::max(logoSize.x, logoSize.y);
-        renderer.draw({.texture = *logo, .position = {center.x, y - size * 0.5F}, .size = logoSize * scale});
-        y += kGap * unit;
-    }
-
+    float y = center.y - (kTitleSize + kGap * 2.0F) * unit;
     const text::Style title{.size = kTitleSize * unit, .color = textColor, .align = text::Alignment::Center};
     renderer.drawText(font, engine.getConfig().name, {center.x, y}, title);
     y += font.getLineHeight(title.size) + kGap * unit;
