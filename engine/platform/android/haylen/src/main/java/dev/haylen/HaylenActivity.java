@@ -358,8 +358,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenPlugins.trimMemory(level);
     }
 
-    @Override
     // A controller connects as soon as Android adds it, with its name, while remotes and keyboards stay keys.
+    @Override
     public void onInputDeviceAdded(int deviceId) {
         InputDevice device = InputDevice.getDevice(deviceId);
         if (device == null) {
@@ -652,7 +652,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     // A TV runs in the television UI mode, and some TV devices tell it only through the leanback feature.
     private static boolean isTelevision(Context context) {
-        return context.getSystemService(UiModeManager.class).getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
+        boolean televisionMode = context.getSystemService(UiModeManager.class).getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION;
+        return televisionMode || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
     }
 
     // The locales of the configuration are the languages the person prefers, or the language that the settings of Android 13 and later give the app alone, as a JSON array of tags.
@@ -715,6 +716,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeTelevision(boolean television);
 
     private static native void nativeLowMemory(boolean critical);
+
     private static native void nativeLink(byte[] url);
 
     private static native void nativeKeyboard(int x, int y, int width, int height);
@@ -724,9 +726,9 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeOrientation(boolean portrait);
 
     private static native void nativeBack();
+
     // Tells the engine whether back is down, and returns on a release whether the engine took the whole hold, so the press goes nowhere else.
     private static native boolean nativeBackHeld(boolean pressed);
-
 
     private static native void nativeTheme(boolean dark);
 

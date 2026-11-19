@@ -16,8 +16,15 @@ final class HaylenAudioFocus implements AudioManager.OnAudioFocusChangeListener,
 
     HaylenAudioFocus(Context context) {
         manager = context.getSystemService(AudioManager.class);
-        AudioAttributes attributes = new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build();
-        request = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN).setAudioAttributes(attributes).setAcceptsDelayedFocusGain(true).setOnAudioFocusChangeListener(this).build();
+        AudioAttributes.Builder attributes = new AudioAttributes.Builder();
+        attributes.setUsage(AudioAttributes.USAGE_GAME);
+        attributes.setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION);
+
+        AudioFocusRequest.Builder focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN);
+        focus.setAudioAttributes(attributes.build());
+        focus.setAcceptsDelayedFocusGain(true);
+        focus.setOnAudioFocusChangeListener(this);
+        request = focus.build();
     }
 
     // A focus that is granted right away also ends an interruption that happened while the app was away.

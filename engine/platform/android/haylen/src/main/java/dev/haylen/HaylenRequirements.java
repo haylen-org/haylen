@@ -231,16 +231,28 @@ public final class HaylenRequirements {
             return;
         }
 
-        List<String> descriptions = new ArrayList<>();
         List<Map<String, Object>> data = new ArrayList<>();
         for (Requirement requirement : missing) {
             report(requirement, Log.WARN, "the calls that need it fail with the code \"unsupported\"");
-            descriptions.add(requirement.description());
             data.add(requirement.toMap());
         }
 
-        String list = descriptions.size() == 1 ? descriptions.get(0) : String.join(", ", descriptions.subList(0, descriptions.size() - 1)) + " and " + descriptions.get(descriptions.size() - 1);
-        throw new HaylenBridge.Failure(owner + " needs " + list + ", which the app lacks.", "unsupported", Collections.singletonMap("missing", data));
+        throw new HaylenBridge.Failure(owner + " needs " + describe(missing) + ", which the app lacks.", "unsupported", Collections.singletonMap("missing", data));
+    }
+
+    // The descriptions of the requirements as one list of a sentence, such as "a, b and c".
+    static String describe(List<Requirement> requirements) {
+        List<String> descriptions = new ArrayList<>();
+        for (Requirement requirement : requirements) {
+            descriptions.add(requirement.description());
+        }
+
+        if (descriptions.size() == 1) {
+            return descriptions.get(0);
+        }
+
+        String leading = String.join(", ", descriptions.subList(0, descriptions.size() - 1));
+        return leading + " and " + descriptions.get(descriptions.size() - 1);
     }
 
     // Logs once per process what the owner needs, what happens without it and how to add it.

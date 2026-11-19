@@ -139,7 +139,10 @@ final class HaylenMediaSession extends MediaSession.Callback {
     }
 
     private void show(JSONObject info, byte[] artwork) {
-        MediaMetadata.Builder metadata = new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE, info.optString("title")).putString(MediaMetadata.METADATA_KEY_ARTIST, info.optString("artist")).putString(MediaMetadata.METADATA_KEY_ALBUM, info.optString("album"));
+        MediaMetadata.Builder metadata = new MediaMetadata.Builder();
+        metadata.putString(MediaMetadata.METADATA_KEY_TITLE, info.optString("title"));
+        metadata.putString(MediaMetadata.METADATA_KEY_ARTIST, info.optString("artist"));
+        metadata.putString(MediaMetadata.METADATA_KEY_ALBUM, info.optString("album"));
         long duration = Math.round(info.optDouble("duration", 0.0) * 1000.0);
         if (duration > 0) {
             metadata.putLong(MediaMetadata.METADATA_KEY_DURATION, duration);
@@ -162,7 +165,10 @@ final class HaylenMediaSession extends MediaSession.Callback {
 
         boolean playing = info.optBoolean("playing");
         long position = Math.round(info.optDouble("position", 0.0) * 1000.0);
-        session.setPlaybackState(new PlaybackState.Builder().setActions(actions).setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, position, playing ? 1.0f : 0.0f).build());
+        PlaybackState.Builder state = new PlaybackState.Builder();
+        state.setActions(actions);
+        state.setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED, position, playing ? 1.0f : 0.0f);
+        session.setPlaybackState(state.build());
         session.setActive(true);
         notifyShade(info, art);
     }
@@ -203,7 +209,17 @@ final class HaylenMediaSession extends MediaSession.Callback {
 
         Intent open = new Intent(activity, activity.getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent content = PendingIntent.getActivity(activity, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        Notification.Builder builder = new Notification.Builder(activity, CHANNEL).setSmallIcon(activity.getApplicationInfo().icon).setContentTitle(info.optString("title")).setContentText(info.optString("artist")).setContentIntent(content).setVisibility(Notification.VISIBILITY_PUBLIC).setOngoing(info.optBoolean("playing")).setStyle(new Notification.MediaStyle().setMediaSession(session.getSessionToken()));
+        Notification.MediaStyle style = new Notification.MediaStyle();
+        style.setMediaSession(session.getSessionToken());
+
+        Notification.Builder builder = new Notification.Builder(activity, CHANNEL);
+        builder.setSmallIcon(activity.getApplicationInfo().icon);
+        builder.setContentTitle(info.optString("title"));
+        builder.setContentText(info.optString("artist"));
+        builder.setContentIntent(content);
+        builder.setVisibility(Notification.VISIBILITY_PUBLIC);
+        builder.setOngoing(info.optBoolean("playing"));
+        builder.setStyle(style);
         if (art != null) {
             builder.setLargeIcon(art);
         }
@@ -269,7 +285,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
     // A headset button that toggles arrives as one key, which Android hands to `onPlay` or `onPause` only when the app offers them, so it goes to the toggle of the app here.
     @Override
     public boolean onMediaButtonEvent(Intent intent) {
-        KeyEvent key = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent.class) : legacyKey(intent);
+        KeyEvent key = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ? intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent.class) : keyBeforeTiramisu(intent);
         if (key != null && key.getAction() == KeyEvent.ACTION_DOWN && (key.getKeyCode() == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || key.getKeyCode() == KeyEvent.KEYCODE_HEADSETHOOK)) {
             nativeCommand(TOGGLE, 0.0);
             return true;
@@ -279,7 +295,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
     }
 
     @SuppressWarnings("deprecation")
-    private static KeyEvent legacyKey(Intent intent) {
+    private static KeyEvent keyBeforeTiramisu(Intent intent) {
         return intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
     }
 

@@ -276,18 +276,15 @@ final class HaylenPermissions {
             return false;
         }
 
-        List<String> descriptions = new ArrayList<>();
         List<String> instructions = new ArrayList<>();
         List<Map<String, Object>> entries = new ArrayList<>();
         for (HaylenRequirements.Requirement requirement : missing) {
             requirements.report(requirement, Log.WARN, "\"system.requestPermission('" + permission.getName() + "')\" fails with the code \"unsupported\"");
-            descriptions.add(requirement.description());
             instructions.add(requirement.instructions());
             entries.add(requirement.toMap());
         }
 
-        String list = descriptions.size() == 1 ? descriptions.get(0) : String.join(", ", descriptions.subList(0, descriptions.size() - 1)) + " and " + descriptions.get(descriptions.size() - 1);
-        answer.answer("unsupported", requirements.owner() + " needs " + list + ", which the app lacks. " + String.join(" ", instructions), entries);
+        answer.answer("unsupported", requirements.owner() + " needs " + HaylenRequirements.describe(missing) + ", which the app lacks. " + String.join(" ", instructions), entries);
         return true;
     }
 

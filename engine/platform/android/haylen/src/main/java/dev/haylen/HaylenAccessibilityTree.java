@@ -23,9 +23,9 @@ import org.json.JSONObject;
 // Serves the elements of the UI of the app to TalkBack and the other accessibility services as virtual views of the surface of the app. The engine hands the tree whenever it changes, and the actions that services ask of an element reach the engine, which performs them the way the keyboard and gamepads do. The engine builds the tree while an accessibility service runs or once a service asked for the views.
 final class HaylenAccessibilityTree extends ExploreByTouchHelper implements AccessibilityManager.AccessibilityStateChangeListener {
     // The bits of the states and actions of the engine.
+    private static final int DISABLED = 1;
     private static final int CHECKED = 1 << 1;
     private static final int SELECTED = 1 << 2;
-    private static final int DISABLED = 1;
     private static final int FOCUSED = 1 << 3;
     private static final int EXPANDED = 1 << 4;
     private static final int ACTION_FOCUS = 1;
@@ -92,9 +92,11 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
             for (int index = 0; index < parsed.length; ++index) {
                 JSONObject element = list.getJSONObject(index);
                 JSONArray bounds = element.getJSONArray("bounds");
-                int left = (int) Math.floor(bounds.getDouble(0));
-                int top = (int) Math.floor(bounds.getDouble(1));
-                Rect rect = new Rect(left, top, (int) Math.ceil(bounds.getDouble(0) + bounds.getDouble(2)), (int) Math.ceil(bounds.getDouble(1) + bounds.getDouble(3)));
+                double x = bounds.getDouble(0);
+                double y = bounds.getDouble(1);
+                double width = bounds.getDouble(2);
+                double height = bounds.getDouble(3);
+                Rect rect = new Rect((int) Math.floor(x), (int) Math.floor(y), (int) Math.ceil(x + width), (int) Math.ceil(y + height));
                 parsed[index] = new Element(element.getLong("id"), element.getString("role"), element.getString("label"), element.getString("value"), element.getString("hint"), rect, element.getInt("states"), element.getInt("actions"));
             }
 
