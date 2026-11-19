@@ -199,13 +199,13 @@ ui.mount(ui.stack{
 
 ### ui.scroll(properties)
 
-A scroll shows one child in an area that scrolls up and down, or sideways. The mouse wheel, the trackpad and the scroll bar scroll it, and on touch screens a finger drags the content. The mouse does not drag the content, as in the pages of desktop platforms. A drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. When the finger lets go, the content flings on for a while. Past an end, the content stretches and then springs back. A gesture across the axis goes to the area around the scroll, as the [UI guide](../ui/ui.md#scrolling-with-wheels-and-trackpads) explains.
+A scroll shows one child in an area that scrolls up and down, or sideways. The mouse wheel and the trackpad scroll it, and on touch screens a finger drags the content. It shows no scroll bar unless it asks for one with `scrollbar`. The mouse does not drag the content, as in the pages of desktop platforms. A drag along the scrolling direction takes the finger from the control it started on, so a list of buttons still scrolls. When the finger lets go, the content flings on for a while. Past an end, the content stretches and then springs back. A gesture across the axis goes to the area around the scroll, as the [UI guide](../ui/ui.md#scrolling-with-wheels-and-trackpads) explains.
 
-The focus scrolls to the focused control. The command [`scrollTo`](#guicommandid-name-arguments) scrolls to an offset or to a node inside the scroll. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll. A horizontal scroll needs a `width`. While the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height. The content draws at the place of the scroll in the tree. So the nodes after it, such as an anchored sheet, cover it, and so do the GUIs of higher layers.
+The focus scrolls to the focused control. The command [`scrollTo`](#guicommandid-name-arguments) scrolls to an offset or to a node inside the scroll. A vertical scroll measures as tall as its content, so give it a `height` or a `maxHeight` to make it scroll. A horizontal scroll needs a `width`. With `scrollbar`, while the child is longer than the area, the [scroll bar](#scroll-bars) takes a lane of its own beside it, and a horizontal scroll adds that lane to its height. The content draws at the place of the scroll in the tree. So the nodes after it, such as an anchored sheet, cover it, and so do the GUIs of higher layers.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `scrollbar` | boolean | `true` | Shows the scroll bar while the child is longer than the area. Without it, the child takes the whole area. |
+| `scrollbar` | boolean | `false` | Shows a [scroll bar](#scroll-bars) while the child is longer than the area. Ask for it only where the position in the content matters, such as a long document or a log. Without it, the child takes the whole area. |
 | `axis` | string | `'vertical'` | The value `'vertical'` or `'horizontal'`. A horizontal scroll lays the child out at its full width and scrolls it sideways, with a sideways trackpad gesture, Shift and the mouse wheel, or a finger. |
 | `snap` | boolean | `false` | Once the player lets go, settles on the start of the item of the child nearest to the scrolled place, such as a card of a row. |
 | `fill` | boolean | `false` | Stretches a child shorter than the area to the whole length of the area. So the children of a column inside it that grow share the room, like a page that fills the screen and scrolls once its content is longer. |
@@ -774,7 +774,7 @@ ui.mount(ui.radioGroup{
 
 ### ui.combo(properties)
 
-A combo is a field that shows the selected item and opens a list of the others. Picking another item reports `change`, with the item id as `value`. The list opens below the field. It opens above instead when the room below is too short for it and the room above is larger. It stays inside the screen, and a list taller than its room scrolls beside a [scroll bar](#scroll-bars). The menus of `menuButton` and `contextMenu` and the popup of `colorField` open and scroll the same way.
+A combo is a field that shows the selected item and opens a list of the others. Picking another item reports `change`, with the item id as `value`. The list opens below the field. It opens above instead when the room below is too short for it and the room above is larger. It stays inside the screen, and a list taller than its room scrolls with the wheel, the trackpad, a finger and the focus, without a scroll bar, and fades out along the edges where more items continue. The menus of `menuButton` and `contextMenu` and the popup of `colorField` open and scroll the same way.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -884,11 +884,12 @@ end})
 
 A text area is a text entry of several lines. Enter, and the return key of the on-screen keyboard, start a new line. It takes the properties of `textField` except `keyboard`, plus `rows`. It reports `change` and never reports `submit`. It shows its `placeholder` while it is empty.
 
-A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways. Text taller than the field scrolls with the wheel and with the caret. A [scroll bar](#scroll-bars) then shows inside the border of the field, from the frame after the text grew taller. The bar narrows the lines that wrap. The lines fade out to transparent along the edges where more text continues, so the field shows through them.
+A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways. Text taller than the field scrolls with the wheel, the trackpad, a finger and the caret. A finger that drags the text scrolls it and does not start the editing. The lines fade out to transparent along the edges where more text continues, so the field shows through them. With `scrollbar`, a [scroll bar](#scroll-bars) shows inside the border of the field, from the frame after the text grew taller, and narrows the lines that wrap.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `rows` | integer from 1 to 200 | `4` | The height in lines of text. |
+| `scrollbar` | boolean | `false` | Shows a [scroll bar](#scroll-bars) while the text is taller than the field, for text whose position matters, such as a log or a long note. |
 
 ```lua
 local ui = require('haylen.ui')
@@ -1397,7 +1398,7 @@ The player scrolls a collection in these ways:
 
 - The wheel and the trackpad scroll the collection under the pointer along its axis. A horizontal one scrolls with a sideways gesture, or with Shift and the mouse wheel. A gesture across its axis scrolls the area around it.
 - A finger drags it along its axis and flings it when it lets go. Past its ends it stretches, with a resistance that grows the farther it goes.
-- The [scroll bar](#scroll-bars), in its lane on the end edge, drags and pages it. The cells leave room for the lane from the frame after the items grew longer than the view. A horizontal collection adds the lane to its height.
+- With `scrollbar`, the [scroll bar](#scroll-bars), in its lane on the end edge, drags and pages it. The cells leave room for the lane from the frame after the items grew longer than the view. A horizontal collection adds the lane to its height.
 - The focus scrolls the item that takes it into view.
 - The mouse does not drag the content, as in the lists of desktop platforms.
 
@@ -1414,7 +1415,7 @@ The player scrolls a collection in these ways:
 | `placeholder` | string | none | The type that shows the items of pages that did not load yet. Without it, those items take the theme `listRowHeight` and draw nothing. |
 | `stickToEnd` | boolean | `false` | Lays short content against the end edge. While the view is at the end, it stays at the end as items arrive, as a chat does. |
 | `snap` | string | `'none'` | Once the content rests, `'item'` settles on the start of the nearest item, `'center'` centers the nearest item, and `'page'` settles on whole views. |
-| `scrollbar` | boolean | `true` | Shows the scroll bar while the content is longer than the view. It fades while the content rests after touch input, and its lane stays. |
+| `scrollbar` | boolean | `false` | Shows a scroll bar while the content is longer than the view, for a list whose position matters, such as a log or a long table. It fades while the content rests after touch input, and its lane stays. Without it, the cells take the whole width. |
 | `prefetch` | number from 0 to 4 | `0.5` | The views bound ahead in the direction of scrolling, so items show bound when they arrive. |
 | `poolSize` | integer from 0 to 256 | `8` | The detached cells each type keeps for reuse between frames. |
 | `selection` | string | `'none'` | The values `'single'` and `'multiple'` let presses select items. |
@@ -1527,7 +1528,7 @@ A dialog is the card of a dialog, with a title, a message, optional children and
 
 - Pressing a button reports `answer`, with the button id as `button`.
 - The buttons line up in one row at the end of the dialog while they fit its width. When they do not fit, as on a phone in portrait, they stack across the whole width, with the last button, usually the main answer, on top and the first one at the bottom. A label too long for the width wraps, and its button grows taller.
-- A dialog is as wide as the theme `dialogWidth` within the room it has, a `panelPadding` away from its edges, and it sits in the middle of that room unless its `align` says otherwise. It is as tall as its content within the safe area. When its title, message and children are taller than that, they scroll above the buttons, beside a [scroll bar](#scroll-bars) at the edge of the dialog. The padding of the dialog holds the lane of the bar.
+- A dialog is as wide as the theme `dialogWidth` within the room it has, a `panelPadding` away from its edges, and it sits in the middle of that room unless its `align` says otherwise. It is as tall as its content within the safe area. When its title, message and children are taller than that, they scroll above the buttons with the wheel, the trackpad, a finger and the focus, and fade out along the edges where more continues. The body shows no scroll bar.
 - The last button takes the focus when the dialog first draws. The focus and screen readers move through the buttons in the order people read them, from the start of the row or the top of the stack.
 
 | Property | Type | Default | Meaning |
@@ -1823,19 +1824,21 @@ ui.mount(ui.stack{width = 1200, height = 700,
 
 ### Scroll bars
 
-Every area that scrolls keeps its scroll bar in a lane of its own along its end edge. The bar never covers the content and never touches it. These areas scroll: `scroll`, `collection`, the text of `textArea`, the popups of `combo`, `menuButton`, `contextMenu` and `colorField`, the body of `dialog`, and the windows of [`haylen.imgui`](imgui.md) with the debug overlay. For content that scrolls up and down, the end edge is the right edge, or the left one in a right-to-left interface. For content that scrolls sideways, it is the bottom edge.
+Areas that scroll show no scroll bar by default. A finger, the wheel, the trackpad and the focus scroll them, and their fades show where the content continues. A `scroll`, a `collection` and a `textArea` show a bar with `scrollbar = true`, which an app asks for only where the position in the content matters, as the [design guidelines](../ui/ui.md#design-guidelines) explain. The popups of `combo`, `menuButton`, `contextMenu` and `colorField` and the body of `dialog` never show one. The windows of [`haylen.imgui`](imgui.md) with the debug overlay keep their bars, as tools with long lists.
+
+A bar runs in a lane of its own along the end edge of its area. The bar never covers the content and never touches it. For content that scrolls up and down, the end edge is the right edge, or the left one in a right-to-left interface. For content that scrolls sideways, it is the bottom edge.
 
 | Metric | Default | Part of the lane |
 | --- | --- | --- |
 | `scrollbarGap` | `8` | The space between the content and the bar. It never spans fewer than 4 points of the screen, whatever the scale mode, the factor of `ui.setScale` or the scaling of the design area. So on a small window or with a small factor, it grows in UI units until it spans 4 points. With the built-in themes, it spans 6 points in the physical scale mode. |
 | `scrollbarSize` | `10` | The thickness of the bar. |
-| `scrollbarInset` | `4` | The space between the bar and the edge of its area. The ends of the bar keep it from the other edges, and from the rounded corners of dialogs, popups and text areas. |
+| `scrollbarInset` | `4` | The space between the bar and the edge of its area. The ends of the bar keep it from the other edges, and from the rounded corners of text areas and immediate windows. |
 
-The lane takes room from the content only while the content is longer than its area, so content that fits keeps the whole width. Padding on the side of the bar counts toward the lane. So the content of a dialog, or of a collection with enough padding, keeps its width when the bar shows. A popup grows by the part of the lane its padding leaves. A popup opens below the control that opened it, or above it when the room below is too short for its content and the room above is larger. It never leaves the display, so its whole bar shows. A horizontal `scroll` and a horizontal `collection` add the lane to their height, so their content keeps its height.
+The lane takes room from the content only while the content is longer than its area, so content that fits keeps the whole width. Padding on the side of the bar counts toward the lane. So the content of a collection with enough padding keeps its width when the bar shows. A horizontal `scroll` and a horizontal `collection` add the lane to their height, so their content keeps its height.
 
-The layout never changes back and forth as the bar comes and goes. A scroll and a dialog decide from the size of their content at the whole width. A popup decides before it opens. A collection and a text area take the lane from the frame after their content grew longer than the view, and show the bar from then on.
+The layout never changes back and forth as the bar comes and goes. A scroll decides from the size of its content at the whole width. A collection and a text area take the lane from the frame after their content grew longer than the view, and show the bar from then on.
 
-A `scroll`, a `collection` and a `textArea` also fade their content out to transparent along each edge where the content continues past the area. The fade is a mask on the alpha of the content, not a color painted over it, so whatever lies below shows through: a card, a gradient, an image or the page. The fade is as long as the theme metric `scrollFade`, and it shows whether the bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. Content that rests at both ends, or fits, fades nothing and costs nothing. An area inside another area that scrolls fades inside the fade of the outer area. A theme sets the metric to `0` to draw no fade.
+Every area that scrolls fades its content out to transparent along each edge where the content continues past the area: a `scroll`, a `collection`, a `textArea`, a popup and the body of a `dialog`. The fade is a mask on the alpha of the content, not a color painted over it, so whatever lies below shows through: a card, a gradient, an image or the page. The fade is as long as the theme metric `scrollFade`, and it shows whether a bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. Content that rests at both ends, or fits, fades nothing and costs nothing. An area inside another area that scrolls fades inside the fade of the outer area. A theme sets the metric to `0` to draw no fade.
 
 The thumb runs in a groove along the whole bar, as wide as the thumb and with the same round ends. So the bar shows how long the content is and where the view lies in it. The colors `scrollbar` and `scrollbarHover` paint the thumb, and `scrollbarTrack` paints the groove, which a transparent color leaves out. The [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint the thumb and its groove with images in the same place. A `style` changes all of them for one node and the nodes inside it.
 
@@ -1846,7 +1849,7 @@ local lines = {}
 for index = 1, 60 do
     lines[index] = ui.label{text = 'Entry ' .. index}
 end
-ui.mount(ui.scroll{height = 400, style = {metrics = {scrollbarGap = 12, scrollbarSize = 14, scrollFade = 0}}, ui.column{children = lines}})
+ui.mount(ui.scroll{height = 400, scrollbar = true, style = {metrics = {scrollbarGap = 12, scrollbarSize = 14, scrollFade = 0}}, ui.column{children = lines}})
 ```
 
 ### Scale

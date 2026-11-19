@@ -1,6 +1,6 @@
 # 🪟 UI
 
-This guide teaches you how to build the interface of an app, step by step. You mount a GUI, lay it out and place it on the screen. Then you react to the player, give the GUI a look, move the focus with every device, share the screen with the game and scroll long content. It is for anyone who builds menus, HUDs, settings screens, dialogs or touch controls. The reference pages [`haylen.ui`](../lua-api/ui.md) and [`haylen.imgui`](../lua-api/imgui.md) list every property, function, event and error.
+This guide teaches you how to build the interface of an app, step by step. You mount a GUI, lay it out and place it on the screen. Then you react to the player, give the GUI a look, move the focus with every device, share the screen with the game and scroll long content, following the design guidelines of Haylen. It is for anyone who builds menus, HUDs, settings screens, dialogs or touch controls. The reference pages [`haylen.ui`](../lua-api/ui.md) and [`haylen.imgui`](../lua-api/imgui.md) list every property, function, event and error.
 
 The examples often come from the Tiny Island sample. Its theme is `samples/games/tiny-island/content/ui/theme.json`, its screens are in `samples/games/tiny-island/source/scenes/`, its HUD is `samples/games/tiny-island/source/ui/hud.lua`, and its shared building blocks are in `samples/games/tiny-island/source/ui/widgets.lua`.
 
@@ -786,7 +786,7 @@ journal:command('log', 'scrollTo', {node = 'entry40', align = 'end'})
 
 ### Scroll bars
 
-Every area that scrolls keeps its scroll bar in a lane of its own, beside the content. The bar never covers the content and never touches it, so text never runs under a thumb. The thumb runs in a groove of the theme color `scrollbarTrack` along the whole bar, so the bar shows how long the content is and where the view lies in it. The windows of `haylen.imgui` draw their bars the same way. Content that fits keeps the whole width, and the layout never jumps back and forth as the bar comes and goes. A `scroll`, a `collection` and a `textArea` also fade their content out to transparent along each edge where it goes on, so a card cut by the edge reads as content that continues, not as a broken card. The fade works on the alpha of the content, so the card, the gradient or the image behind the list shows through it, and no shadow ever darkens the ends of a list. The reference describes the [lane, its metrics and the fade](../lua-api/ui.md#scroll-bars).
+An area that scrolls shows no scroll bar unless the app asks for one with `scrollbar = true`, as the [design guidelines](#design-guidelines) explain. A bar that an app asks for runs in a lane of its own, beside the content. The bar never covers the content and never touches it, so text never runs under a thumb. The thumb runs in a groove of the theme color `scrollbarTrack` along the whole bar, so the bar shows how long the content is and where the view lies in it. The windows of `haylen.imgui` draw their bars the same way. Content that fits keeps the whole width, and the layout never jumps back and forth as the bar comes and goes. Every area that scrolls also fades its content out to transparent along each edge where it goes on, so a card cut by the edge reads as content that continues, not as a broken card. The fade works on the alpha of the content, so the card, the gradient or the image behind the list shows through it, and no shadow ever darkens the ends of a list. The reference describes the [lane, its metrics and the fade](../lua-api/ui.md#scroll-bars).
 
 ### Scrolling with wheels and trackpads
 
@@ -804,8 +804,8 @@ Each gesture moves one area:
 - The gesture stays with that area until it pauses for a moment, until the pointer moves away while it rests, or until fingers touch the trackpad again, even while the momentum of the last swipe still moves the content. It stays even when the content brings another area under the pointer. An area at its end leaves the next gesture that scrolls further to the area around it.
 - A wheel or a trackpad that reports no phases, as on the web, Windows and Linux, never tells when fingers touch it again, and its momentum fills the pause between two swipes. So its gesture also ends once its motion turns clearly to the other axis: more than twice as far across the axis as along it, by a step of a wheel or a few points of a trackpad. A vertical swipe right after a sideways one over a horizontal list then scrolls the page around it at once.
 - On a touch screen, a finger that drags goes to an area once it travels past a small distance. It picks the innermost area it pressed whose axis the drag follows more than the other axis, and stays with it until it lifts. So a finger that drags up over a horizontal list scrolls the page, and one that drags sideways scrolls only the list. Once the area takes the finger, the content moves at once by everything the finger travelled past that distance, so the content follows the finger one to one at any frame rate. A quick flick that lifts before the area took it still gives the area the finger as it lifts, so the content flings.
-- A `scroll` and a `collection` fling on after the finger lets go, and stretch past their ends. A finger that lands on content that glides, after a fling, a step of the wheel or an animated `scrollTo`, stops it where it is and drags it at once, without the small distance, as on a phone. That finger presses nothing, so a tap that stops a list never opens the row under it. The focus brings the control it moves to into view at once.
-- A mouse never drags the content of an area, on any platform, the web included, as in the lists and pages of desktop apps. There a press and a drag of the mouse select text, drag an item or move a control, and the wheel, the trackpad and the scroll bar scroll. A browser that emulates a phone sends touches, which drag the content like a finger.
+- A `scroll` and a `collection` fling on after the finger lets go, and stretch past their ends. A `textArea`, a popup and the body of a `dialog` fling too and stop at their ends. A finger that lands on content that glides, after a fling, a step of the wheel or an animated `scrollTo`, stops it where it is and drags it at once, without the small distance, as on a phone. That finger presses nothing, so a tap that stops a list never opens the row under it. The focus brings the control it moves to into view at once.
+- A mouse never drags the content of an area, on any platform, the web included, as in the lists and pages of desktop apps. There a press and a drag of the mouse select text, drag an item or move a control, and the wheel and the trackpad scroll, as does a scroll bar where an area shows one. A browser that emulates a phone sends touches, which drag the content like a finger.
 
 A touch screen tells taps from gestures. A finger that travels past that small distance, that shares the screen with another finger or that caught gliding content is a swipe, a drag or a pinch. So the button, row, chip or other control it pressed lets it go and never clicks, even when the finger lifts over it. Some controls follow the finger and keep it however far it travels. They are a `slider`, a `rangeSlider`, the handle of a `splitter`, the title bar of a `window`, a `carousel`, the picker of a `colorField`, a scroll bar, a notice swiped away and a text field being edited. A finger that the system cancels never clicks either. The windows and popups of `haylen.imgui` keep every finger.
 
@@ -852,7 +852,7 @@ The view holds what the player sees while the items or their sizes change. Befor
 
 ### Scrolling and the focus
 
-A collection scrolls like a `scroll`: with the wheel, the trackpad, a finger that flings it, and its scroll bar. With `snap`, it settles on items or whole views. A pull at the start of a `refreshable` list reports `refresh`, so the app can load new items.
+A collection scrolls like a `scroll`: with the wheel, the trackpad, a finger that flings it, and the scroll bar it asks for. With `snap`, it settles on items or whole views. A pull at the start of a `refreshable` list reports `refresh`, so the app can load new items.
 
 The keyboard, gamepads and TV remotes move the focus between items with the directions. The actions `uiPagePrevious`, `uiPageNext`, `uiFirst` and `uiLast`, on Page Up, Page Down, Home, End and the shoulder buttons, page through the innermost collection around the focus. The collection binds the items around the focused one, so the focus moves on to items that do not show yet and scrolls them in. The property `focusAlign = 'center'` keeps the focused item in the middle of the view, as TV lists do. An item whose cell the wheel or a finger took out of view keeps the focus, and the next direction brings it back first. With `rememberFocus`, the focus that enters the collection lands on its last focused item. With `focusWrap` along the axis, the focus wraps from the last item to the first.
 
@@ -1095,6 +1095,30 @@ local ui = require('haylen.ui')
 
 -- The player may pick a size, or keep the size of the system.
 ui.setTextScale(preferences.get('textScale', 'system'))
+```
+
+## Design guidelines
+
+These guidelines keep the interfaces of Haylen apps calm and familiar. The defaults of the engine follow them, and so do the samples.
+
+### Scroll bars only where they help
+
+Most lists read naturally without a scroll bar. A finger, the wheel, the trackpad and the focus of the keyboard, gamepads and remotes scroll them, and the fades at their edges show that more content follows. So every area that scrolls shows no bar by default, and its content takes the whole area. Ask for a bar with `scrollbar = true` only where the position in the content matters to the person, such as a long document, a log or a code viewer. There the thumb tells how far they are and lets them jump to any place. A feed, a menu, a settings screen, a shelf of cards or a list of products scrolls without one. The popups of the controls and the body of a dialog never show a bar. The windows of `haylen.imgui` and the debug windows of the engine keep theirs, since they are tools with long lists.
+
+```lua
+local ui = require('haylen.ui')
+
+local posts = {}
+for index = 1, 50 do
+    posts[index] = ui.card{ui.label{text = 'Post ' .. index}}
+end
+
+ui.mount(ui.row{gap = 24,
+    -- A feed reads naturally without a bar.
+    ui.scroll{grow = 1, height = 600, ui.column{gap = 12, children = posts}},
+    -- A log is a place where the position matters.
+    ui.textArea{id = 'log', grow = 1, rows = 20, scrollbar = true},
+})
 ```
 
 ## Component catalog
