@@ -3234,9 +3234,9 @@ local width, height = graphics2d.measureRichText('[b]Quest complete[/b]\nYou fou
 print(width, height)
 ```
 
-### graphics2d.registerTextEffect(name, effect)
+### graphics2d.registerTextEffect(name, effect, options)
 
-Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen.graphics2d` and in `ui.richText`. Every frame, `effect(glyph, attributes)` runs once for each glyph inside the tag. The table `glyph` holds these fields:
+Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen.graphics2d` and in `ui.richText`, and returns a [`Connection`](signal.md#connection) that removes it. Every frame, `effect(glyph, attributes)` runs once for each glyph inside the tag. The optional `options` table takes `owner`, a table or a userdata, and the effect ends with its owner, or with the [default owner](../core/lifecycle.md#subscription-scopes) when the options name none, such as the module that registered it. Any other key raises `Unknown option "<key>".`. The table `glyph` holds these fields:
 
 | Field | Meaning |
 | --- | --- |
@@ -3249,14 +3249,14 @@ Registers a text effect that runs as `[name]...[/name]` in rich text, in `haylen
 
 The table `attributes` holds the attributes of the tag, with numbers as numbers, and `[name=value]` as `attributes.value`.
 
-Registering a name again replaces the effect. An error inside the effect stops the app like any script error. An effect runs while its text builds the picture of the moment, so changing or measuring that text from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`. These names raise an error:
+Registering a name again replaces the effect, whose connection ends. Once the connection ends, markup can no longer name the effect, while rich text that took it before keeps it until its owner ends, and a blocked connection runs nothing for the effect. An error inside the effect stops the app like any script error. An effect runs while its text builds the picture of the moment, so changing or measuring that text from inside the effect raises `A text effect cannot change or lay out the rich text it runs on.`. These names raise an error:
 
 | Error | Cause |
 | --- | --- |
 | `A text effect name must be a single word, not "<name>".` | The name has spaces or is empty. |
 | `The name "<name>" belongs to a rich text tag, so no effect can take it.` | The name is a tag, such as `b` or `color`. |
 | `The name "<name>" belongs to a built-in text effect, so no other effect can take it.` | The name is `wave`, `shake`, `tornado`, `fade`, `rainbow` or `pulse`. |
-| `The text effect "<name>" needs a function.` | The effect is not a function. |
+| `bad argument #2 to 'registerTextEffect' (function expected, got <type>)` | The effect is not a function. |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

@@ -25,7 +25,7 @@ void RichTextRegistry::registerBuiltInEffects() {
     effects.insert_or_assign("pulse", &Effect::pulse);
 }
 
-void RichTextRegistry::registerEffect(std::string name, Effect::Function effect) {
+core::Connection RichTextRegistry::registerEffect(std::string name, Effect::Function effect) {
     if (name.empty() || name.find_first_of(" =[]/") != std::string::npos) {
         throw std::invalid_argument("A text effect name must be a single word, not \"" + name + "\".");
     }
@@ -42,7 +42,39 @@ void RichTextRegistry::registerEffect(std::string name, Effect::Function effect)
         throw std::invalid_argument("The text effect \"" + name + "\" needs a function.");
     }
 
-    effects.insert_or_assign(std::move(name), std::move(effect));
+    auto entry = std::make_shared<EffectEntry>();
+    entry->registry = this;
+    entry->name = name;
+    entry->effect = std::move(effect);
+
+    std::shared_ptr<EffectEntry>& registered = registrations[name];
+    if (registered) {
+        registered->registry = nullptr;
+    }
+
+    registered = entry;
+    // clang-format off
+    effects.insert_or_assign(std::move(name), [running = std::shared_ptr<const EffectEntry>(entry)](Effect::Glyph& glyph, const Effect::Parameters& parameters) {
+        if (!running->blocked) {
+            running->effect(glyph, parameters);
+        }
+    });
+    // clang-format on
+    return core::Connection(entry);
+}
+
+void RichTextRegistry::EffectEntry::disconnect() {
+    if (registry == nullptr) {
+        return;
+    }
+
+    const auto found = registry->registrations.find(name);
+    if (found != registry->registrations.end() && found->second.get() == this) {
+        registry->effects.erase(name);
+        registry->registrations.erase(found);
+    }
+
+    registry = nullptr;
 }
 
 const Effect::Function* RichTextRegistry::findEffect(std::string_view name) const noexcept {
@@ -81,6 +113,11 @@ const RichTextRegistry::Icon* RichTextRegistry::findIcon(std::string_view name) 
 }
 
 void RichTextRegistry::clear() {
+    for (const auto& [name, entry] : registrations) {
+        entry->registry = nullptr;
+    }
+
+    registrations.clear();
     effects.clear();
     icons.clear();
     registerBuiltInEffects();

@@ -7,6 +7,7 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/core/Connection.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -31,8 +32,8 @@ class RichTextRegistry final {
         return family;
     }
 
-    // Registers an effect under a tag name, replacing an effect the app registered before. Markup tags and built-in effects keep their names.
-    void registerEffect(std::string name, Effect::Function effect);
+    // Registers an effect under a tag name, replacing an effect the app registered before, until the connection that the registration returns ends. Markup tags and built-in effects keep their names. Rich text whose markup took the effect keeps it, and runs nothing for it while its connection is blocked.
+    core::Connection registerEffect(std::string name, Effect::Function effect);
     [[nodiscard]] const Effect::Function* findEffect(std::string_view name) const noexcept;
     [[nodiscard]] std::vector<std::string> getEffectNames() const;
 
@@ -45,10 +46,30 @@ class RichTextRegistry final {
   private:
     static constexpr std::array<std::string_view, 6> kBuiltInEffects{"wave", "shake", "tornado", "fade", "rainbow", "pulse"};
 
+    // An effect that the app registered and the link of its connection, which ends once the effect is removed or replaced.
+    struct EffectEntry final : core::Connection::Link {
+        RichTextRegistry* registry = nullptr;
+        std::string name;
+        Effect::Function effect;
+        bool blocked = false;
+
+        void disconnect() override;
+        [[nodiscard]] bool isConnected() const noexcept override {
+            return registry != nullptr;
+        }
+        void setBlocked(bool value) override {
+            blocked = value;
+        }
+        [[nodiscard]] bool isBlocked() const noexcept override {
+            return blocked;
+        }
+    };
+
     void registerBuiltInEffects();
 
     std::shared_ptr<FontFamily> family;
     std::map<std::string, Effect::Function, std::less<>> effects;
+    std::map<std::string, std::shared_ptr<EffectEntry>, std::less<>> registrations;
     std::map<std::string, Icon, std::less<>> icons;
 };
 

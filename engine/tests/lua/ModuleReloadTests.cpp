@@ -383,6 +383,18 @@ require('hud')
     EXPECT_EQ(fixture->engine().getPlugin<plugins::UiPlugin>().events.size(), 1U);
 }
 
+// A platform handler and a text effect that a module registers without an owner belong to the module, so a reload that no longer registers them leaves neither behind.
+TEST_F(ModuleReloadTest, EndsTheHandlersAndTextEffectsThatAModuleNoLongerRegisters) {
+    start({{"source/stand-in.lua", "require('haylen.platform').registerHandler('store.buy', function() return true end)\nrequire('haylen.graphics2d').registerTextEffect('shimmer', function() end)\nreturn {}"},
+        {"source/main.lua", "require('stand-in')"}});
+    const std::string registered = "local names = {} for _, name in ipairs(require('haylen.graphics2d').textEffectNames()) do names[name] = true end return tostring(require('haylen.platform').hasHandler('store.buy')) .. ' ' .. tostring(names.shimmer)";
+    EXPECT_EQ(lua(registered), "true true");
+
+    edit({{"source/stand-in.lua", "return {}"}});
+    EXPECT_EQ(error(), "");
+    EXPECT_EQ(lua(registered), "false nil");
+}
+
 TEST_F(ModuleReloadTest, HandsKeptValuesToTheNextLoad) {
     const std::string player = R"(
 local hotReload = require('haylen.hotReload')

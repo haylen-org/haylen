@@ -605,7 +605,7 @@ The field `handle.native` and the `native` field of `platform.plugins()` come fr
 - On Android, the plugins whose class the engine library created and loaded.
 - On the desktops, the plugins whose native library declared itself their native part with `registerPlugin(id)` of [`HaylenNativeApi`](../lua-api/native.md#the-c-interface-of-the-engine).
 
-The native part belongs to the process, so `handle.native` stays `true` for every app that the process runs after it. A handler that Lua registers with [`platform.registerHandler`](../lua-api/platform.md#platformregisterhandlermethod-handler) belongs to the app instead, and it ends when the app ends or restarts. So the Lua API of a plugin registers its Lua handlers again in every app, and never behind the check of `handle.native` that loads the library of a desktop once.
+The native part belongs to the process, so `handle.native` stays `true` for every app that the process runs after it. A handler that Lua registers with [`platform.registerHandler`](../lua-api/platform.md#platformregisterhandlermethod-handler-options) belongs to the app instead, and it ends when the app ends or restarts. So the Lua API of a plugin registers its Lua handlers again in every app, and never behind the check of `handle.native` that loads the library of a desktop once.
 
 ## Plugin screens
 

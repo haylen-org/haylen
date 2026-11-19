@@ -16,6 +16,7 @@
 #include <variant>
 #include <vector>
 
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Signal.hpp"
 #include "varn/dataview/DataView.h"
@@ -86,8 +87,8 @@ class Bridge final {
     Bridge(const Bridge&) = delete;
     Bridge& operator=(const Bridge&) = delete;
 
-    // Handlers registered in C++ take precedence over the native dispatcher for their method. Their reply may come later from any thread, even after the bridge is gone.
-    void registerHandler(std::string method, Handler handler);
+    // Handlers registered in C++ take precedence over the native dispatcher for their method, until the connection that the registration returns ends or a later registration of the method replaces them. A blocked handler leaves its method to native code. Their reply may come later from any thread, even after the bridge is gone.
+    core::Connection registerHandler(std::string method, Handler handler);
     [[nodiscard]] bool hasHandler(std::string_view method) const;
 
     // A call with a timeout fails with the code `timeout` when no answer arrived in time, and native code hears that it was given up. The caller keeps the views of the parameters alive until the call returns. Throws `std::invalid_argument` for an empty method name, parameters that refer to a buffer they lack, or a token that names no live view.
@@ -134,6 +135,25 @@ class Bridge final {
         std::vector<Arrival> arrivals;
     };
 
+    // A registered handler and the link of its connection, which ends once the handler is removed or replaced.
+    struct HandlerEntry final : core::Connection::Link {
+        Bridge* bridge = nullptr;
+        std::string method;
+        Handler handler;
+        bool blocked = false;
+
+        void disconnect() override;
+        [[nodiscard]] bool isConnected() const noexcept override {
+            return bridge != nullptr;
+        }
+        void setBlocked(bool value) override {
+            blocked = value;
+        }
+        [[nodiscard]] bool isBlocked() const noexcept override {
+            return blocked;
+        }
+    };
+
     struct Pending {
         Callback callback;
         std::string method;
@@ -168,7 +188,7 @@ class Bridge final {
 
     Dispatcher dispatcher;
     Canceller canceller;
-    std::unordered_map<std::string, Handler> handlers;
+    std::unordered_map<std::string, std::shared_ptr<HandlerEntry>> handlers;
     std::unordered_map<std::uint64_t, Pending> pending;
     std::vector<std::pair<Callback, Result>> cancelled;
     std::unordered_map<std::string, std::unique_ptr<core::Signal<const Payload&>>> signals;

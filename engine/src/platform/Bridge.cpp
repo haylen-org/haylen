@@ -40,16 +40,41 @@ Bridge::~Bridge() {
     }
 }
 
-void Bridge::registerHandler(std::string method, Handler handler) {
+void Bridge::HandlerEntry::disconnect() {
+    if (bridge == nullptr) {
+        return;
+    }
+
+    const auto found = bridge->handlers.find(method);
+    if (found != bridge->handlers.end() && found->second.get() == this) {
+        bridge->handlers.erase(found);
+    }
+
+    bridge = nullptr;
+}
+
+core::Connection Bridge::registerHandler(std::string method, Handler handler) {
     if (method.empty() || !handler) {
         throw std::invalid_argument("A platform handler needs a method name and a function.");
     }
 
-    handlers.insert_or_assign(std::move(method), std::move(handler));
+    auto entry = std::make_shared<HandlerEntry>();
+    entry->bridge = this;
+    entry->method = method;
+    entry->handler = std::move(handler);
+
+    std::shared_ptr<HandlerEntry>& registered = handlers[std::move(method)];
+    if (registered) {
+        registered->bridge = nullptr;
+    }
+
+    registered = entry;
+    return core::Connection(entry);
 }
 
 bool Bridge::hasHandler(std::string_view method) const {
-    return handlers.contains(std::string(method));
+    const auto found = handlers.find(std::string(method));
+    return found != handlers.end() && !found->second->blocked;
 }
 
 std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout) {
@@ -99,13 +124,13 @@ void Bridge::send(std::string_view method, const Payload& params) {
 
 void Bridge::start(std::uint64_t id, std::string_view method, const Payload& params, std::span<const varn::dataview::DataView> views, Reply reply) {
     const auto found = handlers.find(std::string(method));
-    if (found == handlers.end()) {
+    if (found == handlers.end() || found->second->blocked) {
         dispatcher(id, method, params.json.dump(), params.buffers, views);
         return;
     }
 
-    const Handler handler = found->second;
-    handler(params, std::move(reply));
+    const std::shared_ptr<const HandlerEntry> entry = found->second;
+    entry->handler(params, std::move(reply));
 }
 
 bool Bridge::cancel(std::uint64_t id) {

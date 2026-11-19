@@ -19,7 +19,6 @@
 #include "haylen/core/Utf8.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -184,10 +183,13 @@ void RichTextLua::pushEffectAttributes(lua_State* L, const text::Effect::Paramet
 }
 
 // The effect takes the glyph table and the attributes of its tag, and the glyph reads back the fields the effect may change.
-void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) {
+void RichTextLua::runEffect(lua_State* main, const lua::Owners::Function& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) {
     // clang-format off
-    lua::Runtime::protectedRun(function.getState(), [&](lua_State* L) {
-        function.push(L);
+    lua::Runtime::protectedRun(main, [&](lua_State* L) {
+        if (!function.push(L)) {
+            return;
+        }
+
         pushEffectGlyph(L, glyph);
         const int table = lua_gettop(L);
         pushEffectAttributes(L, parameters);
@@ -202,13 +204,18 @@ void RichTextLua::runEffect(const lua::Reference& function, text::Effect::Glyph&
     // clang-format on
 }
 
-// Registers a Lua effect with `registerTextEffect(name, function(glyph, attributes) ... end)`, which runs for every glyph inside `[name]` each frame.
+// Registers a Lua effect with `registerTextEffect(name, function(glyph, attributes) ... end, {owner = owner})`, which runs for every glyph inside `[name]` each frame, and returns the connection that removes it. The effect ends with its owner, or with the default owner.
 int RichTextLua::registerTextEffect(lua_State* L) {
     std::string name = lua::Stack::read<std::string>(L, 1);
-    luaL_checktype(L, 2, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, 2);
-    getRegistry(L)->registerEffect(std::move(name), [function](text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) { runEffect(*function, glyph, parameters); });
-    return 0;
+    const lua::Owners::Listener listener = lua::Owners::readListener(L, 2, 3);
+    lua_State* main = lua::Runtime::getMainThread(L);
+    // clang-format off
+    core::Connection connection = getRegistry(L)->registerEffect(std::move(name), [main, function = listener.function](text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters) {
+        runEffect(main, *function, glyph, parameters);
+    });
+    // clang-format on
+    lua::Owners::pushConnection(L, listener, std::move(connection));
+    return 1;
 }
 
 // Registers an icon for `[icon=name]` with `registerTextIcon(name, texture, {source, width, height})`.

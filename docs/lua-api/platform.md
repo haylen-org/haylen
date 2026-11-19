@@ -116,11 +116,13 @@ end)
 
 Desktop builds and tests often have no native code for a method. These functions let Lua play the part of native code.
 
-### platform.registerHandler(method, handler)
+### platform.registerHandler(method, handler, options)
 
-Answers the method named `method` with the Lua function `handler(params)`, which returns the result. The function runs during the `platform.call` that asks for it, so it must return at once. Its result must convert to JSON. Bytes of the parameters arrive as strings, and strings of the result that `platform.bytes` marks cross as bytes.
+Answers the method named `method` with the Lua function `handler(params)`, which returns the result, and returns a [`Connection`](signal.md#connection) that removes the handler. The function runs during the `platform.call` that asks for it, so it must return at once. Its result must convert to JSON. Bytes of the parameters arrive as strings, and strings of the result that `platform.bytes` marks cross as bytes.
 
-An error raised inside the handler fails the call with the error message and its stack trace. It does not stop the app. A new handler replaces an earlier engine handler of the same method, and an engine handler goes before every native handler. The handler belongs to the app, so it ends when the app ends or restarts, while native handlers and the `native` field of a [plugin handle](#appplugin) belong to the process. So every app registers its Lua handlers again, and a plugin never registers them behind a check of `native`, which stays `true` after the first app. An empty method name raises `A platform handler needs a method name and a function.`, and a `handler` that is not a function raises a bad argument error.
+- The optional `options` table takes `owner`, a table or a userdata. The handler ends with its owner, or with the [default owner](../core/lifecycle.md#subscription-scopes) when the options name none, such as the scene or the module that registered it. Any other key raises `Unknown option "<key>".`.
+
+An error raised inside the handler fails the call with the error message and its stack trace. It does not stop the app. A new handler replaces an earlier engine handler of the same method, whose connection ends, and an engine handler goes before every native handler. While its connection is blocked, the method goes to native code as if the handler were not there. The handler belongs to the app, so it ends when the app ends or restarts, while native handlers and the `native` field of a [plugin handle](#appplugin) belong to the process. So every app registers its Lua handlers again, and a plugin never registers them behind a check of `native`, which stays `true` after the first app. An empty method name raises `A platform handler needs a method name and a function.`, and a `handler` that is not a function raises a bad argument error.
 
 ```lua
 local async = require('async')
@@ -146,7 +148,7 @@ end)
 
 ### platform.hasHandler(method)
 
-Returns `true` when an engine handler answers `method`. That covers methods that `platform.registerHandler` registered and methods that C++ code registered. It does not see native handlers, so it returns `false` for a method that only the platform answers.
+Returns `true` when an engine handler answers `method`. That covers methods that `platform.registerHandler` registered and methods that C++ code registered, while their connections are not blocked. It does not see native handlers, so it returns `false` for a method that only the platform answers.
 
 ```lua
 local platform = require('haylen.platform')

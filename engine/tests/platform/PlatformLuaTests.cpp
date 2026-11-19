@@ -48,6 +48,32 @@ TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
     EXPECT_NE(fixture.lua("platform.registerHandler('x', 'not a function')").find("error: "), std::string::npos);
 }
 
+// A Lua handler ends with its owner or its connection, a later handler of the method replaces it, and a blocked one leaves the method to native code.
+TEST(PlatformLuaTest, EndsALuaHandlerWithItsOwnerOrItsConnection) {
+    test::EngineFixture fixture;
+    fixture.runLua("platform = require('haylen.platform') owned = {} platform.registerHandler('store.buy', function() return 'owned' end, {owner = owned})");
+    EXPECT_EQ(fixture.lua("return platform.hasHandler('store.buy')"), "true");
+    fixture.runLua("owned = nil collectgarbage()");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return platform.hasHandler('store.buy')"), "false");
+
+    fixture.runLua("first = platform.registerHandler('store.buy', function() return 'first' end) second = platform.registerHandler('store.buy', function() return 'second' end)");
+    EXPECT_EQ(fixture.lua("return tostring(first.connected) .. ' ' .. tostring(second.connected)"), "false true");
+    fixture.runLua("first:disconnect()");
+    EXPECT_EQ(fixture.lua("return platform.hasHandler('store.buy')"), "true");
+
+    fixture.runLua("second.blocked = true async = require('async') async.spawn(function() answer = platform.call('store.buy'):await() end)");
+    EXPECT_EQ(fixture.lua("return platform.hasHandler('store.buy')"), "false");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().size() == 1; }));
+    fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, R"("native")");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return answer ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return answer"), "native");
+
+    fixture.runLua("second:disconnect()");
+    EXPECT_EQ(fixture.lua("return tostring(second.connected) .. ' ' .. tostring(platform.hasHandler('store.buy'))"), "false false");
+    EXPECT_NE(fixture.lua("platform.registerHandler('store.buy', function() end, {priority = 1})").find("Unknown option \"priority\"."), std::string::npos);
+}
+
 // A reply that reaches the bridge between two frames resumes the coroutine that awaits it in the next frame, so an awaited round trip costs one frame.
 TEST(PlatformLuaTest, ResumesAnAwaitedCallInTheFrameItsReplyReaches) {
     test::EngineFixture fixture;

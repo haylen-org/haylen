@@ -17,7 +17,6 @@
 #include "haylen/lua/Bytes.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/JsonConverter.hpp"
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -249,34 +248,37 @@ int PlatformLua::send(lua_State* L) {
     return 0;
 }
 
-// Implements a platform method in Lua with `registerHandler(method, function(params) return result end)`, which is useful on desktop and in tests.
+// Implements a platform method in Lua with `registerHandler(method, function(params) return result end, {owner = owner})`, which is useful on desktop and in tests, and returns the connection that removes it. The handler ends with its owner, or with the default owner.
 int PlatformLua::registerHandler(lua_State* L) {
-    core::Engine& owner = lua::Runtime::getEngine(L);
-    const std::string method = lua::Stack::read<std::string>(L, 1);
-    luaL_checktype(L, 2, LUA_TFUNCTION);
-    auto function = std::make_shared<lua::Reference>(L, 2);
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    std::string method = lua::Stack::read<std::string>(L, 1);
+    const lua::Owners::Listener listener = lua::Owners::readListener(L, 2, 3);
+    lua_State* main = lua::Runtime::getMainThread(L);
 
     // clang-format off
-    owner.getPlatform().registerHandler(method, [function](const Bridge::Payload& params, Bridge::Reply reply) {
-        lua_State* state = function->getState();
-        const int top = lua_gettop(state);
+    core::Connection connection = engine.getPlatform().registerHandler(std::move(method), [function = listener.function, main](const Bridge::Payload& params, Bridge::Reply reply) {
+        const int top = lua_gettop(main);
         Bridge::Result result;
         try {
-            function->push(state);
-            pushPayload(state, params);
-            lua::Runtime::protectedCall(state, 1, 1);
+            if (!function->push(main)) {
+                throw std::runtime_error("The handler of the platform method ended with its owner.");
+            }
+
+            pushPayload(main, params);
+            lua::Runtime::protectedCall(main, 1, 1);
             result = {.ok = true};
-            result.value.json = lua::JsonConverter::readBridged(state, -1, result.value.buffers);
+            result.value.json = lua::JsonConverter::readBridged(main, -1, result.value.buffers);
             result.value.views = varn::dataview::DataViewJson::acquire(result.value.json);
         } catch (const std::exception& exception) {
             result = {.error = {.message = exception.what()}};
         }
 
-        lua_settop(state, top);
+        lua_settop(main, top);
         reply(std::move(result));
     });
     // clang-format on
-    return 0;
+    lua::Owners::pushConnection(L, listener, std::move(connection));
+    return 1;
 }
 
 int PlatformLua::hasHandler(lua_State* L) {

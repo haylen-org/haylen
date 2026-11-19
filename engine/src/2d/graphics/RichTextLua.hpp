@@ -8,7 +8,6 @@
 #include <string_view>
 #include <vector>
 
-#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/math/Color.hpp"
@@ -18,6 +17,7 @@
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
+#include "lua/Owners.hpp"
 
 struct lua_State;
 
@@ -65,7 +65,7 @@ class RichTextLua final {
     static void readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>& fontNames);
 
     // Runs a Lua effect on one glyph, which reads and writes the fields of a glyph table and reads the attributes of its tag.
-    static void runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters);
+    static void runEffect(lua_State* main, const lua::Owners::Function& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters);
     static void pushEffectGlyph(lua_State* L, const text::Effect::Glyph& glyph);
     static void pushEffectAttributes(lua_State* L, const text::Effect::Parameters& parameters);
 
