@@ -66,13 +66,20 @@ set(HAYLEN_TEST_SOURCES
   ai/DecisionTests.cpp
   ai/StateMachineTests.cpp
   assets/AssetTests.cpp
+  audio/AudioAssetTests.cpp
+  audio/AudioEffectTests.cpp
+  audio/AudioInterruptionTests.cpp
+  audio/AudioLuaTests.cpp
+  audio/AudioOutputTests.cpp
+  audio/AudioPauseTests.cpp
   audio/AudioStreamTests.cpp
-  audio/AudioTests.cpp
-  audio/EffectTests.cpp
+  audio/FormattedOutputTests.cpp
+  audio/FreeverbTests.cpp
   audio/MixerLuaTests.cpp
+  audio/MixerTests.cpp
   audio/OggPageIndexTests.cpp
-  audio/OutputTests.cpp
-  audio/PauseTests.cpp
+  audio/PulledOutputTests.cpp
+  audio/SoundTests.cpp
   audio/SpatializationTests.cpp
   audio/StreamedSoundTests.cpp
   content/BootstrapTests.cpp
@@ -147,12 +154,16 @@ set(HAYLEN_TEST_SOURCES
   graphics/GraphicsTests.cpp
   graphics/ImageFiltersTests.cpp
   graphics/ImagePaletteTests.cpp
+  graphics/MaterialLuaTests.cpp
+  graphics/MaterialTests.cpp
   graphics/ShaderTests.cpp
   graphics/VectorImageTests.cpp
   graphics/VideoTests.cpp
+  input/ActionMapTests.cpp
   input/CommandBufferTests.cpp
   input/GamepadMotionTests.cpp
   input/GestureTests.cpp
+  input/InputRecordingLuaTests.cpp
   input/InputRecordingTests.cpp
   input/InputTests.cpp
   input/PointerEmulationTests.cpp
@@ -182,6 +193,8 @@ set(HAYLEN_TEST_SOURCES
   math/UtilityTests.cpp
   math/VectorTests.cpp
   net/HttpDownloadTests.cpp
+  net/NetLuaTests.cpp
+  net/NetPluginTests.cpp
   net/WebSocketTests.cpp
   platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp
@@ -242,8 +255,10 @@ set(HAYLEN_TEST_SOURCES
   platform/worker/GamepadsTests.cpp
   platform/worker/KeysTests.cpp
   storage/StorageTests.cpp
+  support/ActionBindings.cpp
   support/AllocationTracker.cpp
   support/AllocationTrackerTests.cpp
+  support/AudioFiles.cpp
   support/ContentAppFixture.cpp
   support/ContentParsers.cpp
   support/ContentServer.cpp
@@ -254,10 +269,12 @@ set(HAYLEN_TEST_SOURCES
   support/EngineFixture.cpp
   support/EventLoop.cpp
   support/FakeVideoDecoder.cpp
+  support/MaterialShaders.cpp
   support/ReleaseFixture.cpp
   support/TemporaryDirectory.cpp
   support/TestFiles.cpp
   support/UiFixture.cpp
+  support/ZipArchives.cpp
   text/BitmapFontTests.cpp
   text/ColorGlyphTests.cpp
   text/FontTests.cpp

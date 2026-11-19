@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -18,6 +16,7 @@
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 #include "text/BidiParagraph.hpp"
 
 namespace haylen::text {
@@ -35,8 +34,7 @@ class ShapingTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::shared_ptr<Font> load(std::string_view name) {
-        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
-        return std::make_shared<TrueTypeFont>(fixture.engine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
+        return std::make_shared<TrueTypeFont>(fixture.engine().getGraphics(), test::FontCollection::read(name));
     }
 
     // Shapes one code point on its own, which gives its isolated form, and returns the glyphs it draws with.
@@ -65,11 +63,24 @@ class ShapingTest : public ::testing::Test {
         return *laid;
     }
 
+    // Returns the index of the character of the layout that holds a code point of the text.
+    [[nodiscard]] static std::size_t characterAt(const Layout& layout, std::size_t codePoint) {
+        const auto character = std::ranges::find_if(layout.characters, [codePoint](const Layout::Character& found) { return found.begin <= codePoint && codePoint < found.end; });
+        if (character == layout.characters.end()) {
+            throw std::runtime_error("The layout has no character at the code point " + std::to_string(codePoint) + ".");
+        }
+
+        return static_cast<std::size_t>(character - layout.characters.begin());
+    }
+
     // Returns the glyph drawn for the character that starts at a code point of the text.
     [[nodiscard]] static const Layout::Glyph& glyphAt(const Layout& layout, std::size_t codePoint) {
-        const auto character = std::ranges::find_if(layout.characters, [codePoint](const Layout::Character& found) { return found.begin <= codePoint && codePoint < found.end; });
-        const auto glyph = std::ranges::find_if(layout.glyphs, [&](const Layout::Glyph& found) { return found.character == static_cast<std::size_t>(character - layout.characters.begin()); });
-        EXPECT_NE(glyph, layout.glyphs.end()) << codePoint;
+        const std::size_t character = characterAt(layout, codePoint);
+        const auto glyph = std::ranges::find_if(layout.glyphs, [character](const Layout::Glyph& found) { return found.character == character; });
+        if (glyph == layout.glyphs.end()) {
+            throw std::runtime_error("The layout draws no glyph for the code point " + std::to_string(codePoint) + ".");
+        }
+
         return *glyph;
     }
 
@@ -152,7 +163,7 @@ TEST_F(ShapingTest, OrdersMixedDirectionsForDisplay) {
     // Arabic with an English word and a number, forced to read left to right, keeps the English on the left and reverses the Arabic word, and the number after it joins the Arabic run as an Arabic number, so it stands on the left of the word with its digits in order.
     const Layout& arabicInside = lay("Price السعر 42", {.size = 32.0F, .direction = Direction::LeftToRight});
     EXPECT_FALSE(arabicInside.lines[0].rightToLeft);
-    const auto boxOf = [&](std::size_t codePoint) { return std::ranges::find_if(arabicInside.characters, [codePoint](const Layout::Character& found) { return found.begin <= codePoint && codePoint < found.end; })->box.x; };
+    const auto boxOf = [&arabicInside](std::size_t codePoint) { return arabicInside.characters[characterAt(arabicInside, codePoint)].box.x; };
     EXPECT_LT(boxOf(0), boxOf(12));
     EXPECT_LT(boxOf(12), boxOf(13));
     EXPECT_LT(boxOf(13), boxOf(10));
@@ -376,8 +387,9 @@ TEST_F(ShapingTest, SpansStylesAcrossDirections) {
     RichText list("[p dir=rightToLeft][ul]אחד[/ul][/p]", {.family = family, .size = 32.0F, .maxWidth = 400.0F}, registry);
     const Layout& items = list.getLayout();
     ASSERT_FALSE(items.glyphs.empty());
-    const Layout::Glyph& bullet = *std::ranges::find(items.glyphs, U'•', &Layout::Glyph::codePoint);
-    EXPECT_GT(bullet.position.x, items.characters[0].box.getRight());
+    const auto bullet = std::ranges::find(items.glyphs, U'•', &Layout::Glyph::codePoint);
+    ASSERT_NE(bullet, items.glyphs.end());
+    EXPECT_GT(bullet->position.x, items.characters[0].box.getRight());
 }
 
 // The typewriter reveals characters in reading order, which starts at the right of right-to-left text, and a partly revealed underline grows from there.

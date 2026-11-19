@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <memory>
@@ -60,6 +61,8 @@ class FakeVideoDecoder final : public platform::VideoDecoder {
     [[nodiscard]] double getTime() const override;
 
   private:
+    static constexpr std::chrono::seconds kHoldLimit{30};
+
     Settings settings;
     mutable Info shown;
     std::shared_ptr<Log> log;

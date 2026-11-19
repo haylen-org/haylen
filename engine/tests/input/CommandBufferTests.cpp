@@ -6,7 +6,6 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -14,6 +13,7 @@
 #include "haylen/input/CommandBuffer.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
+#include "support/ActionBindings.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::input {
@@ -133,7 +133,9 @@ TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
     const std::optional<std::size_t> special = buffer.findCommand("upSpecial");
     ASSERT_TRUE(special.has_value());
     EXPECT_EQ(buffer.peek(), special);
-    EXPECT_FALSE(buffer.consume(*buffer.findCommand("attack")));
+    const std::optional<std::size_t> attack = buffer.findCommand("attack");
+    ASSERT_TRUE(attack.has_value());
+    EXPECT_FALSE(buffer.consume(*attack));
     EXPECT_TRUE(buffer.consume(*special));
     EXPECT_FALSE(buffer.consume(*special));
 }
@@ -174,7 +176,7 @@ TEST_F(CommandBufferTest, FollowsTheFacingAndSettlesHeldButtons) {
 
 TEST_F(CommandBufferTest, ReadsTheStepsOfAnActionMap) {
     ActionMap map;
-    map.define({.name = "attack", .type = ActionMap::Action::Type::Button, .bindings = {*ActionMap::Binding::parse("virtual:attack")}});
+    map.define({.name = "attack", .type = ActionMap::Action::Type::Button, .bindings = {test::ActionBindings::parse("virtual:attack")}});
     CommandBuffer buffer(makeOptions({}));
     Input input;
     VirtualInput virtualInput;

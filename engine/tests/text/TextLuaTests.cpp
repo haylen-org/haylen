@@ -1,7 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <stdexcept>
 #include <string>
@@ -17,9 +15,10 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen {
+namespace haylen::text {
 
 class TextLuaTest : public ::testing::Test {
   protected:
@@ -28,9 +27,9 @@ class TextLuaTest : public ::testing::Test {
         const std::vector<std::uint8_t> image = test::TestFiles::pngImage(32, 16, 0xFFFFFFFFU);
         const std::string png(image.begin(), image.end());
         const std::string bmfont = "info face=\"Pixel\" size=8\ncommon lineHeight=10 base=8 pages=1\npage id=0 file=\"pixel.png\"\nchar id=65 x=0 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nchar id=66 x=8 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nkerning first=65 second=66 amount=-1\n";
-        std::ifstream hebrew(std::string(HAYLEN_TEST_FONTS) + "/noto-sans-hebrew-regular.ttf", std::ios::binary);
-        std::ifstream emoji(std::string(HAYLEN_TEST_FONTS) + "/noto-color-emoji-regular.ttf", std::ios::binary);
-        return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}, {"content/fonts/emoji.ttf", {std::istreambuf_iterator<char>(emoji), std::istreambuf_iterator<char>()}}};
+        const std::vector<std::uint8_t> hebrew = test::FontCollection::read("noto-sans-hebrew-regular.ttf");
+        const std::vector<std::uint8_t> emoji = test::FontCollection::read("noto-color-emoji-regular.ttf");
+        return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {hebrew.begin(), hebrew.end()}}, {"content/fonts/emoji.ttf", {emoji.begin(), emoji.end()}}};
     }
 
     void SetUp() override {
@@ -352,4 +351,4 @@ TEST(TextPluginTest, RequiresAStartedEngine) {
     EXPECT_THROW((void)plugin.getRegistry(), std::logic_error);
 }
 
-} // namespace haylen
+} // namespace haylen::text

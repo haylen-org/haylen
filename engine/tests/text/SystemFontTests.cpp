@@ -3,8 +3,8 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -19,6 +19,7 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/FontCollection.hpp"
+#include "support/TestFiles.hpp"
 #include "text/FontFile.hpp"
 #include "text/GlyphTables.hpp"
 
@@ -126,8 +127,12 @@ TEST(GlyphTablesTest, DrawsColorLayersAndOutlinesWithoutBitmaps) {
     const std::vector<std::vector<std::uint8_t>> faces{letters, bitmaps};
     const std::vector<std::uint8_t> collection = test::FontCollection::build(faces);
     EXPECT_EQ(FontFile::countFaces(collection), 2U);
-    EXPECT_TRUE(FontFile::read(std::span<const std::uint8_t>(collection), 0)->isDrawable());
-    EXPECT_FALSE(FontFile::read(std::span<const std::uint8_t>(collection), 1)->isDrawable());
+    const std::optional<FontFile> first = FontFile::read(std::span<const std::uint8_t>(collection), 0);
+    const std::optional<FontFile> second = FontFile::read(std::span<const std::uint8_t>(collection), 1);
+    ASSERT_TRUE(first);
+    ASSERT_TRUE(second);
+    EXPECT_TRUE(first->isDrawable());
+    EXPECT_FALSE(second->isDrawable());
     EXPECT_FALSE(FontFile::read(std::span<const std::uint8_t>(collection), 2).has_value());
 }
 
@@ -136,7 +141,7 @@ TEST_F(SystemFontTest, RefusesFacesTheEngineCannotDrawAndReadsThemOnce) {
     const std::filesystem::path folder = std::filesystem::temp_directory_path() / ("haylen-system-fonts-" + std::to_string(::testing::UnitTest::GetInstance()->random_seed()));
     std::filesystem::create_directories(folder);
     const std::vector<std::uint8_t> bitmaps = test::FontCollection::addTable(test::FontCollection::read("mplus-1p-regular.ttf"), 0x43424454U);
-    std::ofstream(folder / "bitmaps.ttf", std::ios::binary).write(reinterpret_cast<const char*>(bitmaps.data()), static_cast<std::streamsize>(bitmaps.size()));
+    test::TestFiles::write(folder / "bitmaps.ttf", bitmaps);
     fixture.host().addSystemFont(U"한글", folder / "bitmaps.ttf");
     fixture.host().addSystemFont(U"ก", std::string(HAYLEN_TEST_FONTS) + "/crimson-text-regular.ttf");
 

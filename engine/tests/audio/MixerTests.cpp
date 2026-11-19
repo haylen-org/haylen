@@ -1,80 +1,25 @@
 #include <gtest/gtest.h>
 
-#include <lua.hpp>
-
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
-#include "audio/SoundData.hpp"
-#include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Filter.hpp"
 #include "haylen/audio/Mixer.hpp"
-#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Connection.hpp"
-#include "haylen/core/Json.hpp"
-#include "support/EngineFixture.hpp"
-#include "support/TestFiles.hpp"
 
 namespace haylen::audio {
 
-class SoundTest : public MixerFixture {};
-
 class MixerTest : public MixerFixture {};
-
-class AudioAssetTest : public MixerFixture {};
-
-class AudioLuaTest : public MixerFixture {};
-
-TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
-    const std::vector<std::uint8_t> file = test::TestFiles::wav(22050, 2, makeSignal(2205, 2, 0.25F));
-
-    const Sound decoded = Sound::decode(file);
-    EXPECT_TRUE(decoded.isValid());
-    EXPECT_FALSE(decoded.isStreamed());
-    EXPECT_EQ(decoded.getChannels(), 2U);
-    EXPECT_EQ(decoded.getSampleRate(), 22050U);
-    EXPECT_EQ(decoded.getFrameCount(), 2205U);
-    EXPECT_NEAR(decoded.getDuration(), 0.1F, 0.0001F);
-
-    const Sound streamed = Sound::stream(makeReader(file));
-    EXPECT_TRUE(streamed.isStreamed());
-    EXPECT_EQ(streamed.getFrameCount(), 2205U);
-    EXPECT_NE(streamed, decoded);
-
-    const Sound empty;
-    EXPECT_FALSE(empty.isValid());
-    EXPECT_EQ(empty.getDuration(), 0.0F);
-    EXPECT_EQ(empty.getChannels(), 0U);
-    EXPECT_THROW((void)Sound::decode(test::TestFiles::bytes("not audio")), std::runtime_error);
-    EXPECT_THROW((void)Sound::stream(makeReader({})), std::runtime_error);
-    EXPECT_THROW((void)Sound::stream(nullptr), std::invalid_argument);
-    EXPECT_THROW((void)Sound::decode(test::TestFiles::wav(kRate, 1, {})), std::runtime_error);
-}
-
-TEST_F(SoundTest, MakesSoundsFromRawSamples) {
-    const Sound floats = Sound::fromSamples(std::vector<float>{0.5F, -0.5F, 0.25F, -0.25F}, 2, 24000);
-    EXPECT_FALSE(floats.isStreamed());
-    EXPECT_EQ(floats.getChannels(), 2U);
-    EXPECT_EQ(floats.getSampleRate(), 24000U);
-    EXPECT_EQ(floats.getFrameCount(), 2U);
-    EXPECT_EQ(floats.getData()->samples, (std::vector<float>{0.5F, -0.5F, 0.25F, -0.25F}));
-
-    const Sound shorts = Sound::fromSamples(std::vector<std::int16_t>{16384, -32768, 0}, 1, 8000);
-    EXPECT_EQ(shorts.getData()->samples, (std::vector<float>{0.5F, -1.0F, 0.0F}));
-    EXPECT_NEAR(shorts.getDuration(), 3.0F / 8000.0F, 1e-7F);
-
-    EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{0.5F, 0.5F, 0.5F}, 2, 8000), std::invalid_argument);
-    EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{0.5F}, 1, 0), std::invalid_argument);
-    EXPECT_THROW((void)Sound::fromSamples(std::vector<float>{}, 1, 8000), std::runtime_error);
-}
 
 TEST_F(MixerTest, MixesVoicesThroughBuses) {
     const Sound sound = makeTone(toFrames(1.0F));
@@ -368,11 +313,13 @@ TEST_F(MixerTest, ReadsTheCursorOfAVoiceWhileTheMixingThreadMovesIt) {
     });
     // clang-format on
     float latest = 0.0F;
-    while (!done) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!done && std::chrono::steady_clock::now() < deadline) {
         latest = std::max(latest, mixer.getCursor(voice));
     }
 
     mixing.join();
+    EXPECT_TRUE(done) << "The mixing thread did not finish its blocks in time.";
     EXPECT_LE(latest, 0.25F);
     EXPECT_GT(mixer.getCursor(voice), 0.0F);
 }
@@ -440,7 +387,9 @@ TEST_F(MixerTest, LimitsTheVoicesOfOneSound) {
     mixer.setLimit(coin, {.voices = 3, .steal = Mixer::Limit::Steal::None});
     EXPECT_FALSE(mixer.isActive(mixer.play(coin)));
     EXPECT_TRUE(mixer.isActive(fifth));
-    EXPECT_EQ(mixer.getLimit(coin)->steal, Mixer::Limit::Steal::None);
+    const std::optional<Mixer::Limit> limit = mixer.getLimit(coin);
+    ASSERT_TRUE(limit);
+    EXPECT_EQ(limit->steal, Mixer::Limit::Steal::None);
 
     // A play within the cooldown starts nothing, and one after it plays.
     mixer.stopAll();
@@ -512,129 +461,6 @@ TEST_F(MixerTest, ManagesBusesAndRejectsInvalidUse) {
 
     mixer.suspend();
     mixer.resume();
-}
-
-TEST_F(SoundTest, ReadsTheSessionFromHaylenJson) {
-    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "playback", "mixWithOthers": true}})"));
-    EXPECT_EQ(config.audioSession.category, Session::Category::Playback);
-    EXPECT_TRUE(config.audioSession.mixWithOthers);
-    EXPECT_EQ(config.toJson().at("audio"), core::Json::parse(R"({"iosSession": "playback", "mixWithOthers": true, "background": false, "latency": "balanced", "limiter": true})"));
-    EXPECT_TRUE(core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "playback", "background": true}})")).audioSession.background);
-    const core::AppConfig output = core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"latency": "powerSaving", "limiter": false}})"));
-    EXPECT_EQ(output.audioOutput.latency, OutputSettings::Latency::PowerSaving);
-    EXPECT_FALSE(output.audioOutput.limiter);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"latency": "fast"}})")), std::invalid_argument);
-    EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "soloAmbient"}})")).toJson().at("audio").at("iosSession"), "soloAmbient");
-    EXPECT_EQ(core::AppConfig{}.audioSession.category, Session::Category::Ambient);
-
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": "record"}})")), std::invalid_argument);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"iosSession": ""}})")), std::invalid_argument);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"focus": true}})")), std::invalid_argument);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"mixWithOthers": true}})")), std::invalid_argument);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"audio": {"background": true}})")), std::invalid_argument);
-    EXPECT_THROW(Mixer({.device = false, .session = {.category = Session::Category::Ambient, .mixWithOthers = true}}, jobs), std::invalid_argument);
-    EXPECT_NO_THROW(Mixer({.device = false, .session = {.category = Session::Category::Playback, .mixWithOthers = true}}, jobs));
-}
-
-TEST_F(AudioAssetTest, LoadsSoundsThroughTheAssetManager) {
-    const std::vector<std::uint8_t> wav = test::TestFiles::wav(kRate, 1, makeSignal(480, 1, 0.5F));
-    test::EngineFixture fixture({{"content/sfx/hit.wav", std::string(wav.begin(), wav.end())}});
-    assets::Manager& assets = fixture.engine().getAssets();
-
-    EXPECT_EQ(assets.getTypeForPath("sfx/hit.wav"), "sound");
-    const auto decoded = assets.load("sound", "sfx/hit.wav");
-    EXPECT_EQ(assets.load("sound", "sfx/hit.wav", {{"stream", false}}), decoded);
-    EXPECT_NE(assets.load("sound", "sfx/hit.wav", {{"stream", true}}), decoded);
-    EXPECT_THROW((void)assets.load("sound", "sfx/hit.wav", {{"loop", true}}), std::invalid_argument);
-    EXPECT_EQ(fixture.engine().getAudio().getSampleRate(), 48000U);
-}
-
-TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
-    const std::vector<std::uint8_t> hit = test::TestFiles::wav(kRate, 1, makeSignal(4800, 1, 0.5F));
-    const std::vector<std::uint8_t> theme = test::TestFiles::wav(kRate, 2, makeSignal(48000, 2, 0.25F));
-    test::EngineFixture fixture({{"content/sfx/hit.wav", std::string(hit.begin(), hit.end())}, {"content/music/theme.wav", std::string(theme.begin(), theme.end())}});
-    fixture.runLua("audio = require('haylen.audio') assets = require('haylen.assets') hit = assets.load('sfx/hit.wav') theme = assets.load('music/theme.wav', nil, {stream = true})");
-
-    EXPECT_EQ(fixture.lua("return hit.channels .. ' ' .. hit.sampleRate .. ' ' .. hit.frameCount .. ' ' .. tostring(hit.streamed) .. ' ' .. tostring(math.abs(hit.duration - 0.1) < 1e-6)"), "1 48000 4800 false true");
-    EXPECT_EQ(fixture.lua("return theme.streamed and theme == assets.load('music/theme.wav', 'sound', {stream = true}) and theme ~= hit"), "true");
-    EXPECT_EQ(fixture.lua("return audio.sampleRate() .. ' ' .. audio.channels() .. ' ' .. tostring(audio.hasDevice()) .. ' ' .. tostring(audio.outputAvailable())"), "48000 2 false false");
-
-    // clang-format off
-    const std::string varied = fixture.lua(R"(
-        local function pitches()
-            audio.seedVariation(7)
-            local list = {}
-            for index = 1, 3 do
-                local voice = audio.play(hit, {pitch = 1, pitchVariation = 0.3})
-                list[index] = audio.pitch(voice)
-                audio.stop(voice)
-            end
-            return table.concat(list, ',')
-        end
-        local first = pitches()
-        return tostring(first == pitches()) .. ' ' .. tostring(first ~= '1.0,1.0,1.0')
-    )");
-    // clang-format on
-    EXPECT_EQ(varied, "true true");
-    EXPECT_NE(fixture.lua("audio.seedVariation(-1)").find("expected a non-negative integer"), std::string::npos);
-    fixture.frames(1);
-
-    fixture.runLua("voice = audio.play(hit, {bus = 'ui', volume = 0.5, pitch = 1.5, pan = -0.5, loop = true, fadeIn = 0.1, startAt = 0.01, x = 10, y = 20})");
-    EXPECT_EQ(fixture.lua("return audio.active(voice) and audio.voiceCount() == 1 and audio.cursor(voice) >= 0"), "true");
-    EXPECT_EQ(fixture.lua("local varied = audio.play(hit, {pitch = 1, pitchVariation = 0.2}) local p = audio.pitch(varied) audio.stop(varied) return tostring(p >= 0.8 and p <= 1.2) .. ' ' .. audio.pitch(voice)"), "true 1.5");
-    fixture.runLua("audio.pause(voice) audio.resume(voice) audio.setVolume(voice, 1) audio.setPitch(voice, 1) audio.setPan(voice, 0) audio.setPosition(voice, 0, 0)");
-    fixture.runLua("audio.stop(voice) second = audio.play(hit) audio.stopAll(0.1)");
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return audio.active(voice)"), "false");
-
-    fixture.runLua("music = audio.playMusic(theme, {volume = 0.8, fade = 0, loop = false, bus = 'music', startAt = 0.01}) audio.setCursor(music, 0.02) audio.pause(music)");
-    EXPECT_EQ(fixture.lua("return tostring(audio.music() == theme) .. ' ' .. tostring(audio.paused(music)) .. ' ' .. tostring(audio.playMusic(theme) == music)"), "true true true");
-    fixture.runLua("audio.stopMusic(0)");
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return audio.music()"), "nil");
-
-    fixture.runLua("audio.createBus('steps', 'sfx') audio.createBus('voices') audio.setBusVolume('steps', 0.3, 0.5) audio.setBusMuted('voices', true)");
-    EXPECT_EQ(fixture.lua("return audio.busVolume('steps') > 0.29 and audio.busMuted('voices') and #audio.buses() == 7"), "true");
-    fixture.runLua("audio.setListener(5, 6) audio.setSpatialization({minDistance = 10, maxDistance = 20})");
-    EXPECT_EQ(fixture.lua("local x, y = audio.listener() return x .. ',' .. y"), "5.0,6.0");
-
-    EXPECT_EQ(fixture.lua("audio.setLimit(hit, {voices = 2, cooldown = 0.5, steal = 'quietest'}) local limit = audio.limit(hit) return limit.voices .. ' ' .. limit.cooldown .. ' ' .. limit.steal"), "2 0.5 quietest");
-    EXPECT_EQ(fixture.lua("local first = audio.play(hit, {priority = 255}) local second = audio.play(hit) return tostring(audio.active(first)) .. ' ' .. tostring(audio.active(second))"), "true false");
-    EXPECT_EQ(fixture.lua("audio.setLimit(hit, {}) return audio.limit(hit)"), "nil");
-    EXPECT_NE(fixture.lua("audio.setLimit(hit, {steal = 'newest'})").find("The \"steal\" of a sound limit must be \"oldest\", \"quietest\" or \"none\"."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.setLimit(hit, {voice = 1})").find("Unknown option \"voice\"."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.setLimit(hit, {cooldown = -1})").find("The cooldown of a sound must be a finite number of seconds from 0."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play(hit, {priority = 300})").find("The priority of a voice runs from 0 to 255."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play(hit, {volumen = 1})").find("Unknown option \"volumen\""), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.playMusic(theme, {crossfade = 1})").find("Unknown option \"crossfade\""), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play('hit')").find("error: "), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play(hit, {bus = 'missing'})").find("The audio bus \"missing\" does not exist."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.play(hit, {pitch = 0})").find("Audio needs a finite pitch above 0."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.setVolume(1, 0 / 0)").find("Audio needs a finite volume."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.setCursor(1, 0 / 0)").find("Audio needs a finite cursor."), std::string::npos);
-    EXPECT_NE(fixture.lua("return hit.loudness").find("Sound\" has no member \"loudness\""), std::string::npos);
-}
-
-// The bytes of a sound file or of raw samples, such as the audio a plugin returns, become a sound.
-TEST_F(AudioLuaTest, MakesSoundsFromBytes) {
-    test::EngineFixture fixture;
-    const std::vector<std::uint8_t> wav = test::TestFiles::wav(22050, 2, makeSignal(2205, 2, 0.25F));
-    lua_pushlstring(fixture.lua(), reinterpret_cast<const char*>(wav.data()), wav.size());
-    lua_setglobal(fixture.lua(), "wav");
-    fixture.runLua("audio = require('haylen.audio')");
-
-    EXPECT_EQ(fixture.lua("local s = audio.newSound(wav) return s.channels .. ' ' .. s.sampleRate .. ' ' .. s.frameCount .. ' ' .. tostring(s.streamed)"), "2 22050 2205 false");
-    EXPECT_EQ(fixture.lua("return tostring(audio.newSound(wav, {stream = true}).streamed)"), "true");
-    EXPECT_EQ(fixture.lua("local s = audio.newSound(string.pack('<ffff', 0.5, -0.5, 0.25, 0), {format = 'float32', sampleRate = 16000, channels = 2}) return s.frameCount .. ' ' .. s.sampleRate"), "2 16000");
-    EXPECT_EQ(fixture.lua("local s = audio.newSound(string.pack('<hhh', 1, 2, 3), {format = 'int16', sampleRate = 8000, channels = 1}) return s.frameCount .. ' ' .. tostring(audio.active(audio.play(s)))"), "3 true");
-
-    EXPECT_NE(fixture.lua("audio.newSound('not audio')").find("Audio data is not a supported"), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound('abc', {format = 'int16', sampleRate = 8000, channels = 1})").find("Samples of this format take 2 bytes each, which 3 bytes do not fill."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int8', sampleRate = 8000, channels = 1})").find("The format of raw samples is \"float32\" or \"int16\", not \"int8\"."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int16'})").find("Raw audio needs a sample rate and channels."), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound(wav, {sampleRate = 8000})").find("Only raw samples take a sample rate and channels"), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound('abcd', {format = 'int16', sampleRate = 8000, channels = 1, stream = true})").find("cannot stream"), std::string::npos);
-    EXPECT_NE(fixture.lua("audio.newSound(wav, {loop = true})").find("Unknown option \"loop\""), std::string::npos);
 }
 
 } // namespace haylen::audio

@@ -2,28 +2,20 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <optional>
 #include <span>
-#include <string>
 #include <vector>
 
 #include "audio/OggPageIndex.hpp"
 #include "io/MemoryReader.hpp"
+#include "support/AudioFiles.hpp"
 
 namespace haylen::audio {
 
 // Finds pages of Ogg files that the index never read in order, also in files damaged on purpose, which it must read without reading outside them or failing.
 class OggPageIndexTest : public ::testing::Test {
   protected:
-    [[nodiscard]] static std::vector<std::uint8_t> readTestFile(const std::string& name) {
-        std::ifstream stream(std::filesystem::path(HAYLEN_TEST_AUDIO) / name, std::ios::binary);
-        return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-    }
-
     [[nodiscard]] static std::shared_ptr<io::PackageReader> makeReader(std::vector<std::uint8_t> file) {
         return std::make_shared<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(std::move(file)));
     }
@@ -92,7 +84,7 @@ class OggPageIndexTest : public ::testing::Test {
 };
 
 TEST_F(OggPageIndexTest, FindsTheLastPageBeforeAFrameInAFileItNeverRead) {
-    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("notes.ogg");
     const std::vector<OggPageIndex::Page> pages = walk(file);
     ASSERT_GT(pages.size(), 20U);
 
@@ -111,7 +103,7 @@ TEST_F(OggPageIndexTest, FindsTheLastPageBeforeAFrameInAFileItNeverRead) {
 }
 
 TEST_F(OggPageIndexTest, SkipsBytesInsidePagesThatOnlyLookLikeAPage) {
-    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("notes.ogg");
     const std::vector<OggPageIndex::Page> pages = walk(file);
 
     // Every few hundred bytes inside every page lies a copy of its header with another granule position, which only its checksum tells from a page, while the page around them keeps a valid checksum.
@@ -137,7 +129,7 @@ TEST_F(OggPageIndexTest, SkipsBytesInsidePagesThatOnlyLookLikeAPage) {
 }
 
 TEST_F(OggPageIndexTest, ReadsDamagedFilesWithoutFailing) {
-    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("notes.ogg");
     std::vector<std::vector<std::uint8_t>> files;
     for (const std::size_t cut : {std::size_t{0}, std::size_t{3}, std::size_t{27}, std::size_t{60}, std::size_t{5000}, file.size() / 2, file.size() - 1}) {
         files.emplace_back(file.begin(), file.begin() + static_cast<std::ptrdiff_t>(cut));

@@ -163,11 +163,16 @@ TEST_F(VectorImageTest, RejectsARasterWithoutRoomForItsTexture) {
     fixture.frames(2);
     Device& device = fixture.engine().getGraphics();
     std::vector<Texture> textures;
+    std::string full;
     try {
         while (textures.size() <= static_cast<std::size_t>(gpu::NullDevice::kImagePoolSize)) {
             textures.push_back(device.createTexture(Image(1, 1, math::Color::white())));
         }
-    } catch (const std::runtime_error&) {}
+    } catch (const std::runtime_error& error) {
+        full = error.what();
+    }
+
+    ASSERT_NE(full.find("no room for another texture"), std::string::npos) << "The pool of textures must be full before the raster.";
 
     // clang-format off
     fixture.runLua(R"(

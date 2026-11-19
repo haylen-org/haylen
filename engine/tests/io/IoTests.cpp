@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <iterator>
 #include <map>
 #include <memory>
 #include <stdexcept>
@@ -23,6 +22,7 @@
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
+#include "support/ZipArchives.hpp"
 
 namespace haylen::io {
 
@@ -103,23 +103,17 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
     // Returns the bytes of a zip archive with the files, built by libzip in the temporary directory.
     std::vector<std::uint8_t> makeZip(const std::map<std::string, std::string>& files) {
         const std::filesystem::path path = directory.getPath() / "archive.zip";
-        int error = 0;
-        zip_t* archive = zip_open(path.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
-        if (archive == nullptr) {
-            throw std::runtime_error("Could not create a test zip archive.");
-        }
-
+        std::vector<test::ZipArchives::Entry> entries;
         for (const auto& [name, content] : files) {
-            zip_source_t* source = zip_source_buffer(archive, content.data(), content.size(), 0);
-            zip_file_add(archive, name.c_str(), source, ZIP_FL_ENC_UTF_8);
+            entries.push_back({.name = name, .bytes = test::TestFiles::bytes(content)});
         }
 
-        zip_close(archive);
+        test::ZipArchives::write(path, entries);
+        std::vector<std::uint8_t> data = test::TestFiles::read(path);
+        if (!std::filesystem::remove(path)) {
+            throw std::runtime_error("The test could not remove the zip archive it read.");
+        }
 
-        std::ifstream stream(path, std::ios::binary);
-        std::vector<std::uint8_t> data((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
-        stream.close();
-        std::filesystem::remove(path);
         return data;
     }
 
@@ -236,13 +230,7 @@ TEST(PackageOpenTest, RefusesZipEntriesWhoseNamesAreNotNormalized) {
     for (const char* entryName : {"./haylen.json", "content\\hero.png", "/haylen.json", "../haylen.json", "content//hero.png"}) {
         const std::string name = entryName;
         const std::filesystem::path file = directory.getPath() / "app.zip";
-        const std::string text = "{}";
-        int error = 0;
-        zip_t* archive = zip_open(file.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
-        ASSERT_NE(archive, nullptr);
-        zip_file_add(archive, "source/main.lua", zip_source_buffer(archive, text.data(), text.size(), 0), ZIP_FL_ENC_UTF_8);
-        zip_file_add(archive, name.c_str(), zip_source_buffer(archive, text.data(), text.size(), 0), ZIP_FL_ENC_UTF_8);
-        ASSERT_EQ(zip_close(archive), 0);
+        test::ZipArchives::write(file, {{.name = "source/main.lua", .bytes = test::TestFiles::bytes("{}")}, {.name = name, .bytes = test::TestFiles::bytes("{}")}});
 
         try {
             (void)Package::open(file);
@@ -256,17 +244,11 @@ TEST(PackageOpenTest, RefusesZipEntriesWhoseNamesAreNotNormalized) {
 TEST(PackageOpenTest, ReportsDamagedZipEntries) {
     test::TemporaryDirectory directory;
     const std::filesystem::path file = directory.getPath() / "app.zip";
-    const std::string level(64 * 1024, 'a');
-    int error = 0;
-    zip_t* archive = zip_open(file.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
-    ASSERT_NE(archive, nullptr);
-    const zip_int64_t entry = zip_file_add(archive, "content/level.txt", zip_source_buffer(archive, level.data(), level.size(), 0), 0);
-    zip_set_file_compression(archive, static_cast<zip_uint64_t>(entry), ZIP_CM_DEFLATE, 0);
-    zip_close(archive);
+    test::ZipArchives::write(file, {{.name = "content/level.txt", .bytes = std::vector<std::uint8_t>(64 * 1024, 'a'), .deflate = true}});
 
     // The compressed bytes of the only entry follow its local header of 30 bytes, its name and its extra field, and a first byte with every bit set starts a deflate block of a type that does not exist.
-    std::ifstream stream(file, std::ios::binary);
-    std::vector<std::uint8_t> bytes((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    std::vector<std::uint8_t> bytes = test::TestFiles::read(file);
+    ASSERT_GT(bytes.size(), 30U);
     ASSERT_EQ(bytes[8], ZIP_CM_DEFLATE);
     const std::size_t nameLength = std::size_t{bytes[26]} | std::size_t{bytes[27]} << 8;
     const std::size_t extraLength = std::size_t{bytes[28]} | std::size_t{bytes[29]} << 8;
@@ -305,13 +287,7 @@ TEST(PackageOpenTest, ReportsAFolderFileThatShrinksWhileItIsRead) {
 TEST(PackageOpenTest, OpensZipFilesWithoutReadingThemWhole) {
     test::TemporaryDirectory directory;
     const std::vector<std::uint8_t> large = test::TestFiles::randomBytes(8 * 1024 * 1024, 1);
-    int error = 0;
-    zip_t* archive = zip_open((directory.getPath() / "app.zip").string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
-    ASSERT_NE(archive, nullptr);
-    zip_file_add(archive, "content/large.bin", zip_source_buffer(archive, large.data(), large.size(), 0), 0);
-    const std::string small = "{}";
-    zip_file_add(archive, "content/small.json", zip_source_buffer(archive, small.data(), small.size(), 0), 0);
-    zip_close(archive);
+    test::ZipArchives::write(directory.getPath() / "app.zip", {{.name = "content/large.bin", .bytes = large}, {.name = "content/small.json", .bytes = test::TestFiles::bytes("{}")}});
 
     std::unique_ptr<Package> package;
     {
@@ -333,11 +309,7 @@ TEST(PackageOpenTest, KeepsAZipReaderSafeWhenItsArchiveShrinks) {
     test::TemporaryDirectory directory;
     const std::filesystem::path file = directory.getPath() / "app.zip";
     const std::vector<std::uint8_t> large = test::TestFiles::randomBytes(4 * 1024 * 1024, 2);
-    int error = 0;
-    zip_t* archive = zip_open(file.string().c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
-    ASSERT_NE(archive, nullptr);
-    zip_file_add(archive, "content/large.bin", zip_source_buffer(archive, large.data(), large.size(), 0), 0);
-    zip_close(archive);
+    test::ZipArchives::write(file, {{.name = "content/large.bin", .bytes = large}});
 
     const std::unique_ptr<Package> package = Package::open(file);
     std::unique_ptr<PackageReader> reader = package->openReader("content/large.bin");

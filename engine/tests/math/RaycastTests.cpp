@@ -10,7 +10,7 @@
 #include "haylen/math/Raycast.hpp"
 #include "support/EngineFixture.hpp"
 
-namespace haylen {
+namespace haylen::math {
 
 TEST(RaycastTest, HitsSegmentsRectsAndCirclesWithFacingNormals) {
     const math::Ray ray = math::Ray::between({0.0F, 0.0F}, {100.0F, 0.0F});
@@ -56,16 +56,24 @@ TEST(RaycastTest, TreatsClosedShapesAsSolid) {
     const std::optional<math::RayHit> tip = math::Raycast::polygon(ray, diamond);
     ASSERT_TRUE(tip.has_value());
     EXPECT_FLOAT_EQ(tip->distance, 40.0F);
-    EXPECT_TRUE(math::Raycast::polygon(math::Ray::between({50.0F, 0.0F}, {100.0F, 0.0F}), diamond)->normal.isZero());
+    const std::optional<math::RayHit> inside = math::Raycast::polygon(math::Ray::between({50.0F, 0.0F}, {100.0F, 0.0F}), diamond);
+    ASSERT_TRUE(inside.has_value());
+    EXPECT_TRUE(inside->normal.isZero());
     EXPECT_FALSE(math::Raycast::polygon(ray, std::vector<math::Vec2>{{0.0F, 1.0F}, {5.0F, 1.0F}}).has_value());
 }
 
 TEST(RaycastTest, CastsAgainstChainsAndSegmentLists) {
     const math::Ray ray = math::Ray::between({0.0F, 5.0F}, {100.0F, 5.0F});
     const std::vector<math::Vec2> stairs{{20.0F, 0.0F}, {20.0F, 10.0F}, {40.0F, 10.0F}, {40.0F, 0.0F}};
-    EXPECT_EQ(math::Raycast::chain(ray, stairs, false)->index, 0U);
-    EXPECT_FLOAT_EQ(math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {100.0F, 5.0F}), stairs, false)->distance, 10.0F);
-    EXPECT_EQ(math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {30.0F, -20.0F}), stairs, true)->index, 3U);
+    const std::optional<math::RayHit> first = math::Raycast::chain(ray, stairs, false);
+    const std::optional<math::RayHit> fromInside = math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {100.0F, 5.0F}), stairs, false);
+    const std::optional<math::RayHit> closing = math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {30.0F, -20.0F}), stairs, true);
+    ASSERT_TRUE(first.has_value());
+    ASSERT_TRUE(fromInside.has_value());
+    ASSERT_TRUE(closing.has_value());
+    EXPECT_EQ(first->index, 0U);
+    EXPECT_FLOAT_EQ(fromInside->distance, 10.0F);
+    EXPECT_EQ(closing->index, 3U);
     EXPECT_FALSE(math::Raycast::chain(math::Ray::between({30.0F, 5.0F}, {30.0F, -20.0F}), stairs, false).has_value());
     EXPECT_FALSE(math::Raycast::chain(ray, std::vector<math::Vec2>{{30.0F, 5.0F}}, true).has_value()) << "A single point has no edge to hit.";
 
@@ -108,9 +116,12 @@ TEST(RaycastTest, BouncesAndFansAnyCast) {
     math::Raycast::fan({50.0F, 0.0F}, 0.0F, std::numbers::pi_v<float>, 3, 200.0F, cast, fan);
     ASSERT_EQ(fan.size(), 3U);
     EXPECT_FALSE(fan[0].has_value());
+    ASSERT_TRUE(fan[1].has_value());
     EXPECT_EQ(fan[1]->index, 0U);
     EXPECT_FALSE(fan[2].has_value());
     math::Raycast::fan({50.0F, 0.0F}, std::numbers::pi_v<float>, 1.0F, 1, 200.0F, cast, fan);
+    ASSERT_FALSE(fan.empty());
+    ASSERT_TRUE(fan.front().has_value());
     EXPECT_EQ(fan.front()->index, 1U);
 }
 
@@ -137,4 +148,4 @@ TEST(RaycastLuaTest, CastsRaysFromLua) {
     EXPECT_NE(fixture.lua("m.bounceRay({0, 0}, {1, 0}, 10, -1, mirrors)").find("must not be negative"), std::string::npos);
 }
 
-} // namespace haylen
+} // namespace haylen::math

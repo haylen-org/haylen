@@ -25,7 +25,7 @@
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen {
+namespace haylen::graphics {
 
 TEST(ImageTest, CreatesDecodesAndEditsPixels) {
     graphics::Image image(4, 2, math::Color::fromHex(0xFF0000FFU));
@@ -385,7 +385,7 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     fixture.frames(1);
     const graphics::Texture atlas = device.createDynamicDistanceTexture(4, 2, std::vector<std::uint16_t>(8, 0), {.filter = graphics::Texture::Filter::Linear});
     const graphics::Texture image = device.createDynamicTexture(2, 2, math::Color::white());
-    const std::uint32_t atlasImage = atlas.getResource()->image.id;
+    const std::uint64_t atlasImage = atlas.getResource()->image.id;
     EXPECT_EQ(atlas.getOptions().filter, graphics::Texture::Filter::Linear);
     EXPECT_EQ(image.getSize(), math::Vec2(2.0F, 2.0F));
 
@@ -598,15 +598,21 @@ TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     EXPECT_FALSE(graphics::Viewport::scalingPolicyFromName("zoom").has_value());
 
     for (const std::string_view name : {"nearest", "linear"}) {
-        EXPECT_EQ(graphics::Texture::filterName(*graphics::Texture::filterFromName(name)), name);
+        const std::optional<graphics::Texture::Filter> filter = graphics::Texture::filterFromName(name);
+        ASSERT_TRUE(filter.has_value()) << name;
+        EXPECT_EQ(graphics::Texture::filterName(*filter), name);
     }
 
     for (const std::string_view name : {"clamp", "repeat", "mirror"}) {
-        EXPECT_EQ(graphics::Texture::wrapName(*graphics::Texture::wrapFromName(name)), name);
+        const std::optional<graphics::Texture::Wrap> wrap = graphics::Texture::wrapFromName(name);
+        ASSERT_TRUE(wrap.has_value()) << name;
+        EXPECT_EQ(graphics::Texture::wrapName(*wrap), name);
     }
 
     for (const std::string_view name : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
-        EXPECT_EQ(graphics::Viewport::scalingPolicyName(*graphics::Viewport::scalingPolicyFromName(name)), name);
+        const std::optional<graphics::Viewport::ScalingPolicy> policy = graphics::Viewport::scalingPolicyFromName(name);
+        ASSERT_TRUE(policy.has_value()) << name;
+        EXPECT_EQ(graphics::Viewport::scalingPolicyName(*policy), name);
     }
 
     EXPECT_EQ(graphics::Texture::filterFromName("linear"), graphics::Texture::Filter::Linear);
@@ -614,4 +620,4 @@ TEST(GraphicsNamesTest, ParsesAndNamesBlendFilterWrapAndScalingValues) {
     EXPECT_EQ(graphics::Viewport::scalingPolicyFromName("pixelPerfect"), graphics::Viewport::ScalingPolicy::PixelPerfect);
 }
 
-} // namespace haylen
+} // namespace haylen::graphics

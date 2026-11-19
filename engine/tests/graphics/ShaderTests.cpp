@@ -1,31 +1,16 @@
 #include <gtest/gtest.h>
 
-#include <Poco/Process.h>
-
-#include <algorithm>
-#include <array>
-#include <cstddef>
 #include <cstdint>
-#include <cstring>
-#include <fstream>
-#include <iterator>
 #include <memory>
-#include <optional>
-#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
-#include "2d/graphics/MaterialResource.hpp"
 #include "gpu/NullDevice.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Material.hpp"
-#include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/2d/graphics/SpriteData.hpp"
-#include "haylen/2d/graphics/SpriteInstance.hpp"
-#include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/Json.hpp"
@@ -33,49 +18,15 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Shader.hpp"
-#include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
-#include "support/TemporaryDirectory.hpp"
+#include "support/MaterialShaders.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen {
+namespace haylen::graphics {
 
 class ShaderTest : public ::testing::Test {
   protected:
-    // A material with uniform blocks of every kind of member, floats and integers in blocks of their own, and a texture of its own.
-    static constexpr const char* kTintSource = R"(@include haylen/material.glsl
-
-@fs tint_fs
-@include_block haylen_fragment
-layout(binding=1) uniform tint_params {
-    vec4 tint;
-    float strength;
-    vec2 offset;
-    mat4 transform;
-    vec4 palette[3];
-};
-layout(binding=2) uniform tint_extra {
-    vec3 glow;
-    float weights[3];
-};
-layout(binding=3) uniform tint_counts {
-    int steps;
-};
-layout(binding=1) uniform texture2D mask_texture;
-layout(binding=1) uniform sampler mask_sampler;
-
-void main() {
-    vec4 base = haylen_base(uv + offset);
-    float mask = texture(sampler2D(mask_texture, mask_sampler), uv).r;
-    vec4 moved = transform * vec4(base.rgb, 1.0);
-    haylen_output(vec4(mix(base.rgb, moved.rgb * tint.rgb + glow * weights[steps] + palette[steps].rgb, strength * mask), base.a));
-}
-@end
-
-@program tint haylen_vs tint_fs
-)";
-
     // A small shader package with a block, a texture and one program for the desktop GLSL and Metal, which the malformed cases change field by field.
     static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 2, "name": "small", "sources": ["void main() {}"],
     "programs": {"sprite": {
@@ -104,59 +55,10 @@ void main() {
 
         return {};
     }
-
-    // A material that never samples its texture, so its sprite sampler pairs with no texture in any program.
-    static constexpr const char* kGlowSource = R"(@include haylen/material.glsl
-
-@fs glow_fs
-@include_block haylen_fragment
-layout(binding=1) uniform glow_params {
-    vec4 glow;
 };
-
-void main() {
-    haylen_output(glow * color);
-}
-@end
-
-@program glow haylen_vs glow_fs
-)";
-
-    // Compiles the material `source` with `haylen app shaders`, the way apps compile theirs, with the shader compiler of the build. The tooling of the checkout runs through uv, which starts without a shell, so no shell reinterprets the quotes of the paths.
-    [[nodiscard]] static std::vector<std::uint8_t> compile(const std::string& name, const char* source) {
-        const test::TemporaryDirectory app;
-        app.write("haylen.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
-        app.write("content/shaders/" + name + ".glsl", source);
-        const Poco::Process::Env env{{"HAYLEN_SHADER_COMPILER", HAYLEN_SHADER_COMPILER}};
-
-        const std::vector<std::string> arguments{"run", "--project", HAYLEN_TOOLING_ROOT, "--frozen", "haylen", "app", "shaders", app.getPath().string()};
-        if (Poco::Process::launch(HAYLEN_UV, arguments, "", nullptr, nullptr, nullptr, env).wait() != 0) {
-            throw std::runtime_error("The command \"haylen app shaders\" failed.");
-        }
-
-        std::ifstream file(app.getPath() / "content" / "shaders" / (name + ".shader"), std::ios::binary);
-        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-    }
-
-    // The tint material, compiled once for every test that needs it.
-    [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
-        static const std::vector<std::uint8_t> compiled = compile("tint", kTintSource);
-        return compiled;
-    }
-
-    [[nodiscard]] static float floatAt(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
-        float value = 0.0F;
-        std::memcpy(&value, bytes.data() + offset, sizeof(value));
-        return value;
-    }
-};
-
-class MaterialTest : public ShaderTest {};
-
-class MaterialLuaTest : public ShaderTest {};
 
 TEST_F(ShaderTest, CompilesWithAppShadersIntoEveryProgramWithItsReflection) {
-    const graphics::Shader shader = graphics::Shader::parse(tintShader());
+    const graphics::Shader shader = graphics::Shader::parse(test::MaterialShaders::tint());
     EXPECT_EQ(shader.getName(), "tint");
     EXPECT_EQ(shader.getVersion(), 1U);
 
@@ -190,13 +92,24 @@ TEST_F(ShaderTest, CompilesWithAppShadersIntoEveryProgramWithItsReflection) {
         EXPECT_EQ(uniform->offset, offsets[index]) << names[index];
     }
 
-    EXPECT_EQ(shader.findUniform("palette")->count, 3);
-    EXPECT_EQ(shader.findUniform("weights")->count, 3);
-    EXPECT_EQ(shader.findUniform("glow")->block, 1U);
-    EXPECT_EQ(shader.findUniform("steps")->block, 2U);
+    const graphics::Shader::Uniform* palette = shader.findUniform("palette");
+    const graphics::Shader::Uniform* weights = shader.findUniform("weights");
+    const graphics::Shader::Uniform* glow = shader.findUniform("glow");
+    const graphics::Shader::Uniform* steps = shader.findUniform("steps");
+    ASSERT_NE(palette, nullptr);
+    ASSERT_NE(weights, nullptr);
+    ASSERT_NE(glow, nullptr);
+    ASSERT_NE(steps, nullptr);
+    EXPECT_EQ(palette->count, 3);
+    EXPECT_EQ(weights->count, 3);
+    EXPECT_EQ(glow->block, 1U);
+    EXPECT_EQ(steps->block, 2U);
     EXPECT_EQ(shader.findUniform("sprite_texture"), nullptr);
+
     ASSERT_EQ(shader.getTextures().size(), 1U);
-    EXPECT_EQ(shader.findTexture("mask_texture")->slot, 1);
+    const graphics::Shader::TextureSlot* mask = shader.findTexture("mask_texture");
+    ASSERT_NE(mask, nullptr);
+    EXPECT_EQ(mask->slot, 1);
     EXPECT_EQ(shader.findTexture("sprite_texture"), nullptr);
 
     EXPECT_EQ(graphics::Shader::uniformTypeFromName("ivec3"), Type::IVec3);
@@ -220,7 +133,7 @@ TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
     EXPECT_FALSE(empty.isValid());
     EXPECT_THROW((void)empty.getName(), std::logic_error);
     graphics::Shader target;
-    EXPECT_THROW(target.replace(graphics::Shader::parse(tintShader())), std::logic_error);
+    EXPECT_THROW(target.replace(graphics::Shader::parse(test::MaterialShaders::tint())), std::logic_error);
 }
 
 TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
@@ -421,250 +334,4 @@ TEST_F(ShaderTest, ReportsAFullShaderPool) {
     device.collectGarbage();
 }
 
-TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
-    graphics2d::Material material(graphics::Shader::parse(tintShader()));
-    EXPECT_TRUE(material.isValid());
-    EXPECT_EQ(material.getShader().getName(), "tint");
-    EXPECT_EQ(material.get("strength"), std::vector<float>{0.0F});
-
-    material.set("tint", math::Color{0.5F, 0.25F, 1.0F, 1.0F});
-    material.set("strength", 0.75F);
-    material.set("offset", math::Vec2{3.0F, 4.0F});
-    material.set("steps", 2.0F);
-    material.set("transform", math::Transform2D::translation({10.0F, 20.0F}));
-    material.set("glow", math::Color{0.1F, 0.2F, 0.3F, 1.0F});
-    const std::vector<float> palette(12, 0.5F);
-    material.set("palette", palette);
-    material.set("weights", std::vector<float>{1.0F, 2.0F, 3.0F});
-    const std::uint32_t revision = material.getResource()->revision;
-    EXPECT_EQ(revision, 8U);
-
-    EXPECT_EQ(material.get("offset"), (std::vector<float>{3.0F, 4.0F}));
-    EXPECT_EQ(material.get("glow").size(), 3U);
-    EXPECT_EQ(material.get("transform")[12], 10.0F);
-
-    std::vector<std::uint8_t> bytes;
-    material.getResource()->pack(bytes);
-    ASSERT_EQ(bytes.size(), 144U + 64U + 16U);
-    EXPECT_EQ(floatAt(bytes, 4), 0.25F);
-    EXPECT_EQ(floatAt(bytes, 16), 0.75F);
-    EXPECT_EQ(floatAt(bytes, 28), 4.0F);
-    EXPECT_EQ(floatAt(bytes, 32 + 13 * 4), 20.0F);
-    EXPECT_EQ(floatAt(bytes, 96 + 11 * 4), 0.5F);
-    EXPECT_EQ(floatAt(bytes, 144 + 8), 0.3F);
-
-    // Every element of an array of floats takes a whole vector of four in the std140 layout.
-    EXPECT_EQ(floatAt(bytes, 144 + 16), 1.0F);
-    EXPECT_EQ(floatAt(bytes, 144 + 32), 2.0F);
-    EXPECT_EQ(floatAt(bytes, 144 + 48), 3.0F);
-    EXPECT_EQ(floatAt(bytes, 144 + 20), 0.0F);
-    std::int32_t steps = 0;
-    std::memcpy(&steps, bytes.data() + 208, sizeof(steps));
-    EXPECT_EQ(steps, 2);
-
-    test::EngineFixture fixture;
-    const graphics::Texture mask = fixture.engine().getGraphics().createTexture(graphics::Image(2, 2, math::Color::white()));
-    material.setTexture("mask_texture", mask);
-    EXPECT_EQ(material.getTexture("mask_texture"), mask);
-    EXPECT_EQ(material.getResource()->getTextureAt(1), mask);
-    EXPECT_FALSE(material.getResource()->getTextureAt(4).isValid());
-
-    EXPECT_THROW(material.set("missing", 1.0F), std::invalid_argument);
-    EXPECT_THROW(material.set("tint", 1.0F), std::invalid_argument);
-    EXPECT_THROW(material.set("strength", math::Vec2{}), std::invalid_argument);
-    EXPECT_THROW(material.set("palette", std::vector<float>(4, 0.0F)), std::invalid_argument);
-    EXPECT_THROW(material.setTexture("missing", mask), std::invalid_argument);
-    EXPECT_THROW((void)material.getTexture("tint"), std::invalid_argument);
-    EXPECT_EQ(material.getResource()->revision, revision + 1);
-
-    EXPECT_THROW(graphics2d::Material{graphics::Shader{}}, std::invalid_argument);
-    EXPECT_THROW((void)graphics2d::Material{}.getShader(), std::logic_error);
-    const std::string bare = R"({"format": "haylen-shader", "version": 2, "name": "bare", "sources": [], "programs": {"sprite": {"attributes": [], "blocks": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {}}}})";
-    EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::TestFiles::bytes(bare))}, std::invalid_argument);
-}
-
-// A value an app sets every frame, such as a time, and the copy every frame packs of it reuse their storage.
-TEST_F(MaterialTest, SetsAndPacksValuesEveryFrameWithoutAllocating) {
-    graphics2d::Material material(graphics::Shader::parse(tintShader()));
-    material.set("strength", 0.5F);
-    material.set("palette", std::vector<float>(12, 0.5F));
-    std::vector<std::uint8_t> bytes;
-    material.getResource()->pack(bytes);
-
-    const test::AllocationTracker tracker;
-
-    for (int frame = 1; frame <= 10; ++frame) {
-        material.set("strength", static_cast<float>(frame));
-        bytes.clear();
-        material.getResource()->pack(bytes);
-    }
-
-    EXPECT_EQ(tracker.getTotal(), 0U);
-    EXPECT_EQ(floatAt(bytes, 16), 10.0F);
-    EXPECT_EQ(floatAt(bytes, 96), 0.5F);
-}
-
-TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
-    const std::string compiled(tintShader().begin(), tintShader().end());
-    test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
-    graphics::Device& device = fixture.engine().getGraphics();
-    const graphics::Shader shader = fixture.engine().getAssets().shader("shaders/tint.shader");
-    graphics2d::Material material(shader);
-    material.set("strength", 1.0F);
-    const graphics2d::Material post(shader);
-    const graphics::Texture texture = device.createTexture(graphics::Image(8, 8, math::Color::white()));
-    const std::vector<graphics::Texture> textures{texture, device.createTexture(graphics::Image(16, 16, math::Color::white()))};
-    const std::vector<graphics2d::SpriteInstance> sprites(2, graphics2d::SpriteInstance{.size = {4.0F, 4.0F}});
-    const std::vector<graphics2d::SpriteData> data{{.values = {1.0F}}, {.texture = 1, .values = {0.5F}}};
-    const graphics::RenderTarget target = device.createRenderTarget(64, 64);
-
-    // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        graphics2d::Renderer& renderer = engine.getRenderer2D();
-        const graphics2d::DrawOrder order{.material = material};
-        for (const bool lit : {false, true}) {
-            renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = lit ? std::optional(math::Color::white()) : std::nullopt, .postProcess = graphics2d::PostProcess{.materials = {post, post}}});
-            renderer.draw({.texture = texture, .order = order});
-            renderer.drawBatch(textures, sprites, data, order);
-            renderer.drawBatch(std::span(textures).first(1), sprites, std::span(data).first(1), order);
-            material.set("strength", 0.5F);
-            renderer.draw({.texture = texture, .order = order});
-            renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white(), order);
-            renderer.drawCircle({0.0F, 0.0F}, 8.0F, math::Color::white(), order);
-            renderer.drawText(*engine.getDefaultFont(), "Hi", {}, {}, order);
-        }
-
-        renderer.beginTarget(target, graphics2d::Camera{}, {.ambientLight = math::Color::white(), .postProcess = graphics2d::PostProcess{.materials = {post}}});
-        renderer.draw({.texture = texture, .order = order});
-    }));
-    // clang-format on
-    fixture.frames(2);
-
-    // Each canvas copies the material once per change of its values, so both draws of a canvas keep their own strength.
-    const graphics2d::Renderer::Stats& stats = fixture.engine().getRenderer2D().getStats();
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_EQ(stats.canvases, 3U);
-    EXPECT_GE(stats.drawCalls, 19U);
-    EXPECT_EQ(material.get("strength"), std::vector<float>{0.5F});
-
-    // Materials replace the sprite, batch, text, mesh and shape programs only.
-    graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
-    renderer.beginScreen();
-    EXPECT_THROW(renderer.drawImageBlend({.from = texture, .to = texture}, {.material = material}), std::invalid_argument);
-    EXPECT_THROW(renderer.drawMetaballs(std::vector<math::Vec2>{{}}, 4.0F, {}, {.material = material}), std::invalid_argument);
-    fixture.frames(1);
-}
-
-TEST_F(MaterialTest, DrawsWithAShaderThatNeverSamplesItsTexture) {
-    const std::vector<std::uint8_t> bytes = compile("glow", kGlowSource);
-    test::EngineFixture fixture({{"content/shaders/glow.shader", std::string(bytes.begin(), bytes.end())}});
-    graphics::Device& device = fixture.engine().getGraphics();
-    const graphics2d::Material material(fixture.engine().getAssets().shader("shaders/glow.shader"));
-    const graphics::Texture texture = device.createTexture(graphics::Image(8, 8, math::Color::white()));
-    const std::array<math::Vec2, 3> points{math::Vec2{0.0F, 0.0F}, math::Vec2{20.0F, 10.0F}, math::Vec2{40.0F, 0.0F}};
-
-    // Every program that a material replaces binds the sampler of the sprite texture, which the shader declares and never pairs.
-    // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        graphics2d::Renderer& renderer = engine.getRenderer2D();
-        const graphics2d::DrawOrder order{.material = material};
-        for (const bool lit : {false, true}) {
-            renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = lit ? std::optional(math::Color::white()) : std::nullopt});
-            renderer.draw({.texture = texture, .order = order});
-            renderer.drawStroke(points, {.width = 8.0F}, order);
-            renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white(), order);
-            renderer.drawText(*engine.getDefaultFont(), "Hi", {}, {}, order);
-        }
-    }));
-    // clang-format on
-    fixture.frames(2);
-
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
-}
-
-TEST_F(MaterialTest, ReloadsItsShaderInPlace) {
-    const std::string compiled(tintShader().begin(), tintShader().end());
-    test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
-    assets::Manager& assets = fixture.engine().getAssets();
-    const graphics::Shader shader = assets.shader("shaders/tint.shader");
-    graphics2d::Material material(shader);
-    material.set("strength", 0.25F);
-    EXPECT_EQ(assets.shader("shaders/tint.shader"), shader);
-
-    // A reload keeps every handle and the values that still fit, and the next draws create the programs again.
-    fixture.package().setFile("content/shaders/tint.shader", test::TestFiles::bytes(compiled));
-    EXPECT_EQ(assets.reload("shaders/tint.shader"), 1U);
-    EXPECT_EQ(shader.getVersion(), 2U);
-    EXPECT_EQ(material.get("strength"), std::vector<float>{0.25F});
-    fixture.package().setFile("content/shaders/tint.shader", test::TestFiles::bytes("{}"));
-    EXPECT_THROW((void)assets.reload("shaders/tint.shader"), std::invalid_argument);
-    EXPECT_EQ(shader.getVersion(), 2U);
-    EXPECT_THROW((void)assets.load("shader", "shaders/tint.shader", core::Json{{"filter", "linear"}}), std::invalid_argument);
-}
-
-// Uniforms that Lua sets every frame, lists of numbers among them, and the draws that take the material allocate nothing once their storage has grown.
-TEST_F(MaterialLuaTest, SetsUniformsEveryFrameWithoutAllocating) {
-    const std::string compiled(tintShader().begin(), tintShader().end());
-    test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
-    fixture.runLua(R"(
-        graphics = require('haylen.graphics') graphics2d = require('haylen.graphics2d') scene = require('haylen.scene') m = require('haylen.math')
-        tint = graphics2d.newMaterial(require('haylen.assets').shader('shaders/tint.shader'))
-    )");
-    // clang-format off
-    const auto measure = [&fixture](const std::string& body) {
-        fixture.runLua("scene.clear() scene.push({render = function() graphics2d.beginScreen() " + body + " end})");
-        fixture.frames(5);
-        const test::AllocationTracker tracker;
-        fixture.frames(10);
-        return tracker.getTotal();
-    };
-    // clang-format on
-    const std::size_t empty = measure("");
-    EXPECT_EQ(measure("tint:set('strength', 0.5) tint:set('palette', {1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1}) tint:set('tint', '#FF8040FF') tint:set('offset', m.vec2(1, 2)) graphics2d.draw(graphics.whiteTexture(), 0, 0, {width = 10, height = 10, material = tint})"), empty);
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
-}
-
-TEST_F(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
-    const std::string compiled(tintShader().begin(), tintShader().end());
-    test::EngineFixture fixture({{"content/shaders/tint.shader", compiled}});
-    fixture.runLua(R"(
-        assets = require('haylen.assets')
-        graphics = require('haylen.graphics')
-        graphics2d = require('haylen.graphics2d')
-        m = require('haylen.math')
-        shader = assets.shader('shaders/tint.shader')
-        tint = graphics2d.newMaterial(shader, {tint = '#FF8040FF', strength = 0.5, offset = {1, 2}, steps = 1, transform = m.identity(), glow = {r = 1, g = 0.5, b = 0}, palette = {1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1}, mask_texture = graphics.whiteTexture()})
-    )");
-
-    EXPECT_EQ(fixture.lua("return shader.name .. ' ' .. #shader.uniforms .. ' ' .. shader.uniforms[1].name .. ' ' .. shader.uniforms[1].type .. ' ' .. shader.uniforms[5].count .. ' ' .. shader.textures[1]"), "tint 8 tint vec4 3 mask_texture");
-    EXPECT_EQ(fixture.lua("return tostring(assets.load('shaders/tint.shader') == shader) .. ' ' .. tostring(tint.shader == shader)"), "true true");
-    EXPECT_EQ(fixture.lua("return tint:get('strength') .. ' ' .. tint:get('offset').y .. ' ' .. tint:get('steps') .. ' ' .. string.format('%.2f', tint:get('tint').g) .. ' ' .. #tint:get('glow') .. ' ' .. #tint:get('palette') .. ' ' .. tint:get('mask_texture').width"), "0.5 2.0 1 0.25 3 12 1");
-    EXPECT_EQ(fixture.lua("tint:set('offset', m.vec2(5, 6)) tint:set('tint', {1, 1, 1, 0.5}) tint:set('mask_texture', nil) return tint:get('offset').x .. ' ' .. tint:get('tint').a .. ' ' .. tostring(tint:get('mask_texture'))"), "5.0 0.5 nil");
-
-    fixture.runLua(R"(
-        require('haylen.scene').push({render = function()
-            local camera = graphics2d.newCamera()
-            graphics2d.beginWorld(camera, {ambientLight = '#FF808080', postProcess = {materials = {tint}}})
-            graphics2d.draw(graphics.whiteTexture(), 0, 0, {width = 10, height = 10, material = tint})
-            local sprite = graphics2d.newSprite(graphics.whiteTexture(), {material = tint})
-            sprite:draw()
-            spriteMaterial = sprite.material
-            graphics2d.drawText(nil, 'Hi', 0, 0, {material = tint})
-        end})
-    )");
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(spriteMaterial == tint) .. ' ' .. graphics2d.stats().canvases"), "true 1");
-
-    // The gradient text program has no material form, so a text with both is an error.
-    fixture.runLua("require('haylen.scene').replace({render = function() graphics2d.beginScreen() gradientError = select(2, pcall(graphics2d.drawText, nil, 'Hi', 0, 0, {material = tint, gradient = {colors = {'#FFFFFFFF'}}})) end})");
-    fixture.frames(2);
-    EXPECT_NE(fixture.lua("return gradientError").find("A text with a gradient does not take a material."), std::string::npos);
-
-    EXPECT_NE(fixture.lua("graphics2d.newMaterial(shader, {missing = 1})").find("has no uniform named \"missing\""), std::string::npos);
-    EXPECT_NE(fixture.lua("tint:set('tint', 1)").find("takes 4 numbers, not 1"), std::string::npos);
-    EXPECT_NE(fixture.lua("tint:get('nothing')").find("has no uniform named \"nothing\""), std::string::npos);
-    EXPECT_NE(fixture.lua("graphics2d.newMaterial(shader, {[1] = 2})").find("uniform names must be strings"), std::string::npos);
-    EXPECT_NE(fixture.lua("assets.shader('shaders/missing.shader')").find("error: "), std::string::npos);
-}
-
-} // namespace haylen
+} // namespace haylen::graphics

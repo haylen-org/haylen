@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 namespace haylen::test {
 
@@ -27,7 +29,12 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     }
 
     context = reinterpret_cast<void*>(static_cast<std::intptr_t>(handle));
-    makeCurrent();
+    try {
+        makeCurrent();
+    } catch (...) {
+        emscripten_webgl_destroy_context(handle);
+        throw;
+    }
 }
 
 OffscreenGlContext::~OffscreenGlContext() {
@@ -35,7 +42,14 @@ OffscreenGlContext::~OffscreenGlContext() {
 }
 
 void OffscreenGlContext::makeCurrent() {
-    emscripten_webgl_make_context_current(static_cast<EMSCRIPTEN_WEBGL_CONTEXT_HANDLE>(reinterpret_cast<std::intptr_t>(context)));
+    const EMSCRIPTEN_RESULT result = emscripten_webgl_make_context_current(static_cast<EMSCRIPTEN_WEBGL_CONTEXT_HANDLE>(reinterpret_cast<std::intptr_t>(context)));
+    check(result == EMSCRIPTEN_RESULT_SUCCESS, "make the WebGL2 context of the canvas current");
+}
+
+void OffscreenGlContext::check(bool succeeded, std::string_view action) {
+    if (!succeeded) {
+        throw std::runtime_error("The page could not " + std::string(action) + ".");
+    }
 }
 
 // The browser shows what the page drew when the page yields, so a swap has nothing to do.

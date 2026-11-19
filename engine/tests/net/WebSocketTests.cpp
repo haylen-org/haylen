@@ -21,7 +21,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -32,386 +31,269 @@
 #include <thread>
 #include <vector>
 
-#include "haylen/core/Engine.hpp"
 #include "haylen/net/WebSocket.hpp"
-#include "haylen/plugins/NetPlugin.hpp"
+#include "net/WebSocketFixture.hpp"
 #include "net/WebSocketTransport.hpp"
-#include "platform/DevelopmentSession.hpp"
-#include "support/AllocationTracker.hpp"
-#include "support/EngineFixture.hpp"
-#include "support/TestFiles.hpp"
 
 namespace haylen::net {
 
-namespace {
-
-// Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, `bye` closes from the server side and `drop` hangs up without a close frame. The path `/refuse` answers the upgrade request with 403 instead.
-class EchoHandler final : public Poco::Net::HTTPRequestHandler {
-  public:
-    void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
-        if (request.getURI() == "/refuse") {
-            response.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_FORBIDDEN);
-            response.setContentLength(0);
-            response.send();
-            return;
+class WebSocketTest : public WebSocketFixture {
+  protected:
+    // Accepts one connection and never answers, like a server that hangs, and records whether the client sent something and whether it hung up.
+    class SilentServer final {
+      public:
+        SilentServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), thread([this] { serve(); }) {}
+        ~SilentServer() {
+            done = true;
+            thread.join();
         }
 
-        if (request.get("Sec-WebSocket-Protocol", "").find("chat") != std::string::npos) {
-            response.set("Sec-WebSocket-Protocol", "chat");
+        SilentServer(const SilentServer&) = delete;
+        SilentServer& operator=(const SilentServer&) = delete;
+
+        [[nodiscard]] std::string getUrl(const std::string& scheme) const {
+            return scheme + "://127.0.0.1:" + std::to_string(listener.address().port()) + "/";
+        }
+        [[nodiscard]] bool hasReceived() const noexcept {
+            return received;
+        }
+        [[nodiscard]] bool hasHungUp() const noexcept {
+            return hungUp;
         }
 
-        Poco::Net::WebSocket socket(request, response);
-        Poco::Buffer<char> frame(0);
-        while (true) {
-            int flags = 0;
-            frame.resize(0);
-            const int length = socket.receiveFrame(frame, flags);
-            const int opcode = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
-            const std::string text(frame.begin(), frame.size());
+      private:
+        static constexpr int kTickMicroseconds = 10000;
 
-            if ((length == 0 && flags == 0) || opcode == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
-                socket.shutdown(Poco::Net::WebSocket::WS_NORMAL_CLOSE, "");
-                return;
-            }
-
-            if (opcode == Poco::Net::WebSocket::FRAME_OP_PONG) {
-                send(socket, "pong " + text);
-            } else if (opcode == Poco::Net::WebSocket::FRAME_OP_PING) {
-                socket.sendFrame(frame.begin(), length, static_cast<int>(Poco::Net::WebSocket::FRAME_FLAG_FIN) | static_cast<int>(Poco::Net::WebSocket::FRAME_OP_PONG));
-            } else if (text == "fragments") {
-                socket.sendFrame("hel", 3, Poco::Net::WebSocket::FRAME_OP_TEXT);
-                socket.sendFrame("lo", 2, static_cast<int>(Poco::Net::WebSocket::FRAME_FLAG_FIN) | static_cast<int>(Poco::Net::WebSocket::FRAME_OP_CONT));
-            } else if (text == "ping-me") {
-                socket.sendFrame("beat", 4, static_cast<int>(Poco::Net::WebSocket::FRAME_FLAG_FIN) | static_cast<int>(Poco::Net::WebSocket::FRAME_OP_PING));
-            } else if (text == "bye") {
-                socket.shutdown(4001, "server bye");
-                socket.receiveFrame(frame, flags);
-                return;
-            } else if (text == "drop") {
-                return;
-            } else {
-                socket.sendFrame(frame.begin(), length, opcode == Poco::Net::WebSocket::FRAME_OP_BINARY ? Poco::Net::WebSocket::FRAME_BINARY : Poco::Net::WebSocket::FRAME_TEXT);
-            }
-        }
-    }
-
-  private:
-    static void send(Poco::Net::WebSocket& socket, const std::string& text) {
-        socket.sendFrame(text.data(), static_cast<int>(text.size()), Poco::Net::WebSocket::FRAME_TEXT);
-    }
-};
-
-class EchoFactory final : public Poco::Net::HTTPRequestHandlerFactory {
-  public:
-    Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest&) override {
-        return new EchoHandler();
-    }
-};
-
-class EchoServer final {
-  public:
-    EchoServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new EchoFactory(), listener, new Poco::Net::HTTPServerParams()) {
-        server.start();
-    }
-    ~EchoServer() {
-        server.stopAll(true);
-    }
-
-    EchoServer(const EchoServer&) = delete;
-    EchoServer& operator=(const EchoServer&) = delete;
-
-    [[nodiscard]] std::string getUrl(const std::string& path = "/echo") const {
-        return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + path;
-    }
-
-  private:
-    Poco::Net::ServerSocket listener;
-    Poco::Net::HTTPServer server;
-};
-
-// Accepts one connection and never answers, like a server that hangs, and records whether the client sent something and whether it hung up.
-class SilentServer final {
-  public:
-    SilentServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), thread([this] { serve(); }) {}
-    ~SilentServer() {
-        done = true;
-        thread.join();
-    }
-
-    SilentServer(const SilentServer&) = delete;
-    SilentServer& operator=(const SilentServer&) = delete;
-
-    [[nodiscard]] std::string getUrl(const std::string& scheme) const {
-        return scheme + "://127.0.0.1:" + std::to_string(listener.address().port()) + "/";
-    }
-    [[nodiscard]] bool hasReceived() const noexcept {
-        return received;
-    }
-    [[nodiscard]] bool hasHungUp() const noexcept {
-        return hungUp;
-    }
-
-  private:
-    static constexpr int kTickMicroseconds = 10000;
-
-    void serve() {
-        while (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
-            if (done) {
-                return;
-            }
+        // Whether the test still runs and the server still has time, so its thread never outlives a test that hangs.
+        [[nodiscard]] bool isServing() const {
+            return !done && std::chrono::steady_clock::now() < deadline;
         }
 
-        Poco::Net::StreamSocket peer = listener.acceptConnection();
-        std::array<char, 1024> buffer{};
-        while (!done) {
-            if (!peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
-                continue;
-            }
-
-            if (peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) == 0) {
-                hungUp = true;
-                return;
-            }
-
-            received = true;
-        }
-    }
-
-    Poco::Net::ServerSocket listener;
-    std::atomic<bool> done = false;
-    std::atomic<bool> received = false;
-    std::atomic<bool> hungUp = false;
-    std::thread thread;
-};
-
-// Answers connections the way a broken server does: with the status line of an HTTP error, as a server that speaks no TLS, with a reset once the client sent its request, as a server that crashes, or with an upgrade and then half a frame before it hangs up, as a server that crashes while it writes.
-class RawServer final {
-  public:
-    enum class Behavior : std::uint8_t {
-        PlainText,
-        Reset,
-        BrokenFrame,
-    };
-
-    explicit RawServer(Behavior answer) : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), behavior(answer), thread([this] { serve(); }) {}
-    ~RawServer() {
-        done = true;
-        thread.join();
-    }
-
-    RawServer(const RawServer&) = delete;
-    RawServer& operator=(const RawServer&) = delete;
-
-    [[nodiscard]] std::string getUrl(const std::string& scheme) const {
-        return scheme + "://127.0.0.1:" + std::to_string(listener.address().port()) + "/";
-    }
-
-  private:
-    static constexpr int kTickMicroseconds = 10000;
-    static constexpr std::string_view kKeyField = "Sec-WebSocket-Key: ";
-    static constexpr std::string_view kAcceptSuffix = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-
-    // The plain answer ends the stream of the server, since a TLS client may read it as the start of a longer record and wait for the rest. The reset waits for the request, so it reaches the client while the client waits for the answer, and closing without lingering resets the connection. Half a frame announces five bytes and carries two.
-    void serve() {
-        while (!done) {
-            if (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
-                continue;
+        void serve() {
+            while (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
+                if (!isServing()) {
+                    return;
+                }
             }
 
             Poco::Net::StreamSocket peer = listener.acceptConnection();
+            std::array<char, 1024> buffer{};
+            while (isServing()) {
+                if (!peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
+                    continue;
+                }
 
-            // A client that already gave up the connection ends the answer, since the tests check what the client saw.
-            try {
-                answer(peer);
-            } catch (const Poco::Exception&) {}
-        }
-    }
+                if (peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) == 0) {
+                    hungUp = true;
+                    return;
+                }
 
-    void answer(Poco::Net::StreamSocket& peer) const {
-        switch (behavior) {
-        case Behavior::PlainText:
-            send(peer, "HTTP/1.1 400 Bad Request\r\n\r\n");
-            peer.shutdownSend();
-            drain(peer);
-            break;
-        case Behavior::Reset:
-            (void)readRequest(peer);
-            peer.setLinger(true, 0);
-            peer.close();
-            break;
-        case Behavior::BrokenFrame:
-            send(peer, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept(readRequest(peer)) + "\r\n\r\n\x81\x05he");
-            break;
-        }
-    }
-
-    [[nodiscard]] static bool isReadable(const Poco::Net::StreamSocket& peer) {
-        return peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ);
-    }
-
-    static void send(Poco::Net::StreamSocket& peer, const std::string& bytes) {
-        peer.sendBytes(bytes.data(), static_cast<int>(bytes.size()));
-    }
-
-    // Reads until the client hangs up, and a client that hangs up with bytes it never read resets the connection, which ends the answer.
-    void drain(Poco::Net::StreamSocket& peer) const {
-        std::array<char, 1024> buffer{};
-        while (!done) {
-            if (isReadable(peer) && peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) <= 0) {
-                return;
+                received = true;
             }
         }
-    }
 
-    // Reads the request of the client up to the blank line that ends its header.
-    [[nodiscard]] std::string readRequest(Poco::Net::StreamSocket& peer) const {
-        std::string request;
-        std::array<char, 1024> buffer{};
-        while (!done && request.find("\r\n\r\n") == std::string::npos) {
-            if (!isReadable(peer)) {
-                continue;
+        Poco::Net::ServerSocket listener;
+        std::atomic<bool> done = false;
+        const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + kServeLimit;
+        std::atomic<bool> received = false;
+        std::atomic<bool> hungUp = false;
+        std::thread thread;
+    };
+
+    // Answers connections the way a broken server does: with the status line of an HTTP error, as a server that speaks no TLS, with a reset once the client sent its request, as a server that crashes, or with an upgrade and then half a frame before it hangs up, as a server that crashes while it writes.
+    class RawServer final {
+      public:
+        enum class Behavior : std::uint8_t {
+            PlainText,
+            Reset,
+            BrokenFrame,
+        };
+
+        explicit RawServer(Behavior answer) : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), behavior(answer), thread([this] { serve(); }) {}
+        ~RawServer() {
+            done = true;
+            thread.join();
+        }
+
+        RawServer(const RawServer&) = delete;
+        RawServer& operator=(const RawServer&) = delete;
+
+        [[nodiscard]] std::string getUrl(const std::string& scheme) const {
+            return scheme + "://127.0.0.1:" + std::to_string(listener.address().port()) + "/";
+        }
+
+      private:
+        static constexpr int kTickMicroseconds = 10000;
+        static constexpr std::string_view kKeyField = "Sec-WebSocket-Key: ";
+        static constexpr std::string_view kAcceptSuffix = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+
+        // Whether the test still runs and the server still has time, so its thread never outlives a test that hangs.
+        [[nodiscard]] bool isServing() const {
+            return !done && std::chrono::steady_clock::now() < deadline;
+        }
+
+        // The plain answer ends the stream of the server, since a TLS client may read it as the start of a longer record and wait for the rest. The reset waits for the request, so it reaches the client while the client waits for the answer, and closing without lingering resets the connection. Half a frame announces five bytes and carries two.
+        void serve() {
+            while (isServing()) {
+                if (!listener.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ)) {
+                    continue;
+                }
+
+                Poco::Net::StreamSocket peer = listener.acceptConnection();
+
+                // A client that already gave up the connection ends the answer, since the tests check what the client saw.
+                try {
+                    answer(peer);
+                } catch (const Poco::Exception&) {}
             }
+        }
 
-            const int received = peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size()));
-            if (received <= 0) {
+        void answer(Poco::Net::StreamSocket& peer) const {
+            switch (behavior) {
+            case Behavior::PlainText:
+                send(peer, "HTTP/1.1 400 Bad Request\r\n\r\n");
+                peer.shutdownSend();
+                drain(peer);
+                break;
+            case Behavior::Reset:
+                (void)readRequest(peer);
+                peer.setLinger(true, 0);
+                peer.close();
+                break;
+            case Behavior::BrokenFrame:
+                send(peer, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: " + accept(readRequest(peer)) + "\r\n\r\n\x81\x05he");
                 break;
             }
-
-            request.append(buffer.data(), static_cast<std::size_t>(received));
         }
 
-        return request;
-    }
+        [[nodiscard]] static bool isReadable(const Poco::Net::StreamSocket& peer) {
+            return peer.poll(Poco::Timespan(0, kTickMicroseconds), Poco::Net::Socket::SELECT_READ);
+        }
 
-    // Answers the key of an upgrade request the way the WebSocket protocol asks, by hand, since no WebSocket of Poco sends half a frame.
-    [[nodiscard]] static std::string accept(const std::string& request) {
-        const std::size_t start = request.find(kKeyField) + kKeyField.size();
-        Poco::SHA1Engine engine;
-        engine.update(request.substr(start, request.find("\r\n", start) - start) + std::string(kAcceptSuffix));
-        const Poco::DigestEngine::Digest& digest = engine.digest();
-        std::ostringstream text;
-        Poco::Base64Encoder encoder(text);
-        encoder.write(reinterpret_cast<const char*>(digest.data()), static_cast<std::streamsize>(digest.size()));
-        encoder.close();
-        return text.str();
-    }
+        static void send(Poco::Net::StreamSocket& peer, const std::string& bytes) {
+            peer.sendBytes(bytes.data(), static_cast<int>(bytes.size()));
+        }
 
-    Poco::Net::ServerSocket listener;
-    Behavior behavior;
-    std::atomic<bool> done = false;
-    std::thread thread;
-};
+        // Reads until the client hangs up, and a client that hangs up with bytes it never read resets the connection, which ends the answer.
+        void drain(Poco::Net::StreamSocket& peer) const {
+            std::array<char, 1024> buffer{};
+            while (isServing()) {
+                if (isReadable(peer) && peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size())) <= 0) {
+                    return;
+                }
+            }
+        }
 
-// Waits for the first message of a client and then sends it a few large binary messages before it reads anything more, while the client still sends, the way two sides that both stream do, and finally reports what the client sent.
-class FloodHandler final : public Poco::Net::HTTPRequestHandler {
-  public:
-    static constexpr int kMessages = 4;
-    static constexpr int kMessageSize = 8 * 1024 * 1024;
+        // Reads the request of the client up to the blank line that ends its header.
+        [[nodiscard]] std::string readRequest(Poco::Net::StreamSocket& peer) const {
+            std::string request;
+            std::array<char, 1024> buffer{};
+            while (isServing() && request.find("\r\n\r\n") == std::string::npos) {
+                if (!isReadable(peer)) {
+                    continue;
+                }
 
-    void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
-        Poco::Net::WebSocket socket(request, response);
-        socket.setMaxPayloadSize(kMessageSize);
-        Poco::Buffer<char> frame(0);
-        std::size_t received = 0;
-        // clang-format off
-        const auto receive = [&] {
-            int flags = 0;
-            frame.resize(0);
-            const int length = socket.receiveFrame(frame, flags);
-            received += static_cast<std::size_t>(std::max(length, 0));
-            return length > 0;
+                const int received = peer.receiveBytes(buffer.data(), static_cast<int>(buffer.size()));
+                if (received <= 0) {
+                    break;
+                }
+
+                request.append(buffer.data(), static_cast<std::size_t>(received));
+            }
+
+            return request;
+        }
+
+        // Answers the key of an upgrade request the way the WebSocket protocol asks, by hand, since no WebSocket of Poco sends half a frame.
+        [[nodiscard]] static std::string accept(const std::string& request) {
+            const std::size_t start = request.find(kKeyField) + kKeyField.size();
+            Poco::SHA1Engine engine;
+            engine.update(request.substr(start, request.find("\r\n", start) - start) + std::string(kAcceptSuffix));
+            const Poco::DigestEngine::Digest& digest = engine.digest();
+            std::ostringstream text;
+            Poco::Base64Encoder encoder(text);
+            encoder.write(reinterpret_cast<const char*>(digest.data()), static_cast<std::streamsize>(digest.size()));
+            encoder.close();
+            return text.str();
+        }
+
+        Poco::Net::ServerSocket listener;
+        Behavior behavior;
+        std::atomic<bool> done = false;
+        const std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + kServeLimit;
+        std::thread thread;
+    };
+
+    class FloodServer final {
+      public:
+        // Waits for the first message of a client and then sends it a few large binary messages before it reads anything more, while the client still sends, the way two sides that both stream do, and finally reports what the client sent.
+        class Handler final : public Poco::Net::HTTPRequestHandler {
+          public:
+            static constexpr int kMessages = 4;
+            static constexpr int kMessageSize = 8 * 1024 * 1024;
+
+            void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
+                Poco::Net::WebSocket socket(request, response);
+                socket.setMaxPayloadSize(kMessageSize);
+                socket.setReceiveTimeout(Poco::Timespan(kReceiveSeconds, 0));
+                Poco::Buffer<char> frame(0);
+                std::size_t received = 0;
+                // clang-format off
+                const auto receive = [&] {
+                    int flags = 0;
+                    frame.resize(0);
+                    const int length = socket.receiveFrame(frame, flags);
+                    received += static_cast<std::size_t>(std::max(length, 0));
+                    return length > 0;
+                };
+                // clang-format on
+                if (!receive()) {
+                    return;
+                }
+
+                const std::string flood(kMessageSize, 'f');
+                for (int message = 0; message < kMessages; ++message) {
+                    socket.sendFrame(flood.data(), static_cast<int>(flood.size()), Poco::Net::WebSocket::FRAME_BINARY);
+                }
+
+                while (received < static_cast<std::size_t>(kMessages) * kMessageSize) {
+                    if (!receive()) {
+                        return;
+                    }
+                }
+
+                const std::string done = "received " + std::to_string(received);
+                socket.sendFrame(done.data(), static_cast<int>(done.size()), Poco::Net::WebSocket::FRAME_TEXT);
+                (void)receive();
+            }
         };
-        // clang-format on
-        if (!receive()) {
-            return;
-        }
 
-        const std::string flood(kMessageSize, 'f');
-        for (int message = 0; message < kMessages; ++message) {
-            socket.sendFrame(flood.data(), static_cast<int>(flood.size()), Poco::Net::WebSocket::FRAME_BINARY);
-        }
-
-        while (received < static_cast<std::size_t>(kMessages) * kMessageSize) {
-            if (!receive()) {
-                return;
+        class Factory final : public Poco::Net::HTTPRequestHandlerFactory {
+          public:
+            Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest&) override {
+                return new Handler();
             }
+        };
+
+        FloodServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new Factory(), listener, new Poco::Net::HTTPServerParams()) {
+            server.start();
+        }
+        ~FloodServer() {
+            server.stopAll(true);
         }
 
-        const std::string done = "received " + std::to_string(received);
-        socket.sendFrame(done.data(), static_cast<int>(done.size()), Poco::Net::WebSocket::FRAME_TEXT);
-        (void)receive();
-    }
-};
+        FloodServer(const FloodServer&) = delete;
+        FloodServer& operator=(const FloodServer&) = delete;
 
-class FloodFactory final : public Poco::Net::HTTPRequestHandlerFactory {
-  public:
-    Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest&) override {
-        return new FloodHandler();
-    }
-};
-
-class FloodServer final {
-  public:
-    FloodServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new FloodFactory(), listener, new Poco::Net::HTTPServerParams()) {
-        server.start();
-    }
-    ~FloodServer() {
-        server.stopAll(true);
-    }
-
-    FloodServer(const FloodServer&) = delete;
-    FloodServer& operator=(const FloodServer&) = delete;
-
-    [[nodiscard]] std::string getUrl() const {
-        return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + "/flood";
-    }
-
-  private:
-    Poco::Net::ServerSocket listener;
-    Poco::Net::HTTPServer server;
-};
-
-class WebSocketTest : public ::testing::Test {
-  protected:
-    // Pumps until the condition holds, since the connection works on a thread of its own.
-    static bool pumpUntil(WebSocket& socket, const std::function<bool()>& done) {
-        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-        while (std::chrono::steady_clock::now() < deadline) {
-            socket.pump();
-
-            if (done()) {
-                return true;
-            }
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        [[nodiscard]] std::string getUrl() const {
+            return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + "/flood";
         }
 
-        return false;
-    }
-
-    static bool waitUntil(const std::function<bool()>& done, std::chrono::milliseconds timeout = std::chrono::seconds(10)) {
-        const auto deadline = std::chrono::steady_clock::now() + timeout;
-        while (!done() && std::chrono::steady_clock::now() < deadline) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        }
-
-        return done();
-    }
-
-    // Returns an address where nothing listens, so every connection attempt fails at once.
-    static std::string refusedUrl() {
-        Poco::Net::ServerSocket unused(Poco::Net::SocketAddress("127.0.0.1", 0));
-        const std::string url = "ws://127.0.0.1:" + std::to_string(unused.address().port());
-        unused.close();
-        return url;
-    }
+      private:
+        Poco::Net::ServerSocket listener;
+        Poco::Net::HTTPServer server;
+    };
 };
-
-class NetPluginTest : public WebSocketTest {};
-
-class NetLuaTest : public WebSocketTest {};
-
-} // namespace
 
 TEST_F(WebSocketTest, ExchangesMessagesAndCloses) {
     const EchoServer server;
@@ -685,7 +567,7 @@ TEST_F(WebSocketTest, CountsTheBytesThatWaitToBeWritten) {
 
 TEST_F(WebSocketTest, KeepsReadingWhileItWaitsToWrite) {
     const FloodServer server;
-    WebSocket socket(server.getUrl(), {.maxMessageSize = FloodHandler::kMessageSize});
+    WebSocket socket(server.getUrl(), {.maxMessageSize = FloodServer::Handler::kMessageSize});
     int floods = 0;
     std::string report;
     // clang-format off
@@ -698,14 +580,14 @@ TEST_F(WebSocketTest, KeepsReadingWhileItWaitsToWrite) {
     });
     // clang-format on
     ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Open; }));
-    const std::vector<std::uint8_t> message(FloodHandler::kMessageSize, 'm');
-    for (int index = 0; index < FloodHandler::kMessages; ++index) {
+    const std::vector<std::uint8_t> message(FloodServer::Handler::kMessageSize, 'm');
+    for (int index = 0; index < FloodServer::Handler::kMessages; ++index) {
         socket.sendBinary(message);
     }
 
     ASSERT_TRUE(pumpUntil(socket, [&] { return !report.empty(); })) << "Both sides waited for the other to read.";
-    EXPECT_EQ(floods, FloodHandler::kMessages);
-    EXPECT_EQ(report, "received " + std::to_string(static_cast<std::size_t>(FloodHandler::kMessages) * FloodHandler::kMessageSize));
+    EXPECT_EQ(floods, FloodServer::Handler::kMessages);
+    EXPECT_EQ(report, "received " + std::to_string(static_cast<std::size_t>(FloodServer::Handler::kMessages) * FloodServer::Handler::kMessageSize));
 }
 
 TEST_F(WebSocketTest, DisconnectListenersSeeTheStateThatFollows) {
@@ -756,182 +638,6 @@ TEST_F(WebSocketTest, RefusesMessagesLargerThanTheLimit) {
 
     EXPECT_THROW(WebSocket(server.getUrl(), {.maxMessageSize = 0}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl(), {.maxMessageSize = 2147483648U}), std::invalid_argument);
-}
-
-TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
-    const EchoServer server;
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        net = require('haylen.net')
-        log = {}
-        local socket = net.connectWebSocket(')" + server.getUrl() + R"(', {protocols = {'chat'}})
-        socket:on('open', function() log[#log + 1] = 'open ' .. socket.protocol socket:send('hi') socket:ping('beat') end)
-        socket:on('pong', function(payload) log[#log + 1] = 'pong ' .. payload socket:sendBinary('\0\1') end)
-        socket:on('message', function(data, binary) log[#log + 1] = (binary and 'binary ' .. #data or 'text ' .. data) if binary then socket:close(4000, 'thanks') end end)
-        socket:on('close', function(code, reason) log[#log + 1] = 'close ' .. code end)
-        state = socket.state
-    )");
-    // clang-format on
-    EXPECT_EQ(fixture.lua("return state .. ' ' .. net.openSocketCount()"), "connecting 1");
-
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
-    while (fixture.lua("return #log") != "5" && std::chrono::steady_clock::now() < deadline) {
-        fixture.frames(1);
-        std::this_thread::sleep_for(std::chrono::milliseconds(2));
-    }
-
-    EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "open chat, text hi, pong beat, binary 2, close 1000");
-    EXPECT_EQ(fixture.lua("return net.openSocketCount()"), "0");
-    EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
-
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):on('data', print)").find("Unknown WebSocket event \"data\""), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):ping()").find("is not open"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocol = 'x'})").find("Unknown option \"protocol\""), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('ftp://nowhere')").find("\"ws://\" or \"wss://\""), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {maxMessageSize = 0})").find("maximum message size between 1 and 2147483647 bytes"), std::string::npos);
-
-    for (const std::string protocol : {"chat\\r\\nX-Injected: 1", "chat json", "", "chat/2"}) {
-        EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocols = {'" + protocol + "'}})").find("is not a token"), std::string::npos) << protocol;
-    }
-
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {protocols = {'chat', 'json', 'chat'}})").find("The WebSocket subprotocol \"chat\" is listed twice."), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "'):close(4294968296)").find("integer out of range"), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {reconnect = {initialDelay = 0 / 0}})").find("finite delays"), std::string::npos);
-}
-
-TEST_F(NetLuaTest, ModuleReloadsEndTheListenersOfTheirTopLevel) {
-    const EchoServer server;
-    const std::string listener = "socket:on('message', function() heard = heard + 1 end) return {version = 1}";
-    test::EngineFixture fixture({{"source/main.lua", "heard = 0 socket = require('haylen.net').connectWebSocket('" + server.getUrl() + "') require('listener')"}, {"source/listener.lua", listener}}, nullptr, {.development = true});
-    fixture.frames(1);
-
-    fixture.package().setFile("source/listener.lua", test::TestFiles::bytes("-- Edited.\n" + listener));
-    const std::vector<std::string> paths{"source/listener.lua"};
-    fixture.host().getDevelopmentSession()->addChanges(paths);
-    fixture.frames(1);
-    ASSERT_FALSE(fixture.engine().isRestartRequested()) << "The module reloads in place.";
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return socket.state") == "open"; }));
-    fixture.runLua("socket:send('ping')");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return heard") != "0"; }));
-    EXPECT_EQ(fixture.lua("return heard"), "1") << "The listener of the first load ended with the reload.";
-}
-
-TEST_F(NetLuaTest, ReportsFailedConnectionsWithTheirAddress) {
-    const std::string url = refusedUrl();
-    test::EngineFixture fixture;
-    fixture.runLua("local socket = require('haylen.net').connectWebSocket('" + url + "') socket:on('error', function(message) failure = socket.url .. ' ' .. tostring(#message > 0) end)");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(failure)") != "nil"; }));
-    EXPECT_EQ(fixture.lua("return failure"), url + " true");
-}
-
-TEST_F(NetLuaTest, FailuresEndWithWhatTheProjectLacksForTheNetwork) {
-    const std::string url = refusedUrl();
-    const std::string requirement = "The app does not declare the permission \"android.permission.INTERNET\".";
-    test::EngineFixture fixture;
-    fixture.host().setNetworkRequirement(requirement);
-    fixture.restart();
-    fixture.runLua("require('haylen.net').connectWebSocket('" + url + "'):on('error', function(message) failure = message end)");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(failure)") != "nil"; }));
-    const std::string failure = fixture.lua("return failure");
-    EXPECT_TRUE(failure.ends_with(". " + requirement)) << failure;
-    EXPECT_GT(failure.size(), requirement.size() + 2);
-}
-
-TEST_F(NetLuaTest, EndsListenersWithTheirOwner) {
-    const std::string url = refusedUrl();
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        heard = {}
-        local socket = require('haylen.net').connectWebSocket(')" + url + R"(')
-        local holder = {}
-        socket:on('error', function() heard[#heard + 1] = 'owned' end, {owner = holder})
-        socket:on('error', function() heard[#heard + 1] = 'free' end)
-        holder = nil
-        collectgarbage()
-        collectgarbage()
-    )");
-    // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #heard") != "0"; }));
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "free");
-    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + url + "'):on('open', function() end, {weak = true})").find("Unknown option \"weak\""), std::string::npos);
-}
-
-TEST_F(NetLuaTest, ClosesSocketsWithTheirOwnerAndReadsTheirOptions) {
-    const EchoServer server;
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        net = require('haylen.net')
-        local holder = {}
-        owned = net.connectWebSocket(')" + server.getUrl() + R"(', {owner = holder, connectTimeout = 5})
-        alsoOwned = net.connectWebSocket(')" + server.getUrl() + R"(', {owner = holder})
-        kept = net.connectWebSocket(')" + server.getUrl() + R"(')
-        release = function() holder = nil collectgarbage() collectgarbage() end
-    )");
-    // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state .. alsoOwned.state .. kept.state") == "openopenopen"; }));
-    EXPECT_EQ(fixture.lua("return owned.bufferedAmount"), "0");
-    fixture.runLua("release()");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return owned.state .. alsoOwned.state") == "closedclosed"; }));
-    EXPECT_EQ(fixture.lua("return kept.state"), "open");
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {connectTimeout = 0})").find("A WebSocket needs a connect timeout above 0 and at most 3600 seconds."), std::string::npos);
-    EXPECT_NE(fixture.lua("net.connectWebSocket('" + server.getUrl() + "', {owner = 5})").find("An owner must be a table or a userdata, not number."), std::string::npos);
-}
-
-TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
-    const EchoServer server;
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        local net = require('haylen.net')
-        log = {}
-        local dropped = net.connectWebSocket(')" + server.getUrl() + R"(')
-        dropped:on('open', function() dropped:send('bye') end)
-        dropped:on('disconnect', function()
-            local sent, message = pcall(dropped.send, dropped, 'late')
-            log[#log + 1] = 'disconnect ' .. dropped.state .. ' ' .. tostring(sent) .. ' ' .. tostring(message:find('is not open') ~= nil)
-            dropped:close()
-        end)
-        dropped:on('close', function(code) log[#log + 1] = 'dropped close ' .. code end)
-
-        local limited = net.connectWebSocket(')" + server.getUrl() + R"(', {maxMessageSize = 4})
-        limited:on('open', function() limited:send('hello') end)
-        limited:on('error', function(message) log[#log + 1] = 'limited error ' .. tostring(message:find('maximum of 4 bytes') ~= nil) end)
-        limited:on('close', function(code) log[#log + 1] = 'limited close ' .. code end)
-    )");
-    // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #log") == "4"; }));
-    EXPECT_EQ(fixture.lua("table.sort(log) return table.concat(log, ', ')"), "disconnect closed false true, dropped close 4001, limited close 1009, limited error true");
-    EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
-}
-
-TEST_F(NetPluginTest, PumpsSocketsWithoutAllocating) {
-    const EchoServer server;
-    test::EngineFixture fixture;
-    plugins::NetPlugin& plugin = fixture.engine().getPlugin<plugins::NetPlugin>();
-    const std::shared_ptr<WebSocket> socket = plugin.connectWebSocket(server.getUrl());
-    ASSERT_TRUE(fixture.frameUntil([&] { return socket->getState() == WebSocket::State::Open; }));
-    plugin.beginFrame(fixture.engine(), 0.0F);
-
-    const test::AllocationTracker tracker;
-    plugin.beginFrame(fixture.engine(), 0.0F);
-    EXPECT_EQ(tracker.getTotal(), 0U);
-}
-
-TEST_F(NetPluginTest, ClosesOpenSocketsWhenTheAppStops) {
-    const EchoServer server;
-    std::shared_ptr<WebSocket> socket;
-    {
-        test::EngineFixture fixture;
-        socket = fixture.engine().getPlugin<plugins::NetPlugin>().connectWebSocket(server.getUrl());
-        EXPECT_EQ(fixture.engine().getPlugin<plugins::NetPlugin>().getOpenSocketCount(), 1U);
-        ASSERT_TRUE(pumpUntil(*socket, [&] { return socket->getState() == WebSocket::State::Open; }));
-        socket->opened.connect([] {});
-    }
-    EXPECT_TRUE(socket->opened.empty());
-    EXPECT_EQ(socket->getState(), WebSocket::State::Closing);
 }
 
 TEST_F(WebSocketTest, DestroyingNeverWaitsForAConnectionThatHangs) {
@@ -1056,36 +762,6 @@ TEST_F(WebSocketTest, ReconnectsAfterTheServerDropsAndStopsWhenClosed) {
     EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .multiplier = notANumber}}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .jitter = notANumber}}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl(), {.reconnect = {.enabled = true, .maxDelay = std::numeric_limits<float>::infinity()}}), std::invalid_argument);
-}
-
-TEST_F(NetPluginTest, PublishesConnectionEvents) {
-    const EchoServer server;
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        local net = require('haylen.net')
-        local events = require('haylen.events')
-        log = {}
-        events.on('webSocketConnected', function(data) log[#log + 1] = 'connected ' .. tostring(data.url == url) end)
-        events.on('webSocketDisconnected', function(data) log[#log + 1] = 'disconnected ' .. data.code .. ' ' .. data.reason end)
-        events.on('webSocketReconnecting', function(data) log[#log + 1] = 'reconnecting ' .. data.attempt .. ' ' .. tostring(data.delay <= 0.01) end)
-        url = ')" + server.getUrl() + R"('
-        socket = net.connectWebSocket(url, {reconnect = {initialDelay = 0.01, maxDelay = 0.05, multiplier = 3, jitter = 0, maxAttempts = 4}})
-        socket:on('open', function() if socket.attempt == 0 and not said then said = true socket:send('bye') end end)
-        socket:on('reconnecting', function(attempt, delay) log[#log + 1] = 'socket reconnecting ' .. attempt end)
-        socket:on('disconnect', function(code) log[#log + 1] = 'socket disconnect ' .. code end)
-    )");
-    // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #log") == "6"; }));
-    EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "connected true, disconnected 4001 server bye, socket disconnect 4001, reconnecting 1 true, socket reconnecting 1, connected true");
-    EXPECT_EQ(fixture.lua("return socket.state .. ' ' .. socket.attempt"), "open 0");
-
-    // A socket gives up after its attempts, and `true` picks the default backoff.
-    fixture.runLua("failing = require('haylen.net').connectWebSocket('" + refusedUrl() + "', {reconnect = {initialDelay = 0, maxAttempts = 2}}) failing:on('close', function(code) gaveUp = code end)");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(gaveUp)") == "1006"; }));
-    EXPECT_EQ(fixture.lua("return require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = true}).state"), "connecting");
-    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {delay = 1}})").find("Unknown option \"delay\""), std::string::npos);
-    EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {jitter = 3}})").find("jitter between 0 and 1"), std::string::npos);
 }
 
 } // namespace haylen::net

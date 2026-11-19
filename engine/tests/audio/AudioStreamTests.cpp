@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
@@ -111,25 +112,27 @@ TEST_F(AudioStreamTest, TakesSamplesFromAnotherThreadWhileTheMixerReads) {
     auto stream = std::make_shared<platform::AudioStream>(kRate, 1, platform::AudioStream::Format::Float32, 4096);
     mixer.play(stream);
     std::atomic<bool> done{false};
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     // clang-format off
-    std::thread producer([&stream, &done] {
+    std::thread producer([&stream, &done, deadline] {
         const std::vector<float> block(256, 0.5F);
         std::size_t written = 0;
-        while (written < kRate) {
+        while (written < kRate && std::chrono::steady_clock::now() < deadline) {
             written += stream->push(block);
             std::this_thread::yield();
         }
 
-        done = true;
+        done = written >= kRate;
     });
     // clang-format on
     std::vector<float> latest(64);
-    while (!done) {
+    while (!done && std::chrono::steady_clock::now() < deadline) {
         peak(256);
         stream->copyLatest(latest);
     }
 
     producer.join();
+    ASSERT_TRUE(done) << "The producer did not push its second of samples in time.";
     EXPECT_EQ(latest.back(), 0.5F);
 }
 

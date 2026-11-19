@@ -11,6 +11,7 @@
 #include <iterator>
 #include <limits>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -28,6 +29,7 @@
 #include "haylen/storage/UserStorage.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::storage {
 
@@ -67,7 +69,7 @@ TEST(UserStorageTest, RemovesStaleTemporaryFilesWhenItOpens) {
         UserStorage storage(directory.getPath());
         storage.writeText("saves/kept.json", "kept", UserStorage::Durability::Durable);
     }
-    std::ofstream(directory.getPath() / "saves" / "kept.json.7.tmp") << "interrupted";
+    test::TestFiles::write(directory.getPath() / "saves" / "kept.json.7.tmp", "interrupted");
     const UserStorage reopened(directory.getPath());
     EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "saves" / "kept.json.7.tmp"));
     EXPECT_EQ(reopened.readText("saves/kept.json"), "kept");
@@ -160,8 +162,10 @@ TEST(SaveSlotsTest, WritesReadsListsAndRemovesSlots) {
     EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 3}, {"wood", 12}}));
     EXPECT_EQ(saves.read("slot-2"), core::Json::array({1, 2}));
     EXPECT_EQ(saves.read("empty"), std::nullopt);
-    EXPECT_EQ(saves.getInfo("slot-1")->savedAt, 100);
-    EXPECT_EQ(saves.getInfo("slot-1")->summary, (core::Json{{"day", 3}}));
+    const std::optional<SaveSlots::Info> first = saves.getInfo("slot-1");
+    ASSERT_TRUE(first.has_value());
+    EXPECT_EQ(first->savedAt, 100);
+    EXPECT_EQ(first->summary, (core::Json{{"day", 3}}));
     EXPECT_EQ(saves.getInfo("empty"), std::nullopt);
     EXPECT_TRUE(saves.exists("auto_save"));
 
@@ -199,7 +203,9 @@ TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
     EXPECT_THROW((void)saves.read("summed"), std::runtime_error);
 
     saves.write("real", {{"ok", true}});
-    EXPECT_GT(saves.getInfo("real")->savedAt, 1'700'000'000);
+    const std::optional<SaveSlots::Info> real = saves.getInfo("real");
+    ASSERT_TRUE(real.has_value());
+    EXPECT_GT(real->savedAt, 1'700'000'000);
 }
 
 TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
@@ -207,8 +213,10 @@ TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
     UserStorage storage(directory.getPath());
     SaveSlots saves(storage);
     saves.write("slot-1", {{"items", core::Json::array({"axe"})}});
-    EXPECT_EQ(saves.getInfo("slot-1")->version, 1);
-    EXPECT_EQ(saves.getInfo("slot-1")->revision, 1U);
+    const std::optional<SaveSlots::Info> written = saves.getInfo("slot-1");
+    ASSERT_TRUE(written.has_value());
+    EXPECT_EQ(written->version, 1);
+    EXPECT_EQ(written->revision, 1U);
 
     // The migrations of each version run in order, and a read never changes the stored slot.
     saves.setVersion(3);
@@ -228,9 +236,13 @@ TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
     // clang-format on
     EXPECT_EQ(saves.read("slot-1"), (core::Json{{"inventory", core::Json::array({"axe"})}, {"stamina", 100}}));
     EXPECT_EQ(ran, (std::vector<int>{1, 2}));
-    EXPECT_EQ(saves.getInfo("slot-1")->version, 1);
+    const std::optional<SaveSlots::Info> unchanged = saves.getInfo("slot-1");
+    ASSERT_TRUE(unchanged.has_value());
+    EXPECT_EQ(unchanged->version, 1);
     saves.write("slot-2", {{"stamina", 5}});
-    EXPECT_EQ(saves.getInfo("slot-2")->version, 3);
+    const std::optional<SaveSlots::Info> migrated = saves.getInfo("slot-2");
+    ASSERT_TRUE(migrated.has_value());
+    EXPECT_EQ(migrated->version, 3);
 
     // A missing step and a slot of a newer version fail with what went wrong.
     saves.setVersion(4);
@@ -261,21 +273,27 @@ TEST(SaveSlotsTest, FallsBackToTheBackupWhenDamaged) {
     SaveSlots saves(storage);
     saves.write("slot-1", {{"day", 1}});
     saves.write("slot-1", {{"day", 2}});
-    EXPECT_EQ(saves.getInfo("slot-1")->revision, 2U);
-    EXPECT_FALSE(saves.getInfo("slot-1")->recovered);
+    const std::optional<SaveSlots::Info> sound = saves.getInfo("slot-1");
+    ASSERT_TRUE(sound.has_value());
+    EXPECT_EQ(sound->revision, 2U);
+    EXPECT_FALSE(sound->recovered);
 
     // A change that the checksum does not cover, such as a bit that flipped on the disk, makes the backup take the place of the slot.
     std::string text = storage.readText("saves/slot-1.json");
     text.replace(text.find("\"day\":2"), 7, "\"day\":9");
     storage.writeText("saves/slot-1.json", text);
     EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 1}}));
-    EXPECT_TRUE(saves.getInfo("slot-1")->recovered);
-    EXPECT_EQ(saves.getInfo("slot-1")->revision, 1U);
+    const std::optional<SaveSlots::Info> recovered = saves.getInfo("slot-1");
+    ASSERT_TRUE(recovered.has_value());
+    EXPECT_TRUE(recovered->recovered);
+    EXPECT_EQ(recovered->revision, 1U);
     EXPECT_EQ(saves.list().size(), 1U) << "A backup is no slot of its own.";
 
     // A write over a damaged slot keeps the sound backup, and a slot without a sound copy fails.
     saves.write("slot-1", {{"day", 3}});
-    EXPECT_EQ(saves.getInfo("slot-1")->revision, 1U);
+    const std::optional<SaveSlots::Info> rewritten = saves.getInfo("slot-1");
+    ASSERT_TRUE(rewritten.has_value());
+    EXPECT_EQ(rewritten->revision, 1U);
     storage.writeText("saves/slot-1.json", "{");
     EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 1}}));
     storage.writeText("saves/slot-1.backup.json", "{");
@@ -296,15 +314,19 @@ TEST(SaveSlotsTest, ImportsOnlyNewerRevisionsUnlessAskedToReplace) {
     phone.write("slot", {{"day", 1}});
     tablet.write("slot", {{"day", 4}});
     tablet.write("slot", {{"day", 5}});
-    const std::string older = *phone.exportSlot("slot");
-    const std::string newer = *tablet.exportSlot("slot");
-    EXPECT_FALSE(tablet.importSlot("slot", older, SaveSlots::ImportPolicy::KeepNewer));
+    const std::optional<std::string> older = phone.exportSlot("slot");
+    const std::optional<std::string> newer = tablet.exportSlot("slot");
+    ASSERT_TRUE(older.has_value());
+    ASSERT_TRUE(newer.has_value());
+    EXPECT_FALSE(tablet.importSlot("slot", *older, SaveSlots::ImportPolicy::KeepNewer));
     EXPECT_EQ(tablet.read("slot"), (core::Json{{"day", 5}}));
-    EXPECT_TRUE(phone.importSlot("slot", newer, SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_TRUE(phone.importSlot("slot", *newer, SaveSlots::ImportPolicy::KeepNewer));
     EXPECT_EQ(phone.read("slot"), (core::Json{{"day", 5}}));
-    EXPECT_TRUE(tablet.importSlot("slot", older, SaveSlots::ImportPolicy::Replace));
-    EXPECT_EQ(tablet.getInfo("slot")->revision, 1U);
-    EXPECT_TRUE(phone.importSlot("fresh", older, SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_TRUE(tablet.importSlot("slot", *older, SaveSlots::ImportPolicy::Replace));
+    const std::optional<SaveSlots::Info> imported = tablet.getInfo("slot");
+    ASSERT_TRUE(imported.has_value());
+    EXPECT_EQ(imported->revision, 1U);
+    EXPECT_TRUE(phone.importSlot("fresh", *older, SaveSlots::ImportPolicy::KeepNewer));
     EXPECT_FALSE(phone.exportSlot("none").has_value());
     EXPECT_THROW((void)phone.importSlot("slot", "{}", SaveSlots::ImportPolicy::Replace), std::invalid_argument);
     EXPECT_EQ(SaveSlots::importPolicyFromName("keepNewer"), SaveSlots::ImportPolicy::KeepNewer);
@@ -371,7 +393,9 @@ TEST(SaveSlotsTest, CountsEveryWriteOfOneSlotFromTwoThreads) {
 
     other.join();
     EXPECT_EQ(failure, "");
-    EXPECT_EQ(saves.getInfo("shared")->revision, static_cast<std::uint64_t>(kWrites * 2));
+    const std::optional<SaveSlots::Info> shared = saves.getInfo("shared");
+    ASSERT_TRUE(shared.has_value());
+    EXPECT_EQ(shared->revision, static_cast<std::uint64_t>(kWrites * 2));
 }
 
 // A slot that is there but cannot be read fails, instead of reading as a slot that was never saved.
@@ -913,15 +937,23 @@ TEST(UserStorageTest, ReplacesAFileThatAnotherProgramHoldsForAMoment) {
     UserStorage storage(directory.getPath());
     storage.writeText("save.json", "{}");
     std::atomic<bool> holding = false;
+    std::atomic<bool> held = false;
     // clang-format off
     std::thread scanner([&] {
-        const std::ifstream held(directory.getPath() / "save.json", std::ios::binary);
+        const std::ifstream file(directory.getPath() / "save.json", std::ios::binary);
+        held = file.is_open();
         holding = true;
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     });
     // clang-format on
-    while (!holding) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!holding && std::chrono::steady_clock::now() < deadline) {
         std::this_thread::yield();
+    }
+
+    if (!held) {
+        scanner.join();
+        FAIL() << "The other program could not open the file in time.";
     }
 
     storage.writeText("save.json", R"({"level": 2})");

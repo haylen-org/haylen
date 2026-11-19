@@ -4,6 +4,7 @@
 #include <cmath>
 #include <initializer_list>
 #include <numbers>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -114,9 +115,11 @@ TEST_F(GamepadMotionTest, MeasureTheTiltOfAGamepadAndClearItsTouchpadsWhenItGoes
 }
 
 TEST_F(GamepadMotionTest, ReadTheTiltAsBindingsOfTheActionMap) {
-    EXPECT_EQ(ActionMap::Binding::parse("tilt:x+")->toString(), "tilt:x+");
-    EXPECT_EQ(ActionMap::Binding::parse("tilt:y-")->toString(), "tilt:y-");
-    EXPECT_EQ(ActionMap::Binding::parse("stick:tilt")->toString(), "stick:tilt");
+    for (const char* text : {"tilt:x+", "tilt:y-", "stick:tilt"}) {
+        const std::optional<ActionMap::Binding> binding = ActionMap::Binding::parse(text);
+        ASSERT_TRUE(binding.has_value()) << text;
+        EXPECT_EQ(binding->toString(), text);
+    }
 
     for (const char* text : {"tilt:z+", "tilt:x", "tilt:xy+", "stick:middle"}) {
         EXPECT_FALSE(ActionMap::Binding::parse(text).has_value()) << text;

@@ -2,9 +2,6 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
@@ -23,6 +20,7 @@
 #include "haylen/audio/Sound.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/AudioFiles.hpp"
 #include "support/CountingPackage.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -83,11 +81,6 @@ class StreamedSoundTest : public MixerFixture {
         std::map<std::string, std::vector<std::uint8_t>> files;
         files.emplace("content/music/long.wav", std::move(file));
         return std::make_shared<test::CountingPackage>(std::make_shared<io::MemoryPackage>("music", std::move(files)));
-    }
-
-    [[nodiscard]] static std::vector<std::uint8_t> readTestFile(const std::string& name) {
-        std::ifstream stream(std::filesystem::path(HAYLEN_TEST_AUDIO) / name, std::ios::binary);
-        return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     }
 
     // Writes a sample rate into the identification header on the first page of an Ogg Vorbis file and the checksum of that page again, as a hostile file would declare it.
@@ -297,7 +290,7 @@ TEST_F(StreamedSoundTest, DecodesThroughAWindowOfTheFile) {
 TEST_F(StreamedSoundTest, StreamsEveryCompressedFormatLikeItsDecodedSound) {
     for (const std::string name : {"tone.ogg", "notes.ogg", "tone.mp3", "tone-without-header.mp3", "tone.flac"}) {
         SCOPED_TRACE(name);
-        const std::vector<std::uint8_t> file = readTestFile(name);
+        const std::vector<std::uint8_t> file = test::AudioFiles::read(name);
         ASSERT_FALSE(file.empty());
         const Sound decoded = Sound::decode(file);
         const Sound streamed = Sound::stream(makeReader(file));
@@ -316,7 +309,7 @@ TEST_F(StreamedSoundTest, StreamsEveryCompressedFormatLikeItsDecodedSound) {
 TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
     for (const std::string name : {"notes.ogg", "tone.ogg"}) {
         SCOPED_TRACE(name);
-        const std::vector<std::uint8_t> file = readTestFile(name);
+        const std::vector<std::uint8_t> file = test::AudioFiles::read(name);
         const Sound decoded = Sound::decode(file);
         const std::vector<float>& expected = decoded.getData()->samples;
         const std::uint64_t length = decoded.getFrameCount();
@@ -356,7 +349,7 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
 }
 
 TEST_F(StreamedSoundTest, LoopsAnOggVorbisFileBetweenLoopPointsExactly) {
-    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("notes.ogg");
     const Sound decoded = Sound::decode(file);
     const std::vector<float>& expected = decoded.getData()->samples;
     const std::uint32_t channels = decoded.getChannels();
@@ -381,7 +374,7 @@ TEST_F(StreamedSoundTest, LoopsAnOggVorbisFileBetweenLoopPointsExactly) {
 }
 
 TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileByReadingOnlyThePagesAroundTheFrame) {
-    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("notes.ogg");
     std::map<std::string, std::vector<std::uint8_t>> files;
     files.emplace("content/music/notes.ogg", file);
     const auto package = std::make_shared<test::CountingPackage>(std::make_shared<io::MemoryPackage>("music", std::move(files)));
@@ -398,7 +391,12 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileByReadingOnlyThePagesAroundTheFram
 
     // A decoder that played the file seeks back near its end through the pages it recorded.
     ReaderDecoder played(package->openAssetReader("music/notes.ogg"));
-    while (played.read(block) > 0) {}
+    std::uint64_t reads = 0;
+    while (played.read(block) > 0) {
+        ++reads;
+        ASSERT_LE(reads, length / 256 + 1) << "The decoder kept reading past the end of the file.";
+    }
+
     package->reset();
     ASSERT_TRUE(played.seek(length - 5000));
     ASSERT_EQ(played.read(block), 256U);
@@ -407,7 +405,7 @@ TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileByReadingOnlyThePagesAroundTheFram
 }
 
 TEST_F(StreamedSoundTest, ReadsTheLengthOfAnOggFileFromItsLastWholePage) {
-    const std::vector<std::uint8_t> file = readTestFile("tone.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("tone.ogg");
     const std::uint64_t whole = Sound::stream(makeReader(file)).getFrameCount();
     EXPECT_GT(whole, 0U);
 
@@ -423,7 +421,7 @@ TEST_F(StreamedSoundTest, ReadsTheLengthOfAnOggFileFromItsLastWholePage) {
 }
 
 TEST_F(StreamedSoundTest, RefusesAFileWhoseHeaderDeclaresMoreFramesASecondThanItCanPlay) {
-    const std::vector<std::uint8_t> file = readTestFile("tone.ogg");
+    const std::vector<std::uint8_t> file = test::AudioFiles::read("tone.ogg");
     EXPECT_EQ(Sound::stream(makeReader(withSampleRate(file, 384000))).getSampleRate(), 384000U);
 
     // The ring of every voice holds a second of frames, so the header alone would make the voice allocate gigabytes.

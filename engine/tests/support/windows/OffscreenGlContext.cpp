@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
 namespace haylen::test {
 
@@ -78,16 +80,16 @@ class OffscreenGlContext::Drawable final : public gpu::GlContext {
     }
 
     void makeCurrent() override {
-        wglMakeCurrent(deviceContext, context);
+        OffscreenGlContext::check(wglMakeCurrent(deviceContext, context) != FALSE, "make another hidden window of the OpenGL context current");
     }
 
     void swapBuffers() override {
-        SwapBuffers(deviceContext);
+        OffscreenGlContext::check(SwapBuffers(deviceContext) != FALSE, "swap another hidden window of the OpenGL context");
     }
 
     void setSwapInterval(int value) override {
         if (const auto swapInterval = reinterpret_cast<Native::SwapInterval>(reinterpret_cast<void*>(wglGetProcAddress("wglSwapIntervalEXT")))) {
-            swapInterval(value);
+            OffscreenGlContext::check(swapInterval(value) != FALSE, "set the swap interval of another hidden window of the OpenGL context");
         }
     }
 
@@ -114,10 +116,25 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     surface = window;
     const HDC deviceContext = GetDC(window);
     display = deviceContext;
-    Native::choosePixelFormat(deviceContext);
+    try {
+        Native::choosePixelFormat(deviceContext);
+    } catch (...) {
+        ReleaseDC(window, deviceContext);
+        DestroyWindow(window);
+        throw;
+    }
 
     const HGLRC loader = wglCreateContext(deviceContext);
-    wglMakeCurrent(deviceContext, loader);
+    if (loader == nullptr || wglMakeCurrent(deviceContext, loader) == FALSE) {
+        if (loader != nullptr) {
+            wglDeleteContext(loader);
+        }
+
+        ReleaseDC(window, deviceContext);
+        DestroyWindow(window);
+        throw std::runtime_error("Windows could not make the OpenGL context that loads the functions of WGL.");
+    }
+
     const auto createContextAttribs = reinterpret_cast<Native::CreateContextAttribs>(reinterpret_cast<void*>(wglGetProcAddress("wglCreateContextAttribsARB")));
     const std::array<int, 11> attributes{Native::kContextMajorVersion, 4, Native::kContextMinorVersion, 3, Native::kContextProfileMask, Native::kContextCoreProfileBit, Native::kContextFlags, Native::kContextDebugBit | Native::kContextRobustAccessBit, Native::kContextResetNotificationStrategy, Native::kLoseContextOnReset, 0};
     const HGLRC made = createContextAttribs == nullptr ? nullptr : createContextAttribs(deviceContext, nullptr, attributes.data());
@@ -131,7 +148,14 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     }
 
     context = made;
-    makeCurrent();
+    try {
+        makeCurrent();
+    } catch (...) {
+        wglDeleteContext(made);
+        ReleaseDC(window, deviceContext);
+        DestroyWindow(window);
+        throw;
+    }
 }
 
 OffscreenGlContext::~OffscreenGlContext() {
@@ -142,16 +166,22 @@ OffscreenGlContext::~OffscreenGlContext() {
 }
 
 void OffscreenGlContext::makeCurrent() {
-    wglMakeCurrent(static_cast<HDC>(display), static_cast<HGLRC>(context));
+    check(wglMakeCurrent(static_cast<HDC>(display), static_cast<HGLRC>(context)) != FALSE, "make the OpenGL context current");
 }
 
 void OffscreenGlContext::swapBuffers() {
-    SwapBuffers(static_cast<HDC>(display));
+    check(SwapBuffers(static_cast<HDC>(display)) != FALSE, "swap the hidden window of the OpenGL context");
 }
 
 void OffscreenGlContext::setSwapInterval(int value) {
     if (const auto swapInterval = reinterpret_cast<Native::SwapInterval>(reinterpret_cast<void*>(wglGetProcAddress("wglSwapIntervalEXT")))) {
-        swapInterval(value);
+        check(swapInterval(value) != FALSE, "set the swap interval of the OpenGL context");
+    }
+}
+
+void OffscreenGlContext::check(bool succeeded, std::string_view action) {
+    if (!succeeded) {
+        throw std::runtime_error("Windows could not " + std::string(action) + ", with the error " + std::to_string(GetLastError()) + ".");
     }
 }
 

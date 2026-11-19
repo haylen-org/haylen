@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -177,21 +178,29 @@ TEST(UtilitySelectorTest, PicksTheOptionWithTheBestScore) {
     const std::size_t attack = selector.add({.name = "attack", .considerations = {{.name = "health", .input = [&health] { return health; }, .maximum = 100.0F}, {.name = "near", .input = [&distance] { return distance; }, .maximum = 200.0F, .curve = {.slope = -1.0F, .offset = 1.0F}}}});
     const std::size_t flee = selector.add({.name = "flee", .considerations = {{.name = "danger", .input = [&health] { return health; }, .maximum = 100.0F, .curve = {.shape = ResponseCurve::Shape::Polynomial, .slope = -1.0F, .exponent = 2.0F, .offset = 1.0F}}}, .weight = 0.9F});
 
-    EXPECT_EQ(selector.choose()->index, attack);
+    const std::optional<UtilitySelector::Choice> healthy = selector.choose();
+    ASSERT_TRUE(healthy.has_value());
+    EXPECT_EQ(healthy->index, attack);
     health = 20.0F;
-    EXPECT_EQ(selector.choose()->index, flee);
+    const std::optional<UtilitySelector::Choice> hurt = selector.choose();
+    ASSERT_TRUE(hurt.has_value());
+    EXPECT_EQ(hurt->index, flee);
     EXPECT_NEAR(selector.score(flee), 0.9F * 0.96F, 1e-4F);
 
     // With a tolerance of zero every option with a score can come up.
     math::Random random(2);
     std::vector<int> picks(2);
     for (int pick = 0; pick < 200; ++pick) {
-        ++picks[selector.choose(random, 0.0F)->index];
+        const std::optional<UtilitySelector::Choice> choice = selector.choose(random, 0.0F);
+        ASSERT_TRUE(choice.has_value());
+        ++picks[choice->index];
     }
 
     EXPECT_GT(picks[attack], 0);
     EXPECT_GT(picks[flee], picks[attack]);
-    EXPECT_EQ(selector.choose(random, 1.0F)->index, flee);
+    const std::optional<UtilitySelector::Choice> best = selector.choose(random, 1.0F);
+    ASSERT_TRUE(best.has_value());
+    EXPECT_EQ(best->index, flee);
 
     health = 100.0F;
     distance = 200.0F;
@@ -250,7 +259,9 @@ TEST(InfluenceMapTest, StampsSpreadsAndFindsExtremes) {
     const std::optional<InfluenceMap::Spot> hot = threat.findHighest({150.0F, 50.0F}, 100.0F);
     ASSERT_TRUE(hot.has_value());
     EXPECT_LT(math::Vec2::distance(hot->position, {155.0F, 55.0F}), 15.0F);
-    EXPECT_FLOAT_EQ(threat.findLowest({285.0F, 5.0F}, 1.0F)->value, threat.get(18, 0));
+    const std::optional<InfluenceMap::Spot> cold = threat.findLowest({285.0F, 5.0F}, 1.0F);
+    ASSERT_TRUE(cold.has_value());
+    EXPECT_FLOAT_EQ(cold->value, threat.get(18, 0));
     EXPECT_FALSE(threat.findLowest({-500.0F, 0.0F}, 10.0F).has_value());
 
     InfluenceMap allies(20, 10, 10.0F, {100.0F, 0.0F});

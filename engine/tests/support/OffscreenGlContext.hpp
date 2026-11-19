@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string_view>
 
 #include "haylen/gpu/Device.hpp"
 #include "haylen/gpu/Surface.hpp"
@@ -30,6 +31,9 @@ class OffscreenGlContext final : public gpu::GlContext {
   private:
     class Native;
     class Drawable;
+
+    // Throws `std::runtime_error` that names the action when the system reports that it failed.
+    static void check(bool succeeded, std::string_view action);
 
     void* display = nullptr;
     void* surface = nullptr;

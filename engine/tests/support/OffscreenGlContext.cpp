@@ -27,15 +27,15 @@ class OffscreenGlContext::Drawable final : public gpu::GlContext {
     }
 
     void makeCurrent() override {
-        eglMakeCurrent(display, surface, surface, context);
+        OffscreenGlContext::check(eglMakeCurrent(display, surface, surface, context) == EGL_TRUE, "make another pixel buffer of the context current");
     }
 
     void swapBuffers() override {
-        eglSwapBuffers(display, surface);
+        OffscreenGlContext::check(eglSwapBuffers(display, surface) == EGL_TRUE, "swap another pixel buffer of the context");
     }
 
     void setSwapInterval(int value) override {
-        eglSwapInterval(display, value);
+        OffscreenGlContext::check(eglSwapInterval(display, value) == EGL_TRUE, "set the swap interval of another pixel buffer of the context");
     }
 
     void* getProcAddress(const char* name) override {
@@ -92,7 +92,13 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
         throw std::runtime_error(std::format("EGL could not make an {} context.", desktop ? "OpenGL 4.3 core" : "OpenGL ES 3.0"));
     }
 
-    makeCurrent();
+    try {
+        makeCurrent();
+    } catch (...) {
+        eglDestroyContext(made, context);
+        eglDestroySurface(made, surface);
+        throw;
+    }
 }
 
 OffscreenGlContext::~OffscreenGlContext() {
@@ -102,15 +108,21 @@ OffscreenGlContext::~OffscreenGlContext() {
 }
 
 void OffscreenGlContext::makeCurrent() {
-    eglMakeCurrent(display, surface, surface, context);
+    check(eglMakeCurrent(display, surface, surface, context) == EGL_TRUE, "make the context current");
 }
 
 void OffscreenGlContext::swapBuffers() {
-    eglSwapBuffers(display, surface);
+    check(eglSwapBuffers(display, surface) == EGL_TRUE, "swap the pixel buffer of the context");
 }
 
 void OffscreenGlContext::setSwapInterval(int value) {
-    eglSwapInterval(display, value);
+    check(eglSwapInterval(display, value) == EGL_TRUE, "set the swap interval of the context");
+}
+
+void OffscreenGlContext::check(bool succeeded, std::string_view action) {
+    if (!succeeded) {
+        throw std::runtime_error(std::format("EGL could not {}, with the error 0x{:X}.", action, eglGetError()));
+    }
 }
 
 void* OffscreenGlContext::getProcAddress(const char* name) {

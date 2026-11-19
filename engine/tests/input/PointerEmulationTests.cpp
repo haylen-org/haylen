@@ -8,10 +8,10 @@
 
 namespace haylen::input {
 
-namespace {
-
 class PointerEmulationTest : public ::testing::Test {
   protected:
+    using Type = platform::Event::Type;
+
     [[nodiscard]] static platform::Event makeMouse(platform::Event::Type type, MouseButton button = MouseButton::Left) {
         return {.type = type, .mouseButton = button, .position = {40.0F, 50.0F}};
     }
@@ -33,10 +33,6 @@ class PointerEmulationTest : public ::testing::Test {
 
     PointerEmulation emulation;
 };
-
-using Type = platform::Event::Type;
-
-} // namespace
 
 TEST_F(PointerEmulationTest, LeavesEventsAloneUntilAsked) {
     const platform::Event press = makeMouse(Type::MouseDown);

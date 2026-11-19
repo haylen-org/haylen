@@ -5,13 +5,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
-#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -29,6 +26,7 @@
 #include "math/HalfFloat.hpp"
 #include "support/DamagedFonts.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 #include "support/TestFiles.hpp"
 #include "text/DistanceField.hpp"
 #include "text/FontFile.hpp"
@@ -53,8 +51,7 @@ class FontFileTest : public ::testing::Test {
             return {data.begin(), data.end()};
         }
 
-        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
-        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+        return test::FontCollection::read(name);
     }
 
     [[nodiscard]] static FontFile open(const std::vector<std::uint8_t>& data) {
@@ -266,7 +263,7 @@ TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
     text::TrueTypeFont font(fixture.engine().getGraphics(), std::vector<std::uint8_t>(data.begin(), data.end()));
     fixture.frames(1);
     const graphics::Texture page = font.getPage(0);
-    const std::uint32_t image = page.getResource()->image.id;
+    const std::uint64_t image = page.getResource()->image.id;
 
     for (const char* line : {"Harbor", "Lighthouse", "Quay 42", "Market", "Pier & dock", "Zephyr"}) {
         (void)font.layout(line, {.size = 24.0F});

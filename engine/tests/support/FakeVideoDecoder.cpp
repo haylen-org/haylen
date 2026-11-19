@@ -24,8 +24,11 @@ platform::VideoDecoder::Read FakeVideoDecoder::readFrame(Frame& frame) {
     {
         std::unique_lock lock(log->mutex);
         log->readingThreads.insert(std::this_thread::get_id());
-        log->released.wait(lock, [this] { return !log->held; });
+        if (!log->released.wait_for(lock, kHoldLimit, [this] { return !log->held; })) {
+            throw std::runtime_error("The test held the read of a frame longer than it allows.");
+        }
     }
+
     if (settings.info.clocked) {
         const std::scoped_lock lock(log->mutex);
         if (!log->error.empty()) {

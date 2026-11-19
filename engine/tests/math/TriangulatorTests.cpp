@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -13,8 +12,6 @@
 #include "math/Triangulator.hpp"
 
 namespace haylen::math {
-
-namespace {
 
 // Triangulates shapes and measures what their triangles cover.
 class TriangulatorTest : public ::testing::Test {
@@ -89,8 +86,6 @@ class TriangulatorTest : public ::testing::Test {
     std::vector<Vec2> points;
     std::vector<std::uint32_t> counts;
 };
-
-} // namespace
 
 // An outline wound against the outline around it cuts a hole, which no triangle covers, in any winding of the pair.
 TEST_F(TriangulatorTest, CutsHolesOutOfTheFill) {

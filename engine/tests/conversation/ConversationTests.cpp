@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "haylen/conversation/Conversation.hpp"
@@ -19,6 +19,16 @@ class ConversationTest : public ::testing::Test {
   protected:
     [[nodiscard]] static std::shared_ptr<const Conversation> read(const char* text) {
         return std::make_shared<const Conversation>(Conversation::parse(core::Json::parse(text)));
+    }
+
+    // Returns the line that the conversation shows, and throws when it shows none, so a test never reads a line that is not there.
+    [[nodiscard]] static const ConversationState::Line& lineOf(const ConversationState& state) {
+        const std::optional<ConversationState::Line>& line = state.getLine();
+        if (!line) {
+            throw std::runtime_error("The conversation shows no line.");
+        }
+
+        return *line;
     }
 
     [[nodiscard]] static std::string refusal(const char* text) {
@@ -173,15 +183,15 @@ TEST_F(ConversationTest, WalksLinesConditionsChoicesAndCommands) {
     ConversationState state(read(kSmith), core::Json{{"gold", 15}}, 7);
     state.start("greeting");
     ASSERT_TRUE(state.getLine());
-    EXPECT_EQ(state.getLine()->text, "smith.hello");
-    EXPECT_EQ(state.getLine()->speaker, "smith");
-    EXPECT_EQ(state.getLine()->tags, std::vector<std::string>{"happy"});
+    EXPECT_EQ(lineOf(state).text, "smith.hello");
+    EXPECT_EQ(lineOf(state).speaker, "smith");
+    EXPECT_EQ(lineOf(state).tags, std::vector<std::string>{"happy"});
 
     std::vector<std::string> heard;
     state.advance();
     ASSERT_EQ(state.getChoices().size(), 3U);
     ASSERT_TRUE(state.getLine()) << "The line before the choices stays with them.";
-    EXPECT_EQ(state.getLine()->text, "smith.hello");
+    EXPECT_EQ(lineOf(state).text, "smith.hello");
     EXPECT_EQ(state.getVariables().at("metSmith"), true);
     state.deliverCommands();
     const core::Connection listening = state.commanded.connect([&heard](std::string_view name, const core::Json& arguments) { heard.push_back(std::string(name) + " " + arguments.dump()); });
@@ -192,18 +202,18 @@ TEST_F(ConversationTest, WalksLinesConditionsChoicesAndCommands) {
 
     state.choose(0);
     state.deliverCommands();
-    EXPECT_EQ(state.getLine()->text, "smith.thanks");
+    EXPECT_EQ(lineOf(state).text, "smith.thanks");
     EXPECT_EQ(state.getVariables().at("gold"), 5);
     EXPECT_EQ(heard.back(), R"(giveItem {"item":"sword"})");
     state.advance();
-    EXPECT_EQ(state.getLine()->text, "smith.again");
+    EXPECT_EQ(lineOf(state).text, "smith.again");
     EXPECT_EQ(state.getVisits("greeting"), 2);
     state.advance();
     ASSERT_EQ(state.getChoices().size(), 2U) << "The gold no longer allows buying.";
     EXPECT_EQ(state.getChoices()[0].text, "choice.ask");
 
     state.choose(0);
-    EXPECT_EQ(state.getLine()->text.substr(0, 6), "rumor.");
+    EXPECT_EQ(lineOf(state).text.substr(0, 6), "rumor.");
     state.advance();
     state.advance();
     ASSERT_EQ(state.getChoices().size(), 1U) << "A choice taken once is gone.";
@@ -221,7 +231,7 @@ TEST_F(ConversationTest, PicksTheSameVariantsForTheSameSeedAndStopsLoops) {
         state.start("a");
         std::string picked;
         for (int index = 0; index < 12; ++index) {
-            picked += state.getLine()->text + " ";
+            picked += lineOf(state).text + " ";
             state.advance();
         }
 
@@ -249,7 +259,7 @@ TEST_F(ConversationTest, StartsAgainWithoutTheChoicesAndTheLineOfTheNodeItLeft) 
 
     state.choose(0);
     ASSERT_TRUE(state.getLine());
-    EXPECT_EQ(state.getLine()->text, "question");
+    EXPECT_EQ(lineOf(state).text, "question");
 }
 
 // A listener may advance the state, and the commands of the steps it runs reach the app after the ones that waited before them.
@@ -270,7 +280,7 @@ TEST_F(ConversationTest, DeliversCommandsInOrderWhenAListenerAdvances) {
     state.deliverCommands();
 
     EXPECT_EQ(heard, (std::vector<std::string>{"first", "second", "third"}));
-    EXPECT_EQ(state.getLine()->text, "y");
+    EXPECT_EQ(lineOf(state).text, "y");
 }
 
 TEST_F(ConversationTest, SavesAndRestoresWhereItStood) {
@@ -283,7 +293,7 @@ TEST_F(ConversationTest, SavesAndRestoresWhereItStood) {
 
     const std::shared_ptr<ConversationState> restored = ConversationState::restore(smith, core::Json::parse(saved.dump()));
     EXPECT_EQ(restored->save(), saved);
-    EXPECT_EQ(restored->getLine()->text, state.getLine()->text);
+    EXPECT_EQ(lineOf(*restored).text, lineOf(state).text);
     state.advance();
     restored->advance();
     EXPECT_EQ(restored->getChoices().size(), state.getChoices().size());

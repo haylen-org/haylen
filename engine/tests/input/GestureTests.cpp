@@ -17,10 +17,10 @@
 
 namespace haylen::input {
 
-namespace {
-
 class GestureTest : public ::testing::Test {
   protected:
+    using Names = std::vector<std::string>;
+
     GestureTest() {
         viewport.update({1920.0F, 1080.0F}, {1920.0F, 1080.0F}, graphics::Viewport::ScalingPolicy::Fit);
     }
@@ -56,6 +56,10 @@ class GestureTest : public ::testing::Test {
     }
 
     [[nodiscard]] const Gesture& first() const {
+        if (gestures.getGestures().empty()) {
+            throw std::runtime_error("The frame recognized no gesture.");
+        }
+
         return gestures.getGestures().front();
     }
 
@@ -63,10 +67,6 @@ class GestureTest : public ::testing::Test {
     Input input;
     GestureRecognizer gestures;
 };
-
-using Names = std::vector<std::string>;
-
-} // namespace
 
 TEST_F(GestureTest, RecognizesTapsAndDoubleTaps) {
     touch(platform::Event::Type::TouchBegan, {{1, {100.0F, 100.0F}}});

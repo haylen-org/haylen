@@ -3,14 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <set>
 #include <span>
-#include <string>
 #include <string_view>
-#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Image.hpp"
@@ -19,6 +15,7 @@
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 
 namespace haylen::text {
 
@@ -28,13 +25,8 @@ class ColorGlyphTest : public ::testing::Test {
     static constexpr std::string_view kEmoji = "noto-color-emoji-regular.ttf";
     static constexpr std::string_view kLayers = "bungee-color-regular.ttf";
 
-    [[nodiscard]] static std::vector<std::uint8_t> read(std::string_view name) {
-        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + std::string(name), std::ios::binary);
-        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-    }
-
     [[nodiscard]] std::shared_ptr<TrueTypeFont> load(std::string_view name) {
-        return std::make_shared<TrueTypeFont>(fixture.engine().getGraphics(), read(name));
+        return std::make_shared<TrueTypeFont>(fixture.engine().getGraphics(), test::FontCollection::read(name));
     }
 
     // Counts the opaque pixels of a raster whose color lies within a tolerance of a color.

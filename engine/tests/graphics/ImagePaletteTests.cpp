@@ -25,7 +25,7 @@ class ImagePaletteTest : public ::testing::Test {
 };
 
 // The placeholders of the images read the same cover.
-class ImagePlaceholderTest : public ImagePaletteTest {};
+using ImagePlaceholderTest = ImagePaletteTest;
 
 TEST_F(ImagePaletteTest, FindsTheColorsOfTheVisiblePixelsTheMostCommonFirst) {
     const std::vector<ImagePalette::Swatch> palette = ImagePalette::extract(makeCover(), 8);
@@ -63,7 +63,7 @@ TEST_F(ImagePlaceholderTest, EncodesAShortTextThatDecodesToABlurredImage) {
     const std::string code = ImagePlaceholder::encode(makeCover(), {});
     EXPECT_EQ(code.size(), 36U);
     EXPECT_EQ(code.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"), std::string::npos);
-    EXPECT_EQ(ImagePlaceholder::encode(makeCover(), {}), code);
+    EXPECT_EQ(ImagePlaceholder::encode(ImagePaletteTest::makeCover(), {}), code);
 
     const Image blurred = ImagePlaceholder::decode(code, 24, 20);
     EXPECT_EQ(blurred.getWidth(), 24);
@@ -74,7 +74,7 @@ TEST_F(ImagePlaceholderTest, EncodesAShortTextThatDecodesToABlurredImage) {
     EXPECT_GT(bottom.r, bottom.b);
     EXPECT_EQ(top.a, 1.0F);
 
-    const std::string tiny = ImagePlaceholder::encode(makeCover(), {.columns = 1, .rows = 1});
+    const std::string tiny = ImagePlaceholder::encode(ImagePaletteTest::makeCover(), {.columns = 1, .rows = 1});
     EXPECT_EQ(tiny.size(), 7U);
     const math::Color flat = ImagePlaceholder::decode(tiny, 4, 4).getPixel(0, 0);
     EXPECT_EQ(flat, ImagePlaceholder::decode(tiny, 4, 4).getPixel(3, 3));
@@ -91,7 +91,7 @@ TEST_F(ImagePlaceholderTest, RefusesHostileTextsAndSizes) {
     EXPECT_THROW((void)ImagePlaceholder::decode(code, 0, 8), std::invalid_argument);
     EXPECT_THROW((void)ImagePlaceholder::decode(code, 8, ImagePlaceholder::kMaxSize + 1), std::invalid_argument);
     EXPECT_THROW((void)ImagePlaceholder::encode(Image(), {}), std::invalid_argument);
-    EXPECT_THROW((void)ImagePlaceholder::encode(makeCover(), {.columns = 10}), std::invalid_argument);
+    EXPECT_THROW((void)ImagePlaceholder::encode(ImagePaletteTest::makeCover(), {.columns = 10}), std::invalid_argument);
 }
 
 TEST(ImagePaletteLuaTest, ReadsThePaletteSwatchesAndPlaceholdersOfAnImage) {
