@@ -14,6 +14,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
 import androidx.test.uiautomator.Configurator
+import androidx.test.uiautomator.Direction
 import androidx.test.uiautomator.StaleObjectException
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.UiObject2
@@ -235,9 +236,33 @@ abstract class HaylenUiTestCase {
 
     // Taps the button of the permission dialog of the system with one of the resource ids of the permission controller, such as "permission_allow_foreground_only_button", "permission_allow_button" or "permission_deny_button". The dialog names a button by the state of the permission, such as "permission_deny_and_dont_ask_again_button" for a refusal that the person made before, so a test names every id of the answer.
     fun answerPermission(vararg buttons: String) {
-        val answer = waitFor(permissionControl(*buttons), "a button ${buttons.joinToString(" or ") { "\"$it\"" }} of a permission dialog")
+        val answer = findInDialog(permissionControl(*buttons), "a button ${buttons.joinToString(" or ") { "\"$it\"" }} of a permission dialog")
         answer.click()
         assertTrue("The permission dialog stays after the tap.", device.wait(Until.gone(permissionControl(*buttons)), TIMEOUT))
+    }
+
+    // Waits for a control of the permission dialog of the system, scrolling the dialog toward it, since a dialog on a phone held in landscape shows its buttons only below the part that scrolls, such as the choice of a precise or an approximate location.
+    private fun findInDialog(selector: BySelector, description: String): UiObject2 {
+        var found: UiObject2? = null
+        waitUntil("The screen does not show $description after ${TIMEOUT / 1000} seconds.") {
+            found = device.findObject(selector)
+            if (found == null) {
+                scrollDialog()
+            }
+            found != null
+        }
+        return found!!
+    }
+
+    // Scrolls the content of the permission dialog of the system that shows, if it scrolls.
+    private fun scrollDialog() {
+        val dialog = device.findObject(permissionControl("grant_dialog")) ?: return
+        val content = try {
+            dialog.findObject(By.scrollable(true))
+        } catch (stale: StaleObjectException) {
+            null
+        }
+        content?.scroll(Direction.DOWN, 1f)
     }
 
     // The control of the permission controller with one of the resource ids, in a dialog or on a page of the settings of a permission.
@@ -249,6 +274,15 @@ abstract class HaylenUiTestCase {
         device.openNotification()
         waitFor(By.textContains(text), "a notification with \"$text\"").click()
         waitForApp()
+    }
+
+    // Waits until the notification whose text holds the words is in the notification shade, and closes the shade again, so a test knows that the app posted it, such as before it ends the app.
+    fun waitForNotification(text: String) {
+        assertFalse("Do Not Disturb hides the notifications from the notification shade of the device, so the test cannot see one. Run it again once Do Not Disturb is off.", hidesNotifications())
+        device.openNotification()
+        waitFor(By.textContains(text), "a notification with \"$text\"")
+        device.pressBack()
+        assertTrue("The notification shade stays open after the back button.", device.wait(Until.gone(By.textContains(text)), TIMEOUT))
     }
 
     // Whether Do Not Disturb is on with the notifications hidden from the shade, which Android 9 and later let the person choose.

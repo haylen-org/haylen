@@ -28,8 +28,9 @@ class NotificationTests : TestProjectCase() {
         tapNotification(NOTIFICATION)
         expectCheck(TAP_NAME, containing = "received 2 taps")
 
-        // The system starts the app without launch arguments, so the test opens again through the search of the menu.
+        // The system starts the app without launch arguments, so the test opens again through the search of the menu. The alarm of the notification wakes the process of the app, so the app ends only once the notification is there.
         scheduleNotification(asks = false)
+        waitForNotification(NOTIFICATION)
         removeFromRecents()
         tapNotification(NOTIFICATION)
         waitFor(Pattern.compile("Search by code or title.*")).click()
