@@ -256,7 +256,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         node.setSelected((element.states & SELECTED) != 0);
         node.setEnabled((element.states & DISABLED) == 0);
         if ((element.states & EXPANDED) != 0) {
-            node.addAction(AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_COLLAPSE);
+            node.setExpandedState(AccessibilityNodeInfoCompat.EXPANDED_STATE_FULL);
         }
 
         node.setFocusable((element.actions & ACTION_FOCUS) != 0);
