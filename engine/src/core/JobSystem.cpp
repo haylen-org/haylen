@@ -63,7 +63,7 @@ std::string JobSystem::describe(const std::exception_ptr& error) {
     } catch (const std::exception& exception) {
         return exception.what();
     } catch (...) {
-        return "A job failed with an unknown exception.";
+        return std::string(kUnknownFailure);
     }
 }
 

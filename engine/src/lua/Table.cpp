@@ -41,6 +41,15 @@ std::optional<std::string_view> Table::findKey(lua_State* L, FieldNames own, std
     return std::nullopt;
 }
 
+void Table::requireType(lua_State* L, std::string_view field, int type) {
+    if (lua_type(L, -1) == type) {
+        return;
+    }
+
+    lua_pushfstring(L, "%s expected, got %s", lua_typename(L, type), luaL_typename(L, -1));
+    raiseFieldError(L, field);
+}
+
 int Table::raiseFieldError(lua_State* L, std::string_view field) {
     // The protected reader failed as an anonymous function, so only the reason in the parentheses of its argument error is kept. A reason that is a sentence of its own keeps its period.
     std::string reason = lua_type(L, -1) == LUA_TSTRING ? lua_tostring(L, -1) : "its value cannot be read";

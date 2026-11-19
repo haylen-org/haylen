@@ -56,7 +56,13 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
 
     // The Varn runtime comes first because the job system, asset loading and Lua all run on it.
     current.runtime = std::make_unique<varn::runtime::Runtime>(std::vector<std::string>{"haylen", std::string(current.package->getName())}, 1);
-    current.jobs = std::make_unique<JobSystem>(*current.runtime, [this](const std::string& message) { reportError(message); });
+    // A job runs once, so the app restarts after its failure instead of resuming without what the job would have done.
+    // clang-format off
+    current.jobs = std::make_unique<JobSystem>(*current.runtime, [this](const std::string& message) {
+        const PhaseScope scope(*this, Phase::Lifecycle);
+        reportError(message);
+    });
+    // clang-format on
     current.graphics = std::make_unique<graphics::Device>(host.createGpuDevice());
     audio::Mixer::Setup audioSetup = host.getAudioSetup();
     audioSetup.session = current.config.audioSession;
@@ -1268,6 +1274,10 @@ void Engine::showError(const lua::Error& error, bool resumable) {
 
     Log::error("{}", current.errorScreen->getReport());
     current.errorPhase = current.starting ? std::string_view("startup") : kPhaseNames[static_cast<std::size_t>(current.phase)];
+
+    // An error ends the start of the app, so the errors after a recovery name the phase they happen in.
+    current.starting = false;
+
     const Json report = getErrorRecord();
     current.host.reportError(report);
     platform::NativeApi::reportError(report);

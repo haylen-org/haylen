@@ -405,6 +405,6 @@ class LevelTracker final {
 | --- | --- |
 | `Unknown option "<key>".` | The options of `events.on` hold a key that it does not take. |
 | `Option tables only accept string keys.` | The options of `events.on` hold a key that is not a string. |
-| `The option "<key>" of "on" is invalid: <reason>.` | An option has a value of the wrong type, such as a `priority` that is not an integer or a `once` that is not a boolean. |
+| `The option "<key>" of "on" is invalid: <reason>.` | An option has a value of the wrong type, such as a `priority` that is not an integer, a `once` that is not a boolean or a `filter` that is not a function. |
 | `An owner must be a table or a userdata, not <type>.` | The option `owner` is another type. |
-| `bad argument #<n> to '<function>' (<type> expected, got <type>)` | An argument has the wrong type, such as a name or a channel that is not a string, a listener or a `filter` that is not a function, or options that are not a table. |
+| `bad argument #<n> to '<function>' (<type> expected, got <type>)` | An argument has the wrong type, such as a name or a channel that is not a string, a listener that is not a function, or options that are not a table. |

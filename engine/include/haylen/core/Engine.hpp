@@ -109,6 +109,7 @@ class Engine final {
         Inactive,
         Background,
     };
+    static constexpr std::array<std::string_view, 3> kAppStateNames = {"active", "inactive", "background"};
 
     // Whether the device reaches the network, as the platform last reported it. Browsers, Android and Apple platforms report it from the start, and the state stays Unknown on the others.
     enum class NetworkState : std::uint8_t {
@@ -116,6 +117,7 @@ class Engine final {
         Online,
         Offline,
     };
+    static constexpr std::array<std::string_view, 3> kNetworkStateNames = {"unknown", "online", "offline"};
 
     // Where the code that may fail runs, which decides whether a fixed error can resume the app. Frame code, such as updates, renders, events, timers, tweens and listeners, runs again in the next frame, and a reload in development changed nothing when it failed, so both can resume. A lifecycle step, such as the start of the app, a scene hook that loads, enters, exits, unloads, pauses or resumes, the start or stop of an autoload, or a task that cannot come back, stopped half way, so only a restart starts it cleanly.
     enum class Phase : std::uint8_t {

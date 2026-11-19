@@ -77,7 +77,7 @@ class JobSystem final {
             } catch (const std::exception& exception) {
                 result->error = exception.what();
             } catch (...) {
-                result->error = "Background job failed with an unknown exception.";
+                result->error = kUnknownFailure;
             }
 
             postToFrame([completion = std::move(completion), result]() mutable { completion(std::move(*result)); });
@@ -87,6 +87,8 @@ class JobSystem final {
 
     struct ParallelRange;
     struct Queue;
+
+    static constexpr std::string_view kUnknownFailure = "A job failed with an unknown exception.";
 
     // Chunks per worker, so threads that start late or run slow chunks still share the range evenly.
     static constexpr std::size_t kChunksPerWorker = 4;

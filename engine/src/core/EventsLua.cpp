@@ -93,7 +93,7 @@ Connection EventsLua::subscribe(lua_State* L, int name, int function, int option
         }
 
         if (lua_getfield(L, options, "filter") != LUA_TNIL) {
-            luaL_checktype(L, -1, LUA_TFUNCTION);
+            lua::Table::requireType(L, "filter", LUA_TFUNCTION);
             filterIndex = lua_gettop(L);
         }
     }

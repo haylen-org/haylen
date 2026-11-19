@@ -74,6 +74,23 @@ TEST(SignalTest, ScopedConnectionDisconnectsOnDestruction) {
     EXPECT_TRUE(signal.empty());
 }
 
+// A slot that owns the connection of another slot of the same signal disconnects it as the signal lets go of it, which leaves the signal whole.
+TEST(SignalTest, LetsGoOfSlotsThatOwnConnectionsOfTheSameSignal) {
+    Signal<> signal;
+    int calls = 0;
+    auto inner = std::make_shared<ScopedConnection>(signal.connect([&calls] { calls += 10; }));
+    Connection outer = signal.connect([inner, &calls] { ++calls; });
+    inner.reset();
+
+    signal.emit();
+    EXPECT_EQ(calls, 11);
+
+    outer.disconnect();
+    EXPECT_TRUE(signal.empty());
+    signal.emit();
+    EXPECT_EQ(calls, 11);
+}
+
 TEST(SignalTest, ConnectionsEndWithAClearOrTheSignal) {
     Connection cleared;
     Connection destroyed;

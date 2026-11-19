@@ -268,14 +268,16 @@ void SceneManager::startLoad(const std::shared_ptr<Scene>& scene, std::any param
         return;
     }
 
-    // A hook that throws fails the load like a failed deferral, and the load settles at once when the hook finished it.
-    try {
+    // A hook that throws fails the load like a failed deferral, and the load settles at once when the hook finished it. The failure is caught inside the phase, so a load whose failure the app handles leaves no lifecycle failure behind.
+    {
         const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
-        scene->load(engine, *load);
-    } catch (const lua::Error& error) {
-        load->fail(error);
-    } catch (const std::exception& exception) {
-        load->fail(lua::Error(exception.what()));
+        try {
+            scene->load(engine, *load);
+        } catch (const lua::Error& error) {
+            load->fail(error);
+        } catch (const std::exception& exception) {
+            load->fail(lua::Error(exception.what()));
+        }
     }
 
     load->release();

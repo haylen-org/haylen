@@ -23,6 +23,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/io/Path.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
@@ -134,7 +135,7 @@ CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path)
     const AppConfig config = AppConfig::fromPackage(*package);
     PackageInfo info{.name = config.name, .identifier = config.identifier, .version = config.version, .build = config.build, .logo = config.splash.logo};
     if (!info.logo.empty()) {
-        info.logoBytes = package->read("content/" + info.logo);
+        info.logoBytes = package->read(io::Path::asset(info.logo));
     }
 
     return info;
@@ -280,18 +281,8 @@ int CoreLua::rootSetPaused(lua_State* L) {
 }
 
 int CoreLua::rootAppState(lua_State* L) {
-    switch (lua::Runtime::getEngine(L).getAppState()) {
-    case Engine::AppState::Active:
-        lua_pushliteral(L, "active");
-        break;
-    case Engine::AppState::Inactive:
-        lua_pushliteral(L, "inactive");
-        break;
-    case Engine::AppState::Background:
-        lua_pushliteral(L, "background");
-        break;
-    }
-
+    const Engine::AppState state = lua::Runtime::getEngine(L).getAppState();
+    lua::Stack::push(L, Engine::kAppStateNames[static_cast<std::size_t>(state)]);
     return 1;
 }
 
@@ -301,18 +292,8 @@ int CoreLua::rootAppCovered(lua_State* L) {
 }
 
 int CoreLua::rootNetworkState(lua_State* L) {
-    switch (lua::Runtime::getEngine(L).getNetworkState()) {
-    case Engine::NetworkState::Unknown:
-        lua_pushliteral(L, "unknown");
-        break;
-    case Engine::NetworkState::Online:
-        lua_pushliteral(L, "online");
-        break;
-    case Engine::NetworkState::Offline:
-        lua_pushliteral(L, "offline");
-        break;
-    }
-
+    const Engine::NetworkState state = lua::Runtime::getEngine(L).getNetworkState();
+    lua::Stack::push(L, Engine::kNetworkStateNames[static_cast<std::size_t>(state)]);
     return 1;
 }
 

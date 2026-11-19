@@ -107,7 +107,7 @@ TEST(EventsLuaTest, PublishesAndSubscribesByName) {
 
     EXPECT_EQ(fixture.lua("local s = events.topics()[1] return s.name .. ' ' .. s.listeners .. ' ' .. s.emissions"), "damage 2 5");
     EXPECT_NE(fixture.lua("events.on('x', function() end, {channels = 'a'})").find("Unknown option \"channels\""), std::string::npos);
-    EXPECT_NE(fixture.lua("events.on('x', function() end, {filter = 3})").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("events.on('x', function() end, {filter = 3})").find("The option \"filter\" of \"on\" is invalid: function expected, got number."), std::string::npos);
     EXPECT_NE(fixture.lua("events.on('boom', function() error('listener broke') end) events.emit('boom')").find("listener broke"), std::string::npos);
 }
 

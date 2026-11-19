@@ -245,7 +245,7 @@ TEST_F(AppConfigTest, ReadsEveryField) {
         (void)AppConfig::fromJson(Json{{"debug", {{"reload", "always"}}}});
         ADD_FAILURE() << "An unknown reload mode must be refused.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"debug.reload\" option must be \"module\" or \"restart\".");
+        EXPECT_STREQ(error.what(), "The \"debug.reload\" value \"always\" in \"haylen.json\" is unknown. It is \"module\" or \"restart\".");
     }
 }
 
@@ -288,6 +288,11 @@ TEST_F(AppConfigTest, RejectsInvalidValues) {
         EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
     }
 
+    // An empty text is a value like any other, never a way to ask for the default.
+    for (const char* document : {R"({"window": {"statusBar": ""}})", R"({"window": {"statusBarColor": ""}})", R"({"design": {"scaling": ""}})", R"({"ui": {"scaleMode": ""}})", R"({"debug": {"stats": ""}})", R"({"orientation": ""})", R"({"clearColor": ""})"}) {
+        EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
+    }
+
     try {
         (void)AppConfig::fromJson(Json::parse(R"({"autoload": ["state.player", ""]})"));
         FAIL() << "An autoload needs the name of its module.";
@@ -310,7 +315,7 @@ TEST_F(AppConfigTest, RefusesNumbersThatTheirFieldsCannotHold) {
         (void)AppConfig::fromJson(Json::parse(R"({"splash": {"duration": 1e300}})"));
         FAIL() << "A number beyond the range of a float must be refused.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The value of \"duration\" in \"haylen.json\" must be a number from -3.40282e+38 to 3.40282e+38.");
+        EXPECT_STREQ(error.what(), "The value of \"splash.duration\" in \"haylen.json\" must be a number from -3.40282e+38 to 3.40282e+38.");
     }
 }
 
@@ -405,9 +410,14 @@ TEST_F(AppConfigTest, ReadsThePluginsOfTheApp) {
     EXPECT_EQ(refusal(R"({"plugins": {"ads": {"testMode": true}}})"), "Unknown key \"testMode\" in the plugin \"ads\" of \"haylen.json\".");
     EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": 3}}})"), "The \"path\" of the plugin \"ads\" in \"haylen.json\" must be a text.");
     EXPECT_EQ(refusal(R"({"plugins": {"ads": {"git": ""}}})"), "The \"git\" of the plugin \"ads\" in \"haylen.json\" must be a text.");
-    EXPECT_EQ(refusal(R"({"plugins": {"ads": {"path": "../ads", "git": "https://example.com/ads.git"}}})"), "The plugin \"ads\" in \"haylen.json\" names both a \"path\" and a \"git\" repository. Keep the one that the plugin comes from.");
     EXPECT_EQ(refusal(R"({"plugins": {"ads": {"ref": "main"}}})"), "The \"ref\" of the plugin \"ads\" in \"haylen.json\" picks a branch, tag or commit of a git repository, so it needs \"git\".");
     EXPECT_EQ(refusal(R"({"plugins": {"ads": {"parameters": []}}})"), "The \"parameters\" of the plugin \"ads\" in \"haylen.json\" must be an object of parameter values.");
+
+    // A plugin of a repository may lie in a folder of it, which "path" names next to "git".
+    const AppConfig nested = AppConfig::fromJson(Json::parse(R"({"plugins": {"ads": {"git": "https://example.com/plugins.git", "ref": "main", "path": "ads"}}})"));
+    EXPECT_EQ(nested.plugins.at("ads").git, "https://example.com/plugins.git");
+    EXPECT_EQ(nested.plugins.at("ads").ref, "main");
+    EXPECT_EQ(nested.plugins.at("ads").path, "ads");
 
     // Every plugin of `haylen.json` has its manifest in the package, which only the tooling stages for a plugin that `haylen.json` references elsewhere.
     io::MemoryPackage package("app", {{"haylen.json", test::TestFiles::bytes(R"({"plugins": {"ads": {}}})")}});
@@ -892,6 +902,30 @@ TEST(EngineTest, NamesTheKindAndThePhaseOfErrors) {
     }
     test::EngineFixture fixture({{"source/main.lua", "local ok, message = pcall(require, 'broken') error(message, 0)"}, {"source/broken.lua", "return {"}});
     EXPECT_EQ(fixture.engine().getErrorRecord().at("code"), "syntax");
+}
+
+TEST(EngineTest, NamesThePhaseOfErrorsAfterAStartThatFailed) {
+    test::EngineFixture fixture({{"source/main.lua", "require('haylen.timer').after(0, function() error('later', 0) end)\nerror('first', 0)"}});
+    EXPECT_EQ(fixture.engine().getErrorRecord().at("phase"), "startup");
+
+    fixture.engine().recover();
+    fixture.frames(3);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "later");
+    EXPECT_EQ(fixture.engine().getErrorRecord().at("phase"), "frame");
+}
+
+// A job that failed never runs again, so its failure restarts the app in development instead of resuming it without the work of the job.
+TEST(EngineTest, RestartsInsteadOfResumingAfterAJobFailed) {
+    test::EngineFixture fixture;
+    fixture.engine().getJobs().post([] { throw std::runtime_error("The map could not be generated."); });
+    for (int frame = 0; frame < 600 && fixture.engine().getError() == nullptr; ++frame) {
+        fixture.frames(1);
+    }
+
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_STREQ(fixture.engine().getError()->what(), "The map could not be generated.");
+    EXPECT_FALSE(fixture.engine().isErrorResumable());
 }
 
 TEST(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {

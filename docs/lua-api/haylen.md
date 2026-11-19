@@ -185,7 +185,7 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 | `debug.drawings` | list of strings | `[]` | The [debug drawings](debug.md#drawings) that the app starts with, such as `["physics", "bounds"]`. |
 | `debug.objectEvents` | boolean | `false` | Publishes `objectCreated` and `objectDestroyed` for every counted object, as [`haylen.debug`](debug.md#object-counts-and-events) describes. |
 | `debug.console` | boolean | `false` | Turns the [developer console](debug.md#console) on outside development runs, so it runs the lines of the web page and the [inspector](debug.md#inspector) opens. Development runs always have it. |
-| `debug.safeArea` | string or object | Absent | A safe area to simulate instead of the one of the device: a device name such as `"iphoneDynamicIsland"`, or insets in window points, as [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue) describes. |
+| `debug.safeArea` | string, number or array | Absent | A safe area to simulate instead of the one of the device: a device name such as `"iphoneDynamicIsland"`, or insets in window points, one number for every side, two for the top and bottom and the sides, or four for the top, right, bottom and left, as [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue) describes. |
 | `debug.fold` | string or object | Absent | A fold to simulate instead of the one of the device: a preset such as `"book"` or `"tabletop"`, or an object with `axis`, `state` and `hinge`, as [`window.setFoldSimulation`](window.md#windowsetfoldsimulationvalue) describes. |
 | `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) describes. |
 | `debug.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development. `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](../core/lua.md#hot-reload) describes. |
@@ -918,7 +918,7 @@ The engine checks `haylen.json` before any Lua runs. A package whose `haylen.jso
 | Message | Cause |
 | --- | --- |
 | `Unknown key "<key>" in "haylen.json".` | The file has a field that the engine does not know. A field of a section names its section, such as `Unknown key "widht" in the "window" section of "haylen.json".` |
-| `The value of "<key>" in "haylen.json" has the wrong type.` | A value is not of the type that the tables above give. |
+| `The value of "<key>" in "haylen.json" has the wrong type.` | A value is not of the type that the tables above give. The key names its section, such as `window.width`. |
 | `The value of "<key>" in "haylen.json" must be a whole number from <minimum> to <maximum>.` | A whole number, such as `window.width` or `window.frameRate`, has a fraction, such as `800.5`, or lies outside the numbers it can hold, such as `1e20`. |
 | `The value of "<key>" in "haylen.json" must be a number from <minimum> to <maximum>.` | A number with a fraction, such as `splash.duration`, lies outside the numbers it can hold. |
 | `The value of "<key>" in "haylen.json" must be positive.` | One of `window.width`, `window.height`, `window.sampleCount`, `design.width`, `design.height`, `fixedRate` and `maxFrameTime` is `0` or less. |
@@ -944,7 +944,7 @@ The engine checks `haylen.json` before any Lua runs. A package whose `haylen.jso
 | `The "debug.drawings" list in "haylen.json" has an empty drawing name.` | A debug drawing has an empty name. |
 | `The "debug.safeArea" in "haylen.json" is invalid. <reason>` | The simulated safe area is wrong, for the reason that follows. |
 | `The "debug.fold" in "haylen.json" is invalid. <reason>` | The simulated fold is wrong, for the reason that follows. |
-| `The "debug.reload" option must be "module" or "restart".` | The reload mode has another value. |
+| `The "debug.reload" value "<value>" in "haylen.json" is unknown. It is "module" or "restart".` | The reload mode has another value. |
 | `The "localization.<key>" value "<value>" in "haylen.json" is no language tag. Write a language such as "en", "pt-BR" or "pt_BR".` | The `localization.fallback` or `localization.language` is not a language tag. |
 | `The "localization.fallback" of "haylen.json" needs a "localization.folder" that holds its language file.` | The fallback is set without the folder. |
 | `The folder "<folder>" of "localization.folder" in "haylen.json" holds no language file. Add a file such as "<folder>/en.json".` | The folder has no `.json` file. The app shows it on the error screen once it starts. |
@@ -956,7 +956,6 @@ The engine checks `haylen.json` before any Lua runs. A package whose `haylen.jso
 | `The plugin "<id>" in "haylen.json" must be an object with the optional keys "path", "git", "ref" and "parameters".` | The entry of a plugin is not an object. |
 | `Unknown key "<key>" in the plugin "<id>" of "haylen.json".` | The entry of a plugin has a key other than `path`, `git`, `ref` and `parameters`. |
 | `The "<key>" of the plugin "<id>" in "haylen.json" must be a text.` | A `path`, `git` or `ref` is empty or not a text. |
-| `The plugin "<id>" in "haylen.json" names both a "path" and a "git" repository. Keep the one that the plugin comes from.` | An entry names both sources. |
 | `The "ref" of the plugin "<id>" in "haylen.json" picks a branch, tag or commit of a git repository, so it needs "git".` | An entry has a `ref` without `git`. |
 | `The "parameters" of the plugin "<id>" in "haylen.json" must be an object of parameter values.` | The values of a plugin are not an object. |
 | `The plugin "<id>" in "haylen.json" has no "plugins/<id>/plugin.json" in the package.` | The package lacks the manifest of a plugin that `haylen.json` lists. |

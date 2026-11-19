@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <stdexcept>
 #include <tuple>
@@ -190,7 +191,10 @@ template <typename... Args> class Signal final {
                 return;
             }
 
-            std::erase_if(entries, [](const std::shared_ptr<Entry>& entry) { return !entry->connected; });
+            // The slots that leave go only once the list is whole again, since one that owns a connection of the same signal disconnects it as it goes.
+            const auto kept = std::stable_partition(entries.begin(), entries.end(), [](const std::shared_ptr<Entry>& entry) { return entry->connected; });
+            std::vector<std::shared_ptr<Entry>> removed(std::make_move_iterator(kept), std::make_move_iterator(entries.end()));
+            entries.erase(kept, entries.end());
 
             for (std::shared_ptr<Entry>& entry : std::exchange(added, {})) {
                 if (entry->connected) {

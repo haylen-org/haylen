@@ -702,6 +702,22 @@ TEST(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+// A load whose failure the app handles is no failure of the app, so an error later in the frame resumes once a fix reloads, like any error of frame code.
+TEST(SceneManagerTest, LeavesLaterErrorsResumableWhenTheAppHandlesAFailedLoad) {
+    test::EngineFixture fixture;
+    SceneManager& scenes = fixture.engine().getScenes();
+    std::vector<std::string> errors;
+    auto broken = std::make_shared<LoadScene>([](SceneLoad&) { throw lua::Error("no map"); });
+    scenes.push(broken, {.onError = [&errors](const lua::Error& error) { errors.emplace_back(error.what()); }});
+    fixture.frames(1);
+    EXPECT_EQ(errors, std::vector<std::string>{"no map"});
+    ASSERT_EQ(fixture.engine().getError(), nullptr);
+
+    fixture.engine().reportError("a later failure");
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_TRUE(fixture.engine().isErrorResumable());
+}
+
 // The first scene that loads without a loading view leaves nothing of the app on the screen, so a splash screen stays over those frames until it entered.
 TEST(SceneManagerTest, LeavesTheFrameIncompleteWhileTheFirstSceneLoads) {
     std::optional<SceneLoad::Deferral> reading;

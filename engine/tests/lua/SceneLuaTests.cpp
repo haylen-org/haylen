@@ -65,7 +65,9 @@ TEST(SceneLuaTest, ManagesTheStackWithPromisesAndHooks) {
     fixture.runLua("dropped = nil async.spawn(function() dropped = scene.replace(b, {duration = 1}):await() end) scene.clear()");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(dropped) .. ' ' .. scene.size()"), "false 0");
-    EXPECT_NE(fixture.lua("scene.push({}, {duration = 1, onComplete = 3})").find("error: "), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.push({}, {duration = 1, onComplete = 3})").find("The option \"onComplete\" of \"push\" is invalid: function expected, got number."), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.push({}, {onError = true})").find("The option \"onError\" of \"push\" is invalid: function expected, got boolean."), std::string::npos);
+    EXPECT_NE(fixture.lua("scene.push({}, {loading = 'view'})").find("The option \"loading\" of \"push\" is invalid: table expected, got string."), std::string::npos);
     EXPECT_NE(fixture.lua("scene.push({}, {fade = 1})").find("Unknown option \"fade\""), std::string::npos);
 }
 

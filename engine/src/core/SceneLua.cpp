@@ -116,7 +116,7 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
     lua_pop(L, 1);
 
     if (lua_getfield(L, index, "loading") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "loading", LUA_TTABLE);
         options.loading = std::make_shared<lua::ScriptedLoadingView>(L, -1);
     }
 
@@ -124,7 +124,7 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
 
     // The error handler receives the message of the failure, as Lua errors carry it.
     if (lua_getfield(L, index, "onError") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TFUNCTION);
+        lua::Table::requireType(L, "onError", LUA_TFUNCTION);
         auto handler = std::make_shared<lua::Reference>(L, -1);
         // clang-format off
         options.onError = [handler](const lua::Error& error) {
@@ -145,7 +145,7 @@ SceneManager::Completion SceneLua::pushCompletion(lua_State* L, int options) {
     std::shared_ptr<lua::Reference> callback;
     if (options != 0) {
         if (lua_getfield(L, options, "onComplete") != LUA_TNIL) {
-            luaL_checktype(L, -1, LUA_TFUNCTION);
+            lua::Table::requireType(L, "onComplete", LUA_TFUNCTION);
             callback = std::make_shared<lua::Reference>(L, -1);
         }
 

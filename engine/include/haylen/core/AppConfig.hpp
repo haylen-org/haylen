@@ -241,11 +241,11 @@ struct AppConfig {
     static const std::array<std::pair<std::string_view, content::Delivery>, 3> kDeliveryNames;
     static const std::array<std::string_view, 10> kCategoryNames;
 
-    template <typename T> static void readValue(const Json& object, const char* key, T& target);
+    template <typename T> static void readValue(const Json& object, std::string_view section, const char* key, T& target);
     [[nodiscard]] static std::uint32_t readBuild(const Json& document);
     static void requirePositive(double value, const char* key);
     static void requireNonNegative(double value, const char* key);
-    [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);
+    [[nodiscard]] static math::Color readColor(const Json& object, std::string_view section, const char* key);
     static void readPlugins(const Json& section, AppConfig& config);
     [[nodiscard]] static Plugin readPlugin(const std::string& id, const Json& entry);
     static void readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target);
