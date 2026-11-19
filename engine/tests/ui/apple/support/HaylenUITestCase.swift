@@ -259,13 +259,19 @@ class HaylenUITestCase: XCTestCase {
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: timeout), "The tap on the notification does not bring the app to the front.", file: file, line: line)
     }
 
-    // Types the text on the software keyboard of the system one key at a time, as a person does. A key is in the tree of the app before the keyboard is on the screen, and a tap there types nothing, so each key waits until it takes a tap. The match ignores the case of a letter, whose key the keyboard names in the case it types, such as "P" while it capitalizes.
+    // Types the text on the software keyboard of the system one key at a time, as a person does. A key is in the tree of the app before the keyboard is on the screen, and a tap there types nothing, so each key waits until it takes a tap. The first time the keyboard shows on a device, it covers its keys with its introduction of typing by sliding the finger, which the test closes with its one button, as a person does, and the key waits until the introduction is gone, since a tap while it leaves types nothing. The match ignores the case of a letter, whose key the keyboard names in the case it types, such as "P" while it capitalizes.
     func typeOnKeyboard(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let introduction = app.otherElements["UIContinuousPathIntroductionView"]
         for character in text {
             let label = character == " " ? "space" : String(character)
             let key = app.keyboards.keys.matching(NSPredicate(format: "label ==[c] %@ OR identifier ==[c] %@", label, label)).firstMatch
             waitUntil("The key \"\(label)\" of the keyboard takes no tap: it is \(key.exists ? "at \(key.frame)" : "missing") and the keyboard is \(app.keyboards.firstMatch.exists ? "at \(app.keyboards.firstMatch.frame)" : "closed").", file: file, line: line) {
-                key.exists && key.isHittable
+                if introduction.exists {
+                    introduction.buttons.firstMatch.tap()
+                    XCTAssertTrue(introduction.waitForNonExistence(timeout: HaylenUITestCase.timeout), "The introduction of the keyboard stays after a tap on its button.", file: file, line: line)
+                    return false
+                }
+                return key.exists && key.isHittable
             }
             key.tap()
         }
