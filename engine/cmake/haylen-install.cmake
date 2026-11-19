@@ -121,10 +121,17 @@ else()
   set(merge_tool "${CMAKE_AR}")
 endif()
 
+# The runtime of Android defines the entry of GameActivity itself, so its library leaves out the native app glue of GameActivity, which defines that entry for apps of `android_main` and which no link takes, and the merge checks that one member defines the entry.
+set(engine_merge_options "")
+set(runtime_merge_options "")
+if(ANDROID)
+  set(runtime_merge_options "-DEXCLUDED=android_native_app_glue.c.o" "-DSINGLE=GameActivity_onCreate" "-DNM=${CMAKE_NM}")
+endif()
+
 # The objects of the runtime are no file of a target, so the merge names them itself and runs again whenever one of them changes.
 foreach(part engine runtime)
   add_custom_command(OUTPUT "${${part}_library}"
-    COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
+    COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" ${${part}_merge_options} -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
     DEPENDS "${sdk_libraries}/${part}-inputs.txt" ${built_archives} haylen-runtime "$<TARGET_OBJECTS:haylen-runtime>"
     COMMENT "Merging the Haylen ${part} library."
     VERBATIM

@@ -1,8 +1,13 @@
 # Merges static libraries and object files into one static library with the archiver of the platform.
 # Run with `-DKIND=libtool|lib|mri -DTOOL=<archiver> -DOUTPUT=<library> -DINPUTS=<file with one input per line>`.
+# With the archiver of `mri`, `-DEXCLUDED=<members separated by commas>` leaves those members of the inputs out, and `-DSINGLE=<symbol> -DNM=<nm>` fails unless one member of the merged library defines the symbol.
 
 file(STRINGS "${INPUTS}" inputs)
 file(REMOVE "${OUTPUT}")
+
+if((EXCLUDED OR SINGLE) AND NOT KIND STREQUAL "mri")
+  message(FATAL_ERROR "Merging \"${OUTPUT}\" leaves members out and checks symbols only with the archiver of \"mri\", not with \"${KIND}\".")
+endif()
 
 if(KIND STREQUAL "libtool")
   execute_process(COMMAND "${TOOL}" -static -no_warning_for_no_symbols -o "${OUTPUT}" ${inputs} RESULT_VARIABLE result ERROR_VARIABLE messages)
@@ -19,6 +24,10 @@ else()
       string(APPEND script "ADDMOD ${input}\n")
     endif()
   endforeach()
+  string(REPLACE "," ";" excluded "${EXCLUDED}")
+  foreach(member IN LISTS excluded)
+    string(APPEND script "DELETE ${member}\n")
+  endforeach()
   string(APPEND script "SAVE\nEND\n")
   file(WRITE "${OUTPUT}.mri" "${script}")
   execute_process(COMMAND "${TOOL}" -M INPUT_FILE "${OUTPUT}.mri" RESULT_VARIABLE result ERROR_VARIABLE messages)
@@ -29,4 +38,13 @@ if(NOT result EQUAL 0)
 endif()
 if(messages)
   message(WARNING "${messages}")
+endif()
+
+if(SINGLE)
+  execute_process(COMMAND "${NM}" --defined-only "${OUTPUT}" OUTPUT_VARIABLE symbols ERROR_QUIET RESULT_VARIABLE result)
+  string(REGEX MATCHALL "[0-9a-f-]+ [TW] ${SINGLE}\n" definitions "${symbols}")
+  list(LENGTH definitions count)
+  if(NOT result EQUAL 0 OR NOT count EQUAL 1)
+    message(FATAL_ERROR "The merged library \"${OUTPUT}\" defines \"${SINGLE}\" ${count} times, while exactly one of its members must define it.")
+  endif()
 endif()

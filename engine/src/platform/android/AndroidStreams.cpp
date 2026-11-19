@@ -119,34 +119,3 @@ AudioStream& AndroidStreams::getAudio(jlong stream) {
 }
 
 } // namespace haylen::platform
-
-extern "C" {
-
-JNIEXPORT jlong JNICALL Java_dev_haylen_HaylenVideoStream_nativeOpen(JNIEnv* env, jclass, jbyteArray plugin, jbyteArray name, jint format, jint width, jint height) {
-    return haylen::platform::AndroidStreams::openVideo(*env, plugin, name, format, width, height);
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenVideoStream_nativePushBuffer(JNIEnv* env, jclass, jlong stream, jobject pixels, jint offset, jint length, jint width, jint height, jint stride, jdouble timestamp) {
-    haylen::platform::AndroidStreams::pushVideoBuffer(*env, stream, pixels, offset, length, width, height, stride, timestamp);
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenVideoStream_nativePushArray(JNIEnv* env, jclass, jlong stream, jbyteArray pixels, jint offset, jint length, jint width, jint height, jint stride, jdouble timestamp) {
-    haylen::platform::AndroidStreams::pushVideoArray(*env, stream, pixels, offset, length, width, height, stride, timestamp);
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenVideoStream_nativePushBitmap(JNIEnv* env, jclass, jlong stream, jobject bitmap, jdouble timestamp) {
-    haylen::platform::AndroidStreams::pushBitmap(*env, stream, bitmap, timestamp);
-}
-
-JNIEXPORT jlong JNICALL Java_dev_haylen_HaylenAudioStream_nativeOpen(JNIEnv* env, jclass, jbyteArray plugin, jbyteArray name, jint sampleRate, jint channels, jint format, jint capacity) {
-    return haylen::platform::AndroidStreams::openAudio(*env, plugin, name, sampleRate, channels, format, capacity);
-}
-
-JNIEXPORT jint JNICALL Java_dev_haylen_HaylenAudioStream_nativePushFloats(JNIEnv* env, jclass, jlong stream, jfloatArray samples, jint frames) {
-    return haylen::platform::AndroidStreams::pushFloats(*env, stream, samples, frames);
-}
-
-JNIEXPORT jint JNICALL Java_dev_haylen_HaylenAudioStream_nativePushShorts(JNIEnv* env, jclass, jlong stream, jshortArray samples, jint frames) {
-    return haylen::platform::AndroidStreams::pushShorts(*env, stream, samples, frames);
-}
-}

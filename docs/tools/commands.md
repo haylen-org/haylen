@@ -414,10 +414,10 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--graphics-api` | A name of `gpu::Device::kApiNames` that the GPU tests, or the pages of the checks of the web, use alone. |
 | `--device` | The device, simulator or emulator of the target, which `haylen devices` lists. |
 | `--ui` | Runs the UI tests of the app of this folder on a simulator instead. |
-| `--app` | With `--target web`, builds the app of this folder for the web in the configuration of `--config` and checks instead that its page starts it, on WebGPU and WebGL2 or on the API of `--graphics-api`. |
+| `--app` | Builds the app of this folder in the configuration of `--config` and checks instead that it starts: with `--target web` in a page on WebGPU and WebGL2 or on the API of `--graphics-api`, and with `--target android` on the device of `--device` or on an emulator that it starts. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
-Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree` and `graphicsApi` for the GPU tests, with the `output` folder of their images, the `target` or the `abi` and the `device` where they ran on the web, Android and the Apple platforms, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `target`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
+Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree` and `graphicsApi` for the GPU tests, with the `output` folder of their images, the `target` or the `abi` and the `device` where they ran on the web, Android and the Apple platforms, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `target`, `configuration`, `device` and `graphicsApi` for the start check of an app on Android, `app`, `target`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
 
 ### engine configure
 

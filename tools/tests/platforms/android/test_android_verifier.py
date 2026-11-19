@@ -1,20 +1,23 @@
 import zipfile
+from collections.abc import Mapping
 
 from haylen.platforms.android.android_apk import AndroidApk
 from haylen.platforms.android.android_verifier import AndroidVerifier
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.product_component import ProductComponent
 from tests.platforms.android.android_fixture import AndroidFixture
+from tests.support.native_binaries import NativeBinaries
 
 
 class AndroidVerifierTest:
     @staticmethod
-    def product(fixture: AndroidFixture, app, entries: list[str]) -> BuildProduct:
-        prepared = fixture.prepare(fixture.resolve(app, architectures=("arm64-v8a", "x86_64")))
-        apk = fixture.tooling.folder / f"app-{len(entries)}.apk"
+    def product(fixture: AndroidFixture, app, entries: list[str], libraries: Mapping[str, bytes] | None = None, abis: tuple[str, ...] = ("arm64-v8a", "x86_64")) -> BuildProduct:
+        """A built product whose APK holds the entries, each a library that defines the natives of the fixture unless `libraries` gives its bytes."""
+        prepared = fixture.prepare(fixture.resolve(app, architectures=abis))
+        apk = fixture.tooling.folder / f"app-{len(entries)}-{len(libraries or {})}.apk"
         with zipfile.ZipFile(apk, "w") as archive:
             for entry in entries:
-                archive.writestr(entry, b"library")
+                archive.writestr(entry, (libraries or {}).get(entry, NativeBinaries.elf(AndroidFixture.NATIVES)))
         components = tuple(ProductComponent(project.target, apk, "abi") for project in prepared.product.projects)
         return BuildProduct(prepared, apk, "apk", components, ())
 
@@ -82,4 +85,28 @@ class AndroidVerifierTest:
         monkeypatch.setattr(AndroidApk, "manifest", lambda apk, context: with_class)
         assert AndroidVerifierTest.outcomes(verifier.verify(product))["manifest"] == [
             ("failed", 'Loading the plugin classes of the meta-data "dev.haylen.plugin.links" needs the provider "dev.haylen.HaylenPluginProvider", which the merged manifest of the built app lacks.')
+        ]
+
+    def test_the_library_of_the_activity_defines_every_native_method_of_the_engine_for_every_abi(self, tmp_path, monkeypatch):
+        fixture = AndroidFixture(tmp_path)
+        app = fixture.app({})
+        monkeypatch.setattr(AndroidApk, "manifest", lambda apk, context: {"activity": {"dev.haylen.HaylenActivity"}})
+        verifier = AndroidVerifier(fixture.context, lambda: None)
+        abis = ("arm64-v8a", "armeabi-v7a")
+        entries = [f"lib/{abi}/libhaylen.so" for abi in abis]
+
+        whole = {"lib/armeabi-v7a/libhaylen.so": NativeBinaries.elf(AndroidFixture.NATIVES, wide=False)}
+        assert AndroidVerifierTest.outcomes(verifier.verify(AndroidVerifierTest.product(fixture, app, entries, whole, abis)))["natives"] == [
+            ("passed", 'The library "libhaylen.so" defines the JNI functions of every native method of the engine for "arm64-v8a", "armeabi-v7a".')
+        ]
+
+        # The library of the release that dropped the JNI functions of the runtime still needed them and defined only the entry of GameActivity.
+        dropped = {"lib/armeabi-v7a/libhaylen.so": NativeBinaries.elf(["Java_com_google_androidgamesdk_GameActivity_initializeNativeCode"], needed=AndroidFixture.NATIVES, wide=False)}
+        report = verifier.verify(AndroidVerifierTest.product(fixture, app, entries, dropped, abis))
+        assert not report.passed
+        assert AndroidVerifierTest.outcomes(report)["natives"] == [
+            (
+                "failed",
+                'The library "lib/armeabi-v7a/libhaylen.so" lacks the JNI functions of 2 native methods of the engine, such as "JNI_OnLoad", "dev.haylen.HaylenActivity.nativeTelevision", so the app crashes as soon as Java calls one. Build the app again, and the engine SDK with "haylen sdk build --target android" when the library still lacks them.',
+            )
         ]

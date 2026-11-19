@@ -5,6 +5,7 @@ from haylen.cli.command import Command
 from haylen.cli.command_session import CommandSession
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.host import Host
+from haylen.engine.android_app_check import AndroidAppCheck
 from haylen.engine.android_gpu_tests import AndroidGpuTests
 from haylen.engine.apple_device_gpu_tests import AppleDeviceGpuTests
 from haylen.engine.apple_gpu_tests import AppleGpuTests
@@ -21,7 +22,7 @@ from haylen.engine.web_gpu_tests import WebGpuTests
 
 class TestCommand(Command):
     PATH = ("test",)
-    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" and "--app" the start of an app on the web, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, and with "--port" the app of the test port.'
+    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, and with "--port" the app of the test port.'
 
     DESKTOPS = ("macos", "windows", "linux")
     # The names of `gpu::Device::kApiNames`, which "--graphics-api" takes.
@@ -74,7 +75,7 @@ class TestCommand(Command):
         parser.add_argument(
             "--app",
             metavar="folder",
-            help='Build the app of this folder for the web in the configuration of "--config" and check that its page starts it in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", instead of the checks of the web. It takes "--target web".',
+            help='Build the app of this folder in the configuration of "--config" and check that it starts, instead of the checks of the web or the GPU tests: with "--target web" in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", and with "--target android" on the device of "--device" or an emulator that it starts.',
         )
         parser.add_argument(
             "--port",
@@ -93,10 +94,14 @@ class TestCommand(Command):
                 'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--target" other than a desktop or "web".'
             )
         if arguments.app:
-            if target != "web":
-                raise UnsupportedTarget('The option "--app" checks that the page of an app starts on the web, so it takes "--target web".')
+            if target not in ("web", "android"):
+                raise UnsupportedTarget('The option "--app" checks that an app starts on the web or on Android, so it takes "--target web" or "--target android".')
             if arguments.gpu or arguments.ui or arguments.port or arguments.sanitizers:
-                raise UnsupportedTarget('The option "--app" checks that the page of an app starts, so it takes neither "--gpu", "--ui", "--port" nor "--sanitizers".')
+                raise UnsupportedTarget('The option "--app" checks that an app starts, so it takes neither "--gpu", "--ui", "--port" nor "--sanitizers".')
+            if target == "android":
+                if arguments.graphics_api is not None:
+                    raise UnsupportedTarget('An Android app draws through the first graphics API of its order that starts, so "--app" with "--target android" takes no "--graphics-api".')
+                return AndroidAppCheck(context, session.pipeline).run(arguments.app, arguments.config, arguments.device)
             return WebAppCheck(context, session.pipeline).run(arguments.app, arguments.config, arguments.graphics_api)
         if arguments.ui:
             if gpu or arguments.port:

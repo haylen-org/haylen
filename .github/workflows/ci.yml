@@ -348,11 +348,11 @@ jobs:
       - uses: ./.github/actions/compiler-cache
         if: always()
 
-  # The UI tests of the test project on the Android emulator, which answer the permission dialogs, tap the notifications from the app, the home screen and the recent apps, and press the back button.
+  # The start of the protected release of the test project and its UI tests on the Android emulator, which answer the permission dialogs, tap the notifications from the app, the home screen and the recent apps, and press the back button.
   android-ui:
     if: github.event_name == 'workflow_dispatch'
     name: Android UI tests
-    needs: android-sdk
+    needs: [linux-sdk, android-sdk]
     runs-on: ubuntu-latest
     env:
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
@@ -370,6 +370,9 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }}
       - uses: ./.github/actions/sdk
         with:
+          name: linux-sdk
+      - uses: ./.github/actions/sdk
+        with:
           name: android-sdk
       - name: Let the emulator use KVM
         run: |
@@ -378,6 +381,10 @@ jobs:
           sudo udevadm trigger --name-match=kvm
       - name: Create the virtual device
         run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --package "system-images;android-37.0;default;x86_64"
+      - name: Create an upload key
+        run: uv run --locked haylen --verbose app sign samples/tests --target android
+      - name: Start the protected release
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target android --app samples/tests --config Release
       - name: UI tests on the emulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target android
       - uses: ./.github/actions/compiler-cache

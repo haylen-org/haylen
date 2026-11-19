@@ -1,4 +1,4 @@
-# The engine reaches these classes from C++ by name, so R8 must keep them in minified app builds.
+# The engine reaches these classes from C++ by name, so R8 must keep them in minified app builds. The test `tools/tests/repository/test_android_keep_rules.py` fails on a class or a method that the runtime looks up and these rules do not keep.
 
 -keep class dev.haylen.HaylenBridge {
     static void dispatch(long, byte[], byte[], byte[][], long[]);
@@ -33,6 +33,7 @@
     static byte[] clipboard();
     static byte[] networkRequirement();
     static byte[] developmentServer();
+    static byte[][] launchArguments();
 }
 
 -keep class dev.haylen.HaylenPermissions {

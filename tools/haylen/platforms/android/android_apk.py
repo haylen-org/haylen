@@ -7,7 +7,7 @@ from haylen.toolchains.android_sdk import AndroidSdk
 
 
 class AndroidApk:
-    """An APK or a bundle that a build made, read for what the verification checks: the names of its entries, the shards that it stores compressed and the elements of its merged manifest, which `aapt2` of the Android SDK reads from the binary XML."""
+    """An APK or a bundle that a build made, read for what the verification checks: the names of its entries, the bytes of an entry, the shards that it stores compressed and the elements of its merged manifest, which `aapt2` of the Android SDK reads from the binary XML."""
 
     ELEMENT = re.compile(r"\s*E: (\S+)")
     NAME = re.compile(r'\s*A: http://schemas.android.com/apk/res/android:name\(0x[0-9a-f]+\)="([^"]*)"')
@@ -18,6 +18,10 @@ class AndroidApk:
     def entries(self) -> set[str]:
         with zipfile.ZipFile(self.path) as archive:
             return set(archive.namelist())
+
+    def read(self, entry: str) -> bytes:
+        with zipfile.ZipFile(self.path) as archive:
+            return archive.read(entry)
 
     def compressed(self, suffix: str) -> list[str]:
         """The entries of a suffix that the archive stores compressed."""

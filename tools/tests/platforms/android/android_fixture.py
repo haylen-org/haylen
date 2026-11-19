@@ -8,6 +8,7 @@ from haylen.core.project_resolver import ProjectResolver
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.android.android_backend import AndroidBackend
+from haylen.platforms.android.android_platform import AndroidPlatform
 from haylen.platforms.backend_registry import BackendRegistry
 from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_folders import ProductFolders
@@ -17,11 +18,16 @@ from haylen.plugins.plugin_source import PluginSource
 from haylen.sdk.sdk_manifest import SdkManifest
 from haylen.sdk.sdk_selector import SdkSelector
 from haylen.toolchains.android_ndk import AndroidNdk
+from tests.support.native_binaries import NativeBinaries
 from tests.support.tooling_fixture import ToolingFixture
 
 
 class AndroidFixture:
-    """Resolves and prepares Android apps of the tests in a temporary folder, with the Android backend, an Android SDK folder of its own and an installed engine SDK of every ABI whose files the generated projects name without reading them."""
+    """Resolves and prepares Android apps of the tests in a temporary folder, with the Android backend, an Android SDK folder of its own and an installed engine SDK of every ABI whose files the generated projects name without reading them, besides its Android libraries, whose activity declares one native method of the engine next to a native method of Varn."""
+
+    ENGINE_VERSION = "0.0.1"
+    # The JNI names that a library of an app defines for the Android libraries of the fixture.
+    NATIVES = ("JNI_OnLoad", "Java_dev_haylen_HaylenActivity_nativeTelevision")
 
     def __init__(self, folder: Path) -> None:
         self.tooling = ToolingFixture(folder)
@@ -53,7 +59,7 @@ class AndroidFixture:
             "format": 1,
             "port": "android",
             "portVersion": "1.0.0",
-            "engineVersion": "0.0.1",
+            "engineVersion": AndroidFixture.ENGINE_VERSION,
             "revision": ToolingFixture.REVISION,
             "configuration": "Release",
             "slices": slices,
@@ -61,6 +67,11 @@ class AndroidFixture:
         }
         folder.mkdir(parents=True)
         (folder / SdkManifest.FILE).write_text(json.dumps(document), encoding="utf-8")
+        activity = NativeBinaries.class_file("dev/haylen/HaylenActivity", [("nativeTelevision", "(Z)V", True), ("onCreate", "(Landroid/os/Bundle;)V", False)])
+        view = NativeBinaries.class_file("com/varn/VarnDataView", [("nativeAllocate", "(J)J", True)])
+        for library in AndroidPlatform.LIBRARIES:
+            classes = {"dev/haylen/HaylenActivity": activity, "com/varn/VarnDataView": view} if library == "haylen" else {}
+            NativeBinaries.library(folder / "maven" / "dev" / "haylen" / library / AndroidFixture.ENGINE_VERSION / f"{library}-{AndroidFixture.ENGINE_VERSION}.aar", classes)
         return SdkManifest.load(folder)
 
     def app(self, document: dict, name: str = "app") -> Path:

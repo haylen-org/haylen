@@ -29,8 +29,8 @@ function(haylen_link_runtime_platform target scope)
   elseif(HAYLEN_PLATFORM STREQUAL "android")
     # The context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`.
     target_link_libraries(${target} ${scope} android log EGL jnigraphics mediandk)
-    # GameActivity finds its native side through this JNI entry, which nothing in the library references.
-    target_link_options(${target} INTERFACE "LINKER:-u,Java_com_google_androidgamesdk_GameActivity_initializeNativeCode")
+    # Java finds the native sides of GameActivity and of the runtime through JNI entries that nothing in the library references, so every library that links the runtime takes the entry of GameActivity and `JNI_OnLoad`, whose file holds every JNI entry of the runtime.
+    target_link_options(${target} INTERFACE "LINKER:-u,Java_com_google_androidgamesdk_GameActivity_initializeNativeCode" "LINKER:-u,JNI_OnLoad")
   elseif(HAYLEN_PLATFORM STREQUAL "web")
     target_link_options(${target} INTERFACE
       -sALLOW_MEMORY_GROWTH=1
