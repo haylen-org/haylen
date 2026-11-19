@@ -84,23 +84,10 @@ std::string Error::getTraceback() const {
     return text;
 }
 
-std::string_view Error::getKindName(Frame::Kind kind) noexcept {
-    switch (kind) {
-    case Frame::Kind::Lua:
-        return "lua";
-    case Frame::Kind::C:
-        return "c";
-    case Frame::Kind::Main:
-        return "main";
-    }
-
-    return "lua";
-}
-
 core::Json Error::toJson() const {
     core::Json stack = core::Json::array();
     for (const Frame& frame : frames) {
-        stack.push_back({{"source", frame.source}, {"line", frame.line}, {"function", frame.function}, {"kind", getKindName(frame.kind)}});
+        stack.push_back({{"source", frame.source}, {"line", frame.line}, {"function", frame.function}, {"kind", Frame::kKindNames[static_cast<std::size_t>(frame.kind)]}});
     }
 
     core::Json json{{"code", kCodeNames[static_cast<std::size_t>(code)]}, {"message", message}, {"file", file}, {"line", line}, {"traceback", getTraceback()}, {"frames", std::move(stack)}};

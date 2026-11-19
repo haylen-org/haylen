@@ -414,7 +414,7 @@ end)
 
 The engine receives these failures through the handler that it sets with `async.onFailure`. The same handler receives the errors of `ffi` callbacks that fail outside any `ffi` call, of the handlers of Varn's servers and of the callbacks of `http.client.stream`, each with its stack as a list of frames. An app that sets a handler of its own takes them over, and they no longer stop the app.
 
-A rejection that the engine reports another way never stops the app like this. Such rejections are a scene change whose load failed, whose error goes to `onError` or the log as [`haylen.scene`](../lua-api/scene.md#errors) describes, a group of `context:preload` that failed the load it belongs to, and a platform call, a dialog or a screen that was cancelled.
+A rejection that the engine reports another way never stops the app like this. Such rejections are a scene change whose load failed, whose error goes to `onError` or the log as [`haylen.scene`](../lua-api/scene.md#errors) describes, a group of `context:preload` that failed the load it belongs to, a job that ended with its owner as [`haylen.jobs`](../lua-api/jobs.md) describes, the content promises of [`haylen.content`](../lua-api/content.md#errors), a permission or a capability that the person or the platform refused, which the log reports once, a GPU capture that failed after it started, which the log reports, and a platform call, a dialog or a screen that was cancelled.
 
 ### Long computations
 

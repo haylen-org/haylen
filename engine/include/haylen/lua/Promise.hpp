@@ -30,7 +30,7 @@ class Promise final {
 
     void push(lua_State* L) const;
 
-    // Rejects the promise instead when Lua cannot hold the value, which binary JSON and JSON nested more than 128 levels deep cannot.
+    // Rejects the promise instead when Lua cannot hold the value, which JSON nested more than 128 levels deep cannot.
     void resolve(core::Json value) const;
 
     // The function runs on the frame thread when the coroutine resumes and pushes exactly one value.

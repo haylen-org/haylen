@@ -34,6 +34,7 @@ class Error final : public std::runtime_error {
             C,
             Main,
         };
+        static constexpr std::array<std::string_view, 3> kKindNames = {"lua", "c", "main"};
 
         // The chunk as Lua shows it, such as `source/main.lua`, or `[C]` for native functions.
         std::string source;
@@ -90,7 +91,6 @@ class Error final : public std::runtime_error {
 
     [[nodiscard]] static std::optional<Position> findPosition(std::string_view text);
     [[nodiscard]] static bool isSeparator(char character) noexcept;
-    [[nodiscard]] static std::string_view getKindName(Frame::Kind kind) noexcept;
 
     std::string message;
     std::string file;
