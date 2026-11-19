@@ -939,7 +939,10 @@ TEST_F(NavigationTest, PresentsSheetsAlertsAndTheirResultsFromLua) {
     // clang-format on
     frames(30);
     EXPECT_EQ(getFixture().lua("return sheet.detent .. ' ' .. tostring(sheet.modal) .. ' ' .. sheet.style"), "2 true sheet");
+    // The sheet tells of its new detent once it rests there.
     getFixture().runLua("sheet.detent = 1");
+    EXPECT_EQ(getFixture().lua("return tostring(moved)"), "nil");
+    frames(30);
     EXPECT_EQ(getFixture().lua("return tostring(moved)"), "1");
 
     key(input::Key::Escape);

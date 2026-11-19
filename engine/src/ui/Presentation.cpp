@@ -37,6 +37,7 @@ Presentation::Presentation(Navigation& owner, std::shared_ptr<Screen> presented,
     }
 
     detent = options.detent;
+    restedDetent = detent;
     NavigationTransition fallback{.effect = NavigationTransition::Effect::Rise};
     if (options.style == Style::Dialog || options.style == Style::Popover) {
         fallback = {.effect = NavigationTransition::Effect::Fade, .duration = kDialogDuration};
@@ -115,13 +116,18 @@ void Presentation::setDetent(std::size_t index) {
     }
 
     detent = index;
-    detentChanged.emit(*this);
 }
 
 void Presentation::advance(float deltaSeconds) {
     if (!dragging && offset != 0.0F && phase != Phase::Leaving) {
         offset -= offset * std::min(1.0F, deltaSeconds * kGlideSpeed);
         offset = std::fabs(offset) < 0.5F ? 0.0F : offset;
+    }
+
+    // A sheet tells of its new detent once its glide rests there.
+    if (!dragging && offset == 0.0F && detent != restedDetent && phase != Phase::Leaving) {
+        restedDetent = detent;
+        detentChanged.emit(*this);
     }
 
     if (phase != Phase::Arriving && phase != Phase::Leaving) {
@@ -434,10 +440,7 @@ void Presentation::release() {
     }
 
     offset = top - getDetentTop(frame, nearest);
-    if (nearest != detent) {
-        detent = nearest;
-        detentChanged.emit(*this);
-    }
+    detent = nearest;
 }
 
 bool Presentation::dismissByPerson() {

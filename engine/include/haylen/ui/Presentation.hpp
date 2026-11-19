@@ -258,6 +258,9 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
     core::Json result;
     std::size_t detent = 0;
 
+    // The detent that the sheet last told it rests at.
+    std::size_t restedDetent = 0;
+
     // How far the surface lies from its resting place toward where it closes, which a drag sets and a glide brings back to zero, and the speed of the drag.
     float offset = 0.0F;
     float speed = 0.0F;
