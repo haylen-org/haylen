@@ -73,7 +73,7 @@ The script `haylen` at the root of the repository, or `haylen.cmd` on Windows, r
 ./haylen app run ~/apps/my-app
 ```
 
-The command `new` writes a starter app with its `haylen.json`, and `app run` plays it in the desktop player with hot reload. The first run of a target compiles the engine into the SDK that the apps of the target link, as `sdk build` does, which takes from 15 minutes to an hour, and later runs reuse it. For another target, name it, such as `ios-simulator`, `android` or `web`:
+The command `new` writes a starter app with its `haylen.json`, and `app run` plays it in the desktop player with hot reload. The first run of a target compiles the engine into the SDK that the apps of the target link, as `sdk build` does, which takes about ten minutes with a warm compiler cache and up to an hour without one, and later runs reuse it. For another target, name it, such as `ios-simulator`, `android` or `web`:
 
 ```sh
 ./haylen app run ~/apps/my-app --target web

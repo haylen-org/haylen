@@ -35,7 +35,7 @@ class AppPipeline:
     """The one pipeline of every app, Lua or C++, on every target: the manifest, the target and its capabilities, the plugins of the target, the SDK, the resolved product, then the preparation, the build, the verification and the launch by the backend of the target. Each step checks that the backend declares the capability before it calls it, and the commands call these steps instead of any backend directly."""
 
     # What the step of an SDK that an app command builds tells the developer, since its first build compiles the whole engine.
-    SDK_BUILD_NOTE = "No installed SDK holds the engine of these sources for the target, so the command builds it once before the app. A first build compiles the whole engine, which takes from 15 minutes to an hour, and a later build compiles only what changed."
+    SDK_BUILD_NOTE = "No installed SDK holds the engine of these sources for the target, so the command builds it once before the app. A first build compiles the whole engine, which takes about ten minutes with a warm compiler cache and up to an hour without one, and a later build compiles only what changed."
 
     context: ToolingContext
     registry: BackendRegistry
