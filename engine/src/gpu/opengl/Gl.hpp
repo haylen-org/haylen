@@ -240,6 +240,7 @@ class Gl final {
     static constexpr Enum kSampler = 0x82E6;
     static constexpr Enum kVertexArray = 0x8074;
     static constexpr Enum kMaxLabelLength = 0x82E8;
+    static constexpr Enum kMaxDebugMessageLength = 0x9143;
 
     static constexpr Enum kGuiltyContextReset = 0x8253;
     static constexpr Enum kInnocentContextReset = 0x8254;

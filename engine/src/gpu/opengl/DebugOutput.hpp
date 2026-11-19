@@ -28,6 +28,8 @@ class DebugOutput final {
     bool enabled = false;
     bool messages = false;
     Gl::Sizei maxLabelLength = 0;
+    // The longest name of a debug group, which OpenGL bounds as it bounds its messages.
+    Gl::Sizei maxMessageLength = 0;
 };
 
 } // namespace haylen::gpu::opengl

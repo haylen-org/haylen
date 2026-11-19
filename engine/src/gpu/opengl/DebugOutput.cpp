@@ -12,6 +12,7 @@ DebugOutput::DebugOutput(Gl& functions, bool validation) : gl(functions), enable
     }
 
     gl.getIntegerv(Gl::kMaxLabelLength, &maxLabelLength);
+    gl.getIntegerv(Gl::kMaxDebugMessageLength, &maxMessageLength);
     gl.enable(Gl::kDebugOutput);
     gl.enable(Gl::kDebugOutputSynchronous);
     gl.debugMessageCallback(&DebugOutput::receive, nullptr);
@@ -48,7 +49,7 @@ void DebugOutput::label(Gl::Enum type, Gl::Uint name, std::string_view text) con
 
 void DebugOutput::pushGroup(std::string_view name) const {
     if (messages) {
-        gl.pushDebugGroup(Gl::kDebugSourceApplication, 0, std::min(static_cast<Gl::Sizei>(name.size()), maxLabelLength - 1), name.data());
+        gl.pushDebugGroup(Gl::kDebugSourceApplication, 0, std::min(static_cast<Gl::Sizei>(name.size()), maxMessageLength - 1), name.data());
     }
 }
 
