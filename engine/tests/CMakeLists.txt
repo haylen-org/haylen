@@ -214,6 +214,7 @@ set(HAYLEN_TEST_SOURCES
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
   platform/SystemTests.cpp
+  platform/TextHelperTests.cpp
   platform/WebEntryTests.cpp
   platform/DisplayLuaTests.cpp
   platform/WindowLuaTests.cpp
@@ -314,10 +315,12 @@ if(HAYLEN_PLATFORM STREQUAL "linux")
   target_sources(haylen-tests PRIVATE platform/LinuxFontsTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/linux/LinuxFonts.cpp")
   target_link_libraries(haylen-tests PRIVATE ${CMAKE_DL_LIBS})
 endif()
-# On Apple platforms the tests also find the fonts of the system through CoreText.
+# On Apple platforms the tests also find the fonts of the system through CoreText and turn the text of apps into strings of Foundation.
 if(APPLE)
   target_sources(haylen-tests PRIVATE platform/AppleFontsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleFonts.mm")
   set_source_files_properties(platform/AppleFontsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleFonts.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  target_sources(haylen-tests PRIVATE platform/AppleStringsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleStrings.mm")
+  set_source_files_properties(platform/AppleStringsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleStrings.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
   target_link_libraries(haylen-tests PRIVATE "-framework CoreText" "-framework Foundation")
 endif()
 # The graveyard of the Metal device keeps the objects that frames still use, which its tests check without a GPU.

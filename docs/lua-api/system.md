@@ -141,7 +141,7 @@ end)
 
 ### system.setClipboard(text)
 
-Puts `text` on the clipboard of the system. It returns a Varn promise that resolves on a later frame, with nothing once the text reached the clipboard. A `text` that is not a string raises a bad argument error.
+Puts `text` on the clipboard of the system. It returns a Varn promise that resolves on a later frame, with nothing once the text reached the clipboard. A `text` that is not a string raises a bad argument error, and bytes of `text` that are not UTF-8 reach the clipboard as U+FFFD.
 
 Desktops, phones, tablets and TVs take the text at once, and an Apple TV keeps it inside the app. A browser writes the clipboard only for a page served over https or from localhost, which has the focus and an input of the person shortly before, such as a click or a key. So a copy that a button or a key of the app asks for reaches the clipboard, while a copy without an input of the person rejects with a [failure](#failures) of the code `'denied'` and the reason of the browser. A page without the clipboard API, served over plain http from another machine, rejects with the code `'unsupported'`.
 

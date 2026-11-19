@@ -5,8 +5,10 @@
 #include <cstdint>
 
 #include "platform/NativeWindow.hpp"
+#import "platform/apple/AppleStrings.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 
+using haylen::platform::AppleStrings;
 using haylen::platform::AppleTextInput;
 using haylen::platform::TextInput;
 
@@ -83,7 +85,7 @@ using haylen::platform::TextInput;
         field = value.id;
         revision = value.revision;
         applying = YES;
-        NSString* text = AppleTextInput::toNSString(value.text);
+        NSString* text = AppleStrings::toNSString(value.text);
         self.string = text;
         const NSUInteger start = AppleTextInput::toUtf16(text, value.selectionStart);
         self.selectedRange = NSMakeRange(start, AppleTextInput::toUtf16(text, value.selectionEnd) - start);

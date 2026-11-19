@@ -12,6 +12,8 @@
 #import <UIKit/UIKit.h>
 #endif
 
+#import "platform/apple/AppleStrings.hpp"
+
 // The classes and methods of MediaPlayer that the runtime calls, with `id` in place of the types of the framework.
 @protocol HaylenNowPlayingInfoCenter <NSObject>
 + (id)defaultCenter;
@@ -91,9 +93,9 @@ void AppleMediaSession::enableCommands(MediaSession::Commands commands) {
 
 id AppleMediaSession::makeInfo(const MediaSession::NowPlaying& value) {
     NSMutableDictionary* info = [NSMutableDictionary dictionary];
-    info[@"title"] = [NSString stringWithUTF8String:value.title.c_str()];
-    info[@"artist"] = [NSString stringWithUTF8String:value.artist.c_str()];
-    info[@"albumTitle"] = [NSString stringWithUTF8String:value.album.c_str()];
+    info[@"title"] = AppleStrings::toNSString(value.title);
+    info[@"artist"] = AppleStrings::toNSString(value.artist);
+    info[@"albumTitle"] = AppleStrings::toNSString(value.album);
 
     if (value.duration > 0.0) {
         info[@"playbackDuration"] = @(value.duration);

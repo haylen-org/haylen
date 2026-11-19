@@ -7,6 +7,7 @@
 #include "haylen/core/JsonBytes.hpp"
 #include "haylen/core/Log.hpp"
 #include "platform/BridgeRelay.hpp"
+#import "platform/apple/AppleStrings.hpp"
 
 namespace haylen::platform {
 
@@ -33,7 +34,7 @@ void AppleBridge::clearHandlers() {
 
 // The call is pending from here on, so a cancel that arrives before the handler runs keeps it from running, and the cancel block the handler returns is kept only while the call still waits.
 void AppleBridge::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
-    NSString* name = toString(method);
+    NSString* name = AppleStrings::toNSString(method);
     NSNumber* key = @(call);
     HaylenCancellableHandler handler = nil;
     @synchronized([HaylenBridge class]) {
@@ -239,10 +240,6 @@ id AppleBridge::decode(std::string_view json, std::span<const std::vector<std::b
     }
 
     return restore(parsed, datas);
-}
-
-NSString* AppleBridge::toString(std::string_view text) {
-    return [[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding];
 }
 
 // A failure whose code or data JSON cannot hold fails with its message alone.

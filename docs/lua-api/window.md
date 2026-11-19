@@ -137,7 +137,7 @@ window.setResizable(false)
 
 ### window.setTitle(title)
 
-Sets the title of the window. On the web it sets the title of the document.
+Sets the title of the window. On the web it sets the title of the document. Bytes of `title` that are not UTF-8 show as U+FFFD, the character that the UI draws for them too.
 
 ```lua
 local window = require('haylen.window')

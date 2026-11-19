@@ -5,10 +5,10 @@
 #include <cmath>
 #include <cstring>
 
-#include "haylen/core/Utf8.hpp"
 #include "haylen/core/Version.hpp"
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/NativeWindow.hpp"
+#include "platform/TextHelper.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxSettings.hpp"
@@ -205,7 +205,7 @@ void LinuxAccessibility::update(std::span<const AccessibilityElement> tree, std:
 // The window announces the text with the politeness of a live region, as screen readers that read the announcements of AT-SPI expect.
 void LinuxAccessibility::announce(std::string_view text, bool interrupt) {
     if (bus != nullptr) {
-        emit({.kind = Object::Kind::Window}, kObjectEvents, "Announcement", "", interrupt ? kAssertive : kPolite, 0, newVariant("s", toUtf8(text).c_str()));
+        emit({.kind = Object::Kind::Window}, kObjectEvents, "Announcement", "", interrupt ? kAssertive : kPolite, 0, newVariant("s", TextHelper::toValidUtf8(text).c_str()));
     }
 }
 
@@ -474,7 +474,7 @@ void* LinuxAccessibility::readProperty(void*, const char*, const char* path, con
 
         if (name == "HelpText") {
             const AccessibilityElement* element = findElement(object.id);
-            return newVariant("s", object.kind == Object::Kind::Element && element != nullptr ? toUtf8(element->hint).c_str() : "");
+            return newVariant("s", object.kind == Object::Kind::Element && element != nullptr ? TextHelper::toValidUtf8(element->hint).c_str() : "");
         }
 
         return newVariant("s", "");
@@ -488,7 +488,7 @@ void* LinuxAccessibility::readProperty(void*, const char*, const char* path, con
     if (std::strcmp(interface, kValue) == 0) {
         // The engine knows the number of a value and not its range, so the range is the value itself and the text says the rest.
         const AccessibilityElement* element = findElement(object.id);
-        const std::string text = element != nullptr ? toUtf8(element->value) : std::string();
+        const std::string text = element != nullptr ? TextHelper::toValidUtf8(element->value) : std::string();
         if (name == "Text") {
             return newVariant("s", text.c_str());
         }
@@ -649,11 +649,11 @@ std::vector<const char*> LinuxAccessibility::getInterfaces(const Object& object)
 
 std::string LinuxAccessibility::getName(const Object& object) {
     if (object.kind == Object::Kind::Root || object.kind == Object::Kind::Window) {
-        return toUtf8(LinuxDesktop::getTitle());
+        return TextHelper::toValidUtf8(LinuxDesktop::getTitle());
     }
 
     const AccessibilityElement* element = findElement(object.id);
-    return element != nullptr ? toUtf8(element->label) : std::string();
+    return element != nullptr ? TextHelper::toValidUtf8(element->label) : std::string();
 }
 
 // The value of an element that serves no value interface, such as the text of a field, comes before its hint.
@@ -664,10 +664,10 @@ std::string LinuxAccessibility::getDescription(const Object& object) {
     }
 
     if (hasValue(*element) || element->value.empty()) {
-        return toUtf8(element->hint);
+        return TextHelper::toValidUtf8(element->hint);
     }
 
-    return toUtf8(element->hint.empty() ? element->value : element->value + ". " + element->hint);
+    return TextHelper::toValidUtf8(element->hint.empty() ? element->value : element->value + ". " + element->hint);
 }
 
 std::uint32_t LinuxAccessibility::getRole(const Object& object) {
@@ -796,20 +796,6 @@ double LinuxAccessibility::readNumber(std::string_view text) noexcept {
     return number;
 }
 
-// GVariant takes only valid UTF-8, so the bytes of a text that is no UTF-8 become replacement characters.
-std::string LinuxAccessibility::toUtf8(std::string_view text) {
-    if (core::Utf8::isValid(text)) {
-        return std::string(text);
-    }
-
-    std::string valid;
-    for (std::size_t offset = 0; offset < text.size();) {
-        core::Utf8::append(valid, core::Utf8::decode(text, offset));
-    }
-
-    return valid;
-}
-
 void LinuxAccessibility::emit(const Object& object, const char* interface, const char* signal, const char* detail, int first, int second, void* data) {
     void* builder = newBuilder("a{sv}");
     void* properties = endBuilder(builder);
@@ -861,7 +847,7 @@ void LinuxAccessibility::announceChanges(const std::vector<AccessibilityElement>
         const AccessibilityElement& previous = before[found->second];
         const Object object{.kind = Object::Kind::Element, .id = element.id};
         if (element.label != previous.label) {
-            emit(object, kObjectEvents, "PropertyChange", "accessible-name", 0, 0, newVariant("s", toUtf8(element.label).c_str()));
+            emit(object, kObjectEvents, "PropertyChange", "accessible-name", 0, 0, newVariant("s", TextHelper::toValidUtf8(element.label).c_str()));
         }
 
         if (hasValue(element) && element.value != previous.value) {

@@ -538,6 +538,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/DevelopmentConnection.cpp
   src/platform/DevelopmentSession.cpp
   src/platform/KeptEvents.cpp
+  src/platform/TextHelper.cpp
   src/platform/native/NativeApi.cpp
   src/platform/native/NativeCallback.cpp
   src/platform/native/NativeCallbacks.cpp
@@ -991,6 +992,7 @@ elseif(APPLE)
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleSplash.mm
     src/platform/apple/AppleStatusBar.mm
+    src/platform/apple/AppleStrings.mm
     src/platform/apple/AppleSystemGestures.mm
     src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm

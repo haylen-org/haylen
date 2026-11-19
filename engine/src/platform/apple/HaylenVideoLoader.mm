@@ -8,6 +8,8 @@
 #include <span>
 #include <utility>
 
+#import "platform/apple/AppleStrings.hpp"
+
 @implementation HaylenVideoLoader {
     std::shared_ptr<haylen::io::PackageReader> file;
     NSString* contentType;
@@ -46,7 +48,7 @@
                 }
             }
         } catch (const std::exception& error) {
-            [request finishLoadingWithError:[NSError errorWithDomain:@"dev.haylen" code:1 userInfo:@{NSLocalizedDescriptionKey : [NSString stringWithUTF8String:error.what()]}]];
+            [request finishLoadingWithError:[NSError errorWithDomain:@"dev.haylen" code:1 userInfo:@{NSLocalizedDescriptionKey : haylen::platform::AppleStrings::toNSString(error.what())}]];
             return YES;
         }
     }

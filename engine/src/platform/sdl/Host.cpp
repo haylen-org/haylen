@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "haylen/core/Log.hpp"
+#include "platform/TextHelper.hpp"
 #include "platform/sdl/Runtime.hpp"
 #include "platform/sdl/WaylandDisplays.hpp"
 
@@ -239,8 +240,9 @@ void Host::coverDisplay(const FullscreenRequest::Destination& destination) {
     fullscreenRequest.reach(isFullscreen());
 }
 
+// The windows of the systems take only UTF-8 titles, and the one of macOS ends the app on any other.
 void Host::setTitle(std::string_view value) {
-    SDL_SetWindowTitle(runtime.getWindow().get(), std::string(value).c_str());
+    SDL_SetWindowTitle(runtime.getWindow().get(), TextHelper::toValidUtf8(value).c_str());
 }
 
 void Host::setCursor(Cursor value) {
@@ -284,7 +286,7 @@ void Host::setClipboard(std::string_view value, std::function<void(Permission::A
 #if defined(__EMSCRIPTEN__)
     WebPage::setClipboard(value, std::move(callback));
 #else
-    if (!SDL_SetClipboardText(std::string(value).c_str())) {
+    if (!SDL_SetClipboardText(TextHelper::toValidUtf8(value).c_str())) {
         callback({.state = Permission::State::Unsupported, .message = std::format("The clipboard could not be written: {}", SDL_GetError())});
         return;
     }

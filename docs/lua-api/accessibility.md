@@ -43,7 +43,7 @@ Asks the screen reader to say `text`, after what it says now. Use it for a chang
 | --- | --- | --- | --- |
 | `interrupt` | boolean | `false` | Stops what the screen reader says, and says the text at once. |
 
-An empty text raises `An announcement needs a text.`, and an unknown option raises `Unknown option "<key>".`.
+An empty text raises `An announcement needs a text.`, and an unknown option raises `Unknown option "<key>".`. Bytes of `text` that are not UTF-8 are said as U+FFFD, the character that the UI draws for them too.
 
 ```lua
 local accessibility = require('haylen.accessibility')

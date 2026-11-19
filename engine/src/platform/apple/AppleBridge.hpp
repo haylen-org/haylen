@@ -59,8 +59,6 @@ class AppleBridge final {
     [[nodiscard]] static id prepare(id value, Encoded& encoded);
     [[nodiscard]] static id restore(id value, NSArray<NSData*>* buffers);
 
-    [[nodiscard]] static NSString* toString(std::string_view text);
-
     static void fail(std::uint64_t call, NSDictionary* failure);
     static void answer(std::uint64_t call, NSString* method, BOOL ok, id result);
 

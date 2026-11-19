@@ -9,11 +9,13 @@
 #include <stdexcept>
 #include <utility>
 
+#import "platform/apple/AppleStrings.hpp"
+
 namespace haylen::platform {
 
 // AVFoundation loads the tracks and the duration asynchronously, and the worker of the I/O pool that opens the video waits for them.
 AppleVideoDecoder::AppleVideoDecoder(std::shared_ptr<io::PackageReader> file, std::string_view filePath) : path(filePath) {
-    NSString* name = [[NSString alloc] initWithBytes:filePath.data() length:filePath.size() encoding:NSUTF8StringEncoding];
+    NSString* name = AppleStrings::toNSString(filePath);
     loader = [[HaylenVideoLoader alloc] initWithFile:std::move(file) extension:name.pathExtension];
     queue = dispatch_queue_create("dev.haylen.video", DISPATCH_QUEUE_SERIAL);
     NSURLComponents* components = [[NSURLComponents alloc] init];

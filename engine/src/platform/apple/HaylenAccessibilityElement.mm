@@ -1,9 +1,11 @@
 #import "platform/apple/HaylenAccessibilityElement.h"
 
 #include "platform/AccessibilityRelay.hpp"
+#import "platform/apple/AppleStrings.hpp"
 
 using haylen::platform::AccessibilityElement;
 using haylen::platform::AccessibilityRelay;
+using haylen::platform::AppleStrings;
 
 @implementation HaylenAccessibilityElement {
     std::uint8_t actions;
@@ -92,13 +94,13 @@ using haylen::platform::AccessibilityRelay;
 
     self.accessibilityRole = role;
     self.accessibilitySubrole = subrole;
-    self.accessibilityLabel = [NSString stringWithUTF8String:element.label.c_str()];
-    self.accessibilityHelp = element.hint.empty() ? nil : [NSString stringWithUTF8String:element.hint.c_str()];
+    self.accessibilityLabel = AppleStrings::toNSString(element.label);
+    self.accessibilityHelp = element.hint.empty() ? nil : AppleStrings::toNSString(element.hint);
     const bool checkable = element.role == Role::CheckBox || element.role == Role::Switch || element.role == Role::RadioButton || element.role == Role::Tab;
     if (checkable) {
         self.accessibilityValue = @(element.has(AccessibilityElement::Checked) || element.has(AccessibilityElement::Selected) ? 1 : 0);
     } else {
-        self.accessibilityValue = element.value.empty() ? nil : [NSString stringWithUTF8String:element.value.c_str()];
+        self.accessibilityValue = element.value.empty() ? nil : AppleStrings::toNSString(element.value);
     }
 
     self.accessibilityEnabled = !element.has(AccessibilityElement::Disabled);
@@ -206,9 +208,9 @@ using haylen::platform::AccessibilityRelay;
     }
 
     self.accessibilityTraits = traits;
-    self.accessibilityLabel = [NSString stringWithUTF8String:element.label.c_str()];
-    self.accessibilityValue = element.value.empty() ? nil : [NSString stringWithUTF8String:element.value.c_str()];
-    self.accessibilityHint = element.hint.empty() ? nil : [NSString stringWithUTF8String:element.hint.c_str()];
+    self.accessibilityLabel = AppleStrings::toNSString(element.label);
+    self.accessibilityValue = element.value.empty() ? nil : AppleStrings::toNSString(element.value);
+    self.accessibilityHint = element.hint.empty() ? nil : AppleStrings::toNSString(element.hint);
     self.accessibilityFrameInContainerSpace = frame;
 }
 

@@ -42,6 +42,7 @@
 #import "platform/apple/ApplePowerSaving.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleStatusBar.hpp"
+#import "platform/apple/AppleStrings.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleSystemGestures.hpp"
 #import "platform/apple/AppleTimeZone.hpp"
@@ -335,7 +336,7 @@ void AppleServices::update(std::span<const AccessibilityElement> elements, std::
 }
 
 void AppleServices::announce(std::string_view text, bool interrupt) {
-    [HaylenAccessibilityView.shared announce:[[NSString alloc] initWithBytes:text.data() length:text.size() encoding:NSUTF8StringEncoding] interrupt:interrupt];
+    [HaylenAccessibilityView.shared announce:AppleStrings::toNSString(text) interrupt:interrupt];
 }
 
 std::optional<SystemFont> AppleServices::findSystemFont(char32_t codePoint) {

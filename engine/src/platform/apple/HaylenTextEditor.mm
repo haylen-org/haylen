@@ -7,10 +7,12 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
+#import "platform/apple/AppleStrings.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/HaylenTextField.h"
 #import "platform/apple/HaylenTextView.h"
 
+using haylen::platform::AppleStrings;
 using haylen::platform::AppleTextInput;
 using haylen::platform::TextInput;
 
@@ -180,7 +182,7 @@ using haylen::platform::TextInput;
         field = value.id;
         revision = value.revision;
         applying = YES;
-        NSString* text = AppleTextInput::toNSString(value.text);
+        NSString* text = AppleStrings::toNSString(value.text);
 #if TARGET_OS_TV
         textField.text = text;
 #else

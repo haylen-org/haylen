@@ -252,7 +252,6 @@ class LinuxAccessibility final {
     [[nodiscard]] static std::vector<AccessibilityElement::Action> getActions(const AccessibilityElement& element);
     [[nodiscard]] static bool hasValue(const AccessibilityElement& element) noexcept;
     [[nodiscard]] static double readNumber(std::string_view text) noexcept;
-    [[nodiscard]] static std::string toUtf8(std::string_view text);
 
     static void answerAccessible(const Object& object, const char* method, void* parameters, void* invocation);
     static void answerComponent(const Object& object, const char* method, void* parameters, void* invocation);
