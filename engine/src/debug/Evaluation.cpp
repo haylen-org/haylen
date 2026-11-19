@@ -2,6 +2,8 @@
 
 namespace haylen::debug {
 
+Evaluation::Running Evaluation::running;
+
 // The coroutine of the evaluation stands on the stack of `L` until its results moved over, and an evaluation that yields is closed, since nothing resumes it.
 Evaluation::Result Evaluation::run(lua_State* L, int environment, std::string_view source, std::chrono::milliseconds limit) {
     const int environmentIndex = lua_absindex(L, environment);
@@ -23,16 +25,19 @@ Evaluation::Result Evaluation::run(lua_State* L, int environment, std::string_vi
     lua_xmove(L, thread, 1);
     (void)lua_setupvalue(thread, -2, 1);
 
-    deadline = std::chrono::steady_clock::now() + limit;
-    allowed = limit;
-    appHook = lua_gethook(L);
-    appMask = lua_gethookmask(L);
-    appCount = lua_gethookcount(L);
+    const Running outer = running;
+    std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + limit;
+    std::chrono::milliseconds allowed = limit;
+    if (outer.active && outer.deadline < deadline) {
+        deadline = outer.deadline;
+        allowed = outer.allowed;
+    }
+
+    running = {.active = true, .deadline = deadline, .allowed = allowed, .appHook = lua_gethook(L), .appMask = lua_gethookmask(L), .appCount = lua_gethookcount(L)};
     lua_sethook(thread, &onCount, LUA_MASKCOUNT, kCheckInstructions);
-    running = true;
     int results = 0;
     const int status = lua_resume(thread, L, 0, &results);
-    running = false;
+    running = outer;
 
     if (status == LUA_YIELD) {
         (void)lua_closethread(thread, L);
@@ -69,13 +74,13 @@ std::string Evaluation::describeError(lua_State* L, int index) {
 
 // A coroutine that the evaluation created, such as a task that it spawned, inherited its hook and runs on after it as code of the app, so it takes the hook that the app had instead of the time bound of the evaluation.
 void Evaluation::onCount(lua_State* L, lua_Debug*) {
-    if (!running) {
-        lua_sethook(L, appHook, appMask, appCount);
+    if (!running.active) {
+        lua_sethook(L, running.appHook, running.appMask, running.appCount);
         return;
     }
 
-    if (std::chrono::steady_clock::now() > deadline) {
-        luaL_error(L, "The evaluation ran longer than %d ms, so it stopped.", static_cast<int>(allowed.count()));
+    if (std::chrono::steady_clock::now() > running.deadline) {
+        luaL_error(L, "The evaluation ran longer than %d ms, so it stopped.", static_cast<int>(running.allowed.count()));
     }
 }
 

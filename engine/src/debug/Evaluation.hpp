@@ -33,15 +33,17 @@ class Evaluation final {
 
     static void onCount(lua_State* L, lua_Debug* ar);
 
-    // The time the evaluation that runs must end by. Evaluations run on the frame thread one at a time.
-    static inline std::chrono::steady_clock::time_point deadline;
-    static inline std::chrono::milliseconds allowed{0};
-    static inline bool running = false;
+    // The evaluation that runs: the time it must end by, and the hook of the code that started it, which the coroutines that it created take once it ended. Evaluations run on the frame thread, and one nests in another when the code of the outer one reaches a breakpoint whose condition or log message evaluates, so an inner one ends by the deadline of the outer one too and gives the outer one back its state.
+    struct Running {
+        bool active = false;
+        std::chrono::steady_clock::time_point deadline;
+        std::chrono::milliseconds allowed{0};
+        lua_Hook appHook = nullptr;
+        int appMask = 0;
+        int appCount = 0;
+    };
 
-    // The hook of the code that started the evaluation, which the coroutines that the evaluation created take once it ended.
-    static inline lua_Hook appHook = nullptr;
-    static inline int appMask = 0;
-    static inline int appCount = 0;
+    static Running running;
 };
 
 } // namespace haylen::debug

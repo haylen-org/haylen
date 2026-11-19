@@ -44,6 +44,24 @@ TEST_F(EvaluationTest, LeavesTheTimeLimitToTheEvaluationAndNotToTheCoroutinesItC
     EXPECT_EQ(lua_tointeger(task, -1), 5000050000);
 }
 
+// An evaluation nests in another when the code of the outer one reaches a breakpoint whose condition evaluates, and the outer one keeps its time limit once the inner one ended.
+TEST_F(EvaluationTest, KeepsTheTimeLimitOfAnEvaluationAfterAnotherNestedInIt) {
+    lua_State* L = state.get();
+    // clang-format off
+    lua_pushcfunction(L, [](lua_State* inner) {
+        lua_pushglobaltable(inner);
+        const Evaluation::Result condition = Evaluation::run(inner, -1, "true", Evaluation::kTimeLimit);
+        lua_pushboolean(inner, condition.ok ? 1 : 0);
+        return 1;
+    });
+    // clang-format on
+    lua_setglobal(L, "condition");
+
+    const Evaluation::Result result = evaluate("assert(condition()) for _ = 1, 300000000 do end", std::chrono::milliseconds(100));
+    EXPECT_FALSE(result.ok);
+    EXPECT_EQ(result.error, "The evaluation ran longer than 100 ms, so it stopped.");
+}
+
 // The results move onto a stack that grows for them, however many the evaluation returns.
 TEST_F(EvaluationTest, ReturnsMoreValuesThanTheStackOfTheCallerHeld) {
     lua_State* L = state.get();
