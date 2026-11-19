@@ -89,7 +89,8 @@ class TextInputTests: HaylenUITestCase {
         start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)))
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when a finger scrolls the page from outside the field.")
-        XCTAssertLessThan(field.frame.minY, top - 20, "The page does not scroll under the finger.")
+        // The page scrolls only as far as its content reaches past it, which on a phone in landscape can be a few points, and springs back there from past its end.
+        XCTAssertLessThan(field.frame.minY, top - 1, "The page does not scroll under the finger.")
         typeOnKeyboard("mar")
         expectReport("mar")
         try saveScreenshot("scrolled-while-editing")
