@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <span>
@@ -289,7 +290,26 @@ std::size_t TextPlugin::hashDrawn(std::string_view markup, const text::RichTextO
 bool TextPlugin::isSameDrawn(const DrawnText& drawn, std::string_view markup, const text::RichTextOptions& options, std::span<const FontName> fonts) noexcept {
     const text::RichTextOptions& kept = drawn.options;
     const bool sameOptions = kept.family == options.family && kept.size == options.size && kept.bold == options.bold && kept.italic == options.italic && kept.color == options.color && kept.maxWidth == options.maxWidth && kept.align == options.align && kept.direction == options.direction && kept.language == options.language && kept.lineSpacing == options.lineSpacing && kept.scale == options.scale && kept.revealSpeed == options.revealSpeed && kept.underlineLinks == options.underlineLinks && kept.balance == options.balance && kept.ligatures == options.ligatures && kept.code == options.code;
-    return sameOptions && drawn.markup == markup && std::ranges::equal(drawn.fonts, fonts);
+    // clang-format off
+    const bool sameFonts = std::ranges::equal(drawn.fonts, fonts, [](const auto& kept, const FontName& given) {
+        return kept.first == given.first && kept.second == given.second;
+    });
+    // clang-format on
+    return sameOptions && sameFonts && drawn.markup == markup;
+}
+
+std::function<std::shared_ptr<text::FontFamily>(std::string_view)> TextPlugin::makeFontLookup(std::span<const FontName> fonts) {
+    std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> families;
+    for (const auto& [name, family] : fonts) {
+        families.insert_or_assign(std::string(name), family);
+    }
+
+    // clang-format off
+    return [families = std::move(families)](std::string_view name) -> std::shared_ptr<text::FontFamily> {
+        const auto found = families.find(name);
+        return found != families.end() ? found->second : nullptr;
+    };
+    // clang-format on
 }
 
 text::RichText& TextPlugin::getDrawnText(std::string_view markup, const text::RichTextOptions& options, std::span<const FontName> fonts, double seconds) {
@@ -297,8 +317,14 @@ text::RichText& TextPlugin::getDrawnText(std::string_view markup, const text::Ri
     auto [first, last] = drawnTexts.equal_range(hash);
     auto found = std::find_if(first, last, [&](const auto& entry) { return isSameDrawn(entry.second, markup, options, fonts); });
     if (found == last) {
-        auto made = std::make_unique<text::RichText>(std::string(markup), options, getRegistry());
-        found = drawnTexts.emplace(hash, DrawnText{.markup = std::string(markup), .options = options, .fonts = {fonts.begin(), fonts.end()}, .text = std::move(made)});
+        text::RichTextOptions kept = options;
+        if (!fonts.empty()) {
+            kept.fonts = makeFontLookup(fonts);
+        }
+
+        auto made = std::make_unique<text::RichText>(std::string(markup), kept, getRegistry());
+        std::vector<std::pair<std::string, std::shared_ptr<text::FontFamily>>> names(fonts.begin(), fonts.end());
+        found = drawnTexts.emplace(hash, DrawnText{.markup = std::string(markup), .options = std::move(kept), .fonts = std::move(names), .text = std::move(made)});
     }
 
     DrawnText& drawn = found->second;

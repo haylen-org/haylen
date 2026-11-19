@@ -200,6 +200,9 @@ TEST_F(TextLuaTest, KeepsTheLayoutOfRichTextDrawnEveryFrame) {
     // A font given where a family goes stands for the same family every frame.
     EXPECT_EQ(measure("graphics2d.drawRichText('[b]Plain[/b] font', 10, 20, {family = font, size = 24})"), empty);
 
+    // The families of the fonts of the options compare by name and family every frame.
+    EXPECT_EQ(measure("graphics2d.drawRichText('[font=title]Gold[/font] and [font=pixel]coins[/font]', 10, 20, {size = 24, fonts = {title = font, pixel = font}})"), empty);
+
     // Markup that changes every frame still draws, as a new layout each time.
     EXPECT_GT(measure("frameCount = (frameCount or 0) + 1 graphics2d.drawRichText('Frame ' .. frameCount, 10, 20)"), empty);
     EXPECT_EQ(lua("return tostring(graphics2d.measureRichText('[b]Score[/b]', {size = 24}) > 0)"), "true");

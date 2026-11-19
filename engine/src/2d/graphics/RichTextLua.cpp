@@ -2,9 +2,9 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <array>
 #include <functional>
-#include <map>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -75,38 +75,33 @@ text::RichTextOptions RichTextLua::readOptions(lua_State* L, int index, std::ini
             lua::Table::readValue(L, key, options.ligatures);
         } else if (key == "code") {
             lua::Table::readValue(L, key, options.code);
+        } else if (key == "fonts" && fontNames != nullptr) {
+            readFonts(L, *fontNames);
         } else if (key == "fonts") {
-            options.fonts = readFonts(L, fontNames);
+            std::vector<plugins::TextPlugin::FontName> read;
+            readFonts(L, read);
+            options.fonts = plugins::TextPlugin::makeFontLookup(read);
         }
     });
     // clang-format on
     return options;
 }
 
-// Reads the table on top of the stack, which maps font names to families, into the function that rich text asks for the family of a name.
-std::function<std::shared_ptr<text::FontFamily>(std::string_view)> RichTextLua::readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>* fontNames) {
+// Reads the table on top of the stack, which maps font names to families, sorted by name, so the same fonts read the same every frame. The names are the keys of the table, which lives while the call reads them.
+void RichTextLua::readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>& fontNames) {
     luaL_checktype(L, -1, LUA_TTABLE);
-    std::map<std::string, std::shared_ptr<text::FontFamily>, std::less<>> fonts;
+    fontNames.clear();
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
         if (lua_type(L, -2) != LUA_TSTRING) {
             luaL_error(L, "The \"fonts\" option maps font names to families, so its keys must be strings.");
         }
 
-        fonts.insert_or_assign(lua::Stack::read<std::string>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
+        fontNames.emplace_back(lua::Stack::read<std::string_view>(L, -2), graphics::FontLua::readFamily(L, lua_gettop(L)));
         lua_pop(L, 1);
     }
 
-    if (fontNames != nullptr) {
-        fontNames->assign(fonts.begin(), fonts.end());
-    }
-
-    // clang-format off
-    return [fonts = std::move(fonts)](std::string_view name) -> std::shared_ptr<text::FontFamily> {
-        const auto found = fonts.find(name);
-        return found != fonts.end() ? found->second : nullptr;
-    };
-    // clang-format on
+    std::ranges::sort(fontNames, {}, &plugins::TextPlugin::FontName::first);
 }
 
 // Creates rich text with `newRichText(markup, {family, size, bold, italic, color, maxWidth, balance, align, direction, language, lineSpacing, scale, revealSpeed, underlineLinks, ligatures, code, fonts})`.
@@ -125,11 +120,16 @@ math::Color RichTextLua::readTint(lua_State* L, int index) {
     return tint;
 }
 
+// The fonts of the options go into storage every draw reuses, which lets go of their families once the draw found its text.
 text::RichText& RichTextLua::getDrawnText(lua_State* L, int options) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    std::vector<plugins::TextPlugin::FontName> fonts;
+    plugins::TextPlugin& plugin = engine.getPlugin<plugins::TextPlugin>();
+    std::vector<plugins::TextPlugin::FontName>& fonts = plugin.getDrawnFonts();
+    fonts.clear();
     const text::RichTextOptions read = readOptions(L, options, {lua::TypeConverter::kDrawOrderFields, kTintFields}, &fonts);
-    return engine.getPlugin<plugins::TextPlugin>().getDrawnText(lua::Stack::read<std::string_view>(L, 1), read, fonts, engine.getClock().getElapsed());
+    text::RichText& drawn = plugin.getDrawnText(lua::Stack::read<std::string_view>(L, 1), read, fonts, engine.getClock().getElapsed());
+    fonts.clear();
+    return drawn;
 }
 
 // Draws markup with `drawRichText(markup, x, y, options)`, where the options also take the tint and the draw order, and effects follow the time the app has run.

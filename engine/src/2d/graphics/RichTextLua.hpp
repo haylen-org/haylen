@@ -62,7 +62,7 @@ class RichTextLua final {
 
     // Reads the tint of a rich text draw, which multiplies every color of the text.
     [[nodiscard]] static math::Color readTint(lua_State* L, int index);
-    [[nodiscard]] static std::function<std::shared_ptr<text::FontFamily>(std::string_view)> readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>* fontNames);
+    static void readFonts(lua_State* L, std::vector<plugins::TextPlugin::FontName>& fontNames);
 
     // Runs a Lua effect on one glyph, which reads and writes the fields of a glyph table and reads the attributes of its tag.
     static void runEffect(const lua::Reference& function, text::Effect::Glyph& glyph, const text::Effect::Parameters& parameters);
