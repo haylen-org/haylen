@@ -65,61 +65,91 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
     }
 
     luaL_checktype(L, index, LUA_TTABLE);
-    const int table = lua_absindex(L, index);
-    lua::Table::checkFields(L, table, {kCanvasFields});
-    lua::Table::readField(L, table, "sort", options.sort);
-    lua::Table::readField(L, table, "order", options.order);
-    lua::Table::readField(L, table, "visibilityMask", options.visibilityMask);
-    lua::Table::readField(L, table, "ambientLight", options.ambientLight);
-    lua::Table::readField(L, table, "clear", options.clear);
-    lua::Table::readField(L, table, "debugDrawings", options.debugDrawings);
-
-    if (lua_getfield(L, table, "postProcess") != LUA_TNIL) {
-        options.postProcess = readPostProcess(L, lua_gettop(L));
-    }
-
-    lua_pop(L, 1);
+    // clang-format off
+    lua::Table::readFields(L, index, kCanvasFields, {}, [L, &options](std::string_view key) {
+        if (key == "sort") {
+            lua::Table::readValue(L, key, options.sort);
+        } else if (key == "order") {
+            lua::Table::readValue(L, key, options.order);
+        } else if (key == "visibilityMask") {
+            lua::Table::readValue(L, key, options.visibilityMask);
+        } else if (key == "ambientLight") {
+            lua::Table::readValue(L, key, options.ambientLight);
+        } else if (key == "clear") {
+            lua::Table::readValue(L, key, options.clear);
+        } else if (key == "debugDrawings") {
+            lua::Table::readValue(L, key, options.debugDrawings);
+        } else {
+            options.postProcess = readPostProcess(L, lua_gettop(L));
+        }
+    });
+    // clang-format on
     return options;
 }
 
 PostProcess Graphics2DLua::readPostProcess(lua_State* L, int post) {
     luaL_checktype(L, post, LUA_TTABLE);
-    lua::Table::checkFields(L, post, {kPostProcessFields});
     PostProcess process;
-    lua::Table::readField(L, post, "tint", process.tint);
-    lua::Table::readField(L, post, "saturation", process.saturation);
-    lua::Table::readField(L, post, "brightness", process.brightness);
-    lua::Table::readField(L, post, "contrast", process.contrast);
-    lua::Table::readField(L, post, "vignetteStrength", process.vignetteStrength);
-    lua::Table::readField(L, post, "vignetteRadius", process.vignetteRadius);
-    lua::Table::readField(L, post, "vignetteSoftness", process.vignetteSoftness);
-    lua::Table::readField(L, post, "fade", process.fade);
-    lua::Table::readField(L, post, "distortion", process.distortion);
-    lua::Table::readField(L, post, "chromaticAberration", process.chromaticAberration);
-    lua::Table::readField(L, post, "pixelate", process.pixelate);
-    lua::Table::readField(L, post, "blur", process.blur);
-    lua::Table::readField(L, post, "bloomStrength", process.bloomStrength);
-    lua::Table::readField(L, post, "bloomThreshold", process.bloomThreshold);
-    lua::Table::readField(L, post, "bloomRadius", process.bloomRadius);
-    lua::Table::readField(L, post, "colorLut", process.colorLut);
-    lua::Table::readField(L, post, "colorLutStrength", process.colorLutStrength);
-
-    if (lua_getfield(L, post, "colorVision") != LUA_TNIL) {
-        const auto name = lua::Stack::read<std::string_view>(L, -1);
-        const auto found = std::ranges::find(PostProcess::kColorVisionNames, name, &std::pair<std::string_view, PostProcess::ColorVision>::first);
-        if (found == PostProcess::kColorVisionNames.end()) {
-            luaL_error(L, "The color vision \"%s\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\".", std::string(name).c_str());
+    // clang-format off
+    lua::Table::readFields(L, post, kPostProcessFields, {}, [L, &process](std::string_view key) {
+        if (key == "tint") {
+            lua::Table::readValue(L, key, process.tint);
+        } else if (key == "saturation") {
+            lua::Table::readValue(L, key, process.saturation);
+        } else if (key == "brightness") {
+            lua::Table::readValue(L, key, process.brightness);
+        } else if (key == "contrast") {
+            lua::Table::readValue(L, key, process.contrast);
+        } else if (key == "vignetteStrength") {
+            lua::Table::readValue(L, key, process.vignetteStrength);
+        } else if (key == "vignetteRadius") {
+            lua::Table::readValue(L, key, process.vignetteRadius);
+        } else if (key == "vignetteSoftness") {
+            lua::Table::readValue(L, key, process.vignetteSoftness);
+        } else if (key == "distortion") {
+            lua::Table::readValue(L, key, process.distortion);
+        } else if (key == "chromaticAberration") {
+            lua::Table::readValue(L, key, process.chromaticAberration);
+        } else if (key == "pixelate") {
+            lua::Table::readValue(L, key, process.pixelate);
+        } else if (key == "blur") {
+            lua::Table::readValue(L, key, process.blur);
+        } else if (key == "bloomStrength") {
+            lua::Table::readValue(L, key, process.bloomStrength);
+        } else if (key == "bloomThreshold") {
+            lua::Table::readValue(L, key, process.bloomThreshold);
+        } else if (key == "bloomRadius") {
+            lua::Table::readValue(L, key, process.bloomRadius);
+        } else if (key == "colorLutStrength") {
+            lua::Table::readValue(L, key, process.colorLutStrength);
+        } else if (key == "grain") {
+            lua::Table::readValue(L, key, process.grain);
+        } else if (key == "fade") {
+            lua::Table::readValue(L, key, process.fade);
+        } else if (key == "colorLut") {
+            lua::Table::readValue(L, key, process.colorLut);
+        } else if (key == "colorVision") {
+            process.colorVision = readColorVision(L);
+        } else if (key == "correctColorVision") {
+            lua::Table::readValue(L, key, process.correctColorVision);
+        } else if (key == "dither") {
+            lua::Table::readValue(L, key, process.dither);
+        } else {
+            lua::Table::readValue(L, key, process.materials);
         }
+    });
+    // clang-format on
+    return process;
+}
 
-        process.colorVision = found->second;
+PostProcess::ColorVision Graphics2DLua::readColorVision(lua_State* L) {
+    const auto name = lua::Stack::read<std::string_view>(L, -1);
+    const auto found = std::ranges::find(PostProcess::kColorVisionNames, name, &std::pair<std::string_view, PostProcess::ColorVision>::first);
+    if (found == PostProcess::kColorVisionNames.end()) {
+        luaL_error(L, "The color vision \"%s\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\".", std::string(name).c_str());
     }
 
-    lua_pop(L, 1);
-    lua::Table::readField(L, post, "correctColorVision", process.correctColorVision);
-    lua::Table::readField(L, post, "grain", process.grain);
-    lua::Table::readField(L, post, "dither", process.dither);
-    lua::Table::readField(L, post, "materials", process.materials);
-    return process;
+    return found->second;
 }
 
 void Graphics2DLua::assignFields(lua_State* L, int options) {
@@ -711,13 +741,22 @@ int Graphics2DLua::popClip(lua_State* L) {
 int Graphics2DLua::pushFade(lua_State* L) {
     const auto rect = lua::Stack::read<math::Rect>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
-    lua::Table::checkFields(L, 2, {kFadeFields});
     Renderer::Fade fade;
-    lua::Table::readField(L, 2, "length", fade.length);
-    lua::Table::readField(L, 2, "left", fade.left);
-    lua::Table::readField(L, 2, "top", fade.top);
-    lua::Table::readField(L, 2, "right", fade.right);
-    lua::Table::readField(L, 2, "bottom", fade.bottom);
+    // clang-format off
+    lua::Table::readFields(L, 2, kFadeFields, {}, [L, &fade](std::string_view key) {
+        if (key == "length") {
+            lua::Table::readValue(L, key, fade.length);
+        } else if (key == "left") {
+            lua::Table::readValue(L, key, fade.left);
+        } else if (key == "top") {
+            lua::Table::readValue(L, key, fade.top);
+        } else if (key == "right") {
+            lua::Table::readValue(L, key, fade.right);
+        } else {
+            lua::Table::readValue(L, key, fade.bottom);
+        }
+    });
+    // clang-format on
     getRenderer(L).pushFade(rect, fade);
     return 0;
 }

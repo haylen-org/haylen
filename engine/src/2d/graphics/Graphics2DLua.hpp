@@ -70,6 +70,9 @@ class Graphics2DLua final {
     [[nodiscard]] static Renderer& getRenderer(lua_State* L);
     [[nodiscard]] static PostProcess readPostProcess(lua_State* L, int post);
 
+    // Reads the name of a color vision on top of the stack.
+    [[nodiscard]] static PostProcess::ColorVision readColorVision(lua_State* L);
+
     // Kept from draw to draw on the frame thread, so the lists of points, colors, outlines, vertices and sprites that a frame draws allocate nothing once they have grown.
     inline static std::vector<math::Vec2> pointScratch;
     inline static std::vector<math::Color> colorScratch;
