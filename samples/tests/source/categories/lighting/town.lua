@@ -93,13 +93,14 @@ function Town:sky(zenith, horizon, bottom)
     graphics2d.draw(self.fade, area.x, area.y, {width = area.width, height = bottom - area.y, pivotX = 0, pivotY = 0, color = zenith, layer = -19, unshaded = true})
 end
 
--- Repeats a strip of scenery across the canvas with its bottom edge on `bottom` and the height `height`, as one sprite whose source reaches over as many copies of its repeating texture as the canvas needs.
+-- Repeats a strip of scenery across the canvas with its bottom edge on `bottom` and the height `height`, as one sprite whose source reaches over as many copies of its repeating texture as the canvas needs. The source keeps half a texel inside the top and bottom rows, since the texture repeats and the linear filter would otherwise blend the bottom row of the strip into its top edge.
 function Town.strip(texture, bottom, height, layer, color)
     local area = graphics2d.canvasBounds()
     local width = texture.width * height / texture.height
     local left = math.floor(area.x / width) * width
     local span = area:right() - left
-    graphics2d.draw(texture, left, bottom - height, {source = {0, 0, texture.width * span / width, texture.height}, width = span, height = height, pivotX = 0, pivotY = 0, layer = layer, color = color})
+    local source = {0, 0.5, texture.width * span / width, texture.height - 1}
+    graphics2d.draw(texture, left, bottom - height, {source = source, width = span, height = height, pivotX = 0, pivotY = 0, layer = layer, color = color})
 end
 
 -- Draws the hills behind the village and the ground it stands on, down to the bottom of the canvas.
