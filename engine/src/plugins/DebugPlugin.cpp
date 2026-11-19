@@ -210,6 +210,7 @@ void DebugPlugin::publishCrashContext(core::Engine& engine) {
             log.push_back({{"level", std::string(kLevelNames[static_cast<std::size_t>(lines[index].level)])}, {"text", cut(lines[index].text)}});
         }
     }
+
     const core::AppConfig& config = engine.getConfig();
     core::Json context = {{"app", {{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}, {"build", config.build}}}, {"breadcrumbs", std::move(recent)}, {"log", std::move(log)}};
     std::string text = context.dump(-1, ' ', false, core::Json::error_handler_t::replace);
@@ -379,6 +380,7 @@ void DebugPlugin::runRelayedLines() {
     for (const platform::ConsoleRelay::ListReply& reply : platform::ConsoleRelay::takeCommandRequests()) {
         reply(consoleEnabled ? describeCommands() : core::Json::array());
     }
+
     for (const platform::ConsoleRelay::Inspection& inspection : platform::ConsoleRelay::takeInspections()) {
         answerInspection(inspection.path, inspection.reply);
     }

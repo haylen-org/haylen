@@ -177,6 +177,7 @@ void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>
     for (const std::string& path : report.restored) {
         core::Log::info("The file \"{}\" holds the code that runs again.", path);
     }
+
     const bool changedCode = !report.modules.empty() || !report.restored.empty() || !report.assets.empty() || batch.retry;
     if (applied && changedCode && engine.clearError()) {
         report.resumed = true;
@@ -241,6 +242,7 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
             module.failed = false;
             report.modules.push_back(path);
         }
+
         if (result.status == lua::ModuleReloader::Status::Unchanged && std::exchange(module.failed, false)) {
             report.restored.push_back(path);
         }

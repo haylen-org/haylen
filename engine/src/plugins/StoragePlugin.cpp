@@ -130,6 +130,7 @@ void StoragePlugin::queueOperation(std::function<void()> operation) {
         operations->waiting.push_back(std::move(operation));
         schedule = !std::exchange(operations->scheduled, true);
     }
+
     if (schedule) {
         // clang-format off
         jobs->postIo([queue = operations] {
