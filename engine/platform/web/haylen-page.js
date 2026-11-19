@@ -2179,8 +2179,14 @@ Module.haylen = Module.haylen || {};
         const isOpen = () => audio.outputs.get(device) === output;
         shared.ready.then(
             () => {
-                if (isOpen()) {
+                if (!isOpen()) {
+                    return;
+                }
+
+                try {
                     connectAudio(output);
+                } catch (error) {
+                    failAudio(device, "The browser refused the audio processor of the output: " + error.message);
                 }
             },
             (error) => {
