@@ -47,7 +47,9 @@ class ObjectCounterTest : public ::testing::Test {
     }
 
     [[nodiscard]] static graphics::Device::Pool pool(graphics::Device& device, std::string_view name) {
-        for (const graphics::Device::Pool& found : device.getPools()) {
+        std::vector<graphics::Device::Pool> pools;
+        device.readPools(pools);
+        for (const graphics::Device::Pool& found : pools) {
             if (found.name == name) {
                 return found;
             }
@@ -220,18 +222,34 @@ TEST(StatsTest, ReportsTheGpuMemoryOfBatches) {
     EXPECT_EQ(plugin.captureStats(fixture.engine()).memory.batches, before);
 }
 
+// Reads the monitors of the plugin and the history of a monitor into fresh vectors, the way a test compares them.
+class MonitorReader final {
+  public:
+    [[nodiscard]] static std::vector<std::shared_ptr<Monitor>> list(const plugins::DebugPlugin& plugin) {
+        std::vector<std::shared_ptr<Monitor>> registered;
+        plugin.readMonitors(registered);
+        return registered;
+    }
+
+    [[nodiscard]] static std::vector<float> history(const Monitor& monitor) {
+        std::vector<float> values;
+        monitor.readHistory(values);
+        return values;
+    }
+};
+
 TEST(StatsTest, SamplesMonitorsEveryFrame) {
     test::EngineFixture fixture;
     plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
     int calls = 0;
     plugin.addMonitor("enemies", [&calls] { return ++calls * 2.0; });
     fixture.frames(3);
-    ASSERT_EQ(plugin.getMonitors().size(), 1U);
-    EXPECT_EQ(plugin.getMonitors()[0]->getValue(), 6.0);
-    EXPECT_EQ(plugin.getMonitors()[0]->getHistory(), (std::vector<float>{2.0F, 4.0F, 6.0F}));
+    ASSERT_EQ(MonitorReader::list(plugin).size(), 1U);
+    EXPECT_EQ(MonitorReader::list(plugin)[0]->getValue(), 6.0);
+    EXPECT_EQ(MonitorReader::history(*MonitorReader::list(plugin)[0]), (std::vector<float>{2.0F, 4.0F, 6.0F}));
 
     plugin.addMonitor("enemies", [] { return 1.0; });
-    EXPECT_EQ(plugin.getMonitors().size(), 1U);
+    EXPECT_EQ(MonitorReader::list(plugin).size(), 1U);
     EXPECT_TRUE(plugin.removeMonitor("enemies"));
     EXPECT_FALSE(plugin.removeMonitor("enemies"));
     EXPECT_THROW(plugin.addMonitor("", [] { return 1.0; }), std::invalid_argument);
@@ -268,22 +286,22 @@ TEST(StatsTest, MonitorConnectionsRemoveAndHoldMonitors) {
     EXPECT_TRUE(connection.isBlocked());
     connection.setBlocked(false);
     fixture.frames(1);
-    EXPECT_EQ(plugin.getMonitors()[0]->getHistory(), (std::vector<float>{1.0F, 2.0F}));
+    EXPECT_EQ(MonitorReader::history(*MonitorReader::list(plugin)[0]), (std::vector<float>{1.0F, 2.0F}));
 
     // A replaced monitor ends its connection, so disconnecting it leaves the replacement alone.
     core::Connection replacement = plugin.addMonitor("enemies", [] { return 5.0; });
     EXPECT_FALSE(connection.isConnected());
     connection.disconnect();
-    ASSERT_EQ(plugin.getMonitors().size(), 1U);
+    ASSERT_EQ(MonitorReader::list(plugin).size(), 1U);
     replacement.disconnect();
-    EXPECT_TRUE(plugin.getMonitors().empty());
+    EXPECT_TRUE(MonitorReader::list(plugin).empty());
     EXPECT_FALSE(replacement.isConnected());
 
     // A sampler that returns nothing skips the frame and keeps the last value.
     plugin.addMonitor("even", [&calls]() -> std::optional<double> { return ++calls % 2 == 0 ? std::optional<double>(calls) : std::nullopt; });
     fixture.frames(4);
-    EXPECT_EQ(plugin.getMonitors()[0]->getHistory().size(), 2U);
-    EXPECT_EQ(plugin.getMonitors()[0]->getValue(), 6.0);
+    EXPECT_EQ(MonitorReader::history(*MonitorReader::list(plugin)[0]).size(), 2U);
+    EXPECT_EQ(MonitorReader::list(plugin)[0]->getValue(), 6.0);
 }
 
 TEST(StatsTest, EndsMonitorsWithTheirOwner) {
@@ -494,6 +512,44 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     window->StateStorage.SetInt(window->GetID("Objects"), 1);
     window->StateStorage.SetInt(window->GetID("Signals and events"), 1);
     fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
+}
+
+// The statistics window reads what it shows into storage it keeps, so frames that show the same rows with every section open allocate no more than frames without the window.
+TEST(StatsTest, DrawsTheOverlayWithoutAllocating) {
+    std::vector<std::string> entries;
+    test::EngineFixture fixture;
+    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    // clang-format off
+    const auto measure = [&fixture] {
+        fixture.frames(5, 1.0 / 240.0);
+        const test::AllocationTracker tracker;
+        fixture.frames(10, 1.0 / 240.0);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("first", entries));
+    fixture.runLua("require('haylen.events').on('tick', function() end) named = require('haylen.signal').new('a signal whose name is longer than a short string')");
+    const core::Connection monitor = plugin.addMonitor("a monitor whose name is longer than a short string", [] { return std::optional(1.0); });
+    const core::Connection drawer = plugin.addDrawer("a drawing whose name is longer than a short string", [](graphics2d::Renderer&) {});
+    for (const core::Log::Level level : {core::Log::Level::Debug, core::Log::Level::Info, core::Log::Level::Warning, core::Log::Level::Error}) {
+        core::Log::write(level, "A line of the overlay log that is longer than a short string.");
+    }
+
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(1024, 1024, math::Color::white()));
+    const std::size_t quiet = measure();
+
+    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    fixture.frames(2);
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
+    ASSERT_NE(window, nullptr);
+    window->StateStorage.SetInt(window->GetID("Content"), 1);
+    window->StateStorage.SetInt(window->GetID("Objects"), 1);
+    window->StateStorage.SetInt(window->GetID("Signals and events"), 1);
+
+    EXPECT_EQ(measure(), quiet);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
 }

@@ -103,14 +103,16 @@ void EventBus::clear() noexcept {
     }
 }
 
-std::vector<EventBus::Topic> EventBus::getTopics() const {
-    std::vector<Topic> topics;
-    topics.reserve(state->named.size());
+void EventBus::readTopics(std::vector<Topic>& topics) const {
+    topics.resize(state->named.size());
+    std::size_t index = 0;
     for (const auto& [name, listeners] : state->named) {
-        topics.push_back({.name = name, .listeners = listeners->size(), .emissions = listeners->getEmissionCount(), .stale = listeners->getStaleCount()});
+        Topic& topic = topics[index++];
+        topic.name = name;
+        topic.listeners = listeners->size();
+        topic.emissions = listeners->getEmissionCount();
+        topic.stale = listeners->getStaleCount();
     }
-
-    return topics;
 }
 
 } // namespace haylen::core

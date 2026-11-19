@@ -331,13 +331,8 @@ int Device::getMaxTextureSize() const noexcept {
     return std::min(state->gpu->getCapabilities().maxImageSize, Image::kMaxSide);
 }
 
-std::vector<Device::Pool> Device::getPools() const {
-    std::vector<Pool> pools;
-    for (const gpu::Device::Pool& pool : state->gpu->getPools()) {
-        pools.push_back({.name = pool.name, .used = pool.used, .size = pool.size});
-    }
-
-    return pools;
+void Device::readPools(std::vector<Pool>& pools) const {
+    state->gpu->readPools(pools);
 }
 
 void Device::collectGarbage() {

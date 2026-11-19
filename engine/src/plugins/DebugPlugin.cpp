@@ -32,7 +32,7 @@
 
 namespace haylen::plugins {
 
-DebugPlugin::DebugPlugin(platform::DevelopmentSession* developmentSession) : session(developmentSession), inspectorWindow(std::make_unique<debug::InspectorWindow>()), development(developmentSession != nullptr) {}
+DebugPlugin::DebugPlugin(platform::DevelopmentSession* developmentSession) : session(developmentSession), inspectorWindow(std::make_unique<debug::InspectorWindow>()), overlayWindow(std::make_unique<debug::OverlayWindow>()), development(developmentSession != nullptr) {}
 
 DebugPlugin::~DebugPlugin() = default;
 
@@ -103,13 +103,30 @@ std::vector<std::string> DebugPlugin::getDrawings() const {
     return {drawings.begin(), drawings.end()};
 }
 
-std::vector<std::string> DebugPlugin::getDrawingNames() const {
-    std::set<std::string, std::less<>> names{std::string(kBoundsDrawing)};
+// Every name keeps the place it had before, so the storage of a vector that the reader keeps holds the same names every frame.
+void DebugPlugin::readDrawingNames(std::vector<std::string>& names) const {
+    std::size_t count = 0;
+    // clang-format off
+    const auto add = [&names, &count](std::string_view name) {
+        const auto end = names.begin() + static_cast<std::ptrdiff_t>(count);
+        if (std::find(names.begin(), end, name) != end) {
+            return;
+        }
+
+        if (count == names.size()) {
+            names.emplace_back();
+        }
+
+        names[count++] = name;
+    };
+    // clang-format on
+    add(kBoundsDrawing);
     for (const std::shared_ptr<DrawerEntry>& entry : drawers) {
-        names.insert(entry->name);
+        add(entry->name);
     }
 
-    return {names.begin(), names.end()};
+    names.resize(count);
+    std::ranges::sort(names);
 }
 
 void DebugPlugin::DrawerEntry::disconnect() {
@@ -156,7 +173,9 @@ void DebugPlugin::toggleDrawings() {
         return;
     }
 
-    for (std::string& name : getDrawingNames()) {
+    std::vector<std::string> names;
+    readDrawingNames(names);
+    for (std::string& name : names) {
         drawings.insert(std::move(name));
     }
 }
@@ -230,9 +249,13 @@ std::string DebugPlugin::cut(std::string_view text) {
     return std::string(text.substr(0, kReportTextSize));
 }
 
-std::vector<debug::LogLine> DebugPlugin::getRecentLog() const {
+void DebugPlugin::readRecentLog(std::vector<debug::LogLine>& recent) const {
     const std::scoped_lock lock(linesMutex);
-    return {lines.begin(), lines.end()};
+    recent.resize(lines.size());
+    for (std::size_t index = 0; index < lines.size(); ++index) {
+        recent[index].level = lines[index].level;
+        recent[index].text = lines[index].text;
+    }
 }
 
 // The observer is global to the process, so only a running plugin installs it, and events go through the queue because objects come and go on any thread.
@@ -253,6 +276,10 @@ void DebugPlugin::setObjectEvents(bool value) {
 
 debug::Stats DebugPlugin::captureStats(core::Engine& engine) const {
     return debug::Stats::capture(engine, lastRendering);
+}
+
+void DebugPlugin::updateStats(core::Engine& engine, debug::Stats& stats) const {
+    stats.update(engine, lastRendering);
 }
 
 void DebugPlugin::MonitorEntry::disconnect() {
@@ -287,14 +314,11 @@ bool DebugPlugin::removeMonitors(const std::function<bool(const MonitorEntry&)>&
     // clang-format on
 }
 
-std::vector<std::shared_ptr<debug::Monitor>> DebugPlugin::getMonitors() const {
-    std::vector<std::shared_ptr<debug::Monitor>> registered;
-    registered.reserve(monitors.size());
-    for (const std::shared_ptr<MonitorEntry>& entry : monitors) {
-        registered.push_back(entry->monitor);
+void DebugPlugin::readMonitors(std::vector<std::shared_ptr<debug::Monitor>>& registered) const {
+    registered.resize(monitors.size());
+    for (std::size_t index = 0; index < monitors.size(); ++index) {
+        registered[index] = monitors[index]->monitor;
     }
-
-    return registered;
 }
 
 void DebugPlugin::event(core::Engine&, const platform::Event& event) {
@@ -340,7 +364,7 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();
     backend.makeCurrent();
 
-    if (statsMode == debug::StatsDisplay::Mode::Full && !debug::OverlayWindow::draw(engine, backend, captureStats(engine), getMonitors(), getRecentLog())) {
+    if (statsMode == debug::StatsDisplay::Mode::Full && !overlayWindow->draw(engine, backend, *this)) {
         statsMode = debug::StatsDisplay::Mode::Off;
     }
 
@@ -526,7 +550,8 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         }
 
         const std::string& name = arguments[0].get_ref<const std::string&>();
-        const std::vector<std::string> names = getDrawingNames();
+        std::vector<std::string> names;
+        readDrawingNames(names);
         if (std::ranges::find(names, name) == names.end()) {
             throw std::invalid_argument(std::format("There is no drawing \"{}\". The drawings are {}.", name, describeNames(names)));
         }

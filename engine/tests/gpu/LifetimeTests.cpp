@@ -96,7 +96,8 @@ TEST_P(GpuLifetimeTest, RunsManyFramesWithoutGrowing) {
         drawFrame(target, pipeline, buffer, math::Color::white());
     }
 
-    const std::vector<Device::Pool> before = device().getPools();
+    std::vector<Device::Pool> before;
+    device().readPools(before);
 
     const test::AllocationTracker tracker;
 
@@ -106,7 +107,8 @@ TEST_P(GpuLifetimeTest, RunsManyFramesWithoutGrowing) {
 
     EXPECT_EQ(tracker.getTotal(), 0U);
 
-    const std::vector<Device::Pool> after = device().getPools();
+    std::vector<Device::Pool> after;
+    device().readPools(after);
     ASSERT_EQ(after.size(), before.size());
 
     for (std::size_t index = 0; index < after.size(); ++index) {

@@ -27,8 +27,8 @@ class Monitor final {
         return value;
     }
 
-    // The sampled values, oldest first.
-    [[nodiscard]] std::vector<float> getHistory() const;
+    // Fills `values` with the sampled values, oldest first, in the storage it holds.
+    void readHistory(std::vector<float>& values) const;
 
   private:
     std::string name;

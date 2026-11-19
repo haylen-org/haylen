@@ -74,7 +74,9 @@ TEST_F(NullDeviceTest, RunsOutOfRoomLikeARealDevice) {
     EXPECT_EQ(error, "The graphics device has no room for another pipeline. At most 2048 pipelines can exist at once.");
     EXPECT_EQ(pipelines.size(), static_cast<std::size_t>(NullDevice::kPipelinePoolSize));
 
-    for (const Device::Pool& pool : device.getPools()) {
+    std::vector<Device::Pool> pools;
+    device.readPools(pools);
+    for (const Device::Pool& pool : pools) {
         if (pool.name == "pipelines") {
             EXPECT_EQ(pool.used, NullDevice::kPipelinePoolSize);
         }

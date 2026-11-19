@@ -114,7 +114,9 @@ int DebugLua::drawings(lua_State* L) {
 }
 
 int DebugLua::drawingNames(lua_State* L) {
-    lua::Stack::push(L, getPlugin(L).getDrawingNames());
+    std::vector<std::string> names;
+    getPlugin(L).readDrawingNames(names);
+    lua::Stack::push(L, names);
     return 1;
 }
 
@@ -381,7 +383,9 @@ int DebugLua::removeMonitor(lua_State* L) {
 
 // Returns `{name, value, history}` for every monitor, with the history oldest first.
 int DebugLua::monitors(lua_State* L) {
-    const std::vector<std::shared_ptr<Monitor>> all = getPlugin(L).getMonitors();
+    std::vector<std::shared_ptr<Monitor>> all;
+    getPlugin(L).readMonitors(all);
+    std::vector<float> history;
     lua_createtable(L, static_cast<int>(all.size()), 0);
     for (std::size_t index = 0; index < all.size(); ++index) {
         lua_createtable(L, 0, 3);
@@ -389,7 +393,8 @@ int DebugLua::monitors(lua_State* L) {
         lua_setfield(L, -2, "name");
         lua::Stack::push(L, all[index]->getValue());
         lua_setfield(L, -2, "value");
-        lua::Stack::push(L, all[index]->getHistory());
+        all[index]->readHistory(history);
+        lua::Stack::push(L, history);
         lua_setfield(L, -2, "history");
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
@@ -435,7 +440,9 @@ int DebugLua::frame(lua_State* L) {
 }
 
 int DebugLua::frameHistory(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getProfiler().getFrameHistory());
+    std::vector<float> history;
+    lua::Runtime::getEngine(L).getProfiler().readFrameHistory(history);
+    lua::Stack::push(L, history);
     return 1;
 }
 
@@ -460,7 +467,8 @@ int DebugLua::profile(lua_State* L) {
 
 // Returns up to `count` recent log lines, oldest first, as `{level, text}` tables.
 int DebugLua::recentLog(lua_State* L) {
-    const std::vector<LogLine> lines = getPlugin(L).getRecentLog();
+    std::vector<LogLine> lines;
+    getPlugin(L).readRecentLog(lines);
     const std::size_t count = lua_isnoneornil(L, 1) ? lines.size() : lua::Stack::read<std::size_t>(L, 1);
     const std::size_t first = lines.size() > count ? lines.size() - count : 0;
     lua_createtable(L, static_cast<int>(lines.size() - first), 0);

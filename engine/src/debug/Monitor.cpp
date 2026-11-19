@@ -21,8 +21,8 @@ void Monitor::sample() {
     history.push(static_cast<float>(value));
 }
 
-std::vector<float> Monitor::getHistory() const {
-    return {history.begin(), history.end()};
+void Monitor::readHistory(std::vector<float>& values) const {
+    values.assign(history.begin(), history.end());
 }
 
 } // namespace haylen::debug

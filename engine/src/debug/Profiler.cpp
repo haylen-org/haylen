@@ -143,15 +143,14 @@ double Profiler::getFramesPerSecond() const noexcept {
     return total > 0.0 ? 1000.0 * static_cast<double>(intervalCount) / total : 0.0;
 }
 
-std::vector<float> Profiler::getFrameHistory() const {
-    std::vector<float> frames;
-    frames.reserve(recorded);
+// The vector takes the room of the whole history at once, so it never grows again while the history fills.
+void Profiler::readFrameHistory(std::vector<float>& frames) const {
+    frames.reserve(history.size());
+    frames.resize(recorded);
     const std::size_t first = (next + history.size() - recorded) % history.size();
     for (std::size_t index = 0; index < recorded; ++index) {
-        frames.push_back(history[(first + index) % history.size()]);
+        frames[index] = history[(first + index) % history.size()];
     }
-
-    return frames;
 }
 
 } // namespace haylen::debug

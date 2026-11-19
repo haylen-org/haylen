@@ -462,7 +462,8 @@ TEST(EventBusTest, OwnersClearAndStatistics) {
     bus.emit("tick");
     owner.reset();
 
-    const std::vector<EventBus::Topic> topics = bus.getTopics();
+    std::vector<EventBus::Topic> topics;
+    bus.readTopics(topics);
     ASSERT_EQ(topics.size(), 1U);
     EXPECT_EQ(topics[0].name, "tick");
     EXPECT_EQ(topics[0].listeners, 2U);
@@ -480,8 +481,9 @@ TEST(EventBusTest, OwnersClearAndStatistics) {
     // A rejected listener leaves no event behind in the statistics.
     EXPECT_THROW((void)bus.on("never", {}), std::invalid_argument);
     EXPECT_THROW((void)bus.on<int>({}), std::invalid_argument);
-    ASSERT_EQ(bus.getTopics().size(), 1U);
-    EXPECT_EQ(bus.getTopics()[0].name, "tick");
+    bus.readTopics(topics);
+    ASSERT_EQ(topics.size(), 1U);
+    EXPECT_EQ(topics[0].name, "tick");
 }
 
 } // namespace haylen::core

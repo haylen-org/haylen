@@ -19,70 +19,73 @@
 
 namespace haylen::debug {
 
-const ObjectCounter::Snapshot* Stats::findObject(const std::vector<ObjectCounter::Snapshot>& snapshots, std::string_view name) noexcept {
-    const auto found = std::ranges::find(snapshots, name, &ObjectCounter::Snapshot::name);
-    return found != snapshots.end() ? &*found : nullptr;
+const ObjectCounter::Snapshot* Stats::findObject(std::string_view name) const noexcept {
+    const auto found = std::ranges::find(objects, name, &ObjectCounter::Snapshot::name);
+    return found != objects.end() ? &*found : nullptr;
 }
 
-Stats::Frame Stats::measureFrames(core::Engine& engine) {
+// The slowest frames come first, so the one percent low averages the head of the list.
+void Stats::measureFrames(core::Engine& engine) {
     const Profiler& profiler = engine.getProfiler();
-    Frame measured{.milliseconds = profiler.getLastFrameMilliseconds(), .fixedSteps = engine.getClock().getFixedStepCount()};
-    std::vector<float> times = profiler.getFrameHistory();
-    if (times.empty()) {
-        return measured;
+    frame = {.milliseconds = profiler.getLastFrameMilliseconds(), .fixedSteps = engine.getClock().getFixedStepCount()};
+    profiler.readFrameHistory(frameTimes);
+    if (frameTimes.empty()) {
+        return;
     }
 
-    // The slowest frames come first, so the one percent low averages the head of the list.
-    std::ranges::sort(times, std::greater<>());
-    const std::size_t slowest = std::max<std::size_t>(1, times.size() / 100);
-    measured.average = std::accumulate(times.begin(), times.end(), 0.0) / static_cast<double>(times.size());
-    measured.fps = profiler.getFramesPerSecond();
-    measured.minimum = times.back();
-    measured.maximum = times.front();
-    measured.onePercentLow = std::accumulate(times.begin(), times.begin() + static_cast<std::ptrdiff_t>(slowest), 0.0) / static_cast<double>(slowest);
-    return measured;
+    std::ranges::sort(frameTimes, std::greater<>());
+    const std::size_t slowest = std::max<std::size_t>(1, frameTimes.size() / 100);
+    frame.average = std::accumulate(frameTimes.begin(), frameTimes.end(), 0.0) / static_cast<double>(frameTimes.size());
+    frame.fps = profiler.getFramesPerSecond();
+    frame.minimum = frameTimes.back();
+    frame.maximum = frameTimes.front();
+    frame.onePercentLow = std::accumulate(frameTimes.begin(), frameTimes.begin() + static_cast<std::ptrdiff_t>(slowest), 0.0) / static_cast<double>(slowest);
 }
 
 Stats Stats::capture(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame) {
     Stats stats;
-    stats.frame = measureFrames(engine);
+    stats.update(engine, lastFrame);
+    return stats;
+}
+
+void Stats::update(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame) {
+    measureFrames(engine);
     const core::Engine::EventLoopPoll& polled = engine.getEventLoopPoll();
-    stats.eventLoop = {.budget = std::chrono::duration<double, std::milli>(polled.budget).count(), .ran = polled.ran, .pending = polled.pending, .idle = polled.idleMilliseconds};
-    stats.rendering = lastFrame;
-    stats.pools = engine.getGraphics().getPools();
-    stats.buses = engine.getAudio().getBusStats();
-    stats.objects = ObjectCounter::list();
+    eventLoop = {.budget = std::chrono::duration<double, std::milli>(polled.budget).count(), .ran = polled.ran, .pending = polled.pending, .idle = polled.idleMilliseconds};
+    rendering = lastFrame;
+    engine.getGraphics().readPools(pools);
+    engine.getAudio().readBusStats(buses);
+    ObjectCounter::readAll(objects);
 
     lua_State* L = engine.getLuaState();
-    stats.memory.lua = static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNT, 0)) * 1024 + static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNTB, 0));
+    memory.lua = static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNT, 0)) * 1024 + static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNTB, 0));
     // clang-format off
-    const auto bytesOf = [&stats](std::string_view name) {
-        const ObjectCounter::Snapshot* found = findObject(stats.objects, name);
+    const auto bytesOf = [this](std::string_view name) {
+        const ObjectCounter::Snapshot* found = findObject(name);
         return found != nullptr ? found->bytes : 0;
     };
-    const auto aliveOf = [&stats](std::string_view name) {
-        const ObjectCounter::Snapshot* found = findObject(stats.objects, name);
+    const auto aliveOf = [this](std::string_view name) {
+        const ObjectCounter::Snapshot* found = findObject(name);
         return found != nullptr ? found->alive : 0;
     };
     // clang-format on
 
-    stats.memory.textures = bytesOf("Texture");
-    stats.memory.targets = bytesOf("RenderTarget");
-    stats.memory.batches = bytesOf("StaticSpriteBatch");
-    stats.memory.buffers = bytesOf("RendererBuffers");
-    stats.memory.sounds = bytesOf("Sound");
+    memory.textures = bytesOf("Texture");
+    memory.targets = bytesOf("RenderTarget");
+    memory.batches = bytesOf("StaticSpriteBatch");
+    memory.buffers = bytesOf("RendererBuffers");
+    memory.sounds = bytesOf("Sound");
 
-    stats.counts.scenes = engine.getScenes().size();
-    stats.counts.tweens = engine.getTweens().size();
-    stats.counts.timers = engine.getTimers().size();
-    stats.counts.voices = engine.getAudio().getVoiceCount();
-    stats.counts.assetsCached = engine.getAssets().getCachedCount();
-    stats.counts.assetsPending = engine.getAssets().getPendingCount();
-    stats.counts.sockets = engine.getPlugin<plugins::NetPlugin>().getOpenSocketCount();
-    stats.counts.bodies = aliveOf("PhysicsBody");
-    stats.counts.contacts = aliveOf("PhysicsContact");
-    stats.counts.particles = aliveOf("Particle");
-    return stats;
+    counts.scenes = engine.getScenes().size();
+    counts.tweens = engine.getTweens().size();
+    counts.timers = engine.getTimers().size();
+    counts.voices = engine.getAudio().getVoiceCount();
+    counts.assetsCached = engine.getAssets().getCachedCount();
+    counts.assetsPending = engine.getAssets().getPendingCount();
+    counts.sockets = engine.getPlugin<plugins::NetPlugin>().getOpenSocketCount();
+    counts.bodies = aliveOf("PhysicsBody");
+    counts.contacts = aliveOf("PhysicsContact");
+    counts.particles = aliveOf("Particle");
 }
 
 } // namespace haylen::debug

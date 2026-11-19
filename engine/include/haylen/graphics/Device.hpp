@@ -38,11 +38,7 @@ class Device final {
     using CaptureCallback = std::function<void(std::optional<std::filesystem::path> path, const std::string& error)>;
 
     // How many objects of one kind the GPU context holds, out of the room it preallocated for them.
-    struct Pool {
-        std::string_view name;
-        int used = 0;
-        int size = 0;
-    };
+    using Pool = gpu::Device::Pool;
 
     explicit Device(std::unique_ptr<gpu::Device> device);
     ~Device();
@@ -85,8 +81,8 @@ class Device final {
     [[nodiscard]] std::string getAdapterName() const;
     [[nodiscard]] int getMaxTextureSize() const noexcept;
 
-    // Lists how many images, buffers, samplers, programs and pipelines exist, out of the room the GPU device holds for them.
-    [[nodiscard]] std::vector<Pool> getPools() const;
+    // Fills `pools` with how many images, buffers, samplers, programs and pipelines exist, out of the room the GPU device holds for them, in the storage it holds.
+    void readPools(std::vector<Pool>& pools) const;
 
     // Destroys GPU resources whose last handle was released, at a point where no pending draw can use them.
     void collectGarbage();

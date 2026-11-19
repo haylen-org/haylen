@@ -21,10 +21,12 @@ ObjectCounter::Registry& ObjectCounter::getRegistry() {
     return registry;
 }
 
+// The registry keeps its counters in order of name, so a reader lists them without sorting.
 ObjectCounter::ObjectCounter(std::string_view counterName, Kind counterKind) : name(counterName), kind(counterKind) {
     Registry& registry = getRegistry();
     const std::scoped_lock lock(registry.mutex);
-    registry.counters.push_back(this);
+    const auto place = std::ranges::upper_bound(registry.counters, name, {}, &ObjectCounter::name);
+    registry.counters.insert(place, this);
 }
 
 ObjectCounter::~ObjectCounter() {
@@ -53,25 +55,30 @@ void ObjectCounter::addBytes(std::int64_t delta) noexcept {
     bytes.fetch_add(delta, std::memory_order_relaxed);
 }
 
-ObjectCounter::Snapshot ObjectCounter::getSnapshot() const noexcept {
-    const std::uint64_t made = created.load(std::memory_order_relaxed);
-    const std::uint64_t gone = destroyed.load(std::memory_order_relaxed);
-    return {.name = name, .kind = kind, .created = made, .destroyed = gone, .alive = made > gone ? made - gone : 0, .bytes = bytes.load(std::memory_order_relaxed)};
+ObjectCounter::Snapshot ObjectCounter::getSnapshot() const {
+    Snapshot snapshot;
+    readSnapshot(snapshot);
+    return snapshot;
 }
 
-std::vector<ObjectCounter::Snapshot> ObjectCounter::list() {
-    std::vector<Snapshot> snapshots;
-    {
-        Registry& registry = getRegistry();
-        const std::scoped_lock lock(registry.mutex);
-        snapshots.reserve(registry.counters.size());
-        for (const ObjectCounter* counter : registry.counters) {
-            snapshots.push_back(counter->getSnapshot());
-        }
-    }
+void ObjectCounter::readSnapshot(Snapshot& snapshot) const {
+    const std::uint64_t made = created.load(std::memory_order_relaxed);
+    const std::uint64_t gone = destroyed.load(std::memory_order_relaxed);
+    snapshot.name = name;
+    snapshot.kind = kind;
+    snapshot.created = made;
+    snapshot.destroyed = gone;
+    snapshot.alive = made > gone ? made - gone : 0;
+    snapshot.bytes = bytes.load(std::memory_order_relaxed);
+}
 
-    std::ranges::sort(snapshots, {}, &Snapshot::name);
-    return snapshots;
+void ObjectCounter::readAll(std::vector<Snapshot>& snapshots) {
+    Registry& registry = getRegistry();
+    const std::scoped_lock lock(registry.mutex);
+    snapshots.resize(registry.counters.size());
+    for (std::size_t index = 0; index < registry.counters.size(); ++index) {
+        registry.counters[index]->readSnapshot(snapshots[index]);
+    }
 }
 
 std::optional<ObjectCounter::Snapshot> ObjectCounter::find(std::string_view counterName) {

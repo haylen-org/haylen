@@ -213,29 +213,41 @@ int SignalLua::setBlocked(lua_State* L) {
     return 0;
 }
 
-std::vector<EventBus::Topic> SignalLua::getNamedSignals(lua_State* L) {
-    std::vector<EventBus::Topic> signals;
+void SignalLua::readNamedSignals(lua_State* L, std::vector<EventBus::Topic>& signals) {
+    std::size_t count = 0;
     if (lua_getfield(L, LUA_REGISTRYINDEX, kNamedSignals) != LUA_TTABLE) {
         lua_pop(L, 1);
-        return signals;
+        signals.clear();
+        return;
     }
 
     lua_pushnil(L);
     while (lua_next(L, -2) != 0) {
         lua_pop(L, 1);
-
-        if (const ScriptedSignal* signal = lua::Userdata::test<ScriptedSignal>(L, -1)) {
-            signals.push_back({.name = signal->name, .listeners = signal->signal.size(), .emissions = signal->signal.getEmissionCount(), .stale = signal->signal.getStaleCount()});
+        const ScriptedSignal* signal = lua::Userdata::test<ScriptedSignal>(L, -1);
+        if (signal == nullptr) {
+            continue;
         }
+
+        if (count == signals.size()) {
+            signals.emplace_back();
+        }
+
+        EventBus::Topic& topic = signals[count++];
+        topic.name = signal->name;
+        topic.listeners = signal->signal.size();
+        topic.emissions = signal->signal.getEmissionCount();
+        topic.stale = signal->signal.getStaleCount();
     }
 
     lua_pop(L, 1);
-    return signals;
+    signals.resize(count);
 }
 
 // Returns `{name, listeners, emissions, stale}` for every named signal that is still alive.
 int SignalLua::list(lua_State* L) {
-    const std::vector<EventBus::Topic> signals = getNamedSignals(L);
+    std::vector<EventBus::Topic> signals;
+    readNamedSignals(L, signals);
     lua_createtable(L, static_cast<int>(signals.size()), 0);
     lua_Integer count = 0;
     for (const EventBus::Topic& signal : signals) {

@@ -83,7 +83,8 @@ TEST_F(VulkanDeviceTest, ResolvesAndKeepsAttachmentsThroughRenderPasses) {
 
 // The framebuffers of destroyed render targets go with them, while the frames in flight may still draw with them.
 TEST_F(VulkanDeviceTest, ReleasesTheFramebuffersOfDestroyedImages) {
-    const std::vector<gpu::Device::Pool> before = device->getPools();
+    std::vector<gpu::Device::Pool> before;
+    device->readPools(before);
 
     for (int frame = 0; frame < 32; ++frame) {
         const gpu::Device::Image target = device->makeImage({.width = kSize, .height = kSize, .kind = gpu::Device::ImageKind::RenderTarget});
@@ -94,7 +95,8 @@ TEST_F(VulkanDeviceTest, ReleasesTheFramebuffersOfDestroyedImages) {
 
     device->commit();
 
-    const std::vector<gpu::Device::Pool> after = device->getPools();
+    std::vector<gpu::Device::Pool> after;
+    device->readPools(after);
     ASSERT_EQ(after.size(), before.size());
 
     for (std::size_t index = 0; index < after.size(); ++index) {

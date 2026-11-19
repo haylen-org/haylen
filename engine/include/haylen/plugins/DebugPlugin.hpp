@@ -33,7 +33,8 @@
 
 namespace haylen::debug {
 class InspectorWindow;
-}
+class OverlayWindow;
+} // namespace haylen::debug
 
 namespace haylen::platform {
 class DevelopmentSession;
@@ -100,9 +101,9 @@ class DebugPlugin final : public Plugin {
     void setDrawing(std::string_view name, bool enabled);
     [[nodiscard]] bool isDrawing(std::string_view name) const;
 
-    // The names of the drawings that are on, and of every drawing with a drawer, each in order of name.
+    // The names of the drawings that are on, and of every drawing with a drawer, each in order of name. The names of every drawing fill the vector of the reader in the storage it holds.
     [[nodiscard]] std::vector<std::string> getDrawings() const;
-    [[nodiscard]] std::vector<std::string> getDrawingNames() const;
+    void readDrawingNames(std::vector<std::string>& names) const;
 
     // Adds a drawer to a drawing by name, which several drawers may share, and disconnecting the connection removes it.
     core::Connection addDrawer(std::string name, Drawer drawer);
@@ -120,16 +121,17 @@ class DebugPlugin final : public Plugin {
         return objectEvents;
     }
 
-    // Takes a snapshot of the engine statistics, with the rendering of the last frame the renderer finished.
+    // Takes a snapshot of the engine statistics, with the rendering of the last frame the renderer finished, or takes it again into one that a reader keeps.
     [[nodiscard]] debug::Stats captureStats(core::Engine& engine) const;
+    void updateStats(core::Engine& engine, debug::Stats& stats) const;
 
     // Adds a monitor sampled once per frame, replacing the monitor with the same name. Disconnecting the connection removes the monitor, and blocking it holds the value and history without sampling.
     core::Connection addMonitor(std::string name, debug::Monitor::Sampler sampler);
     bool removeMonitor(std::string_view name);
-    [[nodiscard]] std::vector<std::shared_ptr<debug::Monitor>> getMonitors() const;
+    void readMonitors(std::vector<std::shared_ptr<debug::Monitor>>& registered) const;
 
-    // The latest printed lines, oldest first, from any thread that logged.
-    [[nodiscard]] std::vector<debug::LogLine> getRecentLog() const;
+    // Fills `recent` with the latest printed lines, oldest first, from any thread that logged, in the storage it holds.
+    void readRecentLog(std::vector<debug::LogLine>& recent) const;
 
     // Starts recording the scopes and frames of the profiler, the jobs of the workers and the time of the GPU into a new trace, for a number of frames or until it stops. Starting while a trace records throws `std::logic_error`.
     void startTrace(std::optional<int> frames, std::size_t capacity);
@@ -255,6 +257,7 @@ class DebugPlugin final : public Plugin {
     debug::StatsDisplay statsDisplay;
     debug::Console console;
     std::unique_ptr<debug::InspectorWindow> inspectorWindow;
+    std::unique_ptr<debug::OverlayWindow> overlayWindow;
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> inspectorKey = input::Key::F2;
     core::RingBuffer<debug::Breadcrumb> breadcrumbs{kBreadcrumbs};

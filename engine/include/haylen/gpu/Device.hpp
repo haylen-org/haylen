@@ -592,7 +592,9 @@ class Device {
 
     // The seconds the GPU took for the last frame it finished, where the API measures it.
     [[nodiscard]] virtual std::optional<double> getGpuFrameSeconds() const noexcept = 0;
-    [[nodiscard]] virtual std::vector<Pool> getPools() const = 0;
+
+    // Fills `pools` with the pools of the device in the storage it holds, so a reader that keeps the vector allocates nothing once it grew.
+    virtual void readPools(std::vector<Pool>& pools) const = 0;
 
     // Whether the device stopped working, such as after a reset of the GPU or a lost context, after which the platform creates a new device and the app starts again.
     [[nodiscard]] virtual bool isLost() const noexcept = 0;

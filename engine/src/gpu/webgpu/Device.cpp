@@ -125,10 +125,15 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
     return timer ? timer->getSeconds() : std::nullopt;
 }
 
-std::vector<gpu::Device::Pool> Device::getPools() const {
-    return {
-        {.name = "buffers", .used = buffers.size(), .size = buffers.capacity()}, {.name = "images", .used = images.size(), .size = images.capacity()}, {.name = "samplers", .used = samplers.size(), .size = samplers.capacity()}, {.name = "programs", .used = programs.size(), .size = programs.capacity()}, {.name = "pipelines", .used = pipelines.size(), .size = pipelines.capacity()}, {.name = "bindGroups", .used = static_cast<int>(imageGroups.size()), .size = static_cast<int>(imageGroups.capacity())},
-    };
+void Device::readPools(std::vector<Pool>& pools) const {
+    pools.assign({
+        {.name = "buffers", .used = buffers.size(), .size = buffers.capacity()},
+        {.name = "images", .used = images.size(), .size = images.capacity()},
+        {.name = "samplers", .used = samplers.size(), .size = samplers.capacity()},
+        {.name = "programs", .used = programs.size(), .size = programs.capacity()},
+        {.name = "pipelines", .used = pipelines.size(), .size = pipelines.capacity()},
+        {.name = "bindGroups", .used = static_cast<int>(imageGroups.size()), .size = static_cast<int>(imageGroups.capacity())},
+    });
 }
 
 bool Device::isLost() const noexcept {

@@ -468,9 +468,11 @@ TEST_F(Graphics2DLuaTest, KeepsGpuPoolsSteadyAcrossFrames) {
 
     // Both measures fall at the same point between two transitions, after every transition kind ran once.
     fixture.frames(90);
-    const std::vector<graphics::Device::Pool> warm = fixture.engine().getGraphics().getPools();
+    std::vector<graphics::Device::Pool> warm;
+    fixture.engine().getGraphics().readPools(warm);
     fixture.frames(240);
-    const std::vector<graphics::Device::Pool> later = fixture.engine().getGraphics().getPools();
+    std::vector<graphics::Device::Pool> later;
+    fixture.engine().getGraphics().readPools(later);
     ASSERT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_EQ(warm.size(), later.size());
 

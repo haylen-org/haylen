@@ -62,10 +62,14 @@ std::optional<double> NullDevice::getGpuFrameSeconds() const noexcept {
     return std::nullopt;
 }
 
-std::vector<Device::Pool> NullDevice::getPools() const {
-    return {
-        {.name = "images", .used = static_cast<int>(images.size()), .size = kImagePoolSize}, {.name = "buffers", .used = static_cast<int>(buffers.size()), .size = kBufferPoolSize}, {.name = "samplers", .used = static_cast<int>(samplers.size()), .size = kSamplerPoolSize}, {.name = "programs", .used = static_cast<int>(programs.size()), .size = kProgramPoolSize}, {.name = "pipelines", .used = static_cast<int>(pipelines.size()), .size = kPipelinePoolSize},
-    };
+void NullDevice::readPools(std::vector<Pool>& pools) const {
+    pools.assign({
+        {.name = "images", .used = static_cast<int>(images.size()), .size = kImagePoolSize},
+        {.name = "buffers", .used = static_cast<int>(buffers.size()), .size = kBufferPoolSize},
+        {.name = "samplers", .used = static_cast<int>(samplers.size()), .size = kSamplerPoolSize},
+        {.name = "programs", .used = static_cast<int>(programs.size()), .size = kProgramPoolSize},
+        {.name = "pipelines", .used = static_cast<int>(pipelines.size()), .size = kPipelinePoolSize},
+    });
 }
 
 bool NullDevice::isLost() const noexcept {

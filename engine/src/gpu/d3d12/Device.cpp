@@ -196,9 +196,9 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
     return timer->getSeconds();
 }
 
-std::vector<gpu::Device::Pool> Device::getPools() const {
+void Device::readPools(std::vector<Pool>& pools) const {
     const auto pool = [](std::string_view name, int used, int size) { return Pool{.name = name, .used = used, .size = size}; };
-    return {pool("images", images.size(), images.capacity()), pool("buffers", buffers.size(), buffers.capacity()), pool("samplers", samplers.size(), samplers.capacity()), pool("programs", programs.size(), programs.capacity()), pool("pipelines", pipelines.size(), pipelines.capacity())};
+    pools.assign({pool("images", images.size(), images.capacity()), pool("buffers", buffers.size(), buffers.capacity()), pool("samplers", samplers.size(), samplers.capacity()), pool("programs", programs.size(), programs.capacity()), pool("pipelines", pipelines.size(), pipelines.capacity())});
 }
 
 bool Device::isLost() const noexcept {

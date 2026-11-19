@@ -32,6 +32,12 @@ class DebugDrawingTest : public ::testing::Test {
         return fixture.engine().getPlugin<plugins::DebugPlugin>();
     }
 
+    [[nodiscard]] std::vector<std::string> readDrawingNames() {
+        std::vector<std::string> names;
+        getPlugin().readDrawingNames(names);
+        return names;
+    }
+
     void press(input::Key key) {
         platform::Event event;
         event.type = platform::Event::Type::KeyDown;
@@ -70,7 +76,7 @@ TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
 
     (void)drawFrame(texture);
     EXPECT_TRUE(kinds.empty());
-    EXPECT_EQ(plugin.getDrawingNames(), (std::vector<std::string>{"bounds", "marks", "physics"}));
+    EXPECT_EQ(readDrawingNames(), (std::vector<std::string>{"bounds", "marks", "physics"}));
 
     plugin.setDrawing("marks", true);
     (void)drawFrame(texture);
@@ -81,7 +87,7 @@ TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
     press(input::Key::F4);
     EXPECT_TRUE(plugin.getDrawings().empty());
     press(input::Key::F4);
-    EXPECT_EQ(plugin.getDrawings(), plugin.getDrawingNames());
+    EXPECT_EQ(plugin.getDrawings(), readDrawingNames());
     plugin.setDrawKey(std::nullopt);
     press(input::Key::F4);
     EXPECT_EQ(plugin.getDrawings().size(), 3U);
@@ -90,7 +96,7 @@ TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
     drawer.disconnect();
     (void)drawFrame(texture);
     EXPECT_TRUE(kinds.empty());
-    EXPECT_EQ(plugin.getDrawingNames(), (std::vector<std::string>{"bounds", "physics"}));
+    EXPECT_EQ(readDrawingNames(), (std::vector<std::string>{"bounds", "physics"}));
 }
 
 // The bounds outline every textured quad and name each sprite after the path of the texture the assets loaded it from.

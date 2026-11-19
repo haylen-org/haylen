@@ -421,7 +421,8 @@ int AudioLua::buses(lua_State* L) {
 
 // Lists every bus in alphabetical order as `{name, voices, playing, paused, processing}`.
 int AudioLua::busStats(lua_State* L) {
-    const std::vector<Mixer::BusStats> stats = getMixer(L).getBusStats();
+    std::vector<Mixer::BusStats> stats;
+    getMixer(L).readBusStats(stats);
     lua_createtable(L, static_cast<int>(stats.size()), 0);
     lua_Integer position = 1;
     for (const Mixer::BusStats& bus : stats) {

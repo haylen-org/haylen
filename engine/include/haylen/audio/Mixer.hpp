@@ -242,7 +242,9 @@ class Mixer final {
     void setBusProcessMode(std::string_view bus, core::ProcessMode mode);
     [[nodiscard]] core::ProcessMode getBusProcessMode(std::string_view bus) const;
     [[nodiscard]] std::vector<std::string> getBuses() const;
-    [[nodiscard]] std::vector<BusStats> getBusStats() const;
+
+    // Fills `stats` with the statistics of every bus in the storage it holds, so a reader that keeps the vector allocates nothing once it grew.
+    void readBusStats(std::vector<BusStats>& stats) const;
 
     // Applies the pause of the engine to every voice by its process mode. The engine calls it whenever its pause changes.
     void setProcessPaused(bool value);

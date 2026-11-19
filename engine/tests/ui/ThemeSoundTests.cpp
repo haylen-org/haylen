@@ -53,7 +53,9 @@ class ThemeSoundTest : public ::testing::Test, public test::UiFixture {
     }
 
     [[nodiscard]] std::size_t playing(std::string_view bus) {
-        for (const audio::Mixer::BusStats& stats : getEngine().getAudio().getBusStats()) {
+        std::vector<audio::Mixer::BusStats> buses;
+        getEngine().getAudio().readBusStats(buses);
+        for (const audio::Mixer::BusStats& stats : buses) {
             if (stats.name == bus) {
                 return stats.playing;
             }

@@ -53,8 +53,8 @@ class Profiler final {
     // The frames per second over the history, or 0 before the second frame.
     [[nodiscard]] double getFramesPerSecond() const noexcept;
 
-    // Frame times of the history, oldest first.
-    [[nodiscard]] std::vector<float> getFrameHistory() const;
+    // Fills `frames` with the frame times of the history, oldest first, in the storage it holds, so a reader that keeps the vector allocates nothing once it grew.
+    void readFrameHistory(std::vector<float>& frames) const;
 
     // Records every scope that closes and every frame into the recorder, until it is set to null.
     void setTraceRecorder(std::shared_ptr<TraceRecorder> value) noexcept {

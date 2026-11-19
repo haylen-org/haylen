@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -36,7 +37,7 @@ namespace haylen::debug {
 
 class Profiler;
 
-// Draws the full debug overlay window with ImGui: frame times, profiler scopes, the scenes on the stack, the debug drawings, rendering, memory, GPU pools, counters, the reads and downloads of the content, object counts, signals and event listeners, monitors and the recent log.
+// Draws the full debug overlay window with ImGui: frame times, profiler scopes, the scenes on the stack, the debug drawings, rendering, memory, GPU pools, counters, the reads and downloads of the content, object counts, signals and event listeners, monitors and the recent log. It reads what it shows into storage it keeps and writes its numbers into fixed buffers, so a frame that shows what the frame before it showed allocates nothing.
 class OverlayWindow final {
   public:
     static constexpr float kWidth = 720.0F;
@@ -44,25 +45,40 @@ class OverlayWindow final {
     static constexpr std::string_view kDrawingsHint = "Each drawing that is on draws over every canvas of the app.";
 
     // Draws the window and returns `false` once the player closed it.
-    static bool draw(core::Engine& engine, ui::Backend& backend, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log);
+    bool draw(core::Engine& engine, ui::Backend& backend, plugins::DebugPlugin& plugin);
 
   private:
+    // A text of a number of bytes, such as `1.5 MB`, which every count of bytes fits.
+    using ByteText = std::array<char, 32>;
+
+    // A label of a row, such as the name of a pool or a monitor with its value, cut to the room it has.
+    using Label = std::array<char, 160>;
+
     [[nodiscard]] static ImVec4 getLevelColor(core::Log::Level level) noexcept;
-    [[nodiscard]] static std::string formatBytes(std::int64_t bytes);
+    static const char* formatBytes(ByteText& text, std::int64_t bytes) noexcept;
     [[nodiscard]] static std::size_t countStale(const std::vector<core::EventBus::Topic>& topics) noexcept;
 
-    static void drawFrame(const Profiler& profiler, const Stats::Frame& frame);
+    void drawFrame(const Stats::Frame& frame);
     static void drawEventLoop(const Stats::EventLoop& loop);
     static void drawProfiler(const Profiler& profiler);
     static void drawScenes(const core::SceneManager& scenes);
-    static void drawDrawings(plugins::DebugPlugin& plugin);
+    void drawDrawings(plugins::DebugPlugin& plugin);
     static void drawRendering(const graphics2d::Renderer::Stats& rendering);
-    static void drawResources(const Stats& stats);
+    void drawResources();
     static void drawContent(const content::ContentManager& content);
     static void drawObjects(const std::vector<ObjectCounter::Snapshot>& objects);
     static void drawTopics(const char* id, const std::vector<core::EventBus::Topic>& topics);
-    static void drawMonitors(const std::vector<std::shared_ptr<Monitor>>& monitors);
-    static void drawLog(const std::vector<LogLine>& log);
+    void drawMonitors();
+    void drawLog();
+
+    Stats stats;
+    std::vector<float> history;
+    std::vector<std::shared_ptr<Monitor>> monitors;
+    std::vector<LogLine> log;
+    std::vector<core::EventBus::Topic> events;
+    std::vector<core::EventBus::Topic> signals;
+    std::vector<std::string> drawingNames;
+    std::string voices;
 };
 
 } // namespace haylen::debug

@@ -12,7 +12,8 @@ namespace haylen::audio {
 class AudioPauseTest : public MixerFixture {
   protected:
     [[nodiscard]] Mixer::BusStats statsOf(const std::string& bus) const {
-        const std::vector<Mixer::BusStats> stats = mixer.getBusStats();
+        std::vector<Mixer::BusStats> stats;
+        mixer.readBusStats(stats);
         const auto found = std::ranges::find_if(stats, [&bus](const Mixer::BusStats& entry) { return entry.name == bus; });
         if (found == stats.end()) {
             throw std::runtime_error("The mixer has no bus \"" + bus + "\".");
@@ -92,7 +93,9 @@ TEST_F(AudioPauseTest, PausingEveryVoiceKeepsTheVoicesTheAppPaused) {
     EXPECT_EQ(settledPeak(256), 0.0F);
     const Mixer::VoiceId later = mixer.play(tone, {.loop = true});
     EXPECT_NEAR(settledPeak(256), 0.2F, 0.01F);
-    EXPECT_EQ(mixer.getBusStats().size(), 5U);
+    std::vector<Mixer::BusStats> buses;
+    mixer.readBusStats(buses);
+    EXPECT_EQ(buses.size(), 5U);
 
     // Each reason holds on its own, so ending one pause leaves what another reason or the app paused.
     mixer.pauseAll(Mixer::PauseReason::Interruption);

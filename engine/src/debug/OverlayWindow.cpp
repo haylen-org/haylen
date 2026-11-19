@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include <string>
 
 #include "core/SignalLua.hpp"
@@ -34,23 +35,25 @@ ImVec4 OverlayWindow::getLevelColor(core::Log::Level level) noexcept {
     return DebugWindow::kTextColor;
 }
 
-std::string OverlayWindow::formatBytes(std::int64_t bytes) {
+// Writes the text into the buffer, which holds the longest count of bytes, and returns it.
+const char* OverlayWindow::formatBytes(ByteText& text, std::int64_t bytes) noexcept {
     const auto value = static_cast<double>(bytes);
+    std::format_to_n_result<char*> written{};
     if (value >= 1024.0 * 1024.0) {
-        return std::format("{:.1f} MB", value / (1024.0 * 1024.0));
+        written = std::format_to_n(text.data(), text.size() - 1, "{:.1f} MB", value / (1024.0 * 1024.0));
+    } else if (value >= 1024.0) {
+        written = std::format_to_n(text.data(), text.size() - 1, "{:.1f} KB", value / 1024.0);
+    } else {
+        written = std::format_to_n(text.data(), text.size() - 1, "{} B", bytes);
     }
 
-    if (value >= 1024.0) {
-        return std::format("{:.1f} KB", value / 1024.0);
-    }
-
-    return std::format("{} B", bytes);
+    *written.out = '\0';
+    return text.data();
 }
 
-void OverlayWindow::drawFrame(const Profiler& profiler, const Stats::Frame& frame) {
+void OverlayWindow::drawFrame(const Stats::Frame& frame) {
     ImGui::TextWrapped("%.0f FPS, %.2f ms average, %.2f ms last frame", frame.fps, frame.average, frame.milliseconds);
     ImGui::TextWrapped("Fastest %.2f ms, slowest %.2f ms, 1%% low %.2f ms, %u fixed steps", frame.minimum, frame.maximum, frame.onePercentLow, frame.fixedSteps);
-    const std::vector<float> history = profiler.getFrameHistory();
     ImGui::PlotLines("##frames", history.data(), static_cast<int>(history.size()), 0, nullptr, 0.0F, 50.0F, {-1.0F, 80.0F});
 }
 
@@ -96,28 +99,35 @@ void OverlayWindow::drawRendering(const graphics2d::Renderer::Stats& rendering) 
     ImGui::TextWrapped("Draw calls %zu, passes %zu, canvases %zu", rendering.drawCalls, rendering.passes, rendering.canvases);
     ImGui::TextWrapped("Sprites %zu, instances %zu, lights %zu, occluders %zu, shadows %zu", rendering.sprites, rendering.instances, rendering.lights, rendering.occluders, rendering.shadows);
     ImGui::TextWrapped("Vertices %zu, indices %zu, texture switches %zu", rendering.vertices, rendering.indices, rendering.textureSwitches);
-    ImGui::TextWrapped("Uploaded %s", formatBytes(static_cast<std::int64_t>(rendering.uploadedBytes)).c_str());
+    ByteText uploaded{};
+    ImGui::TextWrapped("Uploaded %s", formatBytes(uploaded, static_cast<std::int64_t>(rendering.uploadedBytes)));
 }
 
-void OverlayWindow::drawResources(const Stats& stats) {
-    ImGui::TextWrapped("Lua %s, textures %s, render targets %s, static batches %s, render buffers %s, sounds %s", formatBytes(static_cast<std::int64_t>(stats.memory.lua)).c_str(), formatBytes(stats.memory.textures).c_str(), formatBytes(stats.memory.targets).c_str(), formatBytes(stats.memory.batches).c_str(), formatBytes(stats.memory.buffers).c_str(), formatBytes(stats.memory.sounds).c_str());
+void OverlayWindow::drawResources() {
+    std::array<ByteText, 6> bytes{};
+    ImGui::TextWrapped("Lua %s, textures %s, render targets %s, static batches %s, render buffers %s, sounds %s", formatBytes(bytes[0], static_cast<std::int64_t>(stats.memory.lua)), formatBytes(bytes[1], stats.memory.textures), formatBytes(bytes[2], stats.memory.targets), formatBytes(bytes[3], stats.memory.batches), formatBytes(bytes[4], stats.memory.buffers), formatBytes(bytes[5], stats.memory.sounds));
     const Stats::Counts& counts = stats.counts;
     ImGui::TextWrapped("Scenes %zu, tweens %zu, timers %zu, voices %zu, sockets %zu", counts.scenes, counts.tweens, counts.timers, counts.voices, counts.sockets);
     ImGui::TextWrapped("Assets cached %zu, loading %zu", counts.assetsCached, counts.assetsPending);
-    std::string voices = "Voices by bus:";
+
+    // The text of the buses keeps its storage, so it formats in place.
+    voices = "Voices by bus:";
     for (const audio::Mixer::BusStats& bus : stats.buses) {
-        voices += std::format(" {} {}{}", bus.name, bus.voices, bus.processing ? "" : " (paused)");
+        std::format_to(std::back_inserter(voices), " {} {}{}", bus.name, bus.voices, bus.processing ? "" : " (paused)");
     }
 
     ImGui::TextWrapped("%s", voices.c_str());
+
     ImGui::TextWrapped("Bodies %llu, contacts %llu, particles %llu", static_cast<unsigned long long>(counts.bodies), static_cast<unsigned long long>(counts.contacts), static_cast<unsigned long long>(counts.particles));
 
     // A pool that fills up makes the next GPU object fail, so the bar turns red past nine tenths.
     for (const graphics::Device::Pool& pool : stats.pools) {
         const float fraction = pool.size > 0 ? static_cast<float>(pool.used) / static_cast<float>(pool.size) : 0.0F;
-        const std::string label = std::format("Pool \"{}\" {} / {}", pool.name, pool.used, pool.size);
+        Label label{};
+        const auto written = std::format_to_n(label.data(), label.size() - 1, "Pool \"{}\" {} / {}", pool.name, pool.used, pool.size);
+        *written.out = '\0';
         ImGui::PushStyleColor(ImGuiCol_PlotHistogram, fraction > 0.9F ? DebugWindow::kErrorColor : DebugWindow::kAccentColor);
-        ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, label.c_str());
+        ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, label.data());
         ImGui::PopStyleColor();
     }
 }
@@ -125,13 +135,14 @@ void OverlayWindow::drawResources(const Stats& stats) {
 void OverlayWindow::drawContent(const content::ContentManager& content) {
     const content::ContentManager::Statistics statistics = content.getStatistics();
     ImGui::TextWrapped("Generation %llu, %llu files, %s", static_cast<unsigned long long>(statistics.generation), static_cast<unsigned long long>(statistics.catalogFiles), content.isProtected() ? "protected release" : "folder of the app");
-    ImGui::TextWrapped("Shards open %llu, reads running %llu, chunks decoded %llu (%s in %.1f ms)", static_cast<unsigned long long>(statistics.openShards), static_cast<unsigned long long>(statistics.activeReads), static_cast<unsigned long long>(statistics.decodedChunks), formatBytes(static_cast<std::int64_t>(statistics.decodedBytes)).c_str(), statistics.decodeMilliseconds);
+    std::array<ByteText, 4> bytes{};
+    ImGui::TextWrapped("Shards open %llu, reads running %llu, chunks decoded %llu (%s in %.1f ms)", static_cast<unsigned long long>(statistics.openShards), static_cast<unsigned long long>(statistics.activeReads), static_cast<unsigned long long>(statistics.decodedChunks), formatBytes(bytes[0], static_cast<std::int64_t>(statistics.decodedBytes)), statistics.decodeMilliseconds);
     ImGui::TextWrapped("Shards installed %llu, from the store or the server %llu, chunks missing %llu, of them prefetched %llu", static_cast<unsigned long long>(statistics.installedShards), static_cast<unsigned long long>(statistics.remoteShards), static_cast<unsigned long long>(statistics.missingChunks), static_cast<unsigned long long>(statistics.pendingPrefetch));
-    ImGui::TextWrapped("Store %llu records (%s)", static_cast<unsigned long long>(statistics.storedRecords), formatBytes(static_cast<std::int64_t>(statistics.storedBytes)).c_str());
-    ImGui::TextWrapped("Downloaded %s in %llu requests, %s/s, %llu records waiting, %llu transfers, %llu resumed", formatBytes(static_cast<std::int64_t>(statistics.downloadedBytes)).c_str(), static_cast<unsigned long long>(statistics.requests), formatBytes(static_cast<std::int64_t>(statistics.downloadRate)).c_str(), static_cast<unsigned long long>(statistics.wantedRecords), static_cast<unsigned long long>(statistics.activeTransfers), static_cast<unsigned long long>(statistics.resumedRecords));
+    ImGui::TextWrapped("Store %llu records (%s)", static_cast<unsigned long long>(statistics.storedRecords), formatBytes(bytes[1], static_cast<std::int64_t>(statistics.storedBytes)));
+    ImGui::TextWrapped("Downloaded %s in %llu requests, %s/s, %llu records waiting, %llu transfers, %llu resumed", formatBytes(bytes[2], static_cast<std::int64_t>(statistics.downloadedBytes)), static_cast<unsigned long long>(statistics.requests), formatBytes(bytes[3], static_cast<std::int64_t>(statistics.downloadRate)), static_cast<unsigned long long>(statistics.wantedRecords), static_cast<unsigned long long>(statistics.activeTransfers), static_cast<unsigned long long>(statistics.resumedRecords));
 
     if (statistics.reusedBytes > 0) {
-        ImGui::TextWrapped("The offered update reuses %s that the device holds", formatBytes(static_cast<std::int64_t>(statistics.reusedBytes)).c_str());
+        ImGui::TextWrapped("The offered update reuses %s that the device holds", formatBytes(bytes[0], static_cast<std::int64_t>(statistics.reusedBytes)));
     }
 }
 
@@ -164,7 +175,8 @@ void OverlayWindow::drawObjects(const std::vector<ObjectCounter::Snapshot>& obje
         ImGui::TableNextColumn();
 
         if (object.bytes > 0) {
-            ImGui::TextUnformatted(formatBytes(object.bytes).c_str());
+            ByteText bytes{};
+            ImGui::TextUnformatted(formatBytes(bytes, object.bytes));
         }
     }
 
@@ -194,9 +206,11 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
         ImGui::TableNextColumn();
         ImGui::Text("%zu. %s", index + 1, scene.getName().c_str());
         ImGui::TableNextColumn();
-        ImGui::TextUnformatted(std::string(core::Scene::stateName(scene.getState())).c_str());
+        const std::string_view state = core::Scene::stateName(scene.getState());
+        ImGui::TextUnformatted(state.data(), state.data() + state.size());
         ImGui::TableNextColumn();
-        ImGui::TextUnformatted(std::string(lua::EnumNames<core::ProcessMode>::name(scenes.getProcessMode(index))).c_str());
+        const std::string_view mode = lua::EnumNames<core::ProcessMode>::name(scenes.getProcessMode(index));
+        ImGui::TextUnformatted(mode.data(), mode.data() + mode.size());
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(scene.isTransparent() ? "Yes" : "No");
     }
@@ -211,7 +225,8 @@ void OverlayWindow::drawDrawings(plugins::DebugPlugin& plugin) {
     ImGui::PopStyleColor();
 
     ImGui::PushID("drawings");
-    for (const std::string& name : plugin.getDrawingNames()) {
+    plugin.readDrawingNames(drawingNames);
+    for (const std::string& name : drawingNames) {
         bool enabled = plugin.isDrawing(name);
         if (ImGui::Checkbox(name.c_str(), &enabled)) {
             plugin.setDrawing(name, enabled);
@@ -263,20 +278,25 @@ void OverlayWindow::drawTopics(const char* id, const std::vector<core::EventBus:
     ImGui::EndTable();
 }
 
-void OverlayWindow::drawMonitors(const std::vector<std::shared_ptr<Monitor>>& monitors) {
+// Each plot takes its id from its monitor inside the section, and the history of each monitor in turn reads into the one vector the window keeps.
+void OverlayWindow::drawMonitors() {
     for (const std::shared_ptr<Monitor>& monitor : monitors) {
-        const std::vector<float> history = monitor->getHistory();
+        monitor->readHistory(history);
         if (history.empty()) {
             continue;
         }
 
         const auto [lowest, highest] = std::ranges::minmax(history);
-        const std::string label = std::format("{} {:.3g}", monitor->getName(), monitor->getValue());
-        ImGui::PlotLines(("##" + monitor->getName()).c_str(), history.data(), static_cast<int>(history.size()), 0, label.c_str(), lowest, std::max(highest, lowest + 1.0F), {-1.0F, 48.0F});
+        Label label{};
+        const auto written = std::format_to_n(label.data(), label.size() - 1, "{} {:.3g}", monitor->getName(), monitor->getValue());
+        *written.out = '\0';
+        ImGui::PushID(monitor.get());
+        ImGui::PlotLines("##monitor", history.data(), static_cast<int>(history.size()), 0, label.data(), lowest, std::max(highest, lowest + 1.0F), {-1.0F, 48.0F});
+        ImGui::PopID();
     }
 }
 
-void OverlayWindow::drawLog(const std::vector<LogLine>& log) {
+void OverlayWindow::drawLog() {
     if (ImGui::BeginChild("##log", {0.0F, 220.0F}, ImGuiChildFlags_Borders)) {
         for (const LogLine& line : log) {
             ImGui::PushStyleColor(ImGuiCol_Text, getLevelColor(line.level));
@@ -292,7 +312,7 @@ void OverlayWindow::drawLog(const std::vector<LogLine>& log) {
     ImGui::EndChild();
 }
 
-bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats& stats, const std::vector<std::shared_ptr<Monitor>>& monitors, const std::vector<LogLine>& log) {
+bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, plugins::DebugPlugin& plugin) {
     const math::Rect safe = backend.getSafeRect();
     const math::Rect initial{safe.x + DebugWindow::kMargin, safe.y + DebugWindow::kMargin, std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F), std::min(kHeight, safe.height - DebugWindow::kMargin * 2.0F)};
     bool open = true;
@@ -301,12 +321,17 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats
         return open;
     }
 
+    plugin.updateStats(engine, stats);
+    engine.getProfiler().readFrameHistory(history);
+    plugin.readMonitors(monitors);
+    plugin.readRecentLog(log);
+
     // Listeners whose owner died stay connected until their topic emits again, so the warning shows even while their section is closed.
     const Profiler& profiler = engine.getProfiler();
-    const std::vector<core::EventBus::Topic> events = engine.getEvents().getTopics();
-    const std::vector<core::EventBus::Topic> signals = core::SignalLua::getNamedSignals(engine.getLuaState());
+    engine.getEvents().readTopics(events);
+    core::SignalLua::readNamedSignals(engine.getLuaState(), signals);
     const std::size_t stale = countStale(events) + countStale(signals);
-    drawFrame(profiler, stats.frame);
+    drawFrame(stats.frame);
     drawEventLoop(stats.eventLoop);
 
     if (stale > 0) {
@@ -322,7 +347,7 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats
     }
 
     if (ImGui::CollapsingHeader("Drawings", ImGuiTreeNodeFlags_DefaultOpen)) {
-        drawDrawings(engine.getPlugin<plugins::DebugPlugin>());
+        drawDrawings(plugin);
     }
 
     if (ImGui::CollapsingHeader("Rendering", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -330,7 +355,7 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats
     }
 
     if (ImGui::CollapsingHeader("Memory, counters and GPU pools", ImGuiTreeNodeFlags_DefaultOpen)) {
-        drawResources(stats);
+        drawResources();
     }
 
     if (ImGui::CollapsingHeader("Content")) {
@@ -347,13 +372,15 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, const Stats
     }
 
     if (!monitors.empty() && ImGui::CollapsingHeader("Monitors", ImGuiTreeNodeFlags_DefaultOpen)) {
-        drawMonitors(monitors);
+        drawMonitors();
     }
 
     if (ImGui::CollapsingHeader("Log", ImGuiTreeNodeFlags_DefaultOpen)) {
-        drawLog(log);
+        drawLog();
     }
 
+    // The monitors hold the functions of the app that sample them, so the window lets go of them before the Lua state can close, while their vector keeps its storage.
+    monitors.clear();
     DebugWindow::end();
     return open;
 }

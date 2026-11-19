@@ -115,7 +115,9 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     double now = 0.0;
     Profiler profiler(4, [&now] { return now; });
     EXPECT_EQ(profiler.getAverageFrameMilliseconds(), 0.0);
-    EXPECT_TRUE(profiler.getFrameHistory().empty());
+    std::vector<float> history;
+    profiler.readFrameHistory(history);
+    EXPECT_TRUE(history.empty());
 
     for (int frame = 1; frame <= 6; ++frame) {
         profiler.beginFrame(0.0);
@@ -123,7 +125,7 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
         profiler.endFrame();
     }
 
-    const std::vector<float> history = profiler.getFrameHistory();
+    profiler.readFrameHistory(history);
     ASSERT_EQ(history.size(), 4U);
     EXPECT_NEAR(history.front(), 3.0F, 1e-4F);
     EXPECT_NEAR(history.back(), 6.0F, 1e-4F);
@@ -273,7 +275,8 @@ TEST(DebugPluginTest, CyclesTheStatisticsAndKeepsRecentLines) {
     test::EngineFixture fixture;
     plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
     core::Log::warning("wolves nearby");
-    const std::vector<LogLine> recent = plugin.getRecentLog();
+    std::vector<LogLine> recent;
+    plugin.readRecentLog(recent);
     ASSERT_FALSE(recent.empty());
     EXPECT_EQ(recent.back().level, core::Log::Level::Warning);
     EXPECT_NE(recent.back().text.find("wolves nearby"), std::string::npos);
@@ -311,7 +314,8 @@ TEST(DebugPluginTest, CyclesTheStatisticsAndKeepsRecentLines) {
         core::Log::info("line {}", line);
     }
 
-    EXPECT_EQ(plugin.getRecentLog().size(), plugins::DebugPlugin::kLogLines);
+    plugin.readRecentLog(recent);
+    EXPECT_EQ(recent.size(), plugins::DebugPlugin::kLogLines);
 }
 
 TEST(DebugPluginTest, ProfilesFromLua) {

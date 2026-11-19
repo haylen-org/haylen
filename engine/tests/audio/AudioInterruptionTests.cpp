@@ -37,7 +37,9 @@ TEST_F(AudioInterruptionTest, InterruptionsStopTheOutputUntilTheyEnd) {
     mixer.beginInterruption();
     EXPECT_TRUE(mixer.isInterrupted());
     EXPECT_EQ(peak(256), 0.0F);
-    EXPECT_EQ(mixer.getBusStats()[3].paused, 2U);
+    std::vector<Mixer::BusStats> buses;
+    mixer.readBusStats(buses);
+    EXPECT_EQ(buses[3].paused, 2U);
 
     // The output stays stopped while the app is in the background, even after the interruption ends.
     mixer.suspend();

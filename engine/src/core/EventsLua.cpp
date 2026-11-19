@@ -180,7 +180,8 @@ int EventsLua::postTo(lua_State* L) {
 
 // Returns `{name, listeners, emissions, stale}` for every event that has ever had a listener.
 int EventsLua::topics(lua_State* L) {
-    const std::vector<EventBus::Topic> topics = lua::Runtime::getEngine(L).getEvents().getTopics();
+    std::vector<EventBus::Topic> topics;
+    lua::Runtime::getEngine(L).getEvents().readTopics(topics);
     lua_createtable(L, static_cast<int>(topics.size()), 0);
     lua_Integer index = 0;
     for (const EventBus::Topic& topic : topics) {

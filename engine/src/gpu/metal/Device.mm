@@ -637,10 +637,14 @@ std::optional<double> Device::getGpuFrameSeconds() const noexcept {
     return seconds > 0.0 ? std::optional<double>(seconds) : std::nullopt;
 }
 
-std::vector<gpu::Device::Pool> Device::getPools() const {
-    return {
-        {.name = "images", .used = native->images.size(), .size = native->images.capacity()}, {.name = "buffers", .used = native->buffers.size(), .size = native->buffers.capacity()}, {.name = "samplers", .used = native->samplers.size(), .size = native->samplers.capacity()}, {.name = "programs", .used = native->programs.size(), .size = native->programs.capacity()}, {.name = "pipelines", .used = native->pipelines.size(), .size = native->pipelines.capacity()},
-    };
+void Device::readPools(std::vector<Pool>& pools) const {
+    pools.assign({
+        {.name = "images", .used = native->images.size(), .size = native->images.capacity()},
+        {.name = "buffers", .used = native->buffers.size(), .size = native->buffers.capacity()},
+        {.name = "samplers", .used = native->samplers.size(), .size = native->samplers.capacity()},
+        {.name = "programs", .used = native->programs.size(), .size = native->programs.capacity()},
+        {.name = "pipelines", .used = native->pipelines.size(), .size = native->pipelines.capacity()},
+    });
 }
 
 bool Device::isLost() const noexcept {

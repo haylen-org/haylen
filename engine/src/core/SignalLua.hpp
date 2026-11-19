@@ -25,8 +25,8 @@ class SignalLua final {
 
     [[nodiscard]] static bool isSignal(lua_State* L, int index);
 
-    // Lists every named signal that is still alive with its listener count, its emits and the listeners whose owner is gone.
-    [[nodiscard]] static std::vector<EventBus::Topic> getNamedSignals(lua_State* L);
+    // Fills `signals` with every named signal that is still alive with its listener count, its emits and the listeners whose owner is gone, in the storage it holds.
+    static void readNamedSignals(lua_State* L, std::vector<EventBus::Topic>& signals);
 
   private:
     using Slot = Signal<const ScriptedSignal::Arguments&>::Slot;

@@ -189,7 +189,9 @@ TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
     test::EngineFixture fixture;
     // clang-format off
     const auto shaders = [&fixture] {
-        for (const graphics::Device::Pool& pool : fixture.engine().getGraphics().getPools()) {
+        std::vector<graphics::Device::Pool> pools;
+        fixture.engine().getGraphics().readPools(pools);
+        for (const graphics::Device::Pool& pool : pools) {
             if (pool.name == "programs") {
                 return pool.used;
             }

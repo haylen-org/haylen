@@ -147,8 +147,8 @@ class EventBus final {
 
     void clear() noexcept;
 
-    // Lists every named event that has ever had a listener, with its listener count, its emits since then and the listeners whose owner is gone.
-    [[nodiscard]] std::vector<Topic> getTopics() const;
+    // Fills `topics` with every named event that has ever had a listener, with its listener count, its emits since then and the listeners whose owner is gone, in the storage it holds.
+    void readTopics(std::vector<Topic>& topics) const;
 
   private:
     using Listeners = Signal<Event&>;

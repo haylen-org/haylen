@@ -90,8 +90,10 @@ TEST_F(GpuCaptureTest, TheConsoleCapturesAndLogsTheFileOnceTheFramesWereSubmitte
     EXPECT_EQ(console.run("gpuCapture").output, "A GPU capture is already recording. Wait for it to end before capturing again.");
     fixture.frames(2);
     EXPECT_FALSE(fixture.engine().getGraphics().isCapturing());
-    ASSERT_FALSE(plugin.getRecentLog().empty());
-    EXPECT_NE(plugin.getRecentLog().back().text.find("The GPU capture of 2 frames is in \""), std::string::npos);
+    std::vector<LogLine> recent;
+    plugin.readRecentLog(recent);
+    ASSERT_FALSE(recent.empty());
+    EXPECT_NE(recent.back().text.find("The GPU capture of 2 frames is in \""), std::string::npos);
     EXPECT_EQ(device->getCapturedFrames(), std::vector<std::uint64_t>{2});
 }
 

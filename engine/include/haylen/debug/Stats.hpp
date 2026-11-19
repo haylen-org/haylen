@@ -65,6 +65,9 @@ class Stats final {
     // Takes the snapshot with the renderer statistics of the last frame the renderer finished.
     [[nodiscard]] static Stats capture(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame);
 
+    // Takes the snapshot again into this one, in the storage that its lists hold, so a reader that keeps it allocates nothing once its lists grew.
+    void update(core::Engine& engine, const graphics2d::Renderer::Stats& lastFrame);
+
     Frame frame;
     EventLoop eventLoop;
     graphics2d::Renderer::Stats rendering;
@@ -75,8 +78,11 @@ class Stats final {
     std::vector<ObjectCounter::Snapshot> objects;
 
   private:
-    [[nodiscard]] static Frame measureFrames(core::Engine& engine);
-    [[nodiscard]] static const ObjectCounter::Snapshot* findObject(const std::vector<ObjectCounter::Snapshot>& snapshots, std::string_view name) noexcept;
+    void measureFrames(core::Engine& engine);
+    [[nodiscard]] const ObjectCounter::Snapshot* findObject(std::string_view name) const noexcept;
+
+    // The frame times of the history, slowest first, which the measure of the frames sorts.
+    std::vector<float> frameTimes;
 };
 
 } // namespace haylen::debug

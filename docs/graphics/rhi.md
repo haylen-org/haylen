@@ -190,7 +190,7 @@ The option `validation` of `gpu::DeviceFactory::Options` turns on the validation
 
 Each device turns the messages of its API into lines of the engine log, errors as errors, and every error in the log fails a GPU test. Every object takes the `label` of its description, and debug groups become the markers of GPU debuggers.
 
-For profiling, `getGpuFrameSeconds()` returns the time the GPU took for the last frame it finished, where `Capabilities::gpuTiming` is true, and `getPools()` reports how many objects of each kind exist. The debug overlay and [`debug.stats()`](../lua-api/debug.md) show both.
+For profiling, `getGpuFrameSeconds()` returns the time the GPU took for the last frame it finished, where `Capabilities::gpuTiming` is true, and `readPools(pools)` reports how many objects of each kind exist. The debug overlay and [`debug.stats()`](../lua-api/debug.md) show both.
 
 ## Frame captures
 

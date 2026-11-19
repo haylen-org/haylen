@@ -509,11 +509,16 @@ std::vector<std::string> Mixer::getBuses() const {
     return names;
 }
 
-std::vector<Mixer::BusStats> Mixer::getBusStats() const {
-    std::vector<BusStats> stats;
-    stats.reserve(state->buses.size());
+void Mixer::readBusStats(std::vector<BusStats>& stats) const {
+    stats.resize(state->buses.size());
+    std::size_t index = 0;
     for (const auto& [name, bus] : state->buses) {
-        BusStats entry{.name = name, .processing = core::FrameClock::canProcess(state->resolveMode(*bus), state->processPaused)};
+        BusStats& entry = stats[index++];
+        entry.name = name;
+        entry.voices = 0;
+        entry.playing = 0;
+        entry.paused = 0;
+        entry.processing = core::FrameClock::canProcess(state->resolveMode(*bus), state->processPaused);
         for (const std::unique_ptr<MixerState::Voice>& voice : state->voices) {
             if (voice->bus != bus.get()) {
                 continue;
@@ -527,11 +532,7 @@ std::vector<Mixer::BusStats> Mixer::getBusStats() const {
                 ++entry.playing;
             }
         }
-
-        stats.push_back(std::move(entry));
     }
-
-    return stats;
 }
 
 void Mixer::setProcessPaused(bool value) {

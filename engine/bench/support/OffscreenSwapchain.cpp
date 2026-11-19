@@ -32,8 +32,8 @@ std::optional<double> OffscreenSwapchain::getGpuFrameSeconds() const noexcept {
     return device->getGpuFrameSeconds();
 }
 
-std::vector<gpu::Device::Pool> OffscreenSwapchain::getPools() const {
-    return device->getPools();
+void OffscreenSwapchain::readPools(std::vector<Pool>& pools) const {
+    device->readPools(pools);
 }
 
 bool OffscreenSwapchain::isLost() const noexcept {

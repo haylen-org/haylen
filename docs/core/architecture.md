@@ -524,7 +524,7 @@ GPU objects are created only on the frame thread, through `graphics::Device` (`c
 
 Replacing the pixels and the size of a texture with `replaceTexture` buries the old image the same way, and a dynamic texture stays dynamic. That is how the texture of a video stream follows a new frame size under every handle. Dynamic textures, such as the atlases of fonts and of the UI and the textures of video streams, otherwise change in place. `updateTexture` keeps the last pixels that a texture received, and the renderer sends every changed texture once per frame, before its passes, with `Device::uploadTextures`. The pixels of every changed texture reach the GPU device in one `writeImages` call. Each device copies them through upload memory of its own into the images. So a changed texture uploads all of its pixels once per frame, however many glyphs its draws added.
 
-The GPU device keeps the objects of each kind in a pool, which `gpu::Device::getPools()` reports with how many objects it holds and the room it has. The pools of the real devices grow as the app makes objects, while `gpu::NullDevice` of the headless host bounds its pools with the sizes it declares in `engine/src/gpu/NullDevice.hpp`, so the tests catch an app or a renderer that makes objects without end.
+The GPU device keeps the objects of each kind in a pool, which `gpu::Device::readPools` reports with how many objects it holds and the room it has. The pools of the real devices grow as the app makes objects, while `gpu::NullDevice` of the headless host bounds its pools with the sizes it declares in `engine/src/gpu/NullDevice.hpp`, so the tests catch an app or a renderer that makes objects without end.
 
 | Pool | Size | Bounds |
 | --- | --- | --- |

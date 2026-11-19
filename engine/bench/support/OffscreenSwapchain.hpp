@@ -28,7 +28,7 @@ class OffscreenSwapchain final : public gpu::Device {
     [[nodiscard]] const Capabilities& getCapabilities() const noexcept override;
     [[nodiscard]] std::string getAdapterName() const override;
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept override;
-    [[nodiscard]] std::vector<Pool> getPools() const override;
+    void readPools(std::vector<Pool>& pools) const override;
     [[nodiscard]] bool isLost() const noexcept override;
 
     [[nodiscard]] Buffer makeBuffer(const BufferDesc& desc) override;

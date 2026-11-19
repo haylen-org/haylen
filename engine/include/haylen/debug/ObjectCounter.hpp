@@ -45,10 +45,10 @@ class ObjectCounter final {
     [[nodiscard]] const std::string& getName() const noexcept {
         return name;
     }
-    [[nodiscard]] Snapshot getSnapshot() const noexcept;
+    [[nodiscard]] Snapshot getSnapshot() const;
 
-    // Lists every counter that exists, sorted by name.
-    [[nodiscard]] static std::vector<Snapshot> list();
+    // Fills `snapshots` with every counter that exists, sorted by name, in the storage it holds, so a reader that keeps the vector allocates nothing once it grew.
+    static void readAll(std::vector<Snapshot>& snapshots);
     [[nodiscard]] static std::optional<Snapshot> find(std::string_view counterName);
 
     // Turns object events on with an observer, or off with an empty one.
@@ -62,6 +62,9 @@ class ObjectCounter final {
 
     [[nodiscard]] static Registry& getRegistry();
     void notify(bool wasCreated, std::size_t count) const;
+
+    // Writes the snapshot into one that a reader keeps, whose name keeps its storage.
+    void readSnapshot(Snapshot& snapshot) const;
 
     static std::atomic<bool> observed;
 
