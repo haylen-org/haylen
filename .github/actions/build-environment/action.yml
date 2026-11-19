@@ -1,15 +1,15 @@
 name: Build environment
-description: Installs what a job builds the engine with, restores the sources of the dependencies and the tools that the builds download, and compiles through sccache with the compiler cache of the bucket "haylen-ci".
+description: Installs what a job builds the engine with, restores the sources of the dependencies and the tools that the builds download from the bucket "haylen-ci", and compiles through sccache with the compiler cache of the same bucket.
 
 inputs:
   packages:
     description: The Linux packages that the job installs.
     default: ""
   save-sources:
-    description: Whether the job saves the sources of the dependencies that its builds fetch, which one job of each system does while the others read them.
+    description: Whether the job saves the sources of the dependencies that its builds fetch, which one job of each system does with the action "caches" at its end while the others read them.
     default: "false"
   save-tools:
-    description: The tools whose caches the job saves, from "shader-compiler", "xcodegen" and "emscripten", one job for each tool and system, while the other jobs that use them only read them.
+    description: The tools whose caches the job saves, from "shader-compiler", "xcodegen" and "emscripten", one job for each tool and system, which saves them with the action "caches" at its end while the other jobs that use them only read them.
     default: ""
   xcodegen:
     description: Whether the job generates Xcode projects with XcodeGen.
@@ -69,87 +69,36 @@ runs:
         echo "JOBS=$(python -c 'import os; print(os.cpu_count())')" >> "$GITHUB_ENV"
         echo "emscripten=$(sed -n 's/^    VERSION = "\(.*\)"$/\1/p' tools/haylen/toolchains/emscripten.py)" >> "$GITHUB_OUTPUT"
 
-    # The sources of the dependencies and the tools that the builds download come from the releases of their projects, and each one keeps a cache whose key ends with what pins it. One job of each cache saves it in the runs of the default branch, once the job succeeds with a key that no cache holds yet. Each cache step keeps an id of its own, since the steps of an action that a job uses twice would share the state that saves them.
-    - name: Name the caches
-      id: pins
-      shell: bash
-      run: |
-        system="${{ runner.os }}-${{ runner.arch }}"
-        echo "default-branch=${{ github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}" >> "$GITHUB_OUTPUT"
-        echo "sources=cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}" >> "$GITHUB_OUTPUT"
-        echo "shader-compiler=tool-shader-compiler-$system-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}" >> "$GITHUB_OUTPUT"
-        echo "xcodegen=tool-xcodegen-$system-${{ hashFiles('tools/haylen/toolchains/xcodegen.py') }}" >> "$GITHUB_OUTPUT"
-        echo "emscripten=tool-emscripten-$system-${{ steps.machine.outputs.emscripten }}" >> "$GITHUB_OUTPUT"
-
-    - name: Restore and save the dependency sources
-      id: sources
-      if: inputs.save-sources == 'true' && steps.pins.outputs.default-branch == 'true'
-      uses: actions/cache@v6
-      with:
-        path: .cache/cpm
-        key: ${{ steps.pins.outputs.sources }}
-
-    - name: Restore the dependency sources
-      if: steps.sources.outcome == 'skipped'
-      uses: actions/cache/restore@v6
-      with:
-        path: .cache/cpm
-        key: ${{ steps.pins.outputs.sources }}
-
-    - name: Restore and save the shader compiler
-      id: shader-compiler
-      if: contains(inputs.save-tools, 'shader-compiler') && steps.pins.outputs.default-branch == 'true'
-      uses: actions/cache@v6
-      with:
-        path: .tools/haylen-shaderc-*
-        key: ${{ steps.pins.outputs.shader-compiler }}
-
-    - name: Restore the shader compiler
-      if: steps.shader-compiler.outcome == 'skipped'
-      uses: actions/cache/restore@v6
-      with:
-        path: .tools/haylen-shaderc-*
-        key: ${{ steps.pins.outputs.shader-compiler }}
-
-    - name: Restore and save XcodeGen
-      id: xcodegen
-      if: inputs.xcodegen == 'true' && contains(inputs.save-tools, 'xcodegen') && steps.pins.outputs.default-branch == 'true'
-      uses: actions/cache@v6
-      with:
-        path: .tools/xcodegen-*
-        key: ${{ steps.pins.outputs.xcodegen }}
-
-    - name: Restore XcodeGen
-      if: inputs.xcodegen == 'true' && steps.xcodegen.outcome == 'skipped'
-      uses: actions/cache/restore@v6
-      with:
-        path: .tools/xcodegen-*
-        key: ${{ steps.pins.outputs.xcodegen }}
-
     # The SDK keeps the libraries it builds in a folder of its own, outside the cache, so the cache holds only what the SDK downloads: the SDK itself and its ports.
     - name: Keep the libraries that Emscripten builds out of its SDK
       if: inputs.emscripten == 'true'
       shell: bash
       run: echo "EM_CACHE=${{ github.workspace }}/.cache/emscripten" >> "$GITHUB_ENV"
 
-    - name: Restore and save Emscripten
-      id: emscripten
-      if: inputs.emscripten == 'true' && contains(inputs.save-tools, 'emscripten') && steps.pins.outputs.default-branch == 'true'
-      uses: actions/cache@v6
-      with:
-        path: |
-          .tools/emsdk
-          .cache/emscripten/ports
-        key: ${{ steps.pins.outputs.emscripten }}
-
-    - name: Restore Emscripten
-      if: inputs.emscripten == 'true' && steps.emscripten.outcome == 'skipped'
-      uses: actions/cache/restore@v6
-      with:
-        path: |
-          .tools/emsdk
-          .cache/emscripten/ports
-        key: ${{ steps.pins.outputs.emscripten }}
+    # The bucket "haylen-ci" keeps one layer under each prefix: the objects of sccache under "sccache/", the sources of the dependencies under "dependencies/" and the tools that the builds download under "tools/". Each cache is an archive whose key ends with everything its contents depend on, so a new pin makes its own and no cache hides a failure. One job of each cache saves it in the runs of the default branch, through the action "caches" at its end, once the job succeeded with a key that the bucket does not hold yet. A pull request from a fork gets no secrets, so it downloads them itself.
+    - name: Restore the caches
+      if: env.SCCACHE_ENDPOINT != ''
+      shell: bash
+      run: |
+        caches="${{ github.action_path }}/../caches/caches.sh"
+        system="${{ runner.os }}-${{ runner.arch }}"
+        pins="${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}"
+        default_branch="${{ github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}"
+        saving() {
+          if [ "$default_branch" = "true" ] && [ "$1" = "true" ]; then
+            echo "missing"
+          else
+            echo "never"
+          fi
+        }
+        bash "$caches" restore "dependencies/sources-${{ runner.os }}-$pins" "$(saving "${{ inputs.save-sources }}")" .cache/cpm
+        bash "$caches" restore "tools/shader-compiler-$system-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}" "$(saving "${{ contains(inputs.save-tools, 'shader-compiler') }}")" ".tools/haylen-shaderc-*"
+        if [ "${{ inputs.xcodegen }}" = "true" ]; then
+          bash "$caches" restore "tools/xcodegen-$system-${{ hashFiles('tools/haylen/toolchains/xcodegen.py') }}" "$(saving "${{ contains(inputs.save-tools, 'xcodegen') }}")" ".tools/xcodegen-*"
+        fi
+        if [ "${{ inputs.emscripten }}" = "true" ]; then
+          bash "$caches" restore "tools/emscripten-$system-${{ steps.machine.outputs.emscripten }}" "$(saving "${{ contains(inputs.save-tools, 'emscripten') }}")" .tools/emsdk .cache/emscripten/ports
+        fi
 
     # Apple builds of the engine precompile the shaders of the renderer with the Metal toolchain, a component of Xcode that a runner image may lack.
     - name: Install the Metal toolchain

@@ -1,6 +1,6 @@
 name: CI
 
-# The workflow only tests: it publishes nothing, and tags and releases start no run. A change that touches only Markdown, the docs or the brand images starts no run, since the tests of the tooling check the docs on every machine before a commit. A run started by hand tests the whole branch.
+# The workflow only tests: it publishes nothing, and tags and releases start no run. A push or a pull request runs the small set: the format and the tests of the tooling, and the engine tests on Linux and macOS. A run started by hand runs the full matrix, every SDK and slice, every platform, the GPU tests, the sanitizers, the test project, the fuzzers and the checks of releases, at the end of each block of work. A change that touches only Markdown, the docs or the brand images starts no run, since the tests of the tooling check the docs on every machine before a commit.
 on:
   push:
     branches: ["**"]
@@ -21,8 +21,9 @@ env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
   # The Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read, so the objects that the compiler cache moves stay small.
   HAYLEN_DEBUG_INFO: LINES
-  # The compiler cache is the Cloudflare R2 bucket "haylen-ci", which sccache reaches through its S3 API with the token of the secrets. A pull request from a fork gets no secrets and compiles without it. The server of sccache lives for the whole job.
+  # The compiler cache is the prefix "sccache/" of the Cloudflare R2 bucket "haylen-ci", which sccache reaches through its S3 API with the token of the secrets. A pull request from a fork gets no secrets and compiles without it. The server of sccache lives for the whole job.
   SCCACHE_BUCKET: haylen-ci
+  SCCACHE_S3_KEY_PREFIX: sccache/
   SCCACHE_REGION: auto
   SCCACHE_S3_USE_SSL: "true"
   SCCACHE_IDLE_TIMEOUT: "0"
@@ -54,6 +55,7 @@ jobs:
 
   # The desktop SDK of each system, with the player and the content tool, builds once per run, and the jobs that build apps take it from here, so no job waits for the SDK of another system.
   linux-sdk:
+    if: github.event_name == 'workflow_dispatch'
     name: Linux SDK
     runs-on: ubuntu-latest
     steps:
@@ -68,8 +70,11 @@ jobs:
           name: linux-sdk
           folder: build/sdk/desktop-release
           upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   windows-sdk:
+    if: github.event_name == 'workflow_dispatch'
     name: Windows SDK
     runs-on: windows-latest
     steps:
@@ -82,9 +87,12 @@ jobs:
           name: windows-sdk
           folder: build/sdk/desktop-release
           upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The web SDK, which the page checks and the Apple job take, and the GPU tests in the headless Chrome of the runner, where WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader.
   web-sdk:
+    if: github.event_name == 'workflow_dispatch'
     name: Web SDK
     runs-on: ubuntu-latest
     steps:
@@ -106,9 +114,13 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target web --graphics-api webGpu
       - name: GPU tests on WebGL2
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target web --graphics-api webGl2
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+      - uses: ./.github/actions/caches
 
   # The Android SDK of every ABI, with the Android libraries in its local Maven repository.
   android-sdk:
+    if: github.event_name == 'workflow_dispatch'
     name: Android SDK
     runs-on: ubuntu-latest
     steps:
@@ -130,9 +142,12 @@ jobs:
           name: android-sdk
           folder: build/sdk/android-release
           upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The slices of "Haylen.xcframework" compile with the architectures that the SDK ships in parallel jobs, one slice each, and the Apple job joins them.
   apple-slices:
+    if: github.event_name == 'workflow_dispatch'
     name: Apple slice
     strategy:
       fail-fast: false
@@ -149,9 +164,12 @@ jobs:
           name: apple-slice-${{ matrix.slice }}
           folder: build/slices/${{ matrix.slice }}
           upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The desktop SDK of macOS, whose content tool builds the protected releases of the Apple job.
   macos-sdk:
+    if: github.event_name == 'workflow_dispatch'
     name: macOS SDK
     runs-on: xcode-27
     steps:
@@ -164,6 +182,8 @@ jobs:
           name: macos-sdk
           folder: build/sdk/desktop-release
           upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The engine tests and the GPU tests on every device that a hosted runner starts, with the validation of each API on: Mesa lavapipe and llvmpipe on Linux, WARP on Windows and the paravirtual GPU of macOS. Windows runners have no Vulkan driver and only the OpenGL 1.1 of the system.
   tests:
@@ -171,7 +191,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        system: [Linux, macOS, Windows]
+        system: ${{ fromJSON(github.event_name == 'workflow_dispatch' && '["Linux", "macOS", "Windows"]' || '["Linux", "macOS"]') }}
     runs-on: ${{ fromJSON('{"Linux":"ubuntu-latest","macOS":"xcode-27","Windows":"windows-latest"}')[matrix.system] }}
     steps:
       - uses: actions/checkout@v7
@@ -189,27 +209,31 @@ jobs:
       - name: Engine tests
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test
       - name: GPU tests on Vulkan
-        if: runner.os == 'Linux'
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api vulkan
       - name: GPU tests on OpenGL
-        if: runner.os == 'Linux'
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'Linux'
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api openGl
       - name: GPU tests on Direct3D 12
-        if: runner.os == 'Windows'
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'Windows'
         env:
           HAYLEN_TEST_GPU_SOFTWARE: "1"
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api direct3D12
       - name: GPU tests on Direct3D 11
-        if: runner.os == 'Windows'
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'Windows'
         env:
           HAYLEN_TEST_GPU_SOFTWARE: "1"
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api direct3D11
       - name: GPU tests on Metal
-        if: runner.os == 'macOS'
+        if: github.event_name == 'workflow_dispatch' && runner.os == 'macOS'
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --graphics-api metal
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+      - uses: ./.github/actions/caches
 
   # AddressSanitizer with UndefinedBehaviorSanitizer and ThreadSanitizer run the engine tests in shards, which together run every test once.
   sanitizers:
+    if: github.event_name == 'workflow_dispatch'
     name: Sanitizers
     strategy:
       fail-fast: false
@@ -233,9 +257,12 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }}
       - name: Engine tests
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --sanitizers ${{ matrix.sanitizer }} --shard ${{ matrix.shard }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The headless player runs the categories of the test project in two shards, which together run every test once.
   test-project:
+    if: github.event_name == 'workflow_dispatch'
     name: Test project
     strategy:
       fail-fast: false
@@ -253,8 +280,11 @@ jobs:
         env:
           HAYLEN_TESTS_SHARD: ${{ matrix.shard }}
         run: build/engine/linux-debug/bin/haylen-headless samples/tests --frames 60000
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   fuzz:
+    if: github.event_name == 'workflow_dispatch'
     name: Fuzzers
     runs-on: ubuntu-latest
     steps:
@@ -264,9 +294,12 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }} clang libclang-rt-dev
       - name: Fuzz each parser for a minute
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine fuzz --seconds 60 --llvm /usr/bin
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # An engine port and a backend installed from outside the tooling build, verify and run an app with a plugin, and the test port plays its app under ThreadSanitizer, which checks the worker threads of the loop that the port pumps.
   port:
+    if: github.event_name == 'workflow_dispatch'
     name: Port
     runs-on: ubuntu-latest
     steps:
@@ -280,9 +313,12 @@ jobs:
         run: uv run --locked pytest -m port tools/tests/extensions --verbose
       - name: Port under ThreadSanitizer
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --port --sanitizers thread
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The emulator of an x86-64 image runs on the KVM of the runner and draws through SwiftShader.
   android-gpu:
+    if: github.event_name == 'workflow_dispatch'
     name: Android GPU tests
     runs-on: ubuntu-latest
     env:
@@ -309,9 +345,12 @@ jobs:
         run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
       - name: GPU tests on the emulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target android
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The UI tests of the test project on the Android emulator, which answer the permission dialogs, tap the notifications from the app, the home screen and the recent apps, and press the back button.
   android-ui:
+    if: github.event_name == 'workflow_dispatch'
     name: Android UI tests
     needs: android-sdk
     runs-on: ubuntu-latest
@@ -341,9 +380,12 @@ jobs:
         run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --package "system-images;android-37.0;default;x86_64"
       - name: UI tests on the emulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target android
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # A project that finds the desktop SDK of the run with "find_package", the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
   linux-apps:
+    if: github.event_name == 'workflow_dispatch'
     name: Linux apps
     needs: linux-sdk
     runs-on: ubuntu-latest
@@ -376,8 +418,11 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp
       - name: Build the protected release of the C++ app
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --config Release
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   windows-apps:
+    if: github.event_name == 'workflow_dispatch'
     name: Windows apps
     needs: windows-sdk
     runs-on: windows-latest
@@ -403,9 +448,12 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp
       - name: Build the protected release of the C++ app
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --config Release
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The checks of the pages in two shards, and the start of the protected web release of the test project in the first, in the headless Chrome of the runner, on WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas. The Apple job checks the start on WebGPU.
   web:
+    if: github.event_name == 'workflow_dispatch'
     name: Web
     needs: [linux-sdk, web-sdk]
     strategy:
@@ -431,9 +479,12 @@ jobs:
       - name: Start the protected release of the test project
         if: matrix.shard == '1/2'
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --app samples/tests --config Release --graphics-api webGl2
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The signed protected release of the starter app and the starter C++ app, whose C++ code Gradle compiles for every ABI against the Android SDK of the run.
   android:
+    if: github.event_name == 'workflow_dispatch'
     name: Android
     needs: [linux-sdk, android-sdk]
     runs-on: ubuntu-latest
@@ -464,9 +515,12 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target android --config Release
       - name: Build the C++ app
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target android
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The UI tests of the test project on the iOS and tvOS simulators, which answer the prompts of the system, tap the notifications from the app, the Home Screen and a closed app, and press the remote of the TV.
   apple-ui:
+    if: github.event_name == 'workflow_dispatch'
     name: Apple UI tests
     needs: apple-slices
     runs-on: macos-latest
@@ -484,9 +538,12 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target ios-simulator
       - name: UI tests on the tvOS simulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target tvos-simulator
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The joined Apple SDK, the starter apps for the iOS simulator against it, and the start of the protected web release of the test project on WebGPU, which Chrome draws through Metal.
   apple:
+    if: github.event_name == 'workflow_dispatch'
     name: Apple
     needs: [apple-slices, macos-sdk, web-sdk]
     runs-on: xcode-27
@@ -519,3 +576,6 @@ jobs:
       - uses: ./.github/actions/browser
       - name: Start the protected web release on WebGPU
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --app samples/tests --config Release --graphics-api webGpu
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+      - uses: ./.github/actions/caches
