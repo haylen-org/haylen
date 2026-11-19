@@ -1,5 +1,5 @@
 // Page side of the Haylen web runtime: what needs the document of the page, which are the input and the size of the canvas, the hidden text fields, the overlay of plugins, the mirror of the UI for screen readers, the clipboard, fullscreen, the pointer lock, the wake lock, the now-playing controls, the elements of videos, the windows of outputs, the audio contexts and the web modules of plugins with their permissions. When the module runs on the page, the build includes this script after the engine side of `haylen-runtime.js`. In the Worker mode the page loads this script alone, and it starts the module in a dedicated worker, which it hands the canvas as an `OffscreenCanvas` and reaches through messages.
-// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the versioned editor contract of `Module.haylen.editor`, which edits the package of the app and runs it again without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats` and `onReloaded` callbacks.
+// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the versioned editor contract of `Module.haylen.editor`, which edits the package of the app and runs it again without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats`, `onReloaded` and `onTurnDevice` callbacks.
 
 Module.haylen = Module.haylen || {};
 
@@ -1340,6 +1340,7 @@ Module.haylen = Module.haylen || {};
     };
 
     haylen.reportStopped = function () {
+        orientationWanted.locked = null;
         notify("onStopped");
     };
 
@@ -2526,20 +2527,60 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
-    haylen.lockOrientation = function (value) {
-        const orientation = screen.orientation;
-        if (!orientation || !orientation.lock) {
+    // The orientation of the app is the one it locked with `window.lockOrientation`, or else the one of `haylen.json`, each as 0 for landscape, 1 for portrait and 2 for any. A phone or a tablet turns the screen for a native app, but a browser locks it only where the Screen Orientation API allows, which usually means a fullscreen page, so a handheld page held the other way shows the turn screen of the page shell until the device turns, while the app runs under it.
+    const orientationNames = ["landscape", "portrait", "any"];
+    const orientationWanted = { declared: 2, locked: null };
+    const handheld = matchMedia("(hover: none) and (pointer: coarse)");
+    let turnShown = false;
+
+    const wantedOrientation = () => (orientationWanted.locked === null ? orientationWanted.declared : orientationWanted.locked);
+
+    const updateTurnScreen = () => {
+        const wanted = wantedOrientation();
+        const turn = wanted !== 2 && handheld.matches && haylen.orientation() !== wanted;
+        if (turn === turnShown) {
             return;
         }
 
-        if (value === 2) {
-            orientation.unlock();
-            return;
-        }
-
-        orientation.lock(value === 1 ? "portrait" : "landscape").catch(() => {});
+        turnShown = turn;
+        notify("onTurnDevice", { turn, orientation: orientationNames[wanted] });
     };
+
+    // Browsers refuse the lock outside fullscreen pages on phones, which the turn screen then covers, so the page asks again whenever it enters fullscreen.
+    const applyOrientation = () => {
+        const orientation = screen.orientation;
+        const wanted = wantedOrientation();
+        if (orientation && orientation.lock && wanted === 2) {
+            orientation.unlock();
+        } else if (orientation && orientation.lock) {
+            orientation.lock(orientationNames[wanted]).catch(() => {});
+        }
+
+        updateTurnScreen();
+    };
+
+    haylen.lockOrientation = function (value) {
+        orientationWanted.locked = value;
+        applyOrientation();
+    };
+
+    // The engine declares the orientation of `haylen.json` once the app started, and an app that stops takes its lock with it.
+    haylen.declareOrientation = function (value) {
+        orientationWanted.declared = value;
+        applyOrientation();
+    };
+
+    const followOrientation = () => {
+        if (screen.orientation) {
+            screen.orientation.addEventListener("change", updateTurnScreen);
+        }
+
+        matchMedia("(orientation: portrait)").addEventListener("change", updateTurnScreen);
+        handheld.addEventListener("change", updateTurnScreen);
+        document.addEventListener("fullscreenchange", applyOrientation);
+        document.addEventListener("webkitfullscreenchange", applyOrientation);
+    };
+    followOrientation();
 
     // The scrolls of wheels and trackpads reach the engine with their units: precise devices, which browsers report in pixels, move by the points of the page, and wheels by their steps, of three lines each. The modifiers go as the bits of shift, control, alt and the super key, from the lowest.
     const readModifiers = (event) => (event.shiftKey ? 1 : 0) | (event.ctrlKey ? 2 : 0) | (event.altKey ? 4 : 0) | (event.metaKey ? 8 : 0);

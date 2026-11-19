@@ -1009,6 +1009,7 @@ Module.haylen = Module.haylen || {};
             "checkPermission",
             "requestPermission",
             "lockOrientation",
+            "declareOrientation",
             "openOutput",
             "setTitle",
             "setCursor",

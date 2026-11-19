@@ -271,7 +271,7 @@ Keeps the screen in `'landscape'` or `'portrait'`, or lets it turn freely again 
 
 - Android locks the activity.
 - iPhones and iPads lock the app and turn the screen right away.
-- Browsers lock through the Screen Orientation API, which usually works only for a fullscreen page on a phone.
+- Browsers lock through the Screen Orientation API, which usually works only for a fullscreen page on a phone. The page asks again whenever it enters fullscreen, and a phone or a tablet that holds the page the other way meanwhile shows the turn screen of the page until the device turns, while the app runs under it, as the [build guide](../tools/build.md#runtime-api) describes for `onTurnDevice`.
 - Desktop windows, Mac Catalyst and TVs ignore it.
 
 ```lua

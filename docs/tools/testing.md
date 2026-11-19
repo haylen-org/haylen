@@ -16,7 +16,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters that the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese, kana of a variable CFF2 face of Chinese and Japanese, symbols, the color emoji of a `COLR` font of version 1 with the ligatures of their sequences, and the letters of a display font in color layers of version 0. The command `pyftsubset` of fontTools makes each subset from the font of its license, outside the repository, such as `pyftsubset NotoColorEmoji-Regular.ttf --unicodes=U+1F600,U+200D --layout-features='*' --drop-tables+=SVG,vhea,vmtx`. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
 | `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, in MP3 with and without the header that tells its length, and in FLAC, and `notes.ogg`, forty seconds of notes and clicks in Ogg Vorbis over many pages, which the streaming tests decode and seek through. CMake passes the folder as `HAYLEN_TEST_AUDIO`. |
 | `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation and [the editor check of the web](#the-editor-check-of-the-web) plays in a browser. CMake passes the folder as `HAYLEN_TEST_VIDEO`. |
-| `engine/tests/data/web-error-screen/`, `web-wake-lock/`, `web-fullscreen/`, `web-plugins/`, `web-memory/` | The apps of [the checks of the web](#the-error-screen-check-of-the-web), which the web backend builds. |
+| `engine/tests/data/web-error-screen/`, `web-wake-lock/`, `web-fullscreen/`, `web-orientation/`, `web-plugins/`, `web-memory/` | The apps of [the checks of the web](#the-error-screen-check-of-the-web), which the web backend builds. |
 | `engine/tests/web/` | The pages and the drivers of the checks of the web, of the start check of an app on the web and of the GPU tests of the web, which the Node of the Emscripten SDK runs. |
 | `engine/tests/consumer/` | The consumer project that `haylen engine consumers` builds, which adds the engine the way another repository does. |
 | `engine/tests/native/` | The test library, a C++ library whose C entry points in `NativeTest.cpp` the native interop tests load through `haylen.native` and Varn's `ffi`. They forward to `NativeTestValues` and to `NativeTestLibrary`, which reads and writes the JSON of `HaylenNativeApi` with nlohmann/json. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests` and the headless player, where `native.load` finds it by name, copies it next to the desktop player in `bin/haylen`, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same sources for every platform. |
@@ -312,6 +312,16 @@ A web page goes fullscreen through the Fullscreen API of the browser, which allo
 2. The driver `engine/tests/web/fullscreen-check.mjs` opens the page in a headless Chrome and presses the keys through the debugging protocol, which the browser counts as inputs of the person.
 3. After F, the promise must settle with `window.fullscreen()` already `true`, and the event `windowFullscreenChanged` must arrive. After L, the promise must settle with `window.fullscreen()` already `false`.
 4. After R, the promise of the change to fullscreen must fail with the code `denied`, since the change that leaves fullscreen replaced it, which must settle with `window.fullscreen()` `false`, and the page must end out of fullscreen.
+
+## The orientation check of the web
+
+A phone or a tablet turns the screen for a native app, but a browser locks the orientation only where the Screen Orientation API allows it, which usually means a fullscreen page. So a page held in an orientation that the app does not take shows the turn screen of the page shell, which only a browser shows. So `haylen test --target web` then runs this check in a browser:
+
+1. It builds the release site of the app `engine/tests/data/web-orientation`, whose `haylen.json` takes landscape and whose keys P and A lock portrait and let the screen turn freely, and serves it.
+2. The driver `engine/tests/web/orientation-check.mjs` opens the page in a headless Chrome that emulates a phone with a touch screen held in portrait.
+3. The turn screen `#turn` must show and ask for landscape, while the app logs that it goes on drawing frames under it.
+4. Once the phone turns to landscape, the screen must go away.
+5. After P, the screen must show again and ask for portrait, and after A it must go away.
 
 ## The plugin check of the web
 

@@ -119,6 +119,38 @@
         #splash.failed #splash-caption {
             display: none;
         }
+
+        /* The turn screen takes the background and the text of the splash, and covers the canvas and the splash. */
+        #turn {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--splash-gap);
+            padding: 24px;
+            box-sizing: border-box;
+            background: var(--splash-background);
+            color: var(--splash-text);
+            font: var(--splash-font);
+            text-align: center;
+        }
+
+        #turn[hidden] {
+            display: none;
+        }
+
+        #turn-icon {
+            width: min(24vmin, 96px);
+            height: min(24vmin, 96px);
+        }
+
+        #turn-caption {
+            margin: 0;
+            max-width: 320px;
+        }
     </style>
 </head>
 <body>
@@ -184,6 +216,15 @@
         <p id="splash-caption" aria-hidden="true"><span>Loading</span><span id="splash-percent">0%</span></p>
         <p id="splash-status" hidden></p>
     </div>
+    <!-- The turn screen covers a phone or a tablet held in an orientation that the app does not take, until the device turns. -->
+    <div id="turn" role="alert" hidden>
+        <svg id="turn-icon" viewBox="0 0 96 96" aria-hidden="true">
+            <rect x="30" y="14" width="36" height="62" rx="7" fill="none" stroke="currentColor" stroke-width="5"/>
+            <path d="M18 62 A34 34 0 0 1 22 30" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+            <path d="M14 34 L22 28 L28 36" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p id="turn-caption"></p>
+    </div>
     <script>
         // The runtime downloads the WebAssembly module and the package of the app and reports the progress of both, with a total of 0 while a size is unknown. It ends the splash once the app drew its first frame, and the errors that keep the app from starting replace the progress bar.
         let started = false;
@@ -212,6 +253,10 @@
                     const splash = document.getElementById("splash");
                     splash.style.transitionDuration = fadeOut + "s";
                     splash.classList.add("hidden");
+                },
+                onTurnDevice: function ({ turn, orientation }) {
+                    document.getElementById("turn-caption").textContent = "Turn your device to " + orientation + ".";
+                    document.getElementById("turn").hidden = !turn;
                 },
                 onError: function (error) {
                     if (started) {

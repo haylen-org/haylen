@@ -15,6 +15,7 @@ var Module = {
     const status = document.getElementById("splash-status");
     const details = document.getElementById("splash-details");
     const logo = document.getElementById("splash-logo");
+    const turn = document.getElementById("turn");
 
     const fail = (message, detail) => {
         splash.classList.remove("starting", "hidden");
@@ -170,6 +171,10 @@ var Module = {
         }
 
         splash.classList.toggle("light", isLightColor(background));
+        if (turn !== null) {
+            turn.style.background = background;
+            turn.classList.toggle("light", isLightColor(background));
+        }
     };
     updateTheme();
 
@@ -216,6 +221,13 @@ var Module = {
         splash.style.transitionDuration = `${fadeOut}s`;
         splash.classList.add("hidden");
     };
+    // A page without `#turn` shows the app as the browser holds it.
+    if (turn !== null) {
+        Module.haylen.onTurnDevice = ({turn: shown, orientation}) => {
+            document.getElementById("turn-caption").textContent = `Turn your device to ${orientation}.`;
+            turn.hidden = !shown;
+        };
+    }
     Module.haylen.onError = (error) => {
         console.error(error.message + (error.traceback ? "\n" + error.traceback : ""));
 

@@ -47,6 +47,8 @@ class WebChecks:
     WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
     # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code `denied`.
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
+    # The orientation check: a phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on, the screen goes away once the phone turns, and the lock of the app replaces the orientation of `haylen.json`.
+    ORIENTATION_STEPS = ["ready", "shown in portrait", "runs under it", "hidden in landscape", "locked portrait", "shown for the lock", "turns freely", "hidden for any"]
     # The plugin check: a page whose permissions policy governs one feature that its plugin requires, with an error of the page, a request without a prompt and a permission that the plugin never registered.
     PLUGIN_STEPS = [
         "checked",
@@ -120,7 +122,15 @@ class WebChecks:
         """Runs every check, or the checks of a shard, which take their places in the order of the checks."""
         if api is not None and api not in WebChecks.GRAPHICS_APIS:
             raise UnsupportedTarget(f'The checks of the web draw through "{WebChecks.GRAPHICS_APIS[0]}" or "{WebChecks.GRAPHICS_APIS[1]}", not "{api}".')
-        checks = {"errorScreen": self.error_screen, "wakeLock": self.wake_lock, "fullscreen": self.fullscreen, "plugins": self.plugins, "editor": self.editor, "memory": self.memory}
+        checks = {
+            "errorScreen": self.error_screen,
+            "wakeLock": self.wake_lock,
+            "fullscreen": self.fullscreen,
+            "orientation": self.orientation,
+            "plugins": self.plugins,
+            "editor": self.editor,
+            "memory": self.memory,
+        }
         reports = {}
         for place, (name, check) in enumerate(checks.items()):
             if shard is None or shard.takes(place):
@@ -201,6 +211,16 @@ class WebChecks:
             WebChecks.check_steps(report, WebChecks.FULLSCREEN_STEPS, "The page of the fullscreen check")
         self.context.terminal.success(
             'Each change of fullscreen settled once the window reported its mode, and a change that a newer one replaced failed with the code "denied" while the page ended in the mode of the newer one.'
+        )
+
+    def orientation(self, api: str | None) -> None:
+        site = self.site(WebChecks.DATA / "web-orientation")
+        with ServedSite(site) as served:
+            self.context.terminal.step("Running the orientation check of the web in a headless browser that emulates a phone")
+            report = self.drive("orientation-check.mjs", (), "the orientation check of the web", served.page(WebChecks.query(api)))
+            WebChecks.check_steps(report, WebChecks.ORIENTATION_STEPS, "The page of the orientation check")
+        self.context.terminal.success(
+            "A phone held in portrait showed the turn screen of the page over an app that takes landscape while the app ran on under it, the screen went away once the phone turned, and the lock of the app asked for portrait until the app let the screen turn."
         )
 
     def plugins(self, api: str | None) -> None:

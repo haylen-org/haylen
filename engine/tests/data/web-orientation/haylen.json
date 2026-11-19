@@ -1,0 +1,7 @@
+{
+    "name": "Web Orientation",
+    "identifier": "com.haylen.weborientation",
+    "version": "1.0.0",
+    "category": "developer",
+    "orientation": "landscape"
+}

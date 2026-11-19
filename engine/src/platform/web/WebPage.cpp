@@ -48,6 +48,10 @@ EM_JS(void, haylen_js_started, (const char* json), {
     Module.haylen.reportStarted(JSON.parse(UTF8ToString(json)));
 });
 
+EM_JS(void, haylen_js_declare_orientation, (int value), {
+    Module.haylen.declareOrientation(value);
+});
+
 EM_JS(double, haylen_js_project_budget, (int bytes), {
     const budget = Module.haylen.projectBudget;
     return bytes !== 0 ? budget.bytes : budget.files;
@@ -231,10 +235,12 @@ std::string WebPage::getCanvasSelector() {
     return result;
 }
 
+// The page learns the orientation of `haylen.json` with the start of the app, so a handheld page held the other way asks the person to turn the device.
 void WebPage::reportStarted(core::Engine& engine) {
     lastStats = emscripten_get_now();
     const core::AppConfig& config = engine.getConfig();
     const core::Json app{{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}, {"build", config.build}};
+    haylen_js_declare_orientation(static_cast<int>(config.orientation));
     haylen_js_started(app.dump().c_str());
     const core::Json error = engine.getErrorRecord();
     for (const PendingRequest& pending : std::exchange(pendingRuns, {})) {
