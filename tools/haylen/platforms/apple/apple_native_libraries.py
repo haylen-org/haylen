@@ -89,6 +89,7 @@ class AppleNativeLibraries:
             *CMakeTree.generator(),
             "-DCMAKE_BUILD_TYPE=Release",
             f"-DBUILD_SHARED_LIBS={'OFF' if static else 'ON'}",
+            CMakeTree.WITHOUT_MODULE_SCAN,
             f"-Dhaylen_DIR={self.product.primary.sdk.file(AppleSdkFiles.CMAKE)}",
             *AppleSdk.cmake_options(self.target.slice, architecture),
         ]

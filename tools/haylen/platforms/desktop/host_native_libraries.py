@@ -47,6 +47,7 @@ class HostNativeLibraries:
             *CMakeTree.generator(),
             "-DCMAKE_BUILD_TYPE=Release",
             "-DBUILD_SHARED_LIBS=ON",
+            CMakeTree.WITHOUT_MODULE_SCAN,
             f"-Dhaylen_DIR={package.as_posix()}",
         ]
         command += [f"-DCMAKE_{kind}_OUTPUT_DIRECTORY{suffix}={output.as_posix()}" for kind in ("LIBRARY", "ARCHIVE", "RUNTIME") for suffix in ("", "_RELEASE")]

@@ -163,7 +163,7 @@ class WebBackend(PlatformBackend):
         configuration = prepared.product.configuration.value
         tree = CMakeTree(self.context, WebBackend.cmake_folder(prepared.folders))
         if not tree.configured or Emscripten.is_stale(tree.folder):
-            command = ["cmake", "-S", prepared.project / WebProject.RUNTIME, "-B", tree.folder, "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={configuration}"]
+            command = ["cmake", "-S", prepared.project / WebProject.RUNTIME, "-B", tree.folder, "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={configuration}", CMakeTree.WITHOUT_MODULE_SCAN]
             Emscripten.configure(self.context, tree, command)
         self.context.terminal.step(f'Linking the runtime of the page of "{prepared.product.app.name}"')
         tree.build(["haylen"], configuration)

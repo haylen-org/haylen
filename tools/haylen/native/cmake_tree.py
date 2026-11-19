@@ -11,6 +11,8 @@ class CMakeTree:
     """A CMake build tree that a command configures, builds and installs. It records that CMake configured and generated it only once a configure succeeded, so a tree whose configure failed configures again instead of building."""
 
     CONFIGURED = "haylen-configured.txt"
+    # Apps and plugins use no C++ modules, like the engine, so their trees compile without the scan for modules, which CMake would pair with a module `std` read from the standard library that it finds, the one of the host even for a cross compiler such as the one of the Android NDK.
+    WITHOUT_MODULE_SCAN = "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF"
 
     def __init__(self, context: ToolingContext, folder: Path) -> None:
         self.context = context

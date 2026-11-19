@@ -170,7 +170,7 @@ class DesktopBackend(PlatformBackend):
         configuration = prepared.product.configuration.value
         tree = CMakeTree(self.context, DesktopBackend.cmake_folder(folders))
         if not tree.configured:
-            tree.configure(["cmake", "-S", prepared.project, "-B", tree.folder, *CMakeTree.generator(), f"-DCMAKE_BUILD_TYPE={configuration}"])
+            tree.configure(["cmake", "-S", prepared.project, "-B", tree.folder, *CMakeTree.generator(), f"-DCMAKE_BUILD_TYPE={configuration}", CMakeTree.WITHOUT_MODULE_SCAN])
         self.context.process.run(["cmake", "--build", tree.folder, "--config", configuration, "--parallel", str(self.context.jobs)])
         Folders.remove(folders.products)
         self.context.process.run(["cmake", "--install", tree.folder, "--config", configuration, "--prefix", folders.products])

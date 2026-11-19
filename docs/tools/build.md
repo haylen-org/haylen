@@ -311,6 +311,8 @@ The file `engine/CMakeLists.txt` sets two things for the engine and its dependen
 - The targets compile without the scan for C++ modules, through `CMAKE_CXX_SCAN_FOR_MODULES`, since neither the engine nor its dependencies use modules. So each source compiles in one step, without a second pass of the preprocessor before it.
 - MSVC writes the debug information of Debug and RelWithDebInfo builds into each object, through `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`, instead of one PDB file that every compile of a target writes. So parallel compiles never wait for that file, and a compiler cache can keep the objects. The linker still writes the PDB of each program.
 
+The tooling configures the CMake trees of apps the same way: the generated projects of the desktops, the web and Android, and the native libraries of apps and plugins. They compile without the scan for C++ modules too, so app code and native libraries do not use modules. With the scan on, CMake 4.5 and newer give every target the module `std` of the standard library that it finds. For the compiler of the Android NDK, that is the library of the host, which the NDK cannot compile.
+
 A compiler cache, such as ccache, speeds up builds that compile the same sources again. CMake runs every compile through the launcher that the environment variables `CMAKE_C_COMPILER_LAUNCHER`, `CMAKE_CXX_COMPILER_LAUNCHER`, `CMAKE_OBJC_COMPILER_LAUNCHER` and `CMAKE_OBJCXX_COMPILER_LAUNCHER` name when it configures a build tree, so the commands of `haylen` use a cache once they name it:
 
 ```sh

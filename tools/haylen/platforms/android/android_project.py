@@ -13,6 +13,7 @@ from haylen.core.frozen import Frozen
 from haylen.core.product_inputs import ProductInputs
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
+from haylen.native.cmake_tree import CMakeTree
 from haylen.platforms.android.android_asset_packs import AndroidAssetPacks
 from haylen.platforms.android.android_contributions import AndroidContributions
 from haylen.platforms.android.android_manifest_file import AndroidManifestFile
@@ -187,10 +188,11 @@ class AndroidProject:
         if not self.native.targets:
             return ""
         targets = ", ".join(AndroidTemplate.kotlin(target) for target in self.native.targets)
+        options = ", ".join(AndroidTemplate.kotlin(option) for option in ("-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON", CMakeTree.WITHOUT_MODULE_SCAN))
         lines = [
             "        externalNativeBuild {",
             "            cmake {",
-            '                arguments += listOf("-DANDROID_STL=c++_static", "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON")',
+            f"                arguments += listOf({options})",
             f"                targets += listOf({targets})",
             "            }",
             "        }",

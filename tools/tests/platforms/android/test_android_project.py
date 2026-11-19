@@ -210,6 +210,7 @@ class AndroidProjectTest:
         assert "add_subdirectory(" in cmake
         assert "BOOTSTRAP" not in cmake
         assert 'targets += listOf("haylen-app", "physics")' in script
+        assert '"-DCMAKE_CXX_SCAN_FOR_MODULES=OFF"' in script
         assert 'excludes += "lib/*/libhaylen.so"' in script
         assert 'android:value="haylen-app"' in manifest
 
