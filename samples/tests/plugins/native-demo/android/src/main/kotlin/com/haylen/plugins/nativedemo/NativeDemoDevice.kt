@@ -25,6 +25,7 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
@@ -42,7 +43,11 @@ import org.json.JSONObject
 
 // The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The plugin asks for the permissions it owns through its context, as `system.requestPermission` does.
 class NativeDemoDevice(private val context: HaylenPluginContext) {
+    private val mainThread = Handler(Looper.getMainLooper())
     private var camera: Camera? = null
+    // A camera opens only once the cameras before it closed, since many devices keep one camera open at a time and refuse the next one with the error ERROR_MAX_CAMERAS_IN_USE until the system released the last one. The newest request waits meanwhile, and a request that a newer one or a stop replaces fails with "cancelled".
+    private var closingCameras = 0
+    private var waitingCamera: CameraRequest? = null
     private var microphone: Microphone? = null
     private var map: HaylenOverlay.Panel? = null
 
@@ -55,8 +60,8 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
 
     // Ends what an earlier app of the process left running.
     fun stop() {
-        camera?.stop()
-        camera = null
+        cancelWaitingCamera()
+        closeCamera()
         microphone?.stop()
         microphone = null
         map?.remove()
@@ -73,20 +78,16 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
             val facing = (params as? JSONObject)?.optString("facing", "back") ?: "back"
             context.requirePermission("camera", reply) {
                 val stream = context.openVideoStream("camera", Camera.WIDTH, Camera.HEIGHT, HaylenVideoStream.Format.RGBA8)
-                camera?.stop()
-                camera = Camera(context.application(), facing, stream) { failure ->
-                    if (failure == null) {
-                        reply.success(JSONObject().put("width", Camera.WIDTH).put("height", Camera.HEIGHT).put("facing", facing).put("language", LANGUAGE))
-                    } else {
-                        reply.failure(failure, "cameraFailed", null)
-                    }
-                }
+                cancelWaitingCamera()
+                closeCamera()
+                waitingCamera = CameraRequest(facing, stream, reply)
+                openWaitingCamera()
             }
         }
 
         context.register("stopCamera") { _, reply ->
-            camera?.stop()
-            camera = null
+            cancelWaitingCamera()
+            closeCamera()
             reply.success(null)
         }
 
@@ -95,6 +96,51 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
             val photo = current.photo() ?: throw HaylenBridge.Failure("The camera has no frame yet.", "noFrame", null)
             reply.success(JSONObject().put("jpeg", photo).put("width", Camera.WIDTH).put("height", Camera.HEIGHT).put("language", LANGUAGE))
         }, HaylenBridge.Threading.BACKGROUND)
+    }
+
+    // Closes the camera that runs and opens the next one that waits once the system released it.
+    private fun closeCamera() {
+        val current = camera ?: return
+        camera = null
+        closingCameras += 1
+        current.stop {
+            mainThread.post {
+                closingCameras -= 1
+                openWaitingCamera()
+            }
+        }
+    }
+
+    // Opens the camera that waits once no camera closes.
+    private fun openWaitingCamera() {
+        val request = waitingCamera ?: return
+        if (closingCameras > 0) {
+            return
+        }
+
+        waitingCamera = null
+        camera = Camera(context.application(), request.facing, request.stream, request::answer)
+    }
+
+    private fun cancelWaitingCamera() {
+        waitingCamera?.answer("The camera stopped before it started.", "cancelled")
+        waitingCamera = null
+    }
+
+    // A request of a camera that waits for the cameras before it to close, and the answer to its call.
+    private class CameraRequest(val facing: String, val stream: HaylenVideoStream, private val reply: HaylenBridge.Reply) {
+        fun answer(failure: String?) {
+            answer(failure, "cameraFailed")
+        }
+
+        fun answer(failure: String?, code: String) {
+            if (failure != null) {
+                reply.failure(failure, code, null)
+                return
+            }
+
+            reply.success(JSONObject().put("width", Camera.WIDTH).put("height", Camera.HEIGHT).put("facing", facing).put("language", LANGUAGE))
+        }
     }
 
     private fun registerMicrophone() {
@@ -210,6 +256,10 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
         private var hasFrame = false
         private var device: CameraDevice? = null
         private val opened = System.nanoTime()
+        // The thread of the camera alone reads and writes these: whether `started` was called, whether the system released the camera and what runs once it did.
+        private var answered = false
+        private var released = false
+        private var closed: (() -> Unit)? = null
 
         init {
             val cameras = context.getSystemService(CameraManager::class.java)
@@ -219,15 +269,24 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
             cameras.openCamera(id, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     device = camera
+                    if (closed != null) {
+                        camera.close()
+                        return
+                    }
+
                     val configured = object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
+                            if (closed != null) {
+                                return
+                            }
+
                             val request = camera.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW).apply { addTarget(reader.surface) }
                             session.setRepeatingRequest(request.build(), null, handler)
-                            started(null)
+                            answer(null)
                         }
 
                         override fun onConfigureFailed(session: CameraCaptureSession) {
-                            started("The camera refused the capture session.")
+                            answer("The camera refused the capture session.")
                         }
                     }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -244,17 +303,43 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
 
                 override fun onError(camera: CameraDevice, error: Int) {
                     camera.close()
-                    started("The camera failed with the error $error.")
+                    answer("The camera failed with the error $error.")
+                }
+
+                override fun onClosed(camera: CameraDevice) {
+                    released = true
+                    closed?.let { release(it) }
                 }
             }, handler)
         }
 
-        fun stop() {
+        // Closes the camera, even one that still opens, and calls `then` on the thread of the camera once the system released it.
+        fun stop(then: () -> Unit) {
             handler.post {
+                closed = then
+                answer("The camera stopped before it started.")
+                if (released) {
+                    release(then)
+                    return@post
+                }
+
                 device?.close()
-                reader.close()
-                thread.quitSafely()
             }
+        }
+
+        private fun answer(failure: String?) {
+            if (answered) {
+                return
+            }
+
+            answered = true
+            started(failure)
+        }
+
+        private fun release(then: () -> Unit) {
+            reader.close()
+            thread.quitSafely()
+            then()
         }
 
         // Encodes the newest frame as a JPEG file.
