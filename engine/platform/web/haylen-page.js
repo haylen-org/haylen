@@ -170,9 +170,8 @@ Module.haylen = Module.haylen || {};
     // Parameters, results and events cross as JSON with the bytes of every `ArrayBuffer` and `ArrayBuffer` view, such as a `Uint8Array`, in buffers of their own that the JSON refers to as `{"$bytes": N}`, so binary data never turns into text. A `VarnDataView` crosses as the token of its view, which shares the memory of the heap without a copy, and the payload lists the views so a sender that keeps the payload keeps them. In the Worker mode the heap lives in the worker, so the page has no data views, and a view of the engine that reaches the page fails the call or the screen that carries it with the code `unsupported`.
     const VarnView = hostedInWorker ? null : Module.VarnDataView;
     const isViewToken = (value) => value !== null && typeof value === "object" && Object.hasOwn(value, "$view");
-    const encodePayload = (value) => {
+    const encodePayload = (value, views = []) => {
         const buffers = [];
-        const views = [];
         const prepare = (item) => {
             if (VarnView !== null && item instanceof VarnView) {
                 views.push(item);
@@ -196,6 +195,22 @@ Module.haylen = Module.haylen || {};
         };
         const json = JSON.stringify(prepare(value === undefined ? null : value));
         return { json: json === undefined ? "null" : json, buffers, views };
+    };
+
+    // A result or a failure as the engine reads it. A result that JSON cannot carry, such as one with a `BigInt` or a cycle, fails with the reason, as a handler that threw does, and lets go of the views that it handed over.
+    const encodeAnswer = (ok, value) => {
+        const views = [];
+        try {
+            if (!ok) {
+                return { ok, json: JSON.stringify(value), buffers: [], views };
+            }
+
+            const encoded = encodePayload(value, views);
+            return { ok, ...encoded };
+        } catch (error) {
+            releaseViews(views);
+            return { ok: false, json: JSON.stringify(describeFailure(error)), buffers: [], views: [] };
+        }
     };
 
     // Every `{"$bytes": N}` of the JSON becomes buffer `N`, a `Uint8Array`, and every token a `VarnDataView` with a reference of its own, which `acquired` lists so its owner releases it. The engine keeps the views of the JSON alive while it hands the JSON over, so the decode runs before that returns.
@@ -270,8 +285,8 @@ Module.haylen = Module.haylen || {};
                 return;
             }
 
-            const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [], views: [] };
-            engine.call("haylen_web_resolve", null, ["number", "number", "string", "buffers"], [call, ok ? 1 : 0, encoded.json, encoded.buffers]);
+            const encoded = encodeAnswer(ok, value);
+            engine.call("haylen_web_resolve", null, ["number", "number", "string", "buffers"], [call, encoded.ok ? 1 : 0, encoded.json, encoded.buffers]);
             releaseViews(encoded.views);
         };
         const handler = handlers.get(method);
@@ -336,8 +351,8 @@ Module.haylen = Module.haylen || {};
             screen.popup.close();
         }
 
-        const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [], views: [] };
-        engine.call("haylen_web_finish_screen", null, ["number", "number", "string", "buffers"], [screen.id, ok ? 1 : 0, encoded.json, encoded.buffers]);
+        const encoded = encodeAnswer(ok, value);
+        engine.call("haylen_web_finish_screen", null, ["number", "number", "string", "buffers"], [screen.id, encoded.ok ? 1 : 0, encoded.json, encoded.buffers]);
         releaseViews(encoded.views);
     };
 
@@ -476,9 +491,12 @@ Module.haylen = Module.haylen || {};
             }
 
             settled = true;
-            const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
+            const encoded = encodeAnswer(ok, value);
             const buffers = encoded.buffers.map((buffer) => buffer.slice());
-            whenRuntimeReady(() => engine.call("haylen_web_restore_screen", null, ["string", "string", "string", "number", "string", "buffers"], [record.plugin, record.screen, JSON.stringify(record.state), ok ? 1 : 0, encoded.json, buffers]));
+            whenRuntimeReady(() => {
+                engine.call("haylen_web_restore_screen", null, ["string", "string", "string", "number", "string", "buffers"], [record.plugin, record.screen, JSON.stringify(record.state), encoded.ok ? 1 : 0, encoded.json, buffers]);
+                releaseViews(encoded.views);
+            });
         };
         return { id: record.id, name: record.screen, token: record.token, resolve: (value) => restore(true, value), reject: (error) => restore(false, describeFailure(error)) };
     };

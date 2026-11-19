@@ -52,6 +52,7 @@ class WebChecks:
         "checked",
         "lacks only the governed feature",
         "fails an error of the page as an exception",
+        "fails a result that JSON cannot carry as an exception",
         "fails a use without a prompt as denied",
         "fails an unregistered permission as unsupported",
         "kept the newest events before the app started",
@@ -209,7 +210,7 @@ class WebChecks:
             report = self.drive("plugin-check.mjs", (), "the plugin check of the web", served.page(WebChecks.query(api)))
             WebChecks.check_steps(report, WebChecks.PLUGIN_STEPS, "The page of the plugin check")
         self.context.terminal.success(
-            'The page lacked the feature that its permissions policy refused, left the feature that the policy does not govern to the error of its API, failed the error of the page with the code "exception", the use without a prompt with the code "denied" and the use of an unregistered permission with the code "unsupported".'
+            'The page lacked the feature that its permissions policy refused, left the feature that the policy does not govern to the error of its API, failed the error of the page and a result that JSON cannot carry with the code "exception", the use without a prompt with the code "denied" and the use of an unregistered permission with the code "unsupported".'
         )
 
     def editor(self, api: str | None) -> None:

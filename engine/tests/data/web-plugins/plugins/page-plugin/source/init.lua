@@ -14,6 +14,11 @@ function plugin.fail()
     return handle:call('fail')
 end
 
+-- Returns a platform call that fails, because the web part answers with a result that JSON cannot carry.
+function plugin.unwritable()
+    return handle:call('unwritable')
+end
+
 -- Returns a platform call that fails, because the web part requires the permission `unprompted`, whose request ends without a prompt.
 function plugin.useUnprompted()
     return handle:call('useUnprompted')
