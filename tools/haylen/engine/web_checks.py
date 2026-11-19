@@ -98,7 +98,7 @@ class WebChecks:
         "terminated a stuck worker",
         "terminated before the worker started",
     ]
-    # The memory check: a protected release with a medium and a large file that download on demand, while the memory of WebAssembly and the array buffers of the page stay far below the size of the files. A page without the files of the browser keeps the medium file in memory and refuses the large one for want of room.
+    # The memory check: a protected release with a medium and a large file that download on demand, while the memory of WebAssembly and the array buffers of the page stay far below the size of the files. A page without the files of the browser, or whose worker of the content store does not load, keeps the medium file in memory and refuses the large one for want of room.
     MEMORY_FILE_SIZE = 384 * 1024**2
     MEMORY_MEDIUM_SIZE = 16 * 1024**2
     MEMORY_WASM_LIMIT = MEMORY_FILE_SIZE // 2
@@ -246,15 +246,15 @@ class WebChecks:
 
         reports = {}
         with ServedSite(site) as served:
-            for store in ("files", "memory"):
-                without = " that keeps no files for the page" if store == "memory" else ""
-                self.context.terminal.step(f"Running the memory check of the web in a headless browser{without}")
+            for store, browser in (("files", ""), ("memory", " that keeps no files for the page"), ("missing", " whose worker of the content store does not load")):
+                self.context.terminal.step(f"Running the memory check of the web in a headless browser{browser}")
                 reports[store] = self.drive("memory-check.mjs", (), "the memory check of the web", served.page(WebChecks.query(api)), str(WebChecks.MEMORY_SECONDS), store)
         WebChecks.check_memory(reports["files"])
-        WebChecks.check_memory_without_files(reports["memory"])
+        WebChecks.check_memory_without_files(reports["memory"], "A page whose browser keeps no files")
+        WebChecks.check_memory_without_files(reports["missing"], "A page whose worker of the content store does not load")
         report = reports["files"]
         self.context.terminal.success(
-            f"The page downloaded {report['receivedBytes']} bytes with a peak of {report['peakWasmBytes']} bytes of WebAssembly memory and kept {report['buffersAfterCollection']} bytes of array buffers, and a page without files kept the medium file in memory and refused the large one for want of room."
+            f"The page downloaded {report['receivedBytes']} bytes with a peak of {report['peakWasmBytes']} bytes of WebAssembly memory and kept {report['buffersAfterCollection']} bytes of array buffers, and a page without files or without the worker of its content store kept the medium file in memory and refused the large one for want of room."
         )
         return report
 
@@ -277,11 +277,11 @@ class WebChecks:
             raise BuildFailed(" ".join(problems))
 
     @staticmethod
-    def check_memory_without_files(report: dict) -> None:
-        """Fails on a page without the files of the browser that did not keep the medium file in memory, or that took the large one past its room instead of refusing it."""
+    def check_memory_without_files(report: dict, page: str) -> None:
+        """Fails on a page without the files of the browser, which `page` describes, that did not keep the medium file in memory, or that took the large one past its room instead of refusing it."""
         if not report["downloadedMedium"]:
             reason = f": {report['failure']}" if report["failure"] else ""
-            raise BuildFailed(f"A page whose browser keeps no files did not download the medium file{reason}.")
+            raise BuildFailed(f"{page} did not download the medium file{reason}.")
         if report["finished"] or not report["failure"] or "of room" not in report["failure"]:
             outcome = "downloaded it" if report["finished"] else f"reported: {report['failure']}"
-            raise BuildFailed(f"A page whose browser keeps no files should refuse the large file for want of room, and it {outcome}.")
+            raise BuildFailed(f"{page} should refuse the large file for want of room, and it {outcome}.")

@@ -23,7 +23,7 @@ class WebMemoryTest:
 
     def test_stops_on_a_page_without_files_that_misses_its_room(self):
         refused = {"downloadedMedium": True, "finished": False, "failure": "The content needs 486613920 bytes of room on the device and 251656020 are free."}
-        WebChecks.check_memory_without_files(refused)
+        WebChecks.check_memory_without_files(refused, "A page whose browser keeps no files")
         changes = (
             ({"downloadedMedium": False}, "did not download the medium file"),
             ({"finished": True, "failure": None}, "downloaded it"),
@@ -31,4 +31,4 @@ class WebMemoryTest:
         )
         for change, message in changes:
             with pytest.raises(BuildFailed, match=message):
-                WebChecks.check_memory_without_files({**refused, **change})
+                WebChecks.check_memory_without_files({**refused, **change}, "A page whose browser keeps no files")

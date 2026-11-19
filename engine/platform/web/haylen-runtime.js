@@ -356,9 +356,11 @@ Module.haylen = Module.haylen || {};
         let worker = null;
         let space = 0;
         let unwritten = 0;
+        let opened = false;
         let refused = false;
         let nextId = 1;
         const replies = new Map();
+        const reading = new Set();
 
         const post = (message, transfer) => {
             if (worker) {
@@ -372,6 +374,7 @@ Module.haylen = Module.haylen || {};
                 worker.postMessage({ ...message, id });
             });
         const deliver = (id, bytes) => {
+            reading.delete(id);
             const size = bytes ? bytes.length : 0;
             const pointer = size > 0 ? Module._malloc(size) : 0;
             if (size > 0) {
@@ -385,6 +388,29 @@ Module.haylen = Module.haylen || {};
             }
         };
 
+        // A worker that fails to load or stops on an error ends the store: what waits for it fails, the reads find nothing, and the downloads that follow stay in memory, as the store had refused them.
+        const stop = (reason) => {
+            worker.terminate();
+            worker = null;
+            unwritten = 0;
+
+            for (const resolve of replies.values()) {
+                resolve({ ok: false, message: reason });
+            }
+
+            replies.clear();
+
+            for (const id of [...reading]) {
+                deliver(id, null);
+            }
+
+            if (opened && !refused) {
+                refused = true;
+                console.warn("The worker of the content store stopped, so the downloads of this visit stay in memory: " + reason);
+                callEngine("haylen_web_store_refused", null, ["number", "string"], [0, reason]);
+            }
+        };
+
         return {
             async open(identifier) {
                 if (!navigator.storage || !navigator.storage.getDirectory || typeof Worker === "undefined") {
@@ -393,6 +419,10 @@ Module.haylen = Module.haylen || {};
                 }
 
                 worker = new Worker(locateFile("haylen-content-store.js"));
+                worker.onerror = (event) => {
+                    event.preventDefault();
+                    stop(event.message || "Its script did not load.");
+                };
                 worker.onmessage = (event) => {
                     const message = event.data;
                     if (message.op === "read") {
@@ -420,24 +450,28 @@ Module.haylen = Module.haylen || {};
                         unwritten -= message.size;
                     }
                 };
-                const opened = await ask({ op: "open", identifier });
-                if (!opened.ok) {
-                    console.warn("The downloaded content of the app is held by another tab or the browser refused it, so this visit keeps its downloads in memory: " + opened.message);
-                    worker.terminate();
-                    worker = null;
+                const store = await ask({ op: "open", identifier });
+                if (!store.ok) {
+                    console.warn("The downloaded content of the app is held by another tab or the browser refused it, so this visit keeps its downloads in memory: " + store.message);
+                    if (worker) {
+                        worker.terminate();
+                        worker = null;
+                    }
+
                     return;
                 }
 
+                opened = true;
                 FS.mkdirTree("/content-store");
 
-                for (const file of opened.files) {
+                for (const file of store.files) {
                     const folder = file.name.includes("/") ? "/content-store/" + file.name.slice(0, file.name.lastIndexOf("/")) : "/content-store";
                     FS.mkdirTree(folder);
                     FS.writeFile("/content-store/" + file.name, file.bytes);
                 }
 
-                FS.writeFile("/content-store/.segments", JSON.stringify(opened.segments));
-                space = opened.available;
+                FS.writeFile("/content-store/.segments", JSON.stringify(store.segments));
+                space = store.available;
 
                 if (navigator.storage.persist) {
                     navigator.storage.persist().catch(() => {});
@@ -474,6 +508,7 @@ Module.haylen = Module.haylen || {};
             },
             read(id, name, offset, size) {
                 if (worker) {
+                    reading.add(id);
                     worker.postMessage({ op: "read", id, name, offset, size });
                 } else {
                     setTimeout(() => deliver(id, null), 0);
