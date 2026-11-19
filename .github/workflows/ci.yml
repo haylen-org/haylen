@@ -579,6 +579,14 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target ios-simulator
       - name: UI tests on the tvOS simulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target tvos-simulator
+      - name: Keep the results of the UI tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apple-ui-results
+          path: build/engine/*-simulator-ui-tests/derived/Logs/Test
+          retention-days: 3
+          if-no-files-found: ignore
       - uses: ./.github/actions/compiler-cache
         if: always()
 

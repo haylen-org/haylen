@@ -753,7 +753,7 @@ The jobs of a run hand the SDKs that one of them built to the others through the
 
 ### The browser of the pages
 
-A `web` job whose checks fail keeps the logs of its failed pages, the folder `build/logs/web-checks`, as an artifact of the job that GitHub deletes after three days.
+A `web` job whose checks fail keeps the logs of its failed pages, the folder `build/logs/web-checks`, as an artifact of the job that GitHub deletes after three days. An `apple-ui` job whose UI tests fail keeps their result bundles, with the screenshots and the tree of the app at each failure, as an artifact of the job that GitHub deletes after three days.
 
 The `web-sdk`, `web` and `apple` jobs open pages in the headless Chrome of the runner. A runner reads a program from its disk page by page the first time the program runs, and the first start of Chrome there reads about 150 MB in some 1,600 page faults. That start took from under a second to more than 30 seconds, while every start after it answers within a second. So each of these jobs runs the action `.github/actions/browser` right before its first page, which reads the whole browser in one pass of a few seconds. The tooling waits 30 seconds for a browser to listen for its driver, and a browser that ends before it listens fails at once with the last lines of its output.
 
