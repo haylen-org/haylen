@@ -8,10 +8,9 @@
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/TextValue.hpp"
+#include "ui/TextEditor.hpp"
 
 namespace haylen::ui {
-
-class Scrollbar;
 
 // The value, placeholder, length limit and keyboard options every text entry shares. The value the player types stays in the component, so a later patch of other properties keeps it.
 class TextEntry : public Component {
@@ -30,8 +29,8 @@ class TextEntry : public Component {
         values["value"] = value;
     }
 
-    // Draws the editor with the keyboard of the entry, space kept free for icons on either side and the scroll bar of an entry of many lines.
-    void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart = 0.0F, float reserveEnd = 0.0F, Scrollbar* scrollbar = nullptr);
+    // Draws the editor with the keyboard of the entry, space kept free for icons on either side and the scroll of an entry of many lines.
+    void drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart = 0.0F, float reserveEnd = 0.0F, TextEditor::Scrolling* scrolling = nullptr);
 
     std::string value;
 

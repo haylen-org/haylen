@@ -108,6 +108,19 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
         return std::min(density.x, density.y) / getFixture().host().getDpiScale();
     }
 
+    // Writes the top of the last text that each frame draws, the lines of a text area in these tests, until the overlay it returns is removed.
+    std::uint64_t followTextTop(float& top) {
+        // clang-format off
+        return getEngine().getRenderer2D().addCanvasOverlay([&top](graphics2d::Renderer& drawing) {
+            drawing.visitDrawn([&top](const graphics2d::Renderer::Drawn& drawn) {
+                if (drawn.text) {
+                    top = math::Geometry::bounds(drawn.corners).y;
+                }
+            });
+        });
+        // clang-format on
+    }
+
     // Clicks a point given in UI units, which the pointer of the fixture takes in design units.
     void clickUi(math::Vec2 point) {
         click(point * getUi().getBackend().getScale());
@@ -382,15 +395,7 @@ TEST_F(ScrollbarTest, ScrollsTheTextOfATextAreaWithItsBar) {
     // The thumb of a field that is not edited drags its text, which the field draws higher the further the thumb goes.
     graphics2d::Renderer& renderer = getEngine().getRenderer2D();
     float top = 0.0F;
-    // clang-format off
-    const std::uint64_t overlay = renderer.addCanvasOverlay([&top](graphics2d::Renderer& drawing) {
-        drawing.visitDrawn([&top](const graphics2d::Renderer::Drawn& drawn) {
-            if (drawn.text) {
-                top = math::Geometry::bounds(drawn.corners).y;
-            }
-        });
-    });
-    // clang-format on
+    const std::uint64_t overlay = followTextTop(top);
     frames();
     const float before = top;
     drag(thumb.getCenter(), {thumb.getCenter().x, field.getBottom()});
@@ -424,15 +429,7 @@ TEST_F(ScrollbarTest, ScrollsATextAreaWithTheMomentumOfATrackpad) {
     const math::Vec2 inside = getBounds(*gui, "notes").getCenter();
     graphics2d::Renderer& renderer = getEngine().getRenderer2D();
     float top = 0.0F;
-    // clang-format off
-    const std::uint64_t overlay = renderer.addCanvasOverlay([&top](graphics2d::Renderer& drawing) {
-        drawing.visitDrawn([&top](const graphics2d::Renderer::Drawn& drawn) {
-            if (drawn.text) {
-                top = math::Geometry::bounds(drawn.corners).y;
-            }
-        });
-    });
-    // clang-format on
+    const std::uint64_t overlay = followTextTop(top);
     // clang-format off
     const auto scroll = [&](float distance, Phase phase) {
         pointer(platform::Event::Type::MouseMove, inside);
@@ -456,6 +453,27 @@ TEST_F(ScrollbarTest, ScrollsATextAreaWithTheMomentumOfATrackpad) {
 
     renderer.removeCanvasOverlay(overlay);
     EXPECT_NEAR(top, lifted - 50.0F, 1.0F);
+}
+
+// A step of a wheel glides the lines of a text area to their place, as it glides every other area that scrolls.
+TEST_F(ScrollbarTest, GlidesTheTextOfATextAreaByTheStepsOfAWheel) {
+    auto gui = mount(marked(R"({"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("})"));
+    frames(2);
+    float top = 0.0F;
+    const std::uint64_t overlay = followTextTop(top);
+    frames();
+    const float before = top;
+
+    // The wheel reaches the area in the frame after it turns.
+    wheel(getBounds(*gui, "notes").getCenter(), -1.0F);
+    frames();
+    const float started = before - top;
+    frames(60);
+    const float settled = before - top;
+    getEngine().getRenderer2D().removeCanvasOverlay(overlay);
+    EXPECT_GT(started, 0.0F);
+    EXPECT_LT(started, settled * 0.5F);
+    EXPECT_NEAR(settled, getUi().getTheme().getMetric(Theme::Metric::ScrollLine), 0.5F);
 }
 
 TEST_F(ScrollbarTest, ScrollsTheRowsOfALongComboBesideItsBar) {

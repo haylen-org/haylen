@@ -33,9 +33,9 @@ platform::TextInput::Options TextEntry::getInputOptions(platform::TextInput::Key
     return {.keyboard = keyboard, .returnKey = returnKey, .capitalization = capitalization.value_or(prose ? platform::TextInput::Capitalization::Sentences : platform::TextInput::Capitalization::None), .autocorrect = autocorrect, .maxLength = maxLength};
 }
 
-void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart, float reserveEnd, Scrollbar* scrollbar) {
+void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart, float reserveEnd, TextEditor::Scrolling* scrolling) {
     const std::string_view hint = context.getText(placeholder);
-    const TextEditor::Result result = TextEditor::draw(context, bounds, value, {.placeholder = hint, .input = getInputOptions(keyboard), .focus = takeFocusRequest(), .reserveStart = reserveStart, .reserveEnd = reserveEnd, .scrollbar = scrollbar});
+    const TextEditor::Result result = TextEditor::draw(context, bounds, value, {.placeholder = hint, .input = getInputOptions(keyboard), .focus = takeFocusRequest(), .reserveStart = reserveStart, .reserveEnd = reserveEnd, .scrolling = scrolling});
     if (result.changed) {
         context.playSound(Theme::Sound::Type);
         context.emit(*this, "change", {{"value", value}});

@@ -143,6 +143,25 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
     select(io.KeyShift ? editing.anchor : caret, caret);
 }
 
+// The steps of a wheel glide to their place, while a trackpad moves the text at once and the momentum of the system goes on after its fingers left, since a text area has no fling of its own.
+float TextEditor::scrollLines(Context& context, Scrolling& scrolling, ImGuiID id, const math::Rect& bounds, float overflow, float view) {
+    Scroller& motion = scrolling.motion;
+    motion.setRange(overflow, view);
+    if (overflow > 0.0F) {
+        const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()));
+        const Context::WheelScroll wheel = context.takeWheel(id, bounds, false, motion.getOffset(), overflow, hovered);
+        const double moved = static_cast<double>(wheel.distance + wheel.momentum);
+        if (wheel.motion == Context::WheelScroll::Motion::Glide) {
+            motion.follow(wheel, -1.0, context.getDeltaSeconds());
+        } else if (moved != 0.0) {
+            motion.jumpTo(motion.getOffset() - moved);
+        }
+    }
+
+    motion.update(context.getDeltaSeconds());
+    return static_cast<float>(std::clamp(motion.getOffset(), 0.0, static_cast<double>(overflow)));
+}
+
 TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, std::string& value, const Options& options) {
     const ImGuiID id = ImGui::GetID("##field");
     const bool focused = ImGui::GetActiveID() == id;
@@ -157,9 +176,8 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     // The scroll of the text lives with the field, and so does whether its text was taller than its area in the last frame, which shows the scroll bar of an editor of many lines from the frame after the text grew, so the area never changes while the text lays out.
     ImGuiStorage& storage = *ImGui::GetStateStorage();
     const ImGuiID scrollX = ImGui::GetID("##scrollX");
-    const ImGuiID scrollY = ImGui::GetID("##scrollY");
     const ImGuiID overflowed = ImGui::GetID("##overflowed");
-    const bool barShown = multiline && options.scrollbar != nullptr && storage.GetBool(overflowed);
+    const bool barShown = multiline && storage.GetBool(overflowed);
 
     // The bar keeps inside the frame of the field, and the text and the ImGui field leave its lane.
     const bool rightToLeft = context.isRightToLeft();
@@ -181,7 +199,8 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     style.balance = text::Balance::None;
 
     // The caret and the selection the field had start the frame.
-    const math::Vec2 storedScroll{storage.GetFloat(scrollX), storage.GetFloat(scrollY)};
+    const float storedLines = multiline ? static_cast<float>(std::max(0.0, options.scrolling->motion.getOffset())) : 0.0F;
+    const math::Vec2 storedScroll{storage.GetFloat(scrollX), storedLines};
     Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = area, .scroll = storedScroll, .rightToLeft = rightToLeft, .password = password, .multiline = multiline, .centered = options.centered};
 
     // ImGui leaves the start of the last selection behind when the caret moves without selecting, so only a selection anchors a shift press.
@@ -269,11 +288,11 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
 
     const float overflow = std::max(0.0F, laid->size.y - area.height);
     math::Vec2 scroll = editing.scroll;
-    if (multiline && overflow > 0.0F) {
-        const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()));
-        const Context::WheelScroll wheel = context.takeWheel(id, bounds, false, scroll.y, overflow, hovered);
-        scroll.y = std::clamp(scroll.y - wheel.distance - wheel.momentum, 0.0F, overflow);
+    if (multiline) {
+        scroll.y = scrollLines(context, *options.scrolling, id, bounds, overflow, area.height);
     }
+
+    const float wheeled = scroll.y;
 
     if (state != nullptr) {
         const math::Vec2 scrolledOrigin = getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered);
@@ -285,13 +304,16 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
 
     if (barShown) {
         const float radius = Surfaces::getInnerRadius(context.getMetric(Theme::Metric::ControlRadius), rightToLeft ? frame.left : frame.right);
-        if (const std::optional<double> offset = options.scrollbar->interact(context, barArea, false, false, scroll.y, overflow, area.height, radius)) {
+        if (const std::optional<double> offset = options.scrolling->bar.interact(context, barArea, false, false, scroll.y, overflow, area.height, radius)) {
             scroll.y = static_cast<float>(*offset);
         }
     }
 
+    // The caret and the bar move the text at once.
     storage.SetFloat(scrollX, scroll.x);
-    storage.SetFloat(scrollY, scroll.y);
+    if (multiline && scroll.y != wheeled) {
+        options.scrolling->motion.jumpTo(scroll.y);
+    }
 
     if (multiline) {
         storage.SetBool(overflowed, overflow > 0.0F);
@@ -359,7 +381,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     Context::popClip();
 
     if (barShown) {
-        options.scrollbar->draw(context, 1.0F);
+        options.scrolling->bar.draw(context, 1.0F);
     }
 
     context.takePointer(bounds);

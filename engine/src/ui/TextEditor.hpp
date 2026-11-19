@@ -13,17 +13,24 @@
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/Style.hpp"
+#include "ui/Scrollbar.hpp"
+#include "ui/Scroller.hpp"
 #include "ui/TextFieldLayout.hpp"
 
 namespace haylen::ui {
 
 class Context;
-class Scrollbar;
 class TextSession;
 
 // Draws a themed text editor of one line, or of many lines that wrap at its width, over Dear ImGui text input, with its own surface and focus ring. ImGui keeps the text, the undo history and the keys that edit it, while the editor draws the text shaped and ordered for display, its selection and its caret, and places the caret by the shaped text when the pointer or the arrow keys move it. The focused editor edits through the text session of the backend, so the native field of the platform types into it.
 class TextEditor final {
   public:
+    // The scroll bar of an editor of many lines, which shows while its text is taller than its area, and the motion of its scroll, in which the steps of a wheel glide.
+    struct Scrolling {
+        Scrollbar bar;
+        Scroller motion;
+    };
+
     struct Options {
         std::string_view placeholder;
         platform::TextInput::Options input;
@@ -34,8 +41,8 @@ class TextEditor final {
         // Centers the text of an editor of one line while it fits the area, such as the value of a number field between its buttons.
         bool centered = false;
 
-        // The scroll bar of an editor of many lines, which shows while its text is taller than its area.
-        Scrollbar* scrollbar = nullptr;
+        // The scroll of an editor of many lines, which every editor of many lines has.
+        Scrolling* scrolling = nullptr;
     };
 
     struct Result {
@@ -72,6 +79,9 @@ class TextEditor final {
     // The caret keeps this far from the edges of the field while the text scrolls under it.
     static constexpr float kCaretMargin = 2.0F;
     static constexpr std::string_view kBullet = "\xE2\x80\xA2";
+
+    // Moves the lines of an editor of many lines by the wheel of the frame and returns how far they scroll.
+    [[nodiscard]] static float scrollLines(Context& context, Scrolling& scrolling, ImGuiID id, const math::Rect& bounds, float overflow, float view);
 
     static int callback(ImGuiInputTextCallbackData* data);
     static void placeCaret(ImGuiInputTextCallbackData& data, const Editing& editing);
