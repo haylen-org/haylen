@@ -41,9 +41,25 @@ class ApplePropertyListsTest:
         shown = self.info(apple, {"window": {"statusBar": "dark"}})
         assert (shown["UIStatusBarHidden"], shown["UIStatusBarStyle"]) == (False, "UIStatusBarStyleDarkContent")
 
-    def test_iphones_list_every_orientation_and_refresh_above_60_hertz(self, apple):
-        info = self.info(apple, {"orientation": "portrait"})
+    def test_iphones_refresh_above_60_hertz_in_scenes(self, apple):
+        info = self.info(apple, {})
         assert info["CADisableMinimumFrameDurationOnPhone"] is True
+        assert info["UIApplicationSceneManifest"] == {"UIApplicationSupportsMultipleScenes": True}
+
+    def test_a_landscape_app_launches_in_landscape(self, apple):
+        # The system picks the orientation that an app launches in from this list, so a landscape app held upright opens in landscape without turning.
+        landscape = ["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]
+        for info in (self.info(apple, {"orientation": "landscape"}), self.info(apple, {})):
+            assert info["UISupportedInterfaceOrientations"] == landscape
+            assert info["UISupportedInterfaceOrientations~ipad"] == landscape
+
+    def test_a_portrait_app_launches_in_portrait(self, apple):
+        info = self.info(apple, {"orientation": "portrait"})
+        assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait"]
+        assert info["UISupportedInterfaceOrientations~ipad"] == ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown"]
+
+    def test_an_app_of_any_orientation_lists_every_orientation(self, apple):
+        info = self.info(apple, {"orientation": "any"})
         assert info["UISupportedInterfaceOrientations"] == ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]
         assert info["UISupportedInterfaceOrientations~ipad"] == [
             "UIInterfaceOrientationPortrait",
@@ -51,7 +67,6 @@ class ApplePropertyListsTest:
             "UIInterfaceOrientationLandscapeLeft",
             "UIInterfaceOrientationLandscapeRight",
         ]
-        assert info["UIApplicationSceneManifest"] == {"UIApplicationSupportsMultipleScenes": True}
 
     def test_a_mac_app_that_hides_from_the_dock_is_an_agent(self, apple):
         assert self.info(apple, {"window": {"showInTaskbar": False}}, "macos")["LSUIElement"] is True

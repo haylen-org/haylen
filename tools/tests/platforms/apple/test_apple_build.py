@@ -64,8 +64,8 @@ class AppleBuildTest:
     def test_an_app_with_every_part_passes_the_verification(self, apple):
         info = {
             "UIApplicationSceneManifest": {},
-            "UISupportedInterfaceOrientations": list(InfoPlistKeys.PHONE_ORIENTATIONS),
-            "UISupportedInterfaceOrientations~ipad": list(InfoPlistKeys.PAD_ORIENTATIONS),
+            "UISupportedInterfaceOrientations": list(InfoPlistKeys.PHONE_ORIENTATIONS["landscape"]),
+            "UISupportedInterfaceOrientations~ipad": list(InfoPlistKeys.PAD_ORIENTATIONS["landscape"]),
             "CADisableMinimumFrameDurationOnPhone": True,
             "UIStatusBarHidden": True,
         }

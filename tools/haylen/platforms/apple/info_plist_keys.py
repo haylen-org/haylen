@@ -4,10 +4,15 @@ from haylen.platforms.apple.apple_target import AppleTarget
 
 
 class InfoPlistKeys:
-    """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads every orientation, since the runtime allows the ones of `orientation` and a foldable iPhone shows an app that lists fewer in a box, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`."""
+    """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads the orientations of `orientation`, which the system launches the app in, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`."""
 
-    PHONE_ORIENTATIONS = ("UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
-    PAD_ORIENTATIONS = ("UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
+    LANDSCAPE = ("UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
+    PHONE_ORIENTATIONS = {"landscape": LANDSCAPE, "portrait": ("UIInterfaceOrientationPortrait",), "any": ("UIInterfaceOrientationPortrait", *LANDSCAPE)}
+    PAD_ORIENTATIONS = {
+        "landscape": LANDSCAPE,
+        "portrait": ("UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown"),
+        "any": ("UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", *LANDSCAPE),
+    }
     STATUS_BAR_STYLES = {"auto": "UIStatusBarStyleDefault", "light": "UIStatusBarStyleLightContent", "dark": "UIStatusBarStyleDarkContent"}
     CATEGORIES = {
         AppCategory.GAME: "public.app-category.games",
@@ -35,8 +40,9 @@ class InfoPlistKeys:
 
         if target.folder == "ios":
             status_bar = str(window.get("statusBar", "hidden"))
-            keys["UISupportedInterfaceOrientations"] = list(InfoPlistKeys.PHONE_ORIENTATIONS)
-            keys["UISupportedInterfaceOrientations~ipad"] = list(InfoPlistKeys.PAD_ORIENTATIONS)
+            orientation = str(app.document.get("orientation", "landscape"))
+            keys["UISupportedInterfaceOrientations"] = list(InfoPlistKeys.PHONE_ORIENTATIONS[orientation])
+            keys["UISupportedInterfaceOrientations~ipad"] = list(InfoPlistKeys.PAD_ORIENTATIONS[orientation])
             keys["CADisableMinimumFrameDurationOnPhone"] = True
             keys["UIStatusBarHidden"] = status_bar == "hidden"
             if status_bar != "hidden":

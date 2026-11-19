@@ -6,7 +6,7 @@
 
 namespace haylen::platform {
 
-// The orientations that an iPhone or iPad app allows, as the bits of `UIInterfaceOrientationMask`, which its application delegate and the view controller of its window both answer UIKit with, so UIKit never lays the window out in an orientation the app refuses. Before the app locks the orientation they are those of `haylen.json`, and afterwards those of the lock. The Info.plist lists every orientation, since a foldable iPhone shows an app that lists fewer in a box of the size of the outer screen on its inner screen.
+// The orientations that an iPhone or iPad app allows, as the bits of `UIInterfaceOrientationMask`, which its application delegate and the view controller of its window both answer UIKit with, so UIKit never lays the window out in an orientation the app refuses. Before the app locks the orientation they are those of `haylen.json`, and afterwards those of the lock. The Info.plist lists the orientations of `haylen.json`, which the app launches in.
 class SupportedOrientations final {
   public:
     static constexpr std::uint32_t kPortrait = 1U << 1U;

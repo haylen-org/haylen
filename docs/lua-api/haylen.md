@@ -130,7 +130,7 @@ The desktop options of `window` change later through [`haylen.window`](window.md
 | --- | --- | --- | --- |
 | `design.width`, `design.height` | number | `1920`, `1080` | The design resolution: the space of units that the app draws in and receives input in. |
 | `design.scaling` | string | `"expand"` | How the design resolution fits the screen: `"fit"`, `"fill"`, `"stretch"`, `"expand"`, `"pixelPerfect"`, `"fitWidth"` or `"none"`, as [`haylen.viewport`](viewport.md) describes. |
-| `orientation` | string | `"landscape"` | The orientation of a mobile app: `"landscape"`, `"portrait"` or `"any"`. The Android backend writes it into the manifest of the project that it generates. On iPhones and iPads the `Info.plist` lists every orientation and the runtime allows the ones of `orientation`, as the [distribution guide](../tools/distribution.md) describes. Desktop windows and the web ignore it. |
+| `orientation` | string | `"landscape"` | The orientation of a mobile app: `"landscape"`, `"portrait"` or `"any"`. The Android backend writes it into the manifest of the project that it generates. On iPhones and iPads the `Info.plist` lists the orientations of `orientation`, which the app launches in, as the [distribution guide](../tools/distribution.md) describes. Desktop windows and the web ignore it. |
 | `fixedRate` | number | `60` | Fixed updates per second. [`haylen.fixedStep()`](#haylenfixedstep) returns the length of one step in seconds. |
 | `maxFrameTime` | number | `0.25` | The longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |
 | `clearColor` | string | `"#FF000000"`, or `"#00000000"` for a transparent window | The background color. |

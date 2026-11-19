@@ -51,7 +51,7 @@ using haylen::platform::NativeWindow;
 }
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
-// UIKit reads which questions the application delegate answers once, as the app launches, so the delegate answers this one from the start with the orientations of the Info.plist, and with those of the lock once the app locks the orientation.
+// UIKit reads which questions the application delegate answers once, as the app launches, so the delegate answers this one from the start with the orientations of `haylen.json`, which the Info.plist lists too, and with those of the lock once the app locks the orientation.
 - (UIInterfaceOrientationMask)application:(UIApplication*)application supportedInterfaceOrientationsForWindow:(UIWindow*)window {
     return AppleOrientation::getSupported();
 }
