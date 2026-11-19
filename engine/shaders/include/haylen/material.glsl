@@ -206,8 +206,12 @@ in vec4 haylen_shape_form;
 in vec4 haylen_shape_radii;
 in vec4 haylen_shape_border;
 
-// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, exact at any ratio of its radii. With the longer radius along x and the point in the first quarter, the nearest point of the edge is `(r x / (t + r - 1), y / t)` for the ratio `r` of the squared radii and the root `t` of the equation of the edge, which the bisection finds between bounds that always hold it, while a point on the long axis has the nearest point in closed form.
+// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, exact at any ratio of its radii. A circle measures from its center. With the longer radius along x and the point in the first quarter, the nearest point of the edge is `(r x / (t + r - 1), y / t)` for the ratio `r` of the squared radii and the root `t` of the equation of the edge, which the bisection finds between bounds that always hold it, while a point on the long axis has the nearest point in closed form.
 float haylen_shape_ellipse(vec2 point) {
+    if (haylen_shape_frame.z == haylen_shape_frame.w) {
+        return length(point) - haylen_shape_frame.z;
+    }
+
     bool tall = haylen_shape_frame.w > haylen_shape_frame.z;
     vec2 radii = tall ? haylen_shape_frame.wz : haylen_shape_frame.zw;
     vec2 at = abs(tall ? point.yx : point);
@@ -261,17 +265,27 @@ float haylen_shape_sector() {
     return abs(turned.y) * cos(half_angle) - turned.x * sin(half_angle);
 }
 
-// How much of the pixel the shape covers, and how much of it its fill covers inside the border. Each edge fades over one pixel of the screen, or over the softness, so the coverage of a pixel follows how far its center lies inside the edge. The coverage past the far side of a thin shape is taken away again, so shapes thinner than a pixel cover only what they cross.
+// The coverage of the pixel, which the paint of a shape and its output both read, so each pixel measures it once.
+vec2 haylen_shape_coverage = vec2(0.0);
+bool haylen_shape_covered = false;
+
+// How much of the pixel the shape covers, and how much of it its fill covers inside the border. Each edge fades over one pixel of the screen, or over the softness, so the coverage of a pixel follows how far its center lies inside the edge. The coverage past the far side of a thin shape is taken away again, so shapes thinner than a pixel cover only what they cross. The slopes of the point come first, where every pixel takes them, as derivatives need.
 vec2 haylen_shape_cover() {
     vec2 point = haylen_shape_frame.xy;
     float pixel = 0.5 * (length(dFdx(point)) + length(dFdy(point)));
+    if (haylen_shape_covered) {
+        return haylen_shape_coverage;
+    }
+
     float ramp = max(max(pixel, haylen_shape_form.y), 0.000001);
     float box = haylen_shape_box(point);
     float sector = haylen_shape_sector();
     float beyond = clamp(0.5 - (box + 2.0 * haylen_shape_form.z) / ramp, 0.0, 1.0);
     float outer = clamp(0.5 - max(box, sector) / ramp, 0.0, 1.0) - beyond;
     float inner = clamp(0.5 - max(box + haylen_shape_form.x, sector) / ramp, 0.0, 1.0) - beyond;
-    return vec2(max(outer, 0.0), max(inner, 0.0));
+    haylen_shape_coverage = vec2(max(outer, 0.0), max(inner, 0.0));
+    haylen_shape_covered = true;
+    return haylen_shape_coverage;
 }
 
 // Paints the fill inside the border and the border color in the band along the edge, as one straight color for the whole shape, which `haylen_output` fades by the coverage of the shape.
@@ -324,12 +338,20 @@ vec4 haylen_texture_grad(vec2 point, vec2 slopeX, vec2 slopeY) {
     }
     return textureGrad(sampler2D(sprite_texture, sprite_sampler), point, slopeX, slopeY);
 #else
+    if (haylen_texture_form > 0.5) {
+        return textureLod(sampler2D(sprite_texture, sprite_sampler), point, 0.0);
+    }
     return textureGrad(sampler2D(sprite_texture, sprite_sampler), point, slopeX, slopeY);
 #endif
 }
 
-// The texture of the draw at a point, read at the mip level of the footprint of a pixel. A point that jumps between neighboring pixels, such as one clamped into the source, snapped to a cell or turned by a different angle in each pixel, has slopes far larger than the pixel covers, which would pick a tiny mip level and smear the texture. So the lookup takes the smaller of the slopes of the point and those of the texture coordinate of the draw, which hold the footprint of the pixel for a point shifted from it. The index of the texture of a sprite of a batch is the same across the quad of the sprite, but compilers cannot tell, so the lookup takes the slopes before it picks the texture.
+// The texture of the draw at a point, read at the mip level of the footprint of a pixel. A point that jumps between neighboring pixels, such as one clamped into the source, snapped to a cell or turned by a different angle in each pixel, has slopes far larger than the pixel covers, which would pick a tiny mip level and smear the texture. So the lookup takes the smaller of the slopes of the point and those of the texture coordinate of the draw, which hold the footprint of the pixel for a point shifted from it. A texture of a single level, such as the atlas of text, has no level to pick, so its lookups take no slopes. The index of the texture of a sprite of a batch is the same across the quad of the sprite, but compilers cannot tell, so the lookup takes the slopes before it picks the texture.
 vec4 haylen_texture(vec2 point) {
+#ifndef HAYLEN_BATCH
+    if (haylen_texture_form > 0.5) {
+        return textureLod(sampler2D(sprite_texture, sprite_sampler), point, 0.0);
+    }
+#endif
     vec2 pointX = dFdx(point);
     vec2 pointY = dFdy(point);
     vec2 drawX = dFdx(uv);
@@ -367,6 +389,12 @@ vec2 haylen_texture_size() {
     return vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
 }
 
+#if !defined(HAYLEN_MESH) && !defined(HAYLEN_SHAPE)
+// The texels of the source rectangle that points move inside, which every lookup of a pixel shares, so each pixel works them out once.
+vec4 haylen_inside_bounds = vec4(0.0);
+bool haylen_inside_known = false;
+#endif
+
 // Moves a point inside the texels of the source rectangle of the draw, so filtering never reads the texels around it, such as the neighbours of a region of an atlas or the borders of a stretched nine-slice center. Meshes keep their texture coordinates, and shapes keep theirs inside the texture, so the fade past their edge never wraps around a repeating texture.
 vec2 haylen_inside(vec2 point) {
 #if defined(HAYLEN_MESH)
@@ -374,20 +402,29 @@ vec2 haylen_inside(vec2 point) {
 #elif defined(HAYLEN_SHAPE)
     return clamp(point, 0.0, 1.0);
 #else
-    vec2 margin = 0.5 / haylen_texture_size();
-    vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;
-    return clamp(point, min(haylen_source.xy + margin, middle), max(haylen_source.zw - margin, middle));
+    if (!haylen_inside_known) {
+        vec2 margin = 0.5 / haylen_texture_size();
+        vec2 middle = (haylen_source.xy + haylen_source.zw) * 0.5;
+        haylen_inside_bounds = vec4(min(haylen_source.xy + margin, middle), max(haylen_source.zw - margin, middle));
+        haylen_inside_known = true;
+    }
+    return clamp(point, haylen_inside_bounds.xy, haylen_inside_bounds.zw);
 #endif
 }
 
-// The texture color inside the source of the draw multiplied by the draw color and mixed toward the flash color by its alpha, which a shape paints with its border.
+// The texture color inside the source of the draw multiplied by the draw color and mixed toward the flash color by its alpha, which a shape paints with its border. A draw of the white texture, whose texels are all 1, skips the lookup, and shapes never flash.
 vec4 haylen_sprite(vec2 point) {
-    vec4 shaded = haylen_texture(haylen_inside(point)) * color;
-    shaded.rgb = mix(shaded.rgb, haylen_flash.rgb, haylen_flash.a);
+    vec4 texel = vec4(1.0);
+    if (haylen_texture_form < 1.5) {
+        texel = haylen_texture(haylen_inside(point));
+    }
 #ifdef HAYLEN_SHAPE
-    shaded = haylen_shape_paint(shaded);
-#endif
+    return haylen_shape_paint(texel * color);
+#else
+    vec4 shaded = texel * color;
+    shaded.rgb = mix(shaded.rgb, haylen_flash.rgb, haylen_flash.a);
     return shaded;
+#endif
 }
 
 // How much the distance of the field changes across one pixel of the screen, as `fwidth` measures it, taken from the field half a pixel to each side of the point. The point moves linearly across the quad, so its derivatives give the same pixel on GPUs that take derivatives once for each block of four pixels and on those that take them for each pixel, while the derivatives of the distance itself would differ between them.

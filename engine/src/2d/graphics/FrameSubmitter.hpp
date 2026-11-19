@@ -57,14 +57,24 @@ class FrameSubmitter final {
         std::array<float, 3> padding{};
     };
 
-    // The edges of a fade as the shader library reads them: the slopes along x, the slopes along y and the offsets of the first four edges, then of the next four, where the slots past the last edge cover every point.
-    struct FadeParams {
+    // The parameters of the fragment stage of a draw as the shader library reads them: the slopes along x, the slopes along y and the offsets of the first four edges of its fade, then of the next four, where the slots past the last edge cover every point, the count of its edges and the form of its texture.
+    struct DrawParams {
         Vector x{};
         Vector y{};
         Vector offset{1.0F, 1.0F, 1.0F, 1.0F};
         Vector moreX{};
         Vector moreY{};
         Vector moreOffset{1.0F, 1.0F, 1.0F, 1.0F};
+        float fadeCount = 0.0F;
+        float textureForm = 0.0F;
+        std::array<float, 2> padding{};
+    };
+
+    // The form of the texture of a draw, which lets the lookups of the shader library skip work: a texture with mip levels, or the several textures of a batch, whose lookups pick a level, a texture of a single level, which they read without slopes, and the white texture, whose texels are all 1.
+    enum class TextureForm : std::uint8_t {
+        Levels,
+        SingleLevel,
+        White,
     };
 
     struct LitParams {
@@ -242,8 +252,9 @@ class FrameSubmitter final {
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
 
-    // Applies the edges of a fade of the frame, or of none for 0, moved with draws that the offset moves.
-    void applyFade(std::uint32_t fade, math::Vec2 offset = {});
+    // Applies the fragment parameters of a draw: the edges of a fade of the frame, or of none for 0, moved with draws that the offset moves, and the form of its texture.
+    void applyDraw(std::uint32_t fade, math::Vec2 offset, TextureForm form);
+    [[nodiscard]] TextureForm getTextureForm(const graphics::TextureResource& texture) const noexcept;
 
     // Applies the uniforms of how a command is shaded: the lighting of lit passes, with how its blend covers the emission, the surface and the info, and the values of its material.
     void applyShade(const Shade& shade, graphics::PassTarget pass, Program program, graphics::BlendMode::Type blend);

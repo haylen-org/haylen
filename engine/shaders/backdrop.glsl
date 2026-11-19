@@ -35,7 +35,7 @@ layout(binding=0) uniform sampler backdrop_sampler;
 in vec2 uv;
 out vec4 frag_color;
 
-@include_block haylen_fade
+@include_block haylen_draw
 
 vec3 screen(vec3 below, vec3 above) {
     return below + above - below * above;

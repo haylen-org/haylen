@@ -74,13 +74,13 @@ struct RendererState {
     static constexpr int kMetaballTextureSize = 64;
     static constexpr std::size_t kProgramCount = 15;
 
-    // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot, its fade from the fade block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
+    // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot, its fade and the form of its texture from the draw block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
     static constexpr int kVertexBlock = 0;
     static constexpr std::uint32_t kVertexBlockSize = 80;
     static constexpr std::uint32_t kLitBlockSize = 32;
     static constexpr int kFragmentBlock = 1;
-    static constexpr int kFadeBlock = 6;
-    static constexpr std::uint32_t kFadeBlockSize = 96;
+    static constexpr int kDrawBlock = 6;
+    static constexpr std::uint32_t kDrawBlockSize = 112;
     static constexpr int kLitBlock = 7;
     static constexpr int kSpriteTexture = 0;
     static constexpr int kSpriteSampler = 0;

@@ -978,7 +978,7 @@ const graphics::ShaderResource::Compiled& RendererState::getMaterialProgram(Mate
 
     // The renderer fills the blocks of the shader library itself, so a shader compiled with another version of the library cannot draw.
     const bool lit = target == graphics::PassTarget::LitScene;
-    if (made.blockSizes[kVertexBlock] != kVertexBlockSize || made.blockSizes[kFadeBlock] != kFadeBlockSize || (lit && made.blockSizes[kLitBlock] != kLitBlockSize)) {
+    if (made.blockSizes[kVertexBlock] != kVertexBlockSize || made.blockSizes[kDrawBlock] != kDrawBlockSize || (lit && made.blockSizes[kLitBlock] != kLitBlockSize)) {
         throw std::invalid_argument(std::format("The shader \"{}\" was compiled with another version of the shader library. Compile it again with \"haylen app shaders\".", shader.name));
     }
 

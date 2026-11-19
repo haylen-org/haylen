@@ -1,28 +1,38 @@
-// The fade of a draw, which fades its alpha out toward the edges of the fades around it. Each of its eight edges covers a point by `x * point.x + y * point.y + offset`, clamped to 0 and 1, and the coverages of the edges multiply, where an edge that fades nothing covers every point with 1. Every vertex stage of a program that reads it passes `haylen_output_point`, the point of the canvas it draws at.
-@block haylen_fade
-layout(binding=6) uniform haylen_fade_params {
+// The parameters of the fragment stage of a draw. Its fade fades its alpha out toward the edges of the fades around it. Each of the eight edges covers a point by `x * point.x + y * point.y + offset`, clamped to 0 and 1, and the coverages of the edges multiply, where an edge that fades nothing covers every point with 1. The count of edges lets a draw without a fade skip it and a fade of four edges or fewer read only the first four. The form of its texture lets its lookups skip work. Every vertex stage of a program that reads the fade passes `haylen_output_point`, the point of the canvas it draws at.
+@block haylen_draw
+layout(binding=6) uniform haylen_draw_params {
     vec4 haylen_fade_x;
     vec4 haylen_fade_y;
     vec4 haylen_fade_offset;
     vec4 haylen_fade_more_x;
     vec4 haylen_fade_more_y;
     vec4 haylen_fade_more_offset;
+    float haylen_fade_count;
+    // 0 when the texture of the draw has mip levels or a batch picks one of several textures, 1 when it has a single level, which lookups read without slopes, and 2 for the white texture, whose texels are all 1.
+    float haylen_texture_form;
 };
 
 in vec2 haylen_output_point;
 
 float haylen_fade() {
+    if (haylen_fade_count < 0.5) {
+        return 1.0;
+    }
+
     vec2 point = haylen_output_point;
     vec4 first = clamp(haylen_fade_x * point.x + haylen_fade_y * point.y + haylen_fade_offset, 0.0, 1.0);
-    vec4 second = clamp(haylen_fade_more_x * point.x + haylen_fade_more_y * point.y + haylen_fade_more_offset, 0.0, 1.0);
-    vec4 both = first * second;
-    return both.x * both.y * both.z * both.w;
+    float fade = first.x * first.y * first.z * first.w;
+    if (haylen_fade_count > 4.5) {
+        vec4 second = clamp(haylen_fade_more_x * point.x + haylen_fade_more_y * point.y + haylen_fade_more_offset, 0.0, 1.0);
+        fade *= second.x * second.y * second.z * second.w;
+    }
+    return fade;
 }
 @end
 
 // Writes the result of a fragment shader, which a shape fades by how much of the pixel it covers and every draw by its fade. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
 @block haylen_output
-@include_block haylen_fade
+@include_block haylen_draw
 in float haylen_output_premultiply;
 
 vec3 haylen_output_color(vec4 result) {

@@ -20,7 +20,7 @@ namespace haylen::graphics2d {
 const PostProcess FrameSubmitter::kNoPostProcess{};
 
 template <typename Block> void FrameSubmitter::applyBlock(int slot, const Block& block) {
-    static_assert(sizeof(VertexParams) == RendererState::kVertexBlockSize && sizeof(FadeParams) == RendererState::kFadeBlockSize && sizeof(LitParams) == RendererState::kLitBlockSize && sizeof(LightParams) == 64 && sizeof(CompositeParams) == 176 && sizeof(FilterParams) == 32);
+    static_assert(sizeof(VertexParams) == RendererState::kVertexBlockSize && sizeof(DrawParams) == RendererState::kDrawBlockSize && sizeof(LitParams) == RendererState::kLitBlockSize && sizeof(LightParams) == 64 && sizeof(CompositeParams) == 176 && sizeof(FilterParams) == 32);
     static_assert(sizeof(BlendVertexParams) == 112 && sizeof(BlendFragmentParams) == 80 && sizeof(BackdropVertexParams) == 96 && sizeof(BackdropFragmentParams) == 32 && sizeof(MetaballVertexParams) == 96 && sizeof(MetaballFragmentParams) == 48 && sizeof(GlassParams) == 48);
     state.getGpu().applyUniforms(slot, std::as_bytes(std::span(&block, 1)));
 }
@@ -464,7 +464,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
         beginOffscreenPass(state.fields[draw.field], math::Color::transparent());
         state.getGpu().applyPipeline(state.getPipeline(Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive), graphics::PassTarget::Offscreen));
         applyUniforms(matrix, graphics::BlendMode::Type::Additive);
-        applyFade(0);
+        applyDraw(0, {}, getTextureForm(kernel));
 
         gpu::Device::Bindings bindings;
         bindings.vertexBuffers[0] = state.quad;
@@ -884,7 +884,7 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     const graphics::TextureResource& resource = *image.getResource();
     state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
     applyUniforms(projection(math::Transform2D::identity(), {1.0F, 1.0F}), graphics::BlendMode::Type::Premultiplied);
-    applyFade(0);
+    applyDraw(0, {}, getTextureForm(resource));
     applyShade(shade, pass, Program::Sprite, graphics::BlendMode::Type::Premultiplied);
 
     gpu::Device::Bindings bindings;
@@ -943,6 +943,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
     std::uint32_t currentShade = 0;
     std::uint32_t currentFade = 0;
     math::Vec2 currentOffset{};
+    TextureForm currentForm = TextureForm::Levels;
     std::optional<std::uint32_t> checkedClip;
     bool clipShows = true;
 
@@ -1005,11 +1006,13 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             currentClip.reset();
         }
 
-        if (fresh || command.offset != currentOffset || command.fade != currentFade) {
+        const TextureForm form = command.program == Program::Batch ? TextureForm::Levels : getTextureForm(*command.texture);
+        if (fresh || command.offset != currentOffset || command.fade != currentFade || form != currentForm) {
             applyUniforms(translated(matrix, command.offset), command.blend);
-            applyFade(command.fade, command.offset);
+            applyDraw(command.fade, command.offset, form);
             currentOffset = command.offset;
             currentFade = command.fade;
+            currentForm = form;
         }
 
         if (fresh || command.shade != currentShade) {
@@ -1102,7 +1105,7 @@ void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix
     vertex.columns[1] = draw.columns.y;
     vertex.premultiply = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     applyBlock(RendererState::kVertexBlock, vertex);
-    applyFade(command.fade);
+    applyDraw(command.fade, {}, getTextureForm(from));
 
     const float flips = (from.flipped ? 1.0F : 0.0F) + (to.flipped ? 2.0F : 0.0F);
     const float rows = draw.rows.getLength();
@@ -1148,7 +1151,7 @@ void FrameSubmitter::drawBackdrop(const Canvas& canvas, const Command& command, 
     vertex.columns[0] = draw.columns.x;
     vertex.columns[1] = draw.columns.y;
     applyBlock(RendererState::kVertexBlock, vertex);
-    applyFade(command.fade);
+    applyDraw(command.fade, {}, getTextureForm(image));
     const float mode = static_cast<float>(static_cast<int>(command.blend) - static_cast<int>(graphics::BlendMode::Type::Overlay));
     const BackdropFragmentParams fragment{
         .settings = {mode, draw.blend.progress, draw.blend.reversed ? 1.0F : 0.0F, draw.opacity},
@@ -1186,11 +1189,11 @@ void FrameSubmitter::drawGlass(const Canvas& canvas, const Command& command, con
     const graphics::PassTarget pass = graphics::PassTarget::Offscreen;
     state.getGpu().applyPipeline(shade.material != nullptr ? state.getMaterialPipeline(*shade.material, Program::Glass, blend, pass) : state.getPipeline(Program::Glass, blend, pass));
     applyClip(canvas, command.clip, passRect);
+    const graphics::TextureResource& behind = *targets.image.getTexture().getResource();
     applyUniforms(matrix, command.blend);
-    applyFade(command.fade);
+    applyDraw(command.fade, {}, getTextureForm(behind));
     applyShade(shade, pass, Program::Glass, command.blend);
 
-    const graphics::TextureResource& behind = *targets.image.getTexture().getResource();
     gpu::Device::Bindings bindings;
     bindings.vertexBuffers[0] = state.quad;
     bindings.vertexBuffers[1] = state.instanceBuffer;
@@ -1232,7 +1235,7 @@ void FrameSubmitter::drawMetaball(const Command& command, const Matrix& matrix) 
     vertex.field[0] = field.flipped ? 1.0F : 0.0F;
     vertex.field[1] = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     applyBlock(RendererState::kVertexBlock, vertex);
-    applyFade(command.fade);
+    applyDraw(command.fade, {}, getTextureForm(field));
 
     const Renderer::MetaballStyle& style = draw.style;
     const MetaballFragmentParams fragment{
@@ -1250,8 +1253,8 @@ void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Ty
     applyBlock(RendererState::kVertexBlock, params);
 }
 
-void FrameSubmitter::applyFade(std::uint32_t fade, math::Vec2 offset) {
-    FadeParams params;
+void FrameSubmitter::applyDraw(std::uint32_t fade, math::Vec2 offset, TextureForm form) {
+    DrawParams params;
     if (fade != 0) {
         const auto [begin, count] = state.fades[fade - 1U];
         for (std::uint32_t index = 0; index < count; ++index) {
@@ -1264,9 +1267,21 @@ void FrameSubmitter::applyFade(std::uint32_t fade, math::Vec2 offset) {
             y[lane] = edge.slope.y;
             shift[lane] = edge.getCoverage(offset);
         }
+
+        params.fadeCount = static_cast<float>(count);
     }
 
-    applyBlock(RendererState::kFadeBlock, params);
+    params.textureForm = static_cast<float>(form);
+    applyBlock(RendererState::kDrawBlock, params);
+}
+
+// A texture without mipmaps, such as the atlas of text, a render target or a dynamic texture, has a single level.
+FrameSubmitter::TextureForm FrameSubmitter::getTextureForm(const graphics::TextureResource& texture) const noexcept {
+    if (&texture == state.white.getResource().get()) {
+        return TextureForm::White;
+    }
+
+    return texture.options.mipmaps.value_or(false) ? TextureForm::Levels : TextureForm::SingleLevel;
 }
 
 // Alpha and opaque draws cover the surface and the info by straight alpha and premultiplied draws by premultiplied alpha, while adding, multiplying and screen draws leave them, and multiplying draws also leave the emission.
