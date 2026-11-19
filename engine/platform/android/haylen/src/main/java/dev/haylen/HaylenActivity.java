@@ -140,8 +140,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), this::applyInsets);
         getWindow().getDecorView().addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> excludeBackGesture());
 
-        // The engine follows how long back stays down, from the start of the back gesture or press to its end, since a long hold leaves an app that another app launched.
-        backCallback = new OnBackPressedCallback(false) {
+        // The engine follows how long back stays down, from the start of the back gesture or press to its end, since a long hold leaves an app that another app launched. Back stays with the app while it starts, until the engine tells whether the app takes it, so a press during the splash screen reaches the app instead of leaving it before the app could say.
+        backCallback = new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackStarted(@NonNull BackEventCompat event) {
                 nativeBackHeld(true);

@@ -42,17 +42,22 @@ std::unique_ptr<gpu::Device> AndroidHost::createGpuDevice() {
     return runtime.getGraphics().createDevice();
 }
 
-// Native events wait in Java while no app runs, so the ones that come while an app stops reach the next app instead of none.
-void AndroidHost::appStarted(core::Engine&, bool) {
+// Native events wait in Java while no app runs, so the ones that come while an app stops reach the next app instead of none. The app tells whether it takes back as soon as it started, before its first frame.
+void AndroidHost::appStarted(core::Engine& engine, bool) {
     JavaBridge::setAppRunning(true);
+    reportBack(engine);
 }
 
 void AndroidHost::appStopping() {
     JavaBridge::setAppRunning(false);
 }
 
-// Back reaches the app only through the back callback of the activity, which is enabled only while the app takes back or edits a text field, so the predictive back animation of the system plays only when back leaves the app.
 void AndroidHost::framePlayed(core::Engine& engine) {
+    reportBack(engine);
+}
+
+// Back reaches the app only through the back callback of the activity, which is enabled only while the app takes back or edits a text field, so the predictive back animation of the system plays only when back leaves the app. The callback of a new activity holds back until the first report.
+void AndroidHost::reportBack(core::Engine& engine) {
     const bool captured = engine.isBackCaptured() || AndroidTextInput::isEditing() || isLaunched() || isBackHeld();
     if (captured == backReported) {
         return;

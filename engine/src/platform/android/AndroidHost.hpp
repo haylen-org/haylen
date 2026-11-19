@@ -64,8 +64,10 @@ class AndroidHost final : public NativeHost {
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
   private:
-    // Whether the activity last heard that the app takes the back button. Each activity creates its own host and starts with its back callback disabled.
-    bool backReported = false;
+    void reportBack(core::Engine& engine);
+
+    // Whether the activity last heard that the app takes the back button. Each activity creates its own host and starts with its back callback enabled, which holds back while the app starts.
+    bool backReported = true;
     AndroidRuntime& runtime;
 };
 
