@@ -3,10 +3,12 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "haylen/debug/ObjectCounter.hpp"
@@ -528,6 +530,23 @@ TEST_F(CollectionTest, AnimatesMovesInsertionsAndRemovals) {
     frames(2);
     EXPECT_FLOAT_EQ(getItemBounds(list, 4).y, top + 240.0F);
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).y, top);
+}
+
+// Two changes before a draw, a list that shrinks under the view and grows again, keep the view on items that exist, so the collection draws them in place.
+TEST_F(CollectionTest, KeepsItsViewThroughChangesThatComeBeforeADraw) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    const std::shared_ptr<CountingSource> source = show(list, makeItems(100));
+    list.setScrollOffset(1200.0);
+    frames(2);
+
+    source->assign(makeItems(2, 500));
+    source->assign(makeItems(100));
+    frames(3);
+    EXPECT_EQ(getEngine().getError(), nullptr);
+    const std::optional<std::pair<std::size_t, std::size_t>> shown = list.getVisibleRange();
+    ASSERT_TRUE(shown.has_value());
+    EXPECT_NE(list.findCell(shown->first), nullptr);
 }
 
 // Items that arrive while the collection is hidden show at once when it shows again, without fading in.

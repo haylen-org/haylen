@@ -771,10 +771,17 @@ std::optional<Collection::Hold> Collection::findHold() const {
     return Hold{.index = index, .distance = getItemStart(index) - scroller->getOffset(), .end = false};
 }
 
+// The lines of an earlier change that did not arrange yet still name the items it removed, so they arrange before the view finds the item it holds.
 void Collection::holdView() {
-    if (!hold) {
-        hold = findHold();
+    if (hold) {
+        return;
     }
+
+    if (renderedFrame > 0) {
+        ensureArranged();
+    }
+
+    hold = findHold();
 }
 
 void Collection::restoreHold() {
