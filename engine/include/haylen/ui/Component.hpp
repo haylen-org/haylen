@@ -37,6 +37,14 @@ class Context;
 // A node of a retained tree. Properties arrive as JSON, and the node measures, draws and reports its events on its own. Sizes are in design units.
 class Component {
   public:
+    // The names of the alignments, which nodes and their children take.
+    static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
+        {"start", Alignment::Start},
+        {"center", Alignment::Center},
+        {"end", Alignment::End},
+        {"stretch", Alignment::Stretch},
+    }};
+
     struct CommonProperties {
         static constexpr float kUnbounded = std::numeric_limits<float>::max();
 
@@ -266,12 +274,6 @@ class Component {
 
     static constexpr float kMinAspectRatio = 0.01F;
     static constexpr float kMaxAspectRatio = 100.0F;
-    static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
-        {"start", Alignment::Start},
-        {"center", Alignment::Center},
-        {"end", Alignment::End},
-        {"stretch", Alignment::Stretch},
-    }};
     static constexpr std::array<std::pair<std::string_view, Anchor::Area>, 3> kAnchorAreas{{
         {"safe", Anchor::Area::Safe},
         {"screen", Anchor::Area::Screen},

@@ -22,7 +22,7 @@ void RichText::readProperties(PropertyReader& reader) {
         linked = text.key.empty() && !text::RichText::parse(text.literal).links.empty();
     }
 
-    reader.readChoice<Theme::Font>("font", font, kFonts);
+    reader.readChoice<Theme::Font>("font", font, Theme::kFontNames);
     reader.read("color", color);
     reader.readChoice<text::Alignment>("textAlign", textAlign, text::Style::kAlignmentNames);
     reader.read("wrap", wrap);

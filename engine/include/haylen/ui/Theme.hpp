@@ -248,6 +248,17 @@ class Theme final {
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::Glass) + 1;
     static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::GlassRefraction) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
+
+    // The names of the font roles, which nodes and themes take.
+    static constexpr std::array<std::pair<std::string_view, Font>, kFontCount> kFontNames{{
+        {"body", Font::Body},
+        {"caption", Font::Caption},
+        {"button", Font::Button},
+        {"heading", Font::Heading},
+        {"title", Font::Title},
+        {"monospace", Font::Monospace},
+    }};
+
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::FocusRing) + 1;
     static constexpr std::size_t kSoundCount = static_cast<std::size_t>(Sound::Type) + 1;
 
@@ -458,7 +469,6 @@ class Theme final {
         {"glassRim", 0.5F},
         {"glassRefraction", 10.0F},
     }};
-    static constexpr std::array<std::string_view, kFontCount> kFontNames{"body", "caption", "button", "heading", "title", "monospace"};
     static constexpr std::array<std::string_view, kSurfaceCount> kSurfaceNames{
         "panel",
         "card",

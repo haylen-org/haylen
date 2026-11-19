@@ -63,13 +63,6 @@ class Linear : public Component {
         {"spaceAround", Justify::SpaceAround},
         {"spaceEvenly", Justify::SpaceEvenly},
     }};
-    static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
-        {"start", Alignment::Start},
-        {"center", Alignment::Center},
-        {"end", Alignment::End},
-        {"stretch", Alignment::Stretch},
-    }};
-
     [[nodiscard]] float getLineGap(Context& context) const;
     [[nodiscard]] Alignment getChildAlignment(const Component& child) const noexcept;
     [[nodiscard]] float measureLength(Context& context, Component& child, float crossLength) const;

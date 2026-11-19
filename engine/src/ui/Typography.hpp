@@ -5,6 +5,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -15,6 +16,7 @@
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/Style.hpp"
 #include "haylen/ui/Alignment.hpp"
+#include "haylen/ui/Component.hpp"
 #include "haylen/ui/Theme.hpp"
 
 namespace haylen::ui {
@@ -24,12 +26,8 @@ class Context;
 // Measures, wraps, shortens and draws text in the font families of the theme, so every component sets text the same way. Text is shaped and ordered for display by the text layout of the engine in the language of the node, where every paragraph reads in the direction of its first strong letter and lines up with the side of the UI its alignment names. Layouts are cached by text and style, and text draws through the 2D renderer at its place among the ImGui draws, inside their clip.
 class Typography final {
   public:
-    // The alignments a text property may name.
-    static constexpr std::array<std::pair<std::string_view, Alignment>, 3> kAlignments{{
-        {"start", Alignment::Start},
-        {"center", Alignment::Center},
-        {"end", Alignment::End},
-    }};
+    // The alignments a text property may name, which are those of nodes but the stretch.
+    static constexpr std::span<const std::pair<std::string_view, Alignment>> kAlignments = std::span(Component::kAlignments).first<3>();
 
     [[nodiscard]] static float getLineHeight(Context& context, Theme::Font font);
     [[nodiscard]] static math::Vec2 measure(Context& context, Theme::Font font, std::string_view text, float wrapWidth = -1.0F);

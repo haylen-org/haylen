@@ -33,15 +33,6 @@ class Label final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    static constexpr std::array<std::pair<std::string_view, Theme::Font>, 6> kFonts{{
-        {"body", Theme::Font::Body},
-        {"caption", Theme::Font::Caption},
-        {"button", Theme::Font::Button},
-        {"heading", Theme::Font::Heading},
-        {"title", Theme::Font::Title},
-        {"monospace", Theme::Font::Monospace},
-    }};
-
     TextValue text;
     Theme::Font font = Theme::Font::Body;
     std::optional<Theme::Color> color;

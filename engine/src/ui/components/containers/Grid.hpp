@@ -32,13 +32,6 @@ class Grid final : public Component {
 
   private:
     static constexpr int kMaxColumns = 64;
-    static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
-        {"start", Alignment::Start},
-        {"center", Alignment::Center},
-        {"end", Alignment::End},
-        {"stretch", Alignment::Stretch},
-    }};
-
     [[nodiscard]] float getGap(Context& context) const;
     [[nodiscard]] float getRowGap(Context& context) const;
     [[nodiscard]] std::size_t countColumns(Context& context, float width) const;

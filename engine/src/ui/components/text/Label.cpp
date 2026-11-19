@@ -12,7 +12,7 @@ namespace haylen::ui {
 
 void Label::readProperties(PropertyReader& reader) {
     reader.read("text", text);
-    reader.readChoice<Theme::Font>("font", font, kFonts);
+    reader.readChoice<Theme::Font>("font", font, Theme::kFontNames);
     reader.read("color", color);
     reader.readChoice<Alignment>("textAlign", textAlign, Typography::kAlignments);
     reader.read("wrap", wrap);

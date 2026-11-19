@@ -40,15 +40,6 @@ class RichText final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    static constexpr std::array<std::pair<std::string_view, Theme::Font>, 6> kFonts{{
-        {"body", Theme::Font::Body},
-        {"caption", Theme::Font::Caption},
-        {"button", Theme::Font::Button},
-        {"heading", Theme::Font::Heading},
-        {"title", Theme::Font::Title},
-        {"monospace", Theme::Font::Monospace},
-    }};
-
     // Makes the rich text match the properties and the theme, keeping its effects and reveal while only the width changes.
     [[nodiscard]] text::RichText& refreshText(Context& context);
     void interactWithLinks(Context& context, math::Vec2 origin);

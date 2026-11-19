@@ -30,13 +30,6 @@ class Stack final : public Component {
     void render(Context& context, const math::Rect& bounds) override;
 
   private:
-    static constexpr std::array<std::pair<std::string_view, Alignment>, 4> kAlignments{{
-        {"start", Alignment::Start},
-        {"center", Alignment::Center},
-        {"end", Alignment::End},
-        {"stretch", Alignment::Stretch},
-    }};
-
     math::Insets padding;
     std::optional<Alignment> alignItems;
 };

@@ -22,7 +22,7 @@ void Linear::readProperties(PropertyReader& reader) {
 
     if (reader.has("alignItems")) {
         Alignment value = Alignment::Start;
-        reader.readChoice<Alignment>("alignItems", value, kAlignments);
+        reader.readChoice<Alignment>("alignItems", value, Component::kAlignments);
         alignItems = value;
     }
 

@@ -219,7 +219,7 @@ std::optional<Theme::Metric> Theme::metricFromName(std::string_view value) noexc
 }
 
 std::optional<Theme::Font> Theme::fontFromName(std::string_view value) noexcept {
-    return fromName<Font>(kFontNames, value, std::identity());
+    return fromName<Font>(kFontNames, value, &std::pair<std::string_view, Font>::first);
 }
 
 std::optional<Theme::Surface> Theme::surfaceFromName(std::string_view value) noexcept {
