@@ -159,7 +159,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             origin = math::Vec2{start.x, start.y} + (box.getMin() - bounds.getMin()) + shift;
             const math::Rect area = place(context, *child, size, {origin.x, origin.y, box.width, box.height});
             const double shownOffset = std::clamp(offset, 0.0, scroller.getMaximum());
-            ImGui::PushClipRect(ImGuiConverter::toImVec2(box.getMin()), ImGuiConverter::toImVec2(box.getMax()), true);
+            context.pushClip(box);
             const bool faded = ScrollFade::begin(context, box, horizontal, shownOffset, scroller.getMaximum() - shownOffset);
             child->draw(context, area);
 
@@ -167,7 +167,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
                 ScrollFade::end(context);
             }
 
-            ImGui::PopClipRect();
+            Context::popClip();
             ImGui::SetCursorScreenPos(start);
             const math::Vec2 end = math::Vec2::max(area.getMax(), origin + box.getSize()) - shift;
             ImGui::Dummy({end.x - start.x, end.y - start.y});

@@ -67,9 +67,9 @@ void List::render(Context& context, const math::Rect& bounds) {
     }
 }
 
-// The rows of the visible part of the clip of the window, in the units of the list, which the transforms around it may scale.
+// The rows of the visible part of the clip of the window, in the units of the list, which the transforms drawn in the window may scale.
 std::pair<std::size_t, std::size_t> List::findRowRange(const Context& context, const math::Rect& bounds, float height) const {
-    const Context::Reshape shape = context.getReshape();
+    const Context::Reshape shape = context.getWindowReshape();
     if (height <= 0.0F || shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
         return {0, 0};
     }

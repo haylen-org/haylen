@@ -7,7 +7,6 @@
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 
@@ -276,8 +275,7 @@ void Linear::renderLines(Context& context, const math::Rect& bounds, const math:
     const bool overflowing = total > inner.height;
     if (overflowing) {
         const float reach = context.getMetric(Theme::Metric::FocusGap) + context.getMetric(Theme::Metric::FocusWidth);
-        const math::Rect clip = context.getReshape().apply(bounds.expanded(reach));
-        ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+        context.pushClip(bounds.expanded(reach));
     }
 
     const float spacing = getGap(context);
@@ -289,7 +287,7 @@ void Linear::renderLines(Context& context, const math::Rect& bounds, const math:
     }
 
     if (overflowing) {
-        ImGui::PopClipRect();
+        Context::popClip();
     }
 }
 
@@ -298,14 +296,13 @@ void Linear::render(Context& context, const math::Rect& bounds) {
     paint(context, bounds);
     const bool clipped = clipsChildren();
     if (clipped) {
-        const math::Rect clip = context.getReshape().apply(bounds);
-        ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+        context.pushClip(bounds);
     }
 
     layOut(context, bounds);
 
     if (clipped) {
-        ImGui::PopClipRect();
+        Context::popClip();
     }
 }
 

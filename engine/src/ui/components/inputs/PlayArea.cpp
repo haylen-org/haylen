@@ -46,10 +46,9 @@ void PlayArea::render(Context& context, const math::Rect& bounds) {
 void PlayArea::drawCorners(Context& context, const math::Rect& bounds) const {
     const float corner = std::min(radius, std::min(bounds.width, bounds.height) * 0.5F);
     const float reach = corner * 2.0F;
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
+    context.pushClip(bounds);
     Surfaces::drawShape(context, {.bounds = bounds.inset(math::Insets::uniform(-corner)), .radii = {reach, reach, reach, reach}, .color = math::Color::transparent(), .borderWidth = corner, .borderColor = cornerColor.value_or(context.getColor(Theme::Color::Background))});
-    list.PopClipRect();
+    Context::popClip();
 }
 
 bool PlayArea::describe(Context&, platform::AccessibilityElement& element) const {

@@ -3,11 +3,8 @@
 #include <algorithm>
 #include <string>
 
-#include <imgui.h>
-
 #include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
@@ -43,10 +40,9 @@ void Alert::render(Context& context, const math::Rect& bounds) {
     // The bar of the tone marks the side the UI starts, clipped from the whole shape so it follows its rounded corners.
     const float barWidth = context.getMetric(Theme::Metric::ToneBarWidth);
     const math::Rect bar = context.mirror({bounds.x, bounds.y, barWidth, bounds.height}, bounds);
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PushClipRect(ImGuiConverter::toImVec2(bar.getMin()), ImGuiConverter::toImVec2(bar.getMax()), true);
+    context.pushClip(bar);
     Surfaces::fill(context, bounds, context.getColor(colors.fill), radius);
-    list.PopClipRect();
+    Context::popClip();
 
     const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
     const math::Rect inner = context.mirror(math::Rect::fromMinMax({bounds.x + barWidth + padding, bounds.y + context.getMetric(Theme::Metric::ControlPaddingY)}, {bounds.getRight() - padding, bounds.getBottom()}), bounds);

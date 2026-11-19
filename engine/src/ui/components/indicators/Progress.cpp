@@ -8,7 +8,6 @@
 
 #include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 
@@ -45,10 +44,9 @@ void Progress::render(Context& context, const math::Rect& bounds) {
             continue;
         }
 
-        const math::Rect clip = context.getReshape().apply(part);
-        ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+        context.pushClip(part);
         Typography::drawParagraph(context, Theme::Font::Caption, line, color, shown, Alignment::Center);
-        ImGui::PopClipRect();
+        Context::popClip();
     }
 }
 

@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
@@ -58,6 +59,28 @@ class UiTransformTest : public ::testing::Test {
         drawn.box = math::Rect::fromMinMax(lowest, highest);
         return drawn;
     }
+
+    // Returns whether a command of the last frame clips to the rectangle, within a pixel.
+    [[nodiscard]] static bool hasClip(plugins::UiPlugin& plugin, const math::Rect& expected) {
+        plugin.getBackend().makeCurrent();
+        const ImDrawData& data = *ImGui::GetDrawData();
+        for (const ImDrawList* list : data.CmdLists) {
+            for (const ImDrawCmd& command : list->CmdBuffer) {
+                const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+                const bool near = std::fabs(clip.x - expected.x) <= 1.0F && std::fabs(clip.y - expected.y) <= 1.0F && std::fabs(clip.getRight() - expected.getRight()) <= 1.0F && std::fabs(clip.getBottom() - expected.getBottom()) <= 1.0F;
+                if (near) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // Returns where a scale around a center moves a rectangle.
+    [[nodiscard]] static math::Rect scaleAround(const math::Rect& rect, math::Vec2 center, float scale) {
+        return math::Rect::fromMinMax(center + (rect.getMin() - center) * scale, center + (rect.getMax() - center) * scale);
+    }
 };
 
 } // namespace
@@ -103,6 +126,31 @@ TEST_F(UiTransformTest, ReshapesWhatTheScrollAreasInsideTheNodeDraw) {
     gui->find("panel")->getTransform()->opacity = 0.5F;
     fixture.frames(1);
     EXPECT_EQ(getDrawn(plugin).alpha, 128U);
+}
+
+// A node scales the clips that the nodes inside it draw with once, both in its own window and in the windows of the scroll areas inside it, which it reshapes whole.
+TEST_F(UiTransformTest, ScalesTheClipsOfTheNodesInsideItOnce) {
+    test::EngineFixture fixture;
+    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
+    // clang-format off
+    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "column", "id": "panel", "children": [
+        {"kind": "card", "id": "outside", "width": 100, "height": 40, "children": [{"kind": "label", "text": "Outside"}]},
+        {"kind": "scroll", "height": 300, "children": [{"kind": "card", "id": "inside", "width": 100, "height": 40, "children": [{"kind": "label", "text": "Inside"}]}]}
+    ]})"), Placement::Screen);
+    // clang-format on
+    plugin.mount(gui, 0);
+    fixture.frames(2);
+
+    const math::Rect panel = gui->find("panel")->getBounds();
+    const math::Rect outside = gui->find("outside")->getBounds();
+    const math::Rect inside = gui->find("inside")->getBounds();
+    ASSERT_TRUE(hasClip(plugin, outside));
+    ASSERT_TRUE(hasClip(plugin, inside));
+
+    gui->find("panel")->getTransform()->scale = {0.75F, 0.75F};
+    fixture.frames(2);
+    EXPECT_TRUE(hasClip(plugin, scaleAround(outside, panel.getCenter(), 0.75F)));
+    EXPECT_TRUE(hasClip(plugin, scaleAround(inside, panel.getCenter(), 0.75F)));
 }
 
 // A negative scale mirrors the node, and its corners and borders keep the size of the magnitude of the scale.

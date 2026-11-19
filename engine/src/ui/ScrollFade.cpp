@@ -1,6 +1,7 @@
 #include "ui/ScrollFade.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
@@ -20,10 +21,12 @@ bool ScrollFade::begin(Context& context, const math::Rect& box, bool horizontal,
         return false;
     }
 
-    graphics2d::Renderer::Fade edges{.length = length};
+    // The fade goes around the ImGui vertices, so it lies where the transforms of every node around it move the area on the screen.
+    const Context::Reshape shape = context.getReshape();
+    graphics2d::Renderer::Fade edges{.length = length * std::fabs(horizontal ? shape.scale.x : shape.scale.y)};
     (horizontal ? edges.left : edges.top) = leading;
     (horizontal ? edges.right : edges.bottom) = trailing;
-    context.getBackend().pushFade({.area = box, .edges = edges});
+    context.getBackend().pushFade({.area = shape.apply(box), .edges = edges});
     return true;
 }
 

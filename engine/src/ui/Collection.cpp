@@ -15,7 +15,6 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/PropertyReader.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/ScrollArbiter.hpp"
 #include "ui/ScrollFade.hpp"
 #include "ui/Scrollbar.hpp"
@@ -1067,9 +1066,9 @@ void Collection::render(Context& context, const math::Rect& bounds) {
         laneReserved = false;
         animate();
         drawEmpty(context);
-        ImGui::PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
+        context.pushClip(bounds);
         drawLeaving(context);
-        ImGui::PopClipRect();
+        Context::popClip();
         report(context);
         noticeHiddenCells(context);
         return;
@@ -1127,9 +1126,9 @@ void Collection::drawContent(Context& context, const math::Rect& bounds) {
     const math::Rect cellArea = barShown ? Scrollbar::getContentBox(context, bounds, bounds, !isVertical()) : bounds;
     const bool mirrored = rightToLeft && !isVertical();
 
-    ImGui::PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
+    context.pushClip(bounds);
     const std::optional<double> dragged = barShown ? scrollbar->interact(context, bounds, !isVertical(), mirrored, scroller->getOffset(), scroller->getMaximum(), getMainLength()) : std::nullopt;
-    ImGui::PushClipRect(ImGuiConverter::toImVec2(cellArea.getMin()), ImGuiConverter::toImVec2(cellArea.getMax()), true);
+    context.pushClip(cellArea);
 
     // A mirrored collection starts at its right end, so the content past its left edge is what its offset has not reached yet.
     const double shown = std::clamp(scroller->getOffset(), 0.0, scroller->getMaximum());
@@ -1143,7 +1142,7 @@ void Collection::drawContent(Context& context, const math::Rect& bounds) {
         ScrollFade::end(context);
     }
 
-    ImGui::PopClipRect();
+    Context::popClip();
 
     if (barShown) {
         const bool touch = context.getInput().getLastDevice() == input::InputDevice::Touch;
@@ -1151,7 +1150,7 @@ void Collection::drawContent(Context& context, const math::Rect& bounds) {
         scrollbar->draw(context, touch ? fading : 1.0F);
     }
 
-    ImGui::PopClipRect();
+    Context::popClip();
 
     if (dragged) {
         scroller->jumpTo(*dragged);

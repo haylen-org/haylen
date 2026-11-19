@@ -285,6 +285,13 @@ class Context final {
     void pushPlainReshape();
     [[nodiscard]] Reshape getReshape() const noexcept;
 
+    // Returns the transforms of the nodes that began drawing in the current window. The clip rectangles of the window lie where they apply, since the nodes around the window move its whole draw list onto the screen once they drew it, while the vertices of the node itself move only with the node.
+    [[nodiscard]] Reshape getWindowReshape() const;
+
+    // Clips what the node draws next to a rectangle in its units until `popClip`.
+    void pushClip(const math::Rect& bounds) const;
+    static void popClip();
+
     // The direction and language of the whole UI, which nodes change for themselves and their children by pushing their own around their measuring and drawing. The direction is left to right or right to left, and the language is a BCP 47 tag or empty.
     void setBaseWriting(text::Direction direction, std::string language);
     void pushWriting(std::optional<text::Direction> direction, std::optional<std::string> language);
@@ -322,6 +329,16 @@ class Context final {
         std::string language;
     };
 
+    // The transforms of the nodes being drawn, and of those among them that began drawing in the window that is current where the level starts.
+    struct ReshapeLevel {
+        Reshape whole;
+        Reshape inWindow;
+        ImGuiID window = 0;
+    };
+
+    [[nodiscard]] static Reshape compose(const Reshape& outer, const Transform& shape, math::Vec2 center) noexcept;
+    [[nodiscard]] static ImGuiID getCurrentWindowId() noexcept;
+
     struct Enclosure {
         math::Rect bounds;
         float radius = 0.0F;
@@ -343,7 +360,7 @@ class Context final {
     // The virtual buttons and sticks of on-screen controls, with whether the frame held each button and the value it gave each stick.
     std::map<std::string, bool, std::less<>> heldButtons;
     std::map<std::string, std::optional<math::Vec2>, std::less<>> sticks;
-    std::vector<Reshape> reshapes;
+    std::vector<ReshapeLevel> reshapes;
     std::vector<Enclosure> enclosures;
     MessageStack messages;
 

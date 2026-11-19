@@ -19,6 +19,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/Component.hpp"
+#include "ui/ImGuiConverter.hpp"
 #include "ui/ScrollArbiter.hpp"
 
 namespace haylen::ui {
@@ -429,12 +430,19 @@ std::array<float, 4> Context::getInnerRadii(const math::Rect& bounds, float radi
     return radii;
 }
 
-// A node scales around its center, which maps a point `p` to `p * s + center * (1 - s)`, and the nodes around it apply their own mapping after it.
 void Context::pushReshape(const Transform& shape, math::Vec2 center) {
-    const Reshape outer = getReshape();
+    const ImGuiID window = getCurrentWindowId();
+    const bool sameWindow = !reshapes.empty() && reshapes.back().window == window;
+    const Reshape whole = compose(getReshape(), shape, center);
+    const Reshape inWindow = compose(sameWindow ? reshapes.back().inWindow : Reshape{}, shape, center);
+    reshapes.push_back({.whole = whole, .inWindow = inWindow, .window = window});
+}
+
+// A node scales around its center, which maps a point `p` to `p * s + center * (1 - s)`, and the nodes around it apply their own mapping after it.
+Context::Reshape Context::compose(const Reshape& outer, const Transform& shape, math::Vec2 center) noexcept {
     const math::Color color = shape.tint.withAlpha(shape.tint.a * shape.opacity);
     const math::Vec2 offset = center * (math::Vec2{1.0F, 1.0F} - shape.scale) * outer.scale + outer.offset;
-    reshapes.push_back({.scale = shape.scale * outer.scale, .offset = offset, .color = color * outer.color});
+    return {.scale = shape.scale * outer.scale, .offset = offset, .color = color * outer.color};
 }
 
 void Context::popReshape() {
@@ -442,11 +450,34 @@ void Context::popReshape() {
 }
 
 void Context::pushPlainReshape() {
-    reshapes.emplace_back();
+    reshapes.push_back({.window = getCurrentWindowId()});
 }
 
 Context::Reshape Context::getReshape() const noexcept {
-    return reshapes.empty() ? Reshape{} : reshapes.back();
+    return reshapes.empty() ? Reshape{} : reshapes.back().whole;
+}
+
+// Reshapes pushed outside a frame, which no window draws, belong to no window.
+ImGuiID Context::getCurrentWindowId() noexcept {
+    const ImGuiWindow* window = GImGui != nullptr ? GImGui->CurrentWindow : nullptr;
+    return window != nullptr ? window->ID : 0;
+}
+
+Context::Reshape Context::getWindowReshape() const {
+    if (reshapes.empty() || reshapes.back().window != getCurrentWindowId()) {
+        return {};
+    }
+
+    return reshapes.back().inWindow;
+}
+
+void Context::pushClip(const math::Rect& bounds) const {
+    const math::Rect clip = getWindowReshape().apply(bounds);
+    ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+}
+
+void Context::popClip() {
+    ImGui::PopClipRect();
 }
 
 // Nodes drawn in a new frame start from the writing of the whole UI, even when a failed script left some pushed.

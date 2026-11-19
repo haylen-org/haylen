@@ -6,11 +6,10 @@
 #include <ranges>
 #include <utility>
 
-#include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
-#include "ui/ImGuiConverter.hpp"
 #include "ui/Surfaces.hpp"
 #include "ui/Widgets.hpp"
 
@@ -120,7 +119,7 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
 void Carousel::drawPages(Context& context, const math::Rect& area) {
     // The pages run from the right in a right-to-left UI, where a drag to the right moves forward.
     const float position = shown - (context.isRightToLeft() ? -dragged : dragged) / std::max(1.0F, area.width);
-    ImGui::PushClipRect(ImGuiConverter::toImVec2(area.getMin()), ImGuiConverter::toImVec2(area.getMax()), true);
+    context.pushClip(area);
     std::size_t index = 0;
     for (Component* shownPage : getLayoutChildren()) {
         const float offset = static_cast<float>(index) - position;
@@ -139,7 +138,7 @@ void Carousel::drawPages(Context& context, const math::Rect& area) {
         context.getFocus().suspendTargets(outside);
     }
 
-    ImGui::PopClipRect();
+    Context::popClip();
 }
 
 // The arrows are round buttons of the theme, raised and bordered like the other buttons, and lit and pressed the way they are.

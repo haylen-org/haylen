@@ -96,7 +96,7 @@ Widgets::Interaction Widgets::interact(Context& context, const math::Rect& bound
 }
 
 bool Widgets::isVisible(const Context& context, const math::Rect& bounds) {
-    const math::Rect shown = context.getReshape().apply(bounds);
+    const math::Rect shown = context.getWindowReshape().apply(bounds);
     return ImGui::IsRectVisible(ImGuiConverter::toImVec2(shown.getMin()), ImGuiConverter::toImVec2(shown.getMax()));
 }
 
@@ -106,12 +106,12 @@ void Widgets::drawFocusRing(Context& context, const math::Rect& bounds, ImGuiID 
     }
 
     ImGuiWindow* window = GImGui->CurrentWindow;
-    const Context::Reshape shape = context.getReshape();
+    const Context::Reshape shape = context.getWindowReshape();
     if (shape.scale.x == 0.0F || shape.scale.y == 0.0F) {
         return;
     }
 
-    // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole. The ring lies in the units of the control, which the transforms around it move onto the screen, where the clip of the window lies.
+    // The line runs a gap away from the edge of the control, and it may reach past the clip of a scrolled area so an item at the edge still shows it whole. The ring lies in the units of the control, which the transforms drawn in the window move to where the clip of the window lies.
     const float width = context.getMetric(Theme::Metric::FocusWidth);
     const float distance = context.getMetric(Theme::Metric::FocusGap) + width;
     const Context::Reshape toControl{.scale = math::Vec2{1.0F, 1.0F} / shape.scale, .offset = math::Vec2{} - shape.offset / shape.scale};

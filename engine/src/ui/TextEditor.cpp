@@ -300,8 +300,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const math::Vec2 origin = getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered);
 
     // Lines that continue past the area fade out along its edges, as the content of the other areas that scroll does.
-    ImDrawList& list = *ImGui::GetWindowDrawList();
-    list.PushClipRect(ImGuiConverter::toImVec2(inner.getMin()), ImGuiConverter::toImVec2(inner.getMax()), true);
+    context.pushClip(inner);
     const bool faded = multiline && ScrollFade::begin(context, inner, false, scroll.y, overflow - scroll.y);
 
     if (state != nullptr && state->HasSelection()) {
@@ -357,7 +356,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         ScrollFade::end(context);
     }
 
-    list.PopClipRect();
+    Context::popClip();
 
     if (barShown) {
         options.scrollbar->draw(context, 1.0F);
