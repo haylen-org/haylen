@@ -571,6 +571,25 @@ void NullDevice::requireFollowingPasses(int surface) const {
     }
 }
 
+// A multisampled window keeps no color across an offscreen pass between its swapchain passes, so a swapchain pass that keeps what an earlier one of the frame drew follows it directly.
+void NullDevice::requireKeptSamples(int surface) const {
+    if (surfaceSamples == 1 || recordedPasses == 0) {
+        return;
+    }
+
+    const PassRecord& last = currentFrame.passes[recordedPasses - 1];
+    if (last.swapchain && last.surface == surface) {
+        return;
+    }
+
+    for (std::size_t index = 0; index < recordedPasses; ++index) {
+        const PassRecord& record = currentFrame.passes[index];
+        if (record.swapchain && record.surface == surface) {
+            throw std::logic_error(std::format("A swapchain pass kept what the surface {} drew after an offscreen pass interrupted its passes, but a window of {} samples keeps no color across one. Draw the offscreen passes of the frame before its swapchain passes.", surface, surfaceSamples));
+        }
+    }
+}
+
 void NullDevice::beginPass(const PassDesc& desc) {
     if (pass) {
         throw std::logic_error("A pass began while another pass was open.");
@@ -584,6 +603,11 @@ void NullDevice::beginPass(const PassDesc& desc) {
         }
 
         requireFollowingPasses(desc.surface);
+
+        if (desc.load == Load::Keep) {
+            requireKeptSamples(desc.surface);
+        }
+
         opened.targets.swapchain = true;
     } else {
         if (desc.surface != 0) {
@@ -865,6 +889,7 @@ void NullDevice::attachSurface(const Surface& surface) {
     checkSurface(surface, features.maxSampleCount);
     surfaceAttached = true;
     surfaceSize = surface.size;
+    surfaceSamples = surface.sampleCount;
 }
 
 int NullDevice::addSurface(const Surface& surface) {

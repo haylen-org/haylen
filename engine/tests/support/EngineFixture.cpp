@@ -67,6 +67,7 @@ void EngineFixture::launch(std::unique_ptr<core::Application> application) {
 
     application->configure(config);
     headlessHost.setTransparencySupported(config.window.transparent);
+    headlessHost.setWindowSampleCount(config.window.sampleCount);
     runningEngine = std::make_unique<core::Engine>(headlessHost, playedPackage, std::move(config), std::move(application));
     const debug::ExecutionBudget::Entry entry(executionBudget(), "start");
     runningEngine->start();

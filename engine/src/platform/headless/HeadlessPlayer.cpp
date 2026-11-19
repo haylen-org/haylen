@@ -160,6 +160,7 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const s
     auto application = std::make_unique<lua::Application>();
     application->configure(config);
     host.setTransparencySupported(config.window.transparent);
+    host.setWindowSampleCount(config.window.sampleCount);
     if (DevelopmentSession* session = host.getDevelopmentSession()) {
         session->setOverlay(std::dynamic_pointer_cast<io::OverlayPackage>(package));
     }

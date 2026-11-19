@@ -39,9 +39,11 @@ std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {
         return gpuDeviceMaker();
     }
 
+    // The null device starts with a window of one sample, and takes the window of the samples that the app opens.
     auto device = std::make_unique<gpu::NullDevice>();
+    device->detachSurface();
+    device->attachSurface({.size = getSurfaceSize(), .sampleCount = windowSamples});
     gpu = device.get();
-    followDrawable();
     return device;
 }
 

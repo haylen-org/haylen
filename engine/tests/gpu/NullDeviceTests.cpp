@@ -351,6 +351,38 @@ TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     device.commit();
 }
 
+// A multisampled window keeps its color only while its swapchain passes follow one another, so a pass that keeps it after an offscreen pass would draw over lost samples, while a window of one sample keeps its color across one.
+TEST_F(NullDeviceTest, RefusesToKeepTheColorOfAMultisampledWindowAcrossAnOffscreenPass) {
+    NullDevice device;
+    const Device::Image target = device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::RenderTarget, .label = "target"});
+    const std::array<Device::ColorAttachment, 1> attachments{{{.image = target}}};
+    device.detachSurface();
+    device.attachSurface({.size = {.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8}, .sampleCount = 4});
+
+    device.beginPass({.colors = attachments});
+    device.endPass();
+    device.beginPass({});
+    device.endPass();
+    device.beginPass({.load = Device::Load::Keep});
+    device.endPass();
+    device.beginPass({.colors = attachments});
+    device.endPass();
+    EXPECT_THROW(device.beginPass({.load = Device::Load::Keep}), std::logic_error);
+    EXPECT_NO_THROW(device.beginPass({.load = Device::Load::Clear}));
+    device.endPass();
+    device.commit();
+
+    device.detachSurface();
+    device.attachSurface({.size = {.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8}});
+    device.beginPass({});
+    device.endPass();
+    device.beginPass({.colors = attachments});
+    device.endPass();
+    EXPECT_NO_THROW(device.beginPass({.load = Device::Load::Keep}));
+    device.endPass();
+    device.commit();
+}
+
 // A read copies a whole render target of one sample, between passes, and hands its pixels over once.
 TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     NullDevice device;

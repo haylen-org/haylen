@@ -231,6 +231,7 @@ class NullDevice final : public Device {
     void requireNoPass(std::string_view call) const;
     void recordPass(bool swapchain, int surface, Load load, math::Color clear);
     void requireFollowingPasses(int surface) const;
+    void requireKeptSamples(int surface) const;
     static void checkSurface(const Surface& surface, int maxSampleCount);
     static void checkSize(const Surface::Size& size);
 
@@ -265,6 +266,8 @@ class NullDevice final : public Device {
     // The surface the swapchain passes draw into, which a headless window has from the start, and the surfaces beyond it by their numbers.
     bool surfaceAttached = true;
     Surface::Size surfaceSize;
+    // The samples of the window, which the surfaces beyond it draw with too.
+    int surfaceSamples = 1;
     std::unordered_map<int, Surface> addedSurfaces;
     int nextSurface = 1;
 

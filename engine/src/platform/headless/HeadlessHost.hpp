@@ -480,6 +480,11 @@ class HeadlessHost final : public Host {
         pointerDevice = value;
     }
 
+    // Opens the headless window with the samples of `window.sampleCount` of `haylen.json`, which the null device then draws the window with.
+    void setWindowSampleCount(int value) noexcept {
+        windowSamples = value;
+    }
+
     // Opens the headless window able to be transparent, and transparent, the way `window.transparent` of `haylen.json` opens a real one.
     void setTransparencySupported(bool value) noexcept {
         transparencySupported = value;
@@ -824,6 +829,7 @@ class HeadlessHost final : public Host {
     bool screenKeptOn = false;
     int frameRate = 0;
     bool transparencySupported = false;
+    int windowSamples = 1;
     bool transparent = false;
     bool decorated = true;
     bool alwaysOnTop = false;
