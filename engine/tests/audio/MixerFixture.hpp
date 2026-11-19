@@ -33,7 +33,7 @@ class MixerFixture : public ::testing::Test {
 
     // Work that no worker started goes before the job system that would report its failure.
     void TearDown() override {
-        jobs.discardQueued();
+        jobs.stop();
         EXPECT_TRUE(jobErrors.empty()) << jobErrors.front();
     }
 

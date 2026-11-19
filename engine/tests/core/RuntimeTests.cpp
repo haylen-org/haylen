@@ -201,7 +201,8 @@ TEST_F(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
     EXPECT_EQ(std::accumulate(values.begin(), values.end(), 0), 1000);
 }
 
-TEST_F(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
+// A job system that stopped drops what waits and every later post at once, so nothing it holds outlives the Lua state and nothing reaches the runtime that goes after it.
+TEST_F(JobSystemTest, StopsWithoutRunningQueuedOrLaterWork) {
     test::VarnRuntime varn;
     JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
 
@@ -210,16 +211,22 @@ TEST_F(JobSystemTest, DiscardsQueuedWorkWithoutRunningIt) {
     occupyWorkers(jobs, gate);
     ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount(); }));
 
-    auto held = std::make_shared<int>(0);
-    const std::weak_ptr<int> watched = held;
+    auto queued = std::make_shared<int>(0);
+    const std::weak_ptr<int> watchedQueued = queued;
     std::atomic<bool> ran{false};
-    jobs.post([&ran, sentinel = std::move(held)] { ran = sentinel != nullptr; });
-    jobs.discardQueued();
-    EXPECT_TRUE(watched.expired());
+    jobs.post([&ran, sentinel = std::move(queued)] { ran = sentinel != nullptr; });
+    jobs.stop();
+    EXPECT_TRUE(watchedQueued.expired());
+
+    auto later = std::make_shared<int>(0);
+    const std::weak_ptr<int> watchedLater = later;
+    jobs.post([&ran, sentinel = later] { ran = sentinel != nullptr; });
+    jobs.postIo([&ran, sentinel = later] { ran = sentinel != nullptr; });
+    jobs.postToFrame([&ran, sentinel = std::move(later)] { ran = sentinel != nullptr; });
+    EXPECT_TRUE(watchedLater.expired()) << "Work posted after the stop goes at once.";
 
     gate.open = true;
-    jobs.post([&gate] { ++gate.started; });
-    ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount() + 1 && gate.left.load() == jobs.getWorkerCount(); }));
+    ASSERT_TRUE(varn.pumpUntil([&] { return gate.left.load() == jobs.getWorkerCount(); }));
     EXPECT_FALSE(ran);
 }
 

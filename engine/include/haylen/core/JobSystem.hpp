@@ -54,8 +54,8 @@ class JobSystem final {
     // Splits `[begin, end)` into chunks of at least `grainSize` items and runs them in parallel, including on the calling thread. Workers and the caller take chunks one at a time, so the caller runs every chunk no worker started and never waits behind other work queued on the task pool. Only the frame thread may call it.
     void parallelFor(std::size_t begin, std::size_t end, std::size_t grainSize, const std::function<void(std::size_t, std::size_t)>& body);
 
-    // Drops the posted work that no worker started, without running it. The engine calls it once the pools stopped, so what that work holds, such as Lua references, goes while the Lua state is still open.
-    void discardQueued() noexcept;
+    // Drops the posted work that no worker started, and from then on drops what is posted at once, without running it and without reaching the pools or the loop of the runtime. The engine calls it once the pools stopped and before the runtime goes, so what that work holds, such as Lua references, goes while the Lua state is still open, and nothing that still holds the job system while the engine shuts down reaches the runtime that is gone.
+    void stop() noexcept;
 
     [[nodiscard]] std::size_t getWorkerCount() const noexcept {
         return workerCount;
@@ -96,6 +96,7 @@ class JobSystem final {
     [[nodiscard]] static std::string describe(const std::exception_ptr& error);
     [[nodiscard]] std::function<void()> guardWorker(std::function<void()> work, std::string_view name, std::shared_ptr<debug::TraceRecorder> recorder);
     [[nodiscard]] std::function<void()> enqueue(std::function<void()> work, std::string_view name);
+    [[nodiscard]] bool isStopped() const;
 
     varn::runtime::Runtime& runtime;
     ErrorHandler onError;

@@ -144,7 +144,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
 Engine::~Engine() {
     stop();
 
-    // Everything that holds Lua references lets go before the Lua state closes, including scenes that stop hooks requested and work still queued on the pools, and Lua and the worker pools go before the assets, plugins and GPU resources they still reference.
+    // Everything that holds Lua references lets go before the Lua state closes, including scenes that stop hooks requested and work still queued on the pools, and Lua and the worker pools go before the assets, plugins and GPU resources they still reference. The job system stops with the pools, so what the closing Lua state and the services after it post is dropped at once, and it outlives every service that holds it.
     EngineState& current = *state;
     current.timers.clear();
     current.tweens.clear();
@@ -162,7 +162,7 @@ Engine::~Engine() {
     current.outputs.reset();
     current.displays.reset();
     current.runtime->stop();
-    current.jobs->discardQueued();
+    current.jobs->stop();
     current.runtime.reset();
     current.scheduler.reset();
 

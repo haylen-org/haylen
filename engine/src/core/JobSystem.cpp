@@ -53,6 +53,7 @@ struct JobSystem::Queue {
     std::mutex mutex;
     std::unordered_map<std::uint64_t, std::function<void()>> jobs;
     std::uint64_t next = 0;
+    bool stopped = false;
 };
 
 JobSystem::JobSystem(varn::runtime::Runtime& scriptRuntime, ErrorHandler errorHandler) : runtime(scriptRuntime), onError(std::move(errorHandler)), workerCount(std::max(1U, std::thread::hardware_concurrency())), queue(std::make_shared<Queue>()) {}
@@ -95,12 +96,16 @@ void JobSystem::setTraceRecorder(std::shared_ptr<debug::TraceRecorder> value) {
     tracer = std::move(value);
 }
 
-// The pool job only names the work, so the work stays with the job system until a worker takes it.
+// The pool job only names the work, so the work stays with the job system until a worker takes it. A job system that stopped keeps nothing and answers an empty job, which the caller drops together with the work.
 // The recorder is read under the lock that setting it takes, since workers post jobs too.
 std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string_view name) {
     std::uint64_t id = 0;
     {
         const std::scoped_lock lock(queue->mutex);
+        if (queue->stopped) {
+            return {};
+        }
+
         id = queue->next++;
         queue->jobs.emplace(id, guardWorker(std::move(work), name, tracer));
     }
@@ -125,22 +130,33 @@ std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string
 }
 
 void JobSystem::post(std::function<void()> work) {
-    runtime.scheduler().taskPool().post(enqueue(std::move(work), "job"));
+    std::function<void()> job = enqueue(std::move(work), "job");
+    if (job) {
+        runtime.scheduler().taskPool().post(std::move(job));
+    }
 }
 
 void JobSystem::postIo(std::function<void()> work) {
-    runtime.scheduler().ioPool().post(enqueue(std::move(work), "ioJob"));
+    std::function<void()> job = enqueue(std::move(work), "ioJob");
+    if (job) {
+        runtime.scheduler().ioPool().post(std::move(job));
+    }
 }
 
-void JobSystem::discardQueued() noexcept {
+void JobSystem::stop() noexcept {
     std::unordered_map<std::uint64_t, std::function<void()>> dropped;
     {
         const std::scoped_lock lock(queue->mutex);
+        queue->stopped = true;
         dropped.swap(queue->jobs);
     }
 }
 
 void JobSystem::postToFrame(std::function<void()> work) {
+    if (isStopped()) {
+        return;
+    }
+
     // clang-format off
     runtime.scheduler().mainLoop().post([this, work = std::move(work)] {
         try {
@@ -150,6 +166,11 @@ void JobSystem::postToFrame(std::function<void()> work) {
         }
     });
     // clang-format on
+}
+
+bool JobSystem::isStopped() const {
+    const std::scoped_lock lock(queue->mutex);
+    return queue->stopped;
 }
 
 void JobSystem::parallelFor(std::size_t begin, std::size_t end, [[maybe_unused]] std::size_t grainSize, const std::function<void(std::size_t, std::size_t)>& body) {
