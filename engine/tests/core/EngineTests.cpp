@@ -433,9 +433,9 @@ TEST_F(AppConfigTest, ReadsThePluginsOfTheApp) {
     EXPECT_EQ(AppConfig::fromPackage(package).plugins.size(), 2U);
 }
 
-// The tooling builds the app from its kind, its C++ sources and the sections of its platforms, so the engine takes them and checks only their types.
+// The tooling builds the app from its category, its kind, its C++ sources and the sections of its platforms, so the engine takes them and checks only their values and types.
 TEST_F(AppConfigTest, TakesTheSectionsOfTheToolingAndChecksTheirTypes) {
-    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"kind": "cpp", "cpp": {"sources": ["src"]}, "platforms": {"ios": {"infoPlist": {}}, "android": {}}})")));
+    EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"category": "game", "kind": "cpp", "cpp": {"sources": ["src"]}, "platforms": {"ios": {"infoPlist": {}}, "android": {}}})")));
     EXPECT_NO_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"kind": "lua"})")));
 
     // clang-format off
@@ -448,6 +448,9 @@ TEST_F(AppConfigTest, TakesTheSectionsOfTheToolingAndChecksTheirTypes) {
         return std::string();
     };
     // clang-format on
+    const std::string categories = "\"game\", \"entertainment\", \"education\", \"productivity\", \"utility\", \"graphics\", \"music\", \"video\", \"social\" or \"developer\"";
+    EXPECT_EQ(failure(R"({"category": "racing"})"), "The \"category\" of \"haylen.json\" must be " + categories + ", not \"racing\".");
+    EXPECT_EQ(failure(R"({"category": 1})"), "The \"category\" of \"haylen.json\" must be " + categories + ", not 1.");
     EXPECT_EQ(failure(R"({"kind": "rust"})"), "The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not \"rust\".");
     EXPECT_EQ(failure(R"({"kind": 1})"), "The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not 1.");
     EXPECT_EQ(failure(R"({"cpp": ["src"]})"), "The \"cpp\" section of \"haylen.json\" must be an object with the \"sources\" of the C++ app.");

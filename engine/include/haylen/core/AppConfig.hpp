@@ -239,6 +239,7 @@ struct AppConfig {
   private:
     static const std::array<std::pair<std::string_view, Debug::Reload>, 2> kReloadNames;
     static const std::array<std::pair<std::string_view, content::Delivery>, 3> kDeliveryNames;
+    static const std::array<std::string_view, 10> kCategoryNames;
 
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
     [[nodiscard]] static std::uint32_t readBuild(const Json& document);

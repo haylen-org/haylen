@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 
+from haylen.core.app_category import AppCategory
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.frozen import Frozen
 from haylen.core.resolved_product import ResolvedProduct
@@ -8,12 +9,21 @@ from haylen.platforms.android.android_template import AndroidTemplate
 
 
 class AndroidManifestFile:
-    """Writes the manifest of the app module from the template: the permissions that every app gets unless `platforms.android.manifest.removedPermissions` of `haylen.json` names them, which the merged manifest then leaves out whichever library brings them, and the ones the app adds, the attributes of the application with the class of the application and the ones the app gives, the orientation, the status bar and the library that the activity loads."""
+    """Writes the manifest of the app module from the template: the permissions that every app gets unless `platforms.android.manifest.removedPermissions` of `haylen.json` names them, which the merged manifest then leaves out whichever library brings them, and the ones the app adds, the attributes of the application with the class of the application, the category of `category` where Android has one and the ones the app gives, the orientation, the status bar and the library that the activity loads."""
 
     PATH = "app/src/main/AndroidManifest.xml"
     # The permissions of the template, which network access, the network events, the rumble of gamepads and the local network need.
     DEFAULT_PERMISSIONS = ("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE", "android.permission.ACCESS_LOCAL_NETWORK")
     ORIENTATIONS = {"landscape": "sensorLandscape", "portrait": "sensorPortrait", "any": "fullSensor"}
+    # The values of `android:appCategory`, which has none for the other categories of an app.
+    CATEGORIES = {
+        AppCategory.GAME: "game",
+        AppCategory.PRODUCTIVITY: "productivity",
+        AppCategory.GRAPHICS: "image",
+        AppCategory.MUSIC: "audio",
+        AppCategory.VIDEO: "video",
+        AppCategory.SOCIAL: "social",
+    }
 
     @staticmethod
     def manifest_section(product: ResolvedProduct) -> Mapping[str, object]:
@@ -48,6 +58,9 @@ class AndroidManifestFile:
         application_class = product.primary.setting(AndroidContributions.SECTION, "applicationClass")
         if application_class is not None:
             attributes = {"name": str(application_class), **attributes}
+        category = AndroidManifestFile.CATEGORIES.get(app.category)
+        if category is not None:
+            attributes["appCategory"] = category
         for name, value in manifest.get("applicationAttributes", {}).items():
             attributes[name] = AndroidTemplate.xml(str(value))
 

@@ -37,7 +37,7 @@ set(CPACK_PACKAGE_HOMEPAGE_URL "${HAYLEN_APP_WEBSITE}")
 set(CPACK_PACKAGE_FILE_NAME "${HAYLEN_APP_EXECUTABLE}-${HAYLEN_APP_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
 set(CPACK_PACKAGE_ICON "${HAYLEN_APP_IDENTIFIER}.svg")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-set(CPACK_DEBIAN_PACKAGE_SECTION games)
+set(CPACK_DEBIAN_PACKAGE_SECTION "${HAYLEN_APP_DEBIAN_SECTION}")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # The engine loads GIO for the theme and the monitors of the system, and the sound servers, when it runs, so the package recommends them.
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "libglib2.0-0t64 | libglib2.0-0, libpulse0 | libasound2t64 | libasound2")

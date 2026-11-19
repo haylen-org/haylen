@@ -2,6 +2,7 @@
     "name": "C++ Embedding",
     "identifier": "com.haylen.embedding",
     "version": "1.0.0",
+    "category": "developer",
     "kind": "cpp",
     "cpp": {"sources": ["src"]},
     "window": {

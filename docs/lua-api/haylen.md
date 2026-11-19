@@ -64,6 +64,7 @@ Every field is optional. A field marked "absent" has no value in `haylen.config`
     "name": "Tiny Island",
     "identifier": "com.haylen.tinyisland",
     "version": "1.0.0",
+    "category": "game",
     "window": {"title": "Tiny Island", "width": 1280, "height": 720},
     "design": {"width": 1920, "height": 1080, "scaling": "expand"},
     "lifecycle": {"pauseOnFocusLoss": true},
@@ -209,6 +210,7 @@ These fields load the texts of the app before any Lua runs, as the [localization
 | `content.delivery` | list of objects | `[]` | The rules that let assets arrive after the start of the app. Each rule has `match`, a pattern of paths relative to `content/`, or `group`, the name of a preload group, and either `mode`, which is `"required"`, `"prefetch"` or `"onDemand"`, or `pack`, the name of a pack that a store delivers on its own. The first rule that matches an asset decides. Without rules every asset is required. In `haylen.config` a rule that names a group becomes one rule with `match` for each entry of the group. See [`haylen.content`](content.md) and the [delivery settings](../content/content.md#delivery). |
 | `content.groups` | string | Absent | The group manifest that defines the groups the rules name, relative to `content/`, such as `"groups.json"`. |
 | `autoload` | list of strings | `[]` | The modules that load as [autoloads](#haylenautoloadname-module) before `source/main.lua`, such as `"state.player-data"`. |
+| `category` | string | Absent | The category that the stores and the app menus show the app in: `"game"`, `"entertainment"`, `"education"`, `"productivity"`, `"utility"`, `"graphics"`, `"music"`, `"video"`, `"social"` or `"developer"`. The tooling needs it and maps it to the category of each platform, as the [distribution guide](../tools/distribution.md#category) lists. The engine checks only its value. |
 | `kind` | string | `"lua"` | The kind of the app: `"lua"`, whose code is Lua that the player of the engine runs, or `"cpp"`, whose C++ code of the `cpp` section compiles against the engine SDK. The engine checks only its value, and the tooling builds the app from it. |
 | `cpp` | object | Absent | The C++ code of a C++ app, which the backend of every target compiles: `sources`, the folders and files of its sources relative to the app folder, `includeDirectories` and `definitions`. The engine checks only that it is an object. |
 | `platforms` | object | `{}` | The settings and files of the generated projects of the targets, by the name of a section that a backend reads, such as `apple`, `ios` or `android`, as the [distribution guide](../tools/distribution.md) lists. The engine checks only that each section is an object. |

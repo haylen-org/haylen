@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 
+from haylen.core.app_category import AppCategory
 from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.invalid_manifest import InvalidManifest
 
@@ -13,6 +14,7 @@ class DesktopApp:
     identifier: str
     version: str
     build: int
+    category: AppCategory
     description: str
     company: str
     copyright: str
@@ -28,6 +30,7 @@ class DesktopApp:
             identifier=app.identifier,
             version=app.version,
             build=app.build,
+            category=app.category,
             description=str(document.get("description", app.name)),
             company=company,
             copyright=str(document.get("copyright", f"Copyright © {company}")),

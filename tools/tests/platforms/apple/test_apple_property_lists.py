@@ -2,8 +2,10 @@ import re
 
 import pytest
 
+from haylen.core.app_category import AppCategory
 from haylen.core.errors.invalid_contribution import InvalidContribution
 from haylen.platforms.apple.apple_project import AppleProject
+from haylen.platforms.apple.info_plist_keys import InfoPlistKeys
 from haylen.platforms.apple.privacy_manifest import PrivacyManifest
 from haylen.platforms.apple.property_lists import PropertyLists
 from tests.platforms.apple.apple_fixture import AppleFixture
@@ -59,6 +61,17 @@ class ApplePropertyListsTest:
 
     def test_a_mac_app_that_hides_from_the_dock_is_an_agent(self, apple):
         assert self.info(apple, {"window": {"showInTaskbar": False}}, "macos")["LSUIElement"] is True
+
+    def test_mac_apps_take_the_category_of_haylen_json(self, apple):
+        assert self.info(apple, {"category": "game"}, "macos")["LSApplicationCategoryType"] == "public.app-category.games"
+        assert self.info(apple, {"category": "developer"}, "catalyst")["LSApplicationCategoryType"] == "public.app-category.developer-tools"
+        assert "LSApplicationCategoryType" not in self.info(apple, {"category": "game"}, "ios-simulator")
+        assert set(InfoPlistKeys.CATEGORIES) == set(AppCategory)
+
+    def test_an_app_that_sets_another_category_of_its_own_stops_the_preparation(self, apple):
+        app = apple.app({"category": "music", "platforms": {"macos": {"infoPlist": {"LSApplicationCategoryType": "public.app-category.games"}}}})
+        with pytest.raises(InvalidContribution, match=r'"LSApplicationCategoryType" is "public.app-category.music" for the engine from .* and "public.app-category.games" for "app"'):
+            apple.prepare(app, "macos")
 
     def test_plugins_and_the_app_add_keys_and_items(self, apple):
         app = apple.app(

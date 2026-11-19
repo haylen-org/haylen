@@ -35,6 +35,7 @@ my-game/
     "name": "My Game",
     "identifier": "com.example.mygame",
     "version": "1.0.0",
+    "category": "game",
     "design": {"width": 1920, "height": 1080, "scaling": "expand"}
 }
 ```
@@ -274,6 +275,7 @@ A large world keeps a region off the device until the player goes there.
     "name": "Large World",
     "identifier": "com.example.largeworld",
     "version": "1.0.0",
+    "category": "game",
     "content": {
         "updates": {"baseUrl": "https://content.example.com/large-world/", "channel": "stable"},
         "delivery": [

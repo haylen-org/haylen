@@ -113,6 +113,7 @@ class AppleFixture:
             "name": "Game",
             "identifier": "com.haylen.game",
             "version": "1.0.0",
+            "category": "game",
             "kind": "cpp",
             "cpp": {"sources": ["src"], "includeDirectories": ["include"], "definitions": ["GAME=1"]},
             **document,

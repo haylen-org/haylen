@@ -2,6 +2,7 @@
     "name": "Music Streaming",
     "identifier": "com.haylen.music",
     "version": "1.0.0",
+    "category": "music",
     "orientation": "any",
     "window": {
         "title": "Music Streaming",

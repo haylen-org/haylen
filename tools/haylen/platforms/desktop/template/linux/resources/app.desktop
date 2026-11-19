@@ -1,5 +1,4 @@
-# The desktop entry of the app, which the tooling completes with the name, the description, the executable, the icon, the window class and the URL schemes of the app. A key given here wins, and the section `linux` of `haylen.json` replaces this file with one of the app through its `files`.
+# The desktop entry of the app, which the tooling completes with the name, the description, the categories, the executable, the icon, the window class and the URL schemes of the app. A key given here wins, and the section `linux` of `haylen.json` replaces this file with one of the app through its `files`.
 [Desktop Entry]
 Type=Application
 Terminal=false
-Categories=Game;

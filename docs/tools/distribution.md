@@ -116,7 +116,7 @@ Every section also takes two keys that the core reads:
 
 Each value of a generated project has one owner, and the resolution decides them in a fixed order instead of the order in which it read the files:
 
-- The app defines its identity and the settings that its sections allow. The name, the identifier, the version, the build number and the orientation come from `haylen.json` alone.
+- The app defines its identity and the settings that its sections allow. The name, the identifier, the version, the build number, the category and the orientation come from `haylen.json` alone.
 - Plugins declare what they need, as typed contributions of their `plugin.json`, as the [plugin guide](../platform/plugins.md) describes.
 - The SDK and the engine port declare constraints that no setting of the app cancels, such as the oldest system that the engine runs on, the architectures of each slice and the graphics APIs a slice holds.
 - The backend translates the result into the project of its platform.
@@ -240,9 +240,40 @@ Google Play refuses an upload whose `versionCode` is not higher than the last on
     "name": "Sky Garden",
     "identifier": "com.example.skygarden",
     "version": "1.2.0",
-    "build": 14
+    "build": 14,
+    "category": "game"
 }
 ```
+
+## Category
+
+Every app names its `category` in `haylen.json`, such as `"game"` or `"utility"`. The stores and the app menus of the systems show the app among the apps of its kind. The key has no default, since only the app knows what it is, so a `haylen.json` without it stops every preparation. The command `haylen new` writes `"utility"` unless `--category` names another.
+
+```json
+{
+    "name": "Star Atlas",
+    "identifier": "com.example.staratlas",
+    "version": "1.0.0",
+    "category": "education"
+}
+```
+
+Each backend maps the category to the one of its platform. On Linux the desktop entry lists one main category of the freedesktop menu, with an additional category where one fits, the AppStream metainfo lists the same, and the `.deb` package takes a section of the Debian archive. On macOS and Mac Catalyst the `Info.plist` takes `LSApplicationCategoryType`, which the Mac App Store and the Finder read. The key belongs to the engine with `haylen.json` as its origin, so an `infoPlist` of the app that gives it another value stops the preparation, as [how values merge](#how-values-merge) describes. On Android the `<application>` takes `android:appCategory` where Android has a matching value, and nothing where it has none, and an app that wants another value of Android sets it in `applicationAttributes` of `platforms.android.manifest`.
+
+| `category` | Linux desktop entry and metainfo | Debian section | macOS and Mac Catalyst | Android |
+| --- | --- | --- | --- | --- |
+| `game` | `Game` | `games` | `public.app-category.games` | `game` |
+| `entertainment` | `AudioVideo` | `misc` | `public.app-category.entertainment` | None |
+| `education` | `Education` | `education` | `public.app-category.education` | None |
+| `productivity` | `Office` | `misc` | `public.app-category.productivity` | `productivity` |
+| `utility` | `Utility` | `utils` | `public.app-category.utilities` | None |
+| `graphics` | `Graphics` | `graphics` | `public.app-category.graphics-design` | `image` |
+| `music` | `AudioVideo` and `Audio` | `sound` | `public.app-category.music` | `audio` |
+| `video` | `AudioVideo` and `Video` | `video` | `public.app-category.video` | `video` |
+| `social` | `Network` and `Chat` | `net` | `public.app-category.social-networking` | `social` |
+| `developer` | `Development` | `devel` | `public.app-category.developer-tools` | None |
+
+The other platforms take no category from the app. The `Info.plist` of iPhones, iPads, the Apple TV and the Vision Pro has none, since App Store Connect sets the category of those apps. The web site writes no web app manifest, the Inno Setup installer of Windows has no category, and Steam and Google Play take the category of an app in Steamworks and the Play Console.
 
 ## The Apple project
 
@@ -274,6 +305,7 @@ The `Info.plist` of each platform in the template is complete. It holds `$(HAYLE
 - `CADisableMinimumFrameDurationOnPhone`, without which an iPhone shows no app above 60 frames per second, whatever its display refreshes at and whatever `window.frameRate` asks.
 - The background mode `audio` for an app that sets `audio.background`.
 - `LSUIElement` on macOS for an app whose `window.showInTaskbar` is `false`, so macOS never shows its Dock icon, not even while it starts.
+- `LSApplicationCategoryType` on macOS and Mac Catalyst from `category`, as [category](#category) lists.
 
 The join follows the rule of [how values merge](#how-values-merge): a key that the template, the engine, a plugin and the app give with different values stops the preparation with every origin, so an app that words a key in its own way puts it in its own `Info.plist` through `files` and leaves it out of the plugins, or gives the plugin the words through its parameters. The verification reads the built bundle: its architectures, the frameworks it links, the classes of the plugins, the `Info.plist` keys, the entitlements it is signed with, the privacy declarations and the resources of the plugins.
 
@@ -394,10 +426,10 @@ The backend completes `resources/app.desktop` and `resources/app.metainfo.xml` o
 
 | File | Values of `haylen.json` |
 | --- | --- |
-| `app.desktop` | `Name` from `name`, `Comment` from `description`, `Exec` from the executable, `Icon` and `StartupWMClass` from `identifier`, and the URL schemes of the plugins in `MimeType`. |
-| `app.metainfo.xml` | `id` from `identifier`, `name`, and `summary` and a `description` of one paragraph from `description`, `developer` with the name of `company` and the identifier without its last part as its id, the `launchable` desktop entry, and the `homepage` URL from `website`. |
+| `app.desktop` | `Name` from `name`, `Comment` from `description`, `Categories` from `category`, `Exec` from the executable, `Icon` and `StartupWMClass` from `identifier`, and the URL schemes of the plugins in `MimeType`. |
+| `app.metainfo.xml` | `id` from `identifier`, `name`, and `summary` and a `description` of one paragraph from `description`, `developer` with the name of `company` and the identifier without its last part as its id, the `launchable` desktop entry, the `categories` from `category`, and the `homepage` URL from `website`. |
 
-The metainfo of the template declares the `CC0-1.0` license for the metadata itself, a proprietary license for the app and an empty content rating, which the app changes through its own file. The desktop entry puts the app among games. The command `appstreamcli validate` checks the metainfo, which needs a `website` in `haylen.json` to pass, and `desktop-file-validate` checks the desktop entry.
+The metainfo of the template declares the `CC0-1.0` license for the metadata itself, a proprietary license for the app and an empty content rating, which the app changes through its own file. The `.deb` package takes the section of the Debian archive that `category` maps to, as [category](#category) lists. The command `appstreamcli validate` checks the metainfo, which needs a `website` in `haylen.json` to pass, and `desktop-file-validate` checks the desktop entry.
 
 ### Links on Windows and Linux
 
@@ -762,7 +794,7 @@ The tooling keeps two kinds of templates:
 - The app templates of `templates/`, which `haylen new` copies once into a new app: `templates/common` with `haylen.json`, the logo, the bridge handlers of every platform under `native/` and the `.gitignore`, `.editorconfig` and `.clang-format` of an app repository, then `templates/lua` with `source/main.lua` or `templates/cpp` with `src/App.cpp`, whose files replace a common file of the same path. The template of plugins, `templates/plugin`, is what `haylen plugin new` copies.
 - The backend templates, which live with their backend under `tools/haylen/platforms/<backend>/template/` and are inputs of every preparation: the Info.plist files, launch screens, asset catalogs, `main.m` and bridging header of the Apple apps, the Gradle project, asset pack module and native CMake project of Android, the page files of the web, and the CMake projects with their resources of Windows and Linux. An app replaces one of their files through `files`, and never edits them.
 
-A new app holds no platform project. The command `new` writes the name, the identifier and the orientation into `haylen.json`, gives the window the name as its title, names the application class of Android after the identifier and, for `portrait`, turns the window and the design resolution upright. A C++ app also gets `"kind": "cpp"` and `"cpp": {"sources": ["src"]}`.
+A new app holds no platform project. The command `new` writes the name, the identifier, the category and the orientation into `haylen.json`, gives the window the name as its title, names the application class of Android after the identifier and, for `portrait`, turns the window and the design resolution upright. A C++ app also gets `"kind": "cpp"` and `"cpp": {"sources": ["src"]}`.
 
 ### The bridge example
 

@@ -2,6 +2,7 @@
     "name": "Online Store",
     "identifier": "com.haylen.store",
     "version": "1.0.0",
+    "category": "utility",
     "orientation": "any",
     "window": {
         "title": "Online Store",

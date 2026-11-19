@@ -54,6 +54,7 @@ class ResolvedProduct:
                 "identifier": self.app.identifier,
                 "version": self.app.version,
                 "build": self.app.build,
+                "category": self.app.category.value,
                 "kind": self.app.kind.value,
             },
             "backend": self.backend,

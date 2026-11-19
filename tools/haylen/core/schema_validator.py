@@ -76,7 +76,9 @@ class SchemaValidator:
             return f"{subject} has the unknown keys {unknown}. It takes {SchemaValidator.choices(known)}." if known else f"{subject} takes no keys {unknown}."
         if kind == "required":
             missing = [name for name in error.validator_value if name not in instance]
-            return f"{subject} needs {SchemaValidator.choices(missing, 'and')}."
+            properties = error.schema.get("properties", {})
+            described = "".join(f" {properties[name]['description']}" for name in missing if "description" in properties.get(name, {}))
+            return f"{subject} needs {SchemaValidator.choices(missing, 'and')}.{described}"
         if kind == "type":
             return f"{subject} must be {SchemaValidator.type_words(error.validator_value)}."
         if kind == "enum":

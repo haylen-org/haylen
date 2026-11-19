@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from haylen.core.app_category import AppCategory
 from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_manifest import InvalidManifest
@@ -12,6 +13,7 @@ from haylen.platforms.desktop.desktop_app import DesktopApp
 from haylen.platforms.desktop.desktop_backend import DesktopBackend
 from haylen.platforms.desktop.desktop_layout import DesktopLayout
 from haylen.platforms.desktop.desktop_verifier import DesktopVerifier
+from haylen.platforms.desktop.linux_categories import LinuxCategories
 from haylen.platforms.desktop.linux_entries import LinuxEntries
 from haylen.platforms.desktop.windows_resources import WindowsResources
 from haylen.platforms.verification_check import VerificationCheck
@@ -92,6 +94,17 @@ class DesktopProjectTest:
         with pytest.raises(InvalidManifest, match="is not valid XML"):
             entries.complete_metainfo("<component>", [], "app.metainfo.xml")
 
+    def test_the_category_reaches_the_desktop_entry_the_metainfo_and_the_debian_section(self, fixture: DesktopFixture):
+        project = self.prepare(fixture, fixture.app({"category": "music"}, "radio"), "linux")
+        entry = (project / "resources" / "app.desktop").read_text(encoding="utf-8").splitlines()
+        metainfo = ElementTree.fromstring((project / "resources" / "app.metainfo.xml").read_text(encoding="utf-8").split("\n", 1)[1])
+        values = (project / "app.cmake").read_text(encoding="utf-8")
+
+        assert [line for line in entry if line.startswith("Categories=")] == ["Categories=AudioVideo;Audio;"]
+        assert [category.text for category in metainfo.find("categories")] == ["AudioVideo", "Audio"]
+        assert "set(HAYLEN_APP_DEBIAN_SECTION [[sound]])" in values
+        assert set(LinuxCategories.MENU) == set(LinuxCategories.DEBIAN_SECTIONS) == set(AppCategory)
+
     def test_the_files_of_the_section_replace_the_files_of_the_template(self, fixture: DesktopFixture):
         app = fixture.app({"platforms": {"linux": {"files": {"resources/app.desktop": "desktop/garden.desktop", "resources/icons": "desktop/icons"}}}}, "garden")
         (app / "desktop" / "icons").mkdir(parents=True)
@@ -145,7 +158,7 @@ class DesktopProjectTest:
         assert WindowsResources.read(DesktopProjectTest.executable(manifest), WindowsResources.MANIFEST) == [manifest]
         assert WindowsResources.read(b"not an executable", WindowsResources.MANIFEST) == []
 
-        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, "", "", "", "", "sky-garden")
+        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, AppCategory.GAME, "", "", "", "", "sky-garden")
         installed = tmp_path / "installed"
         native = tmp_path / "native"
         (installed / "app").mkdir(parents=True)
@@ -169,7 +182,7 @@ class DesktopProjectTest:
         ]
 
     def test_a_linux_app_needs_its_desktop_entry_named_after_the_identifier(self, tmp_path: Path):
-        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, "", "", "", "", "sky-garden")
+        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, AppCategory.GAME, "", "", "", "", "sky-garden")
         installed = tmp_path / "installed"
         (installed / "lib" / "sky-garden" / "app").mkdir(parents=True)
         (installed / "lib" / "sky-garden" / "app" / "haylen.json").write_text("{}", encoding="utf-8")

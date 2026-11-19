@@ -2,6 +2,7 @@
     "name": "Photo Social",
     "identifier": "com.haylen.photos",
     "version": "1.0.0",
+    "category": "social",
     "orientation": "any",
     "window": {
         "title": "Photo Social",

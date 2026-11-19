@@ -3,6 +3,7 @@ import re
 import shutil
 from pathlib import Path
 
+from haylen.core.app_category import AppCategory
 from haylen.core.app_kind import AppKind
 from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.invalid_option import InvalidOption
@@ -30,7 +31,7 @@ class AppScaffold:
         return files
 
     @staticmethod
-    def create(folder: Path, kind: AppKind, name: str | None, identifier: str | None, orientation: str) -> AppManifest:
+    def create(folder: Path, kind: AppKind, category: AppCategory, name: str | None, identifier: str | None, orientation: str) -> AppManifest:
         if folder.exists() and any(folder.iterdir()):
             raise InvalidOption(f"The folder `{Repository.shown(folder)}` already exists and is not empty. Name a new folder or an empty one.")
         slug = re.sub(r"[^a-z0-9]+", "-", folder.name.lower()).strip("-")
@@ -51,7 +52,7 @@ class AppScaffold:
 
         manifest_path = folder / AppManifest.FILE
         document = json.loads(manifest_path.read_text(encoding="utf-8"))
-        document.update({"name": title, "identifier": chosen, "orientation": orientation})
+        document.update({"name": title, "identifier": chosen, "category": category.value, "orientation": orientation})
         document["window"]["title"] = title
         document["platforms"]["android"]["applicationClass"] = f"{chosen}.App"
         if kind is AppKind.CPP:

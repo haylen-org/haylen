@@ -2,6 +2,7 @@
     "name": "Lua Benchmark",
     "identifier": "com.haylen.luabenchmark",
     "version": "1.0.0",
+    "category": "developer",
     "window": {
         "title": "Haylen Lua benchmark",
         "width": 1280,

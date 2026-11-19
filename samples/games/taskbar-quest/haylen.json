@@ -2,6 +2,7 @@
     "name": "Haylen Taskbar Quest",
     "identifier": "com.haylen.taskbarquest",
     "version": "1.0.0",
+    "category": "game",
     "orientation": "landscape",
     "window": {
         "title": "Taskbar Quest",

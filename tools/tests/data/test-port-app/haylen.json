@@ -2,6 +2,7 @@
     "name": "Test Port",
     "identifier": "com.haylen.testport",
     "version": "1.0.0",
+    "category": "developer",
     "plugins": {
         "test-port-greeter": {}
     },

@@ -2,6 +2,7 @@
     "name": "Tiny Island",
     "identifier": "com.haylen.tinyisland",
     "version": "1.0.0",
+    "category": "game",
     "orientation": "landscape",
     "window": {
         "title": "Tiny Island",

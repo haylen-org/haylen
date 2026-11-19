@@ -73,6 +73,16 @@ class AndroidProjectTest:
         assert 'android:value="haylen"' in manifest, "A Lua debug build plays the package with the player of the haylen library."
         assert "{{" not in script + manifest
 
+    def test_the_application_takes_the_category_that_android_has(self, tmp_path):
+        fixture = AndroidFixture(tmp_path)
+        manifests = {}
+        for category in ("music", "education"):
+            project = fixture.prepare(fixture.resolve(fixture.app({"category": category}, category)), f"{category}-product").project
+            manifests[category] = (project / "app" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
+
+        assert 'android:appCategory="audio"' in manifests["music"]
+        assert "android:appCategory" not in manifests["education"]
+
     def test_the_wrapper_downloads_the_pinned_gradle_with_its_hash(self, tmp_path):
         fixture = AndroidFixture(tmp_path)
         project = fixture.prepare(fixture.resolve(fixture.app({}))).project

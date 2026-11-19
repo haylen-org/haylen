@@ -40,7 +40,7 @@ The targets of each backend, with their architectures and the systems they build
 ### new
 
 ```sh
-haylen new <folder> [--kind lua|cpp] [--name <name>] [--identifier <identifier>] [--orientation landscape|portrait|any]
+haylen new <folder> [--kind lua|cpp] [--category <category>] [--name <name>] [--identifier <identifier>] [--orientation landscape|portrait|any]
 ```
 
 Creates an app in a folder that does not exist or is empty: `haylen.json`, the logo under `content/`, the starter code, the bridge handlers of every platform under `native/` and the `.gitignore`, `.editorconfig` and `.clang-format` of an app. A Lua app starts with `source/main.lua`, and a C++ app with `src/App.cpp`, which `cpp.sources` names. The app holds no platform project.
@@ -48,11 +48,12 @@ Creates an app in a folder that does not exist or is empty: `haylen.json`, the l
 | Option | Default |
 | --- | --- |
 | `--kind` | `lua`. The value `cpp` makes an app whose C++ code compiles against the engine SDK. |
+| `--category` | `utility`. The category that the stores and the app menus show the app in: `game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` or `developer`, as [category](distribution.md#category) maps them. |
 | `--name` | The display name, made from the folder name. |
 | `--identifier` | `com.example.<folder>`. |
 | `--orientation` | `landscape`. |
 
-Result: `folder`, `name`, `identifier` and `kind`.
+Result: `folder`, `name`, `identifier`, `kind` and `category`.
 
 ### app prepare
 
@@ -251,7 +252,7 @@ haylen project inspect [app] [--target] [--config] [--engine-config] [--architec
 
 Shows the resolved project of the app for a target without generating anything: the target, the backend, the SDK slice of every architecture, the oldest system version with where it comes from and why, the plugins in load order with their parameters, the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from, and every merged contribution with its owners.
 
-Result: `app` (`folder`, `name`, `identifier`, `version`, `build`, `kind`), `backend`, `identity` and `targets`, one per architecture, each with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion` (`value`, `origin`, `justification`), `plugins`, `contributions` (each with `type`, `fields`, `owners` and `origins`), `settings` (each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`), `nativeLibraries` and `permissions`.
+Result: `app` (`folder`, `name`, `identifier`, `version`, `build`, `category`, `kind`), `backend`, `identity` and `targets`, one per architecture, each with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion` (`value`, `origin`, `justification`), `plugins`, `contributions` (each with `type`, `fields`, `owners` and `origins`), `settings` (each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`), `nativeLibraries` and `permissions`.
 
 ## Machine and SDKs
 

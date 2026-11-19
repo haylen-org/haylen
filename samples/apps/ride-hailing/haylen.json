@@ -2,6 +2,7 @@
     "name": "Ride Hailing",
     "identifier": "com.haylen.rides",
     "version": "1.0.0",
+    "category": "utility",
     "orientation": "any",
     "window": {
         "title": "Ride Hailing",

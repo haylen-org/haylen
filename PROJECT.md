@@ -2774,6 +2774,7 @@ Nada do passado:
 
 Revisão:
 
+- [x] Todo app diz a sua categoria na chave obrigatória `category` do `haylen.json` (`game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` ou `developer`), sem valor padrão, e cada backend a traduz para a categoria da sua plataforma: no Linux as categorias do menu freedesktop na entrada de desktop e no metainfo do AppStream e a seção do Debian no `.deb`, sem categoria fixa no template, no macOS e no Mac Catalyst o `LSApplicationCategoryType` do `Info.plist`, e no Android o `android:appCategory` onde o Android tem um valor igual. A engine aceita a chave e confere só o valor, o `haylen new` escreve `utility` ou o valor de `--category`, todo app do repositório tem a sua, e a tabela fica em `docs/tools/distribution.md`.
 - [ ] Revisar o projeto inteiro de novo em busca de bugs, código legado, código sem uso, erros, condições de corrida e falhas que derrubam o app, corrigindo só o que de fato precisa, com teste de regressão para cada correção, e a legibilidade de cada arquivo (é a revisão final em andamento desde 18/11).
 - [ ] O `AGENTS.md` com tudo o que for relevante do projeto que mudar neste grupo.
 - [ ] Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado.

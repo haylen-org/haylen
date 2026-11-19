@@ -27,6 +27,8 @@ const std::array<std::pair<std::string_view, AppConfig::Debug::Reload>, 2> AppCo
 
 const std::array<std::pair<std::string_view, content::Delivery>, 3> AppConfig::kDeliveryNames{{{"required", content::Delivery::Required}, {"prefetch", content::Delivery::Prefetch}, {"onDemand", content::Delivery::OnDemand}}};
 
+const std::array<std::string_view, 10> AppConfig::kCategoryNames{"game", "entertainment", "education", "productivity", "utility", "graphics", "music", "video", "social", "developer"};
+
 std::optional<content::Delivery> AppConfig::deliveryFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kDeliveryNames, name, &std::pair<std::string_view, content::Delivery>::first);
     return found != kDeliveryNames.end() ? std::optional(found->second) : std::nullopt;
@@ -374,8 +376,13 @@ AppConfig::Plugin AppConfig::readPlugin(const std::string& id, const Json& entry
     return plugin;
 }
 
-// The tooling builds the app from `kind`, `cpp` and `platforms`, so the engine checks only their types.
+// The tooling builds the app from `category`, `kind`, `cpp` and `platforms`, so the engine checks only their values and types.
 void AppConfig::requireToolingSections(const Json& document) {
+    const auto category = document.find("category");
+    if (category != document.end() && (!category->is_string() || std::ranges::find(kCategoryNames, category->get_ref<const std::string&>()) == kCategoryNames.end())) {
+        throw std::invalid_argument("The \"category\" of \"haylen.json\" must be \"game\", \"entertainment\", \"education\", \"productivity\", \"utility\", \"graphics\", \"music\", \"video\", \"social\" or \"developer\", not " + category->dump() + ".");
+    }
+
     const auto kind = document.find("kind");
     if (kind != document.end() && *kind != "lua" && *kind != "cpp") {
         throw std::invalid_argument("The \"kind\" of \"haylen.json\" must be \"lua\" or \"cpp\", not " + kind->dump() + ".");
@@ -755,7 +762,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "autoload", "native", "plugins", "kind", "cpp", "platforms"}, "\"haylen.json\"");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "autoload", "native", "plugins", "category", "kind", "cpp", "platforms"}, "\"haylen.json\"");
 
     AppConfig config;
     readValue(document, "name", config.name);

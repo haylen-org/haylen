@@ -2,10 +2,11 @@ import xml.etree.ElementTree as ElementTree
 
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.platforms.desktop.desktop_app import DesktopApp
+from haylen.platforms.desktop.linux_categories import LinuxCategories
 
 
 class LinuxEntries:
-    """The desktop entry and the AppStream metainfo of a Linux app, which the backend completes from the files of the template, or the files of the app that the section `linux` puts in their place, with the name, the description, the executable, the icon, the window class, the publisher, the website and the URL schemes of the app. A key or an element that the file gives wins, with a warning when `haylen.json` gives another value."""
+    """The desktop entry and the AppStream metainfo of a Linux app, which the backend completes from the files of the template, or the files of the app that the section `linux` puts in their place, with the name, the description, the categories, the executable, the icon, the window class, the publisher, the website and the URL schemes of the app. A key or an element that the file gives wins, with a warning when `haylen.json` gives another value."""
 
     ENTRY = "resources/app.desktop"
     METAINFO = "resources/app.metainfo.xml"
@@ -21,7 +22,8 @@ class LinuxEntries:
     @staticmethod
     def keys(app: DesktopApp, schemes: tuple[str, ...]) -> dict[str, str]:
         """The keys of the desktop entry that come from `haylen.json`. An app that links open hands each link to the executable after `--link`."""
-        keys = {"Name": app.name, "Comment": app.description, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
+        categories = "".join(f"{category};" for category in LinuxCategories.MENU[app.category])
+        keys = {"Name": app.name, "Comment": app.description, "Categories": categories, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
         if schemes:
             keys["Exec"] = f"{app.executable} --link %u"
             keys["MimeType"] = "".join(f"x-scheme-handler/{scheme};" for scheme in schemes)
@@ -58,6 +60,9 @@ class LinuxEntries:
         description.append(LinuxEntries.element("p", app.description))
         developer = LinuxEntries.element("developer", id=app.identifier.rsplit(".", 1)[0])
         developer.append(LinuxEntries.element("name", app.company))
+        categories = LinuxEntries.element("categories")
+        for category in LinuxCategories.MENU[app.category]:
+            categories.append(LinuxEntries.element("category", category))
         elements = [
             LinuxEntries.element("id", app.identifier),
             LinuxEntries.element("name", app.name),
@@ -65,6 +70,7 @@ class LinuxEntries:
             description,
             developer,
             LinuxEntries.element("launchable", f"{app.identifier}.desktop", type="desktop-id"),
+            categories,
         ]
         if app.website:
             elements.append(LinuxEntries.element("url", app.website, type="homepage"))

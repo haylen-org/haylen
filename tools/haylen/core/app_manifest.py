@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from haylen.core.app_category import AppCategory
 from haylen.core.app_kind import AppKind
 from haylen.core.cpp_sources import CppSources
 from haylen.core.errors.invalid_manifest import InvalidManifest
@@ -15,7 +16,7 @@ from haylen.plugins.plugin_reference import PluginReference
 
 @dataclass(frozen=True)
 class AppManifest:
-    """The `haylen.json` of an app, read and checked once against its schema: the identity of the app, its kind, its C++ code, its native libraries, its plugins and the sections of its generated projects. The engine reads the same file from the package, and the tooling never writes another manifest next to it."""
+    """The `haylen.json` of an app, read and checked once against its schema: the identity of the app, its category, its kind, its C++ code, its native libraries, its plugins and the sections of its generated projects. The engine reads the same file from the package, and the tooling never writes another manifest next to it."""
 
     FILE = "haylen.json"
 
@@ -25,6 +26,7 @@ class AppManifest:
     identifier: str
     version: str
     build: int
+    category: AppCategory
     kind: AppKind
     cpp: CppSources | None
     native: tuple[NativeLibrary, ...]
@@ -71,6 +73,7 @@ class AppManifest:
             identifier=document["identifier"],
             version=document["version"],
             build=document.get("build", 1),
+            category=AppCategory(document["category"]),
             kind=kind,
             cpp=cpp,
             native=native,

@@ -2,6 +2,7 @@
     "name": "Smart Home",
     "identifier": "com.haylen.smarthome",
     "version": "1.0.0",
+    "category": "utility",
     "orientation": "any",
     "window": {
         "title": "Smart Home",

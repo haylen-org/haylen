@@ -2,5 +2,6 @@
     "name": "Web Error Screen",
     "identifier": "com.haylen.weberrorscreen",
     "version": "1.0.0",
+    "category": "developer",
     "clearColor": "#FFFF00FF"
 }

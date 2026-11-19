@@ -10,6 +10,7 @@ from haylen.core.resolved_product import ResolvedProduct
 from haylen.native.cmake_app import CMakeApp
 from haylen.platforms.desktop.desktop_app import DesktopApp
 from haylen.platforms.desktop.desktop_links import DesktopLinks
+from haylen.platforms.desktop.linux_categories import LinuxCategories
 from haylen.platforms.desktop.linux_entries import LinuxEntries
 from haylen.platforms.desktop.windows_resources import WindowsResources
 from haylen.platforms.generated_tree import GeneratedTree
@@ -103,6 +104,8 @@ class DesktopProject:
             "HAYLEN_APP_CONTENT": self.content.as_posix(),
             "HAYLEN_APP_NATIVE": self.native.as_posix(),
         }
+        if platform == "linux":
+            values["HAYLEN_APP_DEBIAN_SECTION"] = LinuxCategories.DEBIAN_SECTIONS[app.category]
         if platform == "windows":
             debug = product.request.engine_configuration is Configuration.DEBUG
             values["HAYLEN_MSVC_RUNTIME"] = "MultiThreadedDebugDLL" if debug else "MultiThreadedDLL"

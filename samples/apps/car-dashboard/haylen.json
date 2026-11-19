@@ -2,6 +2,7 @@
     "name": "Car Dashboard",
     "identifier": "com.haylen.cardashboard",
     "version": "1.0.0",
+    "category": "utility",
     "orientation": "any",
     "window": {
         "title": "Car Dashboard",

@@ -40,7 +40,7 @@ class ToolingFixture:
         (folder / "source").mkdir(parents=True, exist_ok=True)
         (folder / "content").mkdir(exist_ok=True)
         (folder / "source" / "main.lua").write_text("print('hello')\n", encoding="utf-8")
-        manifest = {"name": "Test App", "identifier": "com.haylen.tests", "version": "1.0.0", **document}
+        manifest = {"name": "Test App", "identifier": "com.haylen.tests", "version": "1.0.0", "category": "utility", **document}
         (folder / AppManifest.FILE).write_text(json.dumps(manifest, indent=4), encoding="utf-8")
         return folder
 

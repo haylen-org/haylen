@@ -2,6 +2,7 @@
     "name": "Haylen Consumer",
     "identifier": "com.haylen.consumer",
     "version": "1.0.0",
+    "category": "developer",
     "window": {
         "title": "Haylen Consumer",
         "width": 960,

@@ -2,6 +2,7 @@
     "name": "Sprite Benchmark",
     "identifier": "com.haylen.spritebenchmark",
     "version": "1.0.0",
+    "category": "developer",
     "window": {
         "title": "Haylen sprite benchmark",
         "width": 1280,
