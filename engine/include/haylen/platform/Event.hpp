@@ -52,7 +52,7 @@ struct Event {
         AudioServicesReset,
     };
 
-    // The phase of the gesture a scroll belongs to, for precise devices that report one, such as the trackpads of macOS: the fingers touch the device, move and leave it, and the momentum that the system adds once they left arrives in its own phase. Wheels and the precise devices of the other platforms report none.
+    // The phase of the gesture a scroll belongs to, for precise devices that report one, such as the trackpads of macOS and the two-finger swipes of touchpads on Android 14 and later: the fingers touch the device, move and leave it, and the momentum that the system adds once they left arrives in its own phase. Wheels and the other precise devices report none.
     enum class ScrollPhase : std::uint8_t {
         None,
         Began,

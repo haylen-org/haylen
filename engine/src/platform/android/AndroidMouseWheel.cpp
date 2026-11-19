@@ -26,4 +26,12 @@ bool AndroidMouseWheel::handleEvent(const GameActivityMotionEvent& event) {
     return true;
 }
 
+// The phases come in the order of `Event::ScrollPhase`, from `HaylenTouchpadSwipe`, and the host turns the place into framebuffer pixels on the frame thread.
+void AndroidMouseWheel::receiveTouchpadScroll(int phase, float x, float y, float deltaX, float deltaY) {
+    const auto scrollPhase = static_cast<Event::ScrollPhase>(phase);
+    const math::Vec2 position{x, y};
+    Player::postEvent({.type = Event::Type::MouseMove, .position = position});
+    Player::postEvent({.type = Event::Type::MouseScroll, .position = position, .scroll = {deltaX, deltaY}, .preciseScroll = true, .scrollPhase = scrollPhase});
+}
+
 } // namespace haylen::platform

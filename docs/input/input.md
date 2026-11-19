@@ -228,7 +228,7 @@ Each platform delivers keys in its own way. The engine keeps one rule everywhere
 
 ### Mouse
 
-Mouse buttons are `'left'`, `'right'` and `'middle'`. The function `input.mousePosition()` returns the position of the mouse in design coordinates. The function `input.mouseDelta()` returns the movement of this frame, which keeps working while [`haylen.window`](../lua-api/window.md) locks the mouse. The function `input.mouseScroll()` returns the scroll of the wheel or the trackpad, in steps of a wheel. The function `input.setScrollSpeed()` and the key `input.scrollSpeed` of `haylen.json` make every scroll faster or slower. The function `input.mouseInside()` tells whether the mouse is over the window.
+Mouse buttons are `'left'`, `'right'` and `'middle'`. The function `input.mousePosition()` returns the position of the mouse in design coordinates. The function `input.mouseDelta()` returns the movement of this frame, which keeps working while [`haylen.window`](../lua-api/window.md) locks the mouse. The function `input.mouseScroll()` returns the scroll of the wheel or the trackpad, in steps of a wheel. On Android 14 and later the two-finger swipe of a touchpad scrolls the same way, as the trackpads of macOS do, and never reaches the app as a touch. The function `input.setScrollSpeed()` and the key `input.scrollSpeed` of `haylen.json` make every scroll faster or slower. The function `input.mouseInside()` tells whether the mouse is over the window.
 
 A camera turns a point in design coordinates, the space of the mouse, into a place in the world with `camera:screenToWorld`. It counts the viewport of the camera too.
 

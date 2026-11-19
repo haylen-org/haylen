@@ -90,6 +90,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private HaylenDisplays displays;
     HaylenOutputs outputs;
     private OnBackPressedCallback backCallback;
+    private final HaylenTouchpadSwipe touchpadSwipe = new HaylenTouchpadSwipe();
     private int statusBar;
     // Whether the app keeps the screen on, which outlives the activity, so an activity that the system creates again keeps the screen on too.
     private static volatile boolean screenKeptOn;
@@ -314,6 +315,21 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
 
         return super.dispatchKeyEvent(event);
+    }
+
+    // Android 14 and later hand the two-finger swipe of a touchpad over as the touch of one fake finger, which the app hears as the scroll of a precise device instead of a touch.
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || event.getClassification() != MotionEvent.CLASSIFICATION_TWO_FINGER_SWIPE) {
+            return super.dispatchTouchEvent(event);
+        }
+
+        HaylenTouchpadSwipe.Scroll scroll = touchpadSwipe.next(event.getActionMasked(), event.getX(), event.getY(), getResources().getDisplayMetrics().density);
+        if (scroll != null) {
+            nativeTouchpadScroll(scroll.phase(), scroll.x(), scroll.y(), scroll.deltaX(), scroll.deltaY());
+        }
+
+        return true;
     }
 
     // Controllers send their sticks, triggers and hats to the focused view, which may be a view over the app, so they reach the app wherever the focus is.
@@ -736,6 +752,9 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeLowMemory(boolean critical);
 
     private static native void nativeLink(byte[] url);
+
+    // Takes a phase of `HaylenTouchpadSwipe`, the place of the fingers in pixels of the window and the distance in points.
+    private static native void nativeTouchpadScroll(int phase, float x, float y, float deltaX, float deltaY);
 
     private static native void nativeKeyboard(int x, int y, int width, int height);
 

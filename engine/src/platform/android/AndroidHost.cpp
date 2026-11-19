@@ -67,10 +67,14 @@ void AndroidHost::reportBack(core::Engine& engine) {
     JavaBridge::captureBack(captured);
 }
 
-// The on-screen keyboard of Android arrives from the UI thread in window pixels.
+// The on-screen keyboard and the swipes of touchpads arrive from the UI thread in window pixels.
 void AndroidHost::preparePostedEvent(Event& event) const {
     if (event.type == Event::Type::KeyboardChanged) {
         event.keyboardFrame = AndroidActivity::toFramebuffer(event.keyboardFrame);
+    }
+
+    if (event.type == Event::Type::MouseMove || event.type == Event::Type::MouseScroll) {
+        event.position = event.position * NativeWindow::getScale();
     }
 }
 

@@ -315,6 +315,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLink(JNIEnv* env, jc
     haylen::platform::LinkRelay::receive(haylen::platform::JavaBridge::toString(*env, url));
 }
 
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTouchpadScroll(JNIEnv*, jclass, jint phase, jfloat x, jfloat y, jfloat deltaX, jfloat deltaY) {
+    haylen::platform::AndroidMouseWheel::receiveTouchpadScroll(phase, x, y, deltaX, deltaY);
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLowMemory(JNIEnv*, jclass, jboolean critical) {
     haylen::platform::MemoryWarning::raise(critical == JNI_TRUE ? haylen::platform::Event::MemoryLevel::Critical : haylen::platform::Event::MemoryLevel::Warning);
 }
