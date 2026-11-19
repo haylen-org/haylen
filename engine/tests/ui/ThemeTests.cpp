@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #include <imgui.h>
 
@@ -101,8 +104,12 @@ TEST_F(ThemeTest, ReadsThemesOnTopOfABase) {
 
     EXPECT_EQ(theme.getName(), "wood");
     EXPECT_EQ(theme.getImageFilter(), graphics::Texture::Filter::Linear);
-    EXPECT_EQ(theme.getColor(Theme::Color::Accent), *math::Color::parse("#FF8B5A2B"));
-    EXPECT_EQ(theme.getColor(Theme::Color::Text), *math::Color::parse("#1B1E2B"));
+    const std::optional<math::Color> accent = math::Color::parse("#FF8B5A2B");
+    const std::optional<math::Color> text = math::Color::parse("#1B1E2B");
+    ASSERT_TRUE(accent.has_value());
+    ASSERT_TRUE(text.has_value());
+    EXPECT_EQ(theme.getColor(Theme::Color::Accent), *accent);
+    EXPECT_EQ(theme.getColor(Theme::Color::Text), *text);
     EXPECT_EQ(theme.getColor(Theme::Color::Window), Theme::light().getColor(Theme::Color::Window));
     EXPECT_EQ(theme.getMetric(Theme::Metric::ControlHeight), 80.0F);
     EXPECT_EQ(theme.getFont(Theme::Font::Title).font, "pixel");
@@ -119,11 +126,18 @@ TEST_F(ThemeTest, ReadsThemesOnTopOfABase) {
     EXPECT_EQ(panel->slice.fill, graphics2d::NineSlice::Fill::Tile);
     EXPECT_FLOAT_EQ(panel->tint.a, 128.0F / 255.0F);
     EXPECT_FALSE(panel->colorize);
-    EXPECT_TRUE(theme.getSurface(Theme::Surface::TrackFill)->colorize);
-    EXPECT_EQ(theme.getSurface(Theme::Surface::Button)->slice.pieces[4], (math::Rect{6.0F, 6.0F, 20.0F, 20.0F}));
-    EXPECT_EQ(theme.getSurface(Theme::Surface::Badge)->slice.pieces[8], (math::Rect{8.0F, 8.0F, 4.0F, 4.0F}));
+    const Theme::Image* fill = theme.getSurface(Theme::Surface::TrackFill);
+    const Theme::Image* button = theme.getSurface(Theme::Surface::Button);
+    const Theme::Image* badge = theme.getSurface(Theme::Surface::Badge);
+    ASSERT_NE(fill, nullptr);
+    ASSERT_NE(button, nullptr);
+    ASSERT_NE(badge, nullptr);
+    EXPECT_TRUE(fill->colorize);
+    EXPECT_EQ(button->slice.pieces[4], (math::Rect{6.0F, 6.0F, 20.0F, 20.0F}));
+    EXPECT_EQ(badge->slice.pieces[8], (math::Rect{8.0F, 8.0F, 4.0F, 4.0F}));
     EXPECT_EQ(theme.getSurface(Theme::Surface::Card), nullptr);
     EXPECT_EQ(loader.paths, (std::vector<std::string>{"ui/badge.png", "ui/button.png", "ui/panel.png", "ui/fill.png"}));
+    ASSERT_EQ(loader.options.size(), 4U);
     EXPECT_EQ(loader.options[2].filter, graphics::Texture::Filter::Linear);
     EXPECT_EQ(loader.options[0].filter, graphics::Texture::Filter::Nearest);
 }

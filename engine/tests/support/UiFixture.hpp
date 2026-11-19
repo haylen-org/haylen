@@ -19,6 +19,9 @@
 #include "haylen/ui/Theme.hpp"
 #include "support/EngineFixture.hpp"
 
+struct ImDrawData;
+struct ImDrawList;
+
 namespace haylen::test {
 
 // A running engine with GUIs mounted from JSON, the input a player would give them and the events they report.
@@ -63,15 +66,19 @@ class UiFixture {
     // Whether a draw of the last frame that goes around the ImGui vertices, such as a shape or a text, is cut to the area, within a distance.
     [[nodiscard]] static bool hasClip(const math::Rect& area, float tolerance = 0.0F);
 
+    // The component of a GUI with an id, which throws when the GUI holds none, so a test never reads a component that is missing.
+    [[nodiscard]] static ui::Component& getComponent(const ui::Gui& gui, std::string_view id);
     [[nodiscard]] const math::Rect& getBounds(const ui::Gui& gui, std::string_view id) const;
+
+    // What the UI drew in its last frame and the draw list of the window that the GUIs share, which throw before the UI drew, so a test never reads a frame that is missing.
+    [[nodiscard]] static const ImDrawData& getDrawData(plugins::UiPlugin& ui);
+    [[nodiscard]] static const ImDrawList& getGuiDrawList(plugins::UiPlugin& ui);
     [[nodiscard]] bool isFocused(const ui::Gui& gui, std::string_view id);
 
     // The id of the collection item that holds the focus, empty outside collections.
     [[nodiscard]] std::string getFocusedItem();
     [[nodiscard]] std::vector<std::string> getEventNames() const;
-    [[nodiscard]] const ui::Event& getLastEvent() const {
-        return events.back();
-    }
+    [[nodiscard]] const ui::Event& getLastEvent() const;
     [[nodiscard]] const ui::Event& findLastEvent(std::string_view name) const;
     void clearEvents() noexcept {
         events.clear();

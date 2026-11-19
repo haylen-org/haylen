@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -129,7 +130,9 @@ TEST_F(PlayAreaTest, MovesTheFocusWithTabAndTheFocusAction) {
     EXPECT_TRUE(isFocused(*gui, "second"));
 
     // An app remaps it like any navigation action, such as to the pause key that the Play/Pause button of a TV remote sends.
-    getEngine().getActions().define({.name = "uiFocus", .bindings = {*input::ActionMap::Binding::parse("key:pause")}});
+    const std::optional<input::ActionMap::Binding> pause = input::ActionMap::Binding::parse("key:pause");
+    ASSERT_TRUE(pause.has_value());
+    getEngine().getActions().define({.name = "uiFocus", .bindings = {*pause}});
     key(input::Key::Pause);
     EXPECT_TRUE(isFocused(*gui, "stage"));
     button(input::GamepadButton::Back);
@@ -168,7 +171,9 @@ TEST_F(PlayAreaTest, GivesTheGamepadToTheGameOrToTheControls) {
 
 // A direction that the app binds to a whole stick takes both axes of that stick from the game while a control has the focus.
 TEST_F(PlayAreaTest, TakesBothAxesOfAStickThatADirectionIsBoundTo) {
-    getEngine().getActions().define({.name = "uiDown", .bindings = {*input::ActionMap::Binding::parse("stick:right")}});
+    const std::optional<input::ActionMap::Binding> rightStick = input::ActionMap::Binding::parse("stick:right");
+    ASSERT_TRUE(rightStick.has_value());
+    getEngine().getActions().define({.name = "uiDown", .bindings = {*rightStick}});
     focus("first");
     input::GamepadState pushed{.connected = true};
     pushed.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = 1.0F;
@@ -256,7 +261,9 @@ TEST_F(PlayAreaTest, CoversTheCornersOfARoundedPlayArea) {
     auto rounded = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "playArea", "id": "stage", "width": 600, "height": 400, "radius": 16, "cornerColor": "#FF101418"}]})");
     frames();
     const math::Rect stage = getBounds(*rounded, "stage");
-    const math::Color corner = *math::Color::parse("#FF101418");
+    const std::optional<math::Color> parsed = math::Color::parse("#FF101418");
+    ASSERT_TRUE(parsed.has_value());
+    const math::Color corner = *parsed;
     bool covered = false;
     for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
         if (shape.borderColor == corner) {
@@ -279,7 +286,9 @@ TEST_F(PlayAreaTest, CoversTheCornersWithTheBackgroundOfTheTheme) {
     getUi().unmount(*gui);
     mount(R"({"kind": "column", "padding": 40, "style": {"colors": {"background": "#FFE9DCC0"}}, "children": [{"kind": "playArea", "width": 600, "height": 400, "radius": 16}]})");
     frames();
-    const math::Color background = *math::Color::parse("#FFE9DCC0");
+    const std::optional<math::Color> parsed = math::Color::parse("#FFE9DCC0");
+    ASSERT_TRUE(parsed.has_value());
+    const math::Color background = *parsed;
     const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
     EXPECT_TRUE(std::ranges::any_of(shapes, [&background](const graphics2d::Shape& shape) { return shape.borderColor == background && shape.borderWidth == 16.0F; }));
 }

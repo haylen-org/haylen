@@ -2,10 +2,9 @@
 
 #include <algorithm>
 #include <deque>
-#include <fstream>
-#include <iterator>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -17,6 +16,7 @@
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "support/FontCollection.hpp"
 #include "support/UiFixture.hpp"
 #include "ui/TextFieldLayout.hpp"
 
@@ -25,8 +25,7 @@ namespace haylen::ui {
 class RightToLeftTest : public ::testing::Test {
   protected:
     [[nodiscard]] std::shared_ptr<text::Font> load(const std::string& name) {
-        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
-        return std::make_shared<text::TrueTypeFont>(ui.getEngine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
+        return std::make_shared<text::TrueTypeFont>(ui.getEngine().getGraphics(), test::FontCollection::read(name));
     }
 
     // Each layout reads its code points from storage of its own that the test keeps.
@@ -35,7 +34,12 @@ class RightToLeftTest : public ::testing::Test {
     }
 
     [[nodiscard]] int getCaret() {
-        return ui.getFixture().host().getPlatformTextInput().getPublished().back().selectionEnd;
+        const auto& published = ui.getFixture().host().getPlatformTextInput().getPublished();
+        if (published.empty()) {
+            throw std::runtime_error("The field published no state to the text input of the platform.");
+        }
+
+        return published.back().selectionEnd;
     }
 
     test::UiFixture ui;

@@ -117,7 +117,7 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
             found = true;
         };
         // clang-format on
-        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+        for (const ImDrawList* list : getDrawData(getUi()).CmdLists) {
             for (const ImDrawVert& vertex : list->VtxBuffer) {
                 const math::Vec2 point{vertex.pos.x, vertex.pos.y};
                 if ((vertex.col & 0x00FFFFFFU) == color && (vertex.col >> 24U) != 0 && reach.contains(point)) {
@@ -160,7 +160,12 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
     }
 
     [[nodiscard]] static const math::Rect& getItemBounds(const Collection& collection, std::size_t index) {
-        return collection.findCell(index)->getRoot().getBounds();
+        const CollectionCell* cell = collection.findCell(index);
+        if (cell == nullptr) {
+            throw std::logic_error("The collection shows no cell for the item " + std::to_string(index) + ".");
+        }
+
+        return cell->getRoot().getBounds();
     }
 
     [[nodiscard]] static std::shared_ptr<CollectionItems> makeItems(std::size_t count) {
@@ -184,8 +189,8 @@ class ScrollbarTest : public ::testing::Test, public test::UiFixture {
     }
 
     // The clip of the text a field draws, which is where its text may show.
-    [[nodiscard]] static math::Rect findTextClip(const math::Rect& field) {
-        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+    [[nodiscard]] math::Rect findTextClip(const math::Rect& field) {
+        for (const ImDrawList* list : getDrawData(getUi()).CmdLists) {
             for (const ImDrawCmd& command : list->CmdBuffer) {
                 const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
                 if (command.UserCallback != nullptr && command.UserCallback != ImGui::GetPlatformIO().DrawCallback_ResetRenderState && field.contains(clip)) {
@@ -570,6 +575,7 @@ TEST_F(ScrollbarTest, KeepsTheGapInImmediateWindowsAndTheirChildren) {
             ASSERT_NE(window, nullptr);
 
             if (std::string(name) == "Inspector") {
+                ASSERT_FALSE(window->DC.ChildWindows.empty());
                 window = window->DC.ChildWindows[0];
             }
 

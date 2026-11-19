@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
+#include <string>
 
 #include "haylen/ui/Message.hpp"
 #include "haylen/ui/MessageStack.hpp"
@@ -18,8 +20,14 @@ class MessageStackTest : public ::testing::Test {
         return placement ? std::optional<float>(placement->offset) : std::nullopt;
     }
 
+    // Places a message of a deck that shows already, which throws when the deck keeps it waiting.
     MessageStack::Placement placeInDeck(std::uint64_t key, float extent, double since, bool expandable = true) {
-        return *stack.place({.key = key, .position = MessageStack::Position::Bottom, .arrangement = MessageStack::Arrangement::Deck, .expandable = expandable, .extent = extent, .since = since, .shown = true, .limit = 2, .peek = kPeek});
+        const std::optional<MessageStack::Placement> placement = stack.place({.key = key, .position = MessageStack::Position::Bottom, .arrangement = MessageStack::Arrangement::Deck, .expandable = expandable, .extent = extent, .since = since, .shown = true, .limit = 2, .peek = kPeek});
+        if (!placement) {
+            throw std::runtime_error("The deck keeps the message " + std::to_string(key) + " waiting.");
+        }
+
+        return *placement;
     }
 
     MessageStack stack;

@@ -111,8 +111,12 @@ TEST_F(RouterTest, MatchesLinksWithTheirTypedParameters) {
     EXPECT_EQ(album->route->name, "album");
     EXPECT_EQ(album->parameters, (core::Json{{"artist", "sea wolves"}, {"id", 7}, {"track", 3}}));
 
-    EXPECT_EQ(router->match("https://music.example.com/artist/42")->parameters, (core::Json{{"artist", "42"}}));
-    EXPECT_EQ(router->match("/home")->route->name, "home");
+    const std::optional<Router::Match> artist = router->match("https://music.example.com/artist/42");
+    ASSERT_TRUE(artist.has_value());
+    EXPECT_EQ(artist->parameters, (core::Json{{"artist", "42"}}));
+    const std::optional<Router::Match> home = router->match("/home");
+    ASSERT_TRUE(home.has_value());
+    EXPECT_EQ(home->route->name, "home");
     EXPECT_FALSE(router->match("music://artist/42/album/seven").has_value());
     EXPECT_FALSE(router->match("photos://artist/42").has_value());
     EXPECT_FALSE(router->match("https://other.example.com/artist/42").has_value());
@@ -347,7 +351,9 @@ TEST_F(RouterTest, KeepsTheStateWhenItsTabsCloseFirstAndClosesWhenItFailsToBuild
 TEST_F(RouterTest, ReadsAPlusSignAsASpaceOnlyInTheQuery) {
     const std::shared_ptr<NavigationStack> stack = getNavigation().createStack({.gui = frame, .node = "middle"}, make("root"));
     const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = {{.name = "search", .path = "search/{term}", .query = {{"q", Router::Type::String}}}}, .stack = stack});
-    EXPECT_EQ(router->match("search/rock+roll?q=rock+roll")->parameters, (core::Json{{"term", "rock+roll"}, {"q", "rock roll"}}));
+    const std::optional<Router::Match> search = router->match("search/rock+roll?q=rock+roll");
+    ASSERT_TRUE(search.has_value());
+    EXPECT_EQ(search->parameters, (core::Json{{"term", "rock+roll"}, {"q", "rock roll"}}));
 }
 
 // A saved location whose query no longer reads as its type is left out, and the rest of the state builds again.

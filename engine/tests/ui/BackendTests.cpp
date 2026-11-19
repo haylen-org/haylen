@@ -2,10 +2,9 @@
 
 #include <cmath>
 #include <cstdint>
-#include <fstream>
 #include <functional>
-#include <iterator>
 #include <numbers>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -27,6 +26,7 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/DamagedFonts.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/FontCollection.hpp"
 #include "text/FontFile.hpp"
 
 namespace haylen::ui {
@@ -60,8 +60,7 @@ class BackendTest : public ::testing::Test {
             return {data.begin(), data.end()};
         }
 
-        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/" + name, std::ios::binary);
-        return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+        return test::FontCollection::read(name);
     }
 
     static void beginWindow(const char* name, math::Vec2 position, ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration) {
@@ -305,7 +304,9 @@ TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
 // ImGui reads the fonts of the UI through HarfBuzz, so a glyph made of itself keeps its advance, an outline past the end of its table draws nothing and a character map that counts more segments than it holds maps no character.
 TEST_F(BackendTest, DrawsDamagedFontsAsMissingGlyphs) {
     std::vector<std::uint8_t> itself = readFont("crimson-text-regular.ttf");
-    const std::uint32_t glyph = text::FontFile::read(itself)->findGlyph('A');
+    const std::optional<text::FontFile> file = text::FontFile::read(itself);
+    ASSERT_TRUE(file.has_value());
+    const std::uint32_t glyph = file->findGlyph('A');
     test::DamagedFonts::makeGlyphOfItself(itself, glyph);
     std::vector<std::uint8_t> moved = readFont("crimson-text-regular.ttf");
     test::DamagedFonts::moveOutlinePastTheEnd(moved, glyph);

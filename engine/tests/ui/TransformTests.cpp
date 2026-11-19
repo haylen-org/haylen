@@ -30,8 +30,7 @@ class UiTransformTest : public ::testing::Test {
     };
 
     [[nodiscard]] static Drawn getDrawn(plugins::UiPlugin& plugin) {
-        plugin.getBackend().makeCurrent();
-        const ImDrawData& data = *ImGui::GetDrawData();
+        const ImDrawData& data = test::UiFixture::getDrawData(plugin);
         math::Vec2 lowest{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
         math::Vec2 highest{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
         Drawn drawn;
@@ -72,17 +71,17 @@ TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
     const std::shared_ptr<Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
     plugin.mount(gui, 0);
     fixture.frames(2);
-    const math::Rect plain = gui->find("title")->getBounds();
+    const math::Rect plain = test::UiFixture::getComponent(*gui, "title").getBounds();
     const Drawn before = getDrawn(plugin);
     EXPECT_EQ(before.alpha, 255U);
 
-    Transform& shape = *gui->find("title")->getTransform();
+    Transform& shape = *test::UiFixture::getComponent(*gui, "title").getTransform();
     shape.offset = {30.0F, 10.0F};
     shape.scale = {2.0F, 2.0F};
     shape.opacity = 0.5F;
     shape.tint = {1.0F, 0.0F, 0.0F, 1.0F};
     fixture.frames(1);
-    const math::Rect moved = gui->find("title")->getBounds();
+    const math::Rect moved = test::UiFixture::getComponent(*gui, "title").getBounds();
     EXPECT_FLOAT_EQ(moved.x, plain.x + 30.0F);
     EXPECT_FLOAT_EQ(moved.y, plain.y + 10.0F);
 
@@ -103,7 +102,7 @@ TEST_F(UiTransformTest, ReshapesWhatTheScrollAreasInsideTheNodeDraw) {
     fixture.frames(1);
     ASSERT_TRUE(fixture.frameUntil([&] { return getDrawn(plugin).alpha == 255U; }));
 
-    gui->find("panel")->getTransform()->opacity = 0.5F;
+    test::UiFixture::getComponent(*gui, "panel").getTransform()->opacity = 0.5F;
     fixture.frames(1);
     EXPECT_EQ(getDrawn(plugin).alpha, 128U);
 }
@@ -144,7 +143,7 @@ TEST_F(UiTransformTest, MirrorsANodeWithANegativeScale) {
     fixture.frames(2);
     const Drawn before = getDrawn(plugin);
 
-    gui->find("title")->getTransform()->scale = {-1.0F, 1.0F};
+    test::UiFixture::getComponent(*gui, "title").getTransform()->scale = {-1.0F, 1.0F};
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_FALSE(plugin.getBackend().getShapes().empty());

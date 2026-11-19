@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -23,15 +22,19 @@
 
 namespace haylen::ui {
 
-// The frame of an app: a bar of 80 units on top with a button, and the middle under it, split into a list and a detail, where the screens lay out.
+// The frame of an app: a bar of 80 units on top with a button, and the middle under it, split into a list and a detail, where the screens lay out, with a picture in the package that a screen shows, which arrives some frames after the screen first draws.
 class NavigationTest : public ::testing::Test, public test::UiFixture {
   protected:
-    explicit NavigationTest(std::map<std::string, std::string> files = {}) : UiFixture(std::move(files)) {
+    NavigationTest() : UiFixture({{"content/icons/square.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3366FF"/></svg>)"}}) {
         frame = mount(R"({"kind": "column", "gap": 0, "children": [{"kind": "row", "id": "bar", "height": 80, "children": [{"kind": "button", "id": "home", "text": "Home"}]}, {"kind": "row", "id": "middle", "grow": 1, "gap": 0, "align": "stretch", "children": [{"kind": "column", "id": "list", "grow": 1, "align": "stretch"}, {"kind": "column", "id": "detail", "grow": 1, "align": "stretch"}]}]})");
     }
 
     std::shared_ptr<test::RecordingScreen> make(const std::string& name) {
         return std::make_shared<test::RecordingScreen>(getUi(), name, log);
+    }
+
+    std::shared_ptr<test::RecordingScreen> makePicture(const std::string& name) {
+        return std::make_shared<test::RecordingScreen>(getUi(), name, log, R"({"kind": "column", "children": [{"kind": "image", "id": "picture", "image": "icons/square.svg", "width": 64, "height": 64}]})");
     }
 
     [[nodiscard]] Navigation& getNavigation() {
@@ -167,18 +170,8 @@ TEST_F(NavigationTest, BuildsOnlyTheTopScreenOfADeepLink) {
     EXPECT_EQ(artist->getState(), Screen::State::Shown);
 }
 
-// The same frame with a picture in the package that a screen shows, which arrives some frames after the screen first draws.
-class NavigationPictureTest : public NavigationTest {
-  protected:
-    NavigationPictureTest() : NavigationTest({{"content/icons/square.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3366FF"/></svg>)"}}) {}
-
-    std::shared_ptr<test::RecordingScreen> makePicture(const std::string& name) {
-        return std::make_shared<test::RecordingScreen>(getUi(), name, log, R"({"kind": "column", "children": [{"kind": "image", "id": "picture", "image": "icons/square.svg", "width": 64, "height": 64}]})");
-    }
-};
-
 // A screen moves in only once its GUI laid out with every picture it shows, so no picture pops in while it slides.
-TEST_F(NavigationPictureTest, HoldsATransitionUntilThePicturesOfTheScreenThatComesArrived) {
+TEST_F(NavigationTest, HoldsATransitionUntilThePicturesOfTheScreenThatComesArrived) {
     const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     frames(2);
     const math::Rect list = getBounds(*frame, "list");
@@ -195,7 +188,7 @@ TEST_F(NavigationPictureTest, HoldsATransitionUntilThePicturesOfTheScreenThatCom
 }
 
 // A presentation rises only once its screen laid out with every picture it shows.
-TEST_F(NavigationPictureTest, HoldsAPresentationUntilThePicturesOfItsScreenArrived) {
+TEST_F(NavigationTest, HoldsAPresentationUntilThePicturesOfItsScreenArrived) {
     frames(2);
     const auto sheet = makePicture("sheet");
     const std::shared_ptr<Presentation> shown = getNavigation().present(sheet, {.style = Presentation::Style::FullScreen});

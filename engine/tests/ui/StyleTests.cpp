@@ -34,9 +34,8 @@ class StyleTest : public ::testing::Test, public test::UiFixture {
 
     // Tells whether a vertex the GUIs drew in the last frame has the color.
     [[nodiscard]] bool drawsColor(math::Color color) {
-        getUi().getBackend().makeCurrent();
         const ImU32 packed = ImGuiConverter::toImU32(color);
-        const ImVector<ImDrawVert>& vertices = ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer;
+        const ImVector<ImDrawVert>& vertices = getGuiDrawList(getUi()).VtxBuffer;
         return std::any_of(vertices.begin(), vertices.end(), [packed](const ImDrawVert& vertex) { return vertex.col == packed; });
     }
 
@@ -96,8 +95,10 @@ TEST_F(StyleTest, ResolvesTheThemeColorsAStyleNames) {
     context.pushStyle("", &inner, false);
     EXPECT_EQ(context.getColor(Theme::Color::Panel), math::Color::fromHex(0x00FF00FFU));
     context.popStyle();
+    const Theme* light = getUi().findTheme("light");
+    ASSERT_NE(light, nullptr);
     context.pushStyle("light", &inner, false);
-    EXPECT_EQ(context.getColor(Theme::Color::Panel), getUi().findTheme("light")->getColor(Theme::Color::Accent));
+    EXPECT_EQ(context.getColor(Theme::Color::Panel), light->getColor(Theme::Color::Accent));
     context.popStyle();
     context.popStyle();
 }

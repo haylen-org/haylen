@@ -67,7 +67,12 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
     }
 
     [[nodiscard]] static debug::ObjectCounter::Snapshot getCells() {
-        return *debug::ObjectCounter::find("UiCell");
+        const std::optional<debug::ObjectCounter::Snapshot> cells = debug::ObjectCounter::find("UiCell");
+        if (!cells) {
+            throw std::logic_error("No object counter counts the cells of collections.");
+        }
+
+        return *cells;
     }
 
     [[nodiscard]] static const math::Rect& getItemBounds(const Collection& collection, std::size_t index) {
@@ -171,7 +176,9 @@ TEST_F(CollectionTest, RecyclesCellsOfTheRightType) {
     for (int step = 0; step < 30; ++step) {
         wheel(list.getBounds().getCenter(), -5.0F);
         frames();
-        const auto [first, last] = *list.getVisibleRange();
+        const std::optional<std::pair<std::size_t, std::size_t>> visible = list.getVisibleRange();
+        ASSERT_TRUE(visible.has_value());
+        const auto [first, last] = *visible;
         for (std::size_t index = first; index <= last; ++index) {
             const CollectionCell* cell = list.findCell(index);
             ASSERT_NE(cell, nullptr);
@@ -203,6 +210,7 @@ TEST_F(CollectionTest, ReplacesUpdatesAndMovesItemsFromCpp) {
     Collection& list = gui->getCollection("list");
     const std::shared_ptr<CountingSource> source = show(list, makeItems(20, 1, "row"));
     const CollectionCell* cell = list.findCell(2);
+    ASSERT_NE(cell, nullptr);
 
     std::size_t reads = source->reads;
     source->update(2, "title", "Changed");
@@ -501,7 +509,9 @@ TEST_F(CollectionTest, ResetsPlayerChangedPartsWhenACellIsReused) {
     // A cell that showed the first item shows another one with the switch off, so a press turns that one on.
     list.setScrollOffset(500.0 * 60.0);
     frames(3);
-    const std::size_t shown = list.getVisibleRange()->first + 1;
+    const std::optional<std::pair<std::size_t, std::size_t>> visible = list.getVisibleRange();
+    ASSERT_TRUE(visible.has_value());
+    const std::size_t shown = visible->first + 1;
     clearEvents();
     click(getItemBounds(list, shown).getCenter());
     EXPECT_EQ(findLastEvent("change").value.at("checked"), true);
@@ -630,7 +640,9 @@ TEST_F(CollectionTest, ReportsPartEventsWithTheirCell) {
     show(list, makeItems(30));
     const CollectionCell* cell = list.findCell(2);
     ASSERT_NE(cell, nullptr);
-    click(cell->findPart("buy")->getBounds().getCenter());
+    const Component* buy = cell->findPart("buy");
+    ASSERT_NE(buy, nullptr);
+    click(buy->getBounds().getCenter());
     const Event& clicked = findLastEvent("click");
     EXPECT_EQ(clicked.id, "list");
     EXPECT_EQ(clicked.value.at("part"), "buy");
@@ -1081,7 +1093,9 @@ TEST_F(CollectionTest, RunsTheBindersOfCppForNewlyBoundCellsOnly) {
     EXPECT_GE(bound, 11U);
     frames(20);
     EXPECT_EQ(calls, bound);
-    EXPECT_THROW(list.findCell(0)->set("nothing", core::Json::object()), std::invalid_argument);
+    CollectionCell* first = list.findCell(0);
+    ASSERT_NE(first, nullptr);
+    EXPECT_THROW(first->set("nothing", core::Json::object()), std::invalid_argument);
 
     list.scrollBy(60.0, false);
     frames(2);

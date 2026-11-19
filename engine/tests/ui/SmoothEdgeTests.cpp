@@ -43,16 +43,15 @@ class SmoothEdgeTest : public ::testing::Test, public test::UiFixture {
 // The ring of a focused control that a transform scales stays inside the clip around it, which scales with it, where the edge of the screen cuts the ring.
 TEST_F(SmoothEdgeTest, ClipsTheFocusRingOfAScaledControlAroundItsShape) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "corner", "text": "Corner", "autofocus": true}]})");
-    gui->find("corner")->getTransform()->scale = {1.5F, 1.5F};
+    getComponent(*gui, "corner").getTransform()->scale = {1.5F, 1.5F};
     key(input::Key::Down);
     frames(2);
 
     const math::Color focus = getColor(Theme::Color::Focus);
     const std::optional<graphics2d::Shape> ring = findShape([&focus](const graphics2d::Shape& shape) { return shape.borderColor == focus; });
     ASSERT_TRUE(ring.has_value());
-    getUi().getBackend().makeCurrent();
     bool clippedAround = false;
-    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+    for (const ImDrawList* list : getDrawData(getUi()).CmdLists) {
         for (const ImDrawCmd& command : list->CmdBuffer) {
             const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
             clippedAround = clippedAround || (command.UserCallback != nullptr && clip.contains(ring->bounds));

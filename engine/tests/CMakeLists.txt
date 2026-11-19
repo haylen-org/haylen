@@ -255,6 +255,7 @@ set(HAYLEN_TEST_SOURCES
   ui/CollectionDiffTests.cpp
   ui/CollectionLuaTests.cpp
   ui/CollectionTests.cpp
+  ui/ComponentAssetTests.cpp
   ui/ComponentTests.cpp
   ui/FocusRingTests.cpp
   ui/NavigationTests.cpp
@@ -286,6 +287,7 @@ set(HAYLEN_TEST_SOURCES
   ui/ThemeSoundTests.cpp
   ui/ThemeTests.cpp
   ui/TransformTests.cpp
+  ui/UiLuaFontTests.cpp
   ui/UiLuaTests.cpp
   ui/WheelTests.cpp
 )

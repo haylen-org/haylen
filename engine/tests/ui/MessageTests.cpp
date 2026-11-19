@@ -406,7 +406,12 @@ TEST_F(MessageTest, UpdatesAndDismissesMessagesAndTellsWhyEachLeft) {
     const std::shared_ptr<Message> upload = show(R"({"title": "Upload", "text": "Sending the save", "indicator": "progress", "progress": 0.25, "duration": 0})");
     std::vector<std::string> heard;
     static_cast<void>(upload->appeared.connect([&heard](Message&) { heard.emplace_back("appeared"); }));
-    static_cast<void>(upload->dismissed.connect([&heard](Message& left) { heard.emplace_back(Message::reasonName(*left.getReason())); }));
+    // clang-format off
+    static_cast<void>(upload->dismissed.connect([&heard](Message& left) {
+        ASSERT_TRUE(left.getReason().has_value());
+        heard.emplace_back(Message::reasonName(*left.getReason()));
+    }));
+    // clang-format on
     frames(getTransitionFrames());
     ASSERT_TRUE(findMessage("Upload. Sending the save").has_value());
 

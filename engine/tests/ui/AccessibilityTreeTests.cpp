@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
@@ -36,6 +38,25 @@ class AccessibilityTreeTest : public ::testing::Test {
         return nullptr;
     }
 
+    // Returns the element of the last tree whose label is the text, which throws when there is none, so a test never reads an element that is missing.
+    [[nodiscard]] const Element& get(std::string_view label) {
+        const Element* element = find(label);
+        if (element == nullptr) {
+            throw std::runtime_error("The last accessibility tree has no element \"" + std::string(label) + "\".");
+        }
+
+        return *element;
+    }
+
+    [[nodiscard]] const platform::HeadlessHost::AccessibilityTree& getLastTree() {
+        const std::vector<platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
+        if (trees.empty()) {
+            throw std::runtime_error("The platform received no accessibility tree.");
+        }
+
+        return trees.back();
+    }
+
     test::EngineFixture fixture;
 };
 
@@ -69,48 +90,48 @@ TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
     const Element* header = find("Settings, Audio");
     ASSERT_NE(header, nullptr);
     EXPECT_EQ(header->role, Element::Role::Heading);
-    EXPECT_EQ(find("Choose how the game sounds.")->role, Element::Role::Text);
-    const Element* play = find("Play");
-    EXPECT_EQ(play->role, Element::Role::Button);
-    EXPECT_EQ(play->actions, Element::Focus | Element::Activate);
-    EXPECT_GT(play->bounds.width, 0.0F);
-    EXPECT_EQ(find("Locked")->states, Element::Disabled);
-    EXPECT_EQ(find("Locked")->actions, 0U);
-    EXPECT_EQ(find("Music")->role, Element::Role::Switch);
-    EXPECT_TRUE(find("Music")->has(Element::Checked));
-    EXPECT_FALSE(find("Hints")->has(Element::Checked));
-    EXPECT_EQ(find("Volume")->value, "0.25");
-    EXPECT_TRUE(find("Volume")->can(Element::Increment));
-    EXPECT_EQ(find("Name")->value, "Ana");
-    EXPECT_EQ(find("Password")->value, "•••");
+    EXPECT_EQ(get("Choose how the game sounds.").role, Element::Role::Text);
+    const Element& play = get("Play");
+    EXPECT_EQ(play.role, Element::Role::Button);
+    EXPECT_EQ(play.actions, Element::Focus | Element::Activate);
+    EXPECT_GT(play.bounds.width, 0.0F);
+    EXPECT_EQ(get("Locked").states, Element::Disabled);
+    EXPECT_EQ(get("Locked").actions, 0U);
+    EXPECT_EQ(get("Music").role, Element::Role::Switch);
+    EXPECT_TRUE(get("Music").has(Element::Checked));
+    EXPECT_FALSE(get("Hints").has(Element::Checked));
+    EXPECT_EQ(get("Volume").value, "0.25");
+    EXPECT_TRUE(get("Volume").can(Element::Increment));
+    EXPECT_EQ(get("Name").value, "Ana");
+    EXPECT_EQ(get("Password").value, "•••");
 
     // The options of a radio group are elements inside the group.
-    const Element* group = find("Difficulty");
-    EXPECT_EQ(group->role, Element::Role::RadioGroup);
-    EXPECT_EQ(find("Hard")->parent, group->id);
-    EXPECT_TRUE(find("Hard")->has(Element::Checked));
-    EXPECT_FALSE(find("Easy")->has(Element::Checked));
-    EXPECT_EQ(find("Download")->value, "50%");
+    const Element& group = get("Difficulty");
+    EXPECT_EQ(group.role, Element::Role::RadioGroup);
+    EXPECT_EQ(get("Hard").parent, group.id);
+    EXPECT_TRUE(get("Hard").has(Element::Checked));
+    EXPECT_FALSE(get("Easy").has(Element::Checked));
+    EXPECT_EQ(get("Download").value, "50%");
 
     // Images are decorative until they have a label, hidden nodes leave their children out and the app names roles and hints of its own.
-    EXPECT_EQ(find("Map")->role, Element::Role::Image);
-    EXPECT_EQ(find("A bold [word]")->role, Element::Role::Text);
+    EXPECT_EQ(get("Map").role, Element::Role::Image);
+    EXPECT_EQ(get("A bold [word]").role, Element::Role::Text);
     EXPECT_EQ(find("Hidden"), nullptr);
-    const Element* coins = find("Coins");
-    EXPECT_EQ(coins->role, Element::Role::Text);
-    EXPECT_EQ(coins->hint, "Spent in the shop");
-    EXPECT_EQ(find("12")->parent, coins->id);
+    const Element& coins = get("Coins");
+    EXPECT_EQ(coins.role, Element::Role::Text);
+    EXPECT_EQ(coins.hint, "Spent in the shop");
+    EXPECT_EQ(get("12").parent, coins.id);
     std::size_t images = 0;
-    for (const Element& element : fixture.host().getAccessibilityTrees().back().elements) {
+    for (const Element& element : getLastTree().elements) {
         images += element.role == Element::Role::Image ? 1U : 0U;
     }
 
     EXPECT_EQ(images, 1U);
 
     // The rows of trees and tables are elements of their own, with their text and their state.
-    EXPECT_TRUE(find("Maps")->has(Element::Expanded));
-    EXPECT_TRUE(find("Coast")->has(Element::Selected));
-    EXPECT_TRUE(find("Ana, 120")->has(Element::Selected));
+    EXPECT_TRUE(get("Maps").has(Element::Expanded));
+    EXPECT_TRUE(get("Coast").has(Element::Selected));
+    EXPECT_TRUE(get("Ana, 120").has(Element::Selected));
 }
 
 TEST_F(AccessibilityTreeTest, SendsTheTreeOnlyWhenItChanges) {
@@ -151,25 +172,25 @@ TEST_F(AccessibilityTreeTest, PerformsTheActionsOfScreenReadersAndFollowsTheFocu
     fixture.frames(3);
 
     // A platform thread asks through the relay, and the UI performs the action at its next frame.
-    platform::AccessibilityRelay::perform({.element = find("Play")->id, .action = Element::Activate});
+    platform::AccessibilityRelay::perform({.element = get("Play").id, .action = Element::Activate});
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "play");
     EXPECT_EQ(fixture.lua("return ui.focused().id"), "play");
-    EXPECT_TRUE(find("Play")->has(Element::Focused));
-    EXPECT_EQ(fixture.host().getAccessibilityTrees().back().focused, find("Play")->id);
+    EXPECT_TRUE(get("Play").has(Element::Focused));
+    EXPECT_EQ(getLastTree().focused, get("Play").id);
 
     fixture.runLua("heard = {}");
-    platform::AccessibilityRelay::perform({.element = find("Volume")->id, .action = Element::Increment});
+    platform::AccessibilityRelay::perform({.element = get("Volume").id, .action = Element::Increment});
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "0.6");
-    EXPECT_EQ(find("Volume")->value, "0.60");
+    EXPECT_EQ(get("Volume").value, "0.60");
     EXPECT_EQ(fixture.lua("return ui.focused().id"), "volume");
 
     // Lua asks the way a screen reader does, and the focus of the UI moves the focus of the tree.
     fixture.runLua("heard = {} for _, element in ipairs(accessibility.elements()) do if element.label == 'Hard' then accessibility.perform(element.id, 'activate') end end");
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "hard");
-    EXPECT_TRUE(find("Hard")->has(Element::Checked));
+    EXPECT_TRUE(get("Hard").has(Element::Checked));
     fixture.runLua("gui:command('play', 'focus')");
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("for _, element in ipairs(accessibility.elements()) do if element.focused then return element.label end end"), "Play");
@@ -199,15 +220,15 @@ TEST_F(AccessibilityTreeTest, ReachesThePresentationAndTheMessagesButNotWhatAMod
     EXPECT_EQ(find("Under"), nullptr);
     EXPECT_NE(find("Queue"), nullptr);
     ASSERT_NE(find("The map was deleted. Undo"), nullptr);
-    EXPECT_EQ(find("The map was deleted. Undo")->role, Element::Role::Alert);
+    EXPECT_EQ(get("The map was deleted. Undo").role, Element::Role::Alert);
     ASSERT_NE(find("Sheet grabber"), nullptr);
-    EXPECT_EQ(find("Sheet grabber")->actions, Element::Activate);
+    EXPECT_EQ(get("Sheet grabber").actions, Element::Activate);
 
-    platform::AccessibilityRelay::perform({.element = find("Sheet grabber")->id, .action = Element::Activate});
+    platform::AccessibilityRelay::perform({.element = get("Sheet grabber").id, .action = Element::Activate});
     fixture.frames(30);
     EXPECT_EQ(fixture.lua("return sheet.detent"), "2");
 
-    platform::AccessibilityRelay::perform({.element = find("Undo")->id, .action = Element::Activate});
+    platform::AccessibilityRelay::perform({.element = get("Undo").id, .action = Element::Activate});
     fixture.frames(30);
     EXPECT_EQ(fixture.lua("return tostring(undone)"), "true");
 
@@ -235,8 +256,8 @@ TEST_F(AccessibilityTreeTest, ReadsTheAnswersOfADialogInTheOrderOfTheRow) {
     }
 
     EXPECT_EQ(answers, (std::vector<std::string>{"Cancel", "Later", "Save"}));
-    EXPECT_LT(find("Cancel")->bounds.x, find("Later")->bounds.x);
-    EXPECT_TRUE(find("Save")->has(Element::Focused));
+    EXPECT_LT(get("Cancel").bounds.x, get("Later").bounds.x);
+    EXPECT_TRUE(get("Save").has(Element::Focused));
 }
 
 TEST_F(AccessibilityTreeTest, ReadsElementsAndAnnouncesFromLua) {

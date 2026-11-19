@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -21,6 +22,7 @@
 #include "haylen/ui/Theme.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/UiFixture.hpp"
 #include "ui/ScrollArbiter.hpp"
 #include "ui/TextSession.hpp"
 
@@ -51,8 +53,23 @@ class TextInputTest : public ::testing::Test {
     platform::HeadlessTextInput& getInput() {
         return fixture.host().getPlatformTextInput();
     }
+    // The last event that a field reported, which throws before any field reported one.
+    const std::string& getLastEvent() const {
+        if (events.empty()) {
+            throw std::runtime_error("No field reported an event.");
+        }
+
+        return events.back();
+    }
+
+    // The last state of the edited field that the platform received, which throws before any field published one.
     const TextInput::Field& getPublished() {
-        return getInput().getPublished().back();
+        const std::vector<TextInput::Field>& published = getInput().getPublished();
+        if (published.empty()) {
+            throw std::runtime_error("No field published its state to the text input of the platform.");
+        }
+
+        return published.back();
     }
 
     void touch(platform::Event::Type type, math::Vec2 point) {
@@ -120,7 +137,7 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     // Every field on screen is offered to the platform with its keyboard, and the defaults follow the keyboard.
     const std::vector<TextInput::Field>& visible = getInput().getVisibleFields();
     ASSERT_EQ(visible.size(), 4U);
-    EXPECT_EQ(visible[0].bounds, gui->find("email")->getBounds());
+    EXPECT_EQ(visible[0].bounds, test::UiFixture::getComponent(*gui, "email").getBounds());
     EXPECT_EQ(visible[0].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Email, .returnKey = TextInput::ReturnKey::Go, .capitalization = TextInput::Capitalization::Words, .autocorrect = true, .maxLength = 40}));
     EXPECT_EQ(visible[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline}));
     EXPECT_EQ(visible[2].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Password, .capitalization = TextInput::Capitalization::None, .autocorrect = false}));
@@ -165,6 +182,7 @@ TEST_F(TextInputTest, OpensTheNativeFieldOnceThePressOfAcceptEnds) {
     EXPECT_TRUE(getInput().getPublished().empty());
     send({.type = platform::Event::Type::KeyUp, .key = input::Key::Enter});
     ASSERT_TRUE(getInput().isEditing());
+    ASSERT_FALSE(getInput().getVisibleFields().empty());
     EXPECT_EQ(getPublished().id, getInput().getVisibleFields().front().id);
 }
 
@@ -373,9 +391,9 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     press(input::Key::Space, U' ');
     press(input::Key::B, U'b');
     ASSERT_FALSE(events.empty());
-    EXPECT_EQ(events.back(), R"(name:change {"value":"a b"})");
+    EXPECT_EQ(getLastEvent(), R"(name:change {"value":"a b"})");
     press(input::Key::Enter, U'\r');
-    EXPECT_EQ(events.back(), R"(name:submit {"value":"a b"})");
+    EXPECT_EQ(getLastEvent(), R"(name:submit {"value":"a b"})");
 
     focus(*gui, "notes");
     events.clear();
@@ -383,7 +401,7 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     press(input::Key::Enter, U'\r');
     press(input::Key::B, U'b');
     ASSERT_FALSE(events.empty());
-    EXPECT_EQ(events.back(), R"(notes:change {"value":"a\nb"})");
+    EXPECT_EQ(getLastEvent(), R"(notes:change {"value":"a\nb"})");
 }
 
 // Where the UI edits the text itself, the shortcuts of copying and pasting go through the clipboard of the system.
@@ -402,7 +420,7 @@ TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheSystem) {
     events.clear();
     press(input::Key::V, 0, shortcut);
     ASSERT_FALSE(events.empty());
-    EXPECT_EQ(events.back(), R"(name:change {"value":"Pasted"})");
+    EXPECT_EQ(getLastEvent(), R"(name:change {"value":"Pasted"})");
 }
 
 // Where the UI edits the text itself, the shortcuts of cutting, undoing, redoing and moving by words work as each system has them.
@@ -457,7 +475,7 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
     focus(*gui, "first");
     act(TextInput::Action::Submit);
     ASSERT_FALSE(events.empty());
-    EXPECT_EQ(events.back(), R"(first:submit {"value":"a"})");
+    EXPECT_EQ(getLastEvent(), R"(first:submit {"value":"a"})");
     EXPECT_FALSE(getInput().isEditing());
 
     focus(*gui, "first");
@@ -474,7 +492,7 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
     edit("typo", 4, 4);
     act(TextInput::Action::Cancel);
     EXPECT_FALSE(getInput().isEditing());
-    EXPECT_EQ(events.back(), R"(third:change {"value":""})");
+    EXPECT_EQ(getLastEvent(), R"(third:change {"value":""})");
 
     focus(*gui, "first");
     events.clear();
@@ -485,19 +503,19 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
 
 TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
-    const math::Rect resting = gui->find("name")->getBounds();
+    const math::Rect resting = test::UiFixture::getComponent(*gui, "name").getBounds();
     focus(*gui, "name");
 
     send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
-    const math::Rect lifted = gui->find("name")->getBounds();
+    const math::Rect lifted = test::UiFixture::getComponent(*gui, "name").getBounds();
     EXPECT_LE(lifted.getBottom(), 540.0F);
     EXPECT_GE(lifted.getBottom(), 500.0F);
     EXPECT_EQ(getPublished().bounds, lifted) << "The platform follows the field.";
 
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
-    EXPECT_EQ(gui->find("name")->getBounds(), resting);
+    EXPECT_EQ(test::UiFixture::getComponent(*gui, "name").getBounds(), resting);
 }
 
 // The layout places nodes on whole units, so a keyboard whose top falls between two units leaves the lifted field still instead of flipping it between them frame after frame.
@@ -507,12 +525,12 @@ TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
     send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.4F, 1920.0F, 539.6F}});
     fixture.frames(60);
 
-    const math::Rect lifted = gui->find("name")->getBounds();
+    const math::Rect lifted = test::UiFixture::getComponent(*gui, "name").getBounds();
     EXPECT_LE(lifted.getBottom(), 540.4F);
 
     for (int frame = 0; frame < 30; ++frame) {
         fixture.frames(1);
-        ASSERT_EQ(gui->find("name")->getBounds(), lifted) << "The field moves in frame " << frame << " after the lift settled.";
+        ASSERT_EQ(test::UiFixture::getComponent(*gui, "name").getBounds(), lifted) << "The field moves in frame " << frame << " after the lift settled.";
     }
 }
 
@@ -523,12 +541,12 @@ TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
     send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
 
-    const math::Vec2 button = gui->find("send")->getBounds().getCenter();
+    const math::Vec2 button = test::UiFixture::getComponent(*gui, "send").getBounds().getCenter();
     touch(platform::Event::Type::TouchBegan, button);
     fixture.frames(2);
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(20);
-    EXPECT_EQ(gui->find("send")->getBounds().getCenter(), button);
+    EXPECT_EQ(test::UiFixture::getComponent(*gui, "send").getBounds().getCenter(), button);
     touch(platform::Event::Type::TouchEnded, button);
     fixture.frames(3);
     EXPECT_NE(std::ranges::find(events, std::string("send:click {}")), events.end());
@@ -537,7 +555,7 @@ TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
 // A finger edits a field once it taps it, with the caret where it lifted, and a finger that only presses the field edits nothing yet.
 TEST_F(TextInputTest, StartsEditingAFieldWhenAFingerTapsIt) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
-    const math::Rect field = gui->find("name")->getBounds();
+    const math::Rect field = test::UiFixture::getComponent(*gui, "name").getBounds();
     const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
     touch(platform::Event::Type::TouchBegan, start);
     fixture.frames(3);
@@ -572,7 +590,7 @@ TEST_F(TextInputTest, DrawsAFieldWithASelectionWithoutAllocating) {
 // A finger that swipes along a field that is not editing is no tap, so the field stays as it was.
 TEST_F(TextInputTest, EditsNothingWhenAFingerSwipesAcrossAField) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
-    const math::Rect field = gui->find("name")->getBounds();
+    const math::Rect field = test::UiFixture::getComponent(*gui, "name").getBounds();
     const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
     touch(platform::Event::Type::TouchBegan, start);
     fixture.frames(2);
@@ -593,8 +611,8 @@ TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
     focus(*gui, "name");
     fixture.frames(2);
     ASSERT_TRUE(getInput().isEditing());
-    const math::Vec2 field = gui->find("name")->getBounds().getCenter();
-    const float top = gui->find("content")->getBounds().y;
+    const math::Vec2 field = test::UiFixture::getComponent(*gui, "name").getBounds().getCenter();
+    const float top = test::UiFixture::getComponent(*gui, "content").getBounds().y;
     touch(platform::Event::Type::TouchBegan, field);
     fixture.frames(2);
 
@@ -605,7 +623,7 @@ TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
 
     touch(platform::Event::Type::TouchEnded, field - math::Vec2{0.0F, 80.0F});
     fixture.frames(2);
-    EXPECT_LT(gui->find("content")->getBounds().y, top - 40.0F);
+    EXPECT_LT(test::UiFixture::getComponent(*gui, "content").getBounds().y, top - 40.0F);
     EXPECT_TRUE(getInput().isEditing());
 }
 
@@ -616,8 +634,8 @@ TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField)
     edit("Ada", 3, 3);
     ASSERT_TRUE(getInput().isEditing());
     events.clear();
-    const math::Vec2 start = gui->find("save")->getBounds().getCenter();
-    const float top = gui->find("content")->getBounds().y;
+    const math::Vec2 start = test::UiFixture::getComponent(*gui, "save").getBounds().getCenter();
+    const float top = test::UiFixture::getComponent(*gui, "content").getBounds().y;
     touch(platform::Event::Type::TouchBegan, start);
     fixture.frames(2);
     EXPECT_TRUE(getInput().isEditing()) << "A press outside the field decides nothing yet.";
@@ -630,7 +648,7 @@ TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField)
 
     touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 80.0F});
     fixture.frames(3);
-    EXPECT_LT(gui->find("content")->getBounds().y, top - 40.0F);
+    EXPECT_LT(test::UiFixture::getComponent(*gui, "content").getBounds().y, top - 40.0F);
     ASSERT_TRUE(getInput().isEditing());
     EXPECT_TRUE(events.empty()) << "The button under the finger takes no press.";
     edit("Ada L", 5, 5);
@@ -641,7 +659,7 @@ TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField)
 TEST_F(TextInputTest, EndsEditingWhenAFingerThatPressedOutsideTheFieldLiftsWithinTheSlop) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "button", "id": "save", "text": "Save"}]})");
     focus(*gui, "name");
-    const math::Vec2 button = gui->find("save")->getBounds().getCenter();
+    const math::Vec2 button = test::UiFixture::getComponent(*gui, "save").getBounds().getCenter();
     const math::Vec2 lift = button + math::Vec2{ScrollArbiter::kDragSlop * 0.5F, 0.0F};
     touch(platform::Event::Type::TouchBegan, button);
     fixture.frames(3);
@@ -679,7 +697,9 @@ TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
 // A screen that builds its content again, as an app that rebuilds it on every change does, keeps the field being edited, with its text, its focus and the keyboard, and so does a field with an id whose siblings come and go.
 TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
     auto gui = mount(R"({"kind": "scroll", "height": 600, "children": [{"kind": "column", "id": "content", "children": [{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": ""}]}]})");
-    const math::Vec2 center = gui->find("content")->getChildren()[1]->getBounds().getCenter();
+    const std::vector<std::unique_ptr<Component>>& children = test::UiFixture::getComponent(*gui, "content").getChildren();
+    ASSERT_EQ(children.size(), 2U);
+    const math::Vec2 center = children[1]->getBounds().getCenter();
     touch(platform::Event::Type::TouchBegan, center);
     fixture.frames(2);
     touch(platform::Event::Type::TouchEnded, center);
@@ -719,7 +739,7 @@ TEST_F(TextInputTest, PublishesAPressOnTheFieldBeingEdited) {
     edit("abc", 3, 3);
     const std::uint64_t revision = getPublished().revision;
 
-    const math::Rect field = gui->find("name")->getBounds();
+    const math::Rect field = test::UiFixture::getComponent(*gui, "name").getBounds();
     const math::Vec2 end{field.getRight() - 20.0F, field.getCenter().y};
     touch(platform::Event::Type::TouchBegan, end);
     fixture.frames(1);
@@ -734,7 +754,7 @@ TEST_F(TextInputTest, PublishesAPressOnTheFieldBeingEdited) {
 TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
     auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name"}]})");
     focus(*gui, "name");
-    const math::Rect field = gui->find("name")->getBounds();
+    const math::Rect field = test::UiFixture::getComponent(*gui, "name").getBounds();
     const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
     const auto caret = std::ranges::find_if(shapes, [&field](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU) && field.contains(shape.bounds.getCenter()); });
     EXPECT_NE(caret, shapes.end());
@@ -757,12 +777,12 @@ TEST_F(TextInputTest, KeepsTheCaretOfAnEmptyFieldClearOfItsPlaceholder) {
 // An anchored bar moves up with every other GUI, so its field rises above the keyboard and the lift settles there instead of growing every frame.
 TEST_F(TextInputTest, LiftsAnchoredFieldsWithTheRestOfTheInterface) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "row", "anchor": "stretchBottom", "height": 80, "children": [{"kind": "textField", "id": "message", "grow": 1}]}]})");
-    const math::Rect resting = gui->find("message")->getBounds();
+    const math::Rect resting = test::UiFixture::getComponent(*gui, "message").getBounds();
     focus(*gui, "message");
 
     send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
-    const math::Rect lifted = gui->find("message")->getBounds();
+    const math::Rect lifted = test::UiFixture::getComponent(*gui, "message").getBounds();
     const float offset = getUi().getBackend().getKeyboardOffset();
     EXPECT_LE(lifted.getBottom(), 540.0F);
     EXPECT_GE(lifted.getBottom(), 500.0F);
@@ -771,7 +791,7 @@ TEST_F(TextInputTest, LiftsAnchoredFieldsWithTheRestOfTheInterface) {
 
     send({.type = platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
-    EXPECT_EQ(gui->find("message")->getBounds(), resting);
+    EXPECT_EQ(test::UiFixture::getComponent(*gui, "message").getBounds(), resting);
 }
 
 } // namespace haylen::ui

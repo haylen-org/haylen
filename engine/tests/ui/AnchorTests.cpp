@@ -135,7 +135,7 @@ TEST_F(AnchorTest, WritesTheInsetsOfTheSafeAreaOutsideIt) {
     const ImU32 color = ImGui::ColorConvertFloat4ToU32({getUi().getTheme().getColor(Theme::Color::Warning).r, getUi().getTheme().getColor(Theme::Color::Warning).g, getUi().getTheme().getColor(Theme::Color::Warning).b, 1.0F});
     const ImVec2 white = ImGui::GetDrawListSharedData()->TexUvWhitePixel;
     int glyphs = 0;
-    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+    for (const ImDrawList* list : getDrawData(getUi()).CmdLists) {
         for (const ImDrawVert& vertex : list->VtxBuffer) {
             if (vertex.col != color || (vertex.uv.x == white.x && vertex.uv.y == white.y)) {
                 continue;

@@ -493,7 +493,7 @@ TEST_F(GameComponentTest, DrawsAndRegistersOnlyTheRowsOfAListInView) {
 
 TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "keyCapture", "id": "jump", "value": "key:space"}]})");
-    click(gui->find("jump")->getBounds().getCenter());
+    click(getBounds(*gui, "jump").getCenter());
     key(input::Key::W);
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "key:w"}}));
 
@@ -502,13 +502,13 @@ TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     button(input::GamepadButton::South);
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "button:south"}}));
 
-    click(gui->find("jump")->getBounds().getCenter());
+    click(getBounds(*gui, "jump").getCenter());
     key(input::Key::Escape);
     frames();
     EXPECT_EQ(getLastEvent().name, "cancel");
 
     gui->set("jump", {{"sources", core::Json::array({"button", "axis"})}});
-    click(gui->find("jump")->getBounds().getCenter());
+    click(getBounds(*gui, "jump").getCenter());
     key(input::Key::A);
     stick({0.9F, 0.0F});
     stick({});
@@ -610,6 +610,7 @@ TEST_F(GameComponentTest, KeepsAPaddingAroundTheLabelsOfSegments) {
     std::vector<math::Rect> boxes;
     for (const Backend::Text& text : backend.getTexts()) {
         const std::shared_ptr<const text::Layout> laid = text.family->layout(backend.getContent(text), text.style);
+        ASSERT_FALSE(laid->lines.empty()) << backend.getContent(text);
         boxes.push_back(laid->lines.front().box.translated(text.origin));
         EXPECT_EQ(backend.getContent(text).find("\xE2\x80\xA6"), std::string_view::npos);
     }

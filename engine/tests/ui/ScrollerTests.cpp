@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <stdexcept>
 
 #include "ui/Scroller.hpp"
 
@@ -11,19 +12,20 @@ class ScrollerTest : public ::testing::Test {
     using Motion = Context::WheelScroll::Motion;
 
     static constexpr float kStep = 1.0F / 60.0F;
-
-    // A motion that has not rested after this many steps, more than half a minute, never rests.
     static constexpr int kMaxSteps = 2000;
 
-    // Runs the scroller until it rests and returns the steps it took.
+    // Runs the scroller until it rests and returns the steps it took, which throws when it does not rest within the steps of half a minute.
     int settle() {
         int steps = 0;
-        while (!scroller.isResting() && steps < kMaxSteps) {
+        while (!scroller.isResting()) {
+            if (steps == kMaxSteps) {
+                throw std::runtime_error("The scroller did not come to rest.");
+            }
+
             scroller.update(kStep);
             ++steps;
         }
 
-        EXPECT_TRUE(scroller.isResting()) << "The scroller did not rest within " << kMaxSteps << " steps.";
         return steps;
     }
 
@@ -41,7 +43,8 @@ TEST_F(ScrollerTest, FlingsAndComesToRest) {
 
     double offset = scroller.getOffset();
     double speed = scroller.getVelocity();
-    for (int step = 0; step < kMaxSteps && !scroller.isResting(); ++step) {
+    for (int step = 0; !scroller.isResting(); ++step) {
+        ASSERT_LT(step, kMaxSteps) << "The scroller did not come to rest.";
         ASSERT_TRUE(scroller.update(kStep));
         EXPECT_GT(scroller.getOffset(), offset);
         EXPECT_LE(std::fabs(scroller.getVelocity()), speed);
@@ -105,7 +108,8 @@ TEST_F(ScrollerTest, GlidesThroughTheStepsOfAWheel) {
     scroller.follow({.distance = 64.0F, .motion = Motion::Glide}, 1.0, kStep);
     EXPECT_DOUBLE_EQ(scroller.getTarget(), 128.0);
     double offset = scroller.getOffset();
-    for (int step = 0; step < kMaxSteps && !scroller.isResting(); ++step) {
+    for (int step = 0; !scroller.isResting(); ++step) {
+        ASSERT_LT(step, kMaxSteps) << "The scroller did not come to rest.";
         scroller.update(kStep);
         EXPECT_GE(scroller.getOffset(), offset);
         EXPECT_LE(scroller.getOffset(), 128.0);
@@ -191,7 +195,8 @@ TEST_F(ScrollerTest, FollowsATargetThatMovesWithoutOvershooting) {
 
     scroller.animateTo(800.0);
     double offset = scroller.getOffset();
-    for (int step = 0; step < kMaxSteps && !scroller.isResting(); ++step) {
+    for (int step = 0; !scroller.isResting(); ++step) {
+        ASSERT_LT(step, kMaxSteps) << "The scroller did not come to rest.";
         scroller.update(kStep);
         EXPECT_GE(scroller.getOffset(), offset);
         EXPECT_LE(scroller.getOffset(), 800.0);

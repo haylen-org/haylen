@@ -6,10 +6,12 @@
 #include <utility>
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/GamepadState.hpp"
+#include "haylen/ui/Backend.hpp"
 
 namespace haylen::test {
 
@@ -54,7 +56,12 @@ std::string UiFixture::labels(int count) {
 }
 
 bool UiFixture::hasClip(const math::Rect& area, float tolerance) {
-    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+    const ImDrawData* data = ImGui::GetDrawData();
+    if (data == nullptr) {
+        throw std::logic_error("The UI drew no frame.");
+    }
+
+    for (const ImDrawList* list : data->CmdLists) {
         for (const ImDrawCmd& command : list->CmdBuffer) {
             const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
             const bool near = std::fabs(clip.x - area.x) <= tolerance && std::fabs(clip.y - area.y) <= tolerance && std::fabs(clip.getRight() - area.getRight()) <= tolerance && std::fabs(clip.getBottom() - area.getBottom()) <= tolerance;
@@ -158,8 +165,37 @@ void UiFixture::type(std::u32string_view text) {
     }
 }
 
+ui::Component& UiFixture::getComponent(const ui::Gui& gui, std::string_view id) {
+    ui::Component* component = gui.find(id);
+    if (component == nullptr) {
+        throw std::logic_error("The GUI has no component \"" + std::string(id) + "\".");
+    }
+
+    return *component;
+}
+
 const math::Rect& UiFixture::getBounds(const ui::Gui& gui, std::string_view id) const {
-    return gui.find(id)->getBounds();
+    return getComponent(gui, id).getBounds();
+}
+
+const ImDrawData& UiFixture::getDrawData(plugins::UiPlugin& ui) {
+    ui.getBackend().makeCurrent();
+    const ImDrawData* data = ImGui::GetDrawData();
+    if (data == nullptr) {
+        throw std::logic_error("The UI drew no frame.");
+    }
+
+    return *data;
+}
+
+const ImDrawList& UiFixture::getGuiDrawList(plugins::UiPlugin& ui) {
+    ui.getBackend().makeCurrent();
+    const ImGuiWindow* window = ImGui::FindWindowByName("##haylen-guis");
+    if (window == nullptr || window->DrawList == nullptr) {
+        throw std::logic_error("The UI has no window of the GUIs.");
+    }
+
+    return *window->DrawList;
 }
 
 bool UiFixture::isFocused(const ui::Gui& gui, std::string_view id) {
@@ -169,6 +205,14 @@ bool UiFixture::isFocused(const ui::Gui& gui, std::string_view id) {
 
 std::string UiFixture::getFocusedItem() {
     return std::string(getUi().getFocus().getFocusedItem());
+}
+
+const ui::Event& UiFixture::getLastEvent() const {
+    if (events.empty()) {
+        throw std::logic_error("No event was reported.");
+    }
+
+    return events.back();
 }
 
 const ui::Event& UiFixture::findLastEvent(std::string_view name) const {

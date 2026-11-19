@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -16,12 +18,20 @@ namespace haylen::ui {
 
 class OverlayTest : public ::testing::Test, public test::UiFixture {
   protected:
-    // The bounds of the element with the label in the last accessibility tree the platform received.
+    // The bounds of the element with the label in the last accessibility tree the platform received, which throws when the tree has no such element.
     [[nodiscard]] math::Rect findElement(std::string_view label) {
-        const std::vector<platform::AccessibilityElement>& elements = getFixture().host().getAccessibilityTrees().back().elements;
+        const auto& trees = getFixture().host().getAccessibilityTrees();
+        if (trees.empty()) {
+            throw std::runtime_error("The platform received no accessibility tree.");
+        }
+
+        const std::vector<platform::AccessibilityElement>& elements = trees.back().elements;
         const auto found = std::ranges::find(elements, label, &platform::AccessibilityElement::label);
-        EXPECT_NE(found, elements.end()) << label;
-        return found == elements.end() ? math::Rect{} : found->bounds;
+        if (found == elements.end()) {
+            throw std::runtime_error("The accessibility tree has no element \"" + std::string(label) + "\".");
+        }
+
+        return found->bounds;
     }
 };
 

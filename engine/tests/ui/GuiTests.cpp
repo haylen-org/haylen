@@ -49,9 +49,11 @@ TEST_F(GuiTest, BuildsTreesWithUniqueIds) {
     ]})");
     // clang-format on
     EXPECT_EQ(menu.getRoot().getKind(), "column");
-    EXPECT_EQ(menu.find("play")->getKind(), "button");
+    EXPECT_EQ(test::UiFixture::getComponent(menu, "play").getKind(), "button");
     EXPECT_EQ(menu.find("missing"), nullptr);
-    EXPECT_EQ(*menu.getProperties("title"), (core::Json{{"text", "Tiny Island"}, {"font", "title"}}));
+    const core::Json* title = menu.getProperties("title");
+    ASSERT_NE(title, nullptr);
+    EXPECT_EQ(*title, (core::Json{{"text", "Tiny Island"}, {"font", "title"}}));
     EXPECT_EQ(menu.getProperties("missing"), nullptr);
     EXPECT_EQ(menu.getPlacement(), Placement::Safe);
     EXPECT_TRUE(menu.isVisible());
@@ -85,12 +87,16 @@ TEST_F(GuiTest, PatchesPropertiesAtomically) {
     Gui form = gui(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "min": 0, "max": 1, "value": 0.5}, {"kind": "touchButton", "id": "attack", "action": "attack"}]})");
 
     form.set("volume", core::Json{{"value", 0.25}, {"showValue", true}});
-    EXPECT_EQ(*form.getProperties("volume"), (core::Json{{"min", 0}, {"max", 1}, {"value", 0.25}, {"showValue", true}}));
+    const core::Json* volume = form.getProperties("volume");
+    ASSERT_NE(volume, nullptr);
+    EXPECT_EQ(*volume, (core::Json{{"min", 0}, {"max", 1}, {"value", 0.25}, {"showValue", true}}));
 
     // Checking the merged state lets a patch leave out required properties and still catches values that clash with earlier ones.
     form.set("attack", core::Json{{"size", 90}});
     EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"min", 2}}); }).find("The property \"min\" of a \"slider\" must be smaller than \"max\"."), std::string::npos);
-    EXPECT_EQ(form.getProperties("volume")->at("min"), 0);
+    const core::Json* kept = form.getProperties("volume");
+    ASSERT_NE(kept, nullptr);
+    EXPECT_EQ(kept->at("min"), 0);
     EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"value", "loud"}}); }).find("The property \"value\" of a \"slider\" must be a number."), std::string::npos);
     EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"colour", "red"}}); }).find("The property \"colour\" of a \"slider\" does not exist."), std::string::npos);
     EXPECT_NE(captureError([&] { form.set("volume", core::Json{{"kind", "label"}}); }).find("without \"kind\", \"id\" or \"children\""), std::string::npos);
@@ -103,7 +109,9 @@ TEST_F(GuiTest, ReplacesChildrenAndTheirIds) {
     EXPECT_NE(list.find("second"), nullptr);
     EXPECT_EQ(list.find("keep"), nullptr);
     EXPECT_EQ(list.getProperties("keep"), nullptr);
-    EXPECT_EQ(list.getProperties("second")->at("text"), "two");
+    const core::Json* second = list.getProperties("second");
+    ASSERT_NE(second, nullptr);
+    EXPECT_EQ(second->at("text"), "two");
     EXPECT_EQ(list.getRoot().getChildren().size(), 2U);
 
     EXPECT_NE(captureError([&] { list.replaceChildren("list", core::Json::parse(R"([{"kind": "label", "id": "list"}])")); }).find("used more than once"), std::string::npos);
@@ -150,11 +158,11 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
         {"kind": "label", "id": "golden", "gradient": {"colors": ["#FFFFE9A0", "#FFC8861E"]}},
         {"kind": "label", "id": "banded", "gradient": {"stops": [[0, "#FFFFFFFF"], [0.5, "#FF808080"]], "angle": 0}}
     ]})");
-    EXPECT_EQ(sample.find("count")->getAlignment(), Alignment::Center);
-    EXPECT_EQ(sample.find("count")->getCommon().tooltip.key, "hint");
-    EXPECT_EQ(sample.find("count")->getCommon().tooltip.arguments, (core::Json{{"n", 1}}));
-    EXPECT_FALSE(sample.find("count")->getCommon().width.has_value());
-    EXPECT_EQ(sample.find("line")->getRowAlignment(), Alignment::Center);
+    EXPECT_EQ(test::UiFixture::getComponent(sample, "count").getAlignment(), Alignment::Center);
+    EXPECT_EQ(test::UiFixture::getComponent(sample, "count").getCommon().tooltip.key, "hint");
+    EXPECT_EQ(test::UiFixture::getComponent(sample, "count").getCommon().tooltip.arguments, (core::Json{{"n", 1}}));
+    EXPECT_FALSE(test::UiFixture::getComponent(sample, "count").getCommon().width.has_value());
+    EXPECT_EQ(test::UiFixture::getComponent(sample, "line").getRowAlignment(), Alignment::Center);
 
     const auto invalid = [&](const std::string& json) { return captureError([&] { (void)gui(json); }); };
     EXPECT_NE(invalid(R"({"kind": "label", "width": -3})").find("The property \"width\" of a \"label\" must be a non-negative number or \"auto\"."), std::string::npos);

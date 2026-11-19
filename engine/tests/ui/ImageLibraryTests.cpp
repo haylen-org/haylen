@@ -39,15 +39,13 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
 
     // Tells whether a vertex the GUIs drew in the last frame has the color.
     [[nodiscard]] bool drawsColor(ImU32 color) {
-        getUi().getBackend().makeCurrent();
-        const ImVector<ImDrawVert>& vertices = ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer;
+        const ImVector<ImDrawVert>& vertices = getGuiDrawList(getUi()).VtxBuffer;
         return std::any_of(vertices.begin(), vertices.end(), [color](const ImDrawVert& vertex) { return vertex.col == color; });
     }
 
     // Returns the box the vertices of a color the GUIs drew in the last frame cover, in UI units.
     [[nodiscard]] math::Rect findColorBox(ImU32 color) {
-        getUi().getBackend().makeCurrent();
-        const ImVector<ImDrawVert>& vertices = ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer;
+        const ImVector<ImDrawVert>& vertices = getGuiDrawList(getUi()).VtxBuffer;
         math::Vec2 minimum{1e9F, 1e9F};
         math::Vec2 maximum{-1e9F, -1e9F};
         for (const ImDrawVert& vertex : vertices) {
@@ -64,7 +62,7 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
     [[nodiscard]] ImU32 findTextureColor(const graphics::Texture& texture) {
         getUi().getBackend().makeCurrent();
         const ImTextureID id = getContext().getTextureReference(texture).GetTexID();
-        const ImDrawList& list = *ImGui::FindWindowByName("##haylen-guis")->DrawList;
+        const ImDrawList& list = getGuiDrawList(getUi());
         for (const ImDrawCmd& command : list.CmdBuffer) {
             if (command.TexRef._TexID == id && command.ElemCount > 0) {
                 return list.VtxBuffer[static_cast<int>(command.VtxOffset + list.IdxBuffer[static_cast<int>(command.IdxOffset)])].col;
@@ -76,8 +74,7 @@ class ImageLibraryTest : public ::testing::Test, public test::UiFixture {
 
     // Counts the vertices the GUIs drew in the last frame.
     [[nodiscard]] int countVertices() {
-        getUi().getBackend().makeCurrent();
-        return ImGui::FindWindowByName("##haylen-guis")->DrawList->VtxBuffer.Size;
+        return getGuiDrawList(getUi()).VtxBuffer.Size;
     }
 };
 
@@ -267,7 +264,7 @@ TEST_F(ImageLibraryTest, PaintsThemeSurfacesWithSvgDocuments) {
     frames(2);
     getUi().getBackend().makeCurrent();
     const ImTextureID raster = getContext().getTextureReference(getContext().getImageAtScale("icons/square.svg", pixels)).GetTexID();
-    const ImVector<ImDrawCmd>& commands = ImGui::FindWindowByName("##haylen-guis")->DrawList->CmdBuffer;
+    const ImVector<ImDrawCmd>& commands = getGuiDrawList(getUi()).CmdBuffer;
     EXPECT_TRUE(std::any_of(commands.begin(), commands.end(), [raster](const ImDrawCmd& command) { return command.TexRef._TexID == raster; }));
     EXPECT_GE(getBounds(*gui, "inside").x - getBounds(*gui, "box").x, 8.0F);
     EXPECT_EQ(getFixture().lua("local panel = require('haylen.ui').themeSurface('panel') return panel.vector .. ' ' .. tostring(panel.slice ~= nil) .. ' ' .. string.format('%.2f', panel.scale * panel.slice.texture.width / 100)"), "icons/square.svg true 2.00");

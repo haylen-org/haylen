@@ -382,7 +382,11 @@ TEST_F(CollectionLuaTest, DropsPagesThatArriveAfterTheGuiWasUnmounted) {
         pages = gui:collection('pages')
         pages:setPages({count = 10, pageSize = 10, load = function(first, count)
             return jobs.spawn(function()
-                while not released do jobs.checkpoint() end
+                local deadline = os.clock() + 10
+                while not released do
+                    if os.clock() > deadline then error('The page was never released.') end
+                    jobs.checkpoint()
+                end
                 local page = {}
                 for i = 1, count do page[i] = {id = 'e' .. i, type = 'entry', title = 'Entry'} end
                 done = true
