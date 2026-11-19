@@ -7,7 +7,7 @@ local Test = require('harness.test')
 
 local Permissions = haylen.class('Permissions', Test)
 
-Permissions.kinds = {{'screens', 'Every screen'}, {'localNetwork', 'Local network'}}
+Permissions.kinds = {{'localNetwork', 'Local network'}}
 
 -- The words and the tone of each state.
 Permissions.states = {
@@ -32,7 +32,7 @@ function Permissions:enter()
     end)
     self:frame{
         hint = 'Ask for a permission and answer the prompt of the system. Refuse a read of the clipboard to see the error that says why.',
-        focus = 'ask-screens',
+        focus = 'ask-localNetwork',
         controls = {
             ui.button{id = 'check', text = 'Check every permission', variant = 'primary', onClick = function() self:checkAll() end},
             ui.button{id = 'paste', text = 'Read the clipboard', onClick = function() self:paste() end},

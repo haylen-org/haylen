@@ -482,7 +482,7 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
 }
 
 void AppConfig::readWindow(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"title", "width", "height", "fullscreen", "maxPixelDensity", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"haylen.json\"");
+    JsonValidator::requireKnownKeys(section, {"title", "width", "height", "fullscreen", "maxPixelDensity", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "externalDisplays", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"haylen.json\"");
     readValue(section, "window", "title", config.window.title);
     readValue(section, "window", "width", config.window.width);
     readValue(section, "window", "height", config.window.height);
@@ -499,6 +499,7 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
     readValue(section, "window", "focusable", config.window.focusable);
     readValue(section, "window", "mousePassthrough", config.window.mousePassthrough);
     readValue(section, "window", "keepScreenOn", config.window.keepScreenOn);
+    readValue(section, "window", "externalDisplays", config.window.externalDisplays);
     readValue(section, "window", "lowPowerGpu", config.window.lowPowerGpu);
     requirePositive(config.window.width, "window.width");
     requirePositive(config.window.height, "window.height");
@@ -889,7 +890,7 @@ Json AppConfig::toJson() const {
         splashJson["darkBackground"] = splash.darkBackground->toHex();
     }
 
-    Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"maxPixelDensity", JsonNumber::fromFloat(window.maxPixelDensity)}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"frameRate", window.frameRate}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"lowPowerGpu", window.lowPowerGpu}};
+    Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"maxPixelDensity", JsonNumber::fromFloat(window.maxPixelDensity)}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"frameRate", window.frameRate}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"externalDisplays", window.externalDisplays}, {"lowPowerGpu", window.lowPowerGpu}};
     windowJson["statusBar"] = platform::Window::statusBarName(window.statusBar);
     windowJson["systemGestures"] = platform::Window::systemGesturesName(window.systemGestures);
 

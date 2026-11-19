@@ -160,7 +160,7 @@ end)
 
 ### system.permission(name)
 
-Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is neither a permission of the engine nor one that a plugin of the app declares raises an error, such as `The permission "bluetooth" is neither one of the engine, which are "screens" and "localNetwork", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the "permissions" of its "plugin.json".`.
+Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is neither a permission of the engine nor one that a plugin of the app declares raises an error, such as `The permission "bluetooth" is neither one of the engine, which are "localNetwork", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the "permissions" of its "plugin.json".`.
 
 | State | Meaning |
 | --- | --- |
@@ -169,16 +169,16 @@ Reads the state of the [permission](#permissions) `name`, as far as the platform
 | `'denied'` | The person refused it, or the system no longer asks. A request then answers `'denied'` at once, and the person allows it in the settings of the system. |
 | `'unknown'` | The platform does not tell the app until it tries, as Apple platforms do for the local network, and asks the person at the first use. |
 
-A platform that has no such capability rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `The browser cannot list every screen.`.
+A platform that has no such capability rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `The browser cannot tell the local network.`.
 
 ```lua
 local async = require('async')
 local system = require('haylen.system')
 
 async.spawn(function()
-    local state, reason = system.permission('screens'):await()
+    local state, reason = system.permission('localNetwork'):await()
     if state == 'prompt' then
-        print('The app explains why it wants every screen before it asks.')
+        print('The app explains why it wants the local network before it asks.')
     elseif not state then
         print(reason)
     end
@@ -295,7 +295,6 @@ A capability that at least one platform gates behind a permission, a prompt or a
 
 | Name | What it gives the app |
 | --- | --- |
-| `'screens'` | Every screen of the device, with where it sits, for windows and outputs on other screens. |
 | `'localNetwork'` | The devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. |
 
 Every other permission belongs to a plugin of the app, such as `'camera'`, `'location'`, `'motion'` or `'notifications'`. A plugin declares the permissions it owns in the `permissions` of its `plugin.json`, and one plugin of an app owns each name, as the [plugin guide](../platform/plugins.md#permissions) describes. For such a name the engine calls the native part of the plugin through the bridge: `<id>.permission` reads the state and `<id>.requestPermission` asks, both with the parameters `{name}`, and the answer settles the promise like the answer of a permission of the engine. A plugin without a native part on this platform rejects with the code `'unsupported'` and the sentence `The plugin "<id>" that owns the permission "<name>" offers no part on this platform.`, and a native part without the handler rejects with `The plugin "<id>" that owns the permission "<name>" offers no part on this platform that answers it.`. Any other failure of the native part rejects with the code `'unsupported'` and the sentence `The plugin "<id>" failed to answer the permission "<name>".` followed by its message. The reference of each plugin tells what each platform answers for its permissions.
@@ -319,15 +318,13 @@ These tables tell what each platform answers for the permissions of the engine a
 
 | Name | iOS, iPadOS, Mac Catalyst, visionOS and macOS | tvOS |
 | --- | --- | --- |
-| `'screens'` | `'granted'`. | `'granted'`. |
 | `'localNetwork'` | `'unknown'`, since the system asks the person the first time the app reaches the local network, with `NSLocalNetworkUsageDescription`, and tells the app nothing of it. | `'unknown'`. |
 
 | Name | Android | Web | Windows | Linux |
 | --- | --- | --- | --- | --- |
-| `'screens'` | `'granted'`. | The Window Management API, with the prompt of `getScreenDetails`. A browser without it answers `'unsupported'`. | `'granted'`. | `'granted'`. |
 | `'localNetwork'` | `ACCESS_LOCAL_NETWORK` for an app that targets Android 17, on Android 17 or later. Older systems and older targets answer `'granted'`. | The state of `local-network-access` in Chromium, where a request answers `'unknown'` while the browser would ask at the first access, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
 
-On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for every screen, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
+On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for the permissions of plugins that use powerful features, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
 
 ## Failures
 

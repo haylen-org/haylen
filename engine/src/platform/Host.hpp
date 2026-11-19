@@ -183,6 +183,9 @@ class Host : public Window {
     virtual void closeOutput(std::uint32_t number) = 0;
     [[nodiscard]] virtual OutputReport getOutputReport(std::uint32_t number) const = 0;
 
+    // Lets the platform connect the external displays of the device to the app, as `window.externalDisplays` of `haylen.json` asks, where the platform connects them only for an app that declares it, such as an iPhone or an iPad of iOS 27 and later, which mirrors the app on them otherwise.
+    virtual void setExternalDisplays(bool value) = 0;
+
     // Whether the app that plays was launched by another app of the process, which starts again when it quits.
     [[nodiscard]] virtual bool isLaunched() const noexcept = 0;
 

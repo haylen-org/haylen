@@ -78,7 +78,7 @@ Each platform decides on its own when a person grants a capability, such as the 
 - The use of a capability that was refused or revoked fails with its own clear error, which names the capability and how to ask for it again. It never waits silently or returns empty data.
 - A use whose request ended in `prompt`, because the system did not show its prompt, fails with the code `denied` as well, since only the platform decides when it asks. Its sentence says that the system did not ask and that the app may ask again later.
 - The reference page of each gated capability lists what every platform answers and when it asks the person, so the behavior is predictable on all of them.
-- The engine owns only the permissions that it uses itself, `screens` and `localNetwork`. Every other permission belongs to the plugin that serves the capability, which declares it in the `permissions` of its `plugin.json` and registers it with the context of each native part. The engine reaches it through the methods `<id>.permission` and `<id>.requestPermission` of the plugin, so the app checks and asks for it with the same two functions and the same states, as the [plugin guide](../platform/plugins.md#permissions) describes.
+- The engine owns only the permission that it uses itself, `localNetwork`. Every other permission belongs to the plugin that serves the capability, which declares it in the `permissions` of its `plugin.json` and registers it with the context of each native part. The engine reaches it through the methods `<id>.permission` and `<id>.requestPermission` of the plugin, so the app checks and asks for it with the same two functions and the same states, as the [plugin guide](../platform/plugins.md#permissions) describes.
 
 ### Value types
 

@@ -123,9 +123,13 @@ std::string LinuxServices::getWindowDisplayId() {
     return LinuxDesktop::getWindowDisplayId();
 }
 
-// Every display of the device is in the list, so none waits for the permission "screens".
+// Every display of the device is in the list, so a request for every screen has nothing to ask for.
 bool LinuxServices::hasUnlistedDisplays() {
     return false;
+}
+
+void LinuxServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
 void LinuxServices::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {

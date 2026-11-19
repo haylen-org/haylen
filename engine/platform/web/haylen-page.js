@@ -1037,7 +1037,6 @@ Module.haylen = Module.haylen || {};
 
     // The permissions of the engine in `system.permission`. Each one names the capability in words, what the page needs for it, the name of the Permissions API that tells its state, where the browser knows it, and how the page asks for it, which answers `{state, message, missing}`. A name that the Permissions API does not know answers the state of `unnamed`. The permissions of plugins take the same shape through `context.registerPermission`.
     const permissions = {
-        screens: { capability: "every screen", needs: { secureContext: true, permissionsPolicy: "window-management" }, unavailable: () => (typeof window.getScreenDetails !== "function" ? "The browser cannot list every screen." : null), query: "window-management", unnamed: "unknown", request: () => seeEveryScreen().then(() => ({ state: "granted" }), (error) => (error.name === "NotAllowedError" ? { state: "denied" } : { state: "unsupported", message: "The browser cannot list every screen: " + error.message })) },
         localNetwork: { capability: "the local network", query: "local-network-access", unnamed: "granted", request: () => requestLocalNetwork() },
     };
 
@@ -1118,6 +1117,31 @@ Module.haylen = Module.haylen || {};
     // A failure of the code of a check or a request answers `unsupported` with its message, so the engine always hears back.
     const settleGatedCall = (id, work) => {
         Promise.resolve().then(work).then((answer) => answerGatedCall(id, answer), (error) => answerGatedCall(id, { state: "unsupported", message: "The browser failed to answer: " + error.message }));
+    };
+
+    // The browser lists every screen through the Window Management API once the person allows it, which it asks for only shortly after a click or a key of the person.
+    haylen.requestEveryScreen = function (id) {
+        settleGatedCall(id, async () => {
+            const missing = findMissing("Every screen", "screens", { secureContext: true, permissionsPolicy: "window-management" });
+            if (missing) {
+                return { state: "unsupported", message: missing.message, missing: missing.missing };
+            }
+
+            if (typeof window.getScreenDetails !== "function") {
+                return { state: "unsupported", message: "The browser cannot list every screen, since it lacks the Window Management API." };
+            }
+
+            try {
+                await seeEveryScreen();
+                return { state: "granted" };
+            } catch (error) {
+                if (error.name === "NotAllowedError") {
+                    return { state: "denied", message: "The person has not allowed the page to see every screen, which the settings of the site in the browser allow again." };
+                }
+
+                return { state: "unsupported", message: "The browser cannot list every screen: " + error.message };
+            }
+        });
     };
 
     haylen.checkPermission = function (id, kind) {
@@ -1463,7 +1487,7 @@ Module.haylen = Module.haylen || {};
         return JSON.stringify({ current: screenId(current), displays: all.map(describeScreen), unlisted });
     };
 
-    // Asks to see every screen, and once the page sees them follows their changes. The permission `screens` asks the same way.
+    // Asks to see every screen, and once the page sees them follows their changes, which `requestEveryScreen` does for the app.
     const seeEveryScreen = () => window.getScreenDetails().then((details) => {
         if (pageScreens.details === null) {
             // The screen of the page keeps its id as the browser describes it in detail, so the app sees the others join it rather than a new screen.

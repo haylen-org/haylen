@@ -247,6 +247,15 @@ class HeadlessHost final : public Host {
         return unlistedDisplays;
     }
 
+    // Answers with the answer that `setEveryScreenAnswer` gave, and a granted answer lists every display.
+    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override {
+        if (everyScreenAnswer.state == Permission::State::Granted) {
+            unlistedDisplays = false;
+        }
+
+        callback(everyScreenAnswer);
+    }
+
     // Outputs open on the headless platform as the requests record them, and tests report them with `setOutputReport` and the event `OutputChanged`.
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override {
         outputRequests.push_back({.number = number, .display = std::string(display), .options = options});
@@ -259,6 +268,12 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override {
         return outputReports.at(number);
+    }
+    void setExternalDisplays(bool value) override {
+        externalDisplays = value;
+    }
+    [[nodiscard]] bool hasExternalDisplays() const noexcept {
+        return externalDisplays;
     }
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override {
@@ -493,6 +508,11 @@ class HeadlessHost final : public Host {
     // Stands for a browser that knows of more screens than the page sees.
     void setUnlistedDisplays(bool value) noexcept {
         unlistedDisplays = value;
+    }
+
+    // The answer of the person to the next requests to see every screen.
+    void setEveryScreenAnswer(Permission::Answer value) {
+        everyScreenAnswer = std::move(value);
     }
 
     void setDisplays(std::vector<Display> value) {
@@ -802,6 +822,8 @@ class HeadlessHost final : public Host {
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};
     bool unlistedDisplays = false;
+    Permission::Answer everyScreenAnswer{.state = Permission::State::Granted};
+    bool externalDisplays = false;
     Permission::Answer windowAnswer{.state = Permission::State::Granted};
     std::vector<math::Rect> screenCutouts;
     Fullscreen fullscreenTarget;

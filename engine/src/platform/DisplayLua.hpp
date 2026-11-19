@@ -17,6 +17,7 @@ class DisplayLua final {
     static int list(lua_State* L);
     static int current(lua_State* L);
     static int unlisted(lua_State* L);
+    static int requestEveryScreen(lua_State* L);
     static int open(lua_State* L);
 };
 

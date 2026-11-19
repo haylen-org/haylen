@@ -86,6 +86,10 @@ bool Services::hasUnlistedDisplays() {
     return getInstalled().displays->hasUnlistedDisplays();
 }
 
+void Services::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    getInstalled().displays->requestEveryScreen(std::move(callback));
+}
+
 math::Rect Services::getWindowFrame() {
     return getInstalled().displays->getWindowFrame();
 }

@@ -98,9 +98,13 @@ std::string AndroidServices::getWindowDisplayId() {
     return AndroidDisplays::getWindowDisplayId();
 }
 
-// Every display of the device is in the list, so none waits for the permission "screens".
+// Every display of the device is in the list, so a request for every screen has nothing to ask for.
 bool AndroidServices::hasUnlistedDisplays() {
     return false;
+}
+
+void AndroidServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
 math::Insets AndroidServices::getSafeAreaInsets() {

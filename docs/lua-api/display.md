@@ -10,7 +10,7 @@ local display = require('haylen.display')
 
 ### display.list()
 
-Returns every display of the device as a list of tables, in the order of the platform. The list always holds at least one display, and the primary one is flagged. A browser lists only the screen of the page until the app holds the permission [`'screens'`](system.md#permissions), which [`system.requestPermission('screens')`](system.md#systemrequestpermissionname) asks the person for.
+Returns every display of the device as a list of tables, in the order of the platform. The list always holds at least one display, and the primary one is flagged. A browser lists only the screen of the page until the person lets the page see every screen, which [`display.requestEveryScreen()`](#displayrequesteveryscreen) asks for.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -49,19 +49,38 @@ print('The window is on', shown.name, 'at', shown.refreshRate, 'frames per secon
 
 ### display.unlisted()
 
-Returns `true` when the device has displays that `display.list()` leaves out until the app holds the [permission](system.md#permissions) `'screens'`. A browser tells that the device has more screens than the page sees before the person lets the page see them, so the app asks with `system.requestPermission('screens')` instead of telling the person that there is a single display. Every other platform lists all of its displays and returns `false`, and an iPhone or an iPad that waits for the permission cannot tell that an external display is there. The list grows with `displayConnected` once the app holds the permission.
+Returns `true` when the device has displays that `display.list()` leaves out until the person lets the app see every screen. A browser tells that the device has more screens than the page sees before the person lets the page see them, so the app asks with [`display.requestEveryScreen()`](#displayrequesteveryscreen) instead of telling the person that there is a single display. Every other platform lists all of its displays and returns `false`. An iPhone or an iPad without [`window.externalDisplays`](haylen.md#haylenconfig) in `haylen.json` mirrors the app on an external display and tells nothing of it, so it returns `false` too.
+
+```lua
+local display = require('haylen.display')
+
+if #display.list() == 1 and display.unlisted() then
+    print('The device has more screens, which the page sees once the person allows it.')
+end
+```
+
+### display.requestEveryScreen()
+
+Asks to list every display of the device and returns a Varn promise that resolves on a later frame, with nothing, once `display.list()` holds them. Only a browser asks: it shows every screen to a page once the person allows it through the Window Management API, which Chrome and Edge offer, and it asks the person only shortly after a click or a key, so an app asks from a button. The screens that the answer adds reach the app as `displayConnected` events too. A refusal of the person rejects with the code `'denied'`, and a browser without the API, outside a secure context or without the feature `window-management` of the permissions policy of the page rejects with the code `'unsupported'`, whose `data.missing` names what the page lacks. Every other platform lists every display already and resolves at once.
+
+| Platform | Answer |
+| --- | --- |
+| Web | The prompt of `getScreenDetails`, which a page that the person allowed before answers without showing. |
+| Every other platform | Resolves at once, since the list holds every display. |
 
 ```lua
 local async = require('async')
 local display = require('haylen.display')
-local system = require('haylen.system')
 
-if #display.list() == 1 and display.unlisted() then
-    async.spawn(function()
-        local state = system.requestPermission('screens'):await()
-        print('The permission is ' .. state .. ', and the app sees ' .. #display.list() .. ' displays.')
-    end)
-end
+async.spawn(function()
+    local _, message, failure = display.requestEveryScreen():await()
+    if failure then
+        print('The app sees only the screen of its page.', failure.code, message)
+        return
+    end
+
+    print('The app sees ' .. #display.list() .. ' displays.')
+end)
 ```
 
 ### display.open(id, options)
@@ -161,7 +180,7 @@ end)
 
 ## C++
 
-C++ code reads the displays through `platform::Displays` of `haylen/platform/Displays.hpp`, which `core::Engine::getDisplays()` returns, and opens outputs through `platform::Outputs` of `haylen/platform/Outputs.hpp`, which `core::Engine::getOutputs()` returns. Its `open(id, options)` returns a `std::shared_ptr<platform::Output>` with the `getTarget()` that the app draws into. Its `getAll()` returns the `platform::Display` values of `haylen/platform/Display.hpp`, `find(id)` returns the display with an id or null, and `getWindowDisplay()` returns the display of the window. The platform reports its displays through `platform::Window::getDisplays()` and `getDisplayId()`.
+C++ code reads the displays through `platform::Displays` of `haylen/platform/Displays.hpp`, which `core::Engine::getDisplays()` returns, and opens outputs through `platform::Outputs` of `haylen/platform/Outputs.hpp`, which `core::Engine::getOutputs()` returns. Its `open(id, options)` returns a `std::shared_ptr<platform::Output>` with the `getTarget()` that the app draws into. Its `getAll()` returns the `platform::Display` values of `haylen/platform/Display.hpp`, `find(id)` returns the display with an id or null, and `getWindowDisplay()` returns the display of the window. Its `requestEveryScreen(callback)` asks to list every display, as `display.requestEveryScreen()` does. The platform reports its displays through `platform::Window::getDisplays()` and `getDisplayId()`.
 
 ## Errors
 

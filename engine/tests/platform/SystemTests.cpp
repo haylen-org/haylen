@@ -214,7 +214,7 @@ TEST_F(SystemTest, ChecksAndAsksForPermissionsWithAnswersOnALaterFrame) {
     std::vector<Permission::Answer> answers;
     const auto record = [&answers](Permission::Answer answer) { answers.push_back(std::move(answer)); };
     fixture.host().setPermission({.state = Permission::State::Prompt});
-    system.checkPermission(Permission::Kind::Screens, record);
+    system.checkPermission(Permission::Kind::LocalNetwork, record);
     fixture.host().setPermissionAnswer({.state = Permission::State::Denied});
     system.requestPermission("localNetwork", record);
     EXPECT_TRUE(answers.empty());
@@ -282,7 +282,7 @@ TEST_F(SystemTest, AsksThePluginThatOwnsAPermissionThroughTheBridge) {
 }
 
 TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
-    for (const std::string_view name : {"screens", "localNetwork"}) {
+    for (const std::string_view name : {"localNetwork"}) {
         const std::optional<Permission::Kind> kind = Permission::kindFromName(name);
         ASSERT_TRUE(kind.has_value()) << name;
         EXPECT_EQ(Permission::kindName(*kind), name);
@@ -292,12 +292,12 @@ TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
     EXPECT_EQ(Permission::stateFromName("unsupported"), Permission::State::Unsupported);
     EXPECT_EQ(Permission::refusal(Permission::State::Denied, "the precise location", "preciseLocation"), "The person has not allowed the precise location. Ask for it with \"system.requestPermission('preciseLocation')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.");
     EXPECT_EQ(Permission::refusal(Permission::State::Prompt, "the precise location", "preciseLocation"), "The system did not show its prompt for the precise location, so the app does not hold it yet. Ask for it again later with \"system.requestPermission('preciseLocation')\".");
-    EXPECT_EQ(Permission::unknown("bluetooth"), "The permission \"bluetooth\" is neither one of the engine, which are \"screens\" and \"localNetwork\", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".");
+    EXPECT_EQ(Permission::unknown("bluetooth"), "The permission \"bluetooth\" is neither one of the engine, which are \"localNetwork\", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".");
 
     EXPECT_TRUE(Permission::isPluginName("backgroundLocation"));
     EXPECT_TRUE(Permission::isPluginName("bluetooth2"));
 
-    for (const std::string_view name : {"", "Camera", "precise-location", "precise_location", "2d", "screens", "localNetwork"}) {
+    for (const std::string_view name : {"", "Camera", "precise-location", "precise_location", "2d", "localNetwork"}) {
         EXPECT_FALSE(Permission::isPluginName(name)) << name;
     }
 }
@@ -306,7 +306,7 @@ TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
 TEST_F(SystemTest, RefusesPluginPermissionsWithoutOneOwner) {
     EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["microphone"]})"), "");
     EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": "camera"})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package is not a list of permission names, such as [\"camera\"].");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["screens"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"screens\", which is a permission of the engine.");
+    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["localNetwork"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"localNetwork\", which is a permission of the engine.");
     EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["front-camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"front-camera\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
     EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": [3]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"3\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
     EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera", "camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"camera\" twice.");
@@ -449,7 +449,7 @@ TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
     )");
     // clang-format on
     fixture.host().setPermission({.state = Permission::State::Prompt});
-    fixture.runLua("remember('checked', system.permission('screens'))");
+    fixture.runLua("remember('checked', system.permission('localNetwork'))");
     fixture.host().setPermissionAnswer({.state = Permission::State::Granted});
     fixture.runLua("remember('asked', system.requestPermission('localNetwork'))");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(answers.asked)") == "granted"; }));
@@ -459,8 +459,8 @@ TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
     EXPECT_NE(fixture.lua("system.requestPermission()").find("string expected"), std::string::npos);
 
     // A platform without the capability rejects with the code "unsupported" and the reason, and a plugin that answers what the project lacks rejects with the line the project lacks.
-    fixture.host().setPermission({.state = Permission::State::Unsupported, .message = "The browser cannot list every screen."});
-    fixture.runLua("remember('screens', system.permission('screens'))");
+    fixture.host().setPermission({.state = Permission::State::Unsupported, .message = "The browser cannot tell the local network."});
+    fixture.runLua("remember('network', system.permission('localNetwork'))");
     // clang-format off
     fixture.engine().getPlatform().registerHandler("cam-kit.requestPermission", [](const Bridge::Payload&, const Bridge::Reply& reply) {
         reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The plugin needs the permission, which the app lacks.", "missing": [{"kind": "permission", "name": "android.permission.CAMERA", "file": "haylen.json", "snippet": "{}"}]})")}});
@@ -468,7 +468,7 @@ TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
     // clang-format on
     fixture.runLua("remember('missing', system.requestPermission('camera'))");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(answers.missing)") != "nil"; }));
-    EXPECT_EQ(fixture.lua("return answers.screens"), "unsupported The browser cannot list every screen. none");
+    EXPECT_EQ(fixture.lua("return answers.network"), "unsupported The browser cannot tell the local network. none");
     EXPECT_EQ(fixture.lua("return answers.missing"), "unsupported The plugin needs the permission, which the app lacks. android.permission.CAMERA");
 
     // The app asked, so an answer that nothing awaits never stops it.

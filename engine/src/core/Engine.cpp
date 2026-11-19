@@ -264,6 +264,7 @@ void Engine::applyWindowOptions() {
     host.setFocusable(window.focusable);
     host.setStatusBar(window.statusBar);
     host.setSystemGestures(window.systemGestures);
+    host.setExternalDisplays(window.externalDisplays);
 
     // clang-format off
     host.setKeepScreenOn(window.keepScreenOn, [](const platform::Permission::Answer& answer) {

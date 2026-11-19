@@ -30,8 +30,8 @@ class AppleOutputs final {
     // Ends the outputs in a scene that disconnected, whose display went away.
     static void disconnect(UIScene* scene);
 
-    // Registers once, on the view controller of the window of the app, the scene accessory through which iOS 27 and later connect the scene of an external display to an app, which earlier releases connect on their own. An external display then shows the scene of the app instead of a mirror of its window.
-    static void registerAccessory(UIViewController* controller);
+    // Registers on the view controller of the window of the app, or unregisters, the scene accessory through which iOS 27 and later connect the scene of an external display to an app, which earlier releases connect on their own. An external display shows the scene of the app while the accessory is registered, and a mirror of its window otherwise.
+    static void setAccessory(bool value);
 
   private:
     struct Entry {
@@ -45,6 +45,7 @@ class AppleOutputs final {
 
     static std::map<std::uint32_t, Entry>& entries;
     static NSObject* accessory;
+    static UIViewController* accessoryController;
 };
 
 } // namespace haylen::platform

@@ -195,8 +195,11 @@ class Window {
     // Returns the id of the display that shows the window, the one that holds most of it on desktops.
     [[nodiscard]] virtual std::string getDisplayId() const = 0;
 
-    // Whether the device has displays that `getDisplays` leaves out until the app holds the permission `screens`, such as the other screens of a browser, which tells that the screen of the page is not the only one before the person lets the page see them.
+    // Whether the device has displays that `getDisplays` leaves out until the person lets the app see every screen, such as the other screens of a browser, which tells that the screen of the page is not the only one before the person lets the page see them.
     [[nodiscard]] virtual bool hasUnlistedDisplays() const = 0;
+
+    // Asks to list every display of the device, which a browser does once the person lets the page see every screen through the Window Management API, and calls back with `Granted` once `getDisplays` holds them, or with `Denied` or `Unsupported` and the sentence that says why. Every other platform lists every display already and answers `Granted`.
+    virtual void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) = 0;
 
   protected:
     // What `setFullscreen`, `enterFullscreen`, `setMouseLocked` and `setKeepScreenOn` do on the platform, which always receive a callback.

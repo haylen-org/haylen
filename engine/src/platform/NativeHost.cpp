@@ -189,6 +189,10 @@ bool NativeHost::hasUnlistedDisplays() const {
     return Services::hasUnlistedDisplays();
 }
 
+void NativeHost::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    Services::requestEveryScreen(std::move(callback));
+}
+
 FullscreenTarget NativeHost::resolveFullscreen(const Fullscreen& value) const {
     return FullscreenTarget::resolve(getDisplays(), getDisplayId(), value);
 }
@@ -215,6 +219,8 @@ NativeHost::OutputReport NativeHost::getOutputReport(std::uint32_t number) const
     const auto found = refusedOutputs.find(number);
     return found != refusedOutputs.end() ? found->second : OutputReport{.ending = Output::Ending::Unsupported};
 }
+
+void NativeHost::setExternalDisplays(bool) {}
 
 void NativeHost::refuseOutput(std::uint32_t number, std::string reason) {
     refusedOutputs[number] = {.ending = Output::Ending::Unsupported, .reason = std::move(reason)};

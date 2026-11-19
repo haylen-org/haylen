@@ -37,7 +37,6 @@
 #import "platform/apple/AppleMediaSession.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
-#import "platform/apple/ApplePermissions.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/ApplePowerSaving.hpp"
 #import "platform/apple/AppleScreens.hpp"
@@ -182,9 +181,13 @@ std::string AppleServices::getWindowDisplayId() {
 #endif
 }
 
-// UIKit tells nothing of an external display whose scene it does not connect, so an iPhone or an iPad that waits for the permission "screens" cannot tell that one is there.
+// UIKit tells nothing of an external display whose scene it does not connect, so an iPhone or an iPad without `window.externalDisplays` of `haylen.json` cannot tell that one is there, and no request lists it.
 bool AppleServices::hasUnlistedDisplays() {
     return false;
+}
+
+void AppleServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
 math::Insets AppleServices::getSafeAreaInsets() {
@@ -308,12 +311,13 @@ SystemInfo AppleServices::getSystemInfo() {
     return AppleSystem::getInfo();
 }
 
-void AppleServices::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    ApplePermissions::check(kind, std::move(callback));
+// Apple platforms ask the person for the local network the first time the app reaches it, and tell apps neither the answer nor a way to ask before.
+void AppleServices::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Unknown});
 }
 
-void AppleServices::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    ApplePermissions::request(kind, std::move(callback));
+void AppleServices::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Unknown});
 }
 
 // A Mac app keeps running its frames in the background, so its sound plays on.

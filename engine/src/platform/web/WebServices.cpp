@@ -200,6 +200,10 @@ bool WebServices::hasUnlistedDisplays() {
     return WebDisplays::hasUnlistedDisplays();
 }
 
+void WebServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    WebPage::requestEveryScreen(std::move(callback));
+}
+
 math::Insets WebServices::getSafeAreaInsets() {
     std::array<float, 4> insets{};
     haylen_js_safe_area(insets.data());

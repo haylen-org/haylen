@@ -105,6 +105,10 @@ EM_JS(void, haylen_js_read_clipboard, (double id), {
     Module.haylen.readClipboard(id);
 });
 
+EM_JS(void, haylen_js_request_every_screen, (double id), {
+    Module.haylen.requestEveryScreen(id);
+});
+
 EM_JS(void, haylen_js_check_permission, (double id, const char* kind), {
     Module.haylen.checkPermission(id, UTF8ToString(kind));
 });
@@ -176,6 +180,10 @@ void WebPage::setClipboard(std::string_view text, std::function<void(Permission:
 
 void WebPage::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
     haylen_js_read_clipboard(awaitGatedCall(std::move(callback)));
+}
+
+void WebPage::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_request_every_screen(awaitGatedCall(withoutText(std::move(callback))));
 }
 
 void WebPage::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {

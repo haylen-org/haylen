@@ -16,7 +16,6 @@ namespace haylen::platform {
 class Permission final {
   public:
     enum class Kind : std::uint8_t {
-        Screens,
         LocalNetwork,
     };
 
@@ -68,7 +67,7 @@ class Permission final {
     // Returns the text of a key of a JSON object, or an empty text when it holds something else.
     [[nodiscard]] static std::string readText(const core::Json& object, const char* key);
 
-    static const std::array<std::pair<std::string_view, Kind>, 2> kKindNames;
+    static const std::array<std::pair<std::string_view, Kind>, 1> kKindNames;
     static const std::array<std::pair<std::string_view, State>, 5> kStateNames;
 };
 

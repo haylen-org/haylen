@@ -29,6 +29,10 @@ const Display& Displays::getWindowDisplay() const noexcept {
     return found != nullptr ? *found : getPrimary();
 }
 
+void Displays::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    window.requestEveryScreen(std::move(callback));
+}
+
 void Displays::refresh() {
     const std::vector<Display> previous = std::exchange(displays, window.getDisplays());
     unlisted = window.hasUnlistedDisplays();

@@ -130,9 +130,13 @@ std::string WindowsServices::getWindowDisplayId() {
     return WindowsDesktop::getWindowDisplayId();
 }
 
-// Every display of the device is in the list, so none waits for the permission "screens".
+// Every display of the device is in the list, so a request for every screen has nothing to ask for.
 bool WindowsServices::hasUnlistedDisplays() {
     return false;
+}
+
+void WindowsServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
 }
 
 void WindowsServices::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {

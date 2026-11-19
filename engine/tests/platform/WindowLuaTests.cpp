@@ -1,9 +1,12 @@
 #include <gtest/gtest.h>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/gpu/Surface.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/platform/Event.hpp"
@@ -90,6 +93,20 @@ TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
     EXPECT_TRUE(fixture.host().isFullscreen());
     EXPECT_TRUE(fixture.host().isMouseLocked());
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// The external displays connect as haylen.json asks at every start, so a restarted app keeps them, and an app that leaves the key out lets them mirror it.
+TEST(WindowLuaTest, LetsExternalDisplaysConnectAsHaylenJsonAsks) {
+    {
+        test::EngineFixture fixture({{"haylen.json", R"({"window": {"externalDisplays": true}})"}});
+        EXPECT_TRUE(fixture.host().hasExternalDisplays());
+        fixture.restart();
+        EXPECT_TRUE(fixture.host().hasExternalDisplays());
+    }
+
+    test::EngineFixture mirrored;
+    EXPECT_FALSE(mirrored.host().hasExternalDisplays());
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"externalDisplays": "yes"}})")), std::invalid_argument);
 }
 
 // The system gestures start as haylen.json asks, a script changes them later, and a restarted app starts again with the value of haylen.json.

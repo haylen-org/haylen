@@ -59,8 +59,8 @@ TEST_F(DisplayLuaTest, ListsTheDisplaysWithTheirModes) {
     EXPECT_EQ(fixture.host().getFrame(), (math::Rect{0.0F, 25.0F, 640.0F, 480.0F}));
 }
 
-// A browser lists only the screen of the page before the permission "screens", while it tells that the device has more, and the list holds them all once the page sees them.
-TEST_F(DisplayLuaTest, TellsOfDisplaysThatWaitForThePermission) {
+// A browser lists only the screen of the page before the person lets it see every screen, while it tells that the device has more, and the list holds them all once the page sees them.
+TEST_F(DisplayLuaTest, TellsOfDisplaysThatTheBrowserHides) {
     test::EngineFixture fixture;
     fixture.runLua("display = require('haylen.display')");
     EXPECT_EQ(fixture.lua("return tostring(display.unlisted())"), "false");
@@ -73,6 +73,37 @@ TEST_F(DisplayLuaTest, TellsOfDisplaysThatWaitForThePermission) {
     fixture.host().setDisplays(twoDisplays());
     fixture.engine().handleEvent({.type = Event::Type::DisplaysChanged});
     EXPECT_EQ(fixture.lua("return #display.list() .. ' ' .. tostring(display.unlisted())"), "2 false");
+}
+
+// The list holds every display when the promise of the request resolves, and a refusal rejects with the sentence and the code of the browser.
+TEST_F(DisplayLuaTest, AsksForEveryScreen) {
+    test::EngineFixture fixture;
+    fixture.host().setUnlistedDisplays(true);
+    fixture.host().setDisplays(twoDisplays());
+    fixture.host().setEveryScreenAnswer({.state = Permission::State::Denied, .message = "The person has not allowed the page to see every screen."});
+
+    // clang-format off
+    fixture.runLua(R"(
+        display = require('haylen.display')
+        async = require('async')
+        answers = {}
+        function ask()
+            async.spawn(function()
+                local _, message, failure = display.requestEveryScreen():await()
+                answers[#answers + 1] = failure and (failure.code .. ': ' .. message) or (#display.list() .. ' ' .. tostring(display.unlisted()))
+            end)
+        end
+        ask()
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "1"; }));
+    EXPECT_EQ(fixture.lua("return answers[1]"), "denied: The person has not allowed the page to see every screen.");
+
+    fixture.host().setEveryScreenAnswer({.state = Permission::State::Granted});
+    fixture.runLua("ask()");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
+    EXPECT_EQ(fixture.lua("return answers[2]"), "2 false");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST_F(DisplayLuaTest, PublishesEveryDisplayThatConnectsDisconnectsOrChanges) {

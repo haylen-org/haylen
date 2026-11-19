@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -14,7 +15,7 @@ class EventBus;
 
 namespace haylen::platform {
 
-// The displays of the device as the app sees them: the list that the engine reads when it starts and again whenever the platform reports a change, which publishes `displayConnected`, `displayDisconnected` and `displayChanged` for each display that the change touched, and the display that shows the window, whose change publishes `windowDisplayChanged`. A browser lists every screen once the app holds the permission `screens` of `Permission`. The engine owns it, and every method and callback runs on the frame thread.
+// The displays of the device as the app sees them: the list that the engine reads when it starts and again whenever the platform reports a change, which publishes `displayConnected`, `displayDisconnected` and `displayChanged` for each display that the change touched, and the display that shows the window, whose change publishes `windowDisplayChanged`. A browser lists every screen once the person lets the page see them through `requestEveryScreen`. The engine owns it, and every method and callback runs on the frame thread.
 class Displays final {
   public:
     Displays(Window& window, core::EventBus& events);
@@ -30,10 +31,13 @@ class Displays final {
     // Returns the display that shows the window. A window on a display that the engine has not heard of yet, between a move and the report of the displays that follows it, counts as on the primary display.
     [[nodiscard]] const Display& getWindowDisplay() const noexcept;
 
-    // Whether the device has displays that the list leaves out until the app holds the permission `screens`, as a browser tells before the person lets the page see every screen.
+    // Whether the device has displays that the list leaves out until the person lets the app see every screen, as a browser tells before `requestEveryScreen`.
     [[nodiscard]] bool hasUnlisted() const noexcept {
         return unlisted;
     }
+
+    // Asks the platform to list every display, as `Window::requestEveryScreen` describes, and calls back as the window does, which `refresh` follows to read the displays that a granted request added.
+    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback);
 
     // Reads the displays again and publishes what changed, the displays that went away first.
     void refresh();

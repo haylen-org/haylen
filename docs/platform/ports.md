@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 4
+  CONTRACT 5
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -117,7 +117,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 4,
+  "contract": 5,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -194,7 +194,7 @@ Every platform, of the engine or of a port, registers the services of the capabi
 | Service | What it covers | What the engine answers without it |
 | --- | --- | --- |
 | `PlatformService` | The name of the platform, starting and stopping the following of the system, the package that ships with the app, the folder of user data, committing it, the system info and whether the device has a pointer. | Required. |
-| `DisplayService` | The displays of the device, the display of the window, the displays that wait for the permission `screens` and the frame of the window. | Required. |
+| `DisplayService` | The displays of the device, the display of the window, the displays that a browser hides until the person lets the page see every screen, the request for them and the frame of the window. | Required. |
 | `DesktopService` | A desktop of windows: the style, background, frame, passthrough and drag of the window, following it and its native handles for native libraries. | A window that fills its screen, with null native handles. |
 | `ScreenService` | The safe area, the orientation, the status bar, the gestures of the system, a fold and cutouts. | A landscape screen, safe everywhere, without a status bar, gestures, fold or cutouts. |
 | `BridgeService` | The native parts of plugins in the language of the platform, their calls, their screens and the failures that stopped the app. | Calls and screens that fail with the code `noHandler`. |

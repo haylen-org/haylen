@@ -71,11 +71,15 @@ class NativeHost : public Host {
     void startDrag() override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
     [[nodiscard]] bool hasUnlistedDisplays() const override;
+    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override;
 
     // Platforms without outputs end every output they are asked for, with the reason.
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
+
+    // Platforms that connect external displays to every app need nothing.
+    void setExternalDisplays(bool value) override;
     [[nodiscard]] std::string getDisplayId() const override;
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override;

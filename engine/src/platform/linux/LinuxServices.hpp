@@ -30,6 +30,7 @@ class LinuxServices final : public port::PlatformService, public port::DisplaySe
     [[nodiscard]] std::vector<Display> getDisplays() override;
     [[nodiscard]] std::string getWindowDisplayId() override;
     [[nodiscard]] bool hasUnlistedDisplays() override;
+    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] math::Rect getWindowFrame() override;
 
     void setWindowStyle(const WindowStyle& value) override;

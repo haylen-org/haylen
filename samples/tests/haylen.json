@@ -9,7 +9,8 @@
         "width": 1280,
         "height": 720,
         "resizable": true,
-        "maxPixelDensity": 0
+        "maxPixelDensity": 0,
+        "externalDisplays": true
     },
     "design": {
         "width": 1920,

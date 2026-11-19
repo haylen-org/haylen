@@ -59,6 +59,10 @@ bool TestPortServices::hasUnlistedDisplays() {
     return false;
 }
 
+void TestPortServices::requestEveryScreen(std::function<void(platform::Permission::Answer answer)> callback) {
+    callback({.state = platform::Permission::State::Granted});
+}
+
 math::Rect TestPortServices::getWindowFrame() {
     return {0.0F, 0.0F, TestPortWindow::kSize.x, TestPortWindow::kSize.y};
 }

@@ -44,6 +44,7 @@
                 "statusBar": {"enum": ["hidden", "auto", "light", "dark"]},
                 "statusBarColor": {"$ref": "#/$defs/color"},
                 "systemGestures": {"enum": ["system", "deferred", "autoHideIndicator"]},
+                "externalDisplays": {"type": "boolean", "description": "Whether the app shows outputs on the external displays of an iPhone or an iPad of iOS 27 and later, which mirror the app without it."},
                 "graphicsApis": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
                 "lowPowerGpu": {"type": "boolean"}
             }

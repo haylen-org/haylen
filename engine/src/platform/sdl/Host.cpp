@@ -118,6 +118,12 @@ Host::OutputReport Host::getOutputReport(std::uint32_t number) const {
 #endif
 }
 
+void Host::setExternalDisplays([[maybe_unused]] bool value) {
+#if defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleOutputs::setAccessory(value);
+#endif
+}
+
 // A desktop window goes fullscreen on the display that shows it, in the mode that the desktop runs in. The page answers once the browser settled the change. The window of SDL answers once SDL reports the mode it asked for: during the call where SDL changes the mode at once, as on Windows or for a hidden window, and at the end of the animation where the system animates the window into it, as on macOS. SDL never reports a change that the system reverts before it ends, such as one that a newer change replaces on macOS, so the mode that SDL reports right after the call is the one the window keeps.
 void Host::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
     if (value && Services::hasDesktop()) {

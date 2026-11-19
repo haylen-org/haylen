@@ -982,7 +982,6 @@ elseif(APPLE)
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleNotifications.mm
     src/platform/apple/AppleOrientation.mm
-    src/platform/apple/ApplePermissions.mm
     src/platform/apple/ApplePlugins.mm
     src/platform/apple/ApplePowerSaving.mm
     src/platform/apple/ApplePresenter.mm

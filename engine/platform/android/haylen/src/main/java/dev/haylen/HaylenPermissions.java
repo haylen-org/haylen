@@ -44,7 +44,7 @@ final class HaylenPermissions {
 
     private static final String PREFERENCES = "haylen.permissions";
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
-    private static final List<HaylenPermission> engine = List.of(new HaylenPermission("screens", "every screen"), new LocalNetwork());
+    private static final List<HaylenPermission> engine = List.of(new LocalNetwork());
     private static ActivityResultLauncher<String[]> launcher;
     private static final HaylenPermissionQueue<Request> queue = new HaylenPermissionQueue<>(new HaylenPermissionQueue.Prompts<>() {
         @Override

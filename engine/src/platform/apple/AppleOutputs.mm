@@ -5,6 +5,7 @@
 #include <string>
 
 #include "haylen/platform/Event.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
 #import "platform/apple/AppleDisplays.hpp"
 #import "platform/apple/HaylenDisplaySceneDelegate.h"
@@ -14,6 +15,7 @@ namespace haylen::platform {
 
 std::map<std::uint32_t, AppleOutputs::Entry>& AppleOutputs::entries = *new std::map<std::uint32_t, AppleOutputs::Entry>();
 NSObject* AppleOutputs::accessory = nil;
+UIViewController* AppleOutputs::accessoryController = nil;
 
 void AppleOutputs::announce(std::uint32_t number) {
     Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
@@ -86,16 +88,25 @@ void AppleOutputs::resize(std::uint32_t number) {
     announce(number);
 }
 
-// A release before iOS 27 connects the scene of an external display without a scene accessory.
-void AppleOutputs::registerAccessory(UIViewController* controller) {
+// A release before iOS 27 connects the scene of an external display without a scene accessory. The registration belongs to the view controller that holds it, which the window of the app keeps while the app restarts.
+void AppleOutputs::setAccessory(bool value) {
     if (@available(iOS 27.0, *)) {
-        if (accessory != nil) {
+        if (value == (accessory != nil)) {
             return;
         }
 
+        if (!value) {
+            [accessoryController unregisterSceneAccessory:static_cast<UISceneAccessoryRegistration*>(accessory)];
+            accessory = nil;
+            accessoryController = nil;
+            return;
+        }
+
+        UIViewController* controller = ((__bridge UIWindow*)NativeWindow::getHandle()).rootViewController;
         UISceneConfiguration* configuration = [[UISceneConfiguration alloc] initWithName:@"HaylenDisplay" sessionRole:UIWindowSceneSessionRoleExternalDisplayNonInteractive];
         configuration.delegateClass = HaylenDisplaySceneDelegate.class;
         accessory = [controller registerSceneAccessory:[UISceneAccessory externalNonInteractiveSceneAccessoryWithConfiguration:configuration]];
+        accessoryController = controller;
     }
 }
 

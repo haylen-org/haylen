@@ -57,6 +57,7 @@ class Host final : public platform::NativeHost {
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
+    void setExternalDisplays(bool value) override;
 
     // Follows the window as SDL reports that it entered or left fullscreen, whoever asked for it, and answers the request of the app that waited for that mode.
     void followFullscreen(bool entered);

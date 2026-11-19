@@ -3,14 +3,13 @@ local display = require('haylen.display')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
-local system = require('haylen.system')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
 
 local SecondDisplay = haylen.class('SecondDisplay', Test)
 
-SecondDisplay.code = "system.requestPermission('screens'):await()\nlocal board = display.open(other.id, {clearColor = '#FF000000'})\ncamera.x, camera.y = board.width / 2, board.height / 2\ngraphics2d.beginTarget(board.target, camera, {clear = '#FF14202C'})\ngraphics2d.drawText(nil, 'Score', board.width / 2, board.height / 2)\nevents.on('outputInput', function(info) print(info.type, info.x, info.y) end)"
+SecondDisplay.code = "display.requestEveryScreen():await()  -- Every screen of a browser.\nlocal board = display.open(other.id, {clearColor = '#FF000000'})\ncamera.x, camera.y = board.width / 2, board.height / 2\ngraphics2d.beginTarget(board.target, camera, {clear = '#FF14202C'})\ngraphics2d.drawText(nil, 'Score', board.width / 2, board.height / 2)\nevents.on('outputInput', function(info) print(info.type, info.x, info.y) end)"
 SecondDisplay.ringSeconds = 1.2
 
 function SecondDisplay:enter()
@@ -29,7 +28,7 @@ function SecondDisplay:enter()
         },
     }
     if display.unlisted() then
-        self:set('answer', {text = 'This browser shows the app only the screen of its window until it holds the permission "screens". Click "Open on the next display" to ask for every screen.'})
+        self:set('answer', {text = 'This browser shows the app only the screen of its window until the person lets it see every screen. Click "Open on the next display" to ask for them.'})
     end
     for _, name in ipairs({'outputShown', 'outputHidden', 'outputResized', 'outputClosed'}) do
         events.on(name, function(info)
@@ -44,13 +43,12 @@ function SecondDisplay:enter()
     end)
 end
 
--- A browser and an iPhone or iPad of iOS 27 show the app every display only once it holds the permission "screens", so a click without it only asks for it. A browser opens the window of an output only right after a click, and the time the person spends on the prompt uses that click up, so the output opens at the next click, once the app holds the permission.
+-- A browser shows the app every screen only once the person allows it, so a click that the browser hides screens for only asks for them. A browser opens the window of an output only right after a click, and the time the person spends on the prompt uses that click up, so the output opens at the next click. The external display of an iPhone or an iPad of iOS 27 reaches the app through "window.externalDisplays" of the "haylen.json" of the project.
 function SecondDisplay:open()
     self:spawn(function()
-        local state = system.permission('screens'):await()
-        if state ~= 'granted' then
-            local answered = system.requestPermission('screens'):await()
-            self:set('answer', {text = answered == 'granted' and 'The app sees every display now. Click again to open the scoreboard.' or string.format('The permission "screens" is "%s", so the app sees only the display of its window.', answered)})
+        if display.unlisted() then
+            local _, message = display.requestEveryScreen():await()
+            self:set('answer', {text = message or 'The app sees every display now. Click again to open the scoreboard.'})
             return
         end
 

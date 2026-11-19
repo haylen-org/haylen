@@ -3,7 +3,6 @@ local display = require('haylen.display')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
-local system = require('haylen.system')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
@@ -11,7 +10,7 @@ local Test = require('harness.test')
 
 local Displays = haylen.class('Displays', Test)
 
-Displays.code = "for _, shown in ipairs(display.list()) do print(shown.id, shown.bounds, shown.refreshRate) end\nwindow.place({anchor = 'center', display = other.id})\nwindow.setFullscreen(true, {display = other.id, mode = other.modes[#other.modes]})\nevents.on('displayConnected', function(info) print(info.name) end)\nsystem.requestPermission('screens'):await()  -- Every screen of a browser."
+Displays.code = "for _, shown in ipairs(display.list()) do print(shown.id, shown.bounds, shown.refreshRate) end\nwindow.place({anchor = 'center', display = other.id})\nwindow.setFullscreen(true, {display = other.id, mode = other.modes[#other.modes]})\nevents.on('displayConnected', function(info) print(info.name) end)\ndisplay.requestEveryScreen():await()  -- Every screen of a browser."
 Displays.margin = 48
 
 function Displays:enter()
@@ -39,10 +38,10 @@ function Displays:enter()
     end
 end
 
--- A browser that hides the other screens until the app holds the permission "screens" says that there are more, so the test asks for them instead of calling the device single.
+-- A browser that hides the other screens until the person lets the page see them says that there are more, so the test asks for them instead of calling the device single.
 function Displays:describeSingle()
     if display.unlisted() then
-        return 'This browser shows the app only the screen of its window until it holds the permission "screens". Click "Ask for every screen" to see the others.'
+        return 'This browser shows the app only the screen of its window until the person lets it see every screen. Click "Ask for every screen" to see the others.'
     end
     return 'This device has a single display.'
 end
@@ -88,11 +87,11 @@ function Displays:cover(exclusive)
     end)
 end
 
--- A browser lists every screen once the app holds the permission "screens", which it asks the person for.
+-- A browser lists every screen once the person lets the page see them, which the request asks for.
 function Displays:request()
     self:spawn(function()
-        local state, message = system.requestPermission('screens'):await()
-        self:set('answer', {text = state == 'granted' and string.format('The app sees %s.', Displays.count(#display.list(), 'display')) or message or string.format('The permission "screens" is "%s".', state)})
+        local _, message = display.requestEveryScreen():await()
+        self:set('answer', {text = message or string.format('The app sees %s.', Displays.count(#display.list(), 'display'))})
     end)
 end
 

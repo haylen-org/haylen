@@ -6,7 +6,7 @@
 
 namespace haylen::platform {
 
-const std::array<std::pair<std::string_view, Permission::Kind>, 2> Permission::kKindNames{{{"screens", Kind::Screens}, {"localNetwork", Kind::LocalNetwork}}};
+const std::array<std::pair<std::string_view, Permission::Kind>, 1> Permission::kKindNames{{{"localNetwork", Kind::LocalNetwork}}};
 const std::array<std::pair<std::string_view, Permission::State>, 5> Permission::kStateNames{{{"granted", State::Granted}, {"prompt", State::Prompt}, {"denied", State::Denied}, {"unknown", State::Unknown}, {"unsupported", State::Unsupported}}};
 
 // A field of the wrong type reads as missing, and an answer that is no object fails as unsupported, so a broken answer of native code fails the request instead of the engine.

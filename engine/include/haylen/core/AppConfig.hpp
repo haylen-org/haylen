@@ -62,6 +62,9 @@ struct AppConfig {
         std::optional<math::Color> statusBarColor;
         platform::Window::SystemGestures systemGestures = platform::Window::SystemGestures::System;
 
+        // Whether the app shows outputs on the external displays of an iPhone or an iPad of iOS 27 and later, whose scene UIKit connects only for an app that registers the scene accessory of external displays, while such a display mirrors the app without it. Every other platform connects external displays on its own.
+        bool externalDisplays = false;
+
         // The graphics APIs the window tries first, in order, before the other APIs of the build in the order of the platform, which an empty list leaves as it is.
         std::vector<gpu::Device::Api> graphicsApis;
 

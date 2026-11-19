@@ -49,9 +49,10 @@ class WebPage final {
     // Locks the pointer to the canvas, or releases it, for the Worker mode, whose page asks the browser itself, and answers as `awaitPointerLock` does.
     static void lockPointer(bool value, std::function<void(Permission::Answer answer)> callback);
 
-    // The calls that a browser may gate: the writes and reads of its clipboard and the checks and requests of permissions, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `Permission::Answer::fromJson` and the text of a read.
+    // The calls that a browser may gate: the writes and reads of its clipboard and the request to see every screen, the checks and requests of permissions, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `Permission::Answer::fromJson` and the text of a read.
     static void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);
     static void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback);
+    static void requestEveryScreen(std::function<void(Permission::Answer answer)> callback);
     static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void answerGatedCall(double id, const char* json);

@@ -59,6 +59,7 @@ class Services final {
     [[nodiscard]] static std::vector<Display> getDisplays();
     [[nodiscard]] static std::string getWindowDisplayId();
     [[nodiscard]] static bool hasUnlistedDisplays();
+    static void requestEveryScreen(std::function<void(Permission::Answer answer)> callback);
     [[nodiscard]] static math::Rect getWindowFrame();
 
     [[nodiscard]] static bool hasDesktop() noexcept;

@@ -20,7 +20,7 @@ class PluginManifest:
 
     FILE = "plugin.json"
     # The permissions that the engine answers itself, which no plugin declares.
-    ENGINE_PERMISSIONS = ("screens", "localNetwork")
+    ENGINE_PERMISSIONS = ("localNetwork",)
     # A placeholder of a parameter in a value of a contribution. Build settings such as `$(NAME)` and shell expansions such as `${BUILD_DIR%/Build/*}` are no placeholders.
     PLACEHOLDER = re.compile(r"\$\{([a-z][A-Za-z0-9]*)\}")
 

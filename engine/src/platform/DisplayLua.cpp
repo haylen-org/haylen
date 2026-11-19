@@ -12,6 +12,8 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/Displays.hpp"
+#include "haylen/platform/System.hpp"
+#include "platform/AnswerLua.hpp"
 #include "platform/OutputLua.hpp"
 
 namespace haylen::platform {
@@ -72,9 +74,28 @@ int DisplayLua::unlisted(lua_State* L) {
     return 1;
 }
 
+// The list holds every display once the promise resolves, so the app reads them right after its await.
+int DisplayLua::requestEveryScreen(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const lua::Promise promise(engine);
+    promise.push(L);
+
+    // clang-format off
+    engine.getDisplays().requestEveryScreen(engine.getSystem().awaitAnswer([&engine, promise](const Permission::Answer& answer) {
+        if (answer.state == Permission::State::Granted) {
+            engine.getDisplays().refresh();
+        }
+
+        AnswerLua::settle(engine, promise, answer);
+    }));
+    // clang-format on
+
+    return 1;
+}
+
 int DisplayLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"list", &lua::Binding::native<&list>}, {"current", &lua::Binding::native<&current>}, {"unlisted", &lua::Binding::native<&unlisted>}, {"open", &lua::Binding::native<&OutputLua::open>}, {nullptr, nullptr},
+        {"list", &lua::Binding::native<&list>}, {"current", &lua::Binding::native<&current>}, {"unlisted", &lua::Binding::native<&unlisted>}, {"requestEveryScreen", &lua::Binding::native<&requestEveryScreen>}, {"open", &lua::Binding::native<&OutputLua::open>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

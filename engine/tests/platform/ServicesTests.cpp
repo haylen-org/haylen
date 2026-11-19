@@ -61,6 +61,10 @@ class MinimalServices final : public port::PlatformService, public port::Display
         return false;
     }
 
+    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override {
+        callback({.state = Permission::State::Granted});
+    }
+
     [[nodiscard]] math::Rect getWindowFrame() override {
         return {0.0F, 0.0F, 1920.0F, 1080.0F};
     }
