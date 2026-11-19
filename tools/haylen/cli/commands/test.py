@@ -66,6 +66,14 @@ class TestCommand(Command):
             help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests/apple" on an Apple simulator or device or the Kotlin tests of its folder "ui-tests/android" on Android, as "--target" and "--device" name, instead of the engine tests.',
         )
         parser.add_argument(
+            "--ui-test",
+            metavar="class",
+            dest="ui_tests",
+            action="append",
+            default=[],
+            help='A class of the UI tests of "--ui" to run alone, which repeats, such as "CameraTests", so a device runs only the tests that need its hardware. Every class by default.',
+        )
+        parser.add_argument(
             "--device-farm",
             metavar="devices",
             type=lambda value: tuple(name.strip() for name in value.split(",") if name.strip()),
@@ -106,9 +114,11 @@ class TestCommand(Command):
         if arguments.ui:
             if gpu or arguments.port:
                 raise UnsupportedTarget('The option "--ui" runs the UI tests of an app, so it takes neither "--gpu", "--graphics-api" nor "--port".')
-            return UiTests(context, session.pipeline).run(arguments.ui, target, arguments.config, arguments.device, arguments.device_farm)
+            return UiTests(context, session.pipeline).run(arguments.ui, target, arguments.config, arguments.device, arguments.device_farm, arguments.ui_tests)
         if arguments.device_farm:
             raise UnsupportedTarget('The option "--device-farm" runs the UI tests of an app, so it takes "--ui".')
+        if arguments.ui_tests:
+            raise UnsupportedTarget('The option "--ui-test" picks classes of the UI tests of an app, so it takes "--ui".')
         if arguments.port:
             if gpu or target != Host.system():
                 raise UnsupportedTarget('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--target".')

@@ -52,11 +52,12 @@ class UiTests:
         self.pipeline = pipeline
 
     @staticmethod
-    def command(action: str, project: Path, scheme: str, destination: str, derived: Path) -> list[object]:
-        """The command that builds the runner of a scheme with "build-for-testing", or runs its tests on the simulator or device of that identifier with "test-without-building", whose output holds only the tests."""
+    def command(action: str, project: Path, scheme: str, destination: str, derived: Path, classes: Sequence[str] = ()) -> list[object]:
+        """The command that builds the runner of a scheme with "build-for-testing", or runs its tests on the simulator or device of that identifier with "test-without-building", whose output holds only the tests, the classes that it names alone or every class. The target of the runner of each platform takes the name of its scheme."""
         command: list[object] = ["xcodebuild", action, "-project", project, "-scheme", scheme, "-destination", f"id={destination}", "-derivedDataPath", derived]
         if action == "test-without-building":
             command += ["-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", str(UiTests.TEST_SECONDS), "-collect-test-diagnostics", "never"]
+            command += [f"-only-testing:{scheme}/{name}" for name in classes]
         return command
 
     @staticmethod
@@ -91,14 +92,16 @@ class UiTests:
             raise BuildFailed("The app of the device carries no signature of a development team, so its UI test runner cannot be signed for it.")
         return match[1]
 
-    def run(self, app: str, platform: str, configuration: str, device: str | None, farm: Sequence[str] = ()) -> dict[str, object]:
-        """Runs the UI tests on the simulator, device or emulator of the platform, or with `farm` on the devices of Device Farm that it names."""
+    def run(self, app: str, platform: str, configuration: str, device: str | None, farm: Sequence[str] = (), classes: Sequence[str] = ()) -> dict[str, object]:
+        """Runs the UI tests on the simulator, device or emulator of the platform, or with `farm` on the devices of Device Farm that it names, the classes that `classes` names alone or every class."""
         if farm and platform not in DeviceFarmUiTests.TYPES:
             raise UnsupportedTarget('Device Farm runs the UI tests of "android" and "ios". Pick one with "--target".')
+        if farm and classes:
+            raise UnsupportedTarget('Device Farm runs every class of the UI tests, so "--device-farm" takes no "--ui-test".')
         if platform == "android":
             folder, tests = UiTests.tests(app, "android")
             android = AndroidUiTests(self.context, self.pipeline)
-            return android.run_on_farm(folder, tests, configuration, farm) if farm else android.run(folder, tests, configuration, device)
+            return android.run_on_farm(folder, tests, configuration, farm) if farm else android.run(folder, tests, configuration, device, classes)
         if platform not in UiTests.PLATFORMS and platform not in UiTests.DEVICES:
             names = ", ".join(f'"{name}"' for name in (*UiTests.PLATFORMS, *UiTests.DEVICES, "android"))
             raise UnsupportedTarget(f'The UI tests run on {names}. Pick one with "--target".')
@@ -124,13 +127,13 @@ class UiTests:
         if farm:
             return self.run_on_farm(product, runner, farm, ProductFolders.app_folder(folder) / "ui-tests" / "device-farm-ios")
         run = self.run_on_device if platform in UiTests.DEVICES else self.run_on_simulator
-        name = run(product, platform, device, runner, output)
+        name = run(product, platform, device, runner, output, classes)
         if any(output.iterdir()):
             self.context.terminal.info(f"The screenshots of the UI tests are in `{Repository.shown(output)}`.")
         self.context.terminal.success(f'The UI tests passed on "{name}".')
         return {"app": str(folder), "target": platform, "device": name, "screenshots": str(output)}
 
-    def run_on_simulator(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path) -> str:
+    def run_on_simulator(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         info = plistlib.loads((product.path / "Info.plist").read_bytes())
         scheme, family = UiTests.PLATFORMS[platform]
         with AppleSimulators(self.context).booted(family, device) as simulator:
@@ -142,7 +145,7 @@ class UiTests:
             self.context.terminal.step(f'Running the UI tests on the simulator "{simulator["name"]}"')
             try:
                 with UnifiedLog(self.context.terminal, info["CFBundleExecutable"], ["xcrun", "simctl", "spawn", udid]) as errors:
-                    UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project), self.context.environment)
+                    UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
             finally:
                 for identifier in (info["CFBundleIdentifier"], UiTests.RUNNER):
                     subprocess.run(["xcrun", "simctl", "uninstall", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
@@ -150,7 +153,7 @@ class UiTests:
             raise BuildFailed(f"The UI tests passed, but the engine logged {len(errors)} errors meanwhile, the first being: {errors[0]}")
         return simulator["name"]
 
-    def run_on_device(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path) -> str:
+    def run_on_device(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         """Runs the tests on a device, which gives the Mac no stream of its unified log, so the checks of the tests are the results. The tests write their screenshots into the container of the runner on the device, which the run copies back."""
         info = plistlib.loads((product.path / "Info.plist").read_bytes())
         target = AppleDevices(self.context).device(device, platform)
@@ -164,7 +167,7 @@ class UiTests:
         self.context.process.run([*devicectl, "install", "app", "--device", target.identifier, product.path])
         self.context.terminal.step(f'Running the UI tests on "{target.name}"')
         try:
-            UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project), self.context.environment)
+            UiTestRun(self.context.terminal).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
         finally:
             copy = [*devicectl, "copy", "from", "--device", target.identifier, "--domain-type", "appDataContainer", "--domain-identifier", UiTests.RUNNER]
             subprocess.run([*copy, "--source", UiTests.DEVICE_OUTPUT, "--destination", str(output)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)

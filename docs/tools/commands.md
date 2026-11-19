@@ -398,7 +398,7 @@ Result: `folder`, the key folder, and `report`.
 ### test
 
 ```sh
-haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--app <folder>] [--port]
+haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--ui-test <class>] [--device-farm <devices>] [--app <folder>] [--port]
 ```
 
 Builds and runs the engine tests of this machine by default. The [testing guide](testing.md#running-the-tests) explains each mode.
@@ -413,7 +413,9 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--gpu` | Runs the GPU tests instead of the engine tests. |
 | `--graphics-api` | A name of `gpu::Device::kApiNames` that the GPU tests, or the pages of the checks of the web, use alone. |
 | `--device` | The device, simulator or emulator of the target, which `haylen devices` lists. |
-| `--ui` | Runs the UI tests of the app of this folder on a simulator instead. |
+| `--ui` | Runs the UI tests of the app of this folder instead, on the simulator, device or emulator of `--target` and `--device`. |
+| `--ui-test` | A class of the UI tests of `--ui` to run alone, such as `CameraTests`, which repeats, so a device runs only the tests that need its hardware. Every class runs by default. |
+| `--device-farm` | Runs the UI tests of `--ui` on the phones of AWS Device Farm that this list names, separated by commas, with `--target android` or `ios`. |
 | `--app` | Builds the app of this folder in the configuration of `--config` and checks instead that it starts: with `--target web` in a page on WebGPU and WebGL2 or on the API of `--graphics-api`, and with `--target android` on the device of `--device` or on an emulator that it starts. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 

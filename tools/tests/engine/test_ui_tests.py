@@ -16,7 +16,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class UiTestsTest:
-    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, each runner takes the tests of its own folder, and a simulator run fails on the errors that the engine logs meanwhile."""
+    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, each runner takes the tests of its own folder, and a simulator run fails on the errors that the engine logs meanwhile."""
 
     def test_the_runner_runs_the_scheme_of_the_platform_and_its_info_names_the_app(self):
         project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "SIMULATOR-ID", Path("/build/derived"))
@@ -24,6 +24,8 @@ class UiTestsTest:
         assert [str(part) for part in UiTests.command("build-for-testing", *project)] == ["xcodebuild", "build-for-testing", *common]
         limits = ["-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", "600", "-collect-test-diagnostics", "never"]
         assert [str(part) for part in UiTests.command("test-without-building", *project)] == ["xcodebuild", "test-without-building", *common, *limits]
+        only = ["-only-testing:visionOS/MenuTests", "-only-testing:visionOS/CameraTests"]
+        assert [str(part) for part in UiTests.command("test-without-building", *project, ["MenuTests", "CameraTests"])] == ["xcodebuild", "test-without-building", *common, *limits, *only]
         env = UiTests.generation({"HOME": "/Users/me"}, Path("/app/ui-tests/apple"), Path("/build/runner"), "com.haylen.tests", "/build/screenshots")
         assert env == {
             "HOME": "/Users/me",
@@ -54,6 +56,8 @@ class UiTestsTest:
         tests = UiTests(RecordedCommands(tmp_path).context, None)
         with pytest.raises(UnsupportedTarget, match='"ios-simulator", "tvos-simulator", "visionos-simulator", "ios", "tvos", "visionos", "android"'):
             tests.run(str(tmp_path), "catalyst", "Debug", None)
+        with pytest.raises(UnsupportedTarget, match='so "--device-farm" takes no "--ui-test"'):
+            tests.run(str(tmp_path), "ios", "Debug", None, ["Google Pixel 9"], ["CameraTests"])
         (tmp_path / "haylen.json").write_text("{}", encoding="utf-8")
         with pytest.raises(InvalidManifest, match=re.escape('has no UI tests for "apple". Write them in Swift')):
             UiTests.tests(str(tmp_path), "apple")
@@ -69,6 +73,8 @@ class UiTestsTest:
         assert command[1:4] == ["-p", str(AndroidUiTests.PROJECT), ":runner:assembleDebug"]
         assert command[-3:] == ["-PhaylenUiTests=/app/ui-tests/android", "-PhaylenUiApp=com.haylen.tests", "-PhaylenBuildDirectory=/build/android-ui-tests"]
         assert AndroidUiTests.instrument() == ["am", "instrument", "-w", "-r", "com.haylen.uitests.test/androidx.test.runner.AndroidJUnitRunner"]
+        classes = ["-e", "class", "com.haylen.uitests.DeviceTests,com.haylen.uitests.PermissionTests"]
+        assert AndroidUiTests.instrument(["DeviceTests", "PermissionTests"]) == ["am", "instrument", "-w", "-r", *classes, "com.haylen.uitests.test/androidx.test.runner.AndroidJUnitRunner"]
         runner = (AndroidUiTests.PROJECT / "runner" / "build.gradle.kts").read_text(encoding="utf-8")
         assert f'namespace = "{AndroidUiTests.RUNNER}"' in runner
         assert 'experimentalProperties["android.experimental.self-instrumenting"] = true' in runner

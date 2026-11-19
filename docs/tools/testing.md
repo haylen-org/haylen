@@ -438,7 +438,10 @@ haylen test --ui samples/tests --target ios --device <name or UDID>
 haylen test --ui samples/tests --target tvos --device <name or UDID>
 haylen test --ui samples/tests --target android
 haylen test --ui samples/tests --target android --device-farm "Google Pixel 9"
+haylen test --ui samples/tests --target ios --device <name or UDID> --ui-test CameraTests
 ```
+
+A simulator, the emulator and the browser carry the checks, and a device runs only what they cannot show, such as the camera. The option `--ui-test` names a class of the tests to run alone and repeats, so a device runs only the classes that need its hardware.
 
 An app keeps its UI tests in its folder `ui-tests`, which is not part of its package: XCUITest cases in Swift in `ui-tests/apple`, which derive from `HaylenUITestCase`, and UI Automator tests in Kotlin in `ui-tests/android`, which derive from `HaylenUiTestCase`. The GUIs of the app expose their components through the accessibility tree, so a test finds a button or a label by the text it shows, which is the accessibility label on Apple platforms and the content description on Android:
 

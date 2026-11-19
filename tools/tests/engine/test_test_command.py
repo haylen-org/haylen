@@ -55,6 +55,8 @@ class TestCommandTest:
             TestCommandTest.run(tmp_path, "--ui", "samples/tests", "--gpu", "--target", "ios-simulator")
         with pytest.raises(UnsupportedTarget, match='The option "--port" builds the test port for this machine, so it takes neither "--gpu"'):
             TestCommandTest.run(tmp_path, "--port", "--gpu")
+        with pytest.raises(UnsupportedTarget, match='The option "--ui-test" picks classes of the UI tests of an app, so it takes "--ui"'):
+            TestCommandTest.run(tmp_path, "--ui-test", "CameraTests")
 
     def test_an_app_starts_only_on_the_web_or_android_and_alone(self, tmp_path, monkeypatch):
         monkeypatch.setattr(WebAppCheck, "run", lambda *arguments: pytest.fail("The start check of the app ran."))

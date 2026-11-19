@@ -28,6 +28,8 @@ class AndroidUiTests:
     PROJECT = Repository.ENGINE / "tests" / "ui" / "android"
     # The test APK of the runner instruments itself, so the device holds only the app and that APK.
     RUNNER = "com.haylen.uitests.test"
+    # The package of the Kotlin tests of every app, whose classes "--ui-test" names.
+    PACKAGE = "com.haylen.uitests"
     INSTRUMENTATION = f"{RUNNER}/androidx.test.runner.AndroidJUnitRunner"
     # The folder of the screenshots in the files of the runner on the device.
     DEVICE_OUTPUT = "ui-tests"
@@ -47,9 +49,12 @@ class AndroidUiTests:
         self.bridge = AndroidDebugBridge(context, self.sdk)
 
     @staticmethod
-    def instrument() -> list[str]:
-        """The arguments of `adb shell` that run every test of the runner, wait for them and report each test in its raw form."""
-        return ["am", "instrument", "-w", "-r", AndroidUiTests.INSTRUMENTATION]
+    def instrument(classes: Sequence[str] = ()) -> list[str]:
+        """The arguments of `adb shell` that run the tests of the runner, the classes that it names alone or every class, wait for them and report each test in its raw form."""
+        command = ["am", "instrument", "-w", "-r"]
+        if classes:
+            command += ["-e", "class", ",".join(f"{AndroidUiTests.PACKAGE}.{name}" for name in classes)]
+        return [*command, AndroidUiTests.INSTRUMENTATION]
 
     def gradle(self, tests: Path, identifier: str, builds: Path) -> list[object]:
         """The command that builds the test APK of the runner with the Kotlin tests of the app, which drives the app of the identifier, into the build folder of the engine."""
@@ -74,7 +79,7 @@ class AndroidUiTests:
         app, runner, _ = self.build(folder, tests, configuration, AndroidUiTests.FARM_ABI)
         return DeviceFarmUiTests(self.context).run("android", app, runner, devices, ProductFolders.app_folder(folder) / "ui-tests" / "device-farm-android")
 
-    def run(self, folder: Path, tests: Path, configuration: str, requested: str | None) -> dict[str, object]:
+    def run(self, folder: Path, tests: Path, configuration: str, requested: str | None, classes: Sequence[str] = ()) -> dict[str, object]:
         device = AndroidTestDevice(self.context, self.sdk, requested)
         app, runner, identifier = self.build(folder, tests, configuration, device.abi())
         output = ProductFolders.app_folder(folder) / "ui-tests" / "android"
@@ -89,7 +94,7 @@ class AndroidUiTests:
             confirmations = self.setting(serial, AndroidUiTests.IMMERSIVE_CONFIRMATIONS)
             self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", AndroidUiTests.IMMERSIVE_CONFIRMATIONS, "confirmed"))
             try:
-                self.instrument_on(serial)
+                self.instrument_on(serial, classes)
             finally:
                 self.restore_setting(serial, AndroidUiTests.IMMERSIVE_CONFIRMATIONS, confirmations)
                 self.copy_screenshots(serial, output)
@@ -110,9 +115,9 @@ class AndroidUiTests:
         action = ["delete", "secure", name] if value is None else ["put", "secure", name, value]
         self.context.process.run(self.bridge.command(serial, "shell", "settings", *action))
 
-    def instrument_on(self, serial: str) -> None:
+    def instrument_on(self, serial: str, classes: Sequence[str]) -> None:
         """Runs the instrumentation, prints its report as it comes and fails unless it reports that every test passed."""
-        command = self.bridge.command(serial, "shell", *AndroidUiTests.instrument())
+        command = self.bridge.command(serial, "shell", *AndroidUiTests.instrument(classes))
         lines = UiTestRun(self.context.terminal, AndroidUiTests.STARTED).run(command, self.context.environment)
         if not AndroidUiTests.passed(lines):
             raise BuildFailed("The UI tests failed, and the report above shows which ones and why.")
