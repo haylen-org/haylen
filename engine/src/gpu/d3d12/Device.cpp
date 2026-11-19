@@ -18,6 +18,7 @@
 #include "gpu/direct3d/MipLevels.hpp"
 #include "gpu/direct3d/ShaderCompiler.hpp"
 #include "gpu/direct3d/WideText.hpp"
+#include "gpu/direct3d/WindowSamples.hpp"
 #include "haylen/core/Log.hpp"
 
 namespace haylen::gpu::d3d12 {
@@ -65,6 +66,7 @@ void Device::enableDebugLayers(bool validation) {
 Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)), dred(validation) {
     createDevice(validation);
     readCapabilities();
+    direct3d::WindowSamples::check(target, capabilities.maxSampleCount, "Direct3D 12");
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
 
     textureViews = std::make_unique<DescriptorHeap>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 1024);

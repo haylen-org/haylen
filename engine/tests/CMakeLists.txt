@@ -128,6 +128,7 @@ set(HAYLEN_TEST_SOURCES
   debug/TraceRecorderTests.cpp
   gpu/DeviceFactoryTests.cpp
   gpu/direct3d/CompileQueueTests.cpp
+  gpu/direct3d/WindowSamplesTests.cpp
   gpu/GpuPreferenceTests.cpp
   gpu/HandleTableTests.cpp
   gpu/NullDeviceTests.cpp

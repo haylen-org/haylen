@@ -53,7 +53,7 @@ The device remembers what the context holds: the pipeline, the shaders, the stat
 
 Both devices show frames through a flip model swapchain of three buffers. A window with vertical sync waits for the refresh of the display. A window without vertical sync presents at once and lets the display tear where it supports it, so frames reach the screen as soon as they are ready.
 
-A flip model swapchain holds one sample per pixel. A window with multisampling draws into a multisampled image of its own, and the device resolves that image into the swapchain when it presents the frame.
+A flip model swapchain holds one sample per pixel. A window with multisampling draws into a multisampled image of its own, and the device resolves that image into the swapchain when it presents the frame. A window takes 1, 2, 4 or 8 samples, up to the most that the GPU takes for the color and the depth of the swapchain together, and a device whose window asks for another count fails to start with a sentence that names both counts, so the platform can try another API.
 
 A transparent window shows what lies behind it through the alpha of its pixels. Only a swapchain for composition keeps that alpha, so the devices show a transparent window through DirectComposition, which composites the frames over the desktop with premultiplied alpha. The window must have no redirection bitmap, which the platform asks for with the extended style `WS_EX_NOREDIRECTIONBITMAP`, or Windows draws an opaque background behind the frames.
 

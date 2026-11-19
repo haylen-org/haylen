@@ -18,6 +18,7 @@
 #include "gpu/direct3d/MipLevels.hpp"
 #include "gpu/direct3d/ShaderCompiler.hpp"
 #include "gpu/direct3d/Swapchain.hpp"
+#include "gpu/direct3d/WindowSamples.hpp"
 #include "haylen/core/Log.hpp"
 
 namespace haylen::gpu::d3d11 {
@@ -44,6 +45,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target
 Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)) {
     createDevice(validation);
     readCapabilities();
+    direct3d::WindowSamples::check(target, capabilities.maxSampleCount, "Direct3D 11");
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
     uniforms = std::make_unique<DynamicRing>(*device.Get(), kUniformRingSize, D3D11_BIND_CONSTANT_BUFFER, kUniformAlignment, "haylen-uniform-ring");
     timer = std::make_unique<FrameTimer>(*device.Get());
