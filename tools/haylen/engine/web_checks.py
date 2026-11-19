@@ -49,6 +49,13 @@ class WebChecks:
         "missing": ["ready", "warned", "runs on"],
     }
     WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
+    # The screens check: an app that asks to see every screen at a key, in a browser that grants the permission "window-management", one that denies it and one without the Window Management API.
+    SCREENS_STEPS = {
+        "granted": ["ready", "sees every screen"],
+        "denied": ["ready", "refused"],
+        "missing": ["ready", "unsupported"],
+    }
+    SCREENS_BROWSERS = {"granted": "grants every screen", "denied": "denies every screen", "missing": "has no Window Management API"}
     # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code `denied`.
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
     # The orientation check: a phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on, the screen goes away once the phone turns, and the lock of the app replaces the orientation of `haylen.json`.
@@ -133,6 +140,7 @@ class WebChecks:
             "plugins": self.plugins,
             "editor": self.editor,
             "memory": self.memory,
+            "screens": self.screens,
         }
         reports = {}
         for place, (name, check) in enumerate(checks.items()):
@@ -214,6 +222,18 @@ class WebChecks:
                 WebChecks.check_steps(report, steps, f"The page of the wake lock check in a browser that {browser}")
         self.context.terminal.success(
             "The page took the wake lock while the app kept the screen on, gave it up when it hid, took it again when it showed and released it when the app let the screen sleep, and a browser that refused it or lacked it only warned."
+        )
+
+    def screens(self, api: str | None) -> None:
+        site = self.site(WebChecks.DATA / "web-screens")
+        with ServedSite(site) as served:
+            for mode, steps in WebChecks.SCREENS_STEPS.items():
+                browser = WebChecks.SCREENS_BROWSERS[mode]
+                self.context.terminal.step(f"Running the screens check of the web in a headless browser that {browser}")
+                report = self.drive("screens-check.mjs", (), "the screens check of the web", served.page(WebChecks.query(api)), mode)
+                WebChecks.check_steps(report, steps, f"The page of the screens check in a browser that {browser}")
+        self.context.terminal.success(
+            'The app saw every screen after a key where the browser granted "window-management", and its request failed with the code "denied" where the browser denied it and with "unsupported" where the browser lacked the Window Management API.'
         )
 
     def fullscreen(self, api: str | None) -> None:
