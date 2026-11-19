@@ -38,7 +38,7 @@ class AndroidHost final : public NativeHost {
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     [[nodiscard]] math::Insets getReservedInsets() const override;
     void closeWindow() override;
-    void appStarted(core::Engine& engine, bool playing) override;
+    void appStarted(core::Engine&, bool playing) override;
     void appStopping() override;
     void framePlayed(core::Engine& engine) override;
     void preparePostedEvent(Event& event) const override;
@@ -64,9 +64,9 @@ class AndroidHost final : public NativeHost {
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
   private:
-    void reportBack(core::Engine& engine);
+    void reportBack(bool captured);
 
-    // Whether the activity last heard that the app takes the back button. Each activity creates its own host and starts with its back callback enabled, which holds back while the app starts.
+    // Whether the activity last heard that the app takes the back button. Each activity creates its own host and starts with its back callback enabled, and every app that starts holds back until its first frame.
     bool backReported = true;
     AndroidRuntime& runtime;
 };
