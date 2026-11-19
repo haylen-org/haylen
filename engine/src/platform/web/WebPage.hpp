@@ -73,7 +73,6 @@ class WebPage final {
 
     // The requests of the editor contract of `haylen-runtime.js`, each with the id of its request where it answers later through `completeRequest`. The ones that answer a number answer -1 when they fail, with the error kept for `getLastError` as the JSON `{code, message}`, which the page rejects the request with. The page edits the files of the package that plays, under its overlay, as atomic batches that each make a new revision of the package, and `applyChanges` hands the paths a batch touched to hot reload in development, or restarts the app otherwise. The runtime of a release, which carries the bootstrap of its app, plays only its protected release and refuses every request that edits or runs a package.
     [[nodiscard]] static const char* getLastError() noexcept;
-    [[nodiscard]] static int getRevision() noexcept;
     static int edit(const char* operations, const std::uint32_t* buffers, int count);
     static int clearFiles();
     static int applyChanges(double request);

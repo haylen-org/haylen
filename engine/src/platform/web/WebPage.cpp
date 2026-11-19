@@ -281,10 +281,6 @@ const char* WebPage::getLastError() noexcept {
     return lastError.c_str();
 }
 
-int WebPage::getRevision() noexcept {
-    return revision;
-}
-
 void WebPage::requireEditable() {
     if (content::Bootstrap::find() != nullptr) {
         throw RequestError("notEditable", "The release runtime of the app plays only its protected release, so the page cannot change its files.");
@@ -729,10 +725,6 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_cover_app() {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_uncover_app() {
     haylen::platform::WebEntry::guard("haylen_web_uncover_app", [&] { haylen::platform::NativeHost::getNativeViews().uncoverApp(); });
-}
-
-EMSCRIPTEN_KEEPALIVE int haylen_web_revision() {
-    return haylen::platform::WebPage::getRevision();
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_edit(const char* operations, const std::uint32_t* buffers, int count) {
