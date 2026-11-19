@@ -463,6 +463,12 @@ vec4 haylen_text(vec2 point) {
         distance = max(haylen_text_field(point - spread, texels), haylen_text_field(point + spread, texels));
     }
     float smoothing = max(haylen_text_smoothing(point, texels) * 0.7, 0.0001);
+
+    // A glyph without a visible outline and without softness is its fill alone, which most text is.
+    if (haylen_flash.a <= 0.0 && haylen_text_style.z <= 0.0) {
+        return vec4(color.rgb, color.a * smoothstep(0.5 - smoothing, 0.5 + smoothing, distance));
+    }
+
     float reach = haylen_text_style.x + haylen_text_style.z;
     float room = max(0.4375 - smoothing, 0.0);
     float fit = reach > room ? room / reach : 1.0;
