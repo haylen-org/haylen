@@ -21,7 +21,6 @@ Module.haylen = Module.haylen || {};
     // The files of the runtime lie next to its script, whose folder Emscripten knows on the page, while in the Worker mode the page names the script.
     const runtimeFile = (name) => (hostedInWorker ? new URL(name, new URL(haylen.runtimeUrl || "haylen.js", document.baseURI)).href : locateFile(name));
 
-
     const handlers = new Map();
     // The size of the drawable that the engine draws into, in pixels, which `haylen.setDrawableWidth` keeps up to date.
     const drawable = { width: 0 };
@@ -860,13 +859,15 @@ Module.haylen = Module.haylen || {};
 
         // Clearing the region before the text makes screen readers say a text that repeats.
         const announce = (text, interrupt) => {
-            const layer = mirror.layer || createLayer();
+            if (!mirror.layer) {
+                createLayer();
+            }
+
             const region = interrupt ? mirror.assertive : mirror.polite;
             region.textContent = "";
             setTimeout(() => {
                 region.textContent = text;
             }, 50);
-            return layer;
         };
 
         return { update, announce };
@@ -897,6 +898,7 @@ Module.haylen = Module.haylen || {};
 
         return source instanceof HTMLVideoElement ? source.currentTime : performance.now() / 1000;
     };
+
     // The streams of the web parts of plugins by the key the page gives each, which the engine side opens once the runtime is ready and answers through `streamOpened` with the room of an audio stream, logging why the engine refused a stream.
     const streams = { open: new Map(), nextKey: 1 };
 
@@ -957,7 +959,6 @@ Module.haylen = Module.haylen || {};
             },
         };
     };
-
 
     // What a plugin needs from the page: a secure context, an API of the browser, which is a path of properties from the global object such as `navigator.contacts`, and a feature that the permissions policy of the page allows. Each missing requirement logs once per plugin, and none of them has a file of a project that adds it, so `file` stays empty, while `snippet` holds the text that allows a feature of the permissions policy.
     const requirements = { kinds: ["secureContext", "api", "permissionsPolicy"], reported: new Set() };
@@ -1320,7 +1321,7 @@ Module.haylen = Module.haylen || {};
 
     // The splash of the page ends once the app drew its first frame and the splash of `haylen.json` lasted its duration, fading out over the seconds it gives.
     haylen.reportSplashEnded = function (fadeOut) {
-        notify("onSplashEnded", {fadeOut});
+        notify("onSplashEnded", { fadeOut });
     };
 
     // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, mode, modules, restored, assets, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
@@ -1347,7 +1348,6 @@ Module.haylen = Module.haylen || {};
         return "#" + CSS.escape(Module.canvas.id);
     };
 
-    // Reads `env(safe-area-inset-*)` of the viewport through a hidden probe and returns the part of each inset that covers the canvas, in framebuffer pixels, so a canvas away from the edges that a cutout or the bars of the system cover has none.
     // The safe area and the fold change only with the layout of the page, so the engine, which asks for them in every frame, reads them once after each change of the size, the scroll or the posture of the page.
     const pageLayout = { safeArea: null, fold: undefined };
     const forgetLayout = () => {
@@ -1364,6 +1364,7 @@ Module.haylen = Module.haylen || {};
             worker.postLayout();
         }
     };
+
     window.addEventListener("resize", forgetLayout);
     window.addEventListener("scroll", forgetLayout, { passive: true });
 
@@ -1371,6 +1372,7 @@ Module.haylen = Module.haylen || {};
         navigator.devicePosture.addEventListener("change", forgetLayout);
     }
 
+    // Reads `env(safe-area-inset-*)` of the viewport through a hidden probe and returns the part of each inset that covers the canvas, in framebuffer pixels, so a canvas away from the edges that a cutout or the bars of the system cover has none.
     haylen.safeAreaInsets = function () {
         if (pageLayout.safeArea) {
             return pageLayout.safeArea;
@@ -1433,6 +1435,7 @@ Module.haylen = Module.haylen || {};
 
         return pageScreens.ids.get(shown);
     };
+
     const describeScreen = (shown) => {
         const detailed = pageScreens.details !== null;
         return {
@@ -1444,6 +1447,7 @@ Module.haylen = Module.haylen || {};
             primary: detailed ? shown.isPrimary : true,
         };
     };
+
     const displaysChanged = () => {
         if (hostedInWorker) {
             worker.setState({ displays: haylen.displays() });
@@ -1451,6 +1455,7 @@ Module.haylen = Module.haylen || {};
 
         whenRuntimeReady(() => engine.call("haylen_web_displays_changed", null, [], []));
     };
+
     haylen.displays = function () {
         const all = pageScreens.details !== null ? pageScreens.details.screens : [window.screen];
         const current = pageScreens.details !== null ? pageScreens.details.currentScreen : window.screen;
@@ -1489,6 +1494,7 @@ Module.haylen = Module.haylen || {};
         status.addEventListener("change", follow);
         follow();
     };
+
     followScreensPermission().catch((error) => console.warn("The browser did not tell whether the page may see every screen: " + error.message));
 
     // The outputs of the app on other screens, each a window of the browser that `window.open` places on its screen through the Window Management API, with a canvas that fills the window and that the WebGPU device presents into. A browser opens such a window only shortly after a click or a key of the person, so the app opens an output from a button, and a window that the browser blocks ends the output with the reason. The window covers the work area of its screen when the output asks for fullscreen, since a page cannot make another window fullscreen without a gesture inside it. The endings are those of `platform::Output::Ending`, in its order.
@@ -1503,6 +1509,7 @@ Module.haylen = Module.haylen || {};
 
         whenRuntimeReady(() => engine.call("haylen_web_output_ended", null, ["number", "number", "string"], [number, ending, reason]));
     };
+
     haylen.outputCanvas = (number) => pageOutputs.get(number)?.canvas ?? null;
     haylen.openOutput = function (number, display, title, fullscreen, width, height) {
         const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
@@ -1547,28 +1554,32 @@ Module.haylen = Module.haylen || {};
             worker.post({ type: "output", number, canvas: offscreen }, [offscreen]);
         }
 
-        const report = () => {
+        const reportSize = () => {
             const scale = opened.devicePixelRatio;
             const pixels = [Math.max(1, Math.round(canvas.clientWidth * scale)), Math.max(1, Math.round(canvas.clientHeight * scale))];
             whenRuntimeReady(() => engine.call("haylen_web_output_canvas", null, ["number", "number", "number", "number"], [number, pixels[0], pixels[1], scale]));
         };
-        const pointer = (kind) => (event) => whenRuntimeReady(() => engine.call("haylen_web_output_pointer", null, ["number", "number", "number", "number", "number", "number", "number"], [number, kind, event.offsetX, event.offsetY, event.button ?? 0, 0, 0]));
-        canvas.addEventListener("pointerdown", pointer(0));
-        canvas.addEventListener("pointerup", pointer(1));
-        canvas.addEventListener("pointermove", pointer(2));
+        const sendPointer = (kind, event) => {
+            const values = [number, kind, event.offsetX, event.offsetY, event.button ?? 0, 0, 0];
+            whenRuntimeReady(() => engine.call("haylen_web_output_pointer", null, ["number", "number", "number", "number", "number", "number", "number"], values));
+        };
+        canvas.addEventListener("pointerdown", (event) => sendPointer(0, event));
+        canvas.addEventListener("pointerup", (event) => sendPointer(1, event));
+        canvas.addEventListener("pointermove", (event) => sendPointer(2, event));
         canvas.addEventListener("wheel", (event) => {
             event.preventDefault();
             whenRuntimeReady(() => engine.call("haylen_web_output_pointer", null, ["number", "number", "number", "number", "number", "number", "number"], [number, 3, event.offsetX, event.offsetY, 0, -event.deltaX / 100, -event.deltaY / 100]));
         }, { passive: false });
-        opened.addEventListener("resize", report);
+        opened.addEventListener("resize", reportSize);
         opened.addEventListener("pagehide", () => {
             if (pageOutputs.get(number) === output) {
                 pageOutputs.delete(number);
                 endOutput(number, outputEndings.person, "");
             }
         });
-        report();
+        reportSize();
     };
+
     haylen.closeOutput = function (number) {
         const output = pageOutputs.get(number);
         if (output !== undefined) {
@@ -2283,7 +2294,6 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-
     const reportNetwork = () => {
         engine.call("haylen_web_network", null, ["number"], [navigator.onLine ? 1 : 0]);
     };
@@ -2294,7 +2304,6 @@ Module.haylen = Module.haylen || {};
         return type.startsWith("portrait") ? 1 : 0;
     };
 
-    // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
     // Fullscreen covers the element that holds the canvas and the overlay of the runtime, so the fields and the views of plugins stay over the app. Browsers grant it only shortly after an input of the person, and Safari before 16.4 names it with its prefix.
     // The Fullscreen API takes the screen to cover once the person let the page see every screen, and a page that is fullscreen on another screen moves there.
     const changeFullscreen = async (value, display) => {
@@ -2413,11 +2422,13 @@ Module.haylen = Module.haylen || {};
         });
         return requestingWakeLock;
     };
+
     document.addEventListener("visibilitychange", () => {
         if (navigator.wakeLock) {
             requestWakeLock();
         }
     });
+
     haylen.keepScreenOn = function (id, value) {
         settleGatedCall(id, () => {
             screenKeptOn = value;
@@ -2444,15 +2455,18 @@ Module.haylen = Module.haylen || {};
         clipboardText = event.clipboardData.getData("text/plain");
         reportClipboard();
     }, true);
+
     // The worker of the Worker mode reads the text from the state of the page.
     const reportClipboard = () => {
         if (hostedInWorker) {
             worker.setState({ clipboard: clipboardText });
         }
     };
+
     haylen.clipboardText = function () {
         return clipboardText;
     };
+
     const withoutClipboard = (action) => ({ state: "unsupported", message: "The page cannot " + action + " the clipboard, because browsers give the clipboard only to pages served over https or from localhost." });
     haylen.writeClipboard = function (id, text) {
         settleGatedCall(id, async () => {
@@ -2471,6 +2485,7 @@ Module.haylen = Module.haylen || {};
             return { state: "granted" };
         });
     };
+
     haylen.readClipboard = function (id) {
         settleGatedCall(id, async () => {
             if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
@@ -2487,6 +2502,7 @@ Module.haylen = Module.haylen || {};
         });
     };
 
+    // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
     haylen.lockOrientation = function (value) {
         const orientation = screen.orientation;
         if (!orientation || !orientation.lock) {
@@ -2931,7 +2947,6 @@ Module.haylen = Module.haylen || {};
         haylen.reportError({ message: "The worker of the runtime failed: " + event.message, file: "", line: 0, traceback: "" });
     };
 
-    // Starts the worker once the page read the device, with the canvas, the options of the page and the state that the engine reads as it starts. The bytes of a package that the page holds go to the worker, and the addresses of the page become absolute, since the worker resolves addresses against its own script.
     // A page holds the start of the worker as it holds the module on the page: the functions of `Module.preRun` run first, and `Module.addRunDependency` holds the start until `Module.removeRunDependency` releases every dependency, as a loader does while it loads the web modules of plugins.
     const runPreRun = () => {
         const dependencies = new Set();
@@ -2956,6 +2971,7 @@ Module.haylen = Module.haylen || {};
         return released;
     };
 
+    // Starts the worker once the page read the device, with the canvas, the options of the page and the state that the engine reads as it starts. The bytes of a package that the page holds go to the worker, and the addresses of the page become absolute, since the worker resolves addresses against its own script.
     const startWorker = async () => {
         await Promise.all([readDevice(), runPreRun()]);
 

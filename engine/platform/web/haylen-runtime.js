@@ -390,7 +390,7 @@ Module.haylen = Module.haylen || {};
             const size = bytes ? bytes.length : 0;
             const pointer = size > 0 ? allocate(size) : 0;
             if (size > 0) {
-                HEAPU8.set(bytes, pointer);
+                Module.HEAPU8.set(bytes, pointer);
             }
 
             Module._haylen_web_store_received(id, pointer, size, bytes ? 1 : 0);
@@ -957,7 +957,6 @@ Module.haylen = Module.haylen || {};
         pushAudio: (stream, samples, channels) => pushAudio(stream.key, samples, channels),
     };
 
-
     // The Worker mode: the engine side answers the page through the messages of the worker. The page posts the calls of its page side into the engine, its input, the state that the engine reads during a frame, the requests of the editor, the ports of the audio outputs, the pushes of streams, the pictures, state and sound of videos and the canvases of outputs. The engine side posts the calls of the engine into the page, the answers of the editor, `ready` once the runtime runs and a heartbeat while the worker answers.
     if (hostedInWorker) {
         const kHeartbeatMilliseconds = 250;
@@ -1144,6 +1143,5 @@ Module.haylen = Module.haylen || {};
         Module.postRun.push(() => post({ type: "ready" }));
         setInterval(() => post({ type: "heartbeat" }), kHeartbeatMilliseconds);
     }
-
 
 })(Module.haylen);

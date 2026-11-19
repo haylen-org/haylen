@@ -192,7 +192,7 @@
             haylen: {
                 packageUrl: new URLSearchParams(location.search).get("package"),
                 graphicsApi: new URLSearchParams(location.search).get("graphicsApi"),
-                onLoadProgress: function ({loaded, total}) {
+                onLoadProgress: function ({ loaded, total }) {
                     const progress = document.getElementById("splash-progress");
                     const percent = total > 0 ? Math.min(100, Math.round((loaded * 100) / total)) : null;
                     progress.classList.toggle("indeterminate", percent === null);
@@ -207,7 +207,7 @@
                 onStarted: function () {
                     started = true;
                 },
-                onSplashEnded: function ({fadeOut}) {
+                onSplashEnded: function ({ fadeOut }) {
                     const splash = document.getElementById("splash");
                     splash.style.transitionDuration = fadeOut + "s";
                     splash.classList.add("hidden");
@@ -216,6 +216,7 @@
                     if (started) {
                         return;
                     }
+
                     const status = document.getElementById("splash-status");
                     document.getElementById("splash").classList.add("failed");
                     status.textContent = error.message;
