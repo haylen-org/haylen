@@ -53,8 +53,11 @@ function Terrain:enter()
     self.rebuilt = 0
     self.blast = Burst('explosions/explosion-small', {count = 4, scale = 0.6, layer = 30})
     self.groundMask, self.grassMask = {layer = -6}, {layer = -4}
+    self.belowArea = {0, 0, 0, 0}
+    -- The ground goes on below the grid down to the bottom of the canvas, so a tall view shows soil under the terrain instead of sky.
     self.drawGround = function()
         graphics2d.drawPolygon(self.ground, Terrain.white)
+        graphics2d.drawRect(self:below(), Terrain.white)
     end
     -- The grass shows where the ground is and above the surface the hills grew with, so its band never hangs into a crater.
     self.drawGrassMask = function()
@@ -208,6 +211,15 @@ function Terrain:growGrass()
             self.lawns[#self.lawns + 1] = lawn
         end
     end
+end
+
+-- Returns the area from one cell above the bottom row of the grid down to the bottom of the canvas, in a table that the draw reuses.
+function Terrain:below()
+    local bounds = graphics2d.canvasBounds()
+    local top = Terrain.origin.y + (Terrain.rows - 2) * Terrain.cellSize
+    local area = self.belowArea
+    area[1], area[2], area[3], area[4] = bounds.x, top, bounds.width, math.max(0, bounds:bottom() - top)
+    return area
 end
 
 -- Returns whether the sample nearest to a point of the world is air. Above the grid is air, and past its other edges is ground, which needs no rim.

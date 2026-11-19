@@ -22,6 +22,10 @@ Town.lantern = {110, 137}
 
 Town.glass = {night = '#FFFFC870', day = '#FF33465E'}
 
+-- The height of the ground strip in units, and the color of the deep soil of its bottom row that fills below it.
+Town.groundHeight = 370
+Town.soil = '#FF81401F'
+
 function Town:init()
     self.scenery = assets.load(Town.atlas, 'atlas', {filter = 'linear'})
     self.lamps = assets.texture(Town.lampTiles, {filter = 'linear'})
@@ -103,11 +107,16 @@ function Town.strip(texture, bottom, height, layer, color)
     graphics2d.draw(texture, left, bottom - height, {source = source, width = span, height = height, pivotX = 0, pivotY = 0, layer = layer, color = color})
 end
 
--- Draws the hills behind the village and the ground it stands on, down to the bottom of the canvas.
+-- Draws the hills behind the village and the ground it stands on at the height of its painting, with the deep soil of its bottom row below it down to the bottom of the canvas, so a tall view never stretches the grass.
 function Town:land(horizon, ground)
     local area = graphics2d.canvasBounds()
+    local top = ground - 60
+    local bottom = top + Town.groundHeight
     Town.strip(self.hills, ground + 40, ground + 40 - horizon, -10)
-    Town.strip(self.ground, area:bottom() + 10, area:bottom() + 10 - ground + 60, 0)
+    Town.strip(self.ground, bottom, Town.groundHeight, 0)
+    if area:bottom() > bottom - 1 then
+        graphics2d.drawRect({area.x, bottom - 1, area.width, area:bottom() - bottom + 1}, Town.soil, {layer = 0})
+    end
 end
 
 return Town
