@@ -264,7 +264,7 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
             val cameras = context.getSystemService(CameraManager::class.java)
             val wanted = if (facing == "front") CameraCharacteristics.LENS_FACING_FRONT else CameraCharacteristics.LENS_FACING_BACK
             val id = cameras.cameraIdList.firstOrNull { cameras.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == wanted } ?: cameras.cameraIdList.first()
-            reader.setOnImageAvailableListener({ source -> source.acquireLatestImage()?.use { convert(it) } }, handler)
+            reader.setOnImageAvailableListener({ source -> receive(source) }, handler)
             cameras.openCamera(id, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {
                     device = camera
@@ -312,17 +312,27 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
             }, handler)
         }
 
-        // Closes the camera, even one that still opens, and calls `then` on the thread of the camera once the system released it.
+        // Closes the camera, even one that still opens, and calls `then` on the thread of the camera once the system released it. The stop runs before the frames that wait for the thread, which a slow device piles up, so the system releases the camera at once.
         fun stop(then: () -> Unit) {
-            handler.post {
+            handler.postAtFrontOfQueue {
                 closed = then
                 answer("The camera stopped before it started.")
                 if (released) {
                     release(then)
-                    return@post
+                    return@postAtFrontOfQueue
                 }
 
                 device?.close()
+            }
+        }
+
+        // Takes the newest frame, which frees the buffer of the reader, and converts it while the camera runs.
+        private fun receive(source: ImageReader) {
+            val image = source.acquireLatestImage() ?: return
+            image.use {
+                if (closed == null) {
+                    convert(it)
+                }
             }
         }
 
