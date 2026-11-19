@@ -210,7 +210,8 @@ using haylen::platform::VideoStream;
     HaylenPermission* permission = [self findPermission:name];
     if (permission == nil) {
         NSString* message = [NSString stringWithFormat:@"The plugin \"%@\" requires the permission \"%@\", which it did not register with \"registerPermission\".", self.identifier, name];
-        completion([NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported"}]);
+        NSError* failure = [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported"}];
+        dispatch_async(dispatch_get_main_queue(), ^{ completion(failure); });
         return;
     }
 

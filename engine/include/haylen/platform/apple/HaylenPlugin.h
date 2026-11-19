@@ -121,7 +121,7 @@ NS_SWIFT_SENDABLE
 - (void)registerPermission:(HaylenPermission*)permission NS_SWIFT_NAME(register(_:));
 
 // Asks for the permission `name` that the plugin registered, such as `camera`, where the app does not hold it yet, before the plugin uses the capability. The completion runs on the main thread with `nil` once the app holds it or the system tells nothing until the app tries, or with an error whose user info holds the failure that a handler replies with: `message`, the code `denied` with the sentence that names the capability and how to ask again when the person refused it or the system did not show its prompt, or `unsupported` with the reason, and `data`, whose `missing` lists the requirements the project lacks. A name that the plugin did not register fails with the code `unsupported`.
-- (void)requirePermission:(NSString*)name completion:(void (^)(NSError* _Nullable error))completion NS_SWIFT_DISABLE_ASYNC;
+- (void)requirePermission:(NSString*)name completion:(void (^NS_SWIFT_UI_ACTOR)(NSError* _Nullable error))completion NS_SWIFT_DISABLE_ASYNC;
 
 // Native UI that covers the app, such as a full screen ad or a sign-in sheet, covers it while it shows, which halts and mutes the app. Covers are counted, and the covers of a plugin end when the window of the app goes away.
 - (void)coverApp;
