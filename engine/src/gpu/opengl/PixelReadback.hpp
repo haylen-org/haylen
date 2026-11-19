@@ -22,7 +22,8 @@ class PixelReadback final : public Device::Readback {
     [[nodiscard]] std::optional<std::vector<std::uint8_t>> poll() override;
 
   private:
-    [[nodiscard]] std::vector<std::uint8_t> copyOut(Context& owner) const;
+    // Returns the pixels of the copy, or nothing when the context could not hand its buffer over.
+    [[nodiscard]] std::optional<std::vector<std::uint8_t>> copyOut(Context& owner) const;
     void release(Context& owner) noexcept;
 
     std::weak_ptr<Context> context;

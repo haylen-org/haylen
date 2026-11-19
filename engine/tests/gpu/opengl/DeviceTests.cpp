@@ -1,18 +1,21 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
 #include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Device.hpp"
 #include "gpu/opengl/OpenGlTest.hpp"
+#include "gpu/opengl/PixelReadback.hpp"
 #include "support/AllocationTracker.hpp"
 
 namespace haylen::gpu::opengl {
@@ -51,6 +54,14 @@ class OpenGlDeviceTest : public OpenGlTest {
     static constexpr Gl::Enum kResetNotificationStrategy = 0x8256;
     static constexpr Gl::Int kLoseContextOnReset = 0x8252;
     static constexpr Gl::Enum kTexture2D = 0x0DE1;
+
+    // How many times a test polls a readback, a hundredth of a second apart, before it gives up on the copy.
+    static constexpr int kPollAttempts = 300;
+
+    // A mapping of a buffer that the context refuses, as a context that runs out of memory does.
+    static void* refuseMap(Gl::Enum, Gl::IntPtr, Gl::SizeiPtr, Gl::Bitfield) {
+        return nullptr;
+    }
 
     void SetUp() override {
         OpenGlTest::SetUp();
@@ -164,6 +175,28 @@ TEST_P(OpenGlDeviceTest, DrawsThroughAContextThatIsLostWhenTheGpuResets) {
     Gl::Int strategy = 0;
     opened.gl.getIntegerv(kResetNotificationStrategy, &strategy);
     EXPECT_EQ(strategy, kLoseContextOnReset);
+}
+
+// A copy of a render target whose buffer the context cannot hand over fails with the reason, instead of handing over pixels that it never read.
+TEST_P(OpenGlDeviceTest, FailsAReadbackWhoseBufferTheContextCannotHandOver) {
+    const auto opened = std::make_shared<Context>();
+    opened->gl.load(*context, GetParam());
+    PixelReadback readback(opened, 0, 4, 4, false);
+    opened->gl.getBufferSubData = nullptr;
+    opened->gl.mapBufferRange = &refuseMap;
+
+    std::string failure;
+    for (int attempt = 0; attempt < kPollAttempts && failure.empty(); ++attempt) {
+        try {
+            EXPECT_FALSE(readback.poll().has_value());
+        } catch (const std::runtime_error& error) {
+            failure = error.what();
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    EXPECT_EQ(failure, "The GPU could not hand over the pixels of a render target.");
 }
 
 // A texture names its last level, so a driver that ignores the level count of immutable storage still samples a texture of one level as complete.

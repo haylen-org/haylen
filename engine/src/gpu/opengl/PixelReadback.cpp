@@ -59,26 +59,38 @@ std::optional<std::vector<std::uint8_t>> PixelReadback::poll() {
         return std::nullopt;
     }
 
-    std::vector<std::uint8_t> result = copyOut(*owner);
+    std::optional<std::vector<std::uint8_t>> result = copyOut(*owner);
     release(*owner);
+
+    if (!result) {
+        throw std::runtime_error("The GPU could not hand over the pixels of a render target.");
+    }
+
     return result;
 }
 
 // OpenGL ES reads a buffer back only by mapping it, and OpenGL and WebGL2 copy it out.
-std::vector<std::uint8_t> PixelReadback::copyOut(Context& owner) const {
+std::optional<std::vector<std::uint8_t>> PixelReadback::copyOut(Context& owner) const {
     Gl& gl = owner.gl;
     const std::size_t bytes = pixels * (floating ? 16 : 4);
     std::vector<std::byte> read(bytes);
     owner.state.bindBuffer(Gl::kPixelPackBuffer, buffer);
 
+    bool copied = true;
     if (gl.getBufferSubData != nullptr) {
         gl.getBufferSubData(Gl::kPixelPackBuffer, 0, static_cast<Gl::SizeiPtr>(bytes), read.data());
     } else if (const void* mapped = gl.mapBufferRange(Gl::kPixelPackBuffer, 0, static_cast<Gl::SizeiPtr>(bytes), Gl::kMapReadBit)) {
         std::memcpy(read.data(), mapped, bytes);
         gl.unmapBuffer(Gl::kPixelPackBuffer);
+    } else {
+        copied = false;
     }
 
     owner.state.bindBuffer(Gl::kPixelPackBuffer, 0);
+
+    if (!copied) {
+        return std::nullopt;
+    }
 
     std::vector<std::uint8_t> result(pixels * 4);
     if (!floating) {
