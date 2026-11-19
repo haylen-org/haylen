@@ -179,7 +179,7 @@ The tooling keeps every build tree of the engine under `build/engine/`, apart fr
 | `build/engine/<host>-port-<config>` | The engine with the test port, which `haylen test --port` builds, with a tree of its own for each sanitizer, such as `<host>-port-<config>-thread`. |
 | `build/engine/coverage`, `build/engine/fuzz` | The trees of coverage and fuzzing. |
 | `build/engine/web-gpu-tests-<config>`, `build/engine/android-gpu-tests-<abi>-<config>`, `build/engine/<platform>-gpu-tests-<config>` | The GPU tests of the web, of Android and of the Apple platforms. |
-| `build/engine/<platform>-ui-tests` | The runner of the UI tests on an Apple simulator. |
+| `build/engine/<platform>-ui-tests`, `build/engine/android-ui-tests` | The runner of the UI tests on an Apple simulator or device, and the test APK of the UI tests on Android. |
 | `build/engine/consumers/<mode>-<config>` | The consumer project of [engine consumers](#engine-consumers). |
 | `build/engine/desktop-<config>`, `build/engine/web-<config>`, `build/engine/apple-<slice>-<architecture>-<config>`, `build/engine/android-<abi>-<config>` | The trees of the engine ports, which `haylen sdk build` reuses. The Apple port joins the architectures of a slice in `build/engine/apple-<slice>-<config>`, and the Android port builds its Android libraries with Gradle in `build/engine/android-libraries-<config>`. |
 

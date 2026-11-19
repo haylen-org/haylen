@@ -25,6 +25,22 @@ function navigation.useActions(document)
     input.defineAction(navigation.focusAction)
 end
 
+-- The test that the launch arguments "--test <code>" name, such as the one a UI test opens, or nil. A code of no test stops the project with the code.
+function navigation.launchedTest()
+    local arguments = haylen.launchArguments()
+    for index, argument in ipairs(arguments) do
+        if argument == '--test' then
+            local code = arguments[index + 1]
+            local test = catalog.byCode[code or '']
+            if not test then
+                error(string.format('The launch argument "--test" names "%s", which is the code of no test.', tostring(code)), 0)
+            end
+            return test
+        end
+    end
+    return nil
+end
+
 function navigation.lastTest()
     return catalog.byCode[preferences.get('tests.last', '')]
 end
@@ -42,14 +58,24 @@ function navigation.openTest(test)
     end
     preferences.set('tests.last', test.code)
     preferences.save()
+    scene.push(navigation.testScene(test), navigation.transition)
+end
+
+-- Opens the test that the launch arguments name over the test list of its category, at once, the way the UI tests start on it. A person did not pick it, so the menu keeps offering the test opened last.
+function navigation.openLaunched(test)
+    navigation.reopen(test)
+    scene.push(navigation.testScene(test))
+end
+
+-- The scene of a test, or of the page that says why it cannot run here.
+function navigation.testScene(test)
     local reason = catalog.unsupported(test)
     if reason then
         log.info(string.format('[%s] Unsupported on "%s": %s', test.code, haylen.platform, reason))
-        scene.push(require('harness.unsupported')(test, reason), navigation.transition)
-        return
+        return require('harness.unsupported')(test, reason)
     end
     log.info(string.format('[%s] Opened "%s".', test.code, test.title))
-    scene.push(require(test.module)(test), navigation.transition)
+    return require(test.module)(test)
 end
 
 function navigation.back()

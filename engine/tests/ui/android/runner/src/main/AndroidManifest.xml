@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The test APK instruments itself, so it runs in a process of its own and drives the app under test from outside, the way a person does. The meta-data names that app, so the APK needs nothing from the command that runs it, and a farm of devices installs only the app and this APK. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The APK sees the app it drives, which the visibility of packages hides otherwise. -->
+    <queries>
+        <package android:name="${haylenUiApp}" />
+    </queries>
+
+    <application>
+        <meta-data android:name="haylenUiApp" android:value="${haylenUiApp}" />
+    </application>
+</manifest>

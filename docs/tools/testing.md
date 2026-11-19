@@ -24,7 +24,8 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/data/gpu/` | The reference images of the scenes of the 2D renderer, one PNG per scene, which hold for every graphics API. |
 | `engine/tests/data/port/`, `engine/tests/data/port-app/` | The test port, the smallest [port](../platform/ports.md) of the engine, and the app that [the test port](#the-test-port) plays on it. |
 | `engine/tests/platform/sdl/` | The tests of the SDL platform layer: the translation of the events of SDL, the controllers, which virtual controllers of SDL stand in for, and the requests of fullscreen. They need no window, so `haylen-tests` compiles their sources with them. |
-| `engine/tests/ui/apple/` | The runner of [the UI tests](#the-ui-tests) of apps on the Apple simulators: its XcodeGen spec `project.yml` and the base class `HaylenUITestCase` in `support/`. |
+| `engine/tests/ui/apple/` | The runner of [the UI tests](#the-ui-tests) of apps on the Apple simulators and devices: its XcodeGen spec `project.yml` and the base class `HaylenUITestCase` in `support/`. |
+| `engine/tests/ui/android/` | The runner of [the UI tests](#the-ui-tests) of apps on Android: the Gradle project of a test APK that instruments itself and the base class `HaylenUiTestCase` in `support/`. |
 | `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`. |
 
 The target `haylen-tests` links `haylen::engine`, `haylen::headless`, `haylen::gpu`, the library of the content tool, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
@@ -411,16 +412,19 @@ gradle -p engine/platform/android :haylen:connectedDebugAndroidTest -PhaylenNati
 
 ## The UI tests
 
-The UI tests drive an app on a simulator the way a person does: they tap, drag and use the system UI, such as the controls that arrange the windows of iPadOS. They run on the iOS and iPadOS simulators, on the Apple TV simulator, where a test presses the buttons of the remote through `XCUIRemote` and types on the keyboard of the system, and on the Apple Vision Pro simulator, where a tap arrives as a look and a pinch.
+The UI tests drive an app the way a person does: they tap, drag, press the remote of a TV and the back button of Android, answer the prompts of the permissions, tap notifications, go home, close the app and open it again from a notification. No person takes part, so every check of a device runs on its own, on a simulator, an emulator, a device of this machine or a device of [Device Farm](hardware-testing.md#real-devices-on-device-farm).
 
 ```sh
 haylen test --ui samples/tests --target ios-simulator --device "iPad Pro 13-inch (M5)"
 haylen test --ui samples/tests --target tvos-simulator --device "Apple TV 4K (3rd generation)"
 haylen test --ui samples/tests --target visionos-simulator --device "Apple Vision Pro"
-haylen test --ui samples/games/tiny-island --target visionos-simulator
+haylen test --ui samples/tests --target ios --device <name or UDID>
+haylen test --ui samples/tests --target tvos --device <name or UDID>
+haylen test --ui samples/tests --target android
+haylen test --ui samples/tests --target android --device-farm "Google Pixel 9"
 ```
 
-An app keeps its UI tests in Swift in its folder `ui-tests`, which is not part of its package. Each test is an XCUITest case that derives from `HaylenUITestCase`. The GUIs of the app expose their components through the accessibility tree, so a test finds a button or a label by the text it shows:
+An app keeps its UI tests in its folder `ui-tests`, which is not part of its package: XCUITest cases in Swift in `ui-tests/apple`, which derive from `HaylenUITestCase`, and UI Automator tests in Kotlin in `ui-tests/android`, which derive from `HaylenUiTestCase`. The GUIs of the app expose their components through the accessibility tree, so a test finds a button or a label by the text it shows, which is the accessibility label on Apple platforms and the content description on Android:
 
 ```swift
 import XCTest
@@ -434,29 +438,99 @@ class MenuTests: HaylenUITestCase {
 }
 ```
 
-The command `haylen test --ui <app>` runs these steps:
+```kotlin
+package com.haylen.uitests
 
-- It builds the app for the simulator target through the Apple backend and verifies it, as `haylen app build` does, in the configuration of `--config`, `Debug` by default, against the Release SDK of the simulator.
-- It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/engine/<platform>-ui-tests`, with the tests of the app, and builds it with `xcodebuild build-for-testing`.
-- It boots the simulator that `--device` names without a window, or else a booted one or the first iPhone, Apple TV or Apple Vision Pro, and installs the app.
-- It runs the tests with `xcodebuild test-without-building`, which prints each test and each failure. The runner receives the identifier of the app and the folder of the screenshots through the prefix `TEST_RUNNER_` of xcodebuild. A test that runs longer than 10 minutes stops and fails.
-- It relays the log of the app meanwhile and fails when the engine logged an error, even when every test passed, so a layout that leaves the drawable behind the window fails the run.
-- It uninstalls the app and the runner, and shuts the simulator down when it booted it.
+import org.junit.Test
 
-The class `HaylenUITestCase` starts the app again for each test and gives the tests these helpers:
+class MenuTests : HaylenUiTestCase() {
+    @Test
+    fun aTapOnACategoryOpensItsTests() {
+        tap("Sprites")
+        waitFor("SPR-001  Sprite basics")
+        saveScreenshot("sprites-category")
+    }
+}
+```
+
+A test class starts the app somewhere through its launch arguments, which the app reads with [`haylen.launchArguments`](../lua-api/haylen.md#haylenlauncharguments). The test project opens the test that `--test <code>` names, so its UI tests start on the test they check.
+
+### Apple platforms
+
+The command `haylen test --ui <app>` with an Apple platform runs these steps:
+
+- It builds the app for the target of the platform through the Apple backend and verifies it, as `haylen app build` does, in the configuration of `--config`, `Debug` by default, against the Release SDK of the target.
+- It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/engine/<platform>-ui-tests`, with the tests of the app. The Info.plist of the runner names the app it drives and the folder of its screenshots, so the runner needs nothing from the command that runs it.
+- On a simulator it boots the simulator that `--device` names without a window, or else a booted one or the first iPhone, Apple TV or Apple Vision Pro, builds the runner with `xcodebuild build-for-testing` and installs the app.
+- On a device, `ios`, `tvos` or `visionos`, it builds the runner for the device with the development team that signed the app, which Xcode makes the profiles of, and installs the app with `devicectl`. The device stays unlocked during the run. tvOS launches no app while the Apple TV sleeps, so `HaylenUITestCase` presses the remote before it launches the app, which wakes it.
+- It runs the tests with `xcodebuild test-without-building`, which prints each test and each failure. A test that runs longer than 10 minutes stops and fails.
+- On a simulator it relays the log of the app meanwhile and fails when the engine logged an error, even when every test passed, so a layout that leaves the drawable behind the window fails the run. A device gives the Mac no stream of its log, so there the checks of the tests are the results.
+- It copies the screenshots back from a device, uninstalls the app and the runner, and shuts the simulator down when it booted it.
+
+The class `HaylenUITestCase` starts the app again for each test, with the launch arguments of its class, and gives the tests these helpers:
 
 | Helper | What it does |
 | --- | --- |
-| `element(_:)`, `element(matching:)` | The first element of the app whose label is the text or matches the regular expression. |
-| `waitFor(_:)`, `tap(_:)` | Waits until an element exists, and taps the element with the text on every simulator but the Apple TV, which has no taps. |
+| `launchArguments` | The launch arguments of the app, which a test class overrides, empty by default. |
+| `resetResources` | The resources, such as `.camera` or `.location`, whose authorization the app loses before it starts, so their prompts show again whatever a test before answered. The authorization of notifications resets only when the app installs again, which each run does. |
+| `element(_:)`, `element(matching:)`, `element(startingWith:)` | The first element of the app whose label is the text, matches the regular expression or starts with the text. |
+| `waitFor(_:)`, `tap(_:)` | Waits until an element exists, and taps the element with the text on every platform but the Apple TV, which has no taps. |
+| `activate(_:after:)` | Presses a component of a GUI the way the person does: a tap, or on the Apple TV the arrows that the test names and then the select button of the remote. The focus of a GUI belongs to the engine, which XCUITest does not read, so the arrows take the focus from the component that holds it to this one, and the other platforms ignore them. |
+| `activate(_:)` | Presses a native view the way the person does: a tap, or on the Apple TV the select button once `focus(_:in:)` moved the focus of UIKit onto the view. |
+| `focus(_:in:)` | Moves the focus of UIKit onto a native view of the app or of the system UI over it, pressing the arrow that points from the view that holds the focus toward it. |
 | `waitUntil(_:_:)` | Waits until a condition holds, and fails with the message when it never does. |
 | `saveScreenshot(_:)` | Saves a picture of the window of the app, never the whole screen, in `ui-tests/<platform>` of the build folder of the app. |
+| `answerAlert(_:)` | Taps the button with one of the labels on the alert of the system over the app, such as the prompt of a permission, in the language of the device. |
+| `tapNotification(containing:)` | Taps the banner of a notification over the app, the Home Screen or another app, and waits until the app is in front. |
+| `goHome()` | Sends the app to the background through the Home Screen. |
 | `setMultitasking(_:)` | Chooses Full Screen Apps, Windowed Apps or Stage Manager in the settings of iPadOS, and returns the mode it replaced, so a test puts it back. |
 | `arrangeWindow(_:)` | Picks an arrangement of the window controls of iPadOS, such as `Left`, `Right` or `Fill`. |
 | `resizeWindow(by:)` | Drags the bottom right corner of the window of the app, which resizes it. |
 | `turnDevice(_:)` | Turns the iPhone or the iPad to an orientation and waits until the window of the app turns with it. |
 
+A test closes the app with `app.terminate()`, and `XCUIDevice.shared.location` gives the simulator and the device a place to report, so a test of the location knows what to expect.
+
+### Android
+
+The command `haylen test --ui <app> --target android` runs these steps:
+
+- It builds the app for the ABI of the device that `--device` names, the only one connected or else the emulator that it starts without a window, as [the GPU tests of Android](#the-gpu-tests) do.
+- It builds the runner of `engine/tests/ui/android` with the pinned Gradle into `build/engine/android-ui-tests`, with the Kotlin tests of the app and the identifier of the app in its manifest, as a test APK that instruments itself, so it runs in a process of its own and drives the app from outside.
+- It installs the app and the test APK, runs `am instrument`, which prints each test and each failure, and fails unless every test passed. The run must start its first test within a bounded time.
+- It copies the screenshots back, uninstalls the app and the test APK, and shuts the emulator down when it started it.
+
+The class `HaylenUiTestCase` starts the app again for each test, with the launch arguments of its class in the extra `dev.haylen.arguments` of the launch intent, and gives the tests these helpers:
+
+| Helper | What it does |
+| --- | --- |
+| `launchArguments` | The launch arguments of the app, which a test class overrides, empty by default. |
+| `revokedPermissions` | The runtime permissions, such as `android.permission.CAMERA`, that the app loses before it starts, so their dialogs show again whatever a test before answered. |
+| `element(label)`, `element(pattern)`, `elementStartingWith(prefix)` | The node whose content description or text is the text, matches the regular expression or starts with the text, or the text field whose hint, its label, does. |
+| `waitFor(...)`, `waitForStart(prefix)`, `tap(label)`, `tapButton(label)` | Waits until a node shows, and taps the node with the text, or the native button with the text, which the theme of Android may show in capitals. |
+| `labelOf(node)` | Reads the content description of a node, or the text of a native view, and gives nothing once the app built its accessibility tree again after the search, so a test that waits searches again. |
+| `poll(timeout) { }`, `waitUntil(message) { }` | Checks a condition four times a second until it holds, and returns whether it held or fails with the message. |
+| `answerPermission(button)` | Taps a button of the permission dialog of the system by its resource id, such as `permission_allow_foreground_only_button`, `permission_allow_button` or `permission_deny_button`, which hold in every language. |
+| `tapNotification(text)` | Opens the notification shade, taps the notification with the text and waits until the app is in front. |
+| `goHome()`, `removeFromRecents()` | Sends the app to the background, or removes its task from the recent apps with `am stack remove`, which the system does when a person swipes the card away, whatever the launcher draws, and ends the process with `am kill` once it holds no activity, as the system does when it needs the memory, while the alarms and notifications of the app stay. |
+| `simulateLocation(latitude, longitude)` | Reports a place through test providers of the GPS and the network until the test ends, which the operation `android:mock_location` lets the runner add on an emulator and on a device. |
+| `isEmulator()` | Whether the tests run on the emulator, which lacks hardware such as a microphone that hears a room. |
+| `saveScreenshot(name)` | Saves a picture of the window of the app, never the whole screen, in `ui-tests/android` of the build folder of the app. |
+
+### The tests of the test project
+
 The test project checks with them that a tap opens a category, that the software keyboard types, deletes and turns with a field on the iPhone and the iPad, that the keyboard of the Apple TV types into the search of its menu, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays, and Car Dashboard and Smart Home turn to landscape and back to portrait and save a picture of each.
+
+The tests of plugins open their test with `--test <code>` and read its checks, which the results of a test show as cards whose accessibility label is the line of the check, such as `Pass: The camera permission reaches the app. The request answered "granted".`:
+
+| Test | iOS and iPadOS | Apple TV | Android |
+| --- | --- | --- | --- |
+| PLG-008, PLG-009, PLG-019 | The native screen that covers the app and closes, the screen of the plugin that answers the call, a cancel, a restart under the screen and the screen of SwiftUI, and the purchases of the fake store with a cancel and a restore. | The same, with the remote. | The same, but the screen of SwiftUI, which Android lacks. |
+| PLG-011 | The prompts of the camera, the microphone, the location and notifications, the camera of the plugin that follows the answer, and the tap on a notification while the app shows, from the Home Screen and after the system ended the app. | The test does not run there. | The same with the permission dialogs, and the tap on a notification after the app left the recent apps. |
+| PLG-016 | The cameras, a photo and the microphone with its level, on a device, since the simulator has no camera. | The test does not run there. | The same, on the emulator and on a device. |
+| PLG-017 | The prompt of the location, the place that the test simulates and the native map. | The same, with the remote. | The same, with test providers of the location. |
+| PLG-015 | | | The back button, which leaves the test for its list. |
+
+The samples of the plugins of system capabilities keep UI tests of the same kind for every call of their plugin, as the repository of the plugins describes.
 
 ## Sanitizers
 
@@ -629,9 +703,11 @@ GitHub runs at most 20 jobs of a public repository at once, and at most 5 of the
 | `web` | Ubuntu | Takes the web SDK of the run and the desktop SDK of Linux for its content tool. Runs `test --target web --graphics-api webGl2 --shard <shard>` in two shards, the [error screen check](#the-error-screen-check-of-the-web), the [wake lock check](#the-wake-lock-check-of-the-web), the [fullscreen check](#the-fullscreen-check-of-the-web), the [plugin check](#the-plugin-check-of-the-web), the [editor check](#the-editor-check-of-the-web) and the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner on WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas. In its first shard, `test --target web --app samples/tests --config Release --graphics-api webGl2` builds the protected web release of the test project with keys made for the job and thrown away with it, verifies it for anything a release never holds and [checks that it starts](#the-start-check-of-an-app-on-the-web). |
 | `android-sdk` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2 and the Android 37.2 platform. Runs `sdk build --target android`, which builds the SDK of every ABI with the Android libraries in its local Maven repository, and hands it to the `android` job. |
 | `android` | Ubuntu | Installs the same tools and takes the Android SDK of the run and the desktop SDK of Linux for its content tool. Creates the starter app and the starter C++ app, gives the starter app an upload key with `app sign build/starter --target android` and runs `app build build/starter --target android --config Release`, which builds the protected release, the library of the app for every ABI and the signed APK, and verifies it for anything a release never holds. Last, `app build build/starter-cpp --target android` builds the C++ app, whose C++ code the CMake external build of Gradle compiles for every ABI against the SDK. |
+| `android-ui` | Ubuntu | Installs the NDK, CMake, the emulator and the Android 37 image for x86-64, lets the emulator use KVM and creates a virtual device. Takes the Android SDK of the run and runs `test --ui samples/tests --target android`, [the UI tests](#the-ui-tests) of the test project on that device without a window. |
 | `android-gpu` | Ubuntu | Installs the NDK, the emulator and the Android 37 image for x86-64, lets the emulator use KVM and creates a virtual device. Runs `test --gpu --target android` with `HAYLEN_TEST_GPU_SOFTWARE=1`, which starts that device without a window, drawing through SwiftShader, and runs the GPU tests on every device of the Android build that starts there. |
 | `apple-slices` | macOS | Builds one slice of `Haylen.xcframework` in each of eight jobs, `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos` and `visionos-simulator`, with the architectures of the slice, and hands each SDK to the `apple` job. |
 | `macos-sdk` | macOS | Runs `sdk build --target player`, which builds the desktop SDK of macOS with the player and the content tool, and hands it to the `apple` job. |
+| `apple-ui` | macOS | Joins the slices of the iOS and tvOS simulators and runs `test --ui samples/tests` with `--target ios-simulator` and `--target tvos-simulator`, [the UI tests](#the-ui-tests) of the test project on the first iPhone and the first Apple TV of the runner. |
 | `apple` | macOS | Joins the slices into the Apple SDK with `sdk join build/slices/*` and takes the desktop SDK of macOS for its content tool. Creates the starter app and the starter C++ app and runs `app build build/starter --target ios-simulator --config Release`, which builds and verifies the protected release for the iOS simulator, and `app build build/starter-cpp --target ios-simulator`, whose C++ code the generated Xcode project compiles against the SDK. Last, it takes the web SDK of the run and checks with `test --target web --app samples/tests --config Release --graphics-api webGpu` that the protected web release of the test project starts on WebGPU, which Chrome draws there through Metal. |
 
-The engine tests run in the `tests` and `sanitizers` jobs, the GPU tests in the `tests`, `web-sdk` and `android-gpu` jobs and the test project in the `test-project` jobs. The SDK jobs and the `android` and `apple` jobs check that the SDKs of every target build and that apps build against them, the apps jobs build the installers of the desktops and a C++ app in Debug and Release, and the `web` and `apple` jobs check that a protected web release starts on WebGL2 and on WebGPU.
+The engine tests run in the `tests` and `sanitizers` jobs, the GPU tests in the `tests`, `web-sdk` and `android-gpu` jobs, the test project in the `test-project` jobs and its UI tests in the `android-ui` and `apple-ui` jobs. Devices of this machine and of Device Farm run the UI tests that need real hardware, which no runner of GitHub has. The SDK jobs and the `android` and `apple` jobs check that the SDKs of every target build and that apps build against them, the apps jobs build the installers of the desktops and a C++ app in Debug and Release, and the `web` and `apple` jobs check that a protected web release starts on WebGL2 and on WebGPU.

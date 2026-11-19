@@ -69,13 +69,16 @@ function Permissions:enter()
     self:showOpened()
 end
 
--- A card with the state of one permission, which the answer of its prompt changes.
+-- A card with the state of one permission, which the answer of its prompt changes. Screen readers and the UI tests read the state with the name of the permission, such as "Camera: Granted".
 function Permissions.card(kind, icon, title)
     return ui.card{grow = 1, align = 'stretch', gap = 8,
         ui.row{gap = 16, ui.icon{image = icon, size = 44, color = 'accentText'}, ui.label{text = title, font = 'heading', grow = 1}},
-        ui.statusIndicator{id = kind .. 'State', text = 'Checking', tone = 'neutral'},
+        ui.statusIndicator{id = kind .. 'State', text = 'Checking', tone = 'neutral', accessibilityLabel = title .. ': Checking'},
     }
 end
+
+-- The names of the permissions on their cards.
+Permissions.titles = {camera = 'Camera', microphone = 'Microphone', location = 'Location', notifications = 'Notifications'}
 
 -- The words and the tone of each state of a permission.
 Permissions.states = {granted = {'Granted', 'success'}, prompt = {'Not asked yet', 'information'}, denied = {'Denied', 'danger'}, unknown = {'Asked at the first use', 'warning'}}
@@ -88,8 +91,8 @@ function Permissions:exit()
 end
 
 function Permissions:show(kind, state, message)
-    local shown = Permissions.states[state]
-    self:set(kind .. 'State', shown and {text = shown[1], tone = shown[2]} or {text = 'Unsupported', tone = 'neutral', tooltip = message})
+    local shown = Permissions.states[state] or {'Unsupported', 'neutral'}
+    self:set(kind .. 'State', {text = shown[1], tone = shown[2], tooltip = Permissions.states[state] and '' or message, accessibilityLabel = Permissions.titles[kind] .. ': ' .. shown[1]})
 end
 
 function Permissions:ask(kind)
@@ -131,6 +134,7 @@ end
 function Permissions:notify()
     self:act(function()
         local name = 'A local notification is scheduled'
+        self.results:set('notify', 'waiting', name, 'The plugin schedules the notification.')
         local scheduled, err = demo.notify(Permissions.notifySeconds):await()
         if err and err.code == 'noHandler' then
             self.results:set('notify', 'skip', name, 'The C++ library of the desktops shows no notifications.')
@@ -141,6 +145,7 @@ function Permissions:notify()
         end
         self:set('notification', {text = string.format('The notification shows in %d seconds. Tap it now, or close the app first to see the tap launch it, except on the web, where a closed page shows nothing.', Permissions.notifySeconds)})
         self.results:set('notify', 'pass', name, string.format('The notification "%s" is on its way.', scheduled.identifier))
+        self.results:set('opened', 'waiting', 'The tap on the notification reaches the app', string.format('The app received %d taps so far and waits for the tap on "%s".', #Permissions.opened, scheduled.identifier))
     end)
 end
 

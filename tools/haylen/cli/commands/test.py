@@ -21,7 +21,7 @@ from haylen.engine.web_gpu_tests import WebGpuTests
 
 class TestCommand(Command):
     PATH = ("test",)
-    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" and "--app" the start of an app on the web, with "--ui" the UI tests of an app on an Apple simulator, and with "--port" the app of the test port.'
+    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" and "--app" the start of an app on the web, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, and with "--port" the app of the test port.'
 
     DESKTOPS = ("macos", "windows", "linux")
     # The names of `gpu::Device::kApiNames`, which "--graphics-api" takes.
@@ -34,7 +34,7 @@ class TestCommand(Command):
             "--target",
             default=Host.system(),
             choices=TestCommand.TARGETS,
-            help='The target that the tests build for and run on, this machine by default. The web, Android, the Apple simulators, Mac Catalyst and Apple devices run the GPU tests, the web also its checks, and "--ui" takes "ios-simulator", "tvos-simulator" or "visionos-simulator".',
+            help='The target that the tests build for and run on, this machine by default. The web, Android, the Apple simulators, Mac Catalyst and Apple devices run the GPU tests, the web also its checks, and "--ui" takes "ios-simulator", "tvos-simulator", "visionos-simulator", "ios", "tvos", "visionos" or "android".',
         )
         parser.add_argument("--config", default="Debug", choices=EngineTree.CONFIGURATIONS, help='The configuration of the build tree, or of the app of "--ui" or "--app", "Debug" by default.')
         parser.add_argument("--sanitizers", choices=EngineTree.SANITIZERS, help="Build in a tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer.")
@@ -60,7 +60,16 @@ class TestCommand(Command):
             help='The Android device of "--target android", the only one connected or an emulator that it starts by default, the name or identifier of a simulator, a booted one or the first of the family by default, or the device of "--target ios", "tvos" or "visionos". The command "haylen devices" lists them.',
         )
         parser.add_argument(
-            "--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--target", instead of the engine tests.'
+            "--ui",
+            metavar="app",
+            help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests/apple" on an Apple simulator or device or the Kotlin tests of its folder "ui-tests/android" on Android, as "--target" and "--device" name, instead of the engine tests.',
+        )
+        parser.add_argument(
+            "--device-farm",
+            metavar="devices",
+            type=lambda value: tuple(name.strip() for name in value.split(",") if name.strip()),
+            default=(),
+            help='Run the UI tests of "--ui" on the devices of AWS Device Farm that this list names, separated by commas, such as "Google Pixel 9,Samsung Galaxy S24", with "--target android" or "ios", instead of a device of this machine. The AWS command line takes its credentials from the environment.',
         )
         parser.add_argument(
             "--app",
@@ -92,7 +101,9 @@ class TestCommand(Command):
         if arguments.ui:
             if gpu or arguments.port:
                 raise UnsupportedTarget('The option "--ui" runs the UI tests of an app, so it takes neither "--gpu", "--graphics-api" nor "--port".')
-            return UiTests(context, session.pipeline).run(arguments.ui, target, arguments.config, arguments.device)
+            return UiTests(context, session.pipeline).run(arguments.ui, target, arguments.config, arguments.device, arguments.device_farm)
+        if arguments.device_farm:
+            raise UnsupportedTarget('The option "--device-farm" runs the UI tests of an app, so it takes "--ui".')
         if arguments.port:
             if gpu or target != Host.system():
                 raise UnsupportedTarget('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--target".')

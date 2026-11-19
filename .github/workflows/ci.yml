@@ -310,6 +310,38 @@ jobs:
       - name: GPU tests on the emulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target android
 
+  # The UI tests of the test project on the Android emulator, which answer the permission dialogs, tap the notifications from the app, the home screen and the recent apps, and press the back button.
+  android-ui:
+    name: Android UI tests
+    needs: android-sdk
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: android-actions/setup-android@v4.0.4
+      - name: Install the NDK, CMake, the platform, the emulator and its image
+        run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+      - uses: ./.github/actions/sdk
+        with:
+          name: android-sdk
+      - name: Let the emulator use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Create the virtual device
+        run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --package "system-images;android-37.0;default;x86_64"
+      - name: UI tests on the emulator
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target android
+
   # A project that finds the desktop SDK of the run with "find_package", the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
   linux-apps:
     name: Linux apps
@@ -432,6 +464,26 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target android --config Release
       - name: Build the C++ app
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target android
+
+  # The UI tests of the test project on the iOS and tvOS simulators, which answer the prompts of the system, tap the notifications from the app, the Home Screen and a closed app, and press the remote of the TV.
+  apple-ui:
+    name: Apple UI tests
+    needs: apple-slices
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          xcodegen: "true"
+      - uses: ./.github/actions/sdk
+        with:
+          name: apple-slice-*-simulator
+      - name: Join the slices of the simulators
+        run: uv run --locked haylen --verbose sdk join build/slices/ios-simulator build/slices/tvos-simulator
+      - name: UI tests on the iOS simulator
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target ios-simulator
+      - name: UI tests on the tvOS simulator
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target tvos-simulator
 
   # The joined Apple SDK, the starter apps for the iOS simulator against it, and the start of the protected web release of the test project on WebGPU, which Chrome draws through Metal.
   apple:

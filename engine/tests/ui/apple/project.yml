@@ -1,4 +1,4 @@
-# XcodeGen spec of the UI test runner of apps, which "haylen test --ui" generates into the build folder with the Swift tests of the folder that "HAYLEN_UI_TESTS" names, the folder "ui-tests" of the app.
+# XcodeGen spec of the UI test runner of apps, which "haylen test --ui" generates into the folder that "HAYLEN_UI_RUNNER" names with the Swift tests of the folder that "HAYLEN_UI_TESTS" names, the folder "ui-tests/apple" of the app. The Info.plist of each runner names the app it drives, "HAYLEN_UI_APP", and the folder of its screenshots, "HAYLEN_UI_OUTPUT", so the runner needs nothing from the command that runs it, as on a farm of devices.
 name: HaylenUITests
 options:
   deploymentTarget:
@@ -16,6 +16,11 @@ targets:
   iOS:
     type: bundle.ui-testing
     platform: iOS
+    info:
+      path: ${HAYLEN_UI_RUNNER}/iOS-Info.plist
+      properties: &properties
+        HaylenUIApp: ${HAYLEN_UI_APP}
+        HaylenUIOutput: ${HAYLEN_UI_OUTPUT}
     sources: &sources
       - support
       - path: ${HAYLEN_UI_TESTS}
@@ -26,6 +31,9 @@ targets:
   tvOS:
     type: bundle.ui-testing
     platform: tvOS
+    info:
+      path: ${HAYLEN_UI_RUNNER}/tvOS-Info.plist
+      properties: *properties
     sources: *sources
     settings:
       base:
@@ -33,6 +41,9 @@ targets:
   visionOS:
     type: bundle.ui-testing
     platform: visionOS
+    info:
+      path: ${HAYLEN_UI_RUNNER}/visionOS-Info.plist
+      properties: *properties
     sources: *sources
     settings:
       base:

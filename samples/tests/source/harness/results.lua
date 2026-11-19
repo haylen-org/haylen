@@ -1,4 +1,4 @@
--- Rows of checks of a test: a state, a name and a detail. The states are waiting, pass, fail, info and skip, which marks what does not apply to the platform, such as an unsupported call. A test shows them as cards in a panel of its GUI, or draws them on its stage. Every row that settles in a new state goes to the log with the code of the test, and a row that fails publishes the event "testCheckFailed", which fails the test in a run of every test.
+-- Rows of checks of a test: a state, a name and a detail. The states are waiting, pass, fail, info and skip, which marks what does not apply to the platform, such as an unsupported call. A test shows them as cards in a panel of its GUI, or draws them on its stage. Every row that settles in a new state goes to the log with the code of the test, and a row that fails publishes the event "testCheckFailed", which fails the test in a run of every test. Screen readers and the UI tests read each card as one element whose label is the line of its row, such as "Pass: The camera starts. The camera started at 640 by 480 pixels.", without the code.
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -47,7 +47,7 @@ function Results:set(key, state, name, detail)
     row.state, row.name, row.detail = state, name, tostring(detail or '')
     if settled then
         local write = state == 'fail' and log.warning or log.info
-        write(string.format('[%s] %s: %s. %s', self.code, Results.marks[state], name, row.detail))
+        write(string.format('[%s] %s', self.code, Results.describe(row)))
     end
     if settled and state == 'fail' then
         events.emit('testCheckFailed', {code = self.code, message = name .. ': ' .. row.detail})
@@ -61,6 +61,16 @@ function Results:set(key, state, name, detail)
         self:refreshCard(row, before)
     end
     self:showSummary()
+
+    -- A row that settles in a new state scrolls into view, so the person and the UI tests, which read only what shows, see the newest result.
+    if settled then
+        self.gui:command('checks-scroll', 'scrollTo', {node = row.id})
+    end
+end
+
+-- The line of a row that the log and the label of its card share.
+function Results.describe(row)
+    return string.format('%s: %s. %s', Results.marks[row.state], row.name, row.detail)
 end
 
 function Results:clear()
@@ -169,7 +179,7 @@ end
 
 function Results:card(row)
     local id = row.id
-    return ui.card{id = id, padding = {16, 20},
+    return ui.card{id = id, padding = {16, 20}, accessibilityLabel = Results.describe(row),
         ui.row{gap = 18, alignItems = 'start',
             ui.stack{width = Results.iconSize, height = Results.iconSize,
                 ui.icon{id = id .. '-icon', image = Results.icons[row.state], size = Results.iconSize, color = Results.inks[row.state], visible = row.state ~= 'waiting'},
@@ -187,6 +197,7 @@ end
 -- Changes only the parts of a card whose row changed, since a row that counts frames changes its detail every frame.
 function Results:refreshCard(row, before)
     local id = row.id
+    self.gui:set(id, {accessibilityLabel = Results.describe(row)})
     if row.state ~= before.state then
         self.gui:set(id .. '-icon', {image = Results.icons[row.state], color = Results.inks[row.state], visible = row.state ~= 'waiting'})
         self.gui:set(id .. '-busy', {visible = row.state == 'waiting'})

@@ -45,7 +45,7 @@ The windowed runs of the test project need a desktop session that nobody is usin
 | visionOS simulator | `haylen test --gpu --target visionos-simulator --device <name>`. Install the visionOS platform first with `xcodebuild -downloadPlatform visionOS`. |
 | Android emulator | `haylen test --gpu --target android` builds the GPU test app, installs it, runs it on Vulkan and OpenGL ES, reads the results back and uninstalls it. It starts an emulator without a window when none is running. |
 
-The UI tests of an app run on the iOS, iPadOS, tvOS and visionOS simulators with `haylen test --ui <app> --target ios-simulator|tvos-simulator|visionos-simulator --device <name>`, which taps, drags, presses the remote and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
+The UI tests of an app run on the iOS, iPadOS, tvOS and visionOS simulators with `haylen test --ui <app> --target ios-simulator|tvos-simulator|visionos-simulator --device <name>`, which taps, drags, presses the remote, answers the prompts and taps the notifications there without a window on the Mac, and on the Android emulator with `haylen test --ui <app> --target android`, which starts the emulator without a window when none is running, as [the UI tests](testing.md#the-ui-tests) describe.
 
 Run the test project with `haylen app run samples/tests --target <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
 
@@ -62,17 +62,25 @@ Each run installs a signed test app, runs it, copies the results back and uninst
 
 #### Plugins on real devices
 
-The plugin tests of the test project and the samples of the plugins run on a device only for what a simulator or an emulator cannot show: the prompts of the system, the camera, the microphone, the location, the haptics, the motion sensors, Bluetooth, the notifications tapped from the background or after the app was closed, the back button of Android and the remote of a TV. Start a test from the developer console of the run, such as `lua require('harness.navigation').openTest(require('harness.catalog').byCode['PLG-016'])`. The log of the app reaches the terminal of the run on every device, since the launch of an Apple device mirrors the unified log of the app to its error output.
+The plugin tests of the test project and the samples of the plugins run on a device for what a simulator or an emulator cannot show: the camera, the microphone, the haptics, the motion sensors and Bluetooth, and the prompts, the notifications, the back button of Android and the remote of a TV on real hardware. They are [UI tests](testing.md#the-ui-tests), which answer the prompts, tap the notifications, go home, close the app and open it again from a notification without a person:
 
-An iPhone 13 has shown these checks passing:
+```sh
+haylen test --ui samples/tests --target ios --device <name or UDID>
+haylen test --ui samples/tests --target tvos --device <name or UDID>
+haylen test --ui samples/tests --target android --device <serial>
+```
 
-| Test | What the device showed |
+Each run installs the app and its runner, runs the tests, copies the screenshots back and uninstalls both. An iPhone or an iPad stays unlocked during the run, and an Android device has the confirmation of installs over USB turned off, as the settings of its maker name it. tvOS launches no app while the Apple TV sleeps, so each test of the Apple TV presses the remote before it launches the app, which wakes it as the press of a person does. The checks of each test are the tables of [the UI tests](testing.md#the-tests-of-the-test-project) and of the samples of the plugins.
+
+Each kind of device runs these suites:
+
+| Device | Suites |
 | --- | --- |
-| PLG-011 | The prompts of the camera, the microphone, the location and notifications. The camera of the plugin after the answer. A notification tapped while the app is open, one tapped from the background and one that launched the closed app, which reached `notificationOpened` of the next app. |
-| PLG-016 | The back and the front cameras at 640 by 480, a photo as JPEG bytes that decodes into a texture, and the microphone at 48000 Hz with its level. |
-| PLG-017 | A location within 5 meters, and the MapKit map over the app. |
+| iPhone or iPad | PLG-008, PLG-009, PLG-011, PLG-016, PLG-017, PLG-019, and the samples of the camera, the microphone, the location, notifications, haptics, motion and Bluetooth |
+| Apple TV | PLG-008, PLG-009, PLG-017, PLG-019 and the keyboard of the search |
+| Android phone or tablet | PLG-008, PLG-009, PLG-011, PLG-015, PLG-016, PLG-017, PLG-019, and the samples |
 
-Two parts of a device still need a person: the system prompts, and the gestures of the system, such as going home and closing the app. These parts move to UI tests, which tap the prompts and the notifications with the tools of each platform, as [Testing](testing.md) describes for the simulators.
+The posture of the foldable iPhone in DeviceHub is the one check that no API of the system drives, so it stays out of routine runs.
 
 ## Browser
 
@@ -140,7 +148,14 @@ The paravirtual GPU of a virtual Mac is not the GPU of a real one, while an EC2 
 
 #### Real devices on Device Farm
 
-Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
+Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. The UI tests of an app run there through the tooling, on the phones that `--device-farm` names by the names that Device Farm gives them:
+
+```sh
+haylen test --ui samples/tests --target android --device-farm "Google Pixel 9,Samsung Galaxy S24"
+haylen test --ui samples/tests --target ios --device-farm "Apple iPhone 16"
+```
+
+The run builds the app and the runner, the test APK that instruments itself on Android and the runner of the team of the app as an IPA on iOS, creates a project of Device Farm for the run, uploads both, runs them once on each device with a timeout of 30 minutes per device, prints what each device ended with and copies the files that Device Farm keeps of each job, such as the log and the video, into `ui-tests/device-farm-<platform>` of the build folder of the app. Whatever the run ends with, it deletes the project with its uploads and its run, and then checks that Device Farm no longer lists it. The AWS command line takes the credentials from the environment. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
 
 1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --target android`, which leaves it in `build/engine/android-gpu-tests-<abi>-debug/apk/haylen-gpu-tests.apk`.
 2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode, and collect logcat.

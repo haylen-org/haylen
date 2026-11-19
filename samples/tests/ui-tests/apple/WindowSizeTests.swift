@@ -60,7 +60,7 @@ class WindowSizeTests: HaylenUITestCase {
             expected = "\(Int(frame.width * numbers[2])) by \(Int(frame.height * numbers[2])) pixels"
             return Int(numbers[0]) == Int(frame.width * numbers[2]) && Int(numbers[1]) == Int(frame.height * numbers[2])
         }
-        let controls = Self.springboard.descendants(matching: .any)["window-controls:\(identifier!)"].firstMatch
+        let controls = Self.system.descendants(matching: .any)["window-controls:\(identifier!)"].firstMatch
         if controls.exists {
             XCTAssertFalse(element("Back").frame.intersects(controls.frame), "At the size \"\(name)\" the controls of the window cover the button \"Back\" of the app.", file: file, line: line)
         }
