@@ -30,11 +30,9 @@ class Gl final {
     static constexpr Enum kZero = 0;
     static constexpr Enum kOne = 1;
 
-    static constexpr Enum kByte = 0x1400;
     static constexpr Enum kUnsignedByte = 0x1401;
     static constexpr Enum kShort = 0x1402;
     static constexpr Enum kUnsignedShort = 0x1403;
-    static constexpr Enum kInt = 0x1404;
     static constexpr Enum kUnsignedInt = 0x1405;
     static constexpr Enum kFloat = 0x1406;
     static constexpr Enum kHalfFloat = 0x140B;
@@ -60,10 +58,6 @@ class Gl final {
     static constexpr Enum kMaxCubeMapTextureSize = 0x851C;
     static constexpr Enum kMaxArrayTextureLayers = 0x88FF;
     static constexpr Enum kMaxSamples = 0x8D57;
-    static constexpr Enum kMaxDrawBuffers = 0x8824;
-    static constexpr Enum kMaxColorAttachments = 0x8CDF;
-    static constexpr Enum kMaxVertexAttribs = 0x8869;
-    static constexpr Enum kMaxCombinedTextureImageUnits = 0x8B4D;
     static constexpr Enum kMaxTextureMaxAnisotropy = 0x84FF;
     static constexpr Enum kGpuDisjoint = 0x8FBB;
 
@@ -203,8 +197,6 @@ class Gl final {
     static constexpr Enum kColor = 0x1800;
     static constexpr Enum kDepth = 0x1801;
     static constexpr Enum kStencil = 0x1802;
-    static constexpr Bitfield kDepthBufferBit = 0x0100;
-    static constexpr Bitfield kStencilBufferBit = 0x0400;
     static constexpr Bitfield kColorBufferBit = 0x4000;
     static constexpr Enum kSamples = 0x80A9;
 
@@ -218,10 +210,7 @@ class Gl final {
     static constexpr Bitfield kSyncFlushCommandsBit = 0x0001;
     static constexpr Enum kSyncStatus = 0x9114;
     static constexpr Enum kSignaled = 0x9119;
-    static constexpr Enum kAlreadySignaled = 0x911A;
     static constexpr Enum kTimeoutExpired = 0x911B;
-    static constexpr Enum kConditionSatisfied = 0x911C;
-    static constexpr Enum kWaitFailed = 0x911D;
 
     static constexpr Enum kTimeElapsed = 0x88BF;
     static constexpr Enum kQueryResult = 0x8866;
@@ -241,10 +230,6 @@ class Gl final {
     static constexpr Enum kVertexArray = 0x8074;
     static constexpr Enum kMaxLabelLength = 0x82E8;
     static constexpr Enum kMaxDebugMessageLength = 0x9143;
-
-    static constexpr Enum kGuiltyContextReset = 0x8253;
-    static constexpr Enum kInnocentContextReset = 0x8254;
-    static constexpr Enum kUnknownContextReset = 0x8255;
 
     // What the context offers past the version of its flavour.
     struct Features {
