@@ -114,6 +114,9 @@ class Device final : public gpu::Device {
         return dynamicRendering;
     }
 
+    // The present mode that the swapchain of a surface presents with, or nothing while the surface has no swapchain.
+    [[nodiscard]] std::optional<VkPresentModeKHR> getPresentMode(int surface) const;
+
   private:
     static constexpr VkDeviceSize kStagingChunkSize = VkDeviceSize{8} * 1024 * 1024;
     static constexpr VkDeviceSize kUniformChunkSize = VkDeviceSize{1} * 1024 * 1024;

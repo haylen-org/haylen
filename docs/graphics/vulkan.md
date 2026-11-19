@@ -47,7 +47,7 @@ The swapchain takes eight bits a channel without the conversion of sRGB formats,
 | Setting | What the device does |
 | --- | --- |
 | Vertical sync on | The FIFO present mode, which waits for the refresh of the display. |
-| Vertical sync off | The mailbox mode, which replaces the waiting frame without tearing, or else the immediate mode, or else FIFO. |
+| Vertical sync off | The mailbox mode, which replaces the waiting frame without tearing, or else the immediate mode, or else FIFO, which the log tells once, since the frames then wait for the refresh of the display. The method `vulkan::Device::getPresentMode(surface)` gives the mode that a surface presents with. |
 | Transparent window | The premultiplied composite alpha of the surface, or the alpha that the surface inherits. A surface with neither logs a warning once and stays opaque. |
 | New size | The swapchain is made again before the next frame. A swapchain that presents out of date or suboptimal is made again once. |
 | Turned display | The images keep the size of the window as it shows, and the compositor turns them where the display turns, as on Android. |

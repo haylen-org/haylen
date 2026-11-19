@@ -511,6 +511,15 @@ Device::SurfaceChain& Device::requireChain(int surface) const {
     return *chains[static_cast<std::size_t>(surface)];
 }
 
+std::optional<VkPresentModeKHR> Device::getPresentMode(int surface) const {
+    const SurfaceChain& chain = requireChain(surface);
+    if (!chain.swapchain || !chain.swapchain->hasImages()) {
+        return std::nullopt;
+    }
+
+    return chain.swapchain->getPresentMode();
+}
+
 Device::SurfaceChain& Device::requireAddedChain(int surface) const {
     if (surface == 0) {
         throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");

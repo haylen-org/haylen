@@ -51,6 +51,14 @@ class Swapchain final {
         return acquired[frame];
     }
 
+    // The present mode of the frames, which is FIFO with vertical sync and where the surface offers no other.
+    [[nodiscard]] static VkPresentModeKHR choosePresentMode(std::span<const VkPresentModeKHR> modes, bool vsync) noexcept;
+
+    // The present mode that the swapchain presents with since it was last configured.
+    [[nodiscard]] VkPresentModeKHR getPresentMode() const noexcept {
+        return presentMode;
+    }
+
     [[nodiscard]] bool hasImages() const noexcept {
         return handle != VK_NULL_HANDLE;
     }
@@ -127,7 +135,7 @@ class Swapchain final {
     };
 
     [[nodiscard]] static VkSurfaceFormatKHR chooseFormat(std::span<const VkSurfaceFormatKHR> formats) noexcept;
-    [[nodiscard]] VkPresentModeKHR choosePresentMode(bool vsync) const;
+    [[nodiscard]] std::vector<VkPresentModeKHR> readPresentModes() const;
     [[nodiscard]] static VkCompositeAlphaFlagBitsKHR chooseCompositeAlpha(VkCompositeAlphaFlagsKHR supported, bool transparent) noexcept;
     [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept;
     [[nodiscard]] bool canScale(const VkSurfaceCapabilitiesKHR& capabilities) const;
@@ -153,7 +161,9 @@ class Swapchain final {
     std::vector<VkSemaphore> acquired;
     Attachment color;
     Attachment depth;
+    VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
     bool warnedOpaque = false;
+    bool warnedVsync = false;
 };
 
 } // namespace haylen::gpu::vulkan

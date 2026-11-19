@@ -64,16 +64,11 @@ VkSurfaceFormatKHR Swapchain::chooseFormat(std::span<const VkSurfaceFormatKHR> f
     return formats.front();
 }
 
-// Without vsync the frames replace the waiting one without tearing where the surface allows it, and reach the screen at once otherwise.
-VkPresentModeKHR Swapchain::choosePresentMode(bool vsync) const {
+// Without vsync the frames replace the waiting one without tearing where the surface allows it, and reach the screen at once otherwise. FIFO is the one mode that every surface offers, so a surface with neither shows the frames at the pace of the display.
+VkPresentModeKHR Swapchain::choosePresentMode(std::span<const VkPresentModeKHR> modes, bool vsync) noexcept {
     if (vsync) {
         return VK_PRESENT_MODE_FIFO_KHR;
     }
-
-    std::uint32_t count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), surface, &count, nullptr);
-    std::vector<VkPresentModeKHR> modes(count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), surface, &count, modes.data());
 
     for (const VkPresentModeKHR preferred : {VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR}) {
         if (std::ranges::find(modes, preferred) != modes.end()) {
@@ -82,6 +77,15 @@ VkPresentModeKHR Swapchain::choosePresentMode(bool vsync) const {
     }
 
     return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+std::vector<VkPresentModeKHR> Swapchain::readPresentModes() const {
+    std::uint32_t count = 0;
+    Context::check(vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), surface, &count, nullptr), "read the present modes of the surface");
+    std::vector<VkPresentModeKHR> modes(count);
+    Context::check(vkGetPhysicalDeviceSurfacePresentModesKHR(context->getPhysicalDevice(), surface, &count, modes.data()), "read the present modes of the surface");
+    modes.resize(count);
+    return modes;
 }
 
 VkCompositeAlphaFlagBitsKHR Swapchain::chooseCompositeAlpha(VkCompositeAlphaFlagsKHR supported, bool transparent) noexcept {
@@ -166,6 +170,12 @@ bool Swapchain::configure(const Settings& settings) {
         warnedOpaque = true;
     }
 
+    presentMode = choosePresentMode(readPresentModes(), settings.vsync);
+    if (!settings.vsync && presentMode == VK_PRESENT_MODE_FIFO_KHR && !warnedVsync) {
+        core::Log::warning("The window asks for frames without vertical sync, which its Vulkan surface does not present, so the frames wait for the refresh of the display.");
+        warnedVsync = true;
+    }
+
     std::uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0) {
         imageCount = std::min(imageCount, capabilities.maxImageCount);
@@ -184,7 +194,7 @@ bool Swapchain::configure(const Settings& settings) {
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .preTransform = transform,
         .compositeAlpha = alpha,
-        .presentMode = choosePresentMode(settings.vsync),
+        .presentMode = presentMode,
         .clipped = VK_TRUE,
         .oldSwapchain = old,
     };

@@ -11,6 +11,7 @@
 
 #include "gpu/support/LoggedErrors.hpp"
 #include "gpu/vulkan/Device.hpp"
+#include "gpu/vulkan/Swapchain.hpp"
 
 namespace haylen::gpu::vulkan {
 
@@ -116,6 +117,18 @@ TEST_F(VulkanDeviceTest, DrawsNothingIntoTheSwapchainOfADeviceWithoutASurface) {
     device->endPass();
     device->commit();
     EXPECT_FALSE(device->isLost());
+}
+
+// FIFO is the one mode that every surface offers, so a surface without the others presents the frames at the pace of the display, which the swapchain reports.
+TEST(VulkanSwapchainTest, PresentsWithoutVerticalSyncOnlyWhereTheSurfaceOffersIt) {
+    const std::array<VkPresentModeKHR, 3> every{VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_MAILBOX_KHR};
+    const std::array<VkPresentModeKHR, 2> immediate{VK_PRESENT_MODE_FIFO_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR};
+    const std::array<VkPresentModeKHR, 1> fifo{VK_PRESENT_MODE_FIFO_KHR};
+
+    EXPECT_EQ(Swapchain::choosePresentMode(every, true), VK_PRESENT_MODE_FIFO_KHR);
+    EXPECT_EQ(Swapchain::choosePresentMode(every, false), VK_PRESENT_MODE_MAILBOX_KHR);
+    EXPECT_EQ(Swapchain::choosePresentMode(immediate, false), VK_PRESENT_MODE_IMMEDIATE_KHR);
+    EXPECT_EQ(Swapchain::choosePresentMode(fifo, false), VK_PRESENT_MODE_FIFO_KHR);
 }
 
 } // namespace haylen::gpu::vulkan
