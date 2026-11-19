@@ -167,6 +167,7 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; }); }));
     const std::vector<core::Json> results = server.getMessages();
     const auto bytes = std::ranges::find_if(results, [](const core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; });
+    ASSERT_NE(bytes, results.end());
     EXPECT_TRUE(bytes->at("ok").get<bool>());
     EXPECT_NE(bytes->at("output").get<std::string>().find("\xEF\xBF\xBD"), std::string::npos);
 
