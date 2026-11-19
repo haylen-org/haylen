@@ -632,8 +632,10 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
                 io.AddMouseButtonEvent(0, true);
             }
 
+            // ImGui may read the release frames later, so each queued release keeps whether it taps until then.
             if (!held || tapped) {
                 io.AddMouseButtonEvent(0, false);
+                queuedTouchTaps.push_back(tapped || (!touchShared && event.type == platform::Event::Type::TouchEnded));
             }
 
             io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
@@ -784,8 +786,6 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     std::swap(blockedPrevious, blocked);
     blocked.clear();
     requestedCursor.reset();
-    dragKeeper = 0;
-    immediateWindows.clear();
     frameTextures.clear();
     renderCalls.clear();
     draws.clear();
@@ -800,6 +800,9 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     renderedLists.clear();
     deferredLists.clear();
     ImGui::NewFrame();
+    releaseLiftedTouch();
+    dragKeeper = 0;
+    immediateWindows.clear();
     scrollArbiter->beginFrame(deltaSeconds);
     findPointerOwner();
     ImGui::ErrorRecoveryStoreState(&recovery->state);
@@ -899,19 +902,48 @@ void Backend::markImmediateWindow() {
     immediateWindows.push_back(ImGui::GetCurrentWindow()->RootWindow->ID);
 }
 
-// A finger that travels past the slop or shares the screen is a swipe, a drag or a pinch, never a tap, so the item it pressed lets it go unless the item follows it, the way a touch screen tells taps from gestures.
-void Backend::releaseTravelledTouch() {
+// The item that a finger pressed follows it when the item keeps the drag, when it drags and drops, or when it lies in an ImGui window of the app, which keeps the behavior of ImGui.
+bool Backend::isFollowingTouch() const {
     const ImGuiContext& state = *imguiContext;
-    if (!primaryTouch || state.ActiveId == 0 || state.ActiveId == dragKeeper || state.DragDropActive || state.ActiveIdWindow == nullptr) {
-        return;
+    if (state.ActiveId == dragKeeper || state.DragDropActive || state.ActiveIdWindow == nullptr) {
+        return true;
     }
 
-    if (std::ranges::find(immediateWindows, state.ActiveIdWindow->RootWindow->ID) != immediateWindows.end()) {
+    return std::ranges::find(immediateWindows, state.ActiveIdWindow->RootWindow->ID) != immediateWindows.end();
+}
+
+// A finger that travels past the slop or shares the screen is a swipe, a drag or a pinch, never a tap, so the item it pressed lets it go unless the item follows it, the way a touch screen tells taps from gestures.
+void Backend::releaseTravelledTouch() {
+    if (!primaryTouch || imguiContext->ActiveId == 0 || isFollowingTouch()) {
         return;
     }
 
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
     if (touchShared || std::hypot(moved.x, moved.y) >= ScrollArbiter::kDragSlop) {
+        ImGui::ClearActiveID();
+    }
+}
+
+// A finger whose release ImGui read in this frame lets go of its item before the item reads it, when the system cancelled the finger, it shared the screen or it travelled past the slop in the last frame it moved. The pointer stays where the finger lifted, so a lifted item lands and a node reports its release there.
+void Backend::releaseLiftedTouch() {
+    std::optional<bool> tap;
+    for (const ImGuiInputEvent& processed : imguiContext->InputEventsTrail) {
+        const bool release = processed.Type == ImGuiInputEventType_MouseButton && processed.MouseButton.Button == ImGuiMouseButton_Left && !processed.MouseButton.Down;
+        if (release && processed.MouseButton.MouseSource == ImGuiMouseSource_TouchScreen) {
+            tap = queuedTouchTaps.front();
+            queuedTouchTaps.erase(queuedTouchTaps.begin());
+        }
+    }
+
+    if (!tap || imguiContext->ActiveId == 0 || isFollowingTouch()) {
+        return;
+    }
+
+    const ImGuiIO& io = imguiContext->IO;
+    const float movedX = io.MousePos.x - io.MouseClickedPos[ImGuiMouseButton_Left].x;
+    const float movedY = io.MousePos.y - io.MouseClickedPos[ImGuiMouseButton_Left].y;
+    const float travelled = std::max(io.MouseDragMaxDistanceSqr[ImGuiMouseButton_Left], (movedX * movedX) + (movedY * movedY));
+    if (!*tap || travelled >= ScrollArbiter::kDragSlop * ScrollArbiter::kDragSlop) {
         ImGui::ClearActiveID();
     }
 }

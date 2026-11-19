@@ -361,7 +361,9 @@ class Backend final {
     // Closes every popup that no component drew in the last frame, such as the dialog of a node that was hidden or of a GUI that was unmounted, so it never keeps the pointer and cancel from the windows under it.
     static void closeAbandonedPopups();
 
+    [[nodiscard]] bool isFollowingTouch() const;
     void releaseTravelledTouch();
+    void releaseLiftedTouch();
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
     void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);
@@ -433,6 +435,7 @@ class Backend final {
     std::vector<ImGuiID> immediateWindows;
     std::optional<std::uint64_t> primaryTouch;
     bool touchShared = false;
+    std::vector<bool> queuedTouchTaps;
     std::optional<math::Vec2> pointerPosition;
     std::string clipboard;
     platform::Window::Cursor cursor = platform::Window::Cursor::Default;

@@ -446,6 +446,23 @@ TEST_F(CollectionTest, KeepsSelectionAndFocusThroughAReorder) {
     EXPECT_EQ(list.getFocusedIndex(), 11U);
 }
 
+// A finger that lifts an item with a long press drops it where it lifts, even when it moves and lifts in one frame.
+TEST_F(CollectionTest, ReordersWhereAFingerLifts) {
+    auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "reorderable": true, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}}}})");
+    Collection& list = gui->getCollection("list");
+    show(list, makeItems(20));
+    const math::Vec2 grab = getItemBounds(list, 1).getCenter();
+    touch(platform::Event::Type::TouchBegan, 1, grab);
+    frames(static_cast<int>(getUi().getTheme().getMetric(Theme::Metric::LongPressDuration) * 60.0F) + 4);
+    EXPECT_EQ(findLastEvent("dragStart").value.at("item"), "i2");
+
+    const math::Vec2 drop = getItemBounds(list, 4).getCenter() - math::Vec2{0.0F, 10.0F};
+    touch(platform::Event::Type::TouchMoved, 1, drop);
+    touch(platform::Event::Type::TouchEnded, 1, drop);
+    frames(3);
+    EXPECT_EQ(findLastEvent("reorder").value, (core::Json{{"item", "i2"}, {"from", 2}, {"to", 5}}));
+}
+
 TEST_F(CollectionTest, SelectsItemsAsItsSelectionModeSays) {
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "selection": "single", "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}}}})");
     Collection& list = gui->getCollection("list");

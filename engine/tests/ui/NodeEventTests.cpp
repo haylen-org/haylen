@@ -154,6 +154,31 @@ TEST_F(NodeEventTest, NeverClicksAButtonAFingerSwipedOrPinched) {
     EXPECT_EQ(countEvents("wide:click"), 1);
 }
 
+// A finger that travels past the slop in the frame it lifts is a flick, and a finger that the system cancels never lifted, so neither clicks the button under it.
+TEST_F(NodeEventTest, NeverClicksAButtonAFingerFlickedOrTheSystemCancelled) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "wide", "text": "Wide", "width": 600, "height": 200}]})");
+    const math::Vec2 center = getBounds(*gui, "wide").getCenter();
+
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{80.0F, 0.0F});
+    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{80.0F, 0.0F});
+    frames(3);
+    EXPECT_EQ(countEvents("wide:click"), 0);
+
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    touch(platform::Event::Type::TouchCancelled, 1, center);
+    frames(3);
+    EXPECT_EQ(countEvents("wide:click"), 0);
+
+    touch(platform::Event::Type::TouchBegan, 1, center);
+    frames(2);
+    touch(platform::Event::Type::TouchEnded, 1, center);
+    frames(3);
+    EXPECT_EQ(countEvents("wide:click"), 1);
+}
+
 // A control that follows the finger keeps it however far it travels.
 TEST_F(NodeEventTest, KeepsTheFingerThatDragsASlider) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "value": 0, "width": 600}]})");
