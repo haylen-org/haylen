@@ -4,6 +4,7 @@ import pytest
 
 from haylen.core.app_colors import AppColors
 from haylen.core.app_kind import AppKind
+from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.platforms.apple.apple_engine_port import AppleEnginePort
 from haylen.platforms.apple.apple_project import AppleProject
@@ -67,10 +68,31 @@ class AppleTargetsTest:
     def test_a_simulator_that_is_off_boots_then_waits_and_shuts_down_afterwards(self, tmp_path):
         # The flag of `bootstatus` that boots fails with "Invalid argument" on the foldable iPhone, so booting and waiting are two commands.
         duo = {"udid": "DUO", "name": "iPhone Duo", "state": "Shutdown"}
-        recorded = RecordedCommands(tmp_path, answer=lambda command: json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-2": [duo]}}))
+        listing = json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-2": [duo]}})
+        report = "2026-11-19 21:38:13.506 Df SpringBoard[14233:b04a] [com.apple.UserNotifications:DataProviderFactory] notificationSourcesDidInstall: 99 sources, initialLoad=1"
+        recorded = RecordedCommands(tmp_path, answer=lambda command: report if "log" in command else listing)
         with AppleSimulators(recorded.context).booted("iOS", "DUO"):
             pass
-        assert recorded.commands[1:] == [["xcrun", "simctl", "boot", "DUO"], ["xcrun", "simctl", "bootstatus", "DUO"], ["xcrun", "simctl", "shutdown", "DUO"]]
+        boot = [["xcrun", "simctl", "boot", "DUO"], ["xcrun", "simctl", "bootstatus", "DUO"]]
+        assert recorded.commands[1:3] == boot
+        assert recorded.commands[3][:6] == ["xcrun", "simctl", "spawn", "DUO", "log", "show"]
+        assert recorded.commands[3][-1] == AppleSimulators.NOTIFICATION_SOURCES
+        assert recorded.commands[4:] == [["xcrun", "simctl", "shutdown", "DUO"]]
+
+    def test_a_booted_ios_simulator_waits_for_its_notification_center_and_shuts_down_when_it_never_loads(self, tmp_path, monkeypatch):
+        # An app that installs before the notification center loaded its apps never shows a notification, which a runner of CI that builds while the simulator boots showed for minutes.
+        phone = {"udid": "PHONE", "name": "iPhone 18 Pro", "state": "Shutdown"}
+        listing = json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.iOS-27-0": [phone]}})
+        recorded = RecordedCommands(tmp_path, answer=lambda command: "" if "log" in command else listing)
+        monkeypatch.setattr(AppleSimulators, "NOTIFICATION_SECONDS", 0)
+        with pytest.raises(BuildFailed, match="did not load its apps"), AppleSimulators(recorded.context).booted("iOS", "PHONE"):
+            pass
+        assert recorded.commands[-1] == ["xcrun", "simctl", "shutdown", "PHONE"]
+        tvs = {"udid": "TV", "name": "Apple TV", "state": "Shutdown"}
+        recorded = RecordedCommands(tmp_path, answer=lambda command: json.dumps({"devices": {"com.apple.CoreSimulator.SimRuntime.tvOS-27-0": [tvs]}}))
+        with AppleSimulators(recorded.context).booted("tvOS", "TV"):
+            pass
+        assert not any("log" in command for command in recorded.commands)
 
     def test_the_template_holds_no_generated_project(self):
         files = [path.relative_to(AppleProject.TEMPLATE).as_posix() for path in AppleProject.TEMPLATE.rglob("*") if path.is_file()]
