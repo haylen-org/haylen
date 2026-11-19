@@ -124,7 +124,10 @@ void ScaledDrawable::destroyTargets() noexcept {
     }
 }
 
+// The drawable holds the values that the passes stored, so neither the resolve nor the drawing converts them to sRGB, whatever an offscreen pass left on.
 void ScaledDrawable::present() {
+    state.setFramebufferSrgb(false);
+
     if (samples > 1) {
         state.prepareClear();
         state.bindReadFramebuffer(framebuffer);
