@@ -520,12 +520,18 @@ int ImGuiLua::openPopup(lua_State* L) {
     return 0;
 }
 
+// A popup is a window of its own, so it keeps the fingers the way ImGui does, like the windows that `beginWindow` opens.
 int ImGuiLua::beginPopup(lua_State* L) {
-    (void)requireFrame(L);
+    Backend& backend = requireFrame(L);
     const char* name = readLabel(L, 1);
     hideBars();
     const bool open = ImGui::BeginPopup(name);
     paintBars(L, open);
+
+    if (open) {
+        backend.markImmediateWindow();
+    }
+
     lua::Stack::push(L, open);
     return 1;
 }

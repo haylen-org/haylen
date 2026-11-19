@@ -179,6 +179,48 @@ TEST_F(NodeEventTest, NeverClicksAButtonAFingerFlickedOrTheSystemCancelled) {
     EXPECT_EQ(countEvents("wide:click"), 1);
 }
 
+// The popups of "haylen.imgui" keep the behavior of ImGui like its windows, so a finger that travels over the button it pressed still clicks it.
+TEST_F(NodeEventTest, KeepsTheFingerOfAButtonInAnImmediatePopup) {
+    // clang-format off
+    getFixture().runLua(R"(
+        local imgui = require('haylen.imgui')
+        local scene = require('haylen.scene')
+        clicks = 0
+        local opened = false
+        scene.push({renderUi = function()
+            if imgui.beginWindow('Tool', {x = 20, y = 20, width = 500, height = 400}) then
+                if not opened then
+                    imgui.openPopup('menu')
+                    opened = true
+                end
+                imgui.setNextWindowPos(40, 60, true)
+                if imgui.beginPopup('menu') then
+                    if imgui.button('Wide', 300, 120) then
+                        clicks = clicks + 1
+                    end
+                    imgui.endPopup()
+                end
+            end
+            imgui.endWindow()
+        end})
+    )");
+    // clang-format on
+    frames(3);
+
+    const math::Vec2 press{80.0F, 110.0F};
+    touch(platform::Event::Type::TouchBegan, 1, press);
+    frames(2);
+
+    for (int step = 1; step <= 4; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, press + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        frames();
+    }
+
+    touch(platform::Event::Type::TouchEnded, 1, press + math::Vec2{80.0F, 0.0F});
+    frames(3);
+    EXPECT_EQ(getFixture().lua("return clicks"), "1");
+}
+
 // A control that follows the finger keeps it however far it travels.
 TEST_F(NodeEventTest, KeepsTheFingerThatDragsASlider) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "value": 0, "width": 600}]})");
