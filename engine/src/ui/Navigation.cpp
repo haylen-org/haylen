@@ -67,6 +67,13 @@ std::shared_ptr<NavigationSplit> Navigation::createSplit(Region primary, Region 
     checkRegion(detail);
     auto created = std::make_shared<NavigationSplit>(*this, std::move(primary), std::move(detail), std::move(root), std::move(placeholder), collapsed);
     splits.push_back(created);
+
+    // Showing a restored detail runs the hooks of the app, which may create or close routers.
+    const std::vector<std::shared_ptr<Router>> waiting = routers;
+    for (const std::shared_ptr<Router>& router : waiting) {
+        router->showWaitingDetails(*created);
+    }
+
     return created;
 }
 

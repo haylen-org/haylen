@@ -428,6 +428,28 @@ void Router::present(const Route& route, std::shared_ptr<Screen> screen) const {
     static_cast<void>(navigation.present(std::move(screen), *route.presentation));
 }
 
+// The details leave the list before they show, since showing a detail runs the hooks of the app, which may create other splits.
+void Router::showWaitingDetails(const NavigationSplit& split) {
+    std::vector<std::string> ready;
+    for (const WaitingDetail& waiting : waitingDetails) {
+        const std::shared_ptr<Screen> host = waiting.host.lock();
+        if (host && host->getGui() == split.getPrimary()->getRegion().gui) {
+            ready.push_back(waiting.location);
+        }
+    }
+
+    // clang-format off
+    std::erase_if(waitingDetails, [&split](const WaitingDetail& waiting) {
+        const std::shared_ptr<Screen> host = waiting.host.lock();
+        return !host || host->getGui() == split.getPrimary()->getRegion().gui;
+    });
+    // clang-format on
+
+    for (const std::string& location : ready) {
+        push(location, NavigationTransition{.effect = NavigationTransition::Effect::None});
+    }
+}
+
 // A link replaces what the person was doing: the modal presentations leave, and the stack of the route holds its root, the screens of its parents and its own screen, or the screen under its detail or its presentation.
 void Router::open(std::string_view link, const NavigationTransition& transition) {
     const Match found = require(link);
@@ -544,6 +566,12 @@ core::Json Router::save() const {
         }
     }
 
+    for (const WaitingDetail& waiting : waitingDetails) {
+        if (!waiting.host.expired()) {
+            details.push_back(waiting.location);
+        }
+    }
+
     core::Json state = {{"stacks", std::move(stacks)}, {"details", std::move(details)}, {"presented", std::move(presented)}};
     if (options.tabs) {
         state["tab"] = options.tabs->getSelected();
@@ -610,11 +638,26 @@ void Router::restore(const core::Json& state) {
         options.tabs->select(tab->get<std::string>());
     }
 
-    for (const char* key : {"details", "presented"}) {
-        for (const core::Json& location : locations(key)) {
-            if (find(location)) {
-                push(location.get<std::string>(), instant);
-            }
+    // A detail of a split that its screen creates the first time it shows, such as in a tab that is not selected, shows once the split exists.
+    waitingDetails.clear();
+    for (const core::Json& location : locations("details")) {
+        const std::optional<Match> found = find(location);
+        if (!found) {
+            continue;
+        }
+
+        const std::shared_ptr<Screen> host = found->route->detail && found->route->screen ? getStack(*found->route)->getTop() : nullptr;
+        if (host && !navigation.findSplit(*host)) {
+            waitingDetails.push_back({.host = host, .location = location.get<std::string>()});
+            continue;
+        }
+
+        push(location.get<std::string>(), instant);
+    }
+
+    for (const core::Json& location : locations("presented")) {
+        if (find(location)) {
+            push(location.get<std::string>(), instant);
         }
     }
 }
@@ -638,6 +681,7 @@ void Router::close() {
     }
 
     closed = true;
+    waitingDetails.clear();
     linkConnection = {};
     backgroundConnection = {};
     stoppingConnection = {};

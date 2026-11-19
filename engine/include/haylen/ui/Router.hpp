@@ -23,6 +23,7 @@ class Engine;
 namespace haylen::ui {
 
 class Navigation;
+class NavigationSplit;
 class NavigationStack;
 class NavigationTabs;
 class Screen;
@@ -145,6 +146,12 @@ class Router final : public std::enable_shared_from_this<Router> {
         std::string location;
     };
 
+    // A restored detail whose split does not exist yet, since the screen that holds the split has not shown, such as the top screen of a tab that is not selected.
+    struct WaitingDetail {
+        std::weak_ptr<Screen> host;
+        std::string location;
+    };
+
     [[nodiscard]] static std::vector<Segment> compile(const Route& route);
     [[nodiscard]] static std::string decode(std::string_view text, bool query);
     [[nodiscard]] static std::string encode(std::string_view text);
@@ -168,6 +175,9 @@ class Router final : public std::enable_shared_from_this<Router> {
     void showDetail(const Route& route, const std::shared_ptr<Screen>& screen, const NavigationTransition& transition) const;
     void present(const Route& route, std::shared_ptr<Screen> screen) const;
 
+    // Shows the restored details that waited for a split that the navigation just created.
+    void showWaitingDetails(const NavigationSplit& split);
+
     // Whether the tabs or the stack where the routes show are still open.
     [[nodiscard]] bool isShowing() const noexcept;
 
@@ -182,6 +192,7 @@ class Router final : public std::enable_shared_from_this<Router> {
     Options options;
     std::vector<std::vector<Segment>> patterns;
     std::vector<Shown> shown;
+    std::vector<WaitingDetail> waitingDetails;
     core::ScopedConnection linkConnection;
     core::ScopedConnection backgroundConnection;
     core::ScopedConnection stoppingConnection;

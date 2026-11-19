@@ -10,6 +10,8 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/ScopedConnection.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Navigation.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationStack.hpp"
@@ -24,6 +26,28 @@ namespace haylen::ui {
 // A frame with a middle where the tabs of the routes show, and screens that remember the parameters they were made from.
 class RouterTest : public ::testing::Test, public test::UiFixture {
   protected:
+    // A screen that creates a split of its list and detail the first time it shows, as the screen of a tab of messages does.
+    class SplitScreen final : public Screen {
+      public:
+        SplitScreen(plugins::UiPlugin& owner, std::shared_ptr<Screen> list) : ui(owner), root(std::move(list)) {}
+
+        [[nodiscard]] std::shared_ptr<Gui> build(core::Engine&, Placement placement) override {
+            return ui.createGui(core::Json::parse(R"({"kind": "row", "children": [{"kind": "column", "id": "list", "grow": 1}, {"kind": "column", "id": "detail", "grow": 1}]})"), placement);
+        }
+
+        void appear(core::Engine&) override {
+            if (!split) {
+                split = ui.getNavigation().createSplit({.gui = getGui(), .node = "list"}, {.gui = getGui(), .node = "detail"}, root, {}, false);
+            }
+        }
+
+        std::shared_ptr<NavigationSplit> split;
+
+      private:
+        plugins::UiPlugin& ui;
+        std::shared_ptr<Screen> root;
+    };
+
     RouterTest() {
         frame = mount(R"({"kind": "column", "children": [{"kind": "column", "id": "middle", "grow": 1, "align": "stretch"}]})");
     }
@@ -165,6 +189,32 @@ TEST_F(RouterTest, ShowsADetailInTheSplitOfTheScreenUnderIt) {
 
     const std::shared_ptr<Router> lost = getNavigation().createRouter({.routes = {{.name = "chat", .path = "chat/{person}", .detail = true, .screen = named("chat", "person")}}, .stack = split->getDetail()});
     EXPECT_THROW(lost->push("chat/bruno"), std::logic_error);
+}
+
+// A detail restored in a tab that is not selected shows once the screen of the tab created its split, the first time the tab shows, and the router keeps it meanwhile.
+TEST_F(RouterTest, RestoresADetailOnceTheSplitOfItsTabShows) {
+    const auto mail = std::make_shared<SplitScreen>(getUi(), make("inbox"));
+    // clang-format off
+    const std::shared_ptr<NavigationTabs> tabs = getNavigation().createTabs({.gui = frame, .node = "middle"}, {
+        {.id = "home", .root = [this] { return make("home"); }},
+        {.id = "mail", .root = [mail] { return mail; }},
+    }, "home");
+    // clang-format on
+    std::vector<Router::Route> routes{{.name = "chat", .path = "chat/{person}", .tab = "mail", .detail = true, .screen = named("chat", "person")}};
+    const std::shared_ptr<Router> router = getNavigation().createRouter({.routes = std::move(routes), .tabs = tabs});
+    frames(2);
+
+    router->restore({{"tab", "home"}, {"details", {"chat/ana"}}});
+    frames(2);
+    EXPECT_EQ(tabs->getSelected(), "home");
+    EXPECT_EQ(mail->split, nullptr);
+    EXPECT_EQ(router->save().at("details"), (core::Json{"chat/ana"}));
+
+    tabs->select("mail");
+    frames(30);
+    ASSERT_NE(mail->split, nullptr);
+    EXPECT_EQ(describe(*mail->split->getDetail()), "chat:\"ana\"");
+    EXPECT_EQ(router->save().at("details"), (core::Json{"chat/ana"}));
 }
 
 // The state of the navigation reads back as the same tabs, stacks and presentations, made again from their locations.
