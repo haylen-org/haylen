@@ -57,7 +57,7 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
         throw;
     }
 
-    core::Log::info("The Vulkan device draws with \"{}\" through Vulkan {}.{} with {}.", context->getProperties().deviceName, VK_API_VERSION_MAJOR(context->getApiVersion()), VK_API_VERSION_MINOR(context->getApiVersion()), dynamicRendering ? "dynamic rendering" : "render passes");
+    core::Log::info("The Vulkan device draws with \"{}\" through Vulkan {}.{} with {}.", getAdapterName(), VK_API_VERSION_MAJOR(context->getApiVersion()), VK_API_VERSION_MINOR(context->getApiVersion()), dynamicRendering ? "dynamic rendering" : "render passes");
 }
 
 void Device::readDriverIssues() {
