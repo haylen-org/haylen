@@ -314,6 +314,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] bool acquireSwapchainImage(SurfaceChain& chain);
 
     [[nodiscard]] BufferRecord& requireBuffer(Buffer buffer) const;
+    static void checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported);
     [[nodiscard]] ImageRecord& requireImage(Image image) const;
     [[nodiscard]] VkFormat resolveFormat(PixelFormat format) const noexcept;
     [[nodiscard]] VkImageView getAttachmentView(ImageRecord& record, int mipLevel, int layer);

@@ -689,6 +689,28 @@ void Device::uploadBuffer(const BufferRecord& record, std::span<const std::byte>
     bufferCopies = true;
 }
 
+// The GPU holds images of a format and a usage only up to the extent, the mip levels and the layers that it reports for them.
+void Device::checkImageLimits(const ImageDesc& desc, const VkImageCreateInfo& info, const VkImageFormatProperties& supported) {
+    if (desc.type == TextureType::Flat && desc.layers != 1) {
+        throw std::invalid_argument(std::format("The flat image \"{}\" has {} layers, and a flat image has one.", desc.label, desc.layers));
+    }
+
+    const VkExtent3D& extent = info.extent;
+    const VkExtent3D& largest = supported.maxExtent;
+    if (extent.width > largest.width || extent.height > largest.height || extent.depth > largest.depth) {
+        throw std::invalid_argument(std::format("The image \"{}\" of {}x{}x{} pixels does not fit the GPU, which holds images of its format up to {}x{}x{}.", desc.label, extent.width, extent.height, extent.depth, largest.width, largest.height, largest.depth));
+    }
+
+    const std::uint32_t maxLevels = std::min(supported.maxMipLevels, static_cast<std::uint32_t>(ImageInfo::getMaxMipLevels(desc)));
+    if (info.mipLevels > maxLevels) {
+        throw std::invalid_argument(std::format("The image \"{}\" has {} mip levels, and the GPU holds 1 to {} for its size and format.", desc.label, desc.mipLevels, maxLevels));
+    }
+
+    if (info.arrayLayers > supported.maxArrayLayers) {
+        throw std::invalid_argument(std::format("The image \"{}\" has {} layers, and the GPU holds images of its format with at most {}.", desc.label, info.arrayLayers, supported.maxArrayLayers));
+    }
+}
+
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (lost) {
         throw std::runtime_error("The Vulkan device stopped working, so it makes no image.");
@@ -746,6 +768,8 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (vkGetPhysicalDeviceImageFormatProperties(context->getPhysicalDevice(), format, info.imageType, info.tiling, usage, flags, &supported) != VK_SUCCESS || (supported.sampleCounts & static_cast<VkSampleCountFlags>(samples)) == 0) {
         throw std::runtime_error(std::format("The GPU of the Vulkan device cannot make the image \"{}\" in its format with {} samples.", desc.label, desc.sampleCount));
     }
+
+    checkImageLimits(desc, info, supported);
 
     auto record = std::make_unique<ImageRecord>(ImageRecord{.format = format, .pixelFormat = desc.format, .kind = desc.kind, .type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .samples = samples, .aspects = Conversions::getAspects(format)});
     if (!sampled) {
