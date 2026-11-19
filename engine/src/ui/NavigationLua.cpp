@@ -262,7 +262,7 @@ int NavigationLua::navigationStack(lua_State* L) {
     lua_pop(L, 1);
     const bool notifies = lua_getfield(L, 1, "onChange") != LUA_TNIL;
     if (notifies) {
-        luaL_checktype(L, -1, LUA_TFUNCTION);
+        lua::Table::requireType(L, "onChange", LUA_TFUNCTION);
     }
 
     const int handler = lua_gettop(L);
@@ -322,7 +322,7 @@ int NavigationLua::navigationTabs(lua_State* L) {
     const auto count = static_cast<int>(lua_rawlen(L, -1));
     for (int position = 1; position <= count; ++position) {
         lua_rawgeti(L, -1, position);
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "tabs", position, LUA_TTABLE);
         lua::Table::checkFields(L, -1, {kTabFields});
         NavigationTabs::Tab tab;
         lua::Table::readField(L, -1, "id", tab.id);
@@ -337,7 +337,7 @@ int NavigationLua::navigationTabs(lua_State* L) {
     lua::Table::readField(L, 1, "selected", selected);
     const bool notifies = lua_getfield(L, 1, "onChange") != LUA_TNIL;
     if (notifies) {
-        luaL_checktype(L, -1, LUA_TFUNCTION);
+        lua::Table::requireType(L, "onChange", LUA_TFUNCTION);
     }
 
     const int handler = lua_gettop(L);
@@ -417,7 +417,7 @@ int NavigationLua::pushHandler(lua_State* L, int options, const char* name) {
         return 0;
     }
 
-    luaL_checktype(L, -1, LUA_TFUNCTION);
+    lua::Table::requireType(L, name, LUA_TFUNCTION);
     return lua_gettop(L);
 }
 
@@ -492,7 +492,7 @@ void NavigationLua::readPresentOptions(lua_State* L, int index, Presentation::Op
 
     lua_pop(L, 1);
     if (lua_getfield(L, index, "anchor") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "anchor", LUA_TTABLE);
         lua::Table::checkFields(L, -1, {kRegionFields});
         options.anchor = readRegion(L, -1, "The anchor of a popover");
     }
@@ -639,7 +639,7 @@ int NavigationLua::presentAlert(lua_State* L) {
     const auto count = static_cast<int>(lua_rawlen(L, -1));
     for (int position = 1; position <= count; ++position) {
         lua_rawgeti(L, -1, position);
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireItemType(L, "actions", position, LUA_TTABLE);
         lua::Table::checkFields(L, -1, {kActionFields});
         Navigation::Alert::Action action;
         lua::Table::readField(L, -1, "id", action.id);
@@ -654,7 +654,7 @@ int NavigationLua::presentAlert(lua_State* L) {
 
     lua_pop(L, 1);
     if (lua_getfield(L, 1, "anchor") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "anchor", LUA_TTABLE);
         lua::Table::checkFields(L, -1, {kRegionFields});
         alert.anchor = readRegion(L, -1, "The anchor of an action sheet");
     }
@@ -749,7 +749,7 @@ Router::Route NavigationLua::readRoute(lua_State* L, int index) {
     lua::Table::readField(L, table, "parent", route.parent);
     lua::Table::readField(L, table, "detail", route.detail);
     if (lua_getfield(L, table, "query") != LUA_TNIL) {
-        luaL_checktype(L, -1, LUA_TTABLE);
+        lua::Table::requireType(L, "query", LUA_TTABLE);
         lua_pushnil(L);
         while (lua_next(L, -2) != 0) {
             const std::string name = lua::Stack::read<std::string>(L, -2);

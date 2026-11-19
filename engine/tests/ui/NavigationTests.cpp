@@ -980,4 +980,8 @@ TEST_F(NavigationTest, ReportsMistakesFromLua) {
     EXPECT_TRUE(getNavigation().getPresentations().empty());
 }
 
+TEST_F(NavigationTest, NamesTheActionOfAnAlertThatIsNotATable) {
+    EXPECT_NE(getFixture().lua("require('haylen.ui').presentAlert({title = 'Delete?', actions = {1}})").find("The item 1 of \"actions\" of \"presentAlert\" is invalid: table expected, got number."), std::string::npos);
+}
+
 } // namespace haylen::ui

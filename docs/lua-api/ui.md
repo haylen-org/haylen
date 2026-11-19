@@ -3942,7 +3942,7 @@ Creates tabs that each keep a stack in the area of the node `id` of the mounted 
 | `owner` | table or userdata | the default owner | Closes the tabs when it ends. |
 | `onChange` | function | none | Hears every change of the selected tab with the table `{selected, previous}`. |
 
-A list that is missing raises `Navigation tabs list their tabs in "tabs", each a table with an "id" and a "root" function.`. An empty list raises `Navigation tabs need at least one tab.`, a repeated id raises `The navigation tab "<id>" is given more than once.`, a selected id that no tab has raises `There is no navigation tab with the id "<id>".` a tab without an id raises `Every navigation tab needs an id.`, a root that is not a function raises `The "root" option is a function that returns a screen.` and a root that returns no screen raises `A screen is a table with a "build" method, not <type>.`.
+A list that is missing raises `Navigation tabs list their tabs in "tabs", each a table with an "id" and a "root" function.`, and a tab that is not a table raises `The item <n> of "tabs" of "navigationTabs" is invalid: table expected, got <type>.`. An `onChange` that is not a function raises `The option "onChange" of "navigationTabs" is invalid: function expected, got <type>.`. An empty list raises `Navigation tabs need at least one tab.`, a repeated id raises `The navigation tab "<id>" is given more than once.`, a selected id that no tab has raises `There is no navigation tab with the id "<id>".` a tab without an id raises `Every navigation tab needs an id.`, a root that is not a function raises `The "root" option is a function that returns a screen.` and a root that returns no screen raises `A screen is a table with a "build" method, not <type>.`.
 
 ```lua
 local tabs = ui.navigationTabs{gui = frame, id = 'middle', tabs = {
@@ -4039,7 +4039,7 @@ Presents an alert or an action sheet that the engine builds and returns its [`Pr
 
 The role of an action is `'default'`, `'cancel'` or `'destructive'`. The cancel action leads, so it sits at the start of a row of answers and under the other actions of an action sheet. The person also chooses it by dismissing the alert with Escape, the system back or a tap outside an action sheet, and an alert without a cancel action stays until one of its actions closes it. A destructive action shows in the danger color, and the last default action of an alert is the preferred one, in the primary color, with the focus.
 
-A missing list raises `An alert lists its actions in "actions", each a table with an "id", a "text" and a "role".`, an empty list raises `An alert needs at least one action.`, a missing id raises `Every action of an alert needs an id.`, a repeated id raises `The alert uses the action id "<id>" more than once.` and a second cancel action raises `An alert has one cancel action at most.`.
+A missing list raises `An alert lists its actions in "actions", each a table with an "id", a "text" and a "role".`, an action that is not a table raises `The item <n> of "actions" of "<function>" is invalid: table expected, got <type>.`, an `anchor` that is not a table raises `The option "anchor" of "<function>" is invalid: table expected, got <type>.`, an empty list raises `An alert needs at least one action.`, a missing id raises `Every action of an alert needs an id.`, a repeated id raises `The alert uses the action id "<id>" more than once.` and a second cancel action raises `An alert has one cancel action at most.`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -4164,7 +4164,7 @@ Creates the routes of the app and returns its [`Router`](#router). A route turns
 | --- | --- | --- |
 | `name` | string | The name of the route, unique in the router. |
 | `path` | string | The segments of the location, such as `'artist/{id}'`. A segment in braces is a parameter: `{id}` reads text, and `{id:integer}`, `{price:number}` and `{on:boolean}` read their type. A segment that does not read as its type makes the route not match. |
-| `query` | table | The query parameters the route reads and their types, such as `{sort = 'string', page = 'integer'}`. A link may leave them out, and the route ignores the others. |
+| `query` | table | The query parameters the route reads and their types, such as `{sort = 'string', page = 'integer'}`. A link may leave them out, and the route ignores the others. Another value raises `The option "query" of "<function>" is invalid: table expected, got <type>.`. |
 | `tab` | string | The tab the route shows in. Without it, the route shows in the selected tab. |
 | `parent` | string | The route whose screens lie under the screen of this one, made from the same parameters, so the stack holds what the person would have reached by hand. |
 | `detail` | boolean | Shows the screen as the detail of the [split](#uinavigationsplitoptions) that the screen under it holds. |
