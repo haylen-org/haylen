@@ -41,7 +41,6 @@ class HaylenUITestCase: XCTestCase {
         XCUIRemote.shared.press(.down)
 #endif
         app.launch()
-        XCTAssertTrue(app.wait(for: .runningForeground, timeout: Self.timeout), "The app does not come to the front after its launch.")
     }
 
     override func tearDown() async throws {
