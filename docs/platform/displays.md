@@ -158,6 +158,26 @@ From iOS and iPadOS 27, UIKit connects the scene of an external display, such as
 }
 ```
 
+UIKit may replace the scene of an external display right after it connects it, with a new scene for the same display. The engine reports what UIKit does and never guesses what it will do. So the app hears `displayDisconnected` for the first display and then `displayConnected` for the new one, which has a new id, and an output that the app opened on the first one closes with the ending `'disconnected'`. An app that keeps a picture on the external display opens its output again on the display that connects next.
+
+```lua
+local display = require('haylen.display')
+local events = require('haylen.events')
+
+local board = nil
+
+events.on('outputClosed', function(info)
+    if board and info.output == board.id then
+        board = nil
+    end
+end)
+events.on('displayConnected', function(info)
+    if board == nil then
+        board = display.open(info.display, {clearColor = '#FF000000'})
+    end
+end)
+```
+
 ## Every screen of a browser
 
 A page sees only the screen it shows on, until the person lets it see every screen. Before that, [`display.unlisted()`](../lua-api/display.md#displayunlisted) tells whether the device has more screens, which the browser reports through `screen.isExtended`. The function [`display.requestEveryScreen()`](../lua-api/display.md#displayrequesteveryscreen) asks for them through the Window Management API, which Chrome and Edge offer. A browser asks the person only shortly after a click or a key, so an app asks from a button. The screens that the answer adds reach the app as `displayConnected` events. A browser without the API rejects the promise with the code `unsupported`, and a refusal rejects with the code `denied`. Every other platform resolves at once, since the list already holds every display.

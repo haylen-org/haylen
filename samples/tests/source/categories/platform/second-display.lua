@@ -14,6 +14,7 @@ SecondDisplay.ringSeconds = 1.2
 
 function SecondDisplay:enter()
     self.output = nil
+    self.reopening = false
     self.time = 0
     self.rings = {}
     self.heard = {}
@@ -36,6 +37,19 @@ function SecondDisplay:enter()
             self.heard[6] = nil
         end, {owner = self})
     end
+    -- UIKit may replace the scene of an external display right after it connects, so the output ends as disconnected and the scoreboard opens again on the display that connects next.
+    events.on('outputClosed', function(info)
+        if self.output and info.output == self.output.id and info.ending == 'disconnected' then
+            self.output = nil
+            self.reopening = true
+        end
+    end, {owner = self})
+    events.on('displayConnected', function(info)
+        if self.reopening and self.output == nil then
+            self.reopening = false
+            self:openOn({id = info.display, name = info.name})
+        end
+    end, {owner = self})
     events.on('outputInput', function(info)
         if info.type == 'mouseDown' and self.output and info.output == self.output.id then
             self.rings[#self.rings + 1] = {x = info.x * self.output.scale, y = info.y * self.output.scale, age = 0}
@@ -56,8 +70,7 @@ function SecondDisplay:open()
         for _, shown in ipairs(display.list()) do
             if shown.id ~= current then
                 self:closeOutput()
-                self.output = display.open(shown.id, {title = 'Scoreboard', clearColor = '#FF000000'})
-                self:set('answer', {text = string.format('Opening on "%s".', shown.name ~= '' and shown.name or shown.id)})
+                self:openOn(shown)
                 return
             end
         end
@@ -65,7 +78,13 @@ function SecondDisplay:open()
     end, {owner = self})
 end
 
+function SecondDisplay:openOn(shown)
+    self.output = display.open(shown.id, {title = 'Scoreboard', clearColor = '#FF000000'})
+    self:set('answer', {text = string.format('Opening on "%s".', shown.name ~= '' and shown.name or shown.id)})
+end
+
 function SecondDisplay:closeOutput()
+    self.reopening = false
     if self.output then
         self.output:close()
         self.output = nil
