@@ -25,12 +25,14 @@ TEST_F(SurfaceTurnTest, PlacesEveryPixelWhereTheTurnOfTheImagesTakesIt) {
     const math::Vec2 pixel{30.0F, 20.0F};
     const std::array<math::Vec2, 4> expected{math::Vec2{30.0F, 20.0F}, math::Vec2{80.0F, 30.0F}, math::Vec2{170.0F, 80.0F}, math::Vec2{20.0F, 170.0F}};
 
-    for (int turns = 0; turns < 4; ++turns) {
+    int turns = 0;
+    for (const math::Vec2& expectedPlace : expected) {
         for (const math::Rect& viewport : {math::Rect{0.0F, 0.0F, 200.0F, 100.0F}, math::Rect{10.0F, 5.0F, 120.0F, 60.0F}}) {
             const math::Vec2 placed = place(pixel, viewport, turns);
-            EXPECT_NEAR(placed.x, expected[turns].x, 0.001F) << turns;
-            EXPECT_NEAR(placed.y, expected[turns].y, 0.001F) << turns;
+            EXPECT_NEAR(placed.x, expectedPlace.x, 0.001F) << turns;
+            EXPECT_NEAR(placed.y, expectedPlace.y, 0.001F) << turns;
         }
+        ++turns;
     }
 }
 
