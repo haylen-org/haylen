@@ -507,7 +507,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
 
 gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     const D3D12_SAMPLER_DESC made = StateDescriptions::makeSampler(desc);
-    const D3D12_CPU_DESCRIPTOR_HANDLE handle = samplerViews->allocate();
+    D3D12_CPU_DESCRIPTOR_HANDLE handle = samplerViews->allocate();
     device->CreateSampler(&made, handle);
     return {samplers.add(std::move(handle))};
 }
