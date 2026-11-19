@@ -871,7 +871,7 @@ void Backend::takePointer(const math::Rect& area) {
 }
 
 // Only the GUIs of the window of app GUIs share their window, and an area counts where its window shows it.
-void Backend::addPointerArea(const math::Rect& area, ImGuiID window) {
+void Backend::addPointerArea(const math::Rect& area, ImGuiID owner) {
     const ImGuiWindow& current = *ImGui::GetCurrentWindow();
     if (drawingGui == nullptr || current.RootWindow->ID != transparentWindow) {
         return;
@@ -883,7 +883,7 @@ void Backend::addPointerArea(const math::Rect& area, ImGuiID window) {
         return;
     }
 
-    pointerAreas.push_back({.area = shown, .gui = drawingGui, .window = window});
+    pointerAreas.push_back({.area = shown, .gui = drawingGui, .window = owner});
 }
 
 math::Rect Backend::getDisplayRect() const noexcept {

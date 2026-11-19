@@ -103,8 +103,8 @@ std::shared_ptr<Gui> AlertScreen::build(core::Engine&, Placement placement) {
     std::shared_ptr<Gui> built = ui.createGui(tree, placement);
     const Gui* own = built.get();
     // clang-format off
-    events = ui.events.connect([this, own](Gui& gui, const Event& event) {
-        if (&gui != own) {
+    events = ui.events.connect([this, own](Gui& source, const Event& event) {
+        if (&source != own) {
             return;
         }
 

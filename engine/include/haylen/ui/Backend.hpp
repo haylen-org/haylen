@@ -417,7 +417,7 @@ class Backend final {
         const void* gui = nullptr;
         ImGuiID window = 0;
     };
-    void addPointerArea(const math::Rect& area, ImGuiID window);
+    void addPointerArea(const math::Rect& area, ImGuiID owner);
     void findPointerOwner();
     std::vector<PointerArea> pointerAreas;
     std::vector<PointerArea> pointerAreasPrevious;
