@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <iterator>
 #include <map>
 #include <memory>
@@ -67,11 +66,6 @@ class ShardTest : public ::testing::Test {
 
     [[nodiscard]] std::shared_ptr<const ContentKey> getKey() const {
         return keys.get(ContentKey(test::ReleaseFixture::makeKey(1)).getId());
-    }
-
-    [[nodiscard]] static std::vector<std::uint8_t> readFile(const std::filesystem::path& file) {
-        std::ifstream stream(file, std::ios::binary);
-        return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     }
 
     [[nodiscard]] static std::unique_ptr<io::PackageReader> makeReader(std::vector<std::uint8_t> bytes) {
@@ -254,7 +248,7 @@ TEST_F(ShardTest, ChecksTheSizeOfDecodedChunks) {
 TEST_F(ShardTest, WritesAndReadsShards) {
     const std::vector<std::vector<std::uint8_t>> chunks = makeChunks();
     const ShardReference reference = writeShard(directory.getPath(), chunks, getKey());
-    const std::vector<std::uint8_t> file = readFile(directory.getPath() / reference.getFileName());
+    const std::vector<std::uint8_t> file = test::TestFiles::read(directory.getPath() / reference.getFileName());
     EXPECT_EQ(reference.fileSize, file.size());
     EXPECT_EQ(reference.fileDigest, Digest::of(file));
     EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "shard.hpak.partial"));
@@ -278,7 +272,7 @@ TEST_F(ShardTest, WritesTheSameBytesForTheSameChunks) {
     const ShardReference first = writeShard(directory.getPath() / "first", chunks, getKey());
     const ShardReference second = writeShard(directory.getPath() / "second", chunks, getKey());
     EXPECT_EQ(first, second);
-    EXPECT_EQ(readFile(directory.getPath() / "first" / first.getFileName()), readFile(directory.getPath() / "second" / second.getFileName()));
+    EXPECT_EQ(test::TestFiles::read(directory.getPath() / "first" / first.getFileName()), test::TestFiles::read(directory.getPath() / "second" / second.getFileName()));
 
     std::vector<std::vector<std::uint8_t>> changed = chunks;
     changed.back() = test::TestFiles::bytes("one more chunk");
@@ -321,7 +315,7 @@ TEST_F(ShardTest, RejectsARecordWithoutItsEncryptedBytes) {
 
 TEST_F(ShardTest, RejectsEveryChangeToTheHeaderAndTheIndex) {
     const ShardReference reference = writeShard(directory.getPath(), makeChunks(), getKey());
-    const std::vector<std::uint8_t> file = readFile(directory.getPath() / reference.getFileName());
+    const std::vector<std::uint8_t> file = test::TestFiles::read(directory.getPath() / reference.getFileName());
     const ShardHeader header = ShardHeader::parse(std::span(file).first<ShardHeader::kSize>(), file.size());
 
     for (std::size_t index = 0; index < ShardHeader::kSize; ++index) {
@@ -397,7 +391,7 @@ TEST_F(ShardTest, OpensEachShardWithItsOwnKey) {
     rotated.add(test::ReleaseFixture::makeKey(2));
     const std::shared_ptr<const ContentKey> second = rotated.get(ContentKey(test::ReleaseFixture::makeKey(2)).getId());
     const ShardReference reference = writeShard(directory.getPath(), makeChunks(), second);
-    const std::vector<std::uint8_t> file = readFile(directory.getPath() / reference.getFileName());
+    const std::vector<std::uint8_t> file = test::TestFiles::read(directory.getPath() / reference.getFileName());
 
     try {
         const ShardReader reader(makeReader(file), reference, keys);
@@ -414,7 +408,7 @@ TEST_F(ShardTest, OpensEachShardWithItsOwnKey) {
 TEST_F(ShardTest, ReportsChunksTheShardDoesNotHold) {
     const std::vector<std::vector<std::uint8_t>> chunks = makeChunks();
     const ShardReference reference = writeShard(directory.getPath(), chunks, getKey());
-    const ShardReader reader(makeReader(readFile(directory.getPath() / reference.getFileName())), reference, keys);
+    const ShardReader reader(makeReader(test::TestFiles::read(directory.getPath() / reference.getFileName())), reference, keys);
     expectReadFails(reader, {.storedId = Digest::of(test::TestFiles::bytes("missing"))}, Error::Code::MissingChunk);
 
     // A record serves only the chunk its catalog describes, with the same content ID, sizes and codec.

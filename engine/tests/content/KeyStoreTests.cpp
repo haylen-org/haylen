@@ -2,7 +2,6 @@
 
 #include <exception>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <stdexcept>
 #include <string>
@@ -11,6 +10,7 @@
 #include "haylen/core/Json.hpp"
 #include "support/PrivateFiles.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::content {
 
@@ -30,7 +30,7 @@ class KeyStoreTest : public ::testing::Test {
     }
 
     void writeIndex(const core::Json& index) const {
-        std::ofstream(getFolder() / KeyStore::kIndexFile, std::ios::trunc) << index.dump();
+        test::TestFiles::write(getFolder() / KeyStore::kIndexFile, index.dump());
     }
 
     test::TemporaryDirectory directory;
@@ -78,11 +78,9 @@ TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
     EXPECT_THROW((void)KeyStore::open(directory.getPath() / "missing"), std::runtime_error);
 
     // An index that is no JSON, that names a content key by anything but its ID or that names another signing key than the folder holds is never used.
-    std::ifstream stream(getFolder() / KeyStore::kIndexFile);
-    const core::Json valid = core::Json::parse(stream);
-    stream.close();
+    const core::Json valid = core::Json::parse(test::TestFiles::readText(getFolder() / KeyStore::kIndexFile));
     const std::string index = (getFolder() / KeyStore::kIndexFile).generic_string();
-    std::ofstream(getFolder() / KeyStore::kIndexFile, std::ios::trunc) << "keys";
+    test::TestFiles::write(getFolder() / KeyStore::kIndexFile, "keys");
     expectError("The file \"" + index + "\" is not the JSON index of a key folder.", [&] { (void)KeyStore::open(getFolder()); });
     core::Json changed = valid;
     changed["contentKeys"] = core::Json::array({"abc"});
@@ -106,7 +104,7 @@ TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
     std::filesystem::resize_file(contentKey, 16);
     expectError(sizeError, [&] { (void)KeyStore::open(getFolder()); });
 
-    std::ofstream(getFolder() / KeyStore::kIndexFile) << "{\"identifier\": \"com.haylen.tests\"}";
+    test::TestFiles::write(getFolder() / KeyStore::kIndexFile, R"({"identifier": "com.haylen.tests"})");
     EXPECT_THROW((void)KeyStore::open(getFolder()), std::runtime_error);
 }
 

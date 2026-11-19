@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -51,7 +52,10 @@ class HttpTransportTest : public ::testing::Test {
     Outcome run(HttpTransport::Request request) {
         Outcome outcome;
         fetch(std::move(request), outcome);
-        EXPECT_TRUE(runtime.pumpUntil([&outcome] { return outcome.done; }));
+        if (!runtime.pumpUntil([&outcome] { return outcome.done; })) {
+            throw std::runtime_error("The transfer never ended.");
+        }
+
         return outcome;
     }
 
@@ -85,6 +89,7 @@ TEST_F(HttpTransportTest, FetchesExactlyTheRangeItAsksFor) {
 
     ASSERT_FALSE(outcome.error) << outcome.error->what();
     EXPECT_EQ(outcome.bytes, slice(1000, 70000));
+    ASSERT_TRUE(outcome.start);
     EXPECT_EQ(outcome.start->fileSize, kFileSize);
     const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
     ASSERT_EQ(exchanges.size(), 1U);
@@ -95,22 +100,28 @@ TEST_F(HttpTransportTest, FetchesExactlyTheRangeItAsksFor) {
 
 TEST_F(HttpTransportTest, ResumesARangeFromTheBytesItHolds) {
     const Outcome first = run({.url = url(), .offset = 0, .size = 4096});
+    ASSERT_TRUE(first.start);
     const Outcome outcome = run({.url = url(), .offset = 2000, .size = 50000, .held = 30000, .validator = first.start->validator});
 
     ASSERT_FALSE(outcome.error) << outcome.error->what();
+    ASSERT_TRUE(outcome.start);
     EXPECT_TRUE(outcome.start->resumed);
     EXPECT_EQ(outcome.bytes, slice(32000, 20000));
-    EXPECT_EQ(server.getExchanges().back().first, 32000U);
+    const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
+    ASSERT_FALSE(exchanges.empty());
+    EXPECT_EQ(exchanges.back().first, 32000U);
 }
 
 TEST_F(HttpTransportTest, StartsARangeAgainWhenTheFileChanged) {
     const Outcome first = run({.url = url(), .offset = 0, .size = 4096});
+    ASSERT_TRUE(first.start);
     server.touch("packs/ab/pack.hpak");
     server.clearExchanges();
 
     const Outcome outcome = run({.url = url(), .offset = 2000, .size = 50000, .held = 30000, .validator = first.start->validator});
 
     ASSERT_FALSE(outcome.error) << outcome.error->what();
+    ASSERT_TRUE(outcome.start);
     EXPECT_FALSE(outcome.start->resumed);
     EXPECT_EQ(outcome.bytes, slice(2000, 50000));
     // The server records an exchange when its answer ends, and the whole file that the client stopped reading may end after the range that followed it.
@@ -124,6 +135,7 @@ TEST_F(HttpTransportTest, NeverResumesWithoutAValidator) {
     const Outcome outcome = run({.url = url(), .offset = 2000, .size = 50000, .held = 30000});
 
     ASSERT_FALSE(outcome.error) << outcome.error->what();
+    ASSERT_TRUE(outcome.start);
     EXPECT_FALSE(outcome.start->resumed);
     EXPECT_EQ(outcome.bytes, slice(2000, 50000));
 }

@@ -1,9 +1,15 @@
 #pragma once
 
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <optional>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "content/FolderStoreFiles.hpp"
 #include "content/StoreFiles.hpp"
@@ -37,8 +43,11 @@ class GatedManifestStoreFiles final : public content::StoreFiles {
         if (name.starts_with("manifests/")) {
             std::unique_lock lock(mutex);
             ++held;
-            changed.wait(lock, [this] { return !closed; });
+            const bool opened = changed.wait_for(lock, kGateTimeout, [this] { return !closed; });
             --held;
+            if (!opened) {
+                throw std::runtime_error("The test never opened the gate of the store.");
+            }
         }
 
         return files.read(name);
@@ -72,6 +81,9 @@ class GatedManifestStoreFiles final : public content::StoreFiles {
     }
 
   private:
+    // The longest that the gate holds an operation, so a test that fails before it opens the gate never leaves a thread waiting for good.
+    static constexpr std::chrono::seconds kGateTimeout{10};
+
     content::FolderStoreFiles files;
     mutable std::mutex mutex;
     mutable std::condition_variable changed;

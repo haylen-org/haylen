@@ -3,7 +3,6 @@
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <memory>
 #include <string>
@@ -158,7 +157,7 @@ TEST_F(LocalStoreTest, DropsATornJournalEntryAndAppendsAfterTheWholeOnes) {
         store->addRecord(key.getId(), first);
         store->flush();
     }
-    std::ofstream(folder.getPath() / "journal-0", std::ios::binary | std::ios::app) << "torn entry";
+    test::TestFiles::append(folder.getPath() / "journal-0", "torn entry");
     {
         const std::unique_ptr<LocalStore> store = open();
         EXPECT_TRUE(store->contains(idOf(first)));

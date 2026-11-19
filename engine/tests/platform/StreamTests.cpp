@@ -85,6 +85,8 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     const graphics::Texture again = stream.getTexture(device);
     EXPECT_NE(again, texture);
     EXPECT_EQ(again.getSize(), math::Vec2(3.0F, 2.0F));
+    ASSERT_NE(again.getResource(), nullptr);
+    ASSERT_FALSE(again.getResource()->staged.empty());
     EXPECT_EQ(again.getResource()->staged.front(), 11U);
 
     EXPECT_THROW(stream.push(larger.data(), 0, 2, getStride(3), 0.0), std::invalid_argument);

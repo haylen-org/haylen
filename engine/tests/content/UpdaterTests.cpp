@@ -4,8 +4,6 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <list>
 #include <map>
 #include <memory>
@@ -29,6 +27,7 @@
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/BrowserStoreFiles.hpp"
+#include "support/CatalogFiles.hpp"
 #include "support/ContentServer.hpp"
 #include "support/CrashingStoreFiles.hpp"
 #include "support/GatedManifestStoreFiles.hpp"
@@ -136,7 +135,10 @@ class UpdaterTest : public ::testing::Test {
     std::pair<std::optional<UpdateOffer>, std::optional<Error>> check(Client& client) {
         std::optional<std::pair<std::optional<UpdateOffer>, std::optional<Error>>> result;
         client.updater->check([&result](std::optional<UpdateOffer> offer, std::optional<Error> error) { result.emplace(std::move(offer), std::move(error)); });
-        EXPECT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }));
+        if (!runtime.pumpUntil([&result] { return result.has_value(); })) {
+            throw std::runtime_error("The check for an update never answered.");
+        }
+
         return std::move(*result);
     }
 
@@ -148,21 +150,33 @@ class UpdaterTest : public ::testing::Test {
             collection = collected;
         });
         // clang-format on
-        EXPECT_TRUE(runtime.pumpUntil([&collection] { return collection.has_value(); }));
-        return collection.value_or(Updater::Collection{});
+        if (!runtime.pumpUntil([&collection] { return collection.has_value(); })) {
+            throw std::runtime_error("The collection of the store never ended.");
+        }
+
+        return *collection;
     }
 
     UpdateOffer requireOffer(Client& client) {
         auto [offer, error] = check(client);
-        EXPECT_FALSE(error) << error->what();
-        EXPECT_TRUE(offer);
+        if (error) {
+            throw std::runtime_error(std::string("The check for an update failed. ") + error->what());
+        }
+
+        if (!offer) {
+            throw std::runtime_error("The check found no update.");
+        }
+
         return std::move(*offer);
     }
 
     std::optional<Error> install(Client& client, const UpdateOffer& offer) {
         std::optional<std::optional<Error>> result;
         client.updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
-        EXPECT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20)));
+        if (!runtime.pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20))) {
+            throw std::runtime_error("The install of the update never ended.");
+        }
+
         return std::move(*result);
     }
 
@@ -170,36 +184,40 @@ class UpdaterTest : public ::testing::Test {
     std::filesystem::path stageStoppedRecord() {
         server.dropAfter(1500 * 1024, 1);
         const std::unique_ptr<Client> client = connect();
-        EXPECT_TRUE(install(*client, requireOffer(*client)));
+        if (!install(*client, requireOffer(*client))) {
+            throw std::runtime_error("The install that the server stops in the middle succeeded.");
+        }
+
         const std::filesystem::path staging = store.getPath() / "staging";
         std::filesystem::path staged;
         // clang-format off
-        EXPECT_TRUE(runtime.pumpUntil([&staging, &staged] {
+        const bool kept = runtime.pumpUntil([&staging, &staged] {
             if (!std::filesystem::exists(staging) || std::filesystem::is_empty(staging)) {
                 return false;
             }
 
             staged = std::filesystem::directory_iterator(staging)->path();
             return readStaged(staged).has_value();
-        }));
+        });
         // clang-format on
+        if (!kept) {
+            throw std::runtime_error("The install that stopped kept no record in the staging folder.");
+        }
+
         return staged;
     }
 
+    // Reads the record that a staged file holds, or nothing while the store has not written a whole start of it.
     [[nodiscard]] static std::optional<PartialRecord> readStaged(const std::filesystem::path& file) {
-        std::ifstream stream(file, std::ios::binary);
-        const std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
         try {
-            return PartialRecord::parse(bytes);
+            return PartialRecord::parse(test::TestFiles::read(file));
         } catch (const Error&) {
             return std::nullopt;
         }
     }
 
     static void writeStaged(const std::filesystem::path& file, const PartialRecord& partial) {
-        const std::vector<std::uint8_t> bytes = partial.write();
-        std::ofstream stream(file, std::ios::binary | std::ios::trunc);
-        stream.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+        test::TestFiles::write(file, partial.write());
     }
 
     [[nodiscard]] static std::string readText(const io::Package& package, std::string_view path) {
@@ -772,7 +790,7 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
     // clang-format off
     const auto chunksOf = [&offer](std::string_view path) {
         const Catalog& catalog = *offer.content->catalog;
-        const Catalog::File file = catalog.getFile(*catalog.findFile(path));
+        const Catalog::File file = test::CatalogFiles::find(catalog, path);
         std::vector<Catalog::Chunk> chunks;
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
             chunks.push_back(catalog.getChunk(catalog.getPart(part).chunk));
@@ -829,8 +847,7 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
     std::map<std::string, std::string> originals;
     for (const ShardReference& reference : publication.newPacks) {
         const std::string pack = PublicationLayout::getPackPath(reference);
-        std::ifstream stream(tree.getPath() / pack, std::ios::binary);
-        std::string bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+        std::string bytes = test::TestFiles::readText(tree.getPath() / pack);
         originals.emplace(pack, bytes);
         std::array<std::uint8_t, ShardHeader::kSize> header{};
         std::copy_n(bytes.begin(), header.size(), reinterpret_cast<char*>(header.data()));
@@ -913,6 +930,7 @@ TEST_F(UpdaterTest, KeepsTheRecordsOfAnInstallThatStartsWhileACollectionRuns) {
         ASSERT_TRUE(runtime.pumpUntil([&gate] { return gate.isHolding(); }));
         std::optional<std::optional<Error>> installed;
         client->updater->install(offer, {}, [&installed](std::optional<Error> error) { installed.emplace(std::move(error)); });
+        // The install may end or wait for the device behind the collection, so this wait gives it time without requiring either.
         (void)runtime.pumpUntil([&installed] { return installed.has_value(); }, std::chrono::seconds(2));
 
         gate.open();

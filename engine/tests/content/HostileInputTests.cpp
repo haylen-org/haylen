@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <iterator>
 #include <stdexcept>
 #include <string>
@@ -36,11 +35,6 @@ class HostileInputTest : public ::testing::Test {
         return bytes;
     }
 
-    [[nodiscard]] static std::vector<std::uint8_t> readFile(const std::filesystem::path& file) {
-        std::ifstream stream(file, std::ios::binary);
-        return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-    }
-
     // Valid inputs of every parser, each behind the byte that picks its parser.
     [[nodiscard]] std::vector<std::vector<std::uint8_t>> makeSeeds() {
         release.build({{"haylen.json", "{}"}, {"source/main.lua", "return 1"}, {"content/a.txt", "alpha"}, {"content/b.bin", std::string(5000, 'b')}});
@@ -53,7 +47,7 @@ class HostileInputTest : public ::testing::Test {
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
             if (entry.path().extension() == ".hpak") {
-                seeds.push_back(withParser(1, readFile(entry.path())));
+                seeds.push_back(withParser(1, test::TestFiles::read(entry.path())));
             }
         }
 
@@ -65,7 +59,7 @@ class HostileInputTest : public ::testing::Test {
         catalog.addFile("content/b/c.txt", Delivery::Required, {});
         seeds.push_back(withParser(3, catalog.write()));
 
-        seeds.push_back(withParser(4, readFile(release.getFolder() / ReleasePackage::kContentManifestFile)));
+        seeds.push_back(withParser(4, test::TestFiles::read(release.getFolder() / ReleasePackage::kContentManifestFile)));
         const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("com.haylen.tests"), .channel = "stable", .generation = 2};
         seeds.push_back(withParser(5, ChannelWriter::write(descriptor, release.getSigningKey())));
         seeds.push_back(withParser(6, StoreState{.application = descriptor.application, .channel = "stable", .acceptedGeneration = 2}.write()));

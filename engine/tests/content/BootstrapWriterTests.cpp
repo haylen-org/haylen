@@ -4,7 +4,6 @@
 #include <array>
 #include <filesystem>
 #include <format>
-#include <fstream>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -14,6 +13,7 @@
 #include "content/crypto/Digest.hpp"
 #include "haylen/content/EmbeddedKeyProvider.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::content {
 
@@ -35,11 +35,6 @@ class BootstrapWriterTest : public ::testing::Test {
         }
 
         return bytes;
-    }
-
-    [[nodiscard]] std::vector<std::uint8_t> readFile(const std::string& name) const {
-        std::ifstream stream(directory.getPath() / "keys" / name, std::ios::binary);
-        return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
     }
 
     // Writes bytes as the literals of the source, which a key must never appear as.
@@ -71,13 +66,13 @@ TEST_F(BootstrapWriterTest, WritesTheIdentityAndSealedKeysOfTheApp) {
         std::ranges::copy(id.getBytes(), keyId.begin());
         KeyProvider::Key opened{};
         ASSERT_TRUE(provider.getKey(keyId, opened));
-        const std::vector<std::uint8_t> key = readFile("content-" + id.toHex() + ".key");
+        const std::vector<std::uint8_t> key = test::TestFiles::read(directory.getPath() / "keys" / ("content-" + id.toHex() + ".key"));
         EXPECT_TRUE(std::ranges::equal(opened, key));
         EXPECT_EQ(source.find(writeLiterals(key)), std::string::npos);
         EXPECT_EQ(source.find(Digest(std::span(key).first<32>()).toHex()), std::string::npos);
     }
 
-    const std::vector<std::uint8_t> seed = readFile(std::string(KeyStore::kSigningKeyFile));
+    const std::vector<std::uint8_t> seed = test::TestFiles::read(directory.getPath() / "keys" / KeyStore::kSigningKeyFile);
     EXPECT_EQ(source.find(writeLiterals(seed)), std::string::npos);
     EXPECT_EQ(source.find(Digest(std::span(seed).first<32>()).toHex()), std::string::npos);
 }

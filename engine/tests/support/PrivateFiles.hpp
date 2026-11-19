@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <memory>
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -22,12 +23,13 @@ class PrivateFiles final {
         PACL list = nullptr;
         PSECURITY_DESCRIPTOR descriptor = nullptr;
         ASSERT_EQ(GetNamedSecurityInfoW(path.c_str(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, nullptr, nullptr, &list, nullptr, &descriptor), static_cast<DWORD>(ERROR_SUCCESS)) << path;
+        const std::unique_ptr<void, decltype(&LocalFree)> ownedDescriptor(descriptor, &LocalFree);
         SECURITY_DESCRIPTOR_CONTROL control = 0;
         DWORD revision = 0;
-        GetSecurityDescriptorControl(descriptor, &control, &revision);
+        ASSERT_NE(GetSecurityDescriptorControl(descriptor, &control, &revision), FALSE) << path;
         EXPECT_NE(control & SE_DACL_PROTECTED, 0) << path;
+        ASSERT_NE(list, nullptr) << path;
         EXPECT_EQ(list->AceCount, 1) << path;
-        LocalFree(descriptor);
 #else
         using std::filesystem::perms;
         const perms expected = std::filesystem::is_directory(path) ? perms::owner_all : perms::owner_read | perms::owner_write;

@@ -4,11 +4,9 @@
 
 namespace haylen::platform {
 
-namespace {
-
-// Counts the frames that the gate plays over a second of refreshes of the display at the rate in hertz, each a little early or late by turns.
-class Refreshes final {
-  public:
+class FrameRateGateTest : public ::testing::Test {
+  protected:
+    // Counts the frames that the gate plays over a second of refreshes of the display at the rate in hertz, each a little early or late by turns.
     static int countFrames(FrameRateGate& gate, double hertz) {
         int frames = 0;
         for (int refresh = 0; refresh < static_cast<int>(hertz); ++refresh) {
@@ -20,38 +18,36 @@ class Refreshes final {
     }
 };
 
-} // namespace
-
-TEST(FrameRateGateTest, PlaysEveryRefreshWithoutATarget) {
+TEST_F(FrameRateGateTest, PlaysEveryRefreshWithoutATarget) {
     FrameRateGate gate;
-    EXPECT_EQ(Refreshes::countFrames(gate, 120.0), 120);
+    EXPECT_EQ(countFrames(gate, 120.0), 120);
 }
 
-TEST(FrameRateGateTest, PlaysAWholeNumberOfRefreshesApartForATargetBelowTheDisplay) {
+TEST_F(FrameRateGateTest, PlaysAWholeNumberOfRefreshesApartForATargetBelowTheDisplay) {
     FrameRateGate gate;
     gate.setTarget(30);
-    EXPECT_EQ(Refreshes::countFrames(gate, 60.0), 30);
+    EXPECT_EQ(countFrames(gate, 60.0), 30);
 
     gate.setTarget(60);
-    EXPECT_EQ(Refreshes::countFrames(gate, 120.0), 60);
+    EXPECT_EQ(countFrames(gate, 120.0), 60);
 
     gate.setTarget(30);
-    EXPECT_EQ(Refreshes::countFrames(gate, 120.0), 30);
+    EXPECT_EQ(countFrames(gate, 120.0), 30);
 }
 
-TEST(FrameRateGateTest, AveragesATargetThatTheDisplayDoesNotDivide) {
+TEST_F(FrameRateGateTest, AveragesATargetThatTheDisplayDoesNotDivide) {
     FrameRateGate gate;
     gate.setTarget(60);
-    EXPECT_NEAR(Refreshes::countFrames(gate, 144.0), 60, 1);
+    EXPECT_NEAR(countFrames(gate, 144.0), 60, 1);
 }
 
-TEST(FrameRateGateTest, PlaysEveryRefreshOfADisplaySlowerThanTheTarget) {
+TEST_F(FrameRateGateTest, PlaysEveryRefreshOfADisplaySlowerThanTheTarget) {
     FrameRateGate gate;
     gate.setTarget(120);
-    EXPECT_EQ(Refreshes::countFrames(gate, 60.0), 60);
+    EXPECT_EQ(countFrames(gate, 60.0), 60);
 }
 
-TEST(FrameRateGateTest, TellsHowLongALoopWaitsForTheNextFrame) {
+TEST_F(FrameRateGateTest, TellsHowLongALoopWaitsForTheNextFrame) {
     FrameRateGate gate;
     EXPECT_EQ(gate.getWaitSeconds(1.0), 0.0);
 
@@ -62,7 +58,7 @@ TEST(FrameRateGateTest, TellsHowLongALoopWaitsForTheNextFrame) {
     EXPECT_EQ(gate.getWaitSeconds(1.2), 0.0);
 }
 
-TEST(FrameRateGateTest, StartsTheBeatAgainAfterALateFrame) {
+TEST_F(FrameRateGateTest, StartsTheBeatAgainAfterALateFrame) {
     FrameRateGate gate;
     gate.setTarget(30);
     EXPECT_TRUE(gate.takeFrame(1.0));

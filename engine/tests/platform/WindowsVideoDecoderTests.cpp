@@ -10,16 +10,15 @@
 
 namespace haylen::platform {
 
-namespace {
-
 class WindowsVideoDecoderTest : public ::testing::Test {
   protected:
+    // More pictures than the clip made for the tests holds, which bounds a read to its end.
+    static constexpr int kMaxFrames = 10000;
+
     [[nodiscard]] static std::shared_ptr<io::PackageReader> open(const char* name) {
         return std::make_shared<io::FileReader>(std::filesystem::path(HAYLEN_TEST_VIDEO) / name, name);
     }
 };
-
-} // namespace
 
 // The clip made for the tests plays through Media Foundation: its size and length, pictures in order as RGBA rows, the sound and a seek.
 TEST_F(WindowsVideoDecoderTest, DecodesPicturesAndSoundOfAClip) {
@@ -49,7 +48,11 @@ TEST_F(WindowsVideoDecoderTest, DecodesPicturesAndSoundOfAClip) {
     ASSERT_EQ(decoder.readFrame(frame), VideoDecoder::Read::Frame);
     EXPECT_GE(frame.time, info.duration * 0.5 - 0.5);
 
-    while (decoder.readFrame(frame) == VideoDecoder::Read::Frame) {}
+    int frames = 0;
+    while (decoder.readFrame(frame) == VideoDecoder::Read::Frame) {
+        ASSERT_LT(++frames, kMaxFrames) << "The clip never ends.";
+    }
+
     EXPECT_EQ(decoder.readFrame(frame), VideoDecoder::Read::End);
 }
 

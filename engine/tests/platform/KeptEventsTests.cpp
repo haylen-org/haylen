@@ -28,10 +28,11 @@ TEST(KeptEventsTest, KeepsTheNewestEventsOfEachNameInTheOrderTheyCame) {
         list.push_back(event.json);
     }
 
-    EXPECT_EQ(samples.size(), KeptEvents::kLimitPerName);
+    ASSERT_EQ(samples.size(), KeptEvents::kLimitPerName);
     EXPECT_EQ(samples.front(), "8");
     EXPECT_EQ(samples.back(), std::to_string(KeptEvents::kLimitPerName + 7));
     EXPECT_EQ(links, (std::vector<std::string>{"\"first\"", "\"second\""}));
+    ASSERT_FALSE(events.empty());
     EXPECT_TRUE(events.back().options.retain);
     EXPECT_EQ(kept.size(), 0U);
 }

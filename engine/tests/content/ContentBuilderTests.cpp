@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <iterator>
 #include <map>
 #include <set>
@@ -15,6 +14,7 @@
 #include "content/format/Catalog.hpp"
 #include "content/format/Chunker.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "support/CatalogFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -56,11 +56,6 @@ class ContentBuilderTest : public ::testing::Test {
         return builder.build(io::MemoryPackage("source", files), std::move(inputs));
     }
 
-    [[nodiscard]] static std::vector<std::uint8_t> readFile(const std::filesystem::path& file) {
-        std::ifstream stream(file, std::ios::binary);
-        return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
-    }
-
     KeyRing keys;
     Digest keyId;
     test::TemporaryDirectory directory;
@@ -73,12 +68,12 @@ TEST_F(ContentBuilderTest, KeepsTheFilesOfEachDeliveryInShardsOfTheirOwn) {
 
     ASSERT_EQ(result.shards.size(), 3U);
     const Catalog catalog = Catalog::parse(result.catalog, result.shards.size());
-    const auto shardOf = [&catalog](std::string_view path) { return catalog.getChunk(catalog.getPart(catalog.getFile(*catalog.findFile(path)).firstPart).chunk).shard; };
+    const auto shardOf = [&catalog](std::string_view path) { return catalog.getChunk(catalog.getPart(test::CatalogFiles::find(catalog, path).firstPart).chunk).shard; };
     EXPECT_EQ(shardOf("content/a.json"), 0U);
     EXPECT_EQ(shardOf("content/d.json"), 0U);
     EXPECT_EQ(shardOf("content/c.json"), 1U);
     EXPECT_EQ(shardOf("content/b.json"), 2U);
-    EXPECT_EQ(catalog.getFile(*catalog.findFile("content/b.json")).delivery, Delivery::OnDemand);
+    EXPECT_EQ(test::CatalogFiles::find(catalog, "content/b.json").delivery, Delivery::OnDemand);
 }
 
 TEST_F(ContentBuilderTest, BuildsTheSameBytesInEveryCleanBuild) {
@@ -89,7 +84,7 @@ TEST_F(ContentBuilderTest, BuildsTheSameBytesInEveryCleanBuild) {
     ASSERT_EQ(first.shards, second.shards);
 
     for (const ShardReference& shard : first.shards) {
-        EXPECT_EQ(readFile(directory.getPath() / "first" / shard.getFileName()), readFile(directory.getPath() / "second" / shard.getFileName()));
+        EXPECT_EQ(test::TestFiles::read(directory.getPath() / "first" / shard.getFileName()), test::TestFiles::read(directory.getPath() / "second" / shard.getFileName()));
     }
 
     EXPECT_GE(first.statistics.newChunks, 21U + 12 * kMegabyte / Chunker::kMaximumSize);
@@ -116,7 +111,7 @@ TEST_F(ContentBuilderTest, StoresOnlyTheChunksAnUpdateChanged) {
     const ContentBuilder::Result base = build(directory.getPath(), files);
     std::map<std::string, std::vector<std::uint8_t>> before;
     for (const ShardReference& shard : base.shards) {
-        before.emplace(shard.getFileName(), readFile(directory.getPath() / shard.getFileName()));
+        before.emplace(shard.getFileName(), test::TestFiles::read(directory.getPath() / shard.getFileName()));
     }
 
     // One small region of the large file and one small file change.
@@ -131,7 +126,7 @@ TEST_F(ContentBuilderTest, StoresOnlyTheChunksAnUpdateChanged) {
     EXPECT_TRUE(std::equal(base.shards.begin(), base.shards.end(), patch.shards.begin())) << "The update references the old shards as they are.";
 
     for (const auto& [name, bytes] : before) {
-        EXPECT_EQ(readFile(directory.getPath() / name), bytes) << "An update never rewrites an old shard.";
+        EXPECT_EQ(test::TestFiles::read(directory.getPath() / name), bytes) << "An update never rewrites an old shard.";
     }
 
     EXPECT_LT(patch.shards.back().fileSize, 2 * Chunker::kMaximumSize + 4096) << "The patch shard holds only the changed chunks.";

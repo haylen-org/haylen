@@ -81,7 +81,9 @@ class PushingServer final {
                         socket.sendFrame(restart.data(), static_cast<int>(restart.size()), Poco::Net::WebSocket::FRAME_TEXT);
                     }
                 }
-            } catch (const Poco::Exception&) {}
+            } catch (const Poco::IOException&) {
+                // The app drops its connection when it stops or restarts, which ends the handler without a close frame.
+            }
         }
 
       private:
@@ -157,6 +159,7 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     EXPECT_EQ(messages.front().at("type"), "hello");
     EXPECT_EQ(messages.front().at("session"), "");
     const auto report = std::ranges::find_if(messages, [](const core::Json& message) { return message.at("type") == "report"; });
+    ASSERT_NE(report, messages.end());
     EXPECT_EQ(report->at("revision"), 1);
     EXPECT_EQ(report->at("modules"), core::Json::array({"source/counter.lua"}));
 

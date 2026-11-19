@@ -1,10 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
+#include <span>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -40,8 +41,11 @@ class ContentToolTest : public ::testing::Test {
         std::vector<std::string> secrets;
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getPath("keys"))) {
             if (entry.path().extension() == ".key") {
-                std::ifstream stream(entry.path(), std::ios::binary);
-                const std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+                const std::vector<std::uint8_t> bytes = test::TestFiles::read(entry.path());
+                if (bytes.size() < Digest::kSize) {
+                    throw std::runtime_error("The key file \"" + entry.path().string() + "\" is shorter than a key.");
+                }
+
                 secrets.push_back(Digest(std::span(bytes).first<Digest::kSize>()).toHex());
             }
         }
@@ -100,8 +104,7 @@ TEST_F(ContentToolTest, BuildsInspectsAndPublishesReleases) {
     ASSERT_EQ(run({"compact", getPath("tree"), "--keys", getPath("keys")}), 0) << errors.str();
     EXPECT_NE(output.str().find("within its last 2 generations"), std::string::npos) << output.str();
     ASSERT_EQ(run({"bootstrap", "--keys", getPath("keys"), "--profile", "desktop", "--build", "7", "--output", getPath("bootstrap/HaylenBootstrap.cpp")}), 0) << errors.str();
-    std::ifstream bootstrap(work.getPath() / "bootstrap" / "HaylenBootstrap.cpp");
-    EXPECT_NE(std::string(std::istreambuf_iterator<char>(bootstrap), std::istreambuf_iterator<char>()).find("haylen::content::Bootstrap::install"), std::string::npos);
+    EXPECT_NE(test::TestFiles::readText(work.getPath() / "bootstrap" / "HaylenBootstrap.cpp").find("haylen::content::Bootstrap::install"), std::string::npos);
     test::PrivateFiles::expectOwnerOnly(work.getPath() / "bootstrap" / "HaylenBootstrap.cpp");
     ASSERT_EQ(run({"keys", "rotate", getPath("keys")}), 0) << errors.str();
     ASSERT_EQ(run({"keys", "show", getPath("keys")}), 0) << errors.str();

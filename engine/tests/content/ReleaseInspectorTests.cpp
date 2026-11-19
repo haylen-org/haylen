@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <map>
 #include <stdexcept>
@@ -70,7 +69,7 @@ TEST_F(ReleaseInspectorTest, ShowsTheFilesChunksAndShardsOfARelease) {
     EXPECT_LT(ReleaseInspector::getStoredBytes(report.content), 2 * large);
     const ReleaseInspector::File& terrain = report.content.files.back();
     EXPECT_EQ(terrain.path, "content/world/terrain.bin");
-    EXPECT_GT(terrain.chunks.size(), 1U);
+    ASSERT_GT(terrain.chunks.size(), 1U);
     EXPECT_EQ(terrain.chunks.back().offset + terrain.chunks.back().plainSize, large);
 }
 
@@ -138,24 +137,23 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
 
     // A file the manifests do not name never belongs in a release.
     const std::filesystem::path stray = release.getFolder() / "main.lua";
-    std::ofstream(stray) << "loaded = true";
+    test::TestFiles::write(stray, "loaded = true");
     EXPECT_THROW((void)inspector.verify(release.getFolder()), std::runtime_error);
-    std::filesystem::remove(stray);
+    ASSERT_TRUE(std::filesystem::remove(stray));
 
-    const ShardReference shard = inspector.inspect(release.getFolder()).content.envelope.shards.front();
-    std::fstream stream(release.getFolder() / shard.getFileName(), std::ios::binary | std::ios::in | std::ios::out);
-    stream.seekp(static_cast<std::streamoff>(shard.fileSize / 2));
-    stream.put('x');
-    stream.close();
+    const std::vector<ShardReference> shards = inspector.inspect(release.getFolder()).content.envelope.shards;
+    ASSERT_FALSE(shards.empty());
+    const ShardReference shard = shards.front();
+    test::TestFiles::damage(release.getFolder() / shard.getFileName(), shard.fileSize / 2);
     expectCode(Error::Code::CorruptHeader, [&] { (void)inspector.verify(release.getFolder()); });
 
-    std::filesystem::remove(release.getFolder() / shard.getFileName());
+    ASSERT_TRUE(std::filesystem::remove(release.getFolder() / shard.getFileName()));
     expectCode(Error::Code::MissingShard, [&] { (void)inspector.verify(release.getFolder()); });
 
     // Each manifest must be the one of its domain.
     std::filesystem::copy_file(release.getFolder() / ReleasePackage::kAppManifestFile, release.getFolder() / ReleasePackage::kContentManifestFile, std::filesystem::copy_options::overwrite_existing);
     expectCode(Error::Code::CorruptManifest, [&] { (void)inspector.inspect(release.getFolder()); });
-    std::filesystem::remove(release.getFolder() / ReleasePackage::kAppManifestFile);
+    ASSERT_TRUE(std::filesystem::remove(release.getFolder() / ReleasePackage::kAppManifestFile));
 
     try {
         (void)inspector.inspect(release.getFolder());

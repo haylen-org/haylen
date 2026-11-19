@@ -14,8 +14,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <string>
 
 #include "haylen/core/Engine.hpp"
@@ -25,6 +23,7 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::platform {
 
@@ -38,8 +37,7 @@ class CrashGuardTest : public ::testing::Test {
     }
 
     [[nodiscard]] static core::Json readReport(const std::filesystem::path& file) {
-        std::ifstream stream(file, std::ios::binary);
-        return core::Json::parse(std::string(std::istreambuf_iterator<char>(stream), {}));
+        return core::Json::parse(test::TestFiles::readText(file));
     }
 
 #if defined(_WIN32)
@@ -197,6 +195,7 @@ TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) 
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return heard[1]"), "Opened the shop. 12");
     const core::Json context = core::Json::parse(fixture.host().getCrashContext());
+    ASSERT_FALSE(context.at("breadcrumbs").empty());
     EXPECT_EQ(context.at("breadcrumbs").back().at("message"), "Opened the shop.");
     EXPECT_EQ(context.at("app").at("identifier"), fixture.engine().getConfig().identifier);
     EXPECT_EQ(context.at("app").at("build"), fixture.engine().getConfig().build);

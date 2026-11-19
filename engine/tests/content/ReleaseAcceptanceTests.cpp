@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <set>
 #include <string>
@@ -15,6 +13,7 @@
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "support/ReleaseFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -43,16 +42,6 @@ class ReleaseAcceptanceTest : public ::testing::Test {
         return files;
     }
 
-    [[nodiscard]] std::map<std::string, std::vector<std::uint8_t>> readRelease() const {
-        std::map<std::string, std::vector<std::uint8_t>> files;
-        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
-            std::ifstream stream(entry.path(), std::ios::binary);
-            files.emplace(entry.path().filename().string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
-        }
-
-        return files;
-    }
-
     [[nodiscard]] static bool holds(const std::vector<std::uint8_t>& file, std::span<const std::uint8_t> part) {
         return std::search(file.begin(), file.end(), part.begin(), part.end()) != file.end();
     }
@@ -69,7 +58,7 @@ TEST_F(ReleaseAcceptanceTest, ShipsASmallGameWithoutAnyReadableFile) {
     release.build(io::MemoryPackage("source", game));
 
     // The release is the two manifests and one shard of each domain, and no file of it holds a path, a line of code or a byte of an asset.
-    const auto shipped = readRelease();
+    const auto shipped = test::ReleaseFiles::read(release.getFolder());
     ASSERT_EQ(shipped.size(), 4U);
     EXPECT_TRUE(shipped.contains(std::string(ReleasePackage::kAppManifestFile)));
     EXPECT_TRUE(shipped.contains(std::string(ReleasePackage::kContentManifestFile)));
@@ -98,7 +87,7 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
     release.build(io::MemoryPackage("source", game), target);
     const ReleaseInspector::Report base = makeInspector().inspect(release.getFolder());
     ASSERT_GE(base.content.envelope.shards.size(), 6U);
-    const auto before = readRelease();
+    const auto before = test::ReleaseFiles::read(release.getFolder());
 
     game["content/world/region5.bin"][kMegabyte] ^= 1;
     release.build(io::MemoryPackage("source", game), target);
@@ -109,7 +98,7 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
     EXPECT_EQ(difference.changedFiles, std::vector<std::string>{"content/world/region5.bin"});
 
     // Every shard of the base stays byte for byte in the update.
-    const auto after = readRelease();
+    const auto after = test::ReleaseFiles::read(release.getFolder());
     for (const ShardReference& shard : base.content.envelope.shards) {
         ASSERT_TRUE(after.contains(shard.getFileName()));
         EXPECT_EQ(after.at(shard.getFileName()), before.at(shard.getFileName()));
@@ -121,13 +110,13 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
 TEST_F(ReleaseAcceptanceTest, UpdatesCodeAndContentWithNewShardsOnly) {
     Files game = makeGame();
     release.build(io::MemoryPackage("source", game));
-    const auto before = readRelease();
+    const auto before = test::ReleaseFiles::read(release.getFolder());
 
     // The next build of the store changes one Lua module and one asset, so it adds one shard to each domain and two new manifests, and every earlier file stays as it was.
     game["source/scenes/island.lua"] = test::TestFiles::bytes("return {title = 'The changed island of the release test'}");
     game["content/data/enemies.json"] = test::TestFiles::bytes(R"({"enemies": ["the ghost of the release test"]})");
     release.build(io::MemoryPackage("source", game));
-    const auto after = readRelease();
+    const auto after = test::ReleaseFiles::read(release.getFolder());
 
     std::set<std::string> added;
     for (const auto& [name, bytes] : after) {

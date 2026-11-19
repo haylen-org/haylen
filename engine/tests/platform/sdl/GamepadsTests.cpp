@@ -2,6 +2,8 @@
 
 #include <array>
 #include <cstddef>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 #include <SDL3/SDL_init.h>
@@ -53,6 +55,10 @@ class GamepadsTest : public ::testing::Test {
         }
 
         SDL_Joystick* joystick = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&desc));
+        if (joystick == nullptr) {
+            throw std::runtime_error(std::string("SDL could not attach the virtual controller: ") + SDL_GetError());
+        }
+
         joysticks.push_back(joystick);
         return joystick;
     }
@@ -119,11 +125,11 @@ TEST_F(GamepadsTest, KeepsEveryControllerInItsSlotWhileItStaysConnected) {
 TEST_F(GamepadsTest, ReadsTheButtonsTheSticksAndTheTriggersOfAController) {
     SDL_Joystick* joystick = attach("Controller", 0x045E, 0x0B12);
     pump();
-    SDL_SetJoystickVirtualButton(joystick, SDL_GAMEPAD_BUTTON_SOUTH, true);
-    SDL_SetJoystickVirtualButton(joystick, SDL_GAMEPAD_BUTTON_DPAD_LEFT, true);
-    SDL_SetJoystickVirtualAxis(joystick, SDL_GAMEPAD_AXIS_LEFTY, SDL_JOYSTICK_AXIS_MAX);
-    SDL_SetJoystickVirtualAxis(joystick, SDL_GAMEPAD_AXIS_RIGHTX, SDL_JOYSTICK_AXIS_MIN);
-    SDL_SetJoystickVirtualAxis(joystick, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, SDL_JOYSTICK_AXIS_MAX);
+    ASSERT_TRUE(SDL_SetJoystickVirtualButton(joystick, SDL_GAMEPAD_BUTTON_SOUTH, true));
+    ASSERT_TRUE(SDL_SetJoystickVirtualButton(joystick, SDL_GAMEPAD_BUTTON_DPAD_LEFT, true));
+    ASSERT_TRUE(SDL_SetJoystickVirtualAxis(joystick, SDL_GAMEPAD_AXIS_LEFTY, SDL_JOYSTICK_AXIS_MAX));
+    ASSERT_TRUE(SDL_SetJoystickVirtualAxis(joystick, SDL_GAMEPAD_AXIS_RIGHTX, SDL_JOYSTICK_AXIS_MIN));
+    ASSERT_TRUE(SDL_SetJoystickVirtualAxis(joystick, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, SDL_JOYSTICK_AXIS_MAX));
     pump();
 
     const input::GamepadState& state = states[0];
@@ -159,7 +165,7 @@ TEST_F(GamepadsTest, ReadsTheSensorsAndTheTouchpadOfAControllerThatHasThem) {
     SDL_Joystick* joystick = attach("Motion Controller", 0x054C, 0x0CE6, nullptr, true);
     pump();
     const std::array<float, 3> gravity{0.5F, 9.8F, -1.0F};
-    SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 1, gravity.data(), static_cast<int>(gravity.size()));
+    ASSERT_TRUE(SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 1, gravity.data(), static_cast<int>(gravity.size())));
     pump();
     EXPECT_TRUE(states[0].motionSensors.test(static_cast<std::size_t>(input::MotionSensor::Accelerometer)));
     EXPECT_TRUE(states[0].motionSensors.test(static_cast<std::size_t>(input::MotionSensor::Gyroscope)));
@@ -169,8 +175,8 @@ TEST_F(GamepadsTest, ReadsTheSensorsAndTheTouchpadOfAControllerThatHasThem) {
     input::GamepadMotion::Sensors wanted;
     wanted.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
     gamepads.setMotion(wanted);
-    SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 2, gravity.data(), static_cast<int>(gravity.size()));
-    SDL_SetJoystickVirtualTouchpad(joystick, 0, 1, true, 0.25F, 0.75F, 0.5F);
+    ASSERT_TRUE(SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 2, gravity.data(), static_cast<int>(gravity.size())));
+    ASSERT_TRUE(SDL_SetJoystickVirtualTouchpad(joystick, 0, 1, true, 0.25F, 0.75F, 0.5F));
     pump();
     EXPECT_EQ(states[0].motion.sensors, wanted);
     EXPECT_EQ(states[0].motion.acceleration, (std::array<float, 3>{0.5F, 1.0F, 9.8F}));

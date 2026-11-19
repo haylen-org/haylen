@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -33,7 +32,7 @@ class RecordCacheTest : public ::testing::Test {
             }
         }
 
-        return {};
+        throw std::runtime_error("The cache holds no entry.");
     }
 
     test::TemporaryDirectory directory;
@@ -56,8 +55,7 @@ TEST_F(RecordCacheTest, ServesTheRecordsItStored) {
     EXPECT_EQ(found, ciphertext);
 
     // The cache holds only the sealed record, never the plain chunk.
-    std::ifstream stream(findEntry(), std::ios::binary);
-    const std::string stored{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+    const std::string stored = test::TestFiles::readText(findEntry());
     EXPECT_EQ(stored.find("repeats"), std::string::npos);
 }
 
@@ -70,18 +68,17 @@ TEST_F(RecordCacheTest, IgnoresEntriesThatDoNotVerify) {
     const std::vector<std::uint8_t> otherPlain = test::TestFiles::bytes("Another chunk of another asset.");
     std::vector<std::uint8_t> otherCiphertext;
     const ChunkRecord::Header otherHeader = RecordSealer::seal(key, otherPlain, ChunkRecord::identifyContent(otherPlain), otherCiphertext).serialize();
-    std::ofstream(findEntry(), std::ios::binary | std::ios::trunc).write(reinterpret_cast<const char*>(otherHeader.data()), static_cast<std::streamsize>(otherHeader.size())).write(reinterpret_cast<const char*>(otherCiphertext.data()), static_cast<std::streamsize>(otherCiphertext.size()));
+    std::vector<std::uint8_t> otherEntry(otherHeader.begin(), otherHeader.end());
+    otherEntry.insert(otherEntry.end(), otherCiphertext.begin(), otherCiphertext.end());
+    test::TestFiles::write(findEntry(), otherEntry);
     EXPECT_FALSE(cache.find(key, record.contentId, found).has_value());
     cache.store(key, record, ciphertext);
-    std::ofstream(findEntry(), std::ios::binary | std::ios::app).put('x');
+    test::TestFiles::append(findEntry(), "x");
     EXPECT_FALSE(cache.find(key, record.contentId, found).has_value());
     cache.store(key, record, ciphertext);
     ASSERT_TRUE(cache.find(key, record.contentId, found).has_value());
 
-    std::fstream stream(findEntry(), std::ios::binary | std::ios::in | std::ios::out);
-    stream.seekp(static_cast<std::streamoff>(ChunkRecord::kHeaderSize + 2));
-    stream.put('x');
-    stream.close();
+    test::TestFiles::damage(findEntry(), ChunkRecord::kHeaderSize + 2);
     EXPECT_FALSE(cache.find(key, record.contentId, found).has_value()) << "A damaged entry is sealed again instead of serving.";
 
     std::filesystem::resize_file(findEntry(), 10);
@@ -92,7 +89,7 @@ TEST_F(RecordCacheTest, ReportsAnEntryItCannotWrite) {
     // A folder under the name the entry grows in leaves no room for it, and the store stops with the name of the entry.
     cache.store(key, record, ciphertext);
     std::filesystem::path partial = findEntry();
-    std::filesystem::remove(partial);
+    ASSERT_TRUE(std::filesystem::remove(partial));
     partial += ".partial";
     std::filesystem::create_directories(partial);
 

@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <memory>
 #include <set>
@@ -18,6 +16,7 @@
 #include "content/format/Chunker.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "io/MemoryReader.hpp"
+#include "support/ReleaseFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -87,16 +86,6 @@ class ReleaseBuilderTest : public ::testing::Test {
         return builder.build(source, directory.getPath() / name, previous, {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild, .shardTarget = shardTarget});
     }
 
-    [[nodiscard]] std::map<std::string, std::vector<std::uint8_t>> readFolder(const std::string& name) const {
-        std::map<std::string, std::vector<std::uint8_t>> files;
-        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(directory.getPath() / name)) {
-            std::ifstream stream(entry.path(), std::ios::binary);
-            files.emplace(entry.path().filename().string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
-        }
-
-        return files;
-    }
-
     [[nodiscard]] std::unique_ptr<io::Package> open(const std::string& name) const {
         return fixture.open(io::Package::openDirectory(directory.getPath() / name));
     }
@@ -123,7 +112,7 @@ TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
 
     const std::unique_ptr<io::Package> release = open("release");
     EXPECT_EQ(release->list(""), (std::vector<std::string>{"content/data/config.json", "content/world/terrain.bin", "haylen.json", "plugins/ads/plugin.json", "plugins/ads/source/init.lua", "source/main.lua"}));
-    for (const auto& [name, bytes] : readFolder("release")) {
+    for (const auto& [name, bytes] : test::ReleaseFiles::read(directory.getPath() / "release")) {
         EXPECT_TRUE(name.ends_with(".hpak") || name.ends_with(".hmanifest")) << name;
     }
 }
@@ -144,7 +133,7 @@ TEST_F(ReleaseBuilderTest, FollowsAReleaseThatAStoreLaidOutInFoldersOfItsOwn) {
     const ShardReference& packed = first.content.shards.front();
     const ShardReference& lost = first.content.shards.back();
     std::filesystem::rename(depot / "app" / packed.getFileName(), depot / "packs" / "expansion" / packed.getFileName());
-    std::filesystem::remove(depot / "app" / lost.getFileName());
+    ASSERT_TRUE(std::filesystem::remove(depot / "app" / lost.getFileName()));
 
     const ReleaseBuilder::Result second = build(source, "second", "depot", nullptr, 2 * kMegabyte);
     EXPECT_EQ(second.content.statistics.missingShards, 1U);
@@ -170,18 +159,18 @@ TEST_F(ReleaseBuilderTest, BuildsTheSameBytesWithAndWithoutItsCache) {
     EXPECT_EQ(cold.content.statistics.cachedChunks, 0U);
     EXPECT_EQ(warm.content.statistics.cachedChunks, warm.content.statistics.newChunks) << "A warm cache seals no chunk again.";
     EXPECT_EQ(warm.app.statistics.cachedChunks, warm.app.statistics.newChunks);
-    EXPECT_EQ(readFolder("cold"), readFolder("plain"));
-    EXPECT_EQ(readFolder("warm"), readFolder("plain"));
+    EXPECT_EQ(test::ReleaseFiles::read(directory.getPath() / "cold"), test::ReleaseFiles::read(directory.getPath() / "plain"));
+    EXPECT_EQ(test::ReleaseFiles::read(directory.getPath() / "warm"), test::ReleaseFiles::read(directory.getPath() / "plain"));
 }
 
 TEST_F(ReleaseBuilderTest, KeepsUnchangedShardsByteForByte) {
     Files files = makeFiles();
     const ReleaseBuilder::Result base = build(io::MemoryPackage("source", files), "base");
-    const auto before = readFolder("base");
+    const auto before = test::ReleaseFiles::read(directory.getPath() / "base");
 
     files["content/data/config.json"] = test::TestFiles::bytes(R"({"level": 4})");
     const ReleaseBuilder::Result update = build(io::MemoryPackage("source", files), "update", "base");
-    const auto after = readFolder("update");
+    const auto after = test::ReleaseFiles::read(directory.getPath() / "update");
 
     EXPECT_EQ(update.app.statistics.newChunks, 0U);
     EXPECT_EQ(update.content.statistics.newChunks, 1U);
@@ -228,10 +217,8 @@ TEST_F(ReleaseBuilderTest, RefusesFoldersAndAppsItCannotBuild) {
 TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
     const io::MemoryPackage source("source", makeFiles());
     const ReleaseBuilder::Result base = build(source, "base");
-    std::fstream stream(directory.getPath() / "base" / base.content.shards.front().getFileName(), std::ios::binary | std::ios::in | std::ios::out);
-    stream.seekp(1000);
-    stream.put('x');
-    stream.close();
+    ASSERT_FALSE(base.content.shards.empty());
+    test::TestFiles::damage(directory.getPath() / "base" / base.content.shards.front().getFileName(), 1000);
 
     try {
         (void)build(source, "update", "base");

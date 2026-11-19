@@ -312,7 +312,9 @@ TEST_F(SystemTest, RefusesPluginPermissionsWithoutOneOwner) {
     EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera", "camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"camera\" twice.");
 
     io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}});
-    EXPECT_EQ(AppPlugin::readAll(package, {{"cam-kit", {}}}).front().permissions, (std::vector<std::string>{"camera"}));
+    const std::vector<AppPlugin> plugins = AppPlugin::readAll(package, {{"cam-kit", {}}});
+    ASSERT_EQ(plugins.size(), 1U);
+    EXPECT_EQ(plugins.front().permissions, (std::vector<std::string>{"camera"}));
 
     try {
         (void)AppPlugin::readAll(package, {{"cam-kit", {}}, {"notes", {}}});

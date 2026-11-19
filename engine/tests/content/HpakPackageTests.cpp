@@ -5,7 +5,6 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <functional>
 #include <limits>
 #include <map>
@@ -73,15 +72,6 @@ class HpakPackageTest : public ::testing::Test {
         } catch (const Error& error) {
             EXPECT_EQ(error.getCode(), code) << error.what();
         }
-    }
-
-    // Changes one byte of a file of the release folder.
-    void damage(const std::filesystem::path& file, std::uint64_t offset) const {
-        std::fstream stream(release.getFolder() / file, std::ios::binary | std::ios::in | std::ios::out);
-        stream.seekg(static_cast<std::streamoff>(offset));
-        const auto byte = static_cast<char>(stream.get() ^ 0x01);
-        stream.seekp(static_cast<std::streamoff>(offset));
-        stream.put(byte);
     }
 
     [[nodiscard]] std::vector<std::string> listShards() const {
@@ -338,9 +328,7 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
     store->flush();
 
     for (const std::filesystem::directory_entry& segment : std::filesystem::directory_iterator(folder.getPath() / "store" / "segments")) {
-        std::fstream stream(segment.path(), std::ios::binary | std::ios::in | std::ios::out);
-        stream.seekp(-10, std::ios::end);
-        stream.put('x');
+        test::TestFiles::damage(segment.path(), segment.file_size() - 10);
     }
 
     expectCode(Error::Code::CacheCorrupt, [&] { (void)package.readRange("content/level.bin", 5000, 10); });
@@ -424,7 +412,7 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
 
     // A damaged record fails only the reads that need it, and the middle of the largest shard belongs to the large file.
     const std::string largest = *std::ranges::max_element(shards, {}, [this](const std::string& shard) { return std::filesystem::file_size(release.getFolder() / shard); });
-    damage(largest, std::filesystem::file_size(release.getFolder() / largest) / 2);
+    test::TestFiles::damage(release.getFolder() / largest, std::filesystem::file_size(release.getFolder() / largest) / 2);
     {
         const std::shared_ptr<io::Package> damaged = open();
         EXPECT_EQ(damaged->readAssetText("data/config.json"), R"({"level": 3})");
@@ -433,7 +421,7 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
 
     // A missing shard keeps the package listing its files and fails the reads of them. The damaged package closed its shards first, since Windows deletes no file that is open.
     for (const std::string& shard : shards) {
-        std::filesystem::remove(release.getFolder() / shard);
+        ASSERT_TRUE(std::filesystem::remove(release.getFolder() / shard));
     }
 
     const std::shared_ptr<io::Package> missing = open();
@@ -443,9 +431,9 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
 
 TEST_F(HpakPackageTest, RejectsReleasesThatAreNotForThisApp) {
     build(makeFiles());
-    damage("app.hmanifest", 100);
+    test::TestFiles::damage(release.getFolder() / "app.hmanifest", 100);
     expectCode(Error::Code::ManifestSignatureInvalid, [&] { (void)open(); });
-    damage("app.hmanifest", 100);
+    test::TestFiles::damage(release.getFolder() / "app.hmanifest", 100);
     (void)open();
 
     content::Compatibility newer = release.getCompatibility();

@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <stdexcept>
 
 #include "haylen/platform/TextInput.hpp"
 #include "platform/SharedTextInput.hpp"
 #include "platform/headless/HeadlessTextInput.hpp"
 
 namespace haylen::platform {
-
-namespace {
 
 class SharedTextInputTest : public ::testing::Test {
   protected:
@@ -18,14 +17,16 @@ class SharedTextInputTest : public ::testing::Test {
 
     // The field that the platform shows last.
     [[nodiscard]] const TextInput::Field& getShown() const {
+        if (platformInput.getPublished().empty()) {
+            throw std::runtime_error("The platform shows no field.");
+        }
+
         return platformInput.getPublished().back();
     }
 
     HeadlessTextInput platformInput;
     SharedTextInput input{platformInput};
 };
-
-} // namespace
 
 // A field that finishes hands the input back to the plain keyboard that the app keeps open, which starts empty.
 TEST_F(SharedTextInputTest, GivesTheInputBackToThePlainKeyboardOfTheAppWhenAFieldFinishes) {

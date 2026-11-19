@@ -1,22 +1,13 @@
 #include <gtest/gtest.h>
 #include <lua.hpp>
 
-#include <chrono>
 #include <cstdint>
-#include <filesystem>
-#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "content/ChannelPublisher.hpp"
-#include "content/FolderStoreFiles.hpp"
-#include "content/PublicationLayout.hpp"
-#include "content/ReleaseInspector.hpp"
-#include "content/ReleasePackage.hpp"
-#include "content/ReleaseStager.hpp"
 #include "content/UpdateScreen.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/ContentManager.hpp"
@@ -29,146 +20,15 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/lua/Error.hpp"
-#include "haylen/lua/Stack.hpp"
 #include "haylen/platform/Event.hpp"
-#include "io/CompositePackage.hpp"
 #include "platform/headless/HeadlessHost.hpp"
-#include "support/ContentServer.hpp"
-#include "support/LimitedStoreFiles.hpp"
-#include "support/ReleaseFixture.hpp"
-#include "support/StorePackSource.hpp"
+#include "support/ContentAppFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::content {
 
-// An app that runs a protected release with a content server: the required content that the app waits for, the files that download in the background or when the app asks for them, and the updates of its channel, all served by a local server.
-class ContentManagerTest : public ::testing::Test {
-  protected:
-    using Files = std::map<std::string, std::vector<std::uint8_t>>;
-
-    ContentManagerTest() {
-        game = makeGame();
-        release.build(io::MemoryPackage("source", game));
-        publish(game);
-    }
-
-    [[nodiscard]] Files makeGame() const {
-        const std::string app = R"({"name": "Content", "identifier": "com.haylen.tests", "content": {"updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false}, "delivery": [{"match": "levels/**", "mode": "onDemand"}, {"match": "music/**", "mode": "prefetch"}]}})";
-        Files files;
-        files.emplace("haylen.json", test::TestFiles::bytes(app));
-        files.emplace("source/main.lua", test::TestFiles::bytes("started = true\nrequire('haylen.events').on('contentRecovered', function(event) recovered = event.reason end)"));
-        files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
-        files.emplace("content/levels/forest.json", test::TestFiles::bytes(R"({"trees": 12})"));
-        files.emplace("content/music/theme.ogg", test::TestFiles::randomBytes(300 * 1024, 3));
-        return files;
-    }
-
-    void publish(const Files& files) const {
-        const ChannelPublisher publisher(release.getKeys(), release.getContentKeyId(), release.getSharedSigningKey());
-        (void)publisher.publish(io::MemoryPackage("source", files), tree.getPath(), {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild, .channel = "stable", .release = release.getFolder()});
-    }
-
-    // The release of an app on a platform that holds none of its content, such as a web page or a device that cleared its downloads: only the manifests and the app domain.
-    [[nodiscard]] std::filesystem::path shipWithoutContent() {
-        const std::filesystem::path folder = shipped.getPath() / std::to_string(++ships);
-        std::filesystem::create_directories(folder);
-
-        for (const std::string_view manifest : {ReleasePackage::kAppManifestFile, ReleasePackage::kContentManifestFile}) {
-            std::filesystem::copy_file(release.getFolder() / manifest, folder / manifest);
-        }
-
-        const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
-        for (const ShardReference& shard : inspector.inspect(release.getFolder()).app.envelope.shards) {
-            std::filesystem::copy_file(release.getFolder() / shard.getFileName(), folder / shard.getFileName());
-        }
-
-        return folder;
-    }
-
-    // Makes the server answer every pack with a status, or serve them again with 0.
-    void setPacksStatus(int status) {
-        for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(tree.getPath() / PublicationLayout::kPacksFolder)) {
-            if (entry.is_regular_file()) {
-                server.setStatus(entry.path().lexically_relative(tree.getPath()).generic_string(), status);
-            }
-        }
-    }
-
-    // Lays out the release the way a platform ships it: what the app needs to start, and nothing that downloads.
-    [[nodiscard]] std::filesystem::path ship() {
-        const std::filesystem::path folder = shipped.getPath() / std::to_string(++ships);
-        const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
-        (void)ReleaseStager(inspector, {}).stage(release.getFolder(), folder, std::nullopt, std::nullopt);
-        return folder;
-    }
-
-    void run(const std::filesystem::path& folder) {
-        run(io::Package::openDirectory(folder));
-    }
-
-    void run(std::shared_ptr<const io::Package> files) {
-        engine.reset();
-        const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
-        std::unique_ptr<StoreFiles> storeFiles;
-        if (storeRoom) {
-            storeFiles = std::make_unique<test::LimitedStoreFiles>(storeFolder.getPath(), *storeRoom);
-        } else {
-            storeFiles = std::make_unique<FolderStoreFiles>(storeFolder.getPath());
-        }
-
-        auto store = storeRefused ? nullptr : std::make_shared<LocalStore>(std::move(storeFiles), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
-        package = ReleasePackage::open(std::move(files), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
-        core::AppConfig config = core::AppConfig::fromPackage(*package);
-        auto application = std::make_unique<lua::Application>();
-        application->configure(config);
-        engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
-        engine->start();
-    }
-
-    bool frameUntil(const std::function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::seconds(20)) {
-        const auto deadline = std::chrono::steady_clock::now() + timeout;
-        while (!condition()) {
-            if (std::chrono::steady_clock::now() > deadline) {
-                return false;
-            }
-
-            engine->frame(1.0 / 60.0);
-        }
-
-        return true;
-    }
-
-    [[nodiscard]] bool hasStarted() const {
-        lua_State* L = engine->getLuaState();
-        lua_getglobal(L, "started");
-        const bool started = lua_toboolean(L, -1) != 0;
-        lua_pop(L, 1);
-        return started;
-    }
-
-    [[nodiscard]] std::string getRecovery() const {
-        lua_State* L = engine->getLuaState();
-        lua_getglobal(L, "recovered");
-        std::string reason = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : "";
-        lua_pop(L, 1);
-        return reason;
-    }
-
-    test::TemporaryDirectory tree;
-    test::ContentServer server{tree.getPath()};
-    test::ReleaseFixture release;
-    Files game;
-    test::TemporaryDirectory shipped;
-    test::TemporaryDirectory storeFolder;
-    test::TemporaryDirectory data;
-    platform::HeadlessHost host{data.getPath()};
-    int ships = 0;
-    std::optional<std::uint64_t> storeRoom;
-    bool storeRefused = false;
-    std::shared_ptr<ReleasePackage> package;
-    std::unique_ptr<core::Engine> engine;
-};
+class ContentManagerTest : public test::ContentAppFixture {};
 
 TEST_F(ContentManagerTest, StartsAtOnceWhenTheRequiredContentShipsWithTheApp) {
     run(ship());
@@ -494,79 +354,7 @@ TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasD
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
     engine->frame(1.0 / 60.0);
     EXPECT_EQ(engine->getContent().getGeneration(), 1U);
-    EXPECT_FALSE(getRecovery().empty());
-}
-
-// An app whose `haylen.json` names content that the engine reads before the app starts: a folder of languages and the group manifest of its delivery rules, which a release may not hold on the device yet, as on a web page.
-class ContentStartTest : public ContentManagerTest {
-  protected:
-    // Builds and publishes the game again with the languages and the sections of `haylen.json` that read them.
-    void rebuild(const std::string& sections) {
-        game["haylen.json"] = test::TestFiles::bytes(R"({"name": "Start", "identifier": "com.haylen.tests", )" + sections + "}");
-        game["source/main.lua"] = test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')\nstarted = true");
-        game.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
-        game.emplace("content/locale/pt-BR.json", test::TestFiles::bytes(R"({"menu": {"play": "Jogar"}})"));
-        game.emplace("content/groups.json", test::TestFiles::bytes(R"({"groups": {"forest": ["levels/"]}})"));
-        release.build(io::MemoryPackage("source", game));
-        publish(game);
-    }
-
-    [[nodiscard]] std::string getGreeting() const {
-        lua_State* L = engine->getLuaState();
-        lua_getglobal(L, "greeting");
-        std::string greeting = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : "";
-        lua_pop(L, 1);
-        return greeting;
-    }
-
-    [[nodiscard]] std::string getServer() const {
-        return R"("updates": {"baseUrl": ")" + server.getUrl() + R"(", "enabled": false})";
-    }
-};
-
-TEST_F(ContentStartTest, LoadsTheLanguagesOfAppJsonOnceTheyDownload) {
-    rebuild(R"("localization": {"folder": "locale", "fallback": "en"}, "content": {)" + getServer() + "}");
-    run(shipWithoutContent());
-
-    EXPECT_FALSE(hasStarted());
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << (engine->getError() != nullptr ? engine->getError()->getMessage() : "");
-    EXPECT_EQ(getGreeting(), "Play") << "The main module reads the languages, so they loaded before it ran.";
-    EXPECT_TRUE(engine->getContent().isLocal("locale/pt-BR.json"));
-}
-
-TEST_F(ContentStartTest, BringsTheLanguagesThatARuleDeliversLaterBeforeTheAppStarts) {
-    rebuild(R"("localization": {"folder": "locale", "fallback": "en"}, "content": {)" + getServer() + R"(, "delivery": [{"match": "locale/**", "mode": "onDemand"}]})");
-    run(ship());
-
-    EXPECT_FALSE(engine->getContent().isLocal("locale/en.json"));
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << (engine->getError() != nullptr ? engine->getError()->getMessage() : "");
-    EXPECT_EQ(getGreeting(), "Play");
-    EXPECT_TRUE(engine->getContent().isLocal("locale/en.json"));
-}
-
-TEST_F(ContentStartTest, ShowsWhyTheLanguagesCannotDownloadAndTriesAgain) {
-    rebuild(R"("localization": {"folder": "locale", "fallback": "en"}, "content": {)" + getServer() + R"(, "delivery": [{"match": "locale/**", "mode": "onDemand"}]})");
-    setPacksStatus(503);
-    run(ship());
-
-    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
-    EXPECT_FALSE(hasStarted());
-    EXPECT_TRUE(engine->getContent().isHoldingStart()) << "The update screen shows the failure and offers to try again.";
-
-    setPacksStatus(0);
-    engine->getContent().retry();
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
-    EXPECT_EQ(getGreeting(), "Play");
-}
-
-TEST_F(ContentStartTest, ExpandsTheGroupsOfItsRulesOnceTheGroupManifestDownloads) {
-    rebuild(R"("content": {)" + getServer() + R"(, "groups": "groups.json", "delivery": [{"group": "forest", "mode": "onDemand"}]})");
-    run(shipWithoutContent());
-
-    EXPECT_FALSE(hasStarted());
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << (engine->getError() != nullptr ? engine->getError()->getMessage() : "");
-    EXPECT_TRUE(engine->getContent().isLocal("data/config.json"));
-    EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json")) << "The group delivers the level on demand, so the start never downloaded it.";
+    EXPECT_FALSE(getGlobalText("recovered").empty());
 }
 
 TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomethingBringsThem) {
@@ -622,156 +410,6 @@ TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater)
     lua_getglobal(L, "greeting");
     EXPECT_STREQ(lua_tostring(L, -1), "Play");
     lua_pop(L, 1);
-}
-
-// An app without a server whose expansion is a pack that a store installs next to the app, or leaves out for a player who does not own it.
-class ContentPackTest : public ContentManagerTest {
-  protected:
-    ContentPackTest() {
-        game.erase("content/levels/forest.json");
-        const std::string app = R"({"name": "Packs", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "expansion/**", "pack": "expansion"}]}})";
-        game["haylen.json"] = test::TestFiles::bytes(app);
-        game.emplace("content/expansion/island.json", test::TestFiles::bytes(R"({"palms": 7})"));
-        release.build(io::MemoryPackage("source", game));
-        const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
-        const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(app));
-        (void)ReleaseStager(inspector, config.content).stage(release.getFolder(), shipped.getPath() / "app", std::nullopt, shipped.getPath() / "packs", ReleaseStager::Content::All);
-    }
-
-    std::string loadIsland();
-};
-
-// Loads an asset of the expansion and returns the error of the load, empty once the asset loaded.
-std::string ContentPackTest::loadIsland() {
-    std::optional<std::string> failure;
-    engine->getAssets().loadAsync("json", "expansion/island.json", [&failure](const std::shared_ptr<void>&, std::string error) { failure = std::move(error); });
-    EXPECT_TRUE(frameUntil([&failure] { return failure.has_value(); }));
-    return failure.value_or("The load never ended.");
-}
-
-TEST_F(ContentPackTest, AsksItsSourcesForAPackThatAnAssetNeeds) {
-    run(shipped.getPath() / "app");
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
-    const auto other = std::make_shared<test::StorePackSource>();
-    const auto store = std::make_shared<test::StorePackSource>();
-    store->install("expansion", shipped.getPath() / "packs" / "expansion");
-    const core::Connection first = engine->getContent().addPackSource(other);
-    const core::Connection second = engine->getContent().addPackSource(store);
-
-    // The load never names the store: the source that delivers nothing passes the pack on to the next one, which installs it.
-    EXPECT_EQ(loadIsland(), "");
-    EXPECT_EQ(other->getRequests(), 1);
-    EXPECT_EQ(store->getRequests(), 1);
-    EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
-    EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
-}
-
-TEST_F(ContentPackTest, FailsALoadWhoseSourceFailsOrGoesAway) {
-    run(shipped.getPath() / "app");
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
-    const auto broken = std::make_shared<test::StorePackSource>();
-    broken->fail("The store is offline.");
-    core::Connection connection = engine->getContent().addPackSource(broken);
-    EXPECT_EQ(loadIsland(), "The store is offline.");
-    connection.disconnect();
-    const auto misplaced = std::make_shared<test::StorePackSource>();
-    misplaced->install("expansion", shipped.getPath() / "missing");
-    core::Connection elsewhere = engine->getContent().addPackSource(misplaced);
-    EXPECT_NE(loadIsland().find("which is no folder"), std::string::npos);
-    elsewhere.disconnect();
-
-    // A source that its connection removes while the store downloads counts as one that delivers nothing, and its late answer changes nothing.
-    const auto slow = std::make_shared<test::StorePackSource>();
-    slow->install("expansion", shipped.getPath() / "packs" / "expansion");
-    slow->hold();
-    core::Connection waiting = engine->getContent().addPackSource(slow);
-    std::optional<std::string> failure;
-    engine->getAssets().loadAsync("json", "expansion/island.json", [&failure](const std::shared_ptr<void>&, std::string error) { failure = std::move(error); });
-    ASSERT_TRUE(frameUntil([&slow] { return slow->getRequests() == 1; }));
-    waiting.disconnect();
-    ASSERT_TRUE(frameUntil([&failure] { return failure.has_value(); }));
-    EXPECT_NE(failure->find("no source of packs delivered the pack"), std::string::npos) << *failure;
-    slow->answer();
-    engine->frame(1.0 / 60.0);
-    EXPECT_FALSE(engine->getContent().isLocal("expansion/island.json"));
-}
-
-TEST_F(ContentPackTest, TakesPacksFromTheSourcesThatLuaGives) {
-    run(shipped.getPath() / "app");
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
-    lua_State* L = engine->getLuaState();
-    lua::Stack::push(L, (shipped.getPath() / "packs" / "expansion").string());
-    lua_setglobal(L, "packFolder");
-
-    // A source that returns something else than a folder and one whose promise rejects fail the load, while a source that answers at once with nothing passes the pack on to one that waits for the store itself and then in a promise, so a yield passes through both continuations of the source.
-    // clang-format off
-    ASSERT_EQ(luaL_dostring(L, R"lua(
-        local content = require('haylen.content')
-        local async = require('async')
-        local load = function()
-            local island, message = require('haylen.assets').loadAsync('expansion/island.json', 'json'):await()
-            return island and island.palms or message
-        end
-        async.spawn(function()
-            local wrong = content.addPackSource(function() return 42 end)
-            refusedValue = load()
-            wrong:disconnect()
-            local offline = content.addPackSource(function() return async.promise(function() error('The store is offline.', 0) end) end)
-            refusedPromise = load()
-            offline:disconnect()
-            content.addPackSource(function(pack) skipped = pack end)
-            content.addPackSource(function(pack, progress)
-                progress({receivedBytes = 5, totalBytes = 10})
-                async.sleep(5):await()
-                return async.promise(function()
-                    async.sleep(10):await()
-                    return packFolder
-                end)
-            end)
-            loaded = load()
-        end)
-    )lua"), LUA_OK) << lua_tostring(L, -1);
-    ASSERT_TRUE(frameUntil([L] {
-        lua_getglobal(L, "loaded");
-        const bool settled = !lua_isnil(L, -1);
-        lua_pop(L, 1);
-        return settled;
-    }));
-    const auto global = [L](const char* name) {
-        lua_getglobal(L, name);
-        std::string value = luaL_tolstring(L, -1, nullptr);
-        lua_pop(L, 2);
-        return value;
-    };
-    // clang-format on
-    EXPECT_NE(global("refusedValue").find("must return the folder of the pack"), std::string::npos) << global("refusedValue");
-    EXPECT_NE(global("refusedPromise").find("failed to deliver the pack \"expansion\". The store is offline."), std::string::npos) << global("refusedPromise");
-    EXPECT_EQ(global("skipped"), "expansion");
-    EXPECT_EQ(global("loaded"), "7");
-    EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
-}
-
-TEST_F(ContentPackTest, StartsWithoutAPackThatIsNotInstalledAndReadsOneThatArrives) {
-    run(shipped.getPath() / "app");
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); })) << "A pack never holds back the start.";
-    EXPECT_FALSE(engine->getContent().isLocal("expansion/island.json"));
-    std::string failure;
-    engine->getAssets().loadAsync("json", "expansion/island.json", [&failure](const std::shared_ptr<void>&, std::string error) { failure = std::move(error); });
-    ASSERT_TRUE(frameUntil([&failure] { return !failure.empty(); }));
-    EXPECT_NE(failure.find("no server"), std::string::npos) << failure;
-
-    // A store delivers the pack while the app runs, and its assets load from the folder it installed them into.
-    EXPECT_THROW(engine->getContent().addPackFolder(shipped.getPath() / "missing"), std::runtime_error);
-    engine->getContent().addPackFolder(shipped.getPath() / "packs" / "expansion");
-    EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
-    EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
-
-    // The store installs the pack into the folder of packs next to the app, which the runtime reads with the release.
-    auto files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{io::Package::openDirectory(shipped.getPath() / "app"), io::Package::openDirectory(shipped.getPath() / "packs" / "expansion")});
-    run(files);
-    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
-    EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
-    EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
 }
 
 } // namespace haylen::content

@@ -10,6 +10,7 @@
 #include "content/format/Catalog.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "haylen/content/Error.hpp"
+#include "support/CatalogFiles.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::content {
@@ -71,15 +72,15 @@ TEST_F(ContentCatalogTest, ReadsBackWhatItWrote) {
     EXPECT_EQ(catalog.getPartCount(), 6U);
     EXPECT_EQ(makeBytes(), makeBytes()) << "A catalog always has the same bytes for the same files.";
 
-    const Catalog::File island = catalog.getFile(*catalog.findFile("content/maps/island.tmj"));
+    const Catalog::File island = test::CatalogFiles::find(catalog, "content/maps/island.tmj");
     EXPECT_EQ(island.path, "content/maps/island.tmj");
     EXPECT_EQ(island.size, 2500U);
     EXPECT_EQ(island.partCount, 3U);
     EXPECT_EQ(island.delivery, Delivery::Required);
     EXPECT_EQ(catalog.getPart(island.firstPart + 2).offset, 1500U);
     EXPECT_EQ(catalog.getChunk(catalog.getPart(island.firstPart + 1).chunk).shard, 1U);
-    EXPECT_EQ(catalog.getFile(*catalog.findFile("content/maps/cave.tmj")).delivery, Delivery::OnDemand);
-    EXPECT_EQ(catalog.getFile(*catalog.findFile("content/empty.txt")).size, 0U);
+    EXPECT_EQ(test::CatalogFiles::find(catalog, "content/maps/cave.tmj").delivery, Delivery::OnDemand);
+    EXPECT_EQ(test::CatalogFiles::find(catalog, "content/empty.txt").size, 0U);
 }
 
 TEST_F(ContentCatalogTest, KeepsTheKindOfEveryFile) {
@@ -114,7 +115,7 @@ TEST_F(ContentCatalogTest, FindsFilesAndFolders) {
 
 TEST_F(ContentCatalogTest, FindsThePartThatHoldsAnOffset) {
     const Catalog catalog = Catalog::parse(makeBytes(), 2);
-    const Catalog::File island = catalog.getFile(*catalog.findFile("content/maps/island.tmj"));
+    const Catalog::File island = test::CatalogFiles::find(catalog, "content/maps/island.tmj");
     EXPECT_EQ(catalog.findPart(island, 0), island.firstPart);
     EXPECT_EQ(catalog.findPart(island, 999), island.firstPart);
     EXPECT_EQ(catalog.findPart(island, 1000), island.firstPart + 1);

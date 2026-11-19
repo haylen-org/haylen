@@ -3,9 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <functional>
-#include <iterator>
 #include <map>
 #include <memory>
 #include <set>
@@ -18,6 +16,7 @@
 #include "content/format/ChannelDescriptor.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "support/ReleaseFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -43,20 +42,8 @@ class ChannelPublisherTest : public ::testing::Test {
         return publisher.publish(io::MemoryPackage("source", makeFiles(level)), tree.getPath(), {.profile = "desktop", .appBuild = 7, .channel = "stable"});
     }
 
-    [[nodiscard]] std::map<std::string, std::vector<std::uint8_t>> readTree() const {
-        std::map<std::string, std::vector<std::uint8_t>> files;
-        for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(tree.getPath())) {
-            if (entry.is_regular_file()) {
-                std::ifstream stream(entry.path(), std::ios::binary);
-                files.emplace(entry.path().lexically_relative(tree.getPath()).generic_string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
-            }
-        }
-
-        return files;
-    }
-
     [[nodiscard]] ChannelDescriptor readChannel() const {
-        const std::vector<std::uint8_t> bytes = readTree().at("channels/stable.hchannel");
+        const std::vector<std::uint8_t> bytes = test::TestFiles::read(tree.getPath() / PublicationLayout::kChannelsFolder / "stable.hchannel");
         const VerifyingKey trusted = signingKey->getVerifyingKey();
         return ChannelDescriptor::read(bytes, std::span(&trusted, 1));
     }
@@ -81,7 +68,7 @@ TEST_F(ChannelPublisherTest, PublishesGenerationsThatOnlyAddFiles) {
     const ChannelPublisher::Publication first = publish("3");
     EXPECT_EQ(first.generation, 1U);
     ASSERT_EQ(first.newPacks.size(), 1U);
-    const auto before = readTree();
+    const auto before = test::ReleaseFiles::read(tree.getPath());
 
     const ChannelPublisher::Publication second = publish("4");
     EXPECT_EQ(second.generation, 2U);
@@ -90,7 +77,7 @@ TEST_F(ChannelPublisherTest, PublishesGenerationsThatOnlyAddFiles) {
     EXPECT_LT(second.newPacks.front().fileSize, 4096U) << "The new pack holds only the changed chunk.";
 
     // Every earlier file stays as it was, apart from the pointer of the channel, and no name tells what a file holds.
-    const auto after = readTree();
+    const auto after = test::ReleaseFiles::read(tree.getPath());
     for (const auto& [path, bytes] : before) {
         if (path != "channels/stable.hchannel") {
             EXPECT_EQ(after.at(path), bytes) << path;
@@ -119,9 +106,10 @@ TEST_F(ChannelPublisherTest, LeavesTheChannelAsItWasWhenAPublishFails) {
     const test::TemporaryDirectory copy;
     std::filesystem::copy(tree.getPath(), copy.getPath(), std::filesystem::copy_options::recursive);
     const ChannelPublisher::Publication probe = publisher.publish(io::MemoryPackage("source", makeFiles("4")), copy.getPath(), {.profile = "desktop", .appBuild = 7, .channel = "stable"});
+    ASSERT_FALSE(probe.newPacks.empty());
     const std::filesystem::path taken = tree.getPath() / PublicationLayout::getPackPath(probe.newPacks.front());
     std::filesystem::create_directories(taken.parent_path());
-    std::ofstream(taken) << "other bytes";
+    test::TestFiles::write(taken, "other bytes");
 
     EXPECT_THROW((void)publish("4"), std::runtime_error);
     const ChannelDescriptor after = readChannel();
@@ -136,18 +124,12 @@ TEST_F(ChannelPublisherTest, VerifiesThePacksItKeepsBeforeTheChannelMoves) {
     const std::filesystem::path keptFile = tree.getPath() / PublicationLayout::getPackPath(kept);
 
     // The next generation keeps the pack of the large file, so a damaged copy of it in the tree stops the publish.
-    const auto middle = static_cast<std::streamoff>(kept.fileSize / 2);
-    std::fstream stream(keptFile, std::ios::binary | std::ios::in | std::ios::out);
-    stream.seekg(middle);
-    const auto damaged = static_cast<char>(stream.get() ^ 0x01);
-    stream.seekp(middle);
-    stream.put(damaged);
-    stream.close();
+    test::TestFiles::damage(keptFile, kept.fileSize / 2);
     expectError(Error::Code::CorruptHeader, "The pack \"" + kept.getFileName() + "\" of the tree is not the file its manifest signs.", [&] { (void)publish("4"); });
     EXPECT_EQ(readChannel().generation, 1U);
 
     // A publish that failed after it placed its new pack and manifest accepts them the next time, since they hold the same bytes, and a kept pack that is gone stops it as well.
-    std::filesystem::remove(keptFile);
+    ASSERT_TRUE(std::filesystem::remove(keptFile));
     expectError(Error::Code::MissingShard, "The tree has no pack \"" + kept.getFileName() + "\", which its manifest names.", [&] { (void)publish("4"); });
     EXPECT_EQ(readChannel().generation, 1U);
 }
@@ -166,7 +148,7 @@ TEST_F(ChannelPublisherTest, RefusesTreesWhosePointersAndManifestsDisagree) {
     std::filesystem::copy_file(tree.getPath() / PublicationLayout::getManifestPath(first.manifest), current);
     expectError(Error::Code::CorruptManifest, "The file of the manifest \"" + second.manifest.toHex() + "\" holds another manifest.", [&] { (void)publish("5"); });
 
-    std::filesystem::remove(current);
+    ASSERT_TRUE(std::filesystem::remove(current));
     expectError(Error::Code::MissingManifest, "The tree has no manifest \"" + second.manifest.toHex() + "\", which a channel names.", [&] { (void)publish("5"); });
 
     std::filesystem::rename(saved, current);
@@ -185,7 +167,7 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
     EXPECT_EQ(nothing.manifests + nothing.packs + nothing.bytes, 0U) << "A tree that has published nothing yet has nothing to remove.";
 
     // Files of the channels folder that are no channel pointers stay as they are.
-    std::ofstream(tree.getPath() / PublicationLayout::kChannelsFolder / "notes.txt") << "notes";
+    test::TestFiles::write(tree.getPath() / PublicationLayout::kChannelsFolder / "notes.txt", "notes");
     const ChannelPublisher::Compaction compaction = publisher.compact(tree.getPath(), 1);
     EXPECT_EQ(compaction.manifests, 2U);
     EXPECT_EQ(compaction.packs, 1U) << "The pack of the second generation goes, while the first one still holds the large file of the last one.";
@@ -193,7 +175,7 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
 
     // The current generation still verifies, and a new publish builds on it.
     std::set<std::string> left;
-    for (const auto& [path, bytes] : readTree()) {
+    for (const auto& [path, bytes] : test::ReleaseFiles::read(tree.getPath())) {
         left.insert(path);
     }
 
@@ -204,9 +186,9 @@ TEST_F(ChannelPublisherTest, CompactsWhatNoChannelReaches) {
 TEST_F(ChannelPublisherTest, RefusesChannelNamesThatLeaveTheChannelsFolder) {
     // A damaged file next to the channels folder shows that a refused name reads nothing, and the tree stays as it was.
     std::filesystem::create_directories(tree.getPath() / PublicationLayout::kChannelsFolder);
-    std::ofstream(tree.getPath() / "x.hchannel") << "not a channel";
+    test::TestFiles::write(tree.getPath() / "x.hchannel", "not a channel");
     EXPECT_THROW((void)publisher.publish(io::MemoryPackage("source", makeFiles("3")), tree.getPath(), {.profile = "desktop", .appBuild = 7, .channel = "../x"}), std::invalid_argument);
-    EXPECT_EQ(readTree().size(), 1U);
+    EXPECT_EQ(test::ReleaseFiles::read(tree.getPath()).size(), 1U);
 }
 
 TEST_F(ChannelPublisherTest, RefusesTheChannelOfAnotherApp) {

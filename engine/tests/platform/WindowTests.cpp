@@ -1,54 +1,24 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 #include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/core/Json.hpp"
 #include "haylen/math/Color.hpp"
-#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Event.hpp"
-#include "haylen/platform/WindowPlacement.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
-#include "support/TemporaryDirectory.hpp"
 
 namespace haylen::platform {
 
-namespace {
-
-class DisplayLayoutTest : public ::testing::Test {
+class WindowEngineTest : public ::testing::Test {
   protected:
-    // A primary display with a taskbar at its bottom, and a denser one to its left whose top sits lower.
-    [[nodiscard]] static std::vector<Display> twoDisplays() {
-        return {
-            {.id = "main-id", .name = "main", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true},
-            {.id = "side-id", .name = "side", .bounds = {-1440.0F, 200.0F, 1440.0F, 900.0F}, .workArea = {-1440.0F, 225.0F, 1440.0F, 875.0F}, .scale = 2.0F, .primary = false},
-        };
-    }
-
-    [[nodiscard]] static math::Rect place(const char* position, const std::vector<Display>& displays = twoDisplays(), math::Vec2 size = {400.0F, 100.0F}) {
-        return WindowPlacement::fromJson(core::Json::parse(position)).resolve(displays, size);
-    }
-};
-
-class WindowConfigTest : public DisplayLayoutTest {};
-
-class WindowPlacementTest : public DisplayLayoutTest {};
-
-class DisplayTest : public DisplayLayoutTest {};
-
-// The passes of the last frame that reached the swapchain, with the alpha they cleared to and the channels their pipelines wrote.
-class SwapchainPasses final {
-  public:
-    [[nodiscard]] static std::vector<gpu::NullDevice::PassRecord> of(test::EngineFixture& fixture) {
+    // The passes of the last frame that reached the swapchain, with the alpha they cleared to and the channels their pipelines wrote.
+    [[nodiscard]] static std::vector<gpu::NullDevice::PassRecord> getSwapchainPasses(test::EngineFixture& fixture) {
         std::vector<gpu::NullDevice::PassRecord> passes;
         for (const gpu::NullDevice::PassRecord& pass : fixture.host().getGpu().getLastFrame().passes) {
             if (pass.swapchain) {
@@ -69,145 +39,7 @@ class SwapchainPasses final {
     }
 };
 
-} // namespace
-
-TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfHaylenJson) {
-    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
-        "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "keepScreenOn": true,
-                   "position": {"anchor": "bottom", "area": "work", "display": "primary", "offset": [0, -8], "fill": "width"}}
-    })"));
-    EXPECT_FALSE(config.window.decorated);
-    EXPECT_TRUE(config.window.transparent);
-    EXPECT_TRUE(config.window.alwaysOnTop);
-    EXPECT_FALSE(config.window.showInTaskbar);
-    EXPECT_FALSE(config.window.focusable);
-    EXPECT_TRUE(config.window.mousePassthrough);
-    EXPECT_TRUE(config.window.keepScreenOn);
-    ASSERT_TRUE(config.window.position.has_value());
-    EXPECT_EQ(config.window.position->resolve(twoDisplays(), {400.0F, 100.0F}), (math::Rect{0.0F, 932.0F, 1920.0F, 100.0F}));
-    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
-
-    // A transparent window clears to transparent unless `clearColor` says otherwise, and so does its splash screen.
-    EXPECT_EQ(config.clearColor, math::Color::transparent());
-    EXPECT_EQ(config.splash.background, math::Color::transparent());
-    EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"transparent": true}, "clearColor": "#102030"})")).clearColor, math::Color::fromHex(0x102030FFU));
-
-    const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
-    EXPECT_TRUE(defaults.window.decorated);
-    EXPECT_FALSE(defaults.window.transparent);
-    EXPECT_FALSE(defaults.window.alwaysOnTop);
-    EXPECT_TRUE(defaults.window.showInTaskbar);
-    EXPECT_TRUE(defaults.window.focusable);
-    EXPECT_FALSE(defaults.window.mousePassthrough);
-    EXPECT_FALSE(defaults.window.keepScreenOn);
-    EXPECT_EQ(defaults.window.frameRate, 0);
-    EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"frameRate": 120}})")).window.frameRate, 120);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"frameRate": 1001}})")), std::invalid_argument);
-    EXPECT_EQ(defaults.window.maxPixelDensity, 0.0F);
-    EXPECT_FLOAT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"maxPixelDensity": 1.5}})")).window.maxPixelDensity, 1.5F);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"maxPixelDensity": -2}})")), std::invalid_argument);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"maxPixelDensity": "high"}})")), std::invalid_argument);
-    EXPECT_FALSE(defaults.window.position.has_value());
-    EXPECT_FALSE(defaults.toJson().at("window").contains("position"));
-}
-
-TEST_F(WindowConfigTest, RejectsInvalidDesktopOptions) {
-    const char* documents[] = {
-        R"({"window": {"decorated": "no"}})", R"({"window": {"mousePassthrough": "regions"}})", R"({"window": {"position": "left"}})", R"({"window": {"position": 12}})", R"({"window": {"position": {"anchor": "middle"}}})", R"({"window": {"position": {"area": "screen"}}})", R"({"window": {"position": {"fill": "all"}}})", R"({"window": {"position": {"display": 0}}})", R"({"window": {"position": {"display": ""}}})", R"({"window": {"position": {"display": true}}})", R"({"window": {"position": {"monitor": 1}}})", R"({"window": {"position": {"offset": [1]}}})", R"({"window": {"position": {"offset": [1, "a"]}}})", R"({"window": {"position": {"x": 3}}})", R"({"window": {"position": {"x": 3, "y": 4, "anchor": "top"}}})", R"({"window": {"position": {"anchor": "top", "size": 3}}})",
-    };
-    for (const char* document : documents) {
-        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
-    }
-}
-
-TEST_F(WindowConfigTest, ReadsTheStatusBarOfHaylenJson) {
-    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"statusBar": "dark", "statusBarColor": "#F0F0F0"}})"));
-    EXPECT_EQ(config.window.statusBar, Window::StatusBar::Dark);
-    EXPECT_EQ(config.window.statusBarColor, math::Color::fromHex(0xF0F0F0FFU));
-    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
-
-    const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
-    EXPECT_EQ(defaults.window.statusBar, Window::StatusBar::Hidden);
-    EXPECT_FALSE(defaults.window.statusBarColor.has_value());
-    EXPECT_EQ(defaults.toJson().at("window").at("statusBar"), "hidden");
-    EXPECT_FALSE(defaults.toJson().at("window").contains("statusBarColor"));
-
-    for (const char* document : {R"({"window": {"statusBar": "white"}})", R"({"window": {"statusBar": true}})", R"({"window": {"statusBarColor": "white"}})"}) {
-        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
-    }
-}
-
-TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfHaylenJson) {
-    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "system"}})"));
-    EXPECT_EQ(config.window.systemGestures, Window::SystemGestures::System);
-    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
-
-    const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
-    EXPECT_EQ(defaults.window.systemGestures, Window::SystemGestures::System);
-    EXPECT_EQ(defaults.toJson().at("window").at("systemGestures"), "system");
-
-    try {
-        (void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "hidden"}})"));
-        FAIL();
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), R"(The "window.systemGestures" value "hidden" in "haylen.json" is unknown. It is "system", "deferred" or "autoHideIndicator".)");
-    }
-
-    for (const char* document : {R"({"window": {"systemGestures": ""}})", R"({"window": {"systemGestures": 1}})"}) {
-        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
-    }
-}
-
-TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfADisplay) {
-    EXPECT_EQ(place(R"("center")"), (math::Rect{760.0F, 470.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "bottom"})"), (math::Rect{760.0F, 940.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "bottom", "area": "full"})"), (math::Rect{760.0F, 980.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "top"})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "left"})"), (math::Rect{0.0F, 470.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "right"})"), (math::Rect{1520.0F, 470.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "topLeft", "offset": [16, 24]})"), (math::Rect{16.0F, 24.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "topRight"})"), (math::Rect{1520.0F, 0.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "bottomLeft"})"), (math::Rect{0.0F, 940.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "bottomRight", "offset": [-10, -10]})"), (math::Rect{1510.0F, 930.0F, 400.0F, 100.0F}));
-
-    // Displays count from 1 or go by their ids, and a display past the last one or one that is not connected is the primary display.
-    EXPECT_EQ(place(R"({"anchor": "bottom", "display": 2})"), (math::Rect{-920.0F, 1000.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "bottom", "display": "side-id"})"), (math::Rect{-920.0F, 1000.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "top", "display": 1})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "top", "display": 3})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "top", "display": "gone"})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
-
-    // Without a primary display, the first display takes its place.
-    std::vector<Display> unflagged = twoDisplays();
-    unflagged.front().primary = false;
-    EXPECT_EQ(place(R"({"anchor": "topLeft"})", unflagged), (math::Rect{0.0F, 0.0F, 400.0F, 100.0F}));
-}
-
-TEST_F(WindowPlacementTest, FillsAreasAndPlacesPoints) {
-    EXPECT_EQ(place(R"({"anchor": "bottom", "fill": "width"})"), (math::Rect{0.0F, 940.0F, 1920.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "right", "fill": "height"})"), (math::Rect{1520.0F, 0.0F, 400.0F, 1040.0F}));
-    EXPECT_EQ(place(R"({"fill": "both", "area": "full", "display": 2})"), (math::Rect{-1440.0F, 200.0F, 1440.0F, 900.0F}));
-    EXPECT_EQ(place(R"({"x": -300.5, "y": 250})"), (math::Rect{-300.5F, 250.0F, 400.0F, 100.0F}));
-
-    // Anchored windows land on whole points, so their edges stay sharp.
-    EXPECT_EQ(place(R"("center")", twoDisplays(), {401.0F, 101.0F}), (math::Rect{760.0F, 470.0F, 401.0F, 101.0F}));
-
-    for (const char* position : {R"("center")", R"({"x": 12, "y": 34})", R"({"anchor": "bottomRight", "area": "full", "display": 2, "offset": [-4, 6], "fill": "height"})", R"({"anchor": "left", "display": "side-id"})"}) {
-        const WindowPlacement placement = WindowPlacement::fromJson(core::Json::parse(position));
-        EXPECT_EQ(WindowPlacement::fromJson(placement.toJson()), placement) << position;
-    }
-}
-
-TEST_F(DisplayTest, FindsTheDisplayThatHoldsMostOfAFrame) {
-    const std::vector<Display> displays = twoDisplays();
-    EXPECT_EQ(Display::findHolding(displays, {-1000.0F, 400.0F, 800.0F, 600.0F}).name, "side");
-    EXPECT_EQ(Display::findHolding(displays, {-300.0F, 400.0F, 800.0F, 600.0F}).name, "main");
-
-    // A frame off every display belongs to the primary one.
-    EXPECT_EQ(Display::findHolding(displays, {5000.0F, 5000.0F, 800.0F, 600.0F}).name, "main");
-}
-
-TEST(WindowEngineTest, AppliesTheWindowOptionsOfHaylenJson) {
+TEST_F(WindowEngineTest, AppliesTheWindowOptionsOfHaylenJson) {
     test::EngineFixture fixture({{"haylen.json", R"({"window": {"decorated": false, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "resizable": false}})"}});
     const HeadlessHost& host = fixture.host();
     EXPECT_FALSE(host.isDecorated());
@@ -219,7 +51,7 @@ TEST(WindowEngineTest, AppliesTheWindowOptionsOfHaylenJson) {
     EXPECT_TRUE(host.getPassthroughRegions().empty());
 }
 
-TEST(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
+TEST_F(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
     test::EngineFixture fixture;
     HeadlessHost& host = fixture.host();
     Window& window = host;
@@ -234,7 +66,7 @@ TEST(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
     EXPECT_FALSE(host.isFullscreen());
 }
 
-TEST(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
+TEST_F(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
     test::EngineFixture fixture;
     const HeadlessHost& host = fixture.host();
     EXPECT_TRUE(host.isDecorated());
@@ -245,7 +77,7 @@ TEST(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
 }
 
 // The engine paints the color behind the status bar on a canvas of its own, only while the status bar shows over the visible area.
-TEST(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
+TEST_F(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
     test::EngineFixture fixture({{"haylen.json", R"({"window": {"statusBar": "light", "statusBarColor": "#102030"}})"}});
     HeadlessHost& host = fixture.host();
     EXPECT_EQ(host.getStatusBar(), Window::StatusBar::Light);
@@ -267,7 +99,7 @@ TEST(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases);
 }
 
-TEST(WindowEngineTest, TurnsTransparencyOffAndOnAgain) {
+TEST_F(WindowEngineTest, TurnsTransparencyOffAndOnAgain) {
     test::EngineFixture fixture({{"haylen.json", R"({"window": {"transparent": true}})"}});
     EXPECT_TRUE(fixture.host().canBeTransparent());
     EXPECT_TRUE(fixture.host().isTransparent());
@@ -280,7 +112,7 @@ TEST(WindowEngineTest, TurnsTransparencyOffAndOnAgain) {
     EXPECT_TRUE(fixture.host().isFrameTransparent());
 }
 
-TEST(WindowEngineTest, KeepsAWindowThatOpenedOpaqueOpaque) {
+TEST_F(WindowEngineTest, KeepsAWindowThatOpenedOpaqueOpaque) {
     test::EngineFixture fixture;
     EXPECT_FALSE(fixture.host().canBeTransparent());
     EXPECT_FALSE(fixture.host().isTransparent());
@@ -289,7 +121,7 @@ TEST(WindowEngineTest, KeepsAWindowThatOpenedOpaqueOpaque) {
 }
 
 // Whatever the clear color and the blends, an opaque window clears to alpha 1 and draws no alpha, while a transparent one clears to the clear color and blends its alpha.
-TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
+TEST_F(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     test::EngineFixture fixture({
         {"haylen.json", R"({"window": {"transparent": true}, "clearColor": "#00000000"})"},
         {"source/main.lua", "local graphics2d = require('haylen.graphics2d') local camera = graphics2d.newCamera() "
@@ -298,10 +130,10 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
                             "graphics2d.beginScreen() graphics2d.drawRect({0, 0, 50, 50}, '#40FFFFFF', {blend = 'additive'}) graphics2d.drawText(nil, 'Gold', 10, 10) end})"},
     });
     fixture.frames(2);
-    std::vector<gpu::NullDevice::PassRecord> passes = SwapchainPasses::of(fixture);
+    std::vector<gpu::NullDevice::PassRecord> passes = getSwapchainPasses(fixture);
     ASSERT_FALSE(passes.empty());
     EXPECT_EQ(passes.front().clear.a, 0.0F);
-    std::vector<gpu::Device::ColorMask> masks = SwapchainPasses::getMasks(passes);
+    std::vector<gpu::Device::ColorMask> masks = getMasks(passes);
     ASSERT_FALSE(masks.empty());
 
     for (const gpu::Device::ColorMask mask : masks) {
@@ -310,10 +142,10 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
 
     fixture.host().setTransparent(false);
     fixture.frames(2);
-    passes = SwapchainPasses::of(fixture);
+    passes = getSwapchainPasses(fixture);
     ASSERT_FALSE(passes.empty());
     EXPECT_EQ(passes.front().clear.a, 1.0F);
-    masks = SwapchainPasses::getMasks(passes);
+    masks = getMasks(passes);
     ASSERT_GE(masks.size(), 3U);
 
     for (const gpu::Device::ColorMask mask : masks) {
@@ -321,7 +153,7 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     }
 }
 
-TEST(WindowEngineTest, PublishesMoves) {
+TEST_F(WindowEngineTest, PublishesMoves) {
     test::EngineFixture fixture;
     fixture.runLua("events = require('haylen.events') heard = {} "
                    "events.on('windowMoved', function(info) heard[#heard + 1] = 'moved ' .. info.x .. ' ' .. info.y end)");

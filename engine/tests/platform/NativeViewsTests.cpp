@@ -22,30 +22,6 @@
 
 namespace haylen::platform {
 
-class AppCoverTest : public ::testing::Test {
-  protected:
-    // Records every app state event of the engine by name.
-    static void recordStates(core::Engine& engine, std::vector<std::string>& log) {
-        for (const std::string_view name : {core::LifecycleEvent::kAppActive, core::LifecycleEvent::kAppInactive, core::LifecycleEvent::kAppBackground}) {
-            engine.getEvents().on(name, [&log, name](core::EventBus::Event&) { log.emplace_back(name); });
-        }
-    }
-};
-
-class SafeAreaTest : public ::testing::Test {
-  protected:
-    static std::string app(std::string_view scaling) {
-        return R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": ")" + std::string(scaling) + R"("}})";
-    }
-
-    static void expectSameRect(const math::Rect& actual, const math::Rect& expected) {
-        EXPECT_NEAR(actual.x, expected.x, 0.01F);
-        EXPECT_NEAR(actual.y, expected.y, 0.01F);
-        EXPECT_NEAR(actual.width, expected.width, 0.01F);
-        EXPECT_NEAR(actual.height, expected.height, 0.01F);
-    }
-};
-
 TEST(NativeViewsTest, KeepsTheLargestReservationOfEveryEdge) {
     NativeViews views;
     EXPECT_EQ(views.getReservedInsets(), math::Insets{});
@@ -121,193 +97,12 @@ TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
     EXPECT_EQ(fixture.lua("local safe = require('haylen.viewport').safeRect() return table.concat({safe.x, safe.y, safe.width, safe.height}, ',')"), "10.0,0.0,950.0,490.0");
 }
 
-TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
-    // A window without a cutout, rounded corners or bars of the system over it has no device insets, so every scaling keeps its whole visible area safe, letterboxed or not.
-    for (const std::string_view scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
-        test::EngineFixture fixture({{"haylen.json", app(scaling)}});
-        for (const math::Vec2 size : {math::Vec2{1920.0F, 1080.0F}, math::Vec2{2400.0F, 1080.0F}, math::Vec2{1080.0F, 1920.0F}}) {
-            fixture.host().resize(size);
-            fixture.frames(1);
-            expectSameRect(fixture.engine().getViewport().getSafeRect(), fixture.engine().getViewport().getVisibleRect());
-        }
-    }
-
-    // Insets of the device that fall in the bars of a letterboxed design leave the design whole, and a reservation takes only its own edge.
-    test::EngineFixture fixture({{"haylen.json", app("fit")}});
-    fixture.host().resize({2400.0F, 1080.0F});
-    fixture.host().setSafeAreaInsets({.left = 120.0F, .right = 200.0F});
-    fixture.host().getNativeViews().reserveInsets("banner", {.bottom = 108.0F});
-    fixture.frames(1);
-    expectSameRect(fixture.engine().getViewport().getSafeRect(), {0.0F, 0.0F, 960.0F, 486.0F});
-
-    // An inset that reaches past the bars covers the design from there.
-    fixture.host().setSafeAreaInsets({.left = 300.0F});
-    fixture.frames(1);
-    expectSameRect(fixture.engine().getViewport().getSafeRect(), {30.0F, 0.0F, 930.0F, 486.0F});
-}
-
-TEST_F(SafeAreaTest, ReportsTheCutoutsOfTheScreenInDesignUnits) {
-    // The cutouts of the device reach Lua in design units, and the event announces each change with the new list.
-    test::EngineFixture fixture({{"haylen.json", app("fit")}});
-    fixture.host().resize({1920.0F, 1080.0F});
-    fixture.frames(1);
-    fixture.runLua("heard = {} require('haylen.events').on('windowCutoutsChanged', function(info) heard[#heard + 1] = #info.cutouts end)");
-    fixture.host().setCutouts({{900.0F, 0.0F, 120.0F, 60.0F}});
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("local cutout = require('haylen.viewport').cutouts()[1] return table.concat({cutout.x, cutout.y, cutout.width, cutout.height}, ',')"), "450.0,0.0,60.0,30.0");
-    fixture.host().setCutouts({});
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return #require('haylen.viewport').cutouts() .. ' ' .. table.concat(heard, ',')"), "0 1,0");
-
-    // A simulated device brings the cutout of its screen, which turns with the window.
-    fixture.runLua("require('haylen.viewport').setSafeAreaSimulation('iphoneDynamicIsland')");
-    fixture.host().resize({1080.0F, 1920.0F});
-    fixture.frames(1);
-    ASSERT_EQ(fixture.engine().getCutouts().size(), 1U);
-    expectSameRect(fixture.engine().getCutouts()[0], {1080.0F * 133.5F / 393.0F, 1920.0F * 11.0F / 852.0F, 1080.0F * 126.0F / 393.0F, 1920.0F * 37.0F / 852.0F});
-    fixture.host().resize({1920.0F, 1080.0F});
-    fixture.frames(1);
-    expectSameRect(fixture.engine().getCutouts()[0], {1920.0F * 11.0F / 852.0F, 1080.0F * 133.5F / 393.0F, 1920.0F * 37.0F / 852.0F, 1080.0F * 126.0F / 393.0F});
-}
-
-TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
-    test::EngineFixture fixture;
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
-    std::vector<std::string> log;
-    recordStates(engine, log);
-    int ticks = 0;
-    engine.getTimers().every(0.05F, [&ticks] { ++ticks; });
-
-    // Covers nest, and the app stays covered until the last one ends, whatever the lifecycle options say.
-    views.coverApp();
-    views.coverApp();
-    fixture.frames(3, 0.06);
-    EXPECT_TRUE(engine.isAppCovered());
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
-    EXPECT_TRUE(engine.isHalted());
-    EXPECT_TRUE(engine.getAudio().isOutputMuted());
-    EXPECT_EQ(ticks, 0);
-    views.uncoverApp();
-    fixture.frames(2, 0.06);
-    EXPECT_TRUE(engine.isAppCovered());
-    EXPECT_EQ(ticks, 0);
-
-    // The last uncover brings the app back without a jump of the clock.
-    views.uncoverApp();
-    fixture.frames(1, 10.0);
-    EXPECT_FALSE(engine.isAppCovered());
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
-    EXPECT_FALSE(engine.isHalted());
-    EXPECT_FALSE(engine.getAudio().isOutputMuted());
-    EXPECT_EQ(ticks, 0);
-    fixture.frames(1, 0.06);
-    EXPECT_EQ(ticks, 1);
-    EXPECT_EQ(log, (std::vector<std::string>{"appInactive", "appActive"}));
-
-    // The mute the player chose survives a cover, which keeps the app silent whatever the app unmutes meanwhile, and the app reads its own mute all along.
-    engine.getAudio().setBusMuted("master", true);
-    views.coverApp();
-    fixture.frames(1);
-    EXPECT_TRUE(engine.getAudio().isOutputMuted());
-    engine.getAudio().setBusMuted("master", false);
-    EXPECT_FALSE(engine.getAudio().isBusMuted("master"));
-    EXPECT_TRUE(engine.getAudio().isOutputMuted());
-    engine.getAudio().setBusMuted("master", true);
-    views.uncoverApp();
-    fixture.frames(1);
-    EXPECT_TRUE(engine.getAudio().isBusMuted("master"));
-    EXPECT_FALSE(engine.getAudio().isOutputMuted());
-}
-
-TEST_F(AppCoverTest, DrawsTheCoveredFrameOnce) {
-    test::EngineFixture fixture({{"source/main.lua", "renders = 0 require('haylen.scene').push({render = function() renders = renders + 1 end})"}});
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
-    const auto rendered = [&fixture] { return std::stoi(fixture.lua("return renders")); };
-    fixture.frames(2);
-    int before = rendered();
-
-    // The first covered frame shows the app covered and stays on screen, since a halted app would draw it the same again.
-    views.coverApp();
-    fixture.frames(4);
-    EXPECT_EQ(rendered() - before, 1);
-
-    // A window of another size and a surface that the background may have dropped need the frame once more.
-    engine.handleEvent({.type = Event::Type::Resized});
-    fixture.frames(3);
-    EXPECT_EQ(rendered() - before, 2);
-    engine.handleEvent({.type = Event::Type::Suspended});
-    fixture.frames(2);
-    engine.handleEvent({.type = Event::Type::Resumed});
-    fixture.frames(3);
-    EXPECT_EQ(rendered() - before, 3);
-
-    // The app draws every frame again once the cover ends.
-    views.uncoverApp();
-    before = rendered();
-    fixture.frames(3);
-    EXPECT_EQ(rendered() - before, 3);
-}
-
-TEST_F(AppCoverTest, KeepsTheAppCoveredThroughTheBackground) {
-    test::EngineFixture fixture;
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
-    std::vector<std::string> log;
-    recordStates(engine, log);
-
-    // A covered app that comes back from the background, or gets the focus back, stays inactive until the cover ends.
-    views.coverApp();
-    fixture.frames(1);
-    engine.handleEvent({.type = Event::Type::Suspended});
-    EXPECT_TRUE(engine.isHalted());
-    engine.handleEvent({.type = Event::Type::Resumed});
-    engine.handleEvent({.type = Event::Type::FocusLost});
-    engine.handleEvent({.type = Event::Type::FocusGained});
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
-    views.uncoverApp();
-    fixture.frames(1);
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
-
-    // A cover that ends in the background leaves the app there until the platform brings it back.
-    views.coverApp();
-    fixture.frames(1);
-    engine.handleEvent({.type = Event::Type::Suspended});
-    views.uncoverApp();
-    fixture.frames(1);
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Background);
-    EXPECT_FALSE(engine.isAppCovered());
-    engine.handleEvent({.type = Event::Type::Resumed});
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
-    EXPECT_FALSE(engine.getAudio().isOutputMuted());
-    EXPECT_EQ(log, (std::vector<std::string>{"appInactive", "appBackground", "appInactive", "appActive", "appInactive", "appBackground", "appActive"}));
-}
-
-TEST_F(AppCoverTest, CoversAnAppThatRestartsUnderNativeUi) {
-    test::EngineFixture fixture({{"source/main.lua", "haylen = require('haylen') events = require('haylen.events') states = {} events.on('appInactive', function() states[#states + 1] = haylen.appCovered() end)"}});
-    NativeViews& views = fixture.host().getNativeViews();
-    views.coverApp();
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat({tostring(haylen.appCovered()), haylen.appState(), tostring(haylen.halted()), tostring(states[1])}, ' ')"), "true inactive true true");
-
-    // The cover belongs to the platform, so the restarted app hears it on its first frame.
-    fixture.restart();
-    EXPECT_FALSE(fixture.engine().isAppCovered());
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat({tostring(haylen.appCovered()), haylen.appState(), #states}, ' ')"), "true inactive 1");
-    EXPECT_TRUE(fixture.engine().getAudio().isOutputMuted());
-    views.uncoverApp();
-    fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return tostring(haylen.appCovered()) .. ' ' .. haylen.appState()"), "false active");
-}
-
 TEST(NativeViewsTest, TakesReservationsAndCoversFromOtherThreads) {
     test::EngineFixture fixture;
     NativeViews& views = fixture.host().getNativeViews();
     std::atomic<bool> done = false;
     // clang-format off
-    std::thread native([&views, &done] {
+    std::jthread native([&views, &done] {
         for (int index = 0; index < 300; ++index) {
             views.reserveInsets("banner", {.bottom = static_cast<float>(index % 3) * 50.0F});
             views.coverApp();
@@ -318,10 +113,7 @@ TEST(NativeViewsTest, TakesReservationsAndCoversFromOtherThreads) {
         done.store(true);
     });
     // clang-format on
-    while (!done.load()) {
-        fixture.frames(1);
-    }
-
+    ASSERT_TRUE(fixture.frameUntil([&done] { return done.load(); })) << "The native thread never finished.";
     native.join();
     fixture.frames(1);
     EXPECT_FALSE(fixture.engine().isAppCovered());

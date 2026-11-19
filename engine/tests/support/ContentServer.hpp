@@ -6,6 +6,7 @@
 #include <Poco/Net/StreamSocket.h>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
@@ -14,6 +15,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace haylen::test {
@@ -89,6 +91,9 @@ class ContentServer final {
     class Factory;
 
     static constexpr int kStallMilliseconds = 3000;
+    static constexpr std::chrono::seconds kStopTimeout{30};
+
+    [[nodiscard]] static bool readRange(std::string_view spec, std::uint64_t& first, std::uint64_t& last);
 
     void serve(const std::string& target, const std::string& range, const std::string& ifRange, Poco::Net::HTTPServerResponse& response, Poco::Net::StreamSocket& socket);
     [[nodiscard]] std::string getValidator(const std::string& path);

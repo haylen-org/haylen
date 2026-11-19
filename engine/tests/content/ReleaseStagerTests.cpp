@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <map>
 #include <string>
 #include <vector>
@@ -13,6 +11,7 @@
 #include "content/ReleaseStager.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "support/ReleaseFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -42,18 +41,6 @@ class ReleaseStagerTest : public ::testing::Test {
         return ReleaseStager(inspector, config.content).stage(release.getFolder(), folder / "shipped", folder / "deferred", folder / "packs", content);
     }
 
-    [[nodiscard]] static std::map<std::string, std::vector<std::uint8_t>> readFolder(const std::filesystem::path& folder) {
-        std::map<std::string, std::vector<std::uint8_t>> read;
-        for (const std::filesystem::directory_entry& entry : std::filesystem::recursive_directory_iterator(folder)) {
-            if (entry.is_regular_file()) {
-                std::ifstream stream(entry.path(), std::ios::binary);
-                read.emplace(entry.path().lexically_relative(folder).generic_string(), std::vector<std::uint8_t>{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()});
-            }
-        }
-
-        return read;
-    }
-
     test::ReleaseFixture release;
     Files files;
     test::TemporaryDirectory work;
@@ -65,7 +52,7 @@ TEST_F(ReleaseStagerTest, ShipsTheRequiredContentAndGivesEachPackItsOwnShards) {
 
     ASSERT_EQ(layout.packs.size(), 1U);
     ASSERT_EQ(layout.packs.at("forest").size(), 1U);
-    EXPECT_EQ(layout.deferred.size(), 1U) << "The prefetched music stays for the server.";
+    ASSERT_EQ(layout.deferred.size(), 1U) << "The prefetched music stays for the server.";
     EXPECT_NE(std::ranges::find(layout.shipped, "app.hmanifest"), layout.shipped.end());
     EXPECT_NE(std::ranges::find(layout.shipped, "content.hmanifest"), layout.shipped.end());
     EXPECT_TRUE(std::filesystem::exists(work.getPath() / "packs" / "forest" / layout.packs.at("forest").front()));
@@ -95,13 +82,14 @@ TEST_F(ReleaseStagerTest, ChangesOnlyTheShardsOfWhatAnUpdateChanged) {
     const std::filesystem::path after = work.getPath() / "after";
     (void)stage(after);
 
-    const auto earlier = readFolder(before);
-    const auto later = readFolder(after);
+    const auto earlier = test::ReleaseFiles::read(before);
+    const auto later = test::ReleaseFiles::read(after);
     std::vector<std::string> added;
     std::size_t kept = 0;
     for (const auto& [path, bytes] : later) {
         const auto found = earlier.find(path);
         if (path.ends_with(".hmanifest")) {
+            ASSERT_NE(found, earlier.end()) << "The manifest " << path << " is new.";
             EXPECT_NE(found->second, bytes) << "The manifest " << path << " names the new shards.";
         } else if (found == earlier.end()) {
             added.push_back(path);
@@ -111,8 +99,8 @@ TEST_F(ReleaseStagerTest, ChangesOnlyTheShardsOfWhatAnUpdateChanged) {
         }
     }
 
-    EXPECT_EQ(readFolder(before / "packs"), readFolder(after / "packs")) << "The pack depot does not change.";
-    EXPECT_EQ(readFolder(before / "deferred"), readFolder(after / "deferred"));
+    EXPECT_EQ(test::ReleaseFiles::read(before / "packs"), test::ReleaseFiles::read(after / "packs")) << "The pack depot does not change.";
+    EXPECT_EQ(test::ReleaseFiles::read(before / "deferred"), test::ReleaseFiles::read(after / "deferred"));
     EXPECT_GE(kept, 2U) << "The unchanged shards of the forest and the music stay as they were.";
     EXPECT_LE(added.size(), 2U) << "Only the new shards of each domain are new.";
 }

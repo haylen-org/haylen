@@ -1,6 +1,9 @@
 #pragma once
 
+#include <gtest/gtest.h>
+
 #include <algorithm>
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <map>
@@ -85,8 +88,8 @@ class ServiceKeyProvider final : public content::KeyProvider {
             bool given = false;
             {
                 std::unique_lock answerLock(mutex);
-                while (holding) {
-                    released.wait(answerLock);
+                if (!released.wait_for(answerLock, kHoldTimeout, [this] { return !holding; })) {
+                    ADD_FAILURE() << "The test never released the answers of the key service.";
                 }
 
                 const auto found = allowed.find(id);
@@ -101,6 +104,9 @@ class ServiceKeyProvider final : public content::KeyProvider {
     }
 
   private:
+    // The longest that an answer waits for a test to release it, so a test that fails first never leaves a thread waiting for good.
+    static constexpr std::chrono::seconds kHoldTimeout{10};
+
     mutable std::mutex mutex;
     std::map<KeyId, Key> allowed;
     mutable std::map<KeyId, Key> held;

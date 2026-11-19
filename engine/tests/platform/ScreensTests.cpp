@@ -421,6 +421,7 @@ TEST_F(ScreensTest, OpensTheScreensThatNativeLibrariesRegister) {
     api.finishScreen(id, 0, nullptr, nullptr, 0);
     fixture.frames(1);
     EXPECT_FALSE(screens.isShowing());
+    ASSERT_TRUE(answer.has_value());
     EXPECT_EQ(answer->error.code, "cancelled");
 
     // A null opener removes the screen, which then goes to the platform.
@@ -458,16 +459,13 @@ TEST_F(ScreensTest, TakesTheEndsOfScreensFromOtherThreads) {
         fixture.frames(1);
         std::atomic<bool> done = false;
         // clang-format off
-        std::thread native([id, &done] {
+        std::jthread native([id, &done] {
             ScreenRelay::finish(id, true, R"({"round": true})");
             ScreenRelay::restore("shop", "paywall", "null", true, "null");
             done.store(true);
         });
         // clang-format on
-        while (!done.load()) {
-            fixture.frames(1);
-        }
-
+        ASSERT_TRUE(fixture.frameUntil([&done] { return done.load(); })) << "The native thread never finished.";
         native.join();
         fixture.frames(1);
     }

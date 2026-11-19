@@ -84,6 +84,8 @@ set(HAYLEN_TEST_SOURCES
   content/ContentBuilderTests.cpp
   content/ContentLuaTests.cpp
   content/ContentManagerTests.cpp
+  content/ContentPackTests.cpp
+  content/ContentStartTests.cpp
   content/ContentToolTests.cpp
   content/CryptoTests.cpp
   content/HostileInputTests.cpp
@@ -199,8 +201,12 @@ set(HAYLEN_TEST_SOURCES
   platform/LinuxVisualColorTests.cpp
   platform/MediaSessionTests.cpp
   platform/NativeLuaTests.cpp
-  platform/NativeTests.cpp
+  platform/AppPluginTests.cpp
+  platform/NativeLibrariesTests.cpp
+  platform/NativeSignatureTests.cpp
   platform/NativeViewsTests.cpp
+  platform/AppCoverTests.cpp
+  platform/SafeAreaTests.cpp
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
   platform/PluginLoadOrderTests.cpp
@@ -221,6 +227,9 @@ set(HAYLEN_TEST_SOURCES
   platform/DisplayLuaTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp
+  platform/WindowConfigTests.cpp
+  platform/WindowPlacementTests.cpp
+  platform/DisplayTests.cpp
   platform/WindowsPowerStatusTests.cpp
   platform/worker/EventsTests.cpp
   platform/worker/GamepadsTests.cpp
@@ -228,6 +237,7 @@ set(HAYLEN_TEST_SOURCES
   storage/StorageTests.cpp
   support/AllocationTracker.cpp
   support/AllocationTrackerTests.cpp
+  support/ContentAppFixture.cpp
   support/ContentParsers.cpp
   support/ContentServer.cpp
   support/CountingPackage.cpp

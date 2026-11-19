@@ -120,7 +120,9 @@ TEST_F(EventsTest, PlacesTheMouseInFramebufferPixels) {
 
     button.type = SDL_EVENT_MOUSE_BUTTON_UP;
     button.button.button = SDL_BUTTON_MIDDLE;
-    EXPECT_EQ(translate(button)[0].mouseButton, input::MouseButton::Middle);
+    const std::vector<platform::Event> released = translate(button);
+    ASSERT_EQ(released.size(), 1U);
+    EXPECT_EQ(released[0].mouseButton, input::MouseButton::Middle);
     button.button.button = SDL_BUTTON_X1;
     EXPECT_TRUE(translate(button).empty());
 
@@ -130,6 +132,7 @@ TEST_F(EventsTest, PlacesTheMouseInFramebufferPixels) {
     motion.motion.xrel = 3.0F;
     motion.motion.yrel = -2.0F;
     const std::vector<platform::Event> moved = translate(motion, {.density = 2.0F});
+    ASSERT_EQ(moved.size(), 1U);
     EXPECT_EQ(moved[0].position, math::Vec2(10.0F, 12.0F));
     EXPECT_EQ(moved[0].delta, math::Vec2(6.0F, -4.0F));
 }
@@ -154,21 +157,25 @@ TEST_F(EventsTest, HandsEveryFingerWithEachChange) {
     EXPECT_EQ(first[0].touches[0].position, math::Vec2(100.0F, 50.0F));
 
     const std::vector<platform::Event> second = translate(makeFinger(SDL_EVENT_FINGER_DOWN, 9, 0.25F, 1.0F), context);
+    ASSERT_EQ(second.size(), 1U);
     ASSERT_EQ(second[0].touchCount, 2U);
     EXPECT_FALSE(second[0].touches[0].changed);
     EXPECT_TRUE(second[0].touches[1].changed);
     EXPECT_EQ(second[0].touches[1].id, 9U);
 
     const std::vector<platform::Event> moved = translate(makeFinger(SDL_EVENT_FINGER_MOTION, 7, 0.0F, 0.0F), context);
+    ASSERT_EQ(moved.size(), 1U);
     EXPECT_EQ(moved[0].type, platform::Event::Type::TouchMoved);
     EXPECT_TRUE(moved[0].touches[0].changed);
     EXPECT_EQ(moved[0].touches[0].position, math::Vec2(0.0F, 0.0F));
 
     const std::vector<platform::Event> lifted = translate(makeFinger(SDL_EVENT_FINGER_UP, 7, 0.0F, 0.0F), context);
+    ASSERT_EQ(lifted.size(), 1U);
     EXPECT_EQ(lifted[0].type, platform::Event::Type::TouchEnded);
     EXPECT_EQ(lifted[0].touchCount, 2U);
 
     const std::vector<platform::Event> cancelled = translate(makeFinger(SDL_EVENT_FINGER_CANCELED, 9, 0.0F, 0.0F), context);
+    ASSERT_EQ(cancelled.size(), 1U);
     EXPECT_EQ(cancelled[0].type, platform::Event::Type::TouchCancelled);
     ASSERT_EQ(cancelled[0].touchCount, 1U);
     EXPECT_EQ(cancelled[0].touches[0].id, 9U);
@@ -178,8 +185,12 @@ TEST_F(EventsTest, HandsEveryFingerWithEachChange) {
 
 TEST_F(EventsTest, ResumesOnlyAWindowThatWasMinimized) {
     EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WINDOW_RESTORED)).empty());
-    EXPECT_EQ(translate(makeEvent(SDL_EVENT_WINDOW_MINIMIZED))[0].type, platform::Event::Type::Suspended);
-    EXPECT_EQ(translate(makeEvent(SDL_EVENT_WINDOW_RESTORED))[0].type, platform::Event::Type::Resumed);
+    const std::vector<platform::Event> minimized = translate(makeEvent(SDL_EVENT_WINDOW_MINIMIZED));
+    ASSERT_EQ(minimized.size(), 1U);
+    EXPECT_EQ(minimized[0].type, platform::Event::Type::Suspended);
+    const std::vector<platform::Event> restored = translate(makeEvent(SDL_EVENT_WINDOW_RESTORED));
+    ASSERT_EQ(restored.size(), 1U);
+    EXPECT_EQ(restored[0].type, platform::Event::Type::Resumed);
     EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WINDOW_RESTORED)).empty());
 }
 
@@ -200,9 +211,13 @@ TEST_F(EventsTest, TranslatesTheWindowAndTheApp) {
 
 TEST_F(EventsTest, ReportsEachStateOfTheAppOnce) {
     EXPECT_TRUE(translate(makeEvent(SDL_EVENT_DID_ENTER_FOREGROUND)).empty());
-    EXPECT_EQ(translate(makeEvent(SDL_EVENT_WILL_ENTER_BACKGROUND))[0].type, platform::Event::Type::FocusLost);
+    const std::vector<platform::Event> leaving = translate(makeEvent(SDL_EVENT_WILL_ENTER_BACKGROUND));
+    ASSERT_EQ(leaving.size(), 1U);
+    EXPECT_EQ(leaving[0].type, platform::Event::Type::FocusLost);
     EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WILL_ENTER_BACKGROUND)).empty());
-    EXPECT_EQ(translate(makeEvent(SDL_EVENT_DID_ENTER_FOREGROUND))[0].type, platform::Event::Type::FocusGained);
+    const std::vector<platform::Event> returned = translate(makeEvent(SDL_EVENT_DID_ENTER_FOREGROUND));
+    ASSERT_EQ(returned.size(), 1U);
+    EXPECT_EQ(returned[0].type, platform::Event::Type::FocusGained);
 }
 
 } // namespace haylen::platform::sdl

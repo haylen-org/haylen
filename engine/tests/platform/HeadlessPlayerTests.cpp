@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
-#include <fstream>
-#include <iterator>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "platform/headless/HeadlessPlayer.hpp"
 #include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::platform {
 
@@ -107,7 +106,7 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedCannotStart
     guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.brokenguest"})");
     guest.write("source/main.lua", "require('haylen').quit()");
     const std::filesystem::path storage = data.getPath() / "com.haylen.brokenguest";
-    std::ofstream(storage) << "A file where the storage folder of the guest goes.";
+    test::TestFiles::write(storage, "A file where the storage folder of the guest goes.");
     test::TemporaryDirectory records;
     const std::filesystem::path restarted = records.getPath() / "restarted";
     // clang-format off
@@ -128,11 +127,8 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedCannotStart
         end
     )", 120), 1);
     // clang-format on
-    std::filesystem::remove(storage);
-
-    std::ifstream record(restarted);
-    const std::string launched((std::istreambuf_iterator<char>(record)), std::istreambuf_iterator<char>());
-    EXPECT_EQ(launched, "false");
+    ASSERT_TRUE(std::filesystem::remove(storage));
+    EXPECT_EQ(test::TestFiles::readText(restarted), "false");
 }
 
 // An app launched without native access has none of the modules and functions that reach native code and other programs but keeps every module of the engine, an app it launches with native access has none either, and the app that launched it keeps them.

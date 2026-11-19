@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -107,6 +108,7 @@ TEST(PlatformLuaTest, AnswersCallsAndSendsEventsFromLua) {
     )");
     // clang-format on
     EXPECT_EQ(fixture.lua("return platform.pendingCallCount() .. ' ' .. tostring(math.type(slowId)) .. ' ' .. tostring(slowId ~= deniedId)"), "2 integer true");
+    ASSERT_FALSE(fixture.host().getPlatformCalls().empty());
     EXPECT_EQ(fixture.host().getPlatformCalls().back().id, std::stoull(fixture.lua("return deniedId")));
 
     fixture.runLua("platform.resolve(slowId, true, {done = true}) platform.resolve(deniedId, false, {message = 'no network'})");
@@ -213,8 +215,14 @@ TEST(PlatformLuaTest, SendsAndReceivesBytesNextToJson) {
     const HeadlessHost::PlatformCall& stored = fixture.host().getPlatformCalls()[0];
     const core::Json params = core::Json::parse(stored.paramsJson);
     ASSERT_EQ(stored.buffers.size(), 2U);
-    EXPECT_EQ(stored.buffers[core::JsonBytes::findReference(params.at("photo")).value()], bytesOf(std::string("\x89PNG\r\n\x1A\n\0\xFF", 10)));
-    EXPECT_EQ(stored.buffers[core::JsonBytes::findReference(params.at("tags").at(0)).value()], bytesOf("a"));
+    const std::optional<std::size_t> photo = core::JsonBytes::findReference(params.at("photo"));
+    const std::optional<std::size_t> tag = core::JsonBytes::findReference(params.at("tags").at(0));
+    ASSERT_TRUE(photo.has_value());
+    ASSERT_TRUE(tag.has_value());
+    ASSERT_LT(*photo, stored.buffers.size());
+    ASSERT_LT(*tag, stored.buffers.size());
+    EXPECT_EQ(stored.buffers[*photo], bytesOf(std::string("\x89PNG\r\n\x1A\n\0\xFF", 10)));
+    EXPECT_EQ(stored.buffers[*tag], bytesOf("a"));
     EXPECT_EQ(params.at("name"), "shot.png");
 
     fixture.engine().getPlatform().resolve(stored.id, true, R"({"small": {"$bytes": 1}, "big": {"$bytes": 0}})", {bytesOf("big"), bytesOf("small")});

@@ -7,6 +7,7 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -24,6 +25,14 @@ namespace haylen::content {
 
 class BootstrapTest : public ::testing::Test {
   protected:
+    // The read of the keys that an answer starts and whether the answer saw it end, which both outlive the answer.
+    struct KeyRead {
+        std::future<std::shared_ptr<const KeyRing>> keys;
+        std::promise<bool> readable;
+    };
+
+    static constexpr std::chrono::seconds kAnswerTimeout{10};
+
     BootstrapTest() {
         release.build({{"haylen.json", R"({"name": "Bootstrap", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}, {"content/data/config.json", R"({"level": 3})"}});
     }
@@ -46,15 +55,24 @@ class BootstrapTest : public ::testing::Test {
 
     // Asks the release for a key and returns whether it gave the key and another thread could read the keys of the release while the answer ran. The read outlives the answer, so a release that answers under its lock fails the check instead of waiting for itself.
     [[nodiscard]] static bool acquireAndReadKeys(ReleasePackage& package, const Digest& id) {
-        std::future<std::shared_ptr<const KeyRing>> keys;
-        std::promise<bool> readable;
+        const auto read = std::make_shared<KeyRead>();
+        std::future<bool> readable = read->readable.get_future();
         // clang-format off
-        package.acquireKey(id, [&package, &keys, &readable](bool given) {
-            keys = std::async(std::launch::async, &ReleasePackage::getKeys, &package);
-            readable.set_value(given && keys.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+        package.acquireKey(id, [&package, read](bool given) {
+            read->keys = std::async(std::launch::async, &ReleasePackage::getKeys, &package);
+            read->readable.set_value(given && read->keys.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
         });
         // clang-format on
-        return readable.get_future().get();
+        return awaitAnswer(std::move(readable));
+    }
+
+    // Waits for the answer to a request for a key, which another thread may give, and fails the test when it never arrives.
+    [[nodiscard]] static bool awaitAnswer(std::future<bool> answer) {
+        if (answer.wait_for(kAnswerTimeout) != std::future_status::ready) {
+            throw std::runtime_error("The request for a key was never answered.");
+        }
+
+        return answer.get();
     }
 
     [[nodiscard]] KeyProvider::KeyId getKeyId() const {
@@ -147,13 +165,17 @@ TEST_F(BootstrapTest, AddsAProviderAfterTheKeysOfTheApp) {
     service->allow(later);
     Bootstrap::addKeyProvider(service);
 
-    const KeyProvider& keys = *Bootstrap::find()->keys;
+    const Bootstrap* installed = Bootstrap::find();
+    ASSERT_NE(installed, nullptr);
+    ASSERT_NE(installed->keys, nullptr);
+    const KeyProvider& keys = *installed->keys;
     const KeyProvider::KeyId laterId = test::ServiceKeyProvider::identify(later);
     // clang-format off
     const auto request = [&keys](const KeyProvider::KeyId& id) {
-        std::promise<bool> answer;
-        keys.requestKey(id, [&answer](bool given) { answer.set_value(given); });
-        return answer.get_future().get();
+        const auto answer = std::make_shared<std::promise<bool>>();
+        std::future<bool> given = answer->get_future();
+        keys.requestKey(id, [answer](bool value) { answer->set_value(value); });
+        return awaitAnswer(std::move(given));
     };
     // clang-format on
     EXPECT_EQ(keys.getKeyIds(), std::vector{getKeyId()});
@@ -192,10 +214,12 @@ TEST_F(BootstrapTest, AsksTheProviderOnceForAKeyThatRequestsRaceFor) {
     const std::unique_ptr<ReleasePackage> package = openWithProvider(service);
     const Digest laterId(test::ServiceKeyProvider::identify(later));
 
-    std::promise<bool> first;
-    std::promise<bool> second;
-    const std::function<void(bool)> answerFirst = [&first](bool given) { first.set_value(given); };
-    const std::function<void(bool)> answerSecond = [&second](bool given) { second.set_value(given); };
+    const auto first = std::make_shared<std::promise<bool>>();
+    const auto second = std::make_shared<std::promise<bool>>();
+    std::future<bool> firstAnswer = first->get_future();
+    std::future<bool> secondAnswer = second->get_future();
+    const std::function<void(bool)> answerFirst = [first](bool given) { first->set_value(given); };
+    const std::function<void(bool)> answerSecond = [second](bool given) { second->set_value(given); };
     {
         const std::jthread firstRequest(&ReleasePackage::acquireKey, package.get(), laterId, answerFirst);
         const std::jthread secondRequest(&ReleasePackage::acquireKey, package.get(), laterId, answerSecond);
@@ -203,8 +227,8 @@ TEST_F(BootstrapTest, AsksTheProviderOnceForAKeyThatRequestsRaceFor) {
     EXPECT_EQ(service->getRequests(), 1);
 
     service->releaseAnswers();
-    EXPECT_TRUE(first.get_future().get());
-    EXPECT_TRUE(second.get_future().get());
+    EXPECT_TRUE(awaitAnswer(std::move(firstAnswer)));
+    EXPECT_TRUE(awaitAnswer(std::move(secondAnswer)));
     EXPECT_TRUE(package->getKeys()->contains(laterId));
 }
 
