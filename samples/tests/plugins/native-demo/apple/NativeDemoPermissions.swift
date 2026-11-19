@@ -7,6 +7,7 @@ import AVFoundation
 #endif
 
 // The permissions that the demo owns on Apple platforms, which the runtime answers for `system.permission` and `system.requestPermission`: the camera and the microphone of AVFoundation, the location of Core Location while the app is in use and the notifications of the notification center. Apple TV has no camera, no microphone for apps and shows no notifications of the demo, so it registers only the location.
+@MainActor
 final class NativeDemoPermissions: NSObject, CLLocationManagerDelegate {
     private let locations = CLLocationManager()
     private var asking: [HaylenPermissionAnswer] = []
@@ -36,7 +37,7 @@ final class NativeDemoPermissions: NSObject, CLLocationManagerDelegate {
         })
     }
 
-    private static func state(of status: AVAuthorizationStatus) -> HaylenPermission.State {
+    private nonisolated static func state(of status: AVAuthorizationStatus) -> HaylenPermission.State {
         switch status {
         case .notDetermined:
             return .prompt
@@ -66,7 +67,7 @@ final class NativeDemoPermissions: NSObject, CLLocationManagerDelegate {
         })
     }
 
-    private static func state(of status: UNAuthorizationStatus) -> HaylenPermission.State {
+    private nonisolated static func state(of status: UNAuthorizationStatus) -> HaylenPermission.State {
         switch status {
         case .notDetermined:
             return .prompt
@@ -95,7 +96,7 @@ final class NativeDemoPermissions: NSObject, CLLocationManagerDelegate {
         })
     }
 
-    private static func state(of status: CLAuthorizationStatus) -> HaylenPermission.State {
+    private nonisolated static func state(of status: CLAuthorizationStatus) -> HaylenPermission.State {
         switch status {
         case .notDetermined:
             return .prompt
@@ -109,7 +110,7 @@ final class NativeDemoPermissions: NSObject, CLLocationManagerDelegate {
     }
 
     // Core Location also reports the authorization when the manager starts, which answers no request while the person has not decided.
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             let state = Self.state(of: self.locations.authorizationStatus)
             if state == .prompt {

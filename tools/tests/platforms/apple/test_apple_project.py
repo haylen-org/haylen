@@ -119,15 +119,20 @@ class AppleProjectTest:
             in raised.value.message
         )
 
+    def test_every_target_compiles_swift_in_the_swift_6_language_mode(self, apple):
+        spec = AppleFixture.spec(apple.prepare(apple.app({})))
+        assert spec["settings"]["base"]["SWIFT_VERSION"] == "6.0"
+        assert "SWIFT_VERSION" not in spec["targets"]["App"]["settings"]["base"]
+
     def test_the_sources_of_the_app_compile_into_the_app_target(self, apple):
-        app = apple.app({"platforms": {"apple": {"sources": ["native/apple"], "buildSettings": {"SWIFT_VERSION": "6.0"}}}})
+        app = apple.app({"platforms": {"apple": {"sources": ["native/apple"], "buildSettings": {"SWIFT_VERSION": "5.0"}}}})
         (app / "native" / "apple").mkdir(parents=True)
         target = AppleFixture.spec(apple.prepare(app))["targets"]["App"]
         assert {"path": str(app / "native" / "apple"), "group": "App", "type": "syncedFolder"} in target["sources"]
-        assert target["settings"]["base"]["SWIFT_VERSION"] == "6.0"
+        assert target["settings"]["base"]["SWIFT_VERSION"] == "5.0"
 
     def test_build_settings_never_set_what_the_backend_owns(self, apple):
-        app = apple.app({"platforms": {"apple": {"buildSettings": {"SWIFT_VERSION": "6.0", "ARCHS": "x86_64", "IPHONEOS_DEPLOYMENT_TARGET": "12.0", "PRODUCT_BUNDLE_IDENTIFIER": "com.other"}}}})
+        app = apple.app({"platforms": {"apple": {"buildSettings": {"SWIFT_VERSION": "5.0", "ARCHS": "x86_64", "IPHONEOS_DEPLOYMENT_TARGET": "12.0", "PRODUCT_BUNDLE_IDENTIFIER": "com.other"}}}})
         with pytest.raises(InvalidManifest) as raised:
             apple.prepare(app)
         message = raised.value.message

@@ -7,6 +7,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // Something that a feature needs from the app, with the file that adds it and the snippet that the file takes.
+NS_SWIFT_SENDABLE
 @interface HaylenRequirement : NSObject
 
 // One of `infoPlistKey`, `usageDescription`, `backgroundMode`, `urlScheme`, `class` and `entitlement`.
@@ -44,6 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 // Tells what the app holds: the keys of its `Info.plist`, the classes it links and, on macOS and Mac Catalyst, the entitlements it signs with. An app may leave out what a plugin needs, so a plugin checks what it needs before it calls a system API that needs it, and a missing requirement logs once what is missing and how to add it and fails the call with the code `unsupported` instead of crashing the app. Every method works from any thread.
+NS_SWIFT_SENDABLE
 @interface HaylenRequirements : NSObject
 
 - (instancetype)init NS_UNAVAILABLE;

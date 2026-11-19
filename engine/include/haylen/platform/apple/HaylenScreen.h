@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class HaylenScreen;
 
 // Opens a screen. The runtime calls it on the main queue once the engine covered the app, with the parameters of the app, where bytes arrive as `NSData` values, and the screen, through which the handler shows its UI and which it ends.
-typedef void (^HaylenScreenHandler)(id params, HaylenScreen* screen);
+typedef void (^NS_SWIFT_UI_ACTOR HaylenScreenHandler)(id params, HaylenScreen* screen);
 
 // A screen of a plugin: native UI that takes over the app until it ends with one result, such as a paywall, a sign-in flow or the UI of an SDK. The handler shows its UI through the screen and ends the screen with `finish` or `fail` from any thread, after which the runtime dismisses the UI and hands the end to the app once the UI is gone. UI that goes away before the screen ended, because the person closed it or because the UI, SwiftUI or an SDK dismissed it, ends the screen with the code `cancelled`. The first end counts.
 NS_SWIFT_UI_ACTOR
@@ -50,10 +50,10 @@ NS_SWIFT_UI_ACTOR
 #endif
 
 // Ends the screen with a result, any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside that cross as bytes, or `nil`.
-- (void)finishWithResult:(nullable id)result NS_SWIFT_NAME(finish(_:));
+- (void)finishWithResult:(nullable id)result NS_SWIFT_NAME(finish(_:)) NS_SWIFT_NONISOLATED;
 
 // Ends the screen with a failure, whose code and data the call of the app keeps, like the failure of a platform call.
-- (void)failWithMessage:(NSString*)message code:(nullable NSString*)code data:(nullable id)data NS_SWIFT_NAME(fail(_:code:data:));
+- (void)failWithMessage:(NSString*)message code:(nullable NSString*)code data:(nullable id)data NS_SWIFT_NAME(fail(_:code:data:)) NS_SWIFT_NONISOLATED;
 
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)new NS_UNAVAILABLE;

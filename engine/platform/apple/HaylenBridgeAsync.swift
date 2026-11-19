@@ -80,15 +80,13 @@ extension HaylenPluginContext {
     // Registers the screen `<id>.<name>` with a handler on the main actor, whose parameters decode from the JSON of the app with `JSONDecoder`, and which shows its UI through the screen. A thrown `HaylenFailure` fails the screen with its code and data, and any other error fails it with the code `exception`.
     func registerScreen<Params: Decodable>(_ name: String, handler: @escaping @MainActor (Params, HaylenScreen) throws -> Void) {
         registerScreen(name) { params, screen in
-            Task { @MainActor in
-                do {
-                    let input = try HaylenBridge.jsonData(params)
-                    try handler(JSONDecoder().decode(Params.self, from: input), screen)
-                } catch let failure as HaylenFailure {
-                    screen.fail(failure.message, code: failure.code, data: failure.data.flatMap { try? HaylenBridge.jsonObject($0) })
-                } catch {
-                    screen.fail(String(describing: error), code: "exception", data: ["type": String(reflecting: type(of: error))])
-                }
+            do {
+                let input = try HaylenBridge.jsonData(params)
+                try handler(JSONDecoder().decode(Params.self, from: input), screen)
+            } catch let failure as HaylenFailure {
+                screen.fail(failure.message, code: failure.code, data: failure.data.flatMap { try? HaylenBridge.jsonObject($0) })
+            } catch {
+                screen.fail(String(describing: error), code: "exception", data: ["type": String(reflecting: type(of: error))])
             }
         }
     }
@@ -126,7 +124,7 @@ extension HaylenPluginContext {
 
 extension HaylenScreen {
     // Ends the screen with a result that encodes to JSON with `JSONEncoder`. Throws the error of the encoder when the result does not encode.
-    func finish<Result: Encodable>(encoding result: Result) throws {
+    nonisolated func finish<Result: Encodable>(encoding result: Result) throws {
         finish(try HaylenBridge.jsonObject(result))
     }
 }

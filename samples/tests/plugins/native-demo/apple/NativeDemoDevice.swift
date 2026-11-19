@@ -14,6 +14,7 @@ import AVFoundation
 #endif
 
 // The device simulations of the demo on Apple platforms, which stand in for the SDKs of cameras, maps and sharing with the frameworks of the system alone: the camera into the video stream `camera` with photos as JPEG bytes, the microphone into the audio stream `microphone` with its level, the location of Core Location, a MapKit map over the app, the share sheet and other apps through their links. Apple TV has no camera, no microphone for apps and no share sheet, so those calls fail there with the code `unsupported`.
+@MainActor
 final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
     struct Empty: Codable {}
 
@@ -74,7 +75,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         let language: String
     }
 
-    private static let language = "Swift"
+    private nonisolated static let language = "Swift"
 
     private let context: HaylenPluginContext
     private let locations = CLLocationManager()
@@ -264,7 +265,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else {
             return
         }
@@ -273,7 +274,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         let failure = HaylenFailure("The location is unknown: \(error.localizedDescription)", code: "locationUnknown")
         Task { @MainActor in
             self.finishLocation(.failure(failure))
@@ -290,7 +291,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
 }
 
 #if !os(tvOS)
-// The camera of the device through AVFoundation, whose frames arrive as BGRA pixel buffers of the size of the stream on a dispatch queue of its own, which pushes them into the stream and keeps the newest one for a photo.
+// The camera of the device through AVFoundation, whose frames arrive as BGRA pixel buffers of the size of the stream on a dispatch queue of its own, which pushes them into the stream and keeps the newest one for a photo. It is safe to share between threads, since the session runs and stops only on that queue once it is configured, the newest frame sits behind the lock and the stream takes frames from any thread.
 final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     static let width = 640
     static let height = 480
@@ -333,14 +334,14 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         }
         session.addOutput(output)
         session.commitConfiguration()
-        queue.async { [session] in
-            session.startRunning()
+        queue.async {
+            self.session.startRunning()
         }
     }
 
     func stop() {
-        queue.async { [session] in
-            session.stopRunning()
+        queue.async {
+            self.session.stopRunning()
         }
     }
 
@@ -379,7 +380,7 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     }
 }
 
-// The microphone of the device through AVAudioEngine, whose input arrives as blocks of 32-bit floats on the thread of the audio system, which pushes the first channel into the stream and reports the level about ten times per second from that thread.
+// The microphone of the device through AVAudioEngine, whose input arrives as blocks of 32-bit floats on the thread of the audio system, which pushes the first channel into the stream and reports the level about ten times per second from that thread. It is safe to share between threads, since only that thread pushes samples and measures the level, while the engine and the session start and stop on the main thread.
 final class NativeDemoMicrophone: @unchecked Sendable {
     let sampleRate: Int
 
@@ -393,7 +394,7 @@ final class NativeDemoMicrophone: @unchecked Sendable {
     #endif
 
     @MainActor
-    init(context: HaylenPluginContext, level: @escaping (Double) -> Void) throws {
+    init(context: HaylenPluginContext, level: @escaping @Sendable (Double) -> Void) throws {
         #if os(iOS) || os(visionOS)
         // Recording needs a session that records, which mixes with the sound of the app, and the session of the app comes back when the microphone stops.
         let session = AVAudioSession.sharedInstance()
@@ -412,7 +413,7 @@ final class NativeDemoMicrophone: @unchecked Sendable {
         }
         stream = opened
         let blocksPerLevel = sampleRate / 10
-        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { [unowned self] buffer, _ in
+        engine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: format) { @Sendable [unowned self] buffer, _ in
             guard let samples = buffer.floatChannelData?[0] else {
                 return
             }
@@ -431,6 +432,7 @@ final class NativeDemoMicrophone: @unchecked Sendable {
         try engine.start()
     }
 
+    @MainActor
     func stop() {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
@@ -460,8 +462,9 @@ final class NativeDemoSharing: NSObject, NSSharingServicePickerDelegate {
     }
 
     nonisolated func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, didChoose service: NSSharingService?) {
+        let chosen = service != nil
         Task { @MainActor in
-            self.finished?(service != nil)
+            self.finished?(chosen)
             self.finished = nil
             self.picker = nil
         }

@@ -239,7 +239,6 @@ class AppleProject:
             "CLANG_CXX_LANGUAGE_STANDARD": "c++20",
             "CLANG_ENABLE_OBJC_ARC": "YES",
             "DEAD_CODE_STRIPPING": "YES",
-            "SWIFT_VERSION": "5.0",
             "SWIFT_OBJC_BRIDGING_HEADER": self.in_project(AppleProject.BRIDGING_HEADER),
             "ASSETCATALOG_COMPILER_APPICON_NAME": "app-icon",
             "ARCHS": architectures,
@@ -407,6 +406,8 @@ class AppleProject:
         spec: dict = {
             "name": "App",
             "options": {"deploymentTarget": {self.target.xcode_platform: str(self.project.minimum_system_version.value)}},
+            # The app and the app extensions of the plugins compile their Swift in the Swift 6 language mode, with its checks of data races.
+            "settings": {"base": {"SWIFT_VERSION": "6.0"}},
             "targets": {AppleProject.TARGET: app, **extensions},
         }
         packages = self.packages()

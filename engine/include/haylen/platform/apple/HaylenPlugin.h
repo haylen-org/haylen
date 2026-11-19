@@ -82,6 +82,7 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 @end
 
 // What the runtime gives the native part of a plugin, once per plugin: its id, its parameters from `haylen.json` with the defaults of `plugin.json`, its overlay, the requirements it checks in the project of the app, the permissions it owns and the app's window. Methods, events, screens and streams take the id of the plugin in front of their names, so `registerHandler:@"show"` answers `<id>.show`. Registering, emitting, covering, checking requirements and opening streams work from any thread, while the window, the view controller and the overlay belong to the main thread.
+NS_SWIFT_SENDABLE
 @interface HaylenPluginContext : NSObject
 
 @property(nonatomic, readonly, copy) NSString* identifier;

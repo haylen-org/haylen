@@ -2,6 +2,7 @@ import CoreGraphics
 import Foundation
 
 // The fake store, ads and sign-in of the demo, which stand in for the SDKs of real plugins with the same shape of calls, screens and events: a catalog, purchases that the person confirms in a native sheet with a receipt and a transaction that the device keeps, a full-screen ad, a rewarded ad and an account that signs in and out. A purchase, an ad and a sign-in take over the app until they end, so they are screens of the plugin, which the engine covers the app for. Nothing is charged and nothing leaves the device.
+@MainActor
 final class NativeDemoStore {
     struct Product: Encodable {
         let id: String

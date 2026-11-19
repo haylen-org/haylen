@@ -7,12 +7,12 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // Answers a platform call once. The result is any JSON value, with NSData values anywhere inside that cross as byte buffers and VarnDataView values that cross as data views, and a failed call passes a message or a dictionary with message, code and data.
-typedef void (^HaylenReply)(BOOL ok, id _Nullable result);
-typedef void (^HaylenHandler)(id params, HaylenReply reply);
+typedef void (^NS_SWIFT_SENDABLE HaylenReply)(BOOL ok, id _Nullable result);
+typedef void (^NS_SWIFT_UI_ACTOR HaylenHandler)(id params, HaylenReply reply);
 
 // Runs on the main queue when the app cancels a call or its timeout passes, so the handler can stop working on it.
-typedef void (^HaylenCancel)(void);
-typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenReply reply);
+typedef void (^NS_SWIFT_UI_ACTOR HaylenCancel)(void);
+typedef HaylenCancel _Nullable (^NS_SWIFT_UI_ACTOR HaylenCancellableHandler)(id params, HaylenReply reply);
 
 // Native side of the platform bridge on Apple platforms. Handlers may be registered at any time, even before the app starts. They run on the main queue and may reply later from any thread. Bytes that the app sends arrive as NSData values in the parameters, and data views as VarnDataView values that share the memory of the app.
 @interface HaylenBridge : NSObject

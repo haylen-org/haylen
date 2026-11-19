@@ -1213,7 +1213,7 @@ The same plugin in Objective-C:
 
 ### The Apple context
 
-`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting, covering, checking requirements and opening streams work from any thread. Handlers run on the main queue. The window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
+`HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting, covering, checking requirements and opening streams work from any thread, so the context is `Sendable` in Swift. Handlers run on the main queue, which Swift sees as the main actor. The window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
 
 | Member | Meaning |
 | --- | --- |
