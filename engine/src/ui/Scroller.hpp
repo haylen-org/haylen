@@ -35,6 +35,11 @@ class Scroller final {
         return motion == Motion::Resting;
     }
 
+    // Whether the content moves on by itself within its range, as a fling, the glide of a wheel or a scroll to a place do.
+    [[nodiscard]] bool isGliding() const noexcept {
+        return motion == Motion::Flinging || motion == Motion::Animating;
+    }
+
     // Jumps to an offset within the range and stops.
     void jumpTo(double value) noexcept;
 
@@ -43,6 +48,9 @@ class Scroller final {
 
     // Moves the content with a finger by a distance over a time, by less and less of it past an end.
     void drag(double delta, float seconds) noexcept;
+
+    // Starts a drag of a finger that already travelled `distance` since the content stopped under it, of which `recent` in this frame, so the content catches up with the finger at once and only the travel of the frame counts for its speed.
+    void grab(double distance, double recent, float seconds) noexcept;
 
     // Follows the wheel of a frame, whose distance `toward` turns into a change of the offset, `-1` for an offset that grows toward the bottom or the right end. Fingers that touch the trackpad stop a fling, and fingers that leave it release the content as a finger that leaves the screen does.
     void follow(const Context::WheelScroll& wheel, double toward, float seconds) noexcept;

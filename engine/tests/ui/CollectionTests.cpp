@@ -24,6 +24,7 @@
 #include "haylen/ui/Theme.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/UiFixture.hpp"
+#include "ui/ScrollArbiter.hpp"
 
 namespace haylen::ui {
 
@@ -739,6 +740,92 @@ TEST_F(CollectionTest, FlingsWithATouchDragAlongItsAxis) {
     touch(platform::Event::Type::TouchEnded, 1, start - math::Vec2{0.0F, 360.0F});
     frames(120);
     EXPECT_GT(list.getScrollOffset(), released + 300.0);
+    EXPECT_EQ(countEvents("select"), 0U);
+}
+
+// The list takes a finger in the frame after it passes the slop and moves at once by everything the finger travelled past the slop, so it follows the finger one to one.
+TEST_F(CollectionTest, FollowsAFingerOneToOnePastTheSlop) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    show(list, makeItems(1000));
+    const math::Vec2 start = list.getBounds().getCenter() + math::Vec2{0.0F, 200.0F};
+    touch(platform::Event::Type::TouchBegan, 1, start);
+    frames(2);
+
+    for (int step = 1; step <= 40; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, start - math::Vec2{0.0F, 5.0F * static_cast<float>(step)});
+        frames();
+        const bool taken = 5.0F * static_cast<float>(step - 1) >= ScrollArbiter::kDragSlop;
+        const double travelled = taken ? 5.0 * step - ScrollArbiter::kDragSlop : 0.0;
+        EXPECT_NEAR(list.getScrollOffset(), travelled, 0.01) << "step " << step;
+    }
+
+    touch(platform::Event::Type::TouchEnded, 1, start - math::Vec2{0.0F, 200.0F});
+    frames(2);
+    EXPECT_EQ(countEvents("select"), 0U);
+}
+
+// A finger that flicks past the slop and lifts before the next frame still flings the list, as a quick flick does on a phone that draws few frames.
+TEST_F(CollectionTest, FlingsWithAFlickThatLiftsBeforeTheListTookIt) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    show(list, makeItems(1000));
+    const math::Vec2 start = list.getBounds().getCenter() + math::Vec2{0.0F, 200.0F};
+    touch(platform::Event::Type::TouchBegan, 1, start);
+    frames(2);
+
+    touch(platform::Event::Type::TouchMoved, 1, start - math::Vec2{0.0F, 100.0F});
+    touch(platform::Event::Type::TouchEnded, 1, start - math::Vec2{0.0F, 100.0F});
+    frames(2);
+    EXPECT_GE(list.getScrollOffset(), 100.0 - ScrollArbiter::kDragSlop);
+    frames(60);
+    EXPECT_GT(list.getScrollOffset(), 300.0);
+    EXPECT_EQ(countEvents("select"), 0U);
+}
+
+// A finger that lands on a list that glides stops it where it is, selects nothing when it lifts and drags the list back from where it landed.
+TEST_F(CollectionTest, StopsItsGlideUnderAFingerThatLandsAndFollowsItBack) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    show(list, makeItems(1000));
+    const math::Vec2 start = list.getBounds().getCenter() + math::Vec2{0.0F, 200.0F};
+    const math::Vec2 landing = list.getBounds().getCenter() - math::Vec2{0.0F, 200.0F};
+
+    for (std::uint64_t finger = 1; finger <= 2; ++finger) {
+        touch(platform::Event::Type::TouchBegan, finger, start);
+        frames(2);
+
+        for (int step = 1; step <= 6; ++step) {
+            touch(platform::Event::Type::TouchMoved, finger, start - math::Vec2{0.0F, 60.0F * static_cast<float>(step)});
+            frames();
+        }
+
+        touch(platform::Event::Type::TouchEnded, finger, start - math::Vec2{0.0F, 360.0F});
+        frames(5);
+        const double gliding = list.getScrollOffset();
+        frames();
+        ASSERT_GT(list.getScrollOffset(), gliding + 10.0);
+
+        // The first finger only taps the gliding list, and the second pulls it back down.
+        touch(platform::Event::Type::TouchBegan, 10 + finger, landing);
+        frames(2);
+        const double caught = list.getScrollOffset();
+        frames(3);
+        EXPECT_DOUBLE_EQ(list.getScrollOffset(), caught);
+
+        const int steps = finger == 1 ? 0 : 40;
+        for (int step = 1; step <= steps; ++step) {
+            touch(platform::Event::Type::TouchMoved, 10 + finger, landing + math::Vec2{0.0F, 5.0F * static_cast<float>(step)});
+            frames();
+        }
+
+        const float pull = 5.0F * static_cast<float>(steps);
+
+        EXPECT_NEAR(caught - list.getScrollOffset(), pull, 0.01);
+        touch(platform::Event::Type::TouchEnded, 10 + finger, landing + math::Vec2{0.0F, pull});
+        frames(60);
+    }
+
     EXPECT_EQ(countEvents("select"), 0U);
 }
 

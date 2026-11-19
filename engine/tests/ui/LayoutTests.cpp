@@ -395,6 +395,54 @@ TEST_F(LayoutTest, FlingsAScrollWithAFingerAndSpringsBackFromPastItsEnds) {
     EXPECT_LT(getBounds(*gui, "content").y, released - 300.0F);
 }
 
+// A finger that flicks past the slop and lifts before the next frame still flings the scroll.
+TEST_F(LayoutTest, FlingsAScrollWithAFlickThatLiftsBeforeTheScrollTookIt) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
+    const math::Vec2 center = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "content").y;
+    touch(platform::Event::Type::TouchBegan, 1, center + math::Vec2{0.0F, 100.0F});
+    frames(2);
+
+    touch(platform::Event::Type::TouchMoved, 1, center);
+    touch(platform::Event::Type::TouchEnded, 1, center);
+    frames(60);
+    EXPECT_LT(getBounds(*gui, "content").y, top - 300.0F);
+}
+
+// A finger that lands on a scroll that glides stops it where it is and drags it back as far as the finger moves.
+TEST_F(LayoutTest, StopsTheGlideOfAScrollUnderAFingerThatLands) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "spacer", "height": 4000}]}]})");
+    const math::Vec2 center = getBounds(*gui, "page").getCenter();
+    touch(platform::Event::Type::TouchBegan, 1, center + math::Vec2{0.0F, 150.0F});
+    frames(2);
+
+    for (int step = 1; step <= 6; ++step) {
+        touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{0.0F, 150.0F - 50.0F * static_cast<float>(step)});
+        frames();
+    }
+
+    touch(platform::Event::Type::TouchEnded, 1, center - math::Vec2{0.0F, 150.0F});
+    frames(5);
+    const float gliding = getBounds(*gui, "content").y;
+    frames();
+    ASSERT_LT(getBounds(*gui, "content").y, gliding - 10.0F);
+
+    touch(platform::Event::Type::TouchBegan, 2, center);
+    frames(2);
+    const float caught = getBounds(*gui, "content").y;
+    frames(3);
+    EXPECT_FLOAT_EQ(getBounds(*gui, "content").y, caught);
+
+    for (int step = 1; step <= 20; ++step) {
+        touch(platform::Event::Type::TouchMoved, 2, center + math::Vec2{0.0F, 5.0F * static_cast<float>(step)});
+        frames();
+    }
+
+    EXPECT_NEAR(getBounds(*gui, "content").y - caught, 100.0F, 0.5F);
+    touch(platform::Event::Type::TouchEnded, 2, center + math::Vec2{0.0F, 100.0F});
+    frames(2);
+}
+
 // A finger that presses a text field of a list and then drags slowly scrolls the list, as on a phone, where only a tap edits the field.
 TEST_F(LayoutTest, ScrollsAListThatAFingerDragsFromOneOfItsFields) {
     auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 4000}]}]})");

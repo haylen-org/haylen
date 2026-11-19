@@ -151,7 +151,7 @@ class Context final {
     // Returns the wheel of the frame for an area that scrolls along one axis, and nothing while the gesture belongs to another area. A gesture keeps the axis it starts along and goes to the innermost area under the pointer that can move along it the way it scrolls, then stays with that area until it pauses. The `position` is how far the area shows from its top or left end, out of `maximum`, and `hovered` says whether the pointer is over the area and nothing covers it.
     [[nodiscard]] WheelScroll takeWheel(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum, bool hovered);
 
-    // Returns whether the finger that drags belongs to an area that it pressed and that can scroll along `horizontal`. The finger goes to the innermost such area once it travels past the slop along that axis more than across it, and stays with it until it lifts.
+    // Returns whether the finger that drags belongs to an area that it pressed and that can scroll along `horizontal`. The finger goes to the innermost such area once it travels past the slop along that axis more than across it, or at once to an area whose gliding content it caught, and stays with it until it lifts.
     [[nodiscard]] bool takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal);
 
     // Keeps the finger that holds `item` when it travels or shares the screen, for a control that follows the pointer while held, such as a slider. A finger lets go of every other item then, so a swipe or a pinch never clicks it.

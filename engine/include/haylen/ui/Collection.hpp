@@ -267,6 +267,8 @@ class Collection final : public Component {
     void takeInput(Context& context);
     void followWheel(Context& context, bool underPointer);
     void followPress(Context& context, bool underPointer);
+    void takeFinger(Context& context);
+    [[nodiscard]] double toOffset(float fingerMotion) const noexcept;
     void finishDrag(Context& context);
 
     // Lifts the pressed item once the mouse drags it or a finger holds it, and reports where it lands.

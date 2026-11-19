@@ -1192,16 +1192,28 @@ void Collection::followWheel(Context& context, bool underPointer) {
 
 // A press that lets go drops what the collection carries, a long press lifts an item of a reorderable collection, and a finger that drags along the axis scrolls it.
 void Collection::followPress(Context& context, bool underPointer) {
-    const ImGuiIO& io = ImGui::GetIO();
-    const ImGuiContext& state = *GImGui;
-    const ScrollArbiter::Press& press = context.getBackend().getScrollArbiter().getPress();
+    ScrollArbiter& arbiter = context.getBackend().getScrollArbiter();
+    const ScrollArbiter::Press& press = arbiter.getPress();
+
+    // A finger that lands on content that glides stops it where it is and drags it from there, as the content of a touch screen does.
     if (press.began) {
         pressed = underPointer;
         dragging = false;
         pressCandidate.clear();
+
+        if (pressed && press.touch && scroller->isGliding()) {
+            scroller->stop();
+            pendingScroll.reset();
+            arbiter.catchDrag(ImGui::GetID(this));
+        }
     }
 
+    // A finger that flicks past the slop and lifts before the list took it takes the list as it lifts, so the list still flings.
     if (!press.down) {
+        if (press.lifted && pressed && press.touch && !dragging && !lift) {
+            takeFinger(context);
+        }
+
         if (lift) {
             finishLift(context);
         }
@@ -1228,24 +1240,39 @@ void Collection::followPress(Context& context, bool underPointer) {
         return;
     }
 
-    // A list that pulls to refresh takes the finger even while all its items show.
     if (!dragging) {
-        if ((scroller->getMaximum() <= 0.0 && !(refreshable && isVertical())) || !context.takeDrag(ImGui::GetID(this), viewport, !isVertical())) {
-            return;
-        }
-
-        // A field being edited keeps editing while the finger scrolls the list, and any other item lets the finger go.
-        if (state.ActiveId != 0 && !io.WantTextInput) {
-            ImGui::ClearActiveID();
-        }
-
-        dragging = true;
-        pendingScroll.reset();
+        takeFinger(context);
+        return;
     }
 
-    const float step = isVertical() ? -press.motion.y : (rightToLeft ? press.motion.x : -press.motion.x);
-    scroller->drag(step, delta);
+    scroller->drag(toOffset(isVertical() ? press.motion.y : press.motion.x), delta);
     idle = 0.0F;
+}
+
+// A list that pulls to refresh takes the finger even while all its items show. The content catches up with the finger at once, and a field being edited keeps editing while the finger scrolls the list, while any other item lets the finger go.
+void Collection::takeFinger(Context& context) {
+    if ((scroller->getMaximum() <= 0.0 && !(refreshable && isVertical())) || !context.takeDrag(ImGui::GetID(this), viewport, !isVertical())) {
+        return;
+    }
+
+    if (GImGui->ActiveId != 0 && !ImGui::GetIO().WantTextInput) {
+        ImGui::ClearActiveID();
+    }
+
+    dragging = true;
+    pendingScroll.reset();
+
+    const ScrollArbiter& arbiter = context.getBackend().getScrollArbiter();
+    const math::Vec2 motion = arbiter.getPress().motion;
+    const double travelled = toOffset(arbiter.getDragTravel(!isVertical()));
+    scroller->grab(travelled, toOffset(isVertical() ? motion.y : motion.x), delta);
+    idle = 0.0F;
+}
+
+// A finger that moves up or to the left moves the offset forward, and a mirrored list moves its offset the way the finger moves.
+double Collection::toOffset(float fingerMotion) const noexcept {
+    const bool mirrored = !isVertical() && rightToLeft;
+    return mirrored ? static_cast<double>(fingerMotion) : -static_cast<double>(fingerMotion);
 }
 
 // The mouse lifts an item it drags past a small distance, and a finger lifts the item it holds still for a long press, since a finger that moves at once scrolls.

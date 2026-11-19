@@ -12,7 +12,7 @@
 
 namespace haylen::ui {
 
-// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses, turns to the other axis or rests while the pointer moves on. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, and stays with it until it lifts, unless it already drags an item. A finger that the UI holds from ImGui, such as one that presses outside the field being edited, drags the areas the same way. An item that the pointer or a finger drags scrolls the innermost area under it that it nears the edge of and that can move that way, faster the closer it gets to the edge.
+// Decides which area a scroll gesture moves. A gesture of a wheel or a trackpad keeps the axis it starts along and goes to the innermost area under the pointer that can move along that axis the way it scrolls, or else to the innermost one that scrolls along it, and stays with that area, wherever the content goes, until the fingers leave a trackpad that reports the phases of its gestures, or until a device without phases pauses, turns to the other axis or rests while the pointer moves on. The momentum that the system adds to a trackpad once the fingers left keeps the gesture and reaches its area apart, which moves on by its own motion when it has one, and fingers that touch the trackpad reach every area under the pointer, which stops its motion. Every area that scrolls registers while it draws, in any order, and a gesture chooses among the areas of the frame before, so its first scroll already moves the area it chose. A gesture that starts as the pointer arrives over an area, before the area knows the pointer is there, chooses again in the next frame, which receives the first scroll too. A finger that drags past the slop goes to the innermost area it pressed whose axis the drag follows, from the frame after the areas it pressed offered themselves, even when that is the frame it lifts in, and stays with it until it lifts, unless it already drags an item. A finger that lands on an area whose content glides catches the content and takes the area at once. A finger that the UI holds from ImGui, such as one that presses outside the field being edited, drags the areas the same way. An item that the pointer or a finger drags scrolls the innermost area under it that it nears the edge of and that can move that way, faster the closer it gets to the edge.
 class ScrollArbiter final {
   public:
     // Steps of a wheel, points of the screen that a trackpad moved and points of the momentum that the system adds to a trackpad once its fingers left, with positive values for scrolling up and to the left.
@@ -32,13 +32,14 @@ class ScrollArbiter final {
         bool lifted = false;
     };
 
-    // The press that the areas follow, in UI units: where it started, how far it travelled since then and in this frame, whether it started in this frame, whether it is down and whether a finger makes it.
+    // The press that the areas follow, in UI units: where it started, how far it travelled since then and in this frame, whether it started in this frame, whether it is down, whether it lifted in this frame, when it keeps the travel and the motion of its last frame, and whether a finger makes it.
     struct Press {
         math::Vec2 start;
         math::Vec2 travel;
         math::Vec2 motion;
         bool began = false;
         bool down = false;
+        bool lifted = false;
         bool touch = false;
     };
 
@@ -63,6 +64,16 @@ class ScrollArbiter final {
 
     // Returns whether the drag of the finger belongs to an area that can scroll along `horizontal`.
     [[nodiscard]] bool takeDrag(ImGuiID area, const math::Rect& bounds, bool horizontal);
+
+    // Gives the drag of the press to an area that it landed on while the content of the area glided, from where the finger is.
+    void catchDrag(ImGuiID area) noexcept;
+
+    // How far the finger is along an axis past the slop from where it pressed, or from where it caught gliding content, which the content of the area that takes the drag moves by at once.
+    [[nodiscard]] float getDragTravel(bool horizontal) const noexcept;
+
+    [[nodiscard]] bool hasDragArea() const noexcept {
+        return dragArea != 0;
+    }
 
     // The press of the frame, of the pointer that ImGui follows or of the finger that the UI holds from ImGui.
     [[nodiscard]] const Press& getPress() const noexcept {
@@ -173,6 +184,8 @@ class ScrollArbiter final {
     Press press;
     std::optional<HeldFinger> held;
     ImGuiID dragArea = 0;
+    math::Vec2 dragOrigin;
+    float dragSlop = 0.0F;
     std::vector<Offer> dragOffers;
     bool carrying = false;
     bool itemDragged = false;

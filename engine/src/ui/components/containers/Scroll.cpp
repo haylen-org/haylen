@@ -229,13 +229,29 @@ void Scroll::followWindow() {
 }
 
 void Scroll::followFinger(Context& context, const math::Rect& bounds, bool underPointer) {
-    const ImGuiIO& io = ImGui::GetIO();
-    const ImGuiContext& state = *GImGui;
-    const ScrollArbiter::Press& press = context.getBackend().getScrollArbiter().getPress();
+    ScrollArbiter& arbiter = context.getBackend().getScrollArbiter();
+    const ScrollArbiter::Press& press = arbiter.getPress();
 
+    // A finger that lands on content that glides stops it where it is and drags it from there, as the content of a touch screen does.
     if (press.began) {
         pressed = underPointer;
         dragging = false;
+
+        if (pressed && press.touch && scroller.isGliding()) {
+            scroller.stop();
+            request.reset();
+            arbiter.catchDrag(ImGui::GetCurrentWindow()->ID);
+        }
+    }
+
+    if (dragging && press.down) {
+        scroller.drag(-static_cast<double>(horizontal ? press.motion.x : press.motion.y), context.getDeltaSeconds());
+        return;
+    }
+
+    // A finger that flicks past the slop and lifts before the area took it takes the area as it lifts, so the content still flings.
+    if (!dragging && pressed && press.touch && (press.down || press.lifted)) {
+        takeFinger(context, bounds);
     }
 
     if (!press.down) {
@@ -245,28 +261,26 @@ void Scroll::followFinger(Context& context, const math::Rect& bounds, bool under
 
         pressed = false;
         dragging = false;
+    }
+}
+
+// The content catches up with the finger at once, and a field being edited keeps editing while the finger scrolls the area, while any other item lets the finger go.
+void Scroll::takeFinger(Context& context, const math::Rect& bounds) {
+    if (scroller.getMaximum() <= 0.0 || !context.takeDrag(ImGui::GetCurrentWindow()->ID, bounds, horizontal)) {
         return;
     }
 
-    if (!pressed || !press.touch) {
-        return;
+    if (GImGui->ActiveId != 0 && !ImGui::GetIO().WantTextInput) {
+        ImGui::ClearActiveID();
     }
 
-    // A field being edited keeps editing while the finger scrolls the area, and any other item lets the finger go.
-    if (!dragging) {
-        if (scroller.getMaximum() <= 0.0 || !context.takeDrag(ImGui::GetCurrentWindow()->ID, bounds, horizontal)) {
-            return;
-        }
+    dragging = true;
+    request.reset();
 
-        if (state.ActiveId != 0 && !io.WantTextInput) {
-            ImGui::ClearActiveID();
-        }
-
-        dragging = true;
-        request.reset();
-    }
-
-    scroller.drag(-static_cast<double>(horizontal ? press.motion.x : press.motion.y), context.getDeltaSeconds());
+    const ScrollArbiter& arbiter = context.getBackend().getScrollArbiter();
+    const double travelled = -static_cast<double>(arbiter.getDragTravel(horizontal));
+    const double moved = -static_cast<double>(horizontal ? arbiter.getPress().motion.x : arbiter.getPress().motion.y);
+    scroller.grab(travelled, moved, context.getDeltaSeconds());
 }
 
 // A node scrolls only as far as it needs to show whole with `nearest`, and aligns its start, middle or end with the view otherwise.

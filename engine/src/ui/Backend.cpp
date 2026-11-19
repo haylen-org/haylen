@@ -912,14 +912,15 @@ bool Backend::isFollowingTouch() const {
     return std::ranges::find(immediateWindows, state.ActiveIdWindow->RootWindow->ID) != immediateWindows.end();
 }
 
-// A finger that travels past the slop or shares the screen is a swipe, a drag or a pinch, never a tap, so the item it pressed lets it go unless the item follows it, the way a touch screen tells taps from gestures.
+// A finger that travels past the slop, that shares the screen or that drags an area, such as one that caught gliding content, is a swipe, a drag or a pinch, never a tap, so the item it pressed lets it go unless the item follows it, the way a touch screen tells taps from gestures. A field being edited keeps editing while the finger scrolls the area around it.
 void Backend::releaseTravelledTouch() {
     if (!primaryTouch || imguiContext->ActiveId == 0 || isFollowingTouch()) {
         return;
     }
 
     const ImVec2 moved = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0F);
-    if (touchShared || std::hypot(moved.x, moved.y) >= ScrollArbiter::kDragSlop) {
+    const bool scrolling = scrollArbiter->hasDragArea() && !imguiContext->IO.WantTextInput;
+    if (touchShared || scrolling || std::hypot(moved.x, moved.y) >= ScrollArbiter::kDragSlop) {
         ImGui::ClearActiveID();
     }
 }

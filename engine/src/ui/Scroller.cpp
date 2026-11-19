@@ -81,6 +81,15 @@ void Scroller::drag(double delta, float seconds) noexcept {
     }
 }
 
+void Scroller::grab(double distance, double recent, float seconds) noexcept {
+    motion = Motion::Dragging;
+    velocity = 0.0;
+
+    const double moved = std::fabs(recent) < std::fabs(distance) ? recent : distance;
+    pull(distance - moved);
+    drag(moved, seconds);
+}
+
 void Scroller::follow(const Context::WheelScroll& wheel, double toward, float seconds) noexcept {
     if (wheel.touched && motion == Motion::Flinging) {
         stop();

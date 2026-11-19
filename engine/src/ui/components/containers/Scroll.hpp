@@ -65,6 +65,7 @@ class Scroll final : public Component {
 
     // A finger that drags the content along the axis takes over from the control it pressed, so a list of buttons still scrolls on a touch screen.
     void followFinger(Context& context, const math::Rect& bounds, bool underPointer);
+    void takeFinger(Context& context, const math::Rect& bounds);
     void settle();
 
     [[nodiscard]] static const Component* findNode(const Component& parent, std::string_view id);
