@@ -10,16 +10,16 @@ class CompilerCacheReport:
         stats = json.load(sys.stdin)["stats"]
         hits = sum(stats["cache_hits"]["counts"].values())
         misses = sum(stats["cache_misses"]["counts"].values())
+        # The compiles that fail, such as the probes of the configure steps, count apart from the misses.
         failures = stats["compile_fails"]
-        compiled = misses - failures
         uncacheable = stats["requests_not_cacheable"]
-        cacheable = hits + compiled
+        cacheable = hits + misses
         rate = 100 * hits / cacheable if cacheable else 0.0
         reading = CompilerCacheReport.seconds(stats["cache_read_hit_duration"])
         compiling = CompilerCacheReport.seconds(stats["compiler_write_duration"])
 
         print("### Compiler cache\n")
-        print(f"- {hits} of {cacheable} compiles came from the cache ({rate:.2f} %), and {compiled} compiled because the cache held no object for them.")
+        print(f"- {hits} of {cacheable} compiles came from the cache ({rate:.2f} %), and {misses} compiled because the cache held no object for them.")
         print(f"- Reading the objects from the cache took {reading:.0f} seconds in all, {reading / hits if hits else 0:.3f} seconds each, and the compiles that missed took {compiling:.0f} seconds.")
         if failures:
             print(f"- {failures} compiles failed, which are the checks of the configure steps that probe the compiler.")
