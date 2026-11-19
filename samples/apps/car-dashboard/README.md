@@ -73,7 +73,7 @@ The sample folder is the package. Only `haylen.json`, `source/` and `content/` s
 
 ```text
 car-dashboard/
-  haylen.json               Window with the status bar in light content, design size of 1920 by 1080 with expand scaling, any orientation and the identifier.
+  haylen.json               Window without the status bar of the system, since the dashboard is the screen of a car and draws its own status bar, design size of 1920 by 1080 with expand scaling, any orientation and the identifier.
   source/
     main.lua             Registers the theme and opens the dashboard.
     style.lua            The palette, the gradients, the theme and the drawing helpers.
