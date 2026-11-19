@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from haylen.core.errors.missing_toolchain import MissingToolchain
+from haylen.core.host import Host
 from haylen.platforms.tool_status import ToolStatus
 from haylen.toolchains.android_sdk import AndroidSdk
 
@@ -34,6 +35,13 @@ class AndroidNdk:
             "-DANDROID_STL=c++_static",
             "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON",
         ]
+
+    def tool(self, name: str) -> Path:
+        """A tool of the LLVM toolchain of the NDK, such as `llvm-readelf`, from the prebuilt folder of this host, the only one that the NDK of a host holds."""
+        tools = sorted((self.folder / "toolchains" / "llvm" / "prebuilt").glob(f"*/bin/{Host.executable(name)}"))
+        if not tools:
+            raise MissingToolchain(f'The Android NDK {AndroidNdk.VERSION} in `{self.folder}` has no "{name}". Install it again with "sdkmanager \'ndk;{AndroidNdk.VERSION}\'".')
+        return tools[0]
 
     def status(self) -> ToolStatus:
         sdk = self.sdk.find()

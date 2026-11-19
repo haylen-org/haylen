@@ -1138,6 +1138,14 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM
 elseif(HAYLEN_BUILD_PLAYER AND ANDROID)
   add_library(haylen SHARED)
   target_link_libraries(haylen PRIVATE haylen::runtime haylen::player)
+  # The player library records only the system libraries whose symbols it uses, and the engine port of the tooling checks them against the list of the engine, which this tree writes for it.
+  target_link_options(haylen PRIVATE "LINKER:--as-needed")
+  set(libraries_json "[]")
+  foreach(library IN LISTS HAYLEN_ANDROID_LIBRARIES)
+    string(JSON length LENGTH "${libraries_json}")
+    string(JSON libraries_json SET "${libraries_json}" ${length} "\"${library}\"")
+  endforeach()
+  file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/haylen-android.json" CONTENT "{\"libraries\": ${libraries_json}}\n" @ONLY)
 endif()
 
 # The headless player runs any package without a window, GPU or audio device on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.

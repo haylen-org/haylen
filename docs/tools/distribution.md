@@ -739,6 +739,8 @@ The bridge handlers of an app register before `main` runs, when their classes lo
 
 The engine links only the frameworks and the libraries of the system that every app needs to run, which `haylen_link_runtime_platform` of `engine/cmake/haylen-app.cmake` gives the runtime, CMake apps and the settings `haylen-apple.json` of the Apple SDK. A capability that only some apps use, such as the camera, notifications or the controls of what plays, brings its frameworks with the plugin that serves it. The build of every slice of the Apple SDK checks with `nm` that each framework of its list gives the merged `libhaylen.a` at least one symbol that the library leaves undefined, from the stubs of the framework in the SDK of Xcode, and fails with the frameworks that give none, so no framework stays linked once the code that used it leaves.
 
+The Android SDK keeps the list `HAYLEN_ANDROID_LIBRARIES` of the same file. The player library `libhaylen.so` links with `--as-needed`, so it records in its entries `DT_NEEDED` only the libraries whose symbols it uses. The build of every ABI reads those entries with `llvm-readelf -d` of the NDK and fails when a listed library is missing from them, or when the library needs one that the list lacks. The only libraries outside the list are `libc.so`, `libm.so` and `libdl.so`, which the clang driver of the NDK adds to the link of every shared library.
+
 | Framework or library | Platforms | Why the engine links it |
 | --- | --- | --- |
 | `AppKit`, `Foundation` | macOS | The application, the windows, the menus, the views and the strings of the system. |

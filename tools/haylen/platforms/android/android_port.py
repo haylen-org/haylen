@@ -1,3 +1,4 @@
+import json
 import shutil
 
 from haylen.core.errors.build_failed import BuildFailed
@@ -7,6 +8,7 @@ from haylen.core.repository import Repository
 from haylen.core.schema_validator import SchemaValidator
 from haylen.core.target_environment import TargetEnvironment
 from haylen.native.cmake_tree import CMakeTree
+from haylen.platforms.android.android_library_check import AndroidLibraryCheck
 from haylen.platforms.android.android_platform import AndroidPlatform
 from haylen.platforms.contract import Contract
 from haylen.platforms.engine_port import EnginePort
@@ -32,6 +34,8 @@ class AndroidPort(EnginePort):
     ABIS_FOLDER = "abis"
     PLAYERS_FOLDER = "jniLibs"
     MAVEN_FOLDER = "maven"
+    # The system libraries that the engine lists for Android, which the engine tree writes from `HAYLEN_ANDROID_LIBRARIES` of `engine/cmake/haylen-app.cmake`.
+    LIBRARIES_FILE = "haylen-android.json"
 
     def describe(self) -> PortDescription:
         target = PortTarget(
@@ -125,6 +129,7 @@ class AndroidPort(EnginePort):
 
         self.context.terminal.step(f'Building the engine for "{abi}" in the "{configuration}" configuration')
         tree.build(["haylen", "haylen-sdk"], configuration)
+        self.check_libraries(tree, abi)
         prefix = request.folder / AndroidPort.ABIS_FOLDER / abi
         Folders.remove(prefix)
         tree.install("haylen-sdk", prefix, configuration)
@@ -133,6 +138,13 @@ class AndroidPort(EnginePort):
         player.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(tree.folder / "lib" / "libhaylen.so", player)
         return tree
+
+    def check_libraries(self, tree: CMakeTree, abi: str) -> None:
+        """Checks that the player library of an ABI needs exactly the system libraries that the engine lists for Android, which the tree writes into `haylen-android.json`."""
+        listed = json.loads((tree.folder / AndroidPort.LIBRARIES_FILE).read_text(encoding="utf-8"))["libraries"]
+        readelf = AndroidNdk(AndroidSdk(self.context.environment)).tool("llvm-readelf")
+        self.context.terminal.step(f'Checking the system libraries of "{abi}"')
+        AndroidLibraryCheck(self.context).check(readelf, tree.folder / "lib" / "libhaylen.so", abi, listed)
 
     def publish_libraries(self, request: SdkRequest, tree: CMakeTree, slices: tuple[SdkSlice, ...]) -> None:
         """Publishes the Android libraries of the engine to the Maven repository of the SDK, the `haylen` library with the player of every ABI of the SDK and the Kotlin transport of Varn from where CPM placed it for the native build."""

@@ -11,6 +11,9 @@ set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
 set(HAYLEN_APPLE_FRAMEWORKS_VISIONOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
 
+# The system libraries that the engine needs on Android, which the engine port of the tooling checks against the libraries that the player library needs. The native activity, the window and the assets come from `android` and the log from `log`, the context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`, whose functions of Android 9 the runtime references weakly behind checks of the version, as `__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__` makes the headers of the NDK declare them.
+set(HAYLEN_ANDROID_LIBRARIES android log EGL jnigraphics mediandk)
+
 # Adds the system libraries and link options every runtime needs, with PUBLIC for the runtime the engine builds and INTERFACE for the one an installed SDK imports.
 function(haylen_link_runtime_platform target scope)
   if(APPLE)
@@ -28,8 +31,7 @@ function(haylen_link_runtime_platform target scope)
   elseif(HAYLEN_PLATFORM STREQUAL "windows")
     target_link_libraries(${target} ${scope} shell32 shcore shlwapi ole32 oleaut32 advapi32 uuid dwrite mfplat mfreadwrite mfuuid uiautomationcore)
   elseif(HAYLEN_PLATFORM STREQUAL "android")
-    # The context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`, whose functions of Android 9 the runtime references weakly behind checks of the version, as `__ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__` makes the headers of the NDK declare them.
-    target_link_libraries(${target} ${scope} android log EGL jnigraphics mediandk)
+    target_link_libraries(${target} ${scope} ${HAYLEN_ANDROID_LIBRARIES})
     # Java finds the native sides of GameActivity and of the runtime through JNI entries that nothing in the library references, so every library that links the runtime takes the entry of GameActivity and `JNI_OnLoad`, whose file holds every JNI entry of the runtime.
     target_link_options(${target} INTERFACE "LINKER:-u,Java_com_google_androidgamesdk_GameActivity_initializeNativeCode" "LINKER:-u,JNI_OnLoad")
   elseif(HAYLEN_PLATFORM STREQUAL "web")
