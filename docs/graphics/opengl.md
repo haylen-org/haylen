@@ -19,11 +19,11 @@ macOS has only OpenGL 4.1 and ships Metal, so OpenGL is not a graphics API of Ha
 OpenGL draws through a context, and the pixel format of a window is chosen before the window opens. So the platform creates the context with the window and hands it to the device as a `gpu::GlContext` in a surface of the kind `Surface::Kind::Gl`. The device loads every OpenGL function it calls through `GlContext::getProcAddress`, so the engine links no OpenGL library and needs no loader library.
 
 ```cpp
-gpu::Surface surface{.kind = gpu::Surface::Kind::Gl, .gl = &context, .width = 1280, .height = 720, .vsync = true};
+gpu::Surface surface{.kind = gpu::Surface::Kind::Gl, .gl = &context, .size = {.width = 1280, .height = 720, .windowWidth = 1280, .windowHeight = 720}, .vsync = true};
 std::unique_ptr<gpu::Device> device = gpu::DeviceFactory::create(gpu::Device::Api::OpenGl, surface, {.validation = true});
 ```
 
-The context stays current on the frame thread for the whole life of the device. The device needs a context, so it cannot start without a surface. The tests of the engine make one with `test::OffscreenGlContext`, which opens an OpenGL or OpenGL ES context on a hidden pixel buffer through EGL, with Mesa in a container or on the Android emulator.
+The context stays current on the frame thread for the whole life of the device. The device needs a context, so it cannot start without a surface. The tests of the engine make one with `test::OffscreenGlContext`, which opens an OpenGL or OpenGL ES context on a hidden pixel buffer through EGL on Linux and Android, with Mesa in a container or on the Android emulator, through WGL on Windows, and on the canvas of the page on the web.
 
 When the window goes away, such as an Android app in the background, the platform keeps the context and calls `detachSurface`. A pass into the swapchain then records nothing. `attachSurface` takes the same context back with its new drawable, so no object is lost.
 

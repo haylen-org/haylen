@@ -184,7 +184,7 @@ The option `validation` of `gpu::DeviceFactory::Options` turns on the validation
 | Metal | The Metal API validation layer through `MTL_DEBUG_LAYER`, and the execution status of each encoder in the error of a failed command buffer. |
 | Direct3D 12 and 11 | The debug layers of Direct3D and DXGI, from the optional feature Graphics Tools of Windows, and on Direct3D 12 the breadcrumbs and page faults of removed devices. |
 | Vulkan | The validation layers of the Vulkan SDK when the machine has them. |
-| OpenGL and OpenGL ES | The debug output of `KHR_debug`, or `glGetError` after each pass where the context lacks it. |
+| OpenGL and OpenGL ES | The debug output of `KHR_debug`, or `glGetError` after each pass and frame where the context lacks it. |
 | WebGL2 | `glGetError` after each pass and frame. |
 | WebGPU | The browser validates every call in every build. |
 

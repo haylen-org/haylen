@@ -581,8 +581,8 @@ end)
 
 On the web, the engine plays through an audio output of its own, which is the only output that miniaudio has there. It works like this:
 
-- The mixer runs on the page thread like the rest of the app and mixes blocks of 256 frames.
-- The page posts the blocks over the message port of an `AudioWorkletNode`.
+- The mixer runs on the thread of the module like the rest of the app, the page or the worker of the Worker mode, and mixes blocks of 256 frames.
+- The mixer posts the blocks over the message port of an `AudioWorkletNode`.
 - Its processor, the file `haylen-audio-worklet.js` next to the runtime script, keeps them in a small ring and plays them on the audio thread of the browser.
 - The processor answers with the frames it played, so the page mixes new blocks until 50 ms of sound wait ahead of the output again.
 

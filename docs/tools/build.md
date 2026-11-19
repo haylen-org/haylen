@@ -564,7 +564,6 @@ Two scripts make the runtime. The engine side, `engine/platform/web/haylen-runti
 | `openLink(url)` | Hands the app a link that opened the page, such as a link of a URL scheme of a plugin that the address of the page stands in for. The app hears it as [`linkOpened`](../lua-api/events.md#app-and-plugins), the link that started the page once `source/main.lua` ran, and a link that arrives while an app that the app launched plays ends that app, as on the other platforms. |
 | `createPluginContext(id, config)` | The context of the web module of a plugin, as the [plugin guide](../platform/plugins.md#web-modules) describes. |
 | `nativePlugins()` | Returns the ids of the plugins that have a web module. |
-| `paused()` | Returns whether the app is paused. |
 
 No C++ exception crosses into the page. A function of the runtime that fails while it answers the page throws an `Error` with the reason. Otherwise it logs an engine error that names the function, and the page goes on.
 

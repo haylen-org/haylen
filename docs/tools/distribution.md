@@ -715,7 +715,7 @@ The folder `engine/platform/android` is a Gradle project with five modules. The 
 - `HaylenDisplays`, which follows the displays of the device, `HaylenOutputs`, which shows the outputs of the app on the other displays, and `HaylenFold`, which reports the fold of foldable and dual-screen devices through Jetpack WindowManager.
 - `HaylenPermissions` with `HaylenPermission`, which read and ask for the permissions of `system.permission` through one launcher of the Activity Result API.
 - `HaylenBridge` for the platform bridge, and the host of the Android parts of [plugins](../platform/plugins.md#the-android-part): `HaylenPluginProvider`, which loads them when the process starts, `HaylenPlugin`, `HaylenPluginContext`, `HaylenRequirements`, `HaylenOverlay` with its `HaylenPlacement`, the screens of plugins with `HaylenScreens` and `HaylenScreen`, and the streams `HaylenVideoStream` and `HaylenAudioStream`.
-- The splash themes, the R8 rules for the classes that C++ calls by name, and the Kotlin HTTP transport of Varn.
+- The splash themes, the R8 rules for the classes that C++ calls by name, the Kotlin HTTP transport of Varn and the Java class of its data views.
 
 The manifest of `haylen` declares only the OpenGL ES 3 requirement, with no permission and no component. So the permissions, the back policy and the components that only some apps want never reach an app through it. The other modules each depend on `haylen` as an API:
 
@@ -732,7 +732,7 @@ The command `haylen sdk build --target android` builds the Android SDK into `bui
 
 1. It builds the player and the SDK of the engine for every ABI, or for the ones that `--architecture` names, in `build/engine/android-<abi>-<config>`, one ABI after the other with the jobs of `--jobs`. So the compilers stay within those jobs, and the configures never write into the shared CPM sources at the same time.
 2. It installs the CMake package of each ABI into `abis/<abi>/` of the SDK, which the native code of apps links against, and copies the player of each ABI into `jniLibs/<abi>/libhaylen.so`. The ABIs that the SDK folder holds from the same engine sources and configuration stay, so building one ABI later adds it to the SDK.
-3. It runs Gradle with `-PhaylenNativeLibraries` for the players of every ABI of the SDK, `-PhaylenVarnSourceDir` for the folder where CPM placed Varn, `-PhaylenMavenDir` for the Maven repository and `-PhaylenBuildDirectory` for the build outputs, which go to `build/engine/android-libraries-<config>`. The task `copyVarnTransport` copies `VarnHttp.kt` of Varn into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport of the Android library of Varn runs in the app.
+3. It runs Gradle with `-PhaylenNativeLibraries` for the players of every ABI of the SDK, `-PhaylenVarnSourceDir` for the folder where CPM placed Varn, `-PhaylenMavenDir` for the Maven repository and `-PhaylenBuildDirectory` for the build outputs, which go to `build/engine/android-libraries-<config>`. The tasks `copyVarnTransport` and `copyVarnDataView` copy `VarnHttp.kt` and `VarnDataView.java` of Varn into the module, because the engine links Varn into the player library and only the Kotlin HTTP transport and the data views of the Android library of Varn run in the app.
 4. It runs the task `publishReleasePublicationToArtifactsRepository` of every module. That publishes `dev.haylen:haylen`, `dev.haylen:haylen-plugins`, `dev.haylen:haylen-links`, `dev.haylen:haylen-playback` and `dev.haylen:haylen-coroutines` at the engine version, with their POMs, to `maven/` of the SDK.
 5. It writes `haylen-sdk.json` with one slice per ABI, which names the CMake package and the player of the ABI, and the Maven repository that every slice shares.
 
@@ -741,7 +741,7 @@ The POM of `haylen` lists the dependencies of the library, which Gradle brings i
 - The Kotlin standard library.
 - `androidx.games:games-activity` 4.4.2, which the Gradle module metadata pins strictly. The Java classes of GameActivity must match its native side in `libhaylen.so`, which links the same version that `engine/cmake/haylen-dependencies.cmake` pins. A change of version updates the pin, the library and the template together.
 - `androidx.appcompat:appcompat` 1.8.0, `androidx.activity:activity` 1.13.0 and `androidx.core:core` 1.19.1, as APIs, which `HaylenActivity` and its plugins build on.
-- `androidx.core:core-splashscreen` and `androidx.window:window-java`, the Jetpack WindowManager that reports the fold of foldable devices.
+- `androidx.core:core-splashscreen`, `androidx.customview:customview`, whose `ExploreByTouchHelper` serves the elements of the UI to accessibility services, and `androidx.window:window-java`, the Jetpack WindowManager that reports the fold of foldable devices.
 
 The POMs of the other libraries list `haylen`. The POM of `haylen-coroutines` also lists `kotlinx-coroutines-android`, which apps and plugins with suspending handlers get as an API.
 
