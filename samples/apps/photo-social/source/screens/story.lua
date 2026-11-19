@@ -3,6 +3,7 @@ local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
+local window = require('haylen.window')
 
 local Chats = require('chats')
 local Page = require('page')
@@ -22,6 +23,13 @@ function Story:tree()
     self.storyIndex = self.params.index
     self.frame, self.elapsed = 1, 0
     return ui.stack{id = 'root'}
+end
+
+-- The stories play on a dark stage, so the status bar shows light content over them and goes back to the content of the app as they leave.
+function Story:appear()
+    Page.appear(self)
+    self.appStatusBar = window.statusBar()
+    window.setStatusBar('light')
 end
 
 function Story:layoutChanged(wide)
@@ -245,6 +253,7 @@ end
 
 function Story:disappear()
     self.exiting = true
+    window.setStatusBar(self.appStatusBar)
 end
 
 

@@ -9,7 +9,8 @@
         "width": 1366,
         "height": 900,
         "resizable": true,
-        "maxPixelDensity": 0
+        "maxPixelDensity": 0,
+        "statusBar": "dark"
     },
     "design": {
         "width": 1366,

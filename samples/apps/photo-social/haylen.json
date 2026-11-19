@@ -9,7 +9,8 @@
         "width": 1280,
         "height": 820,
         "resizable": true,
-        "maxPixelDensity": 0
+        "maxPixelDensity": 0,
+        "statusBar": "dark"
     },
     "design": {
         "width": 1280,

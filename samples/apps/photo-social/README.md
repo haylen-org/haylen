@@ -23,7 +23,7 @@ On the headless platform the app runs a tour by itself: it likes a post, watches
 | Screen | What it shows |
 | --- | --- |
 | Home | The stories in a row, with the person's own first, over the feed of the people the person follows. Every post shows its author with the place and the time, the caption over the picture, and the buttons with the counts of likes and comments under it. A phone shows the posts under the wordmark, and a wide window shows them as cards in a column, with the person and suggestions of people to follow beside it when there is room. |
-| Story | The pictures of a person, five seconds each, under bars that fill as they play, then the stories of the next person. A tap on the left third goes back and anywhere else goes on, a press holds the story, and the field at the bottom replies in the direct messages. A wide window shows the pictures in a tall frame between two arrows. |
+| Story | The pictures of a person, five seconds each, under bars that fill as they play, then the stories of the next person. A tap on the left third goes back and anywhere else goes on, a press holds the story, and the field at the bottom replies in the direct messages. A wide window shows the pictures in a tall frame between two arrows. The status bar shows light content over the dark stage while the stories play. |
 | Post | The post and its comments over the field that adds one, or on a wide window the picture on a dark stage beside the author, the comments, the buttons and the field. A post of the person has the button that deletes it, and a comment of the person has a menu that deletes it, both after an alert. |
 | Profile | The face inside the ring of the app, the name and the bio in the middle, the counts of posts, followers and following on a soft card, the buttons that follow and message, and the grid of pictures. Unfollowing shows a snackbar that follows again, and the message button opens the chat in the messages tab. The person's own profile edits its name and bio in a sheet that asks before it drops changes, starts a post and shows the saved posts in a second section. |
 | Explore | A grid of the pictures of everyone, and the people whose name or handle matches the typed text. |
@@ -93,7 +93,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 photo-social/
-  haylen.json               Window, physical UI scale, any orientation and the identifier.
+  haylen.json               Window with the status bar in dark content, physical UI scale, any orientation and the identifier.
   source/
     main.lua             Registers the theme, the actions of the stories and the pictures, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.

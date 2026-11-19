@@ -88,7 +88,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine. 
 
 ```text
 ride-hailing/
-  haylen.json               Window, physical UI scale, any orientation, the rides autoload and the identifier.
+  haylen.json               Window with the status bar in dark content, physical UI scale, any orientation, the rides autoload and the identifier.
   source/
     main.lua             Registers the theme and starts the shell.
     style.lua            The palette of the screens and of the map, the type scale, the spacing scale, the shapes and the theme.

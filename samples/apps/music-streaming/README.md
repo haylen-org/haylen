@@ -95,7 +95,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 music-streaming/
-  haylen.json            Window, physical UI scale, any orientation, the playback audio session, the player autoload, the plugin of the links and the identifier.
+  haylen.json            Window with the status bar in light content, physical UI scale, any orientation, the playback audio session, the player autoload, the plugin of the links and the identifier.
   source/
     main.lua             Registers the theme and the covers, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.

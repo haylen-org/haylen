@@ -69,7 +69,7 @@ The sample folder is the package. Only `haylen.json`, `source/` and `content/` s
 
 ```text
 smart-home/
-  haylen.json               Window, physical UI scale, any orientation and the identifier.
+  haylen.json               Window with the status bar in dark content, physical UI scale, any orientation and the identifier.
   source/
     main.lua             Registers the theme and opens the panel.
     style.lua            The palette, the gradients and the theme.
