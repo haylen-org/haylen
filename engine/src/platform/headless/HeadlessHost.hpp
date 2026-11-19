@@ -304,6 +304,14 @@ class HeadlessHost final : public Host {
     void persistUserData() override {
         ++persistCount;
     }
+    [[nodiscard]] std::string getUserDataRefusal() override {
+        return userDataRefusal;
+    }
+
+    // Keeps the user data from the apps that start afterwards with the sentence, as a web page whose user data another tab holds does, or gives it back with an empty text.
+    void setUserDataRefusal(std::string value) {
+        userDataRefusal = std::move(value);
+    }
     [[nodiscard]] math::Insets getSafeAreaInsets() const override {
         return safeAreaInsets;
     }
@@ -474,9 +482,10 @@ class HeadlessHost final : public Host {
         return std::exchange(developmentSession, std::move(value));
     }
 
-    // Resizes the window in pixels, whose drawable the pixel density cap may shrink.
-    void resize(math::Vec2 size) noexcept {
+    // Resizes the window in pixels, whose drawable the pixel density cap may shrink and the null device of the host follows.
+    void resize(math::Vec2 size) {
         windowSize = size;
+        followDrawable();
     }
     void setSafeAreaInsets(const math::Insets& value) noexcept {
         safeAreaInsets = value;
@@ -816,6 +825,7 @@ class HeadlessHost final : public Host {
     Cursor cursor = Cursor::Default;
     Orientation orientationLock = Orientation::Any;
     int persistCount = 0;
+    std::string userDataRefusal;
     bool fullscreen = false;
     bool resizable = true;
     bool cursorVisible = true;

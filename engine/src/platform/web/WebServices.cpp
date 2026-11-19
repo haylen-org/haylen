@@ -87,6 +87,10 @@ EM_JS(char*, haylen_js_user_data_root, (), {
     return stringToNewUTF8(Module.haylen.userDataRoot);
 });
 
+EM_JS(char*, haylen_js_user_data_refusal, (), {
+    return stringToNewUTF8(Module.haylen.userDataRefusal);
+});
+
 EM_JS(int, haylen_js_orientation, (), {
     return Module.haylen.orientation();
 });
@@ -177,6 +181,14 @@ std::filesystem::path WebServices::getUserDataDirectory(std::string_view identif
 
 void WebServices::persistUserData() {
     haylen_js_persist();
+}
+
+// The user data of a page belongs to the one tab of the site that holds its lock, which the page takes before the runtime starts.
+std::string WebServices::getUserDataRefusal() {
+    char* refusal = haylen_js_user_data_refusal();
+    std::string sentence(refusal);
+    std::free(refusal);
+    return sentence;
 }
 
 // The canvas is the window, and the page gives it no desktop.

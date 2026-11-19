@@ -209,6 +209,19 @@ async.spawn(function()
 end)
 ```
 
+## A tab without its user data
+
+On the web, one tab of a site uses the user data of a page at a time, as the [web runtime](../tools/build.md#the-user-data-of-a-tab) describes. In a tab whose user data another tab holds, the app still runs, but every function of this module, the save slots and `haylen.preferences` included, raises the sentence that says so, such as `Another tab of this site uses its user data, so this page keeps no user data. Close the other tab and load this page again.`. The functions on the I/O pool reject their promises with it, and `storage.root()` raises it too.
+
+```lua
+local storage = require('haylen.storage')
+
+local saved, failure = pcall(storage.writeText, 'notes.txt', 'Day 4')
+if not saved then
+    print('Not saved: ' .. failure)
+end
+```
+
 ## Files on the I/O pool
 
 These functions do what the functions of [Files](#files) do, on the I/O pool, as [calls on the I/O pool](#calls-on-the-io-pool) describes.

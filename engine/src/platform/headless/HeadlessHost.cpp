@@ -47,10 +47,11 @@ std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {
     return device;
 }
 
-// The null device of the host takes the drawable as the GPU device of a real host does, while a device that a test made draws offscreen.
+// The null device of the host takes the drawable as the GPU device of a real host does, also keeping the last surface while the window has no area, while a device that a test made draws offscreen.
 void HeadlessHost::followDrawable() {
-    if (gpu != nullptr) {
-        gpu->resizeSurface(getSurfaceSize());
+    const gpu::Surface::Size size = getSurfaceSize();
+    if (gpu != nullptr && size.hasArea()) {
+        gpu->resizeSurface(size);
     }
 }
 

@@ -76,7 +76,8 @@ void Outputs::refresh(std::uint32_t number) {
         return;
     }
 
-    if (!report.surface) {
+    // A window without area, such as one minimized on its display, shows nothing, like a window that has no surface.
+    if (!report.surface || !report.surface->size.hasArea()) {
         hide(*output);
         return;
     }
@@ -114,7 +115,7 @@ void Outputs::show(Output& output, const gpu::Surface& surface, float scale) {
     const bool resized = size != output.surfaceSize;
     output.surfaceSize = size;
     output.scale = scale;
-    if (resized && surface.size.width > 0 && surface.size.height > 0) {
+    if (resized) {
         output.target = graphics.createRenderTarget(surface.size.width, surface.size.height);
     }
 

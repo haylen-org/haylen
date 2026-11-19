@@ -260,7 +260,7 @@ scene.push({name = 'title'})
 
 | Event | When | Value |
 | --- | --- | --- |
-| `windowResized` | The framebuffer changed size. | `{width, height}` in pixels. |
+| `windowResized` | The framebuffer changed size. A window without area, such as a canvas that its page hides, publishes nothing until it has an area again, while the app draws nothing and lays nothing out. | `{width, height}` in pixels. |
 | `windowFocusGained`, `windowFocusLost` | The window gained or lost the keyboard focus. | None. |
 | `windowFullscreenChanged` | The window entered or left fullscreen. | `{fullscreen}` |
 | `windowOrientationChanged` | The screen turned between landscape and portrait, as [`window.orientation()`](window.md#windoworientation) reports it. Desktop windows always count as landscape. | `{orientation}`, `'landscape'` or `'portrait'`. |

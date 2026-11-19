@@ -76,7 +76,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     }
 
     // clang-format off
-    current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); });
+    current.storage = std::make_unique<storage::UserStorage>(host.getUserDataDirectory(current.config.identifier), [&host] { host.persistUserData(); }, host.getUserDataRefusal());
     // clang-format on
 
     // Handlers that native libraries register through the C interface answer before the handlers of the platform.
@@ -334,10 +334,10 @@ void Engine::frame(double frameSeconds) {
         reportError(exception);
     }
 
-    // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work. A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts, and an opaque screen of a plugin hides the app, which draws nothing under it.
+    // A halted app lets no time pass, and an app in the background draws nothing, so it does no GPU work. A covered app draws one frame once the cover began, which shows it covered and stays on screen, and no more while the cover lasts, and an opaque screen of a plugin hides the app, which draws nothing under it. A window without area, such as a canvas that its page hides, shows nothing, so the app draws nothing and lays nothing out until it has an area again.
     const bool halted = isHalted();
     const bool hidden = current.appState == AppState::Background;
-    current.drawing = !hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn);
+    current.drawing = !hidden && !current.hiddenByScreen && !(current.covered && current.coveredFrameDrawn) && hasWindowArea();
     remapViewport();
     current.gamepadMotion->update(!hidden);
     current.host.pollGamepads(current.gamepads);
@@ -699,11 +699,14 @@ void Engine::dispatchEvent(const platform::Event& event) {
     try {
         switch (event.type) {
         case platform::Event::Type::Resized: {
-            // The frame on screen no longer fits the window, so a covered app draws it once more.
+            // The frame on screen no longer fits the window, so a covered app draws it once more. A window without area keeps the size that the app knows, which hears the next size with an area.
             current.coveredFrameDrawn = false;
-            resized.emit();
-            const math::Vec2 size = current.host.getFramebufferSize();
-            current.events.emit(LifecycleEvent::kWindowResized, {{"width", JsonNumber::fromFloat(size.x)}, {"height", JsonNumber::fromFloat(size.y)}});
+            if (hasWindowArea()) {
+                resized.emit();
+                const math::Vec2 size = current.host.getFramebufferSize();
+                current.events.emit(LifecycleEvent::kWindowResized, {{"width", JsonNumber::fromFloat(size.x)}, {"height", JsonNumber::fromFloat(size.y)}});
+            }
+
             current.displays->refreshWindowDisplay();
             break;
         }
@@ -855,15 +858,15 @@ void Engine::setAppState(AppState value) {
         current.events.emit(LifecycleEvent::kAppInactive);
         break;
     case AppState::Background:
-        // The platform may end an app in the background without warning, so what the app just saved becomes durable now, also when a listener of the event failed.
+        // The platform may end an app in the background without warning, so what the app just saved becomes durable now, also when a listener of the event failed. A storage that the platform keeps from the app holds nothing to save.
         try {
             current.events.emit(LifecycleEvent::kAppBackground);
         } catch (...) {
-            current.storage->flush();
+            flushUserData();
             throw;
         }
 
-        current.storage->flush();
+        flushUserData();
         break;
     }
 }
@@ -1050,9 +1053,13 @@ void Engine::setDesignSize(math::Vec2 value) {
     remapViewport();
 }
 
-// Input positions live in design units, so they move with the viewport whenever it maps the screen differently, such as after a resize or a rotation.
+// Input positions live in design units, so they move with the viewport whenever it maps the screen differently, such as after a resize or a rotation. A window without area keeps the last mapping, which the app lays out for, until it has an area again.
 void Engine::remapViewport() {
     EngineState& current = *state;
+    if (!hasWindowArea()) {
+        return;
+    }
+
     const graphics::Viewport previous = current.viewport;
     current.reservedInsets = current.host.getReservedInsets();
     const math::Vec2 framebuffer = current.host.getFramebufferSize();
@@ -1061,6 +1068,19 @@ void Engine::remapViewport() {
     if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
         current.input.followViewport(previous, current.viewport);
     }
+}
+
+void Engine::flushUserData() {
+    storage::UserStorage& files = *state->storage;
+    if (files.isAvailable()) {
+        files.flush();
+    }
+}
+
+// A window without area, such as a canvas that its page hides, has a framebuffer of no pixels.
+bool Engine::hasWindowArea() const noexcept {
+    const math::Vec2 framebuffer = state->host.getFramebufferSize();
+    return framebuffer.x >= 1.0F && framebuffer.y >= 1.0F;
 }
 
 // An app that turns with the device lays its design out along the screen, so a design taller than wide turns wide on a screen wider than tall, and the app keeps the size of its design units and lays out again as a native app does.

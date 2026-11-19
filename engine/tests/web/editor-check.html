@@ -26,6 +26,12 @@
         second: "return {step = 2}",
         endless: "require('haylen.scene').push({update = function() while true do pcall(function() while true do end end) end end})",
         input: "input = require('haylen.input')\nkeys, clicks, x, y = 0, 0, 0, 0\nrequire('haylen.scene').push({update = function() if input.keyPressed('space') then keys = keys + 1 end if input.mousePressed('left') then clicks = clicks + 1 x, y = input.mouseFramebufferPosition() end end})",
+        // A project that writes its user data, which a second tab of the same storage namespace refuses.
+        note: "written, failure = pcall(require('haylen.storage').writeText, 'note.txt', 'kept')",
+        // A scene that counts its updates and the sizes of the window it hears, under a button of the UI, while the page hides its canvas and shows it again.
+        canvas: "window = require('haylen.window')\nsizes = {}\ncount = 0\nrequire('haylen.events').on('windowResized', function(event) sizes[#sizes + 1] = string.format('%dx%d', event.width, event.height) end)\nrequire('haylen.ui').mount(require('haylen.ui').column{require('haylen.ui').button{text = 'Play'}})\nrequire('haylen.scene').push({update = function() count = count + 1 end})",
+        // A project that plays the tone and leaves a timer and a task that wake after three seconds, which a run of another project ends before they wake.
+        stale: tone + "\nrequire('haylen.timer').after(3, function() print('Stale timer of the first run.') end)\nlocal async = require('async')\nasync.spawn(function() async.sleep(3):await() print('Stale task of the first run.') end)",
         finalizer: "require('haylen.scene').push({update = function() setmetatable({}, {__gc = function() while true do end end}) collectgarbage() end})",
         // Code that holds the worker longer than the check waits, under a budget of ten minutes.
         stuckApp: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", debug: { executionBudget: 600 } }),

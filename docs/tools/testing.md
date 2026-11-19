@@ -343,13 +343,16 @@ A website edits and runs projects through the [editor contract](build.md#the-edi
 
 1. It serves the page `engine/tests/web/editor-check.html` next to the web player of the web SDK, which is built in `Release`, in development with a storage namespace of its own.
 2. The driver `engine/tests/web/editor-check.mjs` opens the page in a headless Chrome and sends requests through `Module.haylen.editor`.
-3. The editor empties the package, writes a project of three files in one batch and runs it, and the answer of `run` carries the revision of the batch and the app.
-4. It saves a valid module and then a module with a syntax error, which the answer of `applyChanges` rejects with an error record of the code `syntax`, the phase `reload`, the file and the line. Saving the text that runs again restores the module, and the app resumes.
-5. A batch whose remove finds no file fails with `missingFile` and a path outside the package with `invalidPath`, and neither makes a revision.
-6. A file larger than the budget of the project and a batch of more files than it allows fail with `projectBudget`, and bytes that are not a zip archive fail `loadZip` with `package`.
-7. An update that never ends, inside a `pcall` that catches every error, stops through the execution budget with the code `executionBudget` and the callback `update`, while the page goes on answering. So does an update whose finalizer never ends.
-8. The editor pauses the app, whose console line then waits for the `resume`, and inspects the globals of the app, runs it again in place four times while its looping sound opens the audio output, and stops it while the output may still open.
-9. The editor disposes of the runtime, and a later request fails with `disposed`. The page must log no error of its own during the whole check, such as one of the audio output.
+3. A second tab opens the page with the same storage namespace while the first one holds it. Its `hello` answers `storage.available` as `false` with the reason, and the storage of its app raises that reason, while the storage of the first tab works.
+4. The page hides the canvas with `display: none` while a project with a button of the UI runs. The app runs on, `window.framebufferSize()` answers 0 by 0 and no `windowResized` arrives, and once the canvas shows again the app hears its size and draws at it, without an error.
+5. The editor empties the package, writes a project of three files in one batch and runs it, and the answer of `run` carries the revision of the batch and the app.
+6. It saves a valid module and then a module with a syntax error, which the answer of `applyChanges` rejects with an error record of the code `syntax`, the phase `reload`, the file and the line. Saving the text that runs again restores the module, and the app resumes.
+7. A batch whose remove finds no file fails with `missingFile` and a path outside the package with `invalidPath`, and neither makes a revision.
+8. A file larger than the budget of the project and a batch of more files than it allows fail with `projectBudget`, and bytes that are not a zip archive fail `loadZip` with `package`.
+9. An update that never ends, inside a `pcall` that catches every error, stops through the execution budget with the code `executionBudget` and the callback `update`, while the page goes on answering. So does an update whose finalizer never ends.
+10. The editor pauses the app, whose console line then waits for the `resume`, and inspects the globals of the app, runs it again in place four times while its looping sound opens the audio output, and stops it while the output may still open.
+11. A project plays its tone and leaves a timer and a task that wake after three seconds, and the editor runs another project three times before they wake. Afterwards one audio context and one connected processor of the output are left, and neither the timer nor the task of the first run runs after the first run ended.
+12. The editor disposes of the runtime, and a later request fails with `disposed`. The page must log no error of its own during the whole check, such as one of the audio output.
 
 The check then runs again in the [Worker mode](build.md#hosting-the-runtime), on a page whose address asks for it with `hosting=worker` and with the mode `worker` of the driver. There `hello` reports `workerHosting`, and more parts run:
 

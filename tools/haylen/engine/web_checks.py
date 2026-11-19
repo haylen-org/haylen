@@ -73,6 +73,8 @@ class WebChecks:
     EDITOR_PAGE = "editor-check.html"
     EDITOR_STEPS = [
         "ready",
+        "kept the storage namespace to one tab",
+        "hid and showed the canvas",
         "ran",
         "reloaded",
         "rejected a syntax error",
@@ -85,6 +87,7 @@ class WebChecks:
         "inspected",
         "ran again in place",
         "stopped early",
+        "restarted cleanly",
         "disposed",
     ]
     # The same page in the Worker mode, whose runtime runs in a dedicated worker that the page reaches for audio, input, gamepads, the mirror of screen readers, plugins and videos, and whose editor terminates a worker that stopped answering or that has not started.
@@ -98,6 +101,8 @@ class WebChecks:
         "mirrored the interface",
         "answered through a plugin",
         "played a video",
+        "kept the storage namespace to one tab",
+        "hid and showed the canvas",
         "ran",
         "reloaded",
         "rejected a syntax error",
@@ -110,6 +115,7 @@ class WebChecks:
         "inspected",
         "ran again in place",
         "stopped early",
+        "restarted cleanly",
         "disposed",
         "ready again",
         "terminated a stuck worker",

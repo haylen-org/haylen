@@ -26,6 +26,7 @@ class WebServices final : public port::PlatformService, public port::DisplayServ
     [[nodiscard]] std::shared_ptr<io::Package> openBundledPackage() override;
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override;
+    [[nodiscard]] std::string getUserDataRefusal() override;
     [[nodiscard]] SystemInfo getSystemInfo() override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
 

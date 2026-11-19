@@ -106,6 +106,11 @@ std::filesystem::path WindowsServices::getContentStoreDirectory(std::string_view
 
 void WindowsServices::persistUserData() {}
 
+// Nothing keeps the user data of the apps from them on this platform.
+std::string WindowsServices::getUserDataRefusal() {
+    return {};
+}
+
 void WindowsServices::setWindowStyle(const WindowStyle& value) {
     WindowsDesktop::setStyle(value);
 }

@@ -66,6 +66,10 @@ void Services::persistUserData() {
     getInstalled().platform->persistUserData();
 }
 
+std::string Services::getUserDataRefusal() {
+    return getInstalled().platform->getUserDataRefusal();
+}
+
 SystemInfo Services::getSystemInfo() {
     return getInstalled().platform->getSystemInfo();
 }

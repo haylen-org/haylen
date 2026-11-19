@@ -542,7 +542,7 @@ A page defines `Module` before it loads the runtime script. The loader `tools/ha
 
 | Field | Meaning |
 | --- | --- |
-| `Module.canvas` | The canvas that the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the layout of the page decides the size. In the Worker mode the page hands the canvas to the worker with `transferControlToOffscreen`, so nothing else draws into it. |
+| `Module.canvas` | The canvas that the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the layout of the page decides the size. A canvas without area, such as one that the page hides with `display: none` or inside a hidden frame, keeps the app running without drawing or laying out, and the app draws at the right size once the canvas shows again. A canvas without area when the page loads holds the start of the app until it shows. In the Worker mode the page hands the canvas to the worker with `transferControlToOffscreen`, so nothing else draws into it. |
 | `Module.haylen.hosting` | Optional `worker`, which runs the module in a dedicated worker, as [hosting the runtime](#hosting-the-runtime) describes. The page then loads `haylen-page.js` instead of the runtime script. |
 | `Module.haylen.runtimeUrl` | The address of the runtime script in the Worker mode, `haylen.js` next to the page by default. The worker `haylen-worker.js`, the audio processor and the worker of the content store load from next to it. |
 | `Module.haylen.packageData` | Optional bytes of a zipped package, as an `ArrayBuffer` or a `Uint8Array`. The runtime writes them to its file system and plays them instead of the bundled package. The web loader downloads `app.zip` with a progress bar and hands it over this way. |
@@ -552,7 +552,7 @@ A page defines `Module` before it loads the runtime script. The loader `tools/ha
 | `Module.haylen.arguments` | Optional list of strings, the launch arguments of the app, which [`haylen.launchArguments`](../lua-api/haylen.md#haylenlauncharguments) returns. The web loader and the default shell of C++ apps set it from each `argument` parameter of the address, such as `?argument=--test&argument=PLG-016`. |
 | `Module.haylen.development` | Optional `true` that runs the app in development, as the player does with `--dev`. Lua modules and assets that the page changes with `applyChanges()` then reload in place, as [hot reload](../core/lua.md#hot-reload) describes. |
 | `Module.haylen.projectBudget` | Optional `{files, bytes}`, the most files and bytes that the package of a project may hold, 4096 files and 268435456 bytes by default, as [editing the package](#editing-the-package) describes. |
-| `Module.haylen.storageNamespace` | Optional name that keeps the user data of the page in an IndexedDB database of its own, `/persistent/<name>`, as [hosting the runtime](#hosting-the-runtime) describes. Without it the user data lives in `/persistent`. |
+| `Module.haylen.storageNamespace` | Optional name that keeps the user data of the page in an IndexedDB database of its own, `/persistent/<name>`, as [hosting the runtime](#hosting-the-runtime) describes. Without it the user data lives in `/persistent`. One tab of the site uses a database at a time, as [the user data of a tab](#the-user-data-of-a-tab) describes. |
 | `Module.haylen.developmentServer` | Optional WebSocket address of the development server that `app run --target web` starts, such as `ws://127.0.0.1:8000/haylen/development?token=<token>`. The server pushes every file saved in the app to the page. |
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback. It instantiates `haylen.wasm` itself and passes the instance to the callback. So a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
 | `Module.preRun` | Functions that run before the app starts. Page handlers of the platform bridge register here. |
@@ -606,7 +606,7 @@ Each request gets an id, which its answer carries as `request`, and a promise. T
 
 | Request | Params | Answer |
 | --- | --- | --- |
-| `hello` | | `{protocol, capabilities}` |
+| `hello` | | `{protocol, capabilities, storage}` |
 | `edit` | `{operations}` | `{revision}` once the package changed |
 | `clearFiles` | | `{revision}` once the app stopped and the package is empty |
 | `applyChanges` | | `{revision, report}` once the frame that applied the changes ended |
@@ -618,7 +618,7 @@ Each request gets an id, which its answer carries as `request`, and a promise. T
 | `inspect` | `{path}` | `{path, entries}` |
 | `dispose` | | `{disposed}` once the runtime ended |
 
-The `capabilities` say what this runtime offers, each as a boolean: `packageEditing`, which the runtime of a release lacks, `developmentReload` for a page in development, `pause`, `console`, `inspection`, `cancellation` for the [execution budget](../core/lua.md#the-execution-budget) of a page in development, `storageNamespaces` and `workerHosting`, which is `true` when the runtime runs in a dedicated worker, as [hosting the runtime](#hosting-the-runtime) explains.
+The `capabilities` say what this runtime offers, each as a boolean: `packageEditing`, which the runtime of a release lacks, `developmentReload` for a page in development, `pause`, `console`, `inspection`, `cancellation` for the [execution budget](../core/lua.md#the-execution-budget) of a page in development, `storageNamespaces` and `workerHosting`, which is `true` when the runtime runs in a dedicated worker, as [hosting the runtime](#hosting-the-runtime) explains. The `storage` is `{namespace, available, reason}`: the storage namespace of the page, or `null` for the default database, whether this tab holds its user data, and the sentence that tells why not, or `null`, as [the user data of a tab](#the-user-data-of-a-tab) describes.
 
 #### Editing the package
 
@@ -640,7 +640,7 @@ A module that fails to reload keeps running the code it had, while the package k
 
 #### Running, pausing and stopping
 
-The request `run` starts the package from `source/main.lua`, in place of the running app, with a fresh Lua state, and its answer comes once the app started. The `app` of the answer is `{name, identifier, version, build}` from `haylen.json`, and its `error` is the [error record](#error-records) of an error that stopped the start, or `null`. A package whose `haylen.json` is invalid answers with the error and no app. Running again needs no reload of the page, and the audio contexts and the graphics device of the page stay for the next app.
+The request `run` starts the package from `source/main.lua`, in place of the running app, with a fresh Lua state, and its answer comes once the app started. The `app` of the answer is `{name, identifier, version, build}` from `haylen.json`, and its `error` is the [error record](#error-records) of an error that stopped the start, or `null`. A package whose `haylen.json` is invalid answers with the error and no app. Running again needs no reload of the page, and the audio contexts and the graphics device of the page stay for the next app. A run leaves nothing of the app before it: its voices and their processors end, its timers, tasks and pending work end with its Lua state, and the page keeps one audio context for each sample rate, which the person already unlocked, so the next app plays at once, in WebKit too.
 
 The request `pause` keeps the last frame on screen and the app sees the pause as a suspend, as a hidden page does. A paused app runs no frame and applies no changes until `resume`. A `run` always leaves the app running. The request `stop` ends the app and leaves an empty canvas until the next `run`.
 
@@ -694,6 +694,10 @@ async function save(path, content) {
 ### Hosting the runtime
 
 One runtime plays one app at a time, and a page holds one runtime, since the runtime keeps its state in the global `Module` of the page. Two players coexist only in two frames or windows of their own, each with its own runtime. A page that names `Module.haylen.storageNamespace` before the runtime loads, such as `project-42`, keeps the user data of its apps in the IndexedDB database `/persistent/project-42`, apart from every other namespace and from pages without one, and the editor deletes the data of a project with `indexedDB.deleteDatabase("/persistent/project-42")` while no runtime uses it. A namespace is 1 to 64 letters, digits, dots, dashes and underscores, and it starts with a letter or a digit.
+
+#### The user data of a tab
+
+Two tabs that wrote one database would overwrite each other's changes without a word, since each keeps a copy of the files in its memory and writes the whole copy back. So one tab of the site holds a database at a time. Before the app starts, the runtime asks the browser for the lock of its database through the Web Locks API of the browser, `navigator.locks`, named after its folder, such as `haylen-user-data:/persistent/project-42`, and holds it until the runtime ends with `dispose` or `terminate()` or the page goes away. A page whose lock another tab holds still runs its apps, but keeps no user data: every call of [`haylen.storage`](../lua-api/storage.md#a-tab-without-its-user-data), save slots and preferences included, raises the sentence `Another tab of this site uses the storage namespace "project-42", so this page keeps no user data. Close the other tab and load this page again.`, the log of the page warns with it, and `hello` answers `storage.available` as `false` with that sentence as `storage.reason`. So an editor tells the person instead of letting two tabs diverge. The browser gives the Web Locks API only to secure pages, those of `https` and of `localhost`, so a page without it warns in its log that it cannot tell whether another tab writes the same user data, and keeps its user data as before.
 
 An editor that must keep answering whatever the code of a project does runs the runtime in the Worker mode, in a dedicated worker that it ends when the code of a project stops answering. A page asks for the Worker mode with `Module.haylen.hosting = "worker"` and loads `haylen-page.js`, the page side of the runtime, instead of the runtime script:
 

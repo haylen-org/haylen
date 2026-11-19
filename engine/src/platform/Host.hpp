@@ -61,6 +61,7 @@ class Host : public Window {
     [[nodiscard]] virtual bool isFrameTransparent() const noexcept = 0;
     [[nodiscard]] virtual std::filesystem::path getUserDataDirectory(std::string_view identifier) = 0;
     virtual void persistUserData() = 0;
+    [[nodiscard]] virtual std::string getUserDataRefusal() = 0;
     [[nodiscard]] virtual math::Insets getSafeAreaInsets() const = 0;
 
     // The height in framebuffer pixels of the status bar that shows over the top of the app, or 0 while none shows.

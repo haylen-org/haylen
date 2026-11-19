@@ -38,6 +38,11 @@ std::filesystem::path TestPortServices::getUserDataDirectory(std::string_view id
 // Every write of the test port lands in a folder of the machine that builds it, which saves it.
 void TestPortServices::persistUserData() {}
 
+// Nothing keeps the user data of the apps from them on this platform.
+std::string TestPortServices::getUserDataRefusal() {
+    return {};
+}
+
 SystemInfo TestPortServices::getSystemInfo() {
     return {.os = SystemInfo::Os::Port, .osVersion = "1.0", .deviceModel = "Test port", .deviceKind = SystemInfo::DeviceKind::Tv};
 }

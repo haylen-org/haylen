@@ -876,9 +876,9 @@ void NullDevice::checkSurface(const Surface& surface, int maxSampleCount) {
     }
 }
 
-// A minimized window has a drawable of no pixels, and a window shows its drawable at the size of the drawable or larger.
+// The platform hands the device only a drawable with an area, and a window shows its drawable at the size of the drawable or larger.
 void NullDevice::checkSize(const Surface::Size& size) {
-    if (size.width < 0 || size.height < 0 || size.windowWidth < size.width || size.windowHeight < size.height) {
+    if (!size.hasArea() || size.windowWidth < size.width || size.windowHeight < size.height) {
         throw std::logic_error(std::format("A surface cannot draw {}x{} pixels into a window of {}x{}.", size.width, size.height, size.windowWidth, size.windowHeight));
     }
 }

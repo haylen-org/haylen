@@ -157,6 +157,11 @@ std::filesystem::path AppleServices::getContentStoreDirectory(std::string_view i
 
 void AppleServices::persistUserData() {}
 
+// Nothing keeps the user data of the apps from them on this platform.
+std::string AppleServices::getUserDataRefusal() {
+    return {};
+}
+
 // Windows of iPhones, iPads and TVs fill their screen.
 math::Rect AppleServices::getWindowFrame() {
 #if TARGET_OS_OSX

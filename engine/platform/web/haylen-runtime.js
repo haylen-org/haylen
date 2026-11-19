@@ -174,6 +174,12 @@ Module.haylen = Module.haylen || {};
         };
     };
 
+    // The user data of the page: its storage namespace, or `null` for the default database, whether this tab holds it, and the sentence that tells why not.
+    editor.storage = function () {
+        const refusal = haylen.userDataRefusal;
+        return { namespace: haylen.storageNamespace ?? null, available: refusal === "", reason: refusal === "" ? null : refusal };
+    };
+
     // A write carries its content as a string, which goes as UTF-8, or as bytes, an `ArrayBuffer` or a view of one.
     const encodeEdits = (operations) => {
         if (!Array.isArray(operations)) {
@@ -201,7 +207,7 @@ Module.haylen = Module.haylen || {};
     };
 
     const methods = {
-        hello: () => ({ protocol: editor.protocol, capabilities: editor.capabilities() }),
+        hello: () => ({ protocol: editor.protocol, capabilities: editor.capabilities(), storage: editor.storage() }),
 
         // Applies a batch of `{op: "write", path, content}`, `{op: "remove", path}` and `{op: "rename", from, to}` as one change of the package, or none of them when one fails, and answers the revision of the package that it made.
         edit: (request, params) => {
@@ -247,7 +253,7 @@ Module.haylen = Module.haylen || {};
         // Runs a line of the developer console in the running app once the next frame runs.
         console: (request, params) => completeLater(request, () => callEngine("haylen_web_console", null, ["number", "string"], [request, String(params.line)])),
 
-        // Ends the runtime for good: the app stops, the player ends with its window and graphics device, the audio contexts close and the user data reaches its database, so the page can discard the frame or the worker that hosts the runtime. Every request after it fails with `disposed`. In the Worker mode the page closes the audio contexts once the worker answered, and ends the worker.
+        // Ends the runtime for good: the app stops, the player ends with its window and graphics device, the audio contexts close and the user data reaches its database, whose lock the runtime then lets go, so the page can discard the frame or the worker that hosts the runtime. Every request after it fails with `disposed`. In the Worker mode the page closes the audio contexts once the worker answered, and ends the worker.
         dispose: () => {
             const ended = new Promise((resolve) => {
                 editor.ending = resolve;
@@ -256,6 +262,7 @@ Module.haylen = Module.haylen || {};
             return ended
                 .then(() => (hostedInWorker ? undefined : haylen.audio.dispose()))
                 .then(() => new Promise((resolve, reject) => FS.syncfs(false, (error) => (error ? reject(requestError("failed", "Saving user data failed: " + error)) : resolve()))))
+                .finally(() => haylen.releaseUserData())
                 .then(() => ({ disposed: true }));
         },
 
@@ -605,19 +612,61 @@ Module.haylen = Module.haylen || {};
     }
 
     haylen.userDataRoot = storageNamespace === undefined ? "/persistent" : "/persistent/" + storageNamespace;
+
+    // The user data of a database belongs to the one tab of the site that holds the lock of the Web Locks API named after its folder, so two tabs never write over each other's data. A page whose database another tab holds keeps no user data: the storage of its apps refuses every call with `userDataRefusal`, which `hello` reports too. The lock lasts until the runtime ends or the page goes away.
+    const userData = { lock: "haylen-user-data:" + haylen.userDataRoot, release: null };
+    haylen.userDataRefusal = "";
+    const describeHeldUserData = () => (storageNamespace === undefined ? "Another tab of this site uses its user data" : "Another tab of this site uses the storage namespace \"" + storageNamespace + "\"") + ", so this page keeps no user data. Close the other tab and load this page again.";
+    const takeUserData = () => {
+        if (!navigator.locks) {
+            console.warn("This browser offers no Web Locks API, which browsers give only to secure pages, so the page cannot tell whether another tab of the site writes the same user data.");
+            return Promise.resolve("");
+        }
+
+        return new Promise((resolve) => {
+            const granted = (lock) => {
+                if (lock === null) {
+                    resolve(describeHeldUserData());
+                    return undefined;
+                }
+
+                resolve("");
+                return new Promise((release) => (userData.release = release));
+            };
+            navigator.locks.request(userData.lock, { ifAvailable: true }, granted).catch((error) => resolve("The browser refused the lock of the user data of this page, so it keeps none: " + error.message));
+        });
+    };
+
     Module.preRun = Module.preRun || [];
     Module.preRun.push(function () {
         FS.mkdirTree(haylen.userDataRoot);
-        FS.mount(IDBFS, {}, haylen.userDataRoot);
         addRunDependency("haylen-user-data");
-        FS.syncfs(true, (error) => {
-            if (error) {
-                console.error("Loading user data failed.", error);
+        takeUserData().then((refusal) => {
+            haylen.userDataRefusal = refusal;
+            if (refusal !== "") {
+                console.warn(refusal);
+                removeRunDependency("haylen-user-data");
+                return;
             }
 
-            removeRunDependency("haylen-user-data");
+            FS.mount(IDBFS, {}, haylen.userDataRoot);
+            FS.syncfs(true, (error) => {
+                if (error) {
+                    console.error("Loading user data failed.", error);
+                }
+
+                removeRunDependency("haylen-user-data");
+            });
         });
     });
+
+    // The runtime that ends lets the next one, in this tab or another, take the user data.
+    haylen.releaseUserData = function () {
+        if (userData.release !== null) {
+            userData.release();
+            userData.release = null;
+        }
+    };
 
     // A protected release reaches the runtime as `Module.haylen.release`: the manifests and the app domain that the page downloaded, which go to `/app`, the address of the release, where the shards of its content stay and download by range, and the identifier of the app, which names its content store.
     if (haylen.release) {

@@ -79,6 +79,7 @@ void Window::close() noexcept {
 
     SDL_DestroyWindow(window);
     window = nullptr;
+    api = gpu::Device::Api::None;
 }
 
 void Window::show() {

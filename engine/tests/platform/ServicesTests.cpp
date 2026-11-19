@@ -41,6 +41,10 @@ class MinimalServices final : public port::PlatformService, public port::Display
 
     void persistUserData() override {}
 
+    [[nodiscard]] std::string getUserDataRefusal() override {
+        return {};
+    }
+
     [[nodiscard]] SystemInfo getSystemInfo() override {
         return {.os = SystemInfo::Os::Port};
     }

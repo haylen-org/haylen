@@ -52,6 +52,7 @@ class Services final {
     [[nodiscard]] static std::shared_ptr<io::Package> openBundledPackage();
     [[nodiscard]] static std::filesystem::path getUserDataDirectory(std::string_view identifier);
     static void persistUserData();
+    [[nodiscard]] static std::string getUserDataRefusal();
     [[nodiscard]] static SystemInfo getSystemInfo();
     [[nodiscard]] static bool hasPointerDevice() noexcept;
 

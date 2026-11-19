@@ -143,7 +143,7 @@ A platform whose window takes buffers of the size of the drawable, such as the n
 
 The surface changes while the app runs, and the device keeps every object it made through each change:
 
-- `resizeSurface(size)` follows a new size of the drawable and of its window from the next frame. A size of zero, such as a minimized window, makes swapchain passes record nothing.
+- `resizeSurface(size)` follows a new size of the drawable and of its window from the next frame. The platform hands a device only a drawable with an area. A window without one, such as a canvas that its page hides with `display: none`, leaves the device with the last surface, the engine draws no frame and lays nothing out until the window has an area again, and a page whose canvas has none at the start holds the start until it shows. The null device refuses a surface without area, so a platform that hands one over fails in the engine tests.
 - `detachSurface` lets go of the window when the platform has none, such as an Android app in the background, and `attachSurface` takes the new window when it comes back.
 - A swapchain that its API reports out of date or suboptimal is made again before the next frame.
 

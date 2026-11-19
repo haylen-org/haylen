@@ -27,6 +27,11 @@ struct Surface {
         int windowWidth = 0;
         int windowHeight = 0;
 
+        // Whether the drawable has pixels to draw into. A window without area, such as a canvas that its page hides, keeps the last surface that had one, since the engine draws nothing until it has an area again.
+        [[nodiscard]] bool hasArea() const noexcept {
+            return width > 0 && height > 0;
+        }
+
         // Whether the window shows the drawable at another size, which the device then scales.
         [[nodiscard]] bool isScaled() const noexcept {
             return windowWidth != width || windowHeight != height;

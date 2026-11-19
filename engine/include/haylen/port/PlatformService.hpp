@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <string>
 #include <string_view>
 
 #include "haylen/platform/SystemInfo.hpp"
@@ -35,6 +36,9 @@ class PlatformService {
 
     // Commits the user data where the platform saves only on request, and does nothing where every write is saved.
     virtual void persistUserData() = 0;
+
+    // The sentence that tells why the apps cannot use their user data now, such as a web page whose user data another tab of the site holds, or an empty text while they can. The storage of an app that starts then refuses every call with it.
+    [[nodiscard]] virtual std::string getUserDataRefusal() = 0;
 
     // What the device and its operating system are, read once per process. The graphics device names the GPU, so `gpuName` stays empty.
     [[nodiscard]] virtual platform::SystemInfo getSystemInfo() = 0;

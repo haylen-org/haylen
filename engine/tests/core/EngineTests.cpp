@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <imgui_internal.h>
 
 #include <chrono>
 #include <memory>
@@ -9,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
@@ -26,8 +28,11 @@
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Error.hpp"
+#include "haylen/math/Rect.hpp"
+#include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/Plugin.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/NativeViews.hpp"
@@ -359,6 +364,38 @@ TEST_F(EngineTest, PublishesWindowAndGamepadChanges) {
     ASSERT_EQ(log.size(), 2U);
     EXPECT_EQ(log[0], R"(windowOrientationChanged {"orientation":"portrait"})");
     EXPECT_EQ(log[1].rfind("windowSafeAreaChanged", 0), 0U);
+}
+
+// A window without area, such as a canvas that its page hides, draws nothing, lays nothing out and hands no size to the GPU device or to ImGui, while the app runs on, and draws at the right size once it has an area again.
+TEST_F(EngineTest, DrawsNothingWhileTheWindowHasNoArea) {
+    test::EngineFixture fixture({{"source/main.lua", "count = 0 sizes = {} require('haylen.events').on('windowResized', function(event) sizes[#sizes + 1] = string.format('%dx%d', event.width, event.height) end) require('haylen.ui').mount(require('haylen.ui').column{require('haylen.ui').button{text = 'Play'}}) require('haylen.scene').push({update = function() count = count + 1 end})"}});
+    Engine& engine = fixture.engine();
+    const ImGuiContext& imgui = *engine.getPlugin<plugins::UiPlugin>().getBackend().getImGuiContext();
+    platform::Event resized;
+    resized.type = platform::Event::Type::Resized;
+    fixture.frames(2);
+    const int drawnFrames = imgui.FrameCount;
+    const math::Rect mapped = engine.getViewport().getPixelRect();
+    const std::string before = fixture.lua("return count");
+
+    fixture.host().resize({0.0F, 0.0F});
+    engine.handleEvent(resized);
+    fixture.frames(3);
+    EXPECT_FALSE(engine.isDrawing());
+    EXPECT_EQ(imgui.FrameCount, drawnFrames);
+    EXPECT_EQ(engine.getViewport().getPixelRect(), mapped);
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize().width, 1920);
+    EXPECT_EQ(fixture.lua("return #sizes"), "0");
+    EXPECT_EQ(fixture.lua("return count - " + before), "3");
+
+    fixture.host().resize({1280.0F, 720.0F});
+    engine.handleEvent(resized);
+    fixture.frames(1);
+    EXPECT_TRUE(engine.isDrawing());
+    EXPECT_EQ(imgui.FrameCount, drawnFrames + 1);
+    EXPECT_EQ(engine.getViewport().getPixelRect().getSize(), (math::Vec2{1280.0F, 720.0F}));
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize().width, 1280);
+    EXPECT_EQ(fixture.lua("return table.concat(sizes, ',')"), "1280x720");
 }
 
 TEST_F(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {

@@ -86,6 +86,7 @@ class NativeHost : public Host {
     [[nodiscard]] bool isFrameTransparent() const noexcept override;
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override;
+    [[nodiscard]] std::string getUserDataRefusal() override;
     [[nodiscard]] math::Insets getSafeAreaInsets() const override;
     [[nodiscard]] float getStatusBarHeight() const override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) override;

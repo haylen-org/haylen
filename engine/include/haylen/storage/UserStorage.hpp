@@ -13,7 +13,7 @@
 
 namespace haylen::storage {
 
-// Private, writable files of the current user and app. Writes are atomic, and `flush` makes them durable on platforms that buffer storage, such as the browser. A durable write also flushes the file and its folder to the disk before and after it replaces the file, so a loss of power leaves the old file or the new one, never an empty one. Temporary files that a crash left behind go when the storage opens. Reads, writes, lists and removes may run on any thread, and two writes of the same file never mix, while `flush` runs on the frame thread.
+// Private, writable files of the current user and app. Writes are atomic, and `flush` makes them durable on platforms that buffer storage, such as the browser. A durable write also flushes the file and its folder to the disk before and after it replaces the file, so a loss of power leaves the old file or the new one, never an empty one. Temporary files that a crash left behind go when the storage opens. Reads, writes, lists and removes may run on any thread, and two writes of the same file never mix, while `flush` runs on the frame thread. A storage whose platform keeps the user data from the app, such as a web page whose user data another tab of the site holds, refuses every call with the sentence of the platform.
 class UserStorage final {
   public:
     enum class Durability : std::uint8_t {
@@ -21,11 +21,15 @@ class UserStorage final {
         Durable,
     };
 
-    explicit UserStorage(std::filesystem::path folder, std::function<void()> onFlush = {});
+    explicit UserStorage(std::filesystem::path folder, std::function<void()> onFlush = {}, std::string refusal = {});
 
-    [[nodiscard]] const std::filesystem::path& getRoot() const noexcept {
-        return root;
+    // Whether the app may use the user data, which a storage that refuses its calls answers with false.
+    [[nodiscard]] bool isAvailable() const noexcept {
+        return refusalReason.empty();
     }
+
+    // The folder of the files, where Lua writes through the `fs` module of Varn too, so a storage that refuses its calls refuses to name it.
+    [[nodiscard]] const std::filesystem::path& getRoot() const;
     [[nodiscard]] bool exists(std::string_view path) const;
     [[nodiscard]] std::vector<std::uint8_t> read(std::string_view path) const;
     [[nodiscard]] std::string readText(std::string_view path) const;
@@ -41,6 +45,9 @@ class UserStorage final {
 
     [[nodiscard]] std::filesystem::path resolve(std::string_view path) const;
 
+    // Throws `std::runtime_error` with the sentence of the platform while it keeps the user data from the app.
+    void requireAvailable() const;
+
     // Writes the bytes to the temporary sibling and moves it over the file, and returns whether every step succeeded.
     [[nodiscard]] bool replace(const std::filesystem::path& file, const std::filesystem::path& temporary, std::span<const std::uint8_t> bytes, Durability durability);
     [[nodiscard]] static bool writeDurably(const std::filesystem::path& file, std::span<const std::uint8_t> bytes);
@@ -48,6 +55,7 @@ class UserStorage final {
 
     std::filesystem::path root;
     std::function<void()> persist;
+    std::string refusalReason;
     std::atomic<std::uint64_t> writeCount = 0;
     mutable std::shared_mutex mutex;
 };

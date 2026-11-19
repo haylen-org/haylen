@@ -43,9 +43,11 @@ bool AndroidGraphics::isLost(const gpu::Device& device) const noexcept {
     return device.isLost() || contextLost;
 }
 
+// A window without area leaves the device with the last surface that had one, since the engine draws nothing until the window has an area again.
 void AndroidGraphics::resizeWindow(gpu::Device* device) {
-    if (device != nullptr) {
-        device->resizeSurface(window.getSurfaceSize());
+    const gpu::Surface::Size size = window.getSurfaceSize();
+    if (device != nullptr && size.hasArea()) {
+        device->resizeSurface(size);
     }
 }
 

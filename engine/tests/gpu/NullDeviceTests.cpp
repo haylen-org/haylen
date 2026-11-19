@@ -316,7 +316,7 @@ TEST_F(NullDeviceTest, TakesTheSurfaceInTurnBetweenFrames) {
     EXPECT_THROW(device.attachSurface({.size = eight, .sampleCount = 3}), std::logic_error);
     device.attachSurface({.size = eight});
     EXPECT_EQ(device.getSurfaceSize(), eight);
-    EXPECT_NO_THROW(device.resizeSurface({}));
+    EXPECT_THROW(device.resizeSurface({}), std::logic_error);
     EXPECT_THROW(device.resizeSurface({.width = -1, .height = 4, .windowWidth = 4, .windowHeight = 4}), std::logic_error);
     EXPECT_THROW(device.resizeSurface({.width = 8, .height = 8, .windowWidth = 4, .windowHeight = 8}), std::logic_error);
 

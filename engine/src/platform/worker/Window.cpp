@@ -3,7 +3,6 @@
 #include <emscripten/em_macros.h>
 #include <emscripten/emscripten.h>
 
-#include <algorithm>
 #include <array>
 #include <cmath>
 
@@ -87,13 +86,13 @@ void Window::renewGlContext() {
     }
 }
 
-// The canvas takes every pixel of the screen under its box, as the canvas of a page does, and the drawable shrinks from there to the cap, with the scale after it.
+// The canvas takes every pixel of the screen under its box, as the canvas of a page does, and the drawable shrinks from there to the cap, with the scale after it. A box without area, such as the one of a canvas that the page hides, gives a drawable without area.
 void Window::refresh() {
     std::array<float, 3> box{};
     haylen_js_canvas_box(box.data());
     const float density = box[2] > 0.0F ? box[2] : 1.0F;
-    const int pixelWidth = std::max(1, static_cast<int>(std::lround(box[0] * density)));
-    const int pixelHeight = std::max(1, static_cast<int>(std::lround(box[1] * density)));
+    const int pixelWidth = static_cast<int>(std::lround(box[0] * density));
+    const int pixelHeight = static_cast<int>(std::lround(box[1] * density));
     size = PixelDensityCap::apply(pixelWidth, pixelHeight, density, maxPixelDensity);
     scale = density * PixelDensityCap::getShare(size);
 

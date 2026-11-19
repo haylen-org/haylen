@@ -270,7 +270,7 @@ bool Runtime::isHiddenUntilComplete() noexcept {
     return Services::hasDesktop() && !WaylandDisplays::isSession();
 }
 
-// Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `haylen.json` puts it on the desktop, since they know the desktop points of each monitor.
+// Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `haylen.json` puts it on the desktop, since they know the desktop points of each monitor. A window without area, such as a canvas that its page hides, holds the start until it has one, so no device starts on a drawable without pixels.
 bool Runtime::openWindow() {
     const core::AppConfig& config = Player::getOpeningConfig();
 #if defined(__APPLE__)
@@ -283,10 +283,16 @@ bool Runtime::openWindow() {
         }
 
         try {
-            window.open(config.window, api);
-            if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
-                Services::setWindowFrame(*frame);
-                window.refresh();
+            if (window.getApi() != api) {
+                window.open(config.window, api);
+                if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
+                    Services::setWindowFrame(*frame);
+                }
+            }
+
+            window.refresh();
+            if (!window.getSurfaceSize().hasArea()) {
+                return false;
             }
 
             openedDevice = gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
@@ -505,11 +511,13 @@ void Runtime::setMaxPixelDensity(float cap) {
     followDrawable();
 }
 
+// A window without area, such as a canvas that its page hides, leaves the device with the last surface that had one, since the engine draws nothing until the window has an area again.
 void Runtime::followDrawable() {
     window.refresh();
-
-    if (gpu::Device* device = Player::getGpuDevice()) {
-        device->resizeSurface(window.getSurfaceSize());
+    const gpu::Surface::Size size = window.getSurfaceSize();
+    gpu::Device* device = Player::getGpuDevice();
+    if (device != nullptr && size.hasArea()) {
+        device->resizeSurface(size);
     }
 }
 

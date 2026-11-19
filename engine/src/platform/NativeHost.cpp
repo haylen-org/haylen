@@ -249,6 +249,10 @@ void NativeHost::persistUserData() {
     Services::persistUserData();
 }
 
+std::string NativeHost::getUserDataRefusal() {
+    return Services::getUserDataRefusal();
+}
+
 math::Insets NativeHost::getSafeAreaInsets() const {
     return Services::getSafeAreaInsets();
 }

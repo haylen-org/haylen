@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <limits>
 #include <mutex>
@@ -61,6 +62,35 @@ TEST(UserStorageTest, WritesReadsListsAndRemoves) {
     UserStorage desktop(directory.getPath() / "desktop");
     desktop.flush();
     EXPECT_EQ(persisted, 1);
+}
+
+TEST(UserStorageTest, RefusesEveryCallWhileThePlatformKeepsTheUserData) {
+    const test::TemporaryDirectory directory;
+    const std::string refusal = "Another tab of this site uses its user data, so this page keeps none.";
+    int persisted = 0;
+    UserStorage storage(directory.getPath() / "saves", [&] { ++persisted; }, refusal);
+    EXPECT_FALSE(storage.isAvailable());
+
+    std::vector<std::string> failures;
+    // clang-format off
+    const auto attempt = [&failures](const std::function<void()>& call) {
+        try {
+            call();
+        } catch (const std::runtime_error& error) {
+            failures.emplace_back(error.what());
+        }
+    };
+    // clang-format on
+    attempt([&] { storage.writeText("note.txt", "kept"); });
+    attempt([&] { (void)storage.readText("note.txt"); });
+    attempt([&] { (void)storage.exists("note.txt"); });
+    attempt([&] { (void)storage.list(""); });
+    attempt([&] { (void)storage.remove("note.txt"); });
+    attempt([&] { storage.flush(); });
+    attempt([&] { (void)storage.getRoot(); });
+    EXPECT_EQ(failures, std::vector<std::string>(7, refusal));
+    EXPECT_EQ(persisted, 0);
+    EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "saves"));
 }
 
 TEST(UserStorageTest, RemovesStaleTemporaryFilesWhenItOpens) {
@@ -631,6 +661,31 @@ TEST(StorageLuaTest, SavesSlotsPreferencesAndEngineState) {
 
     fixture.engine().getStorage().writeText("preferences.json", "{");
     EXPECT_NE(fixture.lua("preferences.load()").find("The preferences file \"preferences.json\" is damaged."), std::string::npos);
+}
+
+// An app whose platform keeps the user data from it, such as on a web page whose user data another tab holds, starts and runs, while every call of its storage fails with the sentence of the platform and nothing reaches the folder.
+TEST(StorageLuaTest, RefusesTheUserDataThatThePlatformKeepsFromTheApp) {
+    const std::string refusal = "Another tab of this site uses its user data, so this page keeps no user data. Close the other tab and load this page again.";
+    test::EngineFixture fixture;
+    const std::filesystem::path folder = fixture.engine().getStorage().getRoot();
+    std::filesystem::remove_all(folder);
+    fixture.host().setUserDataRefusal(refusal);
+    fixture.restart();
+    fixture.runLua("storage = require('haylen.storage') preferences = require('haylen.preferences')");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_FALSE(fixture.engine().getStorage().isAvailable());
+
+    for (const std::string& call : {"storage.writeText('note.txt', 'kept')", "storage.readText('note.txt')", "storage.exists('note.txt')", "storage.list()", "storage.remove('note.txt')", "storage.flush()", "storage.root()", "storage.writeSlot('one', {day = 1})"}) {
+        SCOPED_TRACE(call);
+        const std::string answer = fixture.lua("local ok, failure = pcall(function() return " + call + " end) return tostring(ok) .. ' ' .. tostring(failure)");
+        EXPECT_TRUE(answer.starts_with("false ") && answer.find(refusal) != std::string::npos) << answer;
+    }
+
+    fixture.runLua("preferences.set('volume', 0.5)");
+    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_FALSE(std::filesystem::exists(folder));
 }
 
 TEST(StorageLuaTest, SavesWhatTheListenersOfTheBackgroundChange) {

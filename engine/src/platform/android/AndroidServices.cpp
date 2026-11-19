@@ -85,6 +85,11 @@ std::filesystem::path AndroidServices::getContentStoreDirectory(std::string_view
 
 void AndroidServices::persistUserData() {}
 
+// Nothing keeps the user data of the apps from them on this platform.
+std::string AndroidServices::getUserDataRefusal() {
+    return {};
+}
+
 // The window of the activity fills its display.
 math::Rect AndroidServices::getWindowFrame() {
     return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};

@@ -14,9 +14,25 @@
 
 namespace haylen::storage {
 
-UserStorage::UserStorage(std::filesystem::path folder, std::function<void()> onFlush) : root(std::move(folder)), persist(std::move(onFlush)) {
+// A storage that refuses its calls leaves the folder as it is, since the platform keeps it from the app.
+UserStorage::UserStorage(std::filesystem::path folder, std::function<void()> onFlush, std::string refusal) : root(std::move(folder)), persist(std::move(onFlush)), refusalReason(std::move(refusal)) {
+    if (!isAvailable()) {
+        return;
+    }
+
     std::filesystem::create_directories(root);
     removeTemporaryFiles();
+}
+
+const std::filesystem::path& UserStorage::getRoot() const {
+    requireAvailable();
+    return root;
+}
+
+void UserStorage::requireAvailable() const {
+    if (!isAvailable()) {
+        throw std::runtime_error(refusalReason);
+    }
 }
 
 // A write that a crash interrupted leaves its temporary sibling, which nothing reads, so the storage drops them when it opens.
@@ -36,6 +52,7 @@ void UserStorage::removeTemporaryFiles() noexcept {
 }
 
 std::filesystem::path UserStorage::resolve(std::string_view path) const {
+    requireAvailable();
     const std::string relative = io::Path::normalize(path);
     if (relative.empty()) {
         throw std::invalid_argument("A storage path cannot be empty.");
@@ -158,6 +175,7 @@ bool UserStorage::remove(std::string_view path) {
 }
 
 std::vector<std::string> UserStorage::list(std::string_view directory) const {
+    requireAvailable();
     const std::string relative = io::Path::normalize(directory);
     const std::filesystem::path start = root / relative;
     std::vector<std::string> files;
@@ -185,6 +203,7 @@ std::vector<std::string> UserStorage::list(std::string_view directory) const {
 }
 
 void UserStorage::flush() {
+    requireAvailable();
     if (persist) {
         persist();
     }

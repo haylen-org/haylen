@@ -12,7 +12,7 @@ A function that takes a boolean needs a real `true` or `false`. Any other value 
 
 ### window.framebufferSize()
 
-Returns the width and the height of the framebuffer in pixels, as two numbers. On screens of high density these are physical pixels, not window points, and fewer under the [pixel density cap](#windowsetmaxpixeldensitycap) of the app.
+Returns the width and the height of the framebuffer in pixels, as two numbers. On screens of high density these are physical pixels, not window points, and fewer under the [pixel density cap](#windowsetmaxpixeldensitycap) of the app. A window without area, such as a canvas that its page hides with `display: none`, returns `0, 0`, and the app runs on without drawing a frame or laying out its UI until the window has an area again.
 
 ```lua
 local window = require('haylen.window')
@@ -836,7 +836,7 @@ The window publishes these events on [`haylen.events`](events.md#engine-events),
 
 | Event | When |
 | --- | --- |
-| `windowResized` | The framebuffer changed size. |
+| `windowResized` | The framebuffer changed size. A window without area, such as a canvas that its page hides, publishes nothing until it has an area again. |
 | `windowFullscreenChanged` | The window entered or left fullscreen. |
 | `windowFocusGained`, `windowFocusLost` | The window gained or lost the keyboard focus. |
 | `windowOrientationChanged` | The screen turned between landscape and portrait. |

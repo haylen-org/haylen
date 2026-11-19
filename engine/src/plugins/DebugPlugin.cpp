@@ -40,8 +40,13 @@ void DebugPlugin::start(core::Engine& engine) {
     owner = &engine;
     consoleEnabled = development || engine.getConfig().debug.console;
     addBuiltInCommands(engine);
-    readLastCrash(engine);
-    engine.getSystem().guardCrashes(engine.getStorage().getRoot() / kCrashReportFile);
+
+    // A crash report lives in the user data, so an app whose platform keeps the user data from it neither reads nor writes one.
+    if (engine.getStorage().isAvailable()) {
+        readLastCrash(engine);
+        engine.getSystem().guardCrashes(engine.getStorage().getRoot() / kCrashReportFile);
+    }
+
     breadcrumbsChanged = true;
     listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) { record(level, line); });
     statsMode = engine.getConfig().debug.stats;

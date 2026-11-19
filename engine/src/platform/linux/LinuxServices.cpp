@@ -91,6 +91,11 @@ std::filesystem::path LinuxServices::getContentStoreDirectory(std::string_view i
 
 void LinuxServices::persistUserData() {}
 
+// Nothing keeps the user data of the apps from them on this platform.
+std::string LinuxServices::getUserDataRefusal() {
+    return {};
+}
+
 SystemInfo LinuxServices::getSystemInfo() {
     return LinuxSystem::getInfo();
 }

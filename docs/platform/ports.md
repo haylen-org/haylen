@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 9
+  CONTRACT 10
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -117,7 +117,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 9,
+  "contract": 10,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -379,7 +379,7 @@ Every port, whatever the platform, implements the same parts of the engine:
 | Entry point and frames | The runtime that installs the services and calls `port::Player::create`, `port::Player::initialize`, `port::Player::frame`, `port::Player::handleEvent` and `port::Player::cleanup`. |
 | Window | The window derived from `port::Host`, with the size and scale of the framebuffer, the pixel density cap, focus, closing, the screen saver and the frame rate. |
 | Input | Controllers, and the keyboard, the mouse and touch where the platform has them, handed to the player as events, and the text input of `port::Host::getTextInput` with the keyboard of the system. |
-| Files | The package that ships with the app, the folder of user data, which `PlatformService::persistUserData` commits where the platform saves on request, and the folder of the content store. |
+| Files | The package that ships with the app, the folder of user data, which `PlatformService::persistUserData` commits where the platform saves on request and `PlatformService::getUserDataRefusal` keeps from the app while something else holds it, and the folder of the content store. |
 | System | The name of the platform, `PlatformService::getSystemInfo` with the device kind, the displays, the safe area of the screen where it has one and the reports of `port::SystemReports`, such as the theme, the battery and the languages. |
 | Lifecycle | The app states `active`, `inactive` and `background`, suspend and resume, and low memory, handed to the player as events. |
 | Audio | The `port::AudioOutput` of the services, which plays the mix of each app on the audio system of the console. |

@@ -215,7 +215,7 @@ void Runtime::start() {
     started = true;
 }
 
-// Each graphics API in the order of the app prepares the canvas and starts its device, and the first that starts keeps the canvas. The reasons of the ones that failed reach the log.
+// Each graphics API in the order of the app prepares the canvas and starts its device, and the first that starts keeps the canvas. The reasons of the ones that failed reach the log. A canvas without area, such as one that the page hides, holds the start until it shows, so no device starts on a drawable without pixels.
 bool Runtime::openWindow() {
     for (; nextApi < apis.size(); ++nextApi) {
         const gpu::Device::Api api = apis[nextApi];
@@ -224,7 +224,15 @@ bool Runtime::openWindow() {
         }
 
         try {
-            window.open(Player::getOpeningConfig().window, api);
+            if (window.getApi() != api) {
+                window.open(Player::getOpeningConfig().window, api);
+            }
+
+            window.refresh();
+            if (!window.getSurfaceSize().hasArea()) {
+                return false;
+            }
+
             openedDevice = gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
             core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
             return true;
@@ -260,11 +268,13 @@ void Runtime::deliver(const Event& event) {
     }
 }
 
+// A canvas without area, such as one that its page hides, leaves the device with the last surface that had one, since the engine draws nothing until the canvas has an area again.
 void Runtime::followDrawable() {
     window.refresh();
-
-    if (gpu::Device* device = Player::getGpuDevice()) {
-        device->resizeSurface(window.getSurfaceSize());
+    const gpu::Surface::Size size = window.getSurfaceSize();
+    gpu::Device* device = Player::getGpuDevice();
+    if (device != nullptr && size.hasArea()) {
+        device->resizeSurface(size);
     }
 }
 

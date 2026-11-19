@@ -327,7 +327,7 @@ class Engine final {
     // Whether the frame that rendered last drew the app complete, which no frame did before the first one rendered: the error screen or the update screen, or the app with its first scene loaded and nothing that a plugin draws still loading. A frame that renders nothing, such as one of an app in the background or covered by native UI, leaves the answer of the frame before. The platform shows the app for the first time with such a frame, so a splash screen hands over to the first real frame of the app.
     [[nodiscard]] bool isFrameComplete() const noexcept;
 
-    // Whether the current frame draws the app, which it does unless the app is in the background, an opaque screen of a plugin hides it or a covered app already drew the frame that stays on screen under the cover. Plugins that prepare drawing in `beginFrame` skip a frame that draws nothing.
+    // Whether the current frame draws the app, which it does unless the app is in the background, an opaque screen of a plugin hides it, a covered app already drew the frame that stays on screen under the cover or the window has no area. Plugins that prepare drawing in `beginFrame` skip a frame that draws nothing.
     [[nodiscard]] bool isDrawing() const noexcept;
 
     // The color that the engine paints behind the status bar while it shows, over everything the app drew there, or none to leave what the app drew. Only the visible area of the viewport takes it, so the clear color shows where letterbox bars cover the top of the screen.
@@ -390,6 +390,8 @@ class Engine final {
     void followBackgroundPlayback();
     void publishLinks();
     void remapViewport();
+    [[nodiscard]] bool hasWindowArea() const noexcept;
+    void flushUserData();
     [[nodiscard]] math::Vec2 getOrientedDesignSize(math::Vec2 framebuffer) const noexcept;
     [[nodiscard]] math::Insets getSafeAreaInsets() const;
 
