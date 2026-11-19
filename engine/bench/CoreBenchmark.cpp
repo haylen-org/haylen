@@ -259,7 +259,7 @@ class CoreBenchmark final {
             }
 
             while (completed < 1000) {
-                engine.getScriptRuntime().poll();
+                engine.getScriptRuntime().scheduler().poll();
             }
         });
 

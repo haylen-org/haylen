@@ -27,6 +27,7 @@
 #include "haylen/math/Ray.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "varn/runtime/Runtime.h"
+#include "varn/runtime/Scheduler.h"
 
 namespace haylen::bench {
 
@@ -34,7 +35,8 @@ namespace haylen::bench {
 class AlgorithmBenchmark final {
   public:
     static int run() {
-        varn::runtime::Runtime runtime({"haylen-algorithm-benchmark"}, 0);
+        varn::runtime::Scheduler scheduler;
+        varn::runtime::Runtime runtime(scheduler, {"haylen-algorithm-benchmark"}, 0);
         core::JobSystem jobs(runtime, [](const std::string& message) { std::fprintf(stderr, "%s\n", message.c_str()); });
         std::printf("%-52s %12s %8s\n", "Algorithm", "Average ms", "Runs");
 

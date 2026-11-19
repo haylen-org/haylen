@@ -6,13 +6,14 @@
 #include <thread>
 
 #include "varn/runtime/Runtime.h"
+#include "varn/runtime/Scheduler.h"
 
 namespace haylen::test {
 
-// Owns a Varn runtime for tests and pumps its event loop the way the engine does once per frame.
+// Owns a Varn runtime on its scheduler for tests and pumps the event loop the way the engine does once per frame.
 class VarnRuntime final {
   public:
-    VarnRuntime() : runtime(std::make_unique<varn::runtime::Runtime>(std::vector<std::string>{"haylen-tests"}, 0)) {}
+    VarnRuntime() : scheduler(std::make_unique<varn::runtime::Scheduler>()), runtime(std::make_unique<varn::runtime::Runtime>(*scheduler, std::vector<std::string>{"haylen-tests"}, 0)) {}
 
     [[nodiscard]] varn::runtime::Runtime& getRuntime() noexcept {
         return *runtime;
@@ -25,7 +26,7 @@ class VarnRuntime final {
                 return false;
             }
 
-            runtime->poll();
+            scheduler->poll();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
@@ -33,6 +34,7 @@ class VarnRuntime final {
     }
 
   private:
+    std::unique_ptr<varn::runtime::Scheduler> scheduler;
     std::unique_ptr<varn::runtime::Runtime> runtime;
 };
 

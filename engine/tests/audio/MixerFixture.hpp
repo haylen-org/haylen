@@ -90,7 +90,7 @@ class MixerFixture : public ::testing::Test {
         std::vector<float> block(kListenBlock * 2);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
         while (positions.size() < count && mixer.isActive(voice) && std::chrono::steady_clock::now() < deadline) {
-            runtime.getRuntime().poll();
+            runtime.getRuntime().scheduler().poll();
             mixer.update(0.0F);
             mixer.render(block);
             bool silent = false;
@@ -111,7 +111,7 @@ class MixerFixture : public ::testing::Test {
             }
         }
 
-        runtime.getRuntime().poll();
+        runtime.getRuntime().scheduler().poll();
         mixer.update(0.0F);
         return positions;
     }
@@ -120,7 +120,7 @@ class MixerFixture : public ::testing::Test {
     [[nodiscard]] bool awaitJobErrors(std::size_t count) {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
         while (jobErrors.size() < count && std::chrono::steady_clock::now() < deadline) {
-            runtime.getRuntime().poll();
+            runtime.getRuntime().scheduler().poll();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 

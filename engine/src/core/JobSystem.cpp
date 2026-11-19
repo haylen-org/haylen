@@ -125,11 +125,11 @@ std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string
 }
 
 void JobSystem::post(std::function<void()> work) {
-    runtime.taskPool().post(enqueue(std::move(work), "job"));
+    runtime.scheduler().taskPool().post(enqueue(std::move(work), "job"));
 }
 
 void JobSystem::postIo(std::function<void()> work) {
-    runtime.ioPool().post(enqueue(std::move(work), "ioJob"));
+    runtime.scheduler().ioPool().post(enqueue(std::move(work), "ioJob"));
 }
 
 void JobSystem::discardQueued() noexcept {
@@ -142,7 +142,7 @@ void JobSystem::discardQueued() noexcept {
 
 void JobSystem::postToFrame(std::function<void()> work) {
     // clang-format off
-    runtime.mainLoop().post([this, work = std::move(work)] {
+    runtime.scheduler().mainLoop().post([this, work = std::move(work)] {
         try {
             work();
         } catch (...) {

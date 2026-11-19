@@ -51,6 +51,7 @@
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/Host.hpp"
 #include "varn/runtime/Runtime.h"
+#include "varn/runtime/Scheduler.h"
 
 namespace haylen::core {
 
@@ -103,6 +104,7 @@ struct EngineState {
     std::vector<plugins::Plugin*> startedPlugins;
 
     std::shared_ptr<text::Font> defaultFont;
+    std::unique_ptr<varn::runtime::Scheduler> scheduler;
     std::unique_ptr<varn::runtime::Runtime> runtime;
     Engine::EventLoopPoll loopPoll;
     std::unique_ptr<JobSystem> jobs;
