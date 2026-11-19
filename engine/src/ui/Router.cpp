@@ -79,18 +79,18 @@ Router::Router(Navigation& owner, core::Engine& running, Options settings) : nav
 
     // clang-format off
     if (options.links) {
-        linkConnection = engine.getEvents().on(core::LifecycleEvent::kLinkOpened, [this](core::EventBus::Event& event) {
+        linkConnection = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kLinkOpened, [this](core::EventBus::Event& event) {
             follow(event.getData().value("url", std::string()));
-        });
+        }));
     }
 
     if (options.restores) {
-        backgroundConnection = engine.getEvents().on(core::LifecycleEvent::kAppBackground, [this](core::EventBus::Event&) {
+        backgroundConnection = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kAppBackground, [this](core::EventBus::Event&) {
             persist();
-        });
-        stoppingConnection = engine.getEvents().on(core::LifecycleEvent::kAppStopping, [this](core::EventBus::Event&) {
+        }));
+        stoppingConnection = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kAppStopping, [this](core::EventBus::Event&) {
             persist();
-        });
+        }));
     }
     // clang-format on
 }

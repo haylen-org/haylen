@@ -130,7 +130,7 @@ void ContentManager::start() {
     // The app hears of a fall back once it runs, so the listeners that its main module adds receive it.
     if (const std::optional<ReleasePackage::Recovery> recovery = release->takeRecovery()) {
         const core::Json report = {{"manifest", recovery->failed.toHex()}, {"reason", recovery->reason}};
-        recoveryReport = engine.getEvents().on(core::LifecycleEvent::kAppStarted, [this, report](core::EventBus::Event&) { engine.getEvents().emit(core::LifecycleEvent::kContentRecovered, report); }, {.once = true});
+        recoveryReport = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kAppStarted, [this, report](core::EventBus::Event&) { engine.getEvents().emit(core::LifecycleEvent::kContentRecovered, report); }, {.once = true}));
     }
 
     // A release without a store downloads nothing, so the group manifest of its rules must be on the device.

@@ -10,7 +10,7 @@ namespace haylen::core {
 class ScopedConnection final {
   public:
     ScopedConnection() = default;
-    ScopedConnection(Connection value) : connection(std::move(value)) {}
+    explicit ScopedConnection(Connection value) : connection(std::move(value)) {}
     ~ScopedConnection() {
         connection.disconnect();
     }

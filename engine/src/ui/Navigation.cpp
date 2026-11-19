@@ -22,9 +22,9 @@ namespace haylen::ui {
 
 // clang-format off
 Navigation::Navigation(core::Engine& owner, plugins::UiPlugin& plugin) : engine(owner), ui(plugin) {
-    linkConnection = engine.getEvents().on(core::LifecycleEvent::kLinkOpened, [this](core::EventBus::Event& event) {
+    linkConnection = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kLinkOpened, [this](core::EventBus::Event& event) {
         launchLink = event.getData().value("url", std::string());
-    });
+    }));
 }
 // clang-format on
 

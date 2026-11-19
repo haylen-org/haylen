@@ -106,7 +106,7 @@ std::shared_ptr<Gui> AlertScreen::build(core::Engine&, Placement placement) {
     std::shared_ptr<Gui> built = ui.createGui(tree, placement);
     const Gui* own = built.get();
     // clang-format off
-    events = ui.events.connect([this, own](Gui& source, const Event& event) {
+    events = core::ScopedConnection(ui.events.connect([this, own](Gui& source, const Event& event) {
         if (&source != own) {
             return;
         }
@@ -116,7 +116,7 @@ std::shared_ptr<Gui> AlertScreen::build(core::Engine&, Placement placement) {
         } else if (event.name == "click") {
             choose(event.id);
         }
-    });
+    }));
     // clang-format on
     return built;
 }

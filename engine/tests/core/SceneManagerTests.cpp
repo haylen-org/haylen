@@ -1336,7 +1336,7 @@ TEST_F(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
 
         menu->onHook = clearOn;
         game->onHook = clearOn;
-        const ScopedConnection listener = fixture.engine().getEvents().on(entry.trigger, [&clearOn, &entry](EventBus::Event&) { clearOn(entry.trigger); });
+        const ScopedConnection listener(fixture.engine().getEvents().on(entry.trigger, [&clearOn, &entry](EventBus::Event&) { clearOn(entry.trigger); }));
         const SceneManager::Options options{.transition = entry.covering ? SceneManager::Transition::fade(0.5F) : SceneManager::Transition{}, .unloadBeforeLoad = !entry.keepCurrent, .completion = [&outcomes](const SceneManager::Result& result) { outcomes.push_back(result.outcome); }, .onError = [&clearOn](const lua::Error&) { clearOn("onError"); }};
         if (entry.push) {
             scenes.push(game, options);

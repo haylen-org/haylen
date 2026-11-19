@@ -244,9 +244,9 @@ TEST_F(EngineTest, TracksAppStatesFromPlatformEvents) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     std::vector<std::string> log;
-    const ScopedConnection states = engine.appStateChanged.connect([&](Engine::AppState state) { log.push_back("state " + std::to_string(static_cast<int>(state))); });
-    const ScopedConnection resized = engine.resized.connect([&] { log.emplace_back("resized"); });
-    const ScopedConnection quit = engine.quitRequested.connect([&] { log.emplace_back("quit"); });
+    const ScopedConnection states(engine.appStateChanged.connect([&](Engine::AppState state) { log.push_back("state " + std::to_string(static_cast<int>(state))); }));
+    const ScopedConnection resized(engine.resized.connect([&] { log.emplace_back("resized"); }));
+    const ScopedConnection quit(engine.quitRequested.connect([&] { log.emplace_back("quit"); }));
 
     for (const std::string_view name : {LifecycleEvent::kAppActive, LifecycleEvent::kAppInactive, LifecycleEvent::kAppBackground, LifecycleEvent::kWindowResized, LifecycleEvent::kWindowFocusLost, LifecycleEvent::kWindowFocusGained, LifecycleEvent::kAppQuitRequested}) {
         engine.getEvents().on(name, [&log, name](EventBus::Event& event) { log.push_back(std::string(name) + (event.getData().is_null() ? "" : " " + event.getData().dump())); });
@@ -271,7 +271,7 @@ TEST_F(EngineTest, TreatsInterruptionsAsInactiveTime) {
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
     std::vector<Engine::AppState> states;
-    const ScopedConnection connection = engine.appStateChanged.connect([&](Engine::AppState state) { states.push_back(state); });
+    const ScopedConnection connection(engine.appStateChanged.connect([&](Engine::AppState state) { states.push_back(state); }));
 
     // A phone call keeps the app inactive even when its window gets the focus back, and going away and back keeps the interruption until it ends.
     for (const platform::Event::Type type : {platform::Event::Type::InterruptionBegan, platform::Event::Type::FocusLost, platform::Event::Type::FocusGained, platform::Event::Type::Suspended, platform::Event::Type::Resumed}) {
@@ -457,7 +457,7 @@ TEST_F(EngineTest, PausesTheGame) {
     std::vector<std::string> log;
     test::EngineFixture fixture;
     Engine& engine = fixture.engine();
-    const ScopedConnection paused = engine.pausedChanged.connect([&](bool value) { log.push_back(value ? "paused" : "resumed"); });
+    const ScopedConnection paused(engine.pausedChanged.connect([&](bool value) { log.push_back(value ? "paused" : "resumed"); }));
     engine.getEvents().on(LifecycleEvent::kPaused, [&](EventBus::Event&) { log.emplace_back("event paused"); });
     engine.getEvents().on(LifecycleEvent::kUnpaused, [&](EventBus::Event&) { log.emplace_back("event unpaused"); });
     auto game = std::make_shared<test::RecordingScene>("game", log);
@@ -487,7 +487,7 @@ TEST_F(EngineTest, ReportsLowMemoryToTheApp) {
     EXPECT_EQ(assets.getCachedCount(), 1U);
 
     std::vector<platform::Event::MemoryLevel> warnings;
-    const ScopedConnection lowMemory = fixture.engine().lowMemory.connect([&](platform::Event::MemoryLevel level) { warnings.push_back(level); });
+    const ScopedConnection lowMemory(fixture.engine().lowMemory.connect([&](platform::Event::MemoryLevel level) { warnings.push_back(level); }));
     // clang-format off
     fixture.runLua(R"(
         levels = {}
@@ -547,7 +547,7 @@ TEST_F(EngineTest, ReportsErrorsAndKeepsRendering) {
     // clang-format on
 
     std::string reported;
-    const ScopedConnection connection = fixture.engine().errorRaised.connect([&](const lua::Error& error) { reported = error.what(); });
+    const ScopedConnection connection(fixture.engine().errorRaised.connect([&](const lua::Error& error) { reported = error.what(); }));
     fixture.frames(1);
     fixture.engine().reportError("first failure");
     fixture.engine().reportError("second failure");

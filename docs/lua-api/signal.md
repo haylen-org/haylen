@@ -213,7 +213,7 @@ jumped:emit()
 
 ## C++
 
-C++ code uses the typed `core::Signal` template, which has the same priorities, `once` listeners, owners and blocking. A slot whose option `queue` is the frame queue of the engine runs at the end of the frame, like a deferred listener. A `core::ScopedConnection` disconnects its listener when it is destroyed, and a `core::ConnectionScope` disconnects every connection it holds.
+C++ code uses the typed `core::Signal` template, which has the same priorities, `once` listeners, owners and blocking. A slot whose option `queue` is the frame queue of the engine runs at the end of the frame, like a deferred listener. A `core::ScopedConnection`, which code makes from a connection only explicitly, disconnects its listener when it is destroyed, and a `core::ConnectionScope` disconnects every connection it holds.
 
 ```cpp
 #include "haylen/core/ScopedConnection.hpp"

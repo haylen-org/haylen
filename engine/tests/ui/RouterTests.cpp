@@ -314,10 +314,10 @@ TEST_F(RouterTest, KeepsTheStateWhenItsTabsCloseFirstAndClosesWhenItFailsToBuild
     router->open("artist/42");
     frames(30);
     // clang-format off
-    core::ScopedConnection ending = getEngine().getEvents().on(core::LifecycleEvent::kAppStopping, [&](core::EventBus::Event&) {
+    core::ScopedConnection ending(getEngine().getEvents().on(core::LifecycleEvent::kAppStopping, [&](core::EventBus::Event&) {
         tabs->close();
         router->close();
-    });
+    }));
     // clang-format on
     getEngine().requestRestart();
     getFixture().restart();

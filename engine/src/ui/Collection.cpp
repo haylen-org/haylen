@@ -232,7 +232,7 @@ void Collection::setSource(std::shared_ptr<CollectionSource> value) {
     const CollectionDiff::Result result = CollectionDiff::compare(before, after, getId());
 
     const std::shared_ptr<CollectionSource> previous = std::exchange(source, std::move(value));
-    connection = source->changed.connect([this](const CollectionSource::Change& change) { applyChange(change); });
+    connection = core::ScopedConnection(source->changed.connect([this](const CollectionSource::Change& change) { applyChange(change); }));
     applyChange({.kind = CollectionSource::Change::Kind::Replaced, .index = 0, .count = source->getCount(), .target = 0, .previous = result.previous});
 }
 

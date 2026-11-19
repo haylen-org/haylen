@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -52,11 +53,13 @@ TEST(SignalTest, SlotsMayDisconnectThemselvesWhileEmitting) {
     EXPECT_EQ(calls, 1);
 }
 
+// A connection becomes scoped only where the code says so, since the scope disconnects it.
 TEST(SignalTest, ScopedConnectionDisconnectsOnDestruction) {
+    static_assert(!std::is_convertible_v<Connection, ScopedConnection>);
     Signal<> signal;
     int calls = 0;
     {
-        ScopedConnection scoped = signal.connect([&] { ++calls; });
+        ScopedConnection scoped(signal.connect([&] { ++calls; }));
         ScopedConnection moved = std::move(scoped);
         EXPECT_TRUE(moved.isConnected());
         EXPECT_FALSE(scoped.isConnected());
@@ -66,8 +69,8 @@ TEST(SignalTest, ScopedConnectionDisconnectsOnDestruction) {
     signal.emit();
     EXPECT_EQ(calls, 1);
 
-    ScopedConnection reassigned = signal.connect([&] { ++calls; });
-    reassigned = signal.connect([&] { calls += 10; });
+    ScopedConnection reassigned(signal.connect([&] { ++calls; }));
+    reassigned = ScopedConnection(signal.connect([&] { calls += 10; }));
     signal.emit();
     EXPECT_EQ(calls, 11);
     reassigned.disconnect();

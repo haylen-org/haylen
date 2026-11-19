@@ -50,7 +50,7 @@ TEST_F(AudioInterruptionTest, InterruptionsStopTheOutputUntilTheyEnd) {
     mixer.endInterruption();
 
     std::vector<Mixer::DeviceEvent> received;
-    const core::ScopedConnection connection = mixer.deviceEventReceived.connect([&received](Mixer::DeviceEvent event) { received.push_back(event); });
+    const core::ScopedConnection connection(mixer.deviceEventReceived.connect([&received](Mixer::DeviceEvent event) { received.push_back(event); }));
     mixer.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
     mixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
     EXPECT_TRUE(received.empty());

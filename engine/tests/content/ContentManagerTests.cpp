@@ -327,7 +327,7 @@ TEST_F(ContentManagerTest, UpdatesFromTheChannelAndAppliesTheUpdateOnRestart) {
     engine->frame(1.0 / 60.0);
 
     std::optional<std::string> ready;
-    const core::ScopedConnection listener = engine->getEvents().on(core::LifecycleEvent::kContentUpdateReady, [&ready](core::EventBus::Event& event) { ready = event.getData().dump(); });
+    const core::ScopedConnection listener(engine->getEvents().on(core::LifecycleEvent::kContentUpdateReady, [&ready](core::EventBus::Event& event) { ready = event.getData().dump(); }));
     std::optional<std::optional<Error>> downloaded;
     engine->getContent().download({}, [&downloaded](std::optional<Error> error) { downloaded = std::move(error); });
     ASSERT_TRUE(frameUntil([&downloaded] { return downloaded.has_value(); }));

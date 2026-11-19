@@ -148,11 +148,11 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatGuisOwn) {
     plugins::UiPlugin& plugin = getEngine().getPlugin<plugins::UiPlugin>();
     std::shared_ptr<Gui> received;
     // clang-format off
-    const core::ScopedConnection listener = getEngine().getEvents().on(core::LifecycleEvent::kGuiMounted, [&](core::EventBus::Event& event) {
+    const core::ScopedConnection listener(getEngine().getEvents().on(core::LifecycleEvent::kGuiMounted, [&](core::EventBus::Event& event) {
         const std::shared_ptr<Gui>* payload = event.get<std::shared_ptr<Gui>>();
         ASSERT_NE(payload, nullptr);
         received = *payload;
-    });
+    }));
     // clang-format on
     const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "label", "text": "native"})"));
     plugin.mount(gui, 3);

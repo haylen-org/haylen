@@ -19,7 +19,7 @@ NavigationSplit::NavigationSplit(Navigation& owner, Region primaryRegion, Region
 
     primary = navigation.createStack(std::move(primaryRegion), std::move(root));
     detail = navigation.createStack(std::move(detailRegion));
-    primaryChanged = primary->changed.connect([this](NavigationStack&) { followPrimary(); });
+    primaryChanged = core::ScopedConnection(primary->changed.connect([this](NavigationStack&) { followPrimary(); }));
     if (collapsed) {
         return;
     }

@@ -41,15 +41,15 @@ void AudioPlugin::start(core::Engine& engine) {
 
     audio::Mixer& mixer = engine.getAudio();
     mixer.setProcessPaused(engine.isPaused());
-    pauseConnection = engine.pausedChanged.connect([&mixer](bool paused) { mixer.setProcessPaused(paused); });
-    deviceConnection = mixer.deviceEventReceived.connect([this, &engine](audio::Mixer::DeviceEvent deviceEvent) { handleDeviceEvent(engine, deviceEvent); });
+    pauseConnection = core::ScopedConnection(engine.pausedChanged.connect([&mixer](bool paused) { mixer.setProcessPaused(paused); }));
+    deviceConnection = core::ScopedConnection(mixer.deviceEventReceived.connect([this, &engine](audio::Mixer::DeviceEvent deviceEvent) { handleDeviceEvent(engine, deviceEvent); }));
     // Because iOS does not always report the end of an interruption, the audio comes back whenever the app becomes active again, as Apple recommends, and an output that the system refused tries to open again then.
     // clang-format off
-    appStateConnection = engine.appStateChanged.connect([this, &engine](core::Engine::AppState value) {
+    appStateConnection = core::ScopedConnection(engine.appStateChanged.connect([this, &engine](core::Engine::AppState value) {
         if (value == core::Engine::AppState::Active) {
             endInterruption(engine);
         }
-    });
+    }));
     // clang-format on
 }
 
