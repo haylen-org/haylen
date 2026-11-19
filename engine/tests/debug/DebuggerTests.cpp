@@ -2,6 +2,7 @@
 
 #include <lua.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <map>
 #include <string>
@@ -476,6 +477,24 @@ TEST_F(DebuggerTest, RefusesABreakpointBeyondTheLastLineASourceReaches) {
     EXPECT_EQ(results.at(0).at("verified"), false);
     EXPECT_EQ(results.at(0).at("message"), "The line of a breakpoint is a whole number from 1 to 1048576.");
     EXPECT_EQ(results.at(1).at("verified"), true);
+}
+
+// Two breakpoints of one request on the same line leave the last one, and the result of the first one says so.
+TEST_F(DebuggerTest, KeepsTheLastBreakpointOfALineAndSaysSoForTheFirst) {
+    client.connect(fixture.lua());
+    const int set = client.request("setBreakpoints", breakpoints({{{"line", 14}}, {{"line", 14}, {"logMessage", "sum {sum}"}}}));
+    client.getDebugger().update(fixture.lua());
+
+    const core::Json results = client.getResponse(set).at("body").at("breakpoints");
+    EXPECT_EQ(results.at(0).at("verified"), false);
+    EXPECT_EQ(results.at(0).at("message"), "A later breakpoint of the same request takes this line.");
+    EXPECT_EQ(results.at(1).at("verified"), true);
+
+    EXPECT_EQ(run(fixture.lua(), "require('mod').loop()"), "");
+    EXPECT_TRUE(client.getEvents("stopped").empty());
+    const std::vector<core::Json> outputs = client.getEvents("output");
+    const auto logged = std::ranges::count_if(outputs, [](const core::Json& output) { return output.at("output").get<std::string>().starts_with("sum "); });
+    EXPECT_EQ(logged, 6);
 }
 
 // A web page cannot halt, so it keeps the log points and says why the other breakpoints never take effect.

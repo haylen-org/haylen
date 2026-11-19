@@ -2,6 +2,7 @@
 
 #include <charconv>
 #include <format>
+#include <map>
 #include <utility>
 
 namespace haylen::debug {
@@ -67,7 +68,7 @@ Breakpoints::Breakpoint* Breakpoints::File::find(int line) {
     return found == lines.end() ? nullptr : &found->second;
 }
 
-// A line asked for twice keeps the last request, and a request whose count of hits cannot be read never takes effect.
+// A line asked for twice keeps the last request, which the result of the earlier one says, and a request whose count of hits cannot be read never takes effect.
 std::vector<Breakpoints::Result> Breakpoints::set(const std::string& path, const std::vector<Request>& requests) {
     if (const auto found = files.find(path); found != files.end()) {
         count(found->second, -1);
@@ -77,6 +78,7 @@ std::vector<Breakpoints::Result> Breakpoints::set(const std::string& path, const
     File file;
     std::vector<Result> results;
     results.reserve(requests.size());
+    std::map<int, std::size_t> resultsByLine;
     for (const Request& request : requests) {
         const int id = nextId++;
         const std::optional<HitCondition> hit = HitCondition::parse(request.hitCondition);
@@ -90,6 +92,13 @@ std::vector<Breakpoints::Result> Breakpoints::set(const std::string& path, const
             continue;
         }
 
+        if (const auto earlier = resultsByLine.find(request.line); earlier != resultsByLine.end()) {
+            Result& replaced = results[earlier->second];
+            replaced.verified = false;
+            replaced.message = "A later breakpoint of the same request takes this line.";
+        }
+
+        resultsByLine[request.line] = results.size();
         file.lines[request.line] = Breakpoint{.id = id, .line = request.line, .condition = request.condition, .hit = *hit, .logMessage = request.logMessage};
         results.push_back({.id = id, .line = request.line, .verified = true});
     }
