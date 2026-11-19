@@ -43,7 +43,7 @@
       <stop offset="1" stop-color="#ff7136"/>
     </linearGradient>
   </defs>
-  <rect x="64" y="64" width="896" height="896" rx="201.6" fill="#FFFFFF" stroke="#DCE1EC" stroke-width="4"/>
+  <rect x="64" y="64" width="896" height="896" rx="201.6" fill="#07112F"/>
   <g transform="translate(244.2 191) scale(1.567)">
     <path fill="url(#linearGradient1)" d="M0.5 26.5C0.5 9.4 16 -2 32.4 3.2L80.6 19.8C105.3 28.3 119.3 44.1 119.3 70.8L119.3 337.3C119.3 360.3 108.3 374.5 88.4 382.7L33.3 405.2C16.7 412 0.5 400 0.5 382.1Z"/>
     <path fill="url(#linearGradient2)" d="M222.7 70.8C222.7 44.1 236.7 28.3 261.4 19.8L309.6 3.2C326 -2 341.5 9.4 341.5 26.5L341.5 382.1C341.5 400 325.3 412 308.7 405.2L253.6 382.7C233.7 374.5 222.7 360.3 222.7 337.3Z"/>

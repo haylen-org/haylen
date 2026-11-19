@@ -308,7 +308,7 @@ The `Info.plist` of each platform in the template is complete. It holds `$(HAYLE
 
 The join follows the rule of [how values merge](#how-values-merge): a key that the template, the engine, a plugin and the app give with different values stops the preparation with every origin, so an app that words a key in its own way puts it in its own `Info.plist` through `files` and leaves it out of the plugins, or gives the plugin the words through its parameters. The verification reads the built bundle: its architectures, the frameworks it links, the classes of the plugins, the `Info.plist` keys, the entitlements it is signed with, the privacy declarations and the resources of the plugins.
 
-The asset catalogs of the template carry the Haylen icons, the gradient symbol on white, the same art that the repositories of Haylen show. The iOS icon is an opaque full square that the system masks. The macOS icons put the symbol on a white rounded plate with a light gray edge, on the grid of macOS icons, with every size drawn on its own. The layered tvOS icons have an opaque white back layer and the symbol on a transparent front layer. The top shelf images show the horizontal logo with its navy wordmark on white.
+The asset catalogs of the template carry the Haylen icons, the gradient symbol on the navy `#07112F` of the brand. The iOS icon is an opaque full square that the system masks. The macOS icons put the symbol on a navy rounded plate with a soft drop shadow, on the grid of macOS icons, with every size drawn on its own. The layered tvOS icons have an opaque navy back layer and the symbol on a transparent front layer. The top shelf images show the horizontal logo with its white wordmark on navy.
 
 ## The Android project
 
@@ -351,7 +351,7 @@ The manifest declares `HaylenActivity` with:
 
 The manifest declares a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters. So an app without such plugins has no exported component besides its launcher activity.
 
-The resources are vector drawables of the Haylen brand. The adaptive launcher icon has the gradient symbol inside the safe zone of its foreground, over `ic_launcher_background`, which is white. Its monochrome layer has the silhouette of the symbol, which launchers tint for themed icons. The Android TV banner shows the horizontal logo with its navy wordmark on the same white.
+The resources are vector drawables of the Haylen brand. The adaptive launcher icon has the gradient symbol inside the safe zone of its foreground, over `ic_launcher_background`, the navy `#07112F` of the brand. Its monochrome layer has the silhouette of the symbol, which launchers tint for themed icons. The Android TV banner shows the horizontal logo with its white wordmark on the same navy.
 
 ## The web site
 
@@ -411,7 +411,7 @@ The resource script `resources/app.rc` reads the values of `haylen.json` from `H
 | `InternalName`, `OriginalFilename` | The executable. |
 | `Comments` | `description`. |
 
-The application manifest of the template declares Windows 10 and 11, per-monitor DPI awareness and no elevation, and the build merges it with the manifest of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The executable builds in the Windows subsystem, without a console, and links the C runtime of the configuration of the engine SDK. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a white plate with rounded corners and a light gray edge, every size drawn from the full-size art.
+The application manifest of the template declares Windows 10 and 11, per-monitor DPI awareness and no elevation, and the build merges it with the manifest of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The executable builds in the Windows subsystem, without a console, and links the C runtime of the configuration of the engine SDK. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a navy plate with rounded corners, every size drawn from the full-size art.
 
 ### Linux
 
