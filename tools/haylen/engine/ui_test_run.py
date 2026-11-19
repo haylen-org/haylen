@@ -14,6 +14,13 @@ class UiTestRun:
     START_SECONDS = 300
     # The line of xcodebuild that starts a test suite.
     STARTED = re.compile(r"Test Suite .* started")
+    # The lines of a runner that a requirement of the platform stopped, each with the sentence that says what the person does once to meet it.
+    REQUIREMENTS = (
+        (
+            re.compile(r"Timed out while enabling automation mode"),
+            'iOS runs UI tests on a device only once the person enabled UI Automation with the passcode of the device. Turn on "Enable UI Automation" in Settings > Developer on the device, which asks for the passcode once, and run the tests again.',
+        ),
+    )
 
     def __init__(self, terminal: Terminal, started: re.Pattern[str] = STARTED) -> None:
         self.terminal = terminal
@@ -43,6 +50,9 @@ class UiTestRun:
                 f"The UI test runner started no test within {start_seconds} seconds, so the run stopped it. The simulator or the device may be stuck: restart it and run the tests again."
             )
         if code != 0:
+            for pattern, requirement in UiTestRun.REQUIREMENTS:
+                if any(pattern.search(line) for line in lines):
+                    raise BuildFailed(requirement)
             raise BuildFailed(f'The command "{Path(parts[0]).name}" failed with exit code {code}, and its output above shows which UI tests failed.')
         return lines
 

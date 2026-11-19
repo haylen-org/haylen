@@ -11,7 +11,10 @@ import org.junit.Test
 // PLG-011: the permission dialogs of the camera, the microphone, the location and notifications answer the app, the camera of the plugin follows the answer, and the tap on a notification reaches the app while it shows, from the home screen and after the app left the recent apps. The test takes the permissions back before it starts, so every dialog shows.
 class PermissionTests : TestProjectCase() {
     companion object {
-        val ALLOW_WHILE_USING = arrayOf("permission_allow_foreground_only_button")
+        // The camera and the microphone, which Android 11 and later offer while the app is in use and Android 10 with a plain "Allow".
+        val ALLOW_WHILE_USING = arrayOf("permission_allow_foreground_only_button", "permission_allow_button")
+        // The location, which every version offers while the app is in use.
+        val ALLOW_LOCATION_WHILE_USING = arrayOf("permission_allow_foreground_only_button")
         val ALLOW = arrayOf("permission_allow_button")
         val DENY = arrayOf("permission_deny_button", "permission_deny_and_dont_ask_again_button")
         const val NOTIFICATION = "Tap to open Haylen Tests."
@@ -25,7 +28,7 @@ class PermissionTests : TestProjectCase() {
     fun thePermissionDialogsAnswerTheAppAndTheNotificationTapsReachIt() {
         ask("camera", "Ask for the camera", ALLOW_WHILE_USING, "granted")
         ask("microphone", "Ask for the microphone", DENY, "denied")
-        ask("location", "Ask for the location", ALLOW_WHILE_USING, "granted")
+        ask("location", "Ask for the location", ALLOW_LOCATION_WHILE_USING, "granted")
         ask("notifications", "Ask for notifications", ALLOW, "granted")
         tap("Start the camera")
         expectCheck("The camera of the plugin follows the permission", containing = "The camera started at")
@@ -51,9 +54,18 @@ class PermissionTests : TestProjectCase() {
         saveScreenshot("notification-launched")
     }
 
+    // Asks for a permission and answers its dialog, which shows unless the permission is granted already, as notifications are on Android 12 and older, which need no permission for them.
     private fun ask(kind: String, button: String, answer: Array<String>, state: String) {
+        val card = "${kind.replaceFirstChar { it.uppercase() }}: "
+        waitUntil("The card of the $kind permission never tells its state.") {
+            val label = labelOf(elementStartingWith(card)) ?: ""
+            label.isNotEmpty() && !label.endsWith(": Checking")
+        }
+        val prompts = !(labelOf(elementStartingWith(card)) ?: "").endsWith(": Granted")
         tap(button)
-        answerPermission(*answer)
+        if (prompts) {
+            answerPermission(*answer)
+        }
         expectCheck("The $kind permission reaches the app", containing = "The request answered \"$state\".")
     }
 

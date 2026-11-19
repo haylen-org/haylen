@@ -111,8 +111,8 @@ class AndroidUiTests:
         return None if value == "null" else value
 
     def restore_setting(self, serial: str, name: str, value: str | None) -> None:
-        """Gives a secure setting back the value it had before the run, which deletes one that the device did not have."""
-        action = ["delete", "secure", name] if value is None else ["put", "secure", name, value]
+        """Gives a secure setting back the value it had before the run, which deletes one that the device did not have. The command "adb shell" joins its arguments into one command line for the shell of the device, which drops an empty word, so an empty value travels quoted."""
+        action = ["delete", "secure", name] if value is None else ["put", "secure", name, value or "''"]
         self.context.process.run(self.bridge.command(serial, "shell", "settings", *action))
 
     def instrument_on(self, serial: str, classes: Sequence[str]) -> None:

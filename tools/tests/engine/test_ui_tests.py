@@ -16,7 +16,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class UiTestsTest:
-    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, each runner takes the tests of its own folder, and a simulator run fails on the errors that the engine logs meanwhile."""
+    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run gives every setting it changed its value back, each runner takes the tests of its own folder, and a simulator run fails on the errors that the engine logs meanwhile."""
 
     def test_the_runner_runs_the_scheme_of_the_platform_and_its_info_names_the_app(self):
         project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "SIMULATOR-ID", Path("/build/derived"))
@@ -86,6 +86,19 @@ class UiTestsTest:
         assert AndroidUiTests.passed(passed)
         assert not AndroidUiTests.passed(["INSTRUMENTATION_STATUS: test=testA", "INSTRUMENTATION_STATUS_CODE: -2", "INSTRUMENTATION_CODE: -1"])
         assert not AndroidUiTests.passed(["INSTRUMENTATION_STATUS: test=testA", "INSTRUMENTATION_RESULT: shortMsg=Process crashed."])
+
+    def test_the_android_run_gives_each_secure_setting_back_the_value_it_had(self, tmp_path):
+        (tmp_path / "sdk" / "platform-tools").mkdir(parents=True)
+        (tmp_path / "sdk" / "platform-tools" / "adb").write_text("", encoding="utf-8")
+        recorded = RecordedCommands(tmp_path, {"ANDROID_HOME": str(tmp_path / "sdk")})
+        tests = AndroidUiTests(recorded.context, None)
+        for value in ("confirmed", "", None):
+            tests.restore_setting("SERIAL", "immersive_mode_confirmations", value)
+        assert [command[-5:] for command in recorded.commands] == [
+            ["settings", "put", "secure", "immersive_mode_confirmations", "confirmed"],
+            ["settings", "put", "secure", "immersive_mode_confirmations", "''"],
+            ["shell", "settings", "delete", "secure", "immersive_mode_confirmations"],
+        ]
 
     def test_the_unified_log_keeps_the_errors_it_relays(self):
         events = [json.dumps({"messageType": "Default", "eventMessage": "Started."}), json.dumps({"messageType": "Error", "eventMessage": "The view parted."}), "Filtering the log data."]

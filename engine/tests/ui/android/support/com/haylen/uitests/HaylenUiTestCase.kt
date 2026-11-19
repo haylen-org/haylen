@@ -1,5 +1,6 @@
 package com.haylen.uitests
 
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -7,6 +8,7 @@ import android.graphics.Rect
 import android.location.Location
 import android.location.LocationManager
 import android.location.provider.ProviderProperties
+import android.os.Build
 import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
@@ -19,6 +21,7 @@ import androidx.test.uiautomator.Until
 import java.io.File
 import java.util.regex.Pattern
 import org.junit.After
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -30,7 +33,8 @@ abstract class HaylenUiTestCase {
         const val POLL = 250L
         // The extra of the launch intent that the engine reads its launch arguments from.
         const val ARGUMENTS_EXTRA = "dev.haylen.arguments"
-        const val PERMISSION_CONTROLLER = "com.android.permissioncontroller"
+        // The package of the permission controller, which shows the dialogs and the settings of the permissions: "com.android.permissioncontroller" on the images of the emulator and "com.google.android.permissioncontroller" on the devices with the services of Google.
+        const val PERMISSION_CONTROLLER = "(com\\.android|com\\.google\\.android)\\.permissioncontroller"
         // How often a simulated location reaches the system, the way a receiver reports its fixes.
         const val LOCATION_INTERVAL = 500L
         // The longest that UI Automator waits for the screen to settle before a search or a tap.
@@ -54,8 +58,10 @@ abstract class HaylenUiTestCase {
     // The runtime permissions that the app loses before it starts, such as "android.permission.CAMERA", so their dialogs show again whatever a test before asked.
     open val revokedPermissions: List<String> = emptyList()
 
+    // Every test starts from the home screen, which also closes the notification shade that a test before may have left open over the app.
     @Before
     fun launch() {
+        device.pressHome()
         device.executeShellCommand("am force-stop $identifier")
         for (permission in revokedPermissions) {
             device.executeShellCommand("pm revoke $identifier $permission")
@@ -213,17 +219,31 @@ abstract class HaylenUiTestCase {
 
     // Taps the button of the permission dialog of the system with one of the resource ids of the permission controller, such as "permission_allow_foreground_only_button", "permission_allow_button" or "permission_deny_button". The dialog names a button by the state of the permission, such as "permission_deny_and_dont_ask_again_button" for a refusal that the person made before, so a test names every id of the answer.
     fun answerPermission(vararg buttons: String) {
-        val ids = Pattern.compile("$PERMISSION_CONTROLLER:id/(${buttons.joinToString("|")})")
-        val answer = waitFor(By.res(ids), "a button ${buttons.joinToString(" or ") { "\"$it\"" }} of a permission dialog")
+        val answer = waitFor(permissionControl(*buttons), "a button ${buttons.joinToString(" or ") { "\"$it\"" }} of a permission dialog")
         answer.click()
-        assertTrue("The permission dialog stays after the tap.", device.wait(Until.gone(By.res(ids)), TIMEOUT))
+        assertTrue("The permission dialog stays after the tap.", device.wait(Until.gone(permissionControl(*buttons)), TIMEOUT))
     }
 
-    // Opens the notification shade and taps the notification whose text holds the words, which brings the app to the front or launches it.
+    // The control of the permission controller with one of the resource ids, in a dialog or on a page of the settings of a permission.
+    fun permissionControl(vararg ids: String): BySelector = By.res(Pattern.compile("$PERMISSION_CONTROLLER:id/(${ids.joinToString("|")})"))
+
+    // Opens the notification shade and taps the notification whose text holds the words, which brings the app to the front or launches it. Do Not Disturb, which the person may set or schedule, can hide every notification from the shade, and the test then fails with that reason instead of a notification that never shows.
     fun tapNotification(text: String) {
+        assertFalse("Do Not Disturb hides the notifications from the notification shade of the device, so the test cannot tap one. Run it again once Do Not Disturb is off.", hidesNotifications())
         device.openNotification()
         waitFor(By.textContains(text), "a notification with \"$text\"").click()
         waitForApp()
+    }
+
+    // Whether Do Not Disturb is on with the notifications hidden from the shade, which Android 9 and later let the person choose.
+    private fun hidesNotifications(): Boolean {
+        val notifications = instrumentation.context.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || notifications.currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL) {
+            return false
+        }
+
+        val listSuppressed = notifications.notificationPolicy.suppressedVisualEffects and NotificationManager.Policy.SUPPRESSED_EFFECT_NOTIFICATION_LIST
+        return listSuppressed != 0
     }
 
     // Whether the tests run on the Android emulator, which sets the property "ro.boot.qemu", and which lacks hardware such as a microphone that hears a room.

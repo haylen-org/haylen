@@ -48,7 +48,7 @@ class LocationTests : TestProjectCase() {
     fun thePlaceAndTheMapReachTheApp() {
         simulateLocation(LATITUDE, LONGITUDE)
         tap("Find the location")
-        answerPermission(*PermissionTests.ALLOW_WHILE_USING)
+        answerPermission(*PermissionTests.ALLOW_LOCATION_WHILE_USING)
         expectCheck("The platform tells where the device is", containing = String.format(Locale.ROOT, "found %.5f, %.5f", LATITUDE, LONGITUDE))
         tap("Show the map")
         expectCheck("A native map shows over the app", containing = "placed a map drawn with")
