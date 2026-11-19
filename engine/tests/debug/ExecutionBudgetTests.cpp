@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include "debug/ExecutionBudget.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Error.hpp"
 #include "platform/DevelopmentSession.hpp"
@@ -183,7 +184,7 @@ end})
     EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
 }
 
-// The budget waits while the app halts, so an evaluation that resumes a coroutine of the app after a long halt finds the budget whole.
+// The budget waits while the app halts, so an evaluation that resumes a coroutine of the app after a halt longer than the budget finds the budget whole. The evaluation runs only enough instructions of the app for the budget to look at its clock many times, so it ends far inside the time limit of evaluations on any build, such as under a sanitizer.
 TEST_F(ExecutionBudgetTest, WaitsWhileTheDebuggerHaltsTheApp) {
     start(R"(
 numbers = coroutine.wrap(function() while true do coroutine.yield(1) end end)
@@ -197,11 +198,13 @@ end})
 )");
     test::DebugClient client{fixture->host()};
     client.connect(fixture->engine().getLuaState());
+    const int resumes = ExecutionBudget::kCheckInstructions * 5;
+    const std::string expression = "(function() local sum = 0 for _ = 1, " + std::to_string(resumes) + " do sum = sum + numbers() end return sum end)()";
     int evaluation = 0;
     // clang-format off
-    client.then([&evaluation](test::DebugClient& debug) {
+    client.then([&evaluation, &expression](test::DebugClient& debug) {
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
-        evaluation = debug.request("evaluate", {{"expression", "(function() local sum = 0 for _ = 1, 100000 do sum = sum + numbers() end return sum end)()"}, {"frameId", 1}});
+        evaluation = debug.request("evaluate", {{"expression", expression}, {"frameId", 1}});
     });
     // clang-format on
     client.then([](test::DebugClient& debug) { debug.request("continue"); });
@@ -209,7 +212,11 @@ end})
 
     EXPECT_FALSE(fixture->engine().isCancelled());
     ASSERT_NE(evaluation, 0);
-    EXPECT_EQ(client.getResponse(evaluation).at("body").at("result"), "100000");
+    const core::Json* response = client.findResponse(evaluation);
+    ASSERT_NE(response, nullptr);
+    ASSERT_TRUE(response->value("success", false)) << response->dump();
+    ASSERT_TRUE(response->contains("body") && response->at("body").contains("result")) << response->dump();
+    EXPECT_EQ(response->at("body").at("result"), std::to_string(resumes));
 }
 
 TEST_F(ExecutionBudgetTest, KeepsTheHandlersAndYieldsOfXpcall) {
