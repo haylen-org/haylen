@@ -20,7 +20,7 @@ class Context;
 // The copies of render targets into memory the CPU reads. Each copy goes to the queue in a command buffer of its own with a fence, right after the frames that drew the image, and the CPU converts its pixels to four bytes once the fence signals, so no frame waits for it. Copies that nobody polls any more go once they finish, and the copies still running when the device goes finish first.
 class ReadbackQueue final {
   public:
-    // A copy as its readback sees it, which outlives the queue: the queue is null once the device went.
+    // A copy as its readback sees it, which outlives the queue: the queue is null once the copy finished or the device went.
     struct Copy {
         ReadbackQueue* queue = nullptr;
         VkBuffer buffer = VK_NULL_HANDLE;

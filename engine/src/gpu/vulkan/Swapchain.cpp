@@ -17,6 +17,7 @@ void Swapchain::attach(const Context& owner, std::size_t frames) {
 
     context = &owner;
     depthFormat = owner.getDepthStencilFormat();
+
     const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     acquired.resize(frames, VK_NULL_HANDLE);
     for (VkSemaphore& semaphore : acquired) {
@@ -36,17 +37,15 @@ void Swapchain::attach(const Context& owner, std::size_t frames) {
     colorSpace = chosen.colorSpace;
 }
 
+// A swapchain exists only once the surface joined a device, so only then is there anything of the device to destroy.
 Swapchain::~Swapchain() {
     if (context != nullptr) {
         destroyImages();
+        destroySwapchain();
 
         for (const VkSemaphore semaphore : acquired) {
             context->getFunctions().vkDestroySemaphore(context->getDevice(), semaphore, nullptr);
         }
-    }
-
-    if (handle != VK_NULL_HANDLE) {
-        context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
     }
 
     vkDestroySurfaceKHR(instance, surface, nullptr);

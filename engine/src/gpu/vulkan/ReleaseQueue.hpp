@@ -13,7 +13,7 @@ namespace haylen::gpu::vulkan {
 
 class Context;
 
-// The objects of Vulkan that wait for the frames that may still use them to finish on the GPU before they are destroyed. Each object waits for the frame of its serial, and the serials of the objects never go down.
+// The objects of Vulkan that wait for the frames that may still use them to finish on the GPU before they are destroyed. Each object waits at least for the frame of its serial.
 class ReleaseQueue final {
   public:
     struct Buffer {

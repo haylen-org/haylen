@@ -85,6 +85,7 @@ void Gl::readFeatures() {
     features.floatBlend = hasExtension("GL_EXT_float_blend");
     features.textureFloatLinear = hasExtension("GL_OES_texture_float_linear");
     features.anisotropicFiltering = hasExtension("GL_EXT_texture_filter_anisotropic");
+
     if (isWeb()) {
         features.timerQuery = hasExtension("GL_EXT_disjoint_timer_query_webgl2");
         return;

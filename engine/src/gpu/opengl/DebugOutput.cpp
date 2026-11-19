@@ -28,7 +28,7 @@ DebugOutput::~DebugOutput() {
     }
 }
 
-// Errors and undefined behavior are failures of the device, and the performance and portability notes of drivers are details for the debug log whatever severity they carry, since drivers such as the Adreno one mark notes about how they copy pixels as high.
+// Errors, undefined behavior and deprecated behavior are failures of the device, and the performance and portability notes of drivers are details for the debug log whatever severity they carry, since drivers such as the Adreno one mark notes about how they copy pixels as high.
 void DebugOutput::receive(Gl::Enum, Gl::Enum type, Gl::Uint, Gl::Enum, Gl::Sizei length, const char* message, const void*) {
     const std::string_view text(message, length < 0 ? std::char_traits<char>::length(message) : static_cast<std::size_t>(length));
     const bool failure = type == Gl::kDebugTypeError || type == Gl::kDebugTypeUndefinedBehavior || type == Gl::kDebugTypeDeprecatedBehavior;
