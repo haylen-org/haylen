@@ -10,6 +10,7 @@
 #include <string_view>
 
 #include "gpu/DriverIssues.hpp"
+#include "gpu/ImageInfo.hpp"
 #include "gpu/opengl/PixelReadback.hpp"
 #include "haylen/core/Log.hpp"
 
@@ -143,6 +144,10 @@ void Device::readCapabilities() {
     capabilities.maxImageSize = value;
     gl.getIntegerv(Gl::kMaxArrayTextureLayers, &value);
     capabilities.maxArrayLayers = value;
+    gl.getIntegerv(Gl::kMax3dTextureSize, &value);
+    maxVolumeSize = value;
+    gl.getIntegerv(Gl::kMaxCubeMapTextureSize, &value);
+    maxCubeSize = value;
     gl.getIntegerv(Gl::kMaxSamples, &value);
     capabilities.maxSampleCount = std::max(1, value);
     capabilities.originTopLeft = false;
@@ -338,12 +343,28 @@ void Device::checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) 
         throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
     }
 
+    if (desc.type == TextureType::Flat && desc.layers != 1) {
+        throw std::logic_error(std::format("The flat image \"{}\" has {} layers, and a flat image has one.", desc.label, desc.layers));
+    }
+
     if (desc.type == TextureType::Cube && (desc.layers != 6 || desc.width != desc.height)) {
         throw std::logic_error(std::format("The cube \"{}\" needs six square faces.", desc.label));
     }
 
+    if (desc.type == TextureType::Cube && desc.width > maxCubeSize) {
+        throw std::logic_error(std::format("The cube \"{}\" has faces of {} pixels, and the device holds faces of at most {}.", desc.label, desc.width, maxCubeSize));
+    }
+
     if (desc.type == TextureType::Array && desc.layers > capabilities.maxArrayLayers) {
         throw std::logic_error(std::format("The array \"{}\" has {} layers, and the device holds at most {}.", desc.label, desc.layers, capabilities.maxArrayLayers));
+    }
+
+    if (desc.type == TextureType::Volume && std::max({desc.width, desc.height, desc.layers}) > maxVolumeSize) {
+        throw std::logic_error(std::format("The volume \"{}\" of {}x{}x{} pixels does not fit the device, which holds volumes of at most {} pixels on a side.", desc.label, desc.width, desc.height, desc.layers, maxVolumeSize));
+    }
+
+    if (desc.mipLevels > ImageInfo::getMaxMipLevels(desc)) {
+        throw std::logic_error(std::format("The image \"{}\" has {} mip levels, and its size holds 1 to {}.", desc.label, desc.mipLevels, ImageInfo::getMaxMipLevels(desc)));
     }
 
     if ((desc.kind == ImageKind::DepthStencil) != pixel.depth) {

@@ -199,6 +199,13 @@ TEST_P(OpenGlDeviceTest, FailsAReadbackWhoseBufferTheContextCannotHandOver) {
     EXPECT_EQ(failure, "The GPU could not hand over the pixels of a render target.");
 }
 
+// The context would refuse the storage of such an image with an error that only validation shows, and the image would read as empty.
+TEST_P(OpenGlDeviceTest, RefusesImagesWhoseShapeTheContextCannotStore) {
+    EXPECT_THROW((void)device->makeImage({.width = 16, .height = 16, .mipLevels = 6, .kind = Device::ImageKind::RenderTarget, .label = "too-many-levels"}), std::logic_error);
+    EXPECT_THROW((void)device->makeImage({.width = 16, .height = 16, .layers = 2, .kind = Device::ImageKind::RenderTarget, .label = "flat-with-layers"}), std::logic_error);
+    EXPECT_THROW((void)device->makeImage({.type = Device::TextureType::Volume, .width = 16, .height = 16, .layers = 1 << 20, .kind = Device::ImageKind::RenderTarget, .label = "deep-volume"}), std::logic_error);
+}
+
 // A texture names its last level, so a driver that ignores the level count of immutable storage still samples a texture of one level as complete.
 TEST_P(OpenGlDeviceTest, LimitsTheLevelsOfATextureToTheLevelsItHas) {
     const Device::Image image = device->makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::Dynamic, .label = "level-count"});

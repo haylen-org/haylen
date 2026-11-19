@@ -218,6 +218,8 @@ class Device final : public gpu::Device {
     int currentSurface = 0;
     std::string adapterName;
     Capabilities capabilities;
+    int maxVolumeSize = 0;
+    int maxCubeSize = 0;
     bool noFloatFiltering = false;
     // Whether samplers filter anisotropically where the context can, which the driver issues turn off for a driver whose anisotropic filtering ignores the slopes of a lookup.
     bool anisotropic = true;
