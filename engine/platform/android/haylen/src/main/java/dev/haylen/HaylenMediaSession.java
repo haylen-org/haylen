@@ -7,7 +7,6 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
@@ -16,7 +15,6 @@ import android.util.Log;
 import android.view.KeyEvent;
 import androidx.core.content.ContextCompat;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -33,8 +31,6 @@ final class HaylenMediaSession extends MediaSession.Callback {
     private static final int NEXT = 4;
     private static final int PREVIOUS = 5;
     private static final int SEEK = 6;
-    // The longest side of the artwork that the controls keep, which Android shows at a few hundred pixels at most.
-    private static final int ARTWORK_MAX_SIDE = 1024;
 
     private static HaylenMediaSession current;
 
@@ -48,9 +44,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
 
     private final HaylenActivity activity;
     private final MediaSession session;
-    // The bytes of the artwork shown last and their picture, so an update that only moves the position decodes nothing.
-    private byte[] artworkBytes;
-    private Bitmap artworkPicture;
+    private final HaylenArtwork shownArtwork = new HaylenArtwork();
 
     private HaylenMediaSession(HaylenActivity owner) {
         activity = owner;
@@ -148,7 +142,7 @@ final class HaylenMediaSession extends MediaSession.Callback {
             metadata.putLong(MediaMetadata.METADATA_KEY_DURATION, duration);
         }
 
-        Bitmap art = decodeArtwork(artwork);
+        Bitmap art = shownArtwork.decode(artwork);
         if (art != null) {
             metadata.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
         }
@@ -171,31 +165,6 @@ final class HaylenMediaSession extends MediaSession.Callback {
         session.setPlaybackState(state.build());
         session.setActive(true);
         notifyShade(info, art);
-    }
-
-    // The picture decodes at the smallest scale of two that fits `ARTWORK_MAX_SIDE`, so the bytes of a large image never hold a full bitmap on the UI thread.
-    private Bitmap decodeArtwork(byte[] artwork) {
-        if (artwork == null || artwork.length == 0) {
-            return null;
-        }
-
-        if (Arrays.equals(artwork, artworkBytes)) {
-            return artworkPicture;
-        }
-
-        BitmapFactory.Options bounds = new BitmapFactory.Options();
-        bounds.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(artwork, 0, artwork.length, bounds);
-
-        BitmapFactory.Options scaled = new BitmapFactory.Options();
-        scaled.inSampleSize = 1;
-        while (Math.max(bounds.outWidth, bounds.outHeight) / scaled.inSampleSize > ARTWORK_MAX_SIDE) {
-            scaled.inSampleSize *= 2;
-        }
-
-        artworkBytes = artwork;
-        artworkPicture = BitmapFactory.decodeByteArray(artwork, 0, artwork.length, scaled);
-        return artworkPicture;
     }
 
     // The notification opens the activity of the app when tapped, and stays while the session lives.

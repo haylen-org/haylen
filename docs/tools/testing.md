@@ -401,6 +401,14 @@ So the headless player exits with 1 when a test raised an error, failed a check 
 
 The variable `HAYLEN_TESTS_SHARD` of the headless player, such as `HAYLEN_TESTS_SHARD=2/4`, runs one part of the automatic run, so several machines run the project side by side. Whole categories go to the shards, the category with the most tests first, each to the shard with the fewest tests so far, so the shards take about the same time and together run every test once. Every test starts from the progress screen alone on the stack and restores what it changed, so it passes whichever tests ran before it.
 
+## The tests of the Android libraries
+
+The Java classes of the `haylen` library have tests of their own in `engine/platform/android/haylen/src`. The tests in `test/` need no device, such as the ones of the queue of permission prompts, and `sdk build --target android` runs them through the Gradle task `:haylen:testReleaseUnitTest` before it publishes the libraries. The tests in `androidTest/` need Android, such as the ones of the artwork of the now-playing controls and of the tree of accessible elements, and run on a device or the emulator through the task `:haylen:connectedDebugAndroidTest` of the Gradle project in `engine/platform/android`, with the properties that `sdk build --target android` passes to it:
+
+```sh
+gradle -p engine/platform/android :haylen:connectedDebugAndroidTest -PhaylenNativeLibraries=<sdk>/jniLibs -PhaylenVarnSourceDir=<varn sources> -PhaylenMavenDir=<sdk>/maven -PhaylenBuildDirectory=build/engine/android-libraries-debug
+```
+
 ## The UI tests
 
 The UI tests drive an app on a simulator the way a person does: they tap, drag and use the system UI, such as the controls that arrange the windows of iPadOS. They run on the iOS and iPadOS simulators, on the Apple TV simulator, where a test presses the buttons of the remote through `XCUIRemote` and types on the keyboard of the system, and on the Apple Vision Pro simulator, where a tap arrives as a look and a pinch.

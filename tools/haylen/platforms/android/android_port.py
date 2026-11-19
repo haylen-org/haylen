@@ -32,6 +32,8 @@ class AndroidPort(EnginePort):
     ABIS_FOLDER = "abis"
     PLAYERS_FOLDER = "jniLibs"
     MAVEN_FOLDER = "maven"
+    # The tests of the `haylen` library that need no device, which run before the libraries publish.
+    UNIT_TESTS = ":haylen:testReleaseUnitTest"
 
     def describe(self) -> PortDescription:
         target = PortTarget(
@@ -150,7 +152,7 @@ class AndroidPort(EnginePort):
         names = ", ".join(f'"{entry.abi}"' for entry in slices)
         self.context.terminal.step(f"Publishing the Android libraries of the engine with the players of {names}")
         builds = Repository.ENGINE_BUILDS / f"android-libraries-{request.configuration.value.lower()}"
-        tasks = [f":{module}:publishReleasePublicationToArtifactsRepository" for module in AndroidPlatform.LIBRARIES]
+        tasks = [AndroidPort.UNIT_TESTS, *(f":{module}:publishReleasePublicationToArtifactsRepository" for module in AndroidPlatform.LIBRARIES)]
         command: list[object] = [Gradle.path(self.context), "-p", AndroidPlatform.LIBRARY_PROJECT, *tasks, f"--max-workers={self.context.jobs}", "--project-cache-dir", builds / "gradle-cache"]
         command += [f"-PhaylenNativeLibraries={players}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}", f"-PhaylenBuildDirectory={builds}"]
         self.context.process.run(command, env=self.context.environment)

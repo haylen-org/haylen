@@ -11,7 +11,6 @@ import android.util.Log;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -45,25 +44,34 @@ final class HaylenPermissions {
 
     private static final String PREFERENCES = "haylen.permissions";
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
-    private static final ArrayDeque<Request> queue = new ArrayDeque<>();
     private static final List<HaylenPermission> engine = List.of(new HaylenPermission("screens", "every screen"), new LocalNetwork());
     private static ActivityResultLauncher<String[]> launcher;
-    // Whether the request at the head of the queue shows its prompt.
-    private static boolean showing;
+    private static final HaylenPermissionQueue<Request> queue = new HaylenPermissionQueue<>(new HaylenPermissionQueue.Prompts<>() {
+        @Override
+        public boolean show(Request request) {
+            return HaylenPermissions.show(request);
+        }
+
+        // The person may grant less than the prompt asked for, such as the approximate location for a request of the precise one, so the answer reads what the app holds.
+        @Override
+        public void answerPrompted(Request request) {
+            request.answer().answer(request.permission().isGranted(request.application()) ? "granted" : "denied", "", Collections.emptyList());
+        }
+
+        @Override
+        public void answerWithoutPrompt(Request request) {
+            answerState(request.permission(), request.application(), request.answer());
+        }
+    });
 
     private HaylenPermissions() {}
 
     // Called in `onCreate` of every activity, before it starts. A request that showed while the activity was recreated answers through the launcher of the new one. An activity that starts anew follows one that finished for good, whose prompt Android never answers, so the requests of its app answer the state that the app holds, without a prompt.
     static void activityCreated(HaylenActivity activity, Bundle savedInstanceState) {
-        launcher = activity.getActivityResultRegistry().register("haylen.permissions", activity, new ActivityResultContracts.RequestMultiplePermissions(), HaylenPermissions::answered);
+        launcher = activity.getActivityResultRegistry().register("haylen.permissions", activity, new ActivityResultContracts.RequestMultiplePermissions(), results -> queue.answered());
 
-        if (savedInstanceState != null) {
-            return;
-        }
-
-        showing = false;
-        for (Request request = queue.poll(); request != null; request = queue.poll()) {
-            answerState(request.permission(), activity, request.answer());
+        if (savedInstanceState == null) {
+            queue.answerWithoutPrompts();
         }
     }
 
@@ -128,9 +136,6 @@ final class HaylenPermissions {
         }
 
         queue.add(new Request(permission, permission.requested(context, requirements), answer, context.getApplicationContext()));
-        if (queue.size() == 1) {
-            show(queue.peek());
-        }
     }
 
     private static void answerState(HaylenPermission permission, Context context, Answer answer) {
@@ -214,37 +219,17 @@ final class HaylenPermissions {
         answer.answer(state.equals("unsupported") ? state : "denied", message, missing);
     }
 
-    private static void show(Request request) {
+    // Without an activity no prompt shows, and the request answers that its state is unknown.
+    private static boolean show(Request request) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null || launcher == null) {
             request.answer().answer("unknown", "", Collections.emptyList());
-            next();
-            return;
+            return false;
         }
 
         activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(request.permission().getName(), true).apply();
-        showing = true;
         launcher.launch(request.asked());
-    }
-
-    // A request that ends after the process ended reaches the launcher of the new activity, while no request waits for it. The answer reads what the app holds, since the person may grant less than the prompt asked for, such as the approximate location for a request of the precise one.
-    private static void answered(Map<String, Boolean> results) {
-        Request request = queue.peek();
-        if (!showing || request == null) {
-            return;
-        }
-
-        showing = false;
-        request.answer().answer(request.permission().isGranted(request.application()) ? "granted" : "denied", "", Collections.emptyList());
-        next();
-    }
-
-    private static void next() {
-        queue.poll();
-        Request following = queue.peek();
-        if (following != null) {
-            show(following);
-        }
+        return true;
     }
 
     // Only an activity tells whether Android still shows the prompt, so without one a permission the engine asked for counts as refused.

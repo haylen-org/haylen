@@ -23,6 +23,7 @@ android {
     defaultConfig {
         minSdk = 27
         consumerProguardFiles("consumer-rules.pro")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -48,6 +49,11 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.customview:customview:1.2.0")
     implementation("androidx.window:window-java:1.5.1")
+
+    // The tests of the library: the logic without Android on the JVM, and the classes that need Android on a device or the emulator.
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }
 
 // Only the HTTP transport and the data views of the Varn Android library run inside a Haylen app, because the engine links Varn into the player library itself and registers their natives from it.
