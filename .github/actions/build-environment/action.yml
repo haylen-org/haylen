@@ -1,5 +1,5 @@
 name: Build environment
-description: Installs what a job builds the engine with, restores the sources of the dependencies and the tools that the builds download from the bucket "haylen-ci", and compiles through sccache with the compiler cache of the same bucket.
+description: Installs what a job builds the engine with, restores the sources of the dependencies, their prebuilt packages and the tools that the builds download from the bucket "haylen-ci", and compiles through sccache with the compiler cache of the same bucket.
 
 inputs:
   packages:
@@ -17,6 +17,9 @@ inputs:
   emscripten:
     description: Whether the job compiles with Emscripten.
     default: "false"
+  dependencies:
+    description: The name of the prebuilt packages of the dependencies of the job, such as "linux-sdk", for a job that builds the engine. The job restores them before it builds and, in the runs of the default branch, saves those it made with the action "caches" at its end.
+    default: ""
   sccache-version:
     description: The release of sccache that compiles every source of the job, its newest one.
     default: "v0.19.0"
@@ -75,7 +78,29 @@ runs:
       shell: bash
       run: echo "EM_CACHE=${{ github.workspace }}/.cache/emscripten" >> "$GITHUB_ENV"
 
-    # The bucket "haylen-ci" keeps one layer under each prefix: the objects of sccache under "sccache/", the sources of the dependencies under "dependencies/" and the tools that the builds download under "tools/". Each cache is an archive whose key ends with everything its contents depend on, so a new pin makes its own and no cache hides a failure. One job of each cache saves it in the runs of the default branch, through the action "caches" at its end, once the job succeeded with a key that the bucket does not hold yet. A pull request from a fork gets no secrets, so it downloads them itself.
+    # The prebuilt packages of the dependencies depend on the compilers of the runner, so their keys name the version of each compiler that a job may build with.
+    - name: Name the compilers of the runner
+      if: inputs.dependencies != ''
+      id: compilers
+      shell: bash
+      run: |
+        case "${{ runner.os }}" in
+          Linux)
+            compilers="gcc-$(gcc -dumpfullversion)"
+            if command -v clang > /dev/null; then
+              compilers="$compilers-clang-$(clang -dumpversion)"
+            fi
+            ;;
+          macOS)
+            compilers="xcode-$(xcodebuild -version | tr -s ' \n' '-' | sed 's/-$//')"
+            ;;
+          Windows)
+            compilers="msvc-$VCToolsVersion"
+            ;;
+        esac
+        echo "name=$compilers" >> "$GITHUB_OUTPUT"
+
+    # The bucket "haylen-ci" keeps one layer under each prefix: the objects of sccache under "sccache/", the sources of the dependencies and their prebuilt packages under "dependencies/" and the tools that the builds download under "tools/". Each cache is an archive whose key ends with everything its contents depend on, so a new pin or compiler makes its own and no cache hides a failure. One job of each cache saves it in the runs of the default branch, through the action "caches" at its end, once the job succeeded with a key that the bucket does not hold yet. A pull request from a fork gets no secrets, so it downloads and builds them itself.
     - name: Restore the caches
       if: env.SCCACHE_ENDPOINT != ''
       shell: bash
@@ -92,6 +117,9 @@ runs:
           fi
         }
         bash "$caches" restore "dependencies/sources-${{ runner.os }}-$pins" "$(saving "${{ inputs.save-sources }}")" .cache/cpm
+        if [ -n "${{ inputs.dependencies }}" ]; then
+          bash "$caches" restore "dependencies/packages-${{ inputs.dependencies }}-$system-${{ steps.compilers.outputs.name }}-$pins-${{ hashFiles('tools/haylen/toolchains/android_ndk.py', 'tools/haylen/toolchains/emscripten.py') }}" "$(saving true)" .cache/packages
+        fi
         bash "$caches" restore "tools/shader-compiler-$system-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}" "$(saving "${{ contains(inputs.save-tools, 'shader-compiler') }}")" ".tools/haylen-shaderc-*"
         if [ "${{ inputs.xcodegen }}" = "true" ]; then
           bash "$caches" restore "tools/xcodegen-$system-${{ hashFiles('tools/haylen/toolchains/xcodegen.py') }}" "$(saving "${{ contains(inputs.save-tools, 'xcodegen') }}")" ".tools/xcodegen-*"
