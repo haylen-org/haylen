@@ -10,6 +10,7 @@ import android.location.LocationManager
 import android.location.provider.ProviderProperties
 import android.os.Build
 import android.os.SystemClock
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.BySelector
@@ -237,8 +238,21 @@ abstract class HaylenUiTestCase {
     // Taps the button of the permission dialog of the system with one of the resource ids of the permission controller, such as "permission_allow_foreground_only_button", "permission_allow_button" or "permission_deny_button". The dialog names a button by the state of the permission, such as "permission_deny_and_dont_ask_again_button" for a refusal that the person made before, so a test names every id of the answer.
     fun answerPermission(vararg buttons: String) {
         val answer = findInDialog(permissionControl(*buttons), "a button ${buttons.joinToString(" or ") { "\"$it\"" }} of a permission dialog")
+        waitForFocusedWindow(*buttons)
         answer.click()
         assertTrue("The permission dialog stays after the tap.", device.wait(Until.gone(permissionControl(*buttons)), TIMEOUT))
+    }
+
+    // Waits until the window that holds a control of the permission controller with one of the resource ids has the input focus. A dialog shows its buttons before its window takes input, and a tap meanwhile goes to the activity under it, which drops it.
+    private fun waitForFocusedWindow(vararg ids: String) {
+        waitUntil("The window of the permission dialog does not take the input focus after ${TIMEOUT / 1000} seconds.") {
+            instrumentation.uiAutomation.windows.any { window -> window.isFocused && holdsControl(window, ids) }
+        }
+    }
+
+    private fun holdsControl(window: AccessibilityWindowInfo, ids: Array<out String>): Boolean {
+        val root = window.root ?: return false
+        return ids.any { id -> root.findAccessibilityNodeInfosByViewId("$PERMISSION_CONTROLLER:id/$id").isNotEmpty() }
     }
 
     // Waits for a control of the permission dialog of the system, scrolling the dialog toward it, since a dialog on a phone held in landscape shows its buttons only below the part that scrolls, such as the choice of a precise or an approximate location.
@@ -305,11 +319,12 @@ abstract class HaylenUiTestCase {
         assertTrue("The app stays in front after Home.", device.wait(Until.gone(By.pkg(identifier).depth(0)), TIMEOUT))
     }
 
-    // Waits until the keyboard of the system shows, the window of the input method that the device uses, so the keys that a test types reach the field that edits instead of the controls of the app.
+    // Waits until the keyboard of the system shows, the window of the input method, so the keys that a test types reach the field that edits instead of the controls of the app. The window tells it by its type, since an input method may draw its keys without nodes that UI Automator finds, as the keyboard of the Android emulator does.
     fun waitForKeyboard() {
         val method = device.executeShellCommand("settings get secure default_input_method").trim()
-        assertTrue("The device names no input method.", method.contains("/"))
-        waitFor(By.pkg(method.substringBefore("/")), "the keyboard of the input method \"$method\"")
+        waitUntil("The screen does not show the keyboard of the input method \"$method\" after ${TIMEOUT / 1000} seconds.") {
+            instrumentation.uiAutomation.windows.any { window -> window.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+        }
     }
 
     // Removes the task of the app from the recent apps, which the system does when a person swipes its card away, whatever the launcher draws, and ends the process once it holds no activity, as the system does when it needs the memory, so the next launch starts a new process. The alarms and notifications of the app stay, which a force stop would cancel.
