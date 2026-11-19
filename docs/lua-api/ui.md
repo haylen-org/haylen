@@ -1562,12 +1562,12 @@ local answer = ui.present(Confirm, {style = 'dialog'}).result:await()
 
 A window is a floating panel with a title bar that the pointer drags around, such as an inventory or a map over the game. It holds a column of children and takes the properties of `column` for them. It takes no room in the layout and sizes itself to its children, unless it has a `width` or `height`. It pads its content like a panel. It draws with the theme `window` surface, on a shadow half again as large as the shadow of a card.
 
-A window stays inside the safe area at every scale of the UI, wherever `x` and `y` place it. Only the part of its body below the title bar may leave the bottom. Its close button stands inside the padding of the theme `titleBar` surface, clear of the ends of the bar. Dragging the title bar reports `move`, with the new `x` and `y`, once the pointer lets go. Closing reports `close`. Moves of the focus reach the controls of the window from the rest of its GUI and bring it to the front. The action `uiCancel` closes a closable window while the focus is inside it.
+A window stays inside the safe area at every scale of the UI, wherever `x` and `y` place it. Only the part of its body below the title bar may leave the bottom. Its close button stands inside the padding of the theme `titleBar` surface, clear of the ends of the bar. Dragging the title bar reports `move`, with the new `x` and `y` in the same coordinates, once the pointer lets go. Closing reports `close`. Moves of the focus reach the controls of the window from the rest of its GUI and bring it to the front. The action `uiCancel` closes a closable window while the focus is inside it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `title` | text | none | The title in the title bar. |
-| `x`, `y` | number | the middle of the safe area | The position of the top left corner, from the top left of the screen. Setting them moves the window there. Setting only one keeps the other coordinate where the window is. |
+| `x`, `y` | number | the middle of the safe area | The position of the top left corner, in the design coordinates of screen canvases like `gui:bounds`, so a window opens over a node at its bounds at every UI scale and screen shape. Setting them moves the window there. Setting only one keeps the other coordinate where the window is. |
 | `open` | boolean | `true` | Shows the window. A window that the player closed shows again when `set` sets `open = true`. |
 | `closable` | boolean | `false` | Adds the close button to the title bar and lets `uiCancel` close the window. |
 | `movable` | boolean | `true` | Lets the pointer drag the title bar. |

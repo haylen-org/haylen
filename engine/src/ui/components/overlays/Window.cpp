@@ -28,9 +28,9 @@ void Window::readMore(PropertyReader& reader) {
     }
 
     // A coordinate given alone keeps the other one where the window is.
-    if (position) {
-        requestedX = position->x;
-        requestedY = position->y;
+    if (designPosition) {
+        requestedX = designPosition->x;
+        requestedY = designPosition->y;
     }
 
     if (reader.has("x")) {
@@ -77,8 +77,10 @@ void Window::render(Context& context, const math::Rect&) {
     const math::Rect safe = context.getBackend().getSafeRect();
     const float header = context.getMetric(Theme::Metric::WindowTitleHeight);
     const math::Vec2 centered = safe.getCenter() - size * 0.5F;
-    const math::Vec2 start = position.value_or(math::Vec2{requestedX.value_or(centered.x), requestedY.value_or(centered.y)});
+    const math::Vec2 requested = context.toUi({requestedX.value_or(0.0F), requestedY.value_or(0.0F)});
+    const math::Vec2 start = position.value_or(math::Vec2{requestedX ? requested.x : centered.x, requestedY ? requested.y : centered.y});
     position = math::Vec2{std::clamp(start.x, safe.x, std::max(safe.x, safe.getRight() - size.x)), std::clamp(start.y, safe.y, std::max(safe.y, safe.getBottom() - header))};
+    designPosition = context.toDesign(*position);
     const math::Vec2 placed = *position - math::Vec2{0.0F, context.getBackend().getKeyboardOffset()};
     setBounds({placed.x, placed.y, size.x, size.y});
 
@@ -167,7 +169,8 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
         dragging = true;
         ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
     } else if (std::exchange(dragging, false)) {
-        context.emit(*this, "move", {{"x", core::JsonNumber::fromFloat(position->x)}, {"y", core::JsonNumber::fromFloat(position->y)}});
+        const math::Vec2 moved = context.toDesign(*position);
+        context.emit(*this, "move", {{"x", core::JsonNumber::fromFloat(moved.x)}, {"y", core::JsonNumber::fromFloat(moved.y)}});
     }
 }
 

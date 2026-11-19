@@ -1042,6 +1042,22 @@ TEST_F(UiLuaTest, PhysicalScaleKeepsControlsTheSameSize) {
     EXPECT_NE(fixture.lua("ui.setScale(10)").find("The UI scale must be from 0.25 to 4."), std::string::npos);
 }
 
+TEST_F(UiLuaTest, PlacesWindowsInTheCoordinatesOfBounds) {
+    // clang-format off
+    fixture.runLua(R"(
+        ui = require('haylen.ui')
+        ui.setScale(1.5)
+        page = ui.mount(ui.column{padding = 120, ui.panel{id = 'dock', width = 300, height = 200}, ui.window{id = 'bag', title = 'Bag', width = 300}}, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    fixture.runLua("local dock = page:bounds('dock') page:set('bag', {x = dock.x, y = dock.y})");
+    fixture.frames(2);
+
+    // A window placed at the bounds of a node lies over that node, in the same design coordinates.
+    EXPECT_EQ(fixture.lua("local dock, bag = page:bounds('dock'), page:bounds('bag') return string.format('%.1f %.1f', bag.x - dock.x, bag.y - dock.y)"), "0.0 0.0");
+}
+
 TEST_F(UiLuaTest, BuildsTheComponentsForGamesAndApps) {
     // clang-format off
     fixture.runLua(R"(

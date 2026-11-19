@@ -50,6 +50,7 @@ class Window final : public Linear {
     std::optional<float> requestedX;
     std::optional<float> requestedY;
     std::optional<math::Vec2> position;
+    std::optional<math::Vec2> designPosition;
     bool dragging = false;
 };
 
