@@ -406,7 +406,7 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Create the virtual device
-        run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --package "system-images;android-37.0;default;x86_64"
+        run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --device medium_phone --package "system-images;android-37.0;default;x86_64"
       - name: Create an upload key
         run: uv run --locked haylen --verbose app sign samples/tests --target android
       - name: Start the protected release
