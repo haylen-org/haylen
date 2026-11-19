@@ -164,7 +164,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
         // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the permissions and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
         getLifecycle().addObserver(new HaylenAudioFocus(this));
-        HaylenPermissions.activityCreated(this);
+        HaylenPermissions.activityCreated(this, savedInstanceState);
         HaylenScreens.activityCreated(this);
         HaylenPlugins.activityCreated(this, savedInstanceState);
 

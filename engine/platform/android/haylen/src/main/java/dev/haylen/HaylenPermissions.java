@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -39,18 +40,31 @@ final class HaylenPermissions {
         }
     }
 
+    // A request that waits for its prompt, with the permissions of the manifest it asks for and the context of the app that reads its answer.
+    private record Request(HaylenPermission permission, String[] asked, Answer answer, Context application) {}
+
     private static final String PREFERENCES = "haylen.permissions";
     private static final Handler mainThread = new Handler(Looper.getMainLooper());
-    private static final ArrayDeque<Runnable> queue = new ArrayDeque<>();
+    private static final ArrayDeque<Request> queue = new ArrayDeque<>();
     private static final List<HaylenPermission> engine = List.of(new HaylenPermission("screens", "every screen"), new LocalNetwork());
     private static ActivityResultLauncher<String[]> launcher;
-    private static Runnable settle;
+    // Whether the request at the head of the queue shows its prompt.
+    private static boolean showing;
 
     private HaylenPermissions() {}
 
-    // Called in `onCreate` of every activity, before it starts. A request that showed while the activity was recreated answers through the launcher of the new one.
-    static void activityCreated(HaylenActivity activity) {
+    // Called in `onCreate` of every activity, before it starts. A request that showed while the activity was recreated answers through the launcher of the new one. An activity that starts anew follows one that finished for good, whose prompt Android never answers, so the requests of its app answer the state that the app holds, without a prompt.
+    static void activityCreated(HaylenActivity activity, Bundle savedInstanceState) {
         launcher = activity.getActivityResultRegistry().register("haylen.permissions", activity, new ActivityResultContracts.RequestMultiplePermissions(), HaylenPermissions::answered);
+
+        if (savedInstanceState != null) {
+            return;
+        }
+
+        showing = false;
+        for (Request request = queue.poll(); request != null; request = queue.poll()) {
+            answerState(request.permission(), activity, request.answer());
+        }
     }
 
     // Called from any thread of the engine with the name of a permission of the engine, which hears through `nativeAnswered` with the same request the state, without a prompt. The engine runs only while an activity exists, and without one the state stays unknown.
@@ -113,10 +127,9 @@ final class HaylenPermissions {
             return;
         }
 
-        String[] asked = permission.requested(context, requirements);
-        queue.add(() -> show(permission, asked, answer));
+        queue.add(new Request(permission, permission.requested(context, requirements), answer, context.getApplicationContext()));
         if (queue.size() == 1) {
-            queue.peek().run();
+            show(queue.peek());
         }
     }
 
@@ -201,36 +214,36 @@ final class HaylenPermissions {
         answer.answer(state.equals("unsupported") ? state : "denied", message, missing);
     }
 
-    private static void show(HaylenPermission permission, String[] asked, Answer answer) {
+    private static void show(Request request) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null || launcher == null) {
-            answer.answer("unknown", "", Collections.emptyList());
+            request.answer().answer("unknown", "", Collections.emptyList());
             next();
             return;
         }
 
-        activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(permission.getName(), true).apply();
-        settle = () -> answer.answer(permission.isGranted(activity) ? "granted" : "denied", "", Collections.emptyList());
-        launcher.launch(asked);
+        activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putBoolean(request.permission().getName(), true).apply();
+        showing = true;
+        launcher.launch(request.asked());
     }
 
     // A request that ends after the process ended reaches the launcher of the new activity, while no request waits for it. The answer reads what the app holds, since the person may grant less than the prompt asked for, such as the approximate location for a request of the precise one.
     private static void answered(Map<String, Boolean> results) {
-        Runnable waiting = settle;
-        if (waiting == null) {
+        Request request = queue.peek();
+        if (!showing || request == null) {
             return;
         }
 
-        settle = null;
-        waiting.run();
+        showing = false;
+        request.answer().answer(request.permission().isGranted(request.application()) ? "granted" : "denied", "", Collections.emptyList());
         next();
     }
 
     private static void next() {
         queue.poll();
-        Runnable following = queue.peek();
+        Request following = queue.peek();
         if (following != null) {
-            following.run();
+            show(following);
         }
     }
 
