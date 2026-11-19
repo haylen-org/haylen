@@ -35,6 +35,20 @@ class AppRunTest:
         every = DevelopmentAddress.of(DevelopmentReach.LOOPBACK, "0.0.0.0")
         assert (every.listen, every.websocket(9000, "token")) == ("0.0.0.0", f"ws://127.0.0.1:9000{path}")
 
+    def test_a_device_behind_a_tunnel_reaches_the_server_at_the_address_of_this_machine_on_the_tunnel(self, monkeypatch):
+        probe = mock.MagicMock()
+        probe.__enter__.return_value.getsockname.return_value = ("fd11:495e:e358::2", 9, 0, 0)
+        opened = mock.Mock(return_value=probe)
+        monkeypatch.setattr(socket, "socket", opened)
+        path = f"{DevelopmentServer.PATH}?token=token"
+
+        tunnel = DevelopmentAddress.of(DevelopmentReach.TUNNEL, "127.0.0.1", "fd11:495e:e358::1")
+        assert (tunnel.listen, tunnel.websocket(8000, "token")) == ("fd11:495e:e358::2", f"ws://[fd11:495e:e358::2]:8000{path}")
+        assert opened.call_args.args == (socket.AF_INET6, socket.SOCK_DGRAM)
+        assert probe.__enter__.return_value.connect.call_args.args == (("fd11:495e:e358::1", 9),)
+        named = DevelopmentAddress.of(DevelopmentReach.TUNNEL, "10.0.0.5", "fd11:495e:e358::1")
+        assert (named.listen, named.reached) == ("10.0.0.5", "10.0.0.5")
+
     def test_a_device_run_on_a_machine_without_a_network_stops_with_what_to_do(self, monkeypatch):
         probe = mock.MagicMock()
         probe.__enter__.return_value.connect.side_effect = OSError(51, "Network is unreachable")

@@ -49,6 +49,19 @@ class AppleDevices:
             found.append(Device(hardware["udid"], properties["state"]["name"], "device", state, (AppleDevices.DEVICE_TARGETS[hardware["platform"]],)))
         return found
 
+    def tunnel_address(self, device: Device) -> str:
+        """The address of a device on the CoreDevice tunnel that devicectl keeps to it while it reaches the device, over a cable or the network, as its JSON file reports. The development server reaches an app on the device through it, since an app accepts and opens connections on that tunnel without the local network permission of iOS."""
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / "device.json"
+            self.context.process.capture(["xcrun", "devicectl", "device", "info", "details", "--device", device.identifier, "--quiet", "--omit-deprecated-fields-in-json", "--json-output", output])
+            details = json.loads(output.read_text(encoding="utf-8"))["result"]
+        address = details.get("properties", {}).get("connection", {}).get("tunnelIPAddressString")
+        if not address:
+            raise UnsupportedTarget(
+                f'The device "{device.name}" has no tunnel to this Mac, through which the development server reaches the app. Unlock the device and connect it by cable or on the same network, so devicectl reaches it, and run the app again.'
+            )
+        return str(address)
+
     def device(self, requested: str | None, target: str) -> Device:
         """The paired device of a target that `--device` names by its identifier or its name."""
         if not requested:

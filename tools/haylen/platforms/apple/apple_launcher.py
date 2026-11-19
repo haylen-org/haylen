@@ -64,7 +64,8 @@ class AppleLauncher:
         device = AppleDevices(self.context).device(launch.device, target.name)
         self.context.terminal.step(f'Installing the app on "{device.name}"')
         self.context.process.run(["xcrun", "devicectl", "device", "install", "app", "--device", device.identifier, product.path])
-        with AppRun(self.context, product, launch, DevelopmentReach.NETWORK, bundle.package) as run:
+        tunnel = AppleDevices(self.context).tunnel_address(device) if launch.development else None
+        with AppRun(self.context, product, launch, DevelopmentReach.TUNNEL, bundle.package, tunnel) as run:
             environment = {**AppleLauncher.DEVICE_LOG, **AppleLauncher.CAPTURE} if run.developing else AppleLauncher.DEVICE_LOG
             variables = ["--environment-variables", json.dumps(environment)]
             # The launch ends the app when it stops, as Ctrl+C does.

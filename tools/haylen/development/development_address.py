@@ -8,7 +8,7 @@ from haylen.development.development_server import DevelopmentServer
 
 @dataclass(frozen=True)
 class DevelopmentAddress:
-    """Where the development server of a run listens and the address at which the app reaches this machine. An app on the loopback address reaches the server on the host of the command, and a device on the local network reaches it on every address of this machine unless the host names one."""
+    """Where the development server of a run listens and the address at which the app reaches this machine. An app on the loopback address reaches the server on the host of the command, a device behind a tunnel reaches it on the address of this machine on that tunnel, and a device on the local network reaches it on every address of this machine, unless the host names one."""
 
     LOOPBACK = "127.0.0.1"
     EVERY_ADDRESS = "0.0.0.0"
@@ -19,7 +19,12 @@ class DevelopmentAddress:
     reached: str
 
     @staticmethod
-    def of(reach: DevelopmentReach, host: str) -> DevelopmentAddress:
+    def of(reach: DevelopmentReach, host: str, peer: str | None = None) -> DevelopmentAddress:
+        """The address for an app that reaches this machine as `reach` says, where `peer` is the address of the device on its tunnel for `DevelopmentReach.TUNNEL`."""
+        if reach is DevelopmentReach.TUNNEL and host == DevelopmentAddress.LOOPBACK:
+            local = DevelopmentAddress.toward(str(peer))
+            return DevelopmentAddress(local, local)
+
         network = reach is DevelopmentReach.NETWORK
         listen = DevelopmentAddress.EVERY_ADDRESS if network and host == DevelopmentAddress.LOOPBACK else host
         if listen != DevelopmentAddress.EVERY_ADDRESS:
@@ -37,6 +42,18 @@ class DevelopmentAddress:
                 raise DevelopmentFailed(f'This machine has no address on a network that devices reach: {error.strerror}. Join a network, or name the address with "--host".') from error
             return probe.getsockname()[0]
 
+    @staticmethod
+    def toward(peer: str) -> str:
+        """Returns the address of this machine on the route to a device, such as its address on the tunnel of the device, which a UDP socket finds without sending anything."""
+        family = socket.AF_INET6 if ":" in peer else socket.AF_INET
+        with socket.socket(family, socket.SOCK_DGRAM) as probe:
+            try:
+                probe.connect((peer, DevelopmentAddress.PROBE[1]))
+            except OSError as error:
+                raise DevelopmentFailed(f'This machine has no route to the device at "{peer}": {error.strerror}. Connect the device again, by cable or on the network, as Xcode needs it.') from error
+            return probe.getsockname()[0]
+
     def websocket(self, port: int, token: str) -> str:
-        """The address of the development path that the app connects to, with the token of the run."""
-        return f"ws://{self.reached}:{port}{DevelopmentServer.PATH}?token={token}"
+        """The address of the development path that the app connects to, with the token of the run, and an IPv6 address in brackets."""
+        host = f"[{self.reached}]" if ":" in self.reached else self.reached
+        return f"ws://{host}:{port}{DevelopmentServer.PATH}?token={token}"

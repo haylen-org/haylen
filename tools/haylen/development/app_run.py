@@ -28,12 +28,13 @@ class AppRun:
     ```
     """
 
-    def __init__(self, context: ToolingContext, product: BuildProduct, launch: LaunchRequest, reach: DevelopmentReach, shipped: Path) -> None:
-        """Takes the built product, the launch that `app run` asks for, how the app reaches this machine, and the package folder as the build ships it, whose files the server compares the saved files with, so the app catches up on what changed since the build."""
+    def __init__(self, context: ToolingContext, product: BuildProduct, launch: LaunchRequest, reach: DevelopmentReach, shipped: Path, peer: str | None = None) -> None:
+        """Takes the built product, the launch that `app run` asks for, how the app reaches this machine, with the address of the device on its tunnel for `DevelopmentReach.TUNNEL`, and the package folder as the build ships it, whose files the server compares the saved files with, so the app catches up on what changed since the build."""
         self.context = context
         self.product = product
         self.launch = launch
         self.reach = reach
+        self.peer = peer
         self.shipped = shipped
         self.development: DevelopmentServer | None = None
         self.listener: LocalServer | None = None
@@ -44,7 +45,7 @@ class AppRun:
             return self
 
         resolved = self.product.prepared.product
-        address = DevelopmentAddress.of(self.reach, self.launch.host)
+        address = DevelopmentAddress.of(self.reach, self.launch.host, self.peer)
         development = DevelopmentServer(self.context, resolved.package, DevelopmentServer.folder_manifest(self.shipped), resolved.primary.sdk)
         handler = functools.partial(DevelopmentHandler, development=development)
         try:

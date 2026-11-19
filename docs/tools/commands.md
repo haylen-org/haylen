@@ -96,7 +96,7 @@ Checks that the backend of the target runs apps, then builds the SDK that the ta
 | Option | Meaning |
 | --- | --- |
 | `--device` | The simulator, emulator or device, by an identifier that `haylen devices` lists. The default device of the target otherwise. |
-| `--host` | The address that the development server, and the server of a web page, listen on, `127.0.0.1` by default. For a device on the local network, the development server listens on every address of this machine unless `--host` names one. |
+| `--host` | The address that the development server, and the server of a web page, listen on, `127.0.0.1` by default. For an Apple device, the development server listens on the address of this machine on the CoreDevice tunnel of the device unless `--host` names one. |
 | `--port` | The port of the development server and of a web page, `8000` by default. |
 | `--debugger-port` | The port that an editor attaches its debugger to in Debug, `4711` by default. |
 | `--coep` | The `Cross-Origin-Embedder-Policy` of a web page: `require-corp`, `credentialless` or `off`, the default. |
