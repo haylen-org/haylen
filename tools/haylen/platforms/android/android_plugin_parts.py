@@ -8,6 +8,7 @@ from haylen.core.product_inputs import ProductInputs
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.platforms.android.android_contributions import AndroidContributions
+from haylen.platforms.android.android_template import AndroidTemplate
 from haylen.plugins.implementation import Implementation
 from haylen.plugins.merged_contribution import MergedContribution
 from haylen.plugins.parameter_substitution import ParameterSubstitution
@@ -17,12 +18,15 @@ from haylen.plugins.resolved_plugin import ResolvedPlugin
 
 @dataclass(frozen=True)
 class AndroidPluginParts:
-    """What the plugins of an app bring to its Android project, from their merged contributions: the library module of each plugin, which the project holds at `plugins/<id>/`, the Maven repositories of their SDKs, the Gradle plugins that the app module applies, the manifest placeholders, the files they place in the project, the packs that one of them delivers from Google Play and `haylen-plugins.json`, which names the plugins whose classes the runtime loads when the process starts. The runtime never reads `haylen.json` or a `plugin.json` for them, which a protected release keeps inside its encrypted app domain."""
+    """What the plugins of an app bring to its Android project, from their merged contributions: the library module of each plugin, which the project holds at `plugins/<id>/` as the Gradle project `:<id>` and which reaches the modules of the plugins it depends on through the dependencies that the backend adds to its build script, the Maven repositories of their SDKs, the Gradle plugins that the app module applies, the manifest placeholders, the files they place in the project, the packs that one of them delivers from Google Play and `haylen-plugins.json`, which names the plugins whose classes the runtime loads when the process starts. The runtime never reads `haylen.json` or a `plugin.json` for them, which a protected release keeps inside its encrypted app domain."""
 
     PLUGINS_FILE = "app/src/main/assets/haylen-plugins.json"
     MODULES = "plugins"
+    BUILD_SCRIPT = "build.gradle.kts"
 
     modules: tuple[tuple[str, Path], ...]
+    # The modules of the plugins that each module depends on, by the id of its plugin, in the order of the dependencies of its `plugin.json`.
+    module_dependencies: tuple[tuple[str, tuple[str, ...]], ...]
     repositories: tuple[str, ...]
     gradle_plugins: tuple[tuple[str, str], ...]
     placeholders: tuple[tuple[str, str], ...]
@@ -49,12 +53,17 @@ class AndroidPluginParts:
                     )
             modules.append((owner, module))
 
+        with_modules = {name for name, _ in modules}
+        manifests = {plugin.id: plugin.manifest for plugin in product.plugins}
+        module_dependencies = tuple((name, tuple(dependency for dependency in manifests[name].dependencies if dependency in with_modules)) for name, _ in modules)
+
         packs = project.of_type(AndroidContributions.ASSET_PACKS)
         listed = [
             {"id": plugin.id, "version": plugin.manifest.version.text, "parameters": Frozen.thaw(plugin.parameters)} for plugin in product.plugins if plugin.implementation is Implementation.NATIVE
         ]
         return AndroidPluginParts(
             modules=tuple(modules),
+            module_dependencies=module_dependencies,
             repositories=tuple(str(contribution.field("url")) for contribution in project.of_type(AndroidContributions.MAVEN_REPOSITORY)),
             gradle_plugins=tuple((str(contribution.field("id")), str(contribution.field("version"))) for contribution in project.of_type(AndroidContributions.GRADLE_PLUGIN)),
             placeholders=tuple(
@@ -91,12 +100,23 @@ class AndroidPluginParts:
             return whole is not None and plugin.manifest.parameters[whole[1]].type == "file"
         return False
 
+    @staticmethod
+    def build_script(module: Path, dependencies: tuple[str, ...]) -> bytes:
+        """The build script of a module whose plugin depends on other plugins with modules: the script of the plugin with the modules of those plugins as `api` dependencies, so its code reaches theirs and the modules that depend on it reach them too."""
+        script = (module / AndroidPluginParts.BUILD_SCRIPT).read_text(encoding="utf-8")
+        lines = "\n".join(f"    api(project({AndroidTemplate.kotlin(':' + dependency)}))" for dependency in dependencies)
+        added = f"\n// The modules of the plugins that this plugin depends on, which the Android backend of Haylen adds.\ndependencies {{\n{lines}\n}}\n"
+        return (script.rstrip("\n") + "\n" + added).encode()
+
     def files(self) -> dict[str, bytes | Path]:
         """The files of the project that the plugins bring: their modules, the files they place and the list of the plugins of the runtime."""
         files: dict[str, bytes | Path] = {AndroidPluginParts.PLUGINS_FILE: self.plugins_file}
+        dependencies = dict(self.module_dependencies)
         for identifier, module in self.modules:
             for path in sorted(ProductInputs.folder("", module).values()):
                 files[f"{AndroidPluginParts.MODULES}/{identifier}/{path.relative_to(module).as_posix()}"] = path
+            if dependencies[identifier]:
+                files[f"{AndroidPluginParts.MODULES}/{identifier}/{AndroidPluginParts.BUILD_SCRIPT}"] = AndroidPluginParts.build_script(module, dependencies[identifier])
         for destination, source in self.project_files:
             if source.is_file():
                 files[destination] = source

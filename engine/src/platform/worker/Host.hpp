@@ -27,9 +27,9 @@ class Host final : public platform::NativeHost {
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
-    void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override;
+    void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
-    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
+    void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] bool prepareGpuDevice() override;
@@ -53,15 +53,15 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
   protected:
-    void applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override;
-    void applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
-    void applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override;
+    void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) override;
+    void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] bool allowsQuit() const noexcept override {
         return false;
     }
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
-    void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    void setScreenSaverSuspended(bool value, std::function<void(SystemAnswer answer)> callback) override;
     void applyFrameRate(int framesPerSecond) override;
     void applyMaxPixelDensity(float cap) override;
 

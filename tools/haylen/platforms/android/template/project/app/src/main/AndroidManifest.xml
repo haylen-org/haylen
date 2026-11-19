@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Network access, the network events and the rumble of gamepads need the first three permissions. Reaching the devices of the local network, such as a development server on this computer or a game on the same Wi-Fi, needs the fourth from Android 17, which the person grants at run time, so the app asks for it with `system.requestPermission('localNetwork')`, as the development session of a debug build does by itself. An app that does not use a feature names its permission in `platforms.android.manifest.removedPermissions` of `haylen.json`, and the feature then logs once what is missing and does nothing or fails its calls with the code `unsupported`. -->
+    <!-- Network access, the network events and the rumble of gamepads need these normal permissions, which Android grants at the install without asking. The development server reaches the app through `adb reverse` and the loopback address, which needs no permission, and an app that reaches the devices of the local network takes a plugin that declares and asks for `ACCESS_LOCAL_NETWORK`. An app that does not use a feature names its permission in `platforms.android.manifest.removedPermissions` of `haylen.json`, and the feature then logs once what is missing and does nothing or fails its calls with the code `unsupported`. -->
 {{PERMISSIONS}}
 
     <!-- Phones, tablets and TVs run the app, so it needs neither a touchscreen nor a screen orientation, and it takes gamepads and TV remotes. -->

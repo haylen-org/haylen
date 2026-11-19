@@ -11,7 +11,6 @@
 #include "haylen/port/LinkService.hpp"
 #include "haylen/port/MediaService.hpp"
 #include "haylen/port/NetworkService.hpp"
-#include "haylen/port/PermissionService.hpp"
 #include "haylen/port/PlatformService.hpp"
 #include "haylen/port/ScreenService.hpp"
 #include "haylen/port/VideoService.hpp"
@@ -25,7 +24,6 @@ struct Services {
     std::shared_ptr<DesktopService> desktop;
     std::shared_ptr<ScreenService> screen;
     std::shared_ptr<BridgeService> bridge;
-    std::shared_ptr<PermissionService> permissions;
     std::shared_ptr<NetworkService> network;
     std::shared_ptr<LinkService> links;
     std::shared_ptr<MediaService> media;

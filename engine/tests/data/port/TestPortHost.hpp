@@ -22,14 +22,14 @@ class TestPortHost final : public port::Host {
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
     [[nodiscard]] bool isFullscreen() const noexcept override;
-    void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    void setFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override;
     void setTitle(std::string_view value) override;
     void setCursor(Window::Cursor value) override;
     void setCursorVisible(bool value) override;
-    void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override;
-    void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override;
+    void setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override;
+    void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
-    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
+    void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] bool prepareGpuDevice() override;
@@ -43,7 +43,7 @@ class TestPortHost final : public port::Host {
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
     void setGamepadMotion(input::GamepadMotion::Sensors sensors) override;
     void setFocusable(bool value) override;
-    void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    void setScreenSaverSuspended(bool value, std::function<void(SystemAnswer answer)> callback) override;
     void applyFrameRate(int framesPerSecond) override;
     void applyMaxPixelDensity(float cap) override;
 

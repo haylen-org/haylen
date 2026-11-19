@@ -16,7 +16,7 @@
 #include "haylen/platform/Display.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/Orientation.hpp"
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "haylen/platform/TextInput.hpp"
 
 namespace haylen::platform {
@@ -108,10 +108,10 @@ class Window {
     [[nodiscard]] virtual bool isFullscreen() const noexcept = 0;
 
     // Leaves fullscreen, or covers the display of the window at the mode that the desktop runs in. The callback runs exactly once on the frame thread, during the call or at a later frame, with `Granted` once the window is fullscreen or left it, or `Denied` or `Unsupported` with the sentence that says why, such as a browser that goes fullscreen only shortly after an input of the person. A newer change replaces one that the window has not finished, which answers `Denied`, as does a change that the window closes before. An empty callback means that the caller does not want the answer, which then reaches nobody.
-    void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback);
+    void setFullscreen(bool value, std::function<void(SystemAnswer answer)> callback);
 
     // Covers the display with the id, or the display of the window while the id is empty, at the mode that the desktop runs in, or exclusively in a mode of the display, which the display runs in while the window holds it. Desktops move the window to the display first, browsers go fullscreen on the screen where the person let the page see every screen, and the other platforms keep the window on its display in the mode that the system picks. Throws `std::invalid_argument` for a display that is not connected or a mode that the display does not list. It answers like `setFullscreen`, with `Unsupported` where the platform cannot go fullscreen there.
-    void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback);
+    void enterFullscreen(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback);
     [[nodiscard]] virtual bool isResizable() const noexcept = 0;
     virtual void setResizable(bool value) = 0;
     virtual void setTitle(std::string_view value) = 0;
@@ -119,7 +119,7 @@ class Window {
     virtual void setCursorVisible(bool value) = 0;
 
     // Hides the pointer and reports only its movement, or brings it back, and answers like `setFullscreen`. Browsers lock the pointer only during a click or a key of the person.
-    void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback);
+    void setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback);
     virtual void setKeyboardVisible(bool value) = 0;
     virtual void requestQuit() = 0;
 
@@ -148,7 +148,7 @@ class Window {
 
     // Keeps the screen on and its saver away while the app shows, or leaves them to the settings of the system, and answers like `setFullscreen`, with `Denied` where a browser refuses its wake lock, such as for a page that hides. Game controllers keep neither the idle timer of iOS and tvOS nor the screen saver of desktops from running, so an app that players drive with them or that plays without input keeps the screen on.
     [[nodiscard]] virtual bool isScreenKeptOn() const noexcept = 0;
-    void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback);
+    void setKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback);
 
     // The frames per second the app aims for, or 0 for a frame at every refresh of the display, at the highest rate the display shows. Displays that change their refresh, such as those of iPhones, iPads and Android devices, slow down to the rate, and every platform plays a frame every few refreshes when the display refreshes faster, so the frames average the rate. A rate above the refresh of the display plays every refresh while vsync is on, and caps the frames of a window without vsync, which keeps a simple app from spending a whole core. Throws `std::invalid_argument` as `requireFrameRate` does.
     [[nodiscard]] virtual int getFrameRate() const noexcept = 0;
@@ -199,17 +199,17 @@ class Window {
     [[nodiscard]] virtual bool hasUnlistedDisplays() const = 0;
 
     // Asks to list every display of the device, which a browser does once the person lets the page see every screen through the Window Management API, and calls back with `Granted` once `getDisplays` holds them, or with `Denied` or `Unsupported` and the sentence that says why. Every other platform lists every display already and answers `Granted`.
-    virtual void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) = 0;
+    virtual void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) = 0;
 
   protected:
     // What `setFullscreen`, `enterFullscreen`, `setMouseLocked` and `setKeepScreenOn` do on the platform, which always receive a callback.
-    virtual void applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
-    virtual void applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) = 0;
-    virtual void applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
-    virtual void applyKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
+    virtual void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
+    virtual void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) = 0;
+    virtual void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
+    virtual void applyKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
 
   private:
-    [[nodiscard]] static std::function<void(Permission::Answer answer)> answerTo(std::function<void(Permission::Answer answer)> callback);
+    [[nodiscard]] static std::function<void(SystemAnswer answer)> answerTo(std::function<void(SystemAnswer answer)> callback);
 
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;
     static const std::array<std::pair<std::string_view, StatusBar>, 4> kStatusBarNames;

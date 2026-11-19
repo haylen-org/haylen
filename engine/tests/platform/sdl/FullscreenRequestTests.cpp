@@ -11,10 +11,10 @@ class FullscreenRequestTest : public ::testing::Test {
   protected:
     // Records each answer that a request receives, in order.
     FullscreenRequest::Callback record() {
-        return [this](Permission::Answer answer) { answers.push_back(std::move(answer)); };
+        return [this](SystemAnswer answer) { answers.push_back(std::move(answer)); };
     }
 
-    std::vector<Permission::Answer> answers;
+    std::vector<SystemAnswer> answers;
 };
 
 TEST_F(FullscreenRequestTest, AnswersOnceTheWindowReportsTheModeItAskedFor) {
@@ -28,7 +28,7 @@ TEST_F(FullscreenRequestTest, AnswersOnceTheWindowReportsTheModeItAskedFor) {
 
     request.reach(true);
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers[0].state, Permission::State::Granted);
+    EXPECT_EQ(answers[0].state, SystemAnswer::State::Granted);
     EXPECT_FALSE(request.isPending());
 
     request.reach(true);
@@ -40,7 +40,7 @@ TEST_F(FullscreenRequestTest, DeniesTheRequestThatANewerOneReplaces) {
     request.begin(true, record());
     request.begin(false, record());
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers[0].state, Permission::State::Denied);
+    EXPECT_EQ(answers[0].state, SystemAnswer::State::Denied);
     EXPECT_EQ(answers[0].message, "A newer change of fullscreen replaced this one before the window finished it.");
     EXPECT_FALSE(request.isEntering());
 
@@ -48,7 +48,7 @@ TEST_F(FullscreenRequestTest, DeniesTheRequestThatANewerOneReplaces) {
     EXPECT_EQ(answers.size(), 1U);
     request.reach(false);
     ASSERT_EQ(answers.size(), 2U);
-    EXPECT_EQ(answers[1].state, Permission::State::Granted);
+    EXPECT_EQ(answers[1].state, SystemAnswer::State::Granted);
 }
 
 TEST_F(FullscreenRequestTest, CoversAnotherDisplayOnlyAfterTheWindowLeftTheFullscreenItHolds) {
@@ -68,7 +68,7 @@ TEST_F(FullscreenRequestTest, CoversAnotherDisplayOnlyAfterTheWindowLeftTheFulls
 
     request.reach(true);
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers[0].state, Permission::State::Granted);
+    EXPECT_EQ(answers[0].state, SystemAnswer::State::Granted);
 }
 
 TEST_F(FullscreenRequestTest, ForgetsTheDestinationOfARequestThatEnds) {
@@ -76,22 +76,22 @@ TEST_F(FullscreenRequestTest, ForgetsTheDestinationOfARequestThatEnds) {
     request.beginLeaving({.display = 7, .displayId = "second"}, record());
     request.begin(false, record());
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers[0].state, Permission::State::Denied);
+    EXPECT_EQ(answers[0].state, SystemAnswer::State::Denied);
     EXPECT_FALSE(request.isLeaving());
 
     request.beginLeaving({.display = 7, .displayId = "second"}, record());
-    request.fail({.state = Permission::State::Unsupported, .message = "The window could not leave fullscreen."});
+    request.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not leave fullscreen."});
     ASSERT_EQ(answers.size(), 3U);
-    EXPECT_EQ(answers[2].state, Permission::State::Unsupported);
+    EXPECT_EQ(answers[2].state, SystemAnswer::State::Unsupported);
     EXPECT_FALSE(request.isLeaving());
 }
 
 TEST_F(FullscreenRequestTest, AnswersAFailureOfTheSystem) {
     FullscreenRequest request;
     request.begin(true, record());
-    request.fail({.state = Permission::State::Unsupported, .message = "The window could not go fullscreen."});
+    request.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not go fullscreen."});
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers[0].state, Permission::State::Unsupported);
+    EXPECT_EQ(answers[0].state, SystemAnswer::State::Unsupported);
     EXPECT_FALSE(request.isPending());
 }
 
@@ -101,7 +101,7 @@ TEST_F(FullscreenRequestTest, DeniesTheRequestThatWaitsWhenTheWindowCloses) {
         request.begin(false, record());
     }
     ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers[0].state, Permission::State::Denied);
+    EXPECT_EQ(answers[0].state, SystemAnswer::State::Denied);
     EXPECT_EQ(answers[0].message, "The window closed before it finished the change of fullscreen.");
 }
 

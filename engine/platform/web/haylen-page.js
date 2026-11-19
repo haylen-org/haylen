@@ -1,4 +1,4 @@
-// Page side of the Haylen web runtime: what needs the document of the page, which are the input and the size of the canvas, the hidden text fields, the overlay of plugins, the mirror of the UI for screen readers, the clipboard, fullscreen, the pointer lock, the wake lock, the now-playing controls, the elements of videos, the windows of outputs, the audio contexts and the web modules of plugins with their permissions. When the module runs on the page, the build includes this script after the engine side of `haylen-runtime.js`. In the Worker mode the page loads this script alone, and it starts the module in a dedicated worker, which it hands the canvas as an `OffscreenCanvas` and reaches through messages.
+// Page side of the Haylen web runtime: what needs the document of the page, which are the input and the size of the canvas, the hidden text fields, the overlay of plugins, the mirror of the UI for screen readers, the clipboard, fullscreen, the pointer lock, the wake lock, the now-playing controls, the elements of videos, the windows of outputs, the audio contexts and the web modules of plugins. When the module runs on the page, the build includes this script after the engine side of `haylen-runtime.js`. In the Worker mode the page loads this script alone, and it starts the module in a dedicated worker, which it hands the canvas as an `OffscreenCanvas` and reaches through messages.
 // Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the versioned editor contract of `Module.haylen.editor`, which edits the package of the app and runs it again without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats`, `onReloaded` and `onTurnDevice` callbacks.
 
 Module.haylen = Module.haylen || {};
@@ -1035,20 +1035,6 @@ Module.haylen = Module.haylen || {};
         return { message: owner + " needs " + list + ", which the page lacks.", missing: missing.map((requirement) => requirement.entry) };
     };
 
-    // The permissions of the engine in `system.permission`. Each one names the capability in words, what the page needs for it, the name of the Permissions API that tells its state, where the browser knows it, and how the page asks for it, which answers `{state, message, missing}`. A name that the Permissions API does not know answers the state of `unnamed`. The permissions of plugins take the same shape through `context.registerPermission`.
-    const permissions = {
-        localNetwork: { capability: "the local network", query: "local-network-access", unnamed: "granted", request: () => requestLocalNetwork() },
-    };
-
-    // The sentence of a use of a capability that a request did not allow, the same as the one of the engine: after `prompt`, where the browser did not show its prompt, it says that the app may ask again later, and after `denied` it names how to ask for it again.
-    const permissionRefusal = (permission, name, answered) => {
-        if (answered === "prompt") {
-            return "The system did not show its prompt for " + permission.capability + ", so the app does not hold it yet. Ask for it again later with \"system.requestPermission('" + name + "')\".";
-        }
-
-        return "The person has not allowed " + permission.capability + ". Ask for it with \"system.requestPermission('" + name + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
-    };
-
     // Answers the state of a name of the Permissions API, or nothing for a name that the browser does not know.
     const queryPermission = async (name) => {
         if (!navigator.permissions || typeof navigator.permissions.query !== "function") {
@@ -1060,47 +1046,6 @@ Module.haylen = Module.haylen || {};
         } catch {
             return null;
         }
-    };
-
-    // A capability that the browser lacks, or that the page lacks a requirement of, answers `unsupported` before anything asks.
-    const blockedPermission = (permission, owner, key) => {
-        const missing = permission.needs ? findMissing(owner, key, permission.needs) : null;
-        if (missing) {
-            return { state: "unsupported", message: missing.message, missing: missing.missing };
-        }
-
-        const unavailable = permission.unavailable ? permission.unavailable() : null;
-        return unavailable ? { state: "unsupported", message: unavailable } : null;
-    };
-
-    const checkPermission = async (permission, owner = "The engine", key = "engine") => {
-        const blocked = blockedPermission(permission, owner, key);
-        if (blocked) {
-            return blocked;
-        }
-
-        if (permission.check) {
-            return permission.check();
-        }
-
-        return { state: (await queryPermission(permission.query)) || permission.unnamed };
-    };
-
-    const requestPermission = async (permission, owner = "The engine", key = "engine") => {
-        const blocked = blockedPermission(permission, owner, key);
-        return blocked || permission.request();
-    };
-
-    // A permission of a plugin shows the prompt of the browser only while its state is `prompt`, or `unknown` where the browser tells nothing before it asks, and answers any other state without asking.
-    const requestPluginPermission = async (permission, owner, key) => {
-        const current = await checkPermission(permission, owner, key);
-        return current.state === "prompt" || current.state === "unknown" ? permission.request() : current;
-    };
-
-    // Chromium asks for the local network at the first access to it, which a page cannot ask for before, so a state that would prompt answers unknown.
-    const requestLocalNetwork = async () => {
-        const answer = await checkPermission(permissions.localNetwork);
-        return answer.state === "prompt" ? { state: "unknown" } : answer;
     };
 
     // In the Worker mode the state of the page reaches the worker before the answer, so the app that hears the answer reads the state that the call left, such as fullscreen.
@@ -1144,113 +1089,13 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    haylen.checkPermission = function (id, kind) {
-        settleGatedCall(id, () => checkPermission(permissions[kind]));
-    };
-
-    haylen.requestPermission = function (id, kind) {
-        settleGatedCall(id, () => requestPermission(permissions[kind]));
-    };
-
-    // An answer of the code of a plugin is the name of a state, or `{state, message}` for `unsupported` with the reason.
-    const readPluginAnswer = (value) => {
-        const answer = typeof value === "string" ? { state: value } : value;
-        if (!answer || !["granted", "prompt", "denied", "unknown", "unsupported"].includes(answer.state)) {
-            throw new TypeError("A permission of a plugin answers \"granted\", \"prompt\", \"denied\", \"unknown\" or \"unsupported\", or {state, message}.");
-        }
-
-        return { state: answer.state, message: answer.message || "" };
-    };
-
-    // Turns what `context.registerPermission` takes into the shape of the permissions of the engine, after it checked every key.
-    const createPluginPermission = (id, spec) => {
-        const keys = ["name", "capability", "needs", "query", "state", "request"];
-        for (const key of Object.keys(spec || {})) {
-            if (!keys.includes(key)) {
-                throw new TypeError("A permission of the plugin \"" + id + "\" takes \"" + keys.join("\", \"") + "\", not \"" + key + "\".");
-            }
-        }
-
-        if (!spec || typeof spec.name !== "string" || spec.name === "" || typeof spec.capability !== "string" || typeof spec.request !== "function") {
-            throw new TypeError("A permission of the plugin \"" + id + "\" needs a \"name\", a \"capability\" in words and a \"request\" function.");
-        }
-
-        if (spec.state !== undefined && typeof spec.state !== "function") {
-            throw new TypeError("The \"state\" of the permission \"" + spec.name + "\" of the plugin \"" + id + "\" is a function.");
-        }
-
-        if (spec.state === undefined && typeof spec.query !== "string") {
-            throw new TypeError("The permission \"" + spec.name + "\" of the plugin \"" + id + "\" tells its state through a \"query\" of the Permissions API or a \"state\" function.");
-        }
-
-        const needs = spec.needs || {};
-        for (const key of Object.keys(needs)) {
-            if (!requirements.kinds.includes(key)) {
-                throw new TypeError("A permission requires \"secureContext\", \"api\" or \"permissionsPolicy\", not \"" + key + "\".");
-            }
-        }
-
-        return {
-            capability: spec.capability,
-            needs,
-            query: spec.query,
-            unnamed: "unknown",
-            check: spec.state ? async () => readPluginAnswer(await spec.state()) : undefined,
-            request: async () => readPluginAnswer(await spec.request()),
-        };
-    };
-
-    // The handlers `<id>.permission` and `<id>.requestPermission` answer the permissions that the plugin registered, and a name that it did not register on the web answers `unsupported`.
-    const answerPluginPermission = async (id, plugin, params, asking) => {
-        const name = params && params.name;
-        const permission = plugin.permissions.get(name);
-        if (!permission) {
-            return { state: "unsupported", message: "The plugin \"" + id + "\" registers no permission \"" + name + "\" on the web." };
-        }
-
-        const owner = "The plugin \"" + id + "\"";
-        return asking ? requestPluginPermission(permission, owner, id) : checkPermission(permission, owner, id);
-    };
-
-    const registerPluginPermission = (id, plugin, spec) => {
-        const permission = createPluginPermission(id, spec);
-
-        if (plugin.permissions.has(spec.name)) {
-            throw new Error("The plugin \"" + id + "\" registered the permission \"" + spec.name + "\" twice.");
-        }
-
-        if (plugin.permissions.size === 0) {
-            haylen.register(id + ".permission", (params) => answerPluginPermission(id, plugin, params, false));
-            haylen.register(id + ".requestPermission", (params) => answerPluginPermission(id, plugin, params, true));
-        }
-
-        plugin.permissions.set(spec.name, permission);
-    };
-
-    // Asks for the permission where the page does not hold it, and fails with the code `denied` when the person refused it or the browser did not show its prompt, or `unsupported` with what the page lacks or for a name that the plugin did not register, as plugins expect before they use a capability. A state that the browser tells nothing of lets the use try.
-    const requirePermission = async (id, plugin, name) => {
-        const permission = plugin.permissions.get(name);
-        if (!permission) {
-            throw Object.assign(new Error("The plugin \"" + id + "\" requires the permission \"" + name + "\", which it did not register with \"registerPermission\"."), { code: "unsupported" });
-        }
-
-        const answer = await requestPluginPermission(permission, "The plugin \"" + id + "\"", id);
-        if (answer.state === "denied" || answer.state === "prompt") {
-            throw Object.assign(new Error(permissionRefusal(permission, name, answer.state)), { code: "denied" });
-        }
-
-        if (answer.state === "unsupported") {
-            throw Object.assign(new Error(answer.message), { code: "unsupported", data: answer.missing ? { missing: answer.missing } : undefined });
-        }
-    };
-
     // Makes the context that the web module of a plugin receives in `load(context)`. Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
     haylen.createPluginContext = function (id, config) {
         if (plugins.has(id)) {
             throw new Error("The plugin \"" + id + "\" already has a context.");
         }
 
-        const plugin = { errorListeners: [], permissions: new Map() };
+        const plugin = { errorListeners: [] };
         plugins.set(id, plugin);
 
         if (hostedInWorker) {
@@ -1291,12 +1136,6 @@ Module.haylen = Module.haylen || {};
             },
             require(needs) {
                 requirePage(id, needs);
-            },
-            registerPermission(spec) {
-                registerPluginPermission(id, plugin, spec);
-            },
-            requirePermission(name) {
-                return requirePermission(id, plugin, name);
             },
         };
     };

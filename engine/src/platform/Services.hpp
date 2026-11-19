@@ -21,8 +21,8 @@
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Orientation.hpp"
-#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "haylen/platform/SystemFont.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/VideoDecoder.hpp"
@@ -59,7 +59,7 @@ class Services final {
     [[nodiscard]] static std::vector<Display> getDisplays();
     [[nodiscard]] static std::string getWindowDisplayId();
     [[nodiscard]] static bool hasUnlistedDisplays();
-    static void requestEveryScreen(std::function<void(Permission::Answer answer)> callback);
+    static void requestEveryScreen(std::function<void(SystemAnswer answer)> callback);
     [[nodiscard]] static math::Rect getWindowFrame();
 
     [[nodiscard]] static bool hasDesktop() noexcept;
@@ -85,9 +85,6 @@ class Services final {
     static void cancel(std::uint64_t id);
     static void openScreen(const ScreenRequest& request);
     static void cancelScreen(std::uint64_t id);
-
-    static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-    static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
 
     [[nodiscard]] static std::string explainBlockedSocket(std::intptr_t socket);
     [[nodiscard]] static std::string getNetworkRequirement();

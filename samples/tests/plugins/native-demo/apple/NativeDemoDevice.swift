@@ -78,6 +78,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
     private nonisolated static let language = "Swift"
 
     private let context: HaylenPluginContext
+    private let access: NativeDemoAccess
     private let locations = CLLocationManager()
     private var located: [CheckedContinuation<CLLocation, Error>] = []
     private var map: HaylenOverlay.Item?
@@ -86,8 +87,9 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
     private var microphone: NativeDemoMicrophone?
     #endif
 
-    init(context: HaylenPluginContext) {
+    init(context: HaylenPluginContext, access: NativeDemoAccess) {
         self.context = context
+        self.access = access
         super.init()
         locations.delegate = self
     }
@@ -116,7 +118,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
             #if os(tvOS)
             throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
             #else
-            try await self.context.requirePermission("camera")
+            try await self.access.requireCapture(.video)
             guard let stream = self.context.openVideoStream("camera", width: NativeDemoCamera.width, height: NativeDemoCamera.height, format: .BGRA8) else {
                 throw HaylenFailure("The video stream \"camera\" did not open.", code: "streamFailed")
             }
@@ -157,7 +159,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
             #if os(tvOS)
             throw HaylenFailure("Apple TV gives apps no microphone.", code: "unsupported")
             #else
-            try await self.context.requirePermission("microphone")
+            try await self.access.requireCapture(.audio)
             self.microphone?.stop()
             let context = self.context
             let microphone = try NativeDemoMicrophone(context: context) { level in
@@ -177,10 +179,10 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    // The location needs the permission `location` that the plugin owns, the location while the app is in use, then asks for one fix of Core Location.
+    // The location asks the person for the location while the app is in use, then asks for one fix of Core Location.
     private func registerLocation() {
         context.register("location") { [unowned self] (_: Empty) async throws -> Place in
-            try await self.context.requirePermission("location")
+            try await self.access.requireLocation()
             let location = try await withCheckedThrowingContinuation { continuation in
                 self.located.append(continuation)
                 self.locations.requestLocation()

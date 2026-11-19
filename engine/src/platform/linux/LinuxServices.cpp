@@ -128,8 +128,8 @@ bool LinuxServices::hasUnlistedDisplays() {
     return false;
 }
 
-void LinuxServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void LinuxServices::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 void LinuxServices::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {

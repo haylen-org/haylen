@@ -4,7 +4,7 @@ local headless = 'The headless host loads no native parts of plugins.'
 return {
     prefix = 'PLG',
     title = 'Plugins',
-    description = 'Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in.',
+    description = 'Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, the plugin "native-base" that it depends on, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in.',
     tests = {
         {code = 'PLG-001', title = 'Calls', description = 'The call "echo" on the main thread, "compute" on a background thread, a typed failure, and a call that only a timeout or a cancel ends.', module = 'calls',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
@@ -36,13 +36,6 @@ return {
                 tvos = 'The TV has no file picker.',
                 windows = 'The desktops share no C API for a file picker, so the C++ library of the plugin has none on Windows.',
                 linux = 'The desktops share no C API for a file picker, so the C++ library of the plugin has none on Linux.',
-                headless = headless,
-            }},
-        {code = 'PLG-011', title = 'Permissions', description = 'The camera, the microphone, the location and notifications that the demo plugin owns, which the app asks for through "haylen.system", the camera of the plugin that follows the answer, and a local notification whose tap reaches the app, even from a closed app.', module = 'permissions',
-            platforms = {'macos', 'ios', 'android', 'web'}, unsupported = {
-                tvos = 'The TV has no camera and shows no notifications of the plugin.',
-                windows = 'The C++ library of the plugin registers no permissions and shows no notifications on Windows.',
-                linux = 'The C++ library of the plugin registers no permissions and shows no notifications on Linux.',
                 headless = headless,
             }},
         {code = 'PLG-012', title = 'Requirements', description = 'A call whose native part needs what the project of the app lacks, which fails with the code "unsupported" and lists what is missing and how to add it.', module = 'requirements',
@@ -85,5 +78,18 @@ return {
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
         {code = 'PLG-023', title = 'Data views', description = 'Camera frames that the native part fills in data views of shared memory, which a texture reads in place, and a view of the app that the native part reads and marks.', module = 'data-views',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'android', 'web'}, unsupported = {headless = headless}},
+        {code = 'PLG-024', title = 'Plugin dependencies', description = 'The native part of "native-demo" calling the helper of the plugin "native-base" that it depends on, directly in Swift, Kotlin or JavaScript, and the text that the helper wrote.', module = 'dependencies',
+            platforms = {'macos', 'ios', 'tvos', 'android', 'web'}, unsupported = {
+                windows = 'The desktop library of a plugin is a program of its own that reaches another plugin only through Lua, and "native-base" has no native part on Windows.',
+                linux = 'The desktop library of a plugin is a program of its own that reaches another plugin only through Lua, and "native-base" has no native part on Linux.',
+                headless = headless,
+            }},
+        {code = 'PLG-025', title = 'Local notifications', description = 'A local notification of the plugin, after the person allowed notifications, whose tap reaches the app, even from a closed app.', module = 'notifications',
+            platforms = {'macos', 'ios', 'android', 'web'}, unsupported = {
+                tvos = 'Apple TV shows no notifications of the plugin.',
+                windows = 'The C++ library of the plugin shows no notifications on Windows.',
+                linux = 'The C++ library of the plugin shows no notifications on Linux.',
+                headless = headless,
+            }},
     },
 }

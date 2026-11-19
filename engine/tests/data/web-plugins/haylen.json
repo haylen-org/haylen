@@ -4,6 +4,7 @@
     "version": "1.0.0",
     "category": "developer",
     "plugins": {
+        "base-plugin": {},
         "page-plugin": {}
     }
 }

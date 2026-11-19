@@ -243,8 +243,8 @@ void StoragePlugin::applyEnginePreferences(core::Engine& engine) {
     const core::Json fullscreen = getStoredPreference(values, "window.fullscreen", core::Json::value_t::boolean);
     if (!fullscreen.is_null()) {
         // clang-format off
-        engine.getWindow().setFullscreen(fullscreen.get<bool>(), [](const platform::Permission::Answer& answer) {
-            if (answer.state != platform::Permission::State::Granted) {
+        engine.getWindow().setFullscreen(fullscreen.get<bool>(), [](const platform::SystemAnswer& answer) {
+            if (answer.state != platform::SystemAnswer::State::Granted) {
                 core::Log::warning("The window stays as it is instead of the \"window.fullscreen\" of the preferences. {}", answer.message);
             }
         });

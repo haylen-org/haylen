@@ -14,14 +14,14 @@
 #include <unordered_map>
 #include <vector>
 
-#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "platform/android/JavaLocalRef.hpp"
 #include "varn/dataview/DataView.h"
 
 namespace haylen::platform {
 
-// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the screens of plugins of `dev.haylen.HaylenScreens` and the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree` and the permissions of `dev.haylen.HaylenPermissions`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
+// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the screens of plugins of `dev.haylen.HaylenScreens`, the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree` and whether the app may reach the local network of `dev.haylen.HaylenNetwork`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
 class JavaBridge final {
   public:
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which `JNI_OnLoad` does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or `JNI_ERR` when the APK lacks a class.
@@ -73,13 +73,8 @@ class JavaBridge final {
     // The launch arguments of the app that the intent of the activity holds in the extra `dev.haylen.arguments`, such as the test that a UI test opens.
     [[nodiscard]] static std::vector<std::string> getLaunchArguments();
 
-    // The check of a permission and the request for it, from any thread, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A call that Java never took fails at once.
-    static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-    static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-    static void answerPermission(std::int64_t request, std::string_view answerJson);
-
-    // Whether the app holds a permission now, from any thread and without a prompt, for the failures that explain a missing one, such as the HTTP requests that Android keeps from the local network.
-    [[nodiscard]] static bool isPermissionHeld(Permission::Kind kind);
+    // Whether Android lets the app reach the local network now, from any thread and without a prompt, for the failures that explain why it blocked a request, which an app that targets Android 17 reaches only with the permission `ACCESS_LOCAL_NETWORK`.
+    [[nodiscard]] static bool isLocalNetworkAllowed();
 
     // Hands the media session of the activity what plays, as the JSON of `{title, artist, album, duration, position, playing, commands}` with the bytes of its artwork, or an empty JSON to leave the controls.
     static void updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork);
@@ -89,7 +84,7 @@ class JavaBridge final {
     static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
     // The clipboard of the system, which the frame thread reads and writes. A write answers unsupported while no activity exists or when Java fails.
-    [[nodiscard]] static Permission::Answer setClipboard(std::string_view text);
+    [[nodiscard]] static SystemAnswer setClipboard(std::string_view text);
     [[nodiscard]] static std::string getClipboard();
 
     // Shows an output in a presentation on the display of the number that the display manager gives, or dismisses it, through `HaylenOutputs`. A presentation that Java never took ends its output.
@@ -135,9 +130,6 @@ class JavaBridge final {
     // Returns the text of a byte array that a static method of Java returns, or `fallback` when the method threw.
     [[nodiscard]] static std::string callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback);
 
-    // Hands Java the check or the request of a permission under a new request, which `answerPermission` settles.
-    static void callPermission(jmethodID method, std::string_view name, Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-
     // Return a global reference to the class, or the static method, and log an engine error that names it when it is missing.
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);
     [[nodiscard]] static jmethodID findMethod(JNIEnv& env, jclass owner, const char* name, const char* signature);
@@ -182,16 +174,9 @@ class JavaBridge final {
     static jclass outputsClass;
     static jmethodID openOutputMethod;
     static jmethodID closeOutputMethod;
-    static jclass permissionsClass;
-    static jmethodID permissionStateMethod;
-    static jmethodID permissionHeldMethod;
-    static jmethodID requestPermissionMethod;
+    static jclass networkClass;
+    static jmethodID localNetworkAllowedMethod;
     static std::atomic<bool> accessibilityWanted;
-
-    // The callbacks of the checks and the requests of permissions that wait for the answer of Java, by request.
-    static std::mutex& permissionMutex;
-    static std::unordered_map<std::int64_t, std::function<void(Permission::Answer)>>& permissionCallbacks;
-    static std::int64_t nextPermission;
 };
 
 } // namespace haylen::platform

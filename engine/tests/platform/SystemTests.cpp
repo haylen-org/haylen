@@ -1,13 +1,9 @@
 #include <gtest/gtest.h>
 
-#include <functional>
-#include <map>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
-#include <utility>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
@@ -15,15 +11,11 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/graphics/Device.hpp"
-#include "haylen/io/MemoryPackage.hpp"
-#include "haylen/platform/AppPlugin.hpp"
-#include "haylen/platform/Bridge.hpp"
-#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/System.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
-#include "support/TestFiles.hpp"
 
 namespace haylen::platform {
 
@@ -33,31 +25,6 @@ class SystemTest : public ::testing::Test {
     static void recordChanges(core::Engine& engine, std::vector<std::string>& log) {
         for (const std::string_view name : {core::LifecycleEvent::kSystemThemeChanged, core::LifecycleEvent::kBatteryChanged}) {
             engine.getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
-        }
-    }
-
-    // An app whose plugin "cam-kit" owns the camera and the microphone and whose plugin "notes" owns the notifications.
-    [[nodiscard]] static std::map<std::string, std::string> makePluginApp() {
-        return {
-            {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}, "notes": {}}})"},
-            {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera", "microphone"]})"},
-            {"plugins/notes/plugin.json", R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["notifications"]})"},
-        };
-    }
-
-    // Keeps each answer under the name of the call that it answers.
-    [[nodiscard]] static std::function<void(Permission::Answer)> recordAs(std::map<std::string, Permission::Answer>& answers, std::string name) {
-        return [&answers, name = std::move(name)](Permission::Answer answer) { answers.emplace(name, std::move(answer)); };
-    }
-
-    // The message of the error that reading the plugins of the manifest throws, or an empty text.
-    [[nodiscard]] static std::string readPluginsFailure(const std::string& manifest) {
-        io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(manifest)}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}});
-        try {
-            (void)AppPlugin::readAll(package, {{"cam-kit", {}}});
-            return {};
-        } catch (const std::runtime_error& error) {
-            return error.what();
         }
     }
 
@@ -193,14 +160,14 @@ TEST_F(SystemTest, WritesAndReadsTheClipboardWithAnswersOnALaterFrame) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
     std::vector<std::string> answers;
-    system.setClipboard("Island seed: 184467", [&answers](Permission::Answer answer) { answers.emplace_back(Permission::stateName(answer.state)); });
-    system.readClipboard([&answers](Permission::Answer answer, std::string text) { answers.push_back(std::string(Permission::stateName(answer.state)) + " " + text); });
+    system.setClipboard("Island seed: 184467", [&answers](SystemAnswer answer) { answers.emplace_back(SystemAnswer::stateName(answer.state)); });
+    system.readClipboard([&answers](SystemAnswer answer, std::string text) { answers.push_back(std::string(SystemAnswer::stateName(answer.state)) + " " + text); });
     EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
 
     // A refused write leaves the clipboard as it was, the way a browser refuses a page without a recent input of the person, and a refused read brings no text.
-    fixture.host().setClipboardAnswer({.state = Permission::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
-    system.setClipboard("Refused", [&answers](Permission::Answer answer) { answers.emplace_back(Permission::stateName(answer.state)); });
-    system.readClipboard([&answers](Permission::Answer answer, std::string text) { answers.push_back(std::string(Permission::stateName(answer.state)) + " " + text); });
+    fixture.host().setClipboardAnswer({.state = SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
+    system.setClipboard("Refused", [&answers](SystemAnswer answer) { answers.emplace_back(SystemAnswer::stateName(answer.state)); });
+    system.readClipboard([&answers](SystemAnswer answer, std::string text) { answers.push_back(std::string(SystemAnswer::stateName(answer.state)) + " " + text); });
     EXPECT_TRUE(answers.empty());
 
     fixture.frames(1);
@@ -208,134 +175,19 @@ TEST_F(SystemTest, WritesAndReadsTheClipboardWithAnswersOnALaterFrame) {
     EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
 }
 
-TEST_F(SystemTest, ChecksAndAsksForPermissionsWithAnswersOnALaterFrame) {
-    test::EngineFixture fixture;
-    System& system = fixture.engine().getSystem();
-    std::vector<Permission::Answer> answers;
-    const auto record = [&answers](Permission::Answer answer) { answers.push_back(std::move(answer)); };
-    fixture.host().setPermission({.state = Permission::State::Prompt});
-    system.checkPermission(Permission::Kind::LocalNetwork, record);
-    fixture.host().setPermissionAnswer({.state = Permission::State::Denied});
-    system.requestPermission("localNetwork", record);
-    EXPECT_TRUE(answers.empty());
-
-    fixture.frames(1);
-    ASSERT_EQ(answers.size(), 2U);
-    EXPECT_EQ(answers[0].state, Permission::State::Prompt);
-    EXPECT_EQ(answers[1].state, Permission::State::Denied);
-    EXPECT_EQ(fixture.host().getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
-}
-
-// The plugin that declares a permission answers it through the bridge with the parameters {"name": ...}, and a plugin without a native part, or one whose native part does not answer, answers that it is unsupported.
-TEST_F(SystemTest, AsksThePluginThatOwnsAPermissionThroughTheBridge) {
-    test::EngineFixture fixture(makePluginApp());
-    fixture.host().setNativePlugins({"cam-kit"});
-    Bridge& bridge = fixture.engine().getPlatform();
-    std::vector<std::string> calls;
-    // clang-format off
-    bridge.registerHandler("cam-kit.permission", [&calls](const Bridge::Payload& params, const Bridge::Reply& reply) {
-        calls.push_back("permission " + params.json.dump());
-        reply({.ok = true, .value = {.json = {{"state", "prompt"}}}});
-    });
-    bridge.registerHandler("cam-kit.requestPermission", [&calls](const Bridge::Payload& params, const Bridge::Reply& reply) {
-        calls.push_back("requestPermission " + params.json.dump());
-        reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The app lacks the usage description.", "missing": [{"kind": "usageDescription", "name": "NSCameraUsageDescription", "file": "haylen.json", "snippet": "{}"}]})")}});
-    });
-    // clang-format on
-
-    System& system = fixture.engine().getSystem();
-    std::map<std::string, Permission::Answer> answers;
-    system.checkPermission("camera", recordAs(answers, "camera"));
-    system.requestPermission("microphone", recordAs(answers, "microphone"));
-    system.requestPermission("notifications", recordAs(answers, "notifications"));
-    ASSERT_TRUE(fixture.frameUntil([&answers] { return answers.size() == 3; }));
-
-    EXPECT_EQ(calls, (std::vector<std::string>{R"(permission {"name":"camera"})", R"(requestPermission {"name":"microphone"})"}));
-    EXPECT_EQ(answers.at("camera").state, Permission::State::Prompt);
-    EXPECT_EQ(answers.at("microphone").state, Permission::State::Unsupported);
-    EXPECT_EQ(answers.at("microphone").message, "The app lacks the usage description.");
-    ASSERT_EQ(answers.at("microphone").missing.size(), 1U);
-    EXPECT_EQ(answers.at("microphone").missing.front().name, "NSCameraUsageDescription");
-    EXPECT_EQ(answers.at("notifications").state, Permission::State::Unsupported);
-    EXPECT_EQ(answers.at("notifications").message, "The plugin \"notes\" that owns the permission \"notifications\" offers no part on this platform.");
-    EXPECT_TRUE(fixture.host().getPermissionRequests().empty());
-
-    // A native part without the handler answers with the code "noHandler", and any other failure keeps its message.
-    fixture.host().setNativePlugins({"cam-kit", "notes"});
-    answers.clear();
-    system.checkPermission("notifications", recordAs(answers, "checked"));
-    system.requestPermission("notifications", recordAs(answers, "asked"));
-    const std::vector<HeadlessHost::PlatformCall>& native = fixture.host().getPlatformCalls();
-    ASSERT_EQ(native.size(), 2U);
-    EXPECT_EQ(native[0].method, "notes.permission");
-    EXPECT_EQ(native[1].method, "notes.requestPermission");
-    EXPECT_EQ(native[1].paramsJson, R"({"name":"notifications"})");
-    bridge.resolve(native[0].id, false, R"({"message": "No native handler is registered for \"notes.permission\".", "code": "noHandler"})");
-    bridge.resolve(native[1].id, false, R"({"message": "The notification center is gone.", "code": "exception"})");
-    ASSERT_TRUE(fixture.frameUntil([&answers] { return answers.size() == 2; }));
-    EXPECT_EQ(answers.at("checked").state, Permission::State::Unsupported);
-    EXPECT_EQ(answers.at("checked").message, "The plugin \"notes\" that owns the permission \"notifications\" offers no part on this platform that answers it.");
-    EXPECT_EQ(answers.at("asked").state, Permission::State::Unsupported);
-    EXPECT_EQ(answers.at("asked").message, "The plugin \"notes\" failed to answer the permission \"notifications\". The notification center is gone.");
-
-    EXPECT_THROW(system.requestPermission("bluetooth", recordAs(answers, "bluetooth")), std::invalid_argument);
-}
-
-TEST_F(SystemTest, NamesThePermissionsOfTheEngineAndHowToAskAgain) {
-    for (const std::string_view name : {"localNetwork"}) {
-        const std::optional<Permission::Kind> kind = Permission::kindFromName(name);
-        ASSERT_TRUE(kind.has_value()) << name;
-        EXPECT_EQ(Permission::kindName(*kind), name);
-    }
-
-    EXPECT_FALSE(Permission::kindFromName("camera").has_value());
-    EXPECT_EQ(Permission::stateFromName("unsupported"), Permission::State::Unsupported);
-    EXPECT_EQ(Permission::refusal(Permission::State::Denied, "the precise location", "preciseLocation"), "The person has not allowed the precise location. Ask for it with \"system.requestPermission('preciseLocation')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.");
-    EXPECT_EQ(Permission::refusal(Permission::State::Prompt, "the precise location", "preciseLocation"), "The system did not show its prompt for the precise location, so the app does not hold it yet. Ask for it again later with \"system.requestPermission('preciseLocation')\".");
-    EXPECT_EQ(Permission::unknown("bluetooth"), "The permission \"bluetooth\" is neither one of the engine, which are \"localNetwork\", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the \"permissions\" of its \"plugin.json\".");
-
-    EXPECT_TRUE(Permission::isPluginName("backgroundLocation"));
-    EXPECT_TRUE(Permission::isPluginName("bluetooth2"));
-
-    for (const std::string_view name : {"", "Camera", "precise-location", "precise_location", "2d", "localNetwork"}) {
-        EXPECT_FALSE(Permission::isPluginName(name)) << name;
-    }
-}
-
-// Each permission has one owner, so the plugins of an app refuse a permission of the engine, a name that is not "camelCase" and a permission that another plugin declares.
-TEST_F(SystemTest, RefusesPluginPermissionsWithoutOneOwner) {
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["microphone"]})"), "");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": "camera"})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package is not a list of permission names, such as [\"camera\"].");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["localNetwork"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"localNetwork\", which is a permission of the engine.");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["front-camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"front-camera\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": [3]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"3\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
-    EXPECT_EQ(readPluginsFailure(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera", "camera"]})"), "The \"permissions\" of \"plugins/cam-kit/plugin.json\" in the package declare \"camera\" twice.");
-
-    io::MemoryPackage package("app", {{"plugins/cam-kit/plugin.json", test::TestFiles::bytes(R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}, {"plugins/notes/plugin.json", test::TestFiles::bytes(R"({"id": "notes", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})")}});
-    const std::vector<AppPlugin> plugins = AppPlugin::readAll(package, {{"cam-kit", {}}});
-    ASSERT_EQ(plugins.size(), 1U);
-    EXPECT_EQ(plugins.front().permissions, (std::vector<std::string>{"camera"}));
-
-    try {
-        (void)AppPlugin::readAll(package, {{"cam-kit", {}}, {"notes", {}}});
-        FAIL() << "Two plugins that declare one permission must not read.";
-    } catch (const std::runtime_error& error) {
-        EXPECT_STREQ(error.what(), "The plugins \"cam-kit\" and \"notes\" both declare the permission \"camera\" in their \"plugin.json\", while one plugin of an app owns each permission.");
-    }
-}
-
-// Native code answers with JSON, whose broken parts read as missing so the request fails instead of the engine.
 TEST_F(SystemTest, ReadsTheAnswersOfNativeCode) {
-    const Permission::Answer answer = Permission::Answer::fromJson(core::Json::parse(R"({"state": "denied", "message": "The engine needs a line.", "missing": [{"kind": "permission", "name": "android.permission.ACCESS_LOCAL_NETWORK", "file": "haylen.json", "snippet": "{\"platforms\": {}}"}, 3]})"));
-    EXPECT_EQ(answer.state, Permission::State::Denied);
-    EXPECT_EQ(answer.message, "The engine needs a line.");
+    const SystemAnswer answer = SystemAnswer::fromJson(core::Json::parse(R"json({"state": "unsupported", "message": "The page needs a feature.", "missing": [{"kind": "permissionsPolicy", "name": "clipboard-read", "file": "", "snippet": "Permissions-Policy: clipboard-read=(self)"}, 3]})json"));
+    EXPECT_EQ(answer.state, SystemAnswer::State::Unsupported);
+    EXPECT_EQ(answer.message, "The page needs a feature.");
     ASSERT_EQ(answer.missing.size(), 1U);
-    EXPECT_EQ(answer.missing.front().name, "android.permission.ACCESS_LOCAL_NETWORK");
-    EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), R"({"platforms": {}})");
+    EXPECT_EQ(answer.missing.front().name, "clipboard-read");
+    EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), "Permissions-Policy: clipboard-read=(self)");
+    EXPECT_EQ(SystemAnswer::fromJson(core::Json::parse(R"({"state": "denied"})")).state, SystemAnswer::State::Denied);
 
-    EXPECT_EQ(Permission::Answer::fromJson(core::Json::parse(R"({"state": 5})")).state, Permission::State::Unknown);
-    EXPECT_EQ(Permission::Answer::fromJson(core::Json::array()).state, Permission::State::Unsupported);
-    EXPECT_FALSE(Permission::Answer::fromJson(core::Json::array()).message.empty());
+    EXPECT_EQ(SystemAnswer::fromJson(core::Json::parse(R"({"state": 5})")).state, SystemAnswer::State::Unsupported);
+    EXPECT_EQ(SystemAnswer::fromJson(core::Json::parse(R"({"state": "unknown"})")).state, SystemAnswer::State::Unsupported);
+    EXPECT_EQ(SystemAnswer::fromJson(core::Json::array()).state, SystemAnswer::State::Unsupported);
+    EXPECT_FALSE(SystemAnswer::fromJson(core::Json::array()).message.empty());
 }
 
 // Platforms report their tags as they write them, and the engine keeps the canonical form of each once, leaves out what is no tag and publishes only a list that changed.
@@ -420,7 +272,7 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     // clang-format on
     fixture.runLua("remember(system.setClipboard('Island seed: 184467')) remember(system.clipboard())");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
-    fixture.host().setClipboardAnswer({.state = Permission::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
+    fixture.host().setClipboardAnswer({.state = SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
     fixture.runLua("remember(system.setClipboard('Refused')) remember(system.clipboard()) system.setClipboard('Unheard')");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
     EXPECT_EQ(fixture.lua("return answers[1] .. ' | ' .. answers[2]"), "nil | Island seed: 184467");
@@ -430,51 +282,6 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.lua("system.setClipboard()").find("string expected"), std::string::npos);
-}
-
-TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
-    test::EngineFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "plugins": {"cam-kit": {}}})"}, {"plugins/cam-kit/plugin.json", R"({"id": "cam-kit", "version": "1.0.0", "implementations": {"ios": "lua"}, "permissions": ["camera"]})"}});
-    fixture.host().setNativePlugins({"cam-kit"});
-    // clang-format off
-    fixture.runLua(R"(
-        system = require('haylen.system')
-        async = require('async')
-        answers = {}
-        function remember(name, promise)
-            async.spawn(function()
-                local state, message, failure = promise:await()
-                answers[name] = state or (failure.code .. ' ' .. message .. ' ' .. (failure.data and failure.data.missing[1].name or 'none'))
-            end)
-        end
-    )");
-    // clang-format on
-    fixture.host().setPermission({.state = Permission::State::Prompt});
-    fixture.runLua("remember('checked', system.permission('localNetwork'))");
-    fixture.host().setPermissionAnswer({.state = Permission::State::Granted});
-    fixture.runLua("remember('asked', system.requestPermission('localNetwork'))");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(answers.asked)") == "granted"; }));
-    EXPECT_EQ(fixture.lua("return answers.checked"), "prompt");
-    EXPECT_EQ(fixture.host().getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
-    EXPECT_NE(fixture.lua("system.permission('bluetooth')").find(Permission::unknown("bluetooth")), std::string::npos);
-    EXPECT_NE(fixture.lua("system.requestPermission()").find("string expected"), std::string::npos);
-
-    // A platform without the capability rejects with the code "unsupported" and the reason, and a plugin that answers what the project lacks rejects with the line the project lacks.
-    fixture.host().setPermission({.state = Permission::State::Unsupported, .message = "The browser cannot tell the local network."});
-    fixture.runLua("remember('network', system.permission('localNetwork'))");
-    // clang-format off
-    fixture.engine().getPlatform().registerHandler("cam-kit.requestPermission", [](const Bridge::Payload&, const Bridge::Reply& reply) {
-        reply({.ok = true, .value = {.json = core::Json::parse(R"({"state": "unsupported", "message": "The plugin needs the permission, which the app lacks.", "missing": [{"kind": "permission", "name": "android.permission.CAMERA", "file": "haylen.json", "snippet": "{}"}]})")}});
-    });
-    // clang-format on
-    fixture.runLua("remember('missing', system.requestPermission('camera'))");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(answers.missing)") != "nil"; }));
-    EXPECT_EQ(fixture.lua("return answers.network"), "unsupported The browser cannot tell the local network. none");
-    EXPECT_EQ(fixture.lua("return answers.missing"), "unsupported The plugin needs the permission, which the app lacks. android.permission.CAMERA");
-
-    // The app asked, so an answer that nothing awaits never stops it.
-    fixture.runLua("system.requestPermission('camera')");
-    fixture.frames(2);
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 } // namespace haylen::platform

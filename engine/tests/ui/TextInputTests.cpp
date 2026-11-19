@@ -416,7 +416,7 @@ TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheSystem) {
     press(input::Key::C, 0, shortcut);
     EXPECT_EQ(fixture.host().getClipboard(), "Copy me");
 
-    fixture.host().setClipboard("Pasted", [](platform::Permission::Answer) {});
+    fixture.host().setClipboard("Pasted", [](platform::SystemAnswer) {});
     events.clear();
     press(input::Key::V, 0, shortcut);
     ASSERT_FALSE(events.empty());

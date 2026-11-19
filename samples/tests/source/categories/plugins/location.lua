@@ -8,7 +8,7 @@ local demo = require('native-demo')
 local Location = haylen.class('Location', DemoTest)
 
 Location.code = [[
-local place, err = demo.location():await()  -- The system asks the person first.
+local place, err = demo.location()  -- The system asks the person first.
 print(place.latitude, place.longitude, place.accuracy)
 demo.showMap('bottom', place.latitude, place.longitude):await()
 demo.removeMap()]]
@@ -27,7 +27,7 @@ function Location:enter()
         controls = {
             ui.button{id = 'locate', text = 'Find the location', variant = 'primary', onClick = function() self:locate() end},
             ui.button{id = 'map', text = 'Show the map', onClick = function() self:toggleMap() end},
-            ui.label{text = 'Core Location and MapKit on Apple platforms, "LocationManager" and a drawn map on Android, and the Geolocation API and a drawn map on the web. The system asks the person for the location the first time.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Core Location and MapKit on Apple platforms, "LocationManager" and a drawn map on Android, and the Geolocation API and a drawn map on the web. The system asks the person for the location the first time, on Android through a screen of the plugin.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.card{align = 'stretch', gap = 12,
@@ -65,7 +65,7 @@ function Location:locate()
     self:act(function()
         self.results:set('location', 'waiting', Location.locationName, 'The platform looks for the device.')
         self:set('placeState', {text = 'Looking for the device.'})
-        local place, err = demo.location():await()
+        local place, err = demo.location()
         if err then
             self:set('placeState', {text = 'The platform gave no place: ' .. err.message})
             self.results:failure('location', Location.locationName, err)

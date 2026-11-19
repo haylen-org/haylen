@@ -22,8 +22,8 @@
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Output.hpp"
-#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "haylen/platform/SystemFont.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
@@ -73,13 +73,13 @@ class Host : public Window {
     virtual void setGamepadMotion(input::GamepadMotion::Sensors sensors) = 0;
 
     // Puts the text on the clipboard of the system and calls back with `Granted` once it got there, or `Denied` or `Unsupported` with the sentence that says why. Browsers write the clipboard of a page asynchronously and refuse a page without a recent input of the person or outside a secure context, so their answer comes later, while the other platforms answer during the call.
-    virtual void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) = 0;
+    virtual void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) = 0;
 
     // The text on the clipboard for a paste of the person into a field of the UI, read during the call.
     [[nodiscard]] virtual std::string getClipboard() const = 0;
 
     // Reads the text on the clipboard for the app, which iOS, macOS and browsers may let the app read only once the person allows it in a prompt that the read shows. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with `Granted` and the text, or `Denied` or `Unsupported` with the sentence that says why.
-    virtual void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) = 0;
+    virtual void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) = 0;
 
     // Hands a platform call to the handlers of the platform, with the byte buffers that its parameters refer to, which stay valid until it returns.
     virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) = 0;
@@ -142,12 +142,6 @@ class Host : public Window {
 
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble, and does nothing elsewhere. Zero intensities stop the gamepad.
     virtual void rumbleGamepad(std::size_t index, float low, float high, float seconds) = 0;
-
-    // Reads the state of a permission without asking the person, which some platforms tell only asynchronously, such as browsers. The callback runs exactly once, on any thread and possibly after the engine that asked is gone.
-    virtual void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) = 0;
-
-    // Asks the person for a permission with the prompt of the system where the platform has one, after it checked what the project of the app must declare for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with the state the person left, or `Unsupported` with the reason and the requirements the project lacks.
-    virtual void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) = 0;
 
     // The explanation of blocked sockets that the connections the engine opens itself read when they fail, such as the Local Network Protection of Android. It never refers to the host, so connections that outlive the host may still call it.
     [[nodiscard]] virtual BlockedReason getBlockedReason() const = 0;

@@ -13,8 +13,8 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/Displays.hpp"
 #include "haylen/platform/System.hpp"
-#include "platform/AnswerLua.hpp"
 #include "platform/OutputLua.hpp"
+#include "platform/SystemAnswerLua.hpp"
 
 namespace haylen::platform {
 
@@ -81,12 +81,12 @@ int DisplayLua::requestEveryScreen(lua_State* L) {
     promise.push(L);
 
     // clang-format off
-    engine.getDisplays().requestEveryScreen(engine.getSystem().awaitAnswer([&engine, promise](const Permission::Answer& answer) {
-        if (answer.state == Permission::State::Granted) {
+    engine.getDisplays().requestEveryScreen(engine.getSystem().awaitAnswer([&engine, promise](const SystemAnswer& answer) {
+        if (answer.state == SystemAnswer::State::Granted) {
             engine.getDisplays().refresh();
         }
 
-        AnswerLua::settle(engine, promise, answer);
+        SystemAnswerLua::settle(engine, promise, answer);
     }));
     // clang-format on
 

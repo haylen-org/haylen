@@ -436,7 +436,7 @@ The variable `HAYLEN_TESTS_SHARD` of the headless player, such as `HAYLEN_TESTS_
 
 ## The tests of the Android libraries
 
-The Java classes of the `haylen` library have tests of their own in `engine/platform/android/haylen/src`. The tests in `test/` need no device, such as the ones of the queue of permission prompts, and `sdk build --target android` runs them through the Gradle task `:haylen:testDebugUnitTest`, the only unit test task that the Android Gradle plugin makes, before it publishes the libraries. The tests in `androidTest/` need Android, such as the ones of the artwork of the now-playing controls and of the tree of accessible elements, and run on a device or the emulator through the task `:haylen:connectedDebugAndroidTest` of the Gradle project in `engine/platform/android`, with the properties that `sdk build --target android` passes to it:
+The Java classes of the `haylen` library have tests of their own in `engine/platform/android/haylen/src/androidTest/`. They need Android, such as the ones of the artwork of the now-playing controls and of the tree of accessible elements, and run on a device or the emulator through the task `:haylen:connectedDebugAndroidTest` of the Gradle project in `engine/platform/android`, with the properties that `sdk build --target android` passes to it:
 
 ```sh
 gradle -p engine/platform/android :haylen:connectedDebugAndroidTest -PhaylenNativeLibraries=<sdk>/jniLibs -PhaylenVarnSourceDir=<varn sources> -PhaylenMavenDir=<sdk>/maven -PhaylenBuildDirectory=build/engine/android-libraries-debug
@@ -560,13 +560,14 @@ The class `HaylenUiTestCase` starts the app again for each test, with the launch
 
 The test project checks with them that a tap opens a category, that the software keyboard types, deletes and turns with a field on the iPhone and the iPad, that the keyboard of the Apple TV types into the search of its menu, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays, and Car Dashboard and Smart Home turn to landscape and back to portrait and save a picture of each.
 
-The tests of plugins open their test with `--test <code>` and read its checks, which the results of a test show as cards whose accessibility label is the line of the check, such as `Pass: The camera permission reaches the app. The request answered "granted".`:
+The tests of plugins open their test with `--test <code>` and read its checks, which the results of a test show as cards whose accessibility label is the line of the check, such as `Pass: The text came back through the plugin it depends on.`:
 
 | Test | iOS and iPadOS | Apple TV | Android |
 | --- | --- | --- | --- |
 | PLG-008, PLG-009, PLG-019 | The native screen that covers the app and closes, the screen of the plugin that answers the call, a cancel, a restart under the screen and the screen of SwiftUI, and the purchases of the fake store with a cancel and a restore. | The same, with the remote. | The same, but the screen of SwiftUI, which Android lacks. |
-| PLG-011 | The prompts of the camera, the microphone, the location and notifications, the camera of the plugin that follows the answer, and the tap on a notification while the app shows, from the Home Screen and after the system ended the app. | The test does not run there. | The same with the permission dialogs, and the tap on a notification after the app left the recent apps. |
-| PLG-016 | The cameras, a photo and the microphone with its level, on a device, since the simulator has no camera. | The test does not run there. | The same, on the emulator and on a device. |
+| PLG-024 | The text that the native part of the plugin of the test wrote through the native part of the plugin it depends on. | The same, with the remote. | The same. |
+| PLG-025 | The prompt of notifications and the tap on a notification while the app shows, from the Home Screen and after the system ended the app. | The test does not run there. | The same with the permission dialog, and the tap on a notification after the app left the recent apps. |
+| PLG-016 | The prompts of the camera and the microphone, the cameras, a photo and the microphone with its level, on a device, since the simulator has no camera. | The test does not run there. | The same, on the emulator and on a device. |
 | PLG-017 | The prompt of the location, the place that the test simulates and the native map. | The same, with the remote. | The same, with test providers of the location. |
 | PLG-015 | | | The back button, which leaves the test for its list. |
 

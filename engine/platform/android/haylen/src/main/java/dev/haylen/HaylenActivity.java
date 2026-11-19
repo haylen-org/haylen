@@ -171,9 +171,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         followNetwork();
         HaylenPlugins.checkLoaded(getApplication());
 
-        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the permissions and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
+        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
         getLifecycle().addObserver(new HaylenAudioFocus(this));
-        HaylenPermissions.activityCreated(this, savedInstanceState);
         HaylenScreens.activityCreated(this);
         HaylenPlugins.activityCreated(this, savedInstanceState);
 
@@ -498,7 +497,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return text.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    // The JSON of `Permission::Answer::fromJson`.
+    // The JSON of `SystemAnswer::fromJson`.
     private static byte[] answer(String state, String message) {
         Map<String, Object> answer = new HashMap<>();
         answer.put("state", state);

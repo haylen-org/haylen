@@ -20,13 +20,13 @@ bool TestPortHost::isFullscreen() const noexcept {
     return true;
 }
 
-void TestPortHost::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void TestPortHost::setFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) {
     if (!value) {
-        callback({.state = Permission::State::Unsupported, .message = "The window of the test port always fills its screen."});
+        callback({.state = SystemAnswer::State::Unsupported, .message = "The window of the test port always fills its screen."});
         return;
     }
 
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 // The screen of the test port shows no title and no cursor.
@@ -36,27 +36,27 @@ void TestPortHost::setCursor(Window::Cursor) {}
 
 void TestPortHost::setCursorVisible(bool) {}
 
-void TestPortHost::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void TestPortHost::setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
     if (value) {
-        callback({.state = Permission::State::Unsupported, .message = "The test port has no pointer to lock."});
+        callback({.state = SystemAnswer::State::Unsupported, .message = "The test port has no pointer to lock."});
         return;
     }
 
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 // The test port has no clipboard of a system, so the window keeps its own.
-void TestPortHost::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
+void TestPortHost::setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) {
     clipboard = value;
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 std::string TestPortHost::getClipboard() const {
     return clipboard;
 }
 
-void TestPortHost::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
-    callback({.state = Permission::State::Granted}, clipboard);
+void TestPortHost::readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) {
+    callback({.state = SystemAnswer::State::Granted}, clipboard);
 }
 
 bool TestPortHost::canBeTransparent() const noexcept {
@@ -106,8 +106,8 @@ void TestPortHost::setGamepadMotion(input::GamepadMotion::Sensors) {}
 void TestPortHost::setFocusable(bool) {}
 
 // The test port has no screen saver, so its screen stays on.
-void TestPortHost::setScreenSaverSuspended(bool, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void TestPortHost::setScreenSaverSuspended(bool, std::function<void(SystemAnswer answer)> callback) {
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 // The runtime of the test port plays frames of a fixed length that no display paces.

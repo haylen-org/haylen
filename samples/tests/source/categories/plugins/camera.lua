@@ -1,4 +1,4 @@
--- The simulated camera and microphone of an SDK: the native part pushes the frames of the camera into the video stream "camera", whose texture the UI shows, takes photos as JPEG bytes, which become a texture, and pushes the samples of the microphone into the audio stream "microphone" with its level. Swift captures them with AVFoundation, Kotlin with Camera2 and "AudioRecord" and JavaScript with "getUserMedia", after the permission of the person.
+-- The simulated camera and microphone of an SDK: the native part pushes the frames of the camera into the video stream "camera", whose texture the UI shows, takes photos as JPEG bytes, which become a texture, and pushes the samples of the microphone into the audio stream "microphone" with its level. Swift captures them with AVFoundation, Kotlin with Camera2 and "AudioRecord" and JavaScript with "getUserMedia", once the person allowed them: Swift asks AVFoundation and JavaScript asks the browser when they start, and on Android the Lua API first opens the screen of the plugin whose Activity Result contract shows the permission dialog.
 local collections = require('haylen.collections')
 local graphics = require('haylen.graphics')
 local haylen = require('haylen')
@@ -10,11 +10,11 @@ local demo = require('native-demo')
 local Camera = haylen.class('Camera', DemoTest)
 
 Camera.code = [[
-demo.startCamera('back'):await()
+local started, err = demo.startCamera('back')  -- The system asks the person first.
 ui.setImage('@native-camera', demo.cameraStream().texture)
 local photo = demo.takePhoto():await()
 local texture = graphics.newTexture(photo.jpeg)
-demo.startMicrophone():await()]]
+demo.startMicrophone()]]
 
 Camera.framesToPass = 30
 Camera.cameraName = 'The frames of the camera reach the texture'
@@ -34,7 +34,7 @@ function Camera:enter()
             ui.button{id = 'front', text = 'Start the front camera', onClick = function() self:toggleCamera('front') end},
             ui.button{id = 'photo', text = 'Take a photo', enabled = false, onClick = function() self:takePhoto() end},
             ui.button{id = 'microphone', text = 'Start the microphone', onClick = function() self:toggleMicrophone() end},
-            ui.label{text = 'AVFoundation on iOS, iPadOS, Mac Catalyst and macOS, Camera2 and "AudioRecord" on Android, and "getUserMedia" on the web. The system asks the person for the camera and the microphone the first time.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'AVFoundation on iOS, iPadOS, Mac Catalyst and macOS, Camera2 and "AudioRecord" on Android, and "getUserMedia" on the web. The system asks the person for the camera and the microphone the first time, on Android through a screen of the plugin.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.row{grow = 1, gap = 16, align = 'stretch',
@@ -77,7 +77,7 @@ function Camera:toggleCamera(facing)
     end
     self:act(function()
         self.results:set('camera', 'waiting', Camera.cameraName, 'The camera starts.')
-        local started, err = demo.startCamera(facing):await()
+        local started, err = demo.startCamera(facing)
         if err then
             self.results:failure('camera', Camera.cameraName, err)
             return
@@ -143,7 +143,7 @@ function Camera:toggleMicrophone()
     end
     self:act(function()
         self.results:set('microphone', 'waiting', Camera.microphoneName, 'The microphone starts.')
-        local started, err = demo.startMicrophone():await()
+        local started, err = demo.startMicrophone()
         if err then
             self.results:failure('microphone', Camera.microphoneName, err)
             return

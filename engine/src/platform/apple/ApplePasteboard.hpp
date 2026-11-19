@@ -3,7 +3,7 @@
 #include <functional>
 #include <string>
 
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 
 namespace haylen::platform {
 
@@ -11,7 +11,7 @@ namespace haylen::platform {
 class ApplePasteboard final {
   public:
     // Calls back exactly once, on any thread, with `Granted` and the text, an empty text when the pasteboard holds none, or `Denied` when the person did not allow the app to paste.
-    static void read(std::function<void(Permission::Answer answer, std::string text)> callback);
+    static void read(std::function<void(SystemAnswer answer, std::string text)> callback);
 };
 
 } // namespace haylen::platform

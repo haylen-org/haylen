@@ -3,6 +3,21 @@ const language = "JavaScript";
 
 const failure = (message, code, data) => Object.assign(new Error(message), { code, data });
 
+// The browser asks the person for the camera or the microphone when the page opens it, so a refusal fails the call with the code `denied` and a device without it with the code `unsupported`.
+const openMedia = async (constraints, capability, absent, failed) => {
+    try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (error) {
+        if (error.name === "NotAllowedError") {
+            throw failure(`The person has not allowed ${capability}. The browser asks again when the page opens it, unless the person blocked it in the settings of the site.`, "denied");
+        }
+        if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
+            throw failure(absent, "unsupported");
+        }
+        throw failure(failed.message + error.message, failed.code);
+    }
+};
+
 const products = [
     { id: "coins.small", title: "A pouch of coins", description: "100 coins for the shop of the app.", price: "0.99", currency: "USD", kind: "consumable" },
     { id: "coins.large", title: "A chest of coins", description: "1200 coins for the shop of the app.", price: "9.99", currency: "USD", kind: "consumable" },
@@ -163,13 +178,9 @@ export default function simulate(context) {
 
     // The camera plays in a video element of its own, which a timer copies into the stream 30 times per second.
     context.register("startCamera", async (params) => {
-        await context.requirePermission("camera");
+        context.require({ secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" });
         stopCamera();
-        try {
-            camera.media = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: params.facing === "front" ? "user" : "environment" } });
-        } catch (error) {
-            throw failure("The camera did not start: " + error.message, "cameraFailed");
-        }
+        camera.media = await openMedia({ video: { width: 640, height: 480, facingMode: params.facing === "front" ? "user" : "environment" } }, "the camera", "This device has no camera.", { message: "The camera did not start: ", code: "cameraFailed" });
         camera.video = Object.assign(document.createElement("video"), { muted: true, playsInline: true, srcObject: camera.media });
         await camera.video.play();
         camera.timer = setInterval(() => camera.stream.push(camera.video), 1000 / 30);
@@ -193,14 +204,9 @@ export default function simulate(context) {
 
     // The microphone plays into an audio worklet whose processor posts every block of samples to the page, which pushes them into the stream and measures their level about ten times per second.
     context.register("startMicrophone", async () => {
-        context.require({ api: "AudioWorkletNode" });
-        await context.requirePermission("microphone");
+        context.require({ secureContext: true, api: ["navigator.mediaDevices.getUserMedia", "AudioWorkletNode"], permissionsPolicy: "microphone" });
         stopMicrophone();
-        try {
-            microphone.media = await navigator.mediaDevices.getUserMedia({ audio: true });
-        } catch (error) {
-            throw failure("The microphone did not start: " + error.message, "microphoneFailed");
-        }
+        microphone.media = await openMedia({ audio: true }, "the microphone", "This device has no microphone.", { message: "The microphone did not start: ", code: "microphoneFailed" });
         microphone.audio = new AudioContext();
         const sampleRate = microphone.audio.sampleRate;
         microphone.stream = context.audioStream("microphone", { sampleRate, channels: 1 });
@@ -230,12 +236,19 @@ export default function simulate(context) {
         return null;
     });
 
+    // The browser asks the person for the location when the page reads it, so a refusal fails the call with the code `denied`.
     context.register("location", async () => {
-        await context.requirePermission("location");
+        context.require({ secureContext: true, api: "navigator.geolocation", permissionsPolicy: "geolocation" });
         return new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
                 (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy, language }),
-                (error) => reject(failure("The location is unknown: " + error.message, "locationUnknown")),
+                (error) => {
+                    if (error.code === error.PERMISSION_DENIED) {
+                        reject(failure("The person has not allowed the location. The browser asks again when the page reads it, unless the person blocked it in the settings of the site.", "denied"));
+                        return;
+                    }
+                    reject(failure("The location is unknown: " + error.message, "locationUnknown"));
+                },
                 { timeout: 15000 },
             );
         });

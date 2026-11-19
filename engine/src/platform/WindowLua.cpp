@@ -24,8 +24,8 @@
 #include "haylen/platform/System.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
-#include "platform/AnswerLua.hpp"
 #include "platform/FullscreenTarget.hpp"
+#include "platform/SystemAnswerLua.hpp"
 
 namespace haylen::platform {
 
@@ -131,11 +131,11 @@ int WindowLua::setFullscreen(lua_State* L) {
 }
 
 // Pushes a promise that the answer of a call of the window settles at the next frame, and returns what the window calls with it.
-std::function<void(Permission::Answer)> WindowLua::awaitAnswer(lua_State* L) {
+std::function<void(SystemAnswer)> WindowLua::awaitAnswer(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
     promise.push(L);
-    return engine.getSystem().awaitAnswer([&engine, promise](const Permission::Answer& answer) { AnswerLua::settle(engine, promise, answer); });
+    return engine.getSystem().awaitAnswer([&engine, promise](const SystemAnswer& answer) { SystemAnswerLua::settle(engine, promise, answer); });
 }
 
 int WindowLua::resizable(lua_State* L) {

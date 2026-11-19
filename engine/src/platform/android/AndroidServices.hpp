@@ -15,8 +15,8 @@
 
 namespace haylen::platform {
 
-// The services of Android, which reach the activity through JNI: the platform, its displays, the screen of the activity with its insets, orientation, bars, gestures, fold and cutouts, the Android parts of plugins, the permissions of the system, why it blocked a connection, the media session, the accessibility tree, the video decoder of the media codecs and the fonts of the font matcher. The activity fills its display and hands the links that open the app to the activity that runs.
-class AndroidServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::PermissionService, public port::NetworkService, public port::MediaService, public port::AccessibilityService, public port::VideoService, public port::FontService {
+// The services of Android, which reach the activity through JNI: the platform, its displays, the screen of the activity with its insets, orientation, bars, gestures, fold and cutouts, the Android parts of plugins, why it blocked a connection, the media session, the accessibility tree, the video decoder of the media codecs and the fonts of the font matcher. The activity fills its display and hands the links that open the app to the activity that runs.
+class AndroidServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::NetworkService, public port::MediaService, public port::AccessibilityService, public port::VideoService, public port::FontService {
   public:
     [[nodiscard]] static port::Services create();
 
@@ -32,7 +32,7 @@ class AndroidServices final : public port::PlatformService, public port::Display
     [[nodiscard]] std::vector<Display> getDisplays() override;
     [[nodiscard]] std::string getWindowDisplayId() override;
     [[nodiscard]] bool hasUnlistedDisplays() override;
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override;
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] math::Rect getWindowFrame() override;
 
     [[nodiscard]] math::Insets getSafeAreaInsets() override;
@@ -50,9 +50,6 @@ class AndroidServices final : public port::PlatformService, public port::Display
     void openScreen(const ScreenRequest& request) override;
     void cancelScreen(std::uint64_t id) override;
     void reportError(const core::Json& report) override;
-
-    void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
 
     [[nodiscard]] std::string explainBlockedSocket(std::intptr_t socket) override;
     [[nodiscard]] std::string getNetworkRequirement() override;

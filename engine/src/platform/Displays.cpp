@@ -29,7 +29,7 @@ const Display& Displays::getWindowDisplay() const noexcept {
     return found != nullptr ? *found : getPrimary();
 }
 
-void Displays::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+void Displays::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
     window.requestEveryScreen(std::move(callback));
 }
 

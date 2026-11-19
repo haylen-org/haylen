@@ -53,27 +53,27 @@ std::string_view Window::systemGesturesName(SystemGestures value) noexcept {
 }
 
 // An empty callback stands for a caller that does not want the answer, so the window answers nobody.
-std::function<void(Permission::Answer answer)> Window::answerTo(std::function<void(Permission::Answer answer)> callback) {
+std::function<void(SystemAnswer answer)> Window::answerTo(std::function<void(SystemAnswer answer)> callback) {
     if (callback) {
         return callback;
     }
 
-    return [](const Permission::Answer&) {};
+    return [](const SystemAnswer&) {};
 }
 
-void Window::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Window::setFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) {
     applyFullscreen(value, answerTo(std::move(callback)));
 }
 
-void Window::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void Window::enterFullscreen(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) {
     applyFullscreenTarget(value, answerTo(std::move(callback)));
 }
 
-void Window::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Window::setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
     applyMouseLocked(value, answerTo(std::move(callback)));
 }
 
-void Window::setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Window::setKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback) {
     applyKeepScreenOn(value, answerTo(std::move(callback)));
 }
 

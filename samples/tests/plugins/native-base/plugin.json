@@ -1,0 +1,14 @@
+{
+    "interface": 1,
+    "id": "native-base",
+    "name": "Native Base",
+    "version": "1.0.0",
+    "description": "A plugin that other plugins depend on, whose native part offers a helper that the native part of \"native-demo\" calls directly on Apple platforms, Android and the web.",
+    "implementations": {"ios": "native", "catalyst": "native", "tvos": "native", "visionos": "native", "macos": "native", "android": "native", "web": "native", "windows": "lua", "linux": "lua"},
+    "contributions": [
+        {"type": "appleClass", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "NativeBasePlugin"},
+        {"type": "appleSources", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "path": "apple"},
+        {"type": "gradleModule", "platforms": ["android"], "path": "android"},
+        {"type": "webModule", "platforms": ["web"], "path": "web/native-base.js"}
+    ]
+}

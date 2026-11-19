@@ -106,6 +106,15 @@ var Module = {
             document.body.appendChild(script);
         });
 
+    // The web module of a plugin imports the module of a plugin it depends on as `haylen-plugin:<id>`, which this map of the page resolves to that module, so both share one instance of it. The page holds the map before it imports any module.
+    const mapPlugins = (plugins) => {
+        const imports = Object.fromEntries(plugins.map((plugin) => ["haylen-plugin:" + plugin.id, new URL(plugin.module, document.baseURI).href]));
+        const map = document.createElement("script");
+        map.type = "importmap";
+        map.textContent = JSON.stringify({ imports });
+        document.head.appendChild(map);
+    };
+
     // Imports the module of every plugin, each of which exports its load function as its default export.
     const importPlugins = (plugins) =>
         Promise.all(
@@ -240,6 +249,7 @@ var Module = {
         await checkGraphics();
         // A protected release downloads only its manifests and its app domain before the app starts, and the content streams in as the app needs it, while development downloads the zipped package.
         const files = config.release ? config.release.files.map((name) => ({ url: "app/" + name, size: config.sizes["app/" + name] })) : [{ url: "app.zip", size: config.sizes["app.zip"] }];
+        mapPlugins(config.plugins);
         const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: "haylen.wasm", size: config.sizes["haylen.wasm"] }, ...files])]);
         // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once. In the Worker mode the bytes go to the worker, which compiles them.
         if (Module.haylen.hosting === "worker") {

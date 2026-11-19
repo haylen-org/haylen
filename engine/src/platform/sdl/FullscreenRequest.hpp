@@ -6,14 +6,14 @@
 
 #include <SDL3/SDL_video.h>
 
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 
 namespace haylen::platform::sdl {
 
 // The change of fullscreen that the app asked for and that the window has not reported yet. Systems such as macOS animate the window into its mode after SDL returns, so the answer waits until SDL reports that the window entered or left fullscreen. A window that covers another display first leaves the fullscreen it holds, and the request keeps that display until SDL reports that the window left. A newer request replaces the one that waits, and a window that closes ends it, so every answer arrives exactly once.
 class FullscreenRequest final {
   public:
-    using Callback = std::function<void(Permission::Answer answer)>;
+    using Callback = std::function<void(SystemAnswer answer)>;
 
     // The display that the window covers and the exclusive mode it covers it in, with the id of the display that the app named.
     struct Destination {
@@ -54,10 +54,10 @@ class FullscreenRequest final {
     void reach(bool fullscreen);
 
     // Answers the request that waits with the answer, such as a system that refused the change.
-    void fail(Permission::Answer answer);
+    void fail(SystemAnswer answer);
 
   private:
-    void settle(Permission::Answer answer);
+    void settle(SystemAnswer answer);
 
     std::optional<bool> wanted;
     std::optional<Destination> destination;

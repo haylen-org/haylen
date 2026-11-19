@@ -30,7 +30,6 @@ TEST(PluginManifestTest, ReadsWhatTheRuntimeNeeds) {
     const PluginManifest manifest = PluginManifest::read(package, "camera");
     EXPECT_EQ(manifest.getVersion(), "1.2.0");
     EXPECT_EQ(manifest.getDependencies(), (std::vector<std::string>{"cloud", "permissions-kit"}));
-    EXPECT_EQ(manifest.getPermissions(), std::vector<std::string>{"camera"});
     EXPECT_EQ(manifest.getDefaults(), core::Json::parse(R"({"usage": "Scans codes."})"));
     EXPECT_TRUE(manifest.isNative("android"));
     EXPECT_FALSE(manifest.isNative("tvos"));

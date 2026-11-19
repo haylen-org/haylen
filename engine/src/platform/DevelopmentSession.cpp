@@ -31,26 +31,7 @@ DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem
     if (!server.empty()) {
         connection = std::make_unique<DevelopmentConnection>(std::move(server), *this, host.getBlockedReason());
         addReporter([target = connection.get()](const core::Json& value) { target->report(value); });
-        awaitLocalNetwork(host);
     }
-}
-
-// A server outside this device is on the local network, which a platform such as Android 17 lets an app reach only once the person grants it, so the connection waits for the answer instead of waiting for packets the platform drops. A platform that needs no permission, or tells nothing until the app tries, answers at once without a prompt.
-void DevelopmentSession::awaitLocalNetwork(Host& host) {
-    if (connection->isOnThisDevice()) {
-        return;
-    }
-
-    // clang-format off
-    host.requestPermission(Permission::Kind::LocalNetwork, [release = connection->hold()](Permission::Answer answer) {
-        if (answer.state == Permission::State::Granted || answer.state == Permission::State::Unknown) {
-            release(std::nullopt);
-            return;
-        }
-
-        release(answer.state == Permission::State::Unsupported ? answer.message : "The person did not grant the access to the local network that reaching it needs.");
-    });
-    // clang-format on
 }
 
 DevelopmentSession::~DevelopmentSession() = default;

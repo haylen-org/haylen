@@ -15,8 +15,8 @@
 
 namespace haylen::platform {
 
-// The services of the web runtime, which reach the page through `Module.haylen`: the platform, the screens the page knows, the screen of the page with its safe area, orientation and fold, the web parts of plugins, the permissions of the browser, the media session, the mirror of the UI for screen readers and the video decoder of the browser. A page has no desktop, opens no process for a link, since it is the link that opened it, and reads no font of the system.
-class WebServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::PermissionService, public port::MediaService, public port::AccessibilityService, public port::VideoService {
+// The services of the web runtime, which reach the page through `Module.haylen`: the platform, the screens the page knows, the screen of the page with its safe area, orientation and fold, the web parts of plugins, the media session, the mirror of the UI for screen readers and the video decoder of the browser. A page has no desktop, opens no process for a link, since it is the link that opened it, and reads no font of the system.
+class WebServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::MediaService, public port::AccessibilityService, public port::VideoService {
   public:
     [[nodiscard]] static port::Services create();
 
@@ -32,7 +32,7 @@ class WebServices final : public port::PlatformService, public port::DisplayServ
     [[nodiscard]] std::vector<Display> getDisplays() override;
     [[nodiscard]] std::string getWindowDisplayId() override;
     [[nodiscard]] bool hasUnlistedDisplays() override;
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override;
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] math::Rect getWindowFrame() override;
 
     [[nodiscard]] math::Insets getSafeAreaInsets() override;
@@ -50,9 +50,6 @@ class WebServices final : public port::PlatformService, public port::DisplayServ
     void openScreen(const ScreenRequest& request) override;
     void cancelScreen(std::uint64_t id) override;
     void reportError(const core::Json& report) override;
-
-    void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
 
     void setBackgroundAudio(bool value) override;
     void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;

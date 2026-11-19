@@ -76,9 +76,9 @@ Each kind of device runs these suites:
 
 | Device | Suites |
 | --- | --- |
-| iPhone or iPad | PLG-008, PLG-009, PLG-011, PLG-016, PLG-017, PLG-019, and the samples of the camera, the microphone, the location, notifications, haptics, motion and Bluetooth |
+| iPhone or iPad | PLG-008, PLG-009, PLG-016, PLG-017, PLG-019, and the samples of the camera, the microphone, the location, notifications, haptics, motion and Bluetooth |
 | Apple TV | PLG-008, PLG-009, PLG-017, PLG-019 and the keyboard of the search |
-| Android phone or tablet | PLG-008, PLG-009, PLG-011, PLG-015, PLG-016, PLG-017, PLG-019, and the samples |
+| Android phone or tablet | PLG-008, PLG-009, PLG-015, PLG-016, PLG-017, PLG-019, and the samples |
 
 The posture of the foldable iPhone in DeviceHub is the one check that no API of the system drives, so it stays out of routine runs.
 

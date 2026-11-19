@@ -361,27 +361,6 @@ if(APPLE)
   set_source_files_properties(platform/AppleStringsTests.mm "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleStrings.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
   target_link_libraries(haylen-tests PRIVATE "-framework CoreText" "-framework Foundation")
 endif()
-# On macOS the tests also run the context that the native part of a plugin receives, with the parts of the runtime it reaches and the Lua player, the app that the player of the runtime loads.
-if(HAYLEN_PLATFORM STREQUAL "macos")
-  set(HAYLEN_PLUGIN_CONTEXT_SOURCES
-    platform/HaylenPluginContextTests.mm
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleBridge.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleScreens.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenAudioStream.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenBridge.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenOverlay.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenOverlayItem.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenOverlayLayer.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenPluginContext.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenRequirements.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenScreen.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenScreenController.mm"
-    "${HAYLEN_ENGINE_DIR}/src/platform/apple/HaylenVideoStream.mm"
-  )
-  target_sources(haylen-tests PRIVATE ${HAYLEN_PLUGIN_CONTEXT_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/NativeHost.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/Player.cpp")
-  set_source_files_properties(${HAYLEN_PLUGIN_CONTEXT_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-  target_link_libraries(haylen-tests PRIVATE haylen::player "-framework AppKit")
-endif()
 # The graveyard of the Metal device keeps the objects that frames still use, which its tests check without a GPU.
 if("metal" IN_LIST HAYLEN_GRAPHICS_APIS)
   target_sources(haylen-tests PRIVATE gpu/metal/GraveyardTests.mm)

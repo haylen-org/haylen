@@ -94,7 +94,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
         });
     // clang-format on
 
-    current.system = std::make_unique<platform::System>(host, *current.platform, current.events, current.graphics->getAdapterName(), [this] { return getAppPlugins(); });
+    current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
     current.gamepadMotion = std::make_unique<input::GamepadMotion>(host);
     current.displays = std::make_unique<platform::Displays>(host, current.events);
     current.outputs = std::make_unique<platform::Outputs>(host, *current.displays, *current.graphics, current.events);
@@ -267,8 +267,8 @@ void Engine::applyWindowOptions() {
     host.setExternalDisplays(window.externalDisplays);
 
     // clang-format off
-    host.setKeepScreenOn(window.keepScreenOn, [](const platform::Permission::Answer& answer) {
-        if (answer.state != platform::Permission::State::Granted) {
+    host.setKeepScreenOn(window.keepScreenOn, [](const platform::SystemAnswer& answer) {
+        if (answer.state != platform::SystemAnswer::State::Granted) {
             Log::warning("The screen follows the settings of the system instead of the \"window.keepScreenOn\" of \"haylen.json\". {}", answer.message);
         }
     });
@@ -280,7 +280,7 @@ void Engine::applyWindowOptions() {
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
 
     // A pointer that goes free needs no answer.
-    host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
+    host.setMouseLocked(false, [](const platform::SystemAnswer&) {});
     host.setCursorVisible(true);
     host.setCursor(platform::Window::Cursor::Default);
     host.setKeyboardVisible(false);
@@ -1272,7 +1272,7 @@ bool Engine::isCancelled() const noexcept {
 void Engine::showError(const lua::Error& error, bool resumable) {
     EngineState& current = *state;
     current.errorScreen = std::make_unique<ErrorScreen>(*this, error, resumable);
-    current.host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
+    current.host.setMouseLocked(false, [](const platform::SystemAnswer&) {});
     current.host.setCursorVisible(true);
 
     Log::error("{}", current.errorScreen->getReport());

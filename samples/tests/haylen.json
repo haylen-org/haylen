@@ -64,6 +64,7 @@
         }
     },
     "plugins": {
+        "native-base": {},
         "native-demo": {
             "parameters": {
                 "greeting": "Hello from haylen.json",

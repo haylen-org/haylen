@@ -15,10 +15,8 @@
 #include <vector>
 
 #include "haylen/input/Input.hpp"
-#include "haylen/platform/AppPlugin.hpp"
 #include "haylen/platform/Battery.hpp"
-#include "haylen/platform/Bridge.hpp"
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
 
@@ -30,13 +28,13 @@ namespace haylen::platform {
 
 class Host;
 
-// The operating system of the device as the app sees it: what the device is, its theme, its battery, its power saving mode, its time zone and the languages the person prefers, the services it offers apps and the permissions the person grants at run time. The engine owns it and publishes `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `timeZoneChanged` and `systemLanguagesChanged` once per change. Every method runs on the frame thread, and so does every callback.
+// The operating system of the device as the app sees it: what the device is, its theme, its battery, its power saving mode, its time zone and the languages the person prefers, and the services it offers apps. The engine owns it and publishes `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `timeZoneChanged` and `systemLanguagesChanged` once per change. Every method runs on the frame thread, and so does every callback.
 class System final {
     struct Inbox;
 
   public:
-    // The info comes from the platform, with the name of the GPU the graphics device runs on. The plugins are the ones of the app, whose permissions the bridge asks their native parts for.
-    System(Host& host, Bridge& bridge, core::EventBus& events, std::string gpuName, std::function<std::vector<AppPlugin>()> plugins);
+    // The info comes from the platform, with the name of the GPU the graphics device runs on.
+    System(Host& host, core::EventBus& events, std::string gpuName);
 
     System(const System&) = delete;
     System& operator=(const System&) = delete;
@@ -57,20 +55,10 @@ class System final {
     [[nodiscard]] std::string getClipboard() const;
 
     // Reads the text on the clipboard for the app and calls back at a later pump with `Granted` and the text, or with `Denied` or `Unsupported` and the sentence that says why. Some platforms ask the person before an app reads it, such as iOS and browsers.
-    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback);
+    void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback);
 
     // Puts the text on the clipboard of the system and calls back at a later pump with `Granted` once it got there, or with `Denied` or `Unsupported` and the sentence that says why. A browser refuses a page outside a secure context or without a recent input of the person, such as a click or a key.
-    void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);
-
-    // Reads the state of a permission of the engine as far as the platform tells it, without asking the person, and calls back at a later pump with the answer, which is `Unsupported` with its reason where the platform has no such capability.
-    void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-
-    // Asks the person for a permission of the engine with the prompt of the system where the platform has one, and calls back at a later pump with the state the person left, or `Unsupported` with the reason and the requirements the project of the app lacks, such as the line of the Android manifest that declares the permission.
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-
-    // Reads or asks for a permission by its name: a kind of the engine, or a permission that a plugin of the app declares in its `plugin.json`, which the bridge asks the native part of the plugin for through `<id>.permission` and `<id>.requestPermission` with `{"name": name}`, and whose answer comes at a later frame. A plugin without a native part on this platform, or one that does not answer the method, answers `Unsupported` with the reason. Throws `std::invalid_argument` for a name that neither the engine nor a plugin of the app owns, and `std::runtime_error` when the plugins of the app cannot be read.
-    void checkPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback);
-    void requestPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback);
+    void setClipboard(std::string_view text, std::function<void(SystemAnswer answer)> callback);
 
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble. Throws `std::invalid_argument` for a gamepad outside `input::Input::kMaxGamepads`, an intensity outside 0 to 1 or seconds that are not positive.
     void rumbleGamepad(std::size_t index, float low, float high, float seconds);
@@ -83,7 +71,7 @@ class System final {
     void setCrashContext(std::string_view json);
 
     // Keeps the callback of a call that a platform may gate until its answer, and returns what the platform calls with the answer from any thread, which reaches the callback at the next pump, such as the answers of the fullscreen of the window.
-    [[nodiscard]] std::function<void(Permission::Answer)> awaitAnswer(std::function<void(Permission::Answer)> callback);
+    [[nodiscard]] std::function<void(SystemAnswer)> awaitAnswer(std::function<void(SystemAnswer)> callback);
 
     // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving, the time zone and the languages. The engine calls it at the start of every frame.
     void pump();
@@ -91,12 +79,12 @@ class System final {
     [[nodiscard]] static std::string_view themeName(Theme value) noexcept;
 
   private:
-    using Callback = std::function<void(Permission::Answer answer, std::string text)>;
+    using Callback = std::function<void(SystemAnswer answer, std::string text)>;
 
     // The answer of the platform to a call, with the text that a read of the clipboard brings.
     struct Reply {
         std::uint64_t id = 0;
-        Permission::Answer answer;
+        SystemAnswer answer;
         std::string text;
     };
 
@@ -114,16 +102,8 @@ class System final {
     // Publishes what the platform reported since the last pump, each value once per change.
     void publishChanges();
 
-    // Calls the method of the plugin that owns the permission with its name, or throws for a name that no plugin of the app owns.
-    void askPlugin(std::string_view name, std::string_view method, std::function<void(Permission::Answer answer)> callback);
-
-    // Turns the result of a call of a plugin into an answer, where a failed call answers `Unsupported` with a sentence that says why.
-    [[nodiscard]] static Permission::Answer readPluginAnswer(const std::string& plugin, const std::string& name, const Bridge::Result& result);
-
     Host& host;
-    Bridge& bridge;
     core::EventBus& events;
-    std::function<std::vector<AppPlugin>()> appPlugins;
     SystemInfo info;
     Theme theme;
     Battery battery;

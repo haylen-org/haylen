@@ -3,9 +3,9 @@
     "id": "page-plugin",
     "name": "Page Plugin",
     "version": "1.0.0",
-    "description": "Answers the plugin check of the web with what the context of a web module gives a plugin, and owns a permission whose prompt the browser never shows.",
+    "description": "Answers the plugin check of the web with what the context of a web module gives a plugin and with the web module of the plugin it depends on.",
     "implementations": {"web": "native"},
-    "permissions": ["unprompted"],
+    "dependencies": {"base-plugin": "1.0.0"},
     "contributions": [
         {"type": "webModule", "platforms": ["web"], "path": "web/page-plugin.js"}
     ]

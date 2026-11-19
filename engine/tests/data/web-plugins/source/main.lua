@@ -1,4 +1,4 @@
--- The app of the plugin check of the web: its plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, fails a call with an error of the page and one with a result that JSON cannot carry, requires a permission whose request ends without a prompt and one that it never registered, and sends events before the app starts, while `haylen test --target web` reads what the page answered.
+-- The app of the plugin check of the web: its plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, fails a call with an error of the page and one with a result that JSON cannot carry, answers a call through the web module of the plugin it depends on, and sends events before the app starts, while `haylen test --target web` reads what the page answered.
 local async = require('async')
 local log = require('haylen.log')
 local plugin = require('page-plugin')
@@ -17,10 +17,7 @@ async.spawn(function()
     local _, unwritable = plugin.unwritable():await()
     log.info(string.format('The result that JSON cannot carry failed with the code "%s" and the type "%s".', tostring(unwritable.code), tostring(unwritable.data and unwritable.data.type)))
 
-    local _, refusal = plugin.useUnprompted():await()
-    log.info(string.format('The use without a prompt failed with the code "%s": %s', tostring(refusal.code), refusal.message))
-
-    local _, unregistered = plugin.useUnregistered():await()
-    log.info(string.format('The use of an unregistered permission failed with the code "%s": %s', tostring(unregistered.code), unregistered.message))
+    local answer = plugin.dependency('Hello'):await()
+    log.info('The dependency answered: ' .. answer.text)
     log.info(string.format('The app heard %d samples sent before it started, from %d to %d.', #samples, samples[1] or -1, samples[#samples] or -1))
 end)

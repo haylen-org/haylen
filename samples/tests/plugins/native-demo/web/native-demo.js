@@ -1,5 +1,5 @@
 // Web part of the Native Demo plugin, built on the DOM alone, with the simulations of SDKs in `simulations.js`. The page imports this module before the runtime starts and calls its `load` function with the context of the plugin.
-import registerPermissions from "./permissions.js";
+import { describe } from "haylen-plugin:native-base";
 import simulate from "./simulations.js";
 
 const language = "JavaScript";
@@ -270,7 +270,6 @@ const pickFile = () =>
     });
 
 export default function load(context) {
-    registerPermissions(context);
     const video = { stream: context.videoStream("island"), canvas: null, timer: null, frame: 0 };
     const tone = { stream: context.audioStream("tone", { sampleRate: 44100, channels: 1 }), timer: null };
     let bursts = null;
@@ -508,7 +507,13 @@ export default function load(context) {
 
     // The notification shows after the seconds pass while the page is open, since a page that closed runs no timers, and its click focuses the page and reaches the app as `notificationOpened`, retained like on the other platforms.
     context.register("notify", async (params) => {
-        await context.requirePermission("notifications");
+        context.require({ secureContext: true, api: "Notification" });
+        if (Notification.permission === "default") {
+            await Notification.requestPermission();
+        }
+        if (Notification.permission !== "granted") {
+            throw failure("The person has not allowed the notifications of the page. The browser asks while the person has not decided, and after that the person allows them in the settings of the site.", "denied");
+        }
         const identifier = `native-demo.${crypto.randomUUID()}`;
         setTimeout(() => {
             const notification = new Notification(params.title, { body: params.body, tag: identifier });
@@ -526,6 +531,9 @@ export default function load(context) {
         context.require({ secureContext: true, api: "navigator.contacts" });
         return { met: true, language };
     });
+
+    // The plugin depends on the plugin `native-base`, whose module the page maps to `haylen-plugin:native-base`, so this module imports its helper directly.
+    context.register("dependency", (params) => ({ text: describe(params.text), language }));
 
     // The confirm screen opens in a popup inside the activation of the tap that asked for it, and answers with what the person picked there, which the popup posts back to this page.
     context.registerScreen("confirm", async (params, screen) => {

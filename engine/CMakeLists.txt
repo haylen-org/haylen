@@ -546,7 +546,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/native/NativeLua.cpp
   src/platform/native/NativeSignature.cpp
   src/platform/NativeViews.cpp
-  src/platform/Permission.cpp
   src/platform/ReturnHold.cpp
   src/platform/PlatformLua.cpp
   src/platform/PluginManifest.cpp
@@ -561,10 +560,11 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/LaunchOptions.cpp
   src/platform/LinkRelay.cpp
   src/platform/MediaSession.cpp
+  src/platform/SystemAnswer.cpp
   src/platform/System.cpp
   src/platform/SystemInfo.cpp
   src/platform/SystemLua.cpp
-  src/platform/AnswerLua.cpp
+  src/platform/SystemAnswerLua.cpp
   src/platform/SystemState.cpp
   src/platform/VideoStream.cpp
   src/platform/Display.cpp
@@ -1009,7 +1009,6 @@ elseif(APPLE)
     src/platform/apple/HaylenOverlayItem.mm
     src/platform/apple/HaylenOutputView.mm
     src/platform/apple/HaylenOverlayLayer.mm
-    src/platform/apple/HaylenPermission.mm
     src/platform/apple/HaylenPlacement.mm
     src/platform/apple/HaylenPluginContext.mm
     src/platform/apple/HaylenRequirement.mm

@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 5
+  CONTRACT 6
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -117,7 +117,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 5,
+  "contract": 6,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -198,7 +198,6 @@ Every platform, of the engine or of a port, registers the services of the capabi
 | `DesktopService` | A desktop of windows: the style, background, frame, passthrough and drag of the window, following it and its native handles for native libraries. | A window that fills its screen, with null native handles. |
 | `ScreenService` | The safe area, the orientation, the status bar, the gestures of the system, a fold and cutouts. | A landscape screen, safe everywhere, without a status bar, gestures, fold or cutouts. |
 | `BridgeService` | The native parts of plugins in the language of the platform, their calls, their screens and the failures that stopped the app. | Calls and screens that fail with the code `noHandler`. |
-| `PermissionService` | The permissions of the engine, `screens` and `localNetwork`. | `Granted`, since such a platform gates none. |
 | `NetworkService` | Why the platform blocked a connection and what the project lacks for network access. | Nothing to explain. |
 | `LinkService` | The links of a platform that starts a new process of the app for every link. | No process forwards a link. |
 | `MediaService` | The now-playing controls and the audio of an app in the background. | No controls, and frames that keep running in the background. |

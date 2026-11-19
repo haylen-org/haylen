@@ -126,6 +126,15 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         let language: String
     }
 
+    struct Dependency: Decodable {
+        let text: String
+    }
+
+    struct Described: Encodable {
+        let text: String
+        let language: String
+    }
+
     struct Met: Encodable {
         let met: Bool
         let language: String
@@ -148,14 +157,15 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     private var lastError: [String: Any]?
     private var video: NativeDemoVideo?
     private var tone: NativeDemoTone?
+    private var access: NativeDemoAccess!
     private var device: NativeDemoDevice?
     private let store = NativeDemoStore()
-    private let permissions = NativeDemoPermissions()
 
     func load(with context: HaylenPluginContext) {
         self.context = context
-        permissions.register(context)
-        let device = NativeDemoDevice(context: context)
+        let access = NativeDemoAccess(context: context)
+        self.access = access
+        let device = NativeDemoDevice(context: context, access: access)
         device.register()
         self.device = device
         store.register(context)
@@ -167,6 +177,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         registerScreens(context)
         registerNotifications(context)
         registerRequirements(context)
+        registerDependency(context)
         context.emitRetained("loaded", payload: ["language": Self.language, "platform": Self.platform])
     }
 
@@ -485,14 +496,14 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
 
-    // The notifications need the permission `notifications` that the plugin owns, which shows the prompt of the system the first time.
+    // The notifications ask the person through the notification center, which shows its prompt the first time.
     private func registerNotifications(_ context: HaylenPluginContext) {
         // The notification comes after the seconds pass, whether the app runs, waits in the background or was closed.
-        context.register("notify") { (params: Notify) async throws -> Scheduled in
+        context.register("notify") { [unowned self] (params: Notify) async throws -> Scheduled in
             #if os(tvOS)
             throw HaylenFailure("Apple TV shows no notifications.", code: "unsupported")
             #else
-            try await context.requirePermission("notifications")
+            try await self.access.requireNotifications()
             let content = UNMutableNotificationContent()
             content.title = params.title
             content.body = params.body
@@ -510,6 +521,13 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         context.register("requirementCheck") { (_: Empty) async throws -> Met in
             try context.require(.usageDescription("NSContactsUsageDescription"))
             return Met(met: true, language: Self.language)
+        }
+    }
+
+    // The plugin depends on the plugin `native-base`, whose Swift sources compile into the same app target, so this plugin calls `NativeBase` directly.
+    private func registerDependency(_ context: HaylenPluginContext) {
+        context.register("dependency") { (params: Dependency) async throws -> Described in
+            Described(text: NativeBase.describe(params.text), language: Self.language)
         }
     }
 

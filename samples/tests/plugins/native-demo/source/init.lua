@@ -21,6 +21,17 @@ end
 demo.id = handle.id
 demo.version = handle.version
 
+-- Calls a method whose native part uses a capability that the system gates, the camera, the microphone, the location or notifications, and returns its answer, or `nil` and the `PlatformError`, so it runs inside a task. Android gates them behind permissions of the manifest, which the plugin asks the person for through its screen `<capability>Permission` first: an Activity Result contract that shows the permission dialog of the system under the stable key `haylen.native-demo.<capability>Permission`, and that Android answers at once where the app holds the permissions already. Apple platforms and the web need no screen, since the native part asks the system itself, through the API of the capability, before it uses it. A refusal fails with the code `denied`.
+local function callWithAccess(capability, method, params)
+    if haylen.platform == 'android' then
+        local _, err = handle:openScreen(capability .. 'Permission', nil, {opaque = false}):await()
+        if err then
+            return nil, err
+        end
+    end
+    return handle:call(method, params):await()
+end
+
 -- Whether the native part of the plugin runs on this platform. Every other function needs it, and calls without it fail with the code `noHandler`.
 function demo.available()
     return handle.native
@@ -184,14 +195,19 @@ function demo.pickFile()
     return handle:call('pickFile')
 end
 
--- Schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`.
+-- Schedules a local notification of the plugin after `seconds`, once the person allowed notifications, and returns `{identifier, seconds, language}` inside a task, or `nil` and the `PlatformError`.
 function demo.notify(seconds)
-    return handle:call('notify', {seconds = seconds, title = 'Native Demo', body = 'Tap to open Haylen Tests.'})
+    return callWithAccess('notifications', 'notify', {seconds = seconds, title = 'Native Demo', body = 'Tap to open Haylen Tests.'})
 end
 
 -- Calls `listener` with `{identifier, title, action, language}` when the person taps a notification of the plugin. The native part sends `notificationOpened` retained, so the tap that launched the app reaches the first listener.
 function demo.onNotificationOpened(listener)
     return handle:on('notificationOpened', listener)
+end
+
+-- Calls the native part of this plugin, which calls the helper of the plugin `native-base` that it depends on directly, in Swift, Kotlin or JavaScript, and answers with `{text, language}`, where `text` is what the helper wrote.
+function demo.dependency(text)
+    return handle:call('dependency', {text = text})
 end
 
 -- Calls a method whose native part needs something that the plugin leaves out of the project of the app on purpose, such as the permission `android.permission.READ_CONTACTS` on Android. It fails with the code `unsupported` and lists each missing requirement in `data.missing` as `{kind, name, file, snippet}`, and answers with `{met, language}` in an app whose project adds it.
@@ -211,9 +227,9 @@ end
 
 -- The simulations below stand in for the SDKs that real plugins bring, such as cameras, maps, stores, ads and sign-in, with the APIs of each platform alone. Each one answers with what the platform gives, and fails with the code `unsupported` and the reason where the platform cannot run it. A purchase, an ad and a sign-in take over the app until they end, so they are screens of the plugin, which the engine covers the app for, and the table `options` of each takes the `state`, `opaque` and `timeout` of `handle:openScreen`.
 
--- Starts the camera, whose frames the native part pushes into the video stream `camera`, and answers with `{width, height, facing, language}`. The argument `facing` is `'back'`, the default, or `'front'`.
+-- Starts the camera, once the person allowed it, whose frames the native part pushes into the video stream `camera`, and returns `{width, height, facing, language}` inside a task, or `nil` and the `PlatformError`. The argument `facing` is `'back'`, the default, or `'front'`.
 function demo.startCamera(facing)
-    return handle:call('startCamera', {facing = facing or 'back'})
+    return callWithAccess('camera', 'startCamera', {facing = facing or 'back'})
 end
 
 function demo.stopCamera()
@@ -230,9 +246,9 @@ function demo.takePhoto()
     return handle:call('takePhoto')
 end
 
--- Starts the microphone, whose samples the native part pushes into the audio stream `microphone`, and answers with `{sampleRate, channels, language}`. The native part sends `microphoneLevel` with `{level, language}`, the level from 0 to 1, about ten times per second.
+-- Starts the microphone, once the person allowed it, whose samples the native part pushes into the audio stream `microphone`, and returns `{sampleRate, channels, language}` inside a task, or `nil` and the `PlatformError`. The native part sends `microphoneLevel` with `{level, language}`, the level from 0 to 1, about ten times per second.
 function demo.startMicrophone()
-    return handle:call('startMicrophone')
+    return callWithAccess('microphone', 'startMicrophone')
 end
 
 function demo.stopMicrophone()
@@ -248,9 +264,9 @@ function demo.onMicrophoneLevel(listener)
     return handle:on('microphoneLevel', listener)
 end
 
--- Asks the platform where the device is, after the permission of the person, and answers with `{latitude, longitude, accuracy, language}`, the accuracy in meters.
+-- Asks the platform where the device is, once the person allowed the location, and returns `{latitude, longitude, accuracy, language}` inside a task, the accuracy in meters, or `nil` and the `PlatformError`.
 function demo.location()
-    return handle:call('location')
+    return callWithAccess('location', 'location')
 end
 
 -- Shows a native map at the anchor `'top'` or `'bottom'` over the app, centered on the latitude and the longitude, and answers with `{anchor, latitude, longitude, drawnWith, language}`. Apple platforms show MapKit, and the other platforms draw a map of their own, as the view of a map SDK would.

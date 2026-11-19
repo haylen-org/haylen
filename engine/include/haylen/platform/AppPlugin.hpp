@@ -22,16 +22,13 @@ struct AppPlugin {
     // The parameter values of `haylen.json` over the defaults that `plugin.json` declares.
     core::Json config = core::Json::object();
 
-    // The permissions that the plugin owns, which `system.permission` and `system.requestPermission` ask its native part for.
-    std::vector<std::string> permissions;
-
     // Whether the native part of the plugin runs on this platform.
     bool native = false;
 
-    // Reads the version, the permissions and the parameter defaults of `plugins/<id>/plugin.json` in the package and applies the `parameters` that `haylen.json` gives the plugin over them. Throws `std::runtime_error` when the manifest is missing, is not JSON, has no version or `implementations`, or has permissions that are not a list of distinct `camelCase` names other than the permissions of the engine.
+    // Reads the version and the parameter defaults of `plugins/<id>/plugin.json` in the package and applies the `parameters` that `haylen.json` gives the plugin over them. Throws `std::runtime_error` when the manifest is missing, is not JSON or has no version or `implementations`.
     [[nodiscard]] static AppPlugin read(const io::Package& package, std::string_view id, const core::Json& parameters);
 
-    // Reads every plugin that `haylen.json` lists, as `read` does, in the order of its ids. Throws `std::runtime_error` as `read` does and when two plugins declare the same permission, since every permission has one owner.
+    // Reads every plugin that `haylen.json` lists, as `read` does, in the order of its ids. Throws `std::runtime_error` as `read` does.
     [[nodiscard]] static std::vector<AppPlugin> readAll(const io::Package& package, const std::map<std::string, core::AppConfig::Plugin>& plugins);
 };
 

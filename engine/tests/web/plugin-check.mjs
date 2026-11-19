@@ -80,8 +80,7 @@ if (await step("checked", "The plugin check found these features missing:", 60))
 }
 await step("fails an error of the page as an exception", 'The error of the page failed with the code "exception" and the type "NotAllowedError".', 10);
 await step("fails a result that JSON cannot carry as an exception", 'The result that JSON cannot carry failed with the code "exception" and the type "TypeError".', 10);
-await step("fails a use without a prompt as denied", 'The use without a prompt failed with the code "denied": The system did not show its prompt for the unprompted capability, so the app does not hold it yet. Ask for it again later with "system.requestPermission(\'unprompted\')".', 10);
-await step("fails an unregistered permission as unsupported", 'The use of an unregistered permission failed with the code "unsupported": The plugin "page-plugin" requires the permission "unregistered", which it did not register with "registerPermission".', 10);
+await step("reaches the module of its dependency", "The dependency answered: Hello, as the web module of base-plugin wrote it for the call 1.", 10);
 await step("kept the newest events before the app started", "The app heard 32 samples sent before it started, from 8 to 39.", 10);
 console.log(JSON.stringify(result));
 process.exit(0);

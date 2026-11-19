@@ -86,7 +86,7 @@ bool Services::hasUnlistedDisplays() {
     return getInstalled().displays->hasUnlistedDisplays();
 }
 
-void Services::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+void Services::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
     getInstalled().displays->requestEveryScreen(std::move(callback));
 }
 
@@ -222,25 +222,6 @@ void Services::cancelScreen(std::uint64_t id) {
     if (const auto& bridge = getInstalled().bridge) {
         bridge->cancelScreen(id);
     }
-}
-
-// A platform that gates none of the permissions of the engine lets the app hold them all.
-void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    if (const auto& permissions = getInstalled().permissions) {
-        permissions->checkPermission(kind, std::move(callback));
-        return;
-    }
-
-    callback({.state = Permission::State::Granted});
-}
-
-void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    if (const auto& permissions = getInstalled().permissions) {
-        permissions->requestPermission(kind, std::move(callback));
-        return;
-    }
-
-    callback({.state = Permission::State::Granted});
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t socket) {

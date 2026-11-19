@@ -71,7 +71,7 @@ class NativeHost : public Host {
     void startDrag() override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
     [[nodiscard]] bool hasUnlistedDisplays() const override;
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override;
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) override;
 
     // Platforms without outputs end every output they are asked for, with the reason.
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
@@ -112,8 +112,6 @@ class NativeHost : public Host {
     [[nodiscard]] std::vector<std::uint8_t> readSystemFont(const SystemFont& font) override;
     void guardCrashes(const std::filesystem::path& report) override;
     void setCrashContext(std::string_view json) override;
-    void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] BlockedReason getBlockedReason() const override;
     [[nodiscard]] std::string getNetworkRequirement() const override;
     void openScreen(const ScreenRequest& request) override;
@@ -206,9 +204,9 @@ class NativeHost : public Host {
     [[nodiscard]] virtual bool prepareGpuDevice() = 0;
 
   protected:
-    void applyKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    void applyKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback) override;
     // Platforms whose window stays on its display go fullscreen only on that display, in the mode that the system picks.
-    void applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
+    void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) override;
     // Finds what a fullscreen asks for among the displays of the platform. Throws `std::invalid_argument` as `enterFullscreen` describes.
     [[nodiscard]] FullscreenTarget resolveFullscreen(const Fullscreen& value) const;
 
@@ -221,7 +219,7 @@ class NativeHost : public Host {
     // Asks the window to close as its close button does, which the app hears before it closes.
     virtual void requestWindowClose() = 0;
     virtual void setWindowFocusable(bool value) = 0;
-    virtual void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
+    virtual void setScreenSaverSuspended(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
 
     // Paces the frames of the platform at the frames per second, or at every refresh of the display for 0.
     virtual void applyFrameRate(int framesPerSecond) = 0;

@@ -135,8 +135,8 @@ bool WindowsServices::hasUnlistedDisplays() {
     return false;
 }
 
-void WindowsServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void WindowsServices::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 void WindowsServices::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {

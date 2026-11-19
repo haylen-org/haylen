@@ -124,6 +124,20 @@ class AndroidProjectTest:
         assert json.loads(lua_parts[1]) == {"plugins": [{"id": "kit", "version": "1.0.0", "parameters": {"scheme": "game"}}]}
         assert '            "kitScheme" to "game",' in lua_parts[2]
 
+    def test_the_module_of_a_plugin_reaches_the_modules_of_the_plugins_it_depends_on(self, tmp_path):
+        fixture = AndroidFixture(tmp_path)
+        app = fixture.app({"plugins": {"camera": {}, "permissions": {}, "theme": {}}})
+        fixture.plugin(app, "permissions", {})
+        fixture.plugin(app, "theme", {})
+        fixture.plugin(app, "camera", {"dependencies": {"permissions": "1.0.0", "theme": "1.0.0"}})
+
+        files = AndroidFixture.files(fixture.prepare(fixture.resolve(app)).project)
+        script = files["plugins/camera/build.gradle.kts"].decode()
+
+        assert script.startswith('android {\n    namespace = "com.haylen.plugins.camera"\n}\n')
+        assert script.endswith('dependencies {\n    api(project(":permissions"))\n    api(project(":theme"))\n}\n')
+        assert files["plugins/permissions/build.gradle.kts"] == (app / "plugins" / "permissions" / "android" / "build.gradle.kts").read_bytes()
+
     @staticmethod
     def plugin_parts(project) -> tuple:
         """The files of the plugin modules, the list of the plugins of the runtime and the lines of the scripts that name the plugin."""

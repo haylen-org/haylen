@@ -54,7 +54,7 @@ namespace haylen::platform {
 // Only a Mac has a desktop of windows, which its own service follows.
 port::Services AppleServices::create() {
     const auto services = std::make_shared<AppleServices>();
-    port::Services registered{.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+    port::Services registered{.platform = services, .displays = services, .screen = services, .bridge = services, .media = services, .accessibility = services, .video = services, .fonts = services};
 #if TARGET_OS_OSX
     registered.desktop = std::make_shared<AppleDesktopService>();
 #endif
@@ -186,8 +186,8 @@ bool AppleServices::hasUnlistedDisplays() {
     return false;
 }
 
-void AppleServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void AppleServices::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 math::Insets AppleServices::getSafeAreaInsets() {
@@ -309,15 +309,6 @@ void AppleServices::cancel(std::uint64_t call) {
 
 SystemInfo AppleServices::getSystemInfo() {
     return AppleSystem::getInfo();
-}
-
-// Apple platforms ask the person for the local network the first time the app reaches it, and tell apps neither the answer nor a way to ask before.
-void AppleServices::checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Unknown});
-}
-
-void AppleServices::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Unknown});
 }
 
 // A Mac app keeps running its frames in the background, so its sound plays on.

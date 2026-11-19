@@ -20,9 +20,9 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/platform/MediaSession.hpp"
-#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/System.hpp"
-#include "platform/AnswerLua.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
+#include "platform/SystemAnswerLua.hpp"
 
 namespace haylen::platform {
 
@@ -74,7 +74,7 @@ int SystemLua::timeZone(lua_State* L) {
 int SystemLua::clipboard(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
-    engine.getSystem().readClipboard([&engine, promise](Permission::Answer answer, std::string text) { AnswerLua::settle(engine, promise, answer, std::move(text)); });
+    engine.getSystem().readClipboard([&engine, promise](SystemAnswer answer, std::string text) { SystemAnswerLua::settle(engine, promise, answer, std::move(text)); });
     promise.push(L);
     return 1;
 }
@@ -84,27 +84,7 @@ int SystemLua::setClipboard(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const auto text = lua::Stack::read<std::string_view>(L, 1);
     const lua::Promise promise(engine);
-    engine.getSystem().setClipboard(text, [&engine, promise](Permission::Answer answer) { AnswerLua::settle(engine, promise, answer); });
-    promise.push(L);
-    return 1;
-}
-
-// Returns a promise that resolves on a later frame with the name of the state, as `requestPermission` does, without asking the person.
-int SystemLua::permission(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto name = lua::Stack::read<std::string_view>(L, 1);
-    const lua::Promise promise(engine);
-    engine.getSystem().checkPermission(name, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
-    promise.push(L);
-    return 1;
-}
-
-// Returns a promise that resolves on a later frame with the name of the state the person left. A permission of a plugin is answered by the native part of the plugin that declares it.
-int SystemLua::requestPermission(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
-    const auto name = lua::Stack::read<std::string_view>(L, 1);
-    const lua::Promise promise(engine);
-    engine.getSystem().requestPermission(name, [&engine, promise](Permission::Answer answer) { AnswerLua::settlePermission(engine, promise, answer); });
+    engine.getSystem().setClipboard(text, [&engine, promise](SystemAnswer answer) { SystemAnswerLua::settle(engine, promise, answer); });
     promise.push(L);
     return 1;
 }
@@ -165,7 +145,7 @@ int SystemLua::clearNowPlaying(lua_State* L) {
 
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

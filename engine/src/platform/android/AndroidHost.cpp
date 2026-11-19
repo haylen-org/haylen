@@ -20,7 +20,7 @@ float AndroidHost::getDpiScale() const noexcept {
     return AndroidActivity::getDensity() * NativeWindow::getScale();
 }
 
-void AndroidHost::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
+void AndroidHost::setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) {
     callback(JavaBridge::setClipboard(value));
 }
 
@@ -29,8 +29,8 @@ std::string AndroidHost::getClipboard() const {
 }
 
 // Android gives the clipboard to the app that has the focus without a prompt, and tells the person with a notice that the app pasted.
-void AndroidHost::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
-    callback({.state = Permission::State::Granted}, JavaBridge::getClipboard());
+void AndroidHost::readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) {
+    callback({.state = SystemAnswer::State::Granted}, JavaBridge::getClipboard());
 }
 
 // The devices of Vulkan and OpenGL ES start during the call that creates them.
@@ -115,28 +115,28 @@ void AndroidHost::requestWindowClose() {
     runtime.requestQuit();
 }
 
-void AndroidHost::setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) {
+void AndroidHost::setScreenSaverSuspended(bool value, std::function<void(SystemAnswer answer)> callback) {
     JavaBridge::keepScreenOn(value);
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 // The window of an Android app always covers its screen.
-void AndroidHost::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void AndroidHost::applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) {
     if (!value) {
-        callback({.state = Permission::State::Unsupported, .message = "An Android app always covers its screen, so it never leaves fullscreen."});
+        callback({.state = SystemAnswer::State::Unsupported, .message = "An Android app always covers its screen, so it never leaves fullscreen."});
         return;
     }
 
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 }
 
-void AndroidHost::applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void AndroidHost::applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
     if (value) {
-        callback({.state = Permission::State::Unsupported, .message = "Android apps of the engine read the pointer as it moves on the screen and lock no pointer."});
+        callback({.state = SystemAnswer::State::Unsupported, .message = "Android apps of the engine read the pointer as it moves on the screen and lock no pointer."});
         return;
     }
 
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 void AndroidHost::applyFrameRate(int framesPerSecond) {

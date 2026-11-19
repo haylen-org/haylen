@@ -37,7 +37,7 @@ class Displays final {
     }
 
     // Asks the platform to list every display, as `Window::requestEveryScreen` describes, and calls back as the window does, which `refresh` follows to read the displays that a granted request added.
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback);
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback);
 
     // Reads the displays again and publishes what changed, the displays that went away first.
     void refresh();

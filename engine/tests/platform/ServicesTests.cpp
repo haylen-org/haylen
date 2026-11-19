@@ -61,8 +61,8 @@ class MinimalServices final : public port::PlatformService, public port::Display
         return false;
     }
 
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override {
-        callback({.state = Permission::State::Granted});
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) override {
+        callback({.state = SystemAnswer::State::Granted});
     }
 
     [[nodiscard]] math::Rect getWindowFrame() override {
@@ -121,11 +121,6 @@ TEST(ServicesTest, AnswersForEveryCapabilityThePlatformLacks) {
     EXPECT_THROW((void)Services::readSystemFont({.name = "Sans"}), std::logic_error);
     EXPECT_TRUE(Services::explainBlockedSocket(3).empty());
     EXPECT_TRUE(Services::getNetworkRequirement().empty());
-
-    std::optional<Permission::Answer> answer;
-    Services::requestPermission(Permission::Kind::LocalNetwork, [&answer](Permission::Answer value) { answer = std::move(value); });
-    ASSERT_TRUE(answer);
-    EXPECT_EQ(answer->state, Permission::State::Granted);
 }
 
 TEST(ServicesTest, FailsACallThatNoNativePartOfThePlatformHandles) {

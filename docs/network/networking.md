@@ -424,23 +424,18 @@ A web page lives inside the rules of the browser. They keep a page from acting a
 
 The Android template declares the permissions `INTERNET` and `ACCESS_NETWORK_STATE`. Every connection needs the first, and the network events need the second. The HTTP client of Varn runs on `HttpURLConnection` there. So Android refuses plain `http://` addresses unless the network security configuration of the app allows cleartext traffic. The `haylen.net` sockets and the `socket` module open their own connections, so they speak plain TCP and `ws://` as on desktops. The emulator reaches the machine that runs it at `10.0.2.2`.
 
-From Android 17, an app that targets it reaches the devices of the local network only with the permission `ACCESS_LOCAL_NETWORK`, which the person grants at run time. The Android backend declares it in the manifest of every app it generates, and the app asks for it with [`system.requestPermission('localNetwork')`](../lua-api/system.md#systemrequestpermissionname) before it looks for a device on the same Wi-Fi. Without it, Android drops the packets of the connection instead of refusing it. A socket of `haylen.net` then fails at once with a sentence that names the permission, since Android tells the engine why it dropped them. The HTTP client and the `socket` module of Varn need the same permission. A connect of the `socket` module that Android blocks fails at once with the same cause. A request of the HTTP client to the local network fails at its deadline, and the message of every request that fails by its deadline or by an error of the network ends with a sentence that says that access to the local network is not granted, while the person has not granted it. So the app asks for the permission before it reaches the local network. The internet, and the addresses of the device itself such as the ones `adb reverse` forwards, need no permission.
+From Android 17, an app that targets it reaches the devices of the local network only with the permission `ACCESS_LOCAL_NETWORK`, which the person grants at run time. The engine declares and asks for no permission, so an app that looks for a device on the same Wi-Fi takes a plugin that declares `ACCESS_LOCAL_NETWORK` in the manifest of its module and asks the person for it, in Debug and Release alike. Without it, Android drops the packets of the connection instead of refusing it. A socket of `haylen.net` then fails at once with a sentence that names the permission and says that a plugin of the app declares it and asks for it, since Android tells the engine why it dropped them. The HTTP client and the `socket` module of Varn need the same permission. A connect of the `socket` module that Android blocks fails at once with the same cause. A request of the HTTP client to the local network fails at its deadline, and the message of every request that fails by its deadline or by an error of the network ends with a sentence that says that the app does not hold the permission, while it does not hold it. The internet, and the addresses of the device itself such as the ones `adb reverse` forwards, need no permission, so the development server of `haylen app run` reaches an Android app through `adb reverse` and the loopback address without it.
 
 ```lua
-local async = require('async')
 local net = require('haylen.net')
-local system = require('haylen.system')
 
-async.spawn(function()
-    local state = system.requestPermission('localNetwork'):await()
-    if state == 'denied' then
-        print('The game on this Wi-Fi is out of reach.')
-        return
-    end
-    local socket = net.connectWebSocket('ws://192.168.1.20:7000/game')
-    socket:on('open', function()
-        socket:send('Hello.')
-    end)
+-- The app holds "ACCESS_LOCAL_NETWORK" through a plugin, which asked the person for it.
+local socket = net.connectWebSocket('ws://192.168.1.20:7000/game')
+socket:on('error', function(info)
+    print(info.message)
+end)
+socket:on('open', function()
+    socket:send('Hello.')
 end)
 ```
 

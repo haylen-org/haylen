@@ -85,7 +85,7 @@ TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
     EXPECT_TRUE(fixture.host().isFullscreen());
     EXPECT_TRUE(fixture.host().isMouseLocked());
 
-    fixture.host().setWindowAnswer({.state = Permission::State::Denied, .message = "The browser refused fullscreen."});
+    fixture.host().setWindowAnswer({.state = SystemAnswer::State::Denied, .message = "The browser refused fullscreen."});
     fixture.runLua("remember(window.setFullscreen(false)) window.setMouseLocked(false)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
     fixture.frames(2);

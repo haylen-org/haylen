@@ -1006,8 +1006,6 @@ Module.haylen = Module.haylen || {};
             "writeClipboard",
             "readClipboard",
             "requestEveryScreen",
-            "checkPermission",
-            "requestPermission",
             "lockOrientation",
             "declareOrientation",
             "openOutput",

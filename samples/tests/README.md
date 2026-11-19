@@ -20,8 +20,8 @@ build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 HAYLEN_TESTS_SHARD=2/4 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
-- UI tests: `haylen test --ui samples/tests --target ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--target visionos-simulator` taps the menu with a look and a pinch. The tests of the plugins answer the prompts, tap the notifications, press the remote and the back button and read the checks of PLG-008, PLG-009, PLG-011, PLG-015, PLG-016, PLG-017 and PLG-019 on the simulators, on the devices of `--target ios`, `tvos` and `android`, and on the phones of AWS Device Farm with `--device-farm`, as [the UI tests](../../docs/tools/testing.md#the-ui-tests) describe.
-- One test: the launch arguments `--test <code>` open the test with that code over its list, such as `haylen --dev samples/tests -- --test PLG-011`, which the UI tests use to start on the test they check. A test opened this way is not the one that `Continue with` offers next time, since no person picked it. A code of no test stops the project with the code.
+- UI tests: `haylen test --ui samples/tests --target ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--target visionos-simulator` taps the menu with a look and a pinch. The tests of the plugins answer the prompts, tap the notifications, press the remote and the back button and read the checks of PLG-008, PLG-009, PLG-015, PLG-016, PLG-017, PLG-019, PLG-024 and PLG-025 on the simulators, on the devices of `--target ios`, `tvos` and `android`, and on the phones of AWS Device Farm with `--device-farm`, as [the UI tests](../../docs/tools/testing.md#the-ui-tests) describe.
+- One test: the launch arguments `--test <code>` open the test with that code over its list, such as `haylen --dev samples/tests -- --test PLG-016`, which the UI tests use to start on the test they check. A test opened this way is not the one that `Continue with` offers next time, since no person picked it. A code of no test stops the project with the code.
 
 ## Using the project
 
@@ -46,7 +46,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | `source/harness/` | What every test shares: the catalog of the manifests, the menu, the test list, the base class `Test` with its frame and play area, the unsupported page, the automatic run with its shards, rows of checks, a log of lines, a pointer for every device and the way between the screens. |
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |
-| `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |
+| `plugins/` | `native-demo`, the plugin that exercises every capability of native plugins, `native-base`, the plugin that `native-demo` depends on, `native-sample` and `platform-sample` with the platform handlers of the Native and Platform tests, and `native-test`, which answers the test library in the browser and holds the CMake project of that library in `native/`. |
 | `ui-tests/apple/`, `ui-tests/android/` | The UI tests of the menu, of typing with the software keyboard of the iPhone and the iPad and with the keyboard of the Apple TV, of the sizes of the windows of iPadOS, and of the tests of the plugins on the simulators, the emulator and the devices, which `haylen test --ui` runs. |
 | `tools/` | The module that keys and cuts the paintings, the packers of the fighter with its training dummy and of the cutout puppet with its skeleton of the Animation category, the packer of the tank and its prefab of the Nodes category, the builder of the walker sheet of the Sprites category, the packers of the icons and creatures of the Events category and of the devices and the platform of the Input category, the builder of the frames of the Nine-slice category, the packer of the props and the painter of the pixel art of the Camera category, the packer of the fantasy theme of the Interface category, the packer of the particle atlases and the writer of the effect library, the generator of the bitmap fonts of the Text category, the generators of the sounds of the Audio category and of the theme sounds of the Interface category, of the maps and tilesets of the Tiled category and of the clip of the Video category, which runs the walker over the scenery strips of the Camera category. |
 
@@ -772,7 +772,7 @@ HTTP requests with Varn "http" and WebSockets with "haylen.net" against public e
 
 #### Platform (PLT)
 
-The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", every event of the platform, the displays and the outputs on other displays. The tests are in `source/categories/platform/`.
+The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", every event of the platform, the displays and the outputs on other displays. The tests are in `source/categories/platform/`. The code `PLT-010`, which showed the permissions of the engine, left the project, since the engine owns no permissions.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -784,13 +784,12 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again. |  |
 | `PLT-008` | Displays | Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays. |  |
 | `PLT-009` | Second display | A scoreboard on a display other than the one of the window, drawn into the target of an output every frame, with its preview, its events and the clicks on its window. |  |
-| `PLT-010` | Permissions | The state of every permission of the engine on this platform, a request for each one, and the error of a clipboard that the person refused. |  |
 | `PLT-011` | Frame rate | The app aiming for every refresh of the display or for 120, 60, 30 or 24 frames per second, with the frames it played in the last second, a ball that swings by the real time and a mark for each frame. |  |
 | `PLT-012` | Pixel density | The framebuffer capped at 2, 1.5, 1 or 0.5 pixels in each point or taking every pixel of the display, with its size and scale, the points of the window that stay the same, and rings, hairlines and text that soften as the cap lowers. |  |
 
 #### Plugins (PLG)
 
-Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in. The tests are in `source/categories/plugins/`.
+Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, the plugin "native-base" that it depends on, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in. The tests are in `source/categories/plugins/`. The code `PLG-011`, which asked for the permissions of the demo plugin through the engine, left the project, since the permissions of plugins belong to the plugins, which ask the system for them through the APIs of each platform.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -804,7 +803,6 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-008` | Covering native UI | A native screen over the whole app, which halts the app until it closes. | windows, linux, headless |
 | `PLG-009` | Native screen | A screen of the plugin whose answer reaches the call, and after a restart the next app as "screenRestored". | headless |
 | `PLG-010` | Native result | The file picker of the platform, which answers with the name of the picked file. | tvos, windows, linux, headless |
-| `PLG-011` | Permissions | The camera, the microphone, the location and notifications that the demo plugin owns, which the app asks for through "haylen.system", the camera of the plugin that follows the answer, and a local notification whose tap reaches the app, even from a closed app. | tvos, windows, linux, headless |
 | `PLG-012` | Requirements | A call whose native part needs what the project of the app lacks, which fails with the code "unsupported" and lists what is missing and how to add it. | windows, linux, headless |
 | `PLG-013` | Opened URLs | Links with the scheme of the plugin that open the app, before or after it started. | windows, linux, headless |
 | `PLG-014` | App errors | An error of the app that the native part keeps and sends back to the next app. | headless |
@@ -817,6 +815,8 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-021` | Fake sign-in | An account that the person picks in a native sheet, the current user that the device keeps and signing out. | headless |
 | `PLG-022` | Bridge benchmark | The round trip of one call, the calls per second, and the work of a frame with N calls and with N batched events. | headless |
 | `PLG-023` | Data views | Camera frames that the native part fills in data views of shared memory, which a texture reads in place, and a view of the app that the native part reads and marks. | headless |
+| `PLG-024` | Plugin dependencies | The native part of "native-demo" calling the helper of the plugin "native-base" that it depends on, directly in Swift, Kotlin or JavaScript, and the text that the helper wrote. | windows, linux, headless |
+| `PLG-025` | Local notifications | A local notification of the plugin, after the person allowed notifications, whose tap reaches the app, even from a closed app. | tvos, windows, linux, headless |
 
 #### Preferences (PRF)
 

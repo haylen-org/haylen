@@ -192,7 +192,7 @@ TEST_F(ErrorScreenTest, TellsWhetherTheClipboardTookTheReportOnceItAnswers) {
     fixture.frames(1);
     EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Copied);
 
-    fixture.host().setClipboardAnswer({.state = platform::Permission::State::Denied, .message = "The browser refused the copy."});
+    fixture.host().setClipboardAnswer({.state = platform::SystemAnswer::State::Denied, .message = "The browser refused the copy."});
     screen->copyReport();
     fixture.frames(1);
     EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Refused);

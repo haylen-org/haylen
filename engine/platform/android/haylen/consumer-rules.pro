@@ -36,10 +36,8 @@
     static byte[][] launchArguments();
 }
 
--keep class dev.haylen.HaylenPermissions {
-    static void state(long, byte[]);
-    static void request(long, byte[]);
-    static boolean isHeld(byte[]);
+-keep class dev.haylen.HaylenNetwork {
+    static boolean isLocalNetworkAllowed();
 }
 
 -keep class dev.haylen.HaylenScreens {

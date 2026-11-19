@@ -19,8 +19,6 @@ class PluginManifest:
     """The `plugin.json` of a plugin folder, read and checked once: its identity, the version of the plugin interface it follows, how it works on each platform, the plugins it depends on, the permissions it owns, its parameters and its typed contributions. The engine reads the same file from the package."""
 
     FILE = "plugin.json"
-    # The permissions that the engine answers itself, which no plugin declares.
-    ENGINE_PERMISSIONS = ("localNetwork",)
     # A placeholder of a parameter in a value of a contribution. Build settings such as `$(NAME)` and shell expansions such as `${BUILD_DIR%/Build/*}` are no placeholders.
     PLACEHOLDER = re.compile(r"\$\{([a-z][A-Za-z0-9]*)\}")
 
@@ -102,9 +100,6 @@ class PluginManifest:
         contributed = {platform for contribution in self.contributions for platform in contribution.platforms}
         for platform in sorted(native - contributed):
             problems.append(f'The platform "{platform}" has a native part in "implementations", but no contribution brings it. Add its contributions, or make it "lua".')
-        for permission in self.permissions:
-            if permission in PluginManifest.ENGINE_PERMISSIONS:
-                problems.append(f'The permission "{permission}" belongs to the engine, which answers it, so no plugin declares it.')
         if self.id in self.dependencies:
             problems.append('The plugin depends on itself in "dependencies".')
         return problems

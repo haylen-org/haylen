@@ -113,14 +113,6 @@ EM_JS(void, haylen_js_request_every_screen, (double id), {
     Module.haylen.requestEveryScreen(id);
 });
 
-EM_JS(void, haylen_js_check_permission, (double id, const char* kind), {
-    Module.haylen.checkPermission(id, UTF8ToString(kind));
-});
-
-EM_JS(void, haylen_js_request_permission, (double id, const char* kind), {
-    Module.haylen.requestPermission(id, UTF8ToString(kind));
-});
-
 EM_JS(char*, haylen_js_clipboard, (), {
     return stringToNewUTF8(Module.haylen.clipboardText());
 });
@@ -162,40 +154,32 @@ void WebPage::setDrawableWidth(int width) {
     haylen_js_set_drawable_width(width);
 }
 
-void WebPage::setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback) {
+void WebPage::setFullscreen(bool value, std::string_view display, std::function<void(SystemAnswer answer)> callback) {
     haylen_js_set_fullscreen(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0, std::string(display).c_str());
 }
 
-void WebPage::setScreenKeptOn(bool value, std::function<void(Permission::Answer answer)> callback) {
+void WebPage::setScreenKeptOn(bool value, std::function<void(SystemAnswer answer)> callback) {
     haylen_js_keep_screen_on(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
 }
 
-void WebPage::awaitPointerLock(bool value, std::function<void(Permission::Answer answer)> callback) {
+void WebPage::awaitPointerLock(bool value, std::function<void(SystemAnswer answer)> callback) {
     haylen_js_await_pointer_lock(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
 }
 
-void WebPage::lockPointer(bool value, std::function<void(Permission::Answer answer)> callback) {
+void WebPage::lockPointer(bool value, std::function<void(SystemAnswer answer)> callback) {
     haylen_js_lock_pointer(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
 }
 
-void WebPage::setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback) {
+void WebPage::setClipboard(std::string_view text, std::function<void(SystemAnswer answer)> callback) {
     haylen_js_write_clipboard(awaitGatedCall(withoutText(std::move(callback))), std::string(text).c_str());
 }
 
-void WebPage::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+void WebPage::readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) {
     haylen_js_read_clipboard(awaitGatedCall(std::move(callback)));
 }
 
-void WebPage::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+void WebPage::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
     haylen_js_request_every_screen(awaitGatedCall(withoutText(std::move(callback))));
-}
-
-void WebPage::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    haylen_js_check_permission(awaitGatedCall(withoutText(std::move(callback))), std::string(Permission::kindName(kind)).c_str());
-}
-
-void WebPage::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    haylen_js_request_permission(awaitGatedCall(withoutText(std::move(callback))), std::string(Permission::kindName(kind)).c_str());
 }
 
 double WebPage::awaitGatedCall(GatedCallback callback) {
@@ -204,8 +188,8 @@ double WebPage::awaitGatedCall(GatedCallback callback) {
     return static_cast<double>(id);
 }
 
-WebPage::GatedCallback WebPage::withoutText(std::function<void(Permission::Answer answer)> callback) {
-    return [callback = std::move(callback)](Permission::Answer answer, std::string) { callback(std::move(answer)); };
+WebPage::GatedCallback WebPage::withoutText(std::function<void(SystemAnswer answer)> callback) {
+    return [callback = std::move(callback)](SystemAnswer answer, std::string) { callback(std::move(answer)); };
 }
 
 void WebPage::answerGatedCall(double id, const char* json) {
@@ -218,7 +202,7 @@ void WebPage::answerGatedCall(double id, const char* json) {
     gatedCalls.erase(found);
     const core::Json value = core::Json::parse(json, nullptr, false);
     const auto text = value.is_object() ? value.find("text") : value.end();
-    callback(Permission::Answer::fromJson(value), text != value.end() && text->is_string() ? text->get<std::string>() : std::string());
+    callback(SystemAnswer::fromJson(value), text != value.end() && text->is_string() ? text->get<std::string>() : std::string());
 }
 
 std::string WebPage::getClipboard() {

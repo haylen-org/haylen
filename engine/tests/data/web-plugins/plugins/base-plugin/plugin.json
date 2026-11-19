@@ -1,0 +1,11 @@
+{
+    "interface": 1,
+    "id": "base-plugin",
+    "name": "Base Plugin",
+    "version": "1.0.0",
+    "description": "Offers the web module of the plugin of the plugin check a function that it imports as a dependency.",
+    "implementations": {"web": "native"},
+    "contributions": [
+        {"type": "webModule", "platforms": ["web"], "path": "web/base-plugin.js"}
+    ]
+}

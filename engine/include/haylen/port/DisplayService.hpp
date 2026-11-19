@@ -6,7 +6,7 @@
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Display.hpp"
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 
 namespace haylen::port {
 
@@ -28,7 +28,7 @@ class DisplayService {
     [[nodiscard]] virtual bool hasUnlistedDisplays() = 0;
 
     // Asks the platform to list every display of the device, and calls back once, on any thread, with `Granted` once `getDisplays` holds them, or `Denied` or `Unsupported` with the sentence that says why. A platform that lists every display already answers `Granted` at once.
-    virtual void requestEveryScreen(std::function<void(platform::Permission::Answer answer)> callback) = 0;
+    virtual void requestEveryScreen(std::function<void(platform::SystemAnswer answer)> callback) = 0;
 
     // The content area of the window in points of the display, with y down from the top left corner of the primary display, which is the whole display where the window fills it.
     [[nodiscard]] virtual math::Rect getWindowFrame() = 0;

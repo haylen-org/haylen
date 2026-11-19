@@ -155,10 +155,6 @@ JNIEXPORT jboolean JNICALL Java_dev_haylen_HaylenActivity_nativeBackHeld(JNIEnv*
     return haylen::platform::AndroidKeys::receiveBackHeld(pressed == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
 }
 
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenPermissions_nativeAnswered(JNIEnv* env, jclass, jlong request, jbyteArray answer) {
-    haylen::platform::JavaBridge::answerPermission(request, haylen::platform::JavaBridge::toString(*env, answer));
-}
-
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclass, jboolean dark) {
     haylen::platform::NativeHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
 }

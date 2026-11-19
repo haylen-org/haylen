@@ -124,7 +124,7 @@ namespace haylen::platform {
 
 port::Services WebServices::create() {
     const auto services = std::make_shared<WebServices>();
-    return {.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .media = services, .accessibility = services, .video = services, .audio = std::make_shared<audio::BrowserAudioOutput>()};
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .media = services, .accessibility = services, .video = services, .audio = std::make_shared<audio::BrowserAudioOutput>()};
 }
 
 std::string_view WebServices::getName() const noexcept {
@@ -200,7 +200,7 @@ bool WebServices::hasUnlistedDisplays() {
     return WebDisplays::hasUnlistedDisplays();
 }
 
-void WebServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
+void WebServices::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
     WebPage::requestEveryScreen(std::move(callback));
 }
 
@@ -271,15 +271,6 @@ SystemInfo WebServices::getSystemInfo() {
         .cpuCores = details.value("cpuCores", 0),
         .memoryBytes = details.value("memoryBytes", std::uint64_t{0}),
     };
-}
-
-// The browser tells the state of most permissions through the Permissions API, and asks the person through the API of each capability.
-void WebServices::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    WebPage::checkPermission(kind, std::move(callback));
-}
-
-void WebServices::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    WebPage::requestPermission(kind, std::move(callback));
 }
 
 // A hidden page keeps running the frames of the app from timers, which browsers do not slow down while the page plays sound.

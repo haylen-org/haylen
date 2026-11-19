@@ -5,7 +5,7 @@
 
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 
 namespace haylen::platform {
 
@@ -24,7 +24,6 @@ PluginManifest PluginManifest::read(const io::Package& package, std::string_view
     PluginManifest read;
     read.version = version->get<std::string>();
     read.dependencies = readDependencies(manifest, path);
-    read.permissions = readPermissions(manifest, path);
     read.defaults = readDefaults(manifest, path);
     read.nativePlatforms = readNativePlatforms(manifest, path);
     read.appleClasses = readAppleClasses(manifest, path);
@@ -37,10 +36,6 @@ const std::string& PluginManifest::getVersion() const noexcept {
 
 const std::vector<std::string>& PluginManifest::getDependencies() const noexcept {
     return dependencies;
-}
-
-const std::vector<std::string>& PluginManifest::getPermissions() const noexcept {
-    return permissions;
 }
 
 const core::Json& PluginManifest::getDefaults() const noexcept {
@@ -85,37 +80,6 @@ std::vector<std::string> PluginManifest::readDependencies(const core::Json& mani
     }
 
     return ids;
-}
-
-std::vector<std::string> PluginManifest::readPermissions(const core::Json& manifest, const std::string& path) {
-    const auto declared = manifest.find("permissions");
-    if (declared == manifest.end()) {
-        return {};
-    }
-
-    if (!declared->is_array()) {
-        throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package is not a list of permission names, such as [\"camera\"].");
-    }
-
-    std::vector<std::string> names;
-    for (const core::Json& entry : *declared) {
-        const std::string name = entry.is_string() ? entry.get<std::string>() : entry.dump();
-        if (Permission::kindFromName(name)) {
-            throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package declare \"" + name + "\", which is a permission of the engine.");
-        }
-
-        if (!entry.is_string() || !Permission::isPluginName(name)) {
-            throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package declare \"" + name + "\", which is not a \"camelCase\" name, such as \"camera\" or \"backgroundLocation\".");
-        }
-
-        if (std::ranges::find(names, name) != names.end()) {
-            throw std::runtime_error("The \"permissions\" of \"" + path + "\" in the package declare \"" + name + "\" twice.");
-        }
-
-        names.push_back(name);
-    }
-
-    return names;
 }
 
 core::Json PluginManifest::readDefaults(const core::Json& manifest, const std::string& path) {

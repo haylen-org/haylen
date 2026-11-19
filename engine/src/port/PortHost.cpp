@@ -19,7 +19,7 @@ bool PortHost::isFullscreen() const noexcept {
     return host->isFullscreen();
 }
 
-void PortHost::applyFullscreen(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
+void PortHost::applyFullscreen(bool value, std::function<void(platform::SystemAnswer answer)> callback) {
     host->setFullscreen(value, std::move(callback));
 }
 
@@ -35,11 +35,11 @@ void PortHost::setCursorVisible(bool value) {
     host->setCursorVisible(value);
 }
 
-void PortHost::applyMouseLocked(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
+void PortHost::applyMouseLocked(bool value, std::function<void(platform::SystemAnswer answer)> callback) {
     host->setMouseLocked(value, std::move(callback));
 }
 
-void PortHost::setClipboard(std::string_view value, std::function<void(platform::Permission::Answer answer)> callback) {
+void PortHost::setClipboard(std::string_view value, std::function<void(platform::SystemAnswer answer)> callback) {
     host->setClipboard(value, std::move(callback));
 }
 
@@ -47,7 +47,7 @@ std::string PortHost::getClipboard() const {
     return host->getClipboard();
 }
 
-void PortHost::readClipboard(std::function<void(platform::Permission::Answer answer, std::string text)> callback) {
+void PortHost::readClipboard(std::function<void(platform::SystemAnswer answer, std::string text)> callback) {
     host->readClipboard(std::move(callback));
 }
 
@@ -106,7 +106,7 @@ void PortHost::setWindowFocusable(bool value) {
     host->setFocusable(value);
 }
 
-void PortHost::setScreenSaverSuspended(bool value, std::function<void(platform::Permission::Answer answer)> callback) {
+void PortHost::setScreenSaverSuspended(bool value, std::function<void(platform::SystemAnswer answer)> callback) {
     host->setScreenSaverSuspended(value, std::move(callback));
 }
 

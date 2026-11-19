@@ -125,7 +125,7 @@ void Host::setExternalDisplays([[maybe_unused]] bool value) {
 }
 
 // A desktop window goes fullscreen on the display that shows it, in the mode that the desktop runs in. The page answers once the browser settled the change. The window of SDL answers once SDL reports the mode it asked for: during the call where SDL changes the mode at once, as on Windows or for a hidden window, and at the end of the animation where the system animates the window into it, as on macOS. SDL never reports a change that the system reverts before it ends, such as one that a newer change replaces on macOS, so the mode that SDL reports right after the call is the one the window keeps.
-void Host::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) {
     if (value && Services::hasDesktop()) {
         enterFullscreen({}, std::move(callback));
         return;
@@ -134,14 +134,14 @@ void Host::applyFullscreen(bool value, std::function<void(Permission::Answer ans
     WebPage::setFullscreen(value, getDisplayId(), std::move(callback));
 #else
     if (!fullscreenRequest.isPending() && isFullscreen() == value) {
-        callback({.state = Permission::State::Granted});
+        callback({.state = SystemAnswer::State::Granted});
         return;
     }
 
     fullscreenRequest.begin(value, std::move(callback));
 
     if (!SDL_SetWindowFullscreen(runtime.getWindow().get(), value)) {
-        fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = std::format("The window could not {} fullscreen. {}", value ? "go" : "leave", SDL_GetError())});
+        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = std::format("The window could not {} fullscreen. {}", value ? "go" : "leave", SDL_GetError())});
         return;
     }
 
@@ -165,7 +165,7 @@ void Host::followFullscreen(bool entered) {
 }
 
 // The page puts the element that holds the canvas and its overlay in fullscreen, so the fields and the views of plugins stay over the app, on the screen that the Fullscreen API takes. Desktops move the window, and the other platforms keep it on its display.
-void Host::applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     const FullscreenTarget target = resolveFullscreen(value);
     WebPage::setFullscreen(true, target.display.id, std::move(callback));
@@ -198,19 +198,19 @@ std::optional<SDL_DisplayMode> Host::findMode(SDL_DisplayID display, const Displ
 }
 
 // A fullscreen window leaves fullscreen before it moves, and covers the display that the app chose once SDL reports that it left, so the frame thread never waits for the animation of the system. A hidden window takes its fullscreen only when it shows, so it moves at once.
-void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(Permission::Answer answer)> callback) {
+void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(SystemAnswer answer)> callback) {
     SDL_Window* window = runtime.getWindow().get();
     const SDL_DisplayID display = sdl::Window::findDisplay(target.display);
     const std::optional<SDL_DisplayMode> exclusive = target.mode ? findMode(display, *target.mode) : std::nullopt;
     if (target.mode && !exclusive) {
-        callback({.state = Permission::State::Unsupported, .message = std::format("SDL lists no fullscreen mode of {} by {} pixels at {} frames per second.", target.mode->width, target.mode->height, target.mode->refreshRate)});
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("SDL lists no fullscreen mode of {} by {} pixels at {} frames per second.", target.mode->width, target.mode->height, target.mode->refreshRate)});
         return;
     }
 
     const SDL_DisplayMode* current = SDL_GetWindowFullscreenMode(window);
     const bool sameMode = exclusive ? current != nullptr && current->w == exclusive->w && current->h == exclusive->h && current->refresh_rate == exclusive->refresh_rate && current->pixel_density == exclusive->pixel_density : current == nullptr;
     if (!fullscreenRequest.isPending() && isFullscreen() && sameMode && SDL_GetDisplayForWindow(window) == display) {
-        callback({.state = Permission::State::Granted});
+        callback({.state = SystemAnswer::State::Granted});
         return;
     }
 
@@ -225,7 +225,7 @@ void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<
     fullscreenRequest.beginLeaving(std::move(destination), std::move(callback));
 
     if (!SDL_SetWindowFullscreen(window, false)) {
-        fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not leave fullscreen to cover the display \"" + target.display.id + "\". " + SDL_GetError()});
+        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not leave fullscreen to cover the display \"" + target.display.id + "\". " + SDL_GetError()});
     }
 }
 
@@ -239,7 +239,7 @@ void Host::coverDisplay(const FullscreenRequest::Destination& destination) {
 
     const SDL_DisplayMode* mode = destination.mode ? &*destination.mode : nullptr;
     if (!SDL_SetWindowFullscreenMode(window, mode) || !SDL_SetWindowFullscreen(window, true)) {
-        fullscreenRequest.fail({.state = Permission::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + destination.displayId + "\". " + SDL_GetError()});
+        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + destination.displayId + "\". " + SDL_GetError()});
         return;
     }
 
@@ -275,29 +275,29 @@ void Host::setCursorVisible(bool value) {
 }
 
 // The page locks the pointer once the browser lets it, which the page answers.
-void Host::applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
     if (!SDL_SetWindowRelativeMouseMode(runtime.getWindow().get(), value)) {
-        callback({.state = Permission::State::Unsupported, .message = std::format("The pointer could not be {}. {}", value ? "locked" : "released", SDL_GetError())});
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The pointer could not be {}. {}", value ? "locked" : "released", SDL_GetError())});
         return;
     }
 #if defined(__EMSCRIPTEN__)
     WebPage::awaitPointerLock(value, std::move(callback));
 #else
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 #endif
 }
 
 // SDL has no clipboard of the browser, so the page writes it and keeps what it may read.
-void Host::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
+void Host::setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     WebPage::setClipboard(value, std::move(callback));
 #else
     if (!SDL_SetClipboardText(TextHelper::toValidUtf8(value).c_str())) {
-        callback({.state = Permission::State::Unsupported, .message = std::format("The clipboard could not be written: {}", SDL_GetError())});
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The clipboard could not be written: {}", SDL_GetError())});
         return;
     }
 
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 #endif
 }
 
@@ -313,13 +313,13 @@ std::string Host::getClipboard() const {
 }
 
 // The pasteboards of Apple platforms and the clipboard of the browser may ask the person before the app reads them, while Windows, Linux and the clipboard that an Apple TV keeps inside the app answer during the call.
-void Host::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+void Host::readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) {
 #if defined(__EMSCRIPTEN__)
     WebPage::readClipboard(std::move(callback));
 #elif defined(__APPLE__) && !TARGET_OS_TV
     ApplePasteboard::read(std::move(callback));
 #else
-    callback({.state = Permission::State::Granted}, getClipboard());
+    callback({.state = SystemAnswer::State::Granted}, getClipboard());
 #endif
 }
 
@@ -511,16 +511,16 @@ void Host::applyMaxPixelDensity(float cap) {
 }
 
 // SDL keeps the screen on through the idle timer of UIKit, the power assertions of macOS, the execution state of Windows and the inhibitors of Linux desktops, and the page asks the browser for a wake lock.
-void Host::setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::setScreenSaverSuspended(bool value, std::function<void(SystemAnswer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     WebPage::setScreenKeptOn(value, std::move(callback));
 #else
     if (!(value ? SDL_DisableScreenSaver() : SDL_EnableScreenSaver())) {
-        callback({.state = Permission::State::Unsupported, .message = std::format("The screen saver could not be {}. {}", value ? "kept away" : "let back", SDL_GetError())});
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The screen saver could not be {}. {}", value ? "kept away" : "let back", SDL_GetError())});
         return;
     }
 
-    callback({.state = Permission::State::Granted});
+    callback({.state = SystemAnswer::State::Granted});
 #endif
 }
 

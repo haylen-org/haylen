@@ -24,52 +24,6 @@ DevelopmentConnection::~DevelopmentConnection() {
     ConsoleRelay::withdraw(this);
 }
 
-std::function<void(std::optional<std::string>)> DevelopmentConnection::hold() {
-    gate = std::make_shared<Gate>();
-    // clang-format off
-    return [shared = std::weak_ptr<Gate>(gate)](std::optional<std::string> refusal) {
-        if (const std::shared_ptr<Gate> alive = shared.lock()) {
-            const std::scoped_lock lock(alive->mutex);
-            alive->answered = true;
-            alive->refusal = std::move(refusal);
-        }
-    };
-    // clang-format on
-}
-
-// A refused connection says once why it never opens.
-bool DevelopmentConnection::isHeld() {
-    if (!gate) {
-        return false;
-    }
-
-    const std::scoped_lock lock(gate->mutex);
-    if (!gate->answered) {
-        return true;
-    }
-
-    if (gate->refusal && !refused) {
-        core::Log::warning("The app does not connect to the development server at \"{}\". {}", address, *gate->refusal);
-        refused = true;
-    }
-
-    return gate->refusal.has_value();
-}
-
-// The address names its host between the scheme and the port or the path, in brackets for IPv6.
-bool DevelopmentConnection::isOnThisDevice() const {
-    const std::size_t start = address.find("://");
-    std::string_view host = std::string_view(address).substr(start == std::string::npos ? 0 : start + 3);
-    host = host.substr(0, host.find('/'));
-    if (host.starts_with('[')) {
-        host = host.substr(1, host.find(']') - 1);
-    } else {
-        host = host.substr(0, host.find(':'));
-    }
-
-    return host == "localhost" || host == "::1" || host.starts_with("127.");
-}
-
 void DevelopmentConnection::pump() {
     if (!socket) {
         open();
@@ -86,10 +40,6 @@ void DevelopmentConnection::pump() {
 }
 
 void DevelopmentConnection::open() {
-    if (isHeld()) {
-        return;
-    }
-
     socket = std::make_unique<net::WebSocket>(address, net::WebSocket::Options{.reconnect = {.enabled = true, .maxDelay = kMaxReconnectDelay}, .blockedReason = explainBlocked});
     socket->opened.connect([this] { sendHello(); });
     socket->received.connect([this](std::string_view data, bool binary) { receive(data, binary); });

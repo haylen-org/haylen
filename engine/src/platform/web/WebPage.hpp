@@ -16,7 +16,7 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 
 namespace haylen::core {
 class Engine;
@@ -38,23 +38,21 @@ class WebPage final {
     static void setDrawableWidth(int width);
 
     // Puts the element that holds the canvas and the overlay of the page in fullscreen on the screen with the id, or takes the page out of it, and answers once the browser settled it. A newer change replaces one that the browser has not settled, which answers `Denied`, and starts once the browser settled it.
-    static void setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback);
+    static void setFullscreen(bool value, std::string_view display, std::function<void(SystemAnswer answer)> callback);
 
     // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go, and answers with the first request of the lock.
-    static void setScreenKeptOn(bool value, std::function<void(Permission::Answer answer)> callback);
+    static void setScreenKeptOn(bool value, std::function<void(SystemAnswer answer)> callback);
 
     // Answers once the browser locked the pointer that SDL asked for, or refused it, within a bound.
-    static void awaitPointerLock(bool value, std::function<void(Permission::Answer answer)> callback);
+    static void awaitPointerLock(bool value, std::function<void(SystemAnswer answer)> callback);
 
     // Locks the pointer to the canvas, or releases it, for the Worker mode, whose page asks the browser itself, and answers as `awaitPointerLock` does.
-    static void lockPointer(bool value, std::function<void(Permission::Answer answer)> callback);
+    static void lockPointer(bool value, std::function<void(SystemAnswer answer)> callback);
 
-    // The calls that a browser may gate: the writes and reads of its clipboard and the request to see every screen, the checks and requests of permissions, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `Permission::Answer::fromJson` and the text of a read.
-    static void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);
-    static void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback);
-    static void requestEveryScreen(std::function<void(Permission::Answer answer)> callback);
-    static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
-    static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+    // The calls that a browser may gate: the writes and reads of its clipboard and and the request to see every screen, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `SystemAnswer::fromJson` and the text of a read.
+    static void setClipboard(std::string_view text, std::function<void(SystemAnswer answer)> callback);
+    static void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback);
+    static void requestEveryScreen(std::function<void(SystemAnswer answer)> callback);
     static void answerGatedCall(double id, const char* json);
 
     // The text of the last paste into the page or the last text it wrote, which a paste of the person into a field of the UI reads.
@@ -177,11 +175,11 @@ class WebPage final {
     static std::vector<PendingRequest>& pendingRuns;
     static std::vector<core::Json>& frameReports;
 
-    using GatedCallback = std::function<void(Permission::Answer answer, std::string text)>;
+    using GatedCallback = std::function<void(SystemAnswer answer, std::string text)>;
 
     // Keeps the callback of a gated call until the page answers it, and returns its id.
     [[nodiscard]] static double awaitGatedCall(GatedCallback callback);
-    [[nodiscard]] static GatedCallback withoutText(std::function<void(Permission::Answer answer)> callback);
+    [[nodiscard]] static GatedCallback withoutText(std::function<void(SystemAnswer answer)> callback);
 
     // The gated calls that the page has not answered yet.
     static std::unordered_map<std::uint64_t, GatedCallback>& gatedCalls;

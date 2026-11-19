@@ -22,9 +22,9 @@ HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : d
 }
 
 // The window moves to the display it covers, as a desktop window does.
-void HeadlessHost::applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void HeadlessHost::applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) {
     const FullscreenTarget target = FullscreenTarget::resolve(displays, getDisplayId(), value);
-    if (windowAnswer.state == Permission::State::Granted) {
+    if (windowAnswer.state == SystemAnswer::State::Granted) {
         frame = target.display.bounds;
         fullscreen = true;
         fullscreenTarget = {.display = target.display.id, .mode = target.mode};
@@ -72,23 +72,6 @@ std::filesystem::path HeadlessHost::getUserDataDirectory(std::string_view identi
 
 void HeadlessHost::pollGamepads(std::span<input::GamepadState> states) {
     std::copy_n(gamepads.begin(), std::min(states.size(), gamepads.size()), states.begin());
-}
-
-void HeadlessHost::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    permissionRequests.push_back(kind);
-
-    if (permissionAnswersHeld) {
-        heldPermissionAnswers.push_back(std::move(callback));
-        return;
-    }
-
-    callback(permissionAnswer);
-}
-
-void HeadlessHost::answerPermissions() {
-    for (const std::function<void(Permission::Answer)>& callback : std::exchange(heldPermissionAnswers, {})) {
-        callback(permissionAnswer);
-    }
 }
 
 void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {

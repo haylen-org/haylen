@@ -50,8 +50,7 @@ dependencies {
     implementation("androidx.customview:customview:1.2.0")
     implementation("androidx.window:window-java:1.5.1")
 
-    // The tests of the library: the logic without Android on the JVM, and the classes that need Android on a device or the emulator.
-    testImplementation("junit:junit:4.13.2")
+    // The tests of the classes of the library, which need Android on a device or the emulator.
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }

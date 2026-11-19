@@ -80,7 +80,7 @@ TEST_F(DisplayLuaTest, AsksForEveryScreen) {
     test::EngineFixture fixture;
     fixture.host().setUnlistedDisplays(true);
     fixture.host().setDisplays(twoDisplays());
-    fixture.host().setEveryScreenAnswer({.state = Permission::State::Denied, .message = "The person has not allowed the page to see every screen."});
+    fixture.host().setEveryScreenAnswer({.state = SystemAnswer::State::Denied, .message = "The person has not allowed the page to see every screen."});
 
     // clang-format off
     fixture.runLua(R"(
@@ -99,7 +99,7 @@ TEST_F(DisplayLuaTest, AsksForEveryScreen) {
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "1"; }));
     EXPECT_EQ(fixture.lua("return answers[1]"), "denied: The person has not allowed the page to see every screen.");
 
-    fixture.host().setEveryScreenAnswer({.state = Permission::State::Granted});
+    fixture.host().setEveryScreenAnswer({.state = SystemAnswer::State::Granted});
     fixture.runLua("ask()");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
     EXPECT_EQ(fixture.lua("return answers[2]"), "2 false");

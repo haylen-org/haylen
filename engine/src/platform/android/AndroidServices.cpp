@@ -31,7 +31,7 @@ namespace haylen::platform {
 
 port::Services AndroidServices::create() {
     const auto services = std::make_shared<AndroidServices>();
-    return {.platform = services, .displays = services, .screen = services, .bridge = services, .permissions = services, .network = services, .media = services, .accessibility = services, .video = services, .fonts = services};
+    return {.platform = services, .displays = services, .screen = services, .bridge = services, .network = services, .media = services, .accessibility = services, .video = services, .fonts = services};
 }
 
 std::string_view AndroidServices::getName() const noexcept {
@@ -39,7 +39,7 @@ std::string_view AndroidServices::getName() const noexcept {
 }
 
 // Every activity of the process starts the runtime anew, and the first one may have ended before.
-// Android drops the packets of a request to the local network while the app does not hold the permission for it, so the HTTP requests that fail say so while the person has not granted it, which is the state of the permission and no guess about the address.
+// Android drops the packets of a request to the local network while the app does not hold the permission for it, so the HTTP requests that fail say so while the app does not hold it, which is the state of the permission and no guess about the address.
 void AndroidServices::initialize() {
     AndroidActivity::holdSplashScreen();
     AndroidGamepads::enableAxes();
@@ -47,7 +47,7 @@ void AndroidServices::initialize() {
 
     // clang-format off
     varn::http::client::FailureNote::install([](const std::string&) {
-        return JavaBridge::isPermissionHeld(Permission::Kind::LocalNetwork) ? std::string() : std::string("Access to the local network is not granted, so Android blocks a request to the local network until \"system.requestPermission('localNetwork')\" grants it.");
+        return JavaBridge::isLocalNetworkAllowed() ? std::string() : std::string("The app does not hold the permission \"android.permission.ACCESS_LOCAL_NETWORK\", so Android blocks a request to the local network until a plugin of the app declares it in the manifest and the person grants it.");
     });
     // clang-format on
 }
@@ -103,8 +103,8 @@ bool AndroidServices::hasUnlistedDisplays() {
     return false;
 }
 
-void AndroidServices::requestEveryScreen(std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void AndroidServices::requestEveryScreen(std::function<void(SystemAnswer answer)> callback) {
+    callback({.state = SystemAnswer::State::Granted});
 }
 
 math::Insets AndroidServices::getSafeAreaInsets() {
@@ -164,14 +164,6 @@ SystemInfo AndroidServices::getSystemInfo() {
     return AndroidDeviceInfo::toSystemInfo(JavaBridge::getSystemInfo());
 }
 
-void AndroidServices::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    JavaBridge::checkPermission(kind, std::move(callback));
-}
-
-void AndroidServices::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    JavaBridge::requestPermission(kind, std::move(callback));
-}
-
 // Android 17 records why it dropped the packets of a socket, which Local Network Protection does for an app that may not reach the local network. Older systems lack the function, which the library of the app looks up while it runs, since it starts on Android 8.1.
 std::string AndroidServices::explainBlockedSocket(std::intptr_t socket) {
     using ReadBlockedReason = std::int32_t (*)(int socket);
@@ -180,7 +172,7 @@ std::string AndroidServices::explainBlockedSocket(std::intptr_t socket) {
         return {};
     }
 
-    return "Android blocked the connection, because the app may not reach the local network without the permission \"android.permission.ACCESS_LOCAL_NETWORK\". Ask the person for it with \"system.requestPermission('localNetwork')\".";
+    return "Android blocked the connection, because the app may not reach the local network without the permission \"android.permission.ACCESS_LOCAL_NETWORK\", which a plugin of the app declares in the manifest and asks the person for.";
 }
 
 // Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.

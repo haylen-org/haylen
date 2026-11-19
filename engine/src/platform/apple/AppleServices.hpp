@@ -15,8 +15,8 @@
 
 namespace haylen::platform {
 
-// The services of Apple platforms: the platform, its displays, the screen with its safe area, orientation, status bar, gestures, fold and cutouts where the device has them, the Apple parts of plugins, the permissions of the system, the now-playing controls, the accessibility of UIKit and AppKit, the video decoder of AVFoundation and the fonts of CoreText. A Mac adds the desktop of `AppleDesktopService`, and LaunchServices and UIKit hand the links that open the app to the app that runs.
-class AppleServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::PermissionService, public port::MediaService, public port::AccessibilityService, public port::VideoService, public port::FontService {
+// The services of Apple platforms: the platform, its displays, the screen with its safe area, orientation, status bar, gestures, fold and cutouts where the device has them, the Apple parts of plugins, the now-playing controls, the accessibility of UIKit and AppKit, the video decoder of AVFoundation and the fonts of CoreText. A Mac adds the desktop of `AppleDesktopService`, and LaunchServices and UIKit hand the links that open the app to the app that runs.
+class AppleServices final : public port::PlatformService, public port::DisplayService, public port::ScreenService, public port::BridgeService, public port::MediaService, public port::AccessibilityService, public port::VideoService, public port::FontService {
   public:
     [[nodiscard]] static port::Services create();
 
@@ -32,7 +32,7 @@ class AppleServices final : public port::PlatformService, public port::DisplaySe
     [[nodiscard]] std::vector<Display> getDisplays() override;
     [[nodiscard]] std::string getWindowDisplayId() override;
     [[nodiscard]] bool hasUnlistedDisplays() override;
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override;
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] math::Rect getWindowFrame() override;
 
     [[nodiscard]] math::Insets getSafeAreaInsets() override;
@@ -50,9 +50,6 @@ class AppleServices final : public port::PlatformService, public port::DisplaySe
     void openScreen(const ScreenRequest& request) override;
     void cancelScreen(std::uint64_t id) override;
     void reportError(const core::Json& report) override;
-
-    void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
 
     void setBackgroundAudio(bool value) override;
     void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) override;

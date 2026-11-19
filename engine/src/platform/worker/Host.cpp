@@ -40,11 +40,11 @@ bool Host::isFullscreen() const noexcept {
 }
 
 // The page puts the element that holds the canvas and its overlay in fullscreen, as it does for the runtime on the page.
-void Host::applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) {
     WebPage::setFullscreen(value, getDisplayId(), std::move(callback));
 }
 
-void Host::applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) {
     const FullscreenTarget target = resolveFullscreen(value);
     WebPage::setFullscreen(true, target.display.id, std::move(callback));
 }
@@ -67,11 +67,11 @@ void Host::setCursorVisible(bool value) {
 }
 
 // The page locks the pointer to the canvas, which browsers allow only during an input of the person, and answers once the browser settled it.
-void Host::applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
     WebPage::lockPointer(value, std::move(callback));
 }
 
-void Host::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
+void Host::setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) {
     WebPage::setClipboard(value, std::move(callback));
 }
 
@@ -79,7 +79,7 @@ std::string Host::getClipboard() const {
     return WebPage::getClipboard();
 }
 
-void Host::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+void Host::readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) {
     WebPage::readClipboard(std::move(callback));
 }
 
@@ -194,7 +194,7 @@ void Host::requestWindowClose() {
 // The page decides where the focus goes.
 void Host::setWindowFocusable(bool) {}
 
-void Host::setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) {
+void Host::setScreenSaverSuspended(bool value, std::function<void(SystemAnswer answer)> callback) {
     WebPage::setScreenKeptOn(value, std::move(callback));
 }
 

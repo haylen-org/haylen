@@ -19,14 +19,9 @@ function plugin.unwritable()
     return handle:call('unwritable')
 end
 
--- Returns a platform call that fails, because the web part requires the permission `unprompted`, whose request ends without a prompt.
-function plugin.useUnprompted()
-    return handle:call('useUnprompted')
-end
-
--- Returns a platform call that fails, because the web part requires the permission `unregistered`, which it never registered.
-function plugin.useUnregistered()
-    return handle:call('useUnregistered')
+-- Returns a platform call, whose `await` gives `{text}` with the text that the web module of the plugin it depends on wrote.
+function plugin.dependency(text)
+    return handle:call('dependency', {text = text})
 end
 
 return plugin

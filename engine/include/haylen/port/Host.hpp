@@ -11,7 +11,7 @@
 #include "haylen/input/GamepadMotion.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/platform/Permission.hpp"
+#include "haylen/platform/SystemAnswer.hpp"
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/platform/Window.hpp"
 
@@ -31,17 +31,17 @@ class Host {
 
     // Whether the window fills its screen, and the request to fill it or leave it, which calls back exactly once with `Granted` or with the state and the sentence that say why it cannot.
     [[nodiscard]] virtual bool isFullscreen() const noexcept = 0;
-    virtual void setFullscreen(bool value, std::function<void(platform::Permission::Answer answer)> callback) = 0;
+    virtual void setFullscreen(bool value, std::function<void(platform::SystemAnswer answer)> callback) = 0;
 
     virtual void setTitle(std::string_view value) = 0;
     virtual void setCursor(platform::Window::Cursor value) = 0;
     virtual void setCursorVisible(bool value) = 0;
-    virtual void setMouseLocked(bool value, std::function<void(platform::Permission::Answer answer)> callback) = 0;
+    virtual void setMouseLocked(bool value, std::function<void(platform::SystemAnswer answer)> callback) = 0;
 
     // The clipboard of the system, as `platform::Window` describes it for apps.
-    virtual void setClipboard(std::string_view value, std::function<void(platform::Permission::Answer answer)> callback) = 0;
+    virtual void setClipboard(std::string_view value, std::function<void(platform::SystemAnswer answer)> callback) = 0;
     [[nodiscard]] virtual std::string getClipboard() const = 0;
-    virtual void readClipboard(std::function<void(platform::Permission::Answer answer, std::string text)> callback) = 0;
+    virtual void readClipboard(std::function<void(platform::SystemAnswer answer, std::string text)> callback) = 0;
 
     // Whether the window opened able to compose its alpha with what lies below it.
     [[nodiscard]] virtual bool canBeTransparent() const noexcept = 0;
@@ -72,7 +72,7 @@ class Host {
     virtual void setGamepadMotion(input::GamepadMotion::Sensors sensors) = 0;
 
     virtual void setFocusable(bool value) = 0;
-    virtual void setScreenSaverSuspended(bool value, std::function<void(platform::Permission::Answer answer)> callback) = 0;
+    virtual void setScreenSaverSuspended(bool value, std::function<void(platform::SystemAnswer answer)> callback) = 0;
 
     // Paces the frames at the frames per second, or at every refresh of the display for 0.
     virtual void applyFrameRate(int framesPerSecond) = 0;

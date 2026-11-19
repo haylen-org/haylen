@@ -102,8 +102,6 @@ class DevelopmentSession final {
     }
 
   private:
-    void awaitLocalNetwork(Host& host);
-
     std::unique_ptr<io::PackageWatcher> watcher;
     std::unique_ptr<debug::Debugger> debugger;
     std::unique_ptr<debug::ExecutionBudget> executionBudget;

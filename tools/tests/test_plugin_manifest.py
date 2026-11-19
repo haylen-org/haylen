@@ -33,7 +33,6 @@ class PluginManifestTest:
             "camera",
             {
                 "implementations": {"fake": "native", "web": "lua"},
-                "permissions": ["localNetwork"],
                 "dependencies": {"camera": "1.0"},
                 "parameters": {"size": {"type": "integer", "default": "big", "description": "A size.", "platforms": ["android"]}},
                 "contributions": [{"type": "package", "platforms": ["web"], "url": "${missing}"}],
@@ -49,7 +48,6 @@ class PluginManifestTest:
         assert 'names "web", where "implementations" does not give the plugin a native part.' in message
         assert 'names the parameter "missing" in "${missing}", which "parameters" does not declare.' in message
         assert 'The platform "fake" has a native part in "implementations", but no contribution brings it.' in message
-        assert 'The permission "localNetwork" belongs to the engine' in message
         assert "The plugin depends on itself" in message
 
     def test_follows_the_schema(self, tmp_path):

@@ -49,14 +49,13 @@ class WebChecks:
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
     # The orientation check: a phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on, the screen goes away once the phone turns, and the lock of the app replaces the orientation of `haylen.json`.
     ORIENTATION_STEPS = ["ready", "shown in portrait", "runs under it", "hidden in landscape", "locked portrait", "shown for the lock", "turns freely", "hidden for any"]
-    # The plugin check: a page whose permissions policy governs one feature that its plugin requires, with an error of the page, a request without a prompt and a permission that the plugin never registered.
+    # The plugin check: a page whose permissions policy governs one feature that its plugin requires, with an error of the page and a plugin whose web module imports the module of the plugin it depends on.
     PLUGIN_STEPS = [
         "checked",
         "lacks only the governed feature",
         "fails an error of the page as an exception",
         "fails a result that JSON cannot carry as an exception",
-        "fails a use without a prompt as denied",
-        "fails an unregistered permission as unsupported",
+        "reaches the module of its dependency",
         "kept the newest events before the app started",
     ]
     # The editor check: a page of the web player of the web SDK in development whose editor builds a project file by file, runs it, reloads, rejects and restores a module, applies a failing batch atomically, keeps the budget of the project, stops code that never ends through the execution budget, inspects the app, runs it again in place while its audio output opens, stops it early and disposes of the runtime, without an error of the page.
@@ -230,7 +229,7 @@ class WebChecks:
             report = self.drive("plugin-check.mjs", (), "the plugin check of the web", served.page(WebChecks.query(api)))
             WebChecks.check_steps(report, WebChecks.PLUGIN_STEPS, "The page of the plugin check")
         self.context.terminal.success(
-            'The page lacked the feature that its permissions policy refused, left the feature that the policy does not govern to the error of its API, failed the error of the page and a result that JSON cannot carry with the code "exception", the use without a prompt with the code "denied" and the use of an unregistered permission with the code "unsupported".'
+            'The page lacked the feature that its permissions policy refused, left the feature that the policy does not govern to the error of its API, failed the error of the page and a result that JSON cannot carry with the code "exception", and answered a call through the web module of the plugin that its plugin depends on.'
         )
 
     def editor(self, api: str | None) -> None:

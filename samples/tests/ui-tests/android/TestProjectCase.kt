@@ -7,7 +7,13 @@ import org.junit.Before
 
 // The base of the UI tests that open one test of the test project, which the launch arguments "--test <code>" name, and read its checks. Each check is a node whose content description is the line of its row, such as "Pass: The camera starts. The camera started at 640 by 480 pixels.".
 abstract class TestProjectCase : HaylenUiTestCase() {
-    // The code of the test that the app opens, such as "PLG-011".
+    companion object {
+        // The resource ids of the buttons of the permission dialog that allow what the plugin asks for.
+        val ALLOW = arrayOf("permission_allow_button")
+        val ALLOW_WHILE_USING = arrayOf("permission_allow_foreground_only_button")
+    }
+
+    // The code of the test that the app opens, such as "PLG-016".
     abstract val code: String
 
     override val launchArguments: List<String>

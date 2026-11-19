@@ -13,7 +13,7 @@ class AndroidManifestFile:
 
     PATH = "app/src/main/AndroidManifest.xml"
     # The permissions of the template, which network access, the network events, the rumble of gamepads and the local network need.
-    DEFAULT_PERMISSIONS = ("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE", "android.permission.ACCESS_LOCAL_NETWORK")
+    DEFAULT_PERMISSIONS = ("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE")
     ORIENTATIONS = {"landscape": "sensorLandscape", "portrait": "sensorPortrait", "any": "fullSensor"}
     # The values of `android:appCategory`, which has none for the other categories of an app.
     CATEGORIES = {

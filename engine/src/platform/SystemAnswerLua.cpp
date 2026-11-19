@@ -1,4 +1,4 @@
-#include "platform/AnswerLua.hpp"
+#include "platform/SystemAnswerLua.hpp"
 
 #include <lua.hpp>
 
@@ -13,19 +13,10 @@
 
 namespace haylen::platform {
 
-std::unordered_set<std::string> AnswerLua::loggedRefusals;
+std::unordered_set<std::string> SystemAnswerLua::loggedRefusals;
 
-void AnswerLua::settlePermission(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer) {
-    if (answer.state != Permission::State::Unsupported) {
-        promise.resolve(std::string(Permission::stateName(answer.state)));
-        return;
-    }
-
-    reject(engine, promise, answer);
-}
-
-void AnswerLua::settle(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer, std::optional<std::string> value) {
-    if (answer.state == Permission::State::Granted) {
+void SystemAnswerLua::settle(core::Engine& engine, const lua::Promise& promise, const SystemAnswer& answer, std::optional<std::string> value) {
+    if (answer.state == SystemAnswer::State::Granted) {
         promise.resolve(value ? core::Json(std::move(*value)) : core::Json());
         return;
     }
@@ -37,12 +28,12 @@ void AnswerLua::settle(core::Engine& engine, const lua::Promise& promise, const 
     reject(engine, promise, answer);
 }
 
-void AnswerLua::reject(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer) {
+void SystemAnswerLua::reject(core::Engine& engine, const lua::Promise& promise, const SystemAnswer& answer) {
     lua_State* main = engine.getLuaState();
     lua_createtable(main, 0, 3);
     lua::Stack::push(main, answer.message);
     lua_setfield(main, -2, "error");
-    lua::Stack::push(main, answer.state == Permission::State::Denied ? "denied" : "unsupported");
+    lua::Stack::push(main, answer.state == SystemAnswer::State::Denied ? "denied" : "unsupported");
     lua_setfield(main, -2, "code");
 
     if (!answer.missing.empty()) {

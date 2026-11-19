@@ -113,8 +113,8 @@ class HeadlessHost final : public Host {
         textInput.setKeyboardVisible(value);
     }
     // The clipboard keeps the text unless the test refuses it, the way a browser refuses a page, and answers at once.
-    void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override {
-        if (clipboardAnswer.state == Permission::State::Granted) {
+    void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override {
+        if (clipboardAnswer.state == SystemAnswer::State::Granted) {
             clipboard = value;
         }
 
@@ -123,8 +123,8 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::string getClipboard() const override {
         return clipboard;
     }
-    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override {
-        callback(clipboardAnswer, clipboardAnswer.state == Permission::State::Granted ? clipboard : std::string());
+    void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override {
+        callback(clipboardAnswer, clipboardAnswer.state == SystemAnswer::State::Granted ? clipboard : std::string());
     }
     void requestQuit() override {
         quitRequested = true;
@@ -248,8 +248,8 @@ class HeadlessHost final : public Host {
     }
 
     // Answers with the answer that `setEveryScreenAnswer` gave, and a granted answer lists every display.
-    void requestEveryScreen(std::function<void(Permission::Answer answer)> callback) override {
-        if (everyScreenAnswer.state == Permission::State::Granted) {
+    void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) override {
+        if (everyScreenAnswer.state == SystemAnswer::State::Granted) {
             unlistedDisplays = false;
         }
 
@@ -394,10 +394,6 @@ class HeadlessHost final : public Host {
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override {
         rumbles.push_back({.index = index, .low = low, .high = high, .seconds = seconds});
     }
-    void checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) override {
-        callback(permissionState);
-    }
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
     // Every socket of the headless platform reads the reason a test set, the way a platform explains a socket it blocked.
     [[nodiscard]] BlockedReason getBlockedReason() const override {
         return [reason = blockedReason](std::intptr_t) { return reason; };
@@ -511,7 +507,7 @@ class HeadlessHost final : public Host {
     }
 
     // The answer of the person to the next requests to see every screen.
-    void setEveryScreenAnswer(Permission::Answer value) {
+    void setEveryScreenAnswer(SystemAnswer value) {
         everyScreenAnswer = std::move(value);
     }
 
@@ -542,7 +538,7 @@ class HeadlessHost final : public Host {
     }
 
     // How the headless window answers fullscreen, the lock of the pointer and keeping the screen on, at once, the way a browser refuses them without an input of the person.
-    void setWindowAnswer(Permission::Answer value) {
+    void setWindowAnswer(SystemAnswer value) {
         windowAnswer = std::move(value);
     }
 
@@ -619,25 +615,8 @@ class HeadlessHost final : public Host {
     }
 
     // The answer of every write and read of the clipboard, which a browser or the person may refuse on a real device.
-    void setClipboardAnswer(Permission::Answer value) {
+    void setClipboardAnswer(SystemAnswer value) {
         clipboardAnswer = std::move(value);
-    }
-
-    // The answer of every check of a permission and of every request for one, which the platform and the person give on a real device.
-    void setPermission(Permission::Answer value) {
-        permissionState = std::move(value);
-    }
-    void setPermissionAnswer(Permission::Answer value) {
-        permissionAnswer = std::move(value);
-    }
-
-    // Holds the answers of the requests for permissions until `answerPermissions`, the way a person takes a while to answer the prompt of the system.
-    void setPermissionAnswersHeld(bool value) noexcept {
-        permissionAnswersHeld = value;
-    }
-    void answerPermissions();
-    [[nodiscard]] const std::vector<Permission::Kind>& getPermissionRequests() const noexcept {
-        return permissionRequests;
     }
 
     // The motion sensors that run now on the gamepads of the headless host.
@@ -729,8 +708,8 @@ class HeadlessHost final : public Host {
     }
 
   protected:
-    void applyFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override {
-        if (windowAnswer.state == Permission::State::Granted) {
+    void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override {
+        if (windowAnswer.state == SystemAnswer::State::Granted) {
             fullscreen = value;
             fullscreenTarget = {};
         }
@@ -739,18 +718,18 @@ class HeadlessHost final : public Host {
     }
 
     // Goes fullscreen like a desktop, on the display and in the mode of the target, which `getFullscreenTarget` reports.
-    void applyFullscreenTarget(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
+    void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) override;
 
-    void applyMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override {
-        if (windowAnswer.state == Permission::State::Granted) {
+    void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override {
+        if (windowAnswer.state == SystemAnswer::State::Granted) {
             mouseLocked = value;
         }
 
         callback(windowAnswer);
     }
 
-    void applyKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override {
-        if (windowAnswer.state == Permission::State::Granted) {
+    void applyKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback) override {
+        if (windowAnswer.state == SystemAnswer::State::Granted) {
             screenKeptOn = value;
         }
 
@@ -781,11 +760,6 @@ class HeadlessHost final : public Host {
     SystemState systemState;
     std::vector<Rumble> rumbles;
     std::string networkRequirement;
-    Permission::Answer permissionState{.state = Permission::State::Granted};
-    Permission::Answer permissionAnswer{.state = Permission::State::Granted};
-    std::vector<Permission::Kind> permissionRequests;
-    std::vector<std::function<void(Permission::Answer)>> heldPermissionAnswers;
-    bool permissionAnswersHeld = false;
     input::GamepadMotion::Sensors gamepadMotion;
     std::string blockedReason;
     std::vector<AccessibilityTree> accessibilityTrees;
@@ -817,14 +791,14 @@ class HeadlessHost final : public Host {
     bool nativeAccess = true;
     bool backHeld = false;
     std::shared_ptr<port::AudioOutput> audioOutput;
-    Permission::Answer clipboardAnswer{.state = Permission::State::Granted};
+    SystemAnswer clipboardAnswer{.state = SystemAnswer::State::Granted};
 
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};
     bool unlistedDisplays = false;
-    Permission::Answer everyScreenAnswer{.state = Permission::State::Granted};
+    SystemAnswer everyScreenAnswer{.state = SystemAnswer::State::Granted};
     bool externalDisplays = false;
-    Permission::Answer windowAnswer{.state = Permission::State::Granted};
+    SystemAnswer windowAnswer{.state = SystemAnswer::State::Granted};
     std::vector<math::Rect> screenCutouts;
     Fullscreen fullscreenTarget;
     std::vector<OutputRequest> outputRequests;

@@ -13,7 +13,7 @@ class Package;
 
 namespace haylen::platform {
 
-// The parts of the `plugin.json` of a plugin in the package that the runtime reads: the version, the plugins it depends on, the permissions it owns, the defaults of its parameters, the platforms where its native part runs and the class of its native part on each Apple platform. The tooling checks the whole file against its schema, and the runtime checks again what it reads, since the player also runs package folders that the tooling never saw.
+// The parts of the `plugin.json` of a plugin in the package that the runtime reads: the version, the plugins it depends on, the defaults of its parameters, the platforms where its native part runs and the class of its native part on each Apple platform. The tooling checks the whole file against its schema, and the runtime checks again what it reads, since the player also runs package folders that the tooling never saw.
 class PluginManifest final {
   public:
     // Reads `plugins/<id>/plugin.json` of the package. Throws `std::runtime_error` when the manifest is missing, is not a JSON object, has no version, or holds a field that the runtime reads in a form other than the one of the schema.
@@ -23,9 +23,6 @@ class PluginManifest final {
 
     // The ids of the plugins that `dependencies` names, in alphabetical order.
     [[nodiscard]] const std::vector<std::string>& getDependencies() const noexcept;
-
-    // The permissions that the plugin owns, distinct `camelCase` names other than the permissions of the engine.
-    [[nodiscard]] const std::vector<std::string>& getPermissions() const noexcept;
 
     // The defaults of the parameters that declare one, by name.
     [[nodiscard]] const core::Json& getDefaults() const noexcept;
@@ -44,13 +41,11 @@ class PluginManifest final {
 
     std::string version;
     std::vector<std::string> dependencies;
-    std::vector<std::string> permissions;
     core::Json defaults = core::Json::object();
     std::vector<std::string> nativePlatforms;
     std::vector<AppleClass> appleClasses;
 
     [[nodiscard]] static std::vector<std::string> readDependencies(const core::Json& manifest, const std::string& path);
-    [[nodiscard]] static std::vector<std::string> readPermissions(const core::Json& manifest, const std::string& path);
     [[nodiscard]] static core::Json readDefaults(const core::Json& manifest, const std::string& path);
     [[nodiscard]] static std::vector<std::string> readNativePlatforms(const core::Json& manifest, const std::string& path);
     [[nodiscard]] static std::vector<AppleClass> readAppleClasses(const core::Json& manifest, const std::string& path);

@@ -11,7 +11,7 @@
 namespace haylen::platform {
 
 // The types of the pasteboard read without a prompt, so a pasteboard that holds text and answers none tells that the person refused.
-void ApplePasteboard::read(std::function<void(Permission::Answer answer, std::string text)> callback) {
+void ApplePasteboard::read(std::function<void(SystemAnswer answer, std::string text)> callback) {
     // clang-format off
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
 #if TARGET_OS_OSX
@@ -24,11 +24,11 @@ void ApplePasteboard::read(std::function<void(Permission::Answer answer, std::st
         NSString* text = holdsText ? pasteboard.string : nil;
 #endif
         if (holdsText && text == nil) {
-            callback({.state = Permission::State::Denied, .message = "The person has not allowed the app to read the clipboard. The system asks at the next read, or the person allows it in the settings of the system."}, {});
+            callback({.state = SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard. The system asks at the next read, or the person allows it in the settings of the system."}, {});
             return;
         }
 
-        callback({.state = Permission::State::Granted}, text != nil ? std::string(text.UTF8String) : std::string());
+        callback({.state = SystemAnswer::State::Granted}, text != nil ? std::string(text.UTF8String) : std::string());
     });
     // clang-format on
 }

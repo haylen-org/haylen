@@ -41,8 +41,8 @@ import java.nio.ByteOrder
 import kotlin.math.sqrt
 import org.json.JSONObject
 
-// The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The plugin asks for the permissions it owns through its context, as `system.requestPermission` does.
-class NativeDemoDevice(private val context: HaylenPluginContext) {
+// The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The handlers check the permissions that `NativeDemoAccess` asks the person for before they use the camera, the microphone or the location.
+class NativeDemoDevice(private val context: HaylenPluginContext, private val access: NativeDemoAccess) {
     private val mainThread = Handler(Looper.getMainLooper())
     private var camera: Camera? = null
     // A camera opens only once the cameras before it closed, since many devices keep one camera open at a time and refuse the next one with the error ERROR_MAX_CAMERAS_IN_USE until the system released the last one. The newest request waits meanwhile, and a request that a newer one or a stop replaces fails with "cancelled".
@@ -76,13 +76,12 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
     private fun registerCamera() {
         context.register("startCamera") { params, reply ->
             val facing = (params as? JSONObject)?.optString("facing", "back") ?: "back"
-            context.requirePermission("camera", reply) {
-                val stream = context.openVideoStream("camera", Camera.WIDTH, Camera.HEIGHT, HaylenVideoStream.Format.RGBA8)
-                cancelWaitingCamera()
-                closeCamera()
-                waitingCamera = CameraRequest(facing, stream, reply)
-                openWaitingCamera()
-            }
+            access.check("camera")
+            val stream = context.openVideoStream("camera", Camera.WIDTH, Camera.HEIGHT, HaylenVideoStream.Format.RGBA8)
+            cancelWaitingCamera()
+            closeCamera()
+            waitingCamera = CameraRequest(facing, stream, reply)
+            openWaitingCamera()
         }
 
         context.register("stopCamera") { _, reply ->
@@ -145,14 +144,13 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
 
     private fun registerMicrophone() {
         context.register("startMicrophone") { _, reply ->
-            context.requirePermission("microphone", reply) {
-                microphone?.stop()
-                microphone = null
-                val record = Microphone.open() ?: throw HaylenBridge.Failure("The microphone of this device does not record.", "unsupported", null)
-                val stream = context.openAudioStream("microphone", Microphone.SAMPLE_RATE, 1, HaylenAudioStream.Format.FLOAT32, Microphone.SAMPLE_RATE)
-                microphone = Microphone(record, stream) { level -> context.emit("microphoneLevel", JSONObject().put("level", level).put("language", LANGUAGE)) }
-                reply.success(JSONObject().put("sampleRate", Microphone.SAMPLE_RATE).put("channels", 1).put("language", LANGUAGE))
-            }
+            access.check("microphone")
+            microphone?.stop()
+            microphone = null
+            val record = Microphone.open() ?: throw HaylenBridge.Failure("The microphone of this device does not record.", "unsupported", null)
+            val stream = context.openAudioStream("microphone", Microphone.SAMPLE_RATE, 1, HaylenAudioStream.Format.FLOAT32, Microphone.SAMPLE_RATE)
+            microphone = Microphone(record, stream) { level -> context.emit("microphoneLevel", JSONObject().put("level", level).put("language", LANGUAGE)) }
+            reply.success(JSONObject().put("sampleRate", Microphone.SAMPLE_RATE).put("channels", 1).put("language", LANGUAGE))
         }
 
         context.register("stopMicrophone") { _, reply ->
@@ -165,7 +163,8 @@ class NativeDemoDevice(private val context: HaylenPluginContext) {
     // One fix of the location, from the GPS where it is on and the person allowed the precise location, and from the network otherwise.
     private fun registerLocation() {
         context.register("location") { _, reply ->
-            context.requirePermission("location", reply) { locate(reply) }
+            access.check("location")
+            locate(reply)
         }
 
         context.register("showMap") { params, reply ->

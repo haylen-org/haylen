@@ -6,11 +6,11 @@ namespace haylen::platform::sdl {
 
 // The window closes with the request, which never reaches its mode then.
 FullscreenRequest::~FullscreenRequest() {
-    settle({.state = Permission::State::Denied, .message = "The window closed before it finished the change of fullscreen."});
+    settle({.state = SystemAnswer::State::Denied, .message = "The window closed before it finished the change of fullscreen."});
 }
 
 void FullscreenRequest::begin(bool fullscreen, Callback callback) {
-    settle({.state = Permission::State::Denied, .message = "A newer change of fullscreen replaced this one before the window finished it."});
+    settle({.state = SystemAnswer::State::Denied, .message = "A newer change of fullscreen replaced this one before the window finished it."});
     wanted = fullscreen;
     waiting = std::move(callback);
 }
@@ -32,14 +32,14 @@ void FullscreenRequest::reach(bool fullscreen) {
         return;
     }
 
-    settle({.state = Permission::State::Granted});
+    settle({.state = SystemAnswer::State::Granted});
 }
 
-void FullscreenRequest::fail(Permission::Answer answer) {
+void FullscreenRequest::fail(SystemAnswer answer) {
     settle(std::move(answer));
 }
 
-void FullscreenRequest::settle(Permission::Answer answer) {
+void FullscreenRequest::settle(SystemAnswer answer) {
     if (!wanted) {
         return;
     }

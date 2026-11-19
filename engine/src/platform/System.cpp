@@ -18,7 +18,7 @@ namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, Theme>, 2> System::kThemeNames{{{"light", Theme::Light}, {"dark", Theme::Dark}}};
 
-System::System(Host& owner, Bridge& channel, core::EventBus& bus, std::string gpuName, std::function<std::vector<AppPlugin>()> plugins) : host(owner), bridge(channel), events(bus), appPlugins(std::move(plugins)), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()), languagesRevision(owner.getLanguagesRevision()) {
+System::System(Host& owner, core::EventBus& bus, std::string gpuName) : host(owner), events(bus), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()), languagesRevision(owner.getLanguagesRevision()) {
     languages = owner.getLanguages();
     info.gpuName = std::move(gpuName);
 }
@@ -51,72 +51,12 @@ std::string System::getClipboard() const {
     return host.getClipboard();
 }
 
-void System::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+void System::readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) {
     host.readClipboard(awaitReply(std::move(callback)));
 }
 
-void System::setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback) {
+void System::setClipboard(std::string_view text, std::function<void(SystemAnswer answer)> callback) {
     host.setClipboard(text, awaitAnswer(std::move(callback)));
-}
-
-void System::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    host.checkPermission(kind, awaitAnswer(std::move(callback)));
-}
-
-void System::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    host.requestPermission(kind, awaitAnswer(std::move(callback)));
-}
-
-void System::checkPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback) {
-    if (const std::optional<Permission::Kind> kind = Permission::kindFromName(name)) {
-        checkPermission(*kind, std::move(callback));
-        return;
-    }
-
-    askPlugin(name, "permission", std::move(callback));
-}
-
-void System::requestPermission(std::string_view name, std::function<void(Permission::Answer answer)> callback) {
-    if (const std::optional<Permission::Kind> kind = Permission::kindFromName(name)) {
-        requestPermission(*kind, std::move(callback));
-        return;
-    }
-
-    askPlugin(name, "requestPermission", std::move(callback));
-}
-
-// The bridge answers on a later frame, on the frame thread, so the answer of the plugin reaches the callback as the answers of the host do.
-void System::askPlugin(std::string_view name, std::string_view method, std::function<void(Permission::Answer answer)> callback) {
-    const std::vector<AppPlugin> plugins = appPlugins();
-    const auto owner = std::ranges::find_if(plugins, [name](const AppPlugin& plugin) { return std::ranges::find(plugin.permissions, name) != plugin.permissions.end(); });
-    if (owner == plugins.end()) {
-        throw std::invalid_argument(Permission::unknown(name));
-    }
-
-    std::function<void(Permission::Answer)> answer = awaitAnswer(std::move(callback));
-    if (!owner->native) {
-        answer({.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" that owns the permission \"{}\" offers no part on this platform.", owner->id, name)});
-        return;
-    }
-
-    const Bridge::Payload params{.json = {{"name", std::string(name)}}};
-    // clang-format off
-    bridge.call(owner->id + "." + std::string(method), params, [plugin = owner->id, permission = std::string(name), answer = std::move(answer)](const Bridge::Result& result) {
-        answer(readPluginAnswer(plugin, permission, result));
-    });
-    // clang-format on
-}
-
-Permission::Answer System::readPluginAnswer(const std::string& plugin, const std::string& name, const Bridge::Result& result) {
-    if (result.ok) {
-        return Permission::Answer::fromJson(result.value.json);
-    }
-
-    if (result.error.code == "noHandler") {
-        return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" that owns the permission \"{}\" offers no part on this platform that answers it.", plugin, name)};
-    }
-
-    return {.state = Permission::State::Unsupported, .message = std::format("The plugin \"{}\" failed to answer the permission \"{}\". {}", plugin, name, result.error.message)};
 }
 
 // The platform may answer during the call, and the answer waits for the next pump like any other. A call without a callback, such as a copy of the UI, keeps none.
@@ -127,7 +67,7 @@ System::Callback System::awaitReply(Callback callback) {
     }
 
     // clang-format off
-    return [shared = std::weak_ptr<Inbox>(inbox), id](Permission::Answer answer, std::string text) {
+    return [shared = std::weak_ptr<Inbox>(inbox), id](SystemAnswer answer, std::string text) {
         if (const std::shared_ptr<Inbox> alive = shared.lock()) {
             const std::scoped_lock lock(alive->mutex);
             alive->replies.push_back({.id = id, .answer = std::move(answer), .text = std::move(text)});
@@ -136,11 +76,11 @@ System::Callback System::awaitReply(Callback callback) {
     // clang-format on
 }
 
-std::function<void(Permission::Answer)> System::awaitAnswer(std::function<void(Permission::Answer)> callback) {
+std::function<void(SystemAnswer)> System::awaitAnswer(std::function<void(SystemAnswer)> callback) {
     // clang-format off
-    Callback reply = awaitReply(callback ? Callback([callback = std::move(callback)](Permission::Answer answer, std::string) { callback(std::move(answer)); }) : Callback());
+    Callback reply = awaitReply(callback ? Callback([callback = std::move(callback)](SystemAnswer answer, std::string) { callback(std::move(answer)); }) : Callback());
     // clang-format on
-    return [reply = std::move(reply)](Permission::Answer answer) { reply(std::move(answer), {}); };
+    return [reply = std::move(reply)](SystemAnswer answer) { reply(std::move(answer), {}); };
 }
 
 void System::guardCrashes(const std::filesystem::path& report) {

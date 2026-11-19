@@ -1,6 +1,6 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the time zone and the languages of the system. It also offers services that every system has. It reads and writes the clipboard, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, those of the engine and those of the plugins of the app, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to know the languages the person prefers, to match the colors of the app to the system, and to do less work on a low battery or while the system saves power. Optional capabilities of the device, such as opening links, vibrating or native dialogs, live in plugins, and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the time zone and the languages of the system. It also offers services that every system has. It reads and writes the clipboard, whose calls the system may refuse, as the [failures](#failures) describe. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to know the languages the person prefers, to match the colors of the app to the system, and to do less work on a low battery or while the system saves power. Optional capabilities of the device, such as the camera, the location, opening links, vibrating or native dialogs, live in plugins with the permissions that they need, and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -158,55 +158,6 @@ async.spawn(function()
 end)
 ```
 
-### system.permission(name)
-
-Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is neither a permission of the engine nor one that a plugin of the app declares raises an error, such as `The permission "bluetooth" is neither one of the engine, which are "localNetwork", nor one that a plugin of the app declares. A plugin declares the permissions it owns in the "permissions" of its "plugin.json".`.
-
-| State | Meaning |
-| --- | --- |
-| `'granted'` | The app holds the permission, or the platform needs none for it. |
-| `'prompt'` | The person was not asked yet, so [`system.requestPermission`](#systemrequestpermissionname) shows the prompt of the system. |
-| `'denied'` | The person refused it, or the system no longer asks. A request then answers `'denied'` at once, and the person allows it in the settings of the system. |
-| `'unknown'` | The platform does not tell the app until it tries, as Apple platforms do for the local network, and asks the person at the first use. |
-
-A platform that has no such capability rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `The browser cannot tell the local network.`.
-
-```lua
-local async = require('async')
-local system = require('haylen.system')
-
-async.spawn(function()
-    local state, reason = system.permission('localNetwork'):await()
-    if state == 'prompt' then
-        print('The app explains why it wants the local network before it asks.')
-    elseif not state then
-        print(reason)
-    end
-end)
-```
-
-### system.requestPermission(name)
-
-Asks the person for the [permission](#permissions) `name` with the prompt of the system, where the platform has one, and returns a Varn promise that resolves on a later frame with the state that the person left: `'granted'`, `'denied'`, `'unknown'`, or `'prompt'` when the system did not ask, such as Safari, which asks only during a tap or a click. A permission that the app holds already answers `'granted'` at once, without a prompt, and so does a platform that never asks.
-
-The engine, or the plugin that owns the permission, first checks what the project of the app must declare for it: the usage description of the `Info.plist` on Apple platforms and the permission of the manifest on Android. Without it the request shows no prompt, logs once with the tag `haylen` what is missing and how to add it, and rejects with a [failure](#failures) of the code `'unsupported'`, whose `data.missing` lists what is missing as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. A platform without the capability rejects with the same code and its reason. The app asked, so a rejection that nothing awaits never stops it.
-
-```lua
-local async = require('async')
-local system = require('haylen.system')
-
-async.spawn(function()
-    local state, message, failure = system.requestPermission('localNetwork'):await()
-    if failure then
-        print(failure.code, message)
-        return
-    end
-    if state == 'denied' then
-        print('The app cannot find players on this Wi-Fi.')
-    end
-end)
-```
-
 ### system.setNowPlaying(info)
 
 Shows what the app plays in the now-playing controls of the system, such as the lock screen and the control center of iPhones, the media notification of Android, the media controls of Windows and the media hub of browsers. From then on the media keys of keyboards, the buttons of headsets and the play and pause buttons of TV remotes reach the app as [`mediaCommand` events](#events).
@@ -289,50 +240,13 @@ events.on('batteryChanged', function(battery)
 end)
 ```
 
-## Permissions
-
-A capability that at least one platform gates behind a permission, a prompt or a policy has a permission, so an app checks it with [`system.permission`](#systempermissionname) and asks for it with [`system.requestPermission`](#systemrequestpermissionname) the same way everywhere. A platform that never asks answers `'granted'`. The engine owns only the permissions that it uses itself.
-
-| Name | What it gives the app |
-| --- | --- |
-| `'localNetwork'` | The devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. |
-
-Every other permission belongs to a plugin of the app, such as `'camera'`, `'location'`, `'motion'` or `'notifications'`. A plugin declares the permissions it owns in the `permissions` of its `plugin.json`, and one plugin of an app owns each name, as the [plugin guide](../platform/plugins.md#permissions) describes. For such a name the engine calls the native part of the plugin through the bridge: `<id>.permission` reads the state and `<id>.requestPermission` asks, both with the parameters `{name}`, and the answer settles the promise like the answer of a permission of the engine. A plugin without a native part on this platform rejects with the code `'unsupported'` and the sentence `The plugin "<id>" that owns the permission "<name>" offers no part on this platform.`, and a native part without the handler rejects with `The plugin "<id>" that owns the permission "<name>" offers no part on this platform that answers it.`. Any other failure of the native part rejects with the code `'unsupported'` and the sentence `The plugin "<id>" failed to answer the permission "<name>".` followed by its message. The reference of each plugin tells what each platform answers for its permissions.
-
-```lua
-local async = require('async')
-local system = require('haylen.system')
-
--- The plugin "camera" of the app declares the permission "camera" in its "plugin.json".
-async.spawn(function()
-    local state, message, failure = system.requestPermission('camera'):await()
-    if failure then
-        print(failure.code, message)
-    elseif state ~= 'granted' then
-        print('The app shows the scanner once the person allows the camera.')
-    end
-end)
-```
-
-These tables tell what each platform answers for the permissions of the engine and when it asks the person.
-
-| Name | iOS, iPadOS, Mac Catalyst, visionOS and macOS | tvOS |
-| --- | --- | --- |
-| `'localNetwork'` | `'unknown'`, since the system asks the person the first time the app reaches the local network, with `NSLocalNetworkUsageDescription`, and tells the app nothing of it. | `'unknown'`. |
-
-| Name | Android | Web | Windows | Linux |
-| --- | --- | --- | --- | --- |
-| `'localNetwork'` | `ACCESS_LOCAL_NETWORK` for an app that targets Android 17, on Android 17 or later. Older systems and older targets answer `'granted'`. | The state of `local-network-access` in Chromium, where a request answers `'unknown'` while the browser would ask at the first access, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
-
-On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for the permissions of plugins that use powerful features, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
-
 ## Failures
 
 A promise of this module that a platform or the person refuses rejects with the message, and with a table that `await` returns as its third value. Its field `error` holds the message, and `code` is one of these.
 
 | Code | When |
 | --- | --- |
-| `'denied'` | The person or the platform refused the call, such as a clipboard that the person did not allow or a browser that wants an input of the person first. The message names the capability and how to ask for it again. |
+| `'denied'` | The person or the platform refused the call, such as a clipboard that the person did not allow or a browser that wants an input of the person first. The message names the capability and how to allow it again. |
 | `'unsupported'` | The platform has no such capability, with the reason, or the project of the app lacks a requirement, which `data.missing` lists as `{kind, name, file, snippet}`. |
 
 ```lua
@@ -389,14 +303,13 @@ The browser and Windows have no toggle button. So an app that offers `'togglePla
 
 ## Android permissions
 
-The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The Android backend declares these four in the manifest of every app that it generates, and an app that does not use one names it in `platforms.android.manifest.removedPermissions` of `haylen.json`, which leaves it out of the merged manifest. The [permissions](#permissions) that plugins use, such as `android.permission.CAMERA`, come with the manifest of their module. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing, and goes on without it.
+The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The Android backend declares these three in the manifest of every app that it generates, and an app that does not use one names it in `platforms.android.manifest.removedPermissions` of `haylen.json`, which leaves it out of the merged manifest. The permissions that plugins use, such as `android.permission.CAMERA` or `android.permission.ACCESS_LOCAL_NETWORK`, come with the manifest of their module, and the plugins ask the person for them. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing, and goes on without it.
 
 | Permission | Feature | Without it |
 | --- | --- | --- |
 | `android.permission.VIBRATE` | The rumble of gamepads, [`input.rumble`](input.md#inputrumbleindex-options). | The gamepad never rumbles, which the log tells once as a warning. |
 | `android.permission.ACCESS_NETWORK_STATE` | The network state of [`haylen.networkState()`](haylen.md#haylennetworkstate) and the events `networkOnline` and `networkOffline` of [`haylen.events`](events.md#engine-events), which the platform reports as `networkChanged`. | The engine never follows the network. The state stays `'unknown'` and the events never fire, which the log tells once at the info level. |
 | `android.permission.INTERNET` | Network access: the `http` and `socket` modules of Varn and [`haylen.net`](net.md). | Connections fail. The `error` events of `haylen.net` sockets end with a sentence that names the missing permission and how to add it, while Varn reports what the system tells it. |
-| `android.permission.ACCESS_LOCAL_NETWORK` | Reaching the devices of the local network from Android 17, for an app that targets it. The person grants it at run time, so the app asks with [`system.requestPermission('localNetwork')`](#systemrequestpermissionname), and the development session of a debug build asks by itself before it reaches a development server outside the device. | The request fails with the code `'unsupported'`. Android drops the packets of a connection to the local network, so `haylen.net` sockets and connects of the `socket` module fail at once with a sentence that names the permission, the requests of the `http` module that fail end with a sentence that says that access to the local network is not granted, and the development session says why it does not connect. |
 
 The [plugin guide](../platform/plugins.md#requirements) describes how plugins check their own requirements the same way.
 
@@ -413,11 +326,8 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getTimeZone()` | The IANA name of the time zone, empty where the platform does not tell. |
 | `getLanguages()` | The languages that the person prefers, most preferred first, in their canonical form. |
 | `getClipboard()` | The text on the clipboard for a paste of the person into a field of the UI. |
-| `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back on the frame thread, at a later frame, with a `haylen::platform::Permission::Answer` and the text. The state of the answer is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
-| `setClipboard(text, callback)` | Puts the text on the clipboard and calls back at a later frame with an `Answer`. |
-| `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` of the engine, `Screens` or `LocalNetwork`, and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
-| `requestPermission(kind, callback)` | Asks the person for a permission of the engine and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
-| `checkPermission(name, callback)`, `requestPermission(name, callback)` | The same by the name of `system.permission`, for a permission of the engine or one that a plugin of the app declares, which the bridge asks the native part of the plugin for. They throw `std::invalid_argument` for a name that nobody owns, and `std::runtime_error` when the plugins of the app cannot be read. |
+| `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back on the frame thread, at a later frame, with a `haylen::platform::SystemAnswer` of `haylen/platform/SystemAnswer.hpp` and the text. The state of the answer is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
+| `setClipboard(text, callback)` | Puts the text on the clipboard and calls back at a later frame with a `SystemAnswer`. |
 
 Each callback may be empty when the caller does not want the answer, which then reaches nobody.
 
@@ -426,7 +336,7 @@ The function `graphics::Device::getAdapterName()` names the GPU on its own.
 ```cpp
 const haylen::platform::SystemInfo& info = engine.getSystem().getInfo();
 haylen::core::Log::info("Running on {} with {} cores", haylen::platform::SystemInfo::osName(info.os), info.cpuCores);
-engine.getSystem().setClipboard(info.deviceModel, [](haylen::platform::Permission::Answer answer) {
-    haylen::core::Log::info("The copy {}", answer.state == haylen::platform::Permission::State::Granted ? "landed" : answer.message);
+engine.getSystem().setClipboard(info.deviceModel, [](haylen::platform::SystemAnswer answer) {
+    haylen::core::Log::info("The copy {}", answer.state == haylen::platform::SystemAnswer::State::Granted ? "landed" : answer.message);
 });
 ```

@@ -13,6 +13,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.util.Log
+import com.haylen.plugins.nativebase.NativeBase
 import com.varn.VarnDataView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -42,6 +43,7 @@ class NativeDemoPlugin : HaylenPlugin() {
     private var bannerTaps = 0
     private var picker: ActivityResultLauncher<Array<String>>? = null
     private var picking: HaylenBridge.Reply? = null
+    private lateinit var access: NativeDemoAccess
     private lateinit var device: NativeDemoDevice
     private var video: NativeDemoVideo? = null
     private var tone: NativeDemoTone? = null
@@ -49,8 +51,9 @@ class NativeDemoPlugin : HaylenPlugin() {
 
     override fun onLoad(context: HaylenPluginContext) {
         this.context = context
-        NativeDemoPermissions.register(context)
-        device = NativeDemoDevice(context)
+        access = NativeDemoAccess(context)
+        access.register()
+        device = NativeDemoDevice(context, access)
         device.register()
         NativeDemoStore(context).register()
         registerCalls()
@@ -61,6 +64,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         registerScreens()
         registerNotifications()
         registerRequirements()
+        registerDependency()
         context.emitRetained("loaded", JSONObject().put("language", LANGUAGE).put("platform", "android"))
     }
 
@@ -310,16 +314,15 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    // The notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed, once the app holds the permission `notifications` that the plugin owns.
+    // The notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed, once the person allowed the notifications of the app through the screen `notificationsPermission`.
     private fun registerNotifications() {
         context.register("notify") { params, reply ->
             val json = params as JSONObject
-            context.requirePermission("notifications", reply) {
-                val identifier = NOTIFICATION_PREFIX + UUID.randomUUID()
-                val seconds = json.getDouble("seconds")
-                NativeDemoNotifier.schedule(context.application(), identifier, json.getString("title"), json.getString("body"), seconds)
-                reply.success(JSONObject().put("identifier", identifier).put("seconds", seconds).put("language", LANGUAGE))
-            }
+            access.check("notifications")
+            val identifier = NOTIFICATION_PREFIX + UUID.randomUUID()
+            val seconds = json.getDouble("seconds")
+            NativeDemoNotifier.schedule(context.application(), identifier, json.getString("title"), json.getString("body"), seconds)
+            reply.success(JSONObject().put("identifier", identifier).put("seconds", seconds).put("language", LANGUAGE))
         }
     }
 
@@ -328,6 +331,14 @@ class NativeDemoPlugin : HaylenPlugin() {
         context.register("requirementCheck") { _, reply ->
             context.requirements().require(HaylenRequirements.Requirement.permission(Manifest.permission.READ_CONTACTS))
             reply.success(JSONObject().put("met", true).put("language", LANGUAGE))
+        }
+    }
+
+    // The plugin depends on the plugin `native-base`, whose module the Android backend adds to the dependencies of this module, so its Kotlin calls `NativeBase` directly.
+    private fun registerDependency() {
+        context.register("dependency") { params, reply ->
+            val text = NativeBase.describe((params as JSONObject).getString("text"))
+            reply.success(JSONObject().put("text", text).put("language", LANGUAGE))
         }
     }
 
