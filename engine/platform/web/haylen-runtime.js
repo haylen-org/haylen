@@ -5,6 +5,16 @@ Module.haylen = Module.haylen || {};
 (function (haylen) {
     const hostedInWorker = haylen.hosting === "worker";
 
+    // Reserves wasm memory, which fails with the size instead of handing out the address 0 when the memory cannot grow that far.
+    const allocate = (size) => {
+        const address = Module._malloc(size);
+        if (address === 0) {
+            throw new Error("The runtime could not reserve " + size + " bytes of WebAssembly memory.");
+        }
+
+        return address;
+    };
+
     // Calls an export of the engine with `ccall`, but with every string argument copied to the heap of the program for the duration of the call, because `ccall` copies strings onto its stack, which a large payload, such as the JSON of a result or the text of a long text area, would overflow.
     const callEngine = (name, returns, types, values) => {
         const owned = [];
@@ -13,8 +23,10 @@ Module.haylen = Module.haylen || {};
                 return value;
             }
 
-            const address = Module.stringToNewUTF8(value);
+            const size = Module.lengthBytesUTF8(value) + 1;
+            const address = allocate(size);
             owned.push(address);
+            Module.stringToUTF8(value, address, size);
             return address;
         });
         try {
@@ -27,11 +39,11 @@ Module.haylen = Module.haylen || {};
     // Copies the buffers into wasm memory with a table of an address and a size for each, for the duration of a call that copies them into the engine.
     const withBuffers = (buffers, body) => {
         const addresses = buffers.map((buffer) => {
-            const address = Module._malloc(Math.max(1, buffer.length));
+            const address = allocate(Math.max(1, buffer.length));
             Module.HEAPU8.set(buffer, address);
             return address;
         });
-        const table = Module._malloc(Math.max(1, buffers.length) * 8);
+        const table = allocate(Math.max(1, buffers.length) * 8);
         addresses.forEach((address, index) => {
             Module.HEAPU32[(table >> 2) + index * 2] = address;
             Module.HEAPU32[(table >> 2) + index * 2 + 1] = buffers[index].length;
@@ -210,7 +222,7 @@ Module.haylen = Module.haylen || {};
         // Replaces the package with a zipped one, as bytes, and runs it.
         loadZip: (request, params) => {
             const data = params.bytes instanceof Uint8Array ? params.bytes : new Uint8Array(params.bytes);
-            const pointer = Module._malloc(data.length);
+            const pointer = allocate(Math.max(1, data.length));
             Module.HEAPU8.set(data, pointer);
             try {
                 return completeLater(request, () => checked(Module._haylen_web_load_zip(request, pointer, data.length)));
@@ -307,7 +319,7 @@ Module.haylen = Module.haylen || {};
         socket.onmessage = (event) => {
             const binary = typeof event.data !== "string";
             const bytes = binary ? new Uint8Array(event.data) : new TextEncoder().encode(event.data);
-            const pointer = Module._malloc(bytes.length);
+            const pointer = allocate(Math.max(1, bytes.length));
             Module.HEAPU8.set(bytes, pointer);
 
             try {
@@ -376,7 +388,7 @@ Module.haylen = Module.haylen || {};
         const deliver = (id, bytes) => {
             reading.delete(id);
             const size = bytes ? bytes.length : 0;
-            const pointer = size > 0 ? Module._malloc(size) : 0;
+            const pointer = size > 0 ? allocate(size) : 0;
             if (size > 0) {
                 HEAPU8.set(bytes, pointer);
             }
@@ -683,7 +695,7 @@ Module.haylen = Module.haylen || {};
     };
 
     mixer.open = function (device, channels, sampleRate, blockFrames, bufferedFrames) {
-        mixer.outputs.set(device, { device, channels, sampleRate, blockFrames, bufferedFrames, port: null, started: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: Module._malloc(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) });
+        mixer.outputs.set(device, { device, channels, sampleRate, blockFrames, bufferedFrames, port: null, started: false, queued: 0, blocks: 0, underruns: 0, spare: [], scratch: allocate(blockFrames * channels * Float32Array.BYTES_PER_ELEMENT) });
         page.audio.open(device, channels, sampleRate, blockFrames, bufferedFrames);
     };
 
@@ -896,8 +908,9 @@ Module.haylen = Module.haylen || {};
     // Keeps a block of wasm memory of at least `size` bytes for the pushes of a stream. A new block may grow the memory, which detaches the views taken before, so callers read `Module.HEAPU8` or `Module.HEAPF32` only after it.
     const reserveMemory = (stream, size) => {
         if (stream.size < size) {
+            const memory = allocate(size);
             Module._free(stream.memory);
-            stream.memory = Module._malloc(size);
+            stream.memory = memory;
             stream.size = size;
         }
 
