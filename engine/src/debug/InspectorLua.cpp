@@ -35,7 +35,9 @@ int InspectorLua::unwatch(lua_State* L) {
 int InspectorLua::inspect(lua_State* L) {
     const std::string_view text = lua_isnoneornil(L, 1) ? std::string_view() : lua::Stack::read<std::string_view>(L, 1);
     const std::vector<std::string> path = Inspector::splitPath(text);
-    const std::vector<Inspector::Entry> entries = Inspector::list(L, path);
+    Inspector::Listing listing;
+    Inspector::list(L, path, listing);
+    const std::vector<Inspector::Entry>& entries = listing.entries;
     lua_createtable(L, static_cast<int>(entries.size()), 0);
     for (std::size_t index = 0; index < entries.size(); ++index) {
         const Inspector::Entry& entry = entries[index];

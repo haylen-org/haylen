@@ -60,7 +60,9 @@ TEST_F(InspectorTest, ListsTheRootsTablesAndThePropertiesOfBoundObjects) {
 TEST_F(InspectorTest, DescribesEveryTextAsWholeCharacters) {
     fixture.runLua("debugging.watch('texts', {long = string.rep('\\u{E9}', 100), broken = 'a\\xFFb', ['\\xFE'] = 1})");
     const std::vector<std::string> path = Inspector::splitPath("watched.texts");
-    const std::vector<Inspector::Entry> entries = Inspector::list(fixture.engine().getLuaState(), path);
+    Inspector::Listing listing;
+    Inspector::list(fixture.engine().getLuaState(), path, listing);
+    const std::vector<Inspector::Entry>& entries = listing.entries;
     ASSERT_EQ(entries.size(), 3U);
 
     for (const Inspector::Entry& entry : entries) {

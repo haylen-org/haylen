@@ -3,11 +3,16 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <cstddef>
+
+#include "debug/InspectorWindow.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/UiFixture.hpp"
 
 namespace haylen::debug {
@@ -89,6 +94,42 @@ TEST_F(InspectorWindowTest, FollowsAFingerAndStaysInsideTheSafeArea) {
     swipe(dragged, dragged + math::Vec2{4000.0F, 4000.0F});
     EXPECT_LE(window->Pos.x + window->Size.x, safe.x + safe.width + 0.5F);
     EXPECT_LE(window->Pos.y + window->Size.y, safe.y + safe.height + 0.5F);
+}
+
+// The inspector lists the values again into the storage it keeps, with the path of every row, so frames that show the same rows allocate no more than frames without the window, also when every frame refreshes them.
+TEST_F(InspectorWindowTest, DrawsTheSameRowsWithoutAllocating) {
+    double now = 0.0;
+    getEngine().getPlugin<plugins::DebugPlugin>().setInspectorClock([&now] { return now; });
+    getFixture().runLua("values = {flag = true, title = 'A title that is longer than a short string'} for index = 1, 80 do values['a value whose name is longer than a short string ' .. index] = index * 0.5 end require('haylen.debug').watch('values', values) require('haylen.scene').push({})");
+    // clang-format off
+    const auto measure = [this, &now] {
+        frames(5);
+        const test::AllocationTracker tracker;
+        for (int frame = 0; frame < 10; ++frame) {
+            now += InspectorWindow::kRefreshSeconds;
+            frames(1);
+        }
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t quiet = measure();
+
+    getFixture().runLua("require('haylen.debug').setInspectorVisible(true)");
+    frames(2);
+    ui::Backend& backend = getUi().getBackend();
+    backend.makeCurrent();
+    ImGuiWindow* window = ImGui::FindWindowByName("Inspector");
+    ASSERT_NE(window, nullptr);
+    const ImGuiTable* table = ImGui::TableFindByID(window->GetID("##values"));
+    ASSERT_NE(table, nullptr);
+    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 5.0F;
+    const ImVec2 first{table->OuterRect.Min.x + 60.0F, table->OuterRect.Min.y + row * 0.5F};
+    tap(place(first));
+    tap(place({first.x, first.y + row}));
+    ASSERT_GT(window->ScrollMax.y, 0.0F) << "The watched values show their rows.";
+
+    EXPECT_EQ(measure(), quiet);
+    EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
 } // namespace haylen::debug

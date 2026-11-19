@@ -369,9 +369,12 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
 
     if (inspectorVisible) {
-        const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-        inspectorVisible = inspectorWindow->draw(engine.getLuaState(), backend, now);
+        inspectorVisible = inspectorWindow->draw(engine.getLuaState(), backend);
     }
+}
+
+void DebugPlugin::setInspectorClock(std::function<double()> clock) {
+    inspectorWindow = std::make_unique<debug::InspectorWindow>(std::move(clock));
 }
 
 void DebugPlugin::setInspectorVisible(bool value) {
@@ -419,7 +422,9 @@ void DebugPlugin::answerInspection(const std::vector<std::string>& path, const s
 
     core::Json entries = core::Json::array();
     try {
-        for (const debug::Inspector::Entry& entry : debug::Inspector::list(owner->getLuaState(), path)) {
+        debug::Inspector::Listing listing;
+        debug::Inspector::list(owner->getLuaState(), path, listing);
+        for (const debug::Inspector::Entry& entry : listing.entries) {
             entries.push_back({{"key", entry.key}, {"type", entry.type}, {"value", entry.value}, {"expandable", entry.expandable}});
         }
     } catch (const std::exception& error) {
@@ -578,7 +583,9 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
     builtInCommands.push_back(console.addCommand({.name = "inspect", .help = "Lists the values at a path of the inspector, such as \"scenes.1\", or its roots when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
         const std::vector<std::string> path = debug::Inspector::splitPath(arguments.empty() ? std::string_view() : arguments[0].get_ref<const std::string&>());
         std::string text;
-        for (const debug::Inspector::Entry& entry : debug::Inspector::list(engine.getLuaState(), path)) {
+        debug::Inspector::Listing listing;
+        debug::Inspector::list(engine.getLuaState(), path, listing);
+        for (const debug::Inspector::Entry& entry : listing.entries) {
             text += std::format("{}{}  {}{}{}", text.empty() ? "" : "\n", entry.key, entry.type, entry.value.empty() ? "" : "  ", entry.value);
         }
 

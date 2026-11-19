@@ -3,9 +3,11 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <format>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <string_view>
@@ -33,46 +35,76 @@ std::vector<std::string> Inspector::splitPath(std::string_view path) {
     return keys;
 }
 
-std::vector<Inspector::Entry> Inspector::list(lua_State* L, std::span<const std::string> path) {
-    std::vector<Entry> entries;
+// The entries fill the storage of the listing before, so a listing of the same values allocates nothing.
+void Inspector::list(lua_State* L, std::span<const std::string> path, Listing& listing) {
+    std::size_t count = 0;
+    std::vector<Entry>& found = listing.found;
     if (path.empty()) {
         // clang-format off
-        lua::Runtime::protectedRun(L, [&entries](lua_State* state) {
+        lua::Runtime::protectedRun(L, [&found, &count](lua_State* state) {
             for (const std::string_view root : kRoots) {
                 pushRoot(state, root);
-                entries.push_back(describe(state, std::string(root), lua_gettop(state), false));
+                Entry& entry = takeEntry(found, count);
+                entry.key = root;
+                describe(state, lua_gettop(state), false, entry);
                 lua_pop(state, 1);
             }
         });
         // clang-format on
-        return entries;
+    } else {
+        lua::Runtime::protectedRun(L, [&found, &count, path](lua_State* state) { collect(state, path, found, count); });
     }
 
-    lua::Runtime::protectedRun(L, [&entries, path](lua_State* state) { collect(state, path, entries); });
+    found.resize(count);
+    listing.order.resize(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        listing.order[index] = index;
+    }
 
-    // Integer keys come first in their order, and names follow in the order of the alphabet.
+    if (!path.empty()) {
+        sort(listing);
+    }
+
+    listing.entries.resize(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        listing.entries[index] = found[listing.order[index]];
+    }
+}
+
+// Integer keys come first in their order, and names follow in the order of the alphabet. The places sort, so every entry of the listing takes the same values each time.
+void Inspector::sort(Listing& listing) {
+    const std::vector<Entry>& found = listing.found;
     // clang-format off
-    std::ranges::sort(entries, [](const Entry& left, const Entry& right) {
-        const std::optional<std::int64_t> first = readIndex(left.key);
-        const std::optional<std::int64_t> second = readIndex(right.key);
+    std::ranges::sort(listing.order, [&found](std::size_t left, std::size_t right) {
+        const std::optional<std::int64_t> first = readIndex(found[left].key);
+        const std::optional<std::int64_t> second = readIndex(found[right].key);
         if (first.has_value() != second.has_value()) {
             return first.has_value();
         }
 
-        return first ? *first < *second : left.key < right.key;
+        return first ? *first < *second : found[left].key < found[right].key;
     });
     // clang-format on
-    return entries;
+}
+
+Inspector::Entry& Inspector::takeEntry(std::vector<Entry>& found, std::size_t& count) {
+    if (count == found.size()) {
+        found.emplace_back();
+    }
+
+    return found[count++];
 }
 
 // The body of a protected run has a stack of its own, so the entries leave it as C++ values.
-void Inspector::collect(lua_State* L, std::span<const std::string> path, std::vector<Entry>& entries) {
+void Inspector::collect(lua_State* L, std::span<const std::string> path, std::vector<Entry>& found, std::size_t& count) {
     pushPath(L, path);
     const int value = lua_gettop(L);
     if (lua_type(L, value) == LUA_TTABLE) {
         lua_pushnil(L);
-        while (lua_next(L, value) != 0 && entries.size() < kMaxEntries) {
-            entries.push_back(describe(L, describeKey(L, -2), lua_gettop(L), true));
+        while (lua_next(L, value) != 0 && count < kMaxEntries) {
+            Entry& entry = takeEntry(found, count);
+            describeKey(L, -2, entry.key);
+            describe(L, lua_gettop(L), true, entry);
             lua_pop(L, 1);
         }
 
@@ -87,14 +119,16 @@ void Inspector::collect(lua_State* L, std::span<const std::string> path, std::ve
     lua_getfield(L, getters - 1, "__writable");
     const int setters = lua_gettop(L);
     lua_pushnil(L);
-    while (lua_next(L, getters) != 0 && entries.size() < kMaxEntries) {
+    while (lua_next(L, getters) != 0 && count < kMaxEntries) {
         lua_pop(L, 1);
         lua_pushvalue(L, -1);
         const bool writable = lua_istable(L, setters) && lua_rawget(L, setters) != LUA_TNIL;
         lua_pop(L, 1);
         lua_pushvalue(L, -1);
         lua_gettable(L, value);
-        entries.push_back(describe(L, describeKey(L, -2), lua_gettop(L), writable));
+        Entry& entry = takeEntry(found, count);
+        describeKey(L, -2, entry.key);
+        describe(L, lua_gettop(L), writable, entry);
         lua_pop(L, 1);
     }
 }
@@ -238,35 +272,37 @@ std::optional<std::int64_t> Inspector::readIndex(std::string_view key) noexcept 
     return number;
 }
 
-Inspector::Entry Inspector::describe(lua_State* L, std::string key, int index, bool editable) {
+void Inspector::describe(lua_State* L, int index, bool editable, Entry& entry) {
     const int type = lua_type(L, index);
-    std::string name = lua_typename(L, type);
+    entry.type = lua_typename(L, type);
     if (type == LUA_TUSERDATA && lua_getmetatable(L, index) != 0) {
         if (lua_getfield(L, -1, "__name") == LUA_TSTRING) {
-            name = lua_tostring(L, -1);
+            entry.type = lua_tostring(L, -1);
         }
 
         lua_pop(L, 2);
     }
 
+    describeValue(L, index, entry.value);
     const bool primitive = type == LUA_TNUMBER || type == LUA_TBOOLEAN || type == LUA_TSTRING;
-    return {.key = std::move(key), .type = std::move(name), .value = describeValue(L, index), .editable = editable && primitive, .expandable = type == LUA_TTABLE || type == LUA_TUSERDATA};
+    entry.editable = editable && primitive;
+    entry.expandable = type == LUA_TTABLE || type == LUA_TUSERDATA;
 }
 
-std::string Inspector::describeValue(lua_State* L, int index) {
-    std::string text;
+void Inspector::describeValue(lua_State* L, int index, std::string& text) {
+    text.clear();
     switch (lua_type(L, index)) {
     case LUA_TNUMBER:
-        text = lua_isinteger(L, index) != 0 ? std::to_string(lua_tointeger(L, index)) : std::format("{}", lua_tonumber(L, index));
+        appendNumber(L, index, text);
         break;
     case LUA_TBOOLEAN:
         text = lua_toboolean(L, index) != 0 ? "true" : "false";
         break;
     case LUA_TSTRING:
-        text = readText(L, index, kMaxValueText);
+        appendText(L, index, kMaxValueText, text);
         break;
     case LUA_TTABLE:
-        text = describeTable(L, index);
+        describeTable(L, index, text);
         break;
     case LUA_TNIL:
         text = "nil";
@@ -274,12 +310,10 @@ std::string Inspector::describeValue(lua_State* L, int index) {
     default:
         break;
     }
-
-    return text;
 }
 
 // Counts the values of a table up to the most that a listing shows, since a table that is not a sequence has no length.
-std::string Inspector::describeTable(lua_State* L, int index) {
+void Inspector::describeTable(lua_State* L, int index, std::string& text) {
     const int table = lua_absindex(L, index);
     std::size_t count = 0;
     lua_pushnil(L);
@@ -287,69 +321,89 @@ std::string Inspector::describeTable(lua_State* L, int index) {
         lua_pop(L, 1);
         if (++count > kMaxEntries) {
             lua_pop(L, 1);
-            return std::format("More than {} values", kMaxEntries);
+            std::format_to(std::back_inserter(text), "More than {} values", kMaxEntries);
+            return;
         }
     }
 
     if (count == 0) {
-        return "Empty";
+        text = "Empty";
+        return;
     }
-
-    const std::string values = count == 1 ? "1 value" : std::format("{} values", count);
 
     // A table with a name, such as a scene or an object of the app, shows it before its count.
     lua_pushliteral(L, "name");
-    if (lua_rawget(L, table) != LUA_TSTRING) {
-        lua_pop(L, 1);
-        return values;
+    if (lua_rawget(L, table) == LUA_TSTRING) {
+        appendText(L, -1, kMaxValueText, text);
+        text += ", ";
     }
 
-    std::string named = std::format("{}, {}", readText(L, -1, kMaxValueText), values);
     lua_pop(L, 1);
-    return named;
+
+    if (count == 1) {
+        text += "1 value";
+        return;
+    }
+
+    std::format_to(std::back_inserter(text), "{} values", count);
+}
+
+// The shortest text that reads back as the same number, which the formatting of the library gives too, written through a buffer on the stack, since the formatting of a floating point number may allocate.
+void Inspector::appendNumber(lua_State* L, int index, std::string& text) {
+    std::array<char, 32> digits{};
+    const std::to_chars_result written = lua_isinteger(L, index) != 0 ? std::to_chars(digits.data(), digits.data() + digits.size(), lua_tointeger(L, index)) : std::to_chars(digits.data(), digits.data() + digits.size(), lua_tonumber(L, index));
+    text.append(digits.data(), written.ptr);
 }
 
 // Keys are read without converting them in place, which would break the traversal of the table.
-std::string Inspector::describeKey(lua_State* L, int index) {
+void Inspector::describeKey(lua_State* L, int index, std::string& text) {
+    text.clear();
     switch (lua_type(L, index)) {
     case LUA_TSTRING:
-        return readText(L, index, std::numeric_limits<std::size_t>::max());
+        appendText(L, index, std::numeric_limits<std::size_t>::max(), text);
+        break;
     case LUA_TNUMBER:
-        return lua_isinteger(L, index) != 0 ? std::to_string(lua_tointeger(L, index)) : std::format("{}", lua_tonumber(L, index));
+        appendNumber(L, index, text);
+        break;
     default:
-        return std::format("({})", luaL_typename(L, index));
+        std::format_to(std::back_inserter(text), "({})", luaL_typename(L, index));
+        break;
     }
 }
 
 // A Lua string holds any bytes, and every description reaches JSON, so the text keeps whole characters within the limit and replaces bytes that are not UTF-8.
-std::string Inspector::readText(lua_State* L, int index, std::size_t limit) {
+void Inspector::appendText(lua_State* L, int index, std::size_t limit, std::string& text) {
     std::size_t length = 0;
     const char* characters = lua_tolstring(L, index, &length);
     const std::string_view bytes(characters, length);
+    const std::size_t start = text.size();
 
-    std::string text;
-    std::string character;
     std::size_t offset = 0;
     while (offset < bytes.size()) {
-        character.clear();
-        core::Utf8::append(character, core::Utf8::decode(bytes, offset));
-        if (text.size() + character.size() > limit) {
+        const std::size_t before = text.size();
+        core::Utf8::append(text, core::Utf8::decode(bytes, offset));
+        if (text.size() - start > limit) {
+            text.resize(before);
             break;
         }
-
-        text += character;
     }
-
-    return text;
 }
 
 std::string Inspector::joinPath(std::span<const std::string> path) {
     std::string joined;
     for (const std::string& key : path) {
-        joined += joined.empty() ? key : "." + key;
+        appendKey(joined, key);
     }
 
     return joined;
+}
+
+void Inspector::appendKey(std::string& path, std::string_view key) {
+    if (!path.empty()) {
+        path += '.';
+    }
+
+    path += key;
 }
 
 } // namespace haylen::debug
