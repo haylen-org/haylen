@@ -69,8 +69,8 @@ class Debugger final {
     // Shows the text in the console of the client.
     void output(const std::string& text);
 
-    // Holds the frame thread at the halt until the client lets the app go on, then sets the step it asked for. The tracer calls it.
-    void halt(const Tracer::Halt& value);
+    // Holds the frame thread at the halt until the client lets the app go on, then sets the step it asked for, and returns whether the app halted, which needs an attached client and a platform whose frames can halt. The tracer calls it.
+    [[nodiscard]] bool halt(const Tracer::Halt& value);
 
     // The debugger that follows the Lua state, or null while none does.
     [[nodiscard]] static Debugger* find(lua_State* L);

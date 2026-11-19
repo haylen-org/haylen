@@ -71,7 +71,10 @@ class ExecutionBudget final {
     // Looks at the clock on a count event of any hook of the coroutine, and raises the error of the budget once it ran out.
     static void check(lua_State* L);
 
-    // Gives the entry that runs its whole time again, such as once a halt of the debugger ended, since a halt waits for the person.
+    // Stops the clock of the entry while the debugger halts the app, since a halt waits for the person, so code of the app that an evaluation runs meanwhile never finds the budget spent.
+    static void suspend() noexcept;
+
+    // Gives the entry that runs its whole time again, such as once a halt of the debugger ended.
     static void renew() noexcept;
 
     // Replaces `xpcall` with one whose message handler of the app no longer runs once the budget ran out. Lua calls a message handler with the hooks off when the error rises inside a hook, so a handler that never ends would otherwise escape the budget.

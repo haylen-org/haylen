@@ -57,6 +57,7 @@ class Inspector final {
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
     [[nodiscard]] static std::string describeKey(lua_State* L, int index);
     [[nodiscard]] static std::string describeTable(lua_State* L, int index);
+    [[nodiscard]] static std::string readText(lua_State* L, int index, std::size_t limit);
 };
 
 } // namespace haylen::debug

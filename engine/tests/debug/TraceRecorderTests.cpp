@@ -85,6 +85,18 @@ TEST_F(TraceRecorderTest, WritesNestedScopesWithALanePerThread) {
     EXPECT_NEAR(spans[4].at("dur").get<double>(), 4000.0, 0.01);
 }
 
+// The name of a scope comes from the app and may hold any bytes, which the trace replaces so it stays JSON.
+TEST_F(TraceRecorderTest, WritesNamesThatAreNotUtf8) {
+    TraceRecorder trace(4);
+    trace.record("a\xFF"
+                 "b",
+                 0.0, 1.0);
+
+    const core::Json parsed = core::Json::parse(trace.toJson());
+    EXPECT_EQ(spansOf(parsed).front().at("name"), "a\xEF\xBF\xBD"
+                                                  "b");
+}
+
 TEST_F(TraceRecorderTest, DropsSpansBeyondItsCapacity) {
     TraceRecorder trace(3);
     for (int index = 0; index < 5; ++index) {

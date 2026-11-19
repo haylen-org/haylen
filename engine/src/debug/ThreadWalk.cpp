@@ -22,6 +22,9 @@ void ThreadWalk::run(lua_State* L, const std::function<void(lua_State* thread)>&
     walk.enqueue(lua_gettop(L));
     lua_pop(L, 1);
 
+    // The coroutine that walks is no coroutine to visit, but what its stack holds, such as a coroutine in one of its locals, is.
+    walk.visitThread(L);
+
     while (walk.pending > 0) {
         lua_rawgeti(L, walk.work, walk.pending);
         lua_pushnil(L);

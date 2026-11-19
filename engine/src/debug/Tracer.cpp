@@ -147,6 +147,7 @@ void Tracer::onHook(lua_State* L, lua_Debug* ar) {
         ExecutionBudget::check(L);
         return;
     }
+
     Tracer* tracer = current;
     if (tracer == nullptr || !tracer->isWatching()) {
         ExecutionBudget::hook(L);
@@ -350,12 +351,17 @@ void Tracer::halt(Halt value) {
     }
 
     lua_State* thread = value.thread;
+    bool halted = false;
     {
         const Busy guard(*this);
-        debugger.halt(value);
+        halted = debugger.halt(value);
     }
 
-    ExecutionBudget::renew();
+    // Only a halt that waited for the person gives the code its whole budget again, so a breakpoint on a page that cannot halt never lets code outlast it.
+    if (halted) {
+        ExecutionBudget::renew();
+    }
+
     refresh(thread);
 }
 

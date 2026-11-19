@@ -124,11 +124,11 @@ The editor shows the console line `The app goes on to the end of its frame witho
 
 ## The web
 
-A web page cannot halt, because the browser runs the app on the one thread that also delivers every message, including the ones of the editor, and that thread delivers nothing until the frame returns. So on the web the debugger keeps the log points, which never halt, and turns down every other breakpoint, a pause and `debug.breakpoint()` with that reason, and it offers no filter of uncaught errors. Errors still reach the error screen and the page.
+A web page cannot halt, because the browser runs the app on the one thread that also delivers every message, including the ones of the editor, and that thread delivers nothing until the frame returns. So on the web the debugger keeps the log points, which never halt, turns down every other breakpoint and a pause with that reason, lets `debug.breakpoint()` do nothing, and offers no filter of uncaught errors. Errors still reach the error screen and the page.
 
 ## Cost
 
-An app without breakpoints, log points, steps or the error filter runs with only the count hook of the [execution budget](../core/lua.md#the-execution-budget), as without an editor. While any of them is set, every coroutine reports its calls and returns, and only the functions whose lines hold a breakpoint report their lines, so code far from the breakpoints runs close to full speed. The breakpoints are indexed by file and line, so the check of a line costs one lookup. Turning the error filter off in the editor leaves an app with no breakpoints with that count hook alone again. The hooks of the debugger carry the count of the budget, since Lua keeps one hook for each coroutine, and the budget waits while the app halts.
+An app without breakpoints, log points, steps or the error filter runs with only the count hook of the [execution budget](../core/lua.md#the-execution-budget), as without an editor. While any of them is set, every coroutine reports its calls, its returns too while a breakpoint, a log point or a step is set, and only the functions whose lines hold a breakpoint report their lines, so code far from the breakpoints runs close to full speed. The breakpoints are indexed by file and line, so the check of a line costs one lookup. Turning the error filter off in the editor leaves an app with no breakpoints with that count hook alone again. The hooks of the debugger carry the count of the budget, since Lua keeps one hook for each coroutine, and the budget waits while the app halts.
 
 ## Release builds
 

@@ -13,6 +13,7 @@ ExecutionBudget::Entry::Entry(ExecutionBudget* owner, std::string_view stage) no
     if (budget == nullptr || budget->entries++ > 0) {
         return;
     }
+
     budget->deadline = Clock::now() + budget->limits.time;
     budget->entryStage = stage;
 }
@@ -21,7 +22,9 @@ ExecutionBudget::Entry::~Entry() {
     if (budget == nullptr || --budget->entries > 0) {
         return;
     }
+
     budget->deadline = Clock::time_point::max();
+
     if (budget->memoryExhausted && !budget->exhausted) {
         budget->cancelForMemory();
     }
@@ -42,6 +45,7 @@ void ExecutionBudget::attach(lua_State* L, Limits value, Cancel cancel, StageRea
     refusal.reset();
     message.clear();
     current = this;
+
     if (entries > 0) {
         deadline = Clock::now() + limits.time;
     }
@@ -57,14 +61,17 @@ void ExecutionBudget::attach(lua_State* L, Limits value, Cancel cancel, StageRea
             hook(thread);
             return;
         }
+
         lua_sethook(thread, existing, lua_gethookmask(thread) | LUA_MASKCOUNT, kCheckInstructions);
     };
     // clang-format on
     lua_State* main = lua::Runtime::getMainThread(L);
     add(main);
+
     if (L != main) {
         add(L);
     }
+
     ThreadWalk::run(L, add);
 }
 
@@ -72,6 +79,7 @@ void ExecutionBudget::detach() noexcept {
     if (current == this) {
         current = nullptr;
     }
+
     state = nullptr;
     cancelApp = nullptr;
     readStage = nullptr;
@@ -85,6 +93,7 @@ void ExecutionBudget::finishApp() noexcept {
     exhausted = false;
     memoryExhausted = false;
     refusal.reset();
+
     if (entries > 0) {
         deadline = Clock::now() + limits.time;
     }
@@ -107,6 +116,7 @@ void* ExecutionBudget::allocate(void* data, void* block, std::size_t oldSize, st
             budget.memoryStage = budget.readCurrentStage();
             budget.refusal = asked;
         }
+
         return nullptr;
     }
 
@@ -114,9 +124,11 @@ void* ExecutionBudget::allocate(void* data, void* block, std::size_t oldSize, st
     if (result == nullptr && newSize > 0) {
         return nullptr;
     }
+
     if (retry && !budget.exhausted) {
         budget.memoryExhausted = false;
     }
+
     budget.used = budget.used - previous + newSize;
     return result;
 }
@@ -129,6 +141,7 @@ int ExecutionBudget::getCount() noexcept {
     if (current == nullptr) {
         return 0;
     }
+
     return current->exhausted ? 1 : kCheckInstructions;
 }
 
@@ -137,6 +150,7 @@ void ExecutionBudget::hook(lua_State* L) {
         lua_sethook(L, nullptr, 0, 0);
         return;
     }
+
     lua_sethook(L, &onHook, LUA_MASKCOUNT, getCount());
 }
 
@@ -152,18 +166,28 @@ void ExecutionBudget::check(lua_State* L) {
     if (budget == nullptr) {
         return;
     }
+
     if (!budget->exhausted && budget->memoryExhausted) {
         budget->exhaust(L, budget->describeMemory(), lua::Error::Code::Memory);
     }
+
     if (!budget->exhausted) {
         if (Clock::now() < budget->deadline) {
             return;
         }
+
         budget->exhaust(L, "ran for more than " + std::to_string(budget->limits.time.count()) + " ms", lua::Error::Code::ExecutionBudget);
     }
+
     lua_sethook(L, lua_gethook(L), lua_gethookmask(L), 1);
     lua_pushstring(L, budget->message.c_str());
     lua_error(L);
+}
+
+void ExecutionBudget::suspend() noexcept {
+    if (current != nullptr) {
+        current->deadline = Clock::time_point::max();
+    }
 }
 
 void ExecutionBudget::renew() noexcept {
@@ -201,6 +225,7 @@ int ExecutionBudget::handleGuarded(lua_State* L) {
         lua_settop(L, 1);
         return 1;
     }
+
     lua_pushvalue(L, lua_upvalueindex(1));
     lua_insert(L, 1);
     lua_call(L, lua_gettop(L) - 1, 1);
@@ -223,6 +248,7 @@ std::string ExecutionBudget::describe(const std::string& reason, const std::stri
 // No code of the app runs at this point, so the error names the step where the allocation failed and has no stack of its own.
 void ExecutionBudget::cancelForMemory() noexcept {
     exhausted = true;
+
     try {
         message = describe(describeMemory(), memoryStage);
         lua::Error error(message);
@@ -238,6 +264,7 @@ void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, lua::Erro
     exhausted = true;
     const std::string stage = code == lua::Error::Code::Memory ? memoryStage : readCurrentStage();
     message = describe(reason, stage);
+
     if (!cancelApp) {
         return;
     }
@@ -245,6 +272,7 @@ void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, lua::Erro
     lua::Error error = lua::Runtime::captureError(L, message, 0);
     error.setCode(code);
     error.setCallback(stage);
+
     try {
         cancelApp(error);
     } catch (const std::exception& failure) {

@@ -453,7 +453,7 @@ int DebugLua::endScope(lua_State* L) {
 int DebugLua::profile(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
-    const ProfileScope scope(lua::Runtime::getEngine(L).getProfiler(), name);
+    const ProfileScope scope(lua::Runtime::getEngine(L).getProfiler(), name, ProfileScope::Owner::Script);
     lua_call(L, lua_gettop(L) - 2, LUA_MULTRET);
     return lua_gettop(L) - 1;
 }

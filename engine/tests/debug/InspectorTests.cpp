@@ -4,8 +4,12 @@
 #include <imgui_internal.h>
 
 #include <string>
+#include <vector>
 
+#include "debug/Inspector.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
+#include "haylen/core/Utf8.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
@@ -57,6 +61,20 @@ TEST_F(InspectorTest, ListsTheRootsTablesAndThePropertiesOfBoundObjects) {
     EXPECT_NE(camera.find("viewSize:haylen.Vec2:"), std::string::npos) << camera;
     EXPECT_EQ(camera.find("viewSize:haylen.Vec2::edit"), std::string::npos);
     EXPECT_EQ(fixture.lua("return run('inspect watched.player.stats')"), "true hp  number  3");
+}
+
+// A description reaches the editor as JSON, so it keeps whole characters of a long text and replaces the bytes of a string that are not UTF-8.
+TEST_F(InspectorTest, DescribesEveryTextAsWholeCharacters) {
+    fixture.runLua("debugging.watch('texts', {long = string.rep('\\u{E9}', 100), broken = 'a\\xFFb', ['\\xFE'] = 1})");
+    const std::vector<std::string> path = Inspector::splitPath("watched.texts");
+    const std::vector<Inspector::Entry> entries = Inspector::list(fixture.engine().getLuaState(), path);
+    ASSERT_EQ(entries.size(), 3U);
+
+    for (const Inspector::Entry& entry : entries) {
+        EXPECT_TRUE(core::Utf8::isValid(entry.key)) << entry.key;
+        EXPECT_TRUE(core::Utf8::isValid(entry.value)) << entry.value;
+        EXPECT_NO_THROW((void)core::Json({{"key", entry.key}, {"value", entry.value}}).dump());
+    }
 }
 
 TEST_F(InspectorTest, EditsValuesThroughTheirSettersWithTheirChecks) {

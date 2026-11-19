@@ -6,11 +6,14 @@
 #include <charconv>
 #include <cmath>
 #include <format>
+#include <limits>
 #include <stdexcept>
+#include <string_view>
 #include <system_error>
 
 #include <fast_float/fast_float.h>
 
+#include "haylen/core/Utf8.hpp"
 #include "haylen/lua/Runtime.hpp"
 
 namespace haylen::debug {
@@ -259,12 +262,9 @@ std::string Inspector::describeValue(lua_State* L, int index) {
     case LUA_TBOOLEAN:
         text = lua_toboolean(L, index) != 0 ? "true" : "false";
         break;
-    case LUA_TSTRING: {
-        std::size_t length = 0;
-        const char* characters = lua_tolstring(L, index, &length);
-        text.assign(characters, std::min(length, kMaxValueText));
+    case LUA_TSTRING:
+        text = readText(L, index, kMaxValueText);
         break;
-    }
     case LUA_TTABLE:
         text = describeTable(L, index);
         break;
@@ -304,9 +304,7 @@ std::string Inspector::describeTable(lua_State* L, int index) {
         return values;
     }
 
-    std::size_t length = 0;
-    const char* characters = lua_tolstring(L, -1, &length);
-    std::string named = std::format("{}, {}", std::string_view(characters, std::min(length, kMaxValueText)), values);
+    std::string named = std::format("{}, {}", readText(L, -1, kMaxValueText), values);
     lua_pop(L, 1);
     return named;
 }
@@ -315,12 +313,34 @@ std::string Inspector::describeTable(lua_State* L, int index) {
 std::string Inspector::describeKey(lua_State* L, int index) {
     switch (lua_type(L, index)) {
     case LUA_TSTRING:
-        return lua_tostring(L, index);
+        return readText(L, index, std::numeric_limits<std::size_t>::max());
     case LUA_TNUMBER:
         return lua_isinteger(L, index) != 0 ? std::to_string(lua_tointeger(L, index)) : std::format("{}", lua_tonumber(L, index));
     default:
         return std::format("({})", luaL_typename(L, index));
     }
+}
+
+// A Lua string holds any bytes, and every description reaches JSON, so the text keeps whole characters within the limit and replaces bytes that are not UTF-8.
+std::string Inspector::readText(lua_State* L, int index, std::size_t limit) {
+    std::size_t length = 0;
+    const char* characters = lua_tolstring(L, index, &length);
+    const std::string_view bytes(characters, length);
+
+    std::string text;
+    std::string character;
+    std::size_t offset = 0;
+    while (offset < bytes.size()) {
+        character.clear();
+        core::Utf8::append(character, core::Utf8::decode(bytes, offset));
+        if (text.size() + character.size() > limit) {
+            break;
+        }
+
+        text += character;
+    }
+
+    return text;
 }
 
 std::string Inspector::joinPath(std::span<const std::string> path) {

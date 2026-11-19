@@ -74,20 +74,20 @@ std::size_t TraceRecorder::getDropped() const {
     return dropped;
 }
 
-// The text is written directly, since a full trace holds hundreds of thousands of spans, and only the names go through the JSON escaping.
+// The text is written directly, since a full trace holds hundreds of thousands of spans, and only the names go through the JSON escaping, which replaces the bytes of a name of the app that are not UTF-8.
 std::string TraceRecorder::toJson() const {
     const std::scoped_lock lock(mutex);
     std::vector<std::string> quoted;
     quoted.reserve(names.size());
     for (const std::string& name : names) {
-        quoted.push_back(core::Json(name).dump());
+        quoted.push_back(core::Json(name).dump(-1, ' ', false, core::Json::error_handler_t::replace));
     }
 
     std::string text = "{\"traceEvents\":[";
     text.reserve(spans.size() * 80 + laneNames.size() * 160);
     for (std::size_t lane = 0; lane < laneNames.size(); ++lane) {
         const std::size_t order = lane == kGpuLane ? laneNames.size() : lane;
-        text += std::format(R"({}{{"name":"thread_name","ph":"M","pid":1,"tid":{},"args":{{"name":{}}}}},{{"name":"thread_sort_index","ph":"M","pid":1,"tid":{},"args":{{"sort_index":{}}}}})", lane == 0 ? "" : ",", lane, core::Json(laneNames[lane]).dump(), lane, order);
+        text += std::format(R"({}{{"name":"thread_name","ph":"M","pid":1,"tid":{},"args":{{"name":{}}}}},{{"name":"thread_sort_index","ph":"M","pid":1,"tid":{},"args":{{"sort_index":{}}}}})", lane == 0 ? "" : ",", lane, core::Json(laneNames[lane]).dump(-1, ' ', false, core::Json::error_handler_t::replace), lane, order);
     }
 
     for (const Span& span : spans) {

@@ -10,6 +10,7 @@
 
 #include "debug/Breakpoints.hpp"
 #include "debug/Evaluation.hpp"
+#include "debug/ExecutionBudget.hpp"
 #include "debug/HaltedStack.hpp"
 #include "haylen/core/Log.hpp"
 #include "platform/Host.hpp"
@@ -89,10 +90,12 @@ void Debugger::breakHere(lua_State* L) {
 }
 
 // The collector holds while the app halts, so no finalizer of the app runs while the person looks at its values. The platform may ask the frame to finish, such as when the person quits, and then the app goes on without halting until the next frame.
-void Debugger::halt(const Tracer::Halt& value) {
+bool Debugger::halt(const Tracer::Halt& value) {
     if (!attached || state == nullptr || !host.canHaltFrames()) {
-        return;
+        return false;
     }
+
+    ExecutionBudget::suspend();
 
     const bool collecting = lua_gc(value.thread, LUA_GCISRUNNING) != 0;
     lua_gc(value.thread, LUA_GCSTOP);
@@ -130,6 +133,8 @@ void Debugger::halt(const Tracer::Halt& value) {
     if (released && attached) {
         sendEvent("continued", {{"threadId", kThreadId}, {"allThreadsContinued", true}});
     }
+
+    return true;
 }
 
 bool Debugger::waitForResume(lua_State* thread) {

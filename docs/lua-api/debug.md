@@ -473,7 +473,7 @@ scene.push({
 
 ### debug.profile(name, fn, ...)
 
-Calls `fn` with the remaining arguments inside a scope named `name`, and returns everything that `fn` returns. An error that `fn` raises reaches the caller unchanged, and the scope still closes by the end of the frame.
+Calls `fn` with the remaining arguments inside a scope named `name`, and returns everything that `fn` returns. An error that `fn` raises reaches the caller unchanged, and the scope still closes by the end of the frame. The function `fn` cannot yield, so it cannot await a promise, and a yield raises `attempt to yield across a C-call boundary`. An error of the [execution budget](../core/lua.md#the-execution-budget) inside it names the step of the engine that runs it, such as `update`, not the scope.
 
 ```lua
 local debug = require('haylen.debug')
@@ -945,6 +945,7 @@ end)
 | --- | --- |
 | An error that ends with `(unknown value '<name>')` | `debug.setStatsMode`, `debug.setStatsItem` and `debug.statsItem` with an unknown name, and `debug.setToggleKey`, `debug.setDrawKey` and `debug.setInspectorKey` with an unknown key. |
 | `a drawing needs a name` | `debug.addDrawer` with an empty name, inside a bad argument error. |
+| `A monitor needs a name and a function that samples its value.` | `debug.addMonitor` with an empty name. |
 | `An owner must be a table or a userdata, not <type>.` | `debug.addDrawer`, `debug.addMonitor` and `debug.addCommand` with an owner of another type. |
 | `Unknown option "<key>".` | Every function that takes options, with an unknown key. |
 | `A debug monitor function returns a number.` | A monitor whose function returns something other than a number. It stops the app with the error screen. |

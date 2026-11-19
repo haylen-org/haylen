@@ -1,13 +1,16 @@
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Error.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "support/DebugClient.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/EventLoop.hpp"
 #include "support/TestFiles.hpp"
@@ -86,7 +89,7 @@ TEST_F(ExecutionBudgetTest, CannotBeCaughtByProtectedCallsOrCoroutines) {
 
 TEST_F(ExecutionBudgetTest, NamesTheStepThatRanTooLong) {
     const std::vector<std::pair<std::string, std::string>> cases{
-        {"while true do end", "start"}, {"require('looping')", "start"}, {"require('haylen.timer').after(0, function() while true do end end)", "update"}, {"require('haylen.scene').push({fixedUpdate = function() while true do end end})", "fixedUpdate"}, {"require('haylen.scene').push({render = function() while true do end end})", "render"}, {"local events = require('haylen.events') events.on('ping', function() while true do end end) require('haylen.timer').after(0, function() events.emit('ping') end)", "update"}, {"local async = require('async') async.spawn(function() async.sleep(0):await() while true do end end)", "scripts"},
+        {"while true do end", "start"}, {"require('looping')", "start"}, {"require('haylen.timer').after(0, function() while true do end end)", "update"}, {"require('haylen.scene').push({fixedUpdate = function() while true do end end})", "fixedUpdate"}, {"require('haylen.scene').push({render = function() while true do end end})", "render"}, {"local events = require('haylen.events') events.on('ping', function() while true do end end) require('haylen.timer').after(0, function() events.emit('ping') end)", "update"}, {"local async = require('async') async.spawn(function() async.sleep(0):await() while true do end end)", "scripts"}, {"require('haylen.scene').push({update = function() require('haylen.debug').profile('findPath', function() while true do end end) end})", "update"},
     };
     for (const auto& [main, stage] : cases) {
         SCOPED_TRACE(main);
@@ -156,6 +159,53 @@ TEST_F(ExecutionBudgetTest, CountsOnlyTheMemoryThatStaysAfterACollection) {
 }
 
 // The `xpcall` of development hands the handler of the app every other error and lets the function it calls yield.
+// A page cannot halt, so a breakpoint there never gives the code that calls it its whole budget again.
+TEST_F(ExecutionBudgetTest, CancelsCodeThatCallsBreakpointsWhereTheAppCannotHalt) {
+    start(R"(
+local scene = require('haylen.scene')
+scene.push({update = function()
+    local started = os.clock()
+    while os.clock() - started < 2 do
+        require('haylen.debug').breakpoint()
+    end
+end})
+)");
+    fixture->host().setHaltable(false);
+    test::DebugClient client{fixture->host()};
+    client.connect(fixture->engine().getLuaState());
+    runUntilCancelled();
+    EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+}
+
+// The budget waits while the app halts, so an evaluation that resumes a coroutine of the app after a long halt finds the budget whole.
+TEST_F(ExecutionBudgetTest, WaitsWhileTheDebuggerHaltsTheApp) {
+    start(R"(
+numbers = coroutine.wrap(function() while true do coroutine.yield(1) end end)
+local scene = require('haylen.scene')
+scene.push({update = function()
+    if not halted then
+        halted = true
+        require('haylen.debug').breakpoint()
+    end
+end})
+)");
+    test::DebugClient client{fixture->host()};
+    client.connect(fixture->engine().getLuaState());
+    int evaluation = 0;
+    // clang-format off
+    client.then([&evaluation](test::DebugClient& debug) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+        evaluation = debug.request("evaluate", {{"expression", "(function() local sum = 0 for _ = 1, 100000 do sum = sum + numbers() end return sum end)()"}, {"frameId", 1}});
+    });
+    // clang-format on
+    client.then([](test::DebugClient& debug) { debug.request("continue"); });
+    fixture->frames(3);
+
+    EXPECT_FALSE(fixture->engine().isCancelled());
+    ASSERT_NE(evaluation, 0);
+    EXPECT_EQ(client.getResponse(evaluation).at("body").at("result"), "100000");
+}
+
 TEST_F(ExecutionBudgetTest, KeepsTheHandlersAndYieldsOfXpcall) {
     start("");
     EXPECT_EQ(fixture->lua("local run = coroutine.wrap(function() return xpcall(function() return coroutine.yield('paused') .. '!' end, debug.traceback) end) local first = run() local ok, value = run('resumed') return first .. ' ' .. tostring(ok) .. ' ' .. value"), "paused true resumed!");
