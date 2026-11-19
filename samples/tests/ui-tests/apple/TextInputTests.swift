@@ -65,8 +65,7 @@ class TextInputTests: HaylenUITestCase {
         waitFor(element("The field \"number\" reported \"change\" with \"42\"."), timeout: 10)
 
         startTyping()
-        XCUIDevice.shared.press(.home)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        goHome()
         app.activate()
         waitFor(app.keyboards.firstMatch)
         typeOnKeyboard("ilha")

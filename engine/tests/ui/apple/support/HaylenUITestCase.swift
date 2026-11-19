@@ -271,9 +271,9 @@ class HaylenUITestCase: XCTestCase {
         }
     }
 
-    // Leaves the app for the Home Screen, which sends it to the background, where it runs or the system suspends it.
+    // Leaves the app for the Home Screen, which sends it to the background, where it runs or the system suspends it. The Home Screen comes to the front as an app, since a device that the test runner cannot reach through its displays, such as one of a device farm, hears the press of the Home button as the key of a keyboard that the system ignores.
     func goHome(file: StaticString = #filePath, line: UInt = #line) {
-        XCUIDevice.shared.press(.home)
+        Self.system.activate()
         waitUntil("The app does not leave the front for the Home Screen.", file: file, line: line) {
             app.state != .runningForeground
         }
