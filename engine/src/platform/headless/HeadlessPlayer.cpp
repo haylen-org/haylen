@@ -2,6 +2,8 @@
 
 #include <charconv>
 #include <exception>
+#include <span>
+#include <string>
 #include <string_view>
 #include <thread>
 #include <utility>
@@ -24,6 +26,11 @@ std::optional<HeadlessPlayer::Options> HeadlessPlayer::parse(int argc, char** ar
     Options options;
     for (int index = 1; index < argc; ++index) {
         const std::string_view argument = argv[index];
+        if (argument == "--") {
+            options.arguments.assign(argv + index + 1, argv + argc);
+            break;
+        }
+
         if (argument == "--dev") {
             options.development = true;
         } else if (argument == "--frames" && index + 1 < argc) {
@@ -62,6 +69,7 @@ int HeadlessPlayer::play(const Options& options) {
     // The apps keep their user data in the folder the run names, or in a folder of the app under the temporary directory of the system.
     const std::filesystem::path dataDirectory = options.dataDirectory.value_or(std::filesystem::temp_directory_path() / "haylen-headless" / core::AppConfig::fromPackage(*package).identifier);
     HeadlessHost host(dataDirectory);
+    host.setLaunchArguments(options.arguments);
     if (options.development) {
         host.enableDevelopment(package->getDirectory());
     }
@@ -92,8 +100,10 @@ int HeadlessPlayer::play(const Options& options) {
             end(host, engine);
             engine = launch(host, playing);
         } else if (const std::optional<core::Engine::Launch> request = engine->getLaunchRequest()) {
-            launchers.push_back({.package = playing, .development = host.exchangeDevelopmentSession(nullptr), .nativeAccess = host.hasNativeAccess()});
+            const std::span<const std::string> arguments = host.getLaunchArguments();
+            launchers.push_back({.package = playing, .development = host.exchangeDevelopmentSession(nullptr), .nativeAccess = host.hasNativeAccess(), .arguments = {arguments.begin(), arguments.end()}});
             host.setLaunched(true);
+            host.setLaunchArguments({});
             host.setNativeAccess(host.hasNativeAccess() && request->nativeAccess);
             end(host, engine);
             engine = launchPackage(host, *request, playing);
@@ -139,6 +149,7 @@ std::unique_ptr<core::Engine> HeadlessPlayer::returnToLauncher(HeadlessHost& hos
     launchers.pop_back();
     host.setLaunched(!launchers.empty());
     host.setNativeAccess(launcher.nativeAccess);
+    host.setLaunchArguments(std::move(launcher.arguments));
     (void)host.exchangeDevelopmentSession(std::move(launcher.development));
     playing = std::move(launcher.package);
     return launch(host, playing);

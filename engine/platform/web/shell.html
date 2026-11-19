@@ -192,6 +192,7 @@
             haylen: {
                 packageUrl: new URLSearchParams(location.search).get("package"),
                 graphicsApi: new URLSearchParams(location.search).get("graphicsApi"),
+                arguments: new URLSearchParams(location.search).getAll("argument"),
                 onLoadProgress: function ({ loaded, total }) {
                     const progress = document.getElementById("splash-progress");
                     const percent = total > 0 ? Math.min(100, Math.round((loaded * 100) / total)) : null;

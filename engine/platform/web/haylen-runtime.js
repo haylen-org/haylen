@@ -635,7 +635,7 @@ Module.haylen = Module.haylen || {};
         });
     }
 
-    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`, and a page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts. The runtime plays it instead of the bundled package. Only a page that sets `Module.haylen.development` runs the app in development, connected to the development server that `Module.haylen.developmentServer` names, if any. The graphics API that `Module.haylen.graphicsApi` names, `webGpu` or `webGl2`, is the one the window tries first.
+    // A page that already holds the zipped package, such as a loader that downloaded it with a progress bar, hands its bytes over as `Module.haylen.packageData`, and a page can instead name a zipped package with `Module.haylen.packageUrl`, which is downloaded before the app starts. The runtime plays it instead of the bundled package. Only a page that sets `Module.haylen.development` runs the app in development, connected to the development server that `Module.haylen.developmentServer` names, if any. The graphics API that `Module.haylen.graphicsApi` names, `webGpu` or `webGl2`, is the one the window tries first, and the list of strings `Module.haylen.arguments` holds the launch arguments of the app.
     const launch = [];
     if (haylen.packageData || haylen.packageUrl) {
         launch.push("/package.zip");
@@ -651,6 +651,10 @@ Module.haylen = Module.haylen || {};
 
     if (haylen.developmentServer) {
         launch.push("--dev-server", haylen.developmentServer);
+    }
+
+    if (haylen.arguments && haylen.arguments.length > 0) {
+        launch.push("--", ...haylen.arguments);
     }
 
     if (launch.length > 0) {

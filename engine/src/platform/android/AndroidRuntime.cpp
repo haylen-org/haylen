@@ -150,11 +150,17 @@ void AndroidRuntime::run() {
 
     NativeWindow::install(&window);
     window.setRunning(true);
-    // Android starts apps without a command line, and a debuggable app takes the development server from the intent that launched it.
+    // Android starts apps without a command line, so a debuggable app takes the development server from the intent that launched it, and every app takes its launch arguments from that intent.
     std::vector<std::string> arguments{"haylen"};
     if (std::string server = JavaBridge::getDevelopmentServer(); !server.empty()) {
         arguments.emplace_back("--dev-server");
         arguments.push_back(std::move(server));
+    }
+
+    const std::vector<std::string> launchArguments = JavaBridge::getLaunchArguments();
+    if (!launchArguments.empty()) {
+        arguments.emplace_back("--");
+        arguments.insert(arguments.end(), launchArguments.begin(), launchArguments.end());
     }
 
     std::vector<char*> argv;

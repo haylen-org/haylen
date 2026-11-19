@@ -126,6 +126,12 @@ class NativeHost : public Host {
     void setLaunched(bool value) noexcept {
         launched = value;
     }
+    [[nodiscard]] std::span<const std::string> getLaunchArguments() const noexcept override {
+        return launchArguments;
+    }
+    void setLaunchArguments(std::vector<std::string> value) noexcept {
+        launchArguments = std::move(value);
+    }
     [[nodiscard]] bool hasNativeAccess() const noexcept override {
         return nativeAccess;
     }
@@ -228,6 +234,7 @@ class NativeHost : public Host {
     std::unordered_map<std::uint32_t, OutputReport> refusedOutputs;
     std::unique_ptr<DevelopmentSession> developmentSession;
     bool launched = false;
+    std::vector<std::string> launchArguments;
     bool nativeAccess = true;
     bool backHeld = false;
     WindowStyle style;

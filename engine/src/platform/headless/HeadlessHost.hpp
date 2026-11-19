@@ -434,6 +434,12 @@ class HeadlessHost final : public Host {
     void setLaunched(bool value) noexcept {
         launched = value;
     }
+    [[nodiscard]] std::span<const std::string> getLaunchArguments() const noexcept override {
+        return launchArguments;
+    }
+    void setLaunchArguments(std::vector<std::string> value) noexcept {
+        launchArguments = std::move(value);
+    }
     [[nodiscard]] bool hasNativeAccess() const noexcept override {
         return nativeAccess;
     }
@@ -782,6 +788,7 @@ class HeadlessHost final : public Host {
     bool finishingHalts = false;
     int haltedPumps = 0;
     bool launched = false;
+    std::vector<std::string> launchArguments;
     bool nativeAccess = true;
     bool backHeld = false;
     std::shared_ptr<port::AudioOutput> audioOutput;

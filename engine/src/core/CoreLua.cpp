@@ -185,6 +185,18 @@ int CoreLua::rootLaunched(lua_State* L) {
     return 1;
 }
 
+// Returns the launch arguments of the app as a new list of strings.
+int CoreLua::rootLaunchArguments(lua_State* L) {
+    const std::span<const std::string> arguments = lua::Runtime::getEngine(L).getLaunchArguments();
+    lua_createtable(L, static_cast<int>(arguments.size()), 0);
+    for (std::size_t index = 0; index < arguments.size(); ++index) {
+        lua::Stack::push(L, arguments[index]);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index) + 1);
+    }
+
+    return 1;
+}
+
 int CoreLua::rootCanQuit(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getWindow().canQuit());
     return 1;
@@ -347,7 +359,7 @@ int CoreLua::rootAutoload(lua_State* L) {
 int CoreLua::openRoot(lua_State* L) {
     Engine& owner = lua::Runtime::getEngine(L);
     const luaL_Reg functions[] = {
-        {"quit", &rootQuit}, {"canQuit", &rootCanQuit}, {"launch", &lua::Binding::native<&rootLaunch>}, {"launched", &rootLaunched}, {"packageInfo", &lua::Binding::native<&rootPackageInfo>}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &lua::Binding::native<&rootSetTimeScale>}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"recoverable", &rootRecoverable}, {"setRecoverable", &lua::Binding::native<&rootSetRecoverable>}, {"recover", &rootRecover}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
+        {"quit", &rootQuit}, {"canQuit", &rootCanQuit}, {"launch", &lua::Binding::native<&rootLaunch>}, {"launched", &rootLaunched}, {"launchArguments", &rootLaunchArguments}, {"packageInfo", &lua::Binding::native<&rootPackageInfo>}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &lua::Binding::native<&rootSetTimeScale>}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"recoverable", &rootRecoverable}, {"setRecoverable", &lua::Binding::native<&rootSetRecoverable>}, {"recover", &rootRecover}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ClassLua::push(L);

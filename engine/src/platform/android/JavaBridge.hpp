@@ -70,6 +70,9 @@ class JavaBridge final {
     // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen app run` launches it with, or an empty text.
     [[nodiscard]] static std::string getDevelopmentServer();
 
+    // The launch arguments of the app that the intent of the activity holds in the extra `dev.haylen.arguments`, such as the test that a UI test opens.
+    [[nodiscard]] static std::vector<std::string> getLaunchArguments();
+
     // The check of a permission and the request for it, from any thread, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A call that Java never took fails at once.
     static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
@@ -166,6 +169,7 @@ class JavaBridge final {
     static jmethodID clipboardMethod;
     static jmethodID networkRequirementMethod;
     static jmethodID developmentServerMethod;
+    static jmethodID launchArgumentsMethod;
     static jclass screensClass;
     static jmethodID openScreenMethod;
     static jmethodID cancelScreenMethod;

@@ -40,6 +40,7 @@ jmethodID JavaBridge::setClipboardMethod = nullptr;
 jmethodID JavaBridge::clipboardMethod = nullptr;
 jmethodID JavaBridge::networkRequirementMethod = nullptr;
 jmethodID JavaBridge::developmentServerMethod = nullptr;
+jmethodID JavaBridge::launchArgumentsMethod = nullptr;
 jclass JavaBridge::outputsClass = nullptr;
 jmethodID JavaBridge::openOutputMethod = nullptr;
 jmethodID JavaBridge::closeOutputMethod = nullptr;
@@ -99,6 +100,7 @@ jint JavaBridge::load(JavaVM* vm) {
     clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
     networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
     developmentServerMethod = findMethod(*env, activityClass, "developmentServer", "()[B");
+    launchArgumentsMethod = findMethod(*env, activityClass, "launchArguments", "()[[B");
     openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[J[BZ)V");
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
@@ -112,7 +114,7 @@ jint JavaBridge::load(JavaVM* vm) {
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
 
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, launchArgumentsMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -267,6 +269,16 @@ std::string JavaBridge::getNetworkRequirement() {
 std::string JavaBridge::getDevelopmentServer() {
     JNIEnv& env = getEnv();
     return callText(env, activityClass, developmentServerMethod, "dev.haylen.HaylenActivity.developmentServer", "");
+}
+
+std::vector<std::string> JavaBridge::getLaunchArguments() {
+    JNIEnv& env = getEnv();
+    const JavaLocalRef arguments(env, static_cast<jobjectArray>(env.CallStaticObjectMethod(activityClass, launchArgumentsMethod)));
+    if (clearException(env, "dev.haylen.HaylenActivity.launchArguments")) {
+        return {};
+    }
+
+    return toStrings(env, arguments.get());
 }
 
 // The ids of the displays of Android are the numbers that the display manager gives them.

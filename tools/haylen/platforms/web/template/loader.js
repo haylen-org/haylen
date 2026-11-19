@@ -246,6 +246,9 @@ var Module = {
             Module.haylen.packageData = packageFiles[0];
         }
 
+        // Each `?argument=` of the address of the page is a launch argument of the app, in the order of the address.
+        Module.haylen.arguments = new URLSearchParams(location.search).getAll("argument");
+
         // A run of the app serves the page in development, connected to the server that pushes every saved file, while a site that the tooling builds has no such entry.
         if (config.development) {
             Module.haylen.development = true;

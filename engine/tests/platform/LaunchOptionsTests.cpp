@@ -42,4 +42,14 @@ TEST_F(LaunchOptionsTest, LeavesTheOptionsOfTheSystemWithTheirValues) {
     EXPECT_EQ(parse({"--unknown", "app"}).package, "app");
 }
 
+// Every argument after "--" reaches the app as it is, even one that the player would read, and the player reads none of them.
+TEST_F(LaunchOptionsTest, HandsTheArgumentsAfterTheSeparatorToTheApp) {
+    const LaunchOptions options = parse({"app", "--dev", "--", "--test", "PLG-011", "--dev", "--"});
+    EXPECT_EQ(options.package, "app");
+    EXPECT_EQ(options.arguments, (std::vector<std::string>{"--test", "PLG-011", "--dev", "--"}));
+    EXPECT_TRUE(parse({"app"}).arguments.empty());
+    EXPECT_EQ(parse({"--", "app"}).package, "");
+    EXPECT_FALSE(parse({"--", "--dev"}).development);
+}
+
 } // namespace haylen::platform

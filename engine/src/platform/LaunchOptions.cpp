@@ -4,12 +4,17 @@
 
 namespace haylen::platform {
 
-// Options of the player start with two dashes, and other options with two dashes are left to the system without a value.
+// Options of the player start with two dashes, other options with two dashes are left to the system without a value, and everything after `--` belongs to the app.
 LaunchOptions LaunchOptions::parse(int argc, char* argv[]) {
     LaunchOptions options;
     for (int index = 1; index < argc; ++index) {
         const std::string_view argument = argv[index];
         const bool hasValue = index + 1 < argc;
+        if (argument == "--") {
+            options.arguments.assign(argv + index + 1, argv + argc);
+            break;
+        }
+
         if (argument == "--dev") {
             options.development = true;
         } else if (argument == "--dev-server" && hasValue) {

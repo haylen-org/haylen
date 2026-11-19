@@ -186,6 +186,9 @@ class Host : public Window {
     // Whether the app that plays was launched by another app of the process, which starts again when it quits.
     [[nodiscard]] virtual bool isLaunched() const noexcept = 0;
 
+    // The arguments that the launch of the process gave the app, every argument after `--` of its command line, which an app that another app launched never has.
+    [[nodiscard]] virtual std::span<const std::string> getLaunchArguments() const noexcept = 0;
+
     // Whether the app that plays may reach native code and other programs through the `ffi`, `process` and `haylen.native` modules and the functions `io.popen` and `os.execute`, which an app launched without native access, and every app it launches, may not.
     [[nodiscard]] virtual bool hasNativeAccess() const noexcept = 0;
 

@@ -1354,6 +1354,10 @@ bool Engine::isLaunched() const noexcept {
     return state->host.isLaunched();
 }
 
+std::span<const std::string> Engine::getLaunchArguments() const noexcept {
+    return state->host.getLaunchArguments();
+}
+
 void Engine::quit(std::uint8_t status) {
     state->running = false;
     state->exitStatus = status;

@@ -6,7 +6,7 @@
 int main(int argc, char** argv) {
     const std::optional<haylen::platform::HeadlessPlayer::Options> options = haylen::platform::HeadlessPlayer::parse(argc, argv);
     if (!options) {
-        std::fprintf(stderr, "Usage: \"haylen-headless <app folder or zip> [--frames <count>] [--dev]\".\n");
+        std::fprintf(stderr, "Usage: \"haylen-headless <app folder or zip> [--frames <count>] [--dev] [-- <arguments of the app>]\".\n");
         return 2;
     }
 

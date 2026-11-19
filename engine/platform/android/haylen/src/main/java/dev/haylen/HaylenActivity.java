@@ -56,6 +56,8 @@ import org.json.JSONObject;
 public class HaylenActivity extends GameActivity implements InputManager.InputDeviceListener {
     // The extra of the launch intent that names the development server of a debuggable app.
     private static final String DEVELOPMENT_SERVER_EXTRA = "dev.haylen.developmentServer";
+    // The extra of the launch intent that holds the launch arguments of the app as a list of strings.
+    private static final String ARGUMENTS_EXTRA = "dev.haylen.arguments";
 
     // The names of the values of the status bar, in the order of `Window::StatusBar` in the engine.
     private static final String[] STATUS_BARS = {"hidden", "auto", "light", "dark"};
@@ -70,6 +72,9 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     // The link that `HaylenLinkActivity` received while no activity ran, which the next activity of the process takes. A launch that brings an existing task to the front keeps the intent that the task started with, even when Android restores its activity after the end of the process, so the link waits here instead of in the intent. Only the main thread reaches it.
     private static Intent pendingLink;
+
+    // The launch arguments of the intent that started the activity, which the activity reads before the frame thread starts and before a link replaces its intent.
+    private static volatile String[] launchArguments = new String[0];
 
     private final HaylenSplash splash = new HaylenSplash(this);
     private final HaylenBattery battery = new HaylenBattery(this);
@@ -96,6 +101,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         splash.install();
         requirements = new HaylenRequirements(this, "The engine");
         HaylenBridge.attach(this);
+        String[] arguments = getIntent().getStringArrayExtra(ARGUMENTS_EXTRA);
+        launchArguments = arguments == null ? new String[0] : arguments;
         // The class `GameActivity` loads the native library here, whose runtime starts the frame thread of the app.
         super.onCreate(savedInstanceState);
         // A new activity starts with the link as its intent, while a restored one hands it to the plugins as a new intent once they heard of the activity.
@@ -569,6 +576,17 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
         String address = activity.getIntent().getStringExtra(DEVELOPMENT_SERVER_EXTRA);
         return address == null ? new byte[0] : address.getBytes(StandardCharsets.UTF_8);
+    }
+
+    // Called from the frame thread of the engine when an app starts, with the launch arguments of the intent that started the activity, such as those of `adb shell am start --esa dev.haylen.arguments`.
+    static byte[][] launchArguments() {
+        String[] arguments = launchArguments;
+        byte[][] encoded = new byte[arguments.length][];
+        for (int index = 0; index < arguments.length; index++) {
+            encoded[index] = arguments[index].getBytes(StandardCharsets.UTF_8);
+        }
+
+        return encoded;
     }
 
     // Called by `HaylenLinkActivity` on the main thread while no activity runs.

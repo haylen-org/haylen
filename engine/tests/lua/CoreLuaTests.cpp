@@ -84,6 +84,14 @@ TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
     EXPECT_EQ(fixture.lua("return tostring(require('haylen').launched())"), "true");
 }
 
+// The launch arguments reach the app as a new list each time, so a change to one list never reaches the next.
+TEST(CoreLuaTest, ReturnsTheLaunchArgumentsOfTheApp) {
+    test::EngineFixture fixture;
+    EXPECT_EQ(fixture.lua("return #require('haylen').launchArguments()"), "0");
+    fixture.host().setLaunchArguments({"--test", "PLG-011"});
+    EXPECT_EQ(fixture.lua("local arguments = require('haylen').launchArguments() arguments[3] = 'changed' return table.concat(require('haylen').launchArguments(), ' ')"), "--test PLG-011");
+}
+
 // A list of downloaded apps shows each one by what its package says, read on the I/O pool.
 TEST(CoreLuaTest, ReadsWhatAnAppPackageSaysAboutItself) {
     test::TemporaryDirectory guest;

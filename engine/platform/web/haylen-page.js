@@ -2987,6 +2987,7 @@ Module.haylen = Module.haylen || {};
             development: haylen.development === true,
             developmentServer: haylen.developmentServer,
             graphicsApi: haylen.graphicsApi,
+            arguments: haylen.arguments,
             storageNamespace: haylen.storageNamespace,
             projectBudget: haylen.projectBudget,
             packageUrl: haylen.packageUrl ? new URL(haylen.packageUrl, document.baseURI).href : undefined,

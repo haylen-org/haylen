@@ -272,6 +272,9 @@ class Engine final {
     // Whether another app launched this one, so that quitting it starts that app again.
     [[nodiscard]] bool isLaunched() const noexcept;
 
+    // The arguments that the launch of the process gave the app, every argument after `--` of its command line, such as the test that a UI test opens. An app that another app launched has none.
+    [[nodiscard]] std::span<const std::string> getLaunchArguments() const noexcept;
+
     // Pauses the game: pausable scenes, autoloads, timers and tweens stop, those that run when paused start, and fixed steps stop accumulating. It tells the scenes it stops or starts, emits pausedChanged and publishes the paused or unpaused event.
     void setPaused(bool value);
     [[nodiscard]] bool isPaused() const noexcept;

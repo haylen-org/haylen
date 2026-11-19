@@ -744,6 +744,23 @@ if haylen.launched() then
 end
 ```
 
+### haylen.launchArguments()
+
+Returns the launch arguments of the app as a new list of strings, empty when the launch gave none. They are the arguments after `--` on the command line of the player or of the executable of a desktop app, the launch arguments of the process on Apple platforms, such as those of a UI test, the list of strings in the extra `dev.haylen.arguments` of the intent that started the activity on Android, and each `?argument=` of the address of a web page. Only the app that the process plays first has them, so an app that another app [launched](#haylenlaunchpath-options) gets an empty list, and the app that launched it gets them again once it starts again. Any program that starts the app chooses them, so read them as input that an app checks before it trusts it.
+
+```lua
+local haylen = require('haylen')
+local scene = require('haylen.scene')
+
+-- Opens the level that "-- --level 3" names, such as from a script that tests the level.
+local arguments = haylen.launchArguments()
+for index = 1, #arguments - 1 do
+    if arguments[index] == '--level' then
+        scene.push(require('scenes.level')(tonumber(arguments[index + 1])))
+    end
+end
+```
+
 ### haylen.packageInfo(path)
 
 Reads what an app package says about itself, such as the name and the logo that a list of downloaded apps shows, without running it. The string `path` names a folder or a zip file of the file system that holds a `haylen.json`. It returns a Varn promise that resolves on a later frame with a table, since it opens the package on the I/O pool.

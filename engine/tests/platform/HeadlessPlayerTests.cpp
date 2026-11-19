@@ -4,6 +4,8 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "platform/headless/HeadlessPlayer.hpp"
 #include "support/TemporaryDirectory.hpp"
@@ -16,10 +18,10 @@ class HeadlessPlayerTest : public ::testing::Test {
         app.write("haylen.json", R"({"name": "Player Test", "identifier": "com.haylen.tests"})");
     }
 
-    // Plays the app with the source of its main module and returns the exit status of the player.
-    int play(const std::string& main, long long frames = 60) {
+    // Plays the app with the source of its main module and the launch arguments, and returns the exit status of the player.
+    int play(const std::string& main, long long frames = 60, std::vector<std::string> arguments = {}) {
         app.write("source/main.lua", main);
-        return HeadlessPlayer::run({.package = app.getPath(), .frames = frames, .dataDirectory = data.getPath()});
+        return HeadlessPlayer::run({.package = app.getPath(), .frames = frames, .dataDirectory = data.getPath(), .arguments = std::move(arguments)});
     }
 
     test::TemporaryDirectory app;
@@ -71,6 +73,31 @@ TEST_F(HeadlessPlayerTest, StartsTheLauncherAgainWhenTheAppItLaunchedQuits) {
             haylen.launch(')" + path + R"(')
         end
     )", 120), 5);
+    // clang-format on
+}
+
+// The launch arguments belong to the app that the process plays first, which has them again once the app it launched quits, while the launched app has none.
+TEST_F(HeadlessPlayerTest, HandsTheLaunchArgumentsToTheFirstAppAlone) {
+    test::TemporaryDirectory guest;
+    guest.write("haylen.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
+    guest.write("source/main.lua", "local haylen = require('haylen') local preferences = require('haylen.preferences') preferences.set('guest', #haylen.launchArguments()) preferences.save() haylen.quit()");
+    const std::string path = guest.getPath().generic_string();
+    // clang-format off
+    EXPECT_EQ(play(R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        local arguments = table.concat(haylen.launchArguments(), ' ')
+        local guest = preferences.get('guest', nil)
+        if guest == nil then
+            haylen.launch(')" + path + R"(')
+        elseif arguments ~= '--test PLG-011' then
+            haylen.quit({status = 2})
+        else
+            preferences.remove('guest')
+            preferences.save()
+            haylen.quit({status = 10 + guest})
+        end
+    )", 120, {"--test", "PLG-011"}), 10);
     // clang-format on
 }
 
