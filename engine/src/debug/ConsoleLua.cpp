@@ -55,7 +55,7 @@ int ConsoleLua::addCommand(lua_State* L) {
         }
 
         if (lua_getfield(L, 3, "args") != LUA_TNIL) {
-            luaL_checktype(L, -1, LUA_TTABLE);
+            lua::Table::requireType(L, "args", LUA_TTABLE);
             const int args = lua_gettop(L);
             for (lua_Integer index = 1; lua_rawgeti(L, args, index) != LUA_TNIL; ++index) {
                 command.parameters.push_back(readParameter(L, -1));

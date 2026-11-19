@@ -164,4 +164,9 @@ TEST(ConsoleLuaTest, CyclesTheStatisticsAndSwitchesEveryDrawingWithoutArguments)
     EXPECT_TRUE(plugin.isDrawing("bounds"));
 }
 
+TEST(ConsoleLuaTest, NamesTheArgumentsThatAreNotAList) {
+    test::EngineFixture fixture;
+    EXPECT_NE(fixture.lua("require('haylen.debug').addCommand('gold', function() end, {args = 1})").find("The option \"args\" of \"addCommand\" is invalid: table expected, got number."), std::string::npos);
+}
+
 } // namespace haylen::debug

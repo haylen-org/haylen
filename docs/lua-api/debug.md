@@ -948,6 +948,7 @@ end)
 | `A monitor needs a name and a function that samples its value.` | `debug.addMonitor` with an empty name. |
 | `An owner must be a table or a userdata, not <type>.` | `debug.addDrawer`, `debug.addMonitor` and `debug.addCommand` with an owner of another type. |
 | `Unknown option "<key>".` | Every function that takes options, with an unknown key. |
+| `The option "args" of "addCommand" is invalid: table expected, got <type>.` | The `args` of `debug.addCommand` is not a list. |
 | `A debug monitor function returns a number.` | A monitor whose function returns something other than a number. It stops the app with the error screen. |
 | `A profiler scope was closed without being opened.` | `debug.endScope` without an open scope of `beginScope`. |
 | `expected a non-negative integer` | `debug.recentLog` with a negative count, inside a bad argument error. |
