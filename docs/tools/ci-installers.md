@@ -465,6 +465,11 @@ jobs:
             haylen/.tools
             haylen/build/sdk
           key: haylen-android-${{ env.HAYLEN_REF }}
+      # The Android dependencies that Gradle downloads from Maven Central and the Maven repository of Google, which the engine, its templates and the plugins of the app pin.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.gradle/caches/modules-2
+          key: haylen-gradle-${{ env.HAYLEN_REF }}-${{ hashFiles(format('{0}/haylen.json', env.APP), format('{0}/haylen.lock', env.APP), format('{0}/plugins/**', env.APP)) }}
       - name: Build the Android SDK and the desktop SDK of this system
         if: steps.engine.outputs.cache-hit != 'true'
         run: |
@@ -642,7 +647,7 @@ jobs:
 
 **iOS and tvOS.** The jobs archive the scheme `App` of the targets `ios` and `tvos` with automatic signing. The API key lets Xcode sign in the cloud, with the distribution certificate and the profiles of the team. The jobs export the `.ipa` with the method `app-store-connect` and upload it on a tag.
 
-**Android.** The job installs the NDK and the platform that the [build guide](build.md#requirements) lists for Android, and builds the Android SDK and the desktop SDK of the runner. The command `app package --format bundle` builds the app in the Release configuration, with the protected release and the library of the app for every ABI, verifies it and copies the App Bundle into `dist`. Gradle, which the tooling downloads, signs the bundle with the upload key that the variables `HAYLEN_RELEASE_STORE_FILE`, `HAYLEN_RELEASE_STORE_PASSWORD`, `HAYLEN_RELEASE_KEY_ALIAS` and `HAYLEN_RELEASE_KEY_PASSWORD` describe, which never reach a file of the generated project.
+**Android.** The job installs the NDK and the platform that the [build guide](build.md#requirements) lists for Android, and builds the Android SDK and the desktop SDK of the runner. The command `app package --format bundle` builds the app in the Release configuration, with the protected release and the library of the app for every ABI, verifies it and copies the App Bundle into `dist`. Gradle, which the tooling downloads, keeps the Android dependencies that it downloads in `~/.gradle/caches/modules-2`, which a cache of their own keeps under a key of the engine at `HAYLEN_REF` and of the manifest, the lock and the plugins of the app, so a run asks Maven Central for them only after one of those changed. Maven Central answers a runner that asks too often with the status 429, Too Many Requests, which fails the build. Gradle signs the bundle with the upload key that the variables `HAYLEN_RELEASE_STORE_FILE`, `HAYLEN_RELEASE_STORE_PASSWORD`, `HAYLEN_RELEASE_KEY_ALIAS` and `HAYLEN_RELEASE_KEY_PASSWORD` describe, which never reach a file of the generated project.
 
 **Windows and Linux.** The command `app package --format installer` generates the project of the platform, builds it in the Release configuration, stops on anything a release never ships and runs CPack. The Windows project signs the executable, the installer and its uninstaller with the certificate of `HAYLEN_WINDOWS_CERTIFICATE`. The packages of Linux link the system libraries of the runner, so they run on that distribution and newer ones.
 

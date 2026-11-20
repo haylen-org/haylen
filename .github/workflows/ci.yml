@@ -143,6 +143,8 @@ jobs:
         with:
           dependencies: android-sdk
           packages: ninja-build
+          gradle: android-sdk
+          save-tools: gradle
       - name: Build the SDK
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target android
       - uses: ./.github/actions/sdk
@@ -398,6 +400,7 @@ jobs:
         with:
           name: linux-sdk
       - uses: ./.github/actions/sdk
+          gradle: android-ui
         with:
           name: android-sdk
       - name: Let the emulator use KVM
@@ -427,6 +430,7 @@ jobs:
   # A project that finds the desktop SDK of the run with "find_package", the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
   linux-apps:
     if: github.event_name == 'workflow_dispatch'
+      - uses: ./.github/actions/caches
     name: Linux apps
     needs: linux-sdk
     runs-on: ubuntu-latest
@@ -553,6 +557,7 @@ jobs:
         with:
           name: linux-sdk
       - uses: ./.github/actions/sdk
+          gradle: android
         with:
           name: android-sdk
       - name: Create the starter apps and an upload key
@@ -570,6 +575,7 @@ jobs:
   # The UI tests of the test project on the iOS and tvOS simulators, which answer the prompts of the system, tap the notifications from the app, the Home Screen and a closed app, and press the remote of the TV.
   apple-ui:
     if: github.event_name == 'workflow_dispatch'
+      - uses: ./.github/actions/caches
     name: Apple UI tests
     needs: apple-slices
     runs-on: xcode-27

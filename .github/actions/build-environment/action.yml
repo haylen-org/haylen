@@ -1,5 +1,5 @@
 name: Build environment
-description: Installs what a job builds the engine with, restores the sources of the dependencies, their prebuilt packages and the tools that the builds download from the bucket "haylen-ci", and compiles through sccache with the compiler cache of the same bucket.
+description: Installs what a job builds the engine with, restores the sources of the dependencies, their prebuilt packages, the Android dependencies of Gradle and the tools that the builds download from the bucket "haylen-ci", and compiles through sccache with the compiler cache of the same bucket.
 
 inputs:
   packages:
@@ -9,7 +9,10 @@ inputs:
     description: Whether the job saves the sources of the dependencies that its builds fetch, which one job of each system does with the action "caches" at its end while the others read them.
     default: "false"
   save-tools:
-    description: The tools whose caches the job saves, from "shader-compiler", "xcodegen" and "emscripten", one job for each tool and system, which saves them with the action "caches" at its end while the other jobs that use them only read them.
+    description: The tools whose caches the job saves, from "shader-compiler", "xcodegen", "emscripten" and "gradle", one job for each tool and system, which saves them with the action "caches" at its end while the other jobs that use them only read them.
+    default: ""
+  gradle:
+    description: The name of the Android dependencies that the Gradle builds of the job download, such as "android-sdk", for a job that builds with Gradle. The job restores them with the pinned Gradle before it builds and, in the runs of the default branch, saves them with the action "caches" at its end when the bucket lacks them.
     default: ""
   xcodegen:
     description: Whether the job generates Xcode projects with XcodeGen.
@@ -50,9 +53,6 @@ runs:
         echo "DEVELOPER_DIR=$app/Contents/Developer" >> "$GITHUB_ENV"
         DEVELOPER_DIR="$app/Contents/Developer" xcodebuild -version
 
-    - name: Install the Linux packages
-      if: runner.os == 'Linux' && inputs.packages != ''
-      shell: bash
     # CMake finds "/usr/bin/cc" and "/usr/bin/c++" on macOS, launchers of the system that run the clang of the selected Xcode with the SDK of macOS, and sccache hashes the program that it runs, so the hash of every object would change with the macOS of the image. The jobs compile with the clang of the Xcode itself and name the SDK that the launchers pick, so the objects keep their hashes on every image with this Xcode.
     - name: Name the compilers of Xcode
       if: runner.os == 'macOS'
@@ -68,6 +68,9 @@ runs:
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)"
         } >> "$GITHUB_ENV"
 
+    - name: Install the Linux packages
+      if: runner.os == 'Linux' && inputs.packages != ''
+      shell: bash
       run: sudo apt-get update && sudo apt-get install -y ${{ inputs.packages }}
 
     - name: Set up MSVC
@@ -93,6 +96,12 @@ runs:
       shell: bash
       run: echo "EM_CACHE=${{ github.workspace }}/.cache/emscripten" >> "$GITHUB_ENV"
 
+    # Gradle keeps the dependencies that it downloads under its folder of the user, which the job puts in the workspace, so the cache of the job holds them.
+    - name: Keep the dependencies of Gradle in the workspace
+      if: inputs.gradle != ''
+      shell: bash
+      run: echo "GRADLE_USER_HOME=${{ github.workspace }}/.cache/gradle" >> "$GITHUB_ENV"
+
     # The prebuilt packages of the dependencies depend on the compilers of the runner, so their keys name the version of each compiler that a job may build with.
     - name: Name the compilers of the runner
       if: inputs.dependencies != ''
@@ -115,7 +124,7 @@ runs:
         esac
         echo "name=$compilers" >> "$GITHUB_OUTPUT"
 
-    # The bucket "haylen-ci" keeps one layer under each prefix: the objects of sccache under "sccache/", the sources of the dependencies and their prebuilt packages under "dependencies/" and the tools that the builds download under "tools/". Each cache is an archive whose key ends with everything its contents depend on, so a new pin or compiler makes its own and no cache hides a failure. One job of each cache saves it in the runs of the default branch, through the action "caches" at its end, once the job succeeded with a key that the bucket does not hold yet. A pull request from a fork gets no secrets, so it downloads and builds them itself.
+    # The bucket "haylen-ci" keeps one layer under each prefix: the objects of sccache under "sccache/", the sources of the dependencies, their prebuilt packages and the Android dependencies of Gradle under "dependencies/" and the tools that the builds download under "tools/". Each cache is an archive whose key ends with everything its contents depend on, so a new pin or compiler makes its own and no cache hides a failure. One job of each cache saves it in the runs of the default branch, through the action "caches" at its end, once the job succeeded with a key that the bucket does not hold yet. A pull request from a fork gets no secrets, so it downloads and builds them itself.
     - name: Restore the caches
       if: env.SCCACHE_ENDPOINT != ''
       shell: bash
@@ -141,6 +150,11 @@ runs:
         fi
         if [ "${{ inputs.emscripten }}" = "true" ]; then
           bash "$caches" restore "tools/emscripten-$system-${{ steps.machine.outputs.emscripten }}" "$(saving "${{ contains(inputs.save-tools, 'emscripten') }}")" .tools/emsdk .cache/emscripten/ports
+        fi
+        # The Android dependencies of a job are the artifacts and the metadata that Gradle downloaded from the Maven repositories, whose versions the build scripts of the engine, its templates and the plugins pin. Gradle never copies the artifacts of a local repository there, such as the Android libraries of the engine SDK.
+        if [ -n "${{ inputs.gradle }}" ]; then
+          bash "$caches" restore "tools/gradle-$system-${{ hashFiles('tools/haylen/toolchains/gradle.py') }}" "$(saving "${{ contains(inputs.save-tools, 'gradle') }}")" ".tools/gradle-*"
+          bash "$caches" restore "dependencies/gradle-${{ inputs.gradle }}-$system-${{ hashFiles('**/*.gradle.kts', '**/plugin.json', 'tools/haylen/toolchains/gradle.py') }}" "$(saving true)" .cache/gradle/caches/modules-2/files-2.1 ".cache/gradle/caches/modules-2/metadata-*"
         fi
 
     # Apple builds of the engine precompile the shaders of the renderer with the Metal toolchain, a component of Xcode that a runner image may lack.
