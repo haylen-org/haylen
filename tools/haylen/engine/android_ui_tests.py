@@ -93,17 +93,17 @@ class AndroidUiTests:
             for apk in (app, runner):
                 self.context.process.run(self.bridge.command(serial, "install", "-r", apk))
             self.context.terminal.step(f'Running the UI tests on "{name}"')
-            kept = {name: self.setting(serial, name) for name in AndroidUiTests.SETTINGS}
-            for name, value in AndroidUiTests.SETTINGS.items():
-                self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", name, value))
+            kept = {setting: self.setting(serial, setting) for setting in AndroidUiTests.SETTINGS}
+            for setting, value in AndroidUiTests.SETTINGS.items():
+                self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", setting, value))
             try:
                 self.instrument_on(serial, classes)
             except BuildFailed:
                 self.keep_log(serial, output)
                 raise
             finally:
-                for name, value in kept.items():
-                    self.restore_setting(serial, name, value)
+                for setting, value in kept.items():
+                    self.restore_setting(serial, setting, value)
                 self.copy_screenshots(serial, output)
                 for package in (identifier, AndroidUiTests.RUNNER):
                     subprocess.run([str(part) for part in self.bridge.command(serial, "uninstall", package)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
