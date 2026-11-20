@@ -1,0 +1,29 @@
+name: Apple slice
+description: Builds one slice of "Haylen.xcframework" with the architectures that the SDK ships and hands it to the other jobs of the run, for the jobs of the slices, which run it after the checkout.
+
+inputs:
+  slice:
+    description: The target of the slice, such as "ios-simulator".
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/build-environment
+      with:
+        dependencies: apple-slice-${{ inputs.slice }}
+
+    - name: Build the slice
+      shell: bash
+      run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} sdk build --target ${{ inputs.slice }} --output build/slices/${{ inputs.slice }}
+
+    - uses: ./.github/actions/sdk
+      with:
+        name: apple-slice-${{ inputs.slice }}
+        folder: build/slices/${{ inputs.slice }}
+        upload: "true"
+
+    - uses: ./.github/actions/compiler-cache
+      if: always()
+
+    - uses: ./.github/actions/caches
