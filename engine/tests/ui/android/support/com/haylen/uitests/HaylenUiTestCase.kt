@@ -340,7 +340,7 @@ abstract class HaylenUiTestCase {
         assertTrue("The app stays in front after Home.", device.wait(Until.gone(By.pkg(identifier).depth(0)), TIMEOUT))
     }
 
-    // Waits until the keyboard of the system shows, the window of the input method that the device uses, so the keys that a test types reach the field that edits instead of the controls of the app. A device with a hardware keyboard shows no keyboard of the system, as Android decides, so the tests run on a device without one.
+    // Waits until the keyboard of the system shows, the window of the input method that the device uses, so the keys that a test types reach the field that edits instead of the controls of the app. Android shows it while a hardware keyboard is attached only with the setting "show_ime_with_hard_keyboard", which "haylen test --ui" turns on for the run.
     fun waitForKeyboard() {
         val method = device.executeShellCommand("settings get secure default_input_method").trim()
         assertTrue("The device names no input method.", method.contains("/"))

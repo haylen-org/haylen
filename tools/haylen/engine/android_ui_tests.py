@@ -38,8 +38,8 @@ class AndroidUiTests:
     # The line of the output of "am instrument -r" that starts the status of a test, which the bound of the start of the run waits for.
     STARTED = re.compile(r"INSTRUMENTATION_STATUS: (test|class)=")
     FARM_ABI = "arm64-v8a"
-    # The secure setting that tells Android that the person saw the hint of full screen apps, which covers an app the first time it hides the bars of the system. The run sets it while the tests run and gives it back afterwards.
-    IMMERSIVE_CONFIRMATIONS = "immersive_mode_confirmations"
+    # The secure settings that the run sets while the tests run and gives back afterwards: that the person saw the hint of full screen apps, which covers an app the first time it hides the bars of the system, and that the keyboard of the system shows while a hardware keyboard is attached, as the setting "Use on-screen keyboard" of Android says, since an emulator reports the keyboard of the machine it runs on as one and the tests type as a person does on a phone.
+    SETTINGS = {"immersive_mode_confirmations": "confirmed", "show_ime_with_hard_keyboard": "1"}
     # The result that "am instrument" reports when every test passed.
     PASSED = "INSTRUMENTATION_CODE: -1"
     FAILED = "INSTRUMENTATION_STATUS_CODE: -2"
@@ -93,15 +93,17 @@ class AndroidUiTests:
             for apk in (app, runner):
                 self.context.process.run(self.bridge.command(serial, "install", "-r", apk))
             self.context.terminal.step(f'Running the UI tests on "{name}"')
-            confirmations = self.setting(serial, AndroidUiTests.IMMERSIVE_CONFIRMATIONS)
-            self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", AndroidUiTests.IMMERSIVE_CONFIRMATIONS, "confirmed"))
+            kept = {name: self.setting(serial, name) for name in AndroidUiTests.SETTINGS}
+            for name, value in AndroidUiTests.SETTINGS.items():
+                self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", name, value))
             try:
                 self.instrument_on(serial, classes)
             except BuildFailed:
                 self.keep_log(serial, output)
                 raise
             finally:
-                self.restore_setting(serial, AndroidUiTests.IMMERSIVE_CONFIRMATIONS, confirmations)
+                for name, value in kept.items():
+                    self.restore_setting(serial, name, value)
                 self.copy_screenshots(serial, output)
                 for package in (identifier, AndroidUiTests.RUNNER):
                     subprocess.run([str(part) for part in self.bridge.command(serial, "uninstall", package)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
