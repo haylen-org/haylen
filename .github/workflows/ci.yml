@@ -142,6 +142,7 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           dependencies: android-sdk
+          ndk: "true"
           packages: ninja-build
           gradle: android-sdk
           save-tools: gradle
@@ -366,6 +367,7 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           dependencies: android-gpu
+          ndk: "true"
           packages: ninja-build
       - name: Let the emulator use KVM
         run: |
