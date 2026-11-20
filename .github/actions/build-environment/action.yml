@@ -53,6 +53,21 @@ runs:
     - name: Install the Linux packages
       if: runner.os == 'Linux' && inputs.packages != ''
       shell: bash
+    # CMake finds "/usr/bin/cc" and "/usr/bin/c++" on macOS, launchers of the system that run the clang of the selected Xcode with the SDK of macOS, and sccache hashes the program that it runs, so the hash of every object would change with the macOS of the image. The jobs compile with the clang of the Xcode itself and name the SDK that the launchers pick, so the objects keep their hashes on every image with this Xcode.
+    - name: Name the compilers of Xcode
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        clang=$(xcrun --find clang)
+        clangxx=$(xcrun --find clang++)
+        {
+          echo "CC=$clang"
+          echo "OBJC=$clang"
+          echo "CXX=$clangxx"
+          echo "OBJCXX=$clangxx"
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)"
+        } >> "$GITHUB_ENV"
+
       run: sudo apt-get update && sudo apt-get install -y ${{ inputs.packages }}
 
     - name: Set up MSVC
