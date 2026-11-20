@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restores and saves the caches of a job in the bucket of the compiler cache, as Zstandard archives of tar named after their keys, which begin with the prefix of their layer.
-# The command "restore <key> <save> <path>..." extracts the archive of the key when the bucket holds it. The value <save> is "missing" when the job saves the cache that the bucket lacks, which goes into the list that "save" uploads once the job succeeded, and "never" otherwise.
+# The command "restore <key> <save> <path>..." extracts the archive of the key when the bucket holds it, through a file of the temporary folder of the runner. The value <save> is "missing" when the job saves the cache that the bucket lacks, which goes into the list that "save" uploads once the job succeeded, and "never" otherwise.
 set -euo pipefail
 
 export AWS_DEFAULT_REGION="$SCCACHE_REGION"
@@ -19,8 +19,11 @@ restore() {
   shift 2
   local answer
   if answer=$(aws s3api head-object --bucket "$SCCACHE_BUCKET" --key "$(object "$key")" --endpoint-url "$SCCACHE_ENDPOINT" 2>&1); then
-    local start=$SECONDS
-    aws s3 cp "s3://$SCCACHE_BUCKET/$(object "$key")" - --endpoint-url "$SCCACHE_ENDPOINT" --only-show-errors | zstd -d -q | tar -xf -
+    local start=$SECONDS archive="$RUNNER_TEMP/haylen-cache.tar"
+    # The tar of macOS stops reading at the end marker of an archive, before the padding that follows it, so a pipe from zstd into tar could close while zstd still writes. So zstd decompresses into a file, which tar reads.
+    aws s3 cp "s3://$SCCACHE_BUCKET/$(object "$key")" - --endpoint-url "$SCCACHE_ENDPOINT" --only-show-errors | zstd -d -q -f -o "$archive"
+    tar -xf - < "$archive"
+    rm "$archive"
     echo "Restored the cache \"$key\" in $((SECONDS - start)) seconds."
     return
   fi

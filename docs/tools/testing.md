@@ -737,7 +737,7 @@ The bucket `haylen-ci` keeps one layer under each prefix, so each one can be lis
 | `dependencies/` | The sources of the dependencies that CPM downloads, and the prebuilt packages of the dependencies that build with build systems of their own. |
 | `tools/` | The tools that the builds download: the shader compiler, XcodeGen and the SDK of Emscripten with its ports. |
 
-Every cache besides the objects of sccache is a Zstandard archive of tar, which the action `build-environment` restores with the AWS CLI of the runner and the token of the compiler cache. A pull request from a fork, which gets no secrets, downloads and builds them itself. An archive of a few hundred megabytes moves in a few seconds each way. The built libraries and SDKs of Haylen and Varn never go into the bucket: every run builds them, and only their objects come from the compiler cache.
+Every cache besides the objects of sccache is a Zstandard archive of tar, which the action `build-environment` restores with the AWS CLI of the runner and the token of the compiler cache. zstd decompresses the archive into a file of the temporary folder of the runner, which tar then reads, since the tar of macOS stops reading at the end marker of an archive, before the padding that follows it, and a pipe from zstd into tar would close while zstd still writes. A pull request from a fork, which gets no secrets, downloads and builds them itself. An archive of a few hundred megabytes moves in a few seconds each way. The built libraries and SDKs of Haylen and Varn never go into the bucket: every run builds them, and only their objects come from the compiler cache.
 
 | Cache | Folder | Key |
 | --- | --- | --- |
