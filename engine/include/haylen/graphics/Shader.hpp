@@ -53,8 +53,8 @@ class Shader final {
     Shader() = default;
     explicit Shader(std::shared_ptr<ShaderResource> value) noexcept : resource(std::move(value)) {}
 
-    // Reads a `.shader` package and checks its programs against themselves and the binding limits of every GPU device. Throws `std::invalid_argument` when the bytes are not a valid shader package.
-    [[nodiscard]] static Shader parse(std::span<const std::uint8_t> bytes);
+    // Reads a `.shader` package and checks its programs against themselves and the binding limits of every GPU device. Throws `ShaderPackageError` with the name of the file when the bytes are not a valid shader package.
+    [[nodiscard]] static Shader parse(std::span<const std::uint8_t> bytes, std::string_view file = {});
 
     // Resolves the GLSL names `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`.
     [[nodiscard]] static std::optional<UniformType> uniformTypeFromName(std::string_view name) noexcept;

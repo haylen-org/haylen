@@ -167,16 +167,16 @@ struct ShaderResource {
     // Whether the code of the language comes as bytes, which the sources of the package hold as Base64 text, rather than as source text.
     [[nodiscard]] static bool isBinary(gpu::Device::Language language) noexcept;
     [[nodiscard]] static gpu::Device::Stage readStage(const core::Json& value);
-    [[nodiscard]] static int readSlot(const core::Json& value, std::string_view kind, std::size_t limit);
-    [[nodiscard]] static std::uint32_t readBlockSize(const core::Json& value, std::string_view block);
+    [[nodiscard]] static int readSlot(const core::Json& value, std::size_t limit);
+    [[nodiscard]] static std::uint32_t readBlockSize(const core::Json& value);
     [[nodiscard]] static gpu::Device::TextureType readTextureType(const core::Json& value);
     [[nodiscard]] static gpu::Device::SampleType readSampleType(const core::Json& value);
     [[nodiscard]] static gpu::Device::SamplerType readSamplerType(const core::Json& value);
     [[nodiscard]] static Binding findBinding(const std::vector<Binding>& bindings, int slot) noexcept;
-    [[nodiscard]] static int readNumber(const core::Json& value, std::string_view what, std::string_view kind, int slot);
-    [[nodiscard]] static std::vector<Binding> readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind, gpu::Device::Language language);
+    [[nodiscard]] static int readNumber(const core::Json& value);
+    [[nodiscard]] static std::vector<Binding> readBindings(const core::Json& target, const char* key, std::span<const int> slots, gpu::Device::Language language);
     [[nodiscard]] StageCode readStageCode(const core::Json& value) const;
-    [[nodiscard]] ProgramInfo readProgram(const std::string& program, const core::Json& value) const;
+    [[nodiscard]] ProgramInfo readProgram(const core::Json& value) const;
     void readMaterialBindings(const ProgramInfo& program);
     void readModules(const ProgramInfo& program, gpu::Device::Language language);
 

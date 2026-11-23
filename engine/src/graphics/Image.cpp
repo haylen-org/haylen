@@ -81,13 +81,13 @@ Image::Image(int imageWidth, int imageHeight, std::vector<std::uint8_t> data) : 
 Image::Image(int imageWidth, int imageHeight, Pixels data) noexcept : width(imageWidth), height(imageHeight), pixels(std::move(data)) {}
 
 // The decoder allocates through the pixel memory, capped at the largest buffer an image of the size its header declares needs: the compressed data it gathers in a buffer that doubles as it grows, and the rows of four 16-bit channels with a filter byte each. A stream that inflates past its image therefore fails instead of growing a buffer without end.
-Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
+Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide, std::string_view file) {
     if (maxSide < 1 || maxSide > kMaxSide) {
         throw std::invalid_argument("The largest side of a decoded image is from 1 to " + std::to_string(kMaxSide) + " pixels.");
     }
 
     if (encoded.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
-        throw std::runtime_error("The encoded image of " + std::to_string(encoded.size()) + " bytes is too large to decode. An encoded image holds at most " + std::to_string(std::numeric_limits<int>::max()) + " bytes.");
+        throw std::runtime_error(describe(file) + " of " + std::to_string(encoded.size()) + " bytes is too large to decode. An encoded image holds at most " + std::to_string(std::numeric_limits<int>::max()) + " bytes.");
     }
 
     const int size = static_cast<int>(encoded.size());
@@ -95,25 +95,25 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     int rows = 0;
     int channels = 0;
     if (stbi_info_from_memory(encoded.data(), size, &columns, &rows, &channels) == 0) {
-        throw std::runtime_error("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
     }
 
     if (columns < 1 || rows < 1) {
-        throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels has no pixels to decode.");
+        throw std::runtime_error(describe(file) + " of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels has no pixels to decode.");
     }
 
     if (columns > maxSide || rows > maxSide) {
-        throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large to decode. The image may have at most " + std::to_string(maxSide) + " pixels on a side.");
+        throw std::runtime_error(describe(file) + " of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large to decode. The image may have at most " + std::to_string(maxSide) + " pixels on a side.");
     }
 
     const PixelMemory::Cap cap(encoded.size() * 2U + static_cast<std::size_t>(rows) * (1U + static_cast<std::size_t>(columns) * 8U) + kDecodeSlack);
     stbi_uc* decoded = stbi_load_from_memory(encoded.data(), size, &columns, &rows, &channels, STBI_rgb_alpha);
     if (decoded == nullptr && cap.hasRefused()) {
-        throw std::runtime_error("The image could not be decoded, because its data holds more than an image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels.");
+        throw std::runtime_error(describe(file) + " could not be decoded, because its data holds more than an image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels.");
     }
 
     if (decoded == nullptr) {
-        throw std::runtime_error("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
+        throw std::runtime_error(describe(file) + " is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
     }
 
     return {columns, rows, Pixels(decoded, static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U)};
@@ -165,8 +165,8 @@ Image Image::fromRendered(std::vector<std::uint8_t> data, int columns, int rows,
     return image;
 }
 
-Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options options) {
-    Image image = decode(encoded);
+Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options options, std::string_view file) {
+    Image image = decode(encoded, kMaxSide, file);
     if (options.filter == Texture::Filter::Linear) {
         image.bleed();
     }
@@ -176,6 +176,10 @@ Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options o
     }
 
     return image;
+}
+
+std::string Image::describe(std::string_view file) {
+    return file.empty() ? std::string("The image") : "The image \"" + std::string(file) + "\"";
 }
 
 // The far edges add up in 64 bits, so an area that reaches past the largest int clips instead of wrapping around.

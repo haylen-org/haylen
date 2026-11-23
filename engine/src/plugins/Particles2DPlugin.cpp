@@ -94,7 +94,7 @@ void Particles2DPlugin::start(core::Engine& engine) {
             return options.is_null() ? core::Json::object() : options;
         },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
-            return std::make_shared<particles2d::ImageShape>(graphics::Image::decode(request.bytes), shapeOptionsFromJson(request.options));
+            return std::make_shared<particles2d::ImageShape>(graphics::Image::decode(request.bytes, graphics::Image::kMaxSide, request.path), shapeOptionsFromJson(request.options));
         },
         .finalize = [](std::shared_ptr<void> result, const assets::Manager::Request&) { return result; },
     });

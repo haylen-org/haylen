@@ -75,7 +75,7 @@ void TiledPlugin::decodeImages(const tiled::Map& map, const io::Package& package
             continue;
         }
 
-        DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path)), .keyed = entry.transparentColor.has_value()};
+        DecodedImage image{.image = graphics::Image::decode(package.readAsset(entry.path), graphics::Image::kMaxSide, entry.path), .keyed = entry.transparentColor.has_value()};
         if (entry.transparentColor) {
             applyColorKey(image.image, *entry.transparentColor);
         }

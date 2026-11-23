@@ -326,6 +326,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/RenderTarget.cpp
   src/graphics/ResourceGraveyard.cpp
   src/graphics/Shader.cpp
+  src/graphics/ShaderPackageError.cpp
   src/graphics/ShaderResource.cpp
   src/graphics/SvgDocument.cpp
   src/graphics/Texture.cpp

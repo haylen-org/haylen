@@ -685,8 +685,9 @@ void Effect::readShape(const std::string& key, const core::Json& value, std::str
         }
 
         options.alphaThreshold = readNumber(image.value("alphaThreshold", core::Json(options.alphaThreshold)), "alphaThreshold");
-        const std::vector<std::uint8_t> bytes = context.read(io::Path::join(io::Path::directory(path), image.at("path").get<std::string>()));
-        config.shapeImage = std::make_shared<ImageShape>(graphics::Image::decode(bytes), options);
+        const std::string imagePath = io::Path::join(io::Path::directory(path), image.at("path").get<std::string>());
+        const std::vector<std::uint8_t> bytes = context.read(imagePath);
+        config.shapeImage = std::make_shared<ImageShape>(graphics::Image::decode(bytes, graphics::Image::kMaxSide, imagePath), options);
     }
 }
 

@@ -116,7 +116,7 @@ void TextPlugin::start(core::Engine& engine) {
             decoded->description = text::BitmapFont::parse(request.bytes);
             for (const std::string& page : decoded->description.pages) {
                 decoded->paths.push_back(io::Path::join(io::Path::directory(request.path), page));
-                decoded->images.push_back(graphics::Image::decode(request.package->readAsset(decoded->paths.back())));
+                decoded->images.push_back(graphics::Image::decode(request.package->readAsset(decoded->paths.back()), graphics::Image::kMaxSide, decoded->paths.back()));
             }
 
             return decoded;
@@ -140,7 +140,7 @@ void TextPlugin::start(core::Engine& engine) {
         .extensions = {},
         .normalize = &normalizeGrid,
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
-            return std::make_shared<graphics::Image>(graphics::Image::decode(request.bytes));
+            return std::make_shared<graphics::Image>(graphics::Image::decode(request.bytes, graphics::Image::kMaxSide, request.path));
         },
         .finalize = [&manager, &device](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
             const graphics::Image& image = *std::static_pointer_cast<graphics::Image>(result);

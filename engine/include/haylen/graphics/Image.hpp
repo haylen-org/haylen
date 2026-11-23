@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/graphics/Texture.hpp"
@@ -37,8 +39,8 @@ class Image final {
     Image(int imageWidth, int imageHeight, math::Color fill = math::Color::transparent());
     Image(int imageWidth, int imageHeight, std::vector<std::uint8_t> data);
 
-    // Decodes PNG, JPG, TGA, BMP and GIF data into the buffer the decoder fills, checking the size its header declares before it allocates a pixel, so data from anywhere, such as a downloaded picture, can name the longest side it accepts. Throws `std::runtime_error` when the data is not a supported image or declares an image with a side longer than the largest side, and `std::invalid_argument` for a largest side under 1 or above `kMaxSide`.
-    [[nodiscard]] static Image decode(std::span<const std::uint8_t> encoded, int maxSide = kMaxSide);
+    // Decodes PNG, JPG, TGA, BMP and GIF data into the buffer the decoder fills, checking the size its header declares before it allocates a pixel, so data from anywhere, such as a downloaded picture, can name the longest side it accepts. Throws `std::runtime_error` when the data is not a supported image or declares an image with a side longer than the largest side, with the name of the file in the message when the data comes from one, and `std::invalid_argument` for a largest side under 1 or above `kMaxSide`.
+    [[nodiscard]] static Image decode(std::span<const std::uint8_t> encoded, int maxSide = kMaxSide, std::string_view file = {});
 
     // Turns the pixels a render target holds, premultiplied by alpha and with the bottom row first where the GPU device stores them so, into an image of straight colors with the top row first.
     [[nodiscard]] static Image fromRendered(std::vector<std::uint8_t> data, int columns, int rows, bool bottomUp);
@@ -47,7 +49,7 @@ class Image final {
     [[nodiscard]] std::vector<std::uint8_t> encodePng() const;
 
     // Decodes an image and prepares it for a texture with the options, off the frame thread: a linear filter bleeds the colors of the image into its transparent pixels, and mipmaps are made at once.
-    [[nodiscard]] static Image decodeFor(std::span<const std::uint8_t> encoded, Texture::Options options);
+    [[nodiscard]] static Image decodeFor(std::span<const std::uint8_t> encoded, Texture::Options options, std::string_view file = {});
 
     [[nodiscard]] int getWidth() const noexcept {
         return width;
@@ -152,6 +154,9 @@ class Image final {
     Image(int imageWidth, int imageHeight, Pixels data) noexcept;
 
     [[nodiscard]] static std::size_t byteCount(int columns, int rows);
+
+    // The subject of the failures of a decode, such as `The image "ui/icon.png"`, or `The image` for data that comes from no file.
+    [[nodiscard]] static std::string describe(std::string_view file);
     [[nodiscard]] static Area clip(const Area& area, int columns, int rows) noexcept;
 
     int width = 0;

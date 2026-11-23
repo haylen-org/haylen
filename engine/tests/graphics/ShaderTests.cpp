@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -18,6 +19,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Shader.hpp"
+#include "haylen/graphics/ShaderPackageError.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/MaterialShaders.hpp"
@@ -40,20 +42,23 @@ class ShaderTest : public ::testing::Test {
             "glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "blocks": {"1": {"name": "params", "type": "vec4", "count": 1}}},
             "msl-macos": {"vertex": {"source": 0, "entry": "main0"}, "fragment": {"source": 0, "entry": "main0"}, "blocks": {"1": 1}, "textures": {"1": 1}, "samplers": {"1": 1}}}}}})";
 
-    // Parses the small shader with the values of `changes` written at their JSON pointers, and returns the error, which is empty when the file parses.
-    [[nodiscard]] static std::string parseError(const core::Json& changes) {
+    using Problem = graphics::ShaderPackageError::Problem;
+
+    // Parses the small shader with the values of `changes` written at their JSON pointers, and returns the rule of the package that it breaks, or nothing when the file parses. Every refusal names the file and the command that compiles it again.
+    [[nodiscard]] static std::optional<Problem> parseError(const core::Json& changes) {
         core::Json document = core::Json::parse(kSmallShader);
         for (const auto& [pointer, value] : changes.items()) {
             document[core::Json::json_pointer(pointer)] = value;
         }
 
         try {
-            (void)graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
-        } catch (const std::invalid_argument& error) {
-            return error.what();
+            (void)graphics::Shader::parse(test::TestFiles::bytes(document.dump()), "shaders/small.shader");
+        } catch (const graphics::ShaderPackageError& error) {
+            EXPECT_STREQ(error.what(), "The shader file \"shaders/small.shader\" is damaged or was made by another version of the Haylen shader compiler. Compile it again with \"haylen app shaders\".");
+            return error.getProblem();
         }
 
-        return {};
+        return std::nullopt;
     }
 };
 
@@ -122,12 +127,22 @@ TEST_F(ShaderTest, CompilesWithAppShadersIntoEveryProgramWithItsReflection) {
 }
 
 TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
-    const auto parse = [](const std::string& text) { return graphics::Shader::parse(test::TestFiles::bytes(text)); };
-    EXPECT_THROW((void)parse("not json"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 1, "name": "x", "sources": [], "programs": {"p": {}}})"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": {}, "extra": 1})"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": {}})"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": []})"), std::invalid_argument);
+    // clang-format off
+    const auto problem = [](const std::string& text) -> std::optional<Problem> {
+        try {
+            (void)graphics::Shader::parse(test::TestFiles::bytes(text));
+        } catch (const graphics::ShaderPackageError& error) {
+            return error.getProblem();
+        }
+
+        return std::nullopt;
+    };
+    // clang-format on
+    EXPECT_EQ(problem("not json"), Problem::Structure);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 1, "name": "x", "sources": [], "programs": {"p": {}}})"), Problem::Version);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": {}, "extra": 1})"), Problem::Structure);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": {}})"), Problem::NoPrograms);
+    EXPECT_EQ(problem(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": []})"), Problem::NoPrograms);
 
     const graphics::Shader empty;
     EXPECT_FALSE(empty.isValid());
@@ -137,51 +152,50 @@ TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
 }
 
 TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
-    const std::string malformed = "The shader file is malformed: ";
     const std::string program = "/programs/sprite";
     const std::string glsl = program + "/targets/glsl430";
     const std::string metal = program + "/targets/msl-macos";
-    EXPECT_EQ(parseError(core::Json::object()), "");
+    EXPECT_EQ(parseError(core::Json::object()), std::nullopt);
 
     // Every slot and source index stays inside the bind slots of every GPU device and the sources of the package.
-    EXPECT_EQ(parseError({{program + "/attributes/0/location", 16}}), malformed + "The attribute slot 16 is out of range.");
-    EXPECT_EQ(parseError({{program + "/blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
-    EXPECT_EQ(parseError({{program + "/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
-    EXPECT_EQ(parseError({{program + "/samplers/0/slot", 12}}), malformed + "The sampler slot 12 is out of range.");
-    EXPECT_EQ(parseError({{program + "/pairs/0/texture", 2}}), malformed + "The texture sampler pair \"mask_mask_sampler\" names a texture or sampler the program does not declare.");
-    EXPECT_EQ(parseError({{glsl + "/fragment/source", 1}}), malformed + "A stage names the source 1, which the file does not have.");
-    EXPECT_EQ(parseError({{glsl + "/vertex/source", -1}}), malformed + "A stage names the source -1, which the file does not have.");
-    EXPECT_EQ(parseError({{program + "/outputs", 0}}), malformed + "The program \"sprite\" writes 0 colors, and draws write one to 4.");
-    EXPECT_NE(parseError({{glsl + "/fragment", nullptr}}), "");
+    EXPECT_EQ(parseError({{program + "/attributes/0/location", 16}}), Problem::SlotRange);
+    EXPECT_EQ(parseError({{program + "/blocks/0/slot", 8}}), Problem::SlotRange);
+    EXPECT_EQ(parseError({{program + "/textures/0/slot", 32}}), Problem::SlotRange);
+    EXPECT_EQ(parseError({{program + "/samplers/0/slot", 12}}), Problem::SlotRange);
+    EXPECT_EQ(parseError({{program + "/pairs/0/texture", 2}}), Problem::UnknownPair);
+    EXPECT_EQ(parseError({{glsl + "/fragment/source", 1}}), Problem::MissingSource);
+    EXPECT_EQ(parseError({{glsl + "/vertex/source", -1}}), Problem::MissingSource);
+    EXPECT_EQ(parseError({{program + "/outputs", 0}}), Problem::Outputs);
+    EXPECT_TRUE(parseError({{glsl + "/fragment", nullptr}}).has_value());
 
     // Names outside the ones the shader compiler writes fail instead of taking a default.
-    EXPECT_EQ(parseError({{program + "/blocks/0/stage", "compute"}}), malformed + "Shaders have no \"compute\" stage.");
-    EXPECT_EQ(parseError({{program + "/textures/0/type", "1d"}}), malformed + "Shaders have no \"1d\" textures.");
-    EXPECT_EQ(parseError({{program + "/textures/0/sampleType", "half"}}), malformed + "Shaders have no textures that sample \"half\".");
-    EXPECT_EQ(parseError({{program + "/samplers/0/type", "anisotropic"}}), malformed + "Shaders have no \"anisotropic\" samplers.");
-    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/type", "mat3"}}), malformed + "The uniform \"tint\" has the type \"mat3\", which materials do not set.");
-    EXPECT_EQ(parseError({{program + "/targets/dxil", core::Json::object()}}), malformed + "The program \"sprite\" has code for \"dxil\", which is not a shader language of the engine.");
+    EXPECT_EQ(parseError({{program + "/blocks/0/stage", "compute"}}), Problem::Stage);
+    EXPECT_EQ(parseError({{program + "/textures/0/type", "1d"}}), Problem::TextureType);
+    EXPECT_EQ(parseError({{program + "/textures/0/sampleType", "half"}}), Problem::SampleType);
+    EXPECT_EQ(parseError({{program + "/samplers/0/type", "anisotropic"}}), Problem::SamplerType);
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/type", "mat3"}}), Problem::UniformType);
+    EXPECT_EQ(parseError({{program + "/targets/dxil", core::Json::object()}}), Problem::UnknownLanguage);
 
     // Blocks hold whole vectors, OpenGL reads each one as an array that fills it, and every other language binds every slot.
-    EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), malformed + "The uniform block \"params\" holds 24 bytes, which is not a multiple of 16.");
-    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 2}}), malformed + "The array of the block \"params\" does not fill its 16 bytes.");
-    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 268435457}}), malformed + "The array of the block \"params\" does not fill its 16 bytes.");
-    EXPECT_EQ(parseError({{glsl + "/blocks/1/type", "mat4"}}), malformed + "The block \"params\" is read as \"mat4\", and OpenGL reads blocks as arrays of \"vec4\" or \"ivec4\".");
-    EXPECT_EQ(parseError({{metal + "/textures", core::Json::object()}}), malformed + "The texture at slot 1 has no binding number.");
-    EXPECT_EQ(parseError({{metal + "/samplers/1", 256}}), malformed + "The binding number 256 of the sampler at slot 1 is out of range.");
+    EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), Problem::BlockSize);
+    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 2}}), Problem::OpenGlBlock);
+    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 268435457}}), Problem::OpenGlBlock);
+    EXPECT_EQ(parseError({{glsl + "/blocks/1/type", "mat4"}}), Problem::OpenGlBlock);
+    EXPECT_EQ(parseError({{metal + "/textures", core::Json::object()}}), Problem::MissingBinding);
+    EXPECT_EQ(parseError({{metal + "/samplers/1", 256}}), Problem::BindingRange);
 
     // Materials write every uniform inside its block.
-    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
-    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 2}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
-    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 0}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4}}), Problem::UniformLayout);
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 2}}), Problem::UniformLayout);
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 0}}), Problem::UniformLayout);
 
     // Counts, sizes, offsets and slots read in 64 bits, so a number past 32 bits never wraps around to one that fits.
-    EXPECT_EQ(parseError({{program + "/outputs", 4294967297}}), malformed + "The program \"sprite\" writes 4294967297 colors, and draws write one to 4.");
-    EXPECT_EQ(parseError({{program + "/pairs/0/texture", 4294967297}}), malformed + "The texture slot 4294967297 is out of range.");
-    EXPECT_EQ(parseError({{program + "/pairs/0/sampler", -4294967295}}), malformed + "The sampler slot -4294967295 is out of range.");
-    EXPECT_EQ(parseError({{program + "/blocks/0/size", 4294967312}}), malformed + "The uniform block \"params\" holds 4294967312 bytes, more than a block holds.");
-    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4294967296}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
-    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 4294967297}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{program + "/outputs", 4294967297}}), Problem::Outputs);
+    EXPECT_EQ(parseError({{program + "/pairs/0/texture", 4294967297}}), Problem::SlotRange);
+    EXPECT_EQ(parseError({{program + "/pairs/0/sampler", -4294967295}}), Problem::SlotRange);
+    EXPECT_EQ(parseError({{program + "/blocks/0/size", 4294967312}}), Problem::BlockSize);
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4294967296}}), Problem::UniformLayout);
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 4294967297}}), Problem::UniformLayout);
 }
 
 // The renderer makes each of its programs the first time a draw needs it, so starting an engine compiles no shader and a frame of sprites compiles only the sprite program.
@@ -213,7 +227,7 @@ TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
     EXPECT_EQ(shaders(), 1);
 }
 
-// A package compiled without the language of the device names the program and the language it lacks, and only the programs with code in the language of the device start compiling ahead.
+// A package compiled without the language of the device names the program and the command that compiles it again, and only the programs with code in the language of the device start compiling ahead.
 TEST_F(ShaderTest, NamesTheLanguageAProgramLacks) {
     const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(kSmallShader));
     gpu::NullDevice gles(gpu::Device::Language::Glsl300es);
@@ -221,7 +235,7 @@ TEST_F(ShaderTest, NamesTheLanguageAProgramLacks) {
         (void)shader.getResource()->getProgram(gles, "sprite");
         ADD_FAILURE() << "A program without the language of the device was made.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The program \"small/sprite\" has no code for the \"glsl300es\" language of this GPU device. Compile its shader again with the Haylen shader compiler.");
+        EXPECT_STREQ(error.what(), "The shader program \"small/sprite\" has no code for the graphics API that this device draws with. Compile it again with \"haylen app shaders\".");
     }
 
     test::EngineFixture fixture;
@@ -261,11 +275,10 @@ TEST_F(ShaderTest, DecodesTheSpirvModulesAndTheirDescriptorSets) {
     core::Json spirv = document.at(core::Json::json_pointer(program + "/targets/spirv"));
     spirv["vertex"]["source"] = 0;
     spirv["fragment"]["source"] = 0;
-    const std::string malformed = "The shader file is malformed: ";
-    EXPECT_EQ(parseError({{"/sources/0", "AwIj"}, {program + "/targets/spirv", spirv}}), malformed + "The source 0 is not the Base64 text of a SPIR-V module.");
-    EXPECT_EQ(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), "");
+    EXPECT_EQ(parseError({{"/sources/0", "AwIj"}, {program + "/targets/spirv", spirv}}), Problem::Code);
+    EXPECT_EQ(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), std::nullopt);
     spirv["samplers"]["1"] = 65;
-    EXPECT_NE(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), "");
+    EXPECT_TRUE(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}).has_value());
 }
 
 // A shader that reloads takes the SPIR-V modules of its new package, so the next program runs the edited code.
@@ -311,8 +324,8 @@ TEST_F(ShaderTest, DecodesTheCodeOfAPortAndItsBindings) {
     core::Json code = document.at(core::Json::json_pointer(program + "/targets/port"));
     code["vertex"]["source"] = 0;
     code["fragment"]["source"] = 0;
-    EXPECT_EQ(parseError({{"/sources/0", "@@@"}, {program + "/targets/port", code}}), "The shader file is malformed: The source 0 is not the Base64 text of the code of a port.");
-    EXPECT_EQ(parseError({{"/sources/0", "UE9SVA=="}, {program + "/targets/port", code}}), "");
+    EXPECT_EQ(parseError({{"/sources/0", "@@@"}, {program + "/targets/port", code}}), Problem::Code);
+    EXPECT_EQ(parseError({{"/sources/0", "UE9SVA=="}, {program + "/targets/port", code}}), std::nullopt);
 }
 
 TEST_F(ShaderTest, ReportsAFullShaderPool) {

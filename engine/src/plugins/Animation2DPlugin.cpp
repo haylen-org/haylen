@@ -40,7 +40,7 @@ void Animation2DPlugin::start(core::Engine& engine) {
             auto decoded = std::make_shared<DecodedAtlas>();
             decoded->document = nlohmann::ordered_json::parse(request.bytes.begin(), request.bytes.end());
             decoded->imagePath = io::Path::join(io::Path::directory(request.path), animation2d::SpriteAtlas::imagePath(decoded->document));
-            decoded->image = graphics::Image::decodeFor(request.package->readAsset(decoded->imagePath), assets::Manager::textureOptionsFromJson(request.options));
+            decoded->image = graphics::Image::decodeFor(request.package->readAsset(decoded->imagePath), assets::Manager::textureOptionsFromJson(request.options), decoded->imagePath);
             return decoded;
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
@@ -68,7 +68,7 @@ void Animation2DPlugin::start(core::Engine& engine) {
                 throw std::invalid_argument(core::JsonValidator::describe(failure, atlasText, "The atlas \"" + decoded->atlasPath + "\""));
             }
             decoded->atlas.imagePath = io::Path::join(io::Path::directory(decoded->atlasPath), animation2d::SpriteAtlas::imagePath(decoded->atlas.document));
-            decoded->atlas.image = graphics::Image::decodeFor(request.package->readAsset(decoded->atlas.imagePath), assets::Manager::textureOptionsFromJson(request.options));
+            decoded->atlas.image = graphics::Image::decodeFor(request.package->readAsset(decoded->atlas.imagePath), assets::Manager::textureOptionsFromJson(request.options), decoded->atlas.imagePath);
             return decoded;
         },
         .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {

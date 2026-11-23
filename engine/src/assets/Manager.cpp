@@ -149,7 +149,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         .extensions = {".png", ".jpg", ".jpeg", ".tga", ".bmp", ".gif"},
         .normalize = [](const core::Json& options) { return textureOptionsToJson(textureOptionsFromJson(options)); },
         .decode = [](Request& request) -> std::shared_ptr<void> {
-            return std::make_shared<graphics::Image>(graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options)));
+            return std::make_shared<graphics::Image>(graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options), request.path));
         },
         .finalize = [this](std::shared_ptr<void> decoded, const Request& request) -> std::shared_ptr<void> {
             const graphics::Image& image = *std::static_pointer_cast<graphics::Image>(decoded);
@@ -158,7 +158,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             return texture;
         },
         .reload = [this](const std::shared_ptr<void>& asset, Request& request) {
-            device.replaceTexture(graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(asset)), graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options)));
+            device.replaceTexture(graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(asset)), graphics::Image::decodeFor(request.bytes, textureOptionsFromJson(request.options), request.path));
         },
     });
     // An image file read into pixels on the CPU, decoded on the worker pool, which the app composes and packs before it becomes a texture.
@@ -170,7 +170,7 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             return core::Json::object();
         },
         .decode = [](Request& request) -> std::shared_ptr<void> {
-            return std::make_shared<graphics::Image>(graphics::Image::decode(request.bytes));
+            return std::make_shared<graphics::Image>(graphics::Image::decode(request.bytes, graphics::Image::kMaxSide, request.path));
         },
         .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
     });
@@ -199,13 +199,13 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
             return core::Json::object();
         },
         .decode = [this](Request& request) -> std::shared_ptr<void> {
-            const graphics::Shader shader = graphics::Shader::parse(request.bytes);
+            const graphics::Shader shader = graphics::Shader::parse(request.bytes, request.path);
             shader.getResource()->prepare(device.getGpu(), jobs);
             return shader.getResource();
         },
         .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
         .reload = [this](const std::shared_ptr<void>& asset, Request& request) {
-            const graphics::Shader fresh = graphics::Shader::parse(request.bytes);
+            const graphics::Shader fresh = graphics::Shader::parse(request.bytes, request.path);
             fresh.getResource()->prepare(device.getGpu(), jobs);
             graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(asset)).replace(fresh);
         },

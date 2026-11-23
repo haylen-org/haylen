@@ -36,7 +36,7 @@ class AssetsManagerTest : public ::testing::Test {
         const std::vector<std::uint8_t> red = test::TestFiles::pngImage(4, 4, 0xFF0000FFU);
         const std::vector<std::uint8_t> blue = test::TestFiles::pngImage(2, 2, 0x0000FFFFU);
         return {
-            {"content/images/red.png", std::string(red.begin(), red.end())}, {"content/images/blue.png", std::string(blue.begin(), blue.end())}, {"content/images/readme.txt", "not an asset type"}, {"content/data/config.json", R"({"speed": 3})"}, {"content/data/broken.json", "{"}, {"content/fonts/ui.ttf", getFontFile()}, {"content/preload.json", R"({"groups": {"menu": ["images/", {"path": "data/config.json", "type": "json"}], "broken": ["data/broken.json", "images/missing.png"], "empty": []}})"},
+            {"content/images/red.png", std::string(red.begin(), red.end())}, {"content/images/blue.png", std::string(blue.begin(), blue.end())}, {"content/images/readme.txt", "not an asset type"}, {"content/data/config.json", R"({"speed": 3})"}, {"content/data/broken.json", "{"}, {"content/pictures/broken.png", "not a picture"}, {"content/fonts/ui.ttf", getFontFile()}, {"content/preload.json", R"({"groups": {"menu": ["images/", {"path": "data/config.json", "type": "json"}], "broken": ["data/broken.json", "images/missing.png"], "empty": []}})"},
         };
     }
 };
@@ -207,6 +207,20 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     assets.loadAsync("json", "data/broken.json", [&](std::shared_ptr<void>, std::string message) { decodeError = message; });
     ASSERT_TRUE(fixture.frameUntil([&] { return !decodeError.empty(); }));
     EXPECT_EQ(decodeError, "The asset \"data/broken.json\" is not valid JSON, since it ends before its last value is complete.");
+
+    // An image that does not decode names its file, whether it loads at once or in the background.
+    const std::string brokenImage = "The image \"pictures/broken.png\" is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.";
+    try {
+        (void)assets.texture("pictures/broken.png");
+        ADD_FAILURE() << "An image that does not decode loads.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_EQ(error.what(), brokenImage);
+    }
+
+    std::string imageError;
+    assets.textureAsync("pictures/broken.png", [&](haylen::graphics::Texture, std::string message) { imageError = message; });
+    ASSERT_TRUE(fixture.frameUntil([&] { return !imageError.empty(); }));
+    EXPECT_EQ(imageError, brokenImage);
 }
 
 TEST_F(AssetsManagerTest, SharesOneAssetBetweenBackgroundAndDirectLoads) {

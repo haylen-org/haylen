@@ -1205,7 +1205,7 @@ These messages come from the functions and methods of the module.
 | `The image of <width> by <height> pixels is too large to decode. The image may have at most <maxSize> pixels on a side.` | The header of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` declares a side longer than the option `maxSize`. |
 | `The image could not be decoded, because its data holds more than an image of <width> by <height> pixels.` | The compressed data of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` inflates past the size that their header declares, so the file is damaged. |
 | `The image of <width> by <height> pixels has no pixels to decode.` | The header of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` declares a side of no pixels. |
-| `The encoded image of <count> bytes is too large to decode. An encoded image holds at most 2147483647 bytes.` | The bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` are longer than a decoder reads. |
+| `The image of <count> bytes is too large to decode. An encoded image holds at most 2147483647 bytes.` | The bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` are longer than a decoder reads. |
 | `The option "maxSize" of a decode is from 1 to 16384 pixels.` | The option `maxSize` of `graphics.decodeImage` or `graphics.decodeImageAsync` is out of range. |
 | `A read needs a valid render target.` | The target of `graphics.readTarget` is not valid. |
 | `The area <x>, <y>, <w> by <h> is not inside the image of <w> by <h> pixels.` | The area of `image:crop` lies outside the image. |
