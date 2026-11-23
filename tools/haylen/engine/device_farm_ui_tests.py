@@ -9,6 +9,7 @@ from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.folders import Folders
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
+from haylen.terminal import Terminal
 
 
 class DeviceFarmUiTests:
@@ -22,6 +23,7 @@ class DeviceFarmUiTests:
     # The longest that one device runs the tests, which Device Farm bills by the minute.
     JOB_MINUTES = 30
     POLL_SECONDS = 15
+    RESULT_COLUMNS = (Terminal.Column("Device"), Terminal.Column("Result"), Terminal.Column("Message", shrink=1))
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
@@ -121,9 +123,16 @@ class DeviceFarmUiTests:
             folder = output / DeviceFarmUiTests.folder_name(name)
             failures = self.failures(job["arn"], folder)
             results.append({"device": name, "result": job["result"], "message": " ".join([message, *failures]).strip()})
-            self.context.terminal.info(f'"{name}" ended with {job["result"]}.')
             self.download(job["arn"], folder)
+        self.context.terminal.group("Results", len(results))
+        self.context.terminal.table(DeviceFarmUiTests.RESULT_COLUMNS, [DeviceFarmUiTests.result_row(result) for result in results])
         return results
+
+    @staticmethod
+    def result_row(result: dict[str, str]) -> tuple[str | Terminal.Cell, ...]:
+        """A row of the results of the jobs: the device, what its job ended with as Device Farm names it, and its message."""
+        sign = Terminal.Sign.PASSED if result["result"] == "PASSED" else Terminal.Sign.FAILED
+        return (result["device"], Terminal.Cell(result["result"].capitalize(), sign), result["message"])
 
     @staticmethod
     def folder_name(name: str) -> str:

@@ -154,3 +154,15 @@ class RunSessionTest:
         RunSession(fixture.context).follow([sys.executable, "-c", script], line=lambda text: None if text == "Dropped." else text)
 
         assert sorted(fixture.output.getvalue().splitlines()) == ["Error.", "Kept."]
+
+    def test_the_summary_of_a_run_and_its_keys_print_as_two_groups(self, tmp_path, monkeypatch):
+        fixture = DevelopmentFixture(tmp_path, monkeypatch)
+        session = RunSession(fixture.context, fixture.server())
+        monkeypatch.setattr(session, "reader", None)
+        session.show([("App", 'My Game ("com.haylen.game")'), ("Device", "iPhone 17e, simulator")])
+
+        lines = fixture.output.getvalue().splitlines()
+        assert lines[:4] == ["Running", '  App     My Game ("com.haylen.game")', "  Device  iPhone 17e, simulator", ""]
+        assert lines[4] == f"Keys  {len(RunSession.KEYS)}"
+        assert lines[5] == "  r  Reload what changed"
+        assert lines[-1] == ""

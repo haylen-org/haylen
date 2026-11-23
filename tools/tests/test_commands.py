@@ -124,7 +124,9 @@ class CommandsTest:
 
         listed = CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["plugin", "list", "--app", str(app)])
         assert [(plugin["id"], plugin["listed"]) for plugin in listed["plugins"]] == [("kit", True), ("stray", False)]
-        assert 'stray  1.0.0, fake, from plugins/stray, Not in "haylen.json", so no build carries it' in fixture.output.getvalue()
+        lines = fixture.output.getvalue().splitlines()
+        assert lines[:2] == ["Plugins  2", "  Plugin  Version  Platforms  Source         State"]
+        assert lines[3] == "  stray   1.0.0    fake       plugins/stray  \u25cb Not listed"
 
     def test_devices_print_a_group_of_every_platform_in_the_order_developers_look_for_them(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
@@ -205,7 +207,10 @@ class CommandsTest:
         origin = f"{fixture.resolve(app).app.origin} at platforms.fake.signing"
 
         CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["project", "inspect", str(app), "--target", "fake"])
-        assert f'  "team" from {fixture.resolve(app).app.origin} at "platforms.fake.signing"' in fixture.output.getvalue()
+        lines = fixture.output.getvalue().splitlines()
+        settings = lines.index("Settings  1")
+        assert re.fullmatch(r"  Setting +Value +Origin", lines[settings + 1])
+        assert re.fullmatch(rf'  platforms\.fake\.signing +"team" +{re.escape(fixture.resolve(app).app.origin)}', lines[settings + 2])
 
         described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["project", "inspect", str(app), "--target", "fake"])
         assert described["targets"][0]["settings"] == {"fake": {"signing": {"value": "team", "origin": origin}}}

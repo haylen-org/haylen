@@ -173,9 +173,6 @@ class Terminal:
     def command(self, parts: list[str]) -> None:
         self.write(Terminal.paint(f"$ {Terminal.command_line(parts)}", self.stdout_color, Terminal.COMMAND))
 
-    def heading(self, text: str) -> None:
-        self.write(Terminal.paint(text, self.stdout_color, Terminal.EMPHASIS))
-
     def group(self, title: str, count: int | None = None) -> None:
         """Prints the title of a group with the count of what it holds, after a blank line that sets it apart from what the command printed before it."""
         shown = Terminal.render(title, self.stdout_color, Terminal.EMPHASIS)

@@ -6,6 +6,7 @@ from haylen.core.host import Host
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
 from haylen.engine.engine_tree import EngineTree
+from haylen.terminal import Terminal
 
 
 class Benchmarks:
@@ -30,6 +31,9 @@ class Benchmarks:
     # The exit status of a benchmark whose device cannot start on this machine, `BenchmarkGpu::kUnavailable`.
     UNAVAILABLE = 3
     CONFIGURATION = "Release"
+    RESULT_COLUMNS = (Terminal.Column("Graphics API"), Terminal.Column("Result"))
+    # What the results name the run without a graphics API: the null device of the headless host, or the first API of the window that starts.
+    DEFAULT_API = "Default"
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
@@ -67,8 +71,9 @@ class Benchmarks:
         return list(compiled.split(";"))
 
     def run_on(self, suite: str, executable: object, apis: list[str | None]) -> list[str | None]:
-        """Runs a benchmark once per API, each printing its own table, and goes past an API whose device cannot start on this machine, which the benchmark explains."""
+        """Runs a benchmark once per API, each printing its own table, goes past an API whose device cannot start on this machine, which the benchmark explains, and sums up which APIs it ran on."""
         started: list[str | None] = []
+        results: list[tuple[str | Terminal.Cell, ...]] = []
         for api in apis:
             self.context.terminal.step(f'Running the "{suite}" benchmark on "{api}"' if api else f'Running the "{suite}" benchmark')
             command = [str(executable), *(["--graphics-api", api] if api else [])]
@@ -76,11 +81,19 @@ class Benchmarks:
                 self.context.terminal.command(command)
             code = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=self.context.terminal.tool_output, check=False).returncode
             if code == Benchmarks.UNAVAILABLE:
-                self.context.terminal.warning(f'The device of "{api}" cannot start on this machine, as the output above says, so the "{suite}" benchmark skips it.')
+                results.append((api or Benchmarks.DEFAULT_API, Terminal.Cell("Cannot start on this machine", Terminal.Sign.IDLE)))
                 continue
             if code != 0:
                 raise BuildFailed(f'The "{suite}" benchmark failed with exit code {code}, and its output above shows why.')
             started.append(api)
+            results.append((api or Benchmarks.DEFAULT_API, Terminal.Cell("Ran", Terminal.Sign.PASSED)))
+        Benchmarks.show(self.context.terminal, suite, results)
         if not started:
             raise BuildFailed(f'No device that the "{suite}" benchmark asked for starts on this machine.')
         return started
+
+    @staticmethod
+    def show(terminal: Terminal, suite: str, results: list[tuple[str | Terminal.Cell, ...]]) -> None:
+        """Prints the results of a benchmark by graphics API."""
+        terminal.group(f'Results of the "{suite}" benchmark', len(results))
+        terminal.table(Benchmarks.RESULT_COLUMNS, results)

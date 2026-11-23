@@ -75,9 +75,8 @@ class RunSession:
     def show(self, rows: list[tuple[str, str]], stop: Callable[[], None] | None = None) -> None:
         """Prints the summary of the run with its keys, and takes the keys from then on. Quitting calls the stop of the platform, or else ends the process that the session follows."""
         self.stop = stop
-        self.terminal.verbatim("")
+        self.terminal.group("Running")
         self.terminal.rows(rows)
-        self.terminal.verbatim("")
         self.list_keys()
         if self.reader is not None:
             Terminal.enable_escapes(self.terminal.stdout)
@@ -85,6 +84,8 @@ class RunSession:
             threading.Thread(target=self.take_keys, daemon=True).start()
 
     def list_keys(self) -> None:
+        """Prints the group of the keys, with a blank line that sets the log after it apart."""
+        self.terminal.group("Keys", len(self.keys))
         self.terminal.rows(list(self.keys.items()), keys=True)
         self.terminal.verbatim("")
 

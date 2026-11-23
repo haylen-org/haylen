@@ -41,3 +41,17 @@ class DeviceFarmUiTestsTest:
         monkeypatch.setattr(farm, "download", lambda arn, folder: downloaded.append((arn, folder)))
         assert farm.failures("arn:job", tmp_path / "apple-iphone-13") == ['The test "testB" ended with FAILED: PermissionTests failed']
         assert downloaded == [("arn:failed", tmp_path / "apple-iphone-13" / "testb")]
+
+    def test_the_results_of_the_jobs_print_as_a_table_with_the_sign_of_each_result(self, tmp_path):
+        recorded = RecordedCommands(tmp_path)
+        results = [{"device": "Google Pixel 9", "result": "PASSED", "message": ""}, {"device": "Apple iPhone 13", "result": "FAILED", "message": 'The test "testB" ended with FAILED.'}]
+        terminal = recorded.context.terminal
+        terminal.group("Results", len(results))
+        terminal.table(DeviceFarmUiTests.RESULT_COLUMNS, [DeviceFarmUiTests.result_row(result) for result in results])
+
+        assert recorded.output.getvalue().splitlines() == [
+            "Results  2",
+            "  Device           Result    Message",
+            "  Google Pixel 9   \u2713 Passed  \u2014",
+            '  Apple iPhone 13  \u2717 Failed  The test "testB" ended with FAILED.',
+        ]
