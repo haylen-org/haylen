@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <list>
 #include <map>
 #include <memory>
@@ -11,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include "content/ChannelPublisher.hpp"
@@ -38,7 +41,7 @@
 #include "support/ServiceKeyProvider.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
-#include "support/VarnRuntime.hpp"
+#include "varn/runtime/Scheduler.h"
 
 namespace haylen::content {
 
@@ -51,7 +54,7 @@ class UpdaterTest : public ::testing::Test {
 
     // An installed app: its release with the local store of its downloads and the parts that update it.
     struct Client {
-        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles, std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr, std::shared_ptr<const io::Package> releaseFiles = nullptr) : jobs(test.jobSystems.emplace_back(test.runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; })), transport(test.runtime.getRuntime()) {
+        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles, std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr, std::shared_ptr<const io::Package> releaseFiles = nullptr) : jobs(test.jobSystems.emplace_back([](const std::string& error) { ADD_FAILURE() << error; })), transport(jobs.getScheduler()) {
             const VerifyingKey trusted = test.release.getSigningKey().getVerifyingKey();
             auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
             package = std::make_shared<ReleasePackage>(releaseFiles ? std::move(releaseFiles) : test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
@@ -128,6 +131,23 @@ class UpdaterTest : public ::testing::Test {
         return files;
     }
 
+    // Polls the event loop of every client the way the engine does once per frame, until the condition holds.
+    bool pumpUntil(const std::function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::seconds(10)) {
+        const auto deadline = std::chrono::steady_clock::now() + timeout;
+        while (!condition()) {
+            if (std::chrono::steady_clock::now() > deadline) {
+                return false;
+            }
+
+            for (core::JobSystem& jobs : jobSystems) {
+                jobs.getScheduler().poll();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        return true;
+    }
+
     [[nodiscard]] std::unique_ptr<Client> connect(std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr) {
         return std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()), std::move(keys), std::move(provider));
     }
@@ -135,7 +155,7 @@ class UpdaterTest : public ::testing::Test {
     std::pair<std::optional<UpdateOffer>, std::optional<Error>> check(Client& client) {
         std::optional<std::pair<std::optional<UpdateOffer>, std::optional<Error>>> result;
         client.updater->check([&result](std::optional<UpdateOffer> offer, std::optional<Error> error) { result.emplace(std::move(offer), std::move(error)); });
-        if (!runtime.pumpUntil([&result] { return result.has_value(); })) {
+        if (!pumpUntil([&result] { return result.has_value(); })) {
             throw std::runtime_error("The check for an update never answered.");
         }
 
@@ -150,7 +170,7 @@ class UpdaterTest : public ::testing::Test {
             collection = collected;
         });
         // clang-format on
-        if (!runtime.pumpUntil([&collection] { return collection.has_value(); })) {
+        if (!pumpUntil([&collection] { return collection.has_value(); })) {
             throw std::runtime_error("The collection of the store never ended.");
         }
 
@@ -173,7 +193,7 @@ class UpdaterTest : public ::testing::Test {
     std::optional<Error> install(Client& client, const UpdateOffer& offer) {
         std::optional<std::optional<Error>> result;
         client.updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
-        if (!runtime.pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20))) {
+        if (!pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20))) {
             throw std::runtime_error("The install of the update never ended.");
         }
 
@@ -191,7 +211,7 @@ class UpdaterTest : public ::testing::Test {
         const std::filesystem::path staging = store.getPath() / "staging";
         std::filesystem::path staged;
         // clang-format off
-        const bool kept = runtime.pumpUntil([&staging, &staged] {
+        const bool kept = pumpUntil([&staging, &staged] {
             if (!std::filesystem::exists(staging) || std::filesystem::is_empty(staging)) {
                 return false;
             }
@@ -231,9 +251,8 @@ class UpdaterTest : public ::testing::Test {
     test::TemporaryDirectory store;
     test::ContentServer server{tree.getPath()};
 
-    // The job systems of the clients outlive the pools, as the one of an engine does, so a job that a client left running when it went away still finds the job system it posts through.
+    // The job systems of the clients outlive the clients, as the one of an engine outlives the services that post through it, so a job that a client left running when it went away still finds the job system it posts through.
     std::list<core::JobSystem> jobSystems;
-    test::VarnRuntime runtime;
 };
 
 TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
@@ -346,10 +365,10 @@ TEST_F(UpdaterTest, LeavesTheStoreAsItWasWhenTheAppStopsWhileItChecks) {
         std::unique_ptr<Client> client = connect();
         server.setStalls(true);
         client->updater->check([](std::optional<UpdateOffer>, std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
-        ASSERT_TRUE(runtime.pumpUntil([this] { return server.getAnswering() > 0; }));
+        ASSERT_TRUE(pumpUntil([this] { return server.getAnswering() > 0; }));
         client.reset();
         server.setStalls(false);
-        (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(200));
+        (void)pumpUntil([] { return false; }, std::chrono::milliseconds(200));
     }
 
     const std::unique_ptr<Client> client = connect();
@@ -424,7 +443,7 @@ TEST_F(UpdaterTest, ReadsInTheRecordsOfADownloadThatALoadWaitsFor) {
             .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
         }, Downloader::Priority::Foreground, use);
         // clang-format on
-        ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
+        ASSERT_TRUE(pumpUntil([&fetched] { return fetched.has_value(); }));
         ASSERT_FALSE(*fetched);
 
         const bool reads = use == Downloader::Use::Read;
@@ -443,7 +462,7 @@ TEST_F(UpdaterTest, ReadsInTheRecordsOfADownloadThatALoadWaitsFor) {
         std::optional<std::optional<Error>> kept;
         server.clearExchanges();
         client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&kept](std::optional<Error> error) { kept.emplace(std::move(error)); }});
-        ASSERT_TRUE(runtime.pumpUntil([&kept] { return kept.has_value(); }));
+        ASSERT_TRUE(pumpUntil([&kept] { return kept.has_value(); }));
         EXPECT_EQ(server.getSentBytes(), 0U);
         EXPECT_EQ(browser.getLoadedCount(), reads ? offer.missing.size() : 0U);
     }
@@ -465,7 +484,7 @@ TEST_F(UpdaterTest, HoldsTransfersWhileTheStoreFallsBehind) {
         .onProgress = {},
         .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
     });
-    (void)runtime.pumpUntil([&client] {
+    (void)pumpUntil([&client] {
         client->downloader->update();
         return false;
     }, std::chrono::milliseconds(300));
@@ -475,7 +494,7 @@ TEST_F(UpdaterTest, HoldsTransfersWhileTheStoreFallsBehind) {
 
     browser.setUnwrittenBytes(0);
     // clang-format off
-    ASSERT_TRUE(runtime.pumpUntil([&client, &fetched] {
+    ASSERT_TRUE(pumpUntil([&client, &fetched] {
         client->downloader->update();
         return fetched.has_value();
     }));
@@ -505,10 +524,10 @@ TEST_F(UpdaterTest, LetsGoOfTheDownloadOfAnInstallWhenItGoesAway) {
 
     server.setStalls(true);
     client->updater->install(offer, {}, [](std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
-    ASSERT_TRUE(runtime.pumpUntil([this] { return server.getAnswering() > 0; }));
+    ASSERT_TRUE(pumpUntil([this] { return server.getAnswering() > 0; }));
     client->updater.reset();
     server.setStalls(false);
-    (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(500));
+    (void)pumpUntil([] { return false; }, std::chrono::milliseconds(500));
 }
 
 // A shard file of the release that cannot be read while the updater measures an offer ends the check with an error instead of leaving it waiting forever.
@@ -601,7 +620,7 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
         EXPECT_TRUE(error->isRetryable()) << static_cast<int>(error->getCode()) << " " << error->what();
         EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
         const std::filesystem::path staging = store.getPath() / "staging";
-        EXPECT_TRUE(runtime.pumpUntil([&staging] { return std::filesystem::exists(staging) && !std::filesystem::is_empty(staging); })) << "The record that stopped keeps its first bytes.";
+        EXPECT_TRUE(pumpUntil([&staging] { return std::filesystem::exists(staging) && !std::filesystem::is_empty(staging); })) << "The record that stopped keeps its first bytes.";
     }
 
     // The app starts again with the content it had and collects what no content uses, which keeps the records of the install that stopped, and the next attempt downloads only what is missing, from the middle of the record that stopped.
@@ -658,7 +677,7 @@ TEST_F(UpdaterTest, DiscardsAStagedStartThatDoesNotMatchItsRecord) {
         const std::optional<Error> error = install(*client, requireOffer(*client));
         EXPECT_FALSE(error) << error->what();
         EXPECT_EQ(client->downloader->getStatistics().resumedRecords, 0U);
-        EXPECT_TRUE(runtime.pumpUntil([&staged] { return !std::filesystem::exists(staged); }));
+        EXPECT_TRUE(pumpUntil([&staged] { return !std::filesystem::exists(staged); }));
     }
     const std::unique_ptr<Client> restarted = connect();
     EXPECT_EQ(restarted->package->read("content/maps/world.bin"), update.at("content/maps/world.bin"));
@@ -682,16 +701,16 @@ TEST_F(UpdaterTest, ReportsADownloadThatStoppedOnceTheRecordsThatArrivedAreOnThe
         std::optional<std::optional<Error>> result;
         client->updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
         // clang-format off
-        ASSERT_TRUE(runtime.pumpUntil([this, &gate] {
+        ASSERT_TRUE(pumpUntil([this, &gate] {
             const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
             return gate.isHolding() && std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.bytes == 1500 * 1024; });
         }));
         // clang-format on
-        (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(300));
+        (void)pumpUntil([] { return false; }, std::chrono::milliseconds(300));
         EXPECT_FALSE(result) << "The install waits for the record that the store writes.";
 
         gate.open();
-        ASSERT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }));
+        ASSERT_TRUE(pumpUntil([&result] { return result.has_value(); }));
         ASSERT_TRUE(*result);
         EXPECT_TRUE((*result)->isRetryable());
     }
@@ -755,7 +774,7 @@ TEST_F(UpdaterTest, ReplacesARecordThatTheDeviceDamaged) {
     const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
     EXPECT_FALSE(missing.empty());
     client->downloader->fetch(content->shards, missing, [client = client.get()](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); }});
-    ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
+    ASSERT_TRUE(pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);
     EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
 }
@@ -796,7 +815,7 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
         .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
     }, Downloader::Priority::Foreground, Downloader::Use::Read);
     // clang-format on
-    ASSERT_TRUE(runtime.pumpUntil([&fetched] { return fetched.has_value(); }));
+    ASSERT_TRUE(pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);
     EXPECT_EQ(total, 0U);
     EXPECT_EQ(server.getExchanges().size(), 0U) << "Nothing downloads that the store holds.";
@@ -838,10 +857,10 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
 
     // The first background request reads the header and the index of the shard before its range starts, so the requests after it plan ranges of their own.
     fetch("content/extra/a.bin", Downloader::Priority::Background);
-    ASSERT_TRUE(runtime.pumpUntil([&client] { return client->downloader->getStatistics().requests >= 3; }));
+    ASSERT_TRUE(pumpUntil([&client] { return client->downloader->getStatistics().requests >= 3; }));
     fetch("content/extra/b.bin", Downloader::Priority::Background);
     fetch("content/extra/c.bin", Downloader::Priority::Foreground);
-    ASSERT_TRUE(runtime.pumpUntil([&finished] { return finished.size() == 3; }));
+    ASSERT_TRUE(pumpUntil([&finished] { return finished.size() == 3; }));
 
     EXPECT_EQ(finished.back(), "content/extra/b.bin") << "The second background request starts only once the first ends.";
     EXPECT_EQ(server.getMostConcurrent(), 2) << "The second background request waits for the first, while the foreground one runs next to it.";
@@ -859,7 +878,7 @@ TEST_F(UpdaterTest, SharesOneDownloadAmongRequestsAndKeepsItForTheOnesThatStay) 
     const std::uint64_t cancelled = client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<Error> error) { first.emplace(std::move(error)); }});
     client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&second](std::optional<Error> error) { second.emplace(std::move(error)); }});
     client->downloader->cancel(cancelled);
-    ASSERT_TRUE(runtime.pumpUntil([&first, &second] { return first.has_value() && second.has_value(); }));
+    ASSERT_TRUE(pumpUntil([&first, &second] { return first.has_value() && second.has_value(); }));
 
     ASSERT_TRUE(*first);
     EXPECT_EQ((*first)->getCode(), Error::Code::NetworkCancelled);
@@ -893,7 +912,7 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
     const auto locate = [&client](const ShardReference& reference) { return client->updater->locate(reference); };
     std::optional<std::optional<Error>> first;
     client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<Error> error) { first.emplace(std::move(error)); }});
-    ASSERT_TRUE(runtime.pumpUntil([&first] { return first.has_value(); }));
+    ASSERT_TRUE(pumpUntil([&first] { return first.has_value(); }));
     ASSERT_TRUE(*first);
 
     // Records that the damaged pack sent before may still fail their checks, but every attempt settles, and one that the whole pack serves succeeds.
@@ -906,7 +925,7 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
     for (int attempt = 0; attempt < 3; ++attempt) {
         std::optional<std::optional<Error>> retried;
         client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&retried](std::optional<Error> error) { retried.emplace(std::move(error)); }});
-        ASSERT_TRUE(runtime.pumpUntil([&retried] { return retried.has_value(); }));
+        ASSERT_TRUE(pumpUntil([&retried] { return retried.has_value(); }));
         failure = *retried;
         if (!failure) {
             break;
@@ -955,14 +974,14 @@ TEST_F(UpdaterTest, KeepsTheRecordsOfAnInstallThatStartsWhileACollectionRuns) {
         gate.close();
         std::optional<std::optional<Error>> collected;
         client->updater->collect([&collected](Updater::Collection, std::optional<Error> error) { collected.emplace(std::move(error)); });
-        ASSERT_TRUE(runtime.pumpUntil([&gate] { return gate.isHolding(); }));
+        ASSERT_TRUE(pumpUntil([&gate] { return gate.isHolding(); }));
         std::optional<std::optional<Error>> installed;
         client->updater->install(offer, {}, [&installed](std::optional<Error> error) { installed.emplace(std::move(error)); });
         // The install may end or wait for the device behind the collection, so this wait gives it time without requiring either.
-        (void)runtime.pumpUntil([&installed] { return installed.has_value(); }, std::chrono::seconds(2));
+        (void)pumpUntil([&installed] { return installed.has_value(); }, std::chrono::seconds(2));
 
         gate.open();
-        ASSERT_TRUE(runtime.pumpUntil([&collected, &installed] { return collected.has_value() && installed.has_value(); }, std::chrono::seconds(20)));
+        ASSERT_TRUE(pumpUntil([&collected, &installed] { return collected.has_value() && installed.has_value(); }, std::chrono::seconds(20)));
         EXPECT_FALSE(*collected);
         EXPECT_FALSE(*installed);
     }

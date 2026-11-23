@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <exception>
 #include <functional>
@@ -11,7 +12,7 @@
 #include <utility>
 
 namespace varn::runtime {
-class Runtime;
+class Scheduler;
 }
 
 namespace haylen::debug {
@@ -20,7 +21,7 @@ class TraceRecorder;
 
 namespace haylen::core {
 
-// Runs background work on the Varn worker pools and hands results back to the frame thread through the Varn event loop. Exceptions that escape posted work reach the error handler on the frame thread.
+// Owns the scheduler of Varn, with its worker pools and its event loop, runs background work on the pools and hands results back to the frame thread through the event loop. Exceptions that escape posted work reach the error handler on the frame thread.
 class JobSystem final {
   public:
     template <typename T> struct Result {
@@ -32,12 +33,28 @@ class JobSystem final {
         }
     };
 
+    // What a poll of the event loop did: whether any job, timer or socket callback ran, whether work remains, and the milliseconds the loop can wait before it has work of its own, which is -1 when only work from outside can bring any.
+    struct Poll {
+        bool ran = false;
+        bool pending = false;
+        long long idleMilliseconds = -1;
+    };
+
     using ErrorHandler = std::function<void(const std::string&)>;
 
-    JobSystem(varn::runtime::Runtime& scriptRuntime, ErrorHandler errorHandler);
+    explicit JobSystem(ErrorHandler errorHandler);
+    ~JobSystem();
 
     JobSystem(const JobSystem&) = delete;
     JobSystem& operator=(const JobSystem&) = delete;
+
+    // Runs what the event loop holds on the calling thread, the frame thread, such as the results of jobs, timers and the callbacks of sockets and HTTP, in passes that repeat while they make progress and the budget lasts.
+    Poll poll(std::chrono::nanoseconds budget);
+
+    // The scheduler that runs the pools and the event loop, which the HTTP client of the content and the runtimes of scripts run on.
+    [[nodiscard]] varn::runtime::Scheduler& getScheduler() noexcept {
+        return *scheduler;
+    }
 
     void post(std::function<void()> work);
     void postIo(std::function<void()> work);
@@ -54,7 +71,7 @@ class JobSystem final {
     // Splits `[begin, end)` into chunks of at least `grainSize` items and runs them in parallel, including on the calling thread. Workers and the caller take chunks one at a time, so the caller runs every chunk no worker started and never waits behind other work queued on the task pool. Only the frame thread may call it.
     void parallelFor(std::size_t begin, std::size_t end, std::size_t grainSize, const std::function<void(std::size_t, std::size_t)>& body);
 
-    // Drops the posted work that no worker started, and from then on drops what is posted at once, without running it and without reaching the pools or the loop of the runtime. The engine calls it once the pools stopped and before the runtime goes, so what that work holds, such as Lua references, goes while the Lua state is still open, and nothing that still holds the job system while the engine shuts down reaches the runtime that is gone.
+    // Stops the pools and the event loop, drops the posted work that no worker started, and from then on drops what is posted at once, without running it and without reaching the pools or the loop. The engine calls it once the services that post work let go, before the runtimes of scripts close, so what that work holds, such as the references of a script, goes while the runtime that owns them is still open.
     void stop() noexcept;
 
     [[nodiscard]] std::size_t getWorkerCount() const noexcept {
@@ -98,7 +115,7 @@ class JobSystem final {
     [[nodiscard]] std::function<void()> enqueue(std::function<void()> work, std::string_view name);
     [[nodiscard]] bool isStopped() const;
 
-    varn::runtime::Runtime& runtime;
+    std::unique_ptr<varn::runtime::Scheduler> scheduler;
     ErrorHandler onError;
     std::size_t workerCount;
     std::shared_ptr<Queue> queue;

@@ -13,7 +13,7 @@
 #include "haylen/content/Error.hpp"
 
 namespace varn::runtime {
-class Runtime;
+class Scheduler;
 }
 
 namespace varn::http::client {
@@ -22,7 +22,7 @@ class HttpClient;
 
 namespace haylen::content {
 
-// Downloads the immutable files that serve protected content, whole or by byte range, through the streaming HTTP client of Varn, so no response is ever held whole. Every response is checked before a byte reaches the caller: its status, the range the server sent and the length. HTTP lets a server answer a range with the whole file, as a content delivery network does with a file it has not cached yet, so such an answer streams the whole file to the caller, which takes the range out of it or keeps all of it, and a download that resumes appends only to the same file, which the validator of its first response names. Callbacks run on the thread that polls the event loop of the runtime.
+// Downloads the immutable files that serve protected content, whole or by byte range, through the streaming HTTP client of Varn, so no response is ever held whole. Every response is checked before a byte reaches the caller: its status, the range the server sent and the length. HTTP lets a server answer a range with the whole file, as a content delivery network does with a file it has not cached yet, so such an answer streams the whole file to the caller, which takes the range out of it or keeps all of it, and a download that resumes appends only to the same file, which the validator of its first response names. Callbacks run on the thread that polls the event loop of the scheduler.
 class HttpTransport final {
   public:
     struct Request {
@@ -75,7 +75,7 @@ class HttpTransport final {
         std::shared_ptr<State> state;
     };
 
-    explicit HttpTransport(varn::runtime::Runtime& runtime);
+    explicit HttpTransport(varn::runtime::Scheduler& scheduler);
     ~HttpTransport();
 
     HttpTransport(const HttpTransport&) = delete;

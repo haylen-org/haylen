@@ -34,7 +34,7 @@ ContentManager::ContentManager(core::Engine& owner, std::shared_ptr<io::Package>
         return;
     }
 
-    transport = std::make_unique<HttpTransport>(engine.getScriptRuntime());
+    transport = std::make_unique<HttpTransport>(engine.getJobs().getScheduler());
     downloader = std::make_unique<Downloader>(engine.getJobs(), *transport, release->getStore());
     updater = std::make_unique<Updater>(release, engine.getJobs(), *transport, *downloader, settings);
 }

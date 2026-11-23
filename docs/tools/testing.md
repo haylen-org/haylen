@@ -129,7 +129,7 @@ The folder `support/` holds the other shared helpers.
 | `EventLoop::yield()` | Gives the event loop of the platform a turn while a test waits, such as for a copy of a render target. In the browser that turn settles the promises of WebGPU, and on other platforms it is a short pause. In `support/EventLoop.hpp`. |
 | `Environment::get(name)` | Reads a variable of the environment that the GPU tests take, such as `HAYLEN_TEST_GRAPHICS_API`, and gives an empty string when it is not set. It reads through `_dupenv_s` with MSVC, whose C library deprecates `std::getenv`, so the build stays free of warnings there. In `support/Environment.hpp`. |
 | `ContentParsers::parse(input)` | Feeds bytes to the parser of the content formats that the first byte picks, and lets only content errors through, for the hostile input tests and the fuzzer, in `support/ContentParsers.hpp`. |
-| `VarnRuntime` | Owns a Varn runtime without an engine, which `getRuntime()` returns. Its `pumpUntil(condition, timeout)` advances the event loop the way the engine does once per frame. The `JobSystem` tests use it. In `support/VarnRuntime.hpp`. |
+| `SchedulerPump::pumpUntil(scheduler, condition, timeout)` | Advances the event loop of a scheduler of Varn the way the engine does once per frame until the condition holds, such as the scheduler that a `core::JobSystem` without an engine owns, which the `JobSystem` tests use. In `support/SchedulerPump.hpp`. |
 
 The fixture of a test file builds the data that only that file needs, such as the bands of the image palette tests. Files that code cannot build live in `engine/tests/data/`, such as the fonts and the tones of the audio tests.
 

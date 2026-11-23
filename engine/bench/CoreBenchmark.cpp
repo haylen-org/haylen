@@ -90,6 +90,9 @@ class CoreBenchmark final {
     static constexpr int kListeners = 100;
     static constexpr double kFrameSeconds = 1.0 / 60.0;
 
+    // The jobs come back through the event loop, which the benchmark polls with the largest budget of a frame.
+    static constexpr std::chrono::nanoseconds kPollBudget = std::chrono::milliseconds(8);
+
     static void measure(const char* name, int runs, const std::function<void()>& work) {
         work();
         const auto start = std::chrono::steady_clock::now();
@@ -252,14 +255,14 @@ class CoreBenchmark final {
 
     static void measureJobs(core::Engine& engine) {
         core::JobSystem& jobs = engine.getJobs();
-        measure("1000 jobs from the frame thread to a worker and back", 20, [&engine, &jobs] {
+        measure("1000 jobs from the frame thread to a worker and back", 20, [&jobs] {
             int completed = 0;
             for (int index = 0; index < 1000; ++index) {
                 jobs.run([index] { return index * 2; }, [&completed](core::JobSystem::Result<int>) { ++completed; });
             }
 
             while (completed < 1000) {
-                engine.getScriptRuntime().scheduler().poll();
+                jobs.poll(kPollBudget);
             }
         });
 

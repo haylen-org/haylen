@@ -1,7 +1,7 @@
 #include "content/HttpTransport.hpp"
 
 #include "varn/http/HttpClient.h"
-#include "varn/runtime/Runtime.h"
+#include "varn/runtime/Scheduler.h"
 
 #include <algorithm>
 #include <format>
@@ -45,7 +45,7 @@ bool HttpTransport::Transfer::isActive() const {
     return state->handle.active();
 }
 
-HttpTransport::HttpTransport(varn::runtime::Runtime& runtime) : client(std::make_unique<client::HttpClient>(runtime.scheduler())) {}
+HttpTransport::HttpTransport(varn::runtime::Scheduler& scheduler) : client(std::make_unique<client::HttpClient>(scheduler)) {}
 
 // A request that never completes, such as one that the app cancels as it stops, keeps its state and the transfer of the client alive through each other, so the transport lets both go when it ends.
 HttpTransport::~HttpTransport() {

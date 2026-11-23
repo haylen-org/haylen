@@ -13,7 +13,6 @@
 #include "haylen/graphics/Shader.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EventLoop.hpp"
-#include "support/VarnRuntime.hpp"
 
 namespace haylen::gpu {
 
@@ -143,8 +142,7 @@ TEST_P(GpuLifetimeTest, MeasuresTheFramesOfTheGpuWhereItCan) {
 
 // Programs prepared ahead on the I/O pool are made from the same descriptions and draw like the others.
 TEST_P(GpuLifetimeTest, MakesProgramsThatItPreparedAhead) {
-    test::VarnRuntime runtime;
-    core::JobSystem jobs(runtime.getRuntime(), [](const std::string& error) { ADD_FAILURE() << error; });
+    core::JobSystem jobs([](const std::string& error) { ADD_FAILURE() << error; });
     const graphics::Shader prepared = graphics::Shader::parse(core::EmbeddedFiles::getConformanceShader());
     prepared.getResource()->prepare(device(), jobs);
 

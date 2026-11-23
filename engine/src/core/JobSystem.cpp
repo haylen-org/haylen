@@ -10,7 +10,7 @@
 
 #include "haylen/debug/TraceRecorder.hpp"
 #include "haylen/port/Contract.hpp"
-#include "varn/runtime/Runtime.h"
+#include "varn/runtime/Scheduler.h"
 
 namespace haylen::core {
 
@@ -48,7 +48,7 @@ struct JobSystem::ParallelRange {
     }
 };
 
-// The work posted to the pools, kept here rather than in the queues of the pools, which outlive the Lua state when the runtime shuts down.
+// The work posted to the pools, kept here rather than in the queues of the pools, which outlive the runtimes of scripts when the engine shuts down.
 struct JobSystem::Queue {
     std::mutex mutex;
     std::unordered_map<std::uint64_t, std::function<void()>> jobs;
@@ -56,7 +56,16 @@ struct JobSystem::Queue {
     bool stopped = false;
 };
 
-JobSystem::JobSystem(varn::runtime::Runtime& scriptRuntime, ErrorHandler errorHandler) : runtime(scriptRuntime), onError(std::move(errorHandler)), workerCount(std::max(1U, std::thread::hardware_concurrency())), queue(std::make_shared<Queue>()) {}
+JobSystem::JobSystem(ErrorHandler errorHandler) : scheduler(std::make_unique<varn::runtime::Scheduler>()), onError(std::move(errorHandler)), workerCount(std::max(1U, std::thread::hardware_concurrency())), queue(std::make_shared<Queue>()) {}
+
+JobSystem::~JobSystem() {
+    stop();
+}
+
+JobSystem::Poll JobSystem::poll(std::chrono::nanoseconds budget) {
+    const varn::runtime::EventLoop::PollResult result = scheduler->poll(budget);
+    return {.ran = result.ran, .pending = result.pending, .idleMilliseconds = result.idleMilliseconds};
+}
 
 std::string JobSystem::describe(const std::exception_ptr& error) {
     try {
@@ -132,17 +141,18 @@ std::function<void()> JobSystem::enqueue(std::function<void()> work, std::string
 void JobSystem::post(std::function<void()> work) {
     std::function<void()> job = enqueue(std::move(work), "job");
     if (job) {
-        runtime.scheduler().taskPool().post(std::move(job));
+        scheduler->taskPool().post(std::move(job));
     }
 }
 
 void JobSystem::postIo(std::function<void()> work) {
     std::function<void()> job = enqueue(std::move(work), "ioJob");
     if (job) {
-        runtime.scheduler().ioPool().post(std::move(job));
+        scheduler->ioPool().post(std::move(job));
     }
 }
 
+// The queued work goes before the pools stop, so a worker that finishes its job takes nothing more, and the stop of the pools waits for the jobs that workers run.
 void JobSystem::stop() noexcept {
     std::unordered_map<std::uint64_t, std::function<void()>> dropped;
     {
@@ -150,6 +160,9 @@ void JobSystem::stop() noexcept {
         queue->stopped = true;
         dropped.swap(queue->jobs);
     }
+
+    dropped.clear();
+    scheduler->stop();
 }
 
 void JobSystem::postToFrame(std::function<void()> work) {
@@ -158,7 +171,7 @@ void JobSystem::postToFrame(std::function<void()> work) {
     }
 
     // clang-format off
-    runtime.scheduler().mainLoop().post([this, work = std::move(work)] {
+    scheduler->mainLoop().post([this, work = std::move(work)] {
         try {
             work();
         } catch (...) {

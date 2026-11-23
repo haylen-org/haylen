@@ -54,16 +54,14 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     state = std::make_unique<EngineState>(host, std::move(package), std::move(config), std::move(application));
     EngineState& current = *state;
 
-    // The scheduler of Varn comes first because the job system, asset loading and Lua all run on it, and the Lua runtime runs on the scheduler.
-    current.scheduler = std::make_unique<varn::runtime::Scheduler>();
-    current.runtime = std::make_unique<varn::runtime::Runtime>(*current.scheduler, std::vector<std::string>{"haylen", std::string(current.package->getName())}, 1);
-    // A job runs once, so the app restarts after its failure instead of resuming without what the job would have done.
+    // The job system comes first because asset loading, the services and Lua all run on its scheduler. A job runs once, so the app restarts after its failure instead of resuming without what the job would have done.
     // clang-format off
-    current.jobs = std::make_unique<JobSystem>(*current.runtime, [this](const std::string& message) {
+    current.jobs = std::make_unique<JobSystem>([this](const std::string& message) {
         const PhaseScope scope(*this, Phase::Lifecycle);
         reportError(message);
     });
     // clang-format on
+    current.runtime = std::make_unique<varn::runtime::Runtime>(current.jobs->getScheduler(), std::vector<std::string>{"haylen", std::string(current.package->getName())}, 1);
     current.graphics = std::make_unique<graphics::Device>(host.createGpuDevice());
     audio::Mixer::Setup audioSetup = host.getAudioSetup();
     audioSetup.session = current.config.audioSession;
@@ -164,7 +162,6 @@ Engine::~Engine() {
     current.runtime->stop();
     current.jobs->stop();
     current.runtime.reset();
-    current.scheduler.reset();
 
     // The motion of gamepads outlives the Lua state, whose owners still end their requests while it closes.
     current.gamepadMotion.reset();
@@ -443,7 +440,7 @@ void Engine::runScripts(double frameSeconds) {
     applyCover();
 
     const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
-    const varn::runtime::EventLoop::PollResult polled = current.scheduler->poll(budget);
+    const JobSystem::Poll polled = current.jobs->poll(budget);
     current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
 }
 

@@ -14,9 +14,9 @@
 #include "content/HttpTransport.hpp"
 #include "content/RangePlanner.hpp"
 #include "support/ContentServer.hpp"
+#include "support/SchedulerPump.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
-#include "support/VarnRuntime.hpp"
 
 namespace haylen::content {
 
@@ -52,7 +52,7 @@ class HttpTransportTest : public ::testing::Test {
     Outcome run(HttpTransport::Request request) {
         Outcome outcome;
         fetch(std::move(request), outcome);
-        if (!runtime.pumpUntil([&outcome] { return outcome.done; })) {
+        if (!test::SchedulerPump::pumpUntil(scheduler, [&outcome] { return outcome.done; })) {
             throw std::runtime_error("The transfer never ended.");
         }
 
@@ -70,8 +70,8 @@ class HttpTransportTest : public ::testing::Test {
     test::TemporaryDirectory folder;
     std::vector<std::uint8_t> file;
     test::ContentServer server{folder.getPath()};
-    test::VarnRuntime runtime;
-    HttpTransport transport{runtime.getRuntime()};
+    varn::runtime::Scheduler scheduler;
+    HttpTransport transport{scheduler};
 };
 
 TEST_F(HttpTransportTest, FetchesAWholeFile) {
@@ -222,9 +222,9 @@ TEST_F(HttpTransportTest, LetsGoOfARequestThatNeverCompletesWhenItEnds) {
     server.setStalls(true);
     const auto sentinel = std::make_shared<int>(0);
     {
-        HttpTransport ending(runtime.getRuntime());
+        HttpTransport ending(scheduler);
         const HttpTransport::Transfer transfer = ending.fetch({.url = url()}, {.onComplete = [sentinel](std::optional<Error>) {}});
-        ASSERT_TRUE(runtime.pumpUntil([this] { return server.getAnswering() > 0; }));
+        ASSERT_TRUE(test::SchedulerPump::pumpUntil(scheduler, [this] { return server.getAnswering() > 0; }));
         transfer.cancel();
     }
     server.setStalls(false);
@@ -238,7 +238,7 @@ TEST_F(HttpTransportTest, CancelsFromAnotherThread) {
     EXPECT_TRUE(transfer.isActive());
     std::thread([transfer] { transfer.cancel(); }).join();
 
-    ASSERT_TRUE(runtime.pumpUntil([&outcome] { return outcome.done; }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(scheduler, [&outcome] { return outcome.done; }));
     ASSERT_TRUE(outcome.error);
     EXPECT_EQ(outcome.error->getCode(), Error::Code::NetworkCancelled);
     EXPECT_FALSE(transfer.isActive());

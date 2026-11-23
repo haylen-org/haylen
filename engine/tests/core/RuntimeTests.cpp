@@ -16,7 +16,7 @@
 
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/Log.hpp"
-#include "support/VarnRuntime.hpp"
+#include "support/SchedulerPump.hpp"
 
 namespace haylen::core {
 
@@ -55,8 +55,7 @@ class JobSystemTest : public ::testing::Test {
 };
 
 TEST_F(JobSystemTest, RunDeliversValuesOnTheFrameThread) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
     const auto frameThread = std::this_thread::get_id();
 
     std::atomic<bool> done{false};
@@ -69,46 +68,43 @@ TEST_F(JobSystemTest, RunDeliversValuesOnTheFrameThread) {
     });
     // clang-format on
 
-    ASSERT_TRUE(varn.pumpUntil([&] { return done.load(); }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return done.load(); }));
 }
 
 TEST_F(JobSystemTest, RunReportsExceptions) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
 
     std::string error;
     std::string unknownError;
     jobs.run([]() -> int { throw std::runtime_error("decode failed"); }, [&](JobSystem::Result<int> result) { error = result.error; });
     jobs.run([]() -> int { throw 7; }, [&](JobSystem::Result<int> result) { unknownError = result.error; });
 
-    ASSERT_TRUE(varn.pumpUntil([&] { return !error.empty() && !unknownError.empty(); }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return !error.empty() && !unknownError.empty(); }));
     EXPECT_EQ(error, "decode failed");
     EXPECT_NE(unknownError.find("unknown"), std::string::npos);
 }
 
 TEST_F(JobSystemTest, PostAndPostIoRunInBackground) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
 
     std::atomic<int> count{0};
     jobs.post([&] { ++count; });
     jobs.postIo([&] { ++count; });
     jobs.postToFrame([&] { ++count; });
 
-    ASSERT_TRUE(varn.pumpUntil([&] { return count.load() == 3; }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return count.load() == 3; }));
     EXPECT_GE(jobs.getWorkerCount(), 1U);
 }
 
 TEST_F(JobSystemTest, ReportsExceptionsThatEscapePostedWork) {
-    test::VarnRuntime varn;
     std::vector<std::string> errors;
-    JobSystem jobs(varn.getRuntime(), [&](const std::string& message) { errors.push_back(message); });
+    JobSystem jobs([&](const std::string& message) { errors.push_back(message); });
 
     jobs.post([] { throw std::runtime_error("worker failed"); });
     jobs.postIo([] { throw 3; });
     jobs.postToFrame([] { throw std::logic_error("frame failed"); });
 
-    ASSERT_TRUE(varn.pumpUntil([&] { return errors.size() == 3; }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return errors.size() == 3; }));
     std::sort(errors.begin(), errors.end());
     EXPECT_EQ(errors[0], "A job failed with an unknown exception.");
     EXPECT_EQ(errors[1], "frame failed");
@@ -116,8 +112,7 @@ TEST_F(JobSystemTest, ReportsExceptionsThatEscapePostedWork) {
 }
 
 TEST_F(JobSystemTest, ParallelForCoversTheWholeRange) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
 
     std::vector<int> values(10000, 0);
     // clang-format off
@@ -146,8 +141,7 @@ TEST_F(JobSystemTest, ParallelForCoversTheWholeRange) {
 }
 
 TEST_F(JobSystemTest, ParallelForPropagatesTheFirstException) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
 
     // clang-format off
     const auto failAfterTheFirstChunk = [](std::size_t begin, std::size_t) {
@@ -167,13 +161,12 @@ TEST_F(JobSystemTest, ParallelForPropagatesTheFirstException) {
 }
 
 TEST_F(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
 
     // Every worker runs a long job, like an asynchronous navmesh build, so no worker can take a chunk.
     Gate gate;
     occupyWorkers(jobs, gate);
-    ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount(); }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return gate.started.load() == jobs.getWorkerCount(); }));
 
     std::vector<int> values(1000, 0);
     std::atomic<bool> finished{false};
@@ -196,27 +189,40 @@ TEST_F(JobSystemTest, ParallelForNeverWaitsBehindBusyWorkers) {
     const bool finishedWhileBusy = finished;
     gate.open = true;
     caller.join();
-    ASSERT_TRUE(varn.pumpUntil([&] { return gate.left.load() == jobs.getWorkerCount(); }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return gate.left.load() == jobs.getWorkerCount(); }));
     EXPECT_TRUE(finishedWhileBusy) << "The caller ran every chunk while the workers were busy.";
     EXPECT_EQ(std::accumulate(values.begin(), values.end(), 0), 1000);
 }
 
-// A job system that stopped drops what waits and every later post at once, so nothing it holds outlives the Lua state and nothing reaches the runtime that goes after it.
+// A job system that stopped drops what waits and every later post at once, so nothing it holds outlives the runtimes of scripts, and its stop waits for the jobs that workers run.
 TEST_F(JobSystemTest, StopsWithoutRunningQueuedOrLaterWork) {
-    test::VarnRuntime varn;
-    JobSystem jobs(varn.getRuntime(), [](const std::string& message) { FAIL() << message; });
+    JobSystem jobs([](const std::string& message) { FAIL() << message; });
 
     // Every worker waits at the gate, so the next job stays in the queue.
     Gate gate;
     occupyWorkers(jobs, gate);
-    ASSERT_TRUE(varn.pumpUntil([&] { return gate.started.load() == jobs.getWorkerCount(); }));
+    ASSERT_TRUE(test::SchedulerPump::pumpUntil(jobs.getScheduler(), [&] { return gate.started.load() == jobs.getWorkerCount(); }));
 
     auto queued = std::make_shared<int>(0);
     const std::weak_ptr<int> watchedQueued = queued;
     std::atomic<bool> ran{false};
     jobs.post([&ran, sentinel = std::move(queued)] { ran = sentinel != nullptr; });
+
+    // The stop drops the queued job before it waits for the workers, which leave once the gate opens.
+    // clang-format off
+    std::thread opener([&gate, &watchedQueued] {
+        const auto deadline = std::chrono::steady_clock::now() + kGateBound;
+        while (!watchedQueued.expired() && std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::yield();
+        }
+
+        gate.open = true;
+    });
+    // clang-format on
     jobs.stop();
+    opener.join();
     EXPECT_TRUE(watchedQueued.expired());
+    EXPECT_EQ(gate.left.load(), jobs.getWorkerCount());
 
     auto later = std::make_shared<int>(0);
     const std::weak_ptr<int> watchedLater = later;
@@ -224,9 +230,6 @@ TEST_F(JobSystemTest, StopsWithoutRunningQueuedOrLaterWork) {
     jobs.postIo([&ran, sentinel = later] { ran = sentinel != nullptr; });
     jobs.postToFrame([&ran, sentinel = std::move(later)] { ran = sentinel != nullptr; });
     EXPECT_TRUE(watchedLater.expired()) << "Work posted after the stop goes at once.";
-
-    gate.open = true;
-    ASSERT_TRUE(varn.pumpUntil([&] { return gate.left.load() == jobs.getWorkerCount(); }));
     EXPECT_FALSE(ran);
 }
 

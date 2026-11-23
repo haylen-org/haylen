@@ -20,7 +20,7 @@
 #include "haylen/io/PackageReader.hpp"
 #include "io/MemoryReader.hpp"
 #include "support/TestFiles.hpp"
-#include "support/VarnRuntime.hpp"
+#include "varn/runtime/Scheduler.h"
 
 namespace haylen::audio {
 
@@ -90,7 +90,7 @@ class MixerFixture : public ::testing::Test {
         std::vector<float> block(kListenBlock * 2);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
         while (positions.size() < count && mixer.isActive(voice) && std::chrono::steady_clock::now() < deadline) {
-            runtime.getRuntime().scheduler().poll();
+            jobs.getScheduler().poll();
             mixer.update(0.0F);
             mixer.render(block);
             bool silent = false;
@@ -111,7 +111,7 @@ class MixerFixture : public ::testing::Test {
             }
         }
 
-        runtime.getRuntime().scheduler().poll();
+        jobs.getScheduler().poll();
         mixer.update(0.0F);
         return positions;
     }
@@ -120,7 +120,7 @@ class MixerFixture : public ::testing::Test {
     [[nodiscard]] bool awaitJobErrors(std::size_t count) {
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
         while (jobErrors.size() < count && std::chrono::steady_clock::now() < deadline) {
-            runtime.getRuntime().scheduler().poll();
+            jobs.getScheduler().poll();
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
 
@@ -157,9 +157,8 @@ class MixerFixture : public ::testing::Test {
         return peak(count);
     }
 
-    test::VarnRuntime runtime;
     std::vector<std::string> jobErrors;
-    core::JobSystem jobs{runtime.getRuntime(), [this](const std::string& message) { jobErrors.push_back(message); }};
+    core::JobSystem jobs{[this](const std::string& message) { jobErrors.push_back(message); }};
     Mixer mixer{{.device = false, .sampleRate = kRate, .channels = 2, .maxVoices = 8}, jobs};
 };
 

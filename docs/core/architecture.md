@@ -354,7 +354,7 @@ The worker layer in `engine/src/platform/worker/` runs the web runtime in the Wo
     - Unless the app is in the background, the asset manager finalizes the assets that finished decoding and creates their GPU objects. It goes on until the upload budget of the frame runs out, and it finalizes at least one per frame.
     - `Bridge::pump()` delivers bridge replies and native events, with the batched events of a name as one list. `System::pump()` delivers the answers of opened urls and publishes the changes of the theme and the battery. The media session and the accessibility of the app deliver their commands and changes, and tweens learn whether the system asks for reduced motion. `Screens::pump()` delivers the ends of screens, their cancellations and their timeouts, and sends the end of a screen that an earlier app opened as the retained event `<plugin>.screenRestored`.
     - All of this happens before the event loop runs, and the engine applies the cover of the app again after it. So a task that awaits a reply resumes in the frame that the reply reaches, and sees the app uncovered once the screen that answered it ended.
-6. **The event loop.** `Scheduler::poll(budget)` advances Varn's event loop within a budget of a quarter of the frame time, between 1 and 8 milliseconds. Promises settle, `async` tasks and scene tasks resume, Varn timers fire, HTTP and socket callbacks run, and completions posted from worker threads run, such as decoded assets that join the upload queue. The loop works in passes. Each pass takes the jobs that were queued and the timers that were due when it started, and then serves every socket until it would block. Passes repeat while they make progress and the budget lasts. So a task that awaits a promise settled during a pass, or a timer of zero milliseconds, resumes in the next pass of the same frame, or in the next frame once the budget is spent. A poll overruns its budget by at most one job and one pass over the sockets, so tasks that wake in great numbers spread over frames instead of holding one up. `Engine::getEventLoopPoll` keeps what the poll reported, which the debug overlay and `debug.stats()` show.
+6. **The event loop.** `JobSystem::poll(budget)` advances Varn's event loop within a budget of a quarter of the frame time, between 1 and 8 milliseconds. Promises settle, `async` tasks and scene tasks resume, Varn timers fire, HTTP and socket callbacks run, and completions posted from worker threads run, such as decoded assets that join the upload queue. The loop works in passes. Each pass takes the jobs that were queued and the timers that were due when it started, and then serves every socket until it would block. Passes repeat while they make progress and the budget lasts. So a task that awaits a promise settled during a pass, or a timer of zero milliseconds, resumes in the next pass of the same frame, or in the next frame once the budget is spent. A poll overruns its budget by at most one job and one pass over the sockets, so tasks that wake in great numbers spread over frames instead of holding one up. `Engine::getEventLoopPoll` keeps what the poll reported, which the debug overlay and `debug.stats()` show.
 7. **The redraw.** An app that redraws on change decides whether the frame updates and draws, as [redraw on change](#redraw-on-change) describes. A frame that it skips runs neither the fixed steps, the updates, the drawing nor the submit, lets only the time of the timers pass and keeps its time out of the fixed steps, and an app that redraws always runs every step.
 8. **`beginFrame`.** Unless the app is in the background, every plugin runs `beginFrame`. There the platform plugin uploads the newest frame of every video stream that the app draws into its texture.
 9. **Fixed steps.** For each step the clock owes, the scenes run `fixedUpdate`, fixed-step tweens advance, and then every plugin runs `fixedUpdate`.
@@ -484,7 +484,7 @@ Each output has a render target of the size of its drawable, which the app draws
 
 The frame thread owns the GPU, the Lua state, scenes, UI, audio control and physics. It never blocks.
 
-`JobSystem`, reached with `engine.getJobs()`, runs work in the background on the Varn scheduler that the engine owns, under the Varn runtime of its Lua state.
+`JobSystem`, reached with `engine.getJobs()`, owns the Varn scheduler with its worker pools and its event loop, and runs work in the background on it. The HTTP client of the content and the Varn runtime of the Lua state run on the same scheduler.
 
 | Method | Where the work runs |
 | --- | --- |
@@ -549,7 +549,7 @@ Due timers fire from a heap. So an update grows with the timers that fire, not w
 
 ## Resource ownership
 
-One `Engine` owns every service of one running app: the Varn scheduler with the Varn runtime and its Lua state on it, the job system, the graphics device, audio, user storage, the bridge, the system, the renderer, assets, scenes and plugins. Restarting an app destroys the engine and creates a new one.
+One `Engine` owns every service of one running app: the job system with the Varn scheduler, the Varn runtime with its Lua state on that scheduler, the graphics device, audio, user storage, the bridge, the system, the renderer, assets, scenes and plugins. Restarting an app destroys the engine and creates a new one.
 
 The GPU device, the renderer and the interface keep state of the process, so only one engine runs at a time. Creating another while one runs throws `Only one engine can run at a time. Destroy the engine that runs before creating another.`.
 
@@ -562,7 +562,7 @@ The engine shuts down in a fixed order:
 1. It clears the scene stack, which also unloads a scene that is still loading and the preloaded scenes.
 2. It stops the application, and stops the plugins in reverse order of registration.
 3. It clears timers and tweens, cancels pending asset callbacks, and closes the bridge and the system.
-4. It stops the Varn runtime, which stops its scheduler and joins the worker pools, then destroys the runtime, which closes the Lua state, and the scheduler.
+4. It stops the Varn runtime and the job system, which drops the work that no worker started, stops the scheduler and joins the worker pools, then destroys the runtime, which closes the Lua state.
 5. Only then does it release audio, plugins, scenes, assets, the default font, the renderer and, last, the graphics device.
 
 So a plugin releases every Lua value it holds in `stop`, because the Lua state is gone by the time the plugin is destroyed.

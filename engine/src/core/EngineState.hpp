@@ -50,7 +50,6 @@
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/Host.hpp"
 #include "varn/runtime/Runtime.h"
-#include "varn/runtime/Scheduler.h"
 
 namespace haylen::core {
 
@@ -102,10 +101,9 @@ struct EngineState {
     std::vector<plugins::Plugin*> startedPlugins;
 
     std::shared_ptr<text::Font> defaultFont;
-    std::unique_ptr<varn::runtime::Scheduler> scheduler;
+    std::unique_ptr<JobSystem> jobs;
     std::unique_ptr<varn::runtime::Runtime> runtime;
     Engine::EventLoopPoll loopPoll;
-    std::unique_ptr<JobSystem> jobs;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
 
     // The window, the keyboard, the network and the gamepads as the app last heard of them, so every change is published once. A connected gamepad keeps its name here so its disconnection can report it.
