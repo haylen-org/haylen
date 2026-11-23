@@ -19,14 +19,13 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "lua/Autoloads.hpp"
 #include "lua/ErrorReader.hpp"
-#include "lua/HotReloadLua.hpp"
 #include "lua/ModuleReloader.hpp"
 #include "lua/ModuleSnapshot.hpp"
 #include "lua/ScriptedScene.hpp"
 #include "platform/DevelopmentSession.hpp"
-#include "plugins/CorePlugin.hpp"
 
 namespace haylen::plugins {
 
@@ -53,10 +52,7 @@ void HotReloadPlugin::start(core::Engine& engine) {
     mode = engine.getConfig().debug.reload;
 }
 
-// The module graph replaces `require` before the app loads any module, because plugins install their modules before the app starts.
-void HotReloadPlugin::installLua(core::Engine&, lua_State* L) {
-    lua::HotReloadLua::install(L);
-
+void HotReloadPlugin::installGraph(lua_State* L) {
     if (session != nullptr) {
         graph = std::make_unique<lua::ModuleGraph>();
         graph->install(L);
@@ -185,7 +181,7 @@ std::string HotReloadPlugin::findRestartReason(core::Engine& engine, const std::
         return "The module file \"" + path + "\" was removed, and a file of the app that is no module, such as \"source/main.lua\", requires it, so the app restarts.";
     }
 
-    const lua::Autoloads& autoloads = engine.getPlugin<CorePlugin>().getAutoloads();
+    const lua::Autoloads& autoloads = engine.getPlugin<lua::ScriptPlugin>().getAutoloads();
     const bool autoload = std::ranges::any_of(module->names, [&autoloads](const std::string& name) { return autoloads.hasModule(name); });
     if (autoload) {
         return "The module file \"" + path + "\" was removed, and the app keeps it as an autoload, so the app restarts.";
@@ -295,7 +291,7 @@ void HotReloadPlugin::reloadAssets(core::Engine& engine, const Batch& batch, Rep
 // A removed module that no code of the app requires leaves `package.loaded`, and what it registered ends with it, so the next `require` of it fails as for a module that never existed.
 void HotReloadPlugin::removeModules(core::Engine& engine, const Batch& batch, Report& report) {
     for (const std::string& path : batch.removed) {
-        graph->remove(engine.getLuaState(), path);
+        graph->remove(engine.getPlugin<lua::ScriptPlugin>().getState(), path);
         core::Log::info("The module file \"{}\" was removed, and no code of the app requires it, so it left the app.", path);
         report.files.push_back({.path = path, .change = Change::InPlace, .reason = "The module file was removed, and no code of the app requires it, so the module left the app."});
     }
@@ -303,7 +299,7 @@ void HotReloadPlugin::removeModules(core::Engine& engine, const Batch& batch, Re
 
 // A module that fails, or whose file cannot be read, changes nothing, while the other modules of the batch still reload. Once the reload finished what it started, the first error of a module or of a hook replaces the one the reload was meant to fix, so the error screen shows the latest one.
 bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report, std::string& restartFile) {
-    lua_State* L = engine.getLuaState();
+    lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
     const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Reload);
     const int top = lua_gettop(L);
     lua::ModuleReloader reloader(L, *graph, engine.getPackage());
@@ -376,7 +372,7 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
 
 // Every table hears `reloaded` once, in this order: the reloaded modules and the modules that require them, the autoloads, the scenes from the bottom of the stack to the top, and the instances of the patched tables. A module that returns a prototype, such as a class of `haylen.class`, defines the hook of its instances, so it is no module hook. Each call is protected like a scene hook.
 std::optional<core::AppError> HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
-    lua_State* L = engine.getLuaState();
+    lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
     const int top = lua_gettop(L);
     lua_createtable(L, 0, 2);
     lua_createtable(L, static_cast<int>(paths.size()), 0);
@@ -438,7 +434,7 @@ std::optional<core::AppError> HotReloadPlugin::callHooks(core::Engine& engine, c
 
     lua_pop(L, 1);
 
-    engine.getPlugin<CorePlugin>().getAutoloads().pushList(L);
+    engine.getPlugin<lua::ScriptPlugin>().getAutoloads().pushList(L);
     for (lua_Integer index = 1; lua_rawgeti(L, -1, index) != LUA_TNIL; ++index) {
         call(lua_gettop(L));
         lua_pop(L, 1);

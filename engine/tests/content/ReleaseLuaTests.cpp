@@ -14,6 +14,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -36,7 +37,7 @@ class ReleaseLuaTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::string readGlobal(const char* name) const {
-        lua_State* L = engine->getLuaState();
+        lua_State* L = engine->getPlugin<lua::ScriptPlugin>().getState();
         lua_getglobal(L, name);
         std::string value = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : "";
         lua_pop(L, 1);

@@ -6,8 +6,6 @@ void Plugin::start(core::Engine&) {}
 
 void Plugin::stop(core::Engine&) {}
 
-void Plugin::installLua(core::Engine&, lua_State*) {}
-
 void Plugin::event(core::Engine&, const platform::Event&) {}
 
 void Plugin::beginFrame(core::Engine&, float) {}

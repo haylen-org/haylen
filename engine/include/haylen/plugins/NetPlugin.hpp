@@ -25,7 +25,6 @@ class NetPlugin final : public Plugin {
     void start(core::Engine& engine) override;
     void stop(core::Engine& engine) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
 
     [[nodiscard]] std::shared_ptr<net::WebSocket> connectWebSocket(std::string url, net::WebSocket::Options options = {});
     [[nodiscard]] std::size_t getOpenSocketCount() const noexcept {

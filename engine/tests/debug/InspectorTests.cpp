@@ -7,6 +7,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Utf8.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "support/EngineFixture.hpp"
@@ -61,7 +62,7 @@ TEST_F(InspectorTest, DescribesEveryTextAsWholeCharacters) {
     fixture.runLua("debugging.watch('texts', {long = string.rep('\\u{E9}', 100), broken = 'a\\xFFb', ['\\xFE'] = 1})");
     const std::vector<std::string> path = Inspector::splitPath("watched.texts");
     Inspector::Listing listing;
-    Inspector::list(fixture.engine().getLuaState(), path, listing);
+    Inspector::list(fixture.engine().getPlugin<lua::ScriptPlugin>().getState(), path, listing);
     const std::vector<Inspector::Entry>& entries = listing.entries;
     ASSERT_EQ(entries.size(), 3U);
 

@@ -7,7 +7,6 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
-#include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -175,7 +174,7 @@ bool Navigation::isMotionReduced() const {
 // Hooks run in the lifecycle phase, so their failures restart the app in development like the failures of scene hooks.
 template <typename Hook> void Navigation::notify(Screen& screen, Hook&& hook) {
     const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Lifecycle);
-    lua::Runtime::runReporting(engine.getLuaState(), [&] { hook(screen); });
+    engine.runReporting([&] { hook(screen); });
 }
 
 bool Navigation::askBack(Screen& screen) {
@@ -589,7 +588,7 @@ void Navigation::update(float deltaSeconds) {
     collectDrawn(walkedScreens);
     for (const std::shared_ptr<Screen>& screen : walkedScreens) {
         if (isDrawn(*screen)) {
-            lua::Runtime::runReporting(engine.getLuaState(), [&] { screen->update(engine, deltaSeconds); });
+            engine.runReporting([&] { screen->update(engine, deltaSeconds); });
         }
     }
 
@@ -679,7 +678,7 @@ void Navigation::render() {
     collectDrawn(walkedScreens);
     for (const std::shared_ptr<Screen>& screen : walkedScreens) {
         if (isDrawn(*screen)) {
-            lua::Runtime::runReporting(engine.getLuaState(), [&] { screen->render(engine); });
+            engine.runReporting([&] { screen->render(engine); });
         }
     }
 

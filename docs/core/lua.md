@@ -724,12 +724,16 @@ A C++ project can add Lua modules of its own, backed by a plugin of its own, whi
 | `Promise.hpp` | `Promise`, a result that a Lua task awaits and that native code settles later, from any thread, with `Promise::isSettled`, and `Promise::isPromise`, which recognizes any Varn promise on the stack. |
 | `TypeConverter.hpp` | The bindings of engine types such as `math::Vec2`, `math::Rect`, `math::Color`, `graphics::Texture` and `graphics2d::Sprite`, so bindings take and return them. |
 | `Application.hpp` | `Application`, the application that runs `source/main.lua`. |
+| `Module.hpp` | `Module`, the interface of a Lua module, which installs its `haylen.<module>` modules into the Lua state. |
+| `Modules.hpp` | `Modules`, which keeps the modules of the app in the order they install and finds them by type. |
+| `ScriptPlugin.hpp` | `ScriptPlugin`, the engine plugin that runs the Lua of an app, with `ScriptPlugin::addModule`, `ScriptPlugin::getModule`, `ScriptPlugin::getState` and `ScriptPlugin::getRuntime`. |
+| `modules/AssetsModule.hpp` | `modules::AssetsModule`, the module of `haylen.assets`, whose `registerPusher` tells how the assets of a type that a plugin adds reach Lua. |
 
 ### A module of your own
 
-A plugin registers its modules in its `installLua` hook with `Binding::preload`. Then `require` builds the module table the first time a script asks for it. `Binding::preload` adds the module to the Varn runtime of the engine with `varn::runtime::Runtime::addModule`. A name that a module of Varn, such as `json`, or of another plugin already has raises `std::runtime_error` with `The Lua module "<name>" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.`, which the error screen shows.
+A plugin of the engine knows nothing of Lua, so a project gives its plugin a Lua module of its own: a class that derives from `haylen::lua::Module` of `haylen/lua/Module.hpp`. The module names itself with `getName` and registers its Lua modules in `install` with `Binding::preload`. Then `require` builds the module table the first time a script asks for it. `Binding::preload` adds the module to the Varn runtime of the engine with `varn::runtime::Runtime::addModule`. A name that a module of Varn, such as `json`, or another module of the engine already has raises `std::runtime_error` with `The Lua module "<name>" cannot be added, because a module of Varn or another module of the engine already has its name. Give the module another name.`, which the error screen shows. The application adds the module to the `lua::ScriptPlugin` with `ScriptPlugin::addModule`, which installs it at once in a Lua state that already runs.
 
-This complete source file adds an `app.score` module to a Lua app. Like the built-in modules, the plugin keeps its Lua entry points as private static methods.
+This complete source file adds an `app.score` module to a Lua app. Like the built-in modules, the module keeps its Lua entry points as private static methods, and the plugin keeps the state that the module reaches through the engine.
 
 ```cpp
 #include <algorithm>
@@ -740,21 +744,19 @@ This complete source file adds an `app.score` module to a Lua app. Like the buil
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Module.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/plugins/Plugin.hpp"
 
 namespace app {
 
-// Keeps the best score of the session and exposes it to Lua as `app.score`.
+// Keeps the best score of the session.
 class ScorePlugin final : public haylen::plugins::Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "score";
-    }
-
-    void installLua(haylen::core::Engine&, lua_State* L) override {
-        haylen::lua::Binding::preload(L, "app.score", &open);
     }
 
     int submit(int points) {
@@ -764,6 +766,21 @@ class ScorePlugin final : public haylen::plugins::Plugin {
 
     [[nodiscard]] int getBest() const noexcept {
         return best;
+    }
+
+  private:
+    int best = 0;
+};
+
+// Exposes the score plugin to Lua as `app.score`.
+class ScoreModule final : public haylen::lua::Module {
+  public:
+    [[nodiscard]] std::string_view getName() const noexcept override {
+        return "app.score";
+    }
+
+    void install(haylen::core::Engine&, lua_State* L) override {
+        haylen::lua::Binding::preload(L, "app.score", &open);
     }
 
   private:
@@ -790,15 +807,18 @@ class ScorePlugin final : public haylen::plugins::Plugin {
         haylen::lua::Binding::newModule(L, functions);
         return 1;
     }
-
-    int best = 0;
 };
 
-// Registers the plugin, then runs `source/main.lua` exactly like an app written only in Lua.
+// Adds the script plugin and the plugin of the score, then runs `source/main.lua` exactly like an app written only in Lua.
 class App final : public haylen::core::Application {
   public:
-    void start(haylen::core::Engine& engine) override {
+    void addPlugins(haylen::core::Engine& engine) override {
+        script.addPlugins(engine);
         engine.addPlugin(std::make_unique<ScorePlugin>());
+    }
+
+    void start(haylen::core::Engine& engine) override {
+        engine.getPlugin<haylen::lua::ScriptPlugin>().addModule(std::make_unique<ScoreModule>());
         script.start(engine);
     }
 
@@ -835,7 +855,7 @@ The template `Binding::native<&f>` wraps a function that takes the Lua state. A 
 
 ### A type of your own
 
-A C++ type becomes a Lua type with two things. A specialization of `Type<T>` names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it. A `ClassBuilder` fills the metatable in `installLua`.
+A C++ type becomes a Lua type with two things. A specialization of `Type<T>` names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it. A `ClassBuilder` fills the metatable in the `install` of a module.
 
 The metatable is protected like the ones of the engine, so `getmetatable` returns the type name and Lua code never reaches the finalizer. It also keeps the getters and setters of the properties, so the [inspector](../lua-api/debug.md#inspector) lists and edits the properties of every bound type, those of plugins too. A binding that creates a userdata metatable of its own does it with `Userdata::newMetatable`, which protects it the same way.
 
@@ -863,13 +883,13 @@ template <> struct Type<app::Wallet> {
 
 namespace app {
 
-class EconomyPlugin final : public haylen::plugins::Plugin {
+class EconomyModule final : public haylen::lua::Module {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
-        return "economy";
+        return "app.economy";
     }
 
-    void installLua(haylen::core::Engine&, lua_State* L) override {
+    void install(haylen::core::Engine&, lua_State* L) override {
         haylen::lua::ClassBuilder<Wallet>(L).method<&Wallet::add>("add").field<&Wallet::coins>("coins").install();
         haylen::lua::Binding::preload(L, "app.economy", &open);
     }
@@ -893,7 +913,7 @@ class EconomyPlugin final : public haylen::plugins::Plugin {
 } // namespace app
 ```
 
-Once the application adds `EconomyPlugin` the way it adds `ScorePlugin`, scripts create wallets and use their methods and fields.
+Once the application adds `EconomyModule` the way it adds `ScoreModule`, scripts create wallets and use their methods and fields.
 
 A field that takes only some values is bound with `checkedField<&Wallet::coins, &Wallet::checkCoins>("coins")` instead. The check is a static function that receives the new value and throws `std::invalid_argument` with a sentence that says what the field takes, and it runs both when a script sets the field and when a tween writes it.
 

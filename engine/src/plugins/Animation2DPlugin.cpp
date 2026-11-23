@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "2d/animation/Animation2DLua.hpp"
-#include "2d/animation/SkeletonLua.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/animation/SkeletonData.hpp"
 #include "haylen/2d/animation/SpriteAtlas.hpp"
@@ -15,9 +13,6 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
-#include "haylen/lua/Stack.hpp"
-#include "haylen/lua/TypeConverter.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 
 namespace haylen::plugins {
 
@@ -54,9 +49,6 @@ void Animation2DPlugin::start(core::Engine& engine) {
             return std::make_shared<animation2d::SpriteAtlas>(animation2d::SpriteAtlas::parse(decoded.document, graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(resource))));
         },
     });
-    engine.getPlugin<AssetsPlugin>().registerLuaPusher("atlas", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        lua::Stack::push(L, std::static_pointer_cast<animation2d::SpriteAtlas>(asset));
-    });
 
     // A skeleton reads its atlas and image with it on the worker thread, and shares the atlas and the texture with direct loads.
     engine.getAssets().registerType({
@@ -84,14 +76,7 @@ void Animation2DPlugin::start(core::Engine& engine) {
             return std::make_shared<animation2d::SkeletonData>(animation2d::SkeletonData::parse(decoded.document, atlas));
         },
     });
-    engine.getPlugin<AssetsPlugin>().registerLuaPusher("skeleton", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        animation2d::SkeletonLua::pushData(L, std::static_pointer_cast<animation2d::SkeletonData>(asset));
-    });
     // clang-format on
-}
-
-void Animation2DPlugin::installLua(core::Engine&, lua_State* L) {
-    animation2d::Animation2DLua::install(L);
 }
 
 void Animation2DPlugin::stop(core::Engine&) {

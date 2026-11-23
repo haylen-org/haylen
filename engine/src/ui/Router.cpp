@@ -11,7 +11,6 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/Log.hpp"
-#include "haylen/lua/Runtime.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/ResumeState.hpp"
 #include "haylen/ui/Navigation.hpp"
@@ -118,7 +117,7 @@ void Router::follow(const std::string& url) {
         return;
     }
 
-    lua::Runtime::runReporting(engine.getLuaState(), [this, &url] { open(url); });
+    engine.runReporting([this, &url] { open(url); });
 }
 
 // A segment in braces is a parameter, `{name}` or `{name:type}`, and any other segment is a literal.

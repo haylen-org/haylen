@@ -8,14 +8,13 @@
 
 namespace haylen::plugins {
 
-// Registers the `prefab` asset type for `.prefab` files, which are checked on a worker thread, and installs the `haylen.nodes2d` module. It follows the trees that Lua creates, so an app that redraws on change draws while the particles of a node live.
+// Registers the `prefab` asset type for `.prefab` files, which are checked on a worker thread. It follows the trees that the app creates, so an app that redraws on change draws while the particles of a node live.
 class Nodes2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "nodes2d";
     }
     void start(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     void stop(core::Engine& engine) override;
 
     // Whether the particles of a node of a tree live, which the next update of the tree moves.

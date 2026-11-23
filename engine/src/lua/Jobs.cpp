@@ -1,0 +1,118 @@
+#include "lua/Jobs.hpp"
+
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+#include "haylen/lua/Runtime.hpp"
+#include "lua/JobsLua.hpp"
+#include "lua/Owners.hpp"
+#include "varn/async/Promise.h"
+
+namespace haylen::lua {
+
+void Jobs::stop() {
+    jobs.clear();
+}
+
+void Jobs::spawn(lua_State* L, int owner, Promise promise) {
+    lua_State* thread = lua_newthread(L);
+    Reference reference(L, -1);
+    lua_pop(L, 1);
+    lua_pushvalue(L, -1);
+    lua_xmove(L, thread, 1);
+
+    Job job{.thread = std::move(reference), .state = thread, .promise = std::move(promise)};
+    if (owner != 0) {
+        job.ownership = std::make_shared<Ownership>();
+        Owners::add(L, owner, core::Connection(job.ownership));
+    }
+
+    jobs.push_back(std::move(job));
+}
+
+void Jobs::setBudget(std::chrono::microseconds value) {
+    if (value.count() <= 0) {
+        throw std::invalid_argument("The job budget must be a positive number of milliseconds.");
+    }
+
+    budget = value;
+}
+
+bool Jobs::isOutOfTime(lua_State* L) const {
+    if (L != current) {
+        throw std::logic_error("A \"jobs.checkpoint\" call only runs inside a job started with \"jobs.spawn\".");
+    }
+
+    return std::chrono::steady_clock::now() >= deadline;
+}
+
+// Jobs take turns in order, so a job that used the whole budget goes last on the next frame. The first turn of a frame always runs, so the jobs move on even in a frame whose thread was held up past the budget.
+bool Jobs::isAnimating() const {
+    return !jobs.empty();
+}
+
+void Jobs::update() {
+    const auto now = std::chrono::steady_clock::now();
+    const auto remaining = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::time_point::max() - now);
+    deadline = budget >= remaining ? std::chrono::steady_clock::time_point::max() : now + budget;
+    const std::size_t turns = jobs.size();
+    for (std::size_t turn = 0; turn < turns && (turn == 0 || std::chrono::steady_clock::now() < deadline); ++turn) {
+        Job job = std::move(jobs.front());
+        jobs.pop_front();
+
+        if (resume(job)) {
+            jobs.push_back(std::move(job));
+        }
+    }
+}
+
+bool Jobs::resume(Job& job) {
+    lua_State* main = job.thread.getState();
+
+    if (job.ownership && !job.ownership->isConnected()) {
+        job.promise.rejectHandled("The job ended with its owner.");
+        return false;
+    }
+
+    int results = 0;
+    current = job.state;
+    const int status = lua_resume(job.state, main, 0, &results);
+    current = nullptr;
+
+    // A job that waits for anything else ends there like a cancelled task of Varn, so a promise it waits for never resumes its code.
+    if (status == LUA_YIELD) {
+        const bool paused = JobsLua::isCheckpoint(job.state, results);
+        lua_pop(job.state, results);
+
+        if (paused) {
+            return true;
+        }
+
+        job.thread.push(main);
+        varn::async::Promise::cancelTask(main, -1);
+        lua_pop(main, 1);
+        job.promise.reject("A job may only pause at \"jobs.checkpoint\". Wait for promises inside \"async.spawn\" instead.");
+        return false;
+    }
+
+    // The failed coroutine keeps its stack, so the rejection carries the stack of the job without the tab characters of a Lua traceback.
+    if (status != LUA_OK) {
+        const char* message = lua_tostring(job.state, -1);
+        const core::AppError error = Runtime::captureError(job.state, message != nullptr ? message : "The job failed with an error that is not a string.", 0);
+        job.promise.reject(std::string(error.what()) + "\n" + error.getTraceback());
+        return false;
+    }
+
+    if (results == 0) {
+        job.promise.resolveWith([](lua_State* state) { lua_pushnil(state); });
+        return false;
+    }
+
+    auto value = std::make_shared<Reference>(job.state, -results);
+    lua_pop(job.state, results);
+    job.promise.resolveWith([value](lua_State* state) { value->push(state); });
+    return false;
+}
+
+} // namespace haylen::lua

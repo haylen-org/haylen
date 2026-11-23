@@ -17,13 +17,15 @@
 #include "haylen/plugins/Plugin.hpp"
 #include "lua/ModuleGraph.hpp"
 
+struct lua_State;
+
 namespace haylen::platform {
 class DevelopmentSession;
 }
 
 namespace haylen::plugins {
 
-// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, a removed module that no code of the app requires leaves the app in place, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app still requires, a module that cannot merge and any module in the mode `restart`. The report of every batch tells for each changed file whether it applied in place, waits for the next load, never counts, was rejected or restarts the app, and why. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The plugin installs `haylen.hotReload` in every app, and the module graph only in development, so apps that ship load their modules exactly as before.
+// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, a removed module that no code of the app requires leaves the app in place, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app still requires, a module that cannot merge and any module in the mode `restart`. The report of every batch tells for each changed file whether it applied in place, waits for the next load, never counts, was rejected or restarts the app, and why. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The Lua module of hot reload installs `haylen.hotReload` in every app that runs Lua, and the module graph only in development, so apps that ship load their modules exactly as before.
 class HotReloadPlugin final : public Plugin {
   public:
     static constexpr std::chrono::milliseconds kScanInterval{500};
@@ -77,13 +79,15 @@ class HotReloadPlugin final : public Plugin {
         return "hotReload";
     }
     void start(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
 
     // Whether the app runs in development, where changes to its files reach it.
     [[nodiscard]] bool isActive() const noexcept {
         return session != nullptr;
     }
+
+    // Makes the module graph replace `require` of the Lua state in development, before the app loads any module, so the graph records the modules that the app loads.
+    void installGraph(lua_State* L);
 
     // The loaded modules of the app, which only an app in development records, or null.
     [[nodiscard]] lua::ModuleGraph* getGraph() noexcept {

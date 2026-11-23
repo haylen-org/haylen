@@ -4,8 +4,6 @@
 #include <string>
 #include <string_view>
 
-struct lua_State;
-
 namespace haylen::platform {
 struct Event;
 }
@@ -26,7 +24,6 @@ class Plugin {
 
     virtual void start(core::Engine& engine);
     virtual void stop(core::Engine& engine);
-    virtual void installLua(core::Engine& engine, lua_State* L);
     virtual void event(core::Engine& engine, const platform::Event& event);
     virtual void beginFrame(core::Engine& engine, float deltaSeconds);
     virtual void fixedUpdate(core::Engine& engine, float stepSeconds);

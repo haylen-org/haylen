@@ -22,6 +22,7 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -374,7 +375,7 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
 
     if (inspectorVisible) {
-        inspectorVisible = inspectorWindow->draw(engine.getLuaState(), backend);
+        inspectorVisible = inspectorWindow->draw(engine.getPlugin<lua::ScriptPlugin>().getState(), backend);
     }
 }
 
@@ -438,7 +439,7 @@ void DebugPlugin::answerInspection(const std::vector<std::string>& path, const s
     core::Json entries = core::Json::array();
     try {
         debug::Inspector::Listing listing;
-        debug::Inspector::list(owner->getLuaState(), path, listing);
+        debug::Inspector::list(owner->getPlugin<lua::ScriptPlugin>().getState(), path, listing);
         for (const debug::Inspector::Entry& entry : listing.entries) {
             entries.push_back({{"key", entry.key}, {"type", entry.type}, {"value", entry.value}, {"expandable", entry.expandable}});
         }
@@ -599,7 +600,7 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         const std::vector<std::string> path = debug::Inspector::splitPath(arguments.empty() ? std::string_view() : arguments[0].get_ref<const std::string&>());
         std::string text;
         debug::Inspector::Listing listing;
-        debug::Inspector::list(engine.getLuaState(), path, listing);
+        debug::Inspector::list(engine.getPlugin<lua::ScriptPlugin>().getState(), path, listing);
         for (const debug::Inspector::Entry& entry : listing.entries) {
             text += std::format("{}{}  {}{}{}", text.empty() ? "" : "\n", entry.key, entry.type, entry.value.empty() ? "" : "  ", entry.value);
         }
@@ -608,7 +609,7 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
     }}));
     builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets a number, a boolean or a string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
         const std::string& path = arguments[0].get_ref<const std::string&>();
-        debug::Inspector::set(engine.getLuaState(), debug::Inspector::splitPath(path), arguments[1].get_ref<const std::string&>());
+        debug::Inspector::set(engine.getPlugin<lua::ScriptPlugin>().getState(), debug::Inspector::splitPath(path), arguments[1].get_ref<const std::string&>());
         return std::format("Set \"{}\".", path);
     }}));
     builtInCommands.push_back(console.addCommand({.name = "inspector", .help = "Shows or hides the inspector window, or switches it when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
@@ -640,9 +641,17 @@ std::string DebugPlugin::describeNames(const std::vector<std::string>& names) {
     return text;
 }
 
+void DebugPlugin::setScriptMemory(std::function<std::size_t()> reader) {
+    scriptMemory = std::move(reader);
+}
+
+std::size_t DebugPlugin::getScriptMemory() const {
+    return scriptMemory ? scriptMemory() : 0;
+}
+
 // The code runs as an expression first, so `player.speed` prints its value, and as statements when it is not one.
 std::string DebugPlugin::runLua(core::Engine& engine, const std::string& chunk) {
-    lua_State* L = engine.getLuaState();
+    lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
     const int top = lua_gettop(L);
     const std::string expression = "return " + chunk;
     if (luaL_loadbufferx(L, expression.data(), expression.size(), "=console", "t") != LUA_OK) {
@@ -721,10 +730,6 @@ void DebugPlugin::endFrame(core::Engine& engine) {
 
     snapshot.clear();
     monitorSnapshot = std::move(snapshot);
-}
-
-void DebugPlugin::installLua(core::Engine&, lua_State* L) {
-    debug::DebugLua::install(L);
 }
 
 } // namespace haylen::plugins

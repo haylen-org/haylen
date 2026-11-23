@@ -23,6 +23,7 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/BenchmarkGpu.hpp"
 
@@ -136,7 +137,7 @@ class AnimationBenchmark final {
 
     // Builds 2000 units both ways on a sheet of 8 frames and times the body of a frame.
     static void measureLua(core::Engine& engine, const std::string& name, const std::string& body) {
-        lua_State* L = engine.getLuaState();
+        lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
         // clang-format off
         const std::string setup = R"(
             local animation2d = require('haylen.animation2d')

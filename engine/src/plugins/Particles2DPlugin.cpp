@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "2d/particles/Particles2DLua.hpp"
 #include "haylen/2d/particles/Effect.hpp"
 #include "haylen/2d/particles/ImageShape.hpp"
 #include "haylen/assets/Manager.hpp"
@@ -14,7 +13,6 @@
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 
 namespace haylen::plugins {
 
@@ -100,17 +98,7 @@ void Particles2DPlugin::start(core::Engine& engine) {
         },
         .finalize = [](std::shared_ptr<void> result, const assets::Manager::Request&) { return result; },
     });
-    engine.getPlugin<AssetsPlugin>().registerLuaPusher("particles", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        particles2d::Particles2DLua::pushEffect(L, std::static_pointer_cast<particles2d::Effect>(asset));
-    });
-    engine.getPlugin<AssetsPlugin>().registerLuaPusher("imageShape", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        particles2d::Particles2DLua::pushImageShape(L, std::static_pointer_cast<particles2d::ImageShape>(asset));
-    });
     // clang-format on
-}
-
-void Particles2DPlugin::installLua(core::Engine&, lua_State* L) {
-    particles2d::Particles2DLua::install(L);
 }
 
 void Particles2DPlugin::stop(core::Engine&) {

@@ -1,7 +1,5 @@
 #include "haylen/debug/StatsDisplay.hpp"
 
-#include <lua.hpp>
-
 #include <algorithm>
 #include <array>
 #include <format>
@@ -20,6 +18,7 @@
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/text/Font.hpp"
 
 namespace haylen::debug {
@@ -98,7 +97,7 @@ void StatsDisplay::format(core::Engine& engine, const graphics2d::Renderer::Stat
             break;
         case Item::Memory: {
             const std::optional<ObjectCounter::Snapshot> textures = ObjectCounter::find("Texture");
-            const double lua = static_cast<double>(lua_gc(engine.getLuaState(), LUA_GCCOUNT, 0)) / 1024.0;
+            const double lua = static_cast<double>(engine.getPlugin<plugins::DebugPlugin>().getScriptMemory()) / (1024.0 * 1024.0);
             std::format_to(out, "Lua {:.1f} MB, textures {:.1f} MB", lua, textures ? static_cast<double>(textures->bytes) / (1024.0 * 1024.0) : 0.0);
             break;
         }

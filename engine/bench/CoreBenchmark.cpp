@@ -26,6 +26,7 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "varn/runtime/Runtime.h"
 
@@ -105,7 +106,7 @@ class CoreBenchmark final {
     }
 
     static void runLua(core::Engine& engine, const std::string& source) {
-        lua::Runtime::runChunk(engine.getLuaState(), source, "=benchmark");
+        lua::Runtime::runChunk(engine.getPlugin<lua::ScriptPlugin>().getState(), source, "=benchmark");
     }
 
     static void measureFrames(core::Engine& engine) {

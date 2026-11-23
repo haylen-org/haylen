@@ -13,7 +13,7 @@ class Host;
 
 namespace haylen::plugins {
 
-// Plays the videos of the app with the decoder of the platform, keeping each one current at the start of every frame until it is released or the app stops, and installs `haylen.video`.
+// Plays the videos of the app with the decoder of the platform, keeping each one current at the start of every frame until it is released or the app stops.
 class VideoPlugin final : public Plugin {
   public:
     explicit VideoPlugin(platform::Host& platformHost) : host(platformHost) {}
@@ -22,7 +22,6 @@ class VideoPlugin final : public Plugin {
         return "video";
     }
     void stop(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
 
     // Whether a video loads or plays in a frame that its process mode runs, so its picture changes.

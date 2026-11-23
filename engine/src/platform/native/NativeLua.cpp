@@ -10,14 +10,15 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
+#include "lua/modules/NativeModule.hpp"
 #include "platform/native/NativeApi.hpp"
 #include "platform/native/NativeCallbacks.hpp"
 #include "platform/native/NativeSignature.hpp"
-#include "plugins/NativePlugin.hpp"
 
 namespace haylen::platform {
 
@@ -92,7 +93,7 @@ int NativeLua::callback(lua_State* L) {
     }
 
     core::Engine& engine = lua::Runtime::getEngine(L);
-    plugins::NativePlugin& plugin = engine.getPlugin<plugins::NativePlugin>();
+    lua::modules::NativeModule& plugin = engine.getPlugin<lua::ScriptPlugin>().getModule<lua::modules::NativeModule>();
     const std::uint64_t id = plugin.getCallbacks()->add(lua::Reference(L, 2));
     NativeCallback::Link link{.owner = plugin.getCallbacks(), .mailbox = engine.getPlatform().getMailbox(), .frameThread = std::this_thread::get_id(), .id = id};
     try {
@@ -126,7 +127,7 @@ int NativeLua::freeCallback(lua_State* L) {
         return 0;
     }
 
-    lua::Runtime::getEngine(L).getPlugin<plugins::NativePlugin>().getCallbacks()->remove(storage->getId());
+    lua::Runtime::getEngine(L).getPlugin<lua::ScriptPlugin>().getModule<lua::modules::NativeModule>().getCallbacks()->remove(storage->getId());
     NativeCallback::release(storage);
     storage.reset();
     return 0;

@@ -252,7 +252,7 @@ haylen --dev ~/apps/my-game --native ~/sdk/lib --native ~/apps/my-game/build/nat
 
 ## C++ plugins
 
-A C++ app, whose `kind` in `haylen.json` is `cpp` and whose sources compile against the prebuilt SDK of the engine, extends the engine with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. The method `installLua` installs a Lua module with the binding toolkit of `haylen/lua/`. A plugin added before the engine starts, or while it runs, gets `start` and `installLua` like a built-in one. The [embedding guide](../tools/embedding.md) shows a complete plugin.
+A C++ app, whose `kind` in `haylen.json` is `cpp` and whose sources compile against the prebuilt SDK of the engine, extends the engine with plugins of its own. They have the same lifecycle as the plugins of the engine: `start`, `fixedUpdate`, `update`, `render`, `renderUi`, `stop` and the lifecycle events, all on the frame thread. A plugin added before the engine starts, or while it runs, gets `start` like a built-in one. A plugin knows nothing of Lua, so a `lua::Module` installs its Lua module with the binding toolkit of `haylen/lua/`, and the application adds the module to the `lua::ScriptPlugin` with `ScriptPlugin::addModule`. The [embedding guide](../tools/embedding.md) shows a complete plugin.
 
 ```cpp
 class GamePlatformPlugin final : public haylen::plugins::Plugin {
@@ -264,9 +264,16 @@ class GamePlatformPlugin final : public haylen::plugins::Plugin {
     void update(haylen::core::Engine&, float) override {
         gp_run_callbacks();
     }
+};
 
-    void installLua(haylen::core::Engine&, lua_State* L) override {
-        haylen::lua::Binding::preload(L, "game.platform", &GamePlatformPlugin::open);
+class GamePlatformModule final : public haylen::lua::Module {
+  public:
+    [[nodiscard]] std::string_view getName() const noexcept override {
+        return "game.platform";
+    }
+
+    void install(haylen::core::Engine&, lua_State* L) override {
+        haylen::lua::Binding::preload(L, "game.platform", &GamePlatformModule::open);
     }
 
   private:

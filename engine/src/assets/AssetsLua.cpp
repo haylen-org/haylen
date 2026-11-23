@@ -16,10 +16,11 @@
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
+#include "haylen/lua/modules/AssetsModule.hpp"
 #include "lua/Owners.hpp"
 #include "varn/async/Promise.h"
 
@@ -141,7 +142,7 @@ int AssetsLua::load(lua_State* L) {
     const std::string path = lua::Stack::read<std::string>(L, 1);
     const std::string type = readType(L, 2, path);
     const std::shared_ptr<void> asset = getAssets(L).load(type, path, readOptions(L, 3));
-    lua::Runtime::getEngine(L).getPlugin<plugins::AssetsPlugin>().pushAsset(L, type, asset);
+    lua::Runtime::getEngine(L).getPlugin<lua::ScriptPlugin>().getModule<lua::modules::AssetsModule>().pushAsset(L, type, asset);
     return 1;
 }
 
@@ -150,10 +151,10 @@ int AssetsLua::loadAsync(lua_State* L) {
     core::Engine& owner = lua::Runtime::getEngine(L);
     const std::string path = lua::Stack::read<std::string>(L, 1);
     const std::string type = readType(L, 2, path);
-    auto promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(owner.getPlugin<lua::ScriptPlugin>().getRuntime());
 
     // clang-format off
-    owner.getAssets().loadAsync(type, path, [promise, type, plugin = &owner.getPlugin<plugins::AssetsPlugin>()](std::shared_ptr<void> asset, std::string error) {
+    owner.getAssets().loadAsync(type, path, [promise, type, plugin = &owner.getPlugin<lua::ScriptPlugin>().getModule<lua::modules::AssetsModule>()](std::shared_ptr<void> asset, std::string error) {
         if (!asset) {
             promise->reject(error);
             return;
@@ -219,7 +220,7 @@ int AssetsLua::preload(lua_State* L) {
         // clang-format on
     }
 
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     engine.getAssets().preload(name, std::move(onProgress), [promise](std::vector<std::string> errors) {
         promise->resolveCustom([errors = std::move(errors)](lua_State* state) { lua::Stack::push(state, errors); });

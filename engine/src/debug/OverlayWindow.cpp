@@ -15,6 +15,7 @@
 #include "haylen/core/Scene.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/debug/Profiler.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -331,7 +332,11 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, plugins::De
     // Listeners whose owner died stay connected until their topic emits again, so the warning shows even while their section is closed.
     const Profiler& profiler = engine.getProfiler();
     engine.getEvents().readTopics(events);
-    core::SignalLua::readNamedSignals(engine.getLuaState(), signals);
+    if (const lua::ScriptPlugin* script = engine.getPlugins().find<lua::ScriptPlugin>()) {
+        core::SignalLua::readNamedSignals(script->getState(), signals);
+    } else {
+        signals.clear();
+    }
     const std::size_t stale = countStale(events) + countStale(signals);
     drawFrame(stats.frame);
     drawEventLoop(stats.eventLoop);

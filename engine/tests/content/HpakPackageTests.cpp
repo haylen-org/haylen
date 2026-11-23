@@ -30,6 +30,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/CountingPackage.hpp"
@@ -476,7 +477,7 @@ TEST_F(HpakPackageTest, RunsAnAppFromItsRelease) {
     engine.start();
     engine.frame(1.0 / 60.0);
 
-    lua_State* L = engine.getLuaState();
+    lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
     lua_getglobal(L, "loaded");
     EXPECT_STREQ(lua_tostring(L, -1), "menu 3 9437184");
     lua_pop(L, 1);

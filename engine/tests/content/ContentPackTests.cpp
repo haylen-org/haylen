@@ -17,6 +17,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "io/CompositePackage.hpp"
 #include "support/ContentAppFixture.hpp"
@@ -101,7 +102,7 @@ TEST_F(ContentPackTest, FailsALoadWhoseSourceFailsOrGoesAway) {
 TEST_F(ContentPackTest, TakesPacksFromTheSourcesThatLuaGives) {
     run(shipped.getPath() / "app");
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
-    lua_State* L = engine->getLuaState();
+    lua_State* L = engine->getPlugin<lua::ScriptPlugin>().getState();
     lua::Stack::push(L, (shipped.getPath() / "packs" / "expansion").string());
     lua_setglobal(L, "packFolder");
 

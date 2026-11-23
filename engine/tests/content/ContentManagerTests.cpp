@@ -22,6 +22,7 @@
 #include "haylen/core/ScopedConnection.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/ContentAppFixture.hpp"
@@ -265,7 +266,7 @@ TEST_F(ContentManagerTest, LogsAPrefetchThatFailsWhileNothingAwaitsItAndKeepsThe
         }
     });
     // clang-format on
-    lua_State* L = engine->getLuaState();
+    lua_State* L = engine->getPlugin<lua::ScriptPlugin>().getState();
     ASSERT_EQ(luaL_dostring(L, "require('haylen.content').prefetch({'levels/forest.json'})"), LUA_OK) << lua_tostring(L, -1);
     const bool logged = frameUntil([&lines] { return !lines.empty(); });
 
@@ -286,7 +287,7 @@ TEST_F(ContentManagerTest, RejectsAPrefetchWithTheFailureThatDescribesIt) {
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
     setPacksStatus(503);
 
-    lua_State* L = engine->getLuaState();
+    lua_State* L = engine->getPlugin<lua::ScriptPlugin>().getState();
     // clang-format off
     ASSERT_EQ(luaL_dostring(L, R"lua(
         require('async').spawn(function()
@@ -437,7 +438,7 @@ TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater)
     EXPECT_TRUE(engine.isStartHeld());
     engine.frame(1.0 / 60.0);
     engine.frame(1.0 / 60.0);
-    lua_State* L = engine.getLuaState();
+    lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
     lua_getglobal(L, "greeting");
     EXPECT_STREQ(lua_tostring(L, -1), "Play");
     lua_pop(L, 1);

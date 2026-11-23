@@ -28,6 +28,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
@@ -868,12 +869,12 @@ TEST_F(EngineTest, ExposesServicesAndPlatformName) {
     EXPECT_EQ(engine.getConfig().identifier, "com.haylen.tests");
     EXPECT_EQ(&engine.getWindow(), &fixture.host());
     EXPECT_EQ(engine.getPackage().getName(), "test");
-    EXPECT_NE(engine.getLuaState(), nullptr);
+    EXPECT_NE(engine.getPlugin<lua::ScriptPlugin>().getState(), nullptr);
     EXPECT_NE(engine.getDefaultFont(), nullptr);
-    EXPECT_NE(engine.getPlugins().find("core"), nullptr);
-    EXPECT_NE(engine.getPlugins().find("graphics2d"), nullptr);
+    EXPECT_NE(engine.getPlugins().find("script"), nullptr);
+    EXPECT_NE(engine.getPlugins().find("ui"), nullptr);
     EXPECT_NE(engine.getPlugins().find("physics2d"), nullptr);
-    EXPECT_NE(engine.getPlugins().find("assets"), nullptr);
+    EXPECT_NE(engine.getPlugins().find("animation2d"), nullptr);
 }
 
 TEST_F(EngineTest, ConstructorRejectsMissingParts) {

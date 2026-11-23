@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include "2d/tiled/TiledLua.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/tiled/AutoMapper.hpp"
 #include "haylen/2d/tiled/Map.hpp"
@@ -23,7 +22,6 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 
 namespace haylen::plugins {
 
@@ -198,21 +196,7 @@ void TiledPlugin::start(core::Engine& engine) {
         .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
     });
 
-    AssetsPlugin& assetsPlugin = engine.getPlugin<AssetsPlugin>();
-    assetsPlugin.registerLuaPusher("tiled", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        tiled::TiledLua::pushMap(L, std::static_pointer_cast<tiled::Map>(asset));
-    });
-    assetsPlugin.registerLuaPusher("tiledRules", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        tiled::TiledLua::pushAutoMapper(L, std::static_pointer_cast<tiled::AutoMapper>(asset));
-    });
-    assetsPlugin.registerLuaPusher("tiledWorld", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        tiled::TiledLua::pushWorld(L, *std::static_pointer_cast<tiled::World>(asset));
-    });
     // clang-format on
-}
-
-void TiledPlugin::installLua(core::Engine&, lua_State* L) {
-    tiled::TiledLua::install(L);
 }
 
 } // namespace haylen::plugins

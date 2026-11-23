@@ -21,6 +21,7 @@
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/BenchmarkGpu.hpp"
 
@@ -247,7 +248,7 @@ class ParticleBenchmark final {
 
     // Updates many emitters from Lua every frame, one call each, which is what scenes full of effects cost the frame thread.
     static void measureLua(core::Engine& engine) {
-        lua_State* L = engine.getLuaState();
+        lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
         // clang-format off
         const char* setup = R"(
             local graphics = require('haylen.graphics')

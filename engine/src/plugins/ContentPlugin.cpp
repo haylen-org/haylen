@@ -19,10 +19,6 @@ void ContentPlugin::stop(core::Engine&) {
     screen.reset();
 }
 
-void ContentPlugin::installLua(core::Engine&, lua_State* L) {
-    content::ContentLua::install(L);
-}
-
 void ContentPlugin::event(core::Engine&, const platform::Event& event) {
     if (screen) {
         screen->handleEvent(event);

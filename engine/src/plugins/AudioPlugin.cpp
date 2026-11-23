@@ -3,7 +3,6 @@
 #include <memory>
 #include <utility>
 
-#include "audio/AudioLua.hpp"
 #include "audio/SoundData.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Sound.hpp"
@@ -11,10 +10,7 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
-#include "haylen/lua/Stack.hpp"
-#include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/Event.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 
 namespace haylen::plugins {
 
@@ -37,9 +33,6 @@ void AudioPlugin::start(core::Engine& engine) {
             const audio::Sound fresh = request.reader ? audio::Sound::stream(std::move(request.reader)) : audio::Sound::decode(request.bytes);
             std::static_pointer_cast<audio::SoundData>(asset)->replace(*fresh.getData());
         },
-    });
-    engine.getPlugin<AssetsPlugin>().registerLuaPusher("sound", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        lua::Stack::push(L, audio::Sound(std::static_pointer_cast<const audio::SoundData>(asset)));
     });
     // clang-format on
 
@@ -78,10 +71,6 @@ void AudioPlugin::stop(core::Engine& engine) {
 
 bool AudioPlugin::isAnimating() const {
     return mixer != nullptr && mixer->getOutputState() != outputState;
-}
-
-void AudioPlugin::installLua(core::Engine&, lua_State* L) {
-    audio::AudioLua::install(L);
 }
 
 // Platforms report interruptions that the audio device cannot see, such as the audio focus of Android, and they take the same path as the notifications of the device. A reset of the audio services of the system, such as the media services of iOS, leaves the device silent, so the output opens again.

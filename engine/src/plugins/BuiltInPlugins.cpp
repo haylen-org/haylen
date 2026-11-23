@@ -2,7 +2,6 @@
 
 #include <memory>
 
-#include "haylen/plugins/AssetsPlugin.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
@@ -16,32 +15,17 @@
 #include "plugins/AudioPlugin.hpp"
 #include "plugins/ContentPlugin.hpp"
 #include "plugins/ConversationPlugin.hpp"
-#include "plugins/CorePlugin.hpp"
-#include "plugins/DebuggerPlugin.hpp"
-#include "plugins/ExecutionBudgetPlugin.hpp"
-#include "plugins/Graphics2DPlugin.hpp"
 #include "plugins/HotReloadPlugin.hpp"
-#include "plugins/InputPlugin.hpp"
-#include "plugins/JobsPlugin.hpp"
-#include "plugins/NativePlugin.hpp"
-#include "plugins/Navigation2DPlugin.hpp"
 #include "plugins/Nodes2DPlugin.hpp"
 #include "plugins/Particles2DPlugin.hpp"
 #include "plugins/Physics2DPlugin.hpp"
 #include "plugins/PlatformPlugin.hpp"
-#include "plugins/Procedural2DPlugin.hpp"
 #include "plugins/ReturnHoldPlugin.hpp"
-#include "plugins/Spatial2DPlugin.hpp"
 #include "plugins/TiledPlugin.hpp"
 
 namespace haylen::plugins {
 
 void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host) {
-    registry.add(std::make_unique<CorePlugin>());
-    registry.add(std::make_unique<JobsPlugin>());
-    registry.add(std::make_unique<InputPlugin>());
-    registry.add(std::make_unique<Graphics2DPlugin>());
-    registry.add(std::make_unique<AssetsPlugin>());
     registry.add(std::make_unique<ContentPlugin>());
     registry.add(std::make_unique<TextPlugin>(host));
     registry.add(std::make_unique<Animation2DPlugin>());
@@ -50,22 +34,16 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<VideoPlugin>(host));
     registry.add(std::make_unique<TiledPlugin>());
     registry.add(std::make_unique<Nodes2DPlugin>());
-    registry.add(std::make_unique<Spatial2DPlugin>());
-    registry.add(std::make_unique<Procedural2DPlugin>());
-    registry.add(std::make_unique<Navigation2DPlugin>());
     registry.add(std::make_unique<LocalizationPlugin>());
     registry.add(std::make_unique<ConversationPlugin>());
     registry.add(std::make_unique<StoragePlugin>());
     registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
-    registry.add(std::make_unique<ExecutionBudgetPlugin>(host.getDevelopmentSession()));
-    registry.add(std::make_unique<DebuggerPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<Physics2DPlugin>());
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<ReturnHoldPlugin>(host));
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement(), host.getBlockedReason()));
     registry.add(std::make_unique<PlatformPlugin>());
-    registry.add(std::make_unique<NativePlugin>());
 }
 
 } // namespace haylen::plugins

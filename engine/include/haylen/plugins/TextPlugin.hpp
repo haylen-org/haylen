@@ -28,7 +28,7 @@ class Host;
 
 namespace haylen::plugins {
 
-// Owns the text services the engine shares: the registry of the effects and icons rich text markup names, the fonts of the system that families draw what none of their fonts holds with, and the `bitmapFont` asset type for BMFont files and the `gridFont` type for images of equal cells. Fonts, families and rich text reach Lua through `haylen.graphics` and `haylen.graphics2d`.
+// Owns the text services the engine shares: the registry of the effects and icons rich text markup names, the fonts of the system that families draw what none of their fonts holds with, and the `bitmapFont` asset type for BMFont files and the `gridFont` type for images of equal cells.
 class TextPlugin final : public Plugin {
   public:
     explicit TextPlugin(platform::Host& platformHost) : host(platformHost) {}

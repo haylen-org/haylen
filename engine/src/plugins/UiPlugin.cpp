@@ -36,7 +36,6 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/localization/Catalog.hpp"
-#include "haylen/lua/Runtime.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
@@ -44,13 +43,11 @@
 #include "haylen/text/TrueTypeFont.hpp"
 #include "haylen/ui/Screen.hpp"
 #include "ui/ImGuiConverter.hpp"
-#include "ui/ImGuiLua.hpp"
 #include "ui/ImageLibrary.hpp"
 #include "ui/MessageView.hpp"
 #include "ui/PresentationView.hpp"
 #include "ui/SoundLibrary.hpp"
 #include "ui/TextSession.hpp"
-#include "ui/UiLua.hpp"
 #include "ui/components/BuiltInComponents.hpp"
 
 namespace haylen::plugins {
@@ -121,7 +118,7 @@ void UiPlugin::stop(core::Engine& engine) {
     themeFiles.clear();
     fontFamilies.clear();
 
-    // No GUI is left to report events, and listeners holding Lua functions let go before the Lua state closes.
+    // No GUI is left to report events, and listeners holding functions of scripts let go before their runtime closes.
     if (navigation) {
         navigation->closeAll();
         navigation.reset();
@@ -283,7 +280,7 @@ void UiPlugin::publishAccessibility(core::Engine& engine) {
 
 // The navigation moves on with the real time of the UI, after the events of the GUIs, so a screen that a handler pushes starts its transition in this frame.
 void UiPlugin::update(core::Engine& engine, float) {
-    deliverEvents(engine);
+    deliverEvents();
     if (std::exchange(backRequested, false)) {
         navigation->goBack();
     }
@@ -308,7 +305,7 @@ void UiPlugin::render(core::Engine&) {
     navigation->render();
 }
 
-void UiPlugin::deliverEvents(core::Engine& engine) {
+void UiPlugin::deliverEvents() {
     // Handlers may mount or unmount GUIs, so the loop walks a copy and skips GUIs that are gone.
     delivering.assign(guis.begin(), guis.end());
     for (const Mounted& entry : delivering) {
@@ -318,23 +315,20 @@ void UiPlugin::deliverEvents(core::Engine& engine) {
                 break;
             }
 
-            deliver(engine, gui, event);
+            deliver(gui, event);
         }
     }
 
     delivering.clear();
 }
 
-// Listeners hear an event before the handlers of its node.
-void UiPlugin::deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event) {
+void UiPlugin::deliver(ui::Gui& gui, const ui::Event& event) {
     events.emit(gui, event);
-    ui::UiLua::deliverEvent(engine.getLuaState(), gui, event);
 }
 
 // An event delivered at once runs inside whatever changed the GUI, so a failing handler goes to the error screen instead of stopping that change halfway.
 void UiPlugin::deliverAtOnce(ui::Gui& gui, const ui::Event& event) {
-    core::Engine& engine = *owner;
-    lua::Runtime::runReporting(engine.getLuaState(), [&] { deliver(engine, gui, event); });
+    owner->runReporting([&] { deliver(gui, event); });
 }
 
 // Every view draws the GUIs of its scenes, a view that leaves through a transition into its own image before the frame ends, and the current view also the GUIs that belong to no scene, which ends the frame. During an effect that shows both scenes, such as a slide, the GUIs of no scene wait for the view of the effect, which draws them on the screen above it, so the bars of an app stay in place while its pages change.
@@ -878,7 +872,7 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
 
     owner->requestRedraw();
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
-    ui::UiLua::forgetGui(owner->getLuaState(), gui);
+    guiUnmounted.emit(gui);
     if (navigation) {
         navigation->closeHostedBy(*unmounted);
     }
@@ -1186,11 +1180,6 @@ bool UiPlugin::isUsingPointer() const {
 
 bool UiPlugin::isUsingKeyboard() const {
     return backend && backend->isUsingKeyboard();
-}
-
-void UiPlugin::installLua(core::Engine&, lua_State* L) {
-    ui::UiLua::install(L);
-    ui::ImGuiLua::install(L);
 }
 
 } // namespace haylen::plugins

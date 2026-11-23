@@ -18,6 +18,7 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -61,7 +62,7 @@ void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIn
     }
 
     auto pending = std::make_shared<Call>();
-    pending->promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
+    pending->promise = std::make_shared<varn::async::Promise>(owner.getPlugin<lua::ScriptPlugin>().getRuntime());
     pending->cancel = &cancelBridgeCall;
     pending->id = owner.getPlatform().call(method, params, settle(pending), timeout);
     lua::Userdata::emplace<Call>(L, std::move(pending));
@@ -426,7 +427,7 @@ int PlatformLua::openScreenOfPlugin(lua_State* L) {
     Screens::Options options = readScreenOptions(L, 4);
 
     auto pending = std::make_shared<Call>();
-    pending->promise = std::make_shared<varn::async::Promise>(owner.getScriptRuntime());
+    pending->promise = std::make_shared<varn::async::Promise>(owner.getPlugin<lua::ScriptPlugin>().getRuntime());
     pending->cancel = &cancelScreen;
     pending->id = owner.getScreens().open(id, std::move(screen), std::move(params), std::move(options), settle(pending));
     lua::Userdata::emplace<Call>(L, std::move(pending));

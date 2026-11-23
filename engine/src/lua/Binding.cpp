@@ -5,13 +5,14 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "varn/runtime/Runtime.h"
 
 namespace haylen::lua {
 
 void Binding::preload(lua_State* L, const char* name, lua_CFunction opener) {
-    if (!Runtime::getEngine(L).getScriptRuntime().addModule(name, opener)) {
-        throw std::runtime_error("The Lua module \"" + std::string(name) + "\" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.");
+    if (!Runtime::getEngine(L).getPlugin<ScriptPlugin>().getRuntime().addModule(name, opener)) {
+        throw std::runtime_error("The Lua module \"" + std::string(name) + "\" cannot be added, because a module of Varn or another module of the engine already has its name. Give the module another name.");
     }
 }
 

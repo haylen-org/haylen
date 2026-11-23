@@ -1,4 +1,5 @@
 #include "support/EngineFixture.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 
 #include <lua.hpp>
 
@@ -112,7 +113,7 @@ bool EngineFixture::frameUntil(const std::function<bool()>& condition, std::chro
 }
 
 std::string EngineFixture::lua(const std::string& source) {
-    lua_State* L = runningEngine->getLuaState();
+    lua_State* L = runningEngine->getPlugin<lua::ScriptPlugin>().getState();
     const int top = lua_gettop(L);
     std::string result;
     if (luaL_loadbufferx(L, source.data(), source.size(), "=test", "t") != LUA_OK || lua_pcall(L, 0, 1, 0) != LUA_OK) {

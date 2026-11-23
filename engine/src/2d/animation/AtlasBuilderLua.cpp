@@ -14,6 +14,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -76,7 +77,7 @@ int AtlasBuilderLua::buildAsync(lua_State* L) {
     const AtlasBuilder::Options options = readOptions(L, 2);
     auto builder = std::make_shared<const AtlasBuilder>(lua::Userdata::check<AtlasBuilder>(L, 1));
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     engine.getJobs().run([builder, options] { return builder->pack(options); }, [promise, device = &engine.getGraphics(), options](core::JobSystem::Result<AtlasBuilder::Packed> result) {
         if (!result.isOk()) {

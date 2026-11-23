@@ -18,6 +18,7 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/NativeProperty.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
@@ -1015,7 +1016,7 @@ int TweenLua::handleKill(lua_State* L) {
 int TweenLua::handleWait(lua_State* L) {
     const std::shared_ptr<Tween> tween = check(L, 1);
     Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     const auto settle = [promise](bool completed) {
         promise->resolveCustom([completed](lua_State* state) { lua_pushboolean(state, completed ? 1 : 0); });

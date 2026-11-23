@@ -23,6 +23,7 @@
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Random.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/BenchmarkGpu.hpp"
 
@@ -324,7 +325,7 @@ class PhysicsBenchmark final {
 
     // Steps a pile from Lua with and without the hit and contact callbacks set, which is what reaches scripts.
     static void measureLuaEvents(core::Engine& engine) {
-        lua_State* L = engine.getLuaState();
+        lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
         // clang-format off
         const char* setup = R"(
             local physics2d = require('haylen.physics2d')

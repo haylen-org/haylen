@@ -9,6 +9,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 
 namespace haylen::platform {
@@ -29,7 +30,7 @@ void SystemAnswerLua::settle(core::Engine& engine, const lua::Promise& promise, 
 }
 
 void SystemAnswerLua::reject(core::Engine& engine, const lua::Promise& promise, const SystemAnswer& answer) {
-    lua_State* main = engine.getLuaState();
+    lua_State* main = engine.getPlugin<lua::ScriptPlugin>().getState();
     lua_createtable(main, 0, 3);
     lua::Stack::push(main, answer.message);
     lua_setfield(main, -2, "error");

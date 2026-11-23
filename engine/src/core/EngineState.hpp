@@ -49,7 +49,6 @@
 #include "haylen/plugins/PluginRegistry.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/Host.hpp"
-#include "varn/runtime/Runtime.h"
 
 namespace haylen::core {
 
@@ -102,7 +101,6 @@ struct EngineState {
 
     std::shared_ptr<text::Font> defaultFont;
     std::unique_ptr<JobSystem> jobs;
-    std::unique_ptr<varn::runtime::Runtime> runtime;
     Engine::EventLoopPoll loopPoll;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
 
@@ -171,7 +169,7 @@ struct EngineState {
     std::vector<std::weak_ptr<void>> startHolds;
     bool applicationPending = false;
 
-    // Whether the app starts, from the start of the engine until `source/main.lua` and the steps it began finished, which the reports of its errors tell.
+    // Whether the app starts, from the start of the engine until the start of the application and the steps it began finished, which the reports of its errors tell.
     bool starting = false;
 
     // The phase of the error that shows, as its record names it.

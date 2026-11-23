@@ -169,11 +169,6 @@ std::exception_ptr StoragePlugin::runOperations(Operations& queue) {
     return failure;
 }
 
-void StoragePlugin::installLua(core::Engine&, lua_State* L) {
-    storage::StorageLua::install(L);
-    storage::PreferencesLua::install(L);
-}
-
 storage::SaveSlots& StoragePlugin::getSaveSlots() {
     if (!saveSlots) {
         throw std::logic_error("The storage plugin has not started.");

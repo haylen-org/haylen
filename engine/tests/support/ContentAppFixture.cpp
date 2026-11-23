@@ -1,4 +1,5 @@
 #include "support/ContentAppFixture.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 
 #include <lua.hpp>
 
@@ -108,7 +109,7 @@ bool ContentAppFixture::frameUntil(const std::function<bool()>& condition, std::
 }
 
 bool ContentAppFixture::hasStarted() const {
-    lua_State* L = engine->getLuaState();
+    lua_State* L = engine->getPlugin<lua::ScriptPlugin>().getState();
     lua_getglobal(L, "started");
     const bool started = lua_toboolean(L, -1) != 0;
     lua_pop(L, 1);
@@ -116,7 +117,7 @@ bool ContentAppFixture::hasStarted() const {
 }
 
 std::string ContentAppFixture::getGlobalText(const char* name) const {
-    lua_State* L = engine->getLuaState();
+    lua_State* L = engine->getPlugin<lua::ScriptPlugin>().getState();
     lua_getglobal(L, name);
     std::string text = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : "";
     lua_pop(L, 1);

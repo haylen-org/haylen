@@ -18,7 +18,7 @@ class DebuggerPlugin final : public Plugin {
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "debugger";
     }
-    void installLua(core::Engine& engine, lua_State* L) override;
+    void start(core::Engine& engine) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
     void stop(core::Engine& engine) override;
 

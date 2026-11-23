@@ -17,8 +17,9 @@
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
+#include "haylen/lua/modules/AssetsModule.hpp"
 #include "haylen/platform/Event.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -452,7 +453,7 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
     // Lua loads an asset of a new type once the plugin of the type tells how Lua sees it.
     fixture.runLua("assets = require('haylen.assets')");
     EXPECT_NE(fixture.lua("assets.load('levels/one.level')").find("The asset type \"level\" has no Lua representation."), std::string::npos);
-    fixture.engine().getPlugin<plugins::AssetsPlugin>().registerLuaPusher("level", [](lua_State* L, const std::shared_ptr<void>& asset) { lua_pushinteger(L, *std::static_pointer_cast<int>(asset)); });
+    fixture.engine().getPlugin<lua::ScriptPlugin>().getModule<lua::modules::AssetsModule>().registerPusher("level", [](lua_State* L, const std::shared_ptr<void>& asset) { lua_pushinteger(L, *std::static_pointer_cast<int>(asset)); });
     EXPECT_EQ(fixture.lua("return assets.load('levels/one.level')"), "3");
 }
 

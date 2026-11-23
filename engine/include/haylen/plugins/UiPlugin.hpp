@@ -42,7 +42,7 @@ class SoundLibrary;
 
 namespace haylen::plugins {
 
-// Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the GUIs the app mounts. Lua sees it as `haylen.ui` and `haylen.imgui`.
+// Runs the app UI: Dear ImGui over the app, the themes, the component kinds and the GUIs the app mounts.
 class UiPlugin final : public Plugin {
   public:
     UiPlugin();
@@ -58,7 +58,6 @@ class UiPlugin final : public Plugin {
     void update(core::Engine& engine, float deltaSeconds) override;
     void render(core::Engine& engine) override;
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     [[nodiscard]] bool isCapturingBack() const override;
     [[nodiscard]] bool isFrameComplete() const override;
 
@@ -97,8 +96,11 @@ class UiPlugin final : public Plugin {
     // Returns the mounted GUI at an address, such as the one the focus navigator names, or nothing when no mounted GUI lives there.
     [[nodiscard]] std::shared_ptr<ui::Gui> findMounted(const ui::Gui* gui) const;
 
-    // Hands out the events of every mounted GUI once per frame, before the app updates.
+    // Hands out the events of every mounted GUI once per frame, before the app updates, to the listeners of the GUIs and then to the handlers of its nodes, which listen with the lowest priority.
     core::Signal<ui::Gui&, const ui::Event&> events;
+
+    // Fires for every GUI that unmounted, once its last events reached the listeners, so what keeps state of the GUI lets go of it.
+    core::Signal<const ui::Gui&> guiUnmounted;
 
     // The theme the app chose. While the system asks for higher contrast the UI draws the high contrast theme that the chosen theme names with the sounds of the chosen theme, and while it asks for reduced transparency it draws the surfaces of the theme opaque, so `getTheme` returns the theme the UI draws. Throws for a theme whose high contrast theme the UI does not know. A theme starts loading its sounds in the background once it is added.
     void addTheme(ui::Theme theme);
@@ -209,8 +211,8 @@ class UiPlugin final : public Plugin {
     // Performs an action that a screen reader asked of an element of the last frame, and hands the elements of this frame to the platform.
     void perform(const platform::Accessibility::Request& request);
     void publishAccessibility(core::Engine& engine);
-    void deliverEvents(core::Engine& engine);
-    void deliver(core::Engine& engine, ui::Gui& gui, const ui::Event& event);
+    void deliverEvents();
+    void deliver(ui::Gui& gui, const ui::Event& event);
     void deliverAtOnce(ui::Gui& gui, const ui::Event& event);
     void prepareGuis();
     void beginWindow(const char* name, ImGuiWindowFlags flags);

@@ -23,7 +23,6 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
-#include "lua/Environment.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/native/NativeApi.hpp"
@@ -54,14 +53,13 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     state = std::make_unique<EngineState>(host, std::move(package), std::move(config), std::move(application));
     EngineState& current = *state;
 
-    // The job system comes first because asset loading, the services and Lua all run on its scheduler. A job runs once, so the app restarts after its failure instead of resuming without what the job would have done.
+    // The job system comes first because asset loading, the services and the runtimes of scripts all run on its scheduler. A job runs once, so the app restarts after its failure instead of resuming without what the job would have done.
     // clang-format off
     current.jobs = std::make_unique<JobSystem>([this](const std::string& message) {
         const PhaseScope scope(*this, Phase::Lifecycle);
         reportError(message);
     });
     // clang-format on
-    current.runtime = std::make_unique<varn::runtime::Runtime>(current.jobs->getScheduler(), std::vector<std::string>{"haylen", std::string(current.package->getName())}, 1);
     current.graphics = std::make_unique<graphics::Device>(host.createGpuDevice());
     audio::Mixer::Setup audioSetup = host.getAudioSetup();
     audioSetup.session = current.config.audioSession;
@@ -137,12 +135,13 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.fold = getFold();
 
     plugins::BuiltInPlugins::registerAll(current.plugins, host);
+    current.application->addPlugins(*this);
 }
 
 Engine::~Engine() {
     stop();
 
-    // Everything that holds Lua references lets go before the Lua state closes, including scenes that stop hooks requested and work still queued on the pools, and Lua and the worker pools go before the assets, plugins and GPU resources they still reference. The job system stops with the pools, so what the closing Lua state and the services after it post is dropped at once, and it outlives every service that holds it.
+    // Everything that holds values of the scripts of the app lets go before the plugin that runs them closes their runtime, including scenes that stop hooks requested and work still queued on the pools, and the worker pools stop before the plugins, assets and GPU resources that their work still references. The job system drops what is posted from then on, so what the closing runtime and the services after it post is dropped at once, and it outlives every service that holds it.
     EngineState& current = *state;
     current.timers.clear();
     current.tweens.clear();
@@ -159,14 +158,12 @@ Engine::~Engine() {
     current.gamepadMotion->clear();
     current.outputs.reset();
     current.displays.reset();
-    current.runtime->stop();
     current.jobs->stop();
-    current.runtime.reset();
 
-    // The motion of gamepads outlives the Lua state, whose owners still end their requests while it closes.
+    // The plugins go in reverse order, so a plugin that runs scripts closes their runtime before the plugins it builds on go, and the motion of gamepads, audio and assets outlive it, since its owners still end their requests while it closes.
+    current.plugins.clear();
     current.gamepadMotion.reset();
     current.audio.reset();
-    current.plugins.clear();
     current.assets.reset();
     current.defaultFont.reset();
     current.renderer.reset();
@@ -181,7 +178,6 @@ void Engine::activatePlugin(plugins::Plugin& plugin) {
 
     plugin.start(*this);
     state->startedPlugins.push_back(&plugin);
-    plugin.installLua(*this, getLuaState());
     state->events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin.getName())}});
 }
 
@@ -200,19 +196,11 @@ void Engine::start() {
     const PhaseScope scope(*this, Phase::Lifecycle);
 
     try {
-        lua::Environment::install(*this, getLuaState());
         for (plugins::Plugin* plugin : current.plugins.getAll()) {
             plugin->start(*this);
             current.startedPlugins.push_back(plugin);
-            plugin->installLua(*this, getLuaState());
             current.events.emit(LifecycleEvent::kPluginStarted, {{"name", std::string(plugin->getName())}});
         }
-
-        if (!current.host.hasNativeAccess()) {
-            lua::Environment::withholdNativeAccess(getLuaState());
-        }
-
-        lua::Environment::checkModules(*this);
 
         if (isStartHeld()) {
             current.applicationPending = true;
@@ -290,7 +278,7 @@ void Engine::stop() {
     current.started = false;
     const PhaseScope scope(*this, Phase::Lifecycle);
 
-    // Stopping runs app code that may fail like any other, and every part still stops so nothing holds Lua references once the Lua state closes.
+    // Stopping runs app code that may fail like any other, and every part still stops so nothing holds values of the scripts of the app once their runtime closes.
     // clang-format off
     const auto attempt = [this](const auto& step) {
         try {
@@ -1469,6 +1457,14 @@ bool Engine::isLaunched() const noexcept {
     return state->host.isLaunched();
 }
 
+bool Engine::hasNativeAccess() const noexcept {
+    return state->host.hasNativeAccess();
+}
+
+platform::DevelopmentSession* Engine::getDevelopmentSession() const noexcept {
+    return state->host.getDevelopmentSession();
+}
+
 std::span<const std::string> Engine::getLaunchArguments() const noexcept {
     return state->host.getLaunchArguments();
 }
@@ -1638,14 +1634,6 @@ const Engine::EventLoopPoll& Engine::getEventLoopPoll() const noexcept {
 std::chrono::nanoseconds Engine::getPollBudget(double frameSeconds) noexcept {
     const std::chrono::duration<double> share(frameSeconds * kPollBudgetShare);
     return std::clamp(std::chrono::duration_cast<std::chrono::nanoseconds>(share), kMinimumPollBudget, kMaximumPollBudget);
-}
-
-varn::runtime::Runtime& Engine::getScriptRuntime() noexcept {
-    return *state->runtime;
-}
-
-lua_State* Engine::getLuaState() noexcept {
-    return state->runtime->luaState();
 }
 
 } // namespace haylen::core

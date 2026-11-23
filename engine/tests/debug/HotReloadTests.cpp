@@ -25,6 +25,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -161,7 +162,7 @@ TEST_F(HotReloadPluginTest, ReloadsTheLuaOfAPluginInPlace) {
     directory.write("hot/plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})");
     directory.write("hot/plugins/ads/source/init.lua", "return {show = function() return 'v1' end}");
     WatchedEngine watched(directory.getPath() / "hot", std::make_unique<lua::Application>());
-    lua_State* L = watched.get().getLuaState();
+    lua_State* L = watched.get().getPlugin<lua::ScriptPlugin>().getState();
     // clang-format off
     const auto shows = [L] {
         lua_getglobal(L, "ads");

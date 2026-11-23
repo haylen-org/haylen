@@ -278,6 +278,7 @@ std::unique_ptr<haylen::core::Application> haylen::core::Application::create() {
 The class `core::Application` has three hooks:
 
 - `configure(AppConfig&)` runs before the window exists, and may change the configuration read from `haylen.json`.
+- `addPlugins(Engine&)` runs when the engine is made, and adds the plugins of the app after the plugins of the engine.
 - `start(Engine&)` runs once the engine is ready.
 - `stop(Engine&)` runs when the app ends.
 
@@ -285,19 +286,19 @@ The class `core::Engine` gives access to every service, such as `getRenderer2D()
 
 ## Plugins of an app
 
-A C++ app extends the engine with plugins of its own. They use the same `haylen::plugins::Plugin` interface as the built-in plugins. Its hooks are `getName`, `start`, `stop`, `installLua`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread. One more hook, `packageChanged`, hears the package paths that changed while the app runs in development. So a plugin rebuilds what it built from files outside the asset cache. Three queries answer the engine: `isCapturingBack` tells whether the plugin takes the next press of the back button, `isFrameComplete` tells whether the frame that just rendered drew everything the plugin had to draw, so the platform shows the app for the first time with a complete frame, and `isAnimating` tells whether what the plugin draws changes by itself, so an app that [redraws on change](../core/architecture.md#redraw-on-change) draws the next frame.
+A C++ app extends the engine with plugins of its own. They use the same `haylen::plugins::Plugin` interface as the built-in plugins. Its hooks are `getName`, `start`, `stop`, `event`, `beginFrame`, `fixedUpdate`, `update`, `render`, `renderUi`, `renderOverlay` and `endFrame`, all on the frame thread. One more hook, `packageChanged`, hears the package paths that changed while the app runs in development. So a plugin rebuilds what it built from files outside the asset cache. Three queries answer the engine: `isCapturingBack` tells whether the plugin takes the next press of the back button, `isFrameComplete` tells whether the frame that just rendered drew everything the plugin had to draw, so the platform shows the app for the first time with a complete frame, and `isAnimating` tells whether what the plugin draws changes by itself, so an app that [redraws on change](../core/architecture.md#redraw-on-change) draws the next frame.
 
 ```cpp
 engine.addPlugin(std::make_unique<MyPlugin>());
 MyPlugin& plugin = engine.getPlugin<MyPlugin>();
 ```
 
-The call `engine.addPlugin` adds a plugin. A plugin added while the engine runs, such as from `Application::start`, gets `start` and `installLua` at once and the event `pluginStarted`. So an application that adds a plugin first and then delegates to a `lua::Application` has the Lua module of the plugin before `source/main.lua` runs. The call `engine.getPlugin<MyPlugin>()` finds the plugin again, such as from a Lua binding through `lua::Runtime::getEngine(L)`.
+The call `engine.addPlugin` adds a plugin. A plugin added while the engine runs, such as from `Application::start`, gets `start` at once and the event `pluginStarted`. An application that delegates to a `lua::Application` adds the script plugin with it in `addPlugins`, and adds the Lua module of its plugin with `ScriptPlugin::addModule` in `start` before it delegates, so the module installs before `source/main.lua` runs. The call `engine.getPlugin<MyPlugin>()` finds the plugin again, such as from a Lua binding through `lua::Runtime::getEngine(L)`.
 
 A plugin is the place for native code that a C++ app compiles itself:
 
 - A C++ SDK, pumped from `update`.
 - Handlers of the platform bridge, registered in `start` with `engine.getPlatform().registerHandler`.
-- A Lua module, installed in `installLua` with the binding toolkit. Its `Binding::preload` adds the module to the Varn runtime of the engine, and refuses a name that a module of Varn or of another plugin already has.
+- A Lua module, a `lua::Module` that installs it with the binding toolkit. Its `Binding::preload` adds the module to the Varn runtime of the engine, and refuses a name that a module of Varn or another module of the engine already has.
 
 The [Lua guide](../core/lua.md#extending-the-engine-from-c) has a complete plugin with a Lua module and the application that adds it. The [native code guide](../platform/native.md) compares plugins with the platform bridge and with native libraries called through FFI, which a Lua app reaches too.

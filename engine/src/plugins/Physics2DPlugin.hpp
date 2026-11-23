@@ -17,7 +17,7 @@ class World;
 
 namespace haylen::plugins {
 
-// Installs `haylen.physics2d`, the Lua side of the Box2D worlds, and draws the bodies, shapes, joints and contacts of every live world Lua made for the `physics` debug drawing.
+// Keeps the Box2D worlds of the app and draws the bodies, shapes, joints and contacts of every live world for the `physics` debug drawing.
 class Physics2DPlugin final : public Plugin {
   public:
     static constexpr std::string_view kDrawing = "physics";
@@ -46,7 +46,6 @@ class Physics2DPlugin final : public Plugin {
     }
     void start(core::Engine& engine) override;
     void stop(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
 
     // Whether a world that its owner does not hold has awake bodies, which move at its next step.
     [[nodiscard]] bool isAnimating() const override;

@@ -23,15 +23,10 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
 
-struct lua_State;
-
-namespace varn::runtime {
-class Runtime;
-}
-
 namespace haylen::platform {
 class Accessibility;
 class Bridge;
+class DevelopmentSession;
 class Displays;
 class Outputs;
 class Host;
@@ -199,24 +194,31 @@ class Engine final {
     [[nodiscard]] platform::Screens& getScreens() noexcept;
     [[nodiscard]] plugins::PluginRegistry& getPlugins() noexcept;
     [[nodiscard]] const std::shared_ptr<text::Font>& getDefaultFont() noexcept;
-    [[nodiscard]] varn::runtime::Runtime& getScriptRuntime() noexcept;
-    [[nodiscard]] lua_State* getLuaState() noexcept;
     [[nodiscard]] const EventLoopPoll& getEventLoopPoll() const noexcept;
 
     template <typename T> [[nodiscard]] T& getPlugin() {
         return getPlugins().get<T>();
     }
 
-    // Registers a plugin and, when the engine is already running, starts it and installs its Lua modules right away.
+    // Registers a plugin and, when the engine is already running, starts it right away.
     template <typename T> T& addPlugin(std::unique_ptr<T> plugin) {
         T& added = getPlugins().add(std::move(plugin));
         activatePlugin(added);
         return added;
     }
 
-    // Stops app updates and shows the error screen until the app is restarted. Script errors end up here, and a core::AppError keeps its stack. Only the first error of an app counts.
+    // Stops app updates and shows the error screen until the app is restarted. Script errors end up here, and a `core::AppError` keeps its stack. Only the first error of an app counts.
     void reportError(const std::exception& exception);
     void reportError(const std::string& message);
+
+    // Runs code of the app that native code reached, such as a hook of a screen or a link that a router opens, and reports its failure to the error screen instead of letting it escape into the native code that triggered it.
+    template <typename Body> void runReporting(Body&& body) {
+        try {
+            body();
+        } catch (const std::exception& exception) {
+            reportError(exception);
+        }
+    }
 
     // Stops the app for good with the error, which replaces any error that shows and which only a restart clears, so no fix resumes the app and it cannot go back from the error screen. The host cancels an app this way, such as when its code ran longer than the execution budget of development.
     void cancel(const core::AppError& error);
@@ -271,6 +273,12 @@ class Engine final {
 
     // Whether another app launched this one, so that quitting it starts that app again.
     [[nodiscard]] bool isLaunched() const noexcept;
+
+    // Whether the app reaches native code, which an app that another app launched without native access does not, nor any app it launches in turn.
+    [[nodiscard]] bool hasNativeAccess() const noexcept;
+
+    // The development session of the host, which outlives every app that restarts under it, or null for an app outside development.
+    [[nodiscard]] platform::DevelopmentSession* getDevelopmentSession() const noexcept;
 
     // The arguments that the launch of the process gave the app, every argument after `--` of its command line, such as the test that a UI test opens. An app that another app launched has none.
     [[nodiscard]] std::span<const std::string> getLaunchArguments() const noexcept;

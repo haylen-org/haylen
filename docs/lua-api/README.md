@@ -2,6 +2,8 @@
 
 The reference lists every Lua module of Haylen: each function, type, method, property, option, default, event and error message, with an example. The guides of each block explain the ideas behind the modules.
 
+Every module of the engine is a `lua::Module` that the `lua::ScriptPlugin` installs, and a C++ project adds a module of its own for its engine plugin the same way, as [a module of your own](../core/lua.md#a-module-of-your-own) shows.
+
 ## Modules
 
 | Name | Description | Link |

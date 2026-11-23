@@ -8,7 +8,7 @@ namespace haylen::plugins {
 
 class PluginRegistry;
 
-// The plugins every engine starts with.
+// The plugins every engine starts with, which run an app without knowing which language it is written in.
 class BuiltInPlugins final {
   public:
     // Adds them in dependency order, so each one starts after the plugins it uses, with what they need to know about the platform.

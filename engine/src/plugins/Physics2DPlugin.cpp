@@ -21,10 +21,6 @@ void Physics2DPlugin::stop(core::Engine&) {
     worlds.clear();
 }
 
-void Physics2DPlugin::installLua(core::Engine&, lua_State* L) {
-    physics2d::Physics2DLua::install(L);
-}
-
 Physics2DPlugin::TrackedWorld::TrackedWorld(const std::shared_ptr<physics2d::World>& tracked) : world(tracked) {}
 
 void Physics2DPlugin::TrackedWorld::disconnect() {

@@ -65,8 +65,4 @@ void NetPlugin::beginFrame(core::Engine& engine, float) {
     std::erase_if(sockets, [](const std::shared_ptr<net::WebSocket>& socket) { return socket->getState() == net::WebSocket::State::Closed; });
 }
 
-void NetPlugin::installLua(core::Engine&, lua_State* L) {
-    net::NetLua::install(L);
-}
-
 } // namespace haylen::plugins

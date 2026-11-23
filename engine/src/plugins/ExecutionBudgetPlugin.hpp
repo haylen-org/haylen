@@ -11,25 +11,18 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Gives the Lua state of an app in development the execution budget of the development session, from before its code runs until the state closed, and cancels the app through the engine once its code ran longer than `debug.executionBudget` of `haylen.json` in one entry of the host, also in a finalizer of the app. It also keeps `debug.sethook` from the app, since the budget and the debugger hold the hooks of Lua. Only an app in development has a budget, so an app that ships never hooks its Lua.
+// Gives the code that stops an app in development the whole execution budget of the development session, which the script plugin gives the Lua state of the app from before its code runs until the state closed. Only an app in development has a budget, so an app that ships never hooks its Lua.
 class ExecutionBudgetPlugin final : public Plugin {
   public:
     explicit ExecutionBudgetPlugin(platform::DevelopmentSession* developmentSession) noexcept : session(developmentSession) {}
-    ~ExecutionBudgetPlugin() override;
-
-    ExecutionBudgetPlugin(const ExecutionBudgetPlugin&) = delete;
-    ExecutionBudgetPlugin& operator=(const ExecutionBudgetPlugin&) = delete;
 
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "executionBudget";
     }
     void start(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     void stop(core::Engine& engine) override;
 
   private:
-    static int refuseHook(lua_State* L);
-
     platform::DevelopmentSession* session;
     core::ScopedConnection stopping;
 };

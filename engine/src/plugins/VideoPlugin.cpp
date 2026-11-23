@@ -23,10 +23,6 @@ void VideoPlugin::stop(core::Engine&) {
     updating.clear();
 }
 
-void VideoPlugin::installLua(core::Engine&, lua_State* L) {
-    graphics::VideoLua::install(L);
-}
-
 // A video plays on real time, so the time scale never changes its speed, while its process mode decides whether the pause of the game holds it. Signals of a video may release videos, so the frame walks a copy.
 void VideoPlugin::beginFrame(core::Engine& engine, float) {
     const core::FrameClock& clock = engine.getClock();

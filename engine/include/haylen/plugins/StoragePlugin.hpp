@@ -21,7 +21,7 @@ class JobSystem;
 
 namespace haylen::plugins {
 
-// Owns the save slots, the preferences and the resume state of the app and exposes user storage to Lua as `haylen.storage` and `haylen.preferences`. Preferences load when the engine starts, and unsaved changes are written when the app stops and when it goes to the background, after the listeners of `appBackground` have run. The resume state of the run before loads when the engine starts, the current one is written when the app goes to the background, after those listeners, and removed when the app comes back or stops. Background storage operations run on the I/O pool one at a time, in the order they were queued.
+// Owns the save slots, the preferences and the resume state of the app. Preferences load when the engine starts, and unsaved changes are written when the app stops and when it goes to the background, after the listeners of `appBackground` have run. The resume state of the run before loads when the engine starts, the current one is written when the app goes to the background, after those listeners, and removed when the app comes back or stops. Background storage operations run on the I/O pool one at a time, in the order they were queued.
 class StoragePlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -30,7 +30,6 @@ class StoragePlugin final : public Plugin {
     void start(core::Engine& engine) override;
     void stop(core::Engine& engine) override;
     void event(core::Engine& engine, const platform::Event& event) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
 
     [[nodiscard]] storage::SaveSlots& getSaveSlots();
     [[nodiscard]] storage::Preferences& getPreferences();

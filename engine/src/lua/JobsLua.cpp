@@ -11,15 +11,16 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
+#include "lua/Jobs.hpp"
 #include "lua/Owners.hpp"
-#include "plugins/JobsPlugin.hpp"
 
 namespace haylen::lua {
 
-plugins::JobsPlugin& JobsLua::getPlugin(lua_State* L) {
-    return Runtime::getEngine(L).getPlugin<plugins::JobsPlugin>();
+Jobs& JobsLua::getJobs(lua_State* L) {
+    return Runtime::getEngine(L).getPlugin<ScriptPlugin>().getJobs();
 }
 
 bool JobsLua::isCheckpoint(lua_State* job, int results) {
@@ -45,14 +46,14 @@ int JobsLua::spawn(lua_State* L) {
 
     const Promise promise(Runtime::getEngine(L));
     lua_pushvalue(L, 1);
-    getPlugin(L).spawn(L, owner, promise);
+    getJobs(L).spawn(L, owner, promise);
     promise.push(L);
     return 1;
 }
 
 // Pauses the running job until the next frame once this frame's budget is spent, and returns right away otherwise. It yields itself, so it stays outside the exception guard.
 int JobsLua::checkpoint(lua_State* L) {
-    const int outOfTime = Binding::guarded(L, [L] { return getPlugin(L).isOutOfTime(L) ? 1 : 0; });
+    const int outOfTime = Binding::guarded(L, [L] { return getJobs(L).isOutOfTime(L) ? 1 : 0; });
     if (outOfTime == 0) {
         return 0;
     }
@@ -70,17 +71,17 @@ int JobsLua::setBudget(lua_State* L) {
 
     const auto largest = static_cast<double>(std::chrono::microseconds::max().count());
     const std::chrono::microseconds limit = microseconds >= largest ? std::chrono::microseconds::max() : std::chrono::microseconds(std::max(1LL, std::llround(microseconds)));
-    getPlugin(L).setBudget(limit);
+    getJobs(L).setBudget(limit);
     return 0;
 }
 
 int JobsLua::budget(lua_State* L) {
-    Stack::push(L, static_cast<double>(getPlugin(L).getBudget().count()) / 1000.0);
+    Stack::push(L, static_cast<double>(getJobs(L).getBudget().count()) / 1000.0);
     return 1;
 }
 
 int JobsLua::runningCount(lua_State* L) {
-    Stack::push(L, getPlugin(L).getRunningCount());
+    Stack::push(L, getJobs(L).getRunningCount());
     return 1;
 }
 

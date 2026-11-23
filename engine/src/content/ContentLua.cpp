@@ -16,6 +16,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -242,7 +243,7 @@ int ContentLua::prefetch(lua_State* L) {
     engine.getContent().prefetch(paths, std::move(onProgress), [&engine, promise, group, paths](std::optional<Error> failure) {
         if (failure) {
             core::Log::warning("{} did not reach the device ahead of time: {}", describeAssets(group, paths), failure->what());
-            reject(engine.getLuaState(), promise, *failure);
+            reject(engine.getPlugin<lua::ScriptPlugin>().getState(), promise, *failure);
             return;
         }
 
@@ -259,7 +260,7 @@ int ContentLua::check(lua_State* L) {
     // clang-format off
     engine.getContent().check([&engine, promise](std::optional<ContentManager::Update> found, std::optional<Error> failure) {
         if (failure) {
-            reject(engine.getLuaState(), promise, *failure);
+            reject(engine.getPlugin<lua::ScriptPlugin>().getState(), promise, *failure);
             return;
         }
 
@@ -277,7 +278,7 @@ int ContentLua::download(lua_State* L) {
     // clang-format off
     engine.getContent().download(std::move(onProgress), [&engine, promise](std::optional<Error> failure) {
         if (failure) {
-            reject(engine.getLuaState(), promise, *failure);
+            reject(engine.getPlugin<lua::ScriptPlugin>().getState(), promise, *failure);
             return;
         }
 

@@ -12,14 +12,13 @@
 
 namespace haylen::plugins {
 
-// Registers the particle effect asset type for `.particles` files, whose textures load as textures of the cache before the effect is finalized, and the `imageShape` asset type that image shapes of emitters load as, and installs the `haylen.particles2d` module. It follows the emitters, systems and trails that Lua creates, so an app that redraws on change draws while one of them lives.
+// Registers the particle effect asset type for `.particles` files, whose textures load as textures of the cache before the effect is finalized, and the `imageShape` asset type that image shapes of emitters load as. It follows the emitters, systems and trails that the app creates, so an app that redraws on change draws while one of them lives.
 class Particles2DPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "particles2d";
     }
     void start(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     void stop(core::Engine& engine) override;
 
     // Whether an emitter, a system or a trail lives, which its next update moves.

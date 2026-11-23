@@ -1,7 +1,5 @@
 #include "haylen/debug/Stats.hpp"
 
-#include <lua.hpp>
-
 #include <algorithm>
 #include <chrono>
 #include <functional>
@@ -15,6 +13,7 @@
 #include "haylen/core/TimerScheduler.hpp"
 #include "haylen/core/TweenManager.hpp"
 #include "haylen/debug/Profiler.hpp"
+#include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
 
 namespace haylen::debug {
@@ -57,8 +56,7 @@ void Stats::update(core::Engine& engine, const graphics2d::Renderer::Stats& last
     engine.getAudio().readBusStats(buses);
     ObjectCounter::readAll(objects);
 
-    lua_State* L = engine.getLuaState();
-    memory.lua = static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNT, 0)) * 1024 + static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNTB, 0));
+    memory.lua = engine.getPlugin<plugins::DebugPlugin>().getScriptMemory();
     // clang-format off
     const auto bytesOf = [this](std::string_view name) {
         const ObjectCounter::Snapshot* found = findObject(name);

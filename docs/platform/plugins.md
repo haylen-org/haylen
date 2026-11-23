@@ -27,6 +27,8 @@ An app lists the plugins it uses in its `haylen.json`, each from its folder `plu
 
 These plugins are distributable folders. They are not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. The plugins of system capabilities, such as the camera or notifications, and the plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live outside the engine repository, in a repository of [haylen-org](https://github.com/haylen-org) with one folder for each plugin. Apps add them with `haylen plugin add`, the address of the repository and the folder of the plugin, or reference that folder of the repository in `haylen.json`. The engine repository holds no third-party SDK. Instead, [the demo plugin of the test project](#demo-plugin) uses every capability of a plugin, built on the APIs of each platform alone.
 
+An engine plugin knows nothing of Lua. A C++ project gives its engine plugin a Lua API of its own with a `lua::Module`, which the `lua::ScriptPlugin` installs, as [a module of your own](../core/lua.md#a-module-of-your-own) shows with a complete plugin and its module.
+
 ## Make a plugin
 
 ### Create it

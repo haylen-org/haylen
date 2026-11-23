@@ -123,12 +123,11 @@ Every dependency is pinned with a SHA-256 hash in `engine/cmake/haylen-dependenc
 
 ## Plugins
 
-Every subsystem of the engine is a plugin. A plugin derives from `haylen::plugins::Plugin` in `haylen/plugins/Plugin.hpp`, returns its name from `getName`, and overrides the hooks it needs. Every hook has an empty default and runs on the frame thread. A plugin wires its subsystem into the engine and installs its Lua modules, while the subsystem itself stays in its own context folder.
+Every subsystem of the engine is a plugin. A plugin derives from `haylen::plugins::Plugin` in `haylen/plugins/Plugin.hpp`, returns its name from `getName`, and overrides the hooks it needs. Every hook has an empty default and runs on the frame thread. A plugin wires its subsystem into the engine, while the subsystem itself stays in its own context folder. The interface knows nothing of Lua, and the [Lua modules](#lua-modules) of a plugin install apart from it.
 
 | Hook | When it runs |
 | --- | --- |
 | `start(core::Engine&)` | Once, when the engine starts or when the plugin is added to a running engine. |
-| `installLua(core::Engine&, lua_State*)` | Right after `start`. It registers Lua modules with `lua::Binding::preload`, which adds them to `package.preload` through the Varn runtime. |
 | `event(core::Engine&, const Event&)` | For every platform event, the lifecycle events `Suspended`, `Resumed`, `Resized`, `FocusGained`, `FocusLost`, `QuitRequested` and `LowMemory` included. |
 | `beginFrame(core::Engine&, float)` | At the start of every frame that is not in the background, after asynchronous results arrive and before any update. |
 | `fixedUpdate(core::Engine&, float)` | Zero or more times per frame, once per fixed step. |
@@ -143,37 +142,59 @@ Every subsystem of the engine is a plugin. A plugin derives from `haylen::plugin
 | `packageChanged(core::Engine&, paths)` | In development, after the assets read from the changed paths of the package reloaded. A plugin then rebuilds what it built from files outside the asset cache, such as the texts of localization and the themes of the UI. |
 | `stop(core::Engine&)` | Once, when the engine stops, in reverse order of registration. |
 
-The class `plugins::BuiltInPlugins` in `engine/src/plugins/BuiltInPlugins.cpp` registers the built-in plugins in the order they depend on each other. They use exactly the interface that other projects use, and their names follow the Lua modules they install.
+The class `plugins::BuiltInPlugins` in `engine/src/plugins/BuiltInPlugins.cpp` registers the built-in plugins in the order they depend on each other. They use exactly the interface that other projects use. Then the engine asks its `core::Application` to add the plugins of the app with `Application::addPlugins`, so they start after the plugins of the engine.
 
-| Plugin | Lua modules | Other duties |
+| Plugin | Duties |
+| --- | --- |
+| `content` | Starts the content manager, which holds the start of the app while its required content downloads, drives its downloads every frame, and draws the update screen while the app waits. |
+| `text` | Owns the registry of the effects and icons that rich text markup names, and registers the asset types `bitmapFont` and `gridFont`. |
+| `animation2d` | Registers the asset types `atlas` and `skeleton`. |
+| `particles2d` | Registers the asset types `particles` and `imageShape`. |
+| `audio` | Registers the asset type `sound`. |
+| `video` | Opens the videos of the app with the decoder of the platform, and keeps each one current at the start of every frame until it is released. |
+| `tiled`, `nodes2d` | Register the asset types `tiled`, `tiledWorld` and `tiledRules`, and `prefab`. |
+| `localization` | Loads the languages of `haylen.json` on start, follows the languages of the system at the start of every frame and publishes `languageChanged`, and rebuilds the texts of a changed folder in development. |
+| `conversation` | Registers the asset type `conversation`. |
+| `storage` | Loads the preferences on start, and writes them on suspend and stop. |
+| `debug` | Draws the compact statistics with the renderer and the full debug overlay with ImGui, which F3 cycles by default. It runs the debug drawings over every canvas through a canvas overlay of the renderer, which F4 switches by default. It samples monitors and publishes object events. Plugins add drawings with `DebugPlugin::addDrawer`, as the `physics2d` plugin does for its worlds. |
+| `hotReload` | Applies the changes of an app in development, as [development and hot reload](#development-and-hot-reload) describes. |
+| `physics2d` | Keeps the worlds of the app and steps the helpers that act on them. |
+| `ui` | Starts the ImGui frame in `beginFrame`. At the start of the first `renderUi` of a frame, before any GUI draws, it lets the collections of mounted GUIs bind their cells and run their binders. It draws mounted GUIs in `renderUi`: the GUIs of the scenes of each view into the image of the view, a leaving view in an ImGui window of its own that draws before the frame ends and takes no input, and the GUIs of no scene with the current view, or during an effect that shows both scenes in an ImGui window of their own that takes no input and reaches the screen after the effect. The GUI of a screen of the navigation lays out in the area of a node of another GUI and draws right after it, where the look of its screen moves and fades it during a transition, and the GUIs under the topmost presentation draw in an ImGui window of their own that takes no input. In `update` it hands out the events of the GUIs, moves the transitions of the navigation on and runs the update hooks of the screens that draw, and in `render` their render hooks. |
+| `returnHold` | Leaves an app that another app launched once the person holds Escape, play and pause of a TV remote, the back button of Android or of a gamepad, or three still fingers, and draws the progress of the hold over the app, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. The player reports the holds of the back button of the platform, and swallows the release that ends such a hold. |
+| `net` | Delivers WebSocket events in `beginFrame`. |
+| `platform` | Connects the bridge relay of native code to the running app. Keeps the textures of the video streams that the app draws current at the start of every frame. |
+
+A Lua app runs as a `lua::Application`, which adds the plugins of the Lua layer after these.
+
+| Plugin | Duties |
+| --- | --- |
+| `script` | The `lua::ScriptPlugin`. It creates the Lua runtime of Varn on the scheduler of the job system, prepares the Lua state, installs every Lua module and takes the modules that reach native code out of the state of an app without native access. It runs the autoloads of the app and resumes the Lua jobs of `haylen.jobs` within the budget of the frame during `update`, writes the warnings of Lua to the log, gives the statistics the memory of the Lua state and closes the Lua state once the engine lets go of it. |
+| `executionBudget` | Gives the code that stops an app in development the whole execution budget, which the script plugin gives the Lua state from before the code of the app runs until the state closed. |
+| `debugger` | Lets the Lua debugger of the development session follow the Lua state of the app and hands it the requests of its editor at the start of every frame, as [the debugger](#the-debugger) describes. |
+
+### Lua modules
+
+A Lua module derives from `haylen::lua::Module` in `haylen/lua/Module.hpp`, returns the name that Lua requires it by from `getName`, such as `haylen.ui`, and installs itself into the Lua state in `install(core::Engine&, lua_State*)`, usually with `lua::Binding::preload`, which adds it to `package.preload` through the Varn runtime. Its `stop` lets go of the Lua values that it keeps when the app stops. The script plugin keeps its modules in a `lua::Modules`, and `lua::modules::BuiltInModules` registers the modules of the engine in the order they depend on each other. The script plugin installs them in that order once every plugin of the engine started, so a module reaches the plugin of its subsystem. `ScriptPlugin::addModule` adds the module of a project that extends the engine after them, and installs it at once when the Lua state already runs.
+
+| Module | Lua modules | Other duties |
 | --- | --- | --- |
-| `core` | `haylen`, `haylen.log`, `haylen.viewport`, `haylen.window`, `haylen.display`, `haylen.collections`, `haylen.timer`, `haylen.scene`, `haylen.signal`, `haylen.events`, `haylen.math`, `haylen.tween`, `haylen.ai` | Runs the autoloads of the app. |
-| `jobs` | `haylen.jobs` | Resumes Lua jobs within the budget of the frame during `update`. |
-| `input` | `haylen.input` | |
-| `graphics2d` | `haylen.graphics`, `haylen.graphics2d`, `haylen.lighting2d` | |
-| `assets` | `haylen.assets` | |
-| `content` | `haylen.content` | Starts the content manager, which holds the start of the app while its required content downloads, drives its downloads every frame, and draws the update screen while the app waits. |
-| `text` | | Owns the registry of the effects and icons that rich text markup names, and registers the asset types `bitmapFont` and `gridFont`. |
-| `animation2d` | `haylen.animation2d` | Registers the asset types `atlas` and `skeleton`. |
-| `particles2d` | `haylen.particles2d` | Registers the asset types `particles` and `imageShape`. |
-| `audio` | `haylen.audio` | Registers the asset type `sound`. |
-| `video` | `haylen.video` | Opens the videos of the app with the decoder of the platform, and keeps each one current at the start of every frame until it is released. |
-| `physics2d`, `tiled`, `nodes2d`, `spatial2d`, `procedural2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.nodes2d`, `haylen.spatial2d`, `haylen.procedural2d`, `haylen.navigation2d` | `tiled` registers the asset types `tiled`, `tiledWorld` and `tiledRules`, and `nodes2d` registers `prefab`. |
-| `localization` | `haylen.localization` | Loads the languages of `haylen.json` on start, follows the languages of the system at the start of every frame and publishes `languageChanged`, and rebuilds the texts of a changed folder in development. |
-| `conversation` | `haylen.conversation` | Registers the asset type `conversation`. |
-| `storage` | `haylen.storage`, `haylen.preferences` | Loads the preferences on start, and writes them on suspend and stop. |
-| `debug` | `haylen.debug` | Draws the compact statistics with the renderer and the full debug overlay with ImGui, which F3 cycles by default. It runs the debug drawings over every canvas through a canvas overlay of the renderer, which F4 switches by default. It samples monitors and publishes object events. Plugins add drawings with `DebugPlugin::addDrawer`, as the `physics2d` plugin does for the worlds that Lua makes. |
-| `hotReload` | `haylen.hotReload` | Applies the changes of an app in development, as [development and hot reload](#development-and-hot-reload) describes. |
-| `debugger` | | Lets the Lua debugger of the development session follow the Lua state of the app and hands it the requests of its editor at the start of every frame, as [the debugger](#the-debugger) describes. |
-| `ui` | `haylen.ui`, `haylen.imgui` | Starts the ImGui frame in `beginFrame`. At the start of the first `renderUi` of a frame, before any GUI draws, it lets the collections of mounted GUIs bind their cells and run their Lua binders. It draws mounted GUIs in `renderUi`: the GUIs of the scenes of each view into the image of the view, a leaving view in an ImGui window of its own that draws before the frame ends and takes no input, and the GUIs of no scene with the current view, or during an effect that shows both scenes in an ImGui window of their own that takes no input and reaches the screen after the effect. The GUI of a screen of the navigation lays out in the area of a node of another GUI and draws right after it, where the look of its screen moves and fades it during a transition, and the GUIs under the topmost presentation draw in an ImGui window of their own that takes no input. In `update` it moves the transitions of the navigation on and runs the update hooks of the screens that draw, and in `render` their render hooks. |
-| `returnHold` | | Leaves an app that another app launched once the person holds Escape, play and pause of a TV remote, the back button of Android or of a gamepad, or three still fingers, and draws the progress of the hold over the app, as [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options) lists. The player reports the holds of the back button of the platform, and swallows the release that ends such a hold. |
-| `net` | `haylen.net` | Delivers WebSocket events in `beginFrame`. |
-| `platform` | `haylen.platform`, `haylen.system`, `haylen.accessibility` | Connects the bridge relay of native code to the running app. Keeps the textures of the video streams that the app draws current at the start of every frame. |
-| `native` | `haylen.native` | Keeps the Lua functions of the native callbacks of the app, and drops them when it stops. |
+| `CoreModule` | `haylen`, `haylen.log`, `haylen.viewport`, `haylen.window`, `haylen.display`, `haylen.collections`, `haylen.timer`, `haylen.scene`, `haylen.signal`, `haylen.events`, `haylen.math`, `haylen.tween`, `haylen.ai` | |
+| `JobsModule` | `haylen.jobs` | |
+| `InputModule` | `haylen.input` | |
+| `Graphics2DModule` | `haylen.graphics`, `haylen.graphics2d`, `haylen.lighting2d` | |
+| `AssetsModule` | `haylen.assets` | Keeps how the assets of every type reach Lua, which the other modules register with `AssetsModule::registerPusher`, and pushes textures, images, fonts, shaders, vector images and JSON itself. |
+| `ContentModule` | `haylen.content` | |
+| `Animation2DModule`, `Particles2DModule`, `AudioModule`, `TiledModule`, `Nodes2DModule`, `ConversationModule` | `haylen.animation2d`, `haylen.particles2d`, `haylen.audio`, `haylen.tiled`, `haylen.nodes2d`, `haylen.conversation` | Register how the assets of their plugins reach Lua. |
+| `VideoModule`, `Spatial2DModule`, `Procedural2DModule`, `Navigation2DModule`, `LocalizationModule`, `DebugModule`, `Physics2DModule`, `NetModule` | `haylen.video`, `haylen.spatial2d`, `haylen.procedural2d`, `haylen.navigation2d`, `haylen.localization`, `haylen.debug`, `haylen.physics2d`, `haylen.net` | |
+| `StorageModule` | `haylen.storage`, `haylen.preferences` | |
+| `HotReloadModule` | `haylen.hotReload` | Gives the hot reload plugin the Lua state, whose `require` its module graph replaces in development. |
+| `UiModule` | `haylen.ui`, `haylen.imgui` | Hands the events of the GUIs to the handlers of their nodes after every listener of the GUI, and lets go of what Lua keeps of a GUI once it unmounted. |
+| `PlatformModule` | `haylen.platform`, `haylen.system`, `haylen.accessibility` | |
+| `NativeModule` | `haylen.native` | Gives `ffi.C` the symbols of the libraries linked into the app, keeps the Lua functions of the native callbacks of the app and drops them when it stops. |
 
 ### Adding a plugin
 
-A project adds a plugin of its own from its `Application`. `Engine::addPlugin` registers the plugin. When the engine already runs, which is always the case inside `Application::start`, it calls `start` and `installLua` right away.
+A project adds a plugin of its own from its `Application`. `Engine::addPlugin` registers the plugin. When the engine already runs, which is always the case inside `Application::start`, it calls `start` right away, and a plugin added in `Application::addPlugins` starts after the plugins of the engine.
 
 ```cpp
 class App final : public haylen::core::Application {
@@ -484,7 +505,7 @@ Each output has a render target of the size of its drawable, which the app draws
 
 The frame thread owns the GPU, the Lua state, scenes, UI, audio control and physics. It never blocks.
 
-`JobSystem`, reached with `engine.getJobs()`, owns the Varn scheduler with its worker pools and its event loop, and runs work in the background on it. The HTTP client of the content and the Varn runtime of the Lua state run on the same scheduler.
+`JobSystem`, reached with `engine.getJobs()`, owns the Varn scheduler with its worker pools and its event loop, and runs work in the background on it. The HTTP client of the content and the Varn runtime of the Lua state, which the script plugin makes, run on the same scheduler.
 
 | Method | Where the work runs |
 | --- | --- |
@@ -549,7 +570,7 @@ Due timers fire from a heap. So an update grows with the timers that fire, not w
 
 ## Resource ownership
 
-One `Engine` owns every service of one running app: the job system with the Varn scheduler, the Varn runtime with its Lua state on that scheduler, the graphics device, audio, user storage, the bridge, the system, the renderer, assets, scenes and plugins. Restarting an app destroys the engine and creates a new one.
+One `Engine` owns every service of one running app: the job system with the Varn scheduler, the graphics device, audio, user storage, the bridge, the system, the renderer, assets, scenes and plugins, among them the script plugin of a Lua app with the Varn runtime and its Lua state on that scheduler. Restarting an app destroys the engine and creates a new one.
 
 The GPU device, the renderer and the interface keep state of the process, so only one engine runs at a time. Creating another while one runs throws `Only one engine can run at a time. Destroy the engine that runs before creating another.`.
 
@@ -562,10 +583,11 @@ The engine shuts down in a fixed order:
 1. It clears the scene stack, which also unloads a scene that is still loading and the preloaded scenes.
 2. It stops the application, and stops the plugins in reverse order of registration.
 3. It clears timers and tweens, cancels pending asset callbacks, and closes the bridge and the system.
-4. It stops the Varn runtime and the job system, which drops the work that no worker started, stops the scheduler and joins the worker pools, then destroys the runtime, which closes the Lua state.
-5. Only then does it release audio, plugins, scenes, assets, the default font, the renderer and, last, the graphics device.
+4. It stops the job system, which drops the work that no worker started, stops the scheduler and joins the worker pools.
+5. It releases the plugins in reverse order of registration, so the script plugin of a Lua app, which comes after the plugins of the engine, releases its modules and closes the Lua state while the plugins of the engine, audio and assets still exist.
+6. Only then does it release the motion of gamepads, audio, assets, the default font, the renderer and, last, the graphics device.
 
-So a plugin releases every Lua value it holds in `stop`, because the Lua state is gone by the time the plugin is destroyed.
+So a plugin releases every Lua value it holds in `stop`, because the Lua state is gone by the time the plugins of the engine are destroyed.
 
 ### GPU objects
 

@@ -15,6 +15,7 @@
 #include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "support/DebugClient.hpp"
 #include "support/EngineFixture.hpp"
@@ -228,7 +229,7 @@ end})
 )");
     fixture->host().setHaltable(false);
     test::DebugClient client{fixture->host()};
-    client.connect(fixture->engine().getLuaState());
+    client.connect(fixture->engine().getPlugin<lua::ScriptPlugin>().getState());
     runUntilCancelled();
     EXPECT_EQ(error().getCode(), core::AppError::Code::ExecutionBudget);
 }
@@ -246,7 +247,7 @@ scene.push({update = function()
 end})
 )");
     test::DebugClient client{fixture->host()};
-    client.connect(fixture->engine().getLuaState());
+    client.connect(fixture->engine().getPlugin<lua::ScriptPlugin>().getState());
     const int resumes = ExecutionBudget::kCheckInstructions * 5;
     const std::string expression = "(function() local sum = 0 for _ = 1, " + std::to_string(resumes) + " do sum = sum + numbers() end return sum end)()";
     int evaluation = 0;

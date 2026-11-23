@@ -21,6 +21,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -98,7 +99,7 @@ int ImageLua::decodeAsync(lua_State* L) {
     std::string bytes(lua::Stack::read<std::string_view>(L, 1));
     const int maxSide = readMaxSide(L, 2);
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     engine.getJobs().run([bytes = std::move(bytes), maxSide] {
         return Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()}, maxSide);
@@ -249,7 +250,7 @@ int ImageLua::blitAsync(lua_State* L) {
     const auto x = lua::Stack::read<int>(L, 3);
     const auto y = lua::Stack::read<int>(L, 4);
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     engine.getJobs().run([target, source, from, x, y, blend] {
         Image result = *target;
@@ -306,7 +307,7 @@ int ImageLua::encodePng(lua_State* L) {
 int ImageLua::encodePngAsync(lua_State* L) {
     const std::shared_ptr<const Image> image = lua::Userdata::checkShared<Image>(L, 1);
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     engine.getJobs().run([image] { return image->encodePng(); }, [promise](core::JobSystem::Result<std::vector<std::uint8_t>> result) {
         if (!result.isOk()) {
@@ -326,7 +327,7 @@ int ImageLua::encodePngAsync(lua_State* L) {
 int ImageLua::readTarget(lua_State* L) {
     const RenderTarget target = lua::Userdata::check<RenderTarget>(L, 1);
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     engine.getGraphics().readTarget(target, settle(promise));
     varn::async::Promise::push(L, promise);
     return 1;
@@ -334,7 +335,7 @@ int ImageLua::readTarget(lua_State* L) {
 
 int ImageLua::captureScreen(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     engine.captureScreen(settle(promise));
     varn::async::Promise::push(L, promise);
     return 1;
@@ -532,7 +533,7 @@ int ImageLua::applyAsync(lua_State* L) {
 
     lua_pop(L, 1);
     core::Engine& engine = lua::Runtime::getEngine(L);
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // clang-format off
     engine.getJobs().run([source, steps = std::move(steps)] {
         Image result = *source;

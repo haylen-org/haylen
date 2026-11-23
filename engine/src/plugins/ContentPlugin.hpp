@@ -11,7 +11,7 @@ class UpdateScreen;
 
 namespace haylen::plugins {
 
-// Wires the content manager into the engine: it starts it, which holds the start of the app while its required content downloads, drives its downloads every frame, draws the update screen while the app waits, and installs `haylen.content`.
+// Wires the content manager into the engine: it starts it, which holds the start of the app while its required content downloads, drives its downloads every frame, draws the update screen while the app waits.
 class ContentPlugin final : public Plugin {
   public:
     ContentPlugin();
@@ -23,7 +23,6 @@ class ContentPlugin final : public Plugin {
 
     void start(core::Engine& engine) override;
     void stop(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
     void event(core::Engine& engine, const platform::Event& event) override;
     void update(core::Engine& engine, float deltaSeconds) override;
     void renderOverlay(core::Engine& engine) override;

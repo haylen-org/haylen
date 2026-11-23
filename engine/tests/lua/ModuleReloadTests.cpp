@@ -396,7 +396,8 @@ require('hud')
     EXPECT_EQ(lua("local timer = require('haylen.timer') return tostring(timer.active(timers[1])) .. ' ' .. tostring(timer.active(timers[2]))"), "false true");
     EXPECT_EQ(lua("return #require('haylen.debug').monitors()"), "1");
     EXPECT_EQ(lua("return unmounted"), "1");
-    EXPECT_EQ(fixture->engine().getPlugin<plugins::UiPlugin>().events.size(), 1U);
+    // The handlers of the nodes listen to the events of the GUIs next to the listener that the module registers again.
+    EXPECT_EQ(fixture->engine().getPlugin<plugins::UiPlugin>().events.size(), 2U);
 }
 
 // A platform handler and a text effect that a module registers without an owner belong to the module, so a reload that no longer registers them leaves neither behind.

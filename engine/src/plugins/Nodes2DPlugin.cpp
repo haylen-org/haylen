@@ -2,12 +2,10 @@
 
 #include <memory>
 
-#include "2d/nodes/Nodes2DLua.hpp"
 #include "haylen/2d/nodes/Prefab.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JsonValidator.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 
 namespace haylen::plugins {
 
@@ -25,14 +23,7 @@ void Nodes2DPlugin::start(core::Engine& engine) {
         },
         .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
     });
-    engine.getPlugin<AssetsPlugin>().registerLuaPusher("prefab", [](lua_State* L, const std::shared_ptr<void>& asset) {
-        nodes2d::Nodes2DLua::pushPrefab(L, std::static_pointer_cast<nodes2d::Prefab>(asset));
-    });
     // clang-format on
-}
-
-void Nodes2DPlugin::installLua(core::Engine&, lua_State* L) {
-    nodes2d::Nodes2DLua::install(L);
 }
 
 void Nodes2DPlugin::stop(core::Engine&) {

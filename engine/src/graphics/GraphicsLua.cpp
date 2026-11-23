@@ -23,6 +23,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -223,7 +224,7 @@ int GraphicsLua::rasterizeVector(lua_State* L) {
         lua_pop(L, 1);
     }
 
-    auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    auto promise = std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime());
     // A texture that finds no room on the device rejects the promise like a raster that failed.
     // clang-format off
     engine.getJobs().run([image, scale] { return image.rasterize(scale); }, [promise, device = &engine.getGraphics(), options](core::JobSystem::Result<Image> result) {

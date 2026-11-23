@@ -29,13 +29,13 @@
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/Window.hpp"
 #include "lua/Autoloads.hpp"
-#include "plugins/CorePlugin.hpp"
 
 namespace haylen::core {
 
@@ -332,7 +332,7 @@ int CoreLua::rootSetLifecycle(lua_State* L) {
 int CoreLua::rootAutoload(lua_State* L) {
     const std::string module = lua::Stack::read<std::string>(L, lua_isnoneornil(L, 2) ? 1 : 2);
     const std::string name = lua_isnoneornil(L, 2) ? lua::Autoloads::getName(module) : lua::Stack::read<std::string>(L, 1);
-    lua::Runtime::getEngine(L).getPlugin<plugins::CorePlugin>().getAutoloads().add(L, name, module);
+    lua::Runtime::getEngine(L).getPlugin<lua::ScriptPlugin>().getAutoloads().add(L, name, module);
     lua::Autoloads::pushTable(L);
     lua_getfield(L, -1, name.c_str());
     return 1;

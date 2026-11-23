@@ -139,8 +139,4 @@ void LocalizationPlugin::packageChanged(core::Engine& engine, std::span<const st
     }
 }
 
-void LocalizationPlugin::installLua(core::Engine&, lua_State* L) {
-    localization::LocalizationLua::install(L);
-}
-
 } // namespace haylen::plugins

@@ -472,11 +472,40 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/Environment.cpp
   src/lua/ErrorReader.cpp
   src/lua/HotReloadLua.cpp
+  src/lua/Jobs.cpp
   src/lua/JobsLua.cpp
   src/lua/JsonConverter.cpp
+  src/lua/Module.cpp
   src/lua/ModuleClosures.cpp
   src/lua/ModuleGraph.cpp
   src/lua/ModuleReloader.cpp
+  src/lua/Modules.cpp
+  src/lua/modules/Animation2DModule.cpp
+  src/lua/modules/AssetsModule.cpp
+  src/lua/modules/AudioModule.cpp
+  src/lua/modules/BuiltInModules.cpp
+  src/lua/modules/ContentModule.cpp
+  src/lua/modules/ConversationModule.cpp
+  src/lua/modules/CoreModule.cpp
+  src/lua/modules/DebugModule.cpp
+  src/lua/modules/Graphics2DModule.cpp
+  src/lua/modules/HotReloadModule.cpp
+  src/lua/modules/InputModule.cpp
+  src/lua/modules/JobsModule.cpp
+  src/lua/modules/LocalizationModule.cpp
+  src/lua/modules/NativeModule.cpp
+  src/lua/modules/Navigation2DModule.cpp
+  src/lua/modules/NetModule.cpp
+  src/lua/modules/Nodes2DModule.cpp
+  src/lua/modules/Particles2DModule.cpp
+  src/lua/modules/Physics2DModule.cpp
+  src/lua/modules/PlatformModule.cpp
+  src/lua/modules/Procedural2DModule.cpp
+  src/lua/modules/Spatial2DModule.cpp
+  src/lua/modules/StorageModule.cpp
+  src/lua/modules/TiledModule.cpp
+  src/lua/modules/UiModule.cpp
+  src/lua/modules/VideoModule.cpp
   src/lua/ModuleSnapshot.cpp
   src/lua/NativeProperty.cpp
   src/lua/Owners.cpp
@@ -486,6 +515,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/ScriptedLoadingView.cpp
   src/lua/ScriptedScene.cpp
   src/lua/ScriptedTransition.cpp
+  src/lua/ScriptPlugin.cpp
   src/lua/Table.cpp
   src/lua/Task.cpp
   src/lua/TypeConverter.cpp
@@ -578,32 +608,23 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/WindowLua.cpp
   src/platform/WindowPlacement.cpp
   src/plugins/Animation2DPlugin.cpp
-  src/plugins/AssetsPlugin.cpp
   src/plugins/AudioPlugin.cpp
   src/plugins/BuiltInPlugins.cpp
   src/plugins/ContentPlugin.cpp
   src/plugins/ConversationPlugin.cpp
-  src/plugins/CorePlugin.cpp
   src/plugins/DebugPlugin.cpp
-  src/plugins/Graphics2DPlugin.cpp
   src/plugins/DebuggerPlugin.cpp
   src/plugins/ExecutionBudgetPlugin.cpp
   src/plugins/HotReloadPlugin.cpp
-  src/plugins/InputPlugin.cpp
-  src/plugins/JobsPlugin.cpp
   src/plugins/LocalizationPlugin.cpp
-  src/plugins/NativePlugin.cpp
-  src/plugins/Navigation2DPlugin.cpp
   src/plugins/NetPlugin.cpp
   src/plugins/Nodes2DPlugin.cpp
   src/plugins/Particles2DPlugin.cpp
   src/plugins/Physics2DPlugin.cpp
   src/plugins/PlatformPlugin.cpp
-  src/plugins/Procedural2DPlugin.cpp
   src/plugins/Plugin.cpp
   src/plugins/PluginRegistry.cpp
   src/plugins/ReturnHoldPlugin.cpp
-  src/plugins/Spatial2DPlugin.cpp
   src/plugins/StoragePlugin.cpp
   src/plugins/TextPlugin.cpp
   src/plugins/TiledPlugin.cpp

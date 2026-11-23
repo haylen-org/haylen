@@ -42,7 +42,7 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Shows the debug statistics and the debug drawings and exposes them to Lua as `haylen.debug`. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `haylen.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `haylen.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `haylen.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values and the globals, opened by F2 unless the app picks another key, by the terminal or by the console.
+// Shows the debug statistics and the debug drawings. Compact mode draws the main numbers in a corner with the renderer, and full mode shows the statistics window with frame times, profiler scopes, the scenes, the drawings, rendering, memory, GPU pools, counters, object counts, signals and event listeners, monitors and recent log lines. A key cycles through `off`, `compact` and `full`, F3 unless the app picks another, and `haylen.json` picks the mode the app starts with. Drawings draw over every canvas the app draws, by name: `physics` shows the bodies, shapes, joints and contacts of every physics world, `bounds` outlines the sprites and text blocks and names each sprite after its texture, and drawers that apps and plugins add show anything else. Another key, F4 unless the app picks another, turns every drawing on or off, and `haylen.json` names the drawings the app starts with. The developer console runs the commands of the engine and the app, from the lines that the terminal of the development server and the web page send, in development runs and wherever `haylen.json` turns it on. The inspector window lists and edits the values of the scenes, the autoloads, the watched values and the globals, opened by F2 unless the app picks another key, by the terminal or by the console.
 class DebugPlugin final : public Plugin {
   public:
     static constexpr std::size_t kLogLines = 200;
@@ -78,7 +78,6 @@ class DebugPlugin final : public Plugin {
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
     void renderOverlay(core::Engine& engine) override;
     void endFrame(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
 
     // Whether the statistics, the inspector or a trace show what changes from frame to frame.
     [[nodiscard]] bool isAnimating() const override;
@@ -184,6 +183,12 @@ class DebugPlugin final : public Plugin {
     // Moves the statistics to the next mode, from `off` to `compact` to `full` and back to `off`, as their key does.
     void cycleStatsMode() noexcept;
 
+    // Gives the statistics the reader of the bytes that the scripts of the app hold, which the plugin that runs them sets while they run, or an empty reader once they stopped.
+    void setScriptMemory(std::function<std::size_t()> reader);
+
+    // The bytes that the scripts of the app hold, or 0 for an app without scripts.
+    [[nodiscard]] std::size_t getScriptMemory() const;
+
     // Turns every drawing off while any is on, and otherwise turns on every drawing the engine and the app know, as the key of the drawings does.
     void toggleDrawings();
 
@@ -266,6 +271,7 @@ class DebugPlugin final : public Plugin {
     std::unique_ptr<debug::OverlayWindow> overlayWindow;
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> inspectorKey = input::Key::F2;
+    std::function<std::size_t()> scriptMemory;
     core::RingBuffer<debug::Breadcrumb> breadcrumbs{kBreadcrumbs};
     core::Json lastCrash;
     std::atomic<bool> logChanged = false;

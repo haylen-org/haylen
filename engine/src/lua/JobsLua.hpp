@@ -4,11 +4,9 @@
 
 struct lua_State;
 
-namespace haylen::plugins {
-class JobsPlugin;
-}
-
 namespace haylen::lua {
+
+class Jobs;
 
 // Installs `haylen.jobs`, which starts Lua jobs and lets them pause at checkpoints.
 class JobsLua final {
@@ -24,7 +22,7 @@ class JobsLua final {
     // Its address marks the yields that come from `jobs.checkpoint`.
     inline static char checkpointKey = 0;
 
-    [[nodiscard]] static plugins::JobsPlugin& getPlugin(lua_State* L);
+    [[nodiscard]] static Jobs& getJobs(lua_State* L);
     static int spawn(lua_State* L);
     static int checkpoint(lua_State* L);
     static int setBudget(lua_State* L);

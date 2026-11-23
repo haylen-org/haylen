@@ -16,6 +16,7 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/TemporaryDirectory.hpp"
 
@@ -50,7 +51,7 @@ class EngineFixture final {
         return *memoryPackage;
     }
     [[nodiscard]] lua_State* lua() noexcept {
-        return runningEngine->getLuaState();
+        return runningEngine->getPlugin<lua::ScriptPlugin>().getState();
     }
 
     // The development session of the host, which only a fixture in development has, and which throws for a fixture that runs outside development.

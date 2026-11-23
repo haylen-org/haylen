@@ -23,9 +23,6 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
-#include "haylen/lua/Stack.hpp"
-#include "haylen/lua/TypeConverter.hpp"
-#include "haylen/plugins/AssetsPlugin.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "platform/Host.hpp"
@@ -158,9 +155,6 @@ void TextPlugin::start(core::Engine& engine) {
     });
 
     for (const char* type : {"bitmapFont", "gridFont"}) {
-        engine.getPlugin<AssetsPlugin>().registerLuaPusher(type, [](lua_State* L, const std::shared_ptr<void>& asset) {
-            lua::Stack::push(L, std::static_pointer_cast<text::Font>(asset));
-        });
     }
     // clang-format on
 }

@@ -27,14 +27,13 @@ class Map;
 
 namespace haylen::plugins {
 
-// Registers the `tiled` asset type for `.tmj` maps, the `tiledWorld` type for `.world` files and the `tiledRules` type for automapping rules, and installs the `haylen.tiled` module.
+// Registers the `tiled` asset type for `.tmj` maps, the `tiledWorld` type for `.world` files and the `tiledRules` type for automapping rules.
 class TiledPlugin final : public Plugin {
   public:
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "tiled";
     }
     void start(core::Engine& engine) override;
-    void installLua(core::Engine& engine, lua_State* L) override;
 
   private:
     struct DecodedImage;

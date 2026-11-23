@@ -6,11 +6,12 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/JsonConverter.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
 #include "varn/async/Promise.h"
 
 namespace haylen::lua {
 
-Promise::Promise(core::Engine& engine) : promise(std::make_shared<varn::async::Promise>(engine.getScriptRuntime())) {}
+Promise::Promise(core::Engine& engine) : promise(std::make_shared<varn::async::Promise>(engine.getPlugin<lua::ScriptPlugin>().getRuntime())) {}
 
 bool Promise::isPromise(lua_State* L, int index) {
     return luaL_testudata(L, index, kVarnType) != nullptr;
