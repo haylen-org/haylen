@@ -6,8 +6,8 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/MountLink.hpp"
 #include "support/EngineFixture.hpp"
-#include "ui/MountLink.hpp"
 
 namespace haylen::ui {
 

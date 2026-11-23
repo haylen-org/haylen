@@ -5,8 +5,8 @@
 
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/ui/ImageLibrary.hpp"
 #include "haylen/ui/PropertyReader.hpp"
-#include "ui/ImageLibrary.hpp"
 
 namespace haylen::ui {
 

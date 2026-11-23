@@ -11,10 +11,10 @@
 #include <vector>
 
 #include "haylen/math/Insets.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/FullscreenTarget.hpp"
 #include "haylen/platform/WindowStyle.hpp"
-#include "platform/DevelopmentSession.hpp"
-#include "platform/FullscreenTarget.hpp"
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/NativeViews.hpp"

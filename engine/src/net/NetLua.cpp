@@ -15,10 +15,10 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/net/SocketLink.hpp"
 #include "haylen/plugins/NetPlugin.hpp"
 #include "lua/Owners.hpp"
 #include "net/MessagePackLua.hpp"
-#include "net/SocketLink.hpp"
 
 namespace haylen::net {
 

@@ -15,8 +15,8 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "io/OverlayPackage.hpp"
-#include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 
 namespace haylen::platform {

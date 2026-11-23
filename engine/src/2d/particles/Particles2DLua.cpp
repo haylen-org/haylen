@@ -25,7 +25,7 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "plugins/Particles2DPlugin.hpp"
+#include "haylen/plugins/Particles2DPlugin.hpp"
 
 namespace haylen::lua {
 

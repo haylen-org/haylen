@@ -14,10 +14,10 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/ImageLibrary.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
-#include "ui/ImGuiConverter.hpp"
-#include "ui/ImageLibrary.hpp"
 
 namespace haylen::ui {
 

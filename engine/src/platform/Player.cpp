@@ -20,16 +20,16 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
+#include "haylen/platform/native/NativeApi.hpp"
 #include "io/OverlayPackage.hpp"
-#include "platform/DevelopmentSession.hpp"
 #include "platform/GraphicsApiOrder.hpp"
 #include "platform/LaunchOptions.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/Services.hpp"
-#include "platform/native/NativeApi.hpp"
 
 namespace haylen::platform {
 

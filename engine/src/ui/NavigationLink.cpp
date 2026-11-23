@@ -1,4 +1,4 @@
-#include "ui/NavigationLink.hpp"
+#include "haylen/ui/NavigationLink.hpp"
 
 #include <utility>
 

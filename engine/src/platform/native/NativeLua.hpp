@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "haylen/lua/Type.hpp"
-#include "platform/native/NativeCallback.hpp"
+#include "haylen/platform/native/NativeCallback.hpp"
 
 namespace haylen::lua {
 

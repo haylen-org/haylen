@@ -6,7 +6,7 @@
 #include <imgui_internal.h>
 
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 

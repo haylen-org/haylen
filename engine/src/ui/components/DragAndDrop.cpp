@@ -8,7 +8,7 @@
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
-#include "ui/Surfaces.hpp"
+#include "haylen/ui/Surfaces.hpp"
 
 namespace haylen::ui {
 

@@ -24,8 +24,8 @@
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
-#include "ui/Scrollbar.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 

@@ -23,7 +23,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "plugins/Animation2DPlugin.hpp"
+#include "haylen/plugins/Animation2DPlugin.hpp"
 
 namespace haylen::animation2d {
 

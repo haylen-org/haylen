@@ -18,8 +18,8 @@
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
+#include "haylen/localization/LanguageTag.hpp"
 #include "haylen/platform/Window.hpp"
-#include "localization/LanguageTag.hpp"
 
 namespace haylen::core {
 

@@ -21,10 +21,10 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
+#include "haylen/text/BidiParagraph.hpp"
 #include "haylen/text/BitmapFont.hpp"
+#include "haylen/text/Segmenter.hpp"
 #include "haylen/text/SystemFonts.hpp"
-#include "text/BidiParagraph.hpp"
-#include "text/Segmenter.hpp"
 
 namespace haylen::graphics {
 

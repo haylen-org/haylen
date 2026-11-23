@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-#include "platform/native/NativeSignature.hpp"
+#include "haylen/platform/native/NativeSignature.hpp"
 
 namespace haylen::platform {
 

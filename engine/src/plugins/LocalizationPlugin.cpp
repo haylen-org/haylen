@@ -18,8 +18,8 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
+#include "haylen/localization/LanguageTag.hpp"
 #include "haylen/platform/System.hpp"
-#include "localization/LanguageTag.hpp"
 #include "localization/LocalizationLua.hpp"
 
 namespace haylen::plugins {

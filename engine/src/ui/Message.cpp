@@ -50,8 +50,8 @@ void Message::checkKeys(const core::Json& properties, bool creating) {
     }
 
     for (const auto& [key, value] : properties.items()) {
-        const bool described = std::ranges::find(Content::kContentKeys, key) != Content::kContentKeys.end();
-        const bool placed = std::ranges::find(Content::kPlacementKeys, key) != Content::kPlacementKeys.end();
+        const bool described = std::ranges::find(kContentKeys, key) != kContentKeys.end();
+        const bool placed = std::ranges::find(kPlacementKeys, key) != kPlacementKeys.end();
         if (!described && !placed) {
             throw std::invalid_argument("A message has no property \"" + key + "\".");
         }

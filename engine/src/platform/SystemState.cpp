@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "haylen/core/Log.hpp"
-#include "localization/LanguageTag.hpp"
+#include "haylen/localization/LanguageTag.hpp"
 
 namespace haylen::platform {
 

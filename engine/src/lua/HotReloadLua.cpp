@@ -6,8 +6,8 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "lua/modules/HotReloadModule.hpp"
-#include "plugins/HotReloadPlugin.hpp"
 #include "runtime/LuaConfig.hpp"
 
 namespace haylen::lua {

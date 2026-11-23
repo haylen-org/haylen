@@ -13,7 +13,7 @@
 #include "debug/ExecutionBudget.hpp"
 #include "debug/HaltedStack.hpp"
 #include "haylen/core/Log.hpp"
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 
 namespace haylen::debug {
 

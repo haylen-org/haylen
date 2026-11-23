@@ -21,8 +21,8 @@
 #include "haylen/text/RichTextDocument.hpp"
 #include "haylen/text/RichTextOptions.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
+#include "haylen/text/Segmenter.hpp"
 #include "haylen/text/Style.hpp"
-#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 

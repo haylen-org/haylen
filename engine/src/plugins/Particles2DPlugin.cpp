@@ -1,4 +1,4 @@
-#include "plugins/Particles2DPlugin.hpp"
+#include "haylen/plugins/Particles2DPlugin.hpp"
 
 #include <memory>
 #include <stdexcept>

@@ -21,8 +21,8 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "platform/ConsoleRelay.hpp"
-#include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "platform/headless/HeadlessPlayer.hpp"
 #include "support/EngineFixture.hpp"

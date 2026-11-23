@@ -10,8 +10,8 @@
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/ui/Collection.hpp"
+#include "haylen/ui/CollectionDiff.hpp"
 #include "ui/CollectionLua.hpp"
-#include "ui/components/collections/CollectionDiff.hpp"
 
 namespace haylen::ui {
 

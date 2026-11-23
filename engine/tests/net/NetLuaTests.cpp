@@ -7,8 +7,8 @@
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/net/WebSocket.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "net/WebSocketFixture.hpp"
-#include "platform/DevelopmentSession.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 

@@ -1,4 +1,4 @@
-#include "text/Segmenter.hpp"
+#include "haylen/text/Segmenter.hpp"
 
 #include <algorithm>
 #include <memory>

@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "haylen/lua/Reference.hpp"
-#include "platform/native/NativeCallback.hpp"
+#include "haylen/platform/native/NativeCallback.hpp"
 
 struct lua_State;
 

@@ -6,9 +6,9 @@
 
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
 #include "haylen/ui/NavigationInput.hpp"
 #include "ui/FocusSearch.hpp"
-#include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 

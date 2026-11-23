@@ -7,8 +7,8 @@
 #include <string_view>
 
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 #include "ui/ScrollArbiter.hpp"
-#include "ui/Scrollbar.hpp"
 
 namespace haylen::debug {
 

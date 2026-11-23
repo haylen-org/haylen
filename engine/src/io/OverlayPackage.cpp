@@ -4,8 +4,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/io/MemoryReader.hpp"
 #include "haylen/io/Path.hpp"
-#include "io/MemoryReader.hpp"
 
 namespace haylen::io {
 

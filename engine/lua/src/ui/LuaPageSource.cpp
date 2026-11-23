@@ -12,10 +12,10 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/ui/Collection.hpp"
+#include "haylen/ui/CollectionDiff.hpp"
 #include "lua/StackScope.hpp"
 #include "lua/Task.hpp"
 #include "ui/CollectionLua.hpp"
-#include "ui/components/collections/CollectionDiff.hpp"
 
 namespace haylen::ui {
 

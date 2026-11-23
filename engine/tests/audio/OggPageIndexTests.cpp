@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "audio/OggPageIndex.hpp"
-#include "io/MemoryReader.hpp"
+#include "haylen/io/MemoryReader.hpp"
 #include "support/AudioFiles.hpp"
 
 namespace haylen::audio {

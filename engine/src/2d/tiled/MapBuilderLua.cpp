@@ -10,7 +10,6 @@
 
 #include "2d/spatial/GridLua.hpp"
 #include "2d/tiled/TiledLua.hpp"
-#include "graphics/TextureResource.hpp"
 #include "haylen/2d/tiled/MapRenderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
@@ -97,7 +96,7 @@ int MapBuilderLua::addTileset(lua_State* L) {
     // The image of a path comes through the asset cache, and a texture made in code keeps the path it was loaded from, if any.
     if (lua_getfield(L, 2, "texture") != LUA_TNIL) {
         tileset->texture = lua::Stack::read<graphics::Texture>(L, -1);
-        tileset->image = tileset->texture.getResource()->label;
+        tileset->image = tileset->texture.getLabel();
     } else {
         lua_getfield(L, 2, "image");
         if (!lua_isstring(L, -1)) {

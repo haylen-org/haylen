@@ -14,7 +14,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/platform/PluginStreams.hpp"
 #include "haylen/platform/VideoStream.hpp"
-#include "plugins/PlatformPlugin.hpp"
+#include "haylen/plugins/PlatformPlugin.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 

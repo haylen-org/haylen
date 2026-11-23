@@ -10,9 +10,9 @@
 #include "haylen/core/Version.hpp"
 #include "haylen/io/PackageWatcher.hpp"
 #include "haylen/io/Path.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/ConsoleRelay.hpp"
-#include "platform/DevelopmentSession.hpp"
 
 namespace haylen::platform {
 

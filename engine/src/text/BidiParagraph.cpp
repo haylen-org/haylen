@@ -1,4 +1,4 @@
-#include "text/BidiParagraph.hpp"
+#include "haylen/text/BidiParagraph.hpp"
 
 #include <stdexcept>
 

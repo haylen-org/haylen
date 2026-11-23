@@ -5,7 +5,7 @@
 
 #include "haylen/input/Input.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/Surfaces.hpp"
+#include "haylen/ui/Surfaces.hpp"
 
 namespace haylen::ui {
 

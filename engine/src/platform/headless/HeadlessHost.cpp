@@ -5,7 +5,7 @@
 #include <thread>
 #include <utility>
 
-#include "platform/FullscreenTarget.hpp"
+#include "haylen/platform/FullscreenTarget.hpp"
 
 namespace haylen::platform {
 

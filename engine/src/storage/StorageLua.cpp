@@ -23,8 +23,8 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/ResumeState.hpp"
+#include "haylen/storage/StoredJson.hpp"
 #include "haylen/storage/UserStorage.hpp"
-#include "storage/StoredJson.hpp"
 
 namespace haylen::storage {
 

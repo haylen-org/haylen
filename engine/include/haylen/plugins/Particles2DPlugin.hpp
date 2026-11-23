@@ -7,8 +7,8 @@
 #include "haylen/2d/particles/System.hpp"
 #include "haylen/2d/particles/Trail.hpp"
 #include "haylen/core/Json.hpp"
+#include "haylen/plugins/LiveObjects.hpp"
 #include "haylen/plugins/Plugin.hpp"
-#include "plugins/LiveObjects.hpp"
 
 namespace haylen::plugins {
 

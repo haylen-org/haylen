@@ -7,7 +7,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 
 namespace haylen::plugins {
 

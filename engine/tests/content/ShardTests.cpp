@@ -23,7 +23,7 @@
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "haylen/content/Error.hpp"
-#include "io/MemoryReader.hpp"
+#include "haylen/io/MemoryReader.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"

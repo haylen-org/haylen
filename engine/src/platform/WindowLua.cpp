@@ -21,10 +21,10 @@
 #include "haylen/platform/Displays.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/FoldSimulation.hpp"
+#include "haylen/platform/FullscreenTarget.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
-#include "platform/FullscreenTarget.hpp"
 #include "platform/SystemAnswerLua.hpp"
 
 namespace haylen::platform {

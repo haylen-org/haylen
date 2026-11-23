@@ -14,8 +14,8 @@
 #include "haylen/ui/Component.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
-#include "ui/ImGuiConverter.hpp"
-#include "ui/Surfaces.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 
 namespace haylen::ui {

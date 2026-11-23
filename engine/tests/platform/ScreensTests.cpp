@@ -18,9 +18,9 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Screens.hpp"
 #include "haylen/platform/native/HaylenNative.h"
+#include "haylen/platform/native/NativeApi.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/headless/HeadlessHost.hpp"
-#include "platform/native/NativeApi.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::platform {

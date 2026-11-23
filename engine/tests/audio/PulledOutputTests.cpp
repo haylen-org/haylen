@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
+#include "haylen/io/MemoryReader.hpp"
 #include "haylen/port/AudioOutput.hpp"
-#include "io/MemoryReader.hpp"
 #include "support/AudioFiles.hpp"
 
 namespace haylen::audio {

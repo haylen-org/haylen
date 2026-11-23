@@ -16,7 +16,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "support/DebugClient.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/EventLoop.hpp"

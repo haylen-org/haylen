@@ -21,8 +21,8 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "haylen/plugins/Physics2DPlugin.hpp"
 #include "lua/Owners.hpp"
-#include "plugins/Physics2DPlugin.hpp"
 
 namespace haylen::physics2d {
 

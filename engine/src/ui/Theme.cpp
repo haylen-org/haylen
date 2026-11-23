@@ -14,9 +14,9 @@
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/ui/Backend.hpp"
-#include "ui/ImGuiConverter.hpp"
-#include "ui/ImageLibrary.hpp"
-#include "ui/Scrollbar.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/ImageLibrary.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 

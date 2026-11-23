@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "haylen/core/Utf8.hpp"
-#include "text/BidiParagraph.hpp"
+#include "haylen/text/BidiParagraph.hpp"
 
 namespace haylen::text {
 

@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "haylen/core/Utf8.hpp"
-#include "text/Segmenter.hpp"
+#include "haylen/text/Segmenter.hpp"
 
 namespace haylen::text {
 

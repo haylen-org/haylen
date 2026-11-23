@@ -9,9 +9,9 @@
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/Surfaces.hpp"
 #include "ui/ScrollFade.hpp"
-#include "ui/Surfaces.hpp"
 
 namespace haylen::ui {
 

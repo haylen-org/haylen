@@ -12,12 +12,12 @@
 #include "haylen/core/SceneView.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "lua/Autoloads.hpp"
 #include "lua/Environment.hpp"
 #include "lua/Jobs.hpp"
 #include "lua/Warnings.hpp"
 #include "lua/modules/BuiltInModules.hpp"
-#include "platform/DevelopmentSession.hpp"
 #include "runtime/LuaConfig.hpp"
 #include "varn/runtime/Runtime.h"
 

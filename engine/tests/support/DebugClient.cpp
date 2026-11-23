@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <utility>
 
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 
 namespace haylen::test {
 

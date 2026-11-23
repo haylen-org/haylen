@@ -47,4 +47,8 @@ Texture::Options Texture::getOptions() const noexcept {
     return resource ? resource->options : Options{};
 }
 
+std::string_view Texture::getLabel() const noexcept {
+    return resource ? std::string_view(resource->label) : std::string_view();
+}
+
 } // namespace haylen::graphics

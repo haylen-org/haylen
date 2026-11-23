@@ -10,9 +10,9 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/debug/Console.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
-#include "platform/DevelopmentSession.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::debug {

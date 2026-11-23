@@ -22,8 +22,8 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/plugins/Nodes2DPlugin.hpp"
 #include "lua/Owners.hpp"
-#include "plugins/Nodes2DPlugin.hpp"
 
 namespace haylen::nodes2d {
 

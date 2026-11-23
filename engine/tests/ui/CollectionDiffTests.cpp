@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "ui/components/collections/CollectionDiff.hpp"
+#include "haylen/ui/CollectionDiff.hpp"
 
 namespace haylen::ui {
 

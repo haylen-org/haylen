@@ -1,4 +1,4 @@
-#include "ui/ImageLibrary.hpp"
+#include "haylen/ui/ImageLibrary.hpp"
 
 #include <algorithm>
 #include <cctype>

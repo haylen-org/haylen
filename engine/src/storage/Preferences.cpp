@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/storage/StoredJson.hpp"
 #include "haylen/storage/UserStorage.hpp"
-#include "storage/StoredJson.hpp"
 
 namespace haylen::storage {
 

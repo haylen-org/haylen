@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "audio/OggPageIndex.hpp"
-#include "io/MemoryReader.hpp"
+#include "haylen/io/MemoryReader.hpp"
 
 // The entry point libFuzzer calls with each input it generates, which is an Ogg file for the index of its pages. The index tells whether its first packet starts like Vorbis, reads its length, records its pages as decoding in order does and searches it for frames up to past the largest granule position, from what it recorded and in a new index that bisects the file. Every page it finds must start inside the file and end at or before the frame.
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {

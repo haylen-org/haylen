@@ -9,9 +9,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/localization/LanguageTag.hpp"
 #include "haylen/localization/PluralRules.hpp"
 #include "haylen/text/Style.hpp"
-#include "localization/LanguageTag.hpp"
 
 namespace haylen::localization {
 

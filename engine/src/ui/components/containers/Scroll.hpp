@@ -12,8 +12,8 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Component.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 #include "ui/ScrollFinger.hpp"
-#include "ui/Scrollbar.hpp"
 #include "ui/Scroller.hpp"
 
 namespace haylen::ui {

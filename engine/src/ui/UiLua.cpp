@@ -36,15 +36,15 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/Gui.hpp"
+#include "haylen/ui/ImageLibrary.hpp"
+#include "haylen/ui/MountLink.hpp"
 #include "haylen/ui/Scaling.hpp"
+#include "haylen/ui/Surfaces.hpp"
 #include "lua/Owners.hpp"
 #include "lua/ScriptedScene.hpp"
 #include "lua/StackScope.hpp"
 #include "ui/CollectionLua.hpp"
-#include "ui/ImageLibrary.hpp"
-#include "ui/MountLink.hpp"
 #include "ui/NavigationLua.hpp"
-#include "ui/Surfaces.hpp"
 #include "ui/TransformLua.hpp"
 
 namespace haylen::lua {

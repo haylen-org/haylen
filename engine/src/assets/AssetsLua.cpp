@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include "graphics/TextureResource.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JobSystem.hpp"

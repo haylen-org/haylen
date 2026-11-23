@@ -15,10 +15,10 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
+#include "haylen/platform/native/NativeApi.hpp"
+#include "haylen/platform/native/NativeSignature.hpp"
 #include "lua/modules/NativeModule.hpp"
-#include "platform/native/NativeApi.hpp"
 #include "platform/native/NativeCallbacks.hpp"
-#include "platform/native/NativeSignature.hpp"
 
 namespace haylen::platform {
 

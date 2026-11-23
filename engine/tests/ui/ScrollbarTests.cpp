@@ -25,10 +25,10 @@
 #include "haylen/ui/CollectionItems.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Scaling.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/TestFiles.hpp"
 #include "support/UiFixture.hpp"
-#include "ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 

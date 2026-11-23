@@ -36,10 +36,6 @@ struct Message::Content {
     static constexpr std::array<std::pair<std::string_view, Variant>, 3> kVariantNames{{{"solid", Variant::Solid}, {"soft", Variant::Soft}, {"outline", Variant::Outline}}};
     static constexpr std::array<std::pair<std::string_view, Indicator>, 4> kIndicatorNames{{{"none", Indicator::None}, {"icon", Indicator::Icon}, {"busy", Indicator::Busy}, {"progress", Indicator::Progress}}};
 
-    // The properties that change what a message says and how it looks, which `update` takes, and those that only a new message takes.
-    static constexpr std::array<std::string_view, 10> kContentKeys{"title", "text", "icon", "action", "tone", "variant", "indicator", "progress", "closable", "duration"};
-    static constexpr std::array<std::string_view, 5> kPlacementKeys{"style", "priority", "position", "arrangement", "expandable"};
-
     // Reads the properties of the content, leaving the others to the reader.
     void read(PropertyReader& reader);
 

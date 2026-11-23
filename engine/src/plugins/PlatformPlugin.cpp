@@ -1,4 +1,4 @@
-#include "plugins/PlatformPlugin.hpp"
+#include "haylen/plugins/PlatformPlugin.hpp"
 
 #include <algorithm>
 #include <utility>

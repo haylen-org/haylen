@@ -4,7 +4,7 @@
 #include "development/Development.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 
 namespace haylen::plugins {
 

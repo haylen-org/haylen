@@ -15,6 +15,7 @@
 #include "audio/EffectLua.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/io/MemoryReader.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -22,7 +23,6 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "io/MemoryReader.hpp"
 
 namespace haylen::audio {
 

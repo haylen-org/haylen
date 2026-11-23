@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/ui/CollectionIds.hpp"
 #include "haylen/ui/CollectionSource.hpp"
-#include "ui/components/collections/CollectionIds.hpp"
 
 struct lua_State;
 

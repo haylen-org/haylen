@@ -15,9 +15,9 @@
 #include "haylen/platform/TextInput.hpp"
 #include "haylen/text/Layout.hpp"
 #include "haylen/text/Style.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "ui/ClampedScroll.hpp"
-#include "ui/Scrollbar.hpp"
 #include "ui/TextFieldLayout.hpp"
 
 struct ImGuiInputTextState;

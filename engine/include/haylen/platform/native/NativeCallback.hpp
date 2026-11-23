@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "haylen/platform/Bridge.hpp"
-#include "platform/native/NativeSignature.hpp"
+#include "haylen/platform/native/NativeSignature.hpp"
 
 namespace haylen::platform {
 

@@ -1,4 +1,4 @@
-#include "plugins/HotReloadPlugin.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -15,7 +15,7 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageWatcher.hpp"
 #include "haylen/io/Path.hpp"
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 
 namespace haylen::plugins {
 

@@ -4,9 +4,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/text/Segmenter.hpp"
 #include "text/LayoutBuilder.hpp"
 #include "text/LayoutCache.hpp"
-#include "text/Segmenter.hpp"
 #include "text/TextFit.hpp"
 
 namespace haylen::text {

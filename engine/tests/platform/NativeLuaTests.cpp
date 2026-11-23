@@ -15,7 +15,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
-#include "platform/native/NativeApi.hpp"
+#include "haylen/platform/native/NativeApi.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::platform {

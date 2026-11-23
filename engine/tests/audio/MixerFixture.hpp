@@ -17,8 +17,8 @@
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/io/MemoryReader.hpp"
 #include "haylen/io/PackageReader.hpp"
-#include "io/MemoryReader.hpp"
 #include "support/TestFiles.hpp"
 #include "varn/runtime/Scheduler.h"
 

@@ -22,10 +22,10 @@
 #include "haylen/debug/ProfileScope.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/platform/native/NativeApi.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/ScreenRelay.hpp"
-#include "platform/native/NativeApi.hpp"
 #include "plugins/BuiltInPlugins.hpp"
 
 namespace haylen::core {

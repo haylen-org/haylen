@@ -15,7 +15,7 @@
 #include "content/ReleasePackage.hpp"
 #include "content/format/Chunker.hpp"
 #include "haylen/io/MemoryPackage.hpp"
-#include "io/MemoryReader.hpp"
+#include "haylen/io/MemoryReader.hpp"
 #include "support/ReleaseFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"

@@ -20,13 +20,13 @@
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/storage/UserStorage.hpp"
 #include "platform/ConsoleRelay.hpp"
 #include "platform/CrashGuard.hpp"
-#include "platform/DevelopmentSession.hpp"
 
 namespace haylen::plugins {
 

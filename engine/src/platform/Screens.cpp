@@ -4,9 +4,9 @@
 #include <stdexcept>
 
 #include "haylen/core/JsonBytes.hpp"
+#include "haylen/platform/native/NativeApi.hpp"
 #include "platform/Host.hpp"
 #include "platform/ScreenRelay.hpp"
-#include "platform/native/NativeApi.hpp"
 
 namespace haylen::platform {
 

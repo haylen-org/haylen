@@ -16,8 +16,8 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/platform/PluginStreams.hpp"
+#include "haylen/plugins/PlatformPlugin.hpp"
 #include "lua/Owners.hpp"
-#include "plugins/PlatformPlugin.hpp"
 
 namespace haylen::platform {
 

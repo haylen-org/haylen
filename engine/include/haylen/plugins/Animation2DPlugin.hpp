@@ -5,8 +5,8 @@
 #include "haylen/2d/animation/AnimatedBatch.hpp"
 #include "haylen/2d/animation/Animator.hpp"
 #include "haylen/2d/animation/Skeleton.hpp"
+#include "haylen/plugins/LiveObjects.hpp"
 #include "haylen/plugins/Plugin.hpp"
-#include "plugins/LiveObjects.hpp"
 
 namespace haylen::plugins {
 

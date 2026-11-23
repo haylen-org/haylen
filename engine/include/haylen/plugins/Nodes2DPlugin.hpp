@@ -3,8 +3,8 @@
 #include <memory>
 
 #include "haylen/2d/nodes/NodeTree.hpp"
+#include "haylen/plugins/LiveObjects.hpp"
 #include "haylen/plugins/Plugin.hpp"
-#include "plugins/LiveObjects.hpp"
 
 namespace haylen::plugins {
 

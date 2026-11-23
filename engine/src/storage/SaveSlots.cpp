@@ -9,8 +9,8 @@
 #include <utility>
 
 #include "haylen/core/Log.hpp"
+#include "haylen/storage/StoredJson.hpp"
 #include "haylen/storage/UserStorage.hpp"
-#include "storage/StoredJson.hpp"
 
 namespace haylen::storage {
 

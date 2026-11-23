@@ -1,4 +1,4 @@
-#include "ui/Scrollbar.hpp"
+#include "haylen/ui/Scrollbar.hpp"
 
 #include <algorithm>
 
@@ -7,8 +7,8 @@
 
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Context.hpp"
-#include "ui/ImGuiConverter.hpp"
-#include "ui/Surfaces.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/Surfaces.hpp"
 
 namespace haylen::ui {
 

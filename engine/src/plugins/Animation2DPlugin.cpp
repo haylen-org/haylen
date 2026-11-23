@@ -1,4 +1,4 @@
-#include "plugins/Animation2DPlugin.hpp"
+#include "haylen/plugins/Animation2DPlugin.hpp"
 
 #include <memory>
 #include <string>

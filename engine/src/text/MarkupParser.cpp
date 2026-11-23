@@ -12,8 +12,8 @@
 #include <fast_float/fast_float.h>
 
 #include "haylen/core/Utf8.hpp"
+#include "haylen/text/Segmenter.hpp"
 #include "haylen/text/Style.hpp"
-#include "text/Segmenter.hpp"
 
 namespace haylen::text {
 

@@ -19,7 +19,7 @@
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/Component.hpp"
-#include "ui/ImGuiConverter.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
 #include "ui/ScrollArbiter.hpp"
 
 namespace haylen::ui {

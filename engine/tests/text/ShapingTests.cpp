@@ -12,12 +12,12 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Utf8.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
+#include "haylen/text/BidiParagraph.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/FontCollection.hpp"
-#include "text/BidiParagraph.hpp"
 
 namespace haylen::text {
 

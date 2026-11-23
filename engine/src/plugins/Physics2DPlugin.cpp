@@ -1,4 +1,4 @@
-#include "plugins/Physics2DPlugin.hpp"
+#include "haylen/plugins/Physics2DPlugin.hpp"
 
 #include <limits>
 #include <memory>

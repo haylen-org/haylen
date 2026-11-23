@@ -1,4 +1,4 @@
-#include "plugins/Nodes2DPlugin.hpp"
+#include "haylen/plugins/Nodes2DPlugin.hpp"
 
 #include <memory>
 

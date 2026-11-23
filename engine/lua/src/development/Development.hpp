@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "haylen/core/Json.hpp"
-#include "platform/DevelopmentSession.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
 
 namespace haylen::debug {
 class Debugger;

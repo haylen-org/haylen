@@ -2,8 +2,8 @@
 
 #include "development/ModuleHotReload.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "lua/HotReloadLua.hpp"
-#include "plugins/HotReloadPlugin.hpp"
 
 namespace haylen::lua::modules {
 

@@ -1,7 +1,7 @@
 #include "ui/components/inputs/FilterField.hpp"
 
 #include "haylen/ui/Context.hpp"
-#include "ui/Surfaces.hpp"
+#include "haylen/ui/Surfaces.hpp"
 #include "ui/Widgets.hpp"
 
 namespace haylen::ui {

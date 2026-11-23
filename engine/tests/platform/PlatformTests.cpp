@@ -14,6 +14,7 @@
 
 #include "haylen/core/JsonBytes.hpp"
 #include "haylen/platform/Bridge.hpp"
+#include "haylen/platform/native/NativeApi.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/GamepadSlots.hpp"
 #include "platform/GamepadVendors.hpp"
@@ -21,7 +22,6 @@
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/ReportedState.hpp"
-#include "platform/native/NativeApi.hpp"
 #include "support/EngineFixture.hpp"
 #include "varn/dataview/DataViewJson.h"
 

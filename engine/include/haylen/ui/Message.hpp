@@ -45,6 +45,10 @@ class Message final : public std::enable_shared_from_this<Message> {
     // What the message says and how it looks, which the UI defines in its own header.
     struct Content;
 
+    // The properties that change what a message says and how it looks, which `update` takes, and those that only a new message takes.
+    static constexpr std::array<std::string_view, 10> kContentKeys{"title", "text", "icon", "action", "tone", "variant", "indicator", "progress", "closable", "duration"};
+    static constexpr std::array<std::string_view, 5> kPlacementKeys{"style", "priority", "position", "arrangement", "expandable"};
+
     static constexpr std::array<std::pair<std::string_view, Style>, 3> kStyleNames{{{"toast", Style::Toast}, {"snackbar", Style::Snackbar}, {"banner", Style::Banner}}};
     static constexpr std::array<std::pair<std::string_view, Priority>, 3> kPriorityNames{{{"low", Priority::Low}, {"normal", Priority::Normal}, {"high", Priority::High}}};
     static constexpr std::array<std::pair<std::string_view, Reason>, 7> kReasonNames{{{"timeout", Reason::Timeout}, {"tapped", Reason::Tapped}, {"closed", Reason::Closed}, {"swiped", Reason::Swiped}, {"action", Reason::Action}, {"dismissed", Reason::Dismissed}, {"replaced", Reason::Replaced}}};

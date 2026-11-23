@@ -28,14 +28,13 @@
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Message.hpp"
 #include "haylen/ui/Navigation.hpp"
+#include "haylen/ui/NavigationLink.hpp"
 #include "haylen/ui/NavigationSplit.hpp"
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/NavigationTabs.hpp"
 #include "haylen/ui/Presentation.hpp"
 #include "haylen/ui/Screen.hpp"
 #include "lua/Owners.hpp"
-#include "ui/MessageContent.hpp"
-#include "ui/NavigationLink.hpp"
 #include "ui/ScriptedScreen.hpp"
 #include "ui/UiLua.hpp"
 
@@ -717,9 +716,9 @@ void NavigationLua::connectMessage(lua_State* L, core::Signal<Message&>& signal,
 // Shows a message with `ui.showMessage{style = 'snackbar', text = 'Photo deleted.', action = 'Undo', priority = 'high', owner = scene, onAction = function(event) end, onDismiss = function(event) end}`.
 int NavigationLua::showMessage(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    lua::Table::checkFields(L, 1, {Message::Content::kContentKeys, Message::Content::kPlacementKeys, kMessageHandlerFields});
-    core::Json properties = readMessageProperties(L, 1, Message::Content::kPlacementKeys);
-    properties.update(readMessageProperties(L, 1, Message::Content::kContentKeys));
+    lua::Table::checkFields(L, 1, {Message::kContentKeys, Message::kPlacementKeys, kMessageHandlerFields});
+    core::Json properties = readMessageProperties(L, 1, Message::kPlacementKeys);
+    properties.update(readMessageProperties(L, 1, Message::kContentKeys));
     const int showHandler = pushHandler(L, 1, "onShow");
     const int actionHandler = pushHandler(L, 1, "onAction");
     const int tapHandler = pushHandler(L, 1, "onTap");
@@ -1213,8 +1212,8 @@ int NavigationLua::presentationSetDetent(lua_State* L) {
 int NavigationLua::messageUpdate(lua_State* L) {
     Message& message = lua::Userdata::check<Message>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
-    lua::Table::checkFields(L, 2, {Message::Content::kContentKeys});
-    message.update(readMessageProperties(L, 2, Message::Content::kContentKeys));
+    lua::Table::checkFields(L, 2, {Message::kContentKeys});
+    message.update(readMessageProperties(L, 2, Message::kContentKeys));
     return 0;
 }
 

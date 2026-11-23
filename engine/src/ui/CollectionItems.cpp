@@ -5,8 +5,8 @@
 #include <stdexcept>
 #include <utility>
 
-#include "ui/components/collections/CollectionDiff.hpp"
-#include "ui/components/collections/CollectionIds.hpp"
+#include "haylen/ui/CollectionDiff.hpp"
+#include "haylen/ui/CollectionIds.hpp"
 
 namespace haylen::ui {
 

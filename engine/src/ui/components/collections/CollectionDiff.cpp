@@ -1,4 +1,4 @@
-#include "ui/components/collections/CollectionDiff.hpp"
+#include "haylen/ui/CollectionDiff.hpp"
 
 #include <algorithm>
 #include <bit>

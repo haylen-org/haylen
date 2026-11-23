@@ -7,7 +7,7 @@
 
 #include "development/ModuleGraph.hpp"
 #include "haylen/core/AppError.hpp"
-#include "plugins/HotReloadPlugin.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
 
 struct lua_State;
 

@@ -19,9 +19,9 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "haylen/platform/DevelopmentSession.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
-#include "platform/DevelopmentSession.hpp"
-#include "plugins/HotReloadPlugin.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 

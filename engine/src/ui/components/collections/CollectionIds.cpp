@@ -1,8 +1,8 @@
-#include "ui/components/collections/CollectionIds.hpp"
+#include "haylen/ui/CollectionIds.hpp"
 
 #include <algorithm>
 
-#include "ui/components/collections/CollectionDiff.hpp"
+#include "haylen/ui/CollectionDiff.hpp"
 
 namespace haylen::ui {
 

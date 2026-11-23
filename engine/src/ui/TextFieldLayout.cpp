@@ -7,7 +7,7 @@
 #include <optional>
 #include <span>
 
-#include "text/Segmenter.hpp"
+#include "haylen/text/Segmenter.hpp"
 
 namespace haylen::ui {
 

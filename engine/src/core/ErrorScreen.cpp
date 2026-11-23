@@ -17,8 +17,8 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/platform/Window.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
 #include "haylen/text/Font.hpp"
-#include "plugins/HotReloadPlugin.hpp"
 
 namespace haylen::core {
 

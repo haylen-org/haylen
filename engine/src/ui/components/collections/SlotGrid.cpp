@@ -10,7 +10,7 @@
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
-#include "ui/Surfaces.hpp"
+#include "haylen/ui/Surfaces.hpp"
 #include "ui/Typography.hpp"
 #include "ui/Widgets.hpp"
 #include "ui/components/DragAndDrop.hpp"

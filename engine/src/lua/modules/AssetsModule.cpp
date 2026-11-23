@@ -5,8 +5,6 @@
 
 #include "assets/AssetsLua.hpp"
 #include "graphics/ImageLua.hpp"
-#include "graphics/ShaderResource.hpp"
-#include "graphics/TextureResource.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
