@@ -32,7 +32,8 @@ class ProjectResolverTest:
             "contributions": [{"type": "package", "platforms": ["fake"], "url": "https://example.com/kit", "version": "1"}],
         }
         lua = fixture.app({"plugins": {"kit": {}}}, "lua")
-        cpp = fixture.app({"kind": "cpp", "cpp": {"sources": ["source"]}, "plugins": {"kit": {}}}, "cpp")
+        cpp = fixture.app({"kind": "cpp", "cpp": {"sources": ["src"]}, "plugins": {"kit": {}}}, "cpp")
+        (cpp / "src").mkdir()
         fixture.plugin(lua, "kit", plugin)
         fixture.plugin(cpp, "kit", plugin)
 

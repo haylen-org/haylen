@@ -37,9 +37,11 @@ class ToolingFixture:
 
     def app(self, document: dict, name: str = "app") -> Path:
         folder = self.folder / name
-        (folder / "source").mkdir(parents=True, exist_ok=True)
-        (folder / "content").mkdir(exist_ok=True)
-        (folder / "source" / "main.lua").write_text("print('hello')\n", encoding="utf-8")
+        (folder / "content").mkdir(parents=True, exist_ok=True)
+        # Only an app that runs Lua has Lua modules.
+        if document.get("kind") != "cpp" or document.get("cpp", {}).get("lua", False):
+            (folder / "source").mkdir(exist_ok=True)
+            (folder / "source" / "main.lua").write_text("print('hello')\n", encoding="utf-8")
         manifest = {"name": "Test App", "identifier": "com.haylen.tests", "version": "1.0.0", "category": "utility", **document}
         (folder / AppManifest.FILE).write_text(json.dumps(manifest, indent=4), encoding="utf-8")
         return folder
@@ -80,6 +82,7 @@ class ToolingFixture:
                 "minimumSystemVersion": minimum,
                 "graphicsApis": ["fakeGl"],
                 "capabilities": list(capabilities),
+                "libraries": {"haylen": "lib/libhaylen.a", "haylen-runtime": "lib/libhaylen-runtime.a", "haylen-lua": "lib/libhaylen-lua.a", "haylen-player": "lib/haylen-player.o"},
             }
             for architecture in architectures
         ]

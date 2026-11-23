@@ -139,22 +139,26 @@ function(haylen_harden_release target)
 endfunction()
 
 # Builds the binary of an app:
-#   haylen_add_app(<target> LUA|CPP [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
+#   haylen_add_app(<target> LUA|CPP [WITH_LUA] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
 # - `LUA` links the Lua player of `haylen::player`, which defines the app, and `CPP` compiles the `SOURCES`, which define `haylen::core::Application::create`.
+# - `WITH_LUA` links the Lua layer of `haylen::lua` into a C++ app whose application runs Lua, and a C++ app without it holds nothing of Lua.
 # - `CONTENT` is the folder that the app ships, the staged package of a Debug build or the protected release of a Release build.
 # - `BOOTSTRAP` is the bootstrap source that the content tool writes for a protected release, which the binary compiles in and which makes the build a release build without symbols.
 # - `WEB_SHELL` is the page of a web app, by default the shell of the engine.
 # On desktops the app is an executable with its content in the folder "app" next to it, on Android the shared library that the activity loads while Gradle takes the content into the assets, and on the web a page that preloads its package or, for a release, streams it from the folder "app" next to it. A port builds the app with the function that `APP_FUNCTION` of its `haylen_port` names.
 function(haylen_add_app target)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "LUA;CPP" "CONTENT;BOOTSTRAP;WEB_SHELL" "SOURCES")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "LUA;CPP;WITH_LUA" "CONTENT;BOOTSTRAP;WEB_SHELL" "SOURCES")
   if(arg_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR "The app \"${target}\" passes \"${arg_UNPARSED_ARGUMENTS}\" to \"haylen_add_app\", which takes \"LUA\" or \"CPP\", \"SOURCES\", \"CONTENT\", \"BOOTSTRAP\" and \"WEB_SHELL\".")
+    message(FATAL_ERROR "The app \"${target}\" passes \"${arg_UNPARSED_ARGUMENTS}\" to \"haylen_add_app\", which takes \"LUA\" or \"CPP\", \"WITH_LUA\", \"SOURCES\", \"CONTENT\", \"BOOTSTRAP\" and \"WEB_SHELL\".")
   endif()
   if(arg_LUA STREQUAL arg_CPP)
     message(FATAL_ERROR "The app \"${target}\" names its kind with exactly one of \"LUA\", for the Lua player of the engine, and \"CPP\", for sources that define \"haylen::core::Application::create\".")
   endif()
   if(arg_LUA AND arg_SOURCES)
     message(FATAL_ERROR "The Lua app \"${target}\" runs the Lua player of the engine, which defines the app, so it takes no \"SOURCES\". Make it a \"CPP\" app to compile sources of its own.")
+  endif()
+  if(arg_LUA AND arg_WITH_LUA)
+    message(FATAL_ERROR "The Lua app \"${target}\" links the Lua layer through the Lua player, so \"WITH_LUA\" belongs only to a \"CPP\" app.")
   endif()
   if(arg_CPP AND NOT arg_SOURCES)
     message(FATAL_ERROR "The C++ app \"${target}\" needs \"SOURCES\" that define \"haylen::core::Application::create\".")
@@ -178,6 +182,8 @@ function(haylen_add_app target)
   set(libraries haylen::runtime)
   if(arg_LUA)
     list(APPEND libraries haylen::player)
+  elseif(arg_WITH_LUA)
+    list(APPEND libraries haylen::lua)
   endif()
 
   if(HAYLEN_PORT_PLATFORM)

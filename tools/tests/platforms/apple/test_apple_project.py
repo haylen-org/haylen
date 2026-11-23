@@ -66,8 +66,11 @@ class AppleProjectTest:
         cpp_target = AppleFixture.spec(apple.prepare(cpp))["targets"]["App"]
 
         assert AppleProjectTest.plugin_parts(lua_target) == AppleProjectTest.plugin_parts(cpp_target)
-        assert any(dependency.get("framework", "").endswith("HaylenPlayer.xcframework") for dependency in lua_target["dependencies"])
-        assert not any(dependency.get("framework", "").endswith("HaylenPlayer.xcframework") for dependency in cpp_target["dependencies"])
+        assert any(dependency.get("framework", "").endswith("HaylenLua.xcframework") for dependency in lua_target["dependencies"])
+        assert not any(dependency.get("framework", "").endswith("HaylenLua.xcframework") for dependency in cpp_target["dependencies"])
+        scripted = apple.cpp_app({"cpp": {"sources": ["src"], "lua": True}}, "scripted")
+        scripted_target = AppleFixture.spec(apple.prepare(scripted))["targets"]["App"]
+        assert any(dependency.get("framework", "").endswith("HaylenLua.xcframework") for dependency in scripted_target["dependencies"])
         assert {"path": str(cpp / "src"), "group": "App", "type": "syncedFolder"} in cpp_target["sources"]
         assert cpp_target["settings"]["base"]["HEADER_SEARCH_PATHS"] == ["$(inherited)", f'"{cpp / "include"}"']
         assert cpp_target["settings"]["base"]["GCC_PREPROCESSOR_DEFINITIONS"] == ["$(inherited)", *AppleFixture.DEFINITIONS, "GAME=1"]

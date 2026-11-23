@@ -31,7 +31,7 @@ from haylen.toolchains.apple_sdk import AppleSdk
 
 
 class AppleEnginePort(EnginePort):
-    """The engine port of the Apple platforms, which builds the slices of the Apple SDK, one per system and environment: the engine and the runtime of every architecture of a slice merged in its `libhaylen.a` and the Lua player in its `libhaylen-player.a`, joined with `lipo` and gathered into `Haylen.xcframework` and `HaylenPlayer.xcframework`, both signed ad hoc so Xcode takes them as signed. The SDK folder keeps the slices that it holds of the same engine sources and configuration, so building one slice later adds it to the frameworks, and SDKs that hold different slices, such as SDKs that several machines built side by side, join into one. The SDK holds the headers, the CMake package of native libraries, the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge."""
+    """The engine port of the Apple platforms, which builds the slices of the Apple SDK, one per system and environment: the engine and the runtime of every architecture of a slice merged in its `libhaylen.a` and the Lua layer with the Lua player in its `libhaylen-lua.a`, joined with `lipo` and gathered into `Haylen.xcframework` and `HaylenLua.xcframework`, both signed ad hoc so Xcode takes them as signed. The SDK folder keeps the slices that it holds of the same engine sources and configuration, so building one slice later adds it to the frameworks, and SDKs that hold different slices, such as SDKs that several machines built side by side, join into one. The SDK holds the headers, the CMake package of native libraries, the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge."""
 
     NAME = "apple"
     VERSION = Repository.engine_version()
@@ -67,8 +67,8 @@ class AppleEnginePort(EnginePort):
             joined = Repository.ENGINE_BUILDS / f"apple-{target.slice}-{configuration.lower()}"
             library = self.join([path / "lib" / AppleSdkFiles.LIBRARY_NAME for path in components], joined / AppleSdkFiles.LIBRARY_NAME)
             self.check_frameworks(target, library, components[0])
-            player = self.join([path / "lib" / AppleSdkFiles.PLAYER_LIBRARY_NAME for path in components], joined / AppleSdkFiles.PLAYER_LIBRARY_NAME)
-            built[target.slice] = (target, library, player)
+            lua = self.join([path / "lib" / AppleSdkFiles.LUA_LIBRARY_NAME for path in components], joined / AppleSdkFiles.LUA_LIBRARY_NAME)
+            built[target.slice] = (target, library, lua)
         if component is None:
             raise UnsupportedTarget("The request names no slice of the Apple SDK to build.")
         installed = self.install_headers(component.parent, configuration)
@@ -83,11 +83,11 @@ class AppleEnginePort(EnginePort):
                 continue
             copy = staging / target.slice
             copy.mkdir(parents=True)
-            library = shutil.copy2(request.folder / entry.files[AppleSdkFiles.LIBRARY], copy / AppleSdkFiles.LIBRARY_NAME)
-            player = shutil.copy2(request.folder / entry.files[AppleSdkFiles.PLAYER_LIBRARY], copy / AppleSdkFiles.PLAYER_LIBRARY_NAME)
-            slices[target.slice] = (target, Path(library), Path(player), entry.architectures)
-        for name, (target, library, player) in built.items():
-            slices[name] = (target, library, player, AppleEnginePort.architectures(target, request.architectures))
+            library = shutil.copy2(request.folder / entry.libraries[SdkSlice.ENGINE], copy / AppleSdkFiles.LIBRARY_NAME)
+            lua = shutil.copy2(request.folder / entry.libraries[SdkSlice.LUA], copy / AppleSdkFiles.LUA_LIBRARY_NAME)
+            slices[target.slice] = (target, Path(library), Path(lua), entry.architectures)
+        for name, (target, library, lua) in built.items():
+            slices[name] = (target, library, lua, AppleEnginePort.architectures(target, request.architectures))
 
         shared = AppleEnginePort.install_shared(request.folder, installed, component)
         manifest = self.create_sdk(request.folder, request.revision, request.configuration, slices, installed / "include", shared)
@@ -106,16 +106,16 @@ class AppleEnginePort(EnginePort):
                 target = AppleTargets.of_system(entry.system, entry.environment)
                 if target.slice in slices:
                     raise UnsupportedTarget(f'More than one of the SDKs to join holds the slice "{target.slice}". Join SDKs that hold different slices.')
-                library = manifest.folder / entry.files[AppleSdkFiles.LIBRARY]
-                player = manifest.folder / entry.files[AppleSdkFiles.PLAYER_LIBRARY]
-                slices[target.slice] = (target, library, player, entry.architectures)
+                library = manifest.folder / entry.libraries[SdkSlice.ENGINE]
+                lua = manifest.folder / entry.libraries[SdkSlice.LUA]
+                slices[target.slice] = (target, library, lua, entry.architectures)
 
         first = request.manifests[0]
         Folders.remove(request.folder)
         request.folder.mkdir(parents=True)
         shared: dict[str, str] = {}
         for name, relative in first.files.items():
-            if name in (AppleSdkFiles.FRAMEWORK, AppleSdkFiles.PLAYER):
+            if name in (AppleSdkFiles.FRAMEWORK, AppleSdkFiles.LUA):
                 continue
             source = first.folder / relative
             if source.is_dir():
@@ -125,7 +125,7 @@ class AppleEnginePort(EnginePort):
                 shutil.copy2(source, request.folder / relative)
             shared[name] = relative
         shared[AppleSdkFiles.FRAMEWORK] = AppleSdkFiles.FRAMEWORK_NAME
-        shared[AppleSdkFiles.PLAYER] = AppleSdkFiles.PLAYER_NAME
+        shared[AppleSdkFiles.LUA] = AppleSdkFiles.LUA_NAME
         return self.create_sdk(request.folder, first.revision, first.configuration, slices, first.file(AppleSdkFiles.INCLUDE), shared)
 
     def create_sdk(
@@ -134,18 +134,18 @@ class AppleEnginePort(EnginePort):
         """Creates the frameworks of an SDK folder from the libraries of its slices and writes its manifest with its shared files."""
         ordered = [slices[target.slice] for target in AppleTargets.ALL if target.slice in slices]
         framework = folder / AppleSdkFiles.FRAMEWORK_NAME
-        player_framework = folder / AppleSdkFiles.PLAYER_NAME
+        lua_framework = folder / AppleSdkFiles.LUA_NAME
         self.create_framework(framework, [(library, include) for _, library, _, _ in ordered])
-        self.create_framework(player_framework, [(player, None) for _, _, player, _ in ordered])
+        self.create_framework(lua_framework, [(lua, None) for _, _, lua, _ in ordered])
 
         identifiers = AppleEnginePort.identifiers(framework)
-        player_identifiers = AppleEnginePort.identifiers(player_framework)
+        lua_identifiers = AppleEnginePort.identifiers(lua_framework)
         entries = []
         for target, _, _, architectures in ordered:
             key = (target.xcframework_platform, target.xcframework_variant)
-            files = {
-                AppleSdkFiles.LIBRARY: f"{AppleSdkFiles.FRAMEWORK_NAME}/{identifiers[key]}/{AppleSdkFiles.LIBRARY_NAME}",
-                AppleSdkFiles.PLAYER_LIBRARY: f"{AppleSdkFiles.PLAYER_NAME}/{player_identifiers[key]}/{AppleSdkFiles.PLAYER_LIBRARY_NAME}",
+            libraries = {
+                SdkSlice.ENGINE: f"{AppleSdkFiles.FRAMEWORK_NAME}/{identifiers[key]}/{AppleSdkFiles.LIBRARY_NAME}",
+                SdkSlice.LUA: f"{AppleSdkFiles.LUA_NAME}/{lua_identifiers[key]}/{AppleSdkFiles.LUA_LIBRARY_NAME}",
             }
             entries.append(
                 SdkSlice(
@@ -158,7 +158,8 @@ class AppleEnginePort(EnginePort):
                     minimum_system_version=target.minimum_version,
                     graphics_apis=AppleTarget.GRAPHICS_APIS,
                     capabilities=target.capabilities,
-                    files=MappingProxyType(files),
+                    libraries=MappingProxyType(libraries),
+                    files=MappingProxyType({}),
                 )
             )
         manifest = SdkManifest(
@@ -248,7 +249,7 @@ class AppleEnginePort(EnginePort):
         shutil.copy2(Repository.ENGINE / "platform" / "apple" / AppleSdkFiles.SWIFT_HELPERS_NAME, folder / AppleSdkFiles.SWIFT_HELPERS_NAME)
         return {
             AppleSdkFiles.FRAMEWORK: AppleSdkFiles.FRAMEWORK_NAME,
-            AppleSdkFiles.PLAYER: AppleSdkFiles.PLAYER_NAME,
+            AppleSdkFiles.LUA: AppleSdkFiles.LUA_NAME,
             AppleSdkFiles.SETTINGS: AppleSdkFiles.SETTINGS_NAME,
             AppleSdkFiles.PRIVACY: AppleSdkFiles.PRIVACY_NAME,
             AppleSdkFiles.SWIFT_HELPERS: AppleSdkFiles.SWIFT_HELPERS_NAME,

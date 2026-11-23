@@ -16,7 +16,7 @@ from haylen.plugins.plugin_source import PluginSource
 
 class AppZipCommand(Command):
     PATH = ("app", "zip")
-    HELP = 'Zip the package of an app: "haylen.json", "source", "content" and the manifest and Lua modules of every plugin wherever it comes from, which a player or the web runtime runs as it is.'
+    HELP = 'Zip the package of an app: "haylen.json", "content" and the manifest of every plugin wherever it comes from, with "source" and the Lua modules of every plugin for an app that runs Lua, which a player or the web runtime runs as it is.'
 
     def configure(self, parser: argparse.ArgumentParser) -> None:
         Arguments.add_app(parser)
@@ -26,7 +26,7 @@ class AppZipCommand(Command):
         app = AppManifest.load(Arguments.app_folder(arguments))
         source = PluginSource(app.folder, PluginLock.load(app.folder), session.context.process, session.terminal)
         loaded = PluginResolver(app, source).load(Configuration.DEBUG)
-        layout = PackageLayout.of(app.folder, {manifest.id: manifest.folder for _, manifest in loaded})
+        layout = PackageLayout.of(app.folder, {manifest.id: manifest.folder for _, manifest in loaded}, app.runs_lua)
         output = Path(arguments.output).expanduser().resolve()
         layout.zip(output)
         session.terminal.success(f"Zipped the package of `{Repository.shown(app.folder)}` into `{Repository.shown(output)}`.")

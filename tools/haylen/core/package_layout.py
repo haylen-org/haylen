@@ -9,29 +9,32 @@ from types import MappingProxyType
 
 @dataclass(frozen=True)
 class PackageLayout:
-    """Where the files of the package of an app lie on disk. The package holds `haylen.json`, `source` and `content` of the app folder, and `plugins/<id>/plugin.json` and `plugins/<id>/source` of every plugin, wherever the plugin folder is, so the runtime never resolves a reference."""
+    """Where the files of the package of an app lie on disk. The package holds `haylen.json` and `content` of the app folder and `plugins/<id>/plugin.json` of every plugin, wherever the plugin folder is, so the runtime never resolves a reference, and the package of an app that runs Lua also holds `source` of the app and `plugins/<id>/source` of every plugin."""
 
     MANIFEST = "haylen.json"
-    FOLDERS = ("source", "content")
+    CONTENT = "content"
+    SOURCE = "source"
     PLUGIN_MANIFEST = "plugin.json"
     IGNORED = frozenset({".DS_Store"})
 
     folder: Path
     plugins: Mapping[str, Path]
+    lua: bool
 
     @staticmethod
-    def of(folder: Path, plugins: Mapping[str, Path]) -> PackageLayout:
-        return PackageLayout(folder, MappingProxyType(dict(plugins)))
+    def of(folder: Path, plugins: Mapping[str, Path], lua: bool) -> PackageLayout:
+        return PackageLayout(folder, MappingProxyType(dict(plugins)), lua)
 
     @property
     def roots(self) -> list[tuple[str, Path]]:
         """The package path of every file and folder of the package with where it lies on disk."""
-        roots = [(PackageLayout.MANIFEST, self.folder / PackageLayout.MANIFEST), *((name, self.folder / name) for name in PackageLayout.FOLDERS)]
+        roots = [(PackageLayout.MANIFEST, self.folder / PackageLayout.MANIFEST), (PackageLayout.CONTENT, self.folder / PackageLayout.CONTENT)]
+        if self.lua:
+            roots.append((PackageLayout.SOURCE, self.folder / PackageLayout.SOURCE))
         for identifier, plugin in self.plugins.items():
-            roots += [
-                (f"plugins/{identifier}/{PackageLayout.PLUGIN_MANIFEST}", plugin / PackageLayout.PLUGIN_MANIFEST),
-                (f"plugins/{identifier}/source", plugin / "source"),
-            ]
+            roots.append((f"plugins/{identifier}/{PackageLayout.PLUGIN_MANIFEST}", plugin / PackageLayout.PLUGIN_MANIFEST))
+            if self.lua:
+                roots.append((f"plugins/{identifier}/{PackageLayout.SOURCE}", plugin / PackageLayout.SOURCE))
         return roots
 
     def files(self) -> dict[str, Path]:

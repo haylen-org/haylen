@@ -434,7 +434,7 @@ jobs:
         if: always()
       - uses: ./.github/actions/caches
 
-  # A project that finds the desktop SDK of the run with "find_package", the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
+  # A project that finds the desktop SDK of the run with "find_package", the same project built from the sources of the engine, whose C++ app without Lua runs on the headless host, the starter app with a plugin from the plugin template, packaged as the installers of the system, and the starter C++ app in Debug and in its protected Release.
   linux-apps:
     if: github.event_name == 'workflow_dispatch'
     name: Linux apps
@@ -450,6 +450,8 @@ jobs:
           name: linux-sdk
       - name: Build a project that finds the SDK
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine consumers --mode package
+      - name: Run a C++ app without Lua on the headless host
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} engine consumers --mode subdirectory
       - name: Install CMake with the AppImage generator
         run: pip install cmake
       - name: Create the starter apps and a plugin

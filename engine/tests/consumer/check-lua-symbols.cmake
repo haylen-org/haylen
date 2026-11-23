@@ -1,0 +1,20 @@
+# Fails when a program of the consumer holds a symbol of the Lua API, which a C++ app without Lua never links. It reads the symbols that `LISTER` lists of the program in `SYMBOLS`, or the map of the program in `SYMBOLS` that the linker wrote when `LISTER` is empty.
+if(LISTER)
+  execute_process(COMMAND "${LISTER}" "${SYMBOLS}" OUTPUT_VARIABLE listing RESULT_VARIABLE result ERROR_VARIABLE problem)
+  if(NOT result EQUAL 0)
+    message(FATAL_ERROR "The symbols of the program \"${PROGRAM}\" cannot be listed with \"${LISTER}\": ${problem}")
+  endif()
+else()
+  file(READ "${SYMBOLS}" listing)
+endif()
+
+# The functions of the Lua API start with `lua_`, `luaL_` or `luaopen_`, and Apple platforms add an underscore in front of every C symbol.
+string(REGEX MATCHALL "(^|[ \t\n])_?lua(L|open)?_[A-Za-z0-9_]+" found "${listing}")
+if(found)
+  list(TRANSFORM found STRIP)
+  list(REMOVE_DUPLICATES found)
+  list(LENGTH found count)
+  list(SUBLIST found 0 5 shown)
+  list(JOIN shown "\", \"" names)
+  message(FATAL_ERROR "The program \"${PROGRAM}\" holds ${count} symbols of Lua, such as \"${names}\", though a C++ app without Lua links nothing of the Lua layer.")
+endif()

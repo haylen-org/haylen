@@ -81,7 +81,7 @@ class DevelopmentServer:
         app = AppManifest.load(folder)
         source = PluginSource(app.folder, PluginLock.load(app.folder), context.process, context.terminal)
         loaded = PluginResolver(app, source).load(Configuration.DEBUG)
-        return PackageLayout.of(app.folder, {manifest.id: manifest.folder for _, manifest in loaded})
+        return PackageLayout.of(app.folder, {manifest.id: manifest.folder for _, manifest in loaded}, app.runs_lua)
 
     @staticmethod
     def hash_files(files: Mapping[str, Path]) -> dict[str, str]:

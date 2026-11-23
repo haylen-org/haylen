@@ -4,6 +4,7 @@ from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
 from haylen.native.cmake_tree import CMakeTree
+from haylen.sdk.sdk_slice import SdkSlice
 from haylen.toolchains.shader_compiler import ShaderCompiler
 
 
@@ -54,3 +55,21 @@ class EngineSdkTree:
         if not configs:
             raise BuildFailed(f'The SDK installed into `{Repository.shown(installed)}` holds no "haylen-config.cmake", so its install did not finish. Build the SDK again.')
         return configs[0].parent
+
+    @staticmethod
+    def libraries(installed: Path, root: Path) -> dict[str, str]:
+        """The libraries that an SDK installed into a folder holds by their names, with their files relative to the SDK folder `root`: the static libraries of the engine, the runtime and the Lua layer, and the object of the Lua player, as the toolchain of the slice names their files."""
+        folder = EngineSdkTree.package_folder(installed).parent.parent
+        names = {
+            SdkSlice.ENGINE: ("libhaylen.a", "haylen.lib"),
+            SdkSlice.RUNTIME: ("libhaylen-runtime.a", "haylen-runtime.lib"),
+            SdkSlice.LUA: ("libhaylen-lua.a", "haylen-lua.lib"),
+            SdkSlice.PLAYER: ("haylen-player.o", "haylen-player.obj"),
+        }
+        libraries: dict[str, str] = {}
+        for name, files in names.items():
+            found = [folder / file for file in files if (folder / file).is_file()]
+            if not found:
+                raise BuildFailed(f'The SDK installed into `{Repository.shown(installed)}` holds no library "{name}", so its install did not finish. Build the SDK again.')
+            libraries[name] = found[0].relative_to(root).as_posix()
+        return libraries

@@ -33,7 +33,7 @@ class DebugRelayTest:
 
     def test_the_relay_holds_requests_until_an_app_connects_and_configures_every_app_that_connects_later(self, tmp_path, monkeypatch):
         fixture = DevelopmentFixture(tmp_path, monkeypatch)
-        relay = DebugRelay(PackageLayout.of(fixture.folder, {}), 0, fixture.context.terminal)
+        relay = DebugRelay(PackageLayout.of(fixture.folder, {}, True), 0, fixture.context.terminal)
         relay.start()
         editor = socket.create_connection(("127.0.0.1", relay.port), timeout=5)
         stream = editor.makefile("rb")
@@ -94,7 +94,7 @@ class DebugRelayTest:
         with pytest.raises(ValueError, match="not a JSON object"):
             DebugMessage.read(io.BytesIO(DebugMessage.frame([])))
 
-        relay = DebugRelay(PackageLayout.of(fixture.folder, {}), 0, fixture.context.terminal)
+        relay = DebugRelay(PackageLayout.of(fixture.folder, {}, True), 0, fixture.context.terminal)
         try:
             editor, connection = socket.socketpair()
             relay.editor = connection

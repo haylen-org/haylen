@@ -11,8 +11,10 @@ from haylen.platforms.apple.apple_backend import AppleBackend
 from haylen.platforms.backend_registry import BackendRegistry
 from haylen.platforms.player.player_backend import PlayerBackend
 from haylen.sdk.sdk_catalog import SdkCatalog
+from haylen.toolchains.shader_compiler import ShaderCompiler
 from tests.platforms.apple.apple_fixture import AppleFixture
 from tests.platforms.desktop.desktop_fixture import DesktopFixture
+from tests.support.recorded_commands import RecordedCommands
 from tests.support.tooling_fixture import ToolingFixture
 
 
@@ -32,3 +34,15 @@ class ConsumersTest:
         monkeypatch.setattr(SdkCatalog, "manifests", lambda catalog: [apple.sdk])
         with pytest.raises(IncompatibleSdk, match=re.escape('Build it with "haylen sdk build --target player --config Release".')):
             consumers.sdk(None, Configuration.RELEASE)
+
+    def test_a_way_from_the_sources_runs_the_app_on_the_headless_host_once_it_built(self, tmp_path, monkeypatch):
+        recorded = RecordedCommands(tmp_path)
+        monkeypatch.setattr(Repository, "ENGINE_BUILDS", tmp_path / "engine")
+        monkeypatch.setattr(ShaderCompiler, "path", staticmethod(lambda context: tmp_path / "haylen-shaderc"))
+        registry = BackendRegistry(recorded.context, [("player", lambda: PlayerBackend)], [])
+
+        Consumers(recorded.context, registry).run(["subdirectory"], "Release", None)
+
+        tree = tmp_path / "engine" / "consumers" / "subdirectory-release"
+        assert recorded.commands[1] == ["cmake", "--build", str(tree), "--config", "Release", "--parallel", "4"]
+        assert recorded.commands[2] == [str(tree / "bin" / Host.executable(Consumers.HEADLESS)), str(tree / "package"), "--frames", "600", "--", "--quit"]

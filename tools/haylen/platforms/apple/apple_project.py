@@ -4,7 +4,6 @@ from pathlib import Path
 
 from haylen.content.protected_releases import ProtectedReleases
 from haylen.content.release_package import ReleasePackage
-from haylen.core.app_kind import AppKind
 from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_contribution import InvalidContribution
 from haylen.core.errors.invalid_manifest import InvalidManifest
@@ -29,7 +28,7 @@ from haylen.toolchains.xcodegen import XcodeGen
 
 
 class AppleProject:
-    """Generates the Xcode project of a product into `project/` of its folders: the XcodeGen spec `project.yml` with one app target for the platform of the target and a target per app extension, the files of the template of that platform, which the `files` of the sections of `haylen.json` replace, the Info.plist, entitlements and privacy manifest joined from the template, the engine, the plugins and the app, the splash assets, the package or the protected release with its bootstrap, the native libraries and the registry of their static symbols. The app compiles the Apple sources of its plugins and the `sources` of the `apple` section, and a C++ app compiles its `cpp` sources too, against the headers of `Haylen.xcframework`, while a Lua app links the player of `HaylenPlayer.xcframework`. XcodeGen writes `App.xcodeproj` into the build folder of the product whenever the spec changes."""
+    """Generates the Xcode project of a product into `project/` of its folders: the XcodeGen spec `project.yml` with one app target for the platform of the target and a target per app extension, the files of the template of that platform, which the `files` of the sections of `haylen.json` replace, the Info.plist, entitlements and privacy manifest joined from the template, the engine, the plugins and the app, the splash assets, the package or the protected release with its bootstrap, the native libraries and the registry of their static symbols. The app compiles the Apple sources of its plugins and the `sources` of the `apple` section, and a C++ app compiles its `cpp` sources too, against the headers of `Haylen.xcframework`, while an app that runs Lua links the Lua layer of `HaylenLua.xcframework`, whose Lua player is the application of a Lua app. XcodeGen writes `App.xcodeproj` into the build folder of the product whenever the spec changes."""
 
     TEMPLATE = Path(__file__).resolve().parent / "template"
     XCODE_PROJECT = "App.xcodeproj"
@@ -345,8 +344,8 @@ class AppleProject:
         sdk_settings = json.loads(self.sdk.file(AppleSdkFiles.SETTINGS).read_text(encoding="utf-8"))
         engine = list(sdk_settings["frameworks"][self.target.frameworks])
         dependencies: list[dict] = [{"framework": str(self.sdk.file(AppleSdkFiles.FRAMEWORK)), "embed": False}]
-        if self.product.app.kind is AppKind.LUA:
-            dependencies.append({"framework": str(self.sdk.file(AppleSdkFiles.PLAYER)), "embed": False})
+        if self.product.app.runs_lua:
+            dependencies.append({"framework": str(self.sdk.file(AppleSdkFiles.LUA)), "embed": False})
         plugin_frameworks = [str(contribution.fields["name"]) for contribution in self.project.of_type(AppleContributions.FRAMEWORK)]
         dependencies += [{"sdk": name} for name in dict.fromkeys([*engine, *plugin_frameworks])]
 

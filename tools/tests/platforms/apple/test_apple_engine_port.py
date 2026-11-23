@@ -16,6 +16,7 @@ from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
 from haylen.platforms.apple.apple_targets import AppleTargets
 from haylen.platforms.sdk_join_request import SdkJoinRequest
 from haylen.platforms.sdk_request import SdkRequest
+from haylen.sdk.sdk_slice import SdkSlice
 from tests.support.recorded_commands import RecordedCommands
 from tests.support.tooling_fixture import ToolingFixture
 
@@ -43,7 +44,7 @@ class AppleEnginePortTest:
             if command[command.index("--component") + 1] == "haylen-sdk":
                 (prefix / "include" / "haylen").mkdir(parents=True)
                 return
-            for name in ("lib/libhaylen.a", "lib/libhaylen-player.a", "lib/cmake/haylen/haylen-config.cmake"):
+            for name in ("lib/libhaylen.a", "lib/libhaylen-lua.a", "lib/cmake/haylen/haylen-config.cmake"):
                 (prefix / name).parent.mkdir(parents=True, exist_ok=True)
                 (prefix / name).write_text(name, encoding="utf-8")
             frameworks = {platform: [f"{platform}Kit.framework"] for platform in ("iOS", "macCatalyst", "tvOS", "visionOS", "macOS")}
@@ -82,18 +83,18 @@ class AppleEnginePortTest:
         engine_port, recorded = port
         manifest = engine_port.build_sdk(self.request(tmp_path, ("macos", "ios-simulator")))
         assert [(entry.system, entry.environment.value, entry.architectures) for entry in manifest.slices] == [("macos", "host", ("arm64",)), ("ios", "simulator", ("arm64",))]
-        assert manifest.slices[1].files[AppleSdkFiles.PLAYER_LIBRARY] == f"{AppleSdkFiles.PLAYER_NAME}/ios-ios-simulator/{AppleSdkFiles.PLAYER_LIBRARY_NAME}"
-        for name in (AppleSdkFiles.FRAMEWORK, AppleSdkFiles.PLAYER, AppleSdkFiles.SETTINGS, AppleSdkFiles.PRIVACY, AppleSdkFiles.SWIFT_HELPERS, AppleSdkFiles.CMAKE):
+        assert manifest.slices[1].libraries[SdkSlice.LUA] == f"{AppleSdkFiles.LUA_NAME}/ios-ios-simulator/{AppleSdkFiles.LUA_LIBRARY_NAME}"
+        for name in (AppleSdkFiles.FRAMEWORK, AppleSdkFiles.LUA, AppleSdkFiles.SETTINGS, AppleSdkFiles.PRIVACY, AppleSdkFiles.SWIFT_HELPERS, AppleSdkFiles.CMAKE):
             assert manifest.file(name).exists(), name
         signed = [command[-1] for command in recorded.commands if command[:2] == ["codesign", "--sign"]]
-        assert signed == [str(tmp_path / "sdk" / AppleSdkFiles.FRAMEWORK_NAME), str(tmp_path / "sdk" / AppleSdkFiles.PLAYER_NAME)]
+        assert signed == [str(tmp_path / "sdk" / AppleSdkFiles.FRAMEWORK_NAME), str(tmp_path / "sdk" / AppleSdkFiles.LUA_NAME)]
 
     def test_a_slice_built_later_joins_the_slices_of_the_same_sources(self, port, tmp_path):
         engine_port, _ = port
         engine_port.build_sdk(self.request(tmp_path, ("macos",)))
         manifest = engine_port.build_sdk(self.request(tmp_path, ("tvos-simulator",)))
         assert [entry.system for entry in manifest.slices] == ["macos", "tvos"]
-        assert (manifest.folder / manifest.slices[0].files[AppleSdkFiles.LIBRARY]).read_text(encoding="utf-8") == "macos"
+        assert (manifest.folder / manifest.slices[0].libraries[SdkSlice.ENGINE]).read_text(encoding="utf-8") == "macos"
         assert not (tmp_path / "sdk.slices").exists()
 
     def test_only_the_architectures_of_a_slice_build(self, port, tmp_path):
@@ -109,7 +110,7 @@ class AppleEnginePortTest:
         ios = engine_port.build_sdk(self.request(tmp_path, ("ios", "ios-simulator"), "ios"))
         joined = engine_port.join_sdks(SdkJoinRequest((mac, ios), tmp_path / "joined"))
         assert [(entry.system, entry.environment.value) for entry in joined.slices] == [("macos", "host"), ("ios", "device"), ("ios", "simulator")]
-        assert (joined.folder / joined.slices[2].files[AppleSdkFiles.LIBRARY]).read_text(encoding="utf-8") == "ios-simulator"
+        assert (joined.folder / joined.slices[2].libraries[SdkSlice.ENGINE]).read_text(encoding="utf-8") == "ios-simulator"
         for name in (AppleSdkFiles.SETTINGS, AppleSdkFiles.PRIVACY, AppleSdkFiles.SWIFT_HELPERS, AppleSdkFiles.CMAKE, AppleSdkFiles.INCLUDE):
             assert joined.file(name).exists(), name
 

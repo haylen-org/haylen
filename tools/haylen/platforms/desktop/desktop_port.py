@@ -105,6 +105,7 @@ class DesktopPort(EnginePort):
             minimum_system_version=system.minimum_system_version,
             graphics_apis=tree.graphics_apis(),
             capabilities=DesktopSystem.CAPABILITIES,
+            libraries=MappingProxyType(EngineSdkTree.libraries(installed, request.folder)),
             files=MappingProxyType(files),
         )
         tools = (

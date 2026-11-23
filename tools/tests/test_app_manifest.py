@@ -71,6 +71,21 @@ class AppManifestTest:
         assert manifest.kind is AppKind.CPP
         assert [path.name for path in manifest.cpp.files()] == ["App.cpp"]
 
+    def test_a_cpp_app_runs_lua_only_when_its_section_says_so(self, tmp_path):
+        fixture = ToolingFixture(tmp_path)
+        without = fixture.app({"kind": "cpp", "cpp": {"sources": ["src"]}}, "without")
+        scripted = fixture.app({"kind": "cpp", "cpp": {"sources": ["src"], "lua": True}}, "scripted")
+        for app in (without, scripted):
+            (app / "src").mkdir()
+
+        assert AppManifest.load(fixture.app({}, "lua")).runs_lua
+        assert not AppManifest.load(without).runs_lua
+        assert AppManifest.load(scripted).runs_lua
+
+        (without / "source").mkdir()
+        with pytest.raises(InvalidManifest, match=re.escape("runs no Lua, so nothing runs the Lua modules of")):
+            AppManifest.load(without)
+
     def test_a_lua_app_has_no_cpp_section(self, tmp_path):
         app = ToolingFixture(tmp_path).app({"cpp": {"sources": ["src"]}})
         with pytest.raises(InvalidManifest, match=re.escape("which only C++ apps have")):

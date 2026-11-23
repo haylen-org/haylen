@@ -190,7 +190,8 @@
             "properties": {
                 "sources": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "description": "Folders and files of C, C++, Objective-C and Objective-C++ sources, relative to the app folder."},
                 "includeDirectories": {"type": "array", "items": {"type": "string", "minLength": 1}},
-                "definitions": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(=.*)?$"}}
+                "definitions": {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(=.*)?$"}},
+                "lua": {"type": "boolean", "default": false, "description": "Whether the app runs Lua, with its Lua modules in \"source\": the app links the Lua layer of the engine, and its application runs Lua through a \"haylen::lua::Application\". Without it the app holds nothing of Lua."}
             }
         },
         "platforms": {

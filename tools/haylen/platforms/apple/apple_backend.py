@@ -31,7 +31,7 @@ from haylen.platforms.verification_report import VerificationReport
 
 
 class AppleBackend(PlatformBackend):
-    """The backend of macOS, Mac Catalyst, iOS and iPadOS, tvOS and visionOS on their devices and simulators. Lua and C++ apps go through one generated XcodeGen project with one app target, which compiles the Swift, Objective-C, C and C++ sources of the app and its plugins, links `Haylen.xcframework` of the Apple SDK, and the Lua player of `HaylenPlayer.xcframework` for a Lua app, and resolves the Swift packages of the plugins with Xcode. It builds with xcodebuild into the build folder of the product, verifies the built app and runs it on this Mac, a simulator or a device. The target `macos` is the default target of C++ apps on macOS."""
+    """The backend of macOS, Mac Catalyst, iOS and iPadOS, tvOS and visionOS on their devices and simulators. Lua and C++ apps go through one generated XcodeGen project with one app target, which compiles the Swift, Objective-C, C and C++ sources of the app and its plugins, links `Haylen.xcframework` of the Apple SDK, and the Lua layer of `HaylenLua.xcframework` for an app that runs Lua, and resolves the Swift packages of the plugins with Xcode. It builds with xcodebuild into the build folder of the product, verifies the built app and runs it on this Mac, a simulator or a device. The target `macos` is the default target of C++ apps on macOS."""
 
     NAME = "apple"
     VERSION = Repository.engine_version()

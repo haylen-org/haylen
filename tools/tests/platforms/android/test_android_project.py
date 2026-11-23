@@ -113,7 +113,8 @@ class AndroidProjectTest:
             ],
         }
         lua = fixture.app({"plugins": {"kit": {"parameters": {"scheme": "game"}}}}, "lua")
-        cpp = fixture.app({"kind": "cpp", "cpp": {"sources": ["source"]}, "plugins": {"kit": {"parameters": {"scheme": "game"}}}}, "cpp")
+        cpp = fixture.app({"kind": "cpp", "cpp": {"sources": ["src"]}, "plugins": {"kit": {"parameters": {"scheme": "game"}}}}, "cpp")
+        (cpp / "src").mkdir()
         for app in (lua, cpp):
             fixture.plugin(app, "kit", plugin)
 

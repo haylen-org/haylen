@@ -36,6 +36,8 @@ class AndroidPort(EnginePort):
     MAVEN_FOLDER = "maven"
     # The system libraries that the engine lists for Android, which the engine tree writes from `HAYLEN_ANDROID_LIBRARIES` of `engine/cmake/haylen-app.cmake`.
     LIBRARIES_FILE = "haylen-android.json"
+    # The libraries that the SDK of an ABI installs into its library folder, by their names.
+    SDK_LIBRARIES = {SdkSlice.ENGINE: "libhaylen.a", SdkSlice.RUNTIME: "libhaylen-runtime.a", SdkSlice.LUA: "libhaylen-lua.a", SdkSlice.PLAYER: "haylen-player.o"}
 
     def describe(self) -> PortDescription:
         target = PortTarget(
@@ -112,6 +114,7 @@ class AndroidPort(EnginePort):
             minimum_system_version=str(AndroidPlatform.MINIMUM_API),
             graphics_apis=AndroidPlatform.GRAPHICS_APIS,
             capabilities=AndroidPlatform.CAPABILITIES,
+            libraries={name: f"{AndroidPort.ABIS_FOLDER}/{abi}/lib/{file}" for name, file in AndroidPort.SDK_LIBRARIES.items()},
             files=files,
         )
 

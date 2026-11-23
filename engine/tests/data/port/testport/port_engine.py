@@ -103,6 +103,7 @@ class PortEngine(EnginePort):
             minimum_system_version=PortEngine.MINIMUM_SYSTEM_VERSION,
             graphics_apis=tree.graphics_apis(),
             capabilities=record.capabilities,
+            libraries=MappingProxyType(EngineSdkTree.libraries(installed, request.folder)),
             files=MappingProxyType({"cmake": package.relative_to(request.folder).as_posix()}),
         )
         return folder.save(added, tuple(tools))

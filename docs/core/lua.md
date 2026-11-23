@@ -843,12 +843,21 @@ score.submit(120)
 print('The best score is ' .. score.best() .. '.')
 ```
 
-The app builds with `haylen_add_app` and the option `CPP`, which says that its sources define `haylen::core::Application::create()`.
+The `haylen.json` of the app names it a C++ app that runs Lua, so every backend of the tooling links the Lua layer into it:
+
+```json
+{
+    "kind": "cpp",
+    "cpp": {"sources": ["src"], "lua": true}
+}
+```
+
+A CMake project of its own builds it with `haylen_add_app` and the options `CPP`, which says that its sources define `haylen::core::Application::create()`, and `WITH_LUA`, which links the Lua layer.
 
 ```cmake
-haylen_add_app(my-app CPP
+haylen_add_app(my-app CPP WITH_LUA
   SOURCES src/App.cpp
-  PACKAGE "${CMAKE_CURRENT_SOURCE_DIR}"
+  CONTENT "${CMAKE_CURRENT_BINARY_DIR}/package"
 )
 ```
 

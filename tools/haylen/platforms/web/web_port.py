@@ -90,6 +90,7 @@ class WebPort(EnginePort):
             minimum_system_version=WebPort.MINIMUM,
             graphics_apis=tree.graphics_apis(),
             capabilities=frozenset(),
+            libraries=MappingProxyType(EngineSdkTree.libraries(installed, request.folder)),
             files=MappingProxyType(files),
         )
         return folder.save(added, ())

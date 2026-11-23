@@ -56,7 +56,19 @@ class DesktopPortTest:
 
     @staticmethod
     def slice_of(architecture: str) -> SdkSlice:
-        return SdkSlice("linux", TargetEnvironment.HOST, (architecture,), f"{architecture}-linux-gnu", "gnu", "libstdc++", "2.39", ("vulkan",), frozenset(), MappingProxyType({}))
+        return SdkSlice(
+            "linux",
+            TargetEnvironment.HOST,
+            (architecture,),
+            f"{architecture}-linux-gnu",
+            "gnu",
+            "libstdc++",
+            "2.39",
+            ("vulkan",),
+            frozenset(),
+            MappingProxyType({SdkSlice.ENGINE: "lib/libhaylen.a", SdkSlice.LUA: "lib/libhaylen-lua.a"}),
+            MappingProxyType({}),
+        )
 
     def test_a_folder_keeps_the_slices_of_the_same_sources_and_configuration(self, tmp_path: Path):
         folder = SdkFolder(tmp_path / "sdk", "desktop", "1.0.0", ToolingFixture.REVISION, Configuration.RELEASE)

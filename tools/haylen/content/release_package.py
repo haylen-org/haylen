@@ -33,7 +33,7 @@ class ReleasePackage:
         platform = target.description.platform
         loaded = plugins.load(Configuration.RELEASE)
         resolved = plugins.for_platform(loaded, platform, ProjectResolver.contribution_types(registry, platform))
-        return ReleasePackage(app, PackageLayout.of(app.folder, {plugin.id: plugin.folder for plugin in resolved.plugins}))
+        return ReleasePackage(app, PackageLayout.of(app.folder, {plugin.id: plugin.folder for plugin in resolved.plugins}, app.runs_lua))
 
     @property
     def content_server(self) -> str | None:

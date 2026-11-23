@@ -65,7 +65,7 @@ class AppleFixture:
 
     def apple_sdk(self) -> SdkManifest:
         folder = self.folder / "sdk" / "apple"
-        for name in (AppleSdkFiles.FRAMEWORK_NAME, AppleSdkFiles.PLAYER_NAME, "include", "lib/cmake/haylen"):
+        for name in (AppleSdkFiles.FRAMEWORK_NAME, AppleSdkFiles.LUA_NAME, "include", "lib/cmake/haylen"):
             (folder / name).mkdir(parents=True)
         engine = Repository.ENGINE / "platform" / "apple"
         shutil.copy(engine / AppleSdkFiles.PRIVACY_NAME, folder / AppleSdkFiles.PRIVACY_NAME)
@@ -83,13 +83,16 @@ class AppleFixture:
                 "minimumSystemVersion": target.minimum_version,
                 "graphicsApis": ["metal"],
                 "capabilities": sorted(target.capabilities),
-                "files": {AppleSdkFiles.LIBRARY: f"{AppleSdkFiles.FRAMEWORK_NAME}/{target.slice}/libhaylen.a"},
+                "libraries": {
+                    "haylen": f"{AppleSdkFiles.FRAMEWORK_NAME}/{target.slice}/{AppleSdkFiles.LIBRARY_NAME}",
+                    "haylen-lua": f"{AppleSdkFiles.LUA_NAME}/{target.slice}/{AppleSdkFiles.LUA_LIBRARY_NAME}",
+                },
             }
             for target in AppleTargets.ALL
         ]
         files = {
             AppleSdkFiles.FRAMEWORK: AppleSdkFiles.FRAMEWORK_NAME,
-            AppleSdkFiles.PLAYER: AppleSdkFiles.PLAYER_NAME,
+            AppleSdkFiles.LUA: AppleSdkFiles.LUA_NAME,
             AppleSdkFiles.SETTINGS: AppleSdkFiles.SETTINGS_NAME,
             AppleSdkFiles.PRIVACY: AppleSdkFiles.PRIVACY_NAME,
             AppleSdkFiles.SWIFT_HELPERS: AppleSdkFiles.SWIFT_HELPERS_NAME,

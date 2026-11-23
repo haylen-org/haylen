@@ -70,6 +70,26 @@ The option `--config` picks the configuration of the app: `Debug` ships the pack
 
 The build of an app never compiles the engine, which always comes from an installed SDK. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of the engine, because none was built or it was built from other sources or in another configuration, the commands that prepare or build the app first build that SDK through the engine port, as `haylen sdk build` does, in a step of its own that says so and how long a first build takes. The commands `project inspect` and `app verify` never build, and they stop with the `haylen sdk build` command that makes the SDK. An SDK of the current sources that serves no app of the target, such as one that runs only on newer systems than the app, stops every command with the reason.
 
+## C++ apps and Lua
+
+A Lua app runs its Lua modules in the Lua player, which links the Lua layer of the engine. A C++ app runs the application of its own sources, and the key `lua` of its `cpp` section decides whether it runs Lua too. The key is `false` by default, so a C++ app links nothing of Lua unless it asks for it:
+
+```json
+{
+    "kind": "cpp",
+    "cpp": {"sources": ["src"], "lua": true}
+}
+```
+
+| Part | A C++ app without Lua | A C++ app with `cpp.lua` |
+| --- | --- | --- |
+| The Lua layer | Not linked, so the binary holds no Lua, no Lua module of Varn, no module reload and no Lua debugger. | Linked as `haylen::lua`, or `HaylenLua.xcframework` on Apple platforms, and its application runs Lua through a `haylen::lua::Application`. |
+| The package | `haylen.json`, `content/` and the `plugin.json` of every plugin. A `source/` folder in the app stops the resolution, since nothing would run it. | Also `source/` and the Lua modules of every plugin, as in a Lua app. |
+| Hot reload in development | The files of `content/`, `haylen.json` and the shaders, which the engine reloads in place. | Also the Lua modules, which reload in place with the state of the app. |
+| The developer tools | The developer console with the commands of the engine and of the app, the statistics, the inspector of the UI, the debug drawings and GPU captures. | The same, with the Lua debugger on the port of `--debugger-port`. |
+
+The plugins of a C++ app without Lua work through their native parts and the [platform bridge](../platform/platform-bridge.md), which the C++ code calls, while their Lua APIs need an app that runs Lua. The [embedding guide](embedding.md#an-app-written-in-c) shows the application of a C++ app.
+
 ## Platform projects
 
 The project of a platform is generated, deterministic and disposable. The developer never edits it, and nothing of it lives in the app folder. Each product of an app has a folder of its own under `build/apps/<app>-<hash>/<product>/`, where `<app>` is the name of the app folder, `<hash>` the start of the SHA-256 hash of its absolute path, so apps in folders with the same name never share builds, and `<product>` the target and the configuration, such as `ios-simulator-debug`, with the architectures added when a request names others than the default ones.
@@ -281,7 +301,7 @@ The Apple backend serves macOS, Mac Catalyst, iOS and iPadOS, tvOS and visionOS,
 
 | File in `project/` | Contents |
 | --- | --- |
-| `project.yml` | The spec of the app target and of a target per app extension. The app target links `Haylen.xcframework` of the Apple SDK, with `HaylenPlayer.xcframework` for a Lua app, and the system frameworks of the engine that the SDK lists for the platform. It compiles the Apple sources of the plugins and the `sources` of the `apple` section, and for a C++ app the `cpp.sources` of `haylen.json`, which Xcode reads where they lie. It adds the frameworks, Swift packages, binary frameworks, resources, build scripts and app extensions of the plugins, and sets the deployment target to the oldest system version of the resolution. |
+| `project.yml` | The spec of the app target and of a target per app extension. The app target links `Haylen.xcframework` of the Apple SDK, with `HaylenLua.xcframework` for a Lua app and a C++ app whose `cpp.lua` is `true`, and the system frameworks of the engine that the SDK lists for the platform. It compiles the Apple sources of the plugins and the `sources` of the `apple` section, and for a C++ app the `cpp.sources` of `haylen.json`, which Xcode reads where they lie. It adds the frameworks, Swift packages, binary frameworks, resources, build scripts and app extensions of the plugins, and sets the deployment target to the oldest system version of the resolution. |
 | `App.xcconfig` | The identity of the app: `HAYLEN_PRODUCT_NAME`, `HAYLEN_DISPLAY_NAME`, `HAYLEN_BUNDLE_IDENTIFIER`, `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, which every target and the values of plugins name as `$(NAME)`. |
 | `main.m` | Calls `haylen_main`, after the bridge handlers of the app and its plugins registered when their classes loaded. |
 | `HaylenBridging.h` | Makes `HaylenBridge.h` and `HaylenPlugin.h` visible to the Swift sources of the app and its plugins. The module of the target is `HaylenApp`, so Objective-C reaches Swift classes through `HaylenApp-Swift.h`. |
@@ -691,11 +711,11 @@ Apps build against the engine SDK of their target, which `haylen sdk build` inst
 
 ### Haylen.xcframework
 
-The command `haylen sdk build` with the Apple targets builds the Apple SDK into `build/sdk/apple-<config>/`. It holds two frameworks with one static library per slice. The library `libhaylen.a` of `Haylen.xcframework` merges, with `libtool`, the engine, every dependency (Varn, Lua, Poco, OpenSSL, libuv, Box2D, ImGui, miniaudio and the rest) and the runtime, next to the public headers. The library `libhaylen-player.a` of `HaylenPlayer.xcframework` holds the Lua player alone, which defines `haylen::core::Application::create` for Lua apps, so Lua apps link both frameworks and C++ apps, which define the function in their own sources, link only `Haylen.xcframework`. The SDK is built in these steps:
+The command `haylen sdk build` with the Apple targets builds the Apple SDK into `build/sdk/apple-<config>/`. It holds two frameworks with one static library per slice. The library `libhaylen.a` of `Haylen.xcframework` merges, with `libtool`, the engine, every dependency (the scheduler and the network of Varn without Lua, Poco, OpenSSL, libuv, Box2D, ImGui, miniaudio and the rest) and the runtime, next to the public headers, and holds nothing of Lua. The library `libhaylen-lua.a` of `HaylenLua.xcframework` holds the Lua layer with the Lua runtime of Varn and Lua itself, and the Lua player as a member of its own, which defines `haylen::core::Application::create` for Lua apps. Lua apps and C++ apps whose `cpp.lua` is `true` link both frameworks, and the link takes the player only when the sources of the app define no application of their own. Other C++ apps link only `Haylen.xcframework`. The SDK is built in these steps:
 
 1. Every architecture is a CMake build of `engine/` with `HAYLEN_BUILD_SDK` and `HAYLEN_BUILD_FRAMEWORK`, in `build/engine/apple-<slice>-<arch>-<config>`.
 2. The script `haylen-install.cmake` merges the engine and the runtime, as it does for the [SDK](embedding.md#find_package-and-the-sdk).
-3. The script `haylen-framework.cmake` merges both into `libhaylen.a` and archives the player into `libhaylen-player.a`. It writes `haylen-apple.json` with the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into CMake apps, and the preprocessor definitions that C++ sources compile with against the headers.
+3. The script `haylen-framework.cmake` merges both into `libhaylen.a`, and the Lua layer of `haylen-install.cmake` with the player into `libhaylen-lua.a`. It writes `haylen-apple.json` with the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into CMake apps, and the preprocessor definitions that C++ sources compile with against the headers.
 4. The tool `lipo` joins the architectures of a slice, and `xcodebuild -create-xcframework` joins the slices of each framework. A slice that the SDK folder holds from the same engine sources and configuration stays, so building one slice later adds it.
 5. The tool `codesign` signs both frameworks ad hoc with `--sign -` and `--timestamp=none`, and `codesign --verify --strict` checks the signatures, so Xcode takes them as signed and a broken signature stops the build of the SDK.
 6. The engine port copies `haylen-apple.json`, the privacy manifest of the engine, its Swift helpers, the headers and the CMake package that gives native libraries `haylen::native` into the SDK folder, and lists them in `haylen-sdk.json`.

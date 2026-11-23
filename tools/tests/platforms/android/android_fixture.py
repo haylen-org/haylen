@@ -9,6 +9,7 @@ from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.android.android_backend import AndroidBackend
 from haylen.platforms.android.android_platform import AndroidPlatform
+from haylen.platforms.android.android_port import AndroidPort
 from haylen.platforms.backend_registry import BackendRegistry
 from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.product_folders import ProductFolders
@@ -51,6 +52,7 @@ class AndroidFixture:
                 "minimumSystemVersion": "27",
                 "graphicsApis": ["vulkan", "openGlEs"],
                 "capabilities": ["dynamicLibraries", "executableMemory", "processes"],
+                "libraries": {name: f"abis/{abi}/lib/{file}" for name, file in AndroidPort.SDK_LIBRARIES.items()},
                 "files": {"cmake": f"abis/{abi}/lib/cmake/haylen", "player": f"jniLibs/{abi}/libhaylen.so"},
             }
             for abi in AndroidNdk.ABIS

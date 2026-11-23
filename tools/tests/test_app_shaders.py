@@ -51,6 +51,7 @@ class AppShadersTest:
             "minimumSystemVersion": "1.0",
             "graphicsApis": ["port"],
             "capabilities": [],
+            "libraries": {"haylen": "lib/libhaylen.a", "haylen-runtime": "lib/libhaylen-runtime.a", "haylen-lua": "lib/libhaylen-lua.a", "haylen-player": "lib/haylen-player.o"},
         }
         tool = {"name": "port-shaders.cmake", "system": Host.system(), "architecture": Host.architecture(), "path": "bin/port-shaders.cmake"}
         document = {

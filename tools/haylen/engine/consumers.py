@@ -18,10 +18,13 @@ from haylen.toolchains.shader_compiler import ShaderCompiler
 
 
 class Consumers:
-    """Builds the consumer project of the engine tests, which adds the engine the way another repository does and compiles a C++ app against its public headers: through `add_subdirectory` and CPM from the sources of the engine, and through `find_package` from an installed SDK of this machine."""
+    """Builds the consumer project of the engine tests, which adds the engine the way another repository does and compiles a C++ app without Lua against its public headers: through `add_subdirectory` and CPM from the sources of the engine, and through `find_package` from an installed SDK of this machine. The build of the project fails when a program of the app holds a symbol of Lua, and a project that adds the engine from its sources also runs the app on the headless host with the application of its own sources, until it quits once it drew its first frame."""
 
     PROJECT = Repository.ENGINE / "tests" / "consumer"
     MODES = {"subdirectory": '"add_subdirectory"', "cpm": "CPM", "package": 'an installed SDK and "find_package"'}
+    HEADLESS = "haylen-consumer-headless"
+    # The app quits in its first frame, so the bound only stops a run that never quits.
+    HEADLESS_FRAMES = 600
 
     def __init__(self, context: ToolingContext, registry: BackendRegistry) -> None:
         self.context = context
@@ -55,6 +58,10 @@ class Consumers:
             self.context.terminal.step(f"Building a project that adds the engine through {Consumers.MODES[mode]}")
             tree.configure(command)
             self.context.process.run(["cmake", "--build", tree.folder, "--config", configuration, "--parallel", str(self.context.jobs)])
+            if mode != "package":
+                self.context.terminal.step("Running the C++ app of the project on the headless host")
+                program = tree.folder / "bin" / Host.executable(Consumers.HEADLESS)
+                self.context.process.run([program, tree.folder / "package", "--frames", str(Consumers.HEADLESS_FRAMES), "--", "--quit"])
             self.context.terminal.success(f"A project adds the engine through {Consumers.MODES[mode]}.")
             built.append({"mode": mode, "tree": str(tree.folder)})
         return {"consumers": built, "sdk": str(sdk) if sdk else None}

@@ -56,7 +56,7 @@ class ProjectResolver:
         minimum = ProjectResolver.minimum_system_version(app, sections, resolved.contributions, description.platform)
         graphics = tuple(app.section("window").get("graphicsApis", ()))
         native = ProjectResolver.native_libraries(app, resolved.contributions, description.platform)
-        package = PackageLayout.of(app.folder, {plugin.id: plugin.folder for plugin in resolved.plugins})
+        package = PackageLayout.of(app.folder, {plugin.id: plugin.folder for plugin in resolved.plugins}, app.runs_lua)
         permissions = Frozen.freeze({permission: plugin.id for plugin in resolved.plugins for permission in plugin.manifest.permissions})
         settings = Frozen.freeze({name: {key: value for key, value in section.items() if key != "minimumSystemVersion"} for name, section in sections.items()})
 

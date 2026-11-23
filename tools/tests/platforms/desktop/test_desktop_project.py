@@ -1,3 +1,4 @@
+import json
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
@@ -123,6 +124,12 @@ class DesktopProjectTest:
         values = (self.prepare(fixture, app, "linux") / "app.cmake").read_text(encoding="utf-8")
         assert f'haylen_add_app(main CPP SOURCES [[{(app / "src" / "App.cpp").as_posix()}]] CONTENT "${{HAYLEN_APP_CONTENT}}")' in values
         assert "target_compile_definitions(main PRIVATE [[GARDEN=1]])" in values
+
+        manifest = json.loads((app / AppManifest.FILE).read_text(encoding="utf-8"))
+        manifest["cpp"]["lua"] = True
+        (app / AppManifest.FILE).write_text(json.dumps(manifest), encoding="utf-8")
+        values = (self.prepare(fixture, app, "linux") / "app.cmake").read_text(encoding="utf-8")
+        assert f'haylen_add_app(main CPP WITH_LUA SOURCES [[{(app / "src" / "App.cpp").as_posix()}]] CONTENT "${{HAYLEN_APP_CONTENT}}")' in values
 
         (app / "src" / "AppBridge.mm").write_text("", encoding="utf-8")
         with pytest.raises(InvalidManifest, match="which compile only on Apple platforms"):

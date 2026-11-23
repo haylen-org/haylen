@@ -58,7 +58,8 @@ class AppRun:
         port = listener.server_address[1]
         threading.Thread(target=listener.serve_forever, daemon=True).start()
         try:
-            development.start(address.listen, port, self.launch.debugger_port)
+            # Only an app that runs Lua has a debugger, of its Lua.
+            development.start(address.listen, port, self.launch.debugger_port if resolved.app.runs_lua else None)
         except DevelopmentFailed:
             listener.shutdown()
             listener.server_close()
@@ -114,6 +115,7 @@ class AppRun:
         rows = [("App", f'{resolved.app.name} ("{resolved.app.identifier}")'), ("Device", device), ("Configuration", configuration)]
         if self.development is not None:
             rows.append(("Hot reload", "Every file saved in the app reloads in it"))
+        if self.development is not None and self.development.debugger is not None:
             rows.append(("Debugger", f"Attach an editor to port {self.development.debugger.port} of this machine"))
         return rows
 

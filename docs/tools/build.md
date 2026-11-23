@@ -160,10 +160,21 @@ A port keeps the slices of its folder that the same engine sources built in the 
 
 | Engine port | Targets | What its SDK holds |
 | --- | --- | --- |
-| `desktop` | `player`, `windows`, `linux` | One slice of this machine, such as `macos-arm64`, with the CMake package that `find_package(haylen)` imports, the Lua player object, and the desktop player `haylen` and the content tool `haylen-content` as host tools. It builds only for the machine it runs on. |
-| `apple` | `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator` | `Haylen.xcframework` with the engine and the runtime of every slice in its `libhaylen.a`, `HaylenPlayer.xcframework` with the Lua player in its `libhaylen-player.a`, both signed ad hoc, the headers, the CMake package of native libraries, `haylen-apple.json` with the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge. |
-| `android` | `android` | One slice per ABI, with the CMake package that the native code of apps links under `abis/` and the player library `libhaylen.so` under `jniLibs/`, and the Android libraries of the engine in the local Maven repository `maven/`, whose `haylen` library carries the player of every ABI of the SDK. |
-| `web` | `web` | The web player, which runs any package that its page hands it, with the processor of its audio output, the worker of its content store and the page side and the worker of the [Worker mode](#hosting-the-runtime), and the Emscripten CMake package that release runtimes and C++ apps link. |
+| `desktop` | `player`, `windows`, `linux` | One slice of this machine, such as `macos-arm64`, with the CMake package that `find_package(haylen)` imports, its four libraries, and the desktop player `haylen` and the content tool `haylen-content` as host tools. It builds only for the machine it runs on. |
+| `apple` | `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator` | `Haylen.xcframework` with the engine and the runtime of every slice in its `libhaylen.a`, `HaylenLua.xcframework` with the Lua layer and the Lua player of every slice in its `libhaylen-lua.a`, both signed ad hoc, the headers, the CMake package of native libraries, `haylen-apple.json` with the settings of Apple projects, the privacy manifest of the engine and the Swift helpers of the bridge. |
+| `android` | `android` | One slice per ABI, with the CMake package that the native code of apps links and its four libraries under `abis/` and the player library `libhaylen.so` under `jniLibs/`, and the Android libraries of the engine in the local Maven repository `maven/`, whose `haylen` library carries the player of every ABI of the SDK. |
+| `web` | `web` | The web player, which runs any package that its page hands it, with the processor of its audio output, the worker of its content store and the page side and the worker of the [Worker mode](#hosting-the-runtime), and the Emscripten CMake package with its four libraries, which release runtimes and C++ apps link. |
+
+The library of the engine of every SDK holds nothing of Lua, and the Lua layer is a library of its own, which only the apps that run Lua link. The SDKs of CMake packages, the desktop, Android and web SDKs, hold four libraries, which `haylen-sdk.json` lists under the `libraries` of each slice with their files:
+
+| Library | What it holds | Who links it |
+| --- | --- | --- |
+| `haylen` | The engine with its dependencies, imported as `haylen::engine`. | Every app. |
+| `haylen-runtime` | The runtime with the platform services, the platform layer and the GPU devices, imported as `haylen::runtime`. | Every app. |
+| `haylen-lua` | The Lua layer with the Lua runtime of Varn, imported as `haylen::lua`. | Lua apps, through the player, and C++ apps whose `cpp.lua` is `true`. |
+| `haylen-player` | The object of the Lua player, which defines the application of a Lua app, imported as `haylen::player`. | Lua apps. |
+
+The Apple slices list two libraries, since they merge the runtime into `haylen`, the `libhaylen.a` of `Haylen.xcframework`, and the Lua player into `haylen-lua`, the `libhaylen-lua.a` of `HaylenLua.xcframework`. The player is a member of its own in that library, and a link takes it only when nothing else defines `haylen::core::Application::create`. So a C++ app that runs Lua with an application of its own links the same framework as a Lua app.
 
 Each target finds its slice after the requirements of its plugins are known and before its project is generated. A slice serves a target only when its system, environment, architecture, binary interface, toolchain and configuration match, the current engine sources built it, it runs on the oldest system that the app supports and it holds the graphics APIs that the app asks for. When no installed SDK of the current engine sources holds an architecture of the target in the configuration of the engine, the commands that prepare or build the app first build its SDK through the engine port, as `haylen sdk build` does, in a step that says why and how long a first build takes, which is about ten minutes with a warm compiler cache and up to an hour without one, while a build of changed sources compiles only what changed. The commands that only read a product, `project inspect` and `app verify`, never build, and they stop with the error `incompatibleSdk`, which names the `haylen sdk build` command to run, as every command does for an SDK of the current sources that serves no app of the target, such as one that runs only on newer systems than the app. The command `app build` takes the SDK of `--engine-config`, `Release` by default.
 
@@ -292,7 +303,7 @@ The tooling sets these cache variables for you. A project that adds the engine i
 | `HAYLEN_BUILD_BENCHMARKS` | on when the engine is the top-level project | Builds every benchmark of [`engine bench`](#engine-bench) on desktop. |
 | `HAYLEN_BUILD_TOOLS` | on when the engine is the top-level project | On desktop hosts, builds the content tool `haylen-content` and its library `haylen-content-tool`. The tests link that library, so they build it too. |
 | `HAYLEN_BUILD_SDK` | off | Merges the engine into the SDK that `cmake --install --component haylen-sdk` installs, which the engine ports turn on. |
-| `HAYLEN_BUILD_FRAMEWORK` | off | On Apple platforms, with `HAYLEN_BUILD_SDK`, merges the engine and the runtime into the `libhaylen.a` of one slice of `Haylen.xcframework` and archives the Lua player into the `libhaylen-player.a` of `HaylenPlayer.xcframework`, which the `haylen-framework` component installs with `haylen-apple.json` and the CMake package of native libraries. |
+| `HAYLEN_BUILD_FRAMEWORK` | off | On Apple platforms, with `HAYLEN_BUILD_SDK`, merges the engine and the runtime into the `libhaylen.a` of one slice of `Haylen.xcframework` and the Lua layer with the Lua player into the `libhaylen-lua.a` of `HaylenLua.xcframework`, which the `haylen-framework` component installs with `haylen-apple.json` and the CMake package of native libraries. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instruments the engine and the tests with LLVM coverage. It needs Clang. |
 | `HAYLEN_SANITIZERS` | `OFF` | The sanitizers of builds for this machine that do not use MSVC, a desktop or a port that builds with the compiler of this machine, such as the test port, and any other build stops with a sentence: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the targets of the engine and AddressSanitizer on the libraries it compiles from the sources of the dependencies that read the bytes of apps, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
 | `HAYLEN_DEBUG_INFO` | `FULL`, or the variable `HAYLEN_DEBUG_INFO` of the environment | The debug information of the Debug and RelWithDebInfo configurations: `FULL` for a debugger, or `LINES` for the file and line of each instruction alone, which stack traces and sanitizer reports read, in objects about a third of the size. GCC takes `-g1` for it and Clang `-gline-tables-only`. MSVC has no format with lines alone, so its objects carry no debug information with `LINES`. The [CI workflow](testing.md#the-compiler-cache) sets `LINES`. |
@@ -485,10 +496,10 @@ NanoSVG reads a style, such as the attribute `style` or the rules of a `<style>`
 The file `engine/cmake/haylen-app.cmake` defines the one CMake function that builds the binary of an app, Lua or C++, against the engine of an installed SDK or of a source tree:
 
 ```cmake
-haylen_add_app(<target> LUA|CPP [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
+haylen_add_app(<target> LUA|CPP [WITH_LUA] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
 ```
 
-The option `LUA` links the Lua player `haylen::player`, and `CPP` compiles the `SOURCES` that define `haylen::core::Application::create`. The folder `CONTENT` is what the app ships, which the tooling prepares, and `BOOTSTRAP` is the release bootstrap that the content tool writes. The function builds an executable on desktops, the shared library of the activity on Android and a page on the web, and calls the `APP_FUNCTION` of a port, while Xcode builds the apps of Apple platforms. The generated projects of the desktop, Android and web backends call it, and the [embedding guide](embedding.md#haylen_add_app) describes every argument and what it makes on each platform.
+The option `LUA` links the Lua player `haylen::player`, and `CPP` compiles the `SOURCES` that define `haylen::core::Application::create`, with the Lua layer `haylen::lua` only when `WITH_LUA` names it. The folder `CONTENT` is what the app ships, which the tooling prepares, and `BOOTSTRAP` is the release bootstrap that the content tool writes. The function builds an executable on desktops, the shared library of the activity on Android and a page on the web, and calls the `APP_FUNCTION` of a port, while Xcode builds the apps of Apple platforms. The generated projects of the desktop, Android and web backends call it, and the [embedding guide](embedding.md#haylen_add_app) describes every argument and what it makes on each platform.
 
 ## The desktop player
 
@@ -764,7 +775,7 @@ The Android backend generates the Gradle project of every app from `tools/haylen
 
 ## Apple platforms
 
-The engine port `apple` builds one slice of `Haylen.xcframework` and `HaylenPlayer.xcframework` per system and environment, each architecture in its own tree `build/engine/apple-<slice>-<architecture>-<config>`, joined with `lipo`:
+The engine port `apple` builds one slice of `Haylen.xcframework` and `HaylenLua.xcframework` per system and environment, each architecture in its own tree `build/engine/apple-<slice>-<architecture>-<config>`, joined with `lipo`:
 
 ```sh
 haylen sdk build --target ios --target ios-simulator

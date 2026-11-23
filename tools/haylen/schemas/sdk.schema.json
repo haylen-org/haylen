@@ -18,7 +18,7 @@
             "items": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["system", "environment", "architectures", "abi", "toolchain", "runtime", "minimumSystemVersion", "graphicsApis", "capabilities"],
+                "required": ["system", "environment", "architectures", "abi", "toolchain", "runtime", "minimumSystemVersion", "graphicsApis", "capabilities", "libraries"],
                 "properties": {
                     "system": {"type": "string", "minLength": 1},
                     "environment": {"enum": ["device", "simulator", "host"]},
@@ -29,6 +29,13 @@
                     "minimumSystemVersion": {"type": "string", "minLength": 1},
                     "graphicsApis": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
                     "capabilities": {"type": "array", "items": {"enum": ["dynamicLibraries", "executableMemory", "processes"]}, "uniqueItems": true},
+                    "libraries": {
+                        "type": "object",
+                        "description": "The libraries of the slice by their names, \"haylen\" with the engine, \"haylen-runtime\", \"haylen-lua\" with the Lua layer and \"haylen-player\" with the Lua player, each with its file relative to the SDK folder. The Apple slices merge the runtime into \"haylen\" and the Lua player into \"haylen-lua\".",
+                        "propertyNames": {"enum": ["haylen", "haylen-runtime", "haylen-lua", "haylen-player"]},
+                        "required": ["haylen", "haylen-lua"],
+                        "additionalProperties": {"type": "string", "minLength": 1}
+                    },
                     "files": {"type": "object", "additionalProperties": {"type": "string"}}
                 }
             }

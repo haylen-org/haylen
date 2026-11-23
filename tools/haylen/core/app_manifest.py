@@ -64,6 +64,11 @@ class AppManifest:
             )
 
         cpp = CppSources.parse(document["cpp"], folder, origin) if "cpp" in document else None
+        if kind is AppKind.CPP and not cpp.lua and (folder / "source").exists():
+            raise InvalidManifest(
+                f'The C++ app `{origin}` runs no Lua, so nothing runs the Lua modules of `{Repository.shown(folder / "source")}`. Set "cpp.lua" to true to run them, or remove the folder.',
+                origin=origin,
+            )
         native = tuple(NativeLibrary.parse(name, entry, folder, "app", origin) for name, entry in document.get("native", {}).items())
         plugins = tuple(PluginReference.parse(identifier, entry) for identifier, entry in document.get("plugins", {}).items())
         return AppManifest(
@@ -80,6 +85,11 @@ class AppManifest:
             plugins=plugins,
             platforms=Frozen.freeze(document.get("platforms", {})),
         )
+
+    @property
+    def runs_lua(self) -> bool:
+        """Whether the app runs Lua and links the Lua layer: every Lua app, and a C++ app whose "cpp.lua" is true."""
+        return self.kind is AppKind.LUA or self.cpp.lua
 
     @property
     def path(self) -> Path:

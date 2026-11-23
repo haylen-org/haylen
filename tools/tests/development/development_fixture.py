@@ -38,7 +38,7 @@ class DevelopmentFixture:
         self.output = io.StringIO()
         terminal = Terminal(self.output, self.output, environment or {}, folder / "logs" / "test.log")
         self.context = ToolingContext(terminal, Process(terminal), 1, dict(os.environ))
-        self.layout = PackageLayout.of(self.folder, {})
+        self.layout = PackageLayout.of(self.folder, {}, True)
         self.manifest = DevelopmentServer.hash_files(self.layout.files())
 
     def write(self, path: str, text: str, later: bool = True) -> Path:

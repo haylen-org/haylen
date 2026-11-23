@@ -35,6 +35,7 @@ class ContentToolTest:
                     "minimumSystemVersion": "1.0",
                     "graphicsApis": [],
                     "capabilities": [],
+                    "libraries": {"haylen": "lib/libhaylen.a", "haylen-runtime": "lib/libhaylen-runtime.a", "haylen-lua": "lib/libhaylen-lua.a", "haylen-player": "lib/haylen-player.o"},
                 }
             ],
             "hostTools": [{"name": ContentTool.NAME, "system": system or Host.system(), "architecture": Host.architecture(), "path": path}],

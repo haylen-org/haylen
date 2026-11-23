@@ -20,7 +20,7 @@ class ReleaseInspectionTest:
         (app / "content" / "images").mkdir()
         (app / "content" / "images" / "hero.png").write_bytes(b"a hero image that only the package holds")
         (app / "content" / "images" / "logo.png").write_bytes(b"the splash logo that platforms show")
-        source = ReleasePackage(AppManifest.load(app), PackageLayout.of(app, {}))
+        source = ReleasePackage(AppManifest.load(app), PackageLayout.of(app, {}, True))
         return ReleaseInspection(source, {'the content key "1234"': ReleaseInspectionTest.KEY})
 
     @staticmethod

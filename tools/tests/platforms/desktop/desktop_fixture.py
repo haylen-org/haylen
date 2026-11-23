@@ -57,6 +57,12 @@ class DesktopFixture:
                         "minimumSystemVersion": "1.0",
                         "graphicsApis": list(system.graphics_apis),
                         "capabilities": sorted(DesktopSystem.CAPABILITIES),
+                        "libraries": {
+                            "haylen": f"{name}/lib/libhaylen.a",
+                            "haylen-runtime": f"{name}/lib/libhaylen-runtime.a",
+                            "haylen-lua": f"{name}/lib/libhaylen-lua.a",
+                            "haylen-player": f"{name}/lib/haylen-player.o",
+                        },
                         "files": {"cmake": f"{name}/lib/cmake/haylen", "player": f"{name}/bin/haylen"},
                     }
                 )
@@ -83,6 +89,7 @@ class DesktopFixture:
                 "minimumSystemVersion": WebPort.MINIMUM,
                 "graphicsApis": list(WebPort.GRAPHICS_APIS),
                 "capabilities": [],
+                "libraries": {"haylen": "lib/libhaylen.a", "haylen-runtime": "lib/libhaylen-runtime.a", "haylen-lua": "lib/libhaylen-lua.a", "haylen-player": "lib/haylen-player.o"},
                 "files": {
                     "cmake": f"{WebPort.SLICE}/lib/cmake/haylen",
                     "player": f"{WebPort.SLICE}/player",

@@ -48,7 +48,8 @@ class PackageServerTest:
 
     def test_only_the_package_of_a_lua_app_is_served(self, tmp_path, monkeypatch):
         fixture = DevelopmentFixture(tmp_path, monkeypatch)
-        cpp = fixture.tooling.app({"kind": "cpp", "cpp": {"sources": ["source"]}}, "cpp")
+        cpp = fixture.tooling.app({"kind": "cpp", "cpp": {"sources": ["src"]}}, "cpp")
+        (cpp / "src").mkdir()
 
         with pytest.raises(DevelopmentFailed, match=r"is a C\+\+ app, which has no package to serve"):
             PackageServer(fixture.context, cpp, "127.0.0.1", 0).serve()

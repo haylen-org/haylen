@@ -45,7 +45,8 @@ class SiteRun:
         development = DevelopmentServer(self.context, self.product.prepared.product.package, manifest, self.product.prepared.product.primary.sdk)
         server = SiteServer(self.site, self.launch.host, self.launch.port, coep, coop, development)
         try:
-            development.start(self.launch.host, server.port, self.launch.debugger_port)
+            # Only an app that runs Lua has a debugger, of its Lua.
+            development.start(self.launch.host, server.port, self.launch.debugger_port if self.product.prepared.product.app.runs_lua else None)
         except DevelopmentFailed:
             server.close()
             raise
@@ -67,6 +68,7 @@ class SiteRun:
         rows = [("App", f'{resolved.app.name} ("{resolved.app.identifier}")'), ("Page", f"`{self.server.url}`"), ("Site", f"`{Repository.shown(self.site)}`")]
         if self.development is not None:
             rows.append(("Hot reload", "Every file saved in the app reloads in the open pages"))
+        if self.development is not None and self.development.debugger is not None:
             rows.append(("Debugger", f"Attach an editor to port {self.development.debugger.port} of this machine, for log points, since a page cannot halt"))
         return rows
 

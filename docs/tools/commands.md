@@ -148,7 +148,7 @@ Result: `files`, the paths that the command wrote.
 haylen app zip [app] [-o <file>]
 ```
 
-Zips the package of the app: `haylen.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin under `plugins/<id>/`, wherever the plugin comes from. The zip goes to `app.zip` in the current folder unless `-o` names another file. Any player and the web runtime run it as it is.
+Zips the package of the app: `haylen.json`, `content/` and the `plugin.json` of every plugin under `plugins/<id>/`, wherever the plugin comes from, with `source/` and the `source/` of every plugin for an app that runs Lua. The zip goes to `app.zip` in the current folder unless `-o` names another file. Any player and the web runtime run it as it is.
 
 Result: `output`, the path of the zip, and `files`, the number of files it holds.
 
@@ -507,6 +507,6 @@ Result: the path of each installed tool by its name.
 haylen engine consumers [--mode subdirectory|cpm|package] [--config Debug|Release] [--sdk <folder>]
 ```
 
-Builds the consumer project of `engine/tests/consumer`, which adds the engine the way another repository does, through `add_subdirectory`, through CPM, or through `find_package` with an installed SDK. The option `--mode` repeats, and every way runs without it. The configuration is `Release` by default, and `--sdk` names the SDK folder of `package`. By default it is the installed desktop SDK of this machine in that configuration, which `haylen sdk build --target player` builds, and never the SDK of a device platform that holds a slice of this system too, such as the Apple SDK on a Mac.
+Builds the consumer project of `engine/tests/consumer`, which adds the engine the way another repository does, through `add_subdirectory`, through CPM, or through `find_package` with an installed SDK, and builds a C++ app without Lua, whose build fails when a program of it holds a symbol of Lua. The ways that add the engine from its sources also run the app on the headless host, with the application of its sources, until it quits after its first frame. The option `--mode` repeats, and every way runs without it. The configuration is `Release` by default, and `--sdk` names the SDK folder of `package`. By default it is the installed desktop SDK of this machine in that configuration, which `haylen sdk build --target player` builds, and never the SDK of a device platform that holds a slice of this system too, such as the Apple SDK on a Mac.
 
 Result: `consumers`, the ways that built, and `sdk`.

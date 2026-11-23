@@ -5,7 +5,7 @@ from haylen.core.repository import Repository
 
 
 class CMakeApp:
-    """Writes the CMake text that builds the binary of an app with `haylen_add_app` in the projects that backends generate: the kind of the app, the C++ sources of a C++ app with its include folders and definitions, the content that the app ships and, for a release, its bootstrap. Values reach CMake as bracket arguments, which keep every character as it is."""
+    """Writes the CMake text that builds the binary of an app with `haylen_add_app` in the projects that backends generate: the kind of the app, the C++ sources of a C++ app with its include folders and definitions and the Lua layer for one that runs Lua, the content that the app ships and, for a release, its bootstrap. Values reach CMake as bracket arguments, which keep every character as it is."""
 
     # Objective-C compiles only on Apple platforms, whose projects take it from the section `apple`.
     OBJECTIVE_C = frozenset({".m", ".mm"})
@@ -34,7 +34,8 @@ class CMakeApp:
                 f'The "cpp" section of `{app.origin}` names the Objective-C files {names}, which compile only on Apple platforms. Name them in "platforms.apple.sources".', origin=app.origin
             )
         sources = " ".join(CMakeApp.text(file.as_posix()) for file in files)
-        lines = [f"haylen_add_app({target} CPP SOURCES {sources} CONTENT {content}{release})"]
+        lua = " WITH_LUA" if cpp.lua else ""
+        lines = [f"haylen_add_app({target} CPP{lua} SOURCES {sources} CONTENT {content}{release})"]
         if cpp.include_directories:
             lines.append(f"target_include_directories({target} PRIVATE {' '.join(CMakeApp.text(path.as_posix()) for path in cpp.include_directories)})")
         if cpp.definitions:

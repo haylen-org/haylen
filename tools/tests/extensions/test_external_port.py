@@ -166,6 +166,7 @@ class ExternalPortTest:
                     "minimumSystemVersion": "1.0",
                     "graphicsApis": ["port"],
                     "capabilities": ["dynamicLibraries"],
+                    "libraries": {"haylen": f"test-port-{architecture}/lib/libhaylen.a", "haylen-lua": f"test-port-{architecture}/lib/libhaylen-lua.a"},
                     "files": {"cmake": f"test-port-{architecture}/lib/cmake/haylen"},
                 }
             ],
