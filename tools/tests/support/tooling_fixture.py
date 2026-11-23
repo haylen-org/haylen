@@ -101,6 +101,28 @@ class ToolingFixture:
         self.sdks.append(manifest)
         return manifest
 
+    def unusable_sdk(self, name: str, system: str = "fakeos", damaged: bool = False) -> Path:
+        """Installs an SDK that this tooling cannot use: one whose slice lacks the libraries, as an older version of Haylen wrote it, or a damaged file."""
+        folder = self.folder / "sdk" / name
+        folder.mkdir(parents=True)
+        slices = [
+            {
+                "system": system,
+                "environment": "device",
+                "architectures": ["arm64"],
+                "abi": "fake-arm64",
+                "toolchain": "fakecc",
+                "runtime": "libfake",
+                "minimumSystemVersion": "1.0",
+                "graphicsApis": [],
+                "capabilities": [],
+            }
+        ]
+        document = {"format": 1, "port": "fake", "portVersion": "1.0.0", "engineVersion": "0.0.1", "revision": "c" * 64, "configuration": "Release", "slices": slices}
+        text = '{"format": 1, "port":' if damaged else json.dumps(document)
+        (folder / SdkManifest.FILE).write_text(text, encoding="utf-8")
+        return folder
+
     def resolver(self, app: Path, registry: BackendRegistry | None = None) -> ProjectResolver:
         manifest = AppManifest.load(app)
         source = PluginSource(manifest.folder, PluginLock.load(manifest.folder), self.context.process, self.context.terminal)

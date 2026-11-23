@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass
 from importlib import metadata
 
@@ -117,6 +117,10 @@ class BackendRegistry:
 
     def targets(self) -> list[BackendRegistry.Target]:
         return [BackendRegistry.Target(entry.backend, entry.description, target) for entry in self.entries for target in entry.description.targets]
+
+    def targets_named_by(self, slices: Collection[tuple[str, str]]) -> list[str]:
+        """The names of the targets whose system and environment a list of slices names, such as the targets that an SDK was built for."""
+        return [target.description.name for target in self.targets() if (target.description.system, target.description.environment.value) in slices]
 
     def target(self, name: str) -> BackendRegistry.Target:
         self.require_healthy()

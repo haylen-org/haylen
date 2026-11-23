@@ -1,9 +1,11 @@
 import argparse
 from collections.abc import Mapping
+from pathlib import Path
 
 from haylen.cli.command import Command
 from haylen.cli.command_session import CommandSession
 from haylen.core.repository import Repository
+from haylen.sdk.sdk_catalog import SdkCatalog
 from haylen.sdk.sdk_manifest import SdkManifest
 from haylen.sdk.sdk_slice import SdkSlice
 from haylen.terminal import Terminal
@@ -34,21 +36,31 @@ class SdkListCommand(Command):
 
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         revision = Repository.engine_revision()
-        manifests = session.sdks.manifests()
+        survey = session.sdks.survey()
+        sentences = {unusable.folder: unusable.sentence(session.registry.targets_named_by(unusable.slices)) for unusable in survey.unusable}
         if not session.structured:
-            SdkListCommand.show(session.terminal, manifests, revision)
-        return {"sdks": [{**manifest.describe(), "folder": str(manifest.folder), "current": manifest.revision == revision} for manifest in manifests]}
+            for unusable in survey.unusable:
+                session.terminal.record("\n".join([unusable.problem, *unusable.reasons]))
+            SdkListCommand.show(session.terminal, survey, revision, sentences)
+        sdks = [{**manifest.describe(), "folder": str(manifest.folder), "current": manifest.revision == revision} for manifest in survey.manifests]
+        unusable = [{"folder": str(entry.folder), "readable": entry.readable, "problem": sentences[entry.folder]} for entry in survey.unusable]
+        return {"sdks": sdks, "unusable": unusable}
 
     @staticmethod
-    def show(terminal: Terminal, manifests: list[SdkManifest], revision: str) -> None:
-        """Prints a table of the SDKs with whether the engine sources of this checkout built them, and a group of the slices of every SDK."""
-        if not manifests:
+    def show(terminal: Terminal, survey: SdkCatalog.Survey, revision: str, sentences: Mapping[Path, str]) -> None:
+        """Prints a table of the SDKs with whether the engine sources of this checkout built them, a group of the slices of every SDK, and a group for every SDK that this tooling cannot use, with what happened and the command that builds it again."""
+        if not survey.manifests and not survey.unusable:
             terminal.info('No SDK is installed. Build one with "haylen sdk build --target <target>".')
             return
-        terminal.group("SDKs", len(manifests))
-        terminal.table(SdkListCommand.SDK_COLUMNS, [SdkListCommand.sdk_row(manifest, revision) for manifest in manifests])
-        groups = [(Repository.shown(manifest.folder), [SdkListCommand.slice_row(entry) for entry in manifest.slices]) for manifest in manifests]
+        rows = [SdkListCommand.sdk_row(manifest, revision) for manifest in survey.manifests]
+        rows += [(Repository.shown(unusable.folder), "", "", "", Terminal.Cell(unusable.state, Terminal.Sign.UNREACHABLE)) for unusable in survey.unusable]
+        terminal.group("SDKs", len(rows))
+        terminal.table(SdkListCommand.SDK_COLUMNS, rows)
+        groups = [(Repository.shown(manifest.folder), [SdkListCommand.slice_row(entry) for entry in manifest.slices]) for manifest in survey.manifests]
         terminal.grouped_table(SdkListCommand.SLICE_COLUMNS, groups)
+        for unusable in survey.unusable:
+            terminal.group(Repository.shown(unusable.folder))
+            terminal.item(Terminal.Sign.UNREACHABLE, sentences[unusable.folder])
 
     @staticmethod
     def sdk_row(manifest: SdkManifest, revision: str) -> tuple[str | Terminal.Cell, ...]:

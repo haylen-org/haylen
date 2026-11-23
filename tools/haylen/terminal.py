@@ -349,6 +349,15 @@ class Terminal:
         """The columns of a terminal that a text takes, without the escape sequences of its colors."""
         return sum(map(Terminal.columns, Terminal.ESCAPE.sub("", text)))
 
+    def record(self, text: str) -> None:
+        """Keeps a detail in the log of the command, such as why this tooling cannot use an SDK in the words of its schema, which the terminal shows only with "--verbose"."""
+        with self.lock:
+            self.log.parent.mkdir(parents=True, exist_ok=True)
+            with self.log.open("a", encoding="utf-8") as log:
+                log.write(text + "\n")
+        if self.verbose:
+            self.write(Terminal.paint(text, self.stdout_color, Terminal.COMMAND))
+
     def info(self, message: str) -> None:
         self.write(Terminal.render(message, self.stdout_color))
 

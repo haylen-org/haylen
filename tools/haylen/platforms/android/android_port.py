@@ -87,10 +87,9 @@ class AndroidPort(EnginePort):
 
     def kept_slices(self, request: SdkRequest) -> tuple[SdkSlice, ...]:
         """Returns the slices of the SDK in the folder that were built from the same engine sources in the same configuration, which the new ABIs join. The files of an SDK of other sources or another configuration leave entirely."""
-        if (request.folder / SdkManifest.FILE).is_file():
-            existing = SdkManifest.load(request.folder)
-            if existing.port == AndroidPort.NAME and existing.revision == request.revision and existing.configuration is request.configuration:
-                return existing.slices
+        existing = SdkManifest.usable(request.folder)
+        if existing is not None and existing.port == AndroidPort.NAME and existing.revision == request.revision and existing.configuration is request.configuration:
+            return existing.slices
         for name in (AndroidPort.ABIS_FOLDER, AndroidPort.PLAYERS_FOLDER, AndroidPort.MAVEN_FOLDER, SdkManifest.FILE):
             path = request.folder / name
             if path.is_file():

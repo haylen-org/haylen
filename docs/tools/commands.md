@@ -289,7 +289,7 @@ haylen doctor [--target <name>]
 
 Shows, for every target or for one, its backend, the engine port that builds its engine, its installed SDKs and every tool it needs with its version and path, and what is missing with how to get it. It downloads nothing and accepts no license.
 
-The group `Targets` holds a table of the targets with their state: ready, without an SDK yet, which the first app build builds, with problems, or of another host. The group `Tools` lists each tool once, with the targets that need it, and the group `Problems` lists every problem once. With `--target`, the description and the capabilities of the target follow its row.
+The group `Targets` holds a table of the targets with their state: ready, without an SDK yet, which the first app build builds, with an SDK built by an older Haylen or unreadable, which a new build replaces, with problems, or of another host. The group `Tools` lists each tool once, with the targets that need it, and the group `Problems` lists every problem once. With `--target`, the description and the capabilities of the target follow its row.
 
 ```text
 Haylen 0.0.1 on macos arm64
@@ -411,7 +411,9 @@ build/sdk/web-release  1
   web      device       wasm32         emscripten-7.0.0   0     webGpu, webGl2
 ```
 
-Result: `sdks`, each manifest with its `folder` and `current`.
+An SDK that this version of Haylen cannot use, such as one that an older version built or one whose manifest is damaged, shows with a cross as built by an older Haylen or unreadable, and a group under it says what happened and the command that builds it again. No command stops on such an SDK: it holds no slice that a build takes, like an SDK of other engine sources, so the app commands build its targets again when they need them, and the log of the command keeps the details.
+
+Result: `sdks`, each manifest with its `folder` and `current`, and `unusable`, each SDK that this version cannot use with its `folder`, `readable`, whether its manifest reads at all, and `problem`, the sentence that says what happened and how to build it again.
 
 ## Content
 

@@ -31,16 +31,46 @@ class SdkManifest:
 
     @staticmethod
     def load(folder: Path) -> SdkManifest:
-        path = folder / SdkManifest.FILE
-        origin = Repository.shown(path)
+        """Reads the manifest of an SDK, and fails with a plain sentence when the file is damaged or this tooling cannot use it, such as one that an older version of Haylen wrote."""
+        document = SdkManifest.document(folder)
+        if SdkManifest.problems(document):
+            raise IncompatibleSdk(SdkManifest.older(folder), origin=Repository.shown(folder / SdkManifest.FILE))
+        return SdkManifest.parse(folder, document)
+
+    @staticmethod
+    def usable(folder: Path) -> SdkManifest | None:
+        """The manifest of the SDK in a folder, or nothing when the folder holds none or one that this tooling cannot use, whose files a new build of the SDK replaces."""
+        if not (folder / SdkManifest.FILE).is_file():
+            return None
         try:
-            document = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise IncompatibleSdk(f"The SDK manifest `{origin}` cannot be read: {error}.", origin=origin) from None
-        problems = SchemaValidator.of("sdk.schema.json").problems(document)
-        if problems:
-            lines = "\n".join(f"  {problem}" for problem in problems)
-            raise IncompatibleSdk(f'The SDK manifest `{origin}` has these problems, so its SDK is incomplete. Build it again with "haylen sdk build".\n{lines}', origin=origin)
+            return SdkManifest.load(folder)
+        except IncompatibleSdk:
+            return None
+
+    @staticmethod
+    def document(folder: Path) -> object:
+        """The JSON document of the manifest of an SDK, failing with a plain sentence when the file cannot be read."""
+        path = folder / SdkManifest.FILE
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except OSError, json.JSONDecodeError:
+            raise IncompatibleSdk(SdkManifest.unreadable(folder), origin=Repository.shown(path)) from None
+
+    @staticmethod
+    def problems(document: object) -> list[str]:
+        """What keeps this tooling from using a manifest, in the words of its schema, which only the log of a command shows."""
+        return SchemaValidator.of("sdk.schema.json").problems(document)
+
+    @staticmethod
+    def older(folder: Path) -> str:
+        return f'The SDK in `{Repository.shown(folder)}` was built by an older version of Haylen, so this version cannot use it. Build it again with "haylen sdk build".'
+
+    @staticmethod
+    def unreadable(folder: Path) -> str:
+        return f'The SDK in `{Repository.shown(folder)}` cannot be read, since its file "{SdkManifest.FILE}" is damaged. Build it again with "haylen sdk build".'
+
+    @staticmethod
+    def parse(folder: Path, document: dict) -> SdkManifest:
         return SdkManifest(
             folder=folder.resolve(),
             port=document["port"],

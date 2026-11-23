@@ -29,6 +29,7 @@ from haylen.plugins.plugin_resolver import PluginResolver
 from haylen.plugins.plugin_source import PluginSource
 from haylen.sdk.sdk_builder import SdkBuilder
 from haylen.sdk.sdk_catalog import SdkCatalog
+from haylen.sdk.sdk_manifest import SdkManifest
 from haylen.sdk.sdk_selector import SdkSelector
 
 
@@ -78,13 +79,20 @@ class AppPipeline:
 
     def resolver(self, app: AppManifest) -> ProjectResolver:
         source = PluginSource(app.folder, PluginLock.load(app.folder), self.context.process, self.context.terminal)
-        selector = SdkSelector(tuple(SdkCatalog(self.context.environment).manifests()), Repository.engine_revision())
+        selector = SdkSelector(self.installed_sdks(), Repository.engine_revision())
         return ProjectResolver(self.registry, PluginResolver(app, source), selector)
+
+    def installed_sdks(self) -> tuple[SdkManifest, ...]:
+        """The installed SDKs that this tooling uses. One that it cannot use, such as one that an older version of Haylen built, serves no target, so a build builds its targets again, and the log of the command keeps why."""
+        survey = SdkCatalog(self.context.environment).survey()
+        for unusable in survey.unusable:
+            self.context.terminal.record("\n".join([unusable.problem, *unusable.reasons]))
+        return survey.manifests
 
     def missing_architectures(self, request: ProductRequest) -> tuple[str, ...]:
         """Returns the architectures of the request that no installed SDK of the current engine sources holds in the configuration of the engine, which only a build of the SDK makes."""
         description = self.registry.target(request.target).description
-        selector = SdkSelector(tuple(SdkCatalog(self.context.environment).manifests()), Repository.engine_revision())
+        selector = SdkSelector(self.installed_sdks(), Repository.engine_revision())
         return tuple(target.architecture for target in ProjectResolver.target_ids(description, request) if selector.lacks(target, request.engine_configuration))
 
     def backend(self, product: ResolvedProduct, capability: Capability) -> PlatformBackend:

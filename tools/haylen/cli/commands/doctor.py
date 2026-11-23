@@ -11,6 +11,7 @@ from haylen.core.host import Host
 from haylen.core.repository import Repository
 from haylen.core.target_id import TargetId
 from haylen.platforms.backend_registry import BackendRegistry
+from haylen.sdk.sdk_catalog import SdkCatalog
 from haylen.sdk.sdk_manifest import SdkManifest
 from haylen.terminal import Terminal
 
@@ -21,7 +22,7 @@ class DoctorCommand(Command):
 
     @dataclass(frozen=True)
     class Examination:
-        """What the doctor found for one target: the engine port that builds the engine for it, or why none does, the installed SDKs of the current engine sources and of other sources, the tools it needs and its problems."""
+        """What the doctor found for one target: the engine port that builds the engine for it, or why none does, the installed SDKs of the current engine sources and of other sources, the installed SDKs of it that this tooling cannot use with the sentence of each, the tools it needs and its problems."""
 
         target: BackendRegistry.Target
         port: str
@@ -30,6 +31,8 @@ class DoctorCommand(Command):
         port_problem: str
         current: tuple[SdkManifest, ...]
         outdated: bool
+        unusable: tuple[SdkCatalog.Unusable, ...]
+        unusable_sentences: tuple[str, ...]
         builds_here: bool
         tools: tuple[dict[str, object], ...]
         problems: tuple[str, ...]
@@ -62,17 +65,20 @@ class DoctorCommand(Command):
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         registry = session.registry
         targets = [registry.target(arguments.target)] if arguments.target else registry.targets()
-        manifests = session.sdks.manifests()
+        survey = session.sdks.survey()
         revision = Repository.engine_revision()
-        examinations = [DoctorCommand.examine(target, registry, manifests, revision) for target in targets]
+        examinations = [DoctorCommand.examine(target, registry, survey, revision) for target in targets]
         if not session.structured:
-            DoctorCommand.show(session.terminal, examinations, list(registry.problems), bool(arguments.target))
+            for unusable in survey.unusable:
+                session.terminal.record("\n".join([unusable.problem, *unusable.reasons]))
+            problems = [*registry.problems, *(unusable.sentence(registry.targets_named_by(unusable.slices)) for unusable in survey.unusable)]
+            DoctorCommand.show(session.terminal, examinations, problems, bool(arguments.target))
         targets_described = [DoctorCommand.describe(examination) for examination in examinations]
         return {"host": {"system": Host.system(), "architecture": Host.architecture()}, "problems": list(registry.problems), "targets": targets_described}
 
     @staticmethod
-    def show(terminal: Terminal, examinations: list[DoctorCommand.Examination], registry_problems: list[str], single: bool) -> None:
-        """Prints the host, a table of the targets with their state, a table of the tools they need, each once with the targets that need it, and every problem once."""
+    def show(terminal: Terminal, examinations: list[DoctorCommand.Examination], machine_problems: list[str], single: bool) -> None:
+        """Prints the host, a table of the targets with their state, a table of the tools they need, each once with the targets that need it, and every problem once: those of the backends, the engine ports and the SDKs of this machine that this tooling cannot use, then those of the targets."""
         terminal.group(f"Haylen {Repository.engine_version()} on {Host.system()} {Host.architecture()}")
         terminal.group("Targets", len(examinations))
         terminal.table(DoctorCommand.TARGET_COLUMNS, [DoctorCommand.target_row(examination) for examination in examinations])
@@ -89,7 +95,7 @@ class DoctorCommand(Command):
             terminal.group("Tools", len(tools))
             terminal.table(columns, rows)
 
-        problems = list(dict.fromkeys([*registry_problems, *(problem for examination in examinations for problem in DoctorCommand.problems_of(examination))]))
+        problems = list(dict.fromkeys([*machine_problems, *(problem for examination in examinations for problem in DoctorCommand.problems_of(examination))]))
         if problems:
             terminal.group("Problems", len(problems))
             for problem in problems:
@@ -111,6 +117,8 @@ class DoctorCommand(Command):
         """The state of a target: whether this machine builds it, what keeps it from building and whether its SDK still has to be built, which the first app build does."""
         if not examination.builds_here:
             return Terminal.Cell("Other host", Terminal.Sign.UNREACHABLE)
+        if examination.unusable:
+            return Terminal.Cell(examination.unusable[0].state, Terminal.Sign.UNREACHABLE)
         if examination.port_problem or examination.problems or any(tool["problem"] for tool in examination.tools):
             return Terminal.Cell("Problems", Terminal.Sign.FAILED)
         if not examination.current:
@@ -163,7 +171,7 @@ class DoctorCommand(Command):
         return [*([examination.port_problem] if examination.port_problem else []), *examination.problems, *tools]
 
     @staticmethod
-    def examine(target: BackendRegistry.Target, registry: BackendRegistry, manifests: list[SdkManifest], revision: str) -> DoctorCommand.Examination:
+    def examine(target: BackendRegistry.Target, registry: BackendRegistry, survey: SdkCatalog.Survey, revision: str) -> DoctorCommand.Examination:
         description = target.description
         port = port_version = port_target = port_problem = ""
         try:
@@ -174,10 +182,13 @@ class DoctorCommand(Command):
         except HaylenError as error:
             port_problem = error.message
 
-        slices = [manifest for manifest in manifests for entry in manifest.slices if entry.system == description.system and entry.environment is description.environment]
+        slices = [manifest for manifest in survey.manifests for entry in manifest.slices if entry.system == description.system and entry.environment is description.environment]
         current = tuple(manifest for manifest in slices if manifest.revision == revision)
+        named = (description.system, description.environment.value)
+        unusable = tuple(sdk for sdk in survey.unusable if named in sdk.slices)
+        sentences = tuple(sdk.sentence(registry.targets_named_by(sdk.slices)) for sdk in unusable)
         builds_here = Host.system() in description.hosts
-        problems: list[str] = []
+        problems = list(sentences)
         tools: tuple[dict[str, object], ...] = ()
         if not builds_here:
             problems.append(f'The target "{description.name}" builds only on {", ".join(sorted(description.hosts))}, and this machine runs "{Host.system()}".')
@@ -186,7 +197,7 @@ class DoctorCommand(Command):
             report = target.backend.check_environment(TargetId(description.system, architecture, description.abis[architecture], description.environment, Configuration.DEBUG, description.toolchain))
             tools = tuple(tool.describe() for tool in report.tools)
             problems += report.problems
-        return DoctorCommand.Examination(target, port, port_version, port_target, port_problem, current, bool(slices) and not current, builds_here, tools, tuple(problems))
+        return DoctorCommand.Examination(target, port, port_version, port_target, port_problem, current, bool(slices) and not current, unusable, sentences, builds_here, tools, tuple(problems))
 
     @staticmethod
     def describe(examination: DoctorCommand.Examination) -> dict[str, object]:
@@ -194,7 +205,9 @@ class DoctorCommand(Command):
         target = examination.target
         description = target.description
         port = examination.port_problem or f'"{examination.port}" {examination.port_version} builds the engine for it as "{examination.port_target}".'
-        if examination.current:
+        if examination.unusable and not examination.current:
+            sdk = examination.unusable_sentences[0]
+        elif examination.current:
             sdk = ", ".join(f"`{Repository.shown(manifest.folder)}` ({manifest.configuration.value})" for manifest in examination.current)
         elif examination.outdated:
             sdk = f'The installed SDKs were built from other engine sources. Build them again with "haylen sdk build --target {description.name}".'

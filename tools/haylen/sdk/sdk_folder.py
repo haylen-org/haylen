@@ -3,7 +3,6 @@ from pathlib import Path
 from types import MappingProxyType
 
 from haylen.core.configuration import Configuration
-from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.folders import Folders
 from haylen.core.repository import Repository
 from haylen.sdk.host_tool import HostTool
@@ -28,11 +27,8 @@ class SdkFolder:
 
     def kept(self) -> SdkManifest | None:
         """Returns the manifest of the slices that stay, or nothing when the folder holds no SDK of the same port, sources and configuration."""
-        if not (self.folder / SdkManifest.FILE).is_file():
-            return None
-        try:
-            manifest = SdkManifest.load(self.folder)
-        except IncompatibleSdk:
+        manifest = SdkManifest.usable(self.folder)
+        if manifest is None:
             return None
         if (manifest.port, manifest.revision, manifest.configuration) != (self.port, self.revision, self.configuration):
             return None

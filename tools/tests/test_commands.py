@@ -254,6 +254,84 @@ class CommandsTest:
             session.pipeline.resolve(ProductRequest(broken, "fake", Configuration.DEBUG, Configuration.RELEASE, ("x86_64",)), build_sdk=True)
         assert len(requests) == 1
 
+    @staticmethod
+    def building_session(fixture: ToolingFixture, requests: list[SdkRequest]) -> CommandSession:
+        """A session whose engine port records the SDKs it builds and installs them in the fixture."""
+
+        class BuildingPort(FakePort):
+            def build_sdk(self, request: SdkRequest) -> SdkManifest:
+                requests.append(request)
+                return fixture.sdk(architectures=request.architectures)
+
+        session = CommandSession(fixture.context, False)
+        session.registry = BackendRegistry(fixture.context, [("FakeBackend", lambda: FakeBackend)], [("BuildingPort", lambda: BuildingPort)])
+        return session
+
+    def test_a_build_never_stops_on_or_names_an_sdk_of_other_targets_that_this_tooling_cannot_use(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        fixture.unusable_sdk("other-older", system="otheros")
+        fixture.unusable_sdk("other-damaged", system="otheros", damaged=True)
+        fixture.sdk()
+        requests: list[SdkRequest] = []
+        session = CommandsTest.building_session(fixture, requests)
+
+        resolved = session.pipeline.resolve(ProductRequest(fixture.app({}), "fake", Configuration.DEBUG, Configuration.RELEASE, ("arm64",)), build_sdk=True)
+
+        assert resolved.primary.sdk.manifest.revision == ToolingFixture.REVISION
+        assert requests == []
+        assert "other-" not in fixture.output.getvalue()
+        assert "other-older" in (tmp_path / "logs" / "test.log").read_text(encoding="utf-8")
+
+    def test_an_sdk_of_the_target_that_an_older_haylen_built_is_built_again_and_an_inspection_says_how(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        fixture.unusable_sdk("fake-release")
+        requests: list[SdkRequest] = []
+        session = CommandsTest.building_session(fixture, requests)
+        request = ProductRequest(fixture.app({}), "fake", Configuration.DEBUG, Configuration.RELEASE, ("arm64",))
+
+        with pytest.raises(IncompatibleSdk, match=re.escape('No installed SDK holds the engine for "fake" on "arm64". Build it with "haylen sdk build --target fake --config Release".')):
+            session.pipeline.resolve(request, build_sdk=False)
+        session.pipeline.resolve(request, build_sdk=True)
+
+        assert [(built.targets, built.architectures) for built in requests] == [(("fake-device",), ("arm64",))]
+        assert AppPipeline.SDK_BUILD_NOTE in fixture.output.getvalue()
+        assert not re.search(r"\[\d+\]|libraries", fixture.output.getvalue())
+
+    def test_the_doctor_and_the_sdk_list_show_an_sdk_that_an_older_haylen_built_and_a_damaged_one_in_plain_words(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        older = fixture.unusable_sdk("fake-release")
+        damaged = fixture.unusable_sdk("web-release", damaged=True)
+        rebuild = f'The SDK of "fake" in {older} was built by an older version of Haylen. Build it again with "haylen sdk build --target fake".'
+
+        CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["doctor"])
+        lines = fixture.output.getvalue().splitlines()
+        assert re.fullmatch("  fake +fake +— +— +\u00d7 Built by an older Haylen", lines[4])
+        assert f"  ✗ {rebuild}" in lines
+        assert f'  ✗ The SDK in {damaged} cannot be read, since its file "haylen-sdk.json" is damaged. Build it again with "haylen sdk build --target <target>".' in lines
+        described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["doctor", "--target", "fake"])
+        assert described["targets"][0]["sdk"] == rebuild.replace(str(older), f"`{older}`")
+
+        fixture.output.seek(0)
+        fixture.output.truncate()
+        CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["sdk", "list"])
+        printed = fixture.output.getvalue()
+        # The doctor printed before, so the first group starts after a blank line.
+        lines = printed.splitlines()[1:]
+        assert lines[0] == "SDKs  2"
+        assert re.fullmatch(rf"  {re.escape(str(older))} +— +— +— +\u00d7 Built by an older Haylen", lines[2])
+        assert re.fullmatch(rf"  {re.escape(str(damaged))} +— +— +— +\u00d7 Unreadable", lines[3])
+        assert f"  \u00d7 {rebuild}" in lines
+        assert not re.search(r"\[\d+\]|libraries", printed)
+        listed = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["sdk", "list"])
+        assert listed["sdks"] == []
+        assert [(entry["folder"], entry["readable"]) for entry in listed["unusable"]] == [(str(older.resolve()), True), (str(damaged.resolve()), False)]
+
     def test_a_release_build_builds_the_sdk_of_this_machine_that_carries_the_content_tool_when_none_holds_it(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
         monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
