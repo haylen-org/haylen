@@ -12,6 +12,7 @@ from haylen.engine.apple_gpu_tests import AppleGpuTests
 from haylen.engine.desktop_gpu_tests import DesktopGpuTests
 from haylen.engine.engine_tests import EngineTests
 from haylen.engine.engine_tree import EngineTree
+from haylen.engine.mac_app_check import MacAppCheck
 from haylen.engine.port_test import PortTest
 from haylen.engine.suite_shard import SuiteShard
 from haylen.engine.ui_tests import UiTests
@@ -22,7 +23,7 @@ from haylen.engine.web_gpu_tests import WebGpuTests
 
 class TestCommand(Command):
     PATH = ("test",)
-    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, and with "--port" the app of the test port.'
+    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--target macos" or "catalyst" and "--app" how an app quits on this Mac, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, and with "--port" the app of the test port.'
 
     DESKTOPS = ("macos", "windows", "linux")
     # The names of `gpu::Device::kApiNames`, which "--graphics-api" takes.
@@ -87,7 +88,7 @@ class TestCommand(Command):
         parser.add_argument(
             "--app",
             metavar="folder",
-            help='Build the app of this folder in the configuration of "--config" and check that it starts, instead of the checks of the web or the GPU tests: with "--target web" in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", and with "--target android" on the device of "--device" or an emulator that it starts.',
+            help='Build the app of this folder in the configuration of "--config" and check that it starts, instead of the checks of the web or the GPU tests: with "--target web" in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", and with "--target android" on the device of "--device" or an emulator that it starts. With "--target macos" or "catalyst" it checks instead that the app quits on this Mac when its window closes and when the Dock quits it.',
         )
         parser.add_argument(
             "--port",
@@ -106,10 +107,16 @@ class TestCommand(Command):
                 'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--target" other than a desktop or "web".'
             )
         if arguments.app:
-            if target not in ("web", "android"):
-                raise UnsupportedTarget('The option "--app" checks that an app starts on the web or on Android, so it takes "--target web" or "--target android".')
+            if target not in ("web", "android", *MacAppCheck.TARGETS):
+                raise UnsupportedTarget(
+                    'The option "--app" checks that an app starts on the web or on Android, or that it quits on this Mac, so it takes "--target web", "android", "macos" or "catalyst".'
+                )
             if arguments.gpu or arguments.ui or arguments.port or arguments.sanitizers:
                 raise UnsupportedTarget('The option "--app" checks that an app starts, so it takes neither "--gpu", "--ui", "--port" nor "--sanitizers".')
+            if target in MacAppCheck.TARGETS:
+                if arguments.graphics_api is not None:
+                    raise UnsupportedTarget('A Mac app draws through Metal, so "--app" with "--target macos" or "catalyst" takes no "--graphics-api".')
+                return MacAppCheck(context, session.pipeline).run(arguments.app, target, arguments.config)
             if target == "android":
                 if arguments.graphics_api is not None:
                     raise UnsupportedTarget('An Android app draws through the first graphics API of its order that starts, so "--app" with "--target android" takes no "--graphics-api".')

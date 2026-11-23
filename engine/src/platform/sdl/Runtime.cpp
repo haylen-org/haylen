@@ -96,6 +96,12 @@ void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
     running->post({.type = platform::Event::Type::MouseScroll, .modifiers = PageModifiers::read(modifiers), .scroll = value, .preciseScroll = precise});
 }
 
+void Runtime::requestQuit() {
+    SDL_Event event{};
+    event.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&event);
+}
+
 // An app that the debugger halts never goes on once the system ends the process, so nothing of it runs as it ends.
 void Runtime::terminate() {
     if (Player::isHalted()) {
@@ -103,6 +109,7 @@ void Runtime::terminate() {
     }
 
     Player::handleEvent({.type = platform::Event::Type::QuitRequested});
+    closing = true;
     quit();
 }
 
@@ -309,21 +316,24 @@ bool Runtime::openWindow() {
     throw std::runtime_error("No graphics API could start on this machine, so the app cannot open its window.");
 }
 
+// A runtime that closes never starts again, such as one that the system stopped at once from outside the frames, which AppKit does as it handles the quit of the Dock and of logging out.
 SDL_AppResult Runtime::iterate() {
+    if (closing) {
+        return SDL_APP_SUCCESS;
+    }
+
     if (!started) {
         return start();
     }
 
     const std::uint64_t now = SDL_GetTicksNS();
-    if (!closing && !frameRate.takeFrame(static_cast<double>(now) / 1.0e9)) {
+    if (!frameRate.takeFrame(static_cast<double>(now) / 1.0e9)) {
         return SDL_APP_CONTINUE;
     }
 
-    if (!closing) {
-        recover();
-        Player::frame(timer.next(now));
-        followPresents();
-    }
+    recover();
+    Player::frame(timer.next(now));
+    followPresents();
 #if defined(__APPLE__) && !TARGET_OS_OSX && !defined(NDEBUG)
     AppleApplication::checkSurface(surfaceCheck);
 #endif

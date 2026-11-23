@@ -1,7 +1,6 @@
 #include "platform/sdl/Host.hpp"
 
 #include <SDL3/SDL_clipboard.h>
-#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_video.h>
 
@@ -493,9 +492,7 @@ void Host::setGamepadMotion(input::GamepadMotion::Sensors value) {
 }
 
 void Host::requestWindowClose() {
-    SDL_Event event{};
-    event.type = SDL_EVENT_QUIT;
-    SDL_PushEvent(&event);
+    runtime.requestQuit();
 }
 
 void Host::setWindowFocusable(bool value) {

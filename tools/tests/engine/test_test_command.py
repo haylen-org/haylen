@@ -12,6 +12,7 @@ from haylen.core.repository import Repository
 from haylen.engine.android_app_check import AndroidAppCheck
 from haylen.engine.engine_tests import EngineTests
 from haylen.engine.engine_tree import EngineTree
+from haylen.engine.mac_app_check import MacAppCheck
 from haylen.engine.suite_shard import SuiteShard
 from haylen.engine.web_app_check import WebAppCheck
 from haylen.engine.web_checks import WebChecks
@@ -63,26 +64,32 @@ class TestCommandTest:
         with pytest.raises(UnsupportedTarget, match='The option "--ui-test" picks classes of the UI tests of an app, so it takes "--ui"'):
             TestCommandTest.run(tmp_path, "--ui-test", "CameraTests")
 
-    def test_an_app_starts_only_on_the_web_or_android_and_alone(self, tmp_path, monkeypatch):
+    def test_an_app_starts_only_on_the_web_android_or_a_mac_and_alone(self, tmp_path, monkeypatch):
         monkeypatch.setattr(WebAppCheck, "run", lambda *arguments: pytest.fail("The start check of the app ran."))
         monkeypatch.setattr(AndroidAppCheck, "run", lambda *arguments: pytest.fail("The start check of the app ran."))
-        with pytest.raises(UnsupportedTarget, match='takes "--target web" or "--target android"'):
+        monkeypatch.setattr(MacAppCheck, "run", lambda *arguments: pytest.fail("The quit check of the app ran."))
+        with pytest.raises(UnsupportedTarget, match='takes "--target web", "android", "macos" or "catalyst"'):
             TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "ios-simulator")
-        for target in ("web", "android"):
+        for target in ("web", "android", "macos", "catalyst"):
             for extra in (["--gpu"], ["--ui", "samples/tests"], ["--port"], ["--sanitizers", "address"]):
                 with pytest.raises(UnsupportedTarget, match='The option "--app" checks that an app starts, so it takes neither'):
                     TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", target, *extra)
         with pytest.raises(UnsupportedTarget, match='takes no "--graphics-api"'):
             TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "android", "--graphics-api", "vulkan")
+        with pytest.raises(UnsupportedTarget, match='takes no "--graphics-api"'):
+            TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "macos", "--graphics-api", "metal")
 
     def test_an_app_starts_in_the_configuration_on_the_api_or_the_device_that_the_command_names(self, tmp_path, monkeypatch):
         called = []
         monkeypatch.setattr(WebAppCheck, "run", lambda self, app, configuration, api: called.append((app, configuration, api)) or {})
         monkeypatch.setattr(AndroidAppCheck, "run", lambda self, app, configuration, device: called.append((app, configuration, device)) or {})
+        monkeypatch.setattr(MacAppCheck, "run", lambda self, app, target, configuration: called.append((app, configuration, target)) or {})
         TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "web", "--config", "Release", "--graphics-api", "webGl2")
         TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "web")
         TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "android", "--config", "Release", "--device", "emulator-5554")
-        assert called == [("samples/tests", "Release", "webGl2"), ("samples/tests", "Debug", None), ("samples/tests", "Release", "emulator-5554")]
+        TestCommandTest.run(tmp_path, "--app", "samples/tests", "--target", "catalyst", "--config", "Release")
+        expected = [("samples/tests", "Release", "webGl2"), ("samples/tests", "Debug", None), ("samples/tests", "Release", "emulator-5554"), ("samples/tests", "Release", "catalyst")]
+        assert called == expected
 
     def test_the_engine_tests_build_both_programs_and_run_them_in_one_run_of_ctest(self, tmp_path, monkeypatch):
         built = []

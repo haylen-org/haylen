@@ -134,6 +134,7 @@ using haylen::platform::NativeWindow;
 #endif
 }
 
+// On a Mac the scene of the window disconnects as the person closes the window, and UIKit keeps the process running without it, so the app quits there as a Mac app of one window does, hearing `appQuitRequested` first as the close button of macOS tells it.
 - (void)sceneDidDisconnect:(UIScene*)scene {
     if (!holdsApp) {
         return;
@@ -141,6 +142,11 @@ using haylen::platform::NativeWindow;
 
     [HaylenOverlayLayer.shared detach];
     ApplePlugins::closeCovers();
+#if TARGET_OS_MACCATALYST
+    if (haylen::platform::sdl::Runtime* runtime = haylen::platform::sdl::Runtime::find()) {
+        runtime->requestQuit();
+    }
+#endif
 }
 
 // SDL turns the links that open the app into dropped files, which the engine does not read, so the scene delegate reports each link as `linkOpened`, and the plugins receive them in their delegate.

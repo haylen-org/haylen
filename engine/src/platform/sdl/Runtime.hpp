@@ -96,6 +96,9 @@ class Runtime final {
     // Queues a scroll of the wheels and trackpads that the web page read over the canvas, in steps of a wheel or in points of the page for a precise device, with the bits of shift, control, alt and the super key held.
     static void scroll(math::Vec2 value, bool precise, int modifiers);
 
+    // Asks the app to quit as the close button of its window does, which the app hears before its window closes and the frames end.
+    void requestQuit();
+
     // Ends the app at once as its window closes, after telling it that the system asked it to quit, for the system that ends the process right after.
     void terminate();
 

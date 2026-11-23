@@ -619,7 +619,7 @@ jobs:
       - uses: ./.github/actions/compiler-cache
         if: always()
 
-  # The joined Apple SDK, the starter apps for the iOS simulator against it, and the start of the protected web release of the test project on WebGPU, which Chrome draws through Metal.
+  # The joined Apple SDK, the starter apps for the iOS simulator against it, the quit of the starter app on macOS and Mac Catalyst, and the start of the protected web release of the test project on WebGPU, which Chrome draws through Metal.
   apple:
     if: github.event_name == 'workflow_dispatch'
     name: Apple
@@ -651,6 +651,10 @@ jobs:
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target ios-simulator --config Release
       - name: Build the C++ app for the iOS simulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter-cpp --target ios-simulator
+      - name: Quit the starter app on macOS
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target macos --app build/starter
+      - name: Quit the starter app on Mac Catalyst
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target catalyst --app build/starter
       - uses: ./.github/actions/browser
       - name: Start the protected web release on WebGPU
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target web --app samples/tests --config Release --graphics-api webGpu
