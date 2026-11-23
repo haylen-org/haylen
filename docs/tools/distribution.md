@@ -179,19 +179,21 @@ The command `haylen devices` lists the identifiers that `--device` takes. Where 
 
 #### While the app runs
 
-Once the app runs, `app run` prints a summary of the app, the device and the configuration, in development also how saved files reach the app and the port of `--debugger-port` that an editor attaches its [debugger](debugger.md) to, and the keys that act on the app, one per line. The log of the app follows.
+Once the app runs, `app run` prints a summary of the app, the device and the configuration under the title `Running`, in development also how saved files reach the app and the port of `--debugger-port` that an editor attaches its [debugger](debugger.md) to, and the keys that act on the app under the title `Keys`, one per line. The log of the app follows.
 
 ```text
 ==> Preparing the project of "My Game" for "ios-simulator" in the "Debug" configuration
 ==> Building "My Game" for "ios-simulator"
 ==> Launching "My Game" on "ios-simulator"
 
+Running
   App            My Game ("com.example.mygame")
   Device         iPhone 17e, simulator
   Configuration  "Debug", with the engine in "Release"
   Hot reload     Every file saved in the app reloads in it
   Debugger       Attach an editor to port 4711 of this machine
 
+Keys  10
   r  Reload what changed
   R  Restart the app
   d  Open the developer console, which runs commands in the app

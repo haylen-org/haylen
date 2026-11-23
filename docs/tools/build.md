@@ -44,9 +44,30 @@ An error is one block with the cause and what to do. The output of the tool that
 ==> Serving build/apps/my-game-70da5b67/web-debug/products at http://127.0.0.1:8000/
 ```
 
-On a terminal, titles are bold after a blue `==>`, commands are dim, successes are green, warnings are yellow and errors are red. Reserved expressions, such as commands, options, keys and values, show in a soft teal without the double quotes that mark them in plain text. Only URLs are underlined, since terminals open them. Paths print bare, with no style. Color follows the usual rules of terminals:
+A command that lists or sums up something prints groups and tables. A group is a bold title with its count after it, and a blank line sets it apart. A table has a row of dim titles and its columns line up. An empty cell shows a dash. A sign in front of a state or a result tells it at a glance, and every success starts with a check.
 
-- The variable `NO_COLOR` with any value turns color off.
+| Sign | Color | Meaning |
+| --- | --- | --- |
+| `●` | Green | Ready, booted or connected. |
+| `○` | Dim | Off, or not built yet, such as a simulator that is shut down or a target without its SDK. |
+| `×` | Yellow | Out of reach, such as a disconnected device or a target of another host. |
+| `✓` | Green | Passed or done. |
+| `✗` | Red | Failed, or a problem. |
+
+An output whose encoding lacks these symbols, such as a console of an old code page of Windows, shows `*`, `o`, `x`, `+` and `x` in their place, and `-` for an empty cell.
+
+A table that is wider than the terminal shrinks some of its columns. A name wraps between its words, and a path loses its middle to an ellipsis. An identifier that you copy, such as the one that `--device` takes, never shrinks. When the table still does not fit, the identifier moves to a line of its own under its row. Output to a file or a pipe keeps every column whole.
+
+```text
+Android  2
+  Name            Kind      System      State    Identifier
+  moto g(8) plus  Device    Android 10  ● Ready  0061296928
+  Pixel_10a       Emulator  Android 17  ● Ready  emulator-5554
+```
+
+On a terminal, titles are bold after a blue `==>`, commands are dim, successes start with a green check, warnings are yellow and errors are red. Reserved expressions, such as commands, options, keys and values, show in a soft teal without the double quotes that mark them in plain text. Only URLs are underlined, since terminals open them. Paths print bare, with no style. Color follows the usual rules of terminals:
+
+- The variable `NO_COLOR` with any value turns color off. The groups, tables and signs keep their structure as plain text.
 - The variable `FORCE_COLOR` turns it on when the output is not a terminal, such as a log of continuous integration.
 - Without either, the output has color only on a terminal whose `TERM` is not `dumb`.
 - On Windows, the command turns on the escape sequences of the console it writes to.

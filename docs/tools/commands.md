@@ -230,7 +230,14 @@ Result: `id`.
 haylen plugin list [--app <app>]
 ```
 
-Lists the plugins of an app with their versions, the platforms they support, where they come from and what keeps each one from building. A folder under `plugins/` of the app that `haylen.json` does not list shows as not in `haylen.json`, since no build carries it.
+Lists the plugins of an app in a table with their versions, the platforms they support, where they come from and their state, and then the problems that keep each one from building. A folder under `plugins/` of the app that `haylen.json` does not list shows as not listed, since no build carries it.
+
+```text
+Plugins  2
+  Plugin  Version  Platforms            Source          State
+  camera  1.2.0    apple, android, web  plugins/camera  ● Ready
+  stray   1.0.0    fake                 plugins/stray   ○ Not listed
+```
 
 Result: `plugins`, each with `id`, `version`, `implementations`, `source`, `problems` and `listed`, whether `haylen.json` lists it.
 
@@ -250,7 +257,25 @@ Result: `id` and `folder`.
 haylen project inspect [app] [--target] [--config] [--engine-config] [--architecture]
 ```
 
-Shows the resolved project of the app for a target without generating anything: the target, the backend, the SDK slice of every architecture, the oldest system version with where it comes from and why, the plugins in load order with their parameters, the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from, and every merged contribution with its owners.
+Shows the resolved project of the app for a target without generating anything: the target, the backend, the SDK slice of every architecture, the oldest system version with where it comes from and why, the plugins in load order with their parameters, the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from, and every merged contribution with its owners. Each part is a group with a table.
+
+```text
+Haylen Tests for web, Debug, with the backend web
+
+Projects  1
+  Target                   SDK                    Minimum system  Reason
+  web-wasm32-device-debug  build/sdk/web-release  0               From the SDK build/sdk/web-release. The SDK runs on no older system.
+
+Plugins  2
+  Plugin       Version  Part    Folder                             Parameters
+  native-base  1.0.0    native  samples/tests/plugins/native-base  {}
+  native-demo  1.0.0    native  samples/tests/plugins/native-demo  {"greeting": "Hello from haylen.json", "tickInterval": 1}
+
+Contributions  2
+  Type       Owners       Fields
+  webModule  native-base  {"path": "web/native-base.js"}
+  webModule  native-demo  {"path": "web/native-demo.js"}
+```
 
 Result: `app` (`folder`, `name`, `identifier`, `version`, `build`, `category`, `kind`), `backend`, `identity` and `targets`, one per architecture, each with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion` (`value`, `origin`, `justification`), `plugins`, `contributions` (each with `type`, `fields`, `owners` and `origins`), `settings` (each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`), `nativeLibraries` and `permissions`.
 
@@ -262,7 +287,34 @@ Result: `app` (`folder`, `name`, `identifier`, `version`, `build`, `category`, `
 haylen doctor [--target <name>]
 ```
 
-Shows, for every target or for one, its backend with its capabilities, the engine port that builds its engine, its installed SDKs and every tool it needs with its version and path, and what is missing with how to get it. It downloads nothing and accepts no license.
+Shows, for every target or for one, its backend, the engine port that builds its engine, its installed SDKs and every tool it needs with its version and path, and what is missing with how to get it. It downloads nothing and accepts no license.
+
+The group `Targets` holds a table of the targets with their state: ready, without an SDK yet, which the first app build builds, with problems, or of another host. The group `Tools` lists each tool once, with the targets that need it, and the group `Problems` lists every problem once. With `--target`, the description and the capabilities of the target follow its row.
+
+```text
+Haylen 0.0.1 on macos arm64
+
+Targets  13
+  Target              Backend  Engine port                 SDK      State
+  android             android  android                     —        ○ No SDK yet
+  macos               apple    apple                       Release  ● Ready
+  catalyst            apple    apple as ios-maccatalyst    —        ○ No SDK yet
+  visionos-simulator  apple    apple as xros-simulator     —        ○ No SDK yet
+  windows             desktop  desktop as desktop-windows  —        × Other host
+  web                 web      web                         Release  ● Ready
+
+Tools  15
+  Tool                    Version        Targets             Path
+  ● Android SDK           —              android             /Users/me/Library/Android/sdk
+  ● Android NDK           30.0.16248370  android             /Users/me/Library/Android/sdk/ndk/30.0.16248370
+  ○ bundletool            1.18.3         android             Downloads with the first build
+  ● cmake                 4.4.3          10 targets          /opt/homebrew/bin/cmake
+  ● Xcode                 27.2           8 targets           /Applications/Xcode.app/Contents/Developer
+
+Problems  2
+  ✗ The target "windows" builds only on windows, and this machine runs "macos".
+  ✗ The target "linux" builds only on linux, and this machine runs "macos".
+```
 
 Result: `host` (`system`, `architecture`), `problems` (the backends and engine ports that did not load) and `targets`, each with `target`, `backend`, `capabilities`, `port`, `sdk`, `tools` (each with `name`, `role`, `version`, `path` and `problem`), `problems` and `ready`.
 
@@ -272,9 +324,36 @@ Result: `host` (`system`, `architecture`), `problems` (the backends and engine p
 haylen devices
 ```
 
-Lists the simulators, emulators and devices that the backends of this machine launch apps on, with the identifier that `--device` takes and the targets that run on each.
+Lists the simulators, emulators and devices that the backends of this machine launch apps on, in a group for each platform: Android, iOS and iPadOS, tvOS, visionOS, the desktops and the web, and then each system that a backend from outside the repository reports. Each group holds a table of its devices with their name, their kind, their system with its version, their state and the identifier that `--device` takes. The devices come first, then the ones ready for a run, then the newest system. A filled dot marks a device that is ready, booted or connected, a hollow dot a simulator that is shut down and a cross a device out of reach, such as one that is disconnected or waits for its authorization.
 
-Result: `devices`, each with `backend`, `identifier`, `name`, `kind`, `state` and `targets`, and `problems`, the backends that could not list theirs.
+```text
+Android  2
+  Name                   Kind       System          State           Identifier
+  moto g(8) plus         Device     Android 10      ● Ready         0061296928
+  Pixel_10a              Emulator   Android 17      ● Ready         emulator-5554
+
+iOS and iPadOS  4
+  Name                   Kind       System          State           Identifier
+  My iPad                Device     iPadOS 17.7.11  ● Connected     01e8cc0db08b03c5c05db4ef46578f207eafaea6
+  My iPhone              Device     iOS 27.2.1      × Disconnected  00008110-001428CC0CD0401E
+  iPad Pro 13-inch (M5)  Simulator  iPadOS 27.2     ● Booted        EA827637-12A4-44AB-9C8B-C2D520433A57
+  iPhone 18 Pro          Simulator  iOS 27.2        ○ Shutdown      00393AAE-011E-4955-AAF8-47E109DDD993
+
+visionOS  1
+  Name                   Kind       System          State           Identifier
+  Apple Vision Pro       Simulator  visionOS 27.0   ○ Shutdown      64216CA0-0915-41A2-B4BD-331C0317472C
+```
+
+On a terminal narrower than the table, the identifier moves to a line of its own under each row, so it stays whole to copy:
+
+```text
+Android  2
+  Name            Kind      System      State
+  moto g(8) plus  Device    Android 10  ● Ready
+    0061296928
+```
+
+Result: `devices`, each with `backend`, `identifier`, `name`, `kind`, `system`, `version`, `state` and `targets`, and `problems`, the backends that could not list theirs. The `system` is the one people know the device by, such as `Android`, `iOS`, `iPadOS`, `tvOS` or `visionOS`, and the `version` is empty while the backend cannot read it, such as for an Android device that waits for its authorization.
 
 ### sdk build
 
@@ -315,7 +394,22 @@ Result: the manifest of the joined SDK with its `folder`, as `sdk build` prints 
 haylen sdk list
 ```
 
-Lists the installed SDKs, those under `build/sdk/` and those of the folders that the variable `HAYLEN_SDK_PATH` lists, with their port, configuration, slices and whether they were built from the engine sources of this checkout.
+Lists the installed SDKs, those under `build/sdk/` and those of the folders that the variable `HAYLEN_SDK_PATH` lists, with their port, configuration, slices and whether they were built from the engine sources of this checkout, and then a group of the slices of each SDK.
+
+```text
+SDKs  2
+  Folder                     Port           Configuration  Slices  Sources
+  build/sdk/android-release  android 0.0.1  Release        1       × Other sources
+  build/sdk/web-release      web 0.0.1      Release        1       ● Current
+
+build/sdk/android-release  1
+  System   Environment  Architectures  Toolchain          From  Graphics APIs
+  android  device       arm64-v8a      ndk-30.0.16248370  27    vulkan, openGlEs
+
+build/sdk/web-release  1
+  System   Environment  Architectures  Toolchain          From  Graphics APIs
+  web      device       wasm32         emscripten-7.0.0   0     webGpu, webGl2
+```
 
 Result: `sdks`, each manifest with its `folder` and `current`.
 
@@ -447,7 +541,15 @@ Result: `tree` and `targets`.
 haylen engine bench [--suite <suite>] [--graphics-api <api>] [--gpu]
 ```
 
-Builds a benchmark in Release and runs it on this machine. The [benchmarks guide](benchmarks.md) lists the suites and what they measure.
+Builds a benchmark in Release and runs it on this machine. The [benchmarks guide](benchmarks.md) lists the suites and what they measure. Each run prints the table of the benchmark, and the command ends with the results of every graphics API, where an API whose device cannot start on this machine shows a hollow dot.
+
+```text
+Results of the "sprites" benchmark  3
+  Graphics API  Result
+  metal         ✓ Ran
+  vulkan        ○ Cannot start on this machine
+  openGl        ✓ Ran
+```
 
 Result: `suite` and `graphicsApis`, the APIs that the benchmark ran on.
 
