@@ -1,4 +1,4 @@
-// Draws the lights of a lit canvas as instances of one quad, each with its values as attributes that stay the same across its quad. The program compiles as `light`, and as `light_shadowed` with `HAYLEN_SHADOWS` for the lights that cast shadows, since a modest GPU reads the shadow map that a branch guards even for a light without shadows.
+// Draws the lights of a lit canvas as instances of one quad, each with its values as attributes that stay the same across its quad. The program compiles as `light`, and as `light_shadowed` with `HAYLEN_SHADOWS` for the lights that cast shadows, since a modest GPU reads the shadow map that a branch guards even for a light without shadows. Both also compile with `HAYLEN_UNIFORM_LIGHTING`, as `light_uniform` and `light_uniform_shadowed`, for a canvas whose draws all take the lights as its background does, which has no images of the light mask, layer and surface of each pixel to read.
 @vs light_vs
 layout(binding=0) uniform light_vs_params {
     mat4 view_projection;
@@ -63,11 +63,15 @@ flat in vec4 shadow_map;
 // Shadow axis of directional lights: x and y place the first texel and the span across the light, z and w the start and span of depths along it.
 flat in vec4 shadow_axis;
 layout(binding=0) uniform texture2D shape_texture;
+#ifndef HAYLEN_UNIFORM_LIGHTING
 layout(binding=1) uniform texture2D surface_texture;
 layout(binding=2) uniform texture2D info_texture;
+#endif
 layout(binding=3) uniform texture2D shadow_texture;
 layout(binding=0) uniform sampler shape_sampler;
+#ifndef HAYLEN_UNIFORM_LIGHTING
 layout(binding=1) uniform sampler surface_sampler;
+#endif
 layout(binding=2) uniform sampler shadow_sampler;
 @sample_type shadow_texture unfilterable_float
 @sampler_type shadow_sampler nonfiltering
@@ -122,6 +126,7 @@ void main() {
     // The size of a pixel in the world, taken before any branch, where the derivatives of every pixel are still known.
     float world_pixel = 0.5 * (length(dFdx(world)) + length(dFdy(world)));
 #endif
+#ifndef HAYLEN_UNIFORM_LIGHTING
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     vec4 info = texelFetch(sampler2D(info_texture, surface_sampler), pixel, 0);
     int mask = int(info.x * 255.0 + 0.5);
@@ -129,6 +134,7 @@ void main() {
     if ((mask & int(origin.z)) == 0 || layer < range.x || layer > range.y) {
         discard;
     }
+#endif
 
     float kind = shape.x;
     vec2 offset = world - origin.xy;
@@ -142,6 +148,7 @@ void main() {
     // Normal-mapped pixels have a shininess and receive light by the angle it reaches them at, with a highlight toward the viewer.
     float diffuse = 1.0;
     float specular = 0.0;
+#ifndef HAYLEN_UNIFORM_LIGHTING
     float shininess = info.z * 255.0;
     if (shininess > 0.5) {
         vec4 surface = texelFetch(sampler2D(surface_texture, surface_sampler), pixel, 0);
@@ -153,6 +160,7 @@ void main() {
         diffuse = max(dot(normal, toward), 0.0);
         specular = surface.z * pow(max(dot(normal, normalize(toward + vec3(0.0, 0.0, 1.0))), 0.0), shininess);
     }
+#endif
 
 #ifdef HAYLEN_SHADOWS
     float shadowed = shadow_amount(offset, along, world_pixel) * shadow_color.a;

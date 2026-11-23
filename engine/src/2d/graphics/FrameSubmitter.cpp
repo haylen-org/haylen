@@ -82,6 +82,7 @@ void FrameSubmitter::prepareTargets() {
         const math::Vec2 size = state.getPassRect(canvas).getSize();
         if (canvas.isComposited()) {
             canvas.litIndex = litCount++;
+            canvas.uniformLighting = canvas.isLit() && takesLightsAlike(canvas);
             getLitTargets(canvas.litIndex, size, canvas);
         }
 
@@ -115,6 +116,32 @@ void FrameSubmitter::prepareTargets() {
     } else if (!state.screenImage.isValid() || state.screenImage.getWidth() != screenWidth || state.screenImage.getHeight() != screenHeight) {
         state.screenImage = state.device.createRenderTarget(screenWidth, screenHeight, {.filter = graphics::Texture::Filter::Nearest});
     }
+}
+
+// The draws of one shade take the lights alike, and distortion draws never reach the scene. A light reaches a draw when its item mask shares a bit with the light mask of the draw and the layer of the draw lies in its range.
+bool FrameSubmitter::takesLightsAlike(const Canvas& canvas) const {
+    std::optional<std::uint32_t> checked;
+    for (std::size_t index = canvas.itemBegin; index < canvas.itemEnd; ++index) {
+        const DrawItem& item = state.items[index];
+        if (item.distortion || checked == item.shade) {
+            continue;
+        }
+
+        checked = item.shade;
+        const Shade& shade = state.shades[item.shade];
+        if (shade.material != nullptr || shade.normalMap != nullptr || shade.emission > 0.0F || shade.unshaded) {
+            return false;
+        }
+
+        for (std::size_t light = canvas.lightBegin; light < canvas.lightEnd; ++light) {
+            const lighting2d::Light& drawn = state.lights[light].light;
+            if (drawn.affects(shade.lightMask, shade.layer) != drawn.affects(kBackgroundLightMask, kBackgroundLayer)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 // Destinations of one size share their images of glass, which the frames that draw over the same sizes keep, in the order the sizes first appear.
@@ -182,10 +209,13 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
     }
 
     if (canvas.isLit() && !targets.light.isValid()) {
+        targets.light = state.device.getState().createRenderTarget(width, height, state.lightFormat, {.filter = graphics::Texture::Filter::Linear});
+    }
+
+    if (canvas.isLit() && !canvas.uniformLighting && !targets.info.isValid()) {
         targets.emission = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.surface = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
         targets.info = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
-        targets.light = state.device.getState().createRenderTarget(width, height, state.lightFormat, {.filter = graphics::Texture::Filter::Linear});
     }
 
     if ((canvas.hasPostMaterials() || canvas.isStaged()) && !targets.post[0].isValid()) {
@@ -506,15 +536,19 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
         blurInto(targets.distortion, targets.distortionBlur, -1.0F, post.distortion * kBendDeviation / kBlurDeviation * full.width / std::max(canvas.viewSize.x, 1.0F));
     }
 
-    if (canvas.isLit()) {
+    // The draws of a canvas whose draws take the lights alike color its scene as they would without light, which is what the color image of a lit pass holds.
+    if (canvas.isLit() && !canvas.uniformLighting) {
         beginLitPass(targets, clear);
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::LitScene, full, &targets.scene);
         endPass();
-        renderLights(canvas, targets);
     } else {
         beginOffscreenPass(targets.scene, clear);
         drawCommands(canvas, canvas.sceneBegin, canvas.sceneEnd, graphics::PassTarget::Offscreen, full, &targets.scene);
         endPass();
+    }
+
+    if (canvas.isLit()) {
+        renderLights(canvas, targets);
     }
 
     renderPostChain(canvas, targets);
@@ -529,36 +563,46 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     }
 }
 
-// Neighbouring lights that share a blend mode, a shape and whether they cast shadows draw as the instances of one call, in the order the app drew them, where only the lights with shadows take the program that reads the shadow map.
+// Neighbouring lights that share a blend mode, a shape and whether they cast shadows draw as the instances of one call, in the order the app drew them, where only the lights with shadows take the program that reads the shadow map. A canvas whose draws take the lights alike skips the lights that miss its background and lights every pixel without reading what covers it.
 void FrameSubmitter::renderLights(const Canvas& canvas, const LitTargets& targets) {
     beginOffscreenPass(targets.light, *canvas.options.ambientLight);
     const Matrix matrix = projection(canvas.view, canvas.viewSize);
     const LightParams vertex{.viewProjection = matrix};
     const gpu::Device::Sampler nearest = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Nearest});
 
+    const bool uniform = canvas.uniformLighting;
     std::size_t first = canvas.lightBegin;
     while (first < canvas.lightEnd) {
+        if (uniform && !state.lights[first].light.affects(kBackgroundLightMask, kBackgroundLayer)) {
+            ++first;
+            continue;
+        }
+
         const lighting2d::Light& light = state.lights[first].light;
         const graphics::TextureResource& shape = getLightShape(light);
         const bool shadowed = state.lights[first].shadowRow >= 0;
         std::size_t end = first + 1;
-        while (end < canvas.lightEnd && state.lights[end].light.blend == light.blend && &getLightShape(state.lights[end].light) == &shape && (state.lights[end].shadowRow >= 0) == shadowed) {
+        while (end < canvas.lightEnd && state.lights[end].light.blend == light.blend && &getLightShape(state.lights[end].light) == &shape && (state.lights[end].shadowRow >= 0) == shadowed && (!uniform || state.lights[end].light.affects(kBackgroundLightMask, kBackgroundLayer))) {
             ++end;
         }
 
-        const Program program = shadowed ? Program::ShadowedLight : Program::Light;
+        const Program shaded = shadowed ? Program::ShadowedLight : Program::Light;
+        const Program program = uniform ? (shadowed ? Program::ShadowedUniformLight : Program::UniformLight) : shaded;
         state.getGpu().applyPipeline(state.getPipeline(program, static_cast<std::uint8_t>(light.blend), graphics::PassTarget::LightMap));
         gpu::Device::Bindings bindings;
         bindings.vertexBuffers[0] = state.quad;
         bindings.vertexBuffers[1] = state.lightBuffer;
         bindings.vertexOffsets[1] = static_cast<int>(first * sizeof(LightInstance));
         bindings.textures[RendererState::kLightShape] = shape.image;
-        bindings.textures[RendererState::kLightSurface] = targets.surface.getTexture().getResource()->image;
-        bindings.textures[RendererState::kLightInfo] = targets.info.getTexture().getResource()->image;
         bindings.textures[RendererState::kLightShadow] = state.shadowImage;
         bindings.samplers[RendererState::kLightShapeSampler] = shape.sampler;
-        bindings.samplers[RendererState::kLightSurfaceSampler] = nearest;
         bindings.samplers[RendererState::kLightShadowSampler] = nearest;
+        if (!uniform) {
+            bindings.textures[RendererState::kLightSurface] = targets.surface.getTexture().getResource()->image;
+            bindings.textures[RendererState::kLightInfo] = targets.info.getTexture().getResource()->image;
+            bindings.samplers[RendererState::kLightSurfaceSampler] = nearest;
+        }
+
         state.getGpu().applyBindings(bindings);
         applyBlock(RendererState::kVertexBlock, vertex);
         state.getGpu().draw(0, 4, static_cast<int>(end - first));
@@ -745,7 +789,7 @@ void FrameSubmitter::beginLitPass(const LitTargets& targets, math::Color clear) 
         {.image = targets.scene.getTexture().getResource()->image, .clear = clear},
         {.image = targets.emission.getTexture().getResource()->image, .clear = math::Color(0.0F, 0.0F, 0.0F, 0.0F)},
         {.image = targets.surface.getTexture().getResource()->image, .clear = math::Color(0.5F, 0.5F, 0.0F, 0.0F)},
-        {.image = targets.info.getTexture().getResource()->image, .clear = math::Color(1.0F / 255.0F, 128.0F / 255.0F, 0.0F, 0.0F)},
+        {.image = targets.info.getTexture().getResource()->image, .clear = math::Color(static_cast<float>(kBackgroundLightMask) / 255.0F, static_cast<float>(kBackgroundLayer + 128) / 255.0F, 0.0F, 0.0F)},
     }};
     state.getGpu().beginPass({.colors = attachments, .label = "haylen-lit-scene-pass"});
     passOpen = true;
@@ -775,7 +819,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     gpu::Device::Bindings bindings;
     bindings.textures[RendererState::kCompositeScene] = viewOf(image);
     bindings.textures[RendererState::kCompositeLight] = viewOf(lit ? targets.light : image);
-    bindings.textures[RendererState::kCompositeEmission] = viewOf(lit ? targets.emission : image);
+    bindings.textures[RendererState::kCompositeEmission] = lit && canvas.uniformLighting ? state.transparent.getResource()->image : viewOf(lit ? targets.emission : image);
     bindings.textures[RendererState::kCompositeDistortion] = viewOf(distorts ? targets.distortionBlur.front()[0] : image);
     bindings.textures[RendererState::kCompositeBloom] = viewOf(blooms ? targets.bloom.front()[0] : image);
     bindings.textures[RendererState::kCompositeLut] = grades ? post.colorLut.getResource()->image : viewOf(image);

@@ -153,6 +153,44 @@ TEST(RendererTest, BlendsEveryColorOfALitPassAlike) {
     EXPECT_GE(stats.drawCalls, 6U);
 }
 
+// A lit canvas whose draws all take the lights as its background does draws its scene into one image and skips the lights that miss the background, while a draw with emission, a normal map, unshaded colors or a light mask that a light reaches unlike the background fills the four images of a lit pass.
+TEST(RendererTest, DrawsTheSceneAloneWhileEveryDrawTakesTheLightsAlike) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::Texture texture = device.createTexture(graphics::Image(8, 8, math::Color::white()));
+    const graphics::Texture normals = device.createTexture(graphics::Image(8, 8, math::Color{0.5F, 0.5F, 1.0F, 1.0F}));
+    const gpu::NullDevice& gpu = fixture.host().getGpu();
+    // clang-format off
+    const auto render = [&](const DrawOrder& order, const lighting2d::Light& light) {
+        (void)test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+            Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(Camera{}, {.ambientLight = math::Color{0.2F, 0.2F, 0.3F, 1.0F}});
+            renderer.draw({.texture = texture, .order = order});
+            renderer.drawLight(light);
+        });
+    };
+    // clang-format on
+    const lighting2d::Light light{.position = {0.0F, 0.0F}, .radius = 100.0F};
+
+    render({.layer = 5}, light);
+    ASSERT_EQ(fixture.engine().getError(), nullptr);
+    ASSERT_GE(gpu.getLastFrame().passes.size(), 2U);
+    EXPECT_EQ(gpu.getLastFrame().passes[0].colors, 1U);
+    EXPECT_EQ(gpu.getLastFrame().passes[1].draws, 1);
+
+    render({}, {.position = {0.0F, 0.0F}, .radius = 100.0F, .itemMask = 2});
+    ASSERT_GE(gpu.getLastFrame().passes.size(), 2U);
+    EXPECT_EQ(gpu.getLastFrame().passes[0].colors, 1U);
+    EXPECT_EQ(gpu.getLastFrame().passes[1].draws, 0);
+
+    for (const DrawOrder& order : {DrawOrder{.emission = 1.0F}, DrawOrder{.normalMap = normals}, DrawOrder{.unshaded = true}, DrawOrder{.lightMask = 2}}) {
+        render(order, light);
+        ASSERT_EQ(fixture.engine().getError(), nullptr);
+        ASSERT_FALSE(gpu.getLastFrame().passes.empty());
+        EXPECT_EQ(gpu.getLastFrame().passes[0].colors, 4U);
+    }
+}
+
 TEST(RendererTest, RendersLitWorldsTargetsAndStaticBatches) {
     test::EngineFixture fixture;
     fixture.host().resize({960.0F, 540.0F});

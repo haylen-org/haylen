@@ -33,12 +33,13 @@ class NullDevice final : public Device {
     static constexpr int kProgramPoolSize = 512;
     static constexpr int kPipelinePoolSize = 2048;
 
-    // A pass of a frame: whether it drew into a swapchain and the surface of that swapchain, its clear color, and the write masks of the first color of the pipelines it applied.
+    // A pass of a frame: whether it drew into a swapchain and the surface of that swapchain, its clear color, how many color images it drew into, and the write masks of the first color of the pipelines it applied.
     struct PassRecord {
         bool swapchain = false;
         int surface = 0;
         Load load = Load::Clear;
         math::Color clear = math::Color::transparent();
+        std::size_t colors = 0;
         std::vector<ColorMask> masks;
         int draws = 0;
     };
@@ -239,7 +240,7 @@ class NullDevice final : public Device {
     [[nodiscard]] const PipelineState& getAppliedPipeline(std::string_view call) const;
     void requirePass(std::string_view call) const;
     void requireNoPass(std::string_view call) const;
-    void recordPass(bool swapchain, int surface, Load load, math::Color clear);
+    void recordPass(bool swapchain, int surface, Load load, math::Color clear, std::size_t colors);
     void requireFollowingPasses(int surface) const;
     void requireKeptSamples(int surface) const;
     static void checkSurface(const Surface& surface, int maxSampleCount);

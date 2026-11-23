@@ -182,6 +182,10 @@ class FrameSubmitter final {
     // A blur of a region works on the region moved out by this many texels of its smallest size, which holds every texel that its taps reach from the region.
     static constexpr float kBlurMargin = 8.0F;
 
+    // The light mask and the layer of the pixels of a lit canvas where no draw covers more than half, which the lights reach as they reach a draw with them.
+    static constexpr std::uint8_t kBackgroundLightMask = 1;
+    static constexpr int kBackgroundLayer = 0;
+
     // Moves everything drawn with the matrix by an offset in world units.
     [[nodiscard]] static Matrix translated(Matrix matrix, math::Vec2 offset) noexcept;
     [[nodiscard]] static Matrix projection(const math::Transform2D& view, math::Vec2 viewSize) noexcept;
@@ -191,6 +195,9 @@ class FrameSubmitter final {
     [[nodiscard]] static math::Rect getPixels(const Canvas& canvas, const std::array<math::Vec2, 4>& corners, const math::Rect& passRect, bool touched) noexcept;
 
     void prepareTargets();
+
+    // Tells whether every draw of a lit canvas takes the lights as its background does: without a material, a normal map, emission or unshaded colors, and with a light mask and a layer that every light of the canvas reaches or misses as it does the background.
+    [[nodiscard]] bool takesLightsAlike(const Canvas& canvas) const;
     LitTargets& getLitTargets(std::size_t index, math::Vec2 size, const Canvas& canvas);
 
     // Gives the glass draws of the canvas the images of glass of the size of its destination, and returns whether the canvas draws on the screen, whose image the glass reads.

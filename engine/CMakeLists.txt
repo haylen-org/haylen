@@ -890,7 +890,7 @@ haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/recolor.glsl" SYMBOL g
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/composite.glsl" SYMBOL getCompositeShader VARIANTS "composite=HAYLEN_COMPOSITE_LIGHTING,HAYLEN_COMPOSITE_EFFECTS" "composite_lit=HAYLEN_COMPOSITE_LIGHTING" "composite_plain=")
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/filter.glsl" SYMBOL getFilterShader)
 haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/effect.glsl" SYMBOL getEffectShader VARIANTS "effect=" "effect_lit=HAYLEN_LIT")
-haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/light.glsl" SYMBOL getLightShader VARIANTS "light=" "light_shadowed=HAYLEN_SHADOWS")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/light.glsl" SYMBOL getLightShader VARIANTS "light=" "light_shadowed=HAYLEN_SHADOWS" "light_uniform=HAYLEN_UNIFORM_LIGHTING" "light_uniform_shadowed=HAYLEN_SHADOWS,HAYLEN_UNIFORM_LIGHTING")
 haylen_embed_file(haylen-engine "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" getDefaultFont)
 haylen_embed_file(haylen-engine "${CMAKE_CURRENT_SOURCE_DIR}/fonts/space-mono-regular.ttf" getMonospaceFont)
 haylen_embed_file(haylen-engine "${budoux_SOURCE_DIR}/budoux/models/th.json" getThaiPhraseModel)

@@ -24,6 +24,7 @@ std::uint64_t RendererState::submissions = 0;
 
 const std::array<std::span<const std::uint8_t> (*)(), 13> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader, &core::EmbeddedFiles::getGlassShader, &core::EmbeddedFiles::getFilterShader};
 
+// clang-format off
 const std::array<RendererState::ProgramSource, RendererState::kProgramCount> RendererState::kPrograms{{
     {.package = 0, .program = "sprite", .lit = "sprite_lit"},
     {.package = 1, .program = "text", .lit = "text_lit"},
@@ -43,7 +44,10 @@ const std::array<RendererState::ProgramSource, RendererState::kProgramCount> Ren
     {.package = 4, .program = "composite_lit", .lit = ""},
     {.package = 4, .program = "composite_plain", .lit = ""},
     {.package = 5, .program = "light_shadowed", .lit = ""},
+    {.package = 5, .program = "light_uniform", .lit = ""},
+    {.package = 5, .program = "light_uniform_shadowed", .lit = ""},
 }};
+// clang-format on
 
 // The vertex layouts below read these records at fixed offsets.
 static_assert(sizeof(GpuInstance) == 48 && sizeof(GpuVertex) == 20 && sizeof(LightInstance) == 144);
@@ -798,6 +802,8 @@ RendererState::Layout RendererState::describeLayout(Program program) {
         return layout;
     case Program::Light:
     case Program::ShadowedLight:
+    case Program::UniformLight:
+    case Program::ShadowedUniformLight:
         layout.buffers[0] = {.stride = kCorner};
         layout.buffers[1] = {.stride = static_cast<int>(sizeof(LightInstance)), .perInstance = true};
         layout.bufferCount = 2;
@@ -965,6 +971,8 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::PlainComposite:
     case Program::Light:
     case Program::ShadowedLight:
+    case Program::UniformLight:
+    case Program::ShadowedUniformLight:
     case Program::Metaball:
     case Program::Recolor:
     case Program::Filter:

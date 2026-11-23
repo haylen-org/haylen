@@ -539,7 +539,7 @@ NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, Open
     return targets;
 }
 
-void NullDevice::recordPass(bool swapchain, int surface, Load load, math::Color clear) {
+void NullDevice::recordPass(bool swapchain, int surface, Load load, math::Color clear, std::size_t colors) {
     if (recordedPasses == currentFrame.passes.size()) {
         currentFrame.passes.emplace_back();
     }
@@ -549,6 +549,7 @@ void NullDevice::recordPass(bool swapchain, int surface, Load load, math::Color 
     record.surface = surface;
     record.load = load;
     record.clear = clear;
+    record.colors = colors;
     record.masks.clear();
     record.draws = 0;
 }
@@ -626,7 +627,7 @@ void NullDevice::beginPass(const PassDesc& desc) {
     bindingsApplied = false;
 
     const bool firstColor = !desc.colors.empty();
-    recordPass(swapchain, desc.surface, firstColor ? desc.colors.front().load : desc.load, firstColor ? desc.colors.front().clear : desc.clear);
+    recordPass(swapchain, desc.surface, firstColor ? desc.colors.front().load : desc.load, firstColor ? desc.colors.front().clear : desc.clear, desc.colors.size());
 }
 
 void NullDevice::applyViewport(const math::Rect& pixels) {
@@ -840,6 +841,7 @@ void NullDevice::commit() {
         kept.surface = made.surface;
         kept.load = made.load;
         kept.clear = made.clear;
+        kept.colors = made.colors;
         kept.masks.assign(made.masks.begin(), made.masks.end());
         kept.draws = made.draws;
     }

@@ -53,6 +53,8 @@ struct Canvas {
 
     // Whether the canvas holds glass draws, which read what its destination holds behind them.
     bool glass = false;
+    // Whether every draw of a lit canvas takes the lights as its background does, so its scene draws alone, without the emission, the surfaces and the light masks and layers of its pixels, which its lights skip.
+    bool uniformLighting = false;
     std::size_t lightBegin = 0;
     std::size_t lightEnd = 0;
     std::size_t segmentBegin = 0;

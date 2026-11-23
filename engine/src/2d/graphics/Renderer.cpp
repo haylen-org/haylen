@@ -138,6 +138,7 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     const auto halfFloat = static_cast<std::size_t>(gpu::Device::PixelFormat::Rgba16Float);
     state->lightFormat = capabilities.renderFormats[halfFloat] && capabilities.blendableFormats[halfFloat] ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
 
+    state->transparent = device.createTexture(graphics::Image(1, 1), {.filter = graphics::Texture::Filter::Nearest, .mipmaps = false});
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});
 
     // The metaball kernel keeps its exact values at every size of a splat, which the threshold of the field depends on.

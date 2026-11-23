@@ -72,7 +72,7 @@ struct RendererState {
     static constexpr std::size_t kParallelGrain = 4096;
     static constexpr int kLightTextureSize = 128;
     static constexpr int kMetaballTextureSize = 64;
-    static constexpr std::size_t kProgramCount = 18;
+    static constexpr std::size_t kProgramCount = 20;
 
     // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot, its fade and the form of its texture from the draw block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
     static constexpr int kVertexBlock = 0;
@@ -118,6 +118,8 @@ struct RendererState {
     graphics::Texture white;
     graphics::Texture light;
     graphics::Texture metaball;
+    // A transparent texel, which the composite of a canvas whose draws take the lights alike reads as its emission.
+    graphics::Texture transparent;
     gpu::Device::Buffer quad;
 
     // Two instances that cover the unit square, the second with its rows flipped for render targets that start at the bottom, which post-processing materials draw with.
