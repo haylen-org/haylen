@@ -50,6 +50,9 @@ class UiTests:
     TEAM = re.compile(r"^TeamIdentifier=(\w+)$", re.MULTILINE)
     # The file of the unified log of a simulator during a failed run, next to the result bundles of the run.
     SIMULATOR_LOG = "simulator.log"
+    # The preference of the keyboard of an iOS simulator that the run turns off while the tests run and gives back afterwards: that the keyboard of the system shrinks to its bar while a hardware keyboard is attached, since a simulator reports the keyboard of the Mac it runs on as one and the tests type as a person does on a phone.
+    KEYBOARD_DOMAIN = "com.apple.keyboard.preferences"
+    KEYBOARD_MINIMIZATION = "AutomaticMinimizationEnabled"
 
     def __init__(self, context: ToolingContext, pipeline: AppPipeline) -> None:
         self.context = context
@@ -147,6 +150,10 @@ class UiTests:
             self.context.process.run(UiTests.command("build-for-testing", *project))
             self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
             self.context.terminal.step(f'Running the UI tests on the simulator "{simulator["name"]}"')
+            phone = family == "iOS"
+            minimization = self.keyboard_minimization(udid) if phone else None
+            if phone:
+                self.set_keyboard_minimization(udid, False)
             started = time.monotonic()
             try:
                 with UnifiedLog(self.context.terminal, info["CFBundleExecutable"], ["xcrun", "simctl", "spawn", udid]) as errors:
@@ -155,11 +162,28 @@ class UiTests:
                 self.keep_simulator_log(udid, time.monotonic() - started, runner / "derived" / "Logs" / "Test")
                 raise
             finally:
+                if phone:
+                    self.set_keyboard_minimization(udid, minimization)
                 for identifier in (info["CFBundleIdentifier"], UiTests.RUNNER):
                     subprocess.run(["xcrun", "simctl", "uninstall", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
         if errors:
             raise BuildFailed(f"The UI tests passed, but the engine logged {len(errors)} errors meanwhile, the first being: {errors[0]}")
         return simulator["name"]
+
+    def keyboard_minimization(self, udid: str) -> bool | None:
+        """The value of the preference that shrinks the keyboard of an iOS simulator while a hardware keyboard is attached, or None when the simulator has none."""
+        command = ["xcrun", "simctl", "spawn", udid, "defaults", "read", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION]
+        read = subprocess.run(command, capture_output=True, text=True, check=False)
+        return read.stdout.strip() == "1" if read.returncode == 0 else None
+
+    def set_keyboard_minimization(self, udid: str, value: bool | None) -> None:
+        """Gives the preference that shrinks the keyboard of an iOS simulator a value, or deletes it for None."""
+        command = ["xcrun", "simctl", "spawn", udid, "defaults"]
+        if value is None:
+            command += ["delete", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION]
+        else:
+            command += ["write", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION, "-bool", "YES" if value else "NO"]
+        self.context.process.run(command)
 
     @staticmethod
     def log_command(udid: str, seconds: float) -> list[str]:

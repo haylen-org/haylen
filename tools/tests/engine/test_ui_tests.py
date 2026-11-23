@@ -16,7 +16,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class UiTestsTest:
-    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run gives every setting it changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, and a failed simulator run keeps the log of the simulator over the whole run."""
+    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run and an iOS simulator run give every setting they changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, and a failed simulator run keeps the log of the simulator over the whole run."""
 
     def test_the_runner_runs_the_scheme_of_the_platform_and_its_info_names_the_app(self):
         project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "SIMULATOR-ID", Path("/build/derived"))
@@ -103,6 +103,17 @@ class UiTestsTest:
             ["settings", "put", "secure", "immersive_mode_confirmations", "confirmed"],
             ["settings", "put", "secure", "immersive_mode_confirmations", "''"],
             ["shell", "settings", "delete", "secure", "immersive_mode_confirmations"],
+        ]
+
+    def test_the_ios_simulator_run_gives_the_keyboard_minimization_back_the_value_it_had(self, tmp_path):
+        recorded = RecordedCommands(tmp_path)
+        tests = UiTests(recorded.context, None)
+        for value in (False, True, None):
+            tests.set_keyboard_minimization("UDID", value)
+        assert [command[4:] for command in recorded.commands] == [
+            ["defaults", "write", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION, "-bool", "NO"],
+            ["defaults", "write", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION, "-bool", "YES"],
+            ["defaults", "delete", UiTests.KEYBOARD_DOMAIN, UiTests.KEYBOARD_MINIMIZATION],
         ]
 
     def test_the_unified_log_keeps_the_errors_it_relays_by_the_level_of_their_record(self):
