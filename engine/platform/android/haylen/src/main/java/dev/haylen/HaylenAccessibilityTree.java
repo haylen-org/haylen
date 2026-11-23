@@ -15,12 +15,15 @@ import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import androidx.core.view.accessibility.AccessibilityNodeProviderCompat;
 import androidx.customview.widget.ExploreByTouchHelper;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-// Serves the elements of the UI of the app to TalkBack and the other accessibility services as virtual views of the surface of the app. The engine hands the tree whenever it changes, and the actions that services ask of an element reach the engine, which performs them the way the keyboard and gamepads do. The engine builds the tree while an accessibility service runs or once a service asked for the views.
+// Serves the elements of the UI of the app to TalkBack and the other accessibility services as virtual views of the surface of the app. The engine hands the tree whenever it changes, and the actions that services ask of an element reach the engine, which performs them the way the keyboard and gamepads do. The engine builds the tree while an accessibility service runs or once a service asked for the views. Each element keeps the id of its virtual view while it stays in the tree, the way a view keeps its id, so a node that a service holds, such as the button that a UI test found, describes and acts on that element alone while elements before it come and go, and the node of an element that left the tree is gone, as the node of a removed view is.
 final class HaylenAccessibilityTree extends ExploreByTouchHelper implements AccessibilityManager.AccessibilityStateChangeListener {
     // The bits of the states and actions of the engine.
     private static final int DISABLED = 1;
@@ -43,6 +46,11 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     private final View view;
     private final AccessibilityManager manager;
     private Element[] elements = new Element[0];
+    // The id of the virtual view of each element, in the order of the elements, and the ids by the ids of the elements in the engine.
+    private int[] virtualIds = new int[0];
+    private Map<Long, Integer> virtualIdsByElement = new HashMap<>();
+    private int nextVirtualId;
+    private NodeProvider provider;
     private long focused;
     private boolean asked;
     private String announcement = "";
@@ -133,21 +141,28 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         });
     }
 
-    // Only the elements that changed tell the services so while the elements stay the same ones, and a focus that moved in the UI moves the accessibility focus of a running screen reader along.
+    // An element that the last tree held keeps its virtual view, and a new one takes a new id. Only the elements that changed tell the services so while the tree holds the same elements in the same order, and a focus that moved in the UI moves the accessibility focus of a running screen reader along.
     private void show(Element[] parsed, long focusedId) {
         Element[] shown = elements;
-        elements = parsed;
-        boolean same = shown.length == parsed.length;
-        for (int index = 0; same && index < parsed.length; ++index) {
-            same = shown[index].id == parsed[index].id;
+        int[] shownIds = virtualIds;
+        int[] ids = new int[parsed.length];
+        Map<Long, Integer> idsByElement = new HashMap<>();
+        for (int index = 0; index < parsed.length; ++index) {
+            long element = parsed[index].id;
+            Integer kept = idsByElement.containsKey(element) ? null : virtualIdsByElement.get(element);
+            ids[index] = kept != null ? kept : takeVirtualId();
+            idsByElement.putIfAbsent(element, ids[index]);
         }
 
-        if (!same) {
+        elements = parsed;
+        virtualIds = ids;
+        virtualIdsByElement = idsByElement;
+        if (!Arrays.equals(shownIds, ids)) {
             invalidateRoot();
         } else {
             for (int index = 0; index < parsed.length; ++index) {
                 if (!shown[index].equals(parsed[index])) {
-                    invalidateVirtualView(index);
+                    invalidateVirtualView(ids[index]);
                 }
             }
         }
@@ -159,11 +174,15 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         focused = focusedId;
         int index = indexOf(focusedId);
         if (index >= 0 && manager.isTouchExplorationEnabled()) {
-            AccessibilityNodeProviderCompat provider = getAccessibilityNodeProvider(view);
-            if (provider != null) {
-                provider.performAction(index, AccessibilityNodeInfoCompat.ACTION_ACCESSIBILITY_FOCUS, null);
-            }
+            getAccessibilityNodeProvider(view).performAction(ids[index], AccessibilityNodeInfoCompat.ACTION_ACCESSIBILITY_FOCUS, null);
         }
+    }
+
+    // The ids go to new elements in turn below the id of the announcer, and start again from zero after the last one, long after any node of the element that held an id was let go.
+    private int takeVirtualId() {
+        int id = nextVirtualId;
+        nextVirtualId = id == ANNOUNCER - 1 ? 0 : id + 1;
+        return id;
     }
 
     private int indexOf(long id) {
@@ -174,6 +193,68 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         }
 
         return -1;
+    }
+
+    private int indexOfVirtualView(int virtualViewId) {
+        for (int index = 0; index < virtualIds.length; ++index) {
+            if (virtualIds[index] == virtualViewId) {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private boolean isShown(int virtualViewId) {
+        if (virtualViewId == HOST_ID) {
+            return true;
+        }
+
+        if (virtualViewId == ANNOUNCER) {
+            return !announcement.isEmpty();
+        }
+
+        return indexOfVirtualView(virtualViewId) >= 0;
+    }
+
+    @NonNull
+    @Override
+    public AccessibilityNodeProviderCompat getAccessibilityNodeProvider(@NonNull View host) {
+        if (provider == null) {
+            provider = new NodeProvider(super.getAccessibilityNodeProvider(host));
+        }
+
+        return provider;
+    }
+
+    // The provider of the helper, which answers no node for a virtual view that the tree no longer holds, so a service that asks for a node it kept learns that its element is gone.
+    private final class NodeProvider extends AccessibilityNodeProviderCompat {
+        private final AccessibilityNodeProviderCompat helper;
+
+        NodeProvider(AccessibilityNodeProviderCompat helper) {
+            this.helper = helper;
+        }
+
+        @Nullable
+        @Override
+        public AccessibilityNodeInfoCompat createAccessibilityNodeInfo(int virtualViewId) {
+            if (!isShown(virtualViewId)) {
+                return null;
+            }
+
+            return helper.createAccessibilityNodeInfo(virtualViewId);
+        }
+
+        @Override
+        public boolean performAction(int virtualViewId, int action, @Nullable Bundle arguments) {
+            return helper.performAction(virtualViewId, action, arguments);
+        }
+
+        @Nullable
+        @Override
+        public AccessibilityNodeInfoCompat findFocus(int focus) {
+            return helper.findFocus(focus);
+        }
     }
 
     private void markAsked() {
@@ -191,7 +272,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         for (int index = elements.length - 1; index >= 0; --index) {
             Element element = elements[index];
             if (element.bounds.contains((int) x, (int) y) && (element.actions != 0 || !element.label.isEmpty())) {
-                return index;
+                return virtualIds[index];
             }
         }
 
@@ -205,7 +286,7 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
         for (int index = 0; index < elements.length; ++index) {
             Element element = elements[index];
             if (element.actions != 0 || !element.label.isEmpty() || !element.value.isEmpty()) {
-                virtualViewIds.add(index);
+                virtualViewIds.add(virtualIds[index]);
             }
         }
 
@@ -228,13 +309,15 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
             return;
         }
 
-        Element element = virtualViewId < elements.length ? elements[virtualViewId] : null;
-        if (element == null) {
+        // The helper still describes a virtual view that left the tree when it tells services that the view lost the accessibility focus.
+        int index = indexOfVirtualView(virtualViewId);
+        if (index < 0) {
             node.setBoundsInParent(new Rect());
             node.setContentDescription("");
             return;
         }
 
+        Element element = elements[index];
         node.setClassName(classOf(element.role));
         node.setBoundsInParent(element.bounds);
         if (element.role.equals("textField")) {
@@ -279,11 +362,12 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
 
     @Override
     protected boolean onPerformActionForVirtualView(int virtualViewId, int action, @Nullable Bundle arguments) {
-        if (virtualViewId >= elements.length) {
+        int index = indexOfVirtualView(virtualViewId);
+        if (index < 0) {
             return false;
         }
 
-        Element element = elements[virtualViewId];
+        Element element = elements[index];
         int engineAction = switch (action) {
             case AccessibilityNodeInfoCompat.ACTION_CLICK -> ACTION_ACTIVATE;
             case AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD -> ACTION_INCREMENT;
@@ -301,11 +385,12 @@ final class HaylenAccessibilityTree extends ExploreByTouchHelper implements Acce
     // A service that moves its accessibility focus to an element moves the focus of the UI there.
     @Override
     protected void onPopulateEventForVirtualView(int virtualViewId, @NonNull AccessibilityEvent event) {
-        if (virtualViewId >= elements.length) {
+        int index = indexOfVirtualView(virtualViewId);
+        if (index < 0) {
             return;
         }
 
-        Element element = elements[virtualViewId];
+        Element element = elements[index];
         event.setContentDescription(element.label);
         if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED && (element.actions & ACTION_FOCUS) != 0 && element.id != focused) {
             nativePerform(element.id, ACTION_FOCUS);

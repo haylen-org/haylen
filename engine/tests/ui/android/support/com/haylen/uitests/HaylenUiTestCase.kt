@@ -167,7 +167,7 @@ abstract class HaylenUiTestCase {
     // The node whose content description or text starts with the text, such as a line of a log that ends with a value the test does not know.
     fun elementStartingWith(prefix: String): UiObject2? = device.findObject(By.descStartsWith(prefix)) ?: device.findObject(By.textStartsWith(prefix)) ?: device.findObject(By.hintStartsWith(prefix))
 
-    // The content description of the node, or the text of a native view, or null without a node or once the app built its accessibility tree again after the search found the node, which a later search finds anew.
+    // The content description of the node, or the text of a native view, or null without a node or once its element left the accessibility tree of the app after the search found it, which a later search finds anew if it comes back.
     fun labelOf(node: UiObject2?): String? {
         return try {
             node?.contentDescription ?: node?.text
