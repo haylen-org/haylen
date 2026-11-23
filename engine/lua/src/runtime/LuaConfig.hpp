@@ -49,11 +49,11 @@ struct LuaConfig {
     static constexpr double kMaxMemoryBudget = 4096.0;
 
     // Reads every present field of the section and validates it. Throws `std::invalid_argument` with the offending field on bad values.
-    [[nodiscard]] static LuaConfig fromJson(const core::Json& section);
+    [[nodiscard]] static LuaConfig fromJson(const haylen::core::Json& section);
 
     // Reads the section that the configuration of the app kept, or the defaults when `haylen.json` has none.
-    [[nodiscard]] static LuaConfig fromConfig(const core::AppConfig& config);
-    [[nodiscard]] core::Json toJson() const;
+    [[nodiscard]] static LuaConfig fromConfig(const haylen::core::AppConfig& config);
+    [[nodiscard]] haylen::core::Json toJson() const;
 
     [[nodiscard]] static std::optional<Reload> reloadFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view reloadName(Reload value) noexcept;
@@ -61,7 +61,7 @@ struct LuaConfig {
   private:
     static const std::array<std::pair<std::string_view, Reload>, 2> kReloadNames;
 
-    [[nodiscard]] static bool isWithin(const core::Json& value, double minimum, double maximum) noexcept;
+    [[nodiscard]] static bool isWithin(const haylen::core::Json& value, double minimum, double maximum) noexcept;
 };
 
 } // namespace haylen::lua

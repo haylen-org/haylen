@@ -1,0 +1,119 @@
+#pragma once
+
+#include <lua.hpp>
+
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+
+#include "haylen/lua/Type.hpp"
+#include "haylen/platform/AppPlugin.hpp"
+#include "haylen/platform/Bridge.hpp"
+#include "haylen/platform/Screens.hpp"
+
+namespace varn::async {
+class Promise;
+}
+
+namespace haylen::lua::platform {
+
+// Installs `haylen.platform`, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins, and the class of the platform calls, which other modules return too.
+class PlatformBinding final {
+  public:
+    // A call as Lua holds it: the promise that its awaiters wait on, the error that it failed with and how the service that runs it gives it up, which returns whether it was still pending.
+    struct Call {
+        // Keeps the error for `await` and rejects the promise with it. A call that was cancelled rejects without stopping the app when nothing awaits it, since the app or the owner of the call gave it up.
+        void fail(haylen::platform::Bridge::Error failure);
+
+        std::shared_ptr<varn::async::Promise> promise;
+        std::uint64_t id = 0;
+        std::optional<haylen::platform::Bridge::Error> error;
+        bool (*cancel)(lua_State* L, std::uint64_t id) = nullptr;
+    };
+
+    static void install(lua_State* L);
+
+  private:
+    static constexpr const char* kErrorType = "haylen.PlatformError";
+    static constexpr std::array<std::string_view, 1> kCallOptions{"timeout"};
+    static constexpr std::array<std::string_view, 1> kListenerOptions{"owner"};
+    static constexpr std::array<std::string_view, 2> kEmitOptions{"retain", "batched"};
+    static constexpr std::array<std::string_view, 3> kScreenOptions{"state", "opaque", "timeout"};
+
+    // Reads the Lua value at `index` as the JSON of a payload, with the byte buffers of the strings that `platform.bytes` marked.
+    [[nodiscard]] static haylen::platform::Bridge::Payload readPayload(lua_State* L, int index);
+
+    // Pushes the JSON of a payload, with a Lua string in the place of every buffer it refers to.
+    static void pushPayload(lua_State* L, const haylen::platform::Bridge::Payload& payload);
+
+    // Starts a call of the method with the parameters and options at the given stack indexes, and pushes the call.
+    static void pushCall(lua_State* L, const std::string& method, int paramsIndex, int optionsIndex);
+
+    // Connects the listener at the given stack index to the native event, with the owner of the options at the next index or the default owner, and pushes the connection.
+    static void pushConnection(lua_State* L, const std::string& event, int listenerIndex);
+
+    [[nodiscard]] static bool cancelBridgeCall(lua_State* L, std::uint64_t id);
+    [[nodiscard]] static bool cancelScreen(lua_State* L, std::uint64_t id);
+
+    // Reads the options of `openScreen` at the given stack index: the state as JSON without bytes, whether the screen is opaque and its timeout in seconds.
+    [[nodiscard]] static haylen::platform::Screens::Options readScreenOptions(lua_State* L, int index);
+
+    // Returns the callback that settles the promise of a call with its result, keeping the error of a failure for `await`.
+    [[nodiscard]] static haylen::platform::Bridge::Callback settle(std::shared_ptr<Call> pending);
+
+    static int call(lua_State* L);
+    static int await(lua_State* L);
+    static int finishAwait(lua_State* L, int status, lua_KContext context);
+    static int cancel(lua_State* L);
+    static int getId(lua_State* L);
+    static int isDone(lua_State* L);
+    static int getPromise(lua_State* L);
+    static int resolve(lua_State* L);
+    static int emit(lua_State* L);
+    static int bytes(lua_State* L);
+    static int getBytesSize(lua_State* L);
+    static int pendingCallCount(lua_State* L);
+    static int on(lua_State* L);
+    static int send(lua_State* L);
+    static int registerHandler(lua_State* L);
+    static int hasHandler(lua_State* L);
+    static int plugins(lua_State* L);
+    static int plugin(lua_State* L);
+    static int getPluginId(lua_State* L);
+    static int getPluginVersion(lua_State* L);
+    static int getPluginConfig(lua_State* L);
+    static int isPluginNative(lua_State* L);
+    [[nodiscard]] static std::string getPluginName(lua_State* L);
+    static int callPlugin(lua_State* L);
+    static int sendToPlugin(lua_State* L);
+    static int onPlugin(lua_State* L);
+    static int videoStreamOfPlugin(lua_State* L);
+    static int audioStreamOfPlugin(lua_State* L);
+    static int openScreenOfPlugin(lua_State* L);
+    static int screenShowing(lua_State* L);
+    static int open(lua_State* L);
+
+    // Pushes a table with `message`, `code` and `data` that reads as its message in `tostring` and concatenation.
+    static void pushError(lua_State* L, const haylen::platform::Bridge::Error& error);
+    static int errorToString(lua_State* L);
+    static int concatError(lua_State* L);
+};
+
+} // namespace haylen::lua::platform
+
+namespace haylen::lua {
+
+template <> struct Type<lua::platform::PlatformBinding::Call> {
+    static constexpr const char* name = "haylen.PlatformCall";
+    using Storage = std::shared_ptr<lua::platform::PlatformBinding::Call>;
+};
+
+template <> struct Type<haylen::platform::AppPlugin> {
+    static constexpr const char* name = "haylen.AppPlugin";
+    using Storage = haylen::platform::AppPlugin;
+};
+
+} // namespace haylen::lua

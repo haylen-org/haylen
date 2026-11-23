@@ -1,6 +1,6 @@
 #include "debug/Evaluation.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 Evaluation::Running Evaluation::running;
 
@@ -84,4 +84,4 @@ void Evaluation::onCount(lua_State* L, lua_Debug*) {
     }
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

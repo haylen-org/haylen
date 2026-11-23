@@ -4,11 +4,8 @@
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
-#include "platform/AccessibilityLua.hpp"
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
-#include "platform/PlatformLua.hpp"
-#include "platform/SystemLua.hpp"
 
 namespace haylen::plugins {
 

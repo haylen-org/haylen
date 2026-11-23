@@ -20,7 +20,6 @@
 #include "haylen/io/Path.hpp"
 #include "haylen/localization/LanguageTag.hpp"
 #include "haylen/platform/System.hpp"
-#include "localization/LocalizationLua.hpp"
 
 namespace haylen::plugins {
 

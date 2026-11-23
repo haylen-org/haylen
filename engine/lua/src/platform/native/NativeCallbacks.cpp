@@ -7,7 +7,7 @@
 
 #include "haylen/lua/Runtime.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 NativeCallbacks::NativeCallbacks(lua_State* L) : state(lua::Runtime::getMainThread(L)) {}
 
@@ -22,7 +22,7 @@ void NativeCallbacks::remove(std::uint64_t id) {
 }
 
 // The function may free its own callback, so it is on the stack before anything can drop its reference.
-void NativeCallbacks::deliver(std::uint64_t id, const std::vector<NativeCallback::Value>& values) {
+void NativeCallbacks::deliver(std::uint64_t id, const std::vector<haylen::platform::NativeCallback::Value>& values) {
     const auto found = functions.find(id);
     if (found == functions.end()) {
         return;
@@ -38,7 +38,7 @@ void NativeCallbacks::deliver(std::uint64_t id, const std::vector<NativeCallback
 
         found->second.push(L);
 
-        for (const NativeCallback::Value& value : values) {
+        for (const haylen::platform::NativeCallback::Value& value : values) {
             push(L, value);
         }
 
@@ -54,7 +54,7 @@ void NativeCallbacks::fail(std::uint64_t id, const std::string& message) {
     }
 }
 
-void NativeCallbacks::push(lua_State* L, const NativeCallback::Value& value) {
+void NativeCallbacks::push(lua_State* L, const haylen::platform::NativeCallback::Value& value) {
     // clang-format off
     std::visit([L](const auto& content) {
         using Content = std::decay_t<decltype(content)>;
@@ -75,4 +75,4 @@ void NativeCallbacks::push(lua_State* L, const NativeCallback::Value& value) {
     // clang-format on
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

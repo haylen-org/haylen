@@ -166,7 +166,7 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
 TEST_F(ReleaseInspectorTest, CountsAShardThatBothDomainsNameOnce) {
     // Content files with the bytes and the order of the files of the app domain seal into the same records, so both domains write one shard file.
     const std::string config = R"({"name": "Release Test", "identifier": "com.haylen.tests"})";
-    const std::vector<std::uint8_t> module = LuaCompiler().compile("loaded = true", "source/main.lua");
+    const std::vector<std::uint8_t> module = lua::content::LuaCompiler().compile("loaded = true", "source/main.lua");
     release.build({{"haylen.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
     const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
     ASSERT_EQ(report.app.envelope.shards, report.content.envelope.shards);

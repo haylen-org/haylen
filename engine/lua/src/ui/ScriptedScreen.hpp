@@ -7,10 +7,10 @@
 
 struct lua_State;
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // A screen implemented by a Lua table, whose `build` method returns the node table of its GUI and whose optional methods mirror the other hooks of a screen. A table is one screen for as long as the engine holds it. The engine sets the field `gui` of the table to its GUI once it is built, and the field `stack` or `presentation` to what holds it, and everything the table owns ends when the screen is removed.
-class ScriptedScreen final : public Screen {
+class ScriptedScreen final : public haylen::ui::Screen {
   public:
     ScriptedScreen(lua_State* L, int index);
 
@@ -21,20 +21,20 @@ class ScriptedScreen final : public Screen {
     [[nodiscard]] static State findState(lua_State* L, int index);
 
     // Pushes the table of a screen made from Lua, or `nil` for a screen of C++.
-    static void push(lua_State* L, const std::shared_ptr<Screen>& screen);
+    static void push(lua_State* L, const std::shared_ptr<haylen::ui::Screen>& screen);
 
-    [[nodiscard]] std::shared_ptr<Gui> build(core::Engine& engine, Placement placement) override;
-    void appear(core::Engine& engine) override;
-    void appeared(core::Engine& engine) override;
-    void disappear(core::Engine& engine) override;
-    void disappeared(core::Engine& engine) override;
-    void update(core::Engine& engine, float deltaSeconds) override;
-    void render(core::Engine& engine) override;
-    [[nodiscard]] bool back(core::Engine& engine) override;
-    void remove(core::Engine& engine) override;
+    [[nodiscard]] std::shared_ptr<haylen::ui::Gui> build(haylen::core::Engine& engine, haylen::ui::Placement placement) override;
+    void appear(haylen::core::Engine& engine) override;
+    void appeared(haylen::core::Engine& engine) override;
+    void disappear(haylen::core::Engine& engine) override;
+    void disappeared(haylen::core::Engine& engine) override;
+    void update(haylen::core::Engine& engine, float deltaSeconds) override;
+    void render(haylen::core::Engine& engine) override;
+    [[nodiscard]] bool back(haylen::core::Engine& engine) override;
+    void remove(haylen::core::Engine& engine) override;
 
   protected:
-    void placed(core::Engine& engine) override;
+    void placed(haylen::core::Engine& engine) override;
 
   private:
     // Maps screen tables to their screens with weak keys, so the map holds neither.
@@ -49,4 +49,4 @@ class ScriptedScreen final : public Screen {
     lua::Reference table;
 };
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

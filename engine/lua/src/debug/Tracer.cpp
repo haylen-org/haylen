@@ -10,7 +10,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "varn/async/AsyncModule.h"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 Tracer::~Tracer() {
     detach();
@@ -369,4 +369,4 @@ void Tracer::haltHere(lua_State* L, int level, std::string text) {
     halt({.thread = L, .level = level, .reason = Reason::Pause, .text = std::move(text)});
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

@@ -1,0 +1,664 @@
+#include "ui/ImGuiBinding.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <misc/cpp/imgui_stdlib.h>
+
+#include "haylen/core/Engine.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Context.hpp"
+#include "haylen/ui/ImGuiConverter.hpp"
+#include "haylen/ui/Scrollbar.hpp"
+
+namespace haylen::lua::ui {
+
+// Every call happens between the frame start and the UI render, which is where scenes update and draw.
+haylen::ui::Backend& ImGuiBinding::requireFrame(lua_State* L) {
+    haylen::ui::Backend& backend = lua::Runtime::getEngine(L).getPlugin<haylen::plugins::UiPlugin>().getBackend();
+    if (!backend.isFrameActive()) {
+        luaL_error(L, "The module \"haylen.imgui\" can only be used while a frame is running.");
+    }
+
+    backend.makeCurrent();
+    return backend;
+}
+
+const char* ImGuiBinding::readLabel(lua_State* L, int index) {
+    return luaL_checkstring(L, index);
+}
+
+ImVec2 ImGuiBinding::readOptionalSize(lua_State* L, int first) {
+    return {lua::Converter<float>::readOr(L, first, 0.0), lua::Converter<float>::readOr(L, first + 1, 0.0)};
+}
+
+// ImGui moves the scroll bars of the windows it begins with a thumb at least as long as the thumbs of the components, which it paints in no color, so the window paints them with the theme once it began.
+void ImGuiBinding::hideBars() {
+    for (const ImGuiCol color : {ImGuiCol_ScrollbarGrab, ImGuiCol_ScrollbarGrabHovered, ImGuiCol_ScrollbarGrabActive}) {
+        ImGui::PushStyleColor(color, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, haylen::ui::Scrollbar::kMinThumb);
+}
+
+// Each bar of the window that began paints its groove and its thumb in the places ImGui gives them, so the thumb the theme paints is the one the pointer drags, over the lane outside the clip of the content.
+void ImGuiBinding::paintBars(lua_State* L, bool visible) {
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
+
+    ImGuiWindow& window = *ImGui::GetCurrentWindow();
+    if (!visible || (!window.ScrollbarX && !window.ScrollbarY)) {
+        return;
+    }
+
+    haylen::ui::Context& context = lua::Runtime::getEngine(L).getPlugin<haylen::plugins::UiPlugin>().getContext();
+    const ImGuiContext& state = *GImGui;
+    window.DrawList->PushClipRect(window.OuterRectClipped.Min, window.OuterRectClipped.Max);
+
+    for (const ImGuiAxis axis : {ImGuiAxis_X, ImGuiAxis_Y}) {
+        const auto along = static_cast<std::size_t>(axis);
+        const ImRect frame = ImGui::GetWindowScrollbarRect(&window, axis);
+        const float padding = std::floor(std::min(state.Style.ScrollbarPadding, std::min(frame.GetWidth(), frame.GetHeight()) * 0.5F));
+        const ImRect groove(frame.Min + ImVec2(padding, padding), frame.Max - ImVec2(padding, padding));
+        const float length = groove.GetSize()[along];
+        if ((axis == ImGuiAxis_X ? !window.ScrollbarX : !window.ScrollbarY) || length < 1.0F) {
+            continue;
+        }
+
+        const float shown = std::trunc(window.InnerRect.Max[along] - window.InnerRect.Min[along]);
+        const float content = std::max({std::trunc(window.ContentSize[along] + window.WindowPadding[along] * 2.0F), shown, 1.0F});
+        const float thumb = std::floor(std::clamp(length * shown / content, std::min(length, haylen::ui::Scrollbar::kMinThumb), length));
+        const float progress = std::clamp(std::trunc(window.Scroll[along]) / std::max(1.0F, content - shown), 0.0F, 1.0F);
+        const float start = groove.Min[along] + progress * (length - thumb);
+        const haylen::math::Rect handle = axis == ImGuiAxis_X ? haylen::math::Rect{start, groove.Min.y, thumb, groove.GetHeight()} : haylen::math::Rect{groove.Min.x, start, groove.GetWidth(), thumb};
+        const ImGuiID id = ImGui::GetWindowScrollbarID(&window, axis);
+        haylen::ui::Scrollbar::paint(context, haylen::ui::ImGuiConverter::toRect(groove), handle, state.HoveredId == id || state.ActiveId == id);
+    }
+
+    window.DrawList->PopClipRect();
+}
+
+int ImGuiBinding::returnChanged(lua_State* L, bool changed, int values) {
+    lua_pushboolean(L, changed ? 1 : 0);
+    lua_insert(L, -1 - values);
+    return values + 1;
+}
+
+// Opens a window with `beginWindow(name[, {x, y, width, height, closable, noTitleBar, noResize, noMove, autoResize}])` and returns whether it is visible and, for closable windows, whether it is still open.
+int ImGuiBinding::beginWindow(lua_State* L) {
+    haylen::ui::Backend& backend = requireFrame(L);
+    ImGuiWindowFlags flags = ImGuiWindowFlags_None;
+    bool closable = false;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        std::optional<float> x;
+        std::optional<float> y;
+        std::optional<float> width;
+        std::optional<float> height;
+        bool noTitleBar = false;
+        bool noResize = false;
+        bool noMove = false;
+        bool autoResize = false;
+
+        // The options of a window that draws every frame are read in one pass over the keys the table holds.
+        // clang-format off
+        lua::Table::readFields(L, 2, kWindowFields, {}, [&](std::string_view key) {
+            if (key == "x") {
+                lua::Table::readValue(L, key, x);
+            } else if (key == "y") {
+                lua::Table::readValue(L, key, y);
+            } else if (key == "width") {
+                lua::Table::readValue(L, key, width);
+            } else if (key == "height") {
+                lua::Table::readValue(L, key, height);
+            } else if (key == "closable") {
+                lua::Table::readValue(L, key, closable);
+            } else if (key == "noTitleBar") {
+                lua::Table::readValue(L, key, noTitleBar);
+            } else if (key == "noResize") {
+                lua::Table::readValue(L, key, noResize);
+            } else if (key == "noMove") {
+                lua::Table::readValue(L, key, noMove);
+            } else if (key == "autoResize") {
+                lua::Table::readValue(L, key, autoResize);
+            }
+        });
+        // clang-format on
+
+        if (x && y) {
+            ImGui::SetNextWindowPos({*x, *y}, ImGuiCond_FirstUseEver);
+        }
+
+        if (width && height) {
+            ImGui::SetNextWindowSize({*width, *height}, ImGuiCond_FirstUseEver);
+        }
+
+        flags |= noTitleBar ? ImGuiWindowFlags_NoTitleBar : ImGuiWindowFlags_None;
+        flags |= noResize ? ImGuiWindowFlags_NoResize : ImGuiWindowFlags_None;
+        flags |= noMove ? ImGuiWindowFlags_NoMove : ImGuiWindowFlags_None;
+        flags |= autoResize ? ImGuiWindowFlags_AlwaysAutoResize : ImGuiWindowFlags_None;
+    }
+
+    bool open = true;
+    const char* name = readLabel(L, 1);
+    hideBars();
+    const bool visible = ImGui::Begin(name, closable ? &open : nullptr, flags);
+    paintBars(L, visible);
+    backend.markImmediateWindow();
+    lua::Stack::push(L, visible);
+    lua::Stack::push(L, open);
+    return 2;
+}
+
+int ImGuiBinding::endWindow(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::End();
+    return 0;
+}
+
+int ImGuiBinding::text(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::TextUnformatted(readLabel(L, 1));
+    return 0;
+}
+
+int ImGuiBinding::textColored(lua_State* L) {
+    (void)requireFrame(L);
+    const haylen::math::Color color = lua::Stack::read<haylen::math::Color>(L, 1);
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(color.r, color.g, color.b, color.a));
+    ImGui::TextUnformatted(readLabel(L, 2));
+    ImGui::PopStyleColor();
+    return 0;
+}
+
+int ImGuiBinding::textWrapped(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::PushTextWrapPos(0.0F);
+    ImGui::TextUnformatted(readLabel(L, 1));
+    ImGui::PopTextWrapPos();
+    return 0;
+}
+
+int ImGuiBinding::button(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::Button(readLabel(L, 1), readOptionalSize(L, 2)));
+    return 1;
+}
+
+int ImGuiBinding::checkbox(lua_State* L) {
+    (void)requireFrame(L);
+    bool value = lua::Stack::read<bool>(L, 2);
+    const bool changed = ImGui::Checkbox(readLabel(L, 1), &value);
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+// Dear ImGui hands the format to `printf` with the number alone, so it may convert that number once and escape other percent signs.
+const char* ImGuiBinding::readNumberFormat(lua_State* L, int index) {
+    const std::string_view format = luaL_optstring(L, index, "%.3f");
+    int conversions = 0;
+    for (std::size_t position = format.find('%'); position != std::string_view::npos; position = format.find('%', position + 1)) {
+        if (position + 1 < format.size() && format[position + 1] == '%') {
+            ++position;
+            continue;
+        }
+
+        position = format.find_first_not_of("-+ #0123456789.", position + 1);
+        if (position != std::string_view::npos && format[position] == 'l') {
+            ++position;
+        }
+
+        if (position >= format.size() || std::string_view("fFeEgGaA").find(format[position]) == std::string_view::npos || ++conversions > 1) {
+            luaL_argerror(L, index, "the format may convert the number once, as in '%.1f', and writes a percent sign as '%%'");
+        }
+    }
+
+    return format.data();
+}
+
+int ImGuiBinding::sliderFloat(lua_State* L) {
+    (void)requireFrame(L);
+    auto value = lua::Stack::read<float>(L, 2);
+    const bool changed = ImGui::SliderFloat(readLabel(L, 1), &value, lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4), readNumberFormat(L, 5));
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::sliderInt(lua_State* L) {
+    (void)requireFrame(L);
+    auto value = lua::Stack::read<int>(L, 2);
+    const bool changed = ImGui::SliderInt(readLabel(L, 1), &value, lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4));
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::dragFloat(lua_State* L) {
+    (void)requireFrame(L);
+    auto value = lua::Stack::read<float>(L, 2);
+    const bool changed = ImGui::DragFloat(readLabel(L, 1), &value, lua::Converter<float>::readOr(L, 3, 1.0), lua::Converter<float>::readOr(L, 4, 0.0), lua::Converter<float>::readOr(L, 5, 0.0));
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::inputText(lua_State* L) {
+    (void)requireFrame(L);
+    std::string value = lua::Stack::read<std::string>(L, 2);
+    const bool changed = lua_isnoneornil(L, 3) ? ImGui::InputText(readLabel(L, 1), &value) : ImGui::InputTextWithHint(readLabel(L, 1), readLabel(L, 3), &value);
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::inputFloat(lua_State* L) {
+    (void)requireFrame(L);
+    auto value = lua::Stack::read<float>(L, 2);
+    const bool changed = ImGui::InputFloat(readLabel(L, 1), &value, lua::Converter<float>::readOr(L, 3, 0.0));
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::inputInt(lua_State* L) {
+    (void)requireFrame(L);
+    auto value = lua::Stack::read<int>(L, 2);
+    const bool changed = ImGui::InputInt(readLabel(L, 1), &value, static_cast<int>(luaL_optinteger(L, 3, 1)));
+    lua::Stack::push(L, value);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::colorEdit(lua_State* L) {
+    (void)requireFrame(L);
+    const haylen::math::Color color = lua::Stack::read<haylen::math::Color>(L, 2);
+    std::array<float, 4> channels{color.r, color.g, color.b, color.a};
+    const bool changed = ImGui::ColorEdit4(readLabel(L, 1), channels.data());
+    lua::Stack::push(L, haylen::math::Color{channels[0], channels[1], channels[2], channels[3]});
+    return returnChanged(L, changed, 1);
+}
+
+// Shows a combo with `combo(label, current, items)`, where `current` is a 1-based index or 0 for no item, and returns whether it changed and the new index.
+int ImGuiBinding::combo(lua_State* L) {
+    (void)requireFrame(L);
+    const lua_Integer selected = luaL_checkinteger(L, 2);
+    const std::vector<std::string> items = lua::Stack::read<std::vector<std::string>>(L, 3);
+    if (selected < 0 || std::cmp_greater(selected, items.size())) {
+        return luaL_error(L, "The current item of a combo is an index from 1 to the number of its items, or 0 for none, not %I.", selected);
+    }
+
+    auto current = static_cast<int>(selected) - 1;
+    std::string joined;
+    for (const std::string& item : items) {
+        joined += item;
+        joined += '\0';
+    }
+
+    joined += '\0';
+    const bool changed = ImGui::Combo(readLabel(L, 1), &current, joined.c_str());
+    lua::Stack::push(L, current + 1);
+    return returnChanged(L, changed, 1);
+}
+
+int ImGuiBinding::selectable(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::Selectable(readLabel(L, 1), lua_toboolean(L, 2) != 0));
+    return 1;
+}
+
+int ImGuiBinding::treeNode(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::TreeNode(readLabel(L, 1)));
+    return 1;
+}
+
+// Dear ImGui does not check this call before it changes the window, so a stray one is caught here.
+int ImGuiBinding::treePop(lua_State* L) {
+    (void)requireFrame(L);
+    if (ImGui::GetCurrentWindow()->DC.TreeDepth <= 0) {
+        return luaL_error(L, "There is no open tree node for \"imgui.treePop\" to close.");
+    }
+
+    ImGui::TreePop();
+    return 0;
+}
+
+int ImGuiBinding::collapsingHeader(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::CollapsingHeader(readLabel(L, 1)));
+    return 1;
+}
+
+int ImGuiBinding::separator(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::Separator();
+    return 0;
+}
+
+int ImGuiBinding::sameLine(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::SameLine(lua::Converter<float>::readOr(L, 1, 0.0), lua::Converter<float>::readOr(L, 2, -1.0));
+    return 0;
+}
+
+int ImGuiBinding::spacing(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::Spacing();
+    return 0;
+}
+
+int ImGuiBinding::dummy(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::Dummy({lua::Stack::read<float>(L, 1), lua::Stack::read<float>(L, 2)});
+    return 0;
+}
+
+int ImGuiBinding::beginChild(lua_State* L) {
+    (void)requireFrame(L);
+    const char* name = readLabel(L, 1);
+    const ImVec2 size = readOptionalSize(L, 2);
+    hideBars();
+    const bool visible = ImGui::BeginChild(name, size, lua_toboolean(L, 4) != 0 ? ImGuiChildFlags_Borders : ImGuiChildFlags_None);
+    paintBars(L, visible);
+    lua::Stack::push(L, visible);
+    return 1;
+}
+
+int ImGuiBinding::endChild(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::EndChild();
+    return 0;
+}
+
+int ImGuiBinding::beginTabBar(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::BeginTabBar(readLabel(L, 1)));
+    return 1;
+}
+
+int ImGuiBinding::endTabBar(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::EndTabBar();
+    return 0;
+}
+
+int ImGuiBinding::beginTabItem(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::BeginTabItem(readLabel(L, 1)));
+    return 1;
+}
+
+int ImGuiBinding::endTabItem(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::EndTabItem();
+    return 0;
+}
+
+int ImGuiBinding::beginTable(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::BeginTable(readLabel(L, 1), lua::Stack::read<int>(L, 2), ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg));
+    return 1;
+}
+
+int ImGuiBinding::endTable(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::EndTable();
+    return 0;
+}
+
+int ImGuiBinding::tableSetupColumn(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::TableSetupColumn(readLabel(L, 1));
+    return 0;
+}
+
+int ImGuiBinding::tableHeadersRow(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::TableHeadersRow();
+    return 0;
+}
+
+// Dear ImGui does not check this call and reads the table it assumes is open, so a stray one is caught here.
+int ImGuiBinding::tableNextRow(lua_State* L) {
+    (void)requireFrame(L);
+    if (ImGui::GetCurrentTable() == nullptr) {
+        return luaL_error(L, "There is no open table for \"imgui.tableNextRow\" to add a row to.");
+    }
+
+    ImGui::TableNextRow();
+    return 0;
+}
+
+int ImGuiBinding::tableNextColumn(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::TableNextColumn());
+    return 1;
+}
+
+int ImGuiBinding::progressBar(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::ProgressBar(lua::Stack::read<float>(L, 1), {lua::Converter<float>::readOr(L, 2, -1.0), lua::Converter<float>::readOr(L, 3, 0.0)}, luaL_optstring(L, 4, nullptr));
+    return 0;
+}
+
+// Plots numbers with `plotLines(label, values[, overlay, minimum, maximum, width, height])`.
+int ImGuiBinding::plot(lua_State* L, bool histogram) {
+    (void)requireFrame(L);
+    const std::vector<float> values = lua::Stack::read<std::vector<float>>(L, 2);
+    const char* overlay = luaL_optstring(L, 3, nullptr);
+    const auto minimum = lua::Converter<float>::readOr(L, 4, FLT_MAX);
+    const auto maximum = lua::Converter<float>::readOr(L, 5, FLT_MAX);
+    const ImVec2 size = readOptionalSize(L, 6);
+    if (histogram) {
+        ImGui::PlotHistogram(readLabel(L, 1), values.data(), static_cast<int>(values.size()), 0, overlay, minimum, maximum, size);
+    } else {
+        ImGui::PlotLines(readLabel(L, 1), values.data(), static_cast<int>(values.size()), 0, overlay, minimum, maximum, size);
+    }
+
+    return 0;
+}
+
+int ImGuiBinding::plotLines(lua_State* L) {
+    return plot(L, false);
+}
+
+int ImGuiBinding::plotHistogram(lua_State* L) {
+    return plot(L, true);
+}
+
+int ImGuiBinding::image(lua_State* L) {
+    haylen::ui::Backend& backend = requireFrame(L);
+    const haylen::graphics::Texture texture = lua::Stack::read<haylen::graphics::Texture>(L, 1);
+    ImGui::Image(backend.getTextureReference(texture), {lua::Converter<float>::readOr(L, 2, texture.getSize().x), lua::Converter<float>::readOr(L, 3, texture.getSize().y)});
+    return 0;
+}
+
+int ImGuiBinding::setNextWindowPos(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::SetNextWindowPos({lua::Stack::read<float>(L, 1), lua::Stack::read<float>(L, 2)}, lua_toboolean(L, 3) != 0 ? ImGuiCond_Always : ImGuiCond_FirstUseEver);
+    return 0;
+}
+
+int ImGuiBinding::setNextWindowSize(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::SetNextWindowSize({lua::Stack::read<float>(L, 1), lua::Stack::read<float>(L, 2)}, lua_toboolean(L, 3) != 0 ? ImGuiCond_Always : ImGuiCond_FirstUseEver);
+    return 0;
+}
+
+int ImGuiBinding::setNextItemWidth(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::SetNextItemWidth(lua::Stack::read<float>(L, 1));
+    return 0;
+}
+
+int ImGuiBinding::isItemHovered(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::IsItemHovered());
+    return 1;
+}
+
+int ImGuiBinding::setTooltip(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::SetTooltip("%s", readLabel(L, 1));
+    return 0;
+}
+
+int ImGuiBinding::openPopup(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::OpenPopup(readLabel(L, 1));
+    return 0;
+}
+
+// A popup is a window of its own, so it keeps the fingers the way ImGui does, like the windows that `beginWindow` opens.
+int ImGuiBinding::beginPopup(lua_State* L) {
+    haylen::ui::Backend& backend = requireFrame(L);
+    const char* name = readLabel(L, 1);
+    hideBars();
+    const bool open = ImGui::BeginPopup(name);
+    paintBars(L, open);
+
+    if (open) {
+        backend.markImmediateWindow();
+    }
+
+    lua::Stack::push(L, open);
+    return 1;
+}
+
+int ImGuiBinding::endPopup(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::EndPopup();
+    return 0;
+}
+
+int ImGuiBinding::closeCurrentPopup(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::CloseCurrentPopup();
+    return 0;
+}
+
+int ImGuiBinding::pushId(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::PushID(readLabel(L, 1));
+    return 0;
+}
+
+int ImGuiBinding::popId(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::PopID();
+    return 0;
+}
+
+// Uses a font the UI knows for the next widgets with `pushFont(name, size)`, where the size is the size of its em square.
+int ImGuiBinding::pushFont(lua_State* L) {
+    haylen::ui::Backend& backend = requireFrame(L);
+    const auto name = lua::Stack::read<std::string_view>(L, 1);
+    ImGui::PushFont(backend.getFont(name), backend.getFontHeight(name, lua::Stack::read<float>(L, 2)));
+    return 0;
+}
+
+int ImGuiBinding::popFont(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::PopFont();
+    return 0;
+}
+
+int ImGuiBinding::showDemoWindow(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::ShowDemoWindow();
+    return 0;
+}
+
+int ImGuiBinding::showMetricsWindow(lua_State* L) {
+    (void)requireFrame(L);
+    ImGui::ShowMetricsWindow();
+    return 0;
+}
+
+int ImGuiBinding::framerate(lua_State* L) {
+    (void)requireFrame(L);
+    lua::Stack::push(L, ImGui::GetIO().Framerate);
+    return 1;
+}
+
+int ImGuiBinding::open(lua_State* L) {
+    // clang-format off
+    const luaL_Reg functions[] = {
+        {"beginWindow", &lua::Binding::native<&beginWindow>},
+        {"endWindow", &lua::Binding::native<&endWindow>},
+        {"text", &lua::Binding::native<&text>},
+        {"textColored", &lua::Binding::native<&textColored>},
+        {"textWrapped", &lua::Binding::native<&textWrapped>},
+        {"button", &lua::Binding::native<&button>},
+        {"checkbox", &lua::Binding::native<&checkbox>},
+        {"sliderFloat", &lua::Binding::native<&sliderFloat>},
+        {"sliderInt", &lua::Binding::native<&sliderInt>},
+        {"dragFloat", &lua::Binding::native<&dragFloat>},
+        {"inputText", &lua::Binding::native<&inputText>},
+        {"inputFloat", &lua::Binding::native<&inputFloat>},
+        {"inputInt", &lua::Binding::native<&inputInt>},
+        {"colorEdit", &lua::Binding::native<&colorEdit>},
+        {"combo", &lua::Binding::native<&combo>},
+        {"selectable", &lua::Binding::native<&selectable>},
+        {"treeNode", &lua::Binding::native<&treeNode>},
+        {"treePop", &lua::Binding::native<&treePop>},
+        {"collapsingHeader", &lua::Binding::native<&collapsingHeader>},
+        {"separator", &lua::Binding::native<&separator>},
+        {"sameLine", &lua::Binding::native<&sameLine>},
+        {"spacing", &lua::Binding::native<&spacing>},
+        {"dummy", &lua::Binding::native<&dummy>},
+        {"beginChild", &lua::Binding::native<&beginChild>},
+        {"endChild", &lua::Binding::native<&endChild>},
+        {"beginTabBar", &lua::Binding::native<&beginTabBar>},
+        {"endTabBar", &lua::Binding::native<&endTabBar>},
+        {"beginTabItem", &lua::Binding::native<&beginTabItem>},
+        {"endTabItem", &lua::Binding::native<&endTabItem>},
+        {"beginTable", &lua::Binding::native<&beginTable>},
+        {"endTable", &lua::Binding::native<&endTable>},
+        {"tableSetupColumn", &lua::Binding::native<&tableSetupColumn>},
+        {"tableHeadersRow", &lua::Binding::native<&tableHeadersRow>},
+        {"tableNextRow", &lua::Binding::native<&tableNextRow>},
+        {"tableNextColumn", &lua::Binding::native<&tableNextColumn>},
+        {"progressBar", &lua::Binding::native<&progressBar>},
+        {"plotLines", &lua::Binding::native<&plotLines>},
+        {"plotHistogram", &lua::Binding::native<&plotHistogram>},
+        {"image", &lua::Binding::native<&image>},
+        {"setNextWindowPos", &lua::Binding::native<&setNextWindowPos>},
+        {"setNextWindowSize", &lua::Binding::native<&setNextWindowSize>},
+        {"setNextItemWidth", &lua::Binding::native<&setNextItemWidth>},
+        {"isItemHovered", &lua::Binding::native<&isItemHovered>},
+        {"setTooltip", &lua::Binding::native<&setTooltip>},
+        {"openPopup", &lua::Binding::native<&openPopup>},
+        {"beginPopup", &lua::Binding::native<&beginPopup>},
+        {"endPopup", &lua::Binding::native<&endPopup>},
+        {"closeCurrentPopup", &lua::Binding::native<&closeCurrentPopup>},
+        {"pushId", &lua::Binding::native<&pushId>},
+        {"popId", &lua::Binding::native<&popId>},
+        {"pushFont", &lua::Binding::native<&pushFont>},
+        {"popFont", &lua::Binding::native<&popFont>},
+        {"showDemoWindow", &lua::Binding::native<&showDemoWindow>},
+        {"showMetricsWindow", &lua::Binding::native<&showMetricsWindow>},
+        {"framerate", &lua::Binding::native<&framerate>},
+        {nullptr, nullptr},
+    };
+    // clang-format on
+    lua::Binding::newModule(L, functions);
+    return 1;
+}
+
+void ImGuiBinding::install(lua_State* L) {
+    lua::Binding::preload(L, "haylen.imgui", &open);
+}
+
+} // namespace haylen::lua::ui

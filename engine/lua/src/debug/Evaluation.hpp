@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // Runs an expression or a statement that the person typed in the debugger, in a given environment, on a coroutine of its own with a time bound, so code that never ends fails instead of holding the debugger. It is the one way the debugger runs code of the app, and only when the person asks for it, such as an evaluation, the condition of a breakpoint or the message of a log point.
 class Evaluation final {
@@ -46,4 +46,4 @@ class Evaluation final {
     static Running running;
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

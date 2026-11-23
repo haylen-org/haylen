@@ -9,12 +9,12 @@
 #include "haylen/core/TweenProperty.hpp"
 #include "haylen/core/TweenTrack.hpp"
 #include "haylen/core/TweenValue.hpp"
-#include "lua/WeakReference.hpp"
+#include "runtime/WeakReference.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 // A tween track that writes fields of a Lua table or object by plain assignment: fields named by a path such as `position.x`, and pairs of number fields that together hold one `Vec2`, such as `x` and `y`. It holds the target weakly and every read and write runs in one protected call per frame.
-class ScriptedTrack final : public TweenTrack {
+class ScriptedTrack final : public haylen::core::TweenTrack {
   public:
     // The parts of a field name such as `position.x`.
     using Path = std::vector<std::string>;
@@ -22,10 +22,10 @@ class ScriptedTrack final : public TweenTrack {
     ScriptedTrack(lua_State* L, int object);
 
     // Adds a value read from and written to one field, or to two number fields that hold a `Vec2`.
-    void add(const std::vector<std::string>& names, TweenProperty property);
+    void add(const std::vector<std::string>& names, haylen::core::TweenProperty property);
 
     // Reads the current value of the fields from the target at index.
-    [[nodiscard]] static TweenValue read(lua_State* L, int object, const std::vector<Path>& paths);
+    [[nodiscard]] static haylen::core::TweenValue read(lua_State* L, int object, const std::vector<Path>& paths);
     [[nodiscard]] static std::vector<Path> split(const std::vector<std::string>& names);
 
     void begin() override;
@@ -42,14 +42,14 @@ class ScriptedTrack final : public TweenTrack {
     struct Field {
         std::vector<std::string> names;
         std::vector<Path> paths;
-        TweenProperty property;
+        haylen::core::TweenProperty property;
         bool released = false;
     };
 
     static void pushPath(lua_State* L, int object, const Path& path);
-    [[nodiscard]] static TweenValue toValue(lua_State* L, int index, const Path& path);
-    static void pushValue(lua_State* L, const TweenValue& value);
-    static void write(lua_State* L, int object, const Path& path, const TweenValue& value);
+    [[nodiscard]] static haylen::core::TweenValue toValue(lua_State* L, int index, const Path& path);
+    static void pushValue(lua_State* L, const haylen::core::TweenValue& value);
+    static void write(lua_State* L, int object, const Path& path, const haylen::core::TweenValue& value);
     static void checkIndexable(lua_State* L, int index, const Path& path);
     [[nodiscard]] static std::string join(const Path& path);
 
@@ -58,4 +58,4 @@ class ScriptedTrack final : public TweenTrack {
     std::vector<Field> fields;
 };
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

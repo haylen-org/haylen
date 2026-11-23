@@ -11,11 +11,11 @@
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/NavigationStack.hpp"
 #include "haylen/ui/Presentation.hpp"
-#include "lua/Owners.hpp"
-#include "ui/NavigationLua.hpp"
-#include "ui/UiLua.hpp"
+#include "runtime/Owners.hpp"
+#include "ui/NavigationBinding.hpp"
+#include "ui/UiBinding.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 ScriptedScreen::ScriptedScreen(lua_State* L, int index) : table(L, index) {}
 
@@ -56,7 +56,7 @@ std::shared_ptr<ScriptedScreen> ScriptedScreen::get(lua_State* L, int index) {
     return created;
 }
 
-Screen::State ScriptedScreen::findState(lua_State* L, int index) {
+haylen::ui::Screen::State ScriptedScreen::findState(lua_State* L, int index) {
     const int key = lua_absindex(L, index);
     lua::Owners::pushWeakTable(L, kScreens, "k");
     lua_pushvalue(L, key);
@@ -70,7 +70,7 @@ Screen::State ScriptedScreen::findState(lua_State* L, int index) {
     return found;
 }
 
-void ScriptedScreen::push(lua_State* L, const std::shared_ptr<Screen>& screen) {
+void ScriptedScreen::push(lua_State* L, const std::shared_ptr<haylen::ui::Screen>& screen) {
     const auto* scripted = dynamic_cast<const ScriptedScreen*>(screen.get());
     if (scripted == nullptr) {
         lua_pushnil(L);
@@ -105,8 +105,8 @@ bool ScriptedScreen::call(const char* name, const float* argument) const {
 }
 
 // The tree that `build` returns becomes the GUI of the screen, which shares the focus with the GUIs around it, such as the bars of the app.
-std::shared_ptr<Gui> ScriptedScreen::build(core::Engine&, Placement placement) {
-    std::shared_ptr<Gui> built;
+std::shared_ptr<haylen::ui::Gui> ScriptedScreen::build(haylen::core::Engine&, haylen::ui::Placement placement) {
+    std::shared_ptr<haylen::ui::Gui> built;
     // clang-format off
     lua::Runtime::protectedRun(table.getState(), [&](lua_State* L) {
         table.push(L);
@@ -121,7 +121,7 @@ std::shared_ptr<Gui> ScriptedScreen::build(core::Engine&, Placement placement) {
             luaL_error(L, "The \"build\" method of a screen must return a node table, not %s.", luaL_typename(L, -1));
         }
 
-        built = UiLua::buildGui(L, -1, placement, true);
+        built = UiBinding::buildGui(L, -1, placement, true);
         lua_setfield(L, self, "gui");
         lua_settop(L, self - 1);
     });
@@ -129,36 +129,36 @@ std::shared_ptr<Gui> ScriptedScreen::build(core::Engine&, Placement placement) {
     return built;
 }
 
-void ScriptedScreen::appear(core::Engine&) {
+void ScriptedScreen::appear(haylen::core::Engine&) {
     static_cast<void>(call("appear"));
 }
 
-void ScriptedScreen::appeared(core::Engine&) {
+void ScriptedScreen::appeared(haylen::core::Engine&) {
     static_cast<void>(call("appeared"));
 }
 
-void ScriptedScreen::disappear(core::Engine&) {
+void ScriptedScreen::disappear(haylen::core::Engine&) {
     static_cast<void>(call("disappear"));
 }
 
-void ScriptedScreen::disappeared(core::Engine&) {
+void ScriptedScreen::disappeared(haylen::core::Engine&) {
     static_cast<void>(call("disappeared"));
 }
 
-void ScriptedScreen::update(core::Engine&, float deltaSeconds) {
+void ScriptedScreen::update(haylen::core::Engine&, float deltaSeconds) {
     static_cast<void>(call("update", &deltaSeconds));
 }
 
-void ScriptedScreen::render(core::Engine&) {
+void ScriptedScreen::render(haylen::core::Engine&) {
     static_cast<void>(call("render"));
 }
 
-bool ScriptedScreen::back(core::Engine&) {
+bool ScriptedScreen::back(haylen::core::Engine&) {
     return call("back");
 }
 
 // Everything the table owns ends after its remove hook, even when the hook fails, and the table no longer names a stack or a presentation.
-void ScriptedScreen::remove(core::Engine& engine) {
+void ScriptedScreen::remove(haylen::core::Engine& engine) {
     std::exception_ptr failure;
     try {
         static_cast<void>(call("remove"));
@@ -180,17 +180,17 @@ void ScriptedScreen::remove(core::Engine& engine) {
     }
 }
 
-void ScriptedScreen::placed(core::Engine&) {
+void ScriptedScreen::placed(haylen::core::Engine&) {
     // clang-format off
     lua::Runtime::protectedRun(table.getState(), [this](lua_State* L) {
         table.push(L);
-        NavigationLua::pushStack(L, getStack());
+        NavigationBinding::pushStack(L, getStack());
         lua_setfield(L, -2, "stack");
-        NavigationLua::pushPresentation(L, getPresentation());
+        NavigationBinding::pushPresentation(L, getPresentation());
         lua_setfield(L, -2, "presentation");
         lua_pop(L, 1);
     });
     // clang-format on
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

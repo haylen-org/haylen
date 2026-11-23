@@ -1,0 +1,44 @@
+#pragma once
+
+#include <array>
+#include <string_view>
+
+struct lua_State;
+
+namespace haylen::lua::physics2d {
+
+// Installs the `Rope` and `Ragdoll` classes of `haylen.physics2d`, which build groups of bodies and joints in a world.
+class AssemblyBinding final {
+  public:
+    static void install(lua_State* L);
+
+    // Sets `newRope`, `newBridge` and `newRagdoll` on the module table at the top of the stack.
+    static void addFunctions(lua_State* L);
+
+  private:
+    static constexpr std::array<std::string_view, 17> kRopeFields{"from", "to", "segments", "thickness", "density", "friction", "linearDamping", "angularDamping", "planks", "pinStart", "pinEnd", "limitLength", "startBody", "endBody", "category", "mask", "group"};
+    static constexpr std::array<std::string_view, 11> kRagdollFields{"x", "y", "height", "density", "friction", "stiffness", "category", "mask", "group", "vx", "vy"};
+
+    static void pushWorld(lua_State* L);
+    static int createRope(lua_State* L, bool bridge);
+
+    static int newRope(lua_State* L);
+    static int newBridge(lua_State* L);
+    static int ropeBodies(lua_State* L);
+    static int ropeJoints(lua_State* L);
+    static int ropeSegments(lua_State* L);
+    static int ropePoints(lua_State* L);
+    static int ropeDestroy(lua_State* L);
+    static int ropeValid(lua_State* L);
+    static int ropeSegmentLength(lua_State* L);
+
+    static int newRagdoll(lua_State* L);
+    static int ragdollBody(lua_State* L);
+    static int ragdollBodies(lua_State* L);
+    static int ragdollJoints(lua_State* L);
+    static int ragdollDestroy(lua_State* L);
+    static int ragdollValid(lua_State* L);
+    static int ragdollMass(lua_State* L);
+};
+
+} // namespace haylen::lua::physics2d

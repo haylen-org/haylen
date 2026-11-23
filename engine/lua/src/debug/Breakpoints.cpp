@@ -5,7 +5,7 @@
 #include <map>
 #include <utility>
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 std::optional<Breakpoints::HitCondition> Breakpoints::HitCondition::parse(std::string_view text) {
     while (!text.empty() && text.front() == ' ') {
@@ -136,4 +136,4 @@ void Breakpoints::count(const File& file, int delta) {
     }
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

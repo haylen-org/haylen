@@ -6,7 +6,7 @@
 
 #include "haylen/core/Signal.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 // A signal created from Lua. Its slots receive the emitted values where they sit on the stack of the emitting thread, so an emit copies nothing.
 struct ScriptedSignal {
@@ -16,8 +16,8 @@ struct ScriptedSignal {
         int count = 0;
     };
 
-    Signal<const Arguments&> signal;
+    haylen::core::Signal<const Arguments&> signal;
     std::string name;
 };
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

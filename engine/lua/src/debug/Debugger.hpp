@@ -16,7 +16,7 @@ namespace haylen::platform {
 class DevelopmentSession;
 }
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class HaltedStack;
 
@@ -24,7 +24,7 @@ class HaltedStack;
 class Debugger final {
   public:
     // Hands a message of the protocol to the client.
-    using Send = std::function<void(const core::Json& message)>;
+    using Send = std::function<void(const haylen::core::Json& message)>;
 
     // Delivers what the client sent since the last call, through `receive`, while the app halts.
     using Pump = std::function<void()>;
@@ -36,14 +36,14 @@ class Debugger final {
     static constexpr int kThreadId = 1;
 
     // The session tells whether the frames of the host may halt and keeps the platform responsive during a halt.
-    Debugger(platform::DevelopmentSession& developmentSession, Send send, Pump pump);
+    Debugger(haylen::platform::DevelopmentSession& developmentSession, Send send, Pump pump);
     ~Debugger();
 
     Debugger(const Debugger&) = delete;
     Debugger& operator=(const Debugger&) = delete;
 
     // Queues a message of the client, which the next frame or the halt handles in order, on the frame thread.
-    void receive(core::Json message);
+    void receive(haylen::core::Json message);
 
     // Handles the requests that arrived while the app runs, at the start of a frame of the app whose Lua state is `L`.
     void update(lua_State* L);
@@ -93,31 +93,31 @@ class Debugger final {
 
     // Handles the requests of the client until it tells the halted app what to do next, and returns whether the platform released the halt instead.
     [[nodiscard]] bool waitForResume(lua_State* thread);
-    void handle(const core::Json& request, lua_State* L);
-    void dispatch(const core::Json& request, const core::Json& arguments, lua_State* L);
-    void respond(const core::Json& request, core::Json body = core::Json::object());
-    void fail(const core::Json& request, const std::string& message);
-    void sendEvent(const std::string& event, core::Json body = core::Json::object());
+    void handle(const haylen::core::Json& request, lua_State* L);
+    void dispatch(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L);
+    void respond(const haylen::core::Json& request, haylen::core::Json body = haylen::core::Json::object());
+    void fail(const haylen::core::Json& request, const std::string& message);
+    void sendEvent(const std::string& event, haylen::core::Json body = haylen::core::Json::object());
 
-    [[nodiscard]] core::Json getCapabilities() const;
-    void setBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L);
-    void setExceptionBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L);
-    void evaluate(const core::Json& request, const core::Json& arguments, lua_State* L);
-    void resume(const core::Json& request, Resume value);
-    void pause(const core::Json& request, lua_State* L);
+    [[nodiscard]] haylen::core::Json getCapabilities() const;
+    void setBreakpoints(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L);
+    void setExceptionBreakpoints(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L);
+    void evaluate(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L);
+    void resume(const haylen::core::Json& request, Resume value);
+    void pause(const haylen::core::Json& request, lua_State* L);
 
     // Reads a field of an object of a request, or an empty value or the fallback when it is missing. A field of another type than the protocol gives it throws `std::invalid_argument` with a message that names it, which fails the request.
-    [[nodiscard]] static core::Json readObject(const core::Json& object, const char* key);
-    [[nodiscard]] static core::Json readArray(const core::Json& object, const char* key);
-    [[nodiscard]] static int readInt(const core::Json& object, const char* key, int fallback);
-    [[nodiscard]] static std::string readText(const core::Json& object, const char* key);
+    [[nodiscard]] static haylen::core::Json readObject(const haylen::core::Json& object, const char* key);
+    [[nodiscard]] static haylen::core::Json readArray(const haylen::core::Json& object, const char* key);
+    [[nodiscard]] static int readInt(const haylen::core::Json& object, const char* key, int fallback);
+    [[nodiscard]] static std::string readText(const haylen::core::Json& object, const char* key);
 
-    platform::DevelopmentSession& session;
+    haylen::platform::DevelopmentSession& session;
     Send send;
     Pump pump;
     Tracer tracer{*this};
     lua_State* state = nullptr;
-    std::deque<core::Json> inbox;
+    std::deque<haylen::core::Json> inbox;
     std::int64_t sequence = 0;
     bool attached = false;
 
@@ -127,4 +127,4 @@ class Debugger final {
     Resume next = Resume::None;
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

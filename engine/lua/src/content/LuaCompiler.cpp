@@ -8,7 +8,7 @@
 
 #include "content/LuaBytecodeAbi.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 std::string LuaCompiler::getAbi() const {
     return LuaBytecodeAbi::get();
@@ -35,4 +35,4 @@ std::vector<std::uint8_t> LuaCompiler::compile(std::string_view source, std::str
     return chunk;
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

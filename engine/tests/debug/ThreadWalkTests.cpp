@@ -19,7 +19,7 @@ class ThreadWalkTest : public ::testing::Test {
     static int findFrom(lua_State* L) {
         lua_State* wanted = lua_tothread(L, 1);
         bool found = false;
-        ThreadWalk::run(L, [wanted, &found](lua_State* thread) { found = found || thread == wanted; });
+        lua::debug::ThreadWalk::run(L, [wanted, &found](lua_State* thread) { found = found || thread == wanted; });
         lua_pushboolean(L, found ? 1 : 0);
         return 1;
     }
@@ -46,7 +46,7 @@ TEST_F(ThreadWalkTest, VisitsTheCoroutinesThatTheWalkingCoroutineHolds) {
 
 // The walk holds the collector, and a failure on the way gives it back as a walk that ends does.
 TEST_F(ThreadWalkTest, RestartsTheCollectorWhenTheWalkFails) {
-    EXPECT_THROW(ThreadWalk::run(state.get(), [](lua_State*) { throw std::runtime_error("The visit failed."); }), std::runtime_error);
+    EXPECT_THROW(lua::debug::ThreadWalk::run(state.get(), [](lua_State*) { throw std::runtime_error("The visit failed."); }), std::runtime_error);
 
     EXPECT_NE(lua_gc(state.get(), LUA_GCISRUNNING), 0);
 }

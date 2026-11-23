@@ -12,7 +12,7 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
-#include "lua/Owners.hpp"
+#include "runtime/Owners.hpp"
 
 namespace haylen::lua {
 
@@ -128,7 +128,7 @@ void ModuleGraph::pushKept(lua_State* L, const std::string& key, int create) {
     try {
         const Owners::DefaultScope scope(L, owner);
         Runtime::protectedCall(L, 0, 1);
-    } catch (const core::AppError&) {
+    } catch (const haylen::core::AppError&) {
         Owners::release(L, owner);
         throw;
     }

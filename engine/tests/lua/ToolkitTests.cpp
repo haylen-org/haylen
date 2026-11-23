@@ -25,10 +25,10 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
-#include "lua/ErrorReader.hpp"
 #include "lua/Probe.hpp"
 #include "lua/ProbeLua.hpp"
-#include "lua/WeakReference.hpp"
+#include "runtime/ErrorReader.hpp"
+#include "runtime/WeakReference.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
@@ -114,7 +114,7 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
     try {
         Runtime::protectedCall(L, 0, 0);
         FAIL() << "The call should fail.";
-    } catch (const core::AppError& error) {
+    } catch (const haylen::core::AppError& error) {
         EXPECT_STREQ(error.what(), "test:1: boom");
         ASSERT_EQ(error.getFrames().size(), 2U);
         EXPECT_EQ(error.getFrames()[1].getLocation(), "test:1");
@@ -123,9 +123,9 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
 
     EXPECT_EQ(lua_gettop(L), 0);
 
-    EXPECT_THROW(Runtime::runChunk(L, "local = 1", "=broken"), core::AppError);
-    EXPECT_THROW(Runtime::runChunk(L, "\x1bLua", "=binary"), core::AppError);
-    EXPECT_THROW(Runtime::runChunk(L, "error('at run time')", "=failing"), core::AppError);
+    EXPECT_THROW(Runtime::runChunk(L, "local = 1", "=broken"), haylen::core::AppError);
+    EXPECT_THROW(Runtime::runChunk(L, "\x1bLua", "=binary"), haylen::core::AppError);
+    EXPECT_THROW(Runtime::runChunk(L, "error('at run time')", "=failing"), haylen::core::AppError);
     Runtime::runChunk(L, "ranChunk = 'yes'", "=chunk");
     EXPECT_EQ(fixture.lua("return ranChunk"), "yes");
     EXPECT_EQ(lua_gettop(L), 0);
@@ -140,8 +140,8 @@ TEST(WarningsTest, WritesTheWarningsOfLuaToTheLog) {
     test::EngineFixture fixture;
     std::vector<std::string> lines;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level level, std::string_view line) {
-        if (level == core::Log::Level::Warning) {
+    const std::uint64_t listener = haylen::core::Log::addListener([&lines](haylen::core::Log::Level level, std::string_view line) {
+        if (level == haylen::core::Log::Level::Warning) {
             lines.emplace_back(line);
         }
     });
@@ -155,7 +155,7 @@ TEST(WarningsTest, WritesTheWarningsOfLuaToTheLog) {
         warn('Shown ', 'in pieces.')
     )");
     // clang-format on
-    core::Log::removeListener(listener);
+    haylen::core::Log::removeListener(listener);
 
     ASSERT_EQ(lines.size(), 2U);
     EXPECT_NE(lines[0].find("Lua warning: error in __gc (test:2: The finalizer failed.)"), std::string::npos) << lines[0];
@@ -294,7 +294,7 @@ TEST(PromiseTest, SettlesFromNativeCodeOnAnyThread) {
     // clang-format on
     EXPECT_FALSE(loaded.isSettled());
 
-    std::thread worker([&] { loaded.resolve(core::Json{{"name", "island"}, {"size", {56, 36}}}); });
+    std::thread worker([&] { loaded.resolve(haylen::core::Json{{"name", "island"}, {"size", {56, 36}}}); });
     worker.join();
     failed.reject("The map is missing.");
     custom.resolveWith([](lua_State* state) { lua_pushinteger(state, 7); });
@@ -321,7 +321,7 @@ TEST(PromiseTest, SharesTheResolvedValueWithEveryAwait) {
         end
     )");
     // clang-format on
-    reply.resolve(core::Json(std::vector<int>(100000, 7)));
+    reply.resolve(haylen::core::Json(std::vector<int>(100000, 7)));
 
     const test::AllocationTracker tracker;
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #sizes") == "8"; }));
@@ -353,9 +353,9 @@ TEST(PromiseTest, RejectsValuesThatLuaCannotHold) {
         end)
     )");
     // clang-format on
-    deep.resolve(core::Json::parse(std::string(200, '[') + std::string(200, ']')));
-    binary.resolve(core::Json{{"payload", core::Json::binary({1, 2})}});
-    shallow.resolve(core::Json::parse(std::string(100, '[') + std::string(100, ']')));
+    deep.resolve(haylen::core::Json::parse(std::string(200, '[') + std::string(200, ']')));
+    binary.resolve(haylen::core::Json{{"payload", haylen::core::Json::binary({1, 2})}});
+    shallow.resolve(haylen::core::Json::parse(std::string(100, '[') + std::string(100, ']')));
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #results") == "3"; }));
     EXPECT_EQ(fixture.lua("return table.concat(results, ' | ')"), "JSON value is nested too deeply to push to Lua. | table | table");
 }
@@ -366,7 +366,7 @@ TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
-    const core::AppError& error = *fixture.engine().getError();
+    const haylen::core::AppError& error = *fixture.engine().getError();
     EXPECT_EQ(error.getFile(), "source/scenes/battle.lua");
     EXPECT_EQ(error.getLine(), 2);
     EXPECT_TRUE(error.getMessage().starts_with("attempt to index")) << error.getMessage();
@@ -377,15 +377,15 @@ TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
     EXPECT_EQ(error.getFrames()[0].function, "upvalue 'strike'");
     EXPECT_EQ(error.getFrames()[1].getLocation(), "source/scenes/battle.lua:5");
     EXPECT_EQ(error.getFrames()[1].function, "function <source/scenes/battle.lua:4>");
-    EXPECT_EQ(error.getFrames()[1].kind, core::AppError::Frame::Kind::Script);
+    EXPECT_EQ(error.getFrames()[1].kind, haylen::core::AppError::Frame::Kind::Script);
 
     EXPECT_EQ(error.getTraceback(), "source/scenes/battle.lua:2  upvalue 'strike'\nsource/scenes/battle.lua:5  function <source/scenes/battle.lua:4>");
     EXPECT_EQ(error.getTraceback().find('\t'), std::string::npos);
-    const core::Json json = error.toJson();
+    const haylen::core::Json json = error.toJson();
     EXPECT_EQ(json.at("line"), 2);
     EXPECT_EQ(json.at("traceback"), error.getTraceback());
     ASSERT_EQ(json.at("frames").size(), 2U);
-    EXPECT_EQ(json.at("frames")[1], (core::Json{{"source", "source/scenes/battle.lua"}, {"line", 5}, {"function", "function <source/scenes/battle.lua:4>"}, {"kind", "script"}}));
+    EXPECT_EQ(json.at("frames")[1], (haylen::core::Json{{"source", "source/scenes/battle.lua"}, {"line", 5}, {"function", "function <source/scenes/battle.lua:4>"}, {"kind", "script"}}));
 }
 
 TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
@@ -394,10 +394,10 @@ TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
-    const core::AppError& error = *fixture.engine().getError();
+    const haylen::core::AppError& error = *fixture.engine().getError();
     EXPECT_NE(error.getMessage().find("stack overflow"), std::string::npos) << error.getMessage();
     EXPECT_LE(error.getFrames().size(), 22U);
-    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const core::AppError::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
+    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const haylen::core::AppError::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
 }
 
 // Failures of tasks reach the engine with the frames of where they were raised, which Varn lists from the innermost call out.
@@ -407,14 +407,14 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
         test::EngineFixture fixture;
         fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(2) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-        const std::vector<core::AppError::Frame>& frames = fixture.engine().getError()->getFrames();
+        const std::vector<haylen::core::AppError::Frame>& frames = fixture.engine().getError()->getFrames();
         ASSERT_EQ(frames.size(), 5U);
         EXPECT_EQ(frames[0].getLocation(), "[C]");
         EXPECT_EQ(frames[0].function, "global 'error'");
-        EXPECT_EQ(frames[0].kind, core::AppError::Frame::Kind::Native);
+        EXPECT_EQ(frames[0].kind, haylen::core::AppError::Frame::Kind::Native);
         EXPECT_EQ(frames[1].getLocation(), "test:1");
         EXPECT_EQ(frames[1].function, "upvalue 'dive'");
-        EXPECT_EQ(frames[1].kind, core::AppError::Frame::Kind::Script);
+        EXPECT_EQ(frames[1].kind, haylen::core::AppError::Frame::Kind::Script);
         EXPECT_EQ(frames.back().getLocation(), "test:1");
         EXPECT_EQ(frames.back().function, "function <test:1>");
     }
@@ -424,13 +424,13 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
         test::EngineFixture fixture;
         fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(200) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-        const std::vector<core::AppError::Frame>& frames = fixture.engine().getError()->getFrames();
+        const std::vector<haylen::core::AppError::Frame>& frames = fixture.engine().getError()->getFrames();
         ASSERT_EQ(frames.size(), 64U);
         EXPECT_EQ(frames.front().function, "global 'error'");
         EXPECT_EQ(frames[31].function, "upvalue 'dive'");
         EXPECT_EQ(frames[32].getLocation(), "...");
         EXPECT_EQ(frames[32].function, "140 levels skipped");
-        EXPECT_EQ(frames[32].kind, core::AppError::Frame::Kind::Native);
+        EXPECT_EQ(frames[32].kind, haylen::core::AppError::Frame::Kind::Native);
         EXPECT_EQ(frames[33].function, "upvalue 'dive'");
         EXPECT_EQ(frames.back().function, "function <test:1>");
     }
@@ -439,38 +439,38 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
     fixture.runLua("require('async').spawn(load('error(\"chunk failure\")', '=chunk'))");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
     ASSERT_FALSE(fixture.engine().getError()->getFrames().empty());
-    EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, core::AppError::Frame::Kind::Main);
+    EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, haylen::core::AppError::Frame::Kind::Main);
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().function, "main chunk");
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().getLocation(), "chunk:1");
 }
 
 TEST(ErrorReaderTest, FindsTheScriptPositionOfErrors) {
-    const core::AppError nested = ErrorReader::read("The scene could not start: source/main.lua:12: missing sprite");
+    const haylen::core::AppError nested = ErrorReader::read("The scene could not start: source/main.lua:12: missing sprite");
     EXPECT_EQ(nested.getMessage(), "The scene could not start: source/main.lua:12: missing sprite");
     EXPECT_EQ(nested.getFile(), "source/main.lua");
     EXPECT_EQ(nested.getLine(), 12);
 
-    const core::AppError plain = ErrorReader::read("The app could not be loaded.");
+    const haylen::core::AppError plain = ErrorReader::read("The app could not be loaded.");
     EXPECT_EQ(plain.getMessage(), "The app could not be loaded.");
     EXPECT_TRUE(plain.getFile().empty());
     EXPECT_EQ(plain.getLine(), 0);
     EXPECT_TRUE(plain.getTraceback().empty());
 
-    const core::AppError huge = ErrorReader::read("source/main.lua:99999999999: a line number beyond any int");
+    const haylen::core::AppError huge = ErrorReader::read("source/main.lua:99999999999: a line number beyond any int");
     EXPECT_TRUE(huge.getFile().empty());
     EXPECT_EQ(huge.getLine(), 0);
 
     // A position further in takes the whole chunk name, and a long message without spaces is read in one pass.
-    const core::AppError later = ErrorReader::read("x.lua:1 then deep/scene.lua.lua:3: failed");
+    const haylen::core::AppError later = ErrorReader::read("x.lua:1 then deep/scene.lua.lua:3: failed");
     EXPECT_EQ(later.getFile(), "deep/scene.lua.lua");
     EXPECT_EQ(later.getLine(), 3);
     EXPECT_EQ(later.getMessage(), "x.lua:1 then deep/scene.lua.lua:3: failed");
-    const core::AppError blob = ErrorReader::read(std::string(1000000, 'a') + ".lua:5: end");
+    const haylen::core::AppError blob = ErrorReader::read(std::string(1000000, 'a') + ".lua:5: end");
     EXPECT_EQ(blob.getLine(), 5);
     EXPECT_EQ(blob.getMessage(), "end");
 
     // A message without a position points at the innermost script frame, skipping native ones.
-    const core::AppError value = ErrorReader::read("(error object is a table value)", {{.source = "[C]", .function = "global 'error'", .kind = core::AppError::Frame::Kind::Native}, {.source = "source/main.lua", .line = 7, .function = "main chunk", .kind = core::AppError::Frame::Kind::Main}});
+    const haylen::core::AppError value = ErrorReader::read("(error object is a table value)", {{.source = "[C]", .function = "global 'error'", .kind = haylen::core::AppError::Frame::Kind::Native}, {.source = "source/main.lua", .line = 7, .function = "main chunk", .kind = haylen::core::AppError::Frame::Kind::Main}});
     EXPECT_EQ(value.getFile(), "source/main.lua");
     EXPECT_EQ(value.getLine(), 7);
     EXPECT_EQ(value.getTraceback(), "[C]                global 'error'\nsource/main.lua:7  main chunk");
@@ -488,7 +488,7 @@ TEST(ErrorTest, NamesTheTypeOfErrorValuesWithoutText) {
         try {
             Runtime::protectedCall(L, 0, 0);
             ADD_FAILURE() << "The call of \"" << function << "\" should fail.";
-        } catch (const core::AppError& error) {
+        } catch (const haylen::core::AppError& error) {
             EXPECT_STREQ(error.what(), "(error object is a table value)") << function;
         }
     }
@@ -553,7 +553,7 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
     test::EngineFixture fixture;
     lua_State* L = fixture.lua();
 
-    const core::Json document = core::Json::parse(R"({"name": "island", "days": 3, "ratio": 0.5, "alive": true, "tags": ["a", "b"], "empty": [], "nested": {"deep": {"value": null}}})");
+    const haylen::core::Json document = haylen::core::Json::parse(R"({"name": "island", "days": 3, "ratio": 0.5, "alive": true, "tags": ["a", "b"], "empty": [], "nested": {"deep": {"value": null}}})");
     JsonConverter::push(L, document);
     lua_setglobal(L, "document");
     EXPECT_EQ(fixture.lua("return document.name .. document.days .. document.ratio .. tostring(document.alive)"), "island30.5true");
@@ -561,15 +561,15 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
     EXPECT_EQ(fixture.lua("return document.nested.deep.value"), "nil");
 
     // Unsigned integers beyond the Lua integers stay positive, and keys keep every byte.
-    JsonConverter::push(L, core::Json::parse(R"({"huge": 18446744073709551615, "a\u0000b": 1})"));
+    JsonConverter::push(L, haylen::core::Json::parse(R"({"huge": 18446744073709551615, "a\u0000b": 1})"));
     lua_setglobal(L, "wide");
     EXPECT_EQ(fixture.lua("return tostring(wide.huge > 0) .. ' ' .. tostring(wide['a\\0b']) .. ' ' .. tostring(wide.a)"), "true 1 nil");
 
     fixture.runLua("roundTrip ={list = {1, 2, 3}, map = {x = 1.5}, flag = false, text = 'hi', integer = 7, float = 2.0}");
     lua_getglobal(L, "roundTrip");
-    const core::Json converted = JsonConverter::read(L, -1);
+    const haylen::core::Json converted = JsonConverter::read(L, -1);
     lua_pop(L, 1);
-    EXPECT_EQ(converted.at("list"), core::Json::parse("[1, 2, 3]"));
+    EXPECT_EQ(converted.at("list"), haylen::core::Json::parse("[1, 2, 3]"));
     EXPECT_EQ(converted.at("map").at("x"), 1.5);
     EXPECT_EQ(converted.at("flag"), false);
     EXPECT_EQ(converted.at("text"), "hi");
@@ -584,11 +584,11 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
     // Arrays keep the marker of Varn's `json` module, so an empty one encodes and converts back as an array, and the markers of `json.array` and `json.object` decide the kind of a table.
     EXPECT_EQ(fixture.lua("return require('json').encode(document.empty) .. require('json').encode(document.tags)"), R"([]["a","b"])");
     lua_getglobal(L, "document");
-    EXPECT_EQ(JsonConverter::read(L, -1).at("empty"), core::Json::array());
+    EXPECT_EQ(JsonConverter::read(L, -1).at("empty"), haylen::core::Json::array());
     lua_pop(L, 1);
     fixture.runLua("marked = {list = require('json').array(), map = require('json').object({1, 2})}");
     lua_getglobal(L, "marked");
-    EXPECT_EQ(JsonConverter::read(L, -1), core::Json::parse(R"({"list": [], "map": {"1": 1, "2": 2}})"));
+    EXPECT_EQ(JsonConverter::read(L, -1), haylen::core::Json::parse(R"({"list": [], "map": {"1": 1, "2": 2}})"));
     lua_pop(L, 1);
 
     fixture.runLua("sparse = {[1] = 'a', [3] = 'c'}");
@@ -598,7 +598,7 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
 
     fixture.runLua("mixed = {1, 2, name = 'three'}");
     lua_getglobal(L, "mixed");
-    EXPECT_EQ(JsonConverter::read(L, -1), core::Json::parse(R"({"1": 1, "2": 2, "name": "three"})"));
+    EXPECT_EQ(JsonConverter::read(L, -1), haylen::core::Json::parse(R"({"1": 1, "2": 2, "name": "three"})"));
     lua_pop(L, 1);
 
     fixture.runLua("counted = setmetatable({}, {__len = function() error('never called') end})");
@@ -612,13 +612,13 @@ TEST(JsonConverterTest, ConvertsBetweenTablesAndJson) {
         lua_settop(L, 0);
     }
 
-    JsonConverter::push(L, core::Json::binary({1, 2}));
+    JsonConverter::push(L, haylen::core::Json::binary({1, 2}));
     std::size_t length = 0;
     const char* text = lua_tolstring(L, -1, &length);
     EXPECT_EQ(std::string_view(text, length), std::string_view("\x01\x02", 2));
     lua_settop(L, 0);
 
-    const auto nested = [](int levels) { return core::Json::parse(std::string(static_cast<std::size_t>(levels), '[') + std::string(static_cast<std::size_t>(levels), ']')); };
+    const auto nested = [](int levels) { return haylen::core::Json::parse(std::string(static_cast<std::size_t>(levels), '[') + std::string(static_cast<std::size_t>(levels), ']')); };
     JsonConverter::push(L, nested(100));
     lua_settop(L, 0);
     EXPECT_THROW(JsonConverter::push(L, nested(100000)), std::invalid_argument);
@@ -679,7 +679,7 @@ TEST(TableTest, ChecksTheKeysAndValuesOfAnOptionTable) {
         static constexpr std::array<std::string_view, 2> kFields{"name", "data"};
         Table::checkFields(state, 1, {kFields});
         std::string name = "none";
-        core::Json data;
+        haylen::core::Json data;
         Table::readField(state, 1, "name", name);
         Table::readField(state, 1, "data", data);
         lua_pushfstring(state, "%s %s", name.c_str(), data.dump().c_str());
@@ -757,9 +757,9 @@ TEST(ClassBuilderTest, RecordsTheNativePropertiesThatTweensAnimate) {
 
     NativeProperty::Values values{0.25F, 0.5F, 0.75F, 1.0F};
     ASSERT_TRUE(tint->write(storage, values));
-    EXPECT_EQ(probe->tint, (math::Color{0.25F, 0.5F, 0.75F, 1.0F}));
+    EXPECT_EQ(probe->tint, (haylen::math::Color{0.25F, 0.5F, 0.75F, 1.0F}));
     ASSERT_TRUE(position->write(storage, values));
-    EXPECT_EQ(probe->position, (math::Vec2{0.25F, 0.5F}));
+    EXPECT_EQ(probe->position, (haylen::math::Vec2{0.25F, 0.5F}));
 
     // The userdata of a released object stays, and its properties no longer reach the object.
     static_cast<std::shared_ptr<Probe>*>(storage)->reset();
@@ -794,7 +794,7 @@ TEST(ConverterTest, RefusesNumbersPastTheRangeOfFloats) {
         return 1;
     };
     constexpr lua_CFunction readPoint = [](lua_State* state) -> int {
-        Stack::push(state, Stack::read<math::Vec2>(state, 1).x);
+        Stack::push(state, Stack::read<haylen::math::Vec2>(state, 1).x);
         return 1;
     };
     // clang-format on
@@ -844,8 +844,8 @@ TEST(ConverterTest, TellsWhichValuesEachConverterReads) {
     lua_pushliteral(L, "#FF8000");
     lua_pushnumber(L, 2.5);
     lua_newtable(L);
-    Stack::push(L, math::Rect{1.0F, 2.0F, 3.0F, 4.0F});
-    Stack::push(L, core::Json{{"days", 3}});
+    Stack::push(L, haylen::math::Rect{1.0F, 2.0F, 3.0F, 4.0F});
+    Stack::push(L, haylen::core::Json{{"days", 3}});
 
     EXPECT_TRUE(Stack::is<bool>(L, flag));
     EXPECT_FALSE(Stack::is<bool>(L, number));
@@ -853,27 +853,27 @@ TEST(ConverterTest, TellsWhichValuesEachConverterReads) {
     EXPECT_FALSE(Stack::is<std::string>(L, number));
     EXPECT_TRUE(Stack::is<std::string_view>(L, hex));
     EXPECT_FALSE(Stack::is<std::string_view>(L, table));
-    EXPECT_TRUE(Stack::is<math::Rect>(L, rect));
-    EXPECT_TRUE(Stack::is<math::Rect>(L, table));
-    EXPECT_FALSE(Stack::is<math::Rect>(L, hex));
-    EXPECT_TRUE(Stack::is<math::Color>(L, hex));
-    EXPECT_TRUE(Stack::is<math::Color>(L, table));
-    EXPECT_FALSE(Stack::is<math::Color>(L, rect));
-    EXPECT_TRUE(Stack::is<core::Json>(L, number));
-    EXPECT_FALSE(Stack::is<core::Json>(L, none));
+    EXPECT_TRUE(Stack::is<haylen::math::Rect>(L, rect));
+    EXPECT_TRUE(Stack::is<haylen::math::Rect>(L, table));
+    EXPECT_FALSE(Stack::is<haylen::math::Rect>(L, hex));
+    EXPECT_TRUE(Stack::is<haylen::math::Color>(L, hex));
+    EXPECT_TRUE(Stack::is<haylen::math::Color>(L, table));
+    EXPECT_FALSE(Stack::is<haylen::math::Color>(L, rect));
+    EXPECT_TRUE(Stack::is<haylen::core::Json>(L, number));
+    EXPECT_FALSE(Stack::is<haylen::core::Json>(L, none));
     EXPECT_TRUE(Stack::is<std::optional<bool>>(L, none));
     EXPECT_FALSE(Stack::is<std::optional<bool>>(L, hex));
-    EXPECT_EQ(Stack::read<core::Json>(L, json), (core::Json{{"days", 3}}));
+    EXPECT_EQ(Stack::read<haylen::core::Json>(L, json), (haylen::core::Json{{"days", 3}}));
     lua_settop(L, flag - 1);
 }
 
 // Every value of the enums that cross the Lua boundary has a name that reads back as the same value.
 TEST(ConverterTest, NamesEveryValueOfTheEnumsOfTheEngine) {
     // clang-format off
-    const auto namesEveryValue = []<core::NamedEnum Enum>(Enum last) {
+    const auto namesEveryValue = []<haylen::core::NamedEnum Enum>(Enum last) {
         for (int value = 0; value <= static_cast<int>(last); ++value) {
             const auto original = static_cast<Enum>(value);
-            if (core::EnumNames<Enum>::name(original).empty() || core::EnumNames<Enum>::fromName(core::EnumNames<Enum>::name(original)) != original) {
+            if (haylen::core::EnumNames<Enum>::name(original).empty() || haylen::core::EnumNames<Enum>::fromName(haylen::core::EnumNames<Enum>::name(original)) != original) {
                 return false;
             }
         }
@@ -881,18 +881,18 @@ TEST(ConverterTest, NamesEveryValueOfTheEnumsOfTheEngine) {
         return true;
     };
     // clang-format on
-    EXPECT_TRUE(namesEveryValue(graphics2d::Renderer::SortMode::Y));
-    EXPECT_TRUE(namesEveryValue(graphics2d::ImageBlend::Pattern::PageTurn));
-    EXPECT_TRUE(namesEveryValue(graphics2d::SceneTransition::Kind::Pixelate));
-    EXPECT_TRUE(namesEveryValue(graphics2d::SceneTransition::Direction::DownRight));
-    EXPECT_TRUE(namesEveryValue(platform::Window::Cursor::NotAllowed));
-    EXPECT_TRUE(namesEveryValue(platform::Window::Passthrough::Regions));
-    EXPECT_TRUE(namesEveryValue(input::InputDevice::Gamepad));
-    EXPECT_TRUE(namesEveryValue(input::TouchPhase::Cancelled));
-    EXPECT_TRUE(namesEveryValue(input::GamepadButton::DpadRight));
-    EXPECT_TRUE(namesEveryValue(input::GamepadAxis::RightTrigger));
-    EXPECT_TRUE(namesEveryValue(platform::Event::Type::DisplaysChanged));
-    EXPECT_TRUE(namesEveryValue(platform::TextInput::Action::Dismissed));
+    EXPECT_TRUE(namesEveryValue(haylen::graphics2d::Renderer::SortMode::Y));
+    EXPECT_TRUE(namesEveryValue(haylen::graphics2d::ImageBlend::Pattern::PageTurn));
+    EXPECT_TRUE(namesEveryValue(haylen::graphics2d::SceneTransition::Kind::Pixelate));
+    EXPECT_TRUE(namesEveryValue(haylen::graphics2d::SceneTransition::Direction::DownRight));
+    EXPECT_TRUE(namesEveryValue(haylen::platform::Window::Cursor::NotAllowed));
+    EXPECT_TRUE(namesEveryValue(haylen::platform::Window::Passthrough::Regions));
+    EXPECT_TRUE(namesEveryValue(haylen::input::InputDevice::Gamepad));
+    EXPECT_TRUE(namesEveryValue(haylen::input::TouchPhase::Cancelled));
+    EXPECT_TRUE(namesEveryValue(haylen::input::GamepadButton::DpadRight));
+    EXPECT_TRUE(namesEveryValue(haylen::input::GamepadAxis::RightTrigger));
+    EXPECT_TRUE(namesEveryValue(haylen::platform::Event::Type::DisplaysChanged));
+    EXPECT_TRUE(namesEveryValue(haylen::platform::TextInput::Action::Dismissed));
 }
 
 TEST(WeakReferenceTest, RefersOnlyToTablesAndUserdata) {

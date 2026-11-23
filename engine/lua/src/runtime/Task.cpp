@@ -1,0 +1,147 @@
+#include "runtime/Task.hpp"
+
+#include <exception>
+#include <new>
+#include <stdexcept>
+#include <utility>
+
+#include "haylen/lua/Promise.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Userdata.hpp"
+#include "runtime/ErrorReader.hpp"
+#include "runtime/Owners.hpp"
+#include "runtime/StackScope.hpp"
+#include "varn/async/Promise.h"
+
+namespace haylen::lua {
+
+Task::Task(lua_State* L, Completion onFinish) : main(Runtime::getMainThread(L)), completion(std::move(onFinish)) {}
+
+// A task that still holds its coroutine when it is destroyed only goes away with the Lua state, which drops the coroutine itself.
+Task::~Task() = default;
+
+std::shared_ptr<Task> Task::start(lua_State* L, int function, int arguments, int owner, Completion onFinish) {
+    luaL_checktype(L, function, LUA_TFUNCTION);
+    auto task = std::make_shared<Task>(L, std::move(onFinish));
+    if (owner != 0) {
+        Owners::addTask(L, owner, task);
+    }
+
+    task->run(L, function, arguments);
+    return task;
+}
+
+// The coroutine also stays on the stack of the caller until its first run returns, so a collection while the task cancels itself, which lets go of its reference, never takes the running coroutine.
+void Task::run(lua_State* L, int function, int arguments) {
+    const int first = lua_absindex(L, function);
+    const StackScope scope(L);
+    thread = lua_newthread(L);
+    if (lua_checkstack(L, arguments + 2) == 0 || lua_checkstack(thread, arguments + 2) == 0) {
+        throw std::runtime_error("A task cannot start with that many arguments.");
+    }
+
+    lua_pushvalue(L, -1);
+    threadReference = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // The body holds the task, so the task lives for as long as its coroutine may still run.
+    if (Userdata::newMetatable(thread, kHolderType)) {
+        lua_pushcfunction(thread, &collectHolder);
+        lua_setfield(thread, -2, "__gc");
+    }
+
+    lua_pop(thread, 1);
+    new (lua_newuserdatauv(thread, sizeof(std::shared_ptr<Task>), 0)) std::shared_ptr<Task>(shared_from_this());
+    luaL_setmetatable(thread, kHolderType);
+    lua_pushcclosure(thread, &body, 1);
+
+    for (int index = 0; index <= arguments; ++index) {
+        lua_pushvalue(L, first + index);
+    }
+
+    lua_xmove(L, thread, arguments + 1);
+
+    // The body catches every error of the function, so only a failure of the coroutine itself, such as running out of memory, ends the resume here.
+    int results = 0;
+    const int status = lua_resume(thread, L, arguments + 1, &results);
+    if (status != LUA_OK && status != LUA_YIELD) {
+        finish(Runtime::readError(thread, -1));
+    }
+}
+
+int Task::body(lua_State* L) {
+    const int arguments = lua_gettop(L) - 1;
+    lua_pushcfunction(L, &Runtime::handleMessage);
+    lua_insert(L, 1);
+    const int status = lua_pcallk(L, arguments, LUA_MULTRET, 1, kCalled, &continueBody);
+    return continueBody(L, status, kCalled);
+}
+
+// Runs when the function returned or failed, possibly after waiting, and again once a promise it returned settled.
+int Task::continueBody(lua_State* L, int status, lua_KContext context) {
+    Task& task = **static_cast<std::shared_ptr<Task>*>(lua_touserdata(L, lua_upvalueindex(1)));
+    if (status != LUA_OK && status != LUA_YIELD) {
+        task.finish(Runtime::readError(L, -1));
+        return 0;
+    }
+
+    if (context == kCalled && lua_gettop(L) >= 2 && Promise::isPromise(L, 2)) {
+        lua_getfield(L, 2, "await");
+        lua_pushvalue(L, 2);
+        lua_callk(L, 1, 2, kAwaited, &continueBody);
+        return continueBody(L, LUA_OK, kAwaited);
+    }
+
+    if (context == kAwaited && !lua_isnil(L, -1)) {
+        task.finish(ErrorReader::read(Runtime::describeValue(L, -1)));
+        return 0;
+    }
+
+    task.finish(std::nullopt);
+    return 0;
+}
+
+int Task::collectHolder(lua_State* L) {
+    static_cast<std::shared_ptr<Task>*>(lua_touserdata(L, 1))->~shared_ptr();
+    lua_pushnil(L);
+    lua_setmetatable(L, 1);
+    return 0;
+}
+
+// A task cancelled while its own code ran goes on to its next wait, so an error of that code still reaches the completion, and only its normal end goes unreported.
+void Task::finish(const std::optional<haylen::core::AppError>& error) {
+    finished = true;
+    release();
+
+    if (!completion || (cancelled && !error)) {
+        return;
+    }
+
+    try {
+        completion(error);
+    } catch (const std::exception& exception) {
+        Runtime::reportError(main, exception);
+    }
+}
+
+void Task::cancel() {
+    if (!isRunning()) {
+        return;
+    }
+
+    cancelled = true;
+    lua_rawgeti(main, LUA_REGISTRYINDEX, threadReference);
+    varn::async::Promise::cancelTask(main, -1);
+    lua_pop(main, 1);
+    release();
+}
+
+void Task::release() noexcept {
+    if (threadReference == LUA_NOREF) {
+        return;
+    }
+
+    luaL_unref(main, LUA_REGISTRYINDEX, threadReference);
+    threadReference = LUA_NOREF;
+}
+
+} // namespace haylen::lua

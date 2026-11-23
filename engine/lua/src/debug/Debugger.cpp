@@ -15,9 +15,9 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/DevelopmentSession.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
-Debugger::Debugger(platform::DevelopmentSession& developmentSession, Send sender, Pump pumper) : session(developmentSession), send(std::move(sender)), pump(std::move(pumper)) {}
+Debugger::Debugger(haylen::platform::DevelopmentSession& developmentSession, Send sender, Pump pumper) : session(developmentSession), send(std::move(sender)), pump(std::move(pumper)) {}
 
 Debugger::~Debugger() = default;
 
@@ -41,12 +41,12 @@ void Debugger::detach() noexcept {
 }
 
 // A message that is no request of the protocol reaches nothing, since the client only ever sends requests.
-void Debugger::receive(core::Json message) {
+void Debugger::receive(haylen::core::Json message) {
     const bool request = message.is_object() && message.contains("type") && message.at("type") == "request";
     const bool named = request && message.contains("command") && message.at("command").is_string();
     const bool numbered = request && (!message.contains("seq") || message.at("seq").is_number_integer());
     if (!named || !numbered) {
-        core::Log::warning("The debugger received a message that is no request of the Debug Adapter Protocol.");
+        haylen::core::Log::warning("The debugger received a message that is no request of the Debug Adapter Protocol.");
         return;
     }
 
@@ -57,7 +57,7 @@ void Debugger::update(lua_State* L) {
     tracer.beginFrame();
 
     while (!inbox.empty()) {
-        const core::Json request = std::move(inbox.front());
+        const haylen::core::Json request = std::move(inbox.front());
         inbox.pop_front();
         handle(request, L);
     }
@@ -103,7 +103,7 @@ bool Debugger::halt(const Tracer::Halt& value) {
     stack = std::make_unique<HaltedStack>(value.thread, value.level);
     next = Resume::None;
 
-    core::Json body{{"reason", Tracer::kReasonNames[static_cast<std::size_t>(value.reason)]}, {"threadId", kThreadId}, {"allThreadsStopped", true}};
+    haylen::core::Json body{{"reason", Tracer::kReasonNames[static_cast<std::size_t>(value.reason)]}, {"threadId", kThreadId}, {"allThreadsStopped", true}};
     if (!value.text.empty()) {
         body["text"] = value.text;
         body["description"] = value.text;
@@ -149,7 +149,7 @@ bool Debugger::waitForResume(lua_State* thread) {
         pump();
 
         while (!inbox.empty() && next == Resume::None) {
-            const core::Json request = std::move(inbox.front());
+            const haylen::core::Json request = std::move(inbox.front());
             inbox.pop_front();
             handle(request, thread);
         }
@@ -163,16 +163,16 @@ bool Debugger::waitForResume(lua_State* thread) {
 }
 
 // A request whose fields have other types than the protocol gives them fails with a message that names the field, and nothing of it takes effect.
-void Debugger::handle(const core::Json& request, lua_State* L) {
+void Debugger::handle(const haylen::core::Json& request, lua_State* L) {
     try {
-        const core::Json arguments = readObject(request, "arguments");
+        const haylen::core::Json arguments = readObject(request, "arguments");
         dispatch(request, arguments, L);
     } catch (const std::invalid_argument& error) {
         fail(request, error.what());
     }
 }
 
-void Debugger::dispatch(const core::Json& request, const core::Json& arguments, lua_State* L) {
+void Debugger::dispatch(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L) {
     const std::string command = request.at("command").get<std::string>();
     if (command == "initialize") {
         respond(request, getCapabilities());
@@ -201,7 +201,7 @@ void Debugger::dispatch(const core::Json& request, const core::Json& arguments, 
 
         respond(request, stack->getFrames(readInt(arguments, "startFrame", 0), readInt(arguments, "levels", 0)));
     } else if (command == "scopes" || command == "variables") {
-        core::Json body;
+        haylen::core::Json body;
         if (isHalted()) {
             body = command == "scopes" ? stack->getScopes(readInt(arguments, "frameId", 0)) : stack->getVariables(readInt(arguments, "variablesReference", 0), readInt(arguments, "start", 0), readInt(arguments, "count", 0));
         }
@@ -230,9 +230,9 @@ void Debugger::dispatch(const core::Json& request, const core::Json& arguments, 
 }
 
 // A page of the web runs the app on the thread that delivers every message, so it cannot halt, and only log points and the errors it reports work there.
-core::Json Debugger::getCapabilities() const {
+haylen::core::Json Debugger::getCapabilities() const {
     const bool halts = session.canHaltFrames();
-    core::Json filters = core::Json::array();
+    haylen::core::Json filters = haylen::core::Json::array();
     if (halts) {
         filters.push_back({{"filter", kErrorFilter}, {"label", "Uncaught errors"}, {"description", "Halts where an error rises that no pcall or xpcall of the app catches, before its stack unwinds."}, {"default", true}});
     }
@@ -241,7 +241,7 @@ core::Json Debugger::getCapabilities() const {
 }
 
 // The development server turns the paths of the client into package paths, such as `source/main.lua`, which name the chunks of the app.
-void Debugger::setBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L) {
+void Debugger::setBreakpoints(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L) {
     const std::string path = readText(readObject(arguments, "source"), "path");
     if (path.empty()) {
         fail(request, "The breakpoints name no source path.");
@@ -251,9 +251,9 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
     const bool halts = session.canHaltFrames();
     std::vector<Breakpoints::Request> requests;
     std::vector<std::size_t> kept;
-    const core::Json asked = readArray(arguments, "breakpoints");
+    const haylen::core::Json asked = readArray(arguments, "breakpoints");
     for (std::size_t index = 0; index < asked.size(); ++index) {
-        const core::Json& item = asked[index];
+        const haylen::core::Json& item = asked[index];
         if (!item.is_object()) {
             throw std::invalid_argument("Every item of the field \"breakpoints\" of the request must be an object.");
         }
@@ -268,12 +268,12 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
     }
 
     const std::vector<Breakpoints::Result> results = tracer.getBreakpoints().set(path, requests);
-    core::Json breakpoints = core::Json::array();
+    haylen::core::Json breakpoints = haylen::core::Json::array();
     std::size_t position = 0;
     for (std::size_t index = 0; index < asked.size(); ++index) {
         if (position < kept.size() && kept[position] == index) {
             const Breakpoints::Result& result = results[position++];
-            core::Json item{{"id", result.id}, {"line", result.line}, {"verified", result.verified}};
+            haylen::core::Json item{{"id", result.id}, {"line", result.line}, {"verified", result.verified}};
             if (!result.message.empty()) {
                 item["message"] = result.message;
             }
@@ -292,9 +292,9 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
     respond(request, {{"breakpoints", std::move(breakpoints)}});
 }
 
-void Debugger::setExceptionBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L) {
-    const core::Json filters = readArray(arguments, "filters");
-    tracer.setErrorsWatched(session.canHaltFrames() && std::find(filters.begin(), filters.end(), core::Json(kErrorFilter)) != filters.end());
+void Debugger::setExceptionBreakpoints(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L) {
+    const haylen::core::Json filters = readArray(arguments, "filters");
+    tracer.setErrorsWatched(session.canHaltFrames() && std::find(filters.begin(), filters.end(), haylen::core::Json(kErrorFilter)) != filters.end());
     if (state != nullptr) {
         tracer.refresh(L);
     }
@@ -303,7 +303,7 @@ void Debugger::setExceptionBreakpoints(const core::Json& request, const core::Js
 }
 
 // An evaluation while the app runs sees the globals, and one in a frame of a halt sees that frame. Values that hold more values open in the client only during a halt, whose view keeps them.
-void Debugger::evaluate(const core::Json& request, const core::Json& arguments, lua_State* L) {
+void Debugger::evaluate(const haylen::core::Json& request, const haylen::core::Json& arguments, lua_State* L) {
     if (state == nullptr) {
         fail(request, "No app runs, so nothing can be evaluated.");
         return;
@@ -328,11 +328,11 @@ void Debugger::evaluate(const core::Json& request, const core::Json& arguments, 
         return;
     }
 
-    core::Json body{{"result", ""}, {"variablesReference", 0}};
+    haylen::core::Json body{{"result", ""}, {"variablesReference", 0}};
     for (int index = 0; index < result.count; ++index) {
         const int value = lua_gettop(L) - result.count + 1 + index;
         if (result.count == 1 && isHalted()) {
-            const core::Json variable = stack->describe("", value);
+            const haylen::core::Json variable = stack->describe("", value);
             body = {{"result", variable.at("value")}, {"type", variable.at("type")}, {"variablesReference", variable.at("variablesReference")}};
             break;
         }
@@ -344,7 +344,7 @@ void Debugger::evaluate(const core::Json& request, const core::Json& arguments, 
     respond(request, std::move(body));
 }
 
-void Debugger::resume(const core::Json& request, Resume value) {
+void Debugger::resume(const haylen::core::Json& request, Resume value) {
     if (!isHalted()) {
         if (value == Resume::Continue) {
             respond(request, {{"allThreadsContinued", true}});
@@ -356,11 +356,11 @@ void Debugger::resume(const core::Json& request, Resume value) {
     }
 
     next = value;
-    respond(request, value == Resume::Continue ? core::Json{{"allThreadsContinued", true}} : core::Json::object());
+    respond(request, value == Resume::Continue ? haylen::core::Json{{"allThreadsContinued", true}} : haylen::core::Json::object());
 }
 
 // A pause halts at the next line of the app that runs, in any coroutine.
-void Debugger::pause(const core::Json& request, lua_State* L) {
+void Debugger::pause(const haylen::core::Json& request, lua_State* L) {
     if (!session.canHaltFrames()) {
         fail(request, "A web page cannot halt, since it runs the app on the thread that delivers every message.");
         return;
@@ -376,22 +376,22 @@ void Debugger::pause(const core::Json& request, lua_State* L) {
     respond(request);
 }
 
-void Debugger::respond(const core::Json& request, core::Json body) {
+void Debugger::respond(const haylen::core::Json& request, haylen::core::Json body) {
     send({{"seq", ++sequence}, {"type", "response"}, {"request_seq", request.value("seq", 0)}, {"success", true}, {"command", request.at("command")}, {"body", std::move(body)}});
 }
 
-void Debugger::fail(const core::Json& request, const std::string& message) {
+void Debugger::fail(const haylen::core::Json& request, const std::string& message) {
     send({{"seq", ++sequence}, {"type", "response"}, {"request_seq", request.value("seq", 0)}, {"success", false}, {"command", request.at("command")}, {"message", message}, {"body", {{"error", {{"id", 1}, {"format", message}}}}}});
 }
 
-void Debugger::sendEvent(const std::string& event, core::Json body) {
+void Debugger::sendEvent(const std::string& event, haylen::core::Json body) {
     send({{"seq", ++sequence}, {"type", "event"}, {"event", event}, {"body", std::move(body)}});
 }
 
-core::Json Debugger::readObject(const core::Json& object, const char* key) {
+haylen::core::Json Debugger::readObject(const haylen::core::Json& object, const char* key) {
     const auto found = object.find(key);
     if (found == object.end()) {
-        return core::Json::object();
+        return haylen::core::Json::object();
     }
 
     if (!found->is_object()) {
@@ -401,10 +401,10 @@ core::Json Debugger::readObject(const core::Json& object, const char* key) {
     return *found;
 }
 
-core::Json Debugger::readArray(const core::Json& object, const char* key) {
+haylen::core::Json Debugger::readArray(const haylen::core::Json& object, const char* key) {
     const auto found = object.find(key);
     if (found == object.end()) {
-        return core::Json::array();
+        return haylen::core::Json::array();
     }
 
     if (!found->is_array()) {
@@ -414,7 +414,7 @@ core::Json Debugger::readArray(const core::Json& object, const char* key) {
     return *found;
 }
 
-int Debugger::readInt(const core::Json& object, const char* key, int fallback) {
+int Debugger::readInt(const haylen::core::Json& object, const char* key, int fallback) {
     const auto found = object.find(key);
     if (found == object.end()) {
         return fallback;
@@ -428,7 +428,7 @@ int Debugger::readInt(const core::Json& object, const char* key, int fallback) {
     return found->get<int>();
 }
 
-std::string Debugger::readText(const core::Json& object, const char* key) {
+std::string Debugger::readText(const haylen::core::Json& object, const char* key) {
     const auto found = object.find(key);
     if (found == object.end()) {
         return {};
@@ -441,4 +441,4 @@ std::string Debugger::readText(const core::Json& object, const char* key) {
     return found->get<std::string>();
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

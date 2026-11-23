@@ -8,18 +8,19 @@ The folder `engine/` is a CMake project of its own. It builds these targets, and
 
 | Target | Alias | What it is |
 | --- | --- | --- |
-| `haylen-engine` | `haylen::engine` | The static library with the whole C++ API and every Lua binding. It draws through `gpu::Device` and reaches the platform through `platform::Host`. It never includes SDL or a graphics API and never calls the APIs of the operating system. Of the content format it holds only the reading side, which opens, verifies, decrypts, decodes and downloads releases. |
+| `haylen-engine` | `haylen::engine` | The static library with the whole C++ API, the core of the engine, which holds nothing of Lua. It draws through `gpu::Device` and reaches the platform through `platform::Host`. It never includes SDL or a graphics API and never calls the APIs of the operating system. Of the content format it holds only the reading side, which opens, verifies, decrypts, decodes and downloads releases. |
 | `haylen-content-writer` | | The static library with the writing side of the content format: `ContentBuilder`, `ReleaseBuilder`, `ShardWriter`, `CatalogWriter`, `ManifestWriter`, `ChannelWriter`, `RecordSealer`, `Compressor`, `Chunker`, `RecordCache` and `SigningKey`, with the modules of the scripts compiled by the `content::ModuleCompiler` that it receives. Apps never link it. The content tool, the tests, the fuzzers and the content benchmark link it, and it builds only for them. |
 | `haylen-platform` | `haylen::platform` | The static library with the parts of the runtime that compile on every platform: the keyboard translator, the gamepad slots, the memory warning flag, the state that the platform reported last, and the readers of the platform folders that need no platform. Since they compile everywhere, every host tests them. The runtime and the tests link it. |
 | `haylen-gpu` | `haylen::gpu` | The static library with `gpu::DeviceFactory` and the GPU device of every graphics API that `HAYLEN_GRAPHICS_APIS` names, each in its folder under `engine/src/gpu`, such as `vulkan`, whose `device.cmake` adds it to the library. The runtime and the GPU tests link it, and the SDK merges it into the runtime. |
 | `haylen-runtime` | `haylen::runtime` | The object library that turns the engine into an app. It holds `platform::Player`, `platform::NativeHost`, the services of one platform folder, which CMake picks when it configures the build, and the [platform layer](#layers), which opens the window, runs the frames, reads the input and holds the entry point. The [SDL platform layer](#the-sdl-platform-layer) runs every platform but Android, with the entry point `main` on Linux, `WinMain` on Windows and `haylen_main` on Apple platforms. The web enters through `main` of `platform::WebMain`, which runs the SDL platform layer on the page and the [worker layer](#the-worker-layer) in the Worker mode. Android runs on the [Android runtime](#the-android-runtime) of its platform folder, whose entry point is `GameActivity_onCreate`, and a [port](../platform/ports.md) brings the runtime of its own platform. |
-| `haylen-headless-host` | `haylen::headless` | The object library with the headless host, a host without a window or a GPU. The tests, the headless player, the benchmarks and the content tool use it. It holds the null GPU device `gpu::NullDevice` that the host draws through, and `HeadlessPlayer`, which runs an app package on it. Only desktop platforms build it. |
-| `haylen-player` | `haylen::player` | The object library of the Lua player, `engine/src/platform/LuaPlayer.cpp`, which defines the app of every Lua app. Lua apps and the player executable link it next to the runtime, and C++ apps never do, so every app defines `core::Application::create` once. The SDK installs it as the object `haylen-player`. |
+| `haylen-lua` | `haylen::lua` | The static library of the Lua layer, in `engine/lua/`: the public toolkit of bindings in `engine/lua/include/haylen/lua/`, the binding of every context, the Lua modules, the runtime of the scripts of an app and the Lua development tools. It links the engine and the Lua runtime of Varn and reaches the engine only through its public C++ API, so an app without Lua never links it. |
+| `haylen-headless-host` | `haylen::headless` | The object library with the headless host, a host without a window or a GPU. The tests, the headless player, the benchmarks and the content tool use it. It holds the null GPU device `gpu::NullDevice` that the host draws through. Only desktop platforms build it. |
+| `haylen-player` | `haylen::player` | The object library of the Lua player, `engine/lua/src/player/LuaPlayer.cpp`, which defines the app of every Lua app and links the Lua layer. Lua apps, the player executable and the headless player link it next to the runtime, and C++ apps never do, so every app defines `core::Application::create` once. The SDK installs it as the object `haylen-player`. |
 | `haylen` | | The player executable. It links the runtime with `haylen::player` and runs any app package. |
-| `haylen-headless` | | The headless player. Its entry point `engine/src/platform/headless/HeadlessMain.cpp` runs `HeadlessPlayer` on any app package, for automatic runs. It builds with the player on desktop platforms. |
+| `haylen-headless` | | The headless player. Its entry point `engine/src/platform/headless/HeadlessMain.cpp` runs `HeadlessPlayer`, which plays any app package on the headless host with the app that `core::Application::create` makes, here the one of `haylen::player`, for automatic runs. It builds with the player on desktop platforms. |
 | `haylen_add_app` | | The CMake function that builds the binary of an app for the current platform, from the content that the tooling prepares, as the [embedding guide](../tools/embedding.md#haylen_add_app) describes. |
 
-Every app defines the static function `haylen::core::Application::create()`, which `haylen/core/Application.hpp` declares, exactly once. In `LuaPlayer.cpp`, the object of `haylen::player`, it returns a `lua::Application`, which runs `source/main.lua`. A C++ app returns its own `core::Application` from its sources and never links the player.
+Every app defines the static function `haylen::core::Application::create()`, which `haylen/core/Application.hpp` declares, exactly once. In `engine/lua/src/player/LuaPlayer.cpp`, the object of `haylen::player`, it returns a `lua::Application`, which runs `source/main.lua`. A C++ app returns its own `core::Application` from its sources and never links the player.
 
 ## Source layout
 
@@ -61,17 +62,16 @@ This table names the main classes of each folder. The headers of a folder list a
 | `2d/spatial` | The spatial structures `HashGrid`, `QuadTree`, `AabbTree`, `KdTree` and `OverlapWorld`, `ScreenPicker`, and the grid algorithms `CellGrid`, `GridRay`, `Bresenham`, `FieldOfView`, `VisibilityPolygon`, `FloodFill`, `ConnectedComponents` and `UnionFind`. |
 | `2d/procedural` | `Scatter` over a `Region`, `CellularAutomaton`, `DrunkardWalk`, `Dungeon`, `Maze`, `WaveFunctionCollapse`, `Delaunay`, `Voronoi` and `Autotile`. |
 
-Lua bindings sit next to the module they bind, such as `engine/src/2d/physics/Physics2DLua.cpp`. Plugins that apps construct or reference have public headers in `engine/include/haylen/plugins/`, such as `UiPlugin.hpp`. The other plugins keep their headers in `engine/src/plugins/`, such as `AudioPlugin.hpp`.
+The Lua layer lives in `engine/lua/` with folders that mirror the contexts of `engine/src/`, so the binding of a module sits in the folder of its context, such as `engine/lua/src/2d/physics/Physics2DBinding.cpp`, in the namespace `haylen::lua::<context>`, such as `haylen::lua::physics2d::Physics2DBinding`. Plugins that apps construct or reference have public headers in `engine/include/haylen/plugins/`, such as `UiPlugin.hpp`. The other plugins keep their headers in `engine/src/plugins/`, such as `AudioPlugin.hpp`.
 
-The folder `engine/src/lua/` holds the implementation of the binding toolkit and the parts of the Lua runtime of an app:
+The folders of `engine/lua/src/` that are no context hold the parts of Lua alone:
 
-- `Environment` routes `require` to the `source/` folder of the package and to the `source/` folders of its plugins.
-- `ScriptedScene` and `ScriptedLoadingView` stand behind Lua scenes and loading views.
-- `Task` runs the cancellable coroutines of load hooks and `scene.spawn`.
-- `Owners` ties listeners, tasks and GUIs to their owner.
-- `Autoloads` keeps the autoloads of the app, and `haylen.jobs` lives here too.
+- `runtime/` holds the implementation of the binding toolkit and the runtime of the scripts of an app: `Environment`, which routes `require` to the `source/` folder of the package and to the `source/` folders of its plugins, `ScriptedScene` and `ScriptedLoadingView`, which stand behind Lua scenes and loading views, `Task`, which runs the cancellable coroutines of load hooks and `scene.spawn`, `Owners`, which ties listeners, tasks and GUIs to their owner, `Autoloads`, `Jobs` with the binding of `haylen.jobs`, and `LuaConfig`, the `lua` section of `haylen.json`.
+- `modules/` holds the Lua modules that install each `haylen.<module>`, in the namespace `haylen::lua::modules`, such as `Physics2DModule`.
+- `debug/`, `development/` and `plugins/` hold the debugger, the execution budget and the reload of modules.
+- `player/` holds `LuaPlayer.cpp`, the Lua player.
 
-The folder `engine/lua/src/` holds the Lua parts of the contexts under the same folders as `engine/src/`, which the engine library compiles with the same include root, so `core/ScriptedTrack.hpp` names the file of either folder: the Lua sides of signals and tween tracks in `core/`, of the item and page sources of collections and of the screens of the navigation in `ui/`, of the agents, graphs and grids of navigation in `2d/navigation/`, of the handles and owners of physics in `2d/physics/`, of the spatial indexes in `2d/spatial/`, the source of packs that a Lua app gives the content manager in `content/` and `NativeCallbacks`, the Lua functions behind the native callbacks of the app, in `platform/native/`.
+The Lua parts of the contexts sit in the folders of their contexts: the Lua sides of signals and tween tracks in `core/`, of the item and page sources of collections and of the screens of the navigation in `ui/`, of the agents, graphs and grids of navigation in `2d/navigation/`, of the handles and owners of physics in `2d/physics/`, of the spatial indexes in `2d/spatial/`, the source of packs that a Lua app gives the content manager and the compiler of the Lua modules of releases in `content/`, and `NativeCallbacks`, the Lua functions behind the native callbacks of the app, in `platform/native/`.
 
 ### The platform folder
 
@@ -82,10 +82,10 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | `Host` | The interface between the engine and a platform, which [the host boundary](#the-host-boundary) describes. |
 | `NativeHost` | The host of real devices, which keeps what the engine holds of every host and from which every platform layer of the engine derives its host, while the window of a port reaches it through `port::Host`. |
 | `NativeWindow` | The native handles of the window of the platform layer. |
-| `Player` | Plays packages for the platform layer, with `ReportedState`, what the platform reported last, and `MemoryWarning`. `LuaPlayer.cpp` is the source of the player. |
+| `Player` | Plays packages for the platform layer, with `ReportedState`, what the platform reported last, and `MemoryWarning`. |
 | `Services` | The services of the platform as the player reaches them. Every platform runtime installs the services of its platform by capability once, as a `port::Services` of the [public API of ports](../platform/ports.md#the-public-api-of-ports), and each capability that a platform does not register is answered here, in one place. |
-| `BridgeRelay` and `PlatformLua` | Carry the answers of the bridge and bind it to Lua. `StreamsLua` binds the streams. |
-| `SystemState` | The theme, the battery and the accessibility settings that the platform reports, with `SystemLua` and `AccessibilityLua`. |
+| `BridgeRelay` | Carries the answers of the bridge. |
+| `SystemState` | The theme, the battery and the accessibility settings that the platform reports. |
 | `AccessibilityRelay` | Carries the actions of screen readers. |
 | `ScreenRelay` | Keeps the screen of a plugin that shows and carries the ends of screens. |
 | `ConsoleRelay` | Carries the lines of the developer console that come from the development server or the web page, and the requests of the terminal for its commands. |
@@ -93,7 +93,7 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | `DevelopmentSession` and `DevelopmentConnection` | Hold the state of [development](#development-and-hot-reload), with the `DevelopmentSession::Extension` that the runtime of the scripts brings. |
 | `NativeViews` | The edges that native views of plugins reserve and the covers of the app. |
 | `PluginLoadOrder` | Orders the native parts of plugins from the package, where the platform reads them there. |
-| `native/` | The native libraries, callbacks and C interface of `haylen.native`: `NativeLibraries` with the symbols of the libraries linked into the app, `NativeSignature`, `NativeCallback`, whose calls reach the `NativeCallback::Receiver` of the app that made it on the frame thread, `NativeApi` and `NativeLua`. |
+| `native/` | The native libraries, callbacks and C interface of `haylen.native`: `NativeLibraries` with the symbols of the libraries linked into the app, `NativeSignature`, `NativeCallback`, whose calls reach the `NativeCallback::Receiver` of the app that made it on the frame thread, and `NativeApi`. |
 | `headless/` | The headless host and the headless player. |
 
 Each platform has a folder of its own. These are its main classes, and each folder holds more classes for the details of its platform, such as text input, gamepads and desktop windows.

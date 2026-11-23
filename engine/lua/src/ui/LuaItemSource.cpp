@@ -11,14 +11,14 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/CollectionDiff.hpp"
-#include "ui/CollectionLua.hpp"
+#include "ui/CollectionBinding.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
-LuaItemSource::LuaItemSource(lua_State* L, const Gui& owner, Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
+LuaItemSource::LuaItemSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
 
 void LuaItemSource::pushList(lua_State* L) const {
-    CollectionLua::pushValue(L, gui, collection, "items");
+    CollectionBinding::pushValue(L, gui, collection, "items");
 }
 
 std::uint16_t LuaItemSource::internType(std::string_view type) {
@@ -32,7 +32,7 @@ std::uint16_t LuaItemSource::internType(std::string_view type) {
 }
 
 std::pair<std::string, std::uint16_t> LuaItemSource::readItem(lua_State* L, int table, std::size_t position) {
-    auto [id, type] = CollectionLua::readItem(L, table, position, collection);
+    auto [id, type] = CollectionBinding::readItem(L, table, position, collection);
     return {std::move(id), internType(type)};
 }
 
@@ -49,9 +49,9 @@ void LuaItemSource::assign(lua_State* L, int list) {
 
     const std::vector<std::string_view> before(ids.begin(), ids.end());
     const std::vector<std::string_view> after(nextIds.begin(), nextIds.end());
-    const CollectionDiff::Result result = CollectionDiff::compare(before, after, collection.getId());
+    const haylen::ui::CollectionDiff::Result result = haylen::ui::CollectionDiff::compare(before, after, collection.getId());
 
-    CollectionLua::setValue(L, gui, collection, "items", table);
+    CollectionBinding::setValue(L, gui, collection, "items", table);
     known.assign(after);
     ids = std::move(nextIds);
     types = std::move(nextTypes);
@@ -203,8 +203,8 @@ void LuaItemSource::pushItem(lua_State* L, std::size_t index) const {
     lua_remove(L, -2);
 }
 
-core::Json LuaItemSource::getValue(std::size_t index, std::string_view field) const {
-    core::Json value;
+haylen::core::Json LuaItemSource::getValue(std::size_t index, std::string_view field) const {
+    haylen::core::Json value;
 
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
@@ -220,7 +220,7 @@ core::Json LuaItemSource::getValue(std::size_t index, std::string_view field) co
     return value;
 }
 
-void LuaItemSource::setValue(std::size_t index, std::string_view field, const core::Json& value) {
+void LuaItemSource::setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) {
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
         pushItem(L, index);
@@ -233,4 +233,4 @@ void LuaItemSource::setValue(std::size_t index, std::string_view field, const co
     // clang-format on
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

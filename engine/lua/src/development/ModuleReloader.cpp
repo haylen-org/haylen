@@ -10,12 +10,12 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Runtime.hpp"
-#include "lua/ErrorReader.hpp"
-#include "lua/Owners.hpp"
+#include "runtime/ErrorReader.hpp"
+#include "runtime/Owners.hpp"
 
 namespace haylen::lua {
 
-ModuleReloader::ModuleReloader(lua_State* L, ModuleGraph& modules, const io::Package& source) : state(L), graph(modules), package(source) {
+ModuleReloader::ModuleReloader(lua_State* L, ModuleGraph& modules, const haylen::io::Package& source) : state(L), graph(modules), package(source) {
     lua_newtable(L);
     replacements = Reference(L, -1);
     lua_newtable(L);
@@ -47,9 +47,9 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     const std::string chunkName = "@" + file;
     const int loaded = luaL_loadbufferx(state, source.data(), source.size(), chunkName.c_str(), "t");
     if (loaded != LUA_OK) {
-        core::AppError error = ErrorReader::read(lua_tostring(state, -1));
+        haylen::core::AppError error = ErrorReader::read(lua_tostring(state, -1));
         if (loaded == LUA_ERRSYNTAX) {
-            error.setCode(core::AppError::Code::Syntax);
+            error.setCode(haylen::core::AppError::Code::Syntax);
         }
         lua_settop(state, top);
         return {.status = Status::Failed, .error = std::move(error)};
@@ -85,7 +85,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
 
     try {
         Runtime::protectedCall(state, 2, 1);
-    } catch (const core::AppError& error) {
+    } catch (const haylen::core::AppError& error) {
         graph.endLoad(state, false);
         abandon();
         return {.status = Status::Failed, .error = error};
@@ -241,7 +241,7 @@ void ModuleReloader::pushMerged(int base, int live, int fresh, const std::string
 
     const bool untouched = ModuleSnapshot::equals(state, current, previous);
     if (!untouched && liveType != freshType && freshType != LUA_TNIL) {
-        core::Log::warning("The field \"{}\" of the module \"{}\" keeps its value, because the app changed it and the new code gives it another kind.", field, name);
+        haylen::core::Log::warning("The field \"{}\" of the module \"{}\" keeps its value, because the app changed it and the new code gives it another kind.", field, name);
     }
 
     lua_pushvalue(state, untouched ? next : current);

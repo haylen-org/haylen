@@ -10,10 +10,10 @@
 
 struct lua_State;
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 // The Lua functions behind the native callbacks of one app, which run on the frame thread with the copied arguments. The app drops them when it stops, so late calls find nothing to run.
-class NativeCallbacks final : public NativeCallback::Receiver {
+class NativeCallbacks final : public haylen::platform::NativeCallback::Receiver {
   public:
     explicit NativeCallbacks(lua_State* L);
 
@@ -21,7 +21,7 @@ class NativeCallbacks final : public NativeCallback::Receiver {
     void remove(std::uint64_t id);
 
     // Runs the function of a callback with the arguments. A failure reaches the error screen like any other script error.
-    void deliver(std::uint64_t id, const std::vector<NativeCallback::Value>& values) override;
+    void deliver(std::uint64_t id, const std::vector<haylen::platform::NativeCallback::Value>& values) override;
 
     // Reports a call whose arguments could not be read.
     void fail(std::uint64_t id, const std::string& message) override;
@@ -31,11 +31,11 @@ class NativeCallbacks final : public NativeCallback::Receiver {
     }
 
   private:
-    static void push(lua_State* L, const NativeCallback::Value& value);
+    static void push(lua_State* L, const haylen::platform::NativeCallback::Value& value);
 
     lua_State* state = nullptr;
     std::unordered_map<std::uint64_t, lua::Reference> functions;
     std::uint64_t nextId = 1;
 };
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

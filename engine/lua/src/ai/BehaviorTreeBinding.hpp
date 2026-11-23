@@ -1,0 +1,78 @@
+#pragma once
+
+#include <lua.hpp>
+
+#include <array>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+
+#include "haylen/ai/BehaviorTree.hpp"
+
+namespace haylen::lua::ai {
+
+// Installs the `BehaviorTree` class of `haylen.ai` and the functions that describe its nodes. Descriptions are plain tables, and leaves are Lua functions of the blackboard table.
+class BehaviorTreeBinding final {
+  public:
+    // A tree created from Lua. Its leaves run on the Lua thread that ticks it, with the tree at stack index 1.
+    struct Scripted {
+        std::optional<haylen::ai::BehaviorTree> tree;
+        lua_State* caller = nullptr;
+    };
+
+    static void install(lua_State* L);
+
+    // Sets the node functions and `newBehaviorTree` on the module table at the top of the stack.
+    static void addFunctions(lua_State* L);
+
+  private:
+    // The kind names of descriptions, in the order of `BehaviorTree::Kind`.
+    static constexpr std::array<std::string_view, 13> kKinds{"sequence", "selector", "parallel", "inverter", "succeeder", "failer", "repeater", "retry", "cooldown", "timeout", "wait", "condition", "action"};
+
+    // Building, ticking and resetting a tree recurse through its levels, so a deeper tree is refused instead of running out of the native stack.
+    static constexpr int kMaxDepth = 256;
+
+    // The keys that descriptions of each group of kinds hold.
+    static constexpr std::array<std::string_view, 2> kCompositeFields{"kind", "children"};
+    static constexpr std::array<std::string_view, 3> kCountedFields{"kind", "children", "count"};
+    static constexpr std::array<std::string_view, 3> kTimedFields{"kind", "children", "seconds"};
+    static constexpr std::array<std::string_view, 2> kWaitFields{"kind", "seconds"};
+    static constexpr std::array<std::string_view, 2> kLeafFields{"kind", "fn"};
+
+    [[nodiscard]] static std::span<const std::string_view> getFields(haylen::ai::BehaviorTree::Kind kind) noexcept;
+
+    // Lists the kind names for error messages, such as `"sequence", "selector" or "action"`.
+    [[nodiscard]] static std::string listKinds();
+
+    // Reads the description at `index`, keeping its leaf functions in the leaves list at `leavesIndex` and the descriptions being read in the set at `pathIndex`, which rejects a description that contains itself.
+    [[nodiscard]] static haylen::ai::BehaviorTree::Node readNode(lua_State* L, int index, int leavesIndex, int pathIndex, Scripted& self, int depth);
+    [[nodiscard]] static haylen::ai::BehaviorTree::Status callLeaf(Scripted& self, lua_Integer leaf, const float* deltaSeconds);
+    // Pushes a description of the kind, reading its children list, single child, count and seconds from the given argument positions, where 0 leaves a part out.
+    static int describe(lua_State* L, haylen::ai::BehaviorTree::Kind kind, int children, int child, int count, int seconds);
+
+    static int sequence(lua_State* L);
+    static int selector(lua_State* L);
+    static int parallel(lua_State* L);
+    static int inverter(lua_State* L);
+    static int succeeder(lua_State* L);
+    static int failer(lua_State* L);
+    static int repeater(lua_State* L);
+    static int retry(lua_State* L);
+    static int cooldown(lua_State* L);
+    static int timeout(lua_State* L);
+    static int wait(lua_State* L);
+    static int condition(lua_State* L);
+    static int action(lua_State* L);
+
+    static int newTree(lua_State* L);
+    static int tick(lua_State* L);
+    static int reset(lua_State* L);
+    static int getStatus(lua_State* L);
+    static int getTime(lua_State* L);
+    static int getNodeCount(lua_State* L);
+    static int getBlackboard(lua_State* L);
+    static int setBlackboard(lua_State* L);
+};
+
+} // namespace haylen::lua::ai

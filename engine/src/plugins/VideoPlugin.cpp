@@ -5,7 +5,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "graphics/VideoLua.hpp"
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FrameClock.hpp"

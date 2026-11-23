@@ -14,12 +14,16 @@
 #include "haylen/ui/CollectionSource.hpp"
 
 namespace haylen::ui {
-
 class Collection;
-class Gui;
+}
 
+namespace haylen::ui {
+class Gui;
+}
+
+namespace haylen::lua::ui {
 // A number of items that a Lua loader gives in pages, for `collection:setPages`. The loader runs once per page the collection asks for, before the GUIs draw, and returns the list of the page or a promise of it. The GUI keeps the loader and the lists of the pages, at most `maxPages` of them, which drops the pages farthest from the view, and an item of a page that has not arrived has no id, so the collection shows its placeholder type.
-class LuaPageSource final : public CollectionSource, public std::enable_shared_from_this<LuaPageSource> {
+class LuaPageSource final : public haylen::ui::CollectionSource, public std::enable_shared_from_this<LuaPageSource> {
   public:
     // The most items that the pages of a collection count, since the collection keeps the type and the selection of each.
     static constexpr std::int64_t kMaxCount = std::int64_t{1} << 24;
@@ -30,7 +34,7 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
         std::size_t maxPages = 16;
     };
 
-    LuaPageSource(lua_State* L, const Gui& owner, Collection& shown);
+    LuaPageSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown);
 
     // Takes new options, keeping the pages that still fit when the page size stays.
     void configure(const Options& value);
@@ -45,8 +49,8 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     }
     [[nodiscard]] std::string_view getId(std::size_t index) const override;
     [[nodiscard]] std::string_view getType(std::size_t index) const override;
-    [[nodiscard]] core::Json getValue(std::size_t index, std::string_view field) const override;
-    void setValue(std::size_t index, std::string_view field, const core::Json& value) override;
+    [[nodiscard]] haylen::core::Json getValue(std::size_t index, std::string_view field) const override;
+    void setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) override;
     void request(std::size_t first, std::size_t count) override;
 
   private:
@@ -82,8 +86,8 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     void drop(std::size_t page);
 
     lua_State* state;
-    const Gui& gui;
-    Collection& collection;
+    const haylen::ui::Gui& gui;
+    haylen::ui::Collection& collection;
     Options options;
     std::map<std::size_t, Page> pages;
     std::uint64_t nextTicket = 1;
@@ -93,4 +97,4 @@ class LuaPageSource final : public CollectionSource, public std::enable_shared_f
     std::size_t neededLast = 0;
 };
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

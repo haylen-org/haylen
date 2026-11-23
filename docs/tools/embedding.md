@@ -6,9 +6,10 @@ This guide is for C++ developers who add Haylen to a CMake project of their own.
 
 | Name | Kind | Purpose |
 | --- | --- | --- |
-| `haylen::engine` | Library target, the alias of `haylen-engine` | The whole C++ API and every Lua binding. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Lua errors unwind as C++ exceptions and yields jump back to their resume with `longjmp`, both native to WebAssembly. |
+| `haylen::engine` | Library target, the alias of `haylen-engine` | The whole C++ API, the core of the engine, which holds nothing of Lua. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Lua errors unwind as C++ exceptions and yields jump back to their resume with `longjmp`, both native to WebAssembly. |
 | `haylen::runtime` | Library target, the alias of `haylen-runtime` | The player, the native host, the platform services, the platform layer, which opens the window, runs the frames and holds the entry point, and the GPU devices, which draw the frames. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
-| `haylen::player` | Object library target, the alias of `haylen-player` | The Lua player, the object that defines `haylen::core::Application::create()` with the application that runs `source/main.lua`. A Lua app links it, and a C++ app defines the function in its own sources instead, so every app holds exactly one. |
+| `haylen::lua` | Library target, the alias of `haylen-lua` | The Lua layer: the toolkit of bindings in `engine/lua/include`, the binding of every context, the Lua modules, the runtime of the scripts of an app and the Lua development tools, with the Lua runtime of Varn. It links `haylen::engine`, and only an app that runs Lua links it. |
+| `haylen::player` | Object library target, the alias of `haylen-player` | The Lua player, which links `haylen::lua`, the object that defines `haylen::core::Application::create()` with the application that runs `source/main.lua`. A Lua app links it, and a C++ app defines the function in its own sources instead, so every app holds exactly one. |
 | `haylen::native` | Interface target of the SDK | The headers of the native API, `haylen/platform/native/HaylenNative.h`, with nlohmann/json, for the native libraries of apps and plugins, which link no engine. |
 | `haylen_add_app` | CMake function | Builds the binary of an app for the platform of the build, as [haylen_add_app](#haylen_add_app) explains. |
 
@@ -97,7 +98,7 @@ haylen_add_app(my-app CPP
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH="$HOME/haylen/build/sdk/desktop-release/macos-arm64"
 ```
 
-The package config imports `haylen::engine`, `haylen::runtime`, `haylen::player` and `haylen::native` and defines `haylen_add_app`. It sets these variables to the values that the SDK was built with:
+The package config imports `haylen::engine`, `haylen::runtime`, `haylen::lua`, `haylen::player` and `haylen::native` and defines `haylen_add_app`. It sets these variables to the values that the SDK was built with:
 
 | Variable | Value |
 | --- | --- |

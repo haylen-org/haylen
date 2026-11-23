@@ -225,7 +225,7 @@ void ContentTool::runBuild(Arguments& arguments) {
         throw std::invalid_argument("The app \"" + config.identifier + "\" cannot build with the keys of \"" + store.getIdentifier() + "\".");
     }
 
-    const LuaCompiler compiler;
+    const lua::content::LuaCompiler compiler;
     const ReleaseBuilder builder(store.getContentKeys(), store.getActiveKeyId(), store.getSigningKey(), cache ? std::make_shared<const RecordCache>(*cache) : nullptr);
     const std::optional<std::filesystem::path> previous = earlier ? std::optional<std::filesystem::path>(*earlier) : std::nullopt;
     const ReleaseBuilder::Result result = builder.build(*package, compiler, folder, previous, options);
@@ -406,7 +406,7 @@ void ContentTool::runBootstrap(Arguments& arguments) {
     arguments.finish();
 
     // An unchanged bootstrap keeps its file as it is, so builds of the app do not compile it again.
-    const std::string source = BootstrapWriter::write(store, profile, build, LuaCompiler().getAbi());
+    const std::string source = BootstrapWriter::write(store, profile, build, lua::content::LuaCompiler().getAbi());
     std::ifstream existing(file, std::ios::binary);
     if (std::string(std::istreambuf_iterator<char>(existing), std::istreambuf_iterator<char>()) != source) {
         existing.close();

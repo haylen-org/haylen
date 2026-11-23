@@ -9,13 +9,13 @@
 #include <string>
 
 #include "haylen/content/PackSource.hpp"
-#include "lua/Owners.hpp"
-#include "lua/WeakReference.hpp"
+#include "runtime/Owners.hpp"
+#include "runtime/WeakReference.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // A source of packs that a Lua function is, such as the one of a store plugin written in Lua. The function runs as a task of its owner with the name of a pack and a progress function, which takes a table with `receivedBytes` and `totalBytes`, and returns the folder that holds the shards of the delivered pack, `nil` when it does not deliver the pack, or a promise of either. An error of the function or a rejected promise fails the load that needs the pack.
-class LuaPackSource final : public PackSource {
+class LuaPackSource final : public haylen::content::PackSource {
   public:
     // An owner index of 0 means no owner.
     LuaPackSource(lua_State* L, int functionIndex, int ownerIndex);
@@ -32,7 +32,7 @@ class LuaPackSource final : public PackSource {
     struct Answer {
         Delivery done;
 
-        void deliver(std::optional<std::filesystem::path> folder, std::optional<Error> failure);
+        void deliver(std::optional<std::filesystem::path> folder, std::optional<haylen::content::Error> failure);
     };
 
     static int run(lua_State* L);
@@ -45,4 +45,4 @@ class LuaPackSource final : public PackSource {
     std::shared_ptr<lua::WeakReference> owner;
 };
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

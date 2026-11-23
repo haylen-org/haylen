@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace haylen::spatial2d {
+namespace haylen::lua::spatial2d {
 
 // A spatial structure created from Lua. Lua keys entries by any value, usually the entity table itself, and only the binding knows the ids the structure sees.
 template <typename Structure> struct ScriptedIndex {
@@ -10,4 +10,4 @@ template <typename Structure> struct ScriptedIndex {
     std::uint64_t nextId = 1;
 };
 
-} // namespace haylen::spatial2d
+} // namespace haylen::lua::spatial2d

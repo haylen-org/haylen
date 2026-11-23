@@ -14,7 +14,7 @@ class Application {
   public:
     virtual ~Application() = default;
 
-    // Defined by the executable, not by the engine. The `haylen` player and generated Lua apps return a `lua::Application`.
+    // Defined by the executable, not by the engine. The `haylen` player and generated Lua apps return the application of the Lua layer.
     [[nodiscard]] static std::unique_ptr<Application> create();
 
     // The sections of `haylen.json` that the application reads itself, such as the `lua` section of a Lua app, which `AppConfig::sections` keeps for `configure`. The engine refuses every other key that it does not read.

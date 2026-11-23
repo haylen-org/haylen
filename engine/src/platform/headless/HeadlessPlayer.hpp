@@ -18,7 +18,7 @@ namespace haylen::platform {
 class DevelopmentSession;
 class HeadlessHost;
 
-// Runs an app package without a window, GPU or audio device on the headless host, at 60 frames per second of real time, so asynchronous work finishes the way it does on a device. The app runs until it quits, until an error stops an app that is not recoverable, or for the number of frames that `--frames` allows, `--dev` runs it in development with hot reload of its folder, like the player, and every argument after `--` reaches the app as its launch arguments. The exit status is the status the app quit with, or 1 when an error was reported or the app did not quit in time, which suits automatic runs such as continuous integration.
+// Runs an app package without a window, GPU or audio device on the headless host, with the application that `core::Application::create` of the program makes, such as the Lua application of the `haylen-headless` player, at 60 frames per second of real time, so asynchronous work finishes the way it does on a device. The app runs until it quits, until an error stops an app that is not recoverable, or for the number of frames that `--frames` allows, `--dev` runs it in development with hot reload of its folder, like the player, and every argument after `--` reaches the app as its launch arguments. The exit status is the status the app quit with, or 1 when an error was reported or the app did not quit in time, which suits automatic runs such as continuous integration.
 class HeadlessPlayer final {
   public:
     struct Options {

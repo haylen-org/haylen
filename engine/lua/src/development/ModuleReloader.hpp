@@ -32,11 +32,11 @@ class ModuleReloader final {
     // A failed module changed nothing and carries its error, and a module that cannot reload in place carries the reason the app restarts instead.
     struct Result {
         Status status = Status::Unchanged;
-        std::optional<core::AppError> error;
+        std::optional<haylen::core::AppError> error;
         std::string reason;
     };
 
-    ModuleReloader(lua_State* L, ModuleGraph& modules, const io::Package& source);
+    ModuleReloader(lua_State* L, ModuleGraph& modules, const haylen::io::Package& source);
 
     // Reloads the loaded module of the file. A batch reloads its modules in the order of `ModuleGraph::order`, so a module runs after the modules it requires.
     [[nodiscard]] Result reload(const std::string& file);
@@ -70,7 +70,7 @@ class ModuleReloader final {
 
     lua_State* state;
     ModuleGraph& graph;
-    const io::Package& package;
+    const haylen::io::Package& package;
     Reference replacements;
     Reference patched;
     Reference deferred;

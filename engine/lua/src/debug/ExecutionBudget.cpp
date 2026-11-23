@@ -7,9 +7,9 @@
 #include "debug/ThreadWalk.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/Runtime.hpp"
-#include "lua/ErrorReader.hpp"
+#include "runtime/ErrorReader.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 void ExecutionBudget::enter(std::string_view stage) noexcept {
     if (entries++ > 0) {
@@ -171,7 +171,7 @@ void ExecutionBudget::check(lua_State* L) {
     }
 
     if (!budget->exhausted && budget->memoryExhausted) {
-        budget->exhaust(L, budget->describeMemory(), core::AppError::Code::Memory);
+        budget->exhaust(L, budget->describeMemory(), haylen::core::AppError::Code::Memory);
     }
 
     if (!budget->exhausted) {
@@ -179,7 +179,7 @@ void ExecutionBudget::check(lua_State* L) {
             return;
         }
 
-        budget->exhaust(L, "ran for more than " + std::to_string(budget->limits.time.count()) + " ms", core::AppError::Code::ExecutionBudget);
+        budget->exhaust(L, "ran for more than " + std::to_string(budget->limits.time.count()) + " ms", haylen::core::AppError::Code::ExecutionBudget);
     }
 
     lua_sethook(L, lua_gethook(L), lua_gethookmask(L), 1);
@@ -321,33 +321,33 @@ void ExecutionBudget::cancelForMemory() noexcept {
 
     try {
         message = describe(describeMemory(), memoryStage);
-        core::AppError error = lua::ErrorReader::read(message);
-        error.setCode(core::AppError::Code::Memory);
+        haylen::core::AppError error = lua::ErrorReader::read(message);
+        error.setCode(haylen::core::AppError::Code::Memory);
         error.setCallback(memoryStage);
         cancelApp(error);
     } catch (const std::exception& failure) {
-        core::Log::error("The app that ran out of memory could not be cancelled: {}", failure.what());
+        haylen::core::Log::error("The app that ran out of memory could not be cancelled: {}", failure.what());
     }
 }
 
-void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, core::AppError::Code code) {
+void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, haylen::core::AppError::Code code) {
     exhausted = true;
-    const std::string stage = code == core::AppError::Code::Memory ? memoryStage : readCurrentStage();
+    const std::string stage = code == haylen::core::AppError::Code::Memory ? memoryStage : readCurrentStage();
     message = describe(reason, stage);
 
     if (!cancelApp) {
         return;
     }
 
-    core::AppError error = lua::Runtime::captureError(L, message, 0);
+    haylen::core::AppError error = lua::Runtime::captureError(L, message, 0);
     error.setCode(code);
     error.setCallback(stage);
 
     try {
         cancelApp(error);
     } catch (const std::exception& failure) {
-        core::Log::error("The app whose code ran too long could not be cancelled: {}", failure.what());
+        haylen::core::Log::error("The app whose code ran too long could not be cancelled: {}", failure.what());
     }
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

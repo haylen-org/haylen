@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 std::string LuaBytecodeAbi::get() {
     static const std::string& abi = *new std::string(read());
@@ -43,4 +43,4 @@ std::string LuaBytecodeAbi::read() {
     return std::format("lua-{}.{}-f{}-i{}-x{}-l{}-n{}-{}", version >> 4, version & 0x0F, format, sizes[0], sizes[1], sizes[2], sizes[3], littleEndian ? "le" : "be");
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

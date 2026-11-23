@@ -7,7 +7,6 @@
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
-#include "net/NetLua.hpp"
 
 namespace haylen::plugins {
 

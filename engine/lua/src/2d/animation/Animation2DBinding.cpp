@@ -1,0 +1,597 @@
+#include "2d/animation/Animation2DBinding.hpp"
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "2d/animation/AnimatedBatchBinding.hpp"
+#include "2d/animation/AtlasBuilderBinding.hpp"
+#include "2d/animation/ChainBinding.hpp"
+#include "2d/animation/SkeletonBinding.hpp"
+#include "2d/animation/StateGraphBinding.hpp"
+#include "2d/nodes/Nodes2DBinding.hpp"
+#include "haylen/2d/animation/Animation.hpp"
+#include "haylen/2d/animation/Animator.hpp"
+#include "haylen/2d/animation/SpriteAtlas.hpp"
+#include "haylen/2d/graphics/Sprite.hpp"
+#include "haylen/2d/nodes/Node.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
+#include "haylen/plugins/Animation2DPlugin.hpp"
+
+namespace haylen::lua::animation2d {
+
+float Animation2DBinding::readFramesPerSecond(lua_State* L, int index) {
+    float framesPerSecond = 10.0F;
+    lua::Table::readField(L, index, "framesPerSecond", framesPerSecond);
+    luaL_argcheck(L, framesPerSecond > 0.0F, index, "framesPerSecond must be positive");
+    return framesPerSecond;
+}
+
+// Cuts a grid animation with `fromGrid(texture, {frameWidth, frameHeight, cells = {1, 2, 3}, framesPerSecond, loop, margin = {x, y}, spacing = {x, y}})`. Cells count from one, left to right and top to bottom.
+int Animation2DBinding::fromGrid(lua_State* L) {
+    haylen::graphics::Texture texture = lua::Stack::read<haylen::graphics::Texture>(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    lua::Table::checkFields(L, 2, {kGridFields});
+
+    haylen::animation2d::Animation::GridOptions options;
+    lua::Table::readField(L, 2, "frameWidth", options.frameSize.x);
+    lua::Table::readField(L, 2, "frameHeight", options.frameSize.y);
+    lua::Table::readField(L, 2, "loop", options.loop);
+    lua::Table::readField(L, 2, "margin", options.margin);
+    lua::Table::readField(L, 2, "spacing", options.spacing);
+    lua::Table::readField(L, 2, "ticksPerFrame", options.ticksPerFrame);
+    options.framesPerSecond = readFramesPerSecond(L, 2);
+    std::vector<int> cells;
+    lua::Table::readField(L, 2, "cells", cells);
+
+    for (const int cell : cells) {
+        options.cells.push_back(cell - 1);
+    }
+
+    lua::Userdata::emplace<haylen::animation2d::Animation>(L, haylen::animation2d::Animation::fromGrid(std::move(texture), options));
+    return 1;
+}
+
+// Builds an animation from frames with `fromFrames(texture, {frame, ...}, {framesPerSecond, loop})`, where a frame is a source rectangle or a table with its source and data.
+int Animation2DBinding::fromFrames(lua_State* L) {
+    haylen::animation2d::Animation animation{.texture = lua::Stack::read<haylen::graphics::Texture>(L, 1)};
+    luaL_checktype(L, 2, LUA_TTABLE);
+    float fps = 10.0F;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kTimingFields});
+        fps = readFramesPerSecond(L, 3);
+        lua::Table::readField(L, 3, "loop", animation.loop);
+    }
+
+    const auto count = static_cast<lua_Integer>(luaL_len(L, 2));
+    luaL_argcheck(L, count > 0, 2, "expected at least one frame");
+    for (lua_Integer index = 1; index <= count; ++index) {
+        lua_rawgeti(L, 2, index);
+        animation.frames.push_back(readFrame(L, -1, 1.0F / fps));
+        lua_pop(L, 1);
+    }
+
+    animation.validate();
+    lua::Userdata::emplace<haylen::animation2d::Animation>(L, std::move(animation));
+    return 1;
+}
+
+haylen::animation2d::SpriteFrame Animation2DBinding::readFrame(lua_State* L, int index, float duration) {
+    const int table = lua_absindex(L, index);
+    if (lua_type(L, table) != LUA_TTABLE || lua_getfield(L, table, "source") == LUA_TNIL) {
+        if (lua_type(L, table) == LUA_TTABLE) {
+            lua_pop(L, 1);
+        }
+
+        const haylen::math::Rect source = lua::Stack::read<haylen::math::Rect>(L, table);
+        return {.source = source, .originalSize = source.getSize(), .duration = duration};
+    }
+
+    lua_pop(L, 1);
+    lua::Table::checkFields(L, table, {kFrameFields});
+    haylen::animation2d::SpriteFrame frame{.duration = duration};
+    lua::Table::readField(L, table, "source", frame.source);
+    frame.originalSize = frame.source.getSize();
+    lua::Table::readField(L, table, "duration", frame.duration);
+    lua::Table::readField(L, table, "ticks", frame.ticks);
+    if (lua_getfield(L, table, "pivot") != LUA_TNIL) {
+        frame.pivot = lua::Stack::read<haylen::math::Vec2>(L, -1);
+    }
+
+    lua_pop(L, 1);
+    lua::Table::readField(L, table, "events", frame.events);
+
+    if (lua_getfield(L, table, "boxes") != LUA_TNIL) {
+        lua::Table::requireType(L, "boxes", LUA_TTABLE);
+        const int boxes = lua_gettop(L);
+        for (lua_Integer place = 1; place <= static_cast<lua_Integer>(luaL_len(L, boxes)); ++place) {
+            lua_rawgeti(L, boxes, place);
+            lua::Table::requireItemType(L, "boxes", place, LUA_TTABLE);
+            lua::Table::checkFields(L, -1, {kBoxFields});
+            haylen::animation2d::SpriteFrame::Box box;
+            lua::Table::readField(L, -1, "name", box.name);
+            lua::Table::readField(L, -1, "x", box.area.x);
+            lua::Table::readField(L, -1, "y", box.area.y);
+            lua::Table::readField(L, -1, "width", box.area.width);
+            lua::Table::readField(L, -1, "height", box.area.height);
+            frame.boxes.push_back(std::move(box));
+            lua_pop(L, 1);
+        }
+    }
+
+    lua_pop(L, 1);
+
+    if (lua_getfield(L, table, "points") != LUA_TNIL) {
+        lua::Table::requireType(L, "points", LUA_TTABLE);
+        const int points = lua_gettop(L);
+        for (lua_Integer place = 1; place <= static_cast<lua_Integer>(luaL_len(L, points)); ++place) {
+            lua_rawgeti(L, points, place);
+            lua::Table::requireItemType(L, "points", place, LUA_TTABLE);
+            lua::Table::checkFields(L, -1, {kPointFields});
+            haylen::animation2d::SpriteFrame::Point point;
+            lua::Table::readField(L, -1, "name", point.name);
+            lua::Table::readField(L, -1, "x", point.position.x);
+            lua::Table::readField(L, -1, "y", point.position.y);
+            frame.points.push_back(std::move(point));
+            lua_pop(L, 1);
+        }
+    }
+
+    lua_pop(L, 1);
+    return frame;
+}
+
+// Describes a frame as a table with its source, trim offset, original size, duration, ticks, pivot, boxes, points and events.
+void Animation2DBinding::pushFrame(lua_State* L, const haylen::animation2d::SpriteFrame& frame) {
+    lua_createtable(L, 0, 9);
+    lua::Stack::push(L, frame.source);
+    lua_setfield(L, -2, "source");
+    lua::Stack::push(L, frame.offset);
+    lua_setfield(L, -2, "offset");
+    lua::Stack::push(L, frame.originalSize);
+    lua_setfield(L, -2, "originalSize");
+    lua::Stack::push(L, frame.duration);
+    lua_setfield(L, -2, "duration");
+    lua::Stack::push(L, frame.ticks);
+    lua_setfield(L, -2, "ticks");
+    if (frame.pivot) {
+        lua::Stack::push(L, *frame.pivot);
+        lua_setfield(L, -2, "pivot");
+    }
+
+    lua_createtable(L, static_cast<int>(frame.boxes.size()), 0);
+    for (std::size_t index = 0; index < frame.boxes.size(); ++index) {
+        lua_createtable(L, 0, 5);
+        lua::Stack::push(L, frame.boxes[index].name);
+        lua_setfield(L, -2, "name");
+        lua::Stack::push(L, frame.boxes[index].area.x);
+        lua_setfield(L, -2, "x");
+        lua::Stack::push(L, frame.boxes[index].area.y);
+        lua_setfield(L, -2, "y");
+        lua::Stack::push(L, frame.boxes[index].area.width);
+        lua_setfield(L, -2, "width");
+        lua::Stack::push(L, frame.boxes[index].area.height);
+        lua_setfield(L, -2, "height");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+
+    lua_setfield(L, -2, "boxes");
+    lua_createtable(L, static_cast<int>(frame.points.size()), 0);
+    for (std::size_t index = 0; index < frame.points.size(); ++index) {
+        lua_createtable(L, 0, 3);
+        lua::Stack::push(L, frame.points[index].name);
+        lua_setfield(L, -2, "name");
+        lua::Stack::push(L, frame.points[index].position.x);
+        lua_setfield(L, -2, "x");
+        lua::Stack::push(L, frame.points[index].position.y);
+        lua_setfield(L, -2, "y");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+
+    lua_setfield(L, -2, "points");
+    lua::Stack::push(L, frame.events);
+    lua_setfield(L, -2, "events");
+}
+
+haylen::graphics2d::Sprite Animation2DBinding::readSprite(lua_State* L, int index) {
+    if (const haylen::nodes2d::Node* node = lua::Userdata::test<haylen::nodes2d::Node>(L, index)) {
+        return node->getSprite();
+    }
+
+    return lua::Userdata::check<haylen::graphics2d::Sprite>(L, index);
+}
+
+int Animation2DBinding::animationDuration(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animation>(L, 1).getDuration());
+    return 1;
+}
+
+int Animation2DBinding::animationCycleDuration(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animation>(L, 1).getCycleDuration());
+    return 1;
+}
+
+int Animation2DBinding::animationFrameCount(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animation>(L, 1).frames.size());
+    return 1;
+}
+
+int Animation2DBinding::animationTexture(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animation>(L, 1).texture);
+    return 1;
+}
+
+int Animation2DBinding::animationFrame(lua_State* L) {
+    const haylen::animation2d::Animation& animation = lua::Userdata::check<haylen::animation2d::Animation>(L, 1);
+    const lua_Integer index = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, index >= 1 && static_cast<std::size_t>(index) <= animation.frames.size(), 2, "frame index out of range");
+    lua::Stack::push(L, animation.frames[static_cast<std::size_t>(index - 1)].source);
+    return 1;
+}
+
+int Animation2DBinding::animationFrameAt(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animation>(L, 1).frameAt(lua::Stack::read<float>(L, 2)) + 1);
+    return 1;
+}
+
+int Animation2DBinding::animationFrameData(lua_State* L) {
+    const haylen::animation2d::Animation& animation = lua::Userdata::check<haylen::animation2d::Animation>(L, 1);
+    const lua_Integer index = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, index >= 1 && static_cast<std::size_t>(index) <= animation.frames.size(), 2, "frame index out of range");
+    pushFrame(L, animation.frames[static_cast<std::size_t>(index - 1)]);
+    return 1;
+}
+
+int Animation2DBinding::animationAddEvent(lua_State* L) {
+    haylen::animation2d::Animation& animation = lua::Userdata::check<haylen::animation2d::Animation>(L, 1);
+    const lua_Integer index = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, index >= 1 && static_cast<std::size_t>(index) <= animation.frames.size(), 2, "frame index out of range");
+    animation.addEvent(static_cast<std::size_t>(index - 1), lua::Stack::read<std::string>(L, 3));
+    return 0;
+}
+
+int Animation2DBinding::animationCountsTicks(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animation>(L, 1).countsTicks());
+    return 1;
+}
+
+int Animation2DBinding::newAnimator(lua_State* L) {
+    const auto animator = std::make_shared<haylen::animation2d::Animator>();
+    lua::Runtime::getEngine(L).getPlugin<haylen::plugins::Animation2DPlugin>().track(animator);
+    lua::Userdata::emplace<haylen::animation2d::Animator>(L, animator);
+    return 1;
+}
+
+int Animation2DBinding::animatorAdd(lua_State* L) {
+    lua::Userdata::check<haylen::animation2d::Animator>(L, 1).add(lua::Stack::read<std::string>(L, 2), lua::Stack::read<haylen::animation2d::Animation>(L, 3));
+    return 0;
+}
+
+int Animation2DBinding::animatorPlay(lua_State* L) {
+    lua::Userdata::check<haylen::animation2d::Animator>(L, 1).play(lua::Stack::read<std::string_view>(L, 2), lua_toboolean(L, 3) != 0);
+    return 0;
+}
+
+int Animation2DBinding::animatorQueue(lua_State* L) {
+    lua::Userdata::check<haylen::animation2d::Animator>(L, 1).queue(lua::Stack::read<std::string_view>(L, 2));
+    return 0;
+}
+
+int Animation2DBinding::animatorClearQueue(lua_State* L) {
+    lua::Userdata::check<haylen::animation2d::Animator>(L, 1).clearQueue();
+    return 0;
+}
+
+int Animation2DBinding::animatorQueuedCount(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getQueuedCount());
+    return 1;
+}
+
+int Animation2DBinding::animatorStop(lua_State* L) {
+    lua::Userdata::check<haylen::animation2d::Animator>(L, 1).stop();
+    return 0;
+}
+
+// Moves the current animation to a time with `animator:seek(time)` and shows its frame there, without callbacks.
+int Animation2DBinding::animatorSeek(lua_State* L) {
+    lua::Userdata::check<haylen::animation2d::Animator>(L, 1).seek(lua::Stack::read<float>(L, 2));
+    return 0;
+}
+
+int Animation2DBinding::animatorHas(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).has(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::animatorAnimation(lua_State* L) {
+    lua::Userdata::emplace<haylen::animation2d::Animation>(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getAnimation(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+void Animation2DBinding::callCallback(lua_State* L, const char* name, std::string_view animation, std::optional<std::size_t> frame) {
+    if (!lua::Userdata::pushFunction(L, 1, name)) {
+        return;
+    }
+
+    lua::Stack::push(L, animation);
+
+    if (frame) {
+        lua::Stack::push(L, *frame + 1);
+    }
+
+    lua_call(L, frame ? 2 : 1, 0);
+}
+
+void Animation2DBinding::callEvent(lua_State* L, std::string_view animation, std::string_view event, std::size_t frame) {
+    if (!lua::Userdata::pushFunction(L, 1, "onEvent")) {
+        return;
+    }
+
+    lua::Stack::push(L, animation);
+    lua::Stack::push(L, event);
+    lua::Stack::push(L, frame + 1);
+    lua_call(L, 3, 0);
+}
+
+// Callbacks live in the user value of the animator, so a callback that captures its own animator never keeps it alive forever.
+template <typename Advance> void Animation2DBinding::advance(lua_State* L, Advance&& body) {
+    haylen::animation2d::Animator& animator = lua::Userdata::check<haylen::animation2d::Animator>(L, 1);
+
+    struct CallbackScope {
+        haylen::animation2d::Animator& animator;
+        ~CallbackScope() {
+            animator.onFrame = {};
+            animator.onEvent = {};
+            animator.onComplete = {};
+        }
+    } scope{animator};
+
+    animator.onFrame = [L](std::string_view name, std::size_t frame) { callCallback(L, "onFrame", name, frame); };
+    animator.onEvent = [L](std::string_view name, std::string_view event, std::size_t frame) { callEvent(L, name, event, frame); };
+    animator.onComplete = [L](std::string_view name) { callCallback(L, "onComplete", name, std::nullopt); };
+    body(animator);
+}
+
+int Animation2DBinding::animatorUpdate(lua_State* L) {
+    const float delta = lua::Stack::read<float>(L, 2);
+    advance(L, [delta](haylen::animation2d::Animator& animator) { animator.update(delta); });
+    return 0;
+}
+
+int Animation2DBinding::animatorStep(lua_State* L) {
+    const lua_Integer ticks = lua_isnoneornil(L, 2) ? 1 : luaL_checkinteger(L, 2);
+    luaL_argcheck(L, ticks >= 0, 2, "ticks must not be negative");
+    advance(L, [ticks](haylen::animation2d::Animator& animator) { animator.step(static_cast<std::uint32_t>(ticks)); });
+    return 0;
+}
+
+int Animation2DBinding::animatorBox(lua_State* L) {
+    const std::optional<haylen::math::Rect> box = lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getBox(lua::Stack::read<std::string_view>(L, 2), readSprite(L, 3));
+    if (!box) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua::Stack::push(L, *box);
+    return 1;
+}
+
+int Animation2DBinding::animatorPoint(lua_State* L) {
+    const std::optional<haylen::math::Vec2> point = lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getPoint(lua::Stack::read<std::string_view>(L, 2), readSprite(L, 3));
+    if (!point) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua::Stack::push(L, point->x);
+    lua::Stack::push(L, point->y);
+    return 2;
+}
+
+// Applies the frame to a sprite, or to the sprite a node shows.
+int Animation2DBinding::animatorApply(lua_State* L) {
+    const haylen::animation2d::Animator& animator = lua::Userdata::check<haylen::animation2d::Animator>(L, 1);
+    if (haylen::nodes2d::Node* node = lua::Userdata::test<haylen::nodes2d::Node>(L, 2)) {
+        haylen::graphics2d::Sprite sprite = node->getSprite();
+        animator.apply(sprite);
+        node->setSprite(sprite);
+        return 0;
+    }
+
+    animator.apply(lua::Userdata::check<haylen::graphics2d::Sprite>(L, 2));
+    return 0;
+}
+
+int Animation2DBinding::animatorCurrent(lua_State* L) {
+    const std::string& current = lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getCurrent();
+    if (current.empty()) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    lua::Stack::push(L, current);
+    return 1;
+}
+
+int Animation2DBinding::animatorFrame(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getFrame() + 1);
+    return 1;
+}
+
+int Animation2DBinding::animatorTime(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).getTime());
+    return 1;
+}
+
+int Animation2DBinding::animatorPlaying(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).isPlaying());
+    return 1;
+}
+
+int Animation2DBinding::animatorFinished(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::Animator>(L, 1).isFinished());
+    return 1;
+}
+
+int Animation2DBinding::getCallback(lua_State* L, const char* name) {
+    (void)lua::Userdata::check<haylen::animation2d::Animator>(L, 1);
+    lua::Userdata::pushField(L, 1, name);
+    return 1;
+}
+
+int Animation2DBinding::setCallback(lua_State* L, const char* name) {
+    (void)lua::Userdata::check<haylen::animation2d::Animator>(L, 1);
+
+    if (!lua_isnil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TFUNCTION);
+    }
+
+    lua::Userdata::setField(L, 1, name, 3);
+    return 0;
+}
+
+int Animation2DBinding::animatorGetOnFrame(lua_State* L) {
+    return getCallback(L, "onFrame");
+}
+
+int Animation2DBinding::animatorSetOnFrame(lua_State* L) {
+    return setCallback(L, "onFrame");
+}
+
+int Animation2DBinding::animatorGetOnComplete(lua_State* L) {
+    return getCallback(L, "onComplete");
+}
+
+int Animation2DBinding::animatorSetOnComplete(lua_State* L) {
+    return setCallback(L, "onComplete");
+}
+
+int Animation2DBinding::animatorGetOnEvent(lua_State* L) {
+    return getCallback(L, "onEvent");
+}
+
+int Animation2DBinding::animatorSetOnEvent(lua_State* L) {
+    return setCallback(L, "onEvent");
+}
+
+int Animation2DBinding::atlasTexture(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getTexture());
+    return 1;
+}
+
+int Animation2DBinding::atlasFrameNames(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getFrameNames());
+    return 1;
+}
+
+int Animation2DBinding::atlasAnimationNames(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getAnimationNames());
+    return 1;
+}
+
+int Animation2DBinding::atlasSliceNames(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getSliceNames());
+    return 1;
+}
+
+int Animation2DBinding::atlasHasFrame(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).hasFrame(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::atlasHasAnimation(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).hasAnimation(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::atlasHasSlice(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).hasSlice(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::atlasFrame(lua_State* L) {
+    pushFrame(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getFrame(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::atlasAnimation(lua_State* L) {
+    lua::Userdata::emplace<haylen::animation2d::Animation>(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getAnimation(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::atlasSlice(lua_State* L) {
+    lua::Userdata::emplace<haylen::graphics2d::NineSlice>(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getSlice(lua::Stack::read<std::string_view>(L, 2)));
+    return 1;
+}
+
+int Animation2DBinding::atlasSource(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).getFrame(lua::Stack::read<std::string_view>(L, 2)).source);
+    return 1;
+}
+
+// Shows one frame on a sprite with `apply(sprite, name)`, keeping the sprite pivot at the center of the untrimmed frame.
+int Animation2DBinding::atlasApply(lua_State* L) {
+    const haylen::animation2d::SpriteAtlas& atlas = lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1);
+    haylen::graphics2d::Sprite& sprite = lua::Userdata::check<haylen::graphics2d::Sprite>(L, 2);
+    const haylen::animation2d::SpriteFrame& frame = atlas.getFrame(lua::Stack::read<std::string_view>(L, 3));
+    sprite.texture = atlas.getTexture();
+    sprite.source = frame.source;
+    sprite.size = frame.source.getSize();
+    sprite.pivot = (haylen::math::Vec2{0.5F, 0.5F} * frame.originalSize - frame.offset) / frame.source.getSize();
+    return 0;
+}
+
+// Returns the frames and animations of a prefix with `atlas:subset(prefix)`, named without it.
+int Animation2DBinding::atlasSubset(lua_State* L) {
+    lua::Stack::push(L, std::make_shared<haylen::animation2d::SpriteAtlas>(lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1).subset(lua::Stack::read<std::string_view>(L, 2))));
+    return 1;
+}
+
+int Animation2DBinding::atlasAnimationFromFrames(lua_State* L) {
+    const haylen::animation2d::SpriteAtlas& atlas = lua::Userdata::check<haylen::animation2d::SpriteAtlas>(L, 1);
+    const std::vector<std::string> names = lua::Stack::read<std::vector<std::string>>(L, 2);
+    float fps = 10.0F;
+    haylen::animation2d::Animation::Loop loop = haylen::animation2d::Animation::Loop::Loop;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kTimingFields});
+        fps = readFramesPerSecond(L, 3);
+        lua::Table::readField(L, 3, "loop", loop);
+    }
+
+    lua::Userdata::emplace<haylen::animation2d::Animation>(L, atlas.animationFromFrames(names, fps, loop));
+    return 1;
+}
+
+int Animation2DBinding::open(lua_State* L) {
+    const luaL_Reg functions[] = {
+        {"fromGrid", &lua::Binding::native<&fromGrid>}, {"fromFrames", &lua::Binding::native<&fromFrames>}, {"newAnimator", &newAnimator}, {"newAnimatedBatch", &lua::Binding::native<&AnimatedBatchBinding::create>}, {"newStateGraph", &lua::Binding::native<&StateGraphBinding::create>}, {"newSkeletonData", &lua::Binding::native<&SkeletonBinding::newData>}, {"newSkeleton", &lua::Binding::native<&SkeletonBinding::newSkeleton>}, {"newAtlasBuilder", &AtlasBuilderBinding::create}, {"newChain", &lua::Binding::native<&ChainBinding::create>}, {nullptr, nullptr},
+    };
+    lua::Binding::newModule(L, functions);
+    return 1;
+}
+
+void Animation2DBinding::install(lua_State* L) {
+    AtlasBuilderBinding::install(L);
+    ChainBinding::install(L);
+    lua::ClassBuilder<haylen::animation2d::Animation>(L).property("duration", &animationDuration).property("cycleDuration", &animationCycleDuration).property("frameCount", &animationFrameCount).property("texture", &animationTexture).field<&haylen::animation2d::Animation::loop>("loop").function("frame", &animationFrame).function("frameAt", &animationFrameAt).function("frameData", &animationFrameData).function("addEvent", &lua::Binding::native<&animationAddEvent>).property("countsTicks", &animationCountsTicks).install();
+
+    lua::ClassBuilder<haylen::animation2d::Animator>(L).function("add", &lua::Binding::native<&animatorAdd>).function("play", &lua::Binding::native<&animatorPlay>).function("queue", &lua::Binding::native<&animatorQueue>).function("clearQueue", &lua::Binding::native<&animatorClearQueue>).property("queuedCount", &animatorQueuedCount).function("stop", &animatorStop).function("seek", &lua::Binding::native<&animatorSeek>).function("has", &animatorHas).function("animation", &lua::Binding::native<&animatorAnimation>).function("update", &lua::Binding::native<&animatorUpdate>).function("step", &lua::Binding::native<&animatorStep>).function("apply", &lua::Binding::native<&animatorApply>).function("box", &lua::Binding::native<&animatorBox>).function("point", &lua::Binding::native<&animatorPoint>).property("current", &animatorCurrent).property("frame", &animatorFrame).property("time", &animatorTime).property("playing", &animatorPlaying).property("finished", &animatorFinished).field<&haylen::animation2d::Animator::speed>("speed").nestedField<&haylen::animation2d::Animator::pivot, &haylen::math::Vec2::x>("pivotX").nestedField<&haylen::animation2d::Animator::pivot, &haylen::math::Vec2::y>("pivotY").property("onFrame", &animatorGetOnFrame, &animatorSetOnFrame).property("onComplete", &animatorGetOnComplete, &animatorSetOnComplete).property("onEvent", &animatorGetOnEvent, &animatorSetOnEvent).install();
+
+    lua::ClassBuilder<haylen::animation2d::SpriteAtlas>(L).property("texture", &atlasTexture).function("hasFrame", &atlasHasFrame).function("hasAnimation", &atlasHasAnimation).function("hasSlice", &atlasHasSlice).function("frame", &lua::Binding::native<&atlasFrame>).function("frameNames", &atlasFrameNames).function("animationNames", &atlasAnimationNames).function("sliceNames", &atlasSliceNames).function("animation", &lua::Binding::native<&atlasAnimation>).function("slice", &lua::Binding::native<&atlasSlice>).function("source", &lua::Binding::native<&atlasSource>).function("apply", &lua::Binding::native<&atlasApply>).function("animationFromFrames", &lua::Binding::native<&atlasAnimationFromFrames>).function("subset", &lua::Binding::native<&atlasSubset>).meta("__eq", &lua::Userdata::equal<haylen::animation2d::SpriteAtlas>).install();
+
+    AnimatedBatchBinding::install(L);
+    StateGraphBinding::install(L);
+    SkeletonBinding::install(L);
+    lua::Binding::preload(L, "haylen.animation2d", &open);
+}
+
+} // namespace haylen::lua::animation2d

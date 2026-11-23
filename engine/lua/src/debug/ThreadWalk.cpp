@@ -1,6 +1,6 @@
 #include "debug/ThreadWalk.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 ThreadWalk::CollectorHold::CollectorHold(lua_State* L) : state(L), running(lua_gc(L, LUA_GCISRUNNING) != 0) {
     lua_gc(L, LUA_GCSTOP);
@@ -143,4 +143,4 @@ void ThreadWalk::visitThread(lua_State* thread) {
     }
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

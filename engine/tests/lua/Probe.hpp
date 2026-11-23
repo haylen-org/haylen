@@ -24,8 +24,8 @@ struct Probe {
     }
 
     float speed = 0.0F;
-    math::Vec2 position;
-    math::Color tint;
+    haylen::math::Vec2 position;
+    haylen::math::Color tint;
     Order order;
     bool visible = true;
     float scale = 1.0F;

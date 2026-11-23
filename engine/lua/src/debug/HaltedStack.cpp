@@ -6,7 +6,7 @@
 
 #include "debug/Evaluation.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 HaltedStack::HaltedStack(lua_State* thread, int firstLevel) : state(thread), first(firstLevel) {
     lua_newtable(state);
@@ -43,8 +43,8 @@ std::string HaltedStack::describeFunction(const lua_Debug& level) {
 }
 
 // A frame of a file of the package names its package path, which the development server turns into the path on the machine of the developer, while code from a text, such as an evaluation, has a name alone.
-core::Json HaltedStack::getFrames(int start, int levels) const {
-    core::Json frames = core::Json::array();
+haylen::core::Json HaltedStack::getFrames(int start, int levels) const {
+    haylen::core::Json frames = haylen::core::Json::array();
     lua_Debug level{};
     int total = 0;
     for (int frameId = 1; findLevel(frameId, level); ++frameId) {
@@ -55,7 +55,7 @@ core::Json HaltedStack::getFrames(int start, int levels) const {
         }
 
         lua_getinfo(state, "Sln", &level);
-        core::Json frame{{"id", frameId}, {"name", describeFunction(level)}, {"line", std::max(level.currentline, 0)}, {"column", level.currentline > 0 ? 1 : 0}};
+        haylen::core::Json frame{{"id", frameId}, {"name", describeFunction(level)}, {"line", std::max(level.currentline, 0)}, {"column", level.currentline > 0 ? 1 : 0}};
         if (level.source[0] == '@') {
             const std::string_view path(level.source + 1);
             frame["source"] = {{"name", std::string(path.substr(path.rfind('/') + 1))}, {"path", std::string(path)}};
@@ -71,7 +71,7 @@ core::Json HaltedStack::getFrames(int start, int levels) const {
     return {{"stackFrames", std::move(frames)}, {"totalFrames", total}};
 }
 
-core::Json HaltedStack::getScopes(int frameId) {
+haylen::core::Json HaltedStack::getScopes(int frameId) {
     lua_Debug level{};
     if (!findLevel(frameId, level)) {
         return nullptr;
@@ -86,7 +86,7 @@ core::Json HaltedStack::getScopes(int frameId) {
              }}};
 }
 
-core::Json HaltedStack::getVariables(int reference, int start, int count) {
+haylen::core::Json HaltedStack::getVariables(int reference, int start, int count) {
     if (reference < 1 || static_cast<std::size_t>(reference) > handles.size()) {
         return nullptr;
     }
@@ -108,7 +108,7 @@ core::Json HaltedStack::getVariables(int reference, int start, int count) {
         // clang-format on
     }
 
-    core::Json variables = core::Json::array();
+    haylen::core::Json variables = haylen::core::Json::array();
     const int from = std::max(start, 0);
     const int limit = count > 0 ? count : kMaxChildren;
     for (int index = from; index < static_cast<int>(children.size()) && static_cast<int>(variables.size()) < limit; ++index) {
@@ -259,9 +259,9 @@ void HaltedStack::pushGlobals(lua_State* L, int function) {
     lua_rawgeti(L, LUA_REGISTRYINDEX, LUA_RIDX_GLOBALS);
 }
 
-core::Json HaltedStack::describe(const std::string& name, int index) {
+haylen::core::Json HaltedStack::describe(const std::string& name, int index) {
     const int value = lua_absindex(state, index);
-    core::Json variable{{"name", name}, {"value", formatValue(state, value)}, {"type", luaL_typename(state, value)}, {"variablesReference", 0}};
+    haylen::core::Json variable{{"name", name}, {"value", formatValue(state, value)}, {"type", luaL_typename(state, value)}, {"variablesReference", 0}};
     const int type = lua_type(state, value);
     if (type == LUA_TTABLE || type == LUA_TUSERDATA || (type == LUA_TFUNCTION && lua_getupvalue(state, value, 1) != nullptr)) {
         if (type == LUA_TFUNCTION) {
@@ -437,4 +437,4 @@ int HaltedStack::writeName(lua_State* L) {
     return 0;
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

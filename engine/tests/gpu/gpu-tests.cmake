@@ -30,8 +30,8 @@ if(ANDROID)
 else()
   add_executable(haylen-gpu-tests ${haylen_gpu_test_sources})
 endif()
-target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
-target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
+target_link_libraries(haylen-gpu-tests PRIVATE haylen::lua haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
+target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src" "${HAYLEN_ENGINE_DIR}/lua/src")
 
 # The surfaces beyond the window are a `CAMetalLayer` on Apple platforms, a hidden window on Windows and a window of X11 on Linux, whose display server the tests reach when one runs.
 if(APPLE)

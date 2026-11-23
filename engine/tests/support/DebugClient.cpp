@@ -9,7 +9,7 @@
 namespace haylen::test {
 
 DebugClient::DebugClient(platform::Host& host) : session(std::make_unique<platform::DevelopmentSession>(host)) {
-    debugger = std::make_unique<debug::Debugger>(*session, [this](const core::Json& message) { received.push_back(message); }, [this] { pump(); });
+    debugger = std::make_unique<lua::debug::Debugger>(*session, [this](const core::Json& message) { received.push_back(message); }, [this] { pump(); });
 }
 
 DebugClient::~DebugClient() = default;

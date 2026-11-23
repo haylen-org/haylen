@@ -1,0 +1,217 @@
+#include "math/PolygonBinding.hpp"
+
+#include <cstdint>
+#include <optional>
+
+#include "haylen/core/EnumNames.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/math/MarchingSquares.hpp"
+#include "haylen/math/Polygon.hpp"
+
+namespace haylen::core {
+
+template <> struct EnumNames<haylen::math::Polygon::Join> {
+    static std::optional<haylen::math::Polygon::Join> fromName(std::string_view name) {
+        return haylen::math::Polygon::joinFromName(name);
+    }
+    static std::string_view name(haylen::math::Polygon::Join value) {
+        return haylen::math::Polygon::joinName(value);
+    }
+};
+
+} // namespace haylen::core
+
+namespace haylen::lua::math {
+
+// A point is a `Vec2`, a table with an `x` field or a table whose first value is a number.
+bool PolygonBinding::isPoint(lua_State* L, int index) {
+    if (lua::Userdata::test<haylen::math::Vec2>(L, index) != nullptr) {
+        return true;
+    }
+
+    if (!lua_istable(L, index)) {
+        return false;
+    }
+
+    const int table = lua_absindex(L, index);
+    const bool named = lua_getfield(L, table, "x") == LUA_TNUMBER;
+    const bool listed = lua_rawgeti(L, table, 1) == LUA_TNUMBER;
+    lua_pop(L, 2);
+    return named || listed;
+}
+
+std::vector<std::vector<haylen::math::Vec2>> PolygonBinding::readShape(lua_State* L, int index) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const int table = lua_absindex(L, index);
+    lua_rawgeti(L, table, 1);
+    const bool outline = isPoint(L, -1);
+    lua_pop(L, 1);
+
+    if (outline) {
+        return {lua::Stack::read<std::vector<haylen::math::Vec2>>(L, table)};
+    }
+
+    return lua::Stack::read<std::vector<std::vector<haylen::math::Vec2>>>(L, table);
+}
+
+void PolygonBinding::readShape(lua_State* L, int index, std::vector<haylen::math::Vec2>& points, std::vector<std::uint32_t>& counts) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const int table = lua_absindex(L, index);
+    points.clear();
+    counts.clear();
+    lua_rawgeti(L, table, 1);
+    const bool outline = isPoint(L, -1);
+    lua_pop(L, 1);
+
+    if (outline) {
+        appendOutline(L, table, points);
+        counts.push_back(static_cast<std::uint32_t>(points.size()));
+        return;
+    }
+
+    const auto length = static_cast<lua_Integer>(lua_rawlen(L, table));
+    for (lua_Integer place = 1; place <= length; ++place) {
+        lua_rawgeti(L, table, place);
+        const std::size_t first = points.size();
+        appendOutline(L, lua_gettop(L), points);
+        counts.push_back(static_cast<std::uint32_t>(points.size() - first));
+        lua_pop(L, 1);
+    }
+}
+
+// The points are read raw, as the lists of every shape are.
+void PolygonBinding::appendOutline(lua_State* L, int index, std::vector<haylen::math::Vec2>& points) {
+    luaL_checktype(L, index, LUA_TTABLE);
+    const auto length = static_cast<lua_Integer>(lua_rawlen(L, index));
+    for (lua_Integer place = 1; place <= length; ++place) {
+        lua_rawgeti(L, index, place);
+        points.push_back(lua::Stack::read<haylen::math::Vec2>(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
+std::vector<std::vector<haylen::math::Vec2>> PolygonBinding::readClips(lua_State* L, int index) {
+    return lua_isnoneornil(L, index) ? std::vector<std::vector<haylen::math::Vec2>>{} : readShape(L, index);
+}
+
+int PolygonBinding::unite(lua_State* L) {
+    lua::Stack::push(L, haylen::math::Polygon::unite(readShape(L, 1), readClips(L, 2)));
+    return 1;
+}
+
+int PolygonBinding::subtract(lua_State* L) {
+    lua::Stack::push(L, haylen::math::Polygon::subtract(readShape(L, 1), readShape(L, 2)));
+    return 1;
+}
+
+int PolygonBinding::intersect(lua_State* L) {
+    lua::Stack::push(L, haylen::math::Polygon::intersect(readShape(L, 1), readShape(L, 2)));
+    return 1;
+}
+
+int PolygonBinding::exclude(lua_State* L) {
+    lua::Stack::push(L, haylen::math::Polygon::exclude(readShape(L, 1), readShape(L, 2)));
+    return 1;
+}
+
+// Grows a shape with `offset(shape, distance, {join = 'round', miterLimit = 2})`.
+int PolygonBinding::offset(lua_State* L) {
+    const std::vector<std::vector<haylen::math::Vec2>> shape = readShape(L, 1);
+    const auto distance = lua::Stack::read<float>(L, 2);
+    haylen::math::Polygon::Join join = haylen::math::Polygon::Join::Round;
+    float miterLimit = 2.0F;
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kOffsetFields});
+        lua::Table::readField(L, 3, "join", join);
+        lua::Table::readField(L, 3, "miterLimit", miterLimit);
+    }
+
+    lua::Stack::push(L, haylen::math::Polygon::offset(shape, distance, join, miterLimit));
+    return 1;
+}
+
+int PolygonBinding::simplify(lua_State* L) {
+    const auto points = lua::Stack::read<std::vector<haylen::math::Vec2>>(L, 1);
+    const auto tolerance = lua::Stack::read<float>(L, 2);
+    const bool closed = lua_isnoneornil(L, 3) || lua::Stack::read<bool>(L, 3);
+    lua::Stack::push(L, haylen::math::Polygon::simplify(points, tolerance, closed));
+    return 1;
+}
+
+int PolygonBinding::decompose(lua_State* L) {
+    const std::vector<std::vector<haylen::math::Vec2>> shape = readShape(L, 1);
+    const std::size_t maxVertices = lua::Stack::read<std::optional<std::size_t>>(L, 2).value_or(8);
+    lua::Stack::push(L, haylen::math::Polygon::decompose(shape, maxVertices));
+    return 1;
+}
+
+int PolygonBinding::area(lua_State* L) {
+    lua::Stack::push(L, haylen::math::Polygon::getArea(readShape(L, 1)));
+    return 1;
+}
+
+// Traces a field with `trace(values, width, height, {threshold = 0.5, spacing = 1, origin = {0, 0}})`, where `values` hold `width` times `height` numbers row by row.
+int PolygonBinding::trace(lua_State* L) {
+    const auto values = lua::Stack::read<std::vector<float>>(L, 1);
+    const auto width = lua::Stack::read<int>(L, 2);
+    const auto height = lua::Stack::read<int>(L, 3);
+    haylen::math::MarchingSquares::Options options;
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        lua::Table::checkFields(L, 4, {kTraceFields});
+        lua::Table::readField(L, 4, "threshold", options.threshold);
+        lua::Table::readField(L, 4, "spacing", options.spacing);
+        lua::Table::readField(L, 4, "origin", options.origin);
+    }
+
+    lua::Stack::push(L, haylen::math::MarchingSquares::trace(values, width, height, options));
+    return 1;
+}
+
+// Traces the pixels that are `true` or not zero with `traceBitmap(pixels, width, height, {spacing = 1, origin = {0, 0}})`.
+int PolygonBinding::traceBitmap(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TTABLE);
+    const auto width = lua::Stack::read<int>(L, 2);
+    const auto height = lua::Stack::read<int>(L, 3);
+    float spacing = 1.0F;
+    haylen::math::Vec2 origin{};
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        lua::Table::checkFields(L, 4, {kBitmapFields});
+        lua::Table::readField(L, 4, "spacing", spacing);
+        lua::Table::readField(L, 4, "origin", origin);
+    }
+
+    const auto count = lua_rawlen(L, 1);
+    std::vector<std::uint8_t> pixels(count);
+    for (std::size_t pixel = 0; pixel < count; ++pixel) {
+        const int type = lua_rawgeti(L, 1, static_cast<lua_Integer>(pixel + 1));
+        pixels[pixel] = (type == LUA_TBOOLEAN ? lua_toboolean(L, -1) != 0 : lua_tonumber(L, -1) != 0.0) ? 1 : 0;
+        lua_pop(L, 1);
+    }
+
+    lua::Stack::push(L, haylen::math::MarchingSquares::traceBitmap(pixels, width, height, spacing, origin));
+    return 1;
+}
+
+void PolygonBinding::addFunctions(lua_State* L) {
+    const luaL_Reg polygon[] = {
+        {"unite", &lua::Binding::native<&unite>}, {"subtract", &lua::Binding::native<&subtract>}, {"intersect", &lua::Binding::native<&intersect>}, {"exclude", &lua::Binding::native<&exclude>}, {"offset", &lua::Binding::native<&offset>}, {"simplify", &lua::Binding::native<&simplify>}, {"decompose", &lua::Binding::native<&decompose>}, {"area", &lua::Binding::native<&area>}, {nullptr, nullptr},
+    };
+    lua::Binding::newModule(L, polygon);
+    lua_setfield(L, -2, "polygon");
+
+    const luaL_Reg marchingSquares[] = {
+        {"trace", &lua::Binding::native<&trace>},
+        {"traceBitmap", &lua::Binding::native<&traceBitmap>},
+        {nullptr, nullptr},
+    };
+    lua::Binding::newModule(L, marchingSquares);
+    lua_setfield(L, -2, "marchingSquares");
+}
+
+} // namespace haylen::lua::math

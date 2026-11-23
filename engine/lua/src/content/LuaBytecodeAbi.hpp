@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // The format of the binary chunks of the Lua of this build of the engine, which the module loader checks before it loads the bytecode of a protected release.
 class LuaBytecodeAbi final {
@@ -24,4 +24,4 @@ class LuaBytecodeAbi final {
     [[nodiscard]] static std::string read();
 };
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

@@ -12,13 +12,13 @@
 #include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // What the Lua code of an app in development may use: the time it may run each time the host enters the engine, such as for a frame, the start of the app or an event, so code that never ends stops the app instead of freezing the platform, and the memory of its Lua state. A count hook on every coroutine reads the clock every few hundred instructions, and the allocator of the state refuses memory past the budget, which runs the budget out unless an emergency collection of Lua makes room for the growth. Once the time or the memory ran out, the budget cancels the app through the engine with an error that names the code that ran out of it, and from then on every instruction of the app raises that error again. So no `pcall`, `xpcall` or coroutine of the app keeps it, and only a restart runs the app again. Only the host sets the time, and an app in development has no way to reach it. Only an app in development has a budget, so an app that ships never hooks its Lua for it.
-class ExecutionBudget final : public core::Engine::EntryObserver {
+class ExecutionBudget final : public haylen::core::Engine::EntryObserver {
   public:
     // Cancels the app with the error of the budget that ran out.
-    using Cancel = std::function<void(const core::AppError& error)>;
+    using Cancel = std::function<void(const haylen::core::AppError& error)>;
 
     // Names the step of the engine that runs now, such as `update` or `reload`, or answers an empty text where the step of the host names it.
     using StageReader = std::function<std::string_view()>;
@@ -92,7 +92,7 @@ class ExecutionBudget final : public core::Engine::EntryObserver {
     static int setGuardedMetatable(lua_State* L);
     static int runFinalizer(lua_State* L);
     static void* allocate(void* data, void* block, std::size_t oldSize, std::size_t newSize);
-    void exhaust(lua_State* L, const std::string& reason, core::AppError::Code code);
+    void exhaust(lua_State* L, const std::string& reason, haylen::core::AppError::Code code);
     [[nodiscard]] std::string readCurrentStage() const;
     [[nodiscard]] std::string describeMemory() const;
     [[nodiscard]] static std::string describe(const std::string& reason, const std::string& stage);
@@ -128,4 +128,4 @@ class ExecutionBudget final : public core::Engine::EntryObserver {
     std::string message;
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

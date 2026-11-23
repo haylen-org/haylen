@@ -1,0 +1,72 @@
+#include "development/HotReloadBinding.hpp"
+
+#include "development/ModuleGraph.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/ScriptPlugin.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/plugins/HotReloadPlugin.hpp"
+#include "modules/HotReloadModule.hpp"
+#include "runtime/LuaConfig.hpp"
+
+namespace haylen::lua {
+
+int HotReloadBinding::active(lua_State* L) {
+    Stack::push(L, Runtime::getEngine(L).getPlugin<haylen::plugins::HotReloadPlugin>().isActive());
+    return 1;
+}
+
+int HotReloadBinding::mode(lua_State* L) {
+    Stack::push(L, LuaConfig::reloadName(Runtime::getEngine(L).getPlugin<ScriptPlugin>().getConfig().reload));
+    return 1;
+}
+
+// Returns `keep(key, create)`: the value the module kept under the key in its previous load, or the result of `create()`, which it keeps. Outside development every call creates.
+int HotReloadBinding::keep(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TSTRING);
+    luaL_checktype(L, 2, LUA_TFUNCTION);
+    lua_settop(L, 2);
+    ModuleGraph* graph = Runtime::getEngine(L).getPlugin<ScriptPlugin>().getModule<modules::HotReloadModule>().getGraph();
+    if (graph == nullptr) {
+        lua_call(L, 0, 1);
+        return 1;
+    }
+
+    if (graph->getLoading().empty()) {
+        return luaL_error(L, "The function \"keep\" works only while a module loads.");
+    }
+
+    graph->pushKept(L, lua_tostring(L, 1), 2);
+    return 1;
+}
+
+// Marks the module that loads, so that a change to its file restarts the app instead of reloading the module.
+int HotReloadBinding::restartOnChange(lua_State* L) {
+    ModuleGraph* graph = Runtime::getEngine(L).getPlugin<ScriptPlugin>().getModule<modules::HotReloadModule>().getGraph();
+    if (graph == nullptr) {
+        return 0;
+    }
+
+    ModuleGraph::Module* module = graph->find(graph->getLoading());
+    if (module == nullptr) {
+        return luaL_error(L, "The function \"restartOnChange\" works only while a module loads.");
+    }
+
+    module->restartOnChange = true;
+    return 0;
+}
+
+int HotReloadBinding::open(lua_State* L) {
+    const luaL_Reg functions[] = {
+        {"active", &Binding::native<&active>}, {"mode", &Binding::native<&mode>}, {"keep", &Binding::native<&keep>}, {"restartOnChange", &Binding::native<&restartOnChange>}, {nullptr, nullptr},
+    };
+    Binding::newModule(L, functions);
+    return 1;
+}
+
+void HotReloadBinding::install(lua_State* L) {
+    Binding::preload(L, "haylen.hotReload", &open);
+}
+
+} // namespace haylen::lua

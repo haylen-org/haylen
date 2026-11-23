@@ -1,5 +1,5 @@
 # Builds the engine as an SDK that other projects find with `find_package(haylen)`.
-# Every static library the engine needs is merged into one `haylen` library, and the runtime into `haylen-runtime`, so the package config imports two libraries for the platform the SDK was built for, with the object of the Lua player, which defines the app of a Lua app, and the headers of the native API for native libraries.
+# Every static library the engine needs is merged into one `haylen` library, the runtime into `haylen-runtime` and the Lua layer with the Lua of Varn into `haylen-lua`, so the package config imports three libraries for the platform the SDK was built for, with the object of the Lua player, which defines the app of a Lua app, and the headers of the native API for native libraries.
 # The SDK installs with `cmake --install <build> --component haylen-sdk`, which leaves out the install rules of the dependencies.
 
 include(GNUInstallDirs)
@@ -82,6 +82,7 @@ set(sdk "${CMAKE_BINARY_DIR}/haylen-sdk")
 set(sdk_libraries "${sdk}/$<CONFIG>")
 set(engine_library "${sdk_libraries}/${CMAKE_STATIC_LIBRARY_PREFIX}haylen${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(runtime_library "${sdk_libraries}/${CMAKE_STATIC_LIBRARY_PREFIX}haylen-runtime${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(lua_library "${sdk_libraries}/${CMAKE_STATIC_LIBRARY_PREFIX}haylen-lua${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
 haylen_static_closure(haylen-engine engine_archives engine_externals)
 set(engine_inputs "")
@@ -109,6 +110,20 @@ list(APPEND engine_externals ${runtime_externals})
 list(REMOVE_DUPLICATES engine_externals)
 file(GENERATE OUTPUT "${sdk_libraries}/runtime-inputs.txt" CONTENT "${runtime_inputs}")
 
+# The Lua layer carries the static libraries it links beyond the ones of the engine: the Lua runtime of Varn with its modules and the Lua that Varn vendors.
+set(lua_inputs "")
+haylen_static_closure(haylen-lua lua_archives lua_externals)
+list(REMOVE_ITEM lua_archives ${engine_archives})
+foreach(archive IN LISTS lua_archives)
+  string(APPEND lua_inputs "$<TARGET_FILE:${archive}>\n")
+  get_target_property(imported "${archive}" IMPORTED)
+  if(NOT imported)
+    list(APPEND built_archives "${archive}")
+  endif()
+endforeach()
+list(REMOVE_ITEM lua_externals ${engine_externals})
+file(GENERATE OUTPUT "${sdk_libraries}/lua-inputs.txt" CONTENT "${lua_inputs}")
+
 if(APPLE)
   find_program(HAYLEN_LIBTOOL libtool HINTS /usr/bin REQUIRED)
   set(merge_kind libtool)
@@ -124,12 +139,13 @@ endif()
 # The runtime of Android defines the entry of GameActivity itself, so its library leaves out the native app glue of GameActivity, which defines that entry for apps of `android_main` and which no link takes, and the merge checks that one member defines the entry.
 set(engine_merge_options "")
 set(runtime_merge_options "")
+set(lua_merge_options "")
 if(ANDROID)
   set(runtime_merge_options "-DEXCLUDED=android_native_app_glue.c.o" "-DSINGLE=GameActivity_onCreate" "-DNM=${CMAKE_NM}")
 endif()
 
 # The objects of the runtime are no file of a target, so the merge names them itself and runs again whenever one of them changes.
-foreach(part engine runtime)
+foreach(part engine runtime lua)
   add_custom_command(OUTPUT "${${part}_library}"
     COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" ${${part}_merge_options} -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
     DEPENDS "${sdk_libraries}/${part}-inputs.txt" ${built_archives} haylen-runtime "$<TARGET_OBJECTS:haylen-runtime>"
@@ -137,7 +153,7 @@ foreach(part engine runtime)
     VERBATIM
   )
 endforeach()
-add_custom_target(haylen-sdk ALL DEPENDS "${engine_library}" "${runtime_library}")
+add_custom_target(haylen-sdk ALL DEPENDS "${engine_library}" "${runtime_library}" "${lua_library}")
 add_dependencies(haylen-sdk haylen-player)
 
 # The package config receives what the engine target carries for its users, with the ImGui configuration pointing at its installed copy.
@@ -146,6 +162,7 @@ if("Threads::Threads" IN_LIST engine_externals)
   set(HAYLEN_SDK_DEPENDENCIES "find_dependency(Threads)")
 endif()
 list(JOIN engine_externals ";" HAYLEN_SDK_EXTERNALS)
+list(JOIN lua_externals ";" HAYLEN_SDK_LUA_EXTERNALS)
 get_target_property(imgui_definitions haylen-imgui INTERFACE_COMPILE_DEFINITIONS)
 list(FILTER imgui_definitions EXCLUDE REGEX "^IMGUI_USER_CONFIG=")
 list(JOIN imgui_definitions ";" HAYLEN_SDK_DEFINITIONS)
@@ -161,6 +178,7 @@ foreach(options HAYLEN_SDK_COMPILE_OPTIONS HAYLEN_SDK_LINK_OPTIONS HAYLEN_SDK_RU
 endforeach()
 set(HAYLEN_SDK_ENGINE_FILE "${CMAKE_STATIC_LIBRARY_PREFIX}haylen${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(HAYLEN_SDK_RUNTIME_FILE "${CMAKE_STATIC_LIBRARY_PREFIX}haylen-runtime${CMAKE_STATIC_LIBRARY_SUFFIX}")
+set(HAYLEN_SDK_LUA_FILE "${CMAKE_STATIC_LIBRARY_PREFIX}haylen-lua${CMAKE_STATIC_LIBRARY_SUFFIX}")
 set(HAYLEN_SDK_PLAYER_FILE "haylen-player${CMAKE_CXX_OUTPUT_EXTENSION}")
 set(HAYLEN_SDK_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/haylen")
 set(HAYLEN_SDK_SHARE_DIR "${CMAKE_INSTALL_DATADIR}/haylen")
@@ -202,10 +220,10 @@ write_basic_package_version_file("${sdk}/haylen-config-version.cmake" VERSION "$
 get_target_property(lua_include varn-vendor-lua INTERFACE_INCLUDE_DIRECTORIES)
 string(REGEX REPLACE "^\\$<BUILD_INTERFACE:(.*)>$" "\\1" lua_include "${lua_include}")
 
-install(FILES "${engine_library}" "${runtime_library}" DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT haylen-sdk)
+install(FILES "${engine_library}" "${runtime_library}" "${lua_library}" DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT haylen-sdk)
 install(FILES "$<TARGET_OBJECTS:haylen-player>" DESTINATION "${CMAKE_INSTALL_LIBDIR}" RENAME "${HAYLEN_SDK_PLAYER_FILE}" COMPONENT haylen-sdk)
 install(FILES "${sdk}/haylen-config.cmake" "${sdk}/haylen-config-version.cmake" DESTINATION "${HAYLEN_SDK_CONFIG_DIR}" COMPONENT haylen-sdk)
-install(DIRECTORY "${HAYLEN_ENGINE_DIR}/include/" "${HAYLEN_GENERATED_INCLUDE_DIR}/" "${nlohmann_json_SOURCE_DIR}/include/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen-sdk)
+install(DIRECTORY "${HAYLEN_ENGINE_DIR}/include/" "${HAYLEN_ENGINE_DIR}/lua/include/" "${HAYLEN_GENERATED_INCLUDE_DIR}/" "${nlohmann_json_SOURCE_DIR}/include/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen-sdk)
 install(FILES "${HAYLEN_ENGINE_DIR}/src/ui/ImGuiConfig.hpp" "${HAYLEN_ENGINE_DIR}/src/ui/ImGuiAssert.hpp" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/haylen/ui" COMPONENT haylen-sdk)
 install(FILES "${imgui_SOURCE_DIR}/imgui.h" "${imgui_SOURCE_DIR}/imconfig.h" "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h" "${lua_include}/lua.h" "${lua_include}/luaconf.h" "${lua_include}/lualib.h" "${lua_include}/lauxlib.h" "${varn_SOURCE_DIR}/include/lua.hpp"
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen-sdk)

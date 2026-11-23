@@ -31,7 +31,7 @@ namespace haylen::lua {
 class ModuleReloadTest : public ::testing::Test {
   protected:
     void TearDown() override {
-        core::Log::removeListener(listener);
+        haylen::core::Log::removeListener(listener);
     }
 
     void start(std::map<std::string, std::string> files) {
@@ -57,9 +57,9 @@ class ModuleReloadTest : public ::testing::Test {
     }
 
     // Saves the files, removes the removed ones and returns the report of the batch that applied both.
-    core::Json applyAndReport(const std::map<std::string, std::string>& files, const std::vector<std::string>& removed = {}) {
-        core::Json report;
-        const core::Connection connection = fixture->engine().getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&report](const plugins::HotReloadPlugin::Report& value) { report = value.toJson(); });
+    haylen::core::Json applyAndReport(const std::map<std::string, std::string>& files, const std::vector<std::string>& removed = {}) {
+        haylen::core::Json report;
+        const haylen::core::Connection connection = fixture->engine().getPlugin<haylen::plugins::HotReloadPlugin>().reloaded.connect([&report](const haylen::plugins::HotReloadPlugin::Report& value) { report = value.toJson(); });
         std::vector<std::string> paths;
         for (const auto& [path, source] : files) {
             fixture->package().setFile(path, test::TestFiles::bytes(source));
@@ -81,13 +81,13 @@ class ModuleReloadTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::string error() const {
-        const core::AppError* failure = fixture->engine().getError();
+        const haylen::core::AppError* failure = fixture->engine().getError();
         return failure != nullptr ? failure->what() : "";
     }
 
     void recordLog() {
         // clang-format off
-        listener = core::Log::addListener([this](core::Log::Level, std::string_view line) {
+        listener = haylen::core::Log::addListener([this](haylen::core::Log::Level, std::string_view line) {
             const std::scoped_lock lock(logMutex);
             lines.emplace_back(line);
         });
@@ -397,7 +397,7 @@ require('hud')
     EXPECT_EQ(lua("return #require('haylen.debug').monitors()"), "1");
     EXPECT_EQ(lua("return unmounted"), "1");
     // The handlers of the nodes listen to the events of the GUIs next to the listener that the module registers again.
-    EXPECT_EQ(fixture->engine().getPlugin<plugins::UiPlugin>().events.size(), 2U);
+    EXPECT_EQ(fixture->engine().getPlugin<haylen::plugins::UiPlugin>().events.size(), 2U);
 }
 
 // A platform handler and a text effect that a module registers without an owner belong to the module, so a reload that no longer registers them leaves neither behind.
@@ -755,7 +755,7 @@ TEST_F(ModuleReloadTest, ShowsTheStackInsideAModuleWhoseFirstLoadFailed) {
     for (const std::string main : {"require('broken')", "require('async').spawn(function() require('broken') end)"}) {
         start({{"source/broken.lua", broken}, {"source/main.lua", "\n" + main}});
         fixture->frames(2);
-        const core::AppError* failure = fixture->engine().getError();
+        const haylen::core::AppError* failure = fixture->engine().getError();
         ASSERT_NE(failure, nullptr) << main;
         EXPECT_EQ(failure->getFile(), "source/broken.lua") << main;
         EXPECT_EQ(failure->getLine(), 2) << main;
@@ -819,8 +819,8 @@ TEST_F(ModuleReloadTest, ResumesOnceAModuleWhoseFirstLoadFailedIsFixed) {
 // An editor that undoes a broken save writes the exact bytes of the code that runs, which no reload needs, and the batch still leaves the error screen and says so.
 TEST_F(ModuleReloadTest, LeavesTheErrorOnceAModuleHoldsTheCodeThatRunsAgain) {
     start({{"source/settings.lua", "return {speed = function() return 1 end}"}, {"source/main.lua", "settings = require('settings')"}});
-    std::vector<plugins::HotReloadPlugin::Report> reports;
-    const core::Connection connection = fixture->engine().getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&reports](const plugins::HotReloadPlugin::Report& report) { reports.push_back(report); });
+    std::vector<haylen::plugins::HotReloadPlugin::Report> reports;
+    const haylen::core::Connection connection = fixture->engine().getPlugin<haylen::plugins::HotReloadPlugin>().reloaded.connect([&reports](const haylen::plugins::HotReloadPlugin::Report& report) { reports.push_back(report); });
     const std::string working = "return {speed = function() return 2 end}";
     edit({{"source/settings.lua", working}});
     edit({{"source/settings.lua", "return {speed = function() return 3 end"}});
@@ -885,10 +885,10 @@ TEST_F(ModuleReloadTest, RestartsForHaylenJsonMainAndPluginManifests) {
     };
     for (const auto& [path, reason] : cases) {
         start({{"source/main.lua", ""}, {"source/settings.lua", "return {}"}});
-        const core::Json report = applyAndReport({{path, "{}"}, {"source/settings.lua", "return {edited = true}"}});
+        const haylen::core::Json report = applyAndReport({{path, "{}"}, {"source/settings.lua", "return {edited = true}"}});
         EXPECT_TRUE(restarted()) << path;
         EXPECT_EQ(report.at("reason"), reason);
-        EXPECT_EQ(report.at("files"), (core::Json{{{"path", path}, {"change", "restart"}, {"reason", reason}}, {{"path", "source/settings.lua"}, {"change", "restart"}, {"reason", "The app restarts for \"" + path + "\", which applies this file too."}}})) << path;
+        EXPECT_EQ(report.at("files"), (haylen::core::Json{{{"path", path}, {"change", "restart"}, {"reason", reason}}, {{"path", "source/settings.lua"}, {"change", "restart"}, {"reason", "The app restarts for \"" + path + "\", which applies this file too."}}})) << path;
     }
 }
 
@@ -943,9 +943,9 @@ TEST_F(ModuleReloadTest, RestartsWhenAModuleReturnsAnotherPlainValue) {
 TEST_F(ModuleReloadTest, RemovesAModuleThatNoCodeRequiresInPlace) {
     start({{"source/gone.lua", "ticks = 0 require('haylen.timer').every(0.01, function() ticks = ticks + 1 end) return {}"}, {"source/main.lua", ""}});
     fixture->runLua("require('gone')");
-    const core::Json report = applyAndReport({}, {"source/gone.lua"});
+    const haylen::core::Json report = applyAndReport({}, {"source/gone.lua"});
     EXPECT_FALSE(restarted());
-    EXPECT_EQ(report.at("files"), (core::Json{{{"path", "source/gone.lua"}, {"change", "inPlace"}, {"reason", "The module file was removed, and no code of the app requires it, so the module left the app."}}}));
+    EXPECT_EQ(report.at("files"), (haylen::core::Json{{{"path", "source/gone.lua"}, {"change", "inPlace"}, {"reason", "The module file was removed, and no code of the app requires it, so the module left the app."}}}));
     EXPECT_EQ(lua("return tostring(package.loaded.gone)"), "nil");
     const std::string ticks = lua("return ticks");
     fixture->frames(3);
@@ -962,7 +962,7 @@ TEST_F(ModuleReloadTest, RestartsForRemovedModulesThatCodeRequires) {
     for (const auto& [files, reason] : cases) {
         SCOPED_TRACE(reason);
         start(files);
-        const core::Json report = applyAndReport({}, {"source/gone.lua"});
+        const haylen::core::Json report = applyAndReport({}, {"source/gone.lua"});
         EXPECT_TRUE(restarted());
         EXPECT_EQ(report.at("reason"), reason);
     }
@@ -1080,7 +1080,7 @@ TEST_F(ModuleReloadTest, ReloadsASaveMadeWhileTheModuleFirstLoads) {
     lua_State* L = fixture->lua();
     lua_pushlightuserdata(L, &fixture->package());
     lua_pushcclosure(L, [](lua_State* state) {
-        static_cast<io::MemoryPackage*>(lua_touserdata(state, lua_upvalueindex(1)))->setFile("source/slow.lua", test::TestFiles::bytes("save() return {version = 2}"));
+        static_cast<haylen::io::MemoryPackage*>(lua_touserdata(state, lua_upvalueindex(1)))->setFile("source/slow.lua", test::TestFiles::bytes("save() return {version = 2}"));
         return 0;
     }, 1);
     lua_setglobal(L, "save");
@@ -1130,10 +1130,10 @@ TEST_F(ModuleReloadTest, ReportsTheModeAndRejectsCallsOutsideAModuleLoad) {
 TEST_F(ModuleReloadTest, ReportsWhatASaveDidWithEachFile) {
     start({{"source/main.lua", "settings = require('settings')"}, {"source/settings.lua", "return {speed = 1}"}, {"content/data.json", R"({"level": 1})"}, {"content/maps/room.json", R"({"size": 1})"}});
     const std::shared_ptr<void> data = fixture->engine().getAssets().load("json", "data.json");
-    const core::Json report = applyAndReport({{"source/.main.lua.swp", "swap"}, {"source/later.lua", "return {value = 'new'}"}, {"source/settings.lua", "return {speed = 2}"}, {"content/data.json", R"({"level": 2})"}, {"content/maps/room.json", R"({"size": 2})"}});
+    const haylen::core::Json report = applyAndReport({{"source/.main.lua.swp", "swap"}, {"source/later.lua", "return {value = 'new'}"}, {"source/settings.lua", "return {speed = 2}"}, {"content/data.json", R"({"level": 2})"}, {"content/maps/room.json", R"({"size": 2})"}});
     EXPECT_FALSE(restarted());
     std::map<std::string, std::string> changes;
-    for (const core::Json& file : report.at("files")) {
+    for (const haylen::core::Json& file : report.at("files")) {
         changes[file.at("path").get<std::string>()] = file.at("change").get<std::string>();
         EXPECT_FALSE(file.at("reason").get<std::string>().empty());
     }
@@ -1143,7 +1143,7 @@ TEST_F(ModuleReloadTest, ReportsWhatASaveDidWithEachFile) {
 }
 
 TEST_F(ModuleReloadTest, RestartsWhenASaveTouchesMoreModulesThanReloadInPlace) {
-    const std::size_t count = plugins::HotReloadPlugin::kRestartModules + 1;
+    const std::size_t count = haylen::plugins::HotReloadPlugin::kRestartModules + 1;
     std::map<std::string, std::string> files{{"source/main.lua", "for index = 1, " + std::to_string(count) + " do require('part' .. index) end"}};
     std::map<std::string, std::string> edits;
     for (std::size_t index = 1; index <= count; ++index) {
@@ -1156,7 +1156,7 @@ TEST_F(ModuleReloadTest, RestartsWhenASaveTouchesMoreModulesThanReloadInPlace) {
     recordLog();
     edit(edits);
     EXPECT_TRUE(restarted());
-    EXPECT_TRUE(logged("The change touches " + std::to_string(count) + " loaded modules, more than the " + std::to_string(plugins::HotReloadPlugin::kRestartModules) + " that reload in place, so the app restarts."));
+    EXPECT_TRUE(logged("The change touches " + std::to_string(count) + " loaded modules, more than the " + std::to_string(haylen::plugins::HotReloadPlugin::kRestartModules) + " that reload in place, so the app restarts."));
 }
 // clang-format on
 

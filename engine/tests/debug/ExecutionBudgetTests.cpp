@@ -248,7 +248,7 @@ end})
 )");
     test::DebugClient client{fixture->host()};
     client.connect(fixture->engine().getPlugin<lua::ScriptPlugin>().getState());
-    const int resumes = ExecutionBudget::kCheckInstructions * 5;
+    const int resumes = lua::debug::ExecutionBudget::kCheckInstructions * 5;
     const std::string expression = "(function() local sum = 0 for _ = 1, " + std::to_string(resumes) + " do sum = sum + numbers() end return sum end)()";
     int evaluation = 0;
     // clang-format off

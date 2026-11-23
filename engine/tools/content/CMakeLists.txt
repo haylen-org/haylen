@@ -9,7 +9,7 @@ add_library(haylen-content-tool STATIC
   SecureRandom.cpp
 )
 target_include_directories(haylen-content-tool PUBLIC "${HAYLEN_ENGINE_DIR}/tools" "${HAYLEN_ENGINE_DIR}/src" "${HAYLEN_ENGINE_DIR}/lua/src")
-target_link_libraries(haylen-content-tool PUBLIC haylen-content-writer haylen-monocypher)
+target_link_libraries(haylen-content-tool PUBLIC haylen-content-writer haylen-lua haylen-monocypher)
 if(WIN32)
   target_link_libraries(haylen-content-tool PRIVATE advapi32 bcrypt)
 endif()

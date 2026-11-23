@@ -8,14 +8,14 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "lua/StackScope.hpp"
-#include "lua/Task.hpp"
+#include "runtime/StackScope.hpp"
+#include "runtime/Task.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 LuaPackSource::LuaPackSource(lua_State* L, int functionIndex, int ownerIndex) : main(lua::Runtime::getMainThread(L)), function(std::make_shared<lua::Owners::Function>(L, functionIndex, ownerIndex)), owner(ownerIndex != 0 ? std::make_shared<lua::WeakReference>(L, ownerIndex) : nullptr) {}
 
-void LuaPackSource::Answer::deliver(std::optional<std::filesystem::path> folder, std::optional<Error> failure) {
+void LuaPackSource::Answer::deliver(std::optional<std::filesystem::path> folder, std::optional<haylen::content::Error> failure) {
     if (!done) {
         return;
     }
@@ -66,9 +66,9 @@ void LuaPackSource::acquire(const std::string& pack, std::function<void(const Pr
     lua_pushcclosure(L, &reportProgress, 1);
 
     // clang-format off
-    lua::Task::start(L, runner, 3, ownerIndex, [answer, pack](const std::optional<core::AppError>& error) {
+    lua::Task::start(L, runner, 3, ownerIndex, [answer, pack](const std::optional<haylen::core::AppError>& error) {
         if (error) {
-            answer->deliver(std::nullopt, Error(Error::Code::StoreAssetUnavailable, "The source of packs failed to deliver the pack \"" + pack + "\". " + error->getMessage()));
+            answer->deliver(std::nullopt, haylen::content::Error(haylen::content::Error::Code::StoreAssetUnavailable, "The source of packs failed to deliver the pack \"" + pack + "\". " + error->getMessage()));
         }
     });
     // clang-format on
@@ -134,4 +134,4 @@ template <typename T> int LuaPackSource::collect(lua_State* L) {
     return 0;
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

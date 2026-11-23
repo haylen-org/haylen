@@ -1,0 +1,107 @@
+#include "2d/graphics/TileLayerBinding.hpp"
+
+#include <utility>
+#include <vector>
+
+#include "core/FloatBufferBinding.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
+
+namespace haylen::lua::graphics2d {
+
+int TileLayerBinding::create(lua_State* L) {
+    std::vector<haylen::graphics::Texture> textures;
+    if (lua::Userdata::test<haylen::graphics::Texture>(L, 1) != nullptr) {
+        textures.push_back(lua::Stack::read<haylen::graphics::Texture>(L, 1));
+    } else {
+        textures = lua::Stack::read<std::vector<haylen::graphics::Texture>>(L, 1);
+    }
+
+    haylen::graphics2d::TileLayer::Options options;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kOptionFields});
+        lua::Table::readField(L, 2, "cellWidth", options.cellSize.x);
+        lua::Table::readField(L, 2, "cellHeight", options.cellSize.y);
+        lua::Table::readField(L, 2, "chunkSize", options.chunkSize);
+    }
+
+    lua::Userdata::emplace<haylen::graphics2d::TileLayer>(L, std::make_shared<haylen::graphics2d::TileLayer>(std::move(textures), options));
+    return 1;
+}
+
+haylen::graphics2d::TileLayer& TileLayerBinding::check(lua_State* L) {
+    return lua::Userdata::check<haylen::graphics2d::TileLayer>(L, 1);
+}
+
+// Defines a frame with `defineFrame(id, {texture = 1, source = rect, offsetX = 0, offsetY = 0, width, height})`.
+int TileLayerBinding::defineFrame(lua_State* L) {
+    haylen::graphics2d::TileLayer& layer = check(L);
+    const auto id = lua::Stack::read<int>(L, 2);
+    luaL_checktype(L, 3, LUA_TTABLE);
+    lua::Table::checkFields(L, 3, {kFrameFields});
+    lua_Integer texture = 1;
+    haylen::graphics2d::TileLayer::Frame frame;
+    lua::Table::readField(L, 3, "texture", texture);
+    luaL_argcheck(L, texture >= 1, 3, "textures are numbered from one");
+    frame.texture = static_cast<std::size_t>(texture - 1);
+    lua::Table::readField(L, 3, "source", frame.source);
+    lua::Table::readField(L, 3, "offsetX", frame.offset.x);
+    lua::Table::readField(L, 3, "offsetY", frame.offset.y);
+    lua::Table::readField(L, 3, "width", frame.size.x);
+    lua::Table::readField(L, 3, "height", frame.size.y);
+    layer.defineFrame(id, frame);
+    return 0;
+}
+
+int TileLayerBinding::setCell(lua_State* L) {
+    check(L).setCell(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4));
+    return 0;
+}
+
+int TileLayerBinding::setCells(lua_State* L) {
+    const haylen::core::FloatBuffer& buffer = lua::Userdata::check<haylen::core::FloatBuffer>(L, 5);
+    check(L).setCells(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3), lua::Stack::read<int>(L, 4), buffer.getValues());
+    return 0;
+}
+
+int TileLayerBinding::cell(lua_State* L) {
+    lua_pushinteger(L, check(L).getCell(lua::Stack::read<int>(L, 2), lua::Stack::read<int>(L, 3)));
+    return 1;
+}
+
+int TileLayerBinding::clear(lua_State* L) {
+    check(L).clear();
+    return 0;
+}
+
+// Draws with `draw(order, offsetX, offsetY)`.
+int TileLayerBinding::draw(lua_State* L) {
+    haylen::graphics2d::TileLayer& layer = check(L);
+    const haylen::graphics2d::DrawOrder order = lua::TypeConverter::readDrawOrder(L, 2);
+    const haylen::math::Vec2 offset{lua::Converter<float>::readOr(L, 3, 0.0), lua::Converter<float>::readOr(L, 4, 0.0)};
+    layer.draw(lua::Runtime::getEngine(L).getRenderer2D(), order, offset);
+    return 0;
+}
+
+int TileLayerBinding::chunkCount(lua_State* L) {
+    lua::Stack::push(L, check(L).getChunkCount());
+    return 1;
+}
+
+int TileLayerBinding::batchCount(lua_State* L) {
+    lua::Stack::push(L, check(L).getBatchCount());
+    return 1;
+}
+
+void TileLayerBinding::install(lua_State* L) {
+    lua::ClassBuilder<haylen::graphics2d::TileLayer>(L).function("defineFrame", &lua::Binding::native<&defineFrame>).function("setCell", &lua::Binding::native<&setCell>).function("setCells", &lua::Binding::native<&setCells>).function("cell", &lua::Binding::native<&cell>).function("clear", &lua::Binding::native<&clear>).function("draw", &lua::Binding::native<&draw>).property("chunkCount", &chunkCount).property("batchCount", &batchCount).install();
+}
+
+} // namespace haylen::lua::graphics2d

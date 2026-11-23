@@ -1270,7 +1270,7 @@ These errors come from wrong curves:
 An `EasingCurve` is an easing curve that C++ code made from a function, which cannot become a name or a table. A curve in any other form reaches Lua as a name or a table. Such a value comes from projects that extend the engine in C++, when a binding pushes a curve of `math::EasingCurve::custom` with the binding toolkit that the [Lua guide](../core/lua.md#extending-the-engine-from-c) describes:
 
 ```cpp
-int CurvesLua::half(lua_State* L) {
+int CurvesBinding::half(lua_State* L) {
     haylen::lua::Stack::push(L, haylen::math::EasingCurve::custom([](float t) { return t * 0.5F; }));
     return 1;
 }

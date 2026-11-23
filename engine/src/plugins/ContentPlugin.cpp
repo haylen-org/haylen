@@ -1,6 +1,5 @@
 #include "plugins/ContentPlugin.hpp"
 
-#include "content/ContentLua.hpp"
 #include "content/UpdateScreen.hpp"
 #include "haylen/content/ContentManager.hpp"
 #include "haylen/core/Engine.hpp"

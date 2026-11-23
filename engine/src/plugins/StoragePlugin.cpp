@@ -12,8 +12,6 @@
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Window.hpp"
-#include "storage/PreferencesLua.hpp"
-#include "storage/StorageLua.hpp"
 
 namespace haylen::plugins {
 

@@ -1,0 +1,279 @@
+#include "2d/graphics/SpriteBatchBinding.hpp"
+
+#include <algorithm>
+#include <format>
+#include <optional>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+#include "core/FloatBufferBinding.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/SpriteBatch.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
+
+namespace haylen::core {
+
+template <> struct EnumNames<haylen::graphics2d::SpriteLayout::Field> {
+    static std::optional<haylen::graphics2d::SpriteLayout::Field> fromName(std::string_view name) {
+        return haylen::graphics2d::SpriteLayout::fieldFromName(name);
+    }
+
+    static std::string_view name(haylen::graphics2d::SpriteLayout::Field value) {
+        return haylen::graphics2d::SpriteLayout::fieldName(value);
+    }
+};
+
+} // namespace haylen::core
+
+namespace haylen::lua::graphics2d {
+
+std::span<const haylen::graphics::Texture> SpriteBatchBinding::readTextures(lua_State* L, int index, Textures& textures) {
+    if (lua_type(L, index) != LUA_TTABLE) {
+        textures[0] = lua::Stack::read<haylen::graphics::Texture>(L, index);
+        return std::span(textures).first(1);
+    }
+
+    const int table = lua_absindex(L, index);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, table));
+    haylen::graphics2d::SpriteBatch::checkTextureCount(count);
+
+    for (std::size_t texture = 0; texture < count; ++texture) {
+        lua_rawgeti(L, table, static_cast<lua_Integer>(texture + 1));
+        textures[texture] = lua::Stack::read<haylen::graphics::Texture>(L, -1);
+        lua_pop(L, 1);
+    }
+
+    return std::span(textures).first(count);
+}
+
+// The data holds up to four numbers, and the numbers it leaves out keep those of the base.
+std::optional<haylen::graphics2d::SpriteData> SpriteBatchBinding::readSpriteData(lua_State* L, int index, std::size_t textureCount, haylen::graphics2d::SpriteData base) {
+    const int table = lua_absindex(L, index);
+    const int texture = lua_getfield(L, table, "texture");
+    const int values = lua_getfield(L, table, "data");
+    if (texture == LUA_TNIL && values == LUA_TNIL) {
+        lua_pop(L, 2);
+        return std::nullopt;
+    }
+
+    if (texture != LUA_TNIL) {
+        const lua_Integer number = luaL_checkinteger(L, -2);
+        if (number < 1 || static_cast<std::size_t>(number) > textureCount) {
+            const std::string held = textureCount == 1 ? std::string("1 texture") : std::format("{} textures", textureCount);
+            throw std::invalid_argument(std::format("A sprite draws from the texture {} of its batch, which has {}.", number, held));
+        }
+
+        base.texture = static_cast<std::uint8_t>(number - 1);
+    }
+
+    if (values != LUA_TNIL) {
+        lua::Table::requireType(L, "data", LUA_TTABLE);
+        const auto count = static_cast<std::size_t>(lua_rawlen(L, -1));
+        if (count > base.values.size()) {
+            throw std::invalid_argument(std::format("The data of a sprite holds up to 4 numbers, and this one has {}.", count));
+        }
+
+        for (std::size_t value = 0; value < count; ++value) {
+            lua_rawgeti(L, -1, static_cast<lua_Integer>(value + 1));
+            base.values[value] = lua::Stack::read<float>(L, -1);
+            lua_pop(L, 1);
+        }
+    }
+
+    lua_pop(L, 2);
+    return base;
+}
+
+haylen::graphics2d::SpriteLayout SpriteBatchBinding::readLayout(lua_State* L, int index, const haylen::graphics2d::SpriteInstance& sprite, const haylen::graphics2d::SpriteData& data) {
+    lua::Stack::readInto(L, index, layoutFields);
+    return haylen::graphics2d::SpriteLayout(layoutFields, sprite, data);
+}
+
+void SpriteBatchBinding::pushSpriteInstance(lua_State* L, const haylen::graphics2d::SpriteInstance& sprite, const haylen::graphics2d::PartColors& colors, const haylen::graphics2d::SpriteData& data) {
+    lua_createtable(L, 0, 16);
+    lua::Stack::push(L, sprite.position.x);
+    lua_setfield(L, -2, "x");
+    lua::Stack::push(L, sprite.position.y);
+    lua_setfield(L, -2, "y");
+    lua::Stack::push(L, sprite.size.x);
+    lua_setfield(L, -2, "width");
+    lua::Stack::push(L, sprite.size.y);
+    lua_setfield(L, -2, "height");
+    lua::Stack::push(L, sprite.source);
+    lua_setfield(L, -2, "source");
+    lua::Stack::push(L, sprite.pivot.x);
+    lua_setfield(L, -2, "pivotX");
+    lua::Stack::push(L, sprite.pivot.y);
+    lua_setfield(L, -2, "pivotY");
+    lua::Stack::push(L, sprite.rotation);
+    lua_setfield(L, -2, "rotation");
+    lua::Stack::push(L, sprite.tilt);
+    lua_setfield(L, -2, "tilt");
+    lua::Stack::push(L, sprite.color);
+    lua_setfield(L, -2, "color");
+    lua::Stack::push(L, sprite.flash);
+    lua_setfield(L, -2, "flash");
+    lua::Stack::push(L, sprite.flip.horizontal);
+    lua_setfield(L, -2, "flipHorizontal");
+    lua::Stack::push(L, sprite.flip.vertical);
+    lua_setfield(L, -2, "flipVertical");
+    lua::Stack::push(L, sprite.flip.diagonal);
+    lua_setfield(L, -2, "flipDiagonal");
+    lua::Stack::push(L, colors);
+    lua_setfield(L, -2, "partColors");
+    lua::Stack::push(L, static_cast<int>(data.texture) + 1);
+    lua_setfield(L, -2, "texture");
+    lua::Stack::push(L, std::vector<float>(data.values.begin(), data.values.end()));
+    lua_setfield(L, -2, "data");
+}
+
+void SpriteBatchBinding::readPartColors(lua_State* L, int table, haylen::graphics2d::SpriteBatch& batch, std::size_t index) {
+    if (lua_getfield(L, table, "partColors") != LUA_TNIL) {
+        batch.setPartColors(index, lua::Stack::read<haylen::graphics2d::PartColors>(L, -1));
+    }
+
+    lua_pop(L, 1);
+}
+
+std::size_t SpriteBatchBinding::checkIndex(lua_State* L, int index, const haylen::graphics2d::SpriteBatch& batch) {
+    const lua_Integer value = luaL_checkinteger(L, index);
+    luaL_argcheck(L, value >= 1 && static_cast<std::size_t>(value) <= batch.size(), index, "sprite index out of range");
+    return static_cast<std::size_t>(value - 1);
+}
+
+std::size_t SpriteBatchBinding::checkFirst(lua_State* L, int index) {
+    const lua_Integer first = luaL_optinteger(L, index, 1);
+    luaL_argcheck(L, first >= 1, index, "sprites are numbered from one");
+    return static_cast<std::size_t>(first - 1);
+}
+
+// A sprite without a size takes the size of the texture it draws from.
+int SpriteBatchBinding::add(lua_State* L) {
+    haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    luaL_checktype(L, 2, LUA_TTABLE);
+    const std::optional<haylen::graphics2d::SpriteData> data = readSpriteData(L, 2, batch.getTextures().size());
+    const haylen::graphics::Texture& texture = batch.getTextures()[data ? data->texture : 0];
+    const std::size_t index = batch.add(lua::TypeConverter::readSpriteInstance(L, 2, texture, {}, {kPartColorFields, kDataFields}));
+    readPartColors(L, 2, batch, index);
+
+    if (data) {
+        batch.setData(index, *data);
+    }
+
+    lua::Stack::push(L, index + 1);
+    return 1;
+}
+
+int SpriteBatchBinding::set(lua_State* L) {
+    haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    const std::size_t index = checkIndex(L, 2, batch);
+    luaL_checktype(L, 3, LUA_TTABLE);
+    const std::optional<haylen::graphics2d::SpriteData> data = readSpriteData(L, 3, batch.getTextures().size(), batch.getData(index));
+    const haylen::graphics::Texture& texture = batch.getTextures()[data ? data->texture : batch.getData(index).texture];
+    batch.set(index, lua::TypeConverter::readSpriteInstance(L, 3, texture, batch.get(index), {kPartColorFields, kDataFields}));
+    readPartColors(L, 3, batch, index);
+
+    if (data) {
+        batch.setData(index, *data);
+    }
+
+    return 0;
+}
+
+int SpriteBatchBinding::get(lua_State* L) {
+    const haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    const std::size_t index = checkIndex(L, 2, batch);
+    pushSpriteInstance(L, batch.get(index), batch.getPartColors(index), batch.getData(index));
+    return 1;
+}
+
+int SpriteBatchBinding::reserve(lua_State* L) {
+    lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1).reserve(lua::Stack::read<std::size_t>(L, 2));
+    return 0;
+}
+
+// Sets the number of sprites with `resize(count[, sprite])`, where new sprites copy the sprite table.
+int SpriteBatchBinding::resize(lua_State* L) {
+    haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    const lua_Integer count = luaL_checkinteger(L, 2);
+    luaL_argcheck(L, count >= 0, 2, "the count cannot be negative");
+    haylen::graphics2d::SpriteInstance sprite{.size = batch.getTexture().getSize()};
+    if (!lua_isnoneornil(L, 3)) {
+        sprite = lua::TypeConverter::readSpriteInstance(L, 3, batch.getTexture());
+    }
+
+    batch.resize(static_cast<std::size_t>(count), sprite);
+    return 0;
+}
+
+// Copies the fields a buffer holds into the sprites with `writeFields(buffer, {'x', 'y', ...}[, first])`.
+int SpriteBatchBinding::writeFields(lua_State* L) {
+    haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    const haylen::core::FloatBuffer& buffer = lua::Userdata::check<haylen::core::FloatBuffer>(L, 2);
+    const haylen::graphics2d::SpriteLayout layout = readLayout(L, 3);
+    batch.writeFields(buffer.getValues(), layout, checkFirst(L, 4));
+    return 0;
+}
+
+// Copies the fields of the sprites into a buffer with `readFields(buffer, {'x', 'y', ...}[, first])`.
+int SpriteBatchBinding::readFields(lua_State* L) {
+    const haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    haylen::core::FloatBuffer& buffer = lua::Userdata::check<haylen::core::FloatBuffer>(L, 2);
+    const haylen::graphics2d::SpriteLayout layout = readLayout(L, 3);
+    batch.readFields(buffer.getValues(), layout, checkFirst(L, 4));
+    return 0;
+}
+
+int SpriteBatchBinding::remove(lua_State* L) {
+    haylen::graphics2d::SpriteBatch& batch = lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1);
+    batch.remove(checkIndex(L, 2, batch));
+    return 0;
+}
+
+int SpriteBatchBinding::clear(lua_State* L) {
+    lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1).clear();
+    return 0;
+}
+
+int SpriteBatchBinding::size(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1).size());
+    return 1;
+}
+
+int SpriteBatchBinding::draw(lua_State* L) {
+    lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1).draw(lua::Runtime::getEngine(L).getRenderer2D(), lua::TypeConverter::readDrawOrder(L, 2));
+    return 0;
+}
+
+int SpriteBatchBinding::bake(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::graphics2d::SpriteBatch>(L, 1).bake(lua::Runtime::getEngine(L).getRenderer2D()));
+    return 1;
+}
+
+std::size_t SpriteBatchBinding::staticSize(const haylen::graphics2d::StaticSpriteBatch& batch) {
+    return batch.size();
+}
+
+haylen::math::Rect SpriteBatchBinding::staticBounds(const haylen::graphics2d::StaticSpriteBatch& batch) {
+    return batch.getBounds();
+}
+
+haylen::graphics::Texture SpriteBatchBinding::staticTexture(const haylen::graphics2d::StaticSpriteBatch& batch) {
+    return batch.getTexture();
+}
+
+void SpriteBatchBinding::install(lua_State* L) {
+    lua::ClassBuilder<haylen::graphics2d::StaticSpriteBatch>(L).function("size", &lua::Binding::function<&staticSize>).function("bounds", &lua::Binding::function<&staticBounds>).function("texture", &lua::Binding::function<&staticTexture>).install();
+    lua::ClassBuilder<haylen::graphics2d::SpriteBatch>(L).function("add", &lua::Binding::native<&add>).function("set", &lua::Binding::native<&set>).function("get", &lua::Binding::native<&get>).function("reserve", &lua::Binding::native<&reserve>).function("resize", &lua::Binding::native<&resize>).function("writeFields", &lua::Binding::native<&writeFields>).function("readFields", &lua::Binding::native<&readFields>).function("remove", &lua::Binding::native<&remove>).function("clear", &clear).function("size", &size).function("draw", &lua::Binding::native<&draw>).function("bake", &lua::Binding::native<&bake>).install();
+}
+
+} // namespace haylen::lua::graphics2d

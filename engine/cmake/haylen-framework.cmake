@@ -1,6 +1,6 @@
-# Builds the libraries of one slice of the Apple SDK: the engine and the runtime merged into the `libhaylen.a` of `Haylen.xcframework`, which every app links, and the Lua player alone in the `libhaylen-player.a` of `HaylenPlayer.xcframework`, which only Lua apps link, so a C++ app that defines `haylen::core::Application::create` holds no second one.
+# Builds the libraries of one slice of the Apple SDK: the engine and the runtime merged into the `libhaylen.a` of `Haylen.xcframework`, which every app links, and the Lua layer with the Lua player in the `libhaylen-player.a` of `HaylenPlayer.xcframework`, which only Lua apps link, so a C++ app that defines `haylen::core::Application::create` holds no second one.
 # The Apple engine port of the tooling builds it for every architecture of a slice, joins the architectures with `lipo` and creates the frameworks with `xcodebuild -create-xcframework`.
-# It runs after `haylen-install.cmake`, whose merged engine and runtime libraries it takes as inputs.
+# It runs after `haylen-install.cmake`, whose merged engine, runtime and Lua libraries it takes as inputs.
 
 if(NOT APPLE OR NOT HAYLEN_BUILD_SDK)
   message(FATAL_ERROR "The option \"HAYLEN_BUILD_FRAMEWORK\" needs an Apple platform and \"HAYLEN_BUILD_SDK\".")
@@ -10,7 +10,7 @@ set(framework_libraries "${CMAKE_BINARY_DIR}/haylen-framework/$<CONFIG>")
 set(framework_library "${framework_libraries}/libhaylen.a")
 set(player_library "${framework_libraries}/libhaylen-player.a")
 file(GENERATE OUTPUT "${framework_libraries}/inputs.txt" CONTENT "${engine_library}\n${runtime_library}\n")
-file(GENERATE OUTPUT "${framework_libraries}/player-inputs.txt" CONTENT "$<JOIN:$<TARGET_OBJECTS:haylen-player>,\n>\n")
+file(GENERATE OUTPUT "${framework_libraries}/player-inputs.txt" CONTENT "${lua_library}\n$<JOIN:$<TARGET_OBJECTS:haylen-player>,\n>\n")
 
 add_custom_command(OUTPUT "${framework_library}"
   COMMAND "${CMAKE_COMMAND}" -DKIND=libtool "-DTOOL=${HAYLEN_LIBTOOL}" "-DOUTPUT=${framework_library}" "-DINPUTS=${framework_libraries}/inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
@@ -20,8 +20,8 @@ add_custom_command(OUTPUT "${framework_library}"
 )
 add_custom_command(OUTPUT "${player_library}"
   COMMAND "${CMAKE_COMMAND}" -DKIND=libtool "-DTOOL=${HAYLEN_LIBTOOL}" "-DOUTPUT=${player_library}" "-DINPUTS=${framework_libraries}/player-inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
-  DEPENDS "${framework_libraries}/player-inputs.txt" "$<TARGET_OBJECTS:haylen-player>"
-  COMMENT "Archiving the Lua player of the Haylen framework"
+  DEPENDS "${framework_libraries}/player-inputs.txt" "${lua_library}" "$<TARGET_OBJECTS:haylen-player>"
+  COMMENT "Merging the Lua layer and the Lua player of the Haylen framework"
   VERBATIM
 )
 add_custom_target(haylen-framework ALL DEPENDS "${framework_library}" "${player_library}")

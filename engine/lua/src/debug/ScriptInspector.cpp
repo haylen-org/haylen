@@ -18,21 +18,21 @@
 #include "haylen/core/Utf8.hpp"
 #include "haylen/lua/Runtime.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 ScriptInspector::ScriptInspector(lua_State* L) noexcept : state(L) {}
 
 // The entries fill the storage of the listing before, so a listing of the same values allocates nothing.
-void ScriptInspector::list(std::span<const std::string> path, Inspector::Listing& listing) {
+void ScriptInspector::list(std::span<const std::string> path, haylen::debug::Inspector::Listing& listing) {
     lua_State* L = state;
     std::size_t count = 0;
-    std::vector<Inspector::Entry>& found = listing.found;
+    std::vector<haylen::debug::Inspector::Entry>& found = listing.found;
     if (path.empty()) {
         // clang-format off
         lua::Runtime::protectedRun(L, [&found, &count](lua_State* thread) {
             for (const std::string_view root : kRoots) {
                 pushRoot(thread, root);
-                Inspector::Entry& entry = takeEntry(found, count);
+                haylen::debug::Inspector::Entry& entry = takeEntry(found, count);
                 entry.key = root;
                 describe(thread, lua_gettop(thread), false, entry);
                 lua_pop(thread, 1);
@@ -60,8 +60,8 @@ void ScriptInspector::list(std::span<const std::string> path, Inspector::Listing
 }
 
 // Integer keys come first in their order, and names follow in the order of the alphabet. The places sort, so every entry of the listing takes the same values each time.
-void ScriptInspector::sort(Inspector::Listing& listing) {
-    const std::vector<Inspector::Entry>& found = listing.found;
+void ScriptInspector::sort(haylen::debug::Inspector::Listing& listing) {
+    const std::vector<haylen::debug::Inspector::Entry>& found = listing.found;
     // clang-format off
     std::ranges::sort(listing.order, [&found](std::size_t left, std::size_t right) {
         const std::optional<std::int64_t> first = readIndex(found[left].key);
@@ -75,7 +75,7 @@ void ScriptInspector::sort(Inspector::Listing& listing) {
     // clang-format on
 }
 
-Inspector::Entry& ScriptInspector::takeEntry(std::vector<Inspector::Entry>& found, std::size_t& count) {
+haylen::debug::Inspector::Entry& ScriptInspector::takeEntry(std::vector<haylen::debug::Inspector::Entry>& found, std::size_t& count) {
     if (count == found.size()) {
         found.emplace_back();
     }
@@ -84,13 +84,13 @@ Inspector::Entry& ScriptInspector::takeEntry(std::vector<Inspector::Entry>& foun
 }
 
 // The body of a protected run has a stack of its own, so the entries leave it as C++ values.
-void ScriptInspector::collect(lua_State* L, std::span<const std::string> path, std::vector<Inspector::Entry>& found, std::size_t& count) {
+void ScriptInspector::collect(lua_State* L, std::span<const std::string> path, std::vector<haylen::debug::Inspector::Entry>& found, std::size_t& count) {
     pushPath(L, path);
     const int value = lua_gettop(L);
     if (lua_type(L, value) == LUA_TTABLE) {
         lua_pushnil(L);
-        while (lua_next(L, value) != 0 && count < Inspector::kMaxEntries) {
-            Inspector::Entry& entry = takeEntry(found, count);
+        while (lua_next(L, value) != 0 && count < haylen::debug::Inspector::kMaxEntries) {
+            haylen::debug::Inspector::Entry& entry = takeEntry(found, count);
             describeKey(L, -2, entry.key);
             describe(L, lua_gettop(L), true, entry);
             lua_pop(L, 1);
@@ -100,21 +100,21 @@ void ScriptInspector::collect(lua_State* L, std::span<const std::string> path, s
     }
 
     if (lua_type(L, value) != LUA_TUSERDATA || lua_getmetatable(L, value) == 0 || lua_getfield(L, -1, "__properties") != LUA_TTABLE) {
-        throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which holds nothing to list.", Inspector::joinPath(path), luaL_typename(L, value)));
+        throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which holds nothing to list.", haylen::debug::Inspector::joinPath(path), luaL_typename(L, value)));
     }
 
     const int getters = lua_gettop(L);
     lua_getfield(L, getters - 1, "__writable");
     const int setters = lua_gettop(L);
     lua_pushnil(L);
-    while (lua_next(L, getters) != 0 && count < Inspector::kMaxEntries) {
+    while (lua_next(L, getters) != 0 && count < haylen::debug::Inspector::kMaxEntries) {
         lua_pop(L, 1);
         lua_pushvalue(L, -1);
         const bool writable = lua_istable(L, setters) && lua_rawget(L, setters) != LUA_TNIL;
         lua_pop(L, 1);
         lua_pushvalue(L, -1);
         lua_gettable(L, value);
-        Inspector::Entry& entry = takeEntry(found, count);
+        haylen::debug::Inspector::Entry& entry = takeEntry(found, count);
         describeKey(L, -2, entry.key);
         describe(L, lua_gettop(L), writable, entry);
         lua_pop(L, 1);
@@ -145,7 +145,7 @@ void ScriptInspector::assign(lua_State* L, std::span<const std::string> path, st
         double number = 0.0;
         const auto [end, error] = fast_float::from_chars(text.data(), text.data() + text.size(), number);
         if (error != std::errc{} || end != text.data() + text.size() || !std::isfinite(number)) {
-            throw std::invalid_argument(std::format("The value at \"{}\" is a number, and \"{}\" is not one.", Inspector::joinPath(path), text));
+            throw std::invalid_argument(std::format("The value at \"{}\" is a number, and \"{}\" is not one.", haylen::debug::Inspector::joinPath(path), text));
         }
 
         if (std::trunc(number) == number && std::abs(number) < 9.0e15) {
@@ -155,14 +155,14 @@ void ScriptInspector::assign(lua_State* L, std::span<const std::string> path, st
         }
     } else if (current == LUA_TBOOLEAN) {
         if (text != "true" && text != "false") {
-            throw std::invalid_argument(std::format("The value at \"{}\" is a boolean, which is \"true\" or \"false\".", Inspector::joinPath(path)));
+            throw std::invalid_argument(std::format("The value at \"{}\" is a boolean, which is \"true\" or \"false\".", haylen::debug::Inspector::joinPath(path)));
         }
 
         lua_pushboolean(L, text == "true" ? 1 : 0);
     } else if (current == LUA_TSTRING) {
         lua_pushlstring(L, text.data(), text.size());
     } else {
-        throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which the inspector does not edit. It edits numbers, booleans and strings.", Inspector::joinPath(path), lua_typename(L, current)));
+        throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which the inspector does not edit. It edits numbers, booleans and strings.", haylen::debug::Inspector::joinPath(path), lua_typename(L, current)));
     }
 
     lua_settable(L, container);
@@ -223,7 +223,7 @@ void ScriptInspector::pushPath(lua_State* L, std::span<const std::string> path) 
     for (std::size_t index = 1; index < path.size(); ++index) {
         const int container = lua_gettop(L);
         if (!lua_istable(L, container) && !lua_isuserdata(L, container)) {
-            throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which holds no \"{}\".", Inspector::joinPath(path.first(index)), luaL_typename(L, container), path[index]));
+            throw std::invalid_argument(std::format("The value at \"{}\" is of the type \"{}\", which holds no \"{}\".", haylen::debug::Inspector::joinPath(path.first(index)), luaL_typename(L, container), path[index]));
         }
 
         pushKey(L, container, path[index]);
@@ -261,7 +261,7 @@ std::optional<std::int64_t> ScriptInspector::readIndex(std::string_view key) noe
     return number;
 }
 
-void ScriptInspector::describe(lua_State* L, int index, bool editable, Inspector::Entry& entry) {
+void ScriptInspector::describe(lua_State* L, int index, bool editable, haylen::debug::Inspector::Entry& entry) {
     const int type = lua_type(L, index);
     entry.type = lua_typename(L, type);
     if (type == LUA_TUSERDATA && lua_getmetatable(L, index) != 0) {
@@ -288,7 +288,7 @@ void ScriptInspector::describeValue(lua_State* L, int index, std::string& text) 
         text = lua_toboolean(L, index) != 0 ? "true" : "false";
         break;
     case LUA_TSTRING:
-        appendText(L, index, Inspector::kMaxValueText, text);
+        appendText(L, index, haylen::debug::Inspector::kMaxValueText, text);
         break;
     case LUA_TTABLE:
         describeTable(L, index, text);
@@ -308,9 +308,9 @@ void ScriptInspector::describeTable(lua_State* L, int index, std::string& text) 
     lua_pushnil(L);
     while (lua_next(L, table) != 0) {
         lua_pop(L, 1);
-        if (++count > Inspector::kMaxEntries) {
+        if (++count > haylen::debug::Inspector::kMaxEntries) {
             lua_pop(L, 1);
-            std::format_to(std::back_inserter(text), "More than {} values", Inspector::kMaxEntries);
+            std::format_to(std::back_inserter(text), "More than {} values", haylen::debug::Inspector::kMaxEntries);
             return;
         }
     }
@@ -323,7 +323,7 @@ void ScriptInspector::describeTable(lua_State* L, int index, std::string& text) 
     // A table with a name, such as a scene or an object of the app, shows it before its count.
     lua_pushliteral(L, "name");
     if (lua_rawget(L, table) == LUA_TSTRING) {
-        appendText(L, -1, Inspector::kMaxValueText, text);
+        appendText(L, -1, haylen::debug::Inspector::kMaxValueText, text);
         text += ", ";
     }
 
@@ -370,7 +370,7 @@ void ScriptInspector::appendText(lua_State* L, int index, std::size_t limit, std
     std::size_t offset = 0;
     while (offset < bytes.size()) {
         const std::size_t before = text.size();
-        core::Utf8::append(text, core::Utf8::decode(bytes, offset));
+        haylen::core::Utf8::append(text, haylen::core::Utf8::decode(bytes, offset));
         if (text.size() - start > limit) {
             text.resize(before);
             break;
@@ -378,4 +378,4 @@ void ScriptInspector::appendText(lua_State* L, int index, std::size_t limit, std
     }
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

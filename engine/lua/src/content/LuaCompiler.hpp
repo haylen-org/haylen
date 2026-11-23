@@ -7,10 +7,10 @@
 
 #include "haylen/content/ModuleCompiler.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // Compiles the Lua modules of an app into the binary chunks of the Lua that the engine runs, for the app domain of a release, so a release ships no Lua text and loads its modules without parsing them. A chunk keeps the package path of its module as its name and all of its debug information, so an error in a release names the module, the line and the local variables as it does in development, and it holds no folder of the machine that built it. Its chunks have the format that `LuaBytecodeAbi` names.
-class LuaCompiler final : public ModuleCompiler {
+class LuaCompiler final : public haylen::content::ModuleCompiler {
   public:
     // The format that `LuaBytecodeAbi` names.
     [[nodiscard]] std::string getAbi() const override;
@@ -19,4 +19,4 @@ class LuaCompiler final : public ModuleCompiler {
     [[nodiscard]] std::vector<std::uint8_t> compile(std::string_view source, std::string_view path) const override;
 };
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

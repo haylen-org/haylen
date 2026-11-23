@@ -1,0 +1,524 @@
+#include "2d/graphics/RichTextBinding.hpp"
+
+#include <lua.hpp>
+
+#include <algorithm>
+#include <array>
+#include <functional>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+#include "graphics/FontBinding.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/FrameClock.hpp"
+#include "haylen/core/Utf8.hpp"
+#include "haylen/lua/Binding.hpp"
+#include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Runtime.hpp"
+#include "haylen/lua/Stack.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
+#include "haylen/plugins/TextPlugin.hpp"
+
+namespace haylen::lua::graphics2d {
+
+const std::shared_ptr<haylen::text::RichTextRegistry>& RichTextBinding::getRegistry(lua_State* L) {
+    return lua::Runtime::getEngine(L).getPlugin<haylen::plugins::TextPlugin>().getRegistry();
+}
+
+haylen::text::RichTextOptions RichTextBinding::readOptions(lua_State* L, int index, std::initializer_list<lua::Table::FieldNames> extraFields, std::vector<haylen::plugins::TextPlugin::FontName>* fontNames) {
+    haylen::core::Engine& engine = lua::Runtime::getEngine(L);
+    haylen::plugins::TextPlugin& plugin = engine.getPlugin<haylen::plugins::TextPlugin>();
+    haylen::text::RichTextOptions options{.family = plugin.getRegistry()->getDefaultFamily(), .images = [&engine, &plugin](std::string_view path) { return plugin.getImage(engine, path); }};
+    if (lua_isnoneornil(L, index)) {
+        return options;
+    }
+
+    luaL_checktype(L, index, LUA_TTABLE);
+    // clang-format off
+    lua::Table::readFields(L, index, kOptionFields, extraFields, [L, &options, fontNames](std::string_view key) {
+        if (key == "family") {
+            options.family = lua::graphics::FontBinding::readFamily(L, lua_gettop(L));
+        } else if (key == "size") {
+            lua::Table::readValue(L, key, options.size);
+        } else if (key == "bold") {
+            lua::Table::readValue(L, key, options.bold);
+        } else if (key == "italic") {
+            lua::Table::readValue(L, key, options.italic);
+        } else if (key == "color") {
+            lua::Table::readValue(L, key, options.color);
+        } else if (key == "maxWidth") {
+            lua::Table::readValue(L, key, options.maxWidth);
+        } else if (key == "align") {
+            lua::Table::readValue(L, key, options.align);
+        } else if (key == "direction") {
+            lua::Table::readValue(L, key, options.direction);
+        } else if (key == "language") {
+            lua::Table::readValue(L, key, options.language);
+        } else if (key == "lineSpacing") {
+            lua::Table::readValue(L, key, options.lineSpacing);
+        } else if (key == "lineHeight") {
+            lua::Table::readValue(L, key, options.lineHeight);
+        } else if (key == "scale") {
+            lua::Table::readValue(L, key, options.scale);
+        } else if (key == "revealSpeed") {
+            lua::Table::readValue(L, key, options.revealSpeed);
+        } else if (key == "underlineLinks") {
+            lua::Table::readValue(L, key, options.underlineLinks);
+        } else if (key == "balance") {
+            lua::Table::readValue(L, key, options.balance);
+        } else if (key == "ligatures") {
+            lua::Table::readValue(L, key, options.ligatures);
+        } else if (key == "code") {
+            lua::Table::readValue(L, key, options.code);
+        } else if (key == "fonts" && fontNames != nullptr) {
+            readFonts(L, *fontNames);
+        } else if (key == "fonts") {
+            std::vector<haylen::plugins::TextPlugin::FontName> read;
+            readFonts(L, read);
+            options.fonts = haylen::plugins::TextPlugin::makeFontLookup(read);
+        }
+    });
+    // clang-format on
+    return options;
+}
+
+// Reads the table on top of the stack, which maps font names to families, sorted by name, so the same fonts read the same every frame. The names are the keys of the table, which lives while the call reads them.
+void RichTextBinding::readFonts(lua_State* L, std::vector<haylen::plugins::TextPlugin::FontName>& fontNames) {
+    lua::Table::requireType(L, "fonts", LUA_TTABLE);
+    fontNames.clear();
+    lua_pushnil(L);
+    while (lua_next(L, -2) != 0) {
+        if (lua_type(L, -2) != LUA_TSTRING) {
+            luaL_error(L, "The \"fonts\" option maps font names to families, so its keys must be strings.");
+        }
+
+        fontNames.emplace_back(lua::Stack::read<std::string_view>(L, -2), lua::graphics::FontBinding::readFamily(L, lua_gettop(L)));
+        lua_pop(L, 1);
+    }
+
+    std::ranges::sort(fontNames, {}, &haylen::plugins::TextPlugin::FontName::first);
+}
+
+// Creates rich text with `newRichText(markup, {family, size, bold, italic, color, maxWidth, balance, align, direction, language, lineSpacing, lineHeight, scale, revealSpeed, underlineLinks, ligatures, code, fonts})`.
+int RichTextBinding::newRichText(lua_State* L) {
+    std::string markup = lua::Stack::read<std::string>(L, 1);
+    lua::Stack::push(L, std::make_shared<haylen::text::RichText>(std::move(markup), readOptions(L, 2), getRegistry(L)));
+    return 1;
+}
+
+haylen::math::Color RichTextBinding::readTint(lua_State* L, int index) {
+    haylen::math::Color tint = haylen::math::Color::white();
+    if (!lua_isnoneornil(L, index)) {
+        lua::Table::readFields(L, index, kTintFields, {kOptionFields, lua::TypeConverter::kDrawOrderFields}, [L, &tint](std::string_view key) { lua::Table::readValue(L, key, tint); });
+    }
+
+    return tint;
+}
+
+// The fonts of the options go into storage every draw reuses, which lets go of their families once the draw found its text.
+haylen::text::RichText& RichTextBinding::getDrawnText(lua_State* L, int options) {
+    haylen::core::Engine& engine = lua::Runtime::getEngine(L);
+    haylen::plugins::TextPlugin& plugin = engine.getPlugin<haylen::plugins::TextPlugin>();
+    std::vector<haylen::plugins::TextPlugin::FontName>& fonts = plugin.getDrawnFonts();
+    fonts.clear();
+    const haylen::text::RichTextOptions read = readOptions(L, options, {lua::TypeConverter::kDrawOrderFields, kTintFields}, &fonts);
+    haylen::text::RichText& drawn = plugin.getDrawnText(lua::Stack::read<std::string_view>(L, 1), read, fonts, engine.getClock().getElapsed());
+    fonts.clear();
+    return drawn;
+}
+
+// Draws markup with `drawRichText(markup, x, y, options)`, where the options also take the tint and the draw order, and effects follow the time the app has run.
+int RichTextBinding::drawRichText(lua_State* L) {
+    haylen::text::RichText& richText = getDrawnText(L, 4);
+    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(richText, {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, lua::TypeConverter::readDrawOrder(L, 4, {kOptionFields, kTintFields}), {1.0F, 1.0F}, readTint(L, 4));
+    return 0;
+}
+
+int RichTextBinding::measureRichText(lua_State* L) {
+    const haylen::math::Vec2 size = getDrawnText(L, 2).getSize();
+    lua::Stack::push(L, size.x);
+    lua::Stack::push(L, size.y);
+    return 2;
+}
+
+// The glyph table holds `index` and `character` counted from 1, `char`, `codePoint`, `x` and `y` on the baseline, `time`, `offsetX`, `offsetY`, `color` and `visible`.
+void RichTextBinding::pushEffectGlyph(lua_State* L, const haylen::text::Effect::Glyph& glyph) {
+    lua_createtable(L, 0, 12);
+    const std::array<std::pair<const char*, double>, 5> numbers{{{"x", glyph.position.x}, {"y", glyph.position.y}, {"time", glyph.time}, {"offsetX", glyph.offset.x}, {"offsetY", glyph.offset.y}}};
+    for (const auto& [name, value] : numbers) {
+        lua_pushnumber(L, value);
+        lua_setfield(L, -2, name);
+    }
+
+    lua_pushinteger(L, static_cast<lua_Integer>(glyph.index + 1));
+    lua_setfield(L, -2, "index");
+    lua_pushinteger(L, static_cast<lua_Integer>(glyph.character + 1));
+    lua_setfield(L, -2, "character");
+    std::string character;
+    haylen::core::Utf8::append(character, glyph.codePoint);
+    lua::Stack::push(L, character);
+    lua_setfield(L, -2, "char");
+    lua_pushinteger(L, static_cast<lua_Integer>(glyph.codePoint));
+    lua_setfield(L, -2, "codePoint");
+    lua::Stack::push(L, glyph.color);
+    lua_setfield(L, -2, "color");
+    lua::Stack::push(L, glyph.visible);
+    lua_setfield(L, -2, "visible");
+}
+
+// The attributes of the tag come with numbers as numbers.
+void RichTextBinding::pushEffectAttributes(lua_State* L, const haylen::text::Effect::Parameters& parameters) {
+    lua_createtable(L, 0, static_cast<int>(parameters.getValues().size()));
+    for (const auto& [key, value] : parameters.getValues()) {
+        if (lua_stringtonumber(L, value.c_str()) == 0) {
+            lua::Stack::push(L, value);
+        }
+
+        lua_setfield(L, -2, key.c_str());
+    }
+}
+
+// The effect takes the glyph table and the attributes of its tag, and the glyph reads back the fields the effect may change.
+void RichTextBinding::runEffect(lua_State* main, const lua::Owners::Function& function, haylen::text::Effect::Glyph& glyph, const haylen::text::Effect::Parameters& parameters) {
+    // clang-format off
+    lua::Runtime::protectedRun(main, [&](lua_State* L) {
+        if (!function.push(L)) {
+            return;
+        }
+
+        pushEffectGlyph(L, glyph);
+        const int table = lua_gettop(L);
+        pushEffectAttributes(L, parameters);
+        lua_pushvalue(L, table);
+        lua_insert(L, 1);
+        lua_call(L, 2, 0);
+        lua::Table::readField(L, 1, "offsetX", glyph.offset.x);
+        lua::Table::readField(L, 1, "offsetY", glyph.offset.y);
+        lua::Table::readField(L, 1, "color", glyph.color);
+        lua::Table::readField(L, 1, "visible", glyph.visible);
+    });
+    // clang-format on
+}
+
+// Registers a Lua effect with `registerTextEffect(name, function(glyph, attributes) ... end, {owner = owner})`, which runs for every glyph inside `[name]` each frame, and returns the connection that removes it. The effect ends with its owner, or with the default owner.
+int RichTextBinding::registerTextEffect(lua_State* L) {
+    std::string name = lua::Stack::read<std::string>(L, 1);
+    const lua::Owners::Listener listener = lua::Owners::readListener(L, 2, 3);
+    lua_State* main = lua::Runtime::getMainThread(L);
+    // clang-format off
+    haylen::core::Connection connection = getRegistry(L)->registerEffect(std::move(name), [main, function = listener.function](haylen::text::Effect::Glyph& glyph, const haylen::text::Effect::Parameters& parameters) {
+        runEffect(main, *function, glyph, parameters);
+    });
+    // clang-format on
+    lua::Owners::pushConnection(L, listener, std::move(connection));
+    return 1;
+}
+
+// Registers an icon for `[icon=name]` with `registerTextIcon(name, texture, {source, width, height})`.
+int RichTextBinding::registerTextIcon(lua_State* L) {
+    std::string name = lua::Stack::read<std::string>(L, 1);
+    haylen::text::RichTextRegistry::Icon icon{.texture = lua::Stack::read<haylen::graphics::Texture>(L, 2)};
+    if (!lua_isnoneornil(L, 3)) {
+        luaL_checktype(L, 3, LUA_TTABLE);
+        lua::Table::checkFields(L, 3, {kIconFields});
+        lua::Table::readField(L, 3, "source", icon.source);
+        lua::Table::readField(L, 3, "width", icon.size.x);
+        lua::Table::readField(L, 3, "height", icon.size.y);
+    }
+
+    getRegistry(L)->registerIcon(std::move(name), std::move(icon));
+    return 0;
+}
+
+int RichTextBinding::textEffectNames(lua_State* L) {
+    lua::Stack::push(L, getRegistry(L)->getEffectNames());
+    return 1;
+}
+
+int RichTextBinding::update(lua_State* L) {
+    lua::Userdata::check<haylen::text::RichText>(L, 1).update(lua::Stack::read<float>(L, 2));
+    return 0;
+}
+
+// Draws the text with `text:draw(x, y, options)`, where the options take the scale of the block from its top-left corner, the tint of every color and the draw order keys.
+int RichTextBinding::draw(lua_State* L) {
+    const haylen::graphics2d::DrawOrder order = lua::TypeConverter::readDrawOrder(L, 4, {kDrawFields});
+    haylen::math::Vec2 scale{1.0F, 1.0F};
+    haylen::math::Color tint = haylen::math::Color::white();
+    if (!lua_isnoneornil(L, 4)) {
+        // clang-format off
+        lua::Table::readFields(L, 4, kDrawFields, {lua::TypeConverter::kDrawOrderFields}, [L, &scale, &tint](std::string_view key) {
+            if (key == "scale") {
+                lua::Table::readValue(L, key, scale);
+            } else {
+                lua::Table::readValue(L, key, tint);
+            }
+        });
+        // clang-format on
+    }
+
+    lua::Runtime::getEngine(L).getRenderer2D().drawRichText(lua::Userdata::check<haylen::text::RichText>(L, 1), {lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, order, scale, tint);
+    return 0;
+}
+
+// Returns the size of the block, or with `text:size(maxWidth)` the size the block takes at another wrap width without changing the text, which is how a container measures text before placing it.
+int RichTextBinding::size(lua_State* L) {
+    haylen::text::RichText& richText = lua::Userdata::check<haylen::text::RichText>(L, 1);
+    const haylen::math::Vec2 measured = lua_isnoneornil(L, 2) ? richText.getSize() : richText.getLayout(lua::Stack::read<float>(L, 2)).size;
+    lua::Stack::push(L, measured.x);
+    lua::Stack::push(L, measured.y);
+    return 2;
+}
+
+int RichTextBinding::linkAt(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getLinkAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}));
+    return 1;
+}
+
+int RichTextBinding::hintAt(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getHintAt({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}));
+    return 1;
+}
+
+// A negative count shows every character.
+int RichTextBinding::setVisibleCharacters(lua_State* L) {
+    haylen::text::RichText& richText = lua::Userdata::check<haylen::text::RichText>(L, 1);
+    const lua_Integer count = luaL_checkinteger(L, lua_gettop(L));
+    richText.setVisibleCharacters(count < 0 ? richText.getCharacterCount() : static_cast<std::size_t>(count));
+    return 0;
+}
+
+// Returns the layout of this moment as `{size, lineCount, glyphs, boxes, images, links, hints, characters, lines}`, the way the text draws now.
+int RichTextBinding::frame(lua_State* L) {
+    haylen::text::RichText& richText = lua::Userdata::check<haylen::text::RichText>(L, 1);
+    const haylen::text::Layout& frame = richText.getFrame();
+    lua_createtable(L, 0, 9);
+    lua::Stack::push(L, frame.size);
+    lua_setfield(L, -2, "size");
+    lua::Stack::push(L, frame.lineCount);
+    lua_setfield(L, -2, "lineCount");
+    pushGlyphs(L, frame);
+    lua_setfield(L, -2, "glyphs");
+    pushBoxes(L, frame);
+    lua_setfield(L, -2, "boxes");
+    pushImages(L, frame);
+    lua_setfield(L, -2, "images");
+    pushAreas(L, frame.links, richText.getDocument().links, "link");
+    lua_setfield(L, -2, "links");
+    pushAreas(L, frame.hints, richText.getDocument().hints, "hint");
+    lua_setfield(L, -2, "hints");
+    pushCharacters(L, frame);
+    lua_setfield(L, -2, "characters");
+    pushLines(L, frame);
+    lua_setfield(L, -2, "lines");
+    return 1;
+}
+
+void RichTextBinding::pushGlyphs(lua_State* L, const haylen::text::Layout& frame) {
+    lua_createtable(L, static_cast<int>(frame.glyphs.size()), 0);
+    for (std::size_t index = 0; index < frame.glyphs.size(); ++index) {
+        const haylen::text::Layout::Glyph& glyph = frame.glyphs[index];
+        const haylen::text::Layout::Look& look = frame.looks[glyph.look];
+        std::string character;
+        haylen::core::Utf8::append(character, glyph.codePoint);
+        lua_createtable(L, 0, 12);
+        lua::Stack::push(L, character);
+        lua_setfield(L, -2, "char");
+        lua::Stack::push(L, glyph.index);
+        lua_setfield(L, -2, "index");
+        lua::Stack::push(L, glyph.character + 1);
+        lua_setfield(L, -2, "character");
+        lua::Stack::push(L, haylen::math::Rect{glyph.position.x, glyph.position.y, glyph.size.x, glyph.size.y});
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, glyph.baseline);
+        lua_setfield(L, -2, "baseline");
+        lua::Stack::push(L, glyph.color);
+        lua_setfield(L, -2, "color");
+        lua::Stack::push(L, glyph.visible);
+        lua_setfield(L, -2, "visible");
+        lua::Stack::push(L, look.size);
+        lua_setfield(L, -2, "size");
+        lua::Stack::push(L, look.weight > 0.0F || look.emboldenOffset > 0.0F);
+        lua_setfield(L, -2, "syntheticBold");
+        lua::Stack::push(L, look.skew != 0.0F);
+        lua_setfield(L, -2, "syntheticItalic");
+
+        if (glyph.image.isValid()) {
+            lua::Stack::push(L, glyph.image);
+            lua_setfield(L, -2, "image");
+        }
+
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
+void RichTextBinding::pushBoxes(lua_State* L, const haylen::text::Layout& frame) {
+    lua_createtable(L, static_cast<int>(frame.boxes.size()), 0);
+    for (std::size_t index = 0; index < frame.boxes.size(); ++index) {
+        const haylen::text::Layout::Box& box = frame.boxes[index];
+        lua_createtable(L, 0, 4);
+        lua::Stack::push(L, kBoxKindNames[static_cast<std::size_t>(box.kind)]);
+        lua_setfield(L, -2, "kind");
+        lua::Stack::push(L, box.rect);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, box.color);
+        lua_setfield(L, -2, "color");
+        lua::Stack::push(L, box.visible);
+        lua_setfield(L, -2, "visible");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
+void RichTextBinding::pushImages(lua_State* L, const haylen::text::Layout& frame) {
+    lua_createtable(L, static_cast<int>(frame.images.size()), 0);
+    for (std::size_t index = 0; index < frame.images.size(); ++index) {
+        const haylen::text::Layout::Image& image = frame.images[index];
+        lua_createtable(L, 0, 3);
+        lua::Stack::push(L, image.rect);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, image.texture);
+        lua_setfield(L, -2, "texture");
+        lua::Stack::push(L, image.visible);
+        lua_setfield(L, -2, "visible");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
+void RichTextBinding::pushAreas(lua_State* L, const std::vector<haylen::text::Layout::Area>& areas, const std::vector<std::string>& values, const char* key) {
+    lua_createtable(L, static_cast<int>(areas.size()), 0);
+    for (std::size_t index = 0; index < areas.size(); ++index) {
+        lua_createtable(L, 0, 2);
+        lua::Stack::push(L, areas[index].rect);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, values[areas[index].index]);
+        lua_setfield(L, -2, key);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
+// Characters come in reading order with the code points of the text without markup they draw, counted from 1.
+void RichTextBinding::pushCharacters(lua_State* L, const haylen::text::Layout& frame) {
+    lua_createtable(L, static_cast<int>(frame.characters.size()), 0);
+    for (std::size_t index = 0; index < frame.characters.size(); ++index) {
+        const haylen::text::Layout::Character& character = frame.characters[index];
+        lua_createtable(L, 0, 4);
+        lua::Stack::push(L, character.box);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, character.begin + 1);
+        lua_setfield(L, -2, "first");
+        lua::Stack::push(L, character.end);
+        lua_setfield(L, -2, "last");
+        lua::Stack::push(L, character.rightToLeft);
+        lua_setfield(L, -2, "rightToLeft");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
+void RichTextBinding::pushLines(lua_State* L, const haylen::text::Layout& frame) {
+    lua_createtable(L, static_cast<int>(frame.lines.size()), 0);
+    for (std::size_t index = 0; index < frame.lines.size(); ++index) {
+        const haylen::text::Layout::Line& line = frame.lines[index];
+        lua_createtable(L, 0, 3);
+        lua::Stack::push(L, line.box);
+        lua_setfield(L, -2, "rect");
+        lua::Stack::push(L, line.baseline);
+        lua_setfield(L, -2, "baseline");
+        lua::Stack::push(L, line.rightToLeft);
+        lua_setfield(L, -2, "rightToLeft");
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+}
+
+int RichTextBinding::getMarkup(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getMarkup());
+    return 1;
+}
+
+int RichTextBinding::setMarkup(lua_State* L) {
+    lua::Userdata::check<haylen::text::RichText>(L, 1).setMarkup(lua::Stack::read<std::string>(L, 3));
+    return 0;
+}
+
+int RichTextBinding::getMaxWidth(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getOptions().maxWidth);
+    return 1;
+}
+
+int RichTextBinding::setMaxWidth(lua_State* L) {
+    lua::Userdata::check<haylen::text::RichText>(L, 1).setMaxWidth(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int RichTextBinding::getScale(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getOptions().scale);
+    return 1;
+}
+
+int RichTextBinding::setScale(lua_State* L) {
+    lua::Userdata::check<haylen::text::RichText>(L, 1).setScale(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+template <auto Option> int RichTextBinding::getOption(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getOptions().*Option);
+    return 1;
+}
+
+// An option set as a property lays the text out again and starts its reveal over, like any change of the options.
+template <auto Option> int RichTextBinding::setOption(lua_State* L) {
+    haylen::text::RichText& richText = lua::Userdata::check<haylen::text::RichText>(L, 1);
+    haylen::text::RichTextOptions changed = richText.getOptions();
+    changed.*Option = lua::Stack::read<std::remove_cvref_t<decltype(changed.*Option)>>(L, 3);
+    richText.setOptions(std::move(changed));
+    return 0;
+}
+
+int RichTextBinding::setFamily(lua_State* L) {
+    haylen::text::RichText& richText = lua::Userdata::check<haylen::text::RichText>(L, 1);
+    haylen::text::RichTextOptions changed = richText.getOptions();
+    changed.family = lua::graphics::FontBinding::readFamily(L, 3);
+    richText.setOptions(std::move(changed));
+    return 0;
+}
+
+int RichTextBinding::getVisibleCharacters(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getVisibleCharacters());
+    return 1;
+}
+
+int RichTextBinding::getVisibleRatio(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getVisibleRatio());
+    return 1;
+}
+
+int RichTextBinding::setVisibleRatio(lua_State* L) {
+    lua::Userdata::check<haylen::text::RichText>(L, 1).setVisibleRatio(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int RichTextBinding::characterCount(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getCharacterCount());
+    return 1;
+}
+
+int RichTextBinding::revealing(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).isRevealing());
+    return 1;
+}
+
+int RichTextBinding::time(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::text::RichText>(L, 1).getTime());
+    return 1;
+}
+
+void RichTextBinding::install(lua_State* L) {
+    lua::ClassBuilder<haylen::text::RichText>(L).function("update", &lua::Binding::native<&update>).function("draw", &lua::Binding::native<&draw>).function("size", &lua::Binding::native<&size>).function("linkAt", &lua::Binding::native<&linkAt>).function("hintAt", &lua::Binding::native<&hintAt>).function("setVisibleCharacters", &lua::Binding::native<&setVisibleCharacters>).function("frame", &lua::Binding::native<&frame>).property("markup", &lua::Binding::native<&getMarkup>, &lua::Binding::native<&setMarkup>).property("maxWidth", &lua::Binding::native<&getMaxWidth>, &lua::Binding::native<&setMaxWidth>).property("scale", &lua::Binding::native<&getScale>, &lua::Binding::native<&setScale>).property("family", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::family>>, &lua::Binding::native<&setFamily>).property("bold", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::bold>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::bold>>).property("italic", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::italic>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::italic>>).property("color", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::color>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::color>>).property("align", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::align>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::align>>).property("direction", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::direction>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::direction>>).property("language", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::language>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::language>>).property("lineSpacing", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::lineSpacing>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::lineSpacing>>).property("lineHeight", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::lineHeight>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::lineHeight>>).property("revealSpeed", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::revealSpeed>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::revealSpeed>>).property("underlineLinks", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::underlineLinks>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::underlineLinks>>).property("ligatures", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::ligatures>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::ligatures>>).property("code", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::code>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::code>>).property("balance", &lua::Binding::native<&getOption<&haylen::text::RichTextOptions::balance>>, &lua::Binding::native<&setOption<&haylen::text::RichTextOptions::balance>>).property("visibleCharacters", &lua::Binding::native<&getVisibleCharacters>, &lua::Binding::native<&setVisibleCharacters>).property("visibleRatio", &lua::Binding::native<&getVisibleRatio>, &lua::Binding::native<&setVisibleRatio>).property("characterCount", &lua::Binding::native<&characterCount>).property("revealing", &lua::Binding::native<&revealing>).property("time", &time).install();
+}
+
+} // namespace haylen::lua::graphics2d

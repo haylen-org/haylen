@@ -28,7 +28,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/ui/android/` | The runner of [the UI tests](#the-ui-tests) of apps on Android: the Gradle project of a test APK that instruments itself and the base class `HaylenUiTestCase` in `support/`. |
 | `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`. |
 
-The target `haylen-tests` links `haylen::engine`, `haylen::headless`, `haylen::gpu`, the library of the content tool, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
+The target `haylen-tests` links `haylen::lua`, `haylen::player`, `haylen::headless`, `haylen::gpu`, the library of the content tool, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` and `engine/lua/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
 
 The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. Each test has a timeout of 120 seconds, far above the few seconds that the slowest test takes. So a test that hangs fails on its own, and the rest of the suite still runs.
 

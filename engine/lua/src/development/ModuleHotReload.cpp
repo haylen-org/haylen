@@ -18,10 +18,10 @@
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
-#include "lua/Autoloads.hpp"
-#include "lua/ErrorReader.hpp"
-#include "lua/ScriptedScene.hpp"
+#include "runtime/Autoloads.hpp"
+#include "runtime/ErrorReader.hpp"
 #include "runtime/LuaConfig.hpp"
+#include "runtime/ScriptedScene.hpp"
 
 namespace haylen::lua {
 
@@ -35,7 +35,7 @@ bool ModuleHotReload::isLoaded(std::string_view path) const {
 }
 
 // A removed module leaves the app in place only while no code of the app requires it: no other module, no file that is no module, such as `source/main.lua`, and no autoload.
-std::string ModuleHotReload::findRestartReason(core::Engine& engine, const std::string& path) const {
+std::string ModuleHotReload::findRestartReason(haylen::core::Engine& engine, const std::string& path) const {
     const ModuleGraph::Module* module = graph.find(path);
     if (module == nullptr) {
         return {};
@@ -68,18 +68,18 @@ std::string ModuleHotReload::findRestartReason(core::Engine& engine, const std::
 }
 
 // A removed module that no code of the app requires leaves `package.loaded`, and what it registered ends with it, so the next `require` of it fails as for a module that never existed.
-void ModuleHotReload::remove(core::Engine&, const std::string& path) {
+void ModuleHotReload::remove(haylen::core::Engine&, const std::string& path) {
     graph.remove(state, path);
 }
 
 // A module that fails, or whose file cannot be read, changes nothing, while the other modules of the batch still reload. Once the reload finished what it started, the first error of a module or of a hook replaces the one the reload was meant to fix, so the error screen shows the latest one.
-bool ModuleHotReload::reload(core::Engine& engine, const std::vector<std::string>& paths, plugins::HotReloadPlugin::Report& report, std::string& restartFile) {
-    using Change = plugins::HotReloadPlugin::Change;
+bool ModuleHotReload::reload(haylen::core::Engine& engine, const std::vector<std::string>& paths, haylen::plugins::HotReloadPlugin::Report& report, std::string& restartFile) {
+    using Change = haylen::plugins::HotReloadPlugin::Change;
     lua_State* L = state;
-    const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Reload);
+    const haylen::core::Engine::PhaseScope scope(engine, haylen::core::Engine::Phase::Reload);
     const int top = lua_gettop(L);
     ModuleReloader reloader(L, graph, engine.getPackage());
-    std::optional<core::AppError> failure;
+    std::optional<haylen::core::AppError> failure;
     for (const std::string& path : graph.order(paths)) {
         ModuleReloader::Result result;
         try {
@@ -125,13 +125,13 @@ bool ModuleHotReload::reload(core::Engine& engine, const std::vector<std::string
     reloader.finish();
 
     if (!report.modules.empty()) {
-        std::optional<core::AppError> hookFailure = callHooks(engine, report.modules, top + 1);
+        std::optional<haylen::core::AppError> hookFailure = callHooks(engine, report.modules, top + 1);
         if (!failure) {
             failure = std::move(hookFailure);
         }
 
         for (const std::string& path : report.modules) {
-            engine.getEvents().post(std::string(core::LifecycleEvent::kModuleReloaded), {{"module", graph.find(path)->names.front()}, {"path", path}});
+            engine.getEvents().post(std::string(haylen::core::LifecycleEvent::kModuleReloaded), {{"module", graph.find(path)->names.front()}, {"path", path}});
         }
     }
 
@@ -147,7 +147,7 @@ bool ModuleHotReload::reload(core::Engine& engine, const std::vector<std::string
 }
 
 // Every table hears `reloaded` once, in this order: the reloaded modules and the modules that require them, the autoloads, the scenes from the bottom of the stack to the top, and the instances of the patched tables. A module that returns a prototype, such as a class of `haylen.class`, defines the hook of its instances, so it is no module hook. Each call is protected like a scene hook.
-std::optional<core::AppError> ModuleHotReload::callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
+std::optional<haylen::core::AppError> ModuleHotReload::callHooks(haylen::core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
     lua_State* L = state;
     const int top = lua_gettop(L);
     lua_createtable(L, 0, 2);
@@ -165,7 +165,7 @@ std::optional<core::AppError> ModuleHotReload::callHooks(core::Engine& engine, c
     const Reference info(L, -1);
 
     std::unordered_set<const void*> called;
-    std::optional<core::AppError> failure;
+    std::optional<haylen::core::AppError> failure;
     // clang-format off
     const auto call = [&](int index) {
         if (!lua_istable(L, index) || !called.insert(lua_topointer(L, index)).second) {
@@ -187,7 +187,7 @@ std::optional<core::AppError> ModuleHotReload::callHooks(core::Engine& engine, c
                 info.push(thread);
                 lua_call(thread, 2, 0);
             });
-        } catch (const core::AppError& error) {
+        } catch (const haylen::core::AppError& error) {
             if (!failure) {
                 failure = error;
             }
@@ -218,8 +218,8 @@ std::optional<core::AppError> ModuleHotReload::callHooks(core::Engine& engine, c
 
     lua_pop(L, 2);
 
-    const std::vector<std::shared_ptr<core::Scene>> scenes(engine.getScenes().begin(), engine.getScenes().end());
-    for (const std::shared_ptr<core::Scene>& scene : scenes) {
+    const std::vector<std::shared_ptr<haylen::core::Scene>> scenes(engine.getScenes().begin(), engine.getScenes().end());
+    for (const std::shared_ptr<haylen::core::Scene>& scene : scenes) {
         if (const auto* scripted = dynamic_cast<const ScriptedScene*>(scene.get())) {
             scripted->pushTable(L);
             call(lua_gettop(L));

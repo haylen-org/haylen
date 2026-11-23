@@ -4,7 +4,6 @@
 #include <memory>
 #include <string>
 
-#include "2d/physics/Physics2DLua.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/Engine.hpp"

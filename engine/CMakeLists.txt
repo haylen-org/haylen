@@ -68,77 +68,51 @@ include(haylen-embed)
 
 set(HAYLEN_ENGINE_SOURCES
   src/2d/animation/AnimatedBatch.cpp
-  src/2d/animation/AnimatedBatchLua.cpp
   src/2d/animation/Animation.cpp
   src/2d/animation/AtlasBuilder.cpp
-  src/2d/animation/AtlasBuilderLua.cpp
-  src/2d/animation/Animation2DLua.cpp
   src/2d/animation/Animator.cpp
   src/2d/animation/Chain.cpp
-  src/2d/animation/ChainLua.cpp
   src/2d/animation/Skeleton.cpp
   src/2d/animation/SkeletonAnimation.cpp
   src/2d/animation/SkeletonData.cpp
-  src/2d/animation/SkeletonLua.cpp
   src/2d/animation/SpriteAtlas.cpp
   src/2d/animation/StateGraph.cpp
-  src/2d/animation/StateGraphLua.cpp
   src/2d/animation/StateGraphPlayer.cpp
   src/2d/graphics/Camera.cpp
-  src/2d/graphics/CameraLua.cpp
   src/2d/graphics/CameraRig.cpp
-  src/2d/graphics/CameraRigLua.cpp
   src/2d/graphics/DrawItem.cpp
   src/2d/graphics/FrameSubmitter.cpp
-  src/2d/graphics/GlassLua.cpp
   src/2d/graphics/GpuInstance.cpp
-  src/2d/graphics/Graphics2DLua.cpp
   src/2d/graphics/LightInstance.cpp
   src/2d/graphics/Material.cpp
-  src/2d/graphics/MaterialLua.cpp
   src/2d/graphics/MaterialResource.cpp
-  src/2d/graphics/GroupLua.cpp
   src/2d/graphics/Mesh.cpp
-  src/2d/graphics/MeshLua.cpp
   src/2d/graphics/NineSlice.cpp
-  src/2d/graphics/NineSliceLua.cpp
   src/2d/graphics/Parallax.cpp
   src/2d/graphics/PixelCanvas.cpp
-  src/2d/graphics/PixelCanvasLua.cpp
-  src/2d/graphics/ParallaxLua.cpp
   src/2d/graphics/MeshFringe.cpp
   src/2d/graphics/Path.cpp
-  src/2d/graphics/PathLua.cpp
   src/2d/graphics/PathTessellation.cpp
   src/2d/graphics/PolygonMesh.cpp
   src/2d/graphics/PostProcess.cpp
   src/2d/graphics/Renderer.cpp
   src/2d/graphics/RendererState.cpp
-  src/2d/graphics/RichTextLua.cpp
   src/2d/graphics/SceneTransition.cpp
   src/2d/graphics/Shape.cpp
   src/2d/graphics/SpriteBatch.cpp
-  src/2d/graphics/SpriteBatchLua.cpp
   src/2d/graphics/SpriteEffect.cpp
   src/2d/graphics/SpriteLayout.cpp
-  src/2d/graphics/SpriteLua.cpp
   src/2d/graphics/StaticBatchResource.cpp
   src/2d/graphics/StaticSpriteBatch.cpp
   src/2d/graphics/Stroke.cpp
   src/2d/graphics/StrokeBuilder.cpp
-  src/2d/graphics/StrokeLua.cpp
   src/2d/graphics/TextPainter.cpp
   src/2d/graphics/TileLayer.cpp
-  src/2d/graphics/TileLayerLua.cpp
   src/2d/graphics/VectorAtlas.cpp
   src/2d/lighting/LightFlicker.cpp
   src/2d/lighting/Light.cpp
-  src/2d/lighting/LightLua.cpp
-  src/2d/lighting/Lighting2DLua.cpp
   src/2d/lighting/Occluder.cpp
-  src/2d/lighting/OccluderLua.cpp
   src/2d/lighting/ShadowMap.cpp
-  src/2d/navigation/AgentLua.cpp
   src/2d/navigation/ConstrainedTriangulation.cpp
   src/2d/navigation/Crowd.cpp
   src/2d/navigation/DijkstraMap.cpp
@@ -148,70 +122,48 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/navigation/Grid.cpp
   src/2d/navigation/GridSearch.cpp
   src/2d/navigation/HierarchicalPathfinder.cpp
-  src/2d/navigation/NavGraphLua.cpp
-  src/2d/navigation/NavGridLua.cpp
   src/2d/navigation/NavMesh.cpp
-  src/2d/navigation/NavMeshLua.cpp
-  src/2d/navigation/Navigation2DLua.cpp
   src/2d/navigation/SteeringAgent.cpp
   src/2d/navigation/Wanderer.cpp
   src/2d/nodes/Node.cpp
-  src/2d/nodes/Nodes2DLua.cpp
   src/2d/nodes/NodeSerializer.cpp
   src/2d/nodes/NodeTree.cpp
   src/2d/nodes/Prefab.cpp
   src/2d/particles/Effect.cpp
   src/2d/particles/Emitter.cpp
   src/2d/particles/ImageShape.cpp
-  src/2d/particles/Particles2DLua.cpp
   src/2d/particles/Ribbon.cpp
   src/2d/particles/System.cpp
   src/2d/particles/Trail.cpp
-  src/2d/physics/AssemblyLua.cpp
   src/2d/physics/Body.cpp
-  src/2d/physics/BodyLua.cpp
   src/2d/physics/Box2DConverter.cpp
   src/2d/physics/DebugDraw.cpp
-  src/2d/physics/DestructionLua.cpp
   src/2d/physics/Explosion.cpp
   src/2d/physics/Fluid.cpp
-  src/2d/physics/FluidLua.cpp
   src/2d/physics/ForceField.cpp
-  src/2d/physics/ForceFieldLua.cpp
   src/2d/physics/Fracture.cpp
   src/2d/physics/Grabber.cpp
-  src/2d/physics/GrabberLua.cpp
   src/2d/physics/Joint.cpp
-  src/2d/physics/JointLua.cpp
   src/2d/physics/Mover.cpp
-  src/2d/physics/MoverLua.cpp
   src/2d/physics/PathPredictor.cpp
-  src/2d/physics/Physics2DLua.cpp
   src/2d/physics/Ragdoll.cpp
   src/2d/physics/RayBatch.cpp
   src/2d/physics/RayDebugDraw.cpp
   src/2d/physics/Raycaster.cpp
   src/2d/physics/Rope.cpp
   src/2d/physics/Shape.cpp
-  src/2d/physics/ShapeLua.cpp
   src/2d/physics/StepTasks.cpp
   src/2d/physics/Terrain.cpp
   src/2d/physics/TopDownVehicle.cpp
   src/2d/physics/Vehicle.cpp
-  src/2d/physics/VehicleLua.cpp
   src/2d/physics/World.cpp
-  src/2d/physics/WorldLua.cpp
-  src/2d/physics/WorldRaycastLua.cpp
   src/2d/procedural/Autotile.cpp
   src/2d/procedural/CellularAutomaton.cpp
   src/2d/procedural/Delaunay.cpp
   src/2d/procedural/DrunkardWalk.cpp
   src/2d/procedural/Dungeon.cpp
-  src/2d/procedural/MapGeneratorsLua.cpp
   src/2d/procedural/Maze.cpp
   src/2d/procedural/Placement.cpp
-  src/2d/procedural/PlacementLua.cpp
-  src/2d/procedural/Procedural2DLua.cpp
   src/2d/procedural/Region.cpp
   src/2d/procedural/Scatter.cpp
   src/2d/procedural/Voronoi.cpp
@@ -222,24 +174,18 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/spatial/ConnectedComponents.cpp
   src/2d/spatial/EntryBounds.cpp
   src/2d/spatial/FloodFill.cpp
-  src/2d/spatial/GridLua.cpp
   src/2d/spatial/GridRay.cpp
   src/2d/spatial/HashGrid.cpp
   src/2d/spatial/KdTree.cpp
   src/2d/spatial/OverlapWorld.cpp
-  src/2d/spatial/OverlapWorldLua.cpp
   src/2d/spatial/QuadTree.cpp
-  src/2d/spatial/Spatial2DLua.cpp
-  src/2d/spatial/SpatialIndexLua.cpp
   src/2d/spatial/UnionFind.cpp
   src/2d/spatial/VisibilityPolygon.cpp
   src/2d/tiled/AutoMapper.cpp
   src/2d/tiled/Layer.cpp
   src/2d/tiled/Map.cpp
-  src/2d/tiled/MapBuilderLua.cpp
   src/2d/tiled/MapParser.cpp
   src/2d/tiled/MapQuery.cpp
-  src/2d/tiled/MapQueryLua.cpp
   src/2d/tiled/MapRenderer.cpp
   src/2d/tiled/MapWriter.cpp
   src/2d/tiled/Object.cpp
@@ -247,29 +193,21 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/tiled/Properties.cpp
   src/2d/tiled/PropertyTypes.cpp
   src/2d/tiled/TileCollision.cpp
-  src/2d/tiled/TiledLua.cpp
   src/2d/tiled/Tileset.cpp
   src/2d/tiled/WangSet.cpp
   src/2d/tiled/World.cpp
-  src/ai/AiLua.cpp
   src/ai/BehaviorTree.cpp
-  src/ai/BehaviorTreeLua.cpp
   src/ai/InfluenceMap.cpp
-  src/ai/InfluenceMapLua.cpp
   src/ai/ResponseCurve.cpp
   src/ai/StateMachine.cpp
-  src/ai/UtilityLua.cpp
   src/ai/UtilitySelector.cpp
-  src/assets/AssetsLua.cpp
   src/assets/GroupManifest.cpp
   src/assets/Manager.cpp
-  src/audio/AudioLua.cpp
   src/audio/BufferSource.cpp
   src/audio/Delay.cpp
   src/audio/Device.cpp
   src/audio/Effect.cpp
   src/audio/EffectChain.cpp
-  src/audio/EffectLua.cpp
   src/audio/EffectNode.cpp
   src/audio/Filter.cpp
   src/audio/Freeverb.cpp
@@ -291,7 +229,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/Bootstrap.cpp
   src/content/Compatibility.cpp
   src/content/CompositeKeyProvider.cpp
-  src/content/ContentLua.cpp
   src/content/ContentManager.cpp
   src/content/crypto/Aead.cpp
   src/content/crypto/ContentKey.cpp
@@ -331,23 +268,17 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/UpdateScreen.cpp
   src/content/Updater.cpp
   src/conversation/Conversation.cpp
-  src/conversation/ConversationLua.cpp
   src/conversation/ConversationState.cpp
   src/conversation/Expression.cpp
   src/core/AppConfig.cpp
   src/core/AppError.cpp
   src/core/Base64.cpp
   src/core/Application.cpp
-  src/core/ClassLua.cpp
-  src/core/CollectionsLua.cpp
   src/core/ConnectionScope.cpp
-  src/core/CoreLua.cpp
   src/core/Engine.cpp
   src/core/ErrorScreen.cpp
   src/core/EventBus.cpp
-  src/core/EventsLua.cpp
   src/core/FloatBuffer.cpp
-  src/core/FloatBufferLua.cpp
   src/core/FrameClock.cpp
   src/core/FrameQueue.cpp
   src/core/JobSystem.cpp
@@ -361,27 +292,18 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/PropertyTween.cpp
   src/core/Scene.cpp
   src/core/SceneLoad.cpp
-  src/core/SceneLua.cpp
   src/core/SceneManager.cpp
-  src/core/SignalLua.cpp
   src/core/Timeline.cpp
-  src/core/TimerLua.cpp
   src/core/TimerScheduler.cpp
   src/core/Tween.cpp
-  src/core/TweenLua.cpp
   src/core/TweenManager.cpp
   src/core/TweenMotion.cpp
   src/core/TweenProperty.cpp
   src/core/TweenValue.cpp
   src/core/Utf8.cpp
   src/debug/Console.cpp
-  src/debug/ConsoleLua.cpp
-  src/debug/CrashLua.cpp
-  src/debug/DebugLua.cpp
   src/debug/DebugWindow.cpp
-  src/debug/GpuCaptureLua.cpp
   src/debug/Inspector.cpp
-  src/debug/InspectorLua.cpp
   src/debug/InspectorWindow.cpp
   src/debug/Monitor.cpp
   src/debug/ObjectCounter.cpp
@@ -389,18 +311,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Profiler.cpp
   src/debug/Stats.cpp
   src/debug/StatsDisplay.cpp
-  src/debug/TraceLua.cpp
   src/debug/TraceRecorder.cpp
   src/debug/TraceSpan.cpp
   src/gpu/SurfaceTurn.cpp
   src/graphics/BlendMode.cpp
   src/graphics/Device.cpp
   src/graphics/DeviceState.cpp
-  src/graphics/FontLua.cpp
   src/graphics/Gradient.cpp
-  src/graphics/GraphicsLua.cpp
   src/graphics/ImageFilters.cpp
-  src/graphics/ImageLua.cpp
   src/graphics/ImagePalette.cpp
   src/graphics/ImagePlaceholder.cpp
   src/graphics/Image.cpp
@@ -415,24 +333,18 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/VectorImage.cpp
   src/graphics/VectorImageResource.cpp
   src/graphics/Video.cpp
-  src/graphics/VideoLua.cpp
   src/graphics/Viewport.cpp
   src/input/ActionMap.cpp
-  src/input/ActionMapLua.cpp
   src/input/ActionMaps.cpp
   src/input/AppTextField.cpp
   src/input/CommandBuffer.cpp
-  src/input/CommandBufferLua.cpp
   src/input/Controls.cpp
   src/input/Gesture.cpp
   src/input/GestureRecognizer.cpp
   src/input/Input.cpp
-  src/input/InputLua.cpp
   src/input/InputPlayback.cpp
   src/input/InputRecording.cpp
-  src/input/InputRecordingLua.cpp
   src/input/GamepadMotion.cpp
-  src/input/GamepadMotionLua.cpp
   src/input/PointerEmulation.cpp
   src/input/VirtualInput.cpp
   src/io/CompositePackage.cpp
@@ -453,88 +365,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/localization/LanguageTag.cpp
   src/localization/ListFormat.cpp
   src/localization/LocaleData.cpp
-  src/localization/LocalizationLua.cpp
   src/localization/NumberFormat.cpp
   src/localization/PluralRules.cpp
-  src/lua/Application.cpp
-  src/lua/Autoloads.cpp
-  src/lua/Binding.cpp
-  src/lua/Environment.cpp
-  src/lua/ErrorReader.cpp
-  src/lua/HotReloadLua.cpp
-  src/lua/Jobs.cpp
-  src/lua/JobsLua.cpp
-  src/lua/JsonConverter.cpp
-  src/lua/Module.cpp
-  src/lua/Modules.cpp
-  src/lua/modules/Animation2DModule.cpp
-  src/lua/modules/AssetsModule.cpp
-  src/lua/modules/AudioModule.cpp
-  src/lua/modules/BuiltInModules.cpp
-  src/lua/modules/ContentModule.cpp
-  src/lua/modules/ConversationModule.cpp
-  src/lua/modules/CoreModule.cpp
-  src/lua/modules/DebugModule.cpp
-  src/lua/modules/Graphics2DModule.cpp
-  src/lua/modules/HotReloadModule.cpp
-  src/lua/modules/InputModule.cpp
-  src/lua/modules/JobsModule.cpp
-  src/lua/modules/LocalizationModule.cpp
-  src/lua/modules/NativeModule.cpp
-  src/lua/modules/Navigation2DModule.cpp
-  src/lua/modules/NetModule.cpp
-  src/lua/modules/Nodes2DModule.cpp
-  src/lua/modules/Particles2DModule.cpp
-  src/lua/modules/Physics2DModule.cpp
-  src/lua/modules/PlatformModule.cpp
-  src/lua/modules/Procedural2DModule.cpp
-  src/lua/modules/Spatial2DModule.cpp
-  src/lua/modules/StorageModule.cpp
-  src/lua/modules/TiledModule.cpp
-  src/lua/modules/UiModule.cpp
-  src/lua/modules/VideoModule.cpp
-  src/lua/NativeProperty.cpp
-  src/lua/Owners.cpp
-  src/lua/Promise.cpp
-  src/lua/Reference.cpp
-  src/lua/Runtime.cpp
-  src/lua/ScriptedLoadingView.cpp
-  src/lua/ScriptedScene.cpp
-  src/lua/ScriptedTransition.cpp
-  src/lua/ScriptPlugin.cpp
-  src/lua/Table.cpp
-  src/lua/Task.cpp
-  src/lua/TypeConverter.cpp
-  src/lua/Userdata.cpp
-  src/lua/Warnings.cpp
-  src/lua/WeakReference.cpp
-  lua/src/content/LuaBytecodeAbi.cpp
-  lua/src/content/LuaCompiler.cpp
-  lua/src/content/LuaPackSource.cpp
-  lua/src/core/ScriptedTrack.cpp
-  lua/src/debug/Breakpoints.cpp
-  lua/src/debug/Debugger.cpp
-  lua/src/debug/Evaluation.cpp
-  lua/src/debug/ExecutionBudget.cpp
-  lua/src/debug/HaltedStack.cpp
-  lua/src/debug/ScriptInspector.cpp
-  lua/src/debug/ThreadWalk.cpp
-  lua/src/debug/Tracer.cpp
-  lua/src/development/Development.cpp
-  lua/src/development/ModuleClosures.cpp
-  lua/src/development/ModuleGraph.cpp
-  lua/src/development/ModuleHotReload.cpp
-  lua/src/development/ModuleReloader.cpp
-  lua/src/development/ModuleSnapshot.cpp
-  lua/src/development/ValueRemap.cpp
-  lua/src/platform/native/NativeCallbacks.cpp
-  lua/src/plugins/DebuggerPlugin.cpp
-  lua/src/plugins/ExecutionBudgetPlugin.cpp
-  lua/src/runtime/LuaConfig.cpp
-  lua/src/ui/LuaItemSource.cpp
-  lua/src/ui/LuaPageSource.cpp
-  lua/src/ui/ScriptedScreen.cpp
-  src/math/ChoiceLua.cpp
   src/math/Color.cpp
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
@@ -546,31 +378,22 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/MarchingSquares.cpp
   src/math/MedianFilter.cpp
   src/math/MovingAverage.cpp
-  src/math/MathLua.cpp
   src/math/Noise2D.cpp
   src/math/PoissonDisk.cpp
   src/math/Polygon.cpp
-  src/math/PolygonLua.cpp
   src/math/Random.cpp
   src/math/Raycast.cpp
-  src/math/RaycastLua.cpp
   src/math/ShuffleBag.cpp
   src/math/SignalFilterHelper.cpp
-  src/math/SignalFilterLua.cpp
   src/math/Spline.cpp
-  src/math/SplineLua.cpp
   src/math/Spring.cpp
-  src/math/SpringLua.cpp
   src/math/Transform2D.cpp
   src/math/Triangulator.cpp
   src/math/WeightedChoice.cpp
-  src/net/MessagePackLua.cpp
-  src/net/NetLua.cpp
   src/net/SocketLink.cpp
   src/net/WebSocket.cpp
   src/platform/Accessibility.cpp
   src/platform/AccessibilityElement.cpp
-  src/platform/AccessibilityLua.cpp
   src/platform/AccessibilityRelay.cpp
   src/platform/AccessibilitySettings.cpp
   src/platform/AppPlugin.cpp
@@ -586,11 +409,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/native/NativeApi.cpp
   src/platform/native/NativeCallback.cpp
   src/platform/native/NativeLibraries.cpp
-  src/platform/native/NativeLua.cpp
   src/platform/native/NativeSignature.cpp
   src/platform/NativeViews.cpp
   src/platform/ReturnHold.cpp
-  src/platform/PlatformLua.cpp
   src/platform/PluginManifest.cpp
   src/platform/PluginStreams.cpp
   src/platform/Fold.cpp
@@ -599,23 +420,17 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/SafeAreaSimulation.cpp
   src/platform/ScreenRelay.cpp
   src/platform/Screens.cpp
-  src/platform/StreamsLua.cpp
   src/platform/LaunchOptions.cpp
   src/platform/LinkRelay.cpp
   src/platform/System.cpp
   src/platform/SystemInfo.cpp
-  src/platform/SystemLua.cpp
   src/platform/SystemAnswer.cpp
-  src/platform/SystemAnswerLua.cpp
   src/platform/SystemState.cpp
   src/platform/VideoStream.cpp
   src/platform/Display.cpp
-  src/platform/DisplayLua.cpp
   src/platform/Displays.cpp
-  src/platform/OutputLua.cpp
   src/platform/Outputs.cpp
   src/platform/Window.cpp
-  src/platform/WindowLua.cpp
   src/platform/WindowPlacement.cpp
   src/plugins/Animation2DPlugin.cpp
   src/plugins/AudioPlugin.cpp
@@ -639,10 +454,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/UiPlugin.cpp
   src/plugins/VideoPlugin.cpp
   src/storage/Preferences.cpp
-  src/storage/PreferencesLua.cpp
   src/storage/ResumeState.cpp
   src/storage/SaveSlots.cpp
-  src/storage/StorageLua.cpp
   src/storage/StoredJson.cpp
   src/storage/UserStorage.cpp
   src/text/BidiParagraph.cpp
@@ -749,7 +562,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Collection.cpp
   src/ui/CollectionCell.cpp
   src/ui/CollectionItems.cpp
-  src/ui/CollectionLua.cpp
   src/ui/Context.cpp
   src/ui/FocusNavigator.cpp
   src/ui/FocusSearch.cpp
@@ -757,7 +569,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Gui.cpp
   src/ui/ImGuiConverter.cpp
   src/ui/ImGuiFontLoader.cpp
-  src/ui/ImGuiLua.cpp
   src/ui/ImageLibrary.cpp
   src/ui/Message.cpp
   src/ui/MessageStack.cpp
@@ -766,7 +577,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Navigation.cpp
   src/ui/NavigationInput.cpp
   src/ui/NavigationLink.cpp
-  src/ui/NavigationLua.cpp
   src/ui/NavigationSplit.cpp
   src/ui/NavigationStack.cpp
   src/ui/NavigationTabs.cpp
@@ -791,9 +601,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/TextSession.cpp
   src/ui/TextValue.cpp
   src/ui/Theme.cpp
-  src/ui/TransformLua.cpp
   src/ui/Typography.cpp
-  src/ui/UiLua.cpp
   src/ui/Widgets.cpp
 )
 
@@ -807,6 +615,7 @@ endif()
 # Native callbacks are the closures of libffi, which Varn builds with its driver `LIBFFI`, and which a port writes into memory only where it allows `executableMemory`, while the platforms of the engine without that capability take the closures that libffi makes from trampolines it ships. A platform without them makes no callback.
 if(VARN_FFI_DRIVER STREQUAL "LIBFFI" AND (NOT HAYLEN_PORT_PLATFORM OR "executableMemory" IN_LIST HAYLEN_CAPABILITIES))
   list(APPEND HAYLEN_ENGINE_SOURCES src/platform/native/libffi/NativeCallback.cpp)
+  set(HAYLEN_NATIVE_CALLBACKS_LIBFFI ON)
 else()
   list(APPEND HAYLEN_ENGINE_SOURCES src/platform/native/unavailable/NativeCallback.cpp)
 endif()
@@ -861,16 +670,21 @@ if(EMSCRIPTEN)
 endif()
 target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
-  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src" "${CMAKE_CURRENT_LIST_DIR}/lua/src"
+  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src"
 )
 
 target_link_libraries(haylen-engine
-  PUBLIC nlohmann_json::nlohmann_json varn-core haylen-imgui
+  PUBLIC nlohmann_json::nlohmann_json varn-runtime haylen-imgui
   PRIVATE box2d::box2d Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
 if(TARGET Poco::NetSSL)
   target_link_libraries(haylen-engine PRIVATE Poco::NetSSL)
+endif()
+
+# The native callbacks of the engine are closures of the libffi that Varn builds.
+if(HAYLEN_NATIVE_CALLBACKS_LIBFFI)
+  target_link_libraries(haylen-engine PRIVATE varn-ffi-vendor)
 endif()
 
 # Native libraries load through the dynamic linker, which Linux keeps in its own library.
@@ -1121,11 +935,7 @@ if(NOT HAYLEN_PORT_PLATFORM)
   haylen_link_runtime_platform(haylen-runtime PUBLIC)
 endif()
 
-# The Lua player is the app of every Lua app: the object that defines `core::Application::create` with the app of Lua. Lua apps link it next to the runtime, while C++ apps define the function in their own sources, so every app holds exactly one.
-add_library(haylen-player OBJECT src/platform/LuaPlayer.cpp)
-add_library(haylen::player ALIAS haylen-player)
-target_link_libraries(haylen-player PRIVATE haylen-engine)
-haylen_enable_warnings(haylen-player)
+add_subdirectory(lua)
 
 # A port installs the SDK of its platform only when its `haylen_port` says that it builds one.
 if(HAYLEN_BUILD_SDK AND HAYLEN_PORT_PLATFORM AND NOT HAYLEN_PORT_SDK)
@@ -1138,7 +948,6 @@ endif()
 if(HAYLEN_DESKTOP OR (HAYLEN_GPU_TESTS_ALONE AND HAYLEN_BUILD_TESTS))
   add_library(haylen-headless-host OBJECT
     src/platform/headless/HeadlessHost.cpp
-    src/platform/headless/HeadlessPlayer.cpp
   )
   add_library(haylen::headless ALIAS haylen-headless-host)
   target_include_directories(haylen-headless-host PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
@@ -1179,11 +988,11 @@ elseif(HAYLEN_BUILD_PLAYER AND ANDROID)
   file(CONFIGURE OUTPUT "${CMAKE_BINARY_DIR}/haylen-android.json" CONTENT "{\"libraries\": ${libraries_json}}\n" @ONLY)
 endif()
 
-# The headless player runs any package without a window, GPU or audio device on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.
+# The headless player runs any package with the app of the Lua player, without a window, GPU or audio device, on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.
 if(HAYLEN_BUILD_PLAYER AND HAYLEN_DESKTOP)
-  add_executable(haylen-headless src/platform/headless/HeadlessMain.cpp)
+  add_executable(haylen-headless src/platform/headless/HeadlessMain.cpp src/platform/headless/HeadlessPlayer.cpp)
   target_include_directories(haylen-headless PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-headless PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-headless PRIVATE haylen::headless haylen::player)
   set_target_properties(haylen-headless PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-headless)
 endif()
@@ -1226,63 +1035,63 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   # The physics benchmark times the steps, fluids, queries, transform sync, debug drawing and Lua events of physics worlds on the CPU, inside an engine on the headless host.
   add_executable(haylen-physics-benchmark bench/PhysicsBenchmark.cpp)
   target_include_directories(haylen-physics-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-physics-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
+  target_link_libraries(haylen-physics-benchmark PRIVATE haylen::lua haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-physics-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-physics-benchmark)
 
   # The UI benchmark flings collections of a hundred thousand items on the headless host, which times what the frame thread spends on long lists and counts their binds and cells.
   add_executable(haylen-ui-benchmark bench/UiBenchmark.cpp)
   target_include_directories(haylen-ui-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-ui-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
+  target_link_libraries(haylen-ui-benchmark PRIVATE haylen::lua haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-ui-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-ui-benchmark)
 
   # The render benchmark times whole frames of sprites, shapes, text, rich text and interface components on the headless host, with the draw calls, uploads and allocations of each frame.
   add_executable(haylen-render-benchmark bench/RenderBenchmark.cpp)
   target_include_directories(haylen-render-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-render-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
+  target_link_libraries(haylen-render-benchmark PRIVATE haylen::lua haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-render-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-render-benchmark)
 
   # The particle benchmark times the simulation and the drawing of emitters on the CPU, inside an engine on the headless host.
   add_executable(haylen-particle-benchmark bench/ParticleBenchmark.cpp)
   target_include_directories(haylen-particle-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-particle-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
+  target_link_libraries(haylen-particle-benchmark PRIVATE haylen::lua haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-particle-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-particle-benchmark)
 
   # The node benchmark times the update and the draw of large node trees on the CPU, inside an engine on the headless host.
   add_executable(haylen-node-benchmark bench/NodeBenchmark.cpp)
   target_include_directories(haylen-node-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-node-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
+  target_link_libraries(haylen-node-benchmark PRIVATE haylen::lua haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-node-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-node-benchmark)
 
   # The animation benchmark times animated batches and crowds animated from Lua on the CPU, inside an engine on the headless host.
   add_executable(haylen-animation-benchmark bench/AnimationBenchmark.cpp)
   target_include_directories(haylen-animation-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-animation-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
+  target_link_libraries(haylen-animation-benchmark PRIVATE haylen::lua haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-animation-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-animation-benchmark)
 
   # The Lua benchmark runs the sprite package in bench/lua-benchmark on the headless host, which times what Lua costs to update and draw many sprites through tables and through float buffers.
   add_executable(haylen-lua-benchmark bench/LuaBenchmark.cpp)
   target_include_directories(haylen-lua-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-lua-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-lua-benchmark PRIVATE haylen::lua haylen::headless)
   set_target_properties(haylen-lua-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-lua-benchmark)
 
   # The core benchmark times the frame loop, events, owners, timers, tweens, jobs and asset loading on the headless host.
   add_executable(haylen-core-benchmark bench/CoreBenchmark.cpp)
   target_include_directories(haylen-core-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-core-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-core-benchmark PRIVATE haylen::lua haylen::headless)
   set_target_properties(haylen-core-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-core-benchmark)
 
   # The content benchmark times building, opening and reading a protected release, catalog lookups, the planning of update ranges and the local store, with the largest allocation of each.
   add_executable(haylen-content-benchmark bench/ContentBenchmark.cpp)
   target_include_directories(haylen-content-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src" "${CMAKE_CURRENT_LIST_DIR}/lua/src")
-  target_link_libraries(haylen-content-benchmark PRIVATE haylen-content-writer haylen::headless)
+  target_link_libraries(haylen-content-benchmark PRIVATE haylen-content-writer haylen::lua haylen::headless)
   set_target_properties(haylen-content-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-content-benchmark)
 endif()

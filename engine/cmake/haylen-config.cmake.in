@@ -1,4 +1,4 @@
-# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the GPU devices of `@HAYLEN_GRAPHICS_APIS@`, and defines `haylen::engine`, `haylen::runtime`, `haylen::player`, `haylen::native` and `haylen_add_app`.
+# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the GPU devices of `@HAYLEN_GRAPHICS_APIS@`, and defines `haylen::engine`, `haylen::runtime`, `haylen::lua`, `haylen::player`, `haylen::native` and `haylen_add_app`.
 
 get_filename_component(_haylen_prefix "${CMAKE_CURRENT_LIST_DIR}/@HAYLEN_SDK_PREFIX_FROM_CONFIG@" ABSOLUTE)
 
@@ -35,11 +35,18 @@ if(NOT TARGET haylen::engine)
     INTERFACE_LINK_OPTIONS "@HAYLEN_SDK_RUNTIME_LINK_OPTIONS@"
   )
 
+  # The Lua layer, which only the apps that run Lua link.
+  add_library(haylen::lua STATIC IMPORTED)
+  set_target_properties(haylen::lua PROPERTIES
+    IMPORTED_LOCATION "${_haylen_prefix}/@CMAKE_INSTALL_LIBDIR@/@HAYLEN_SDK_LUA_FILE@"
+    INTERFACE_LINK_LIBRARIES "haylen::engine;@HAYLEN_SDK_LUA_EXTERNALS@"
+  )
+
   # The Lua player is one object, which defines the app of a Lua app, so a C++ app that defines its own never links it.
   add_library(haylen::player OBJECT IMPORTED)
   set_target_properties(haylen::player PROPERTIES
     IMPORTED_OBJECTS "${_haylen_prefix}/@CMAKE_INSTALL_LIBDIR@/@HAYLEN_SDK_PLAYER_FILE@"
-    INTERFACE_LINK_LIBRARIES haylen::engine
+    INTERFACE_LINK_LIBRARIES haylen::lua
   )
 
   # Native libraries compile against the native API and nlohmann/json of the SDK without linking the engine.

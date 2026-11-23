@@ -28,7 +28,7 @@ class DebugClient final {
     DebugClient(const DebugClient&) = delete;
     DebugClient& operator=(const DebugClient&) = delete;
 
-    [[nodiscard]] debug::Debugger& getDebugger() noexcept {
+    [[nodiscard]] lua::debug::Debugger& getDebugger() noexcept {
         return *debugger;
     }
 
@@ -56,7 +56,7 @@ class DebugClient final {
     void pump();
 
     std::unique_ptr<platform::DevelopmentSession> session;
-    std::unique_ptr<debug::Debugger> debugger;
+    std::unique_ptr<lua::debug::Debugger> debugger;
     std::vector<core::Json> received;
     std::deque<Step> steps;
     std::vector<int> waiting;

@@ -1,0 +1,32 @@
+#pragma once
+
+#include <vector>
+
+struct lua_State;
+
+namespace haylen::graphics2d {
+class Material;
+}
+
+namespace haylen::lua::graphics2d {
+// Installs the `Material` class of `haylen.graphics2d`, whose uniforms and textures Lua sets by name.
+class MaterialBinding final {
+  public:
+    static void install(lua_State* L);
+
+    // Creates a material with `newMaterial(shader, {name = value, ...})`.
+    static int newMaterial(lua_State* L);
+
+  private:
+    // Kept from call to call on the frame thread, so a list of numbers set every frame allocates nothing once it has grown.
+    inline static std::vector<float> valueScratch;
+
+    // Sets a uniform or texture from the Lua value at index: a number, a `Vec2`, a `Color` or color string, a `Transform`, a `Texture`, or a list of numbers.
+    static void setValue(lua_State* L, haylen::graphics2d::Material& material, int nameIndex, int valueIndex);
+
+    static int set(lua_State* L);
+    static int get(lua_State* L);
+    static int shader(lua_State* L);
+};
+
+} // namespace haylen::lua::graphics2d

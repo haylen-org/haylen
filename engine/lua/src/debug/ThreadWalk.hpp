@@ -5,7 +5,7 @@
 #include <functional>
 #include <unordered_set>
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // One walk of the Lua heap from the registry through every table, closure, user value, metatable and coroutine stack it reaches, which hands over every coroutine it finds, since Lua sets its hooks per coroutine and lists none of them. It reads raw values only, so it never runs a metamethod, and it holds the collector, so no finalizer runs during it.
 class ThreadWalk final {
@@ -42,4 +42,4 @@ class ThreadWalk final {
     std::unordered_set<const void*> seen;
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

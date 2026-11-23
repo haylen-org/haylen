@@ -8,9 +8,9 @@
 namespace haylen::lua {
 
 // The debugger talks to its client through the connection of the session, and while it halts the app it pumps the connection itself, since no frame pumps it then.
-Development::Development(platform::DevelopmentSession& owner) : executionBudget(std::make_unique<debug::ExecutionBudget>()) {
+Development::Development(haylen::platform::DevelopmentSession& owner) : executionBudget(std::make_unique<lua::debug::ExecutionBudget>()) {
     // clang-format off
-    debugger = std::make_unique<debug::Debugger>(owner, [&owner](const core::Json& message) {
+    debugger = std::make_unique<lua::debug::Debugger>(owner, [&owner](const haylen::core::Json& message) {
         owner.sendDebug(message);
     }, [&owner] { owner.pump(); });
     // clang-format on
@@ -18,7 +18,7 @@ Development::Development(platform::DevelopmentSession& owner) : executionBudget(
 
 Development::~Development() = default;
 
-Development& Development::of(platform::DevelopmentSession& session) {
+Development& Development::of(haylen::platform::DevelopmentSession& session) {
     if (auto* found = dynamic_cast<Development*>(session.getExtension())) {
         return *found;
     }
@@ -33,7 +33,7 @@ bool Development::isHalted() const noexcept {
     return debugger->isHalted();
 }
 
-void Development::receive(core::Json message) {
+void Development::receive(haylen::core::Json message) {
     debugger->receive(std::move(message));
 }
 

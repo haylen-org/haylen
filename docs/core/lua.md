@@ -708,7 +708,7 @@ Keep `buffer[index]` for values that C++ fills, such as the transforms that `wor
 
 ## Extending the engine from C++
 
-A C++ project can add Lua modules of its own, backed by a plugin of its own, while the app itself stays in Lua. The public binding toolkit in `engine/include/haylen/lua/` is the same one that every built-in module uses, and everything in it lives in the namespace `haylen::lua`. A failed protected call throws `core::AppError` of `haylen/core/AppError.hpp`, with the message, the script position and the frames of the stack.
+A C++ project can add Lua modules of its own, backed by a plugin of its own, while the app itself stays in Lua. The public binding toolkit in `engine/lua/include/haylen/lua/`, which the target `haylen::lua` gives, is the same one that every built-in module uses, and everything in it lives in the namespace `haylen::lua`. A failed protected call throws `core::AppError` of `haylen/core/AppError.hpp`, with the message, the script position and the frames of the stack.
 
 | Header | What it gives |
 | --- | --- |
@@ -948,7 +948,7 @@ The promise may be settled from a worker thread. The waiting task resumes on the
 namespace app {
 
 // Binds `app.text`, whose `countWords` counts the words of a text on a worker thread and returns a promise for the count.
-class TextLua final {
+class TextBinding final {
   public:
     static int countWords(lua_State* L) {
         std::string text = luaL_checkstring(L, 1);

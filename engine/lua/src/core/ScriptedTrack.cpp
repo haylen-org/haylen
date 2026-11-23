@@ -10,7 +10,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 ScriptedTrack::ScriptedTrack(lua_State* L, int object) : state(lua::Runtime::getMainThread(L)), target(L, object) {}
 
@@ -48,7 +48,7 @@ std::vector<ScriptedTrack::Path> ScriptedTrack::split(const std::vector<std::str
     return paths;
 }
 
-void ScriptedTrack::add(const std::vector<std::string>& names, TweenProperty property) {
+void ScriptedTrack::add(const std::vector<std::string>& names, haylen::core::TweenProperty property) {
     fields.push_back({.names = names, .paths = split(names), .property = std::move(property)});
 }
 
@@ -68,16 +68,16 @@ void ScriptedTrack::pushPath(lua_State* L, int object, const Path& path) {
     }
 }
 
-TweenValue ScriptedTrack::toValue(lua_State* L, int index, const Path& path) {
+haylen::core::TweenValue ScriptedTrack::toValue(lua_State* L, int index, const Path& path) {
     if (lua_type(L, index) == LUA_TNUMBER) {
         return lua_tonumber(L, index);
     }
 
-    if (const math::Vec2* vector = lua::Userdata::test<math::Vec2>(L, index)) {
+    if (const haylen::math::Vec2* vector = lua::Userdata::test<haylen::math::Vec2>(L, index)) {
         return *vector;
     }
 
-    if (const math::Color* color = lua::Userdata::test<math::Color>(L, index)) {
+    if (const haylen::math::Color* color = lua::Userdata::test<haylen::math::Color>(L, index)) {
         return *color;
     }
 
@@ -89,17 +89,17 @@ TweenValue ScriptedTrack::toValue(lua_State* L, int index, const Path& path) {
     return {};
 }
 
-TweenValue ScriptedTrack::read(lua_State* L, int object, const std::vector<Path>& paths) {
+haylen::core::TweenValue ScriptedTrack::read(lua_State* L, int object, const std::vector<Path>& paths) {
     const int index = lua_absindex(L, object);
     if (paths.size() == 1) {
         pushPath(L, index, paths.front());
-        TweenValue value = toValue(L, -1, paths.front());
+        haylen::core::TweenValue value = toValue(L, -1, paths.front());
         lua_pop(L, 1);
         return value;
     }
 
     // Two paths hold the components of one `Vec2`, such as `x` and `y`.
-    math::Vec2 components;
+    haylen::math::Vec2 components;
     for (std::size_t axis = 0; axis < 2; ++axis) {
         pushPath(L, index, paths[axis]);
         if (lua_type(L, -1) != LUA_TNUMBER) {
@@ -113,25 +113,25 @@ TweenValue ScriptedTrack::read(lua_State* L, int object, const std::vector<Path>
     return components;
 }
 
-void ScriptedTrack::pushValue(lua_State* L, const TweenValue& value) {
+void ScriptedTrack::pushValue(lua_State* L, const haylen::core::TweenValue& value) {
     switch (value.getKind()) {
-    case TweenValue::Kind::Number:
+    case haylen::core::TweenValue::Kind::Number:
         lua_pushnumber(L, value.getNumber());
         return;
-    case TweenValue::Kind::Vector:
+    case haylen::core::TweenValue::Kind::Vector:
         lua::Stack::push(L, value.getVector());
         return;
-    case TweenValue::Kind::Color:
+    case haylen::core::TweenValue::Kind::Color:
         lua::Stack::push(L, value.getColor());
         return;
-    case TweenValue::Kind::Text:
+    case haylen::core::TweenValue::Kind::Text:
         lua::Stack::push(L, value.getText());
         return;
     }
 }
 
 // A path that ends inside a `Vec2` or a `Color`, such as `position.x`, writes a changed copy back to the field that holds it, since those values are copies in Lua and changing one in place would change every field that shares it.
-void ScriptedTrack::write(lua_State* L, int object, const Path& path, const TweenValue& value) {
+void ScriptedTrack::write(lua_State* L, int object, const Path& path, const haylen::core::TweenValue& value) {
     if (path.size() == 1) {
         pushValue(L, value);
         lua_setfield(L, object, path.front().c_str());
@@ -151,9 +151,9 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const Twee
     const std::string& component = path.back();
     lua_getfield(L, holder, container.c_str());
 
-    const auto amount = static_cast<float>(value.getKind() == TweenValue::Kind::Number ? value.getNumber() : 0.0);
-    if (const math::Vec2* vector = lua::Userdata::test<math::Vec2>(L, -1)) {
-        math::Vec2 copy = *vector;
+    const auto amount = static_cast<float>(value.getKind() == haylen::core::TweenValue::Kind::Number ? value.getNumber() : 0.0);
+    if (const haylen::math::Vec2* vector = lua::Userdata::test<haylen::math::Vec2>(L, -1)) {
+        haylen::math::Vec2 copy = *vector;
 
         if (component != "x" && component != "y") {
             luaL_error(L, "Cannot tween the field \"%s\" because a \"Vec2\" has only \"x\" and \"y\".", join(path).c_str());
@@ -163,8 +163,8 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const Twee
         lua_pop(L, 1);
         lua::Stack::push(L, copy);
         lua_setfield(L, holder, container.c_str());
-    } else if (const math::Color* color = lua::Userdata::test<math::Color>(L, -1)) {
-        math::Color copy = *color;
+    } else if (const haylen::math::Color* color = lua::Userdata::test<haylen::math::Color>(L, -1)) {
+        haylen::math::Color copy = *color;
         float* channel = component == "r" ? &copy.r : component == "g" ? &copy.g : component == "b" ? &copy.b : component == "a" ? &copy.a : nullptr;
         if (channel == nullptr) {
             luaL_error(L, "Cannot tween the field \"%s\" because a \"Color\" has only \"r\", \"g\", \"b\" and \"a\".", join(path).c_str());
@@ -214,13 +214,13 @@ void ScriptedTrack::render(float progress, int loops) {
                 continue;
             }
 
-            const TweenValue value = field.property.evaluate(progress, loops);
+            const haylen::core::TweenValue value = field.property.evaluate(progress, loops);
             if (field.paths.size() == 1) {
                 write(L, index, field.paths.front(), value);
                 continue;
             }
 
-            const math::Vec2 components = value.getVector();
+            const haylen::math::Vec2 components = value.getVector();
             write(L, index, field.paths[0], static_cast<double>(components.x));
             write(L, index, field.paths[1], static_cast<double>(components.y));
         }
@@ -269,4 +269,4 @@ bool ScriptedTrack::release(std::string_view name) {
     return remaining;
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

@@ -9,8 +9,8 @@
 namespace haylen::lua {
 
 // Cells cross into Lua as `{x = column, y = row}` tables and come back from those or from `{column, row}`.
-template <> struct Converter<navigation2d::Grid::Cell> {
-    static void push(lua_State* L, navigation2d::Grid::Cell cell) {
+template <> struct Converter<haylen::navigation2d::Grid::Cell> {
+    static void push(lua_State* L, haylen::navigation2d::Grid::Cell cell) {
         lua_createtable(L, 0, 2);
         lua_pushinteger(L, cell.x);
         lua_setfield(L, -2, "x");
@@ -18,7 +18,7 @@ template <> struct Converter<navigation2d::Grid::Cell> {
         lua_setfield(L, -2, "y");
     }
 
-    static navigation2d::Grid::Cell read(lua_State* L, int index) {
+    static haylen::navigation2d::Grid::Cell read(lua_State* L, int index) {
         luaL_checktype(L, index, LUA_TTABLE);
         const int table = lua_absindex(L, index);
         const bool named = lua_getfield(L, table, "x") != LUA_TNIL;
@@ -31,7 +31,7 @@ template <> struct Converter<navigation2d::Grid::Cell> {
             lua_rawgeti(L, table, 2);
         }
 
-        const navigation2d::Grid::Cell cell{Stack::read<int>(L, -2), Stack::read<int>(L, -1)};
+        const haylen::navigation2d::Grid::Cell cell{Stack::read<int>(L, -2), Stack::read<int>(L, -1)};
         lua_pop(L, 2);
         return cell;
     }

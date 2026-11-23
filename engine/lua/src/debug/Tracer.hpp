@@ -11,7 +11,7 @@
 #include "debug/Breakpoints.hpp"
 #include "haylen/lua/Reference.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class Debugger;
 
@@ -150,4 +150,4 @@ class Tracer final {
     lua::Reference stepAnchor;
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

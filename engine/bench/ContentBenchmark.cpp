@@ -71,7 +71,7 @@ class ContentBenchmark final {
         auto keys = std::make_shared<content::KeyRing>();
         const content::Digest keyId = keys->add(makeKey(1));
         auto signing = std::make_shared<const content::SigningKey>(makeKey(101));
-        const content::LuaCompiler compiler;
+        const lua::content::LuaCompiler compiler;
         const content::ReleaseBuilder builder(keys, keyId, signing);
         const content::Compatibility compatibility{.application = content::Manifest::identifyApplication(kIdentifier), .appBuild = 1, .profile = "desktop"};
         const content::VerifyingKey trusted = signing->getVerifyingKey();

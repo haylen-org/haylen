@@ -13,13 +13,13 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/CollectionDiff.hpp"
-#include "lua/StackScope.hpp"
-#include "lua/Task.hpp"
-#include "ui/CollectionLua.hpp"
+#include "runtime/StackScope.hpp"
+#include "runtime/Task.hpp"
+#include "ui/CollectionBinding.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
-LuaPageSource::LuaPageSource(lua_State* L, const Gui& owner, Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
+LuaPageSource::LuaPageSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
 
 // Pages keep their place while the page size stays, and a page whose length the new count changes loads again. The pages go before the count changes, so the collection hears of them while it still has their items.
 void LuaPageSource::configure(const Options& value) {
@@ -100,7 +100,7 @@ void LuaPageSource::load(std::size_t page) {
 
     lua_State* L = state;
     const lua::StackScope scope(L);
-    CollectionLua::pushValue(L, gui, collection, "load");
+    CollectionBinding::pushValue(L, gui, collection, "load");
     lua_pushinteger(L, static_cast<lua_Integer>(page * options.pageSize + 1));
     lua_pushinteger(L, static_cast<lua_Integer>(getPageLength(page)));
     try {
@@ -133,7 +133,7 @@ void LuaPageSource::load(std::size_t page) {
     lua_State* main = state;
 
     // clang-format off
-    lua::Task::start(L, lua_gettop(L) - 1, 1, 0, [main](const std::optional<core::AppError>& error) {
+    lua::Task::start(L, lua_gettop(L) - 1, 1, 0, [main](const std::optional<haylen::core::AppError>& error) {
         if (error) {
             lua::Runtime::reportError(main, *error);
         }
@@ -209,7 +209,7 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
     const std::size_t first = page * options.pageSize;
     for (std::size_t offset = 0; offset < length; ++offset) {
         lua_rawgeti(L, table, static_cast<lua_Integer>(offset + 1));
-        std::tie(loaded.ids[offset], loaded.types[offset]) = CollectionLua::readItem(L, -1, first + offset + 1, collection);
+        std::tie(loaded.ids[offset], loaded.types[offset]) = CollectionBinding::readItem(L, -1, first + offset + 1, collection);
         lua_pop(L, 1);
     }
 
@@ -219,9 +219,9 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
     }
 
     ids.insert(ids.end(), loaded.ids.begin(), loaded.ids.end());
-    CollectionDiff::checkUnique(ids, collection.getId());
+    haylen::ui::CollectionDiff::checkUnique(ids, collection.getId());
 
-    CollectionLua::setPage(L, gui, collection, page, table);
+    CollectionBinding::setPage(L, gui, collection, page, table);
     found->second = std::move(loaded);
     changed.emit({.kind = Change::Kind::Changed, .index = first, .count = length});
     dropFarthest();
@@ -231,7 +231,7 @@ void LuaPageSource::drop(std::size_t page) {
     const auto found = pages.find(page);
     const bool loaded = found->second.loaded;
     pages.erase(found);
-    CollectionLua::setPage(state, gui, collection, page, 0);
+    CollectionBinding::setPage(state, gui, collection, page, 0);
 
     if (loaded) {
         changed.emit({.kind = Change::Kind::Changed, .index = page * options.pageSize, .count = getPageLength(page)});
@@ -256,13 +256,13 @@ void LuaPageSource::pushItem(lua_State* L, std::size_t index) const {
         return;
     }
 
-    CollectionLua::pushPage(L, gui, collection, index / options.pageSize);
+    CollectionBinding::pushPage(L, gui, collection, index / options.pageSize);
     lua_rawgeti(L, -1, static_cast<lua_Integer>(index % options.pageSize + 1));
     lua_remove(L, -2);
 }
 
-core::Json LuaPageSource::getValue(std::size_t index, std::string_view field) const {
-    core::Json value;
+haylen::core::Json LuaPageSource::getValue(std::size_t index, std::string_view field) const {
+    haylen::core::Json value;
 
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
@@ -278,7 +278,7 @@ core::Json LuaPageSource::getValue(std::size_t index, std::string_view field) co
     return value;
 }
 
-void LuaPageSource::setValue(std::size_t index, std::string_view field, const core::Json& value) {
+void LuaPageSource::setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) {
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
         pushItem(L, index);
@@ -291,4 +291,4 @@ void LuaPageSource::setValue(std::size_t index, std::string_view field, const co
     // clang-format on
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

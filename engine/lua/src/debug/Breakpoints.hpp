@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // The breakpoints of the Lua debugger, indexed by the package path of their file and their line, so the hooks find out at once whether a function or a line holds one. A breakpoint stops only when its condition holds and its count of hits passes, and a log point writes its message instead of stopping.
 class Breakpoints final {
@@ -108,4 +108,4 @@ class Breakpoints final {
     int nextId = 1;
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

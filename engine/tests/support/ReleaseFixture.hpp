@@ -69,7 +69,7 @@ class ReleaseFixture final {
     std::shared_ptr<content::KeyRing> keys = std::make_shared<content::KeyRing>();
     content::Digest contentKeyId;
     std::shared_ptr<const content::SigningKey> signingKey;
-    content::LuaCompiler compiler;
+    lua::content::LuaCompiler compiler;
     int builds = 0;
     std::filesystem::path folder;
     content::ReleaseBuilder::Result result;
