@@ -1,0 +1,298 @@
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <cstdint>
+#include <filesystem>
+#include <map>
+#include <memory>
+#include <set>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "content/LuaCompiler.hpp"
+#include "content/RecordCache.hpp"
+#include "content/ReleaseBuilder.hpp"
+#include "content/ReleasePackage.hpp"
+#include "content/format/Chunker.hpp"
+#include "haylen/content/Error.hpp"
+#include "haylen/content/ModuleCompiler.hpp"
+#include "haylen/io/MemoryPackage.hpp"
+#include "haylen/io/MemoryReader.hpp"
+#include "haylen/lua/Application.hpp"
+#include "support/ReleaseFiles.hpp"
+#include "support/ReleaseFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
+#include "support/TestFiles.hpp"
+
+namespace haylen::content {
+
+class ReleaseBuilderTest : public ::testing::Test {
+  protected:
+    using Files = std::map<std::string, std::vector<std::uint8_t>>;
+
+    static constexpr std::size_t kMegabyte = 1024 * 1024;
+    static constexpr std::string_view kManifest = R"({"name": "Release Test", "identifier": "com.haylen.tests", "version": "1.0.0", "plugins": {"ads": {}}})";
+
+    // A package whose files read as other bytes the second time they open, like files that change while a release builds.
+    class ChangingPackage final : public io::Package {
+      public:
+        explicit ChangingPackage(Files contents) : files(std::move(contents)) {}
+
+        [[nodiscard]] std::string_view getName() const noexcept override {
+            return "changing";
+        }
+        [[nodiscard]] bool exists(std::string_view path) const override {
+            return files.contains(std::string(path));
+        }
+        [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
+            return files.at(std::string(path)).size();
+        }
+        [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
+            std::vector<std::uint8_t> bytes = files.at(std::string(path));
+            if (++opened[std::string(path)] > 1 && !bytes.empty()) {
+                bytes.back() ^= 1;
+            }
+
+            return std::make_unique<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(std::move(bytes)));
+        }
+        [[nodiscard]] std::vector<std::string> list(std::string_view folder) const override {
+            std::vector<std::string> paths;
+            for (const auto& [path, bytes] : files) {
+                if (path.starts_with(std::string(folder) + "/")) {
+                    paths.push_back(path);
+                }
+            }
+
+            return paths;
+        }
+
+      private:
+        Files files;
+        mutable std::map<std::string, int> opened;
+    };
+
+    // A compiler of modules that marks their text, so the release shows which modules it compiled and under which format.
+    class MarkingCompiler final : public ModuleCompiler {
+      public:
+        [[nodiscard]] std::string getAbi() const override {
+            return "marked-1";
+        }
+        [[nodiscard]] std::vector<std::uint8_t> compile(std::string_view source, std::string_view path) const override {
+            return test::TestFiles::bytes("compiled " + std::string(path) + ": " + std::string(source));
+        }
+    };
+
+    [[nodiscard]] static Files makeFiles() {
+        Files files;
+        const auto text = [&files](const std::string& path, const std::string& content) { files.emplace(path, test::TestFiles::bytes(content)); };
+        text("haylen.json", std::string(kManifest));
+        text("source/main.lua", "loaded = true");
+        text("plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})");
+        text("plugins/ads/source/init.lua", "return {}");
+        text("content/data/config.json", R"({"level": 3})");
+        files.emplace("content/world/terrain.bin", test::TestFiles::randomBytes(9 * kMegabyte, 1));
+        return files;
+    }
+
+    ReleaseBuilder::Result build(const io::Package& source, const std::string& name, const std::string& earlier = "", std::shared_ptr<const RecordCache> cache = nullptr, std::uint64_t shardTarget = ContentBuilder::kDefaultShardTarget) const {
+        const ReleaseBuilder builder(fixture.getKeys(), fixture.getContentKey()->getId(), std::make_shared<const SigningKey>(test::ReleaseFixture::makeKey(101)), std::move(cache));
+        const std::optional<std::filesystem::path> previous = earlier.empty() ? std::nullopt : std::optional(directory.getPath() / earlier);
+        return builder.build(source, fixture.getCompiler(), directory.getPath() / name, previous, {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild, .shardTarget = shardTarget});
+    }
+
+    [[nodiscard]] std::unique_ptr<io::Package> open(const std::string& name) const {
+        return fixture.open(io::Package::openDirectory(directory.getPath() / name));
+    }
+
+    test::ReleaseFixture fixture{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::TemporaryDirectory directory;
+};
+
+TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
+    // The folder of an app also holds its native code, its signing keys, notes, plugins it does not list and files of file managers, none of which ship.
+    const test::TemporaryDirectory app;
+    for (const auto& [path, bytes] : makeFiles()) {
+        app.write(path, std::string(bytes.begin(), bytes.end()));
+    }
+
+    app.write("plugins/unused/plugin.json", R"({"id": "unused", "version": "1.0.0", "implementations": {"ios": "lua"}})");
+    app.write("plugins/unused/source/init.lua", "return {}");
+    app.write("plugins/ads/android/build.gradle.kts", "plugins {}");
+    app.write("native/apple/AppBridge.swift", "import Foundation");
+    app.write("platform/android/keystore/release.properties", "alias=upload");
+    app.write("content/.DS_Store", "finder");
+    app.write("notes.txt", "notes");
+    (void)build(*io::Package::openDirectory(app.getPath()), "release");
+
+    const std::unique_ptr<io::Package> release = open("release");
+    EXPECT_EQ(release->list(""), (std::vector<std::string>{"content/data/config.json", "content/world/terrain.bin", "haylen.json", "plugins/ads/plugin.json", "plugins/ads/source/init.lua", "source/main.lua"}));
+    for (const auto& [name, bytes] : test::ReleaseFiles::read(directory.getPath() / "release")) {
+        EXPECT_TRUE(name.ends_with(".hpak") || name.ends_with(".hmanifest")) << name;
+    }
+}
+
+// The modules of the app and of its plugins reach the release as the compiler wrote them, and the manifest of the app domain names its format, which a build that loads them must name too.
+TEST_F(ReleaseBuilderTest, CompilesTheModulesWithItsCompiler) {
+    const MarkingCompiler compiler;
+    const ReleaseBuilder builder(fixture.getKeys(), fixture.getContentKey()->getId(), std::make_shared<const SigningKey>(test::ReleaseFixture::makeKey(101)));
+    (void)builder.build(io::MemoryPackage("source", makeFiles()), compiler, directory.getPath() / "marked", std::nullopt, {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild});
+
+    const VerifyingKey trusted = fixture.getSigningKey().getVerifyingKey();
+    Compatibility compatibility = fixture.getCompatibility();
+    compatibility.luaAbi = compiler.getAbi();
+    const std::unique_ptr<io::Package> release = ReleasePackage::open(io::Package::openDirectory(directory.getPath() / "marked"), fixture.getKeys(), std::span(&trusted, 1), compatibility);
+    EXPECT_EQ(release->readText("source/main.lua"), "compiled source/main.lua: loaded = true");
+    EXPECT_EQ(release->readText("plugins/ads/source/init.lua"), "compiled plugins/ads/source/init.lua: return {}");
+    EXPECT_TRUE(release->isLuaBytecode("source/main.lua"));
+    EXPECT_EQ(release->readText("content/data/config.json"), R"({"level": 3})");
+
+    compatibility.luaAbi = fixture.getCompiler().getAbi();
+    EXPECT_THROW((void)ReleasePackage::open(io::Package::openDirectory(directory.getPath() / "marked"), fixture.getKeys(), std::span(&trusted, 1), compatibility), Error);
+}
+
+// A clean build machine follows the release that shipped, such as the files of the depots of a store, where packs keep their shards in folders of their own, and builds again only the content whose shards the folder lacks.
+TEST_F(ReleaseBuilderTest, FollowsAReleaseThatAStoreLaidOutInFoldersOfItsOwn) {
+    const io::MemoryPackage source("source", makeFiles());
+    const ReleaseBuilder::Result first = build(source, "first", "", nullptr, 2 * kMegabyte);
+    ASSERT_GE(first.content.shards.size(), 3U);
+    const std::filesystem::path depot = directory.getPath() / "depot";
+    std::filesystem::create_directories(depot / "app");
+    std::filesystem::create_directories(depot / "packs" / "expansion");
+
+    for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(directory.getPath() / "first")) {
+        std::filesystem::copy_file(entry.path(), depot / "app" / entry.path().filename());
+    }
+
+    const ShardReference& packed = first.content.shards.front();
+    const ShardReference& lost = first.content.shards.back();
+    std::filesystem::rename(depot / "app" / packed.getFileName(), depot / "packs" / "expansion" / packed.getFileName());
+    ASSERT_TRUE(std::filesystem::remove(depot / "app" / lost.getFileName()));
+
+    const ReleaseBuilder::Result second = build(source, "second", "depot", nullptr, 2 * kMegabyte);
+    EXPECT_EQ(second.content.statistics.missingShards, 1U);
+    EXPECT_EQ(second.content.keptShards, first.content.shards.size() - 1);
+    EXPECT_NE(std::ranges::find(second.content.shards, packed), second.content.shards.end()) << "The shard in the folder of its pack stays as it was.";
+    EXPECT_GT(second.content.statistics.newChunks, 0U) << "The content of the lost shard is built again.";
+    EXPECT_EQ(open("second")->read("content/world/terrain.bin"), makeFiles().at("content/world/terrain.bin"));
+
+    // A folder that holds two releases, or none, names no release to follow.
+    std::filesystem::copy_file(depot / "app" / ReleasePackage::kAppManifestFile, depot / "packs" / ReleasePackage::kAppManifestFile);
+    EXPECT_THROW((void)build(source, "third", "depot"), std::invalid_argument);
+    std::filesystem::create_directories(directory.getPath() / "empty");
+    EXPECT_THROW((void)build(source, "fourth", "empty"), std::invalid_argument);
+}
+
+TEST_F(ReleaseBuilderTest, BuildsTheSameBytesWithAndWithoutItsCache) {
+    const io::MemoryPackage source("source", makeFiles());
+    const auto cache = std::make_shared<const RecordCache>(directory.getPath() / "cache");
+    (void)build(source, "plain");
+    const ReleaseBuilder::Result cold = build(source, "cold", "", cache);
+    const ReleaseBuilder::Result warm = build(source, "warm", "", cache);
+
+    EXPECT_EQ(cold.content.statistics.cachedChunks, 0U);
+    EXPECT_EQ(warm.content.statistics.cachedChunks, warm.content.statistics.newChunks) << "A warm cache seals no chunk again.";
+    EXPECT_EQ(warm.app.statistics.cachedChunks, warm.app.statistics.newChunks);
+    EXPECT_EQ(test::ReleaseFiles::read(directory.getPath() / "cold"), test::ReleaseFiles::read(directory.getPath() / "plain"));
+    EXPECT_EQ(test::ReleaseFiles::read(directory.getPath() / "warm"), test::ReleaseFiles::read(directory.getPath() / "plain"));
+}
+
+TEST_F(ReleaseBuilderTest, KeepsUnchangedShardsByteForByte) {
+    Files files = makeFiles();
+    const ReleaseBuilder::Result base = build(io::MemoryPackage("source", files), "base");
+    const auto before = test::ReleaseFiles::read(directory.getPath() / "base");
+
+    files["content/data/config.json"] = test::TestFiles::bytes(R"({"level": 4})");
+    const ReleaseBuilder::Result update = build(io::MemoryPackage("source", files), "update", "base");
+    const auto after = test::ReleaseFiles::read(directory.getPath() / "update");
+
+    EXPECT_EQ(update.app.statistics.newChunks, 0U);
+    EXPECT_EQ(update.content.statistics.newChunks, 1U);
+    EXPECT_EQ(after.at(std::string(ReleasePackage::kAppManifestFile)), before.at(std::string(ReleasePackage::kAppManifestFile))) << "An unchanged domain signs the same manifest.";
+
+    for (const ShardReference& shard : base.content.shards) {
+        EXPECT_EQ(after.at(shard.getFileName()), before.at(shard.getFileName())) << "Unrelated shards stay byte for byte.";
+    }
+
+    ASSERT_EQ(update.content.shards.size(), base.content.shards.size() + 1);
+    EXPECT_EQ(update.content.keptShards, base.content.shards.size());
+    EXPECT_LT(update.content.shards.back().fileSize, 4096U) << "The new shard holds only the changed chunk.";
+    EXPECT_EQ(after.size(), before.size() + 1);
+    EXPECT_EQ(open("update")->readAssetText("data/config.json"), R"({"level": 4})");
+}
+
+TEST_F(ReleaseBuilderTest, RepacksShardsThatLostMostOfTheirBytes) {
+    Files files = makeFiles();
+    files.emplace("content/world/rivers.bin", test::TestFiles::randomBytes(9 * kMegabyte, 2));
+    const ReleaseBuilder::Result base = build(io::MemoryPackage("source", files), "base");
+    ASSERT_EQ(base.content.shards.size(), 1U);
+
+    // Dropping one of the two large files leaves less than half of the shard in use, so its live chunks move into a new shard.
+    files.erase("content/world/rivers.bin");
+    const ReleaseBuilder::Result update = build(io::MemoryPackage("source", files), "update", "base");
+    EXPECT_EQ(update.content.statistics.droppedShards, 1U);
+    EXPECT_EQ(update.content.keptShards, 0U);
+    ASSERT_EQ(update.content.shards.size(), 1U);
+    EXPECT_LT(update.content.shards.front().fileSize, base.content.shards.front().fileSize * 2 / 3);
+    EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "update" / base.content.shards.front().getFileName()));
+    EXPECT_EQ(open("update")->readAsset("world/terrain.bin"), files.at("content/world/terrain.bin"));
+}
+
+TEST_F(ReleaseBuilderTest, RefusesFoldersAndAppsItCannotBuild) {
+    const io::MemoryPackage source("source", makeFiles());
+    (void)build(source, "release");
+    EXPECT_THROW((void)build(source, "release"), std::invalid_argument) << "A release never builds over another one.";
+
+    Files broken = makeFiles();
+    broken["haylen.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "unknown": 1})");
+    EXPECT_THROW((void)build(io::MemoryPackage("source", broken), "broken"), std::invalid_argument);
+}
+
+TEST_F(ReleaseBuilderTest, StopsOnADamagedEarlierRelease) {
+    const io::MemoryPackage source("source", makeFiles());
+    const ReleaseBuilder::Result base = build(source, "base");
+    ASSERT_FALSE(base.content.shards.empty());
+    test::TestFiles::damage(directory.getPath() / "base" / base.content.shards.front().getFileName(), 1000);
+
+    try {
+        (void)build(source, "update", "base");
+        FAIL() << "A damaged earlier shard must stop the build.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string(error.what()).find("damaged shard"), std::string::npos) << error.what();
+    }
+}
+
+TEST_F(ReleaseBuilderTest, RefusesEarlierReleasesItCannotReuse) {
+    const Files small{{"haylen.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})")}, {"source/main.lua", test::TestFiles::bytes("loaded = true")}};
+    try {
+        (void)build(io::MemoryPackage("source", small), "first", "missing");
+        FAIL() << "A previous release that does not exist must stop the build.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The folder \"" + (directory.getPath() / "missing").generic_string() + "\" of the previous release does not exist.");
+    }
+
+    // The release of another app shares no file with this one, even when the same keys sign both.
+    Files other = small;
+    other["haylen.json"] = test::TestFiles::bytes(R"({"name": "Other", "identifier": "com.haylen.other"})");
+    const ReleaseBuilder::Result foreign = build(io::MemoryPackage("source", other), "other");
+    try {
+        (void)build(io::MemoryPackage("source", small), "second", "other");
+        FAIL() << "The release of another app must stop the build.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_EQ(std::string(error.what()), "The earlier manifest \"" + foreign.app.manifest.toHex() + "\" belongs to another app or domain, so the build cannot reuse it.");
+    }
+}
+
+TEST_F(ReleaseBuilderTest, StopsWhenAFileChangesWhileItBuilds) {
+    const ChangingPackage source(makeFiles());
+    try {
+        (void)build(source, "release");
+        FAIL() << "A file that changes while the release builds must stop it.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_NE(std::string(error.what()).find("changed while the release was built"), std::string::npos) << error.what();
+    }
+}
+
+} // namespace haylen::content

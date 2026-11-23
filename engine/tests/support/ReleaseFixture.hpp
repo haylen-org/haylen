@@ -5,16 +5,17 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 
 #include "content/Compatibility.hpp"
 #include "content/ContentBuilder.hpp"
-#include "content/LuaCompiler.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/Manifest.hpp"
+#include "haylen/content/ModuleCompiler.hpp"
 #include "haylen/io/Package.hpp"
 #include "support/TemporaryDirectory.hpp"
 
@@ -27,7 +28,8 @@ class ReleaseFixture final {
     static constexpr std::string_view kProfile = "desktop";
     static constexpr std::uint64_t kAppBuild = 7;
 
-    ReleaseFixture();
+    // Builds releases with the modules that the compiler compiles and the sections of `haylen.json` that the application of the app reads.
+    explicit ReleaseFixture(std::shared_ptr<const content::ModuleCompiler> moduleCompiler, std::span<const std::string_view> applicationSections = {});
 
     void build(const io::Package& source, std::uint64_t shardTarget = content::ContentBuilder::kDefaultShardTarget);
     void build(const std::map<std::string, std::string>& files, std::uint64_t shardTarget = content::ContentBuilder::kDefaultShardTarget);
@@ -57,9 +59,9 @@ class ReleaseFixture final {
     [[nodiscard]] const content::ContentBuilder::Statistics& getStatistics(content::Manifest::Domain domain) const;
     [[nodiscard]] content::ReleaseBuilder makeBuilder() const;
 
-    // The compiler of the Lua modules of the releases that the fixture builds.
+    // The compiler of the modules of the releases that the fixture builds.
     [[nodiscard]] const content::ModuleCompiler& getCompiler() const noexcept {
-        return compiler;
+        return *compiler;
     }
 
     [[nodiscard]] static std::array<std::uint8_t, 32> makeKey(std::uint8_t first) noexcept;
@@ -69,7 +71,8 @@ class ReleaseFixture final {
     std::shared_ptr<content::KeyRing> keys = std::make_shared<content::KeyRing>();
     content::Digest contentKeyId;
     std::shared_ptr<const content::SigningKey> signingKey;
-    lua::content::LuaCompiler compiler;
+    std::shared_ptr<const content::ModuleCompiler> compiler;
+    std::span<const std::string_view> sections;
     int builds = 0;
     std::filesystem::path folder;
     content::ReleaseBuilder::Result result;

@@ -408,7 +408,7 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--target` | The target that the tests build for and run on, with the names of the app commands and `haylen devices`: `macos`, `windows`, `linux`, `web`, `android`, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `catalyst`, `ios`, `tvos` or `visionos`, this machine by default. |
 | `--config` | The configuration of the build tree, or of the app of `--ui` or `--app`, `Debug` by default. |
 | `--sanitizers` | A tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer. |
-| `--cmake-target` | The CMake target that builds before CTest runs, `haylen-tests` by default. |
+| `--cmake-target` | A CMake target that builds before CTest runs, which repeats, `haylen-tests` and `haylen-lua-tests` by default. |
 | `--shard` | Runs one of the equal parts of the engine tests of this machine, or of the checks of the web with `--target web`, such as `2/4`, so several machines run them side by side and together run each test once. |
 | `--gpu` | Runs the GPU tests instead of the engine tests. |
 | `--graphics-api` | A name of `gpu::Device::kApiNames` that the GPU tests, or the pages of the checks of the web, use alone. |

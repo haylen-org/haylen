@@ -1,41 +1,20 @@
 set(HAYLEN_TEST_SOURCES
-  2d/animation/AnimatedBatchTests.cpp
+  support/AllocationTrackerTests.cpp
   2d/animation/AtlasBuilderTests.cpp
   2d/animation/Animation2DTests.cpp
-  2d/animation/ChainTests.cpp
-  2d/animation/FrameDataTests.cpp
-  2d/animation/SkeletonTests.cpp
-  2d/animation/SpriteAtlasTests.cpp
-  2d/animation/StateGraphTests.cpp
-  2d/graphics/CameraRigTests.cpp
   2d/graphics/CameraTests.cpp
   2d/graphics/GlassTests.cpp
-  2d/graphics/Graphics2DLuaTests.cpp
   2d/graphics/GpuInstanceTests.cpp
   2d/graphics/GroupTests.cpp
-  2d/graphics/MeshFringeTests.cpp
   2d/graphics/NineSliceTests.cpp
   2d/graphics/StrokeBuilderTests.cpp
   2d/graphics/SceneTransitionTests.cpp
-  2d/graphics/TileLayerTests.cpp
-  2d/graphics/PartMaskTests.cpp
-  2d/graphics/PathTests.cpp
-  2d/graphics/PostProcessTests.cpp
   2d/graphics/RendererStateTests.cpp
   2d/graphics/RendererTests.cpp
-  2d/graphics/ScreenEffectsTests.cpp
-  2d/graphics/ShapeTests.cpp
-  2d/graphics/SpriteDataTests.cpp
   2d/graphics/TextPainterTests.cpp
-  2d/graphics/VectorAtlasTests.cpp
-  2d/lighting/Lighting2DTests.cpp
   2d/navigation/CrowdTests.cpp
-  2d/nodes/NodeTreeTests.cpp
   2d/navigation/NavMeshTests.cpp
-  2d/navigation/Navigation2DTests.cpp
-  2d/navigation/NavigationLuaTests.cpp
   2d/navigation/PathfindingTests.cpp
-  2d/particles/Particles2DLuaTests.cpp
   2d/particles/Particles2DTests.cpp
   2d/physics/AssemblyTests.cpp
   2d/physics/BodyMotionTests.cpp
@@ -46,104 +25,42 @@ set(HAYLEN_TEST_SOURCES
   2d/physics/ForceFieldTests.cpp
   2d/physics/JointRuntimeTests.cpp
   2d/physics/MoverTests.cpp
-  2d/physics/Physics2DTests.cpp
-  2d/physics/PhysicsFeaturesLuaTests.cpp
-  2d/physics/RaycasterTests.cpp
   2d/physics/VehicleTests.cpp
   2d/physics/WorldTuningTests.cpp
-  2d/procedural/Procedural2DLuaTests.cpp
-  2d/procedural/PlacementTests.cpp
   2d/procedural/Procedural2DTests.cpp
   2d/procedural/TilingTests.cpp
-  2d/spatial/GridAlgorithmTests.cpp
-  2d/spatial/OverlapWorldTests.cpp
-  2d/spatial/Spatial2DTests.cpp
   2d/tiled/AutoMapperTests.cpp
-  2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
-  2d/tiled/TiledTests.cpp
-  ai/DecisionLuaTests.cpp
   ai/DecisionTests.cpp
-  ai/StateMachineTests.cpp
-  assets/AssetTests.cpp
   audio/AudioAssetTests.cpp
   audio/AudioEffectTests.cpp
   audio/AudioInterruptionTests.cpp
-  audio/AudioLuaTests.cpp
-  audio/AudioOutputTests.cpp
   audio/AudioPauseTests.cpp
   audio/AudioStreamTests.cpp
   audio/FormattedOutputTests.cpp
   audio/FreeverbTests.cpp
-  audio/MixerLuaTests.cpp
   audio/MixerTests.cpp
   audio/OggPageIndexTests.cpp
   audio/PulledOutputTests.cpp
   audio/SoundTests.cpp
   audio/SpatializationTests.cpp
   audio/StreamedSoundTests.cpp
-  content/BootstrapTests.cpp
-  content/BootstrapWriterTests.cpp
-  content/CatalogTests.cpp
-  content/ChannelPublisherTests.cpp
   content/ChunkerTests.cpp
   content/CompressionTests.cpp
   content/ContentBuilderTests.cpp
-  content/ContentLuaTests.cpp
-  content/ContentManagerTests.cpp
-  content/ContentPackTests.cpp
-  content/ContentStartTests.cpp
-  content/ContentToolTests.cpp
   content/CryptoTests.cpp
-  content/HostileInputTests.cpp
-  content/HpakPackageTests.cpp
   content/HttpTransportTests.cpp
-  content/KeyStoreTests.cpp
   content/LocalStoreTests.cpp
-  content/LuaCompilerTests.cpp
-  content/ManifestTests.cpp
   content/RecordCacheTests.cpp
-  content/ReleaseAcceptanceTests.cpp
-  content/ReleaseBuilderTests.cpp
-  content/ReleaseInspectorTests.cpp
-  content/ReleaseLuaTests.cpp
-  content/ReleaseStagerTests.cpp
-  content/ReleaseStreamingTests.cpp
   content/ShardTests.cpp
-  content/UpdaterTests.cpp
   core/AppConfigTests.cpp
   core/Base64Tests.cpp
   core/ContainerTests.cpp
-  conversation/ConversationTests.cpp
   core/CoreTests.cpp
-  core/MessagePackTests.cpp
-  core/EngineTests.cpp
-  core/ErrorReportTests.cpp
-  core/ErrorScreenTests.cpp
-  core/RedrawTests.cpp
   core/RuntimeTests.cpp
   core/SceneManagerTests.cpp
   core/SignalTests.cpp
   core/TweenTests.cpp
-  debug/AssetReloadTests.cpp
-  debug/ConsoleTests.cpp
-  debug/DebugTests.cpp
-  debug/DebuggerConnectionTests.cpp
-  debug/DebuggerErrorTests.cpp
-  debug/DebuggerStepTests.cpp
-  debug/DebuggerTests.cpp
-  debug/DebuggerWebTests.cpp
-  debug/DrawingTests.cpp
-  debug/EvaluationTests.cpp
-  debug/ExecutionBudgetTests.cpp
-  debug/GpuCaptureTests.cpp
-  debug/HotReloadTests.cpp
-  debug/InspectorTests.cpp
-  debug/InspectorWindowTests.cpp
-  debug/PackageWatcherTests.cpp
-  debug/StatsTests.cpp
-  debug/ThreadWalkTests.cpp
-  debug/TraceRecorderTests.cpp
   gpu/DeviceFactoryTests.cpp
   gpu/direct3d/CompileQueueTests.cpp
   gpu/direct3d/WindowSamplesTests.cpp
@@ -151,55 +68,17 @@ set(HAYLEN_TEST_SOURCES
   gpu/HandleTableTests.cpp
   gpu/NullDeviceTests.cpp
   gpu/SurfaceTurnTests.cpp
-  graphics/GradientTests.cpp
-  graphics/GraphicsLuaTests.cpp
   graphics/GraphicsTests.cpp
-  graphics/ImageFiltersTests.cpp
-  graphics/ImagePaletteTests.cpp
-  graphics/MaterialLuaTests.cpp
   graphics/MaterialTests.cpp
   graphics/ShaderTests.cpp
-  graphics/VectorImageTests.cpp
-  graphics/VideoTests.cpp
   input/ActionMapTests.cpp
-  input/CommandBufferTests.cpp
-  input/GamepadMotionTests.cpp
-  input/GestureTests.cpp
-  input/InputRecordingLuaTests.cpp
   input/InputRecordingTests.cpp
-  input/InputTests.cpp
   input/PointerEmulationTests.cpp
-  io/IoTests.cpp
-  localization/FormatTests.cpp
-  localization/LocalizationTests.cpp
-  lua/AssetsLuaTests.cpp
-  lua/BufferLuaTests.cpp
-  lua/CollectionsLuaTests.cpp
-  lua/CoreLuaTests.cpp
-  lua/EventsLuaTests.cpp
-  lua/GeometryLuaTests.cpp
-  lua/InputLuaTests.cpp
-  lua/MathLuaTests.cpp
-  lua/LuaConfigTests.cpp
-  lua/LuaReferenceTests.cpp
-  lua/ModuleReloadTests.cpp
-  lua/SceneLuaTests.cpp
-  lua/ToolkitTests.cpp
-  lua/TweenLuaTests.cpp
-  lua/YieldTests.cpp
-  math/ColorTransformTests.cpp
-  math/SignalFilterTests.cpp
   math/PolygonTests.cpp
-  math/ProceduralTests.cpp
-  math/RaycastTests.cpp
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp
   math/VectorTests.cpp
-  net/HttpDownloadTests.cpp
-  net/NetLuaTests.cpp
-  net/NetPluginTests.cpp
   net/WebSocketTests.cpp
-  platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidFramePacerTests.cpp
@@ -211,44 +90,28 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidGraphicsApisTests.cpp
   platform/AndroidKeyClaimsTests.cpp
   platform/AndroidYuvImageTests.cpp
-  platform/CrashGuardTests.cpp
-  platform/DevelopmentConnectionTests.cpp
   platform/DeviceRecoveryTests.cpp
-  platform/FoldTests.cpp
   platform/FrameTimerTests.cpp
   platform/GraphicsApiOrderTests.cpp
-  platform/HeadlessPlayerTests.cpp
   platform/KeptEventsTests.cpp
   platform/LaunchOptionsTests.cpp
   platform/LinuxSystemReaderTests.cpp
   platform/LinuxVisualColorTests.cpp
-  platform/NativeLuaTests.cpp
-  platform/AppPluginTests.cpp
   platform/NativeLibrariesTests.cpp
   platform/NativeSignatureTests.cpp
-  platform/NativeViewsTests.cpp
-  platform/AppCoverTests.cpp
-  platform/SafeAreaTests.cpp
-  platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
   platform/PluginLoadOrderTests.cpp
   platform/PluginManifestTests.cpp
   platform/ReturnHoldTests.cpp
-  platform/ScreensTests.cpp
   platform/ServicesTests.cpp
   platform/SharedTextInputTests.cpp
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp
   platform/sdl/FullscreenRequestTests.cpp
-  platform/StreamTests.cpp
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
-  platform/SystemTests.cpp
   platform/TextHelperTests.cpp
   platform/WebEntryTests.cpp
-  platform/DisplayLuaTests.cpp
-  platform/WindowLuaTests.cpp
-  platform/WindowTests.cpp
   platform/WindowConfigTests.cpp
   platform/WindowPlacementTests.cpp
   platform/DisplayTests.cpp
@@ -256,18 +119,50 @@ set(HAYLEN_TEST_SOURCES
   platform/worker/EventsTests.cpp
   platform/worker/GamepadsTests.cpp
   platform/worker/KeysTests.cpp
-  storage/StorageTests.cpp
+  text/BitmapFontTests.cpp
+  text/ColorGlyphTests.cpp
+  text/FontTests.cpp
+  text/LineHeightTests.cpp
+  text/RichTextLayoutTests.cpp
+  text/RichTextMarkupTests.cpp
+  text/ShapingTests.cpp
+  ui/BackendTests.cpp
+  ui/CollectionDiffTests.cpp
+  ui/CollectionTests.cpp
+  ui/ComponentAssetTests.cpp
+  ui/FocusRingTests.cpp
+  ui/GuiTests.cpp
+  ui/LabelTests.cpp
+  ui/LayoutTests.cpp
+  ui/MessageStackTests.cpp
+  ui/FocusTests.cpp
+  ui/GameComponentTests.cpp
+  ui/GridLayoutTests.cpp
+  ui/MountLinkTests.cpp
+  ui/OverlayTests.cpp
+  ui/RichTextComponentTests.cpp
+  ui/RightToLeftTests.cpp
+  ui/ScalingTests.cpp
+  ui/ScrollArbiterTests.cpp
+  ui/ScrollerTests.cpp
+  ui/SizeCacheTests.cpp
+  ui/SmoothEdgeTests.cpp
+  ui/TextFieldLayoutTests.cpp
+  ui/ThemeTests.cpp
+  ui/UiRedrawTests.cpp
+  ui/WheelTests.cpp
+)
+
+# The helpers that the tests of the core and the tests of the Lua layer share, one object library that both programs link, so each program replaces the global allocation functions for `test::AllocationTracker`.
+set(HAYLEN_TEST_SUPPORT_SOURCES
   support/ActionBindings.cpp
   support/AllocationTracker.cpp
-  support/AllocationTrackerTests.cpp
   support/AudioFiles.cpp
-  support/ContentAppFixture.cpp
   support/ContentParsers.cpp
   support/ContentServer.cpp
   support/CountingPackage.cpp
   support/DamagedFonts.cpp
   support/FontCollection.cpp
-  support/DebugClient.cpp
   support/EngineFixture.cpp
   support/EventLoop.cpp
   support/FakeVideoDecoder.cpp
@@ -277,78 +172,31 @@ set(HAYLEN_TEST_SOURCES
   support/TestFiles.cpp
   support/UiFixture.cpp
   support/ZipArchives.cpp
-  text/BitmapFontTests.cpp
-  text/ColorGlyphTests.cpp
-  text/FontTests.cpp
-  text/LineHeightTests.cpp
-  text/RichTextLayoutTests.cpp
-  text/RichTextMarkupTests.cpp
-  text/ShapingTests.cpp
-  text/SystemFontTests.cpp
-  text/TextLuaTests.cpp
-  ui/AccessibilityTreeTests.cpp
-  ui/AnchorTests.cpp
-  ui/BackendTests.cpp
-  ui/CollectionDiffTests.cpp
-  ui/CollectionLuaTests.cpp
-  ui/CollectionTests.cpp
-  ui/ComponentAssetTests.cpp
-  ui/ComponentTests.cpp
-  ui/FocusRingTests.cpp
-  ui/NavigationTests.cpp
-  ui/RouterTests.cpp
-  ui/GuiTests.cpp
-  ui/ImageLibraryTests.cpp
-  ui/LabelTests.cpp
-  ui/LayoutTests.cpp
-  ui/MessageStackTests.cpp
-  ui/MessageTests.cpp
-  ui/FocusTests.cpp
-  ui/GameComponentTests.cpp
-  ui/GridLayoutTests.cpp
-  ui/MountLinkTests.cpp
-  ui/NodeEventTests.cpp
-  ui/OverlayTests.cpp
-  ui/PlayAreaTests.cpp
-  ui/RichTextComponentTests.cpp
-  ui/RightToLeftTests.cpp
-  ui/ScalingTests.cpp
-  ui/SceneGuiTests.cpp
-  ui/ScrollArbiterTests.cpp
-  ui/ScrollbarTests.cpp
-  ui/ScrollerTests.cpp
-  ui/SizeCacheTests.cpp
-  ui/SmoothEdgeTests.cpp
-  ui/TextFieldLayoutTests.cpp
-  ui/TextInputTests.cpp
-  ui/StyleTests.cpp
-  ui/ThemeSoundTests.cpp
-  ui/ThemeTests.cpp
-  ui/TransformTests.cpp
-  ui/UiLuaFontTests.cpp
-  ui/UiLuaTests.cpp
-  ui/UiRedrawTests.cpp
-  ui/WheelTests.cpp
 )
 
 # The tests of the platform layer of SDL compile the translation of its events, the controllers, which virtual controllers of SDL stand in for, and the requests of fullscreen, which need no window.
+add_library(haylen-test-support OBJECT ${HAYLEN_TEST_SUPPORT_SOURCES})
+target_link_libraries(haylen-test-support PUBLIC haylen::engine haylen-content-writer haylen::headless haylen::gpu SDL3::SDL3-static haylen-harfbuzz haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
+# The tests reach into the engine's private headers on purpose, to check internals the public API hides.
+target_include_directories(haylen-test-support PUBLIC "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
+haylen_enable_warnings(haylen-test-support)
+haylen_enable_coverage(haylen-test-support)
+
 add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FullscreenRequest.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 # The tests export the variables that the drivers of a laptop with two GPUs read, like the player and the apps.
 if(WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/windows/GpuPreferenceExports.cpp")
 endif()
-target_link_libraries(haylen-tests PRIVATE haylen::lua haylen::player haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-harfbuzz haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
-# The tests reach into the engine's private headers on purpose, to check internals the public API hides.
-target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src" "${HAYLEN_ENGINE_DIR}/lua/src")
-target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/platform/headless/HeadlessPlayer.cpp")
+# The objects of the headless host reach only the programs that link it themselves.
+target_link_libraries(haylen-tests PRIVATE haylen-test-support haylen::headless)
 # The queue of the compilations of Direct3D holds plain threads, so its tests run on every desktop, with its source from the GPU library on Windows and compiled into the tests elsewhere.
 if(NOT WIN32)
   target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/direct3d/CompileQueue.cpp")
 endif()
 # The shader tests compile a material with `haylen app shaders`, the way apps compile theirs, running the tooling of the checkout through uv, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.
 find_program(HAYLEN_UV uv REQUIRED)
-target_compile_definitions(haylen-tests PRIVATE HAYLEN_UV="${HAYLEN_UV}" HAYLEN_TOOLING_ROOT="${HAYLEN_ENGINE_DIR}/.." HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
+target_compile_definitions(haylen-test-support PUBLIC HAYLEN_UV="${HAYLEN_UV}" HAYLEN_TOOLING_ROOT="${HAYLEN_ENGINE_DIR}/.." HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
 # On Windows the tests also run the decoder of Media Foundation, the font fallback of DirectWrite and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)
   target_sources(haylen-tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsFontsTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFonts.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsFontText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsText.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
@@ -386,7 +234,7 @@ target_include_directories(haylen-native-test PRIVATE "${HAYLEN_ENGINE_DIR}/incl
 target_link_libraries(haylen-native-test PRIVATE nlohmann_json::nlohmann_json Threads::Threads)
 haylen_enable_warnings(haylen-native-test)
 add_dependencies(haylen-tests haylen-native-test)
-target_compile_definitions(haylen-tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>")
+target_compile_definitions(haylen-test-support PUBLIC HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>")
 
 # The desktop player keeps a folder of its own, so the library goes next to it too, where the tests of native libraries in the test project load it by name.
 if(TARGET haylen AND TARGET haylen-headless)
@@ -396,7 +244,7 @@ if(TARGET haylen AND TARGET haylen-headless)
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:haylen-native-test>" "${player_folder}"
     VERBATIM
   )
-  target_compile_definitions(haylen-tests PRIVATE HAYLEN_PLAYER_FOLDER="${player_folder}" HAYLEN_HEADLESS_PLAYER_FOLDER="$<TARGET_FILE_DIR:haylen-headless>")
+  target_compile_definitions(haylen-test-support PUBLIC HAYLEN_PLAYER_FOLDER="${player_folder}" HAYLEN_HEADLESS_PLAYER_FOLDER="$<TARGET_FILE_DIR:haylen-headless>")
 endif()
 
 # Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs.

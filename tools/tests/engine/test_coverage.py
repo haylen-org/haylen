@@ -11,7 +11,7 @@ from tests.support.recorded_commands import RecordedCommands
 
 class CoverageTest:
     def test_the_report_reads_the_tests_by_the_name_of_their_executable_on_this_machine(self, tmp_path, monkeypatch):
-        for system, executable in (("windows", "haylen-tests.exe"), ("linux", "haylen-tests")):
+        for system, suffix in (("windows", ".exe"), ("linux", "")):
             monkeypatch.setattr(Repository, "ENGINE_BUILDS", tmp_path / system)
             monkeypatch.setattr(Host, "system", staticmethod(lambda system=system: system))
             monkeypatch.setattr(EngineTree, "ensure", lambda self, command, env=None: None)
@@ -31,5 +31,6 @@ class CoverageTest:
 
             monkeypatch.setattr(recorded.context.process, "run", record)
             Coverage(recorded.context).run(None)
-            binary = str(tmp_path / system / "coverage" / "bin" / executable)
-            assert [command[2] for command in recorded.commands if command[0] == "llvm-cov"] == [binary, binary]
+            folder = tmp_path / system / "coverage" / "bin"
+            programs = [str(folder / f"haylen-tests{suffix}"), "-object", str(folder / f"haylen-lua-tests{suffix}")]
+            assert [[str(part) for part in command[2:5]] for command in recorded.commands if command[0] == "llvm-cov"] == [programs, programs]

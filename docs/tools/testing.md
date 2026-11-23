@@ -4,13 +4,14 @@ This guide is for people who change the engine and need to prove that it works. 
 
 ## Layout
 
-The suite lives in `engine/tests/` and builds into one executable, `haylen-tests`.
+The suite builds into two programs. The tests of the core of the engine live in `engine/tests/` and build into `haylen-tests`, which links no Lua. The tests that run Lua, of the bindings, the Lua modules, the runtime of the scripts, the Lua development tools, the headless player and the content tool, live in `engine/lua/tests/` with the folders of the same contexts and build into `haylen-lua-tests`. Both programs link the helpers of `engine/tests/support/`, and `haylen test` builds both and runs every test of both once.
 
 | Path | Contents |
 | --- | --- |
 | `engine/tests/<module>/` | The tests of one module of the engine, such as `core/EngineTests.cpp` or `io/IoTests.cpp`. |
 | `engine/tests/2d/<module>/` | The tests of the 2D modules, which follow the `2d` folders of the engine: `animation`, `graphics` (the renderer, fonts, cameras and their Lua binding), `lighting`, `navigation`, `nodes`, `particles`, `physics`, `procedural`, `spatial` and `tiled`. |
-| `engine/tests/lua/` | The binding tests of the core modules, such as events, scenes, tweens, jobs and buffers, of the math, geometry, input and assets modules, and of the Lua runtime and the binding toolkit, with its references, module reloads and yields. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
+| `engine/lua/tests/<module>/` | The tests that run Lua, in the folders of the contexts they test, with the helpers of Lua in `engine/lua/tests/support/`: `LuaFixture`, `LuaUiFixture`, `LuaComponentFixture`, `DebugClient` and `ContentAppFixture`. |
+| `engine/lua/tests/lua/` | The binding tests of the core modules, such as events, scenes, tweens, jobs and buffers, of the math, geometry, input and assets modules, and of the Lua runtime and the binding toolkit, with its references, module reloads and yields. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
 | `engine/tests/support/` | The shared helpers in `haylen::test`, which [the engine fixture](#the-engine-fixture) lists. |
 | `engine/tests/fuzz/` | The entry points of the fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents, of the pages of Ogg files, of TrueType and OpenType fonts and of BMFont files, which the option `HAYLEN_BUILD_FUZZERS` builds. |
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters that the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese, kana of a variable CFF2 face of Chinese and Japanese, symbols, the color emoji of a `COLR` font of version 1 with the ligatures of their sequences, and the letters of a display font in color layers of version 0. The command `pyftsubset` of fontTools makes each subset from the font of its license, outside the repository, such as `pyftsubset NotoColorEmoji-Regular.ttf --unicodes=U+1F600,U+200D --layout-features='*' --drop-tables+=SVG,vhea,vmtx`. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
@@ -26,9 +27,10 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/platform/sdl/` | The tests of the SDL platform layer: the translation of the events of SDL, the controllers, which virtual controllers of SDL stand in for, and the requests of fullscreen. They need no window, so `haylen-tests` compiles their sources with them. |
 | `engine/tests/ui/apple/` | The runner of [the UI tests](#the-ui-tests) of apps on the Apple simulators and devices: its XcodeGen spec `project.yml` and the base class `HaylenUITestCase` in `support/`. |
 | `engine/tests/ui/android/` | The runner of [the UI tests](#the-ui-tests) of apps on Android: the Gradle project of a test APK that instruments itself and the base class `HaylenUiTestCase` in `support/`. |
-| `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`. |
+| `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test of the core, the object library `haylen-test-support` of the shared helpers and the target `haylen-tests`. |
+| `engine/lua/tests/CMakeLists.txt` | The list `HAYLEN_LUA_TEST_SOURCES`, which names every test that runs Lua, and the target `haylen-lua-tests`. |
 
-The target `haylen-tests` links `haylen::lua`, `haylen::player`, `haylen::headless`, `haylen::gpu`, the library of the content tool, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` and `engine/lua/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
+The target `haylen-tests` links `haylen-test-support`, `haylen::engine`, `haylen::headless`, `haylen::gpu`, the writing side of the content format, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. The target `haylen-lua-tests` links the same helpers with `haylen::lua`, `haylen::player` and the library of the content tool, and adds `engine/lua/tests` and `engine/lua/src` to its include folders, so its tests include `support/LuaFixture.hpp` and the private headers of the Lua layer.
 
 The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. Each test has a timeout of 120 seconds, far above the few seconds that the slowest test takes. So a test that hangs fails on its own, and the rest of the suite still runs.
 
@@ -81,7 +83,7 @@ explicit EngineFixture(std::map<std::string, std::string> files = {}, std::uniqu
 EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options);
 ```
 
-The argument `files` maps package paths to their contents. Unless the map has them, the fixture adds a `haylen.json` with the name `Test App` and the identifier `com.haylen.tests`, and an empty `source/main.lua`. It reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder, which the fixture removes afterwards.
+The argument `files` maps package paths to their contents. Unless the map has it, the fixture adds a `haylen.json` with the name `Test App` and the identifier `com.haylen.tests`. It reads the configuration, creates the engine with the given application, or with a `test::TestApplication` that runs no code, so the tests of the core drive the engine from C++, and starts it. User data goes to a temporary folder, which the fixture removes afterwards.
 
 The struct `EngineFixture::Options` has four options:
 
@@ -93,10 +95,15 @@ The struct `EngineFixture::Options` has four options:
 | Member | Purpose |
 | --- | --- |
 | `engine()`, `host()`, `package()` | The `core::Engine`, the `platform::HeadlessHost` and the `io::MemoryPackage`, to drive the engine and check its state. |
-| `lua()` | The `lua_State*` of the engine. |
-| `restart()` | Replaces the engine with a new one that runs the package with a Lua application on the same host, as the runtime restarts an app. What the host keeps, such as the covers of the app, outlives it. |
+| `restart()` | Replaces the engine with a new one that runs the package with the application of the fixture on the same host, as the runtime restarts an app. What the host keeps, such as the covers of the app, outlives it. |
 | `frames(count, seconds)` | Runs `count` frames of `seconds` each, one sixtieth of a second by default. |
 | `frameUntil(condition, timeout)` | Runs frames until `condition` returns `true` or the timeout passes, ten seconds by default. It sleeps one millisecond between frames, so worker threads can finish. It returns whether the condition was met. |
+
+The class `haylen::test::LuaFixture` of `engine/lua/tests/support/` is the engine fixture of the tests that run Lua. It adds an empty `source/main.lua` unless the map has one, runs a `lua::Application` unless the test gives another application, at the start and at every restart, and adds these members:
+
+| Member | Purpose |
+| --- | --- |
+| `lua()` | The `lua_State*` of the app. |
 | `lua(source)` | Runs a chunk named `test` and returns its first result converted with `tostring`, or `error: ` followed by the message when it fails. |
 | `runLua(source)` | Runs a chunk and throws `std::runtime_error` when it fails, for setup code. |
 | `developmentSession()` | The `platform::DevelopmentSession` of the host, which throws for a fixture that runs outside development. |
@@ -143,19 +150,19 @@ A binding test runs Lua through the fixture and checks what matters to an app: r
 - Advance frames for anything asynchronous. Promises settle and coroutines resume during a frame, so a test waits with `frameUntil`.
 - Check engine state through `fixture.engine()` and `fixture.host()` when a binding changes the engine, such as the window title or a platform call.
 
-The test `Spatial2DLuaTest.StoresLuaValuesInEveryStructure` in `engine/tests/2d/spatial/Spatial2DTests.cpp` is a compact model for a synchronous module. A test like this one covers `jobs.spawn`, whose promise resolves in a later frame, as the tests of `JobsLuaTest` in `engine/tests/lua/CoreLuaTests.cpp` do:
+The test `Spatial2DLuaTest.StoresLuaValuesInEveryStructure` in `engine/lua/tests/2d/spatial/Spatial2DTests.cpp` is a compact model for a synchronous module. A test like this one covers `jobs.spawn`, whose promise resolves in a later frame, as the tests of `JobsLuaTest` in `engine/lua/tests/lua/CoreLuaTests.cpp` do:
 
 ```cpp
 #include <gtest/gtest.h>
 
 #include <string>
 
-#include "support/EngineFixture.hpp"
+#include "support/LuaFixture.hpp"
 
 namespace haylen::core {
 
 TEST(JobsLuaTest, ResolvesSpawnedJobsInLaterFrames) {
-    test::EngineFixture fixture;
+    test::LuaFixture fixture;
     // clang-format off
     fixture.runLua(R"(
         local async = require('async')
@@ -199,13 +206,13 @@ haylen test --config Release --jobs 4
 haylen test --sanitizers address --shard 2/4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/engine/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. The option `--config` picks the configuration, `Debug` by default, `--sanitizers` builds a tree with [sanitizers](#sanitizers), `--cmake-target` names the CMake target that the build makes before CTest runs, `haylen-tests` by default, and `--jobs` sets the jobs of the build and of CTest. The option `--target` names where the tests run, this machine by default, with the names that the app commands and `haylen devices` use. With `--shard`, such as `--shard 2/4`, it runs one of the equal parts of the suite, so several machines run it side by side, and with `--target web` it runs one part of the checks of the web, which take their places in the order this guide lists them. CTest numbers the tests that the build discovered in one fixed order and runs each test in a process of its own, so the shard `2/4` runs the tests 2, 6, 10 and on through `--tests-information 2,,4`, and the shards together run every test once. The variables `GTEST_SHARD_INDEX` and `GTEST_TOTAL_SHARDS` of GoogleTest split the tests of one process, so they do not apply to a suite where every process runs one test. With `--target web` it runs [the error screen check of the web](#the-error-screen-check-of-the-web), [the wake lock check of the web](#the-wake-lock-check-of-the-web), [the fullscreen check of the web](#the-fullscreen-check-of-the-web), [the orientation check of the web](#the-orientation-check-of-the-web), [the plugin check of the web](#the-plugin-check-of-the-web), [the editor check of the web](#the-editor-check-of-the-web), [the memory check of the web](#the-memory-check-of-the-web) and [the screens check of the web](#the-screens-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS, tvOS or visionOS device it runs [the GPU tests](#the-gpu-tests) there. With `--app` it runs [the start check of an app on the web](#the-start-check-of-an-app-on-the-web) with `--target web`, or [the start check of an app on Android](#the-start-check-of-an-app-on-android) with `--target android`, instead. With `--port` it builds and plays [the test port](#the-test-port), and with `--ui` it runs [the UI tests](#the-ui-tests) of an app on a simulator. The checks of the web, the start check and the UI tests build their apps through the backends, which first build the SDK of their target when no installed SDK of the current engine sources holds it. The checks of the web and a Release start check also need the desktop SDK of this machine, whose content tool builds their protected releases, as [engine SDKs](build.md#engine-sdks) describe.
+The command `test` builds `haylen-tests` and `haylen-lua-tests` for this machine and runs CTest, which runs the tests of both programs, with `--output-on-failure` in parallel. It configures `build/engine/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. The option `--config` picks the configuration, `Debug` by default, `--sanitizers` builds a tree with [sanitizers](#sanitizers), `--cmake-target` names a CMake target, which repeats, that the build makes before CTest runs, both programs by default, and `--jobs` sets the jobs of the build and of CTest. The option `--target` names where the tests run, this machine by default, with the names that the app commands and `haylen devices` use. With `--shard`, such as `--shard 2/4`, it runs one of the equal parts of the suite, so several machines run it side by side, and with `--target web` it runs one part of the checks of the web, which take their places in the order this guide lists them. CTest numbers the tests that the build discovered in one fixed order and runs each test in a process of its own, so the shard `2/4` runs the tests 2, 6, 10 and on through `--tests-information 2,,4`, and the shards together run every test once. The variables `GTEST_SHARD_INDEX` and `GTEST_TOTAL_SHARDS` of GoogleTest split the tests of one process, so they do not apply to a suite where every process runs one test. With `--target web` it runs [the error screen check of the web](#the-error-screen-check-of-the-web), [the wake lock check of the web](#the-wake-lock-check-of-the-web), [the fullscreen check of the web](#the-fullscreen-check-of-the-web), [the orientation check of the web](#the-orientation-check-of-the-web), [the plugin check of the web](#the-plugin-check-of-the-web), [the editor check of the web](#the-editor-check-of-the-web), [the memory check of the web](#the-memory-check-of-the-web) and [the screens check of the web](#the-screens-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS, tvOS or visionOS device it runs [the GPU tests](#the-gpu-tests) there. With `--app` it runs [the start check of an app on the web](#the-start-check-of-an-app-on-the-web) with `--target web`, or [the start check of an app on Android](#the-start-check-of-an-app-on-android) with `--target android`, instead. With `--port` it builds and plays [the test port](#the-test-port), and with `--ui` it runs [the UI tests](#the-ui-tests) of an app on a simulator. The checks of the web, the start check and the UI tests build their apps through the backends, which first build the SDK of their target when no installed SDK of the current engine sources holds it. The checks of the web and a Release start check also need the desktop SDK of this machine, whose content tool builds their protected releases, as [engine SDKs](build.md#engine-sdks) describe.
 
 Run one suite or one test through CTest or through the executable:
 
 ```sh
 ctest --test-dir build/engine/macos-debug -R Spatial2DLuaTest --output-on-failure
-build/engine/macos-debug/bin/haylen-tests --gtest_filter='Spatial2DLuaTest.*'
+build/engine/macos-debug/bin/haylen-lua-tests --gtest_filter='Spatial2DLuaTest.*'
 ```
 
 ## The GPU tests
@@ -651,8 +658,8 @@ haylen engine coverage --jobs 4 --sanitizers address
 Coverage uses the source-based coverage of LLVM, so it needs Clang. The command `engine coverage` works in these steps:
 
 1. It configures `build/engine/coverage` in the Debug configuration with `HAYLEN_ENABLE_COVERAGE=ON` and without the player.
-2. It builds `haylen-tests` and runs every test, which writes one profile per process into `build/engine/coverage/coverage/`.
-3. It merges the profiles with `llvm-profdata`, prints the report of `llvm-cov` and writes an HTML report to `build/engine/coverage/coverage/html/index.html`.
+2. It builds `haylen-tests` and `haylen-lua-tests` and runs every test of both, which writes one profile per process into `build/engine/coverage/coverage/`.
+3. It merges the profiles with `llvm-profdata`, prints the report of `llvm-cov` over both programs, which sums what each one covers, and writes an HTML report to `build/engine/coverage/coverage/html/index.html`.
 
 The report leaves out the dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need the SDK of a platform: `apple`, `android`, `web`, `windows` and `linux`. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. The command also takes `--sanitizers`, which measures with sanitizers too. Coverage of the engine stays as close to 100 percent as the code allows.
 

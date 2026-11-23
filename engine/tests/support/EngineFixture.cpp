@@ -1,7 +1,4 @@
 #include "support/EngineFixture.hpp"
-#include "haylen/lua/ScriptPlugin.hpp"
-
-#include <lua.hpp>
 
 #include <stdexcept>
 
@@ -9,13 +6,17 @@
 #include "haylen/platform/DevelopmentSession.hpp"
 #include "io/OverlayPackage.hpp"
 #include "support/EventLoop.hpp"
+#include "support/TestApplication.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::test {
 
 EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application) : EngineFixture(std::move(files), std::move(application), Options{}) {}
 
-EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options) : headlessHost(directory.getPath() / "data") {
+// The default application of the core fixture runs no code, so a test drives the engine from C++.
+EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options) : EngineFixture(std::move(files), std::move(application), std::move(options), [] { return std::make_unique<TestApplication>(nullptr); }) {}
+
+EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options, ApplicationMaker maker) : headlessHost(directory.getPath() / "data"), makeApplication(std::move(maker)) {
     if (options.development || !options.developmentServer.empty()) {
         headlessHost.enableDevelopment(std::nullopt, options.developmentServer);
     }
@@ -26,7 +27,6 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
     }
 
     files.try_emplace("haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests"})");
-    files.try_emplace("source/main.lua", "");
 
     std::map<std::string, std::vector<std::uint8_t>> contents;
     for (const auto& [path, text] : files) {
@@ -54,7 +54,7 @@ void EngineFixture::stop() {
 
 void EngineFixture::launch(std::unique_ptr<core::Application> application) {
     if (!application) {
-        application = std::make_unique<lua::Application>();
+        application = makeApplication();
     }
 
     core::AppConfig config = core::AppConfig::fromPackage(*playedPackage, application->getSections());
@@ -98,27 +98,6 @@ bool EngineFixture::frameUntil(const std::function<bool()>& condition, std::chro
     }
 
     return true;
-}
-
-std::string EngineFixture::lua(const std::string& source) {
-    lua_State* L = runningEngine->getPlugin<lua::ScriptPlugin>().getState();
-    const int top = lua_gettop(L);
-    std::string result;
-    if (luaL_loadbufferx(L, source.data(), source.size(), "=test", "t") != LUA_OK || lua_pcall(L, 0, 1, 0) != LUA_OK) {
-        result = std::string("error: ") + lua_tostring(L, -1);
-    } else {
-        result = luaL_tolstring(L, -1, nullptr);
-    }
-
-    lua_settop(L, top);
-    return result;
-}
-
-void EngineFixture::runLua(const std::string& source) {
-    const std::string result = lua(source);
-    if (result.starts_with("error: ")) {
-        throw std::runtime_error(result);
-    }
 }
 
 } // namespace haylen::test

@@ -31,12 +31,16 @@ class UiFixture {
     static constexpr int kSettleFrames = 60;
 
     explicit UiFixture(std::map<std::string, std::string> files = {});
+    virtual ~UiFixture() = default;
+
+    UiFixture(const UiFixture&) = delete;
+    UiFixture& operator=(const UiFixture&) = delete;
 
     [[nodiscard]] core::Engine& getEngine() noexcept {
-        return fixture.engine();
+        return fixture->engine();
     }
     [[nodiscard]] EngineFixture& getFixture() noexcept {
-        return fixture;
+        return *fixture;
     }
     [[nodiscard]] plugins::UiPlugin& getUi();
 
@@ -90,8 +94,12 @@ class UiFixture {
         events.clear();
     }
 
+  protected:
+    // A fixture of the GUIs of the engine that the fixture runs, such as one that runs Lua.
+    explicit UiFixture(std::unique_ptr<EngineFixture> engineFixture);
+
   private:
-    EngineFixture fixture;
+    std::unique_ptr<EngineFixture> fixture;
     std::vector<ui::Event> events;
     core::Connection connection;
 };

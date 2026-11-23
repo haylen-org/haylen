@@ -26,7 +26,14 @@ namespace haylen::test {
 // A running engine whose tests of the components mount GUIs, give them input and read the events of the components, without the focus events that clicks also cause.
 class ComponentFixture {
   protected:
-    explicit ComponentFixture(std::map<std::string, std::string> files = {}) : fixture(std::move(files)) {
+    explicit ComponentFixture(std::map<std::string, std::string> files = {}) : ComponentFixture(std::make_unique<EngineFixture>(std::move(files))) {}
+    virtual ~ComponentFixture() = default;
+
+    ComponentFixture(const ComponentFixture&) = delete;
+    ComponentFixture& operator=(const ComponentFixture&) = delete;
+
+    // A fixture of the components of the engine that the fixture runs, such as one that runs Lua.
+    explicit ComponentFixture(std::unique_ptr<EngineFixture> engineFixture) : fixture(std::move(engineFixture)) {
         // Clicks move the focus too, and the focus tests check its events, so these tests keep the events of the components alone.
         // clang-format off
         connection = getUi().events.connect([this](ui::Gui&, const ui::Event& event) {
@@ -38,7 +45,7 @@ class ComponentFixture {
     }
 
     core::Engine& getEngine() {
-        return fixture.engine();
+        return fixture->engine();
     }
     plugins::UiPlugin& getUi() {
         return getEngine().getPlugin<plugins::UiPlugin>();
@@ -52,7 +59,7 @@ class ComponentFixture {
     }
 
     void frames(int count = 1) {
-        fixture.frames(count);
+        fixture->frames(count);
     }
 
     void pointer(platform::Event::Type type, math::Vec2 point) {
@@ -132,7 +139,7 @@ class ComponentFixture {
         return UiFixture::getGuiDrawList(getUi()).VtxBuffer.Size + static_cast<int>(getEngine().getRenderer2D().getStats().instances);
     }
 
-    test::EngineFixture fixture;
+    std::unique_ptr<test::EngineFixture> fixture;
     std::vector<ui::Event> events;
     core::Connection connection;
 };

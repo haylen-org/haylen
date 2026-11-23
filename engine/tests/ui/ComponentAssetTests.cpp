@@ -81,7 +81,7 @@ class ComponentAssetTest : public ::testing::Test, public test::ComponentFixture
             });
         });
         // clang-format on
-        fixture.frames(1);
+        fixture->frames(1);
         renderer.removeCanvasOverlay(overlay);
         return drawn;
     }
@@ -89,7 +89,7 @@ class ComponentAssetTest : public ::testing::Test, public test::ComponentFixture
 
 TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "image", "id": "icon", "image": "ui/icon.png", "scale": 2}, {"kind": "icon", "image": "ui/icon.png", "color": "accent"}]})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return getBounds(*gui, "icon").width > 0.0F; }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return getBounds(*gui, "icon").width > 0.0F; }));
     EXPECT_EQ(getBounds(*gui, "icon").getSize(), math::Vec2(32.0F, 32.0F));
 
     EXPECT_EQ(getUi().loadTheme(getEngine(), "themes/wood.json", "light"), "wood");
@@ -108,24 +108,24 @@ TEST_F(ComponentAssetTest, LoadsImagesThemesAndTranslations) {
     EXPECT_EQ(getUi().getContext().getText({.literal = "plain"}), "plain");
 
     mount(R"({"kind": "image", "image": "ui/missing.png"})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return getEngine().getError() != nullptr; }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return getEngine().getError() != nullptr; }));
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The UI image \"ui/missing.png\" could not be loaded."), std::string::npos);
 }
 
 TEST_F(ComponentAssetTest, LoadsImagesWithTheFilterOfTheTheme) {
     const auto loaded = [&] { return getUi().getContext().getImage("ui/icon.png", {16.0F, 16.0F}); };
-    ASSERT_TRUE(fixture.frameUntil([&] { return loaded().isValid(); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return loaded().isValid(); }));
     EXPECT_EQ(loaded().getOptions().filter, graphics::Texture::Filter::Nearest);
 
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/smooth.json"));
     EXPECT_FALSE(loaded().isValid());
-    ASSERT_TRUE(fixture.frameUntil([&] { return loaded().isValid(); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return loaded().isValid(); }));
     EXPECT_EQ(loaded().getOptions().filter, graphics::Texture::Filter::Linear);
 }
 
 TEST_F(ComponentAssetTest, PressesImageButtons) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "imageButton", "id": "start", "image": "ui/icon.png", "hoverImage": "ui/panel.png", "text": "Go", "scale": 4}]})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return getBounds(*gui, "start").width == 64.0F; }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return getBounds(*gui, "start").width == 64.0F; }));
     click(*gui, "start");
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"start:click"}));
     EXPECT_EQ(getEngine().getError(), nullptr);
@@ -146,7 +146,7 @@ TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
         return found;
     };
     // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return last(false) >= 0; }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return last(false) >= 0; }));
     EXPECT_GT(last(true), last(false));
 }
 
@@ -201,7 +201,7 @@ TEST_F(ComponentAssetTest, DrawsFramesWithoutAllocating) {
     EXPECT_EQ(measure(), empty);
 
     // The elements that screen readers read build every frame without allocating once they settled.
-    fixture.host().setAccessibilityTreeWanted(true);
+    fixture->host().setAccessibilityTreeWanted(true);
     EXPECT_EQ(measure(), empty);
     EXPECT_GT(getEngine().getAccessibility().getElements().size(), 30U);
 }
@@ -219,7 +219,7 @@ TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {
     // clang-format on
 
     // A switch that is on fills the groove of its track, whose frame stays around the fill.
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawn(fill); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawn(fill); }));
     EXPECT_TRUE(drawn(track));
 
     // A switch that is off keeps the same track, with an empty groove.
@@ -234,7 +234,7 @@ TEST_F(ComponentAssetTest, DrawsTogglesInTheirTrackInEveryState) {
 TEST_F(ComponentAssetTest, KeepsTheTrackOfASwitchStillWhileItTurns) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/wood.json"));
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "toggle", "id": "sound", "checked": true}]})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/fill.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/fill.png"); }));
     const auto steady = drawFrame();
     ASSERT_TRUE(steady.contains("ui/panel.png"));
     const math::Rect track = steady.at("ui/panel.png");
@@ -276,7 +276,7 @@ TEST_F(ComponentAssetTest, PaintsTooltipsWithTheThemeSurface) {
 TEST_F(ComponentAssetTest, DrawsRadioMarksWithTheirSurfaces) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
     mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "radioGroup", "items": [{"id": "easy", "text": "Easy"}, {"id": "hard", "text": "Hard"}], "selected": "easy"}]})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/dot.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/dot.png"); }));
     const auto drawn = drawFrame();
     const float size = getUi().getTheme().getMetric(Theme::Metric::ChoiceSize);
     ASSERT_TRUE(drawn.contains("ui/mark.png"));
@@ -288,20 +288,20 @@ TEST_F(ComponentAssetTest, DrawsRadioMarksWithTheirSurfaces) {
 TEST_F(ComponentAssetTest, HighlightsTheRowsOfListsWithTheCellSurfaces) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "list", "id": "crew", "width": 400, "height": 300, "items": [{"id": "ana", "text": "Ana"}, {"id": "leo", "text": "Leo"}], "selected": "ana"}]})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/row.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/row.png"); }));
     const math::Rect chosen = drawFrame().at("ui/row.png");
     EXPECT_FLOAT_EQ(chosen.height, getUi().getTheme().getMetric(Theme::Metric::ListRowHeight));
     EXPECT_FLOAT_EQ(chosen.y, getBounds(*gui, "crew").y);
 
     pointer(platform::Event::Type::MouseMove, {chosen.getCenter().x, chosen.getCenter().y + chosen.height});
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/hover.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/hover.png"); }));
     EXPECT_EQ(drawFrame().at("ui/hover.png"), chosen.translated({0.0F, chosen.height}));
 }
 
 TEST_F(ComponentAssetTest, FramesTheTitlesOfWindowsAndDialogsWithTheTitleBar) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
     auto gui = mount(R"({"kind": "window", "id": "bag", "title": "Bag", "x": 100, "y": 100, "width": 500, "height": 400})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/bar.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/bar.png"); }));
     const math::Rect window = getBounds(*gui, "bag");
     EXPECT_EQ(drawFrame().at("ui/bar.png"), math::Rect(window.x, window.y, window.width, getUi().getTheme().getMetric(Theme::Metric::WindowTitleHeight)));
 
@@ -323,7 +323,7 @@ TEST_F(ComponentAssetTest, FramesTheTitlesOfWindowsAndDialogsWithTheTitleBar) {
 TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheTheme) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
     auto gui = mount(R"({"kind": "window", "id": "bag", "title": "Bag", "x": 100, "y": 100, "width": 500, "height": 400, "closable": true})");
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/close.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/close.png"); }));
     const math::Rect window = getBounds(*gui, "bag");
     const float header = getUi().getTheme().getMetric(Theme::Metric::WindowTitleHeight);
     const float side = header - 10.0F - 12.0F;
@@ -333,7 +333,7 @@ TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheThe
     EXPECT_TRUE(covers(drawFrame().at("ui/close.png")));
 
     pointer(platform::Event::Type::MouseMove, button.getCenter());
-    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/closing.png"); }));
+    ASSERT_TRUE(fixture->frameUntil([&] { return drawFrame().contains("ui/closing.png"); }));
     EXPECT_TRUE(covers(drawFrame().at("ui/closing.png")));
     EXPECT_FALSE(drawFrame().contains("ui/close.png"));
     click(button.getCenter());
@@ -342,11 +342,11 @@ TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheThe
 
 // A theme that paints messages with an image keeps their text inside the padding of the image, which screen readers find as the frame of the alert.
 TEST_F(ComponentAssetTest, KeepsTheTextOfMessagesInsideThePaddingOfTheirSurface) {
-    fixture.host().setAccessibilityTreeWanted(true);
+    fixture->host().setAccessibilityTreeWanted(true);
     static_cast<void>(getUi().getNavigation().showMessage({{"text", "Saved"}, {"duration", 0}}));
     // clang-format off
     const auto measure = [this] {
-        const auto& trees = fixture.host().getAccessibilityTrees();
+        const auto& trees = fixture->host().getAccessibilityTrees();
         if (trees.empty()) {
             throw std::runtime_error("The platform received no accessibility tree.");
         }

@@ -1,0 +1,181 @@
+# The tests of the Lua layer: every test that runs Lua, the bindings, the modules, the runtime of the scripts, the Lua development tools, the headless player and the content tool, which compiles Lua modules. They run Lua through the headless engine with `test::LuaFixture` and share the helpers of the tests of the core.
+set(HAYLEN_LUA_TEST_SOURCES
+  2d/animation/AnimatedBatchTests.cpp
+  2d/animation/ChainTests.cpp
+  2d/animation/FrameDataTests.cpp
+  2d/animation/SkeletonTests.cpp
+  2d/animation/SpriteAtlasTests.cpp
+  2d/animation/StateGraphTests.cpp
+  2d/graphics/CameraRigTests.cpp
+  2d/graphics/Graphics2DLuaTests.cpp
+  2d/graphics/MeshFringeTests.cpp
+  2d/graphics/PartMaskTests.cpp
+  2d/graphics/PathTests.cpp
+  2d/graphics/PostProcessTests.cpp
+  2d/graphics/ScreenEffectsTests.cpp
+  2d/graphics/ShapeTests.cpp
+  2d/graphics/SpriteDataTests.cpp
+  2d/graphics/TileLayerTests.cpp
+  2d/graphics/VectorAtlasTests.cpp
+  2d/lighting/Lighting2DTests.cpp
+  2d/navigation/Navigation2DTests.cpp
+  2d/navigation/NavigationLuaTests.cpp
+  2d/nodes/NodeTreeTests.cpp
+  2d/particles/Particles2DLuaTests.cpp
+  2d/physics/Physics2DTests.cpp
+  2d/physics/PhysicsFeaturesLuaTests.cpp
+  2d/physics/RaycasterTests.cpp
+  2d/procedural/PlacementTests.cpp
+  2d/procedural/Procedural2DLuaTests.cpp
+  2d/spatial/GridAlgorithmTests.cpp
+  2d/spatial/OverlapWorldTests.cpp
+  2d/spatial/Spatial2DTests.cpp
+  2d/tiled/MapQueryTests.cpp
+  2d/tiled/TiledTests.cpp
+  ai/DecisionLuaTests.cpp
+  ai/StateMachineTests.cpp
+  assets/AssetTests.cpp
+  audio/AudioLuaTests.cpp
+  audio/AudioOutputTests.cpp
+  audio/MixerLuaTests.cpp
+  content/BootstrapTests.cpp
+  content/BootstrapWriterTests.cpp
+  content/CatalogTests.cpp
+  content/ChannelPublisherTests.cpp
+  content/ContentLuaTests.cpp
+  content/ContentManagerTests.cpp
+  content/ContentPackTests.cpp
+  content/ContentStartTests.cpp
+  content/ContentToolTests.cpp
+  content/HostileInputTests.cpp
+  content/HpakPackageTests.cpp
+  content/KeyStoreTests.cpp
+  content/LuaCompilerTests.cpp
+  content/ManifestTests.cpp
+  content/ReleaseAcceptanceTests.cpp
+  content/ReleaseBuilderTests.cpp
+  content/ReleaseInspectorTests.cpp
+  content/ReleaseLuaTests.cpp
+  content/ReleaseStagerTests.cpp
+  content/ReleaseStreamingTests.cpp
+  content/UpdaterTests.cpp
+  conversation/ConversationTests.cpp
+  core/EngineTests.cpp
+  core/ErrorReportTests.cpp
+  core/ErrorScreenTests.cpp
+  core/MessagePackTests.cpp
+  core/RedrawTests.cpp
+  debug/AssetReloadTests.cpp
+  debug/ConsoleTests.cpp
+  debug/DebugTests.cpp
+  debug/DebuggerConnectionTests.cpp
+  debug/DebuggerErrorTests.cpp
+  debug/DebuggerStepTests.cpp
+  debug/DebuggerTests.cpp
+  debug/DebuggerWebTests.cpp
+  debug/DrawingTests.cpp
+  debug/EvaluationTests.cpp
+  debug/ExecutionBudgetTests.cpp
+  debug/GpuCaptureTests.cpp
+  debug/HotReloadTests.cpp
+  debug/InspectorTests.cpp
+  debug/InspectorWindowTests.cpp
+  debug/PackageWatcherTests.cpp
+  debug/StatsTests.cpp
+  debug/ThreadWalkTests.cpp
+  debug/TraceRecorderTests.cpp
+  graphics/GradientTests.cpp
+  graphics/GraphicsLuaTests.cpp
+  graphics/ImageFiltersTests.cpp
+  graphics/ImagePaletteTests.cpp
+  graphics/MaterialLuaTests.cpp
+  graphics/VectorImageTests.cpp
+  graphics/VideoTests.cpp
+  input/CommandBufferTests.cpp
+  input/GamepadMotionTests.cpp
+  input/GestureTests.cpp
+  input/InputRecordingLuaTests.cpp
+  input/InputTests.cpp
+  io/IoTests.cpp
+  localization/FormatTests.cpp
+  localization/LocalizationTests.cpp
+  lua/AssetsLuaTests.cpp
+  lua/BufferLuaTests.cpp
+  lua/CollectionsLuaTests.cpp
+  lua/CoreLuaTests.cpp
+  lua/EventsLuaTests.cpp
+  lua/GeometryLuaTests.cpp
+  lua/InputLuaTests.cpp
+  lua/LuaConfigTests.cpp
+  lua/LuaReferenceTests.cpp
+  lua/MathLuaTests.cpp
+  lua/ModuleReloadTests.cpp
+  lua/SceneLuaTests.cpp
+  lua/ToolkitTests.cpp
+  lua/TweenLuaTests.cpp
+  lua/YieldTests.cpp
+  math/ColorTransformTests.cpp
+  math/ProceduralTests.cpp
+  math/RaycastTests.cpp
+  math/SignalFilterTests.cpp
+  net/HttpDownloadTests.cpp
+  net/NetLuaTests.cpp
+  net/NetPluginTests.cpp
+  platform/AccessibilityTests.cpp
+  platform/AppCoverTests.cpp
+  platform/AppPluginTests.cpp
+  platform/CrashGuardTests.cpp
+  platform/DevelopmentConnectionTests.cpp
+  platform/DisplayLuaTests.cpp
+  platform/FoldTests.cpp
+  platform/HeadlessPlayerTests.cpp
+  platform/NativeLuaTests.cpp
+  platform/NativeViewsTests.cpp
+  platform/PlatformLuaTests.cpp
+  platform/SafeAreaTests.cpp
+  platform/ScreensTests.cpp
+  platform/StreamTests.cpp
+  platform/SystemTests.cpp
+  platform/WindowLuaTests.cpp
+  platform/WindowTests.cpp
+  storage/StorageTests.cpp
+  support/ContentAppFixture.cpp
+  support/DebugClient.cpp
+  support/LuaFixture.cpp
+  text/SystemFontTests.cpp
+  text/TextLuaTests.cpp
+  ui/AccessibilityTreeTests.cpp
+  ui/AnchorTests.cpp
+  ui/CollectionLuaTests.cpp
+  ui/ComponentTests.cpp
+  ui/ImageLibraryTests.cpp
+  ui/MessageTests.cpp
+  ui/NavigationTests.cpp
+  ui/NodeEventTests.cpp
+  ui/PlayAreaTests.cpp
+  ui/RouterTests.cpp
+  ui/SceneGuiTests.cpp
+  ui/ScrollbarTests.cpp
+  ui/StyleTests.cpp
+  ui/TextInputTests.cpp
+  ui/ThemeSoundTests.cpp
+  ui/TransformTests.cpp
+  ui/UiLuaFontTests.cpp
+  ui/UiLuaTests.cpp
+)
+
+add_executable(haylen-lua-tests ${HAYLEN_LUA_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/headless/HeadlessPlayer.cpp")
+set_target_properties(haylen-lua-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+target_link_libraries(haylen-lua-tests PRIVATE haylen-test-support haylen::headless haylen::lua haylen::player haylen-content-tool)
+# The tests of the Lua layer reach into its private headers and those of the core on purpose, and find their own helpers before the shared ones.
+target_include_directories(haylen-lua-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/lua/src")
+haylen_enable_warnings(haylen-lua-tests)
+haylen_enable_coverage(haylen-lua-tests)
+add_dependencies(haylen-lua-tests haylen-native-test)
+
+# The tests read their data from the folder of the tests of the core, as those do.
+gtest_discover_tests(haylen-lua-tests
+  WORKING_DIRECTORY "${HAYLEN_ENGINE_DIR}/tests"
+  DISCOVERY_TIMEOUT 60
+  PROPERTIES TIMEOUT 120
+)

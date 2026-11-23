@@ -5,17 +5,17 @@ from haylen.toolchains.build_tools import BuildTools
 
 
 class EngineTests:
-    """Builds the engine tests in the tree of this machine for a configuration and a sanitizer, and runs them, or one shard of them, through CTest, which prints their results."""
+    """Builds the engine tests in the tree of this machine for a configuration and a sanitizer, the program of the tests of the core and the program of the tests of the Lua layer, and runs every test of both, or one shard of them, through CTest, which prints their results."""
 
-    TARGET = "haylen-tests"
+    TARGETS = ("haylen-tests", "haylen-lua-tests")
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
 
-    def run(self, configuration: str, sanitizers: str | None, target: str, shard: SuiteShard | None) -> dict[str, object]:
+    def run(self, configuration: str, sanitizers: str | None, targets: list[str], shard: SuiteShard | None) -> dict[str, object]:
         tree = EngineTree(self.context, EngineTree.host_name(configuration, sanitizers))
         tree.ensure(tree.command(configuration, *EngineTree.host_options(sanitizers)))
-        tree.build([target], configuration)
+        tree.build(targets, configuration)
 
         command: list[object] = [BuildTools.CTEST.require(), "--test-dir", tree.folder, "-C", configuration, "--output-on-failure", "--parallel", str(self.context.jobs)]
         if shard is None:

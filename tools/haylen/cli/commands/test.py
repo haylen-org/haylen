@@ -39,7 +39,11 @@ class TestCommand(Command):
         )
         parser.add_argument("--config", default="Debug", choices=EngineTree.CONFIGURATIONS, help='The configuration of the build tree, or of the app of "--ui" or "--app", "Debug" by default.')
         parser.add_argument("--sanitizers", choices=EngineTree.SANITIZERS, help="Build in a tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer.")
-        parser.add_argument("--cmake-target", default=EngineTests.TARGET, help=f'The CMake target that the engine tests build before CTest runs them, "{EngineTests.TARGET}" by default.')
+        parser.add_argument(
+            "--cmake-target",
+            action="append",
+            help='A CMake target that the engine tests build before CTest runs them, which repeats. Both test programs, "haylen-tests" and "haylen-lua-tests", by default.',
+        )
         parser.add_argument(
             "--shard",
             type=SuiteShard.parse,
@@ -142,4 +146,4 @@ class TestCommand(Command):
             raise UnsupportedTarget(f'The tests of "{target}" run on a "{target}" machine, and this one runs "{Host.system()}".')
         if gpu:
             return DesktopGpuTests(context).run(arguments.config, arguments.sanitizers, arguments.graphics_api)
-        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.cmake_target, arguments.shard)
+        return EngineTests(context).run(arguments.config, arguments.sanitizers, arguments.cmake_target or list(EngineTests.TARGETS), arguments.shard)

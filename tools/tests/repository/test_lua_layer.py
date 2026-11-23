@@ -6,7 +6,7 @@ from tests.support.engine_sources import EngineSources
 
 
 class LuaLayerTest:
-    """The core of the engine in `engine/include` and `engine/src` is C++ without Lua, and the Lua layer in `engine/lua` reaches it only through its public C++ API, so an app without Lua links no Lua and every capability of the engine is usable from C++."""
+    """The core of the engine in `engine/include` and `engine/src` is C++ without Lua, and the Lua layer in `engine/lua/include` and `engine/lua/src` reaches it only through its public C++ API, while the tests of both reach their internals on purpose, so an app without Lua links no Lua and every capability of the engine is usable from C++."""
 
     LUA = re.compile(r'#\s*include\s*[<"](lua\.h|lua\.hpp|lauxlib\.h|lualib\.h|haylen/lua/|varn/lua/|varn/async/AsyncModule\.h)|\blua_State\b|\blua::|\bluaL_\w|\blua_\w')
     LUA_FILE = re.compile(r"(Scripted\w*|Lua\w*|\w+Lua)\.\w+$")
@@ -29,7 +29,7 @@ class LuaLayerTest:
     def test_the_lua_layer_includes_no_private_header_of_the_core(self):
         including = []
         for name, text in EngineSources.read().items():
-            if not name.startswith("engine/lua/"):
+            if not name.startswith(("engine/lua/include/", "engine/lua/src/")):
                 continue
             for included in LuaLayerTest.INCLUDE.findall(text):
                 if (Repository.ENGINE / "src" / included).is_file() and not (Repository.ENGINE / "lua" / "src" / included).is_file():

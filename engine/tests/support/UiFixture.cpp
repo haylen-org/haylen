@@ -15,7 +15,9 @@
 
 namespace haylen::test {
 
-UiFixture::UiFixture(std::map<std::string, std::string> files) : fixture(std::move(files)) {
+UiFixture::UiFixture(std::map<std::string, std::string> files) : UiFixture(std::make_unique<EngineFixture>(std::move(files))) {}
+
+UiFixture::UiFixture(std::unique_ptr<EngineFixture> engineFixture) : fixture(std::move(engineFixture)) {
     // clang-format off
     connection = getUi().events.connect([this](ui::Gui&, const ui::Event& event) {
         events.push_back(event);
@@ -35,7 +37,7 @@ std::shared_ptr<ui::Gui> UiFixture::mount(const std::string& json, ui::Placement
 }
 
 void UiFixture::frames(int count) {
-    fixture.frames(count);
+    fixture->frames(count);
 }
 
 float UiFixture::getMetric(ui::Theme::Metric role) {
@@ -155,9 +157,9 @@ void UiFixture::key(input::Key code) {
 void UiFixture::button(input::GamepadButton pressed) {
     input::GamepadState state{.connected = true};
     state.buttons[static_cast<std::size_t>(pressed)] = true;
-    fixture.host().setGamepad(0, state);
+    fixture->host().setGamepad(0, state);
     frames();
-    fixture.host().setGamepad(0, input::GamepadState{.connected = true});
+    fixture->host().setGamepad(0, input::GamepadState{.connected = true});
     frames();
 }
 
@@ -165,7 +167,7 @@ void UiFixture::stick(math::Vec2 value) {
     input::GamepadState state{.connected = true};
     state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = value.x;
     state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = value.y;
-    fixture.host().setGamepad(0, state);
+    fixture->host().setGamepad(0, state);
     frames();
 }
 

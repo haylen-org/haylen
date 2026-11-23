@@ -331,7 +331,7 @@ These rules apply to every text the project writes: code comments, documentation
 
 ## Tests
 
-- Every engine capability has GoogleTest tests when the logic can run without a real graphics device or platform runtime. The headless host (the null GPU device, a mixer without a device, Varn runtime) makes the renderer, UI, Lua bindings and the engine loop testable, and `test::EngineFixture` runs a real engine on an in-memory package.
+- Every engine capability has GoogleTest tests when the logic can run without a real graphics device or platform runtime. The headless host (the null GPU device, a mixer without a device, the scheduler of Varn) makes the renderer, UI, Lua bindings and the engine loop testable. The tests run as two programs: `haylen-tests`, the tests of the core in `engine/tests/`, which links no Lua and whose `test::EngineFixture` runs a real engine with a C++ application on an in-memory package, and `haylen-lua-tests`, the tests that run Lua in `engine/lua/tests/`, whose `test::LuaFixture` runs a Lua application, and `haylen test` builds both and runs every test of both once.
 - Lua bindings are tested by running Lua through the headless engine and asserting on engine state, returned values, error messages and asynchronous results.
 - Every fix comes with a regression test that fails without it.
 - Tests verify behavior that matters. Do not write redundant tests, generated tests or tests that only restate the implementation.

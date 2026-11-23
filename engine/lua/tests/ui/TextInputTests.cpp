@@ -1,0 +1,847 @@
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <memory>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <imgui.h>
+#include <imgui_internal.h>
+
+#include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/Signal.hpp"
+#include "haylen/graphics/Viewport.hpp"
+#include "haylen/input/AppTextField.hpp"
+#include "haylen/platform/Event.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Theme.hpp"
+#include "support/AllocationTracker.hpp"
+#include "support/LuaFixture.hpp"
+#include "support/LuaUiFixture.hpp"
+#include "ui/ScrollArbiter.hpp"
+#include "ui/TextSession.hpp"
+
+namespace haylen::ui {
+
+// Drives text fields as a native field of the platform would, through the recording text input of the headless host.
+class TextInputTest : public ::testing::Test {
+  protected:
+    using TextInput = platform::TextInput;
+
+    TextInputTest() {
+        getInput().setNative(true);
+        // clang-format off
+        connection = getUi().events.connect([this](Gui&, const Event& event) {
+            if (event.name != "focus" && event.name != "blur") {
+                events.push_back(event.id + ":" + event.name + " " + event.value.dump());
+            }
+        });
+        // clang-format on
+    }
+
+    core::Engine& getEngine() {
+        return fixture.engine();
+    }
+    plugins::UiPlugin& getUi() {
+        return getEngine().getPlugin<plugins::UiPlugin>();
+    }
+    platform::HeadlessTextInput& getInput() {
+        return fixture.host().getPlatformTextInput();
+    }
+    // The last event that a field reported, which throws before any field reported one.
+    const std::string& getLastEvent() const {
+        if (events.empty()) {
+            throw std::runtime_error("No field reported an event.");
+        }
+
+        return events.back();
+    }
+
+    // The last state of the edited field that the platform received, which throws before any field published one.
+    const TextInput::Field& getPublished() {
+        const std::vector<TextInput::Field>& published = getInput().getPublished();
+        if (published.empty()) {
+            throw std::runtime_error("No field published its state to the text input of the platform.");
+        }
+
+        return published.back();
+    }
+
+    void touch(platform::Event::Type type, math::Vec2 point) {
+        platform::Event event;
+        event.type = type;
+        event.touchCount = 1;
+        event.touches[0] = {.id = 1, .position = getEngine().getViewport().toFramebuffer(point + getEngine().getViewport().getVisibleRect().getMin()), .changed = true};
+        getEngine().handleEvent(event);
+    }
+
+    std::shared_ptr<Gui> mount(const std::string& json) {
+        auto gui = getUi().createGui(core::Json::parse(json), Placement::Screen);
+        getUi().mount(gui);
+        fixture.frames(1);
+        return gui;
+    }
+
+    void focus(Gui& gui, const std::string& id) {
+        gui.command(getUi().getContext(), id, "focus", core::Json::object());
+        fixture.frames(2);
+    }
+
+    void send(platform::Event event) {
+        getEngine().handleEvent(event);
+        fixture.frames(2);
+    }
+
+    void edit(std::string text, int selectionStart, int selectionEnd, int compositionStart = -1, int compositionEnd = -1) {
+        const TextInput::Field& field = getPublished();
+        send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = field.id, .revision = field.revision, .text = std::move(text), .selectionStart = selectionStart, .selectionEnd = selectionEnd, .compositionStart = compositionStart, .compositionEnd = compositionEnd}});
+    }
+
+    void act(TextInput::Action action) {
+        send({.type = platform::Event::Type::TextAction, .textEdit = {.field = getPublished().id}, .textAction = action});
+    }
+
+    // Presses a key the way a physical keyboard does, with the character it types in the same frame as the key.
+    void press(input::Key key, char32_t character, input::KeyModifiers modifiers = {}) {
+        getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = key, .modifiers = modifiers});
+
+        if (character != 0) {
+            getEngine().handleEvent({.type = platform::Event::Type::Character, .modifiers = modifiers, .character = character});
+        }
+
+        fixture.frames(1);
+        getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = key, .modifiers = modifiers});
+        fixture.frames(1);
+    }
+
+    test::LuaFixture fixture;
+    std::vector<std::string> events;
+    core::Connection connection;
+};
+
+TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "textField", "id": "email", "value": "ana", "keyboard": "email", "returnKey": "go", "autocorrect": true, "autocapitalize": "words", "maxLength": 40},
+        {"kind": "textArea", "id": "notes"},
+        {"kind": "secretField", "id": "pin"},
+        {"kind": "numberField", "id": "count", "min": -5, "max": 5}
+    ]})");
+    // clang-format on
+
+    // Every field on screen is offered to the platform with its keyboard, and the defaults follow the keyboard.
+    const std::vector<TextInput::Field>& visible = getInput().getVisibleFields();
+    ASSERT_EQ(visible.size(), 4U);
+    EXPECT_EQ(visible[0].bounds, test::LuaUiFixture::getComponent(*gui, "email").getBounds());
+    EXPECT_EQ(visible[0].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Email, .returnKey = TextInput::ReturnKey::Go, .capitalization = TextInput::Capitalization::Words, .autocorrect = true, .maxLength = 40}));
+    EXPECT_EQ(visible[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline}));
+    EXPECT_EQ(visible[2].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Password, .capitalization = TextInput::Capitalization::None, .autocorrect = false}));
+    EXPECT_EQ(visible[3].options.keyboard, TextInput::Keyboard::Text) << "Numeric keypads have no minus sign.";
+    EXPECT_FLOAT_EQ(getInput().getTapSlop(), ScrollArbiter::kDragSlop) << "A press taps a field within the slop of a drag, in framebuffer pixels.";
+    EXPECT_TRUE(getInput().getPublished().empty());
+
+    focus(*gui, "email");
+    ASSERT_TRUE(getInput().isEditing());
+    const TextInput::Field& field = getPublished();
+    EXPECT_EQ(field.id, visible[0].id);
+    EXPECT_EQ(field.text, "ana");
+    EXPECT_EQ(field.selectionStart, 0) << "A field focused from the keyboard selects its text.";
+    EXPECT_EQ(field.selectionEnd, 3);
+    EXPECT_EQ(field.bounds, visible[0].bounds);
+    EXPECT_FALSE(field.caret.isEmpty());
+    EXPECT_TRUE(field.bounds.contains(field.caret.getCenter()));
+    EXPECT_FALSE(fixture.host().isKeyboardVisible()) << "Fields of the UI never open the plain keyboard.";
+
+    getUi().getContext().getBackend().makeCurrent();
+    ImGui::ClearActiveID();
+    fixture.frames(1);
+    EXPECT_FALSE(getInput().isEditing());
+}
+
+// The press of accept that opens a field ends before the platform edits it, so its release never types into the keyboard of the system, as the remote of the Apple TV would type the key under the focus.
+TEST_F(TextInputTest, OpensTheNativeFieldOnceThePressOfAcceptEnds) {
+    mount(R"({"kind": "column", "children": [{"kind": "button", "id": "go", "text": "Go", "autofocus": true}, {"kind": "textField", "id": "name"}]})");
+    // The first key shows the focus, and the next one moves it to the field.
+    for (int press = 0; press < 2; ++press) {
+        send({.type = platform::Event::Type::KeyDown, .key = input::Key::Down});
+        send({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
+    }
+
+    ASSERT_EQ(fixture.lua("return require('haylen.ui').focused().id"), "name");
+    ASSERT_FALSE(getInput().isEditing());
+
+    send({.type = platform::Event::Type::KeyDown, .key = input::Key::Enter});
+    fixture.frames(30);
+    ASSERT_NE(getUi().getContext().getBackend().getTextSession().getActiveField(), 0U) << "The press opens the field.";
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_TRUE(getInput().getPublished().empty());
+    send({.type = platform::Event::Type::KeyUp, .key = input::Key::Enter});
+    ASSERT_TRUE(getInput().isEditing());
+    ASSERT_FALSE(getInput().getVisibleFields().empty());
+    EXPECT_EQ(getPublished().id, getInput().getVisibleFields().front().id);
+}
+
+TEST_F(TextInputTest, TakesTheKeyboardFromTheFieldOfTheAppAndGivesItBack) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
+    input::AppTextField& appField = getEngine().getAppTextField();
+    appField.edit({.text = "abc", .selectionStart = 3, .selectionEnd = 3, .bounds = {10.0F, 10.0F, 200.0F, 40.0F}});
+    EXPECT_EQ(getPublished().id, input::AppTextField::kField);
+
+    // The field of the UI takes the keyboard, and what the app gives meanwhile waits.
+    focus(*gui, "name");
+    EXPECT_NE(getPublished().id, input::AppTextField::kField);
+    EXPECT_FALSE(appField.isEditing());
+    const std::size_t published = getInput().getPublished().size();
+    appField.edit({.text = "abcd", .selectionStart = 4, .selectionEnd = 4, .bounds = {10.0F, 10.0F, 200.0F, 40.0F}});
+    fixture.frames(1);
+    EXPECT_EQ(getInput().getPublished().size(), published);
+
+    // Once the UI lets go, the field of the app edits again with what the app gave last.
+    getUi().getContext().getBackend().makeCurrent();
+    ImGui::ClearActiveID();
+    fixture.frames(1);
+    EXPECT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().id, input::AppTextField::kField);
+    EXPECT_EQ(getPublished().text, "abcd");
+    EXPECT_TRUE(appField.isEditing());
+
+    // The app ending its field leaves a field of the UI that edits alone.
+    focus(*gui, "name");
+    appField.finish();
+    EXPECT_TRUE(getInput().isEditing());
+}
+
+// A field of the UI takes the native input from the plain keyboard of the app and gives it back when it finishes, and closing the plain keyboard meanwhile leaves the field editing.
+TEST_F(TextInputTest, SharesTheNativeInputWithThePlainKeyboardOfTheApp) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ana"}, {"kind": "textField", "id": "town"}]})");
+    fixture.runLua("window = require('haylen.window') window.setKeyboardVisible(true)");
+    ASSERT_TRUE(fixture.host().isKeyboardVisible());
+
+    focus(*gui, "name");
+    EXPECT_NE(getPublished().id, TextInput::kKeyboardField);
+    act(TextInput::Action::Submit);
+    EXPECT_TRUE(fixture.host().isKeyboardVisible()) << "A field that the player submits leaves the keyboard of the app open.";
+
+    focus(*gui, "town");
+    fixture.runLua("window.setKeyboardVisible(false)");
+    EXPECT_TRUE(getInput().isEditing());
+    EXPECT_NE(getPublished().id, TextInput::kKeyboardField) << "The field keeps editing while the app closes its keyboard.";
+    act(TextInput::Action::Submit);
+    EXPECT_FALSE(getInput().isEditing());
+}
+
+TEST_F(TextInputTest, StopsEditingWhenTheAppRestarts) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+    fixture.restart();
+    EXPECT_FALSE(getInput().isEditing());
+
+    getEngine().getAppTextField().edit({.text = "abc"});
+    ASSERT_TRUE(getInput().isEditing());
+    fixture.restart();
+    EXPECT_FALSE(getInput().isEditing());
+}
+
+TEST_F(TextInputTest, AppliesEditsOfTheCurrentRevisionOnly) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
+    focus(*gui, "name");
+    const std::uint64_t revision = getPublished().revision;
+    const std::uint64_t id = getPublished().id;
+    events.clear();
+
+    edit("Ana é", 5, 5);
+    EXPECT_EQ(events, std::vector<std::string>{R"(name:change {"value":"Ana é"})"});
+    EXPECT_EQ(getPublished().revision, revision) << "An edit of the platform is no change of the UI.";
+    EXPECT_EQ(getPublished().text, "Ana é");
+    EXPECT_EQ(getPublished().selectionStart, 5) << "Selections count code points.";
+
+    // An edit against an older revision or another field answers a text the field no longer shows.
+    send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = id, .revision = revision - 1, .text = "stale"}});
+    send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = id + 1, .revision = revision, .text = "other"}});
+    EXPECT_EQ(events.size(), 1U);
+
+    edit("Ana é", 0, 3);
+    EXPECT_EQ(events.size(), 1U);
+    EXPECT_EQ(getPublished().selectionStart, 0);
+    EXPECT_EQ(getPublished().selectionEnd, 3);
+    EXPECT_EQ(getPublished().revision, revision);
+}
+
+TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "maxLength": 3})");
+    focus(*gui, "name");
+    const std::size_t published = getInput().getPublished().size();
+    const ImGuiID field = static_cast<ImGuiID>(getPublished().id);
+    const TextSession& session = getUi().getBackend().getTextSession();
+
+    edit("かな", 2, 2, 0, 2);
+    EXPECT_EQ(session.getComposition(field), (std::pair{0, 2}));
+    EXPECT_EQ(getInput().getPublished().size(), published) << "Nothing reaches the platform while it composes.";
+
+    edit("仮名", 2, 2);
+    EXPECT_FALSE(session.getComposition(field));
+    EXPECT_EQ(getPublished().text, "仮名");
+
+    // The limit cuts what the platform typed, which the UI then pushes back as a change of its own.
+    const std::uint64_t revision = getPublished().revision;
+    edit("仮名です", 4, 4);
+    EXPECT_EQ(getPublished().text, "仮名で");
+    EXPECT_GT(getPublished().revision, revision);
+    EXPECT_EQ(getPublished().selectionEnd, 3);
+}
+
+// Keys held in play, with fields on screen that nobody edits, never turn on the text input of the platform, so no input method, such as the accent menu of macOS, opens for them.
+TEST_F(TextInputTest, LeavesTheTextInputOfThePlatformOffInPlay) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "jump", "text": "Jump"}, {"kind": "textField", "id": "name"}]})");
+
+    for (int repeat = 0; repeat < 30; ++repeat) {
+        getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A, .repeat = repeat > 0});
+        fixture.frames(1);
+    }
+
+    getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::A});
+    fixture.frames(1);
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_TRUE(getInput().getPublished().empty());
+    EXPECT_FALSE(fixture.host().isKeyboardVisible());
+}
+
+TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "abc"})");
+    focus(*gui, "name");
+    events.clear();
+
+    send({.type = platform::Event::Type::Character, .character = U'x'});
+    send({.type = platform::Event::Type::KeyDown, .key = input::Key::Backspace});
+    send({.type = platform::Event::Type::KeyUp, .key = input::Key::Backspace});
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(getPublished().text, "abc");
+}
+
+// A platform with a native field may send the keys and the characters of a keystroke next to the edit of the field, and the field types each keystroke once.
+TEST_F(TextInputTest, TypesEachKeystrokeOnceNextToItsKeys) {
+    auto gui = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*gui, "name");
+    events.clear();
+
+    press(input::Key::O, U'o');
+    edit("o", 1, 1);
+    press(input::Key::I, U'i');
+    edit("oi", 2, 2);
+    EXPECT_EQ(events, (std::vector<std::string>{R"(name:change {"value":"o"})", R"(name:change {"value":"oi"})"}));
+    EXPECT_EQ(getPublished().text, "oi");
+}
+
+// Suggestions and compositions of the native field, taken or refused, and the Backspace right after them all reach the field, which keeps taking every edit after them.
+TEST_F(TextInputTest, KeepsTypingAfterSuggestionsAndCompositions) {
+    auto gui = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*gui, "name");
+    const std::uint64_t revision = getPublished().revision;
+    const ImGuiID field = static_cast<ImGuiID>(getPublished().id);
+    const TextSession& session = getUi().getBackend().getTextSession();
+    // clang-format off
+    const auto expectText = [&](const std::string& text) {
+        fixture.frames(1);
+        EXPECT_EQ(getPublished().text, text);
+        EXPECT_EQ(getPublished().revision, revision) << "No edit of the platform is a change of the UI.";
+    };
+    // clang-format on
+
+    // A suggestion shown after the caret composes until the user takes or refuses it, and Backspace refuses it.
+    edit("he", 2, 2);
+    edit("hello", 2, 2, 2, 5);
+    EXPECT_EQ(session.getComposition(field), (std::pair{2, 5}));
+    edit("h", 1, 1);
+    EXPECT_FALSE(session.getComposition(field));
+    expectText("h");
+    edit("hi", 2, 2);
+    expectText("hi");
+
+    // A correction that replaces a word, and the Backspace right after it.
+    edit("hi tehre", 8, 8);
+    edit("hi there ", 9, 9);
+    expectText("hi there ");
+    edit("hi there", 8, 8);
+    expectText("hi there");
+
+    // A composition of an input method that commits, and the Backspace right after it.
+    edit("hi thereか", 9, 9, 8, 9);
+    edit("hi there家", 9, 9);
+    expectText("hi there家");
+    edit("hi there", 8, 8);
+    expectText("hi there");
+    edit("hi there!", 9, 9);
+    expectText("hi there!");
+}
+
+// Where the UI edits the text itself, Space and Enter type into the field even though they also press the focused control.
+TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textArea", "id": "notes"}]})");
+
+    focus(*gui, "name");
+    events.clear();
+    press(input::Key::A, U'a');
+    press(input::Key::Space, U' ');
+    press(input::Key::B, U'b');
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(getLastEvent(), R"(name:change {"value":"a b"})");
+    press(input::Key::Enter, U'\r');
+    EXPECT_EQ(getLastEvent(), R"(name:submit {"value":"a b"})");
+
+    focus(*gui, "notes");
+    events.clear();
+    press(input::Key::A, U'a');
+    press(input::Key::Enter, U'\r');
+    press(input::Key::B, U'b');
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(getLastEvent(), R"(notes:change {"value":"a\nb"})");
+}
+
+// Where the UI edits the text itself, the shortcuts of copying and pasting go through the clipboard of the system.
+TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheSystem) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Copy me"})");
+    focus(*gui, "name");
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    const input::KeyModifiers shortcut = ImGui::GetIO().ConfigMacOSXBehaviors ? input::KeyModifiers{.super = true} : input::KeyModifiers{.control = true};
+
+    press(input::Key::A, 0, shortcut);
+    press(input::Key::C, 0, shortcut);
+    EXPECT_EQ(fixture.host().getClipboard(), "Copy me");
+
+    fixture.host().setClipboard("Pasted", [](platform::SystemAnswer) {});
+    events.clear();
+    press(input::Key::V, 0, shortcut);
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(getLastEvent(), R"(name:change {"value":"Pasted"})");
+}
+
+// Where the UI edits the text itself, the shortcuts of cutting, undoing, redoing and moving by words work as each system has them.
+TEST_F(TextInputTest, CutsUndoesRedoesAndMovesByWordsThroughTheShortcuts) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Red fox"})");
+    focus(*gui, "name");
+    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    const bool mac = ImGui::GetIO().ConfigMacOSXBehaviors;
+    const input::KeyModifiers shortcut = mac ? input::KeyModifiers{.super = true} : input::KeyModifiers{.control = true};
+    const input::KeyModifiers word = mac ? input::KeyModifiers{.alt = true} : input::KeyModifiers{.control = true};
+
+    press(input::Key::End, 0);
+    press(input::Key::Left, 0, word);
+    EXPECT_EQ(getPublished().selectionStart, 4);
+    press(input::Key::End, 0, {.shift = true});
+    press(input::Key::X, 0, shortcut);
+    EXPECT_EQ(fixture.host().getClipboard(), "fox");
+    EXPECT_EQ(getPublished().text, "Red ");
+
+    press(input::Key::Z, 0, shortcut);
+    EXPECT_EQ(getPublished().text, "Red fox");
+    press(input::Key::Z, 0, {.shift = true, .control = shortcut.control, .super = shortcut.super});
+    EXPECT_EQ(getPublished().text, "Red ");
+}
+
+// A shift press selects from the caret where it stands, also after typing moved it.
+TEST_F(TextInputTest, SelectsFromTheCaretAfterTyping) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*gui, "name");
+    press(input::Key::A, U'a');
+    press(input::Key::B, U'b');
+    press(input::Key::C, U'c');
+    press(input::Key::Left, 0, {.shift = true});
+    EXPECT_EQ(getPublished().text, "abc");
+    EXPECT_EQ(getPublished().selectionStart, 2);
+    EXPECT_EQ(getPublished().selectionEnd, 3);
+}
+
+TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [
+        {"kind": "textField", "id": "first", "value": "a"},
+        {"kind": "textField", "id": "second", "returnKey": "next"},
+        {"kind": "textField", "id": "third"}
+    ]})");
+    // clang-format on
+    const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
+    ASSERT_EQ(fields.size(), 3U);
+
+    focus(*gui, "first");
+    act(TextInput::Action::Submit);
+    ASSERT_FALSE(events.empty());
+    EXPECT_EQ(getLastEvent(), R"(first:submit {"value":"a"})");
+    EXPECT_FALSE(getInput().isEditing());
+
+    focus(*gui, "first");
+    act(TextInput::Action::Next);
+    EXPECT_EQ(getPublished().id, fields[1].id);
+
+    // A return key labelled `next` moves on like tab.
+    events.clear();
+    act(TextInput::Action::Submit);
+    EXPECT_EQ(getPublished().id, fields[2].id);
+    EXPECT_TRUE(events.empty());
+
+    // Cancel reverts what the field took since it was focused.
+    edit("typo", 4, 4);
+    act(TextInput::Action::Cancel);
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_EQ(getLastEvent(), R"(third:change {"value":""})");
+
+    focus(*gui, "first");
+    events.clear();
+    act(TextInput::Action::Dismissed);
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_TRUE(events.empty());
+}
+
+TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
+    const math::Rect resting = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    focus(*gui, "name");
+
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(60);
+    const math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    EXPECT_LE(lifted.getBottom(), 540.0F);
+    EXPECT_GE(lifted.getBottom(), 500.0F);
+    EXPECT_EQ(getPublished().bounds, lifted) << "The platform follows the field.";
+
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(60);
+    EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "name").getBounds(), resting);
+}
+
+// The layout places nodes on whole units, so a keyboard whose top falls between two units leaves the lifted field still instead of flipping it between them frame after frame.
+TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
+    focus(*gui, "name");
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.4F, 1920.0F, 539.6F}});
+    fixture.frames(60);
+
+    const math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    EXPECT_LE(lifted.getBottom(), 540.4F);
+
+    for (int frame = 0; frame < 30; ++frame) {
+        fixture.frames(1);
+        ASSERT_EQ(test::LuaUiFixture::getComponent(*gui, "name").getBounds(), lifted) << "The field moves in frame " << frame << " after the lift settled.";
+    }
+}
+
+// A keyboard that hides while a finger presses a button next to a field leaves the UI where it was until the finger lifts, so the button it pressed takes the tap.
+TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "row", "children": [{"kind": "textField", "id": "draft", "grow": 1}, {"kind": "button", "id": "send", "text": "Send"}]}]})");
+    focus(*gui, "draft");
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(60);
+
+    const math::Vec2 button = test::LuaUiFixture::getComponent(*gui, "send").getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, button);
+    fixture.frames(2);
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(20);
+    EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "send").getBounds().getCenter(), button);
+    touch(platform::Event::Type::TouchEnded, button);
+    fixture.frames(3);
+    EXPECT_NE(std::ranges::find(events, std::string("send:click {}")), events.end());
+}
+
+// The part of an area that the keyboard covers joins the end of its content while the keyboard shows, so a finger scrolls what lies under the keyboard above it, and the content goes back once the keyboard hides.
+TEST_F(TextInputTest, ScrollsWhatTheKeyboardCoversAboveIt) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 1000, "children": [{"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 700}, {"kind": "button", "id": "last", "text": "Last"}]}]})");
+    const math::Rect resting = test::LuaUiFixture::getComponent(*gui, "last").getBounds();
+    ASSERT_GT(resting.getBottom(), 540.0F);
+    focus(*gui, "name");
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(30);
+
+    const math::Vec2 start{300.0F, 400.0F};
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(1);
+    for (int step = 1; step <= 30; ++step) {
+        touch(platform::Event::Type::TouchMoved, start - math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
+        fixture.frames(1);
+    }
+
+    touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 600.0F});
+    fixture.frames(120);
+    const math::Rect scrolled = test::LuaUiFixture::getComponent(*gui, "last").getBounds();
+    EXPECT_LE(scrolled.getBottom(), 540.5F) << "The last button stays under the keyboard.";
+    EXPECT_GE(scrolled.getBottom(), 539.5F) << "The content scrolls past the room that the keyboard covers.";
+    EXPECT_TRUE(getInput().isEditing());
+
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(120);
+    EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "last").getBounds(), resting);
+}
+
+// A finger edits a field once it taps it, with the caret where it lifted, and a finger that only presses the field edits nothing yet.
+TEST_F(TextInputTest, StartsEditingAFieldWhenAFingerTapsIt) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
+    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(3);
+    EXPECT_FALSE(getInput().isEditing());
+
+    touch(platform::Event::Type::TouchEnded, start);
+    fixture.frames(3);
+    ASSERT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().selectionStart, getPublished().selectionEnd);
+    EXPECT_LT(getPublished().selectionStart, 4);
+}
+
+// A field that edits with its text selected draws the same frames as it does unfocused, without allocating.
+TEST_F(TextInputTest, DrawsAFieldWithASelectionWithoutAllocating) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "A long name that a person typed into the field", "width": 900}]})");
+    // clang-format off
+    const auto measure = [this] {
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t unfocused = measure();
+
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+    ASSERT_NE(getPublished().selectionStart, getPublished().selectionEnd);
+    EXPECT_EQ(measure(), unfocused);
+}
+
+// A finger that swipes along a field that is not editing is no tap, so the field stays as it was.
+TEST_F(TextInputTest, EditsNothingWhenAFingerSwipesAcrossAField) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
+    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(2);
+
+    for (int step = 1; step <= 5; ++step) {
+        touch(platform::Event::Type::TouchMoved, start + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        fixture.frames(1);
+    }
+
+    touch(platform::Event::Type::TouchEnded, start + math::Vec2{100.0F, 0.0F});
+    fixture.frames(3);
+    EXPECT_FALSE(getInput().isEditing());
+}
+
+// A finger that drags a list over the field being edited scrolls the list and leaves the field editing.
+TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 4000}]}]})");
+    focus(*gui, "name");
+    fixture.frames(2);
+    ASSERT_TRUE(getInput().isEditing());
+    const math::Vec2 field = test::LuaUiFixture::getComponent(*gui, "name").getBounds().getCenter();
+    const float top = test::LuaUiFixture::getComponent(*gui, "content").getBounds().y;
+    touch(platform::Event::Type::TouchBegan, field);
+    fixture.frames(2);
+
+    for (int step = 1; step <= 10; ++step) {
+        touch(platform::Event::Type::TouchMoved, field - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
+        fixture.frames(1);
+    }
+
+    touch(platform::Event::Type::TouchEnded, field - math::Vec2{0.0F, 80.0F});
+    fixture.frames(2);
+    EXPECT_LT(test::LuaUiFixture::getComponent(*gui, "content").getBounds().y, top - 40.0F);
+    EXPECT_TRUE(getInput().isEditing());
+}
+
+// A finger that presses outside the field being edited and drags scrolls the form, and the field keeps editing with the keyboard, its focus and its text.
+TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "children": [{"kind": "textField", "id": "name"}, {"kind": "button", "id": "save", "text": "Save"}, {"kind": "spacer", "height": 4000}]}]})");
+    focus(*gui, "name");
+    edit("Ada", 3, 3);
+    ASSERT_TRUE(getInput().isEditing());
+    events.clear();
+    const math::Vec2 start = test::LuaUiFixture::getComponent(*gui, "save").getBounds().getCenter();
+    const float top = test::LuaUiFixture::getComponent(*gui, "content").getBounds().y;
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(2);
+    EXPECT_TRUE(getInput().isEditing()) << "A press outside the field decides nothing yet.";
+
+    for (int step = 1; step <= 10; ++step) {
+        touch(platform::Event::Type::TouchMoved, start - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
+        fixture.frames(1);
+        ASSERT_TRUE(getInput().isEditing()) << "The field stops editing at step " << step << " of the drag.";
+    }
+
+    touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 80.0F});
+    fixture.frames(3);
+    EXPECT_LT(test::LuaUiFixture::getComponent(*gui, "content").getBounds().y, top - 40.0F);
+    ASSERT_TRUE(getInput().isEditing());
+    EXPECT_TRUE(events.empty()) << "The button under the finger takes no press.";
+    edit("Ada L", 5, 5);
+    EXPECT_EQ(getPublished().text, "Ada L");
+}
+
+// A finger that taps outside the field being edited ends the editing once it lifts, and the button it tapped takes the tap.
+TEST_F(TextInputTest, EndsEditingWhenAFingerThatPressedOutsideTheFieldLiftsWithinTheSlop) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "button", "id": "save", "text": "Save"}]})");
+    focus(*gui, "name");
+    const math::Vec2 button = test::LuaUiFixture::getComponent(*gui, "save").getBounds().getCenter();
+    const math::Vec2 lift = button + math::Vec2{ScrollArbiter::kDragSlop * 0.5F, 0.0F};
+    touch(platform::Event::Type::TouchBegan, button);
+    fixture.frames(3);
+    EXPECT_TRUE(getInput().isEditing()) << "The field edits while the finger is down.";
+
+    touch(platform::Event::Type::TouchMoved, lift);
+    fixture.frames(1);
+    touch(platform::Event::Type::TouchEnded, lift);
+    fixture.frames(3);
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_NE(std::ranges::find(events, std::string("save:click {}")), events.end());
+}
+
+// A tap on another field moves the editing to it while the native field keeps editing, so the platform never closes its keyboard in between, as the focus moves between native fields.
+TEST_F(TextInputTest, KeepsTheNativeInputWhenAFingerTapsAnotherField) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textField", "id": "crew", "keyboard": "number"}]})");
+    const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
+    ASSERT_EQ(fields.size(), 2U);
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+
+    const math::Vec2 crew = test::LuaUiFixture::getComponent(*gui, "crew").getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, crew);
+    fixture.frames(1);
+    touch(platform::Event::Type::TouchEnded, crew);
+    for (int frame = 0; frame < 6; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing()) << "The native input ends in frame " << frame << " after the tap.";
+    }
+
+    EXPECT_EQ(getPublished().id, fields[1].id);
+    EXPECT_EQ(getPublished().options.keyboard, TextInput::Keyboard::Number);
+}
+
+// A screen that turns lays the GUI out again around the field being edited, which keeps its text, its focus and the keyboard.
+TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Name"}, {"kind": "textField", "id": "name", "align": "stretch"}]})");
+    focus(*gui, "name");
+    edit("Ada", 3, 3);
+    const math::Rect wide = getPublished().bounds;
+
+    // The field edits in every frame of the turn, so the keyboard never closes.
+    fixture.host().resize({1080.0F, 1920.0F});
+
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing());
+    }
+
+    EXPECT_EQ(getPublished().text, "Ada");
+    EXPECT_NE(getPublished().bounds, wide) << "The native field follows the field to its new place.";
+    edit("Ada L", 5, 5);
+    EXPECT_EQ(getPublished().text, "Ada L");
+}
+
+// A screen that builds its content again, as an app that rebuilds it on every change does, keeps the field being edited, with its text, its focus and the keyboard, and so does a field with an id whose siblings come and go.
+TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
+    auto gui = mount(R"({"kind": "scroll", "height": 600, "children": [{"kind": "column", "id": "content", "children": [{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": ""}]}]})");
+    const std::vector<std::unique_ptr<Component>>& children = test::LuaUiFixture::getComponent(*gui, "content").getChildren();
+    ASSERT_EQ(children.size(), 2U);
+    const math::Vec2 center = children[1]->getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, center);
+    fixture.frames(2);
+    touch(platform::Event::Type::TouchEnded, center);
+    fixture.frames(3);
+    ASSERT_TRUE(getInput().isEditing());
+    edit("lamp", 4, 4);
+
+    const std::uint64_t field = getPublished().id;
+    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": "lamp"}])"));
+
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing());
+    }
+
+    EXPECT_EQ(getPublished().id, field);
+    edit("lamps", 5, 5);
+    EXPECT_EQ(getPublished().text, "lamps");
+
+    // A field with an id keeps editing while a notice comes in above it.
+    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
+    fixture.frames(1);
+    gui->command(getUi().getContext(), "filter", "focus", core::Json::object());
+    fixture.frames(2);
+    ASSERT_TRUE(getInput().isEditing());
+    const std::uint64_t named = getPublished().id;
+    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Saved."}, {"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
+    fixture.frames(2);
+    EXPECT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().id, named);
+}
+
+// A press on the field being edited reaches the platform even when the caret stays where it was, so a native field whose keyboard hid shows it again, as a tap on a native field does.
+TEST_F(TextInputTest, PublishesAPressOnTheFieldBeingEdited) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "abc", "width": 600}]})");
+    focus(*gui, "name");
+    edit("abc", 3, 3);
+    const std::uint64_t revision = getPublished().revision;
+
+    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const math::Vec2 end{field.getRight() - 20.0F, field.getCenter().y};
+    touch(platform::Event::Type::TouchBegan, end);
+    fixture.frames(1);
+    touch(platform::Event::Type::TouchEnded, end);
+    fixture.frames(2);
+    EXPECT_GT(getPublished().revision, revision);
+    EXPECT_EQ(getPublished().selectionStart, 3);
+    EXPECT_TRUE(getInput().isEditing());
+}
+
+// The caret of a focused field takes the theme color for it, which a style changes like any other color.
+TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name"}]})");
+    focus(*gui, "name");
+    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
+    const auto caret = std::ranges::find_if(shapes, [&field](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU) && field.contains(shape.bounds.getCenter()); });
+    EXPECT_NE(caret, shapes.end());
+}
+
+// The caret of a focused empty field stands before its placeholder with a caret width of room between them, so it never touches the first letter.
+TEST_F(TextInputTest, KeepsTheCaretOfAnEmptyFieldClearOfItsPlaceholder) {
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name", "placeholder": "Island name"}]})");
+    focus(*gui, "name");
+    const Backend& backend = getUi().getBackend();
+    const std::span<const graphics2d::Shape> shapes = backend.getShapes();
+    const auto caret = std::ranges::find_if(shapes, [](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU); });
+    const std::span<const Backend::Text> texts = backend.getTexts();
+    const auto placeholder = std::ranges::find_if(texts, [&backend](const Backend::Text& text) { return backend.getContent(text) == "Island name"; });
+    ASSERT_NE(caret, shapes.end());
+    ASSERT_NE(placeholder, texts.end());
+    EXPECT_FLOAT_EQ(placeholder->origin.x - caret->bounds.getRight(), getUi().getTheme().getMetric(Theme::Metric::CaretWidth));
+}
+
+// An anchored bar moves up with every other GUI, so its field rises above the keyboard and the lift settles there instead of growing every frame.
+TEST_F(TextInputTest, LiftsAnchoredFieldsWithTheRestOfTheInterface) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "row", "anchor": "stretchBottom", "height": 80, "children": [{"kind": "textField", "id": "message", "grow": 1}]}]})");
+    const math::Rect resting = test::LuaUiFixture::getComponent(*gui, "message").getBounds();
+    focus(*gui, "message");
+
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(60);
+    const math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "message").getBounds();
+    const float offset = getUi().getBackend().getKeyboardOffset();
+    EXPECT_LE(lifted.getBottom(), 540.0F);
+    EXPECT_GE(lifted.getBottom(), 500.0F);
+    fixture.frames(60);
+    EXPECT_EQ(getUi().getBackend().getKeyboardOffset(), offset);
+
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(60);
+    EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "message").getBounds(), resting);
+}
+
+} // namespace haylen::ui

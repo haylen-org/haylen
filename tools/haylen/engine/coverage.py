@@ -20,7 +20,7 @@ class Coverage:
         tree = EngineTree(self.context, "coverage")
         options = [*EngineTree.host_options(sanitizers), "-DHAYLEN_ENABLE_COVERAGE=ON", "-DHAYLEN_BUILD_PLAYER=OFF"]
         tree.ensure(tree.command("Debug", *options))
-        tree.build([EngineTests.TARGET], "Debug")
+        tree.build(list(EngineTests.TARGETS), "Debug")
 
         profiles = tree.folder / "coverage"
         Folders.remove(profiles)
@@ -34,11 +34,13 @@ class Coverage:
         merged = profiles / "haylen.profdata"
         self.context.process.run([Llvm.tool("llvm-profdata", self.context), "merge", "-sparse", *raw, "-o", merged])
 
-        binary = tree.binary(EngineTests.TARGET)
+        # The report sums both test programs: the first one is the binary of the report and the other one joins it as an object.
+        binaries = [tree.binary(name) for name in EngineTests.TARGETS]
+        programs = [binaries[0], *[argument for binary in binaries[1:] for argument in ("-object", binary)]]
         coverage = Llvm.tool("llvm-cov", self.context)
         filters = [f"-instr-profile={merged}", f"-ignore-filename-regex={Coverage.IGNORED}"]
-        self.context.process.run([coverage, "report", binary, *filters], stream=True)
+        self.context.process.run([coverage, "report", *programs, *filters], stream=True)
         html = profiles / "html"
-        self.context.process.run([coverage, "show", binary, *filters, "-format=html", f"-output-dir={html}"])
+        self.context.process.run([coverage, "show", *programs, *filters, "-format=html", f"-output-dir={html}"])
         self.context.terminal.success(f"The coverage report is in `{Repository.shown(html / 'index.html')}`.")
         return {"tree": str(tree.folder), "report": str(html / "index.html")}
