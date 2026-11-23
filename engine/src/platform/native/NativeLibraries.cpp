@@ -5,7 +5,6 @@
 #include <utility>
 
 #include "platform/native/LibraryLoader.hpp"
-#include "varn/runtime/Runtime.h"
 
 namespace haylen::platform {
 
@@ -146,16 +145,17 @@ void* NativeLibraries::findSymbol(std::string_view name) {
     return LibraryLoader::lookupProcess(text);
 }
 
-void NativeLibraries::addLinkedSymbols(varn::runtime::Runtime& runtime) {
+std::vector<NativeLibraries::LinkedSymbol> NativeLibraries::getLinkedSymbols() {
     State& state = getState();
     const std::scoped_lock lock(state.mutex);
+    std::vector<LinkedSymbol> symbols;
     for (const auto& [library, table] : state.linked) {
         for (const auto& [symbol, address] : table) {
-            if (!runtime.addSymbol(symbol, address)) {
-                throw std::runtime_error("The symbol \"" + symbol + "\" of the linked library \"" + library + "\" has another address in another linked library. Register each symbol with one address.");
-            }
+            symbols.push_back({.library = library, .name = symbol, .address = address});
         }
     }
+
+    return symbols;
 }
 
 } // namespace haylen::platform

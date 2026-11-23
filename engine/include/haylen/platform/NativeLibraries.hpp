@@ -8,10 +8,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace varn::runtime {
-class Runtime;
-}
-
 namespace haylen::platform {
 
 // Finds and loads the native libraries of an app and keeps them loaded for the rest of the process, because native code may still run from them after the app stops. A library that the app links statically, as iOS apps do with static libraries, registers its symbols here instead of being loaded.
@@ -48,8 +44,15 @@ class NativeLibraries final {
     // Returns the address of a symbol of the linked libraries, of the libraries loaded so far or of the app itself, or null.
     [[nodiscard]] static void* findSymbol(std::string_view name);
 
-    // Adds the symbols of the linked libraries to a new runtime, so `ffi.C` finds them by name without the app exporting them. Throws `std::runtime_error` when two linked libraries register one name with different addresses.
-    static void addLinkedSymbols(varn::runtime::Runtime& runtime);
+    // A symbol of a library linked into the app, with the name of its library.
+    struct LinkedSymbol {
+        std::string library;
+        std::string name;
+        void* address = nullptr;
+    };
+
+    // Returns the symbols of the linked libraries, which a runtime of scripts finds by name without the app exporting them, such as `ffi.C` of Lua.
+    [[nodiscard]] static std::vector<LinkedSymbol> getLinkedSymbols();
 
     // Returns the file names a library of this name has on the platform, such as `libname.dylib` and `name.framework/name` on Apple platforms. A name with an extension is already a file name.
     [[nodiscard]] static std::vector<std::string> getFileNames(std::string_view name);

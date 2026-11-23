@@ -71,6 +71,8 @@ The folder `engine/src/lua/` holds the implementation of the binding toolkit and
 - `Owners` ties listeners, tasks and GUIs to their owner.
 - `Autoloads` keeps the autoloads of the app, and `haylen.jobs` lives here too.
 
+The folder `engine/lua/src/` holds the Lua parts of the contexts under the same folders as `engine/src/`, which the engine library compiles with the same include root, so `core/ScriptedTrack.hpp` names the file of either folder: the Lua sides of signals and tween tracks in `core/`, of the item and page sources of collections and of the screens of the navigation in `ui/`, of the agents, graphs and grids of navigation in `2d/navigation/`, of the handles and owners of physics in `2d/physics/`, of the spatial indexes in `2d/spatial/`, the source of packs that a Lua app gives the content manager in `content/` and `NativeCallbacks`, the Lua functions behind the native callbacks of the app, in `platform/native/`.
+
 ### The platform folder
 
 The folder `engine/src/platform/` holds the boundary with the operating system. These classes are shared by every platform.
@@ -91,7 +93,7 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | `DevelopmentSession` and `DevelopmentConnection` | Hold the state of [development](#development-and-hot-reload). |
 | `NativeViews` | The edges that native views of plugins reserve and the covers of the app. |
 | `PluginLoadOrder` | Orders the native parts of plugins from the package, where the platform reads them there. |
-| `native/` | The native libraries, callbacks and C interface of `haylen.native`: `NativeLibraries`, `NativeSignature`, `NativeCallback`, `NativeCallbacks`, `NativeApi` and `NativeLua`. |
+| `native/` | The native libraries, callbacks and C interface of `haylen.native`: `NativeLibraries` with the symbols of the libraries linked into the app, `NativeSignature`, `NativeCallback`, whose calls reach the `NativeCallback::Receiver` of the app that made it on the frame thread, `NativeApi` and `NativeLua`. |
 | `headless/` | The headless host and the headless player. |
 
 Each platform has a folder of its own. These are its main classes, and each folder holds more classes for the details of its platform, such as text input, gamepads and desktop windows.

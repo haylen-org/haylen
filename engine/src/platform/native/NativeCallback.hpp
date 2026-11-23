@@ -14,9 +14,7 @@
 
 namespace haylen::platform {
 
-class NativeCallbacks;
-
-// A C function pointer that native code may call from any thread and that runs a Lua function of the app on the frame thread. It copies the arguments, so the Lua function may run after native code returned. The process keeps it until release, because native code may still call it after the app stopped, when the call does nothing.
+// A C function pointer that native code may call from any thread and that runs a function of the app on the frame thread through the receiver of its link. It copies the arguments, so the Lua function may run after native code returned. The process keeps it until release, because native code may still call it after the app stopped, when the call does nothing.
 class NativeCallback final {
   public:
     enum class Thread : std::uint8_t {
@@ -28,9 +26,21 @@ class NativeCallback final {
 
     using Value = std::variant<std::monostate, bool, std::int64_t, double, void*, std::string>;
 
-    // Where calls go: the callbacks of the app that created the callback, while it runs, and the mailbox of its bridge.
+    // What runs the calls of native code on the frame thread, such as the functions of the scripts of the app that made the callbacks.
+    class Receiver {
+      public:
+        virtual ~Receiver() = default;
+
+        // Runs the callback of the id with the copied arguments.
+        virtual void deliver(std::uint64_t id, const std::vector<Value>& values) = 0;
+
+        // Reports a call of the callback of the id whose arguments could not be read.
+        virtual void fail(std::uint64_t id, const std::string& message) = 0;
+    };
+
+    // Where calls go: the receiver of the app that created the callback, while it runs, and the mailbox of its bridge.
     struct Link {
-        std::weak_ptr<NativeCallbacks> owner;
+        std::weak_ptr<Receiver> owner;
         Bridge::Mailbox mailbox;
         std::thread::id frameThread;
         std::uint64_t id = 0;

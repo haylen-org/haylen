@@ -13,7 +13,7 @@ struct lua_State;
 namespace haylen::platform {
 
 // The Lua functions behind the native callbacks of one app, which run on the frame thread with the copied arguments. The app drops them when it stops, so late calls find nothing to run.
-class NativeCallbacks final {
+class NativeCallbacks final : public NativeCallback::Receiver {
   public:
     explicit NativeCallbacks(lua_State* L);
 
@@ -21,10 +21,10 @@ class NativeCallbacks final {
     void remove(std::uint64_t id);
 
     // Runs the function of a callback with the arguments. A failure reaches the error screen like any other script error.
-    void deliver(std::uint64_t id, const std::vector<NativeCallback::Value>& values);
+    void deliver(std::uint64_t id, const std::vector<NativeCallback::Value>& values) override;
 
     // Reports a call whose arguments could not be read.
-    void fail(std::uint64_t id, const std::string& message);
+    void fail(std::uint64_t id, const std::string& message) override;
 
     [[nodiscard]] std::size_t size() const noexcept {
         return functions.size();

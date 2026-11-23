@@ -7,7 +7,7 @@ from tests.support.tracked_files import TrackedFiles
 class EngineBoundaryTest:
     """The engine holds only what every app needs to run, so it owns, asks for and answers no permission, shows nothing in the controls of what plays, owns no delegate of the notification center, declares no permission in its Android libraries, adds no usage description, background mode or entitlement to the Apple projects it generates and links no framework that it does not use. The capabilities that only some apps need live in plugins, which declare what they need themselves."""
 
-    SOURCES = ("engine/include", "engine/src", "engine/platform")
+    SOURCES = ("engine/include", "engine/src", "engine/lua", "engine/platform")
     SOURCE_SUFFIXES = (".c", ".cpp", ".h", ".hpp", ".mm", ".m", ".swift", ".java", ".kt", ".js")
     FORBIDDEN = re.compile(r"Permission::|requestPermission|registerPermission|HaylenPermission|UNUserNotificationCenter|MPNowPlayingInfoCenter|navigator\.mediaSession")
     APPLE_TEMPLATE = "tools/haylen/platforms/apple/template"

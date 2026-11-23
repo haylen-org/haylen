@@ -322,7 +322,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/HttpTransport.cpp
   src/content/LocalStore.cpp
   src/content/LuaBytecodeAbi.cpp
-  src/content/LuaPackSource.cpp
   src/content/PublicationLayout.cpp
   src/content/RangePlanner.cpp
   src/content/ReleasePackage.cpp
@@ -365,7 +364,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/SceneLoad.cpp
   src/core/SceneLua.cpp
   src/core/SceneManager.cpp
-  src/core/ScriptedTrack.cpp
   src/core/SignalLua.cpp
   src/core/Timeline.cpp
   src/core/TimerLua.cpp
@@ -523,6 +521,12 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/ValueRemap.cpp
   src/lua/Warnings.cpp
   src/lua/WeakReference.cpp
+  lua/src/content/LuaPackSource.cpp
+  lua/src/platform/native/NativeCallbacks.cpp
+  lua/src/core/ScriptedTrack.cpp
+  lua/src/ui/LuaItemSource.cpp
+  lua/src/ui/LuaPageSource.cpp
+  lua/src/ui/ScriptedScreen.cpp
   src/math/ChoiceLua.cpp
   src/math/Color.cpp
   src/math/Easing.cpp
@@ -574,7 +578,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/TextHelper.cpp
   src/platform/native/NativeApi.cpp
   src/platform/native/NativeCallback.cpp
-  src/platform/native/NativeCallbacks.cpp
   src/platform/native/NativeLibraries.cpp
   src/platform/native/NativeLua.cpp
   src/platform/native/NativeSignature.cpp
@@ -751,8 +754,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/ImGuiFontLoader.cpp
   src/ui/ImGuiLua.cpp
   src/ui/ImageLibrary.cpp
-  src/ui/LuaItemSource.cpp
-  src/ui/LuaPageSource.cpp
   src/ui/Message.cpp
   src/ui/MessageStack.cpp
   src/ui/MessageView.cpp
@@ -772,7 +773,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/Router.cpp
   src/ui/Scaling.cpp
   src/ui/Screen.cpp
-  src/ui/ScriptedScreen.cpp
   src/ui/ScrollArbiter.cpp
   src/ui/ScrollFade.cpp
   src/ui/ScrollFinger.cpp
@@ -856,7 +856,7 @@ if(EMSCRIPTEN)
 endif()
 target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
-  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src"
+  PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src" "${CMAKE_CURRENT_LIST_DIR}/lua/src"
 )
 
 target_link_libraries(haylen-engine

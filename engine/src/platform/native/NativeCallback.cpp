@@ -6,7 +6,6 @@
 #include <utility>
 
 #include "haylen/core/Log.hpp"
-#include "platform/native/NativeCallbacks.hpp"
 
 namespace haylen::platform {
 
@@ -98,7 +97,7 @@ std::vector<NativeCallback::Value> NativeCallback::read(void** arguments, std::s
 // A call on the frame thread of a frame callback runs at once, and any other call waits in the mailbox of the bridge, which drops it once the app is gone.
 void NativeCallback::deliver(std::vector<Value> values, std::string failure) const {
     if (thread == Thread::Frame && std::this_thread::get_id() == link.frameThread) {
-        const std::shared_ptr<NativeCallbacks> owner = link.owner.lock();
+        const std::shared_ptr<Receiver> owner = link.owner.lock();
         if (owner && failure.empty()) {
             owner->deliver(link.id, values);
         } else if (owner) {
@@ -110,7 +109,7 @@ void NativeCallback::deliver(std::vector<Value> values, std::string failure) con
 
     // clang-format off
     link.mailbox.post([owner = link.owner, id = link.id, values = std::move(values), failure = std::move(failure)] {
-        const std::shared_ptr<NativeCallbacks> alive = owner.lock();
+        const std::shared_ptr<Receiver> alive = owner.lock();
         if (alive && failure.empty()) {
             alive->deliver(id, values);
         } else if (alive) {

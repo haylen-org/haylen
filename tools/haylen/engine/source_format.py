@@ -12,7 +12,7 @@ class SourceFormat:
     """Formats the sources of the repository, or checks them with `check`: clang-format on the C, C++, Objective-C and Objective-C++ files of the engine, the samples, the app scaffolds and the templates of the backends, the rule that multi-line lambdas stand between `clang-format off` and `on` markers, since clang-format cannot lay them out, and Ruff on the Python of `tools`."""
 
     EXTENSIONS = frozenset({".h", ".hpp", ".c", ".cpp", ".m", ".mm"})
-    ROOTS = ("engine/include", "engine/src", "engine/tests", "engine/tools", "samples", "templates", "tools/haylen")
+    ROOTS = ("engine/include", "engine/src", "engine/lua", "engine/tests", "engine/tools", "samples", "templates", "tools/haylen")
     # Build outputs inside those roots, such as the native tree that Gradle keeps in each Android project, hold generated and third-party code.
     SKIPPED = frozenset({".cxx", ".gradle", "build", "_deps"})
     PYTHON = Repository.ROOT / "tools"
