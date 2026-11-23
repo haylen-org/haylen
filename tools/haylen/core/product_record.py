@@ -33,14 +33,22 @@ class ProductRecord:
             raise BuildFailed(
                 f'The app `{Repository.shown(resolved.app.folder)}` has no build for "{resolved.target_name}" in the "{resolved.configuration.value}" configuration yet. Build it with "haylen app build".'
             )
-        document = json.loads(path.read_text(encoding="utf-8"))
-        project = Path(document["project"])
+        outdated = BuildFailed(
+            f'The last build of `{Repository.shown(resolved.app.folder)}` for "{resolved.target_name}" is damaged or an older version of Haylen made it. Build the app again with "haylen app build".'
+        )
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            project = Path(document["project"])
+            components = tuple(ProductComponent(ProductRecord.target(entry["target"]), Path(entry["path"]), entry["kind"]) for entry in document["components"])
+            product = (Path(document["path"]), document["kind"], tuple(Path(entry) for entry in document["auxiliary"]))
+        except json.JSONDecodeError, KeyError, TypeError:
+            raise outdated from None
         state = PreparationState.read(project)
         if state is None:
             raise BuildFailed(f'The project `{Repository.shown(project)}` of the last build is gone. Build the app again with "haylen app build".')
         prepared = PreparedProject(resolved, folders, project, backend, state, False)
-        components = tuple(ProductComponent(ProductRecord.target(entry["target"]), Path(entry["path"]), entry["kind"]) for entry in document["components"])
-        return BuildProduct(prepared, Path(document["path"]), document["kind"], components, tuple(Path(entry) for entry in document["auxiliary"]))
+        path, kind, auxiliary = product
+        return BuildProduct(prepared, path, kind, components, auxiliary)
 
     @staticmethod
     def target(entry: dict[str, str]) -> TargetId:

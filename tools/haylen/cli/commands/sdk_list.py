@@ -39,8 +39,6 @@ class SdkListCommand(Command):
         survey = session.sdks.survey()
         sentences = {unusable.folder: unusable.sentence(session.registry.targets_named_by(unusable.slices)) for unusable in survey.unusable}
         if not session.structured:
-            for unusable in survey.unusable:
-                session.terminal.record("\n".join([unusable.problem, *unusable.reasons]))
             SdkListCommand.show(session.terminal, survey, revision, sentences)
         sdks = [{**manifest.describe(), "folder": str(manifest.folder), "current": manifest.revision == revision} for manifest in survey.manifests]
         unusable = [{"folder": str(entry.folder), "readable": entry.readable, "problem": sentences[entry.folder]} for entry in survey.unusable]

@@ -14,6 +14,7 @@ from haylen.content.content_tool import ContentTool
 from haylen.core.app_pipeline import AppPipeline
 from haylen.core.configuration import Configuration
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
+from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.errors.unsupported_target import UnsupportedTarget
@@ -28,7 +29,9 @@ from haylen.platforms.device import Device
 from haylen.platforms.platform_description import PlatformDescription
 from haylen.platforms.port_description import PortDescription
 from haylen.platforms.port_target import PortTarget
+from haylen.platforms.preparation_state import PreparationState
 from haylen.platforms.sdk_request import SdkRequest
+from haylen.plugins.plugin_lock import PluginLock
 from haylen.sdk.sdk_manifest import SdkManifest
 from haylen.terminal import Terminal
 from tests.content.test_content_tool import ContentToolTest
@@ -282,7 +285,6 @@ class CommandsTest:
         assert resolved.primary.sdk.manifest.revision == ToolingFixture.REVISION
         assert requests == []
         assert "other-" not in fixture.output.getvalue()
-        assert "other-older" in (tmp_path / "logs" / "test.log").read_text(encoding="utf-8")
 
     def test_an_sdk_of_the_target_that_an_older_haylen_built_is_built_again_and_an_inspection_says_how(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
@@ -300,6 +302,16 @@ class CommandsTest:
         assert [(built.targets, built.architectures) for built in requests] == [(("fake-device",), ("arm64",))]
         assert AppPipeline.SDK_BUILD_NOTE in fixture.output.getvalue()
         assert not re.search(r"\[\d+\]|libraries", fixture.output.getvalue())
+
+    def test_a_record_that_an_older_haylen_wrote_is_prepared_again_or_named_in_plain_words(self, tmp_path: Path):
+        (tmp_path / PreparationState.FILE).write_text(json.dumps({"generator": "0.0.1"}), encoding="utf-8")
+        assert PreparationState.read(tmp_path) is None
+
+        (tmp_path / PluginLock.FILE).write_text(json.dumps({"plugins": []}), encoding="utf-8")
+        with pytest.raises(InvalidManifest) as raised:
+            PluginLock.load(tmp_path)
+        assert raised.value.message.endswith('is damaged or an older version of Haylen wrote it. Write it again with "haylen plugin update".')
+        assert "{" not in raised.value.message
 
     def test_the_doctor_and_the_sdk_list_show_an_sdk_that_an_older_haylen_built_and_a_damaged_one_in_plain_words(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)

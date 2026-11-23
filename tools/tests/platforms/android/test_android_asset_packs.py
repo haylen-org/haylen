@@ -13,7 +13,7 @@ from haylen.plugins.merged_contribution import MergedContribution
 class AndroidAssetPacksTest:
     @staticmethod
     def delivery(fast: list[str]) -> MergedContribution:
-        return MergedContribution("assetPacks", Frozen.freeze({"fastFollow": fast}), ("delivery",), ("plugins/delivery/plugin.json at contributions[0]",), ())
+        return MergedContribution("assetPacks", Frozen.freeze({"fastFollow": fast}), ("delivery",), ("plugins/delivery/plugin.json",), ())
 
     @staticmethod
     def release(folder, sizes: dict[str, int]):

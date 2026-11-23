@@ -46,7 +46,7 @@ class PluginManifest:
 
         implementations = {platform: Implementation(value) for platform, value in document["implementations"].items()}
         parameters = {name: PluginParameter.parse(name, entry) for name, entry in document.get("parameters", {}).items()}
-        contributions = tuple(PluginManifest.contribution(document["id"], index, entry, origin, folder) for index, entry in enumerate(document.get("contributions", [])))
+        contributions = tuple(PluginManifest.contribution(document["id"], entry, origin, folder) for entry in document.get("contributions", []))
         manifest = PluginManifest(
             folder=folder.resolve(),
             id=document["id"],
@@ -66,9 +66,9 @@ class PluginManifest:
         return manifest
 
     @staticmethod
-    def contribution(owner: str, index: int, entry: Mapping[str, object], origin: str, folder: Path) -> Contribution:
+    def contribution(owner: str, entry: Mapping[str, object], origin: str, folder: Path) -> Contribution:
         fields = {key: value for key, value in entry.items() if key not in ("type", "platforms")}
-        return Contribution(str(entry["type"]), tuple(entry["platforms"]), Frozen.freeze(fields), owner, f"{origin} at contributions[{index}]", folder.resolve())
+        return Contribution(str(entry["type"]), tuple(entry["platforms"]), Frozen.freeze(fields), owner, origin, folder.resolve())
 
     @property
     def origin(self) -> str:
@@ -91,11 +91,11 @@ class PluginManifest:
             outside = sorted(set(contribution.platforms) - native)
             if outside:
                 problems.append(
-                    f'The contribution "contributions[{index}]" of type "{contribution.type}" names {SchemaValidator.choices(outside, "and")}, where "implementations" does not give the plugin a native part.'
+                    f'Contribution {index + 1} of "contributions", of the type "{contribution.type}", names {SchemaValidator.choices(outside, "and")}, where "implementations" does not give the plugin a native part.'
                 )
             for name in sorted(PluginManifest.placeholders(contribution.fields)):
                 if name not in self.parameters:
-                    problems.append(f'The contribution "contributions[{index}]" names the parameter "{name}" in "${{{name}}}", which "parameters" does not declare.')
+                    problems.append(f'Contribution {index + 1} of "contributions" names the parameter "{name}" in "${{{name}}}", which "parameters" does not declare.')
 
         contributed = {platform for contribution in self.contributions for platform in contribution.platforms}
         for platform in sorted(native - contributed):

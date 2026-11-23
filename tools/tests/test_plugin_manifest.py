@@ -25,7 +25,7 @@ class PluginManifestTest:
         assert manifest.implementation("web") is Implementation.LUA
         assert manifest.implementation("android") is None
         assert manifest.contributions[0].fields["url"] == "https://example.com/kit"
-        assert manifest.contributions[0].origin.endswith("plugin.json at contributions[0]")
+        assert manifest.contributions[0].origin.endswith("plugin.json")
 
     def test_names_every_problem_the_schema_cannot_see(self, tmp_path):
         folder = ToolingFixture(tmp_path).plugin(

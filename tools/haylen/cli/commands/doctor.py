@@ -69,8 +69,6 @@ class DoctorCommand(Command):
         revision = Repository.engine_revision()
         examinations = [DoctorCommand.examine(target, registry, survey, revision) for target in targets]
         if not session.structured:
-            for unusable in survey.unusable:
-                session.terminal.record("\n".join([unusable.problem, *unusable.reasons]))
             problems = [*registry.problems, *(unusable.sentence(registry.targets_named_by(unusable.slices)) for unusable in survey.unusable)]
             DoctorCommand.show(session.terminal, examinations, problems, bool(arguments.target))
         targets_described = [DoctorCommand.describe(examination) for examination in examinations]

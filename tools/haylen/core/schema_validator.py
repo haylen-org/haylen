@@ -53,20 +53,26 @@ class SchemaValidator:
             raise InvalidManifest(f"The file `{origin}` has these problems:\n{lines}", origin=origin)
 
     @staticmethod
-    def key(path: Iterable[object]) -> str:
-        """Names a place of a document like the docs do, such as `content.delivery[2].mode`."""
-        text = ""
+    def subject(path: Iterable[object]) -> str:
+        """Names a place of a document in words, counting the items of a list from one, such as `The key "mode" of item 3 of "content.delivery"`, or the whole file for an empty path."""
+        groups: list[tuple[str, int]] = []
+        names: list[str] = []
         for part in path:
             if isinstance(part, int):
-                text += f"[{part}]"
+                groups.append((".".join(names), part + 1))
+                names = []
             else:
-                text += f".{part}" if text else str(part)
-        return text
+                names.append(str(part))
+
+        phrase = f'The key "{".".join(names)}"' if names else ""
+        for name, number in reversed(groups):
+            item = f'item {number} of "{name}"' if name else f"item {number}"
+            phrase = f"{phrase} of {item}" if phrase else item[0].upper() + item[1:]
+        return phrase or "The file"
 
     @staticmethod
     def sentence(error: ValidationError) -> str:
-        place = SchemaValidator.key(error.absolute_path)
-        subject = f'The key "{place}"' if place else "The file"
+        subject = SchemaValidator.subject(error.absolute_path)
         kind = error.validator
         instance = error.instance
 

@@ -83,11 +83,8 @@ class AppPipeline:
         return ProjectResolver(self.registry, PluginResolver(app, source), selector)
 
     def installed_sdks(self) -> tuple[SdkManifest, ...]:
-        """The installed SDKs that this tooling uses. One that it cannot use, such as one that an older version of Haylen built, serves no target, so a build builds its targets again, and the log of the command keeps why."""
-        survey = SdkCatalog(self.context.environment).survey()
-        for unusable in survey.unusable:
-            self.context.terminal.record("\n".join([unusable.problem, *unusable.reasons]))
-        return survey.manifests
+        """The installed SDKs that this tooling uses. One that it cannot use, such as one that an older version of Haylen built, serves no target, so a build builds its targets again."""
+        return tuple(SdkCatalog(self.context.environment).manifests())
 
     def missing_architectures(self, request: ProductRequest) -> tuple[str, ...]:
         """Returns the architectures of the request that no installed SDK of the current engine sources holds in the configuration of the engine, which only a build of the SDK makes."""

@@ -34,5 +34,8 @@ class DevelopmentRecord:
         record = DevelopmentRecord.path(app)
         if not record.is_file():
             return None
-        document = json.loads(record.read_text(encoding="utf-8"))
-        return DevelopmentRecord(document["address"], document["token"])
+        try:
+            document = json.loads(record.read_text(encoding="utf-8"))
+            return DevelopmentRecord(document["address"], document["token"])
+        except json.JSONDecodeError, KeyError, TypeError:
+            return None

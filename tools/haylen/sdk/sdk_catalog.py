@@ -15,12 +15,10 @@ class SdkCatalog:
 
     @dataclass(frozen=True)
     class Unusable:
-        """An installed SDK whose manifest this tooling cannot use: whether the file reads at all, the sentence that says what happened in plain words, the reasons of the schema for the log of the command, and the systems and environments that its slices name, which tell the targets it was built for."""
+        """An installed SDK whose manifest this tooling cannot use: whether the file reads at all, and the systems and environments that its slices name, which tell the targets it was built for."""
 
         folder: Path
         readable: bool
-        problem: str
-        reasons: tuple[str, ...]
         slices: tuple[tuple[str, str], ...]
 
         @property
@@ -67,12 +65,11 @@ class SdkCatalog:
         for folder in self.folders():
             try:
                 document = SdkManifest.document(folder)
-            except IncompatibleSdk as error:
-                unusable.append(SdkCatalog.Unusable(folder.resolve(), False, error.message, (), ()))
+            except IncompatibleSdk:
+                unusable.append(SdkCatalog.Unusable(folder.resolve(), False, ()))
                 continue
-            reasons = SdkManifest.problems(document)
-            if reasons:
-                unusable.append(SdkCatalog.Unusable(folder.resolve(), True, SdkManifest.older(folder), tuple(reasons), SdkCatalog.named_slices(document)))
+            if not SdkManifest.matches(document):
+                unusable.append(SdkCatalog.Unusable(folder.resolve(), True, SdkCatalog.named_slices(document)))
                 continue
             manifests.append(SdkManifest.parse(folder, document))
         return SdkCatalog.Survey(tuple(manifests), tuple(unusable))

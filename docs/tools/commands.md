@@ -411,7 +411,7 @@ build/sdk/web-release  1
   web      device       wasm32         emscripten-7.0.0   0     webGpu, webGl2
 ```
 
-An SDK that this version of Haylen cannot use, such as one that an older version built or one whose manifest is damaged, shows with a cross as built by an older Haylen or unreadable, and a group under it says what happened and the command that builds it again. No command stops on such an SDK: it holds no slice that a build takes, like an SDK of other engine sources, so the app commands build its targets again when they need them, and the log of the command keeps the details.
+An SDK that this version of Haylen cannot use, such as one that an older version built or one whose manifest is damaged, shows with a cross as built by an older Haylen or unreadable, and a group under it says what happened and the command that builds it again. No command stops on such an SDK: it holds no slice that a build takes, like an SDK of other engine sources, so the app commands build its targets again when they need them.
 
 Result: `sdks`, each manifest with its `folder` and `current`, and `unusable`, each SDK that this version cannot use with its `folder`, `readable`, whether its manifest reads at all, and `problem`, the sentence that says what happened and how to build it again.
 

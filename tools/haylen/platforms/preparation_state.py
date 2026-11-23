@@ -22,10 +22,18 @@ class PreparationState:
 
     @staticmethod
     def read(folder: Path) -> PreparationState | None:
+        """The record of the last preparation of a project, or nothing when there is none or when it is damaged or an older version of Haylen wrote it, so the next preparation writes the project again."""
         path = folder / PreparationState.FILE
         if not path.is_file():
             return None
-        document = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            return PreparationState.parse(document)
+        except json.JSONDecodeError, KeyError, TypeError:
+            return None
+
+    @staticmethod
+    def parse(document: dict) -> PreparationState:
         return PreparationState(
             generator=document["generator"],
             backend=document["backend"],

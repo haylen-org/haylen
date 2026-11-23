@@ -33,7 +33,7 @@ class SdkManifest:
     def load(folder: Path) -> SdkManifest:
         """Reads the manifest of an SDK, and fails with a plain sentence when the file is damaged or this tooling cannot use it, such as one that an older version of Haylen wrote."""
         document = SdkManifest.document(folder)
-        if SdkManifest.problems(document):
+        if not SdkManifest.matches(document):
             raise IncompatibleSdk(SdkManifest.older(folder), origin=Repository.shown(folder / SdkManifest.FILE))
         return SdkManifest.parse(folder, document)
 
@@ -57,9 +57,9 @@ class SdkManifest:
             raise IncompatibleSdk(SdkManifest.unreadable(folder), origin=Repository.shown(path)) from None
 
     @staticmethod
-    def problems(document: object) -> list[str]:
-        """What keeps this tooling from using a manifest, in the words of its schema, which only the log of a command shows."""
-        return SchemaValidator.of("sdk.schema.json").problems(document)
+    def matches(document: object) -> bool:
+        """Tells whether a manifest has the layout that this tooling writes, which one of an older version of Haylen lacks."""
+        return not SchemaValidator.of("sdk.schema.json").problems(document)
 
     @staticmethod
     def older(folder: Path) -> str:
@@ -93,7 +93,7 @@ class SdkManifest:
     def file(self, name: str) -> Path:
         """Returns a shared file of the SDK by its name, and fails when the SDK lacks it."""
         if name not in self.files:
-            raise IncompatibleSdk(f'The SDK `{Repository.shown(self.folder)}` has no file "{name}", so it is incomplete. Build it again with "haylen sdk build".')
+            raise IncompatibleSdk(f'The SDK in `{Repository.shown(self.folder)}` lacks a part that this version of Haylen needs, so it is incomplete. Build it again with "haylen sdk build".')
         return self.folder / self.files[name]
 
     def describe(self) -> dict[str, object]:

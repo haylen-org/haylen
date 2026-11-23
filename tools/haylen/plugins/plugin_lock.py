@@ -26,19 +26,20 @@ class PluginLock:
         origin = Repository.shown(path)
         try:
             document = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as error:
-            raise InvalidManifest(f"The file `{origin}` is not JSON: {error.msg} at line {error.lineno}.", origin=origin) from None
+        except json.JSONDecodeError:
+            raise InvalidManifest(PluginLock.damaged(origin), origin=origin) from None
 
         entries = document.get("plugins") if isinstance(document, dict) and document.get("version") == PluginLock.VERSION else None
         valid = isinstance(entries, dict) and all(
             isinstance(entry, dict) and set(entry) == {"git", "ref", "commit"} and all(isinstance(value, str) for value in entry.values()) for entry in entries.values()
         )
         if not valid:
-            raise InvalidManifest(
-                f'The file `{origin}` is not a lock of plugins, which holds {{"version": {PluginLock.VERSION}, "plugins": {{"<id>": {{"git", "ref", "commit"}}}}}}. Write it again with "haylen plugin update".',
-                origin=origin,
-            )
+            raise InvalidManifest(PluginLock.damaged(origin), origin=origin)
         return PluginLock(folder, MappingProxyType({identifier: MappingProxyType(dict(entry)) for identifier, entry in entries.items()}))
+
+    @staticmethod
+    def damaged(origin: str) -> str:
+        return f'The file `{origin}` is damaged or an older version of Haylen wrote it. Write it again with "haylen plugin update".'
 
     def commit(self, identifier: str, git: str, ref: str) -> str | None:
         """Returns the pinned commit of a plugin while the lock names the same repository and ref as `haylen.json`."""
