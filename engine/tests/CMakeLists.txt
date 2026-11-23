@@ -279,6 +279,7 @@ set(HAYLEN_TEST_SOURCES
   text/BitmapFontTests.cpp
   text/ColorGlyphTests.cpp
   text/FontTests.cpp
+  text/LineHeightTests.cpp
   text/RichTextLayoutTests.cpp
   text/RichTextMarkupTests.cpp
   text/ShapingTests.cpp
@@ -317,6 +318,7 @@ set(HAYLEN_TEST_SOURCES
   ui/ScrollerTests.cpp
   ui/SizeCacheTests.cpp
   ui/SmoothEdgeTests.cpp
+  ui/TextFieldLayoutTests.cpp
   ui/TextInputTests.cpp
   ui/StyleTests.cpp
   ui/ThemeSoundTests.cpp

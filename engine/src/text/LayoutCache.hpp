@@ -38,6 +38,7 @@ class LayoutCache final {
         bool wrap = true;
         Balance balance = Balance::LastLine;
         float lineSpacing = 0.0F;
+        LineHeight lineHeight = LineHeight::Natural;
         Alignment align = Alignment::Start;
         Direction direction = Direction::Auto;
         std::string_view language;

@@ -271,7 +271,7 @@ TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
         "name": "tank", "x": 10, "color": "#FF808080",
         "sprite": {"texture": "units/tank.png", "filter": "linear", "source": [0, 0, 16, 16], "pivotY": 1},
         "children": [
-            {"name": "label", "y": -20, "text": {"text": "Tank", "size": 18, "anchor": [0.5, 1], "maxWidth": 60, "minScale": 0.5, "wrap": false}},
+            {"name": "label", "y": -20, "text": {"text": "Tank", "size": 18, "anchor": [0.5, 1], "maxWidth": 60, "minScale": 0.5, "wrap": false, "lineHeight": "uniform"}},
             {"name": "turret", "rotation": 0.5, "layer": 1}
         ]
     })"));
@@ -290,6 +290,7 @@ TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
     EXPECT_FALSE(saved["children"][0]["text"].contains("font"));
     EXPECT_EQ(saved["children"][0]["text"]["minScale"], 0.5);
     EXPECT_EQ(saved["children"][0]["text"]["wrap"], false);
+    EXPECT_EQ(saved["children"][0]["text"]["lineHeight"], "uniform");
     EXPECT_FALSE(saved.contains("visible"));
     const Node copy = NodeSerializer::load(*tree, {}, saved, assets);
     EXPECT_EQ(NodeSerializer::save(copy, engine.getDefaultFont()), saved);
@@ -321,6 +322,7 @@ TEST_F(NodeSerializerTest, NamesTheNodeAndTheKeyOfBadDescriptions) {
     EXPECT_EQ(message(R"({"name": "tank", "frame": {"texture": "a.png", "fill": "wrap"}})"), "The key \"fill\" of the frame of the node \"tank\" must be \"stretch\" or \"tile\".");
     EXPECT_EQ(message(R"([1, 2])"), "The description of the node \"\" must be an object.");
     EXPECT_EQ(message(R"({"name": "tank", "text": {"text": "Tank", "minScale": 0}})"), "The key \"minScale\" of the text of the node \"tank\" must be above 0 and at most 1.");
+    EXPECT_EQ(message(R"({"name": "tank", "text": {"text": "Tank", "lineHeight": "tall"}})"), "The key \"lineHeight\" of the text of the node \"tank\" must be \"natural\" or \"uniform\".");
 
     // A description nests only as deep as a Lua table of descriptions, so a hostile prefab never runs out of stack.
     core::Json deepest = core::Json{{"name", "n"}};

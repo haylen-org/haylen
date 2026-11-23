@@ -41,7 +41,7 @@ Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style,
     }
 
     // A plain layout serves its text in every color, so its lines are white and take the color of the style as they draw.
-    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = math::Color::white(), .maxWidth = style.maxWidth, .balance = style.balance, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .ligatures = style.ligatures, .code = style.code};
+    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = math::Color::white(), .maxWidth = style.maxWidth, .balance = style.balance, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .lineHeight = style.lineHeight, .ligatures = style.ligatures, .code = style.code};
     return LayoutBuilder(plain, plainOptions, nullptr, baseFamily, baseFont).build();
 }
 
@@ -198,18 +198,29 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
         const auto codePoints = std::u32string_view(source.text).substr(piece.begin, piece.end - piece.begin);
         const bool visible = !std::ranges::all_of(codePoints, &Segmenter::isInvisible);
 
+        // The cluster reaches as high and as low as the metrics of its font, or as its ink where a glyph, such as a stacked mark, passes them.
         float pen = 0.0F;
+        float inkTop = 0.0F;
+        float inkBottom = 0.0F;
         for (; visible && next < last; ++next) {
             const Font::ShapedGlyph& shaped = shapedGlyphs[byCluster[next]];
-            glyphs.push_back({.glyph = drawing.getGlyph(shaped.index), .index = shaped.index, .factor = factor, .offset = math::Vec2{pen, 0.0F} + shaped.offset * factor});
+            const Font::Glyph& glyph = drawing.getGlyph(shaped.index);
+            const math::Vec2 offset = math::Vec2{pen, 0.0F} + shaped.offset * factor;
+            if (!glyph.ink.isEmpty()) {
+                inkTop = std::min(inkTop, offset.y + glyph.ink.y * factor);
+                inkBottom = std::max(inkBottom, offset.y + glyph.ink.getBottom() * factor);
+            }
+
+            glyphs.push_back({.glyph = glyph, .index = shaped.index, .factor = factor, .offset = offset});
             pen += shaped.advance * factor;
         }
 
         next = last;
+        const float ascent = drawing.getAscent(font.size);
         piece.glyphCount = glyphs.size() - piece.firstGlyph;
         piece.advance = visible ? pen + drawn.weight * 2.0F + drawn.emboldenOffset : 0.0F;
-        piece.ascent = drawing.getAscent(font.size);
-        piece.descent = drawing.getLineHeight(font.size) - piece.ascent;
+        piece.ascent = std::max(ascent, -inkTop);
+        piece.descent = std::max(drawing.getLineHeight(font.size) - ascent, inkBottom);
         piece.space = std::ranges::all_of(codePoints, &Segmenter::isSpace);
         pieces.push_back(std::move(piece));
     }
@@ -485,10 +496,10 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
         }
     }
 
-    line.ascent = ascent;
-    line.descent = descent;
+    line.ascent = std::max(ascent, uniformAscent);
+    line.descent = std::max(descent, uniformDescent);
     line.top = top;
-    top += (ascent + descent) * options.lineSpacing;
+    top += (line.ascent + line.descent) * options.lineSpacing;
     flow.lines.push_back(line);
 }
 
@@ -839,6 +850,23 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
     return block;
 }
 
+void LayoutBuilder::takeTallest(const std::vector<Block>& blocks) {
+    for (const Block& block : blocks) {
+        for (const Line& line : block.flow.lines) {
+            uniformAscent = std::max(uniformAscent, line.ascent);
+            uniformDescent = std::max(uniformDescent, line.descent);
+        }
+
+        if (!block.table) {
+            continue;
+        }
+
+        for (const std::vector<Block>& cell : block.table->cells) {
+            takeTallest(cell);
+        }
+    }
+}
+
 LayoutBuilder::Block LayoutBuilder::measureRule(const RichTextDocument::Paragraph& paragraph) {
     const float margin = options.size * options.scale * kRuleMarginEms;
     return {.paragraph = &paragraph, .height = paragraph.ruleThickness * options.scale + margin * 2.0F};
@@ -907,7 +935,13 @@ Layout LayoutBuilder::build() {
         layout.families.push_back(options.family);
     }
 
-    const std::vector<Block> blocks = measureBlocks(document.paragraphs, options.maxWidth);
+    // Uniform lines take the tallest ascent and the tallest descent of every line of the text, table cells included, so the text breaks into lines again once it knows them.
+    std::vector<Block> blocks = measureBlocks(document.paragraphs, options.maxWidth);
+    if (options.lineHeight == LineHeight::Uniform) {
+        takeTallest(blocks);
+        blocks = measureBlocks(document.paragraphs, options.maxWidth);
+    }
+
     float width = std::max(options.maxWidth, 0.0F);
     if (options.maxWidth <= 0.0F) {
         for (const Block& block : blocks) {

@@ -233,10 +233,10 @@ std::vector<text::Font::ShapedGlyph> FontLua::shapeText(text::Font& font, std::u
     return shaped;
 }
 
-// Pushes a glyph at the native size as `{index, source, offset, advance, page, visible, image}`, where only a color glyph has an image.
+// Pushes a glyph at the native size as `{index, source, offset, advance, page, visible, ink, image}`, where only a color glyph has an image.
 int FontLua::pushGlyph(lua_State* L, text::Font& font, std::uint32_t index) {
     const text::Font::Glyph& found = font.getGlyph(index);
-    lua_createtable(L, 0, 7);
+    lua_createtable(L, 0, 8);
     lua::Stack::push(L, index);
     lua_setfield(L, -2, "index");
     lua::Stack::push(L, found.source);
@@ -249,6 +249,8 @@ int FontLua::pushGlyph(lua_State* L, text::Font& font, std::uint32_t index) {
     lua_setfield(L, -2, "page");
     lua::Stack::push(L, found.visible);
     lua_setfield(L, -2, "visible");
+    lua::Stack::push(L, found.ink);
+    lua_setfield(L, -2, "ink");
     if (found.image.isValid()) {
         lua::Stack::push(L, found.image);
         lua_setfield(L, -2, "image");

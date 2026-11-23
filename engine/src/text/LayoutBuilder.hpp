@@ -211,6 +211,7 @@ class LayoutBuilder final {
     [[nodiscard]] Block measureParagraph(const RichTextDocument::Paragraph& paragraph, float width);
     [[nodiscard]] Block measureRule(const RichTextDocument::Paragraph& paragraph);
     [[nodiscard]] Block measureTable(const RichTextDocument::Paragraph& paragraph, float width);
+    void takeTallest(const std::vector<Block>& blocks);
     void breakLines(Flow& flow, float available);
     void wrapLines(Flow& flow, float available, std::span<const std::size_t> forced);
     void keepLastWords(Flow& flow, float available);
@@ -241,6 +242,10 @@ class LayoutBuilder final {
     std::vector<std::size_t> forcedBreaks;
     float pendingPause = 0.0F;
     std::size_t textOffset = 0;
+
+    // The ascent and descent that every line takes at least, the tallest of the text with a uniform line height and zero otherwise.
+    float uniformAscent = 0.0F;
+    float uniformDescent = 0.0F;
 };
 
 } // namespace haylen::text

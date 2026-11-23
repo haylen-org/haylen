@@ -534,6 +534,8 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             Table::readValue(L, key, style.balance);
         } else if (key == "lineSpacing") {
             Table::readValue(L, key, style.lineSpacing);
+        } else if (key == "lineHeight") {
+            Table::readValue(L, key, style.lineHeight);
         } else if (key == "anchor") {
             Table::readValue(L, key, style.anchor);
         } else if (key == "rotation") {

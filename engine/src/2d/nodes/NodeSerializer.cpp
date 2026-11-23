@@ -264,6 +264,15 @@ NodeContent NodeSerializer::readContent(const core::Json& description, const std
             style.align = *alignment;
         }
 
+        if (const std::string lineHeight = text(*found, "lineHeight", path, "text"); !lineHeight.empty()) {
+            const auto height = text::Style::lineHeightFromName(lineHeight);
+            if (!height) {
+                throw std::invalid_argument(describe(path, "text", "lineHeight") + " must be \"natural\" or \"uniform\".");
+            }
+
+            style.lineHeight = *height;
+        }
+
         const std::string font = text(*found, "font", path, "text");
         NodeContent::Text block{.content = text(*found, "text", path, "text"), .style = style, .order = {.layer = integer(*found, "layer", 0, path, "text")}};
 
@@ -502,6 +511,10 @@ void NodeSerializer::writeContent(core::Json& object, const Node& node, const st
         put("minScale", style.minScale, 1.0F);
         put("wrap", style.wrap, true);
         put("lineSpacing", style.lineSpacing, 1.2F);
+
+        if (style.lineHeight != text::LineHeight::Natural) {
+            part["lineHeight"] = text::Style::lineHeightName(style.lineHeight);
+        }
 
         if (!style.anchor.isZero()) {
             part["anchor"] = {style.anchor.x, style.anchor.y};

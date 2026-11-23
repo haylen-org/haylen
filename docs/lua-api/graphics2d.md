@@ -3071,7 +3071,7 @@ scene.push({
         graphics2d.beginScreen()
         graphics2d.drawText(family, 'مرحبا بالعالم، رقم 42 (Harbor)', 1200, 200, {size = 40, maxWidth = 600, language = 'ar'})
         graphics2d.drawText(family, 'Order 7: السعر 42', 100, 300, {size = 40, direction = 'leftToRight'})
-        graphics2d.drawText(family, 'नमस्ते दुनिया', 100, 400, {size = 40, language = 'hi', bold = true, italic = true, underline = true, strike = false, rotation = 0.05, scale = {1.1, 1}, lineSpacing = 1.4, outlineWidth = 0, shadowBlur = 0, pixelSnap = false})
+        graphics2d.drawText(family, 'नमस्ते दुनिया', 100, 400, {size = 40, language = 'hi', bold = true, italic = true, underline = true, strike = false, rotation = 0.05, scale = {1.1, 1}, lineSpacing = 1.4, lineHeight = 'natural', outlineWidth = 0, shadowBlur = 0, pixelSnap = false})
     end,
 })
 ```
@@ -3095,6 +3095,7 @@ scene.push({
 | `maxHeight` | number | `0` | The height of the box that `minScale` fits the text into, where 0 bounds no height. |
 | `minScale` | number above 0, at most 1 | `1` | Draws text that does not fit its box smaller, down to this share of `size`, at the largest size where it fits: wrapped lines until they fit `maxHeight`, and text that does not wrap until its widest line fits `maxWidth` and its lines fit `maxHeight`. Text that fits at `size` keeps it, and text that never fits draws at the smallest size. The fitted layout is cached like any other, so text that stays the same fits once. |
 | `lineSpacing` | number | `1.2` | The distance between lines as a multiple of the line height. |
+| `lineHeight` | string | `'natural'` | How tall the lines are: `'natural'` gives each line its own height, which also grows with glyphs whose ink reaches past the metrics of their font, such as stacked marks, and `'uniform'` gives every line the height of the tallest, so the baselines keep one step. The [text guide](../graphics/text.md#line-heights) explains both. |
 | `direction` | string | `'auto'` | The direction of every paragraph: `'auto'` takes the direction of its first strong letter, and `'leftToRight'` and `'rightToLeft'` force it. It decides the order of mixed runs and the side of `'start'`. |
 | `language` | string | `''` | The BCP 47 language tag of the text, such as `'ar'`, `'fa'`, `'ur'` or `'sr'`, which the shaper uses to pick the forms a language prefers. |
 | `bold`, `italic` | boolean | `false` | With a `FontFamily`, pick its bold and italic faces or synthesize them. A `Font` synthesizes them. |
@@ -3196,6 +3197,7 @@ scene.push({
 | `balance` | string | `'lastLine'` | How the wrapped lines of every paragraph share its words, `'lastLine'`, `'allLines'` or `'none'`, like the text style option. |
 | `align` | string | `'start'` | The alignment of paragraphs without their own: `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'`, where `'start'` and `'end'` follow the direction of each paragraph. |
 | `lineSpacing` | number | `1.2` | The distance between lines as a multiple of their height. |
+| `lineHeight` | string | `'natural'` | How tall the lines are, `'natural'` or `'uniform'`, like the text style option. |
 | `direction` | string | `'auto'` | The direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'leftToRight'` and `'rightToLeft'` force it. |
 | `language` | string | `''` | The BCP 47 language tag that the text is shaped for, such as `'ar'` or `'hi'`. |
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
@@ -3307,6 +3309,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 | `direction` | string | read and write | The direction of paragraphs without a `[p dir]` of their own, like the `direction` option. |
 | `language` | string | read and write | The BCP 47 language tag the text is shaped for. |
 | `lineSpacing` | number | read and write | The distance between lines as a multiple of their height. |
+| `lineHeight` | string | read and write | How tall the lines are, like the `lineHeight` option. |
 | `revealSpeed` | number | read and write | The characters per second that the typewriter reveal shows, 0 for everything at once. |
 | `underlineLinks` | boolean | read and write | Whether `[url]` text is underlined. |
 | `ligatures` | boolean | read and write | Whether letters outside `[code]` join into the ligatures of the font. |
@@ -3337,6 +3340,7 @@ line.align = 'center'
 line.direction = 'leftToRight'
 line.language = 'en'
 line.lineSpacing = 1.3
+line.lineHeight = 'uniform'
 line.revealSpeed = 0
 line.underlineLinks = false
 ```

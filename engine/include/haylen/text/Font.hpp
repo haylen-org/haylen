@@ -22,7 +22,7 @@ class LayoutCache;
 // A font whose glyph images live in texture pages: a TrueType font drawn through a signed distance field, or a bitmap font drawn from its own images. Sizes are pixel sizes, and every font shapes and lays text out the same way.
 class Font {
   public:
-    // One glyph at the native size of the font: the region of its image in a page, where the image goes from the pen on the baseline, and how far the pen moves after it. A color glyph has the vector image of its colors instead of a region of a page, and its source is the box of that image at the origin.
+    // One glyph at the native size of the font: the region of its image in a page, where the image goes from the pen on the baseline, and how far the pen moves after it. A color glyph has the vector image of its colors instead of a region of a page, and its source is the box of that image at the origin. The ink is the box that the outline of a TrueType glyph, or the paint of a color glyph, covers from the pen, which a line grows to hold where it reaches past the metrics of the font, and it stays empty for a bitmap font, whose line height holds its images.
     struct Glyph {
         math::Rect source{};
         math::Vec2 offset{};
@@ -30,6 +30,7 @@ class Font {
         std::uint16_t page = 0;
         bool visible = false;
         graphics::VectorImage image;
+        math::Rect ink{};
     };
 
     // A glyph of shaped text at the native size: its index in the font, the code point where its cluster starts, how far the pen moves after it, and where it sits from the pen with y pointing down.

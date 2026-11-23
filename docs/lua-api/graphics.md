@@ -859,13 +859,14 @@ Returns the glyph that `character` shapes to on its own, at the native size, as 
 | `advance` | How far the pen moves after the glyph. |
 | `page` | The page that holds the glyph, counted from 1. |
 | `visible` | Whether the glyph draws anything. |
+| `ink` | The `Rect` that the outline of the glyph, or the paint of a color glyph, covers from the pen on the baseline, with y pointing down, which a [natural line](../graphics/text.md#line-heights) grows to hold. It is empty for a glyph without an outline, such as a space, and for every glyph of a bitmap font. |
 | `image` | The `VectorImage` of the colors of a color glyph, as large as its box at the native size, and `nil` for every other glyph. It draws at any size with `graphics2d.drawVector`. |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
 
 local glyph = graphics2d.defaultFont():glyph('g')
-print(glyph.index, glyph.advance, glyph.offset.y, glyph.source.height)
+print(glyph.index, glyph.advance, glyph.offset.y, glyph.source.height, glyph.ink.y)
 ```
 
 ### font:glyphByIndex(index)

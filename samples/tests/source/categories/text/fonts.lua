@@ -19,6 +19,10 @@ fonts.files = {
     hebrew = {'fonts/noto-sans-hebrew-regular.ttf'},
     devanagari = {'fonts/noto-sans-devanagari-regular.ttf'},
     thai = {'fonts/noto-sans-thai-regular.ttf'},
+    myanmar = {'fonts/noto-sans-myanmar-regular.ttf'},
+    khmer = {'fonts/noto-sans-khmer-regular.ttf'},
+    tibetan = {'fonts/noto-serif-tibetan-regular.ttf'},
+    emoji = {'fonts/noto-color-emoji-regular.ttf'},
     pixel = {'text/haylen-pixel.fnt', {filter = 'nearest'}},
     pixelGold = {'text/haylen-pixel-gold.fnt', {filter = 'nearest'}},
 }

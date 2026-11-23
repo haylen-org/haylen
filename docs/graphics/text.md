@@ -407,9 +407,9 @@ Plain text lays out in these steps:
 
 Plain text is a document of one paragraph per line. The carriage return of CRLF stays at the end of its line and draws nothing, so the characters of the layout keep counting the code points of the text.
 
-Every font and every family keeps its 512 most recent plain text layouts. They are found by the text and by the style fields that change the layout: size, wrap width and whether it wraps, height and smallest scale of a fit, balance, line spacing, alignment, direction, language, bold, italic, underline, strike, ligatures and code. The size, the wrap width, the height, the smallest scale and the line spacing must be finite numbers. So text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
+Every font and every family keeps its 512 most recent plain text layouts. They are found by the text and by the style fields that change the layout: size, wrap width and whether it wraps, height and smallest scale of a fit, balance, line spacing, line height, alignment, direction, language, bold, italic, underline, strike, ligatures and code. The size, the wrap width, the height, the smallest scale and the line spacing must be finite numbers. So text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
 
-Rich text lays each paragraph out into lines. Lines wrap where the [line breaking](#line-breaking) rules allow and around images, and inside a word only when the word alone is wider than a line. Every line stands on one baseline and is as tall as its tallest text and images. Lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images are centered by default on the middle of the text of their style. The value `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
+Rich text lays each paragraph out into lines. Lines wrap where the [line breaking](#line-breaking) rules allow and around images, and inside a word only when the word alone is wider than a line. Every line stands on one baseline and is as tall as its tallest text and images, as [line heights](#line-heights) explains. Lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images are centered by default on the middle of the text of their style. The value `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
 
 The layout of rich text is cached by its width and scale, and a few widths stay cached. So a UI container that measures text at one width and draws it at another lays it out once for each, and `text:size(maxWidth)` measures at another width the same way. Changing the markup or the options lays it out again, and effects and the reveal never do. An image that is still loading takes no room, and the layout is built again once it arrives.
 
@@ -425,6 +425,37 @@ scene.push({
         local width, height = hint:size(300)
         graphics2d.drawRect({100, 100, width, height}, '#C0000000')
         hint:draw(100, 100)
+    end,
+})
+```
+
+## Line heights
+
+The height of a line is its ascent, the room above its baseline, plus its descent, the room below it. The option `lineHeight` of the text style and of rich text picks one of two ways to size the lines, and `lineSpacing` multiplies the height either way.
+
+- `natural`, the default, gives each line its own height. A line takes the largest ascent and descent of the fonts it uses, each at its size, so a line with a larger size, a fallback font or an image makes room for it. A line also grows where the ink of a glyph reaches past those metrics: stacked marks of Burmese, Khmer, Thai, Tibetan and the scripts of India, the capitals of Vietnamese with two accents, fallback fonts of the system and emoji. So nothing collides with the next line or is cut off.
+- `uniform` gives every line of the text the largest ascent and the largest descent of all its lines, the lines of tables included. The baselines then follow one steady step, which tables, code, columns and lists of numbers need.
+
+The ink of a glyph is the box that its outline covers, or that the layers of a color glyph paint. HarfBuzz reads it once, the first time the font draws the glyph, and the font keeps it with the glyph, so no frame measures it again. A line grows only by what its ink passes the metrics of its font. Latin text in a font whose metrics hold its letters, accents and descenders lays out exactly by those metrics. A bitmap font keeps the line height its description gives, because its images are cells that the font made for its lines.
+
+The caret, the selection and the hit testing of the text fields and text areas of the UI follow the box of each line, so a taller line takes a taller caret and selection.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local family = graphics.newFontFamily({
+    regular = assets.font('fonts/fira-sans-regular.otf'),
+    fallbacks = {assets.font('fonts/noto-sans-khmer-regular.ttf'), assets.font('fonts/noto-sans-thai-regular.ttf')},
+})
+local rows = 'Total 42\nខ្ញុំស្រឡាញ់\nที่นี่ 7'
+
+scene.push({
+    render = function(self)
+        graphics2d.drawText(family, rows, 40, 40, {size = 28})
+        graphics2d.drawText(family, rows, 400, 40, {size = 28, lineHeight = 'uniform'})
     end,
 })
 ```

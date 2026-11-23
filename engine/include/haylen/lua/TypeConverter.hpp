@@ -75,7 +75,7 @@ class TypeConverter final {
   public:
     static constexpr std::array<std::string_view, 15> kDrawOrderFields{"layer", "depth", "sortOffset", "sortId", "visibility", "blend", "material", "partMask", "normalMap", "specular", "shininess", "emission", "lightMask", "unshaded", "distortion"};
     static constexpr std::array<std::string_view, 8> kSpriteEffectFields{"dissolve", "dissolveEdge", "dissolveSize", "dissolveColor", "outlineWidth", "outlineColor", "glowSize", "glowColor"};
-    static constexpr std::array<std::string_view, 27> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "gradient", "align", "maxWidth", "maxHeight", "minScale", "wrap", "balance", "lineSpacing", "anchor", "rotation", "scale", "bold", "italic", "underline", "strike", "direction", "language", "pixelSnap", "ligatures", "code"};
+    static constexpr std::array<std::string_view, 28> kTextStyleFields{"size", "color", "outlineWidth", "outlineColor", "shadowOffset", "shadowColor", "shadowBlur", "gradient", "align", "maxWidth", "maxHeight", "minScale", "wrap", "balance", "lineSpacing", "lineHeight", "anchor", "rotation", "scale", "bold", "italic", "underline", "strike", "direction", "language", "pixelSnap", "ligatures", "code"};
     static constexpr std::array<std::string_view, 3> kTextGradientFields{"stops", "colors", "angle"};
     static constexpr std::array<std::string_view, 3> kTextureOptionFields{"filter", "wrap", "mipmaps"};
     static constexpr std::array<std::string_view, 14> kSpriteInstanceFields{"x", "y", "width", "height", "source", "pivotX", "pivotY", "rotation", "tilt", "color", "flash", "flipHorizontal", "flipVertical", "flipDiagonal"};
@@ -447,6 +447,15 @@ template <> struct EnumNames<text::Balance> {
     }
     static std::string_view name(text::Balance value) {
         return text::Style::balanceName(value);
+    }
+};
+
+template <> struct EnumNames<text::LineHeight> {
+    static std::optional<text::LineHeight> fromName(std::string_view name) {
+        return text::Style::lineHeightFromName(name);
+    }
+    static std::string_view name(text::LineHeight value) {
+        return text::Style::lineHeightName(value);
     }
 };
 

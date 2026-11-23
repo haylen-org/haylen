@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <array>
 #include <filesystem>
+#include <stdexcept>
+#include <string>
 
 #include "support/TestFiles.hpp"
 
@@ -59,6 +61,33 @@ std::vector<std::uint8_t> FontCollection::addTable(std::span<const std::uint8_t>
     }
 
     return added;
+}
+
+// The horizontal header holds the ascender, the descender and the line gap from its fifth byte, and the OS/2 table the typographic three from its 69th byte, followed by the Windows ascent and descent, which count down as positive numbers.
+std::vector<std::uint8_t> FontCollection::setLineMetrics(std::span<const std::uint8_t> font, std::int16_t ascender, std::int16_t descender, std::int16_t lineGap) {
+    std::vector<std::uint8_t> changed(font.begin(), font.end());
+    const std::size_t header = findTable(font, 0x68686561U);
+    const std::size_t metrics = findTable(font, 0x4F532F32U);
+    for (const std::size_t table : {header + 4, metrics + 68}) {
+        writeBigEndian(changed, table, static_cast<std::uint16_t>(ascender), 2);
+        writeBigEndian(changed, table + 2, static_cast<std::uint16_t>(descender), 2);
+        writeBigEndian(changed, table + 4, static_cast<std::uint16_t>(lineGap), 2);
+    }
+
+    writeBigEndian(changed, metrics + 74, static_cast<std::uint16_t>(ascender), 2);
+    writeBigEndian(changed, metrics + 76, static_cast<std::uint16_t>(-descender), 2);
+    return changed;
+}
+
+std::size_t FontCollection::findTable(std::span<const std::uint8_t> font, std::uint32_t tag) {
+    const std::uint32_t tables = readBigEndian(font, 4, 2);
+    for (std::size_t record = 12; record < 12 + tables * 16; record += 16) {
+        if (readBigEndian(font, record, 4) == tag) {
+            return readBigEndian(font, record + 8, 4);
+        }
+    }
+
+    throw std::invalid_argument("The font has no table with the tag " + std::to_string(tag) + ".");
 }
 
 std::uint32_t FontCollection::readBigEndian(std::span<const std::uint8_t> bytes, std::size_t offset, std::size_t width) {

@@ -49,7 +49,7 @@ class RichTextLua final {
     [[nodiscard]] static const std::shared_ptr<text::RichTextRegistry>& getRegistry(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 17> kOptionFields{"family", "size", "bold", "italic", "color", "maxWidth", "balance", "align", "direction", "language", "lineSpacing", "scale", "revealSpeed", "underlineLinks", "ligatures", "code", "fonts"};
+    static constexpr std::array<std::string_view, 18> kOptionFields{"family", "size", "bold", "italic", "color", "maxWidth", "balance", "align", "direction", "language", "lineSpacing", "lineHeight", "scale", "revealSpeed", "underlineLinks", "ligatures", "code", "fonts"};
     static constexpr std::array<std::string_view, 3> kIconFields{"source", "width", "height"};
     static constexpr std::array<std::string_view, 2> kDrawFields{"scale", "tint"};
     static constexpr std::array<std::string_view, 1> kTintFields{"tint"};

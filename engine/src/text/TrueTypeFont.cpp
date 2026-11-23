@@ -208,8 +208,14 @@ const Font::Glyph& TrueTypeFont::getGlyph(std::uint32_t index) {
     return glyphs.emplace(index, rasterize(index)).first->second;
 }
 
+// The ink of a glyph is the box of its outline, or of what the layers of a color glyph paint, which HarfBuzz measures with y pointing up.
 Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
     Glyph glyph{.advance = static_cast<float>(face->file.getAdvance(index)) * face->scale};
+    if (const std::optional<hb_glyph_extents_t> extents = face->file.getExtents(index)) {
+        const float scale = face->scale;
+        glyph.ink = {static_cast<float>(extents->x_bearing) * scale, static_cast<float>(-extents->y_bearing) * scale, static_cast<float>(extents->width) * scale, static_cast<float>(-extents->height) * scale};
+    }
+
     if (isColor(index)) {
         return paintColors(glyph, index);
     }

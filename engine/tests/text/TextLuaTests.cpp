@@ -91,6 +91,7 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("return tostring(font.distanceField) .. ' ' .. font.nativeSize .. ' ' .. font.pageCount .. ' ' .. tostring(font:hasGlyph('A')) .. ' ' .. tostring(font:hasGlyph(0xE000))"), "true 48.0 1 true false");
     EXPECT_EQ(lua("local glyph = font:glyph('A') return tostring(glyph.visible) .. ' ' .. tostring(glyph.advance > 0) .. ' ' .. glyph.page .. ' ' .. tostring(font:page(1).width >= 512)"), "true true 1 true");
     EXPECT_EQ(lua("local shaped = font:shape('AV', {size = 96}) return font:toDistance(4, 32) == 2 * font:toDistance(2, 32) and #shaped == 2 and shaped[2].cluster == 2 and shaped[1].advance <= font:glyph('A').advance * 2"), "true");
+    EXPECT_EQ(lua("local ink = font:glyph('g').ink local space = font:glyph(' ').ink return tostring(ink.y < 0 and ink.y + ink.height > 0 and ink.width > 0) .. ' ' .. tostring(space:empty())"), "true true");
     EXPECT_NE(lua("font:glyph('AB')").find("expected one character or a code point"), std::string::npos);
     EXPECT_NE(lua("font:hasGlyph(-2147483648)").find("expected a code point from 0 to 0x10FFFF"), std::string::npos);
     EXPECT_NE(lua("font:glyph(0x110000)").find("expected a code point from 0 to 0x10FFFF"), std::string::npos);
@@ -159,6 +160,15 @@ TEST_F(TextLuaTest, EndsParagraphsAtEverySeparatorAndHidesControlCharacters) {
 
     // A tab draws no missing glyph box and takes no room.
     EXPECT_EQ(lua(R"(local laid = font:layout('a\tb', {size = 20}) return #laid.quads .. ' ' .. tostring(math.abs(laid.size.x - font:measure('a', {size = 20}) - font:measure('b', {size = 20})) < 0.01))"), "2 true");
+}
+
+// The style option "lineHeight" and the rich text option and property of the same name give each line its own height or every line the height of the tallest, and they take only the names of those two ways.
+TEST_F(TextLuaTest, GivesLinesTheirOwnHeightOrTheTallest) {
+    EXPECT_EQ(lua("local natural = graphics2d.newRichText('a\\n[size=64]B[/size]\\nc', {size = 20}) local uniform = graphics2d.newRichText('a\\n[size=64]B[/size]\\nc', {size = 20, lineHeight = 'uniform'}) local _, naturalHeight = natural:size() local _, uniformHeight = uniform:size() local before = natural.lineHeight natural.lineHeight = 'uniform' local _, changedHeight = natural:size() return tostring(uniformHeight > naturalHeight) .. ' ' .. before .. ' ' .. uniform.lineHeight .. ' ' .. tostring(changedHeight == uniformHeight)"), "true natural uniform true");
+    EXPECT_EQ(lua("local _, natural = graphics2d.measureText(nil, 'a\\nb', {size = 20}) local _, uniform = graphics2d.measureText(nil, 'a\\nb', {size = 20, lineHeight = 'uniform'}) return tostring(natural == uniform)"), "true");
+    EXPECT_NE(lua("font:layout('x', {lineHeight = 'tall'})").find("unknown value 'tall'"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x', {lineHeight = 'tall'})").find("unknown value 'tall'"), std::string::npos);
+    EXPECT_NE(lua("graphics2d.newRichText('x').lineHeight = 'tall'").find("unknown value 'tall'"), std::string::npos);
 }
 
 // The anchor is the fraction of the block that lands on the position, and the line spacing spreads the lines apart.
