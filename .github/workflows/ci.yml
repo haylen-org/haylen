@@ -222,7 +222,7 @@ jobs:
           dependencies: tests-${{ matrix.system }}
           packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
           save-sources: "true"
-          save-tools: shader-compiler
+          save-tools: sccache shader-compiler
       - name: Install the Direct3D debug layer
         if: runner.os == 'Windows'
         shell: pwsh

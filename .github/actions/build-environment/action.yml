@@ -9,7 +9,7 @@ inputs:
     description: Whether the job saves the sources of the dependencies that its builds fetch, which one job of each system does with the action "caches" at its end while the others read them.
     default: "false"
   save-tools:
-    description: The tools whose caches the job saves, from "shader-compiler", "xcodegen", "emscripten" and "gradle", one job for each tool and system, which saves them with the action "caches" at its end while the other jobs that use them only read them.
+    description: The tools whose caches the job saves, from "sccache", "shader-compiler", "xcodegen", "emscripten" and "gradle", one job for each tool and system, which saves them with the action "caches" at its end while the other jobs that use them only read them.
     default: ""
   gradle:
     description: The name of the Android dependencies that the Gradle builds of the job download, such as "android-sdk", for a job that builds with Gradle. The job restores them with the pinned Gradle before it builds and, in the runs of the default branch, saves them with the action "caches" at its end when the bucket lacks them.
@@ -28,7 +28,7 @@ inputs:
     default: "false"
   sccache-version:
     description: The release of sccache that compiles every source of the job, its newest one.
-    default: "v0.19.0"
+    default: "v0.20.0"
   xcode:
     description: The exact version of Xcode that the jobs of macOS build with, the newest one of their image.
     default: "27.2"
@@ -152,6 +152,7 @@ runs:
           fi
           bash "$caches" restore "$packages" "$(saving true)" .cache/packages
         fi
+        bash "$caches" restore "tools/sccache-$system-${{ inputs.sccache-version }}" "$(saving "${{ contains(inputs.save-tools, 'sccache') }}")" ".tools/sccache-*"
         bash "$caches" restore "tools/shader-compiler-$system-${{ hashFiles('engine/cmake/haylen-shader-compiler.json', 'engine/cmake/haylen-shader-compiler.cmake') }}" "$(saving "${{ contains(inputs.save-tools, 'shader-compiler') }}")" ".tools/haylen-shaderc-*"
         if [ "${{ inputs.xcodegen }}" = "true" ]; then
           bash "$caches" restore "tools/xcodegen-$system-${{ hashFiles('tools/haylen/toolchains/xcodegen.py') }}" "$(saving "${{ contains(inputs.save-tools, 'xcodegen') }}")" ".tools/xcodegen-*"
@@ -171,12 +172,37 @@ runs:
       shell: bash
       run: xcrun -sdk macosx metal --version > /dev/null 2>&1 || xcodebuild -downloadComponent MetalToolchain
 
-    # The workflow hands sccache the bucket and its token from the secrets of the repository, which a pull request from a fork does not get, so such a run compiles without the cache.
+    # The workflow hands sccache the bucket and its token from the secrets of the repository, which a pull request from a fork does not get, so such a run compiles without the cache. The release of sccache comes from the tools of the bucket, and only a job whose key the bucket lacks downloads it from GitHub and checks the SHA-256 that this step pins for each system.
     - name: Install sccache
       if: env.SCCACHE_ENDPOINT != ''
-      uses: mozilla-actions/sccache-action@v0.0.11
-      with:
-        version: ${{ inputs.sccache-version }}
+      shell: bash
+      run: |
+        version="${{ inputs.sccache-version }}"
+        case "${{ runner.os }}-${{ runner.arch }}" in
+          Linux-X64) target="x86_64-unknown-linux-musl" sum="c3c5db9cd7e3be12b7bab350d8fe8ae7dcfb7269d5432b269e0dffa1a87c6ed2" ;;
+          macOS-ARM64) target="aarch64-apple-darwin" sum="da98c2072d7b62598ef575dde53f6c16ca2aa4c3fce486943ff965350c179b7b" ;;
+          Windows-X64) target="x86_64-pc-windows-msvc" sum="5d8df6ca7eb421dd0782bd8dc283a2086a5efb2f975a6858e30fd00e763638c2" ;;
+          *)
+            echo "::error::The step \"Install sccache\" pins no release of sccache $version for ${{ runner.os }} on ${{ runner.arch }}. Add the archive of that system with its SHA-256."
+            exit 1
+            ;;
+        esac
+        folder="$PWD/.tools/sccache-$version-$target"
+        if [ ! -d "$folder" ]; then
+          archive="$RUNNER_TEMP/sccache.tar.gz"
+          curl --fail --silent --show-error --location --output "$archive" "https://github.com/mozilla/sccache/releases/download/$version/sccache-$version-$target.tar.gz"
+          echo "$sum  $archive" | shasum -a 256 --check --status
+          mkdir -p .tools
+          tar -xzf "$archive" -C .tools
+          rm "$archive"
+        fi
+        program="$folder/sccache"
+        if [ "$RUNNER_OS" = "Windows" ]; then
+          folder=$(cygpath --windows "$folder")
+          program=$(cygpath --windows "$program.exe")
+        fi
+        echo "$folder" >> "$GITHUB_PATH"
+        echo "SCCACHE_PATH=$program" >> "$GITHUB_ENV"
 
     # CMake runs every compile of C, C++, Objective-C and Objective-C++ through sccache, and so does Gradle through the CMake of Android. The compiler of Emscripten is a script that stays the same from one version to the next, so a job that compiles with Emscripten puts its version into the hash of every object, through the variable that sccache offers for it.
     - name: Compile through sccache
