@@ -113,7 +113,10 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         const float view = horizontal ? box.width : box.height;
         const ImVec2 start = ImGui::GetCursorScreenPos();
         const float shown = horizontal ? ImGui::GetScrollX() : ImGui::GetScrollY();
-        scroller.setRange(std::max(0.0F, (horizontal ? size.x : size.y) - view), view);
+
+        // The part of the area that the on-screen keyboard covers joins the end of the content, so what lies under the keyboard scrolls above it.
+        const float cover = horizontal ? 0.0F : context.getBackend().getKeyboardCover(box);
+        scroller.setRange(std::max(0.0F, (horizontal ? size.x : size.y + cover) - view), view);
         followWindow();
 
         // The wheel, the finger and an item dragged near an end move the content along the axis, and the bar takes the pointer in its lane before the content does.
@@ -170,7 +173,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
 
             Context::popClip();
             ImGui::SetCursorScreenPos(start);
-            const math::Vec2 end = math::Vec2::max(area.getMax(), origin + box.getSize()) - shift;
+            const math::Vec2 end = math::Vec2::max(area.getMax() + math::Vec2{0.0F, cover}, origin + box.getSize()) - shift;
             ImGui::Dummy({end.x - start.x, end.y - start.y});
 
             // The items of the child are the places snapping settles on, measured from the start of the content.

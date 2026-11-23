@@ -1,7 +1,7 @@
 import XCTest
 
 #if os(iOS)
-// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns and while a finger scrolls the page, and the keyboard follows the field that edits.
+// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns and while a finger scrolls the page, the end of the page scrolls above the keyboard, and the keyboard follows the field that edits.
 class TextInputTests: HaylenUITestCase {
     override func setUp() async throws {
         try await super.setUp()
@@ -97,6 +97,24 @@ class TextInputTests: HaylenUITestCase {
 
         belowField(field).tap()
         waitUntil("The keyboard stays open after a tap outside the field.") { !app.keyboards.firstMatch.exists }
+    }
+
+    // The part of the page that the keyboard covers joins the end of its content, so a finger scrolls the last fields of the page above the keyboard, as native apps do, on every screen size. The drags start on the page where the help line of the field shows before any drag, which the lift keeps above the keyboard and its bar, and away from the text area, which scrolls its own lines.
+    func testTheEndOfThePageScrollsAboveTheKeyboard() throws {
+        startTyping()
+        let keyboard = app.keyboards.firstMatch
+        let field = element("https://haylen.dev")
+        let start = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: field.frame.midX, dy: field.frame.maxY + 14))
+        for _ in 0..<4 {
+            start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -240)))
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(1.5))
+        XCTAssertTrue(keyboard.exists, "The keyboard closes when a finger scrolls the page.")
+        for label in ["Password", "Filter recipes"] {
+            let last = element(label)
+            XCTAssertLessThanOrEqual(last.frame.maxY, keyboard.frame.minY + 1, "The field \"\(label)\" stays under the keyboard at \(last.frame).")
+        }
+        try saveScreenshot("end-above-keyboard")
     }
 
     // The plain keyboard of the test "Text input" gives the native input to the message field and takes it back once the field sends, and closes when the test hides it as it exits.

@@ -219,6 +219,9 @@ class Collection final : public Component {
     // Returns the room the cells give up across the axis to the lane of the scroll bar while it shows, the part of the lane that the padding on the side of the bar leaves.
     [[nodiscard]] float getLaneReserve(const Context& context) const;
     [[nodiscard]] float getMainLength() const noexcept;
+
+    // How far the content scrolls, with the part of a vertical collection that the on-screen keyboard covers joined to its end.
+    [[nodiscard]] double getScrollMaximum() const noexcept;
     [[nodiscard]] double getBase() const noexcept;
     [[nodiscard]] double getItemStart(std::size_t index) const;
     [[nodiscard]] double getViewStart() const noexcept;
@@ -371,6 +374,7 @@ class Collection final : public Component {
     bool drawing = false;
 
     math::Rect viewport;
+    float keyboardCover = 0.0F;
     float crossLength = -1.0F;
     float gapLength = 0.0F;
     std::size_t laneCount = 1;

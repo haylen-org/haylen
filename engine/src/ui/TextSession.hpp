@@ -36,6 +36,11 @@ class TextSession final {
         keyboard = frame;
     }
 
+    // The area of the screen that the on-screen keyboard covers in UI units, empty while it is hidden.
+    [[nodiscard]] const math::Rect& getKeyboardFrame() const noexcept {
+        return keyboard;
+    }
+
     // Starts a frame over the visible area, whose origin is the origin of UI coordinates, at the design units one UI unit spans, and moves the UI toward the offset that keeps the focused field above the keyboard. The UI holds its place while `pressed`, so a press that ends the editing, such as a tap on a send button next to the field, releases over the control it pressed.
     void beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds, bool pointerDown);
 

@@ -331,7 +331,7 @@ void Collection::arrangeChange(const CollectionSource::Change& change) {
 
     layout->arrange({.count = count, .crossLength = std::max(0.0F, crossLength), .gap = gapLength, .lanes = laneCount, .spans = spans}, first);
     sizes->arrangeFrom(*layout, gapLength, layout->getLine(std::min(first, count - 1)));
-    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+    scroller->setRange(getScrollMaximum(), getMainLength());
 }
 
 bool Collection::isStickyItem(std::size_t index) const {
@@ -561,6 +561,10 @@ float Collection::getMainLength() const noexcept {
     return isVertical() ? viewport.height : viewport.width;
 }
 
+double Collection::getScrollMaximum() const noexcept {
+    return getContentLength() + keyboardCover - getMainLength();
+}
+
 std::size_t Collection::getCount() const {
     return sizes->size();
 }
@@ -676,7 +680,7 @@ void Collection::arrange() {
     layout->arrange({.count = count, .crossLength = cross, .gap = gapLength, .lanes = laneCount, .spans = spans}, 0);
     sizes->arrange(*layout, gapLength);
     layoutDirty = false;
-    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+    scroller->setRange(getScrollMaximum(), getMainLength());
 }
 
 std::size_t Collection::findFirstFrom(double offset) const {
@@ -790,7 +794,7 @@ void Collection::restoreHold() {
     }
 
     const Hold kept = *std::exchange(hold, std::nullopt);
-    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+    scroller->setRange(getScrollMaximum(), getMainLength());
     if (kept.end) {
         scroller->shift(scroller->getMaximum() - scroller->getOffset());
     } else if (kept.index < sizes->size()) {
@@ -1058,10 +1062,11 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     drawing = true;
     delta = context.getDeltaSeconds();
     viewport = bounds;
+    keyboardCover = isVertical() ? context.getBackend().getKeyboardCover(bounds) : 0.0F;
     rightToLeft = context.isRightToLeft();
     context.getFocus().beginCollection(bounds, !isVertical(), rememberFocus ? rememberedTarget : 0);
     updateGeometry(context, (isVertical() ? bounds.width - padding.getHorizontal() : bounds.height - padding.getVertical()) - getLaneReserve(context));
-    scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+    scroller->setRange(getScrollMaximum(), getMainLength());
 
     if (getCount() == 0) {
         laneReserved = false;
@@ -1989,7 +1994,7 @@ void Collection::refreshRange() {
 
     if (renderedFrame > 0) {
         ensureArranged();
-        scroller->setRange(getContentLength() - getMainLength(), getMainLength());
+        scroller->setRange(getScrollMaximum(), getMainLength());
     }
 }
 

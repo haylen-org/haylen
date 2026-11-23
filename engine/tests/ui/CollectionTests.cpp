@@ -156,6 +156,26 @@ TEST_F(CollectionTest, ScrollsByThePointsOfATrackpadAndTheLinesOfAWheel) {
     EXPECT_NEAR(list.getScrollOffset(), 109.0, 0.5);
 }
 
+// The part of a list that the keyboard covers joins the end of its content while the keyboard shows, so its last items scroll above the keyboard, and the list goes back within its content once the keyboard hides.
+TEST_F(CollectionTest, ScrollsTheItemsThatTheKeyboardCoversAboveIt) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    show(list, makeItems(20));
+    const float top = list.getBounds().y + 300.0F;
+    getEngine().handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, top, 1920.0F, 1080.0F - top}});
+    frames(2);
+
+    pointer(platform::Event::Type::MouseMove, list.getBounds().getCenter());
+    frames();
+    wheel(list.getBounds().getCenter(), -5000.0F, 0.0F, true);
+    frames(60);
+    EXPECT_NEAR(getItemBounds(list, 19).getBottom(), top, 0.5) << "The last item stays under the keyboard.";
+
+    getEngine().handleEvent({.type = platform::Event::Type::KeyboardChanged});
+    frames(120);
+    EXPECT_NEAR(getItemBounds(list, 19).getBottom(), list.getBounds().getBottom(), 0.5);
+}
+
 TEST_F(CollectionTest, RecyclesCellsOfTheRightType) {
     auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "poolSize": 2, "types": {
         "header": {"template": {"kind": "sectionTitle", "part": "heading", "bind": {"text": "title"}}},

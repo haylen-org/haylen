@@ -372,6 +372,24 @@ float Backend::getKeyboardOffset() const noexcept {
     return textSession->getKeyboardOffset();
 }
 
+float Backend::getKeyboardCover(const math::Rect& area) const noexcept {
+    const math::Rect& keyboard = textSession->getKeyboardFrame();
+    if (keyboard.isEmpty() || keyboard.getRight() <= area.x || keyboard.x >= area.getRight()) {
+        return 0.0F;
+    }
+
+    return std::clamp(area.getBottom() - keyboard.getTop(), 0.0F, area.height);
+}
+
+std::optional<float> Backend::getKeyboardTop() const noexcept {
+    const math::Rect& keyboard = textSession->getKeyboardFrame();
+    if (keyboard.isEmpty()) {
+        return std::nullopt;
+    }
+
+    return keyboard.getTop();
+}
+
 math::Rect Backend::getLiftedDisplayRect() const noexcept {
     return getDisplayRect().translated({0.0F, -getKeyboardOffset()});
 }

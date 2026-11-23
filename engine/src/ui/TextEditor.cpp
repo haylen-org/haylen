@@ -58,17 +58,18 @@ std::size_t TextEditor::toPosition(std::string_view text, int bytes) {
     return core::Utf8::countCodePoints(text.substr(0, clamped));
 }
 
-// The lines of an editor of many lines wrap at the width of its area, so its text only scrolls down, while a field of one line scrolls to the left for left-to-right text and to the right for right-to-left text, and never further than its overflow.
-void TextEditor::follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline) {
+// The lines of an editor of many lines wrap at the width of its area, so its text only scrolls down and keeps the caret above the part `cover` of the area that the on-screen keyboard covers, while a field of one line scrolls to the left for left-to-right text and to the right for right-to-left text, and never further than its overflow.
+void TextEditor::follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, float cover, bool rightToLeft, bool multiline) {
     const math::Vec2 size = field.getLayout().size;
     if (multiline) {
+        const float shownBottom = area.getBottom() - cover;
         if (caret.y < area.y) {
             scroll.y -= area.y - caret.y;
-        } else if (caret.getBottom() > area.getBottom()) {
-            scroll.y += caret.getBottom() - area.getBottom();
+        } else if (caret.getBottom() > shownBottom) {
+            scroll.y += caret.getBottom() - shownBottom;
         }
 
-        scroll = {0.0F, std::clamp(scroll.y, 0.0F, std::max(0.0F, size.y - area.height))};
+        scroll = {0.0F, std::clamp(scroll.y, 0.0F, std::max(0.0F, size.y + cover - area.height))};
         return;
     }
 
@@ -243,23 +244,27 @@ TextEditor::Input TextEditor::edit(Context& context, std::string& value, const O
 math::Vec2 TextEditor::scrollText(const Editing& editing, const Options& options, const Geometry& geometry, const TextFieldLayout* field, std::optional<std::size_t> caret, ImGuiID id, float overflow, bool barShown) {
     Context& context = *editing.context;
     math::Vec2 scroll = editing.scroll;
+
+    // The lines that the on-screen keyboard covers scroll above it, as the content of every area that scrolls does.
+    const float cover = editing.multiline ? context.getBackend().getKeyboardCover(geometry.area) : 0.0F;
+    const float reach = overflow + cover;
     if (editing.multiline) {
         const bool hovered = ImGui::IsMouseHoveringRect(ImGuiConverter::toImVec2(editing.bounds.getMin()), ImGuiConverter::toImVec2(editing.bounds.getMax()));
-        scroll.y = static_cast<float>(options.scrolling->lines.update(context, id, editing.bounds, overflow, geometry.area.height, hovered));
+        scroll.y = static_cast<float>(options.scrolling->lines.update(context, id, editing.bounds, reach, geometry.area.height, hovered));
     }
 
     const float wheeled = scroll.y;
     if (field != nullptr && caret) {
         const math::Vec2 origin = getOrigin(field->getLayout(), geometry.area, scroll, editing.rightToLeft, editing.multiline, editing.centered);
         const math::Rect shownCaret = field->getCaret(*caret).translated(origin);
-        follow(scroll, *field, shownCaret, geometry.area, editing.rightToLeft, editing.multiline);
+        follow(scroll, *field, shownCaret, geometry.area, cover, editing.rightToLeft, editing.multiline);
     } else if (!editing.multiline) {
         scroll = {};
     }
 
     if (barShown) {
         const float radius = Surfaces::getInnerRadius(context.getMetric(Theme::Metric::ControlRadius), editing.rightToLeft ? geometry.frame.left : geometry.frame.right);
-        if (const std::optional<double> offset = options.scrolling->bar.interact(context, geometry.barArea, false, false, scroll.y, overflow, geometry.area.height, radius)) {
+        if (const std::optional<double> offset = options.scrolling->bar.interact(context, geometry.barArea, false, false, scroll.y, reach, geometry.area.height, radius)) {
             scroll.y = static_cast<float>(*offset);
         }
     }

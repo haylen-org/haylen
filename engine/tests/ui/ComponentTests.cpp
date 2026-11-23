@@ -850,6 +850,22 @@ TEST_F(ComponentTest, KeepsAMousePressWithTheSideThatTookItUntilItIsReleased) {
     EXPECT_FALSE(getEngine().getActions().isDown("attack"));
 }
 
+// The list of a combo opens on the side of its anchor with room above the on-screen keyboard, so none of its items lies under the keyboard.
+TEST_F(ComponentTest, OpensTheListOfAComboAboveTheKeyboard) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 400}, {"kind": "combo", "id": "size", "width": 300, "items": [{"id": "small", "text": "Small"}, {"id": "medium", "text": "Medium"}, {"id": "large", "text": "Large"}]}]})");
+    const math::Rect anchor = getBounds(*gui, "size");
+    const float top = anchor.getBottom() + 40.0F;
+    getEngine().handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, top, 1920.0F, 1080.0F - top}});
+    frames(2);
+    click(anchor.getCenter());
+    frames(2);
+
+    const Backend& backend = getUi().getBackend();
+    const auto drawn = std::ranges::find_if(backend.getTexts(), [&backend](const Backend::Text& text) { return backend.getContent(text) == "Large"; });
+    ASSERT_NE(drawn, backend.getTexts().end()) << "The list of the combo does not open.";
+    EXPECT_LT(drawn->origin.y, anchor.y) << "The list opens below its anchor, under the keyboard.";
+}
+
 // Presses the interface answers itself never reach the actions bound to the same keys and buttons, even while they stay held after the interface lets go, and they reach the actions again once it answers nothing.
 TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
     getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "back", "type": "button", "bindings": ["key:escape", "button:east"]}, {"name": "jump", "type": "button", "bindings": ["key:space", "key:j"]}]})"));

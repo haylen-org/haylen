@@ -257,6 +257,12 @@ class Backend final {
     // How far up the UI moves so the focused text field stays above the on-screen keyboard, in UI units.
     [[nodiscard]] float getKeyboardOffset() const noexcept;
 
+    // How much of the bottom of an area of the screen the on-screen keyboard covers, in UI units, which an area that scrolls adds to the end of its content so the person scrolls what lies under the keyboard above it.
+    [[nodiscard]] float getKeyboardCover(const math::Rect& area) const noexcept;
+
+    // The top of the on-screen keyboard in UI units, or nothing while it is hidden.
+    [[nodiscard]] std::optional<float> getKeyboardTop() const noexcept;
+
     // The display and safe areas moved up by the keyboard offset, where every GUI places what it draws, its anchored nodes, dialogs, windows, toasts and popups alike, so the whole UI moves together and a focused field always moves with it.
     [[nodiscard]] math::Rect getLiftedDisplayRect() const noexcept;
     [[nodiscard]] math::Rect getLiftedSafeRect() const noexcept;

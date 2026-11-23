@@ -230,8 +230,12 @@ void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     const math::Rect column{inner.x, body.y, inner.width, body.height};
     ImGui::PushClipRect(ImGuiConverter::toImVec2(body.getMin()), ImGuiConverter::toImVec2(body.getMax()), true);
+
+    // The part of a body that scrolls that the on-screen keyboard covers joins the end of the content, so what lies under the keyboard scrolls above it, and no fade shows along that empty room.
+    const float cover = overflowing ? context.getBackend().getKeyboardCover(body) : 0.0F;
     const double shown = ImGui::GetScrollY();
-    const bool faded = overflowing && ScrollFade::begin(context, body, false, shown, ImGui::GetScrollMaxY() - shown);
+    const double rest = std::max(0.0, ImGui::GetScrollMaxY() - static_cast<double>(cover) - shown);
+    const bool faded = overflowing && ScrollFade::begin(context, body, false, shown, rest);
     const ImVec2 start = ImGui::GetCursorScreenPos();
     float y = start.y;
     if (const std::string_view titleText = context.getText(title); !titleText.empty()) {
@@ -265,7 +269,7 @@ void Dialog::drawBody(Context& context, const math::Rect& body, const math::Rect
 
     ImGui::PopClipRect();
     ImGui::SetCursorScreenPos(start);
-    ImGui::Dummy({body.width, std::max(0.0F, y - spacing - start.y)});
+    ImGui::Dummy({body.width, std::max(0.0F, y - spacing - start.y) + cover});
 
     if (overflowing) {
         scroll.updateWindow(context);

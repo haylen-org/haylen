@@ -552,6 +552,35 @@ TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
     EXPECT_NE(std::ranges::find(events, std::string("send:click {}")), events.end());
 }
 
+// The part of an area that the keyboard covers joins the end of its content while the keyboard shows, so a finger scrolls what lies under the keyboard above it, and the content goes back once the keyboard hides.
+TEST_F(TextInputTest, ScrollsWhatTheKeyboardCoversAboveIt) {
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 1000, "children": [{"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 700}, {"kind": "button", "id": "last", "text": "Last"}]}]})");
+    const math::Rect resting = test::UiFixture::getComponent(*gui, "last").getBounds();
+    ASSERT_GT(resting.getBottom(), 540.0F);
+    focus(*gui, "name");
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    fixture.frames(30);
+
+    const math::Vec2 start{300.0F, 400.0F};
+    touch(platform::Event::Type::TouchBegan, start);
+    fixture.frames(1);
+    for (int step = 1; step <= 30; ++step) {
+        touch(platform::Event::Type::TouchMoved, start - math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
+        fixture.frames(1);
+    }
+
+    touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 600.0F});
+    fixture.frames(120);
+    const math::Rect scrolled = test::UiFixture::getComponent(*gui, "last").getBounds();
+    EXPECT_LE(scrolled.getBottom(), 540.5F) << "The last button stays under the keyboard.";
+    EXPECT_GE(scrolled.getBottom(), 539.5F) << "The content scrolls past the room that the keyboard covers.";
+    EXPECT_TRUE(getInput().isEditing());
+
+    send({.type = platform::Event::Type::KeyboardChanged});
+    fixture.frames(120);
+    EXPECT_EQ(test::UiFixture::getComponent(*gui, "last").getBounds(), resting);
+}
+
 // A finger edits a field once it taps it, with the caret where it lifted, and a finger that only presses the field edits nothing yet.
 TEST_F(TextInputTest, StartsEditingAFieldWhenAFingerTapsIt) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");

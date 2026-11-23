@@ -124,7 +124,7 @@ class TextEditor final {
     [[nodiscard]] static std::size_t toPosition(std::string_view text, int bytes);
 
     // Moves the scroll so the caret stays inside the area, without leaving room at an end the text does not fill.
-    static void follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline);
+    static void follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, float cover, bool rightToLeft, bool multiline);
 
     // Underlines the text the input method composes in the focused field.
     static void drawComposition(Context& context, const TextSession& session, ImGuiID id, const TextFieldLayout& field, math::Vec2 origin);
