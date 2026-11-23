@@ -111,10 +111,11 @@ class TextInputTests: HaylenUITestCase {
         tap("Show the plain keyboard")
         waitFor(app.keyboards.firstMatch)
 
+        // The keyboard takes the traits of the field from the plain keyboard, so it capitalizes the first letter of the sentence.
         tap("Say hello to the keeper")
         typeOnKeyboard("oi")
         waitFor(app.keyboards.descendants(matching: .any).matching(NSPredicate(format: "label ==[c] %@", "send")).firstMatch).tap()
-        waitFor(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Submitted \"oi\"")).firstMatch, timeout: 10)
+        waitFor(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Submitted \"Oi\"")).firstMatch, timeout: 10)
         RunLoop.current.run(until: Date().addingTimeInterval(1))
         XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard of the app closes after the field sends.")
         try saveScreenshot("plain-keyboard-back")

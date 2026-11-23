@@ -198,6 +198,7 @@ TextEditor::Input TextEditor::edit(Context& context, std::string& value, const O
         storage.SetBool(tapped, false);
     } else if (storage.GetBool(tapped)) {
         editing.tap = math::Vec2{storage.GetFloat(tapX), storage.GetFloat(tapY)};
+        editing.session->noteFocusRequest();
         ImGui::SetKeyboardFocusHere();
     } else if (options.focus) {
         ImGui::SetKeyboardFocusHere();
@@ -214,6 +215,11 @@ TextEditor::Input TextEditor::edit(Context& context, std::string& value, const O
             storage.SetBool(tapped, true);
             storage.SetFloat(tapX, io.MousePos.x);
             storage.SetFloat(tapY, io.MousePos.y);
+        }
+
+        // While another field edits, a finger reaches ImGui only as a tap, so its press and its tap keep the native input of that field until this one takes the focus.
+        if (storage.GetBool(tapped) || ImGui::IsItemActive()) {
+            editing.session->noteFocusRequest();
         }
     } else if (editing.multiline) {
         static_cast<void>(ImGui::InputTextMultiline("##field", &value, ImGuiConverter::toImVec2(geometry.inner.getSize()), flags, &callback, &editing));

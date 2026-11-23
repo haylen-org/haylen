@@ -60,6 +60,11 @@ class TextSession final {
         pressed = true;
     }
 
+    // Records that a field waits in this frame for the focus that a tap asked for, so the platform keeps editing the field that had it until the tapped field takes over, as the focus moves between native fields without closing the keyboard.
+    void noteFocusRequest() noexcept {
+        focusRequested = true;
+    }
+
     // Records where the focused field shows its caret after its `InputText` call.
     void setCaret(const math::Rect& caret) noexcept {
         caretRect = caret;
@@ -138,6 +143,7 @@ class TextSession final {
     std::optional<platform::TextInput::Action> action;
     ImGuiID active = 0;
     bool activeThisFrame = false;
+    bool focusRequested = false;
     bool pressed = false;
     std::uint64_t revision = 0;
     std::string text;

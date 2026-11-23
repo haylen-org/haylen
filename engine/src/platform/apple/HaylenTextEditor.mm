@@ -2,6 +2,7 @@
 
 #if !TARGET_OS_OSX
 #include <algorithm>
+#include <array>
 #include <cstdint>
 
 #include "haylen/platform/Event.hpp"
@@ -25,9 +26,9 @@ using haylen::platform::TextInput;
 #endif
 
 @implementation HaylenTextEditor {
-    HaylenTextField* textField;
+    std::array<HaylenTextField*, 2> textFields;
 #if !TARGET_OS_TV
-    HaylenTextView* textView;
+    std::array<HaylenTextView*, 2> textViews;
 #endif
     UIView<UITextInput>* current;
     std::uint64_t field;
@@ -40,22 +41,60 @@ using haylen::platform::TextInput;
 
 - (instancetype)init {
     self = [super init];
-    textField = [[HaylenTextField alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 1.0)];
-    textField.editor = self;
-    textField.delegate = self;
-    // The editors stay hidden rather than transparent, since the system draws the caret, the selection, the bubbles of autocorrection and the inline predictions of a field in views of its own, which only a hidden field keeps from the screen, and the engine draws the field with its composition itself.
-    textField.hidden = YES;
-    [textField addTarget:self action:@selector(textChanged:) forControlEvents:UIControlEventEditingChanged];
+    for (HaylenTextField* __strong& view : textFields) {
+        view = [self makeTextField];
+    }
 #if !TARGET_OS_TV
-    textView = [[HaylenTextView alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 1.0) textContainer:nil];
-    textView.editor = self;
-    textView.delegate = self;
-    textView.hidden = YES;
+    for (HaylenTextView* __strong& view : textViews) {
+        view = [self makeTextView];
+    }
+
     NSNotificationCenter* center = NSNotificationCenter.defaultCenter;
     [center addObserver:self selector:@selector(keyboardChanged:) name:UIKeyboardWillChangeFrameNotification object:nil];
     [center addObserver:self selector:@selector(keyboardChanged:) name:UIKeyboardWillHideNotification object:nil];
 #endif
     return self;
+}
+
+// The editors stay hidden rather than transparent, since the system draws the caret, the selection, the bubbles of autocorrection and the inline predictions of a field in views of its own, which only a hidden field keeps from the screen, and the engine draws the field with its composition itself.
+- (HaylenTextField*)makeTextField {
+    HaylenTextField* view = [[HaylenTextField alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 1.0)];
+    view.editor = self;
+    view.delegate = self;
+    view.hidden = YES;
+    [view addTarget:self action:@selector(textChanged:) forControlEvents:UIControlEventEditingChanged];
+    return view;
+}
+
+#if !TARGET_OS_TV
+- (HaylenTextView*)makeTextView {
+    HaylenTextView* view = [[HaylenTextView alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 1.0) textContainer:nil];
+    view.editor = self;
+    view.delegate = self;
+    view.hidden = YES;
+    return view;
+}
+#endif
+
+// The view of the kind of the field: the one that edits it, or for a field that takes over from the one that edits, the view of its kind that does not edit.
+- (UIView<UITextInput>*)viewFor:(const TextInput::Field&)value {
+#if TARGET_OS_TV
+    UIView<UITextInput>* first = textFields[0];
+    UIView<UITextInput>* second = textFields[1];
+#else
+    const bool multiline = value.options.keyboard == TextInput::Keyboard::Multiline;
+    UIView<UITextInput>* first = multiline ? textViews[0] : textFields[0];
+    UIView<UITextInput>* second = multiline ? textViews[1] : textFields[1];
+#endif
+    if (current != first && current != second) {
+        return first;
+    }
+
+    if (!editing || value.id == field) {
+        return current;
+    }
+
+    return current == first ? second : first;
 }
 
 + (UIKeyboardType)keyboardType:(TextInput::Keyboard)keyboard {
@@ -156,17 +195,8 @@ using haylen::platform::TextInput;
 
 - (void)edit:(const TextInput::Field&)value {
     UIView* host = ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).rootViewController.view;
-#if TARGET_OS_TV
-    UIView<UITextInput>* view = textField;
-#else
-    UIView<UITextInput>* view = value.options.keyboard == TextInput::Keyboard::Multiline ? textView : textField;
-#endif
-    if (view != current && current.isFirstResponder) {
-        finishing = YES;
-        [current resignFirstResponder];
-        finishing = NO;
-    }
-
+    UIView<UITextInput>* view = [self viewFor:value];
+    const BOOL handingOver = view != current && current.isFirstResponder;
     current = view;
 
     if (view.superview != host) {
@@ -184,12 +214,12 @@ using haylen::platform::TextInput;
         applying = YES;
         NSString* text = AppleStrings::toNSString(value.text);
 #if TARGET_OS_TV
-        textField.text = text;
+        static_cast<UITextField*>(view).text = text;
 #else
-        if (view == textView) {
-            textView.text = text;
+        if ([view isKindOfClass:UITextView.class]) {
+            static_cast<UITextView*>(view).text = text;
         } else {
-            textField.text = text;
+            static_cast<UITextField*>(view).text = text;
         }
 #endif
         UITextPosition* start = [view positionFromPosition:view.beginningOfDocument offset:static_cast<NSInteger>(AppleTextInput::toUtf16(text, value.selectionStart))];
@@ -203,8 +233,11 @@ using haylen::platform::TextInput;
 
     editing = YES;
 
+    // A view that takes over from the other one becomes the first responder directly, which ends the editing of the other without a dismissal and without closing the keyboard, as the focus moves between native fields.
     if (!view.isFirstResponder) {
+        finishing = handingOver;
         [view becomeFirstResponder];
+        finishing = NO;
     } else if (reconfigured) {
         [view reloadInputViews];
     }

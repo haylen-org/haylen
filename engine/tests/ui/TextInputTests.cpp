@@ -702,6 +702,27 @@ TEST_F(TextInputTest, EndsEditingWhenAFingerThatPressedOutsideTheFieldLiftsWithi
     EXPECT_NE(std::ranges::find(events, std::string("save:click {}")), events.end());
 }
 
+// A tap on another field moves the editing to it while the native field keeps editing, so the platform never closes its keyboard in between, as the focus moves between native fields.
+TEST_F(TextInputTest, KeepsTheNativeInputWhenAFingerTapsAnotherField) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textField", "id": "crew", "keyboard": "number"}]})");
+    const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
+    ASSERT_EQ(fields.size(), 2U);
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+
+    const math::Vec2 crew = test::UiFixture::getComponent(*gui, "crew").getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, crew);
+    fixture.frames(1);
+    touch(platform::Event::Type::TouchEnded, crew);
+    for (int frame = 0; frame < 6; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing()) << "The native input ends in frame " << frame << " after the tap.";
+    }
+
+    EXPECT_EQ(getPublished().id, fields[1].id);
+    EXPECT_EQ(getPublished().options.keyboard, TextInput::Keyboard::Number);
+}
+
 // A screen that turns lays the GUI out again around the field being edited, which keeps its text, its focus and the keyboard.
 TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Name"}, {"kind": "textField", "id": "name", "align": "stretch"}]})");

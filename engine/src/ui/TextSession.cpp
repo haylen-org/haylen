@@ -79,6 +79,7 @@ void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiSc
     scale = uiScale;
     fields.clear();
     activeThisFrame = false;
+    focusRequested = false;
 
     if (pointerDown) {
         return;
@@ -192,11 +193,12 @@ void TextSession::publish(bool plainKeyboard) {
         compositionStart = -1;
         compositionEnd = -1;
 
+        // A tapped field that waits for the focus takes over the native input from the field that edited, so the platform keeps editing meanwhile and never closes its keyboard in between.
         const bool keyboardPublished = published && published->id == platform::TextInput::kKeyboardField;
         if (plainKeyboard && !keyboardPublished) {
             published = platform::TextInput::getKeyboardField();
             input.edit(*published);
-        } else if (!plainKeyboard && published) {
+        } else if (!plainKeyboard && published && !focusRequested) {
             published.reset();
             input.finish();
         }
