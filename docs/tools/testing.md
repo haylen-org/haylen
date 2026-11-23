@@ -505,7 +505,7 @@ class MenuTests : HaylenUiTestCase() {
 }
 ```
 
-A test class starts the app somewhere through its launch arguments, which the app reads with [`haylen.launchArguments`](../lua-api/haylen.md#haylenlauncharguments). The test project opens the test that `--test <code>` names, so its UI tests start on the test they check.
+A test class starts the app somewhere through its launch arguments, which the app reads with [`haylen.launchArguments`](../lua-api/haylen.md#haylenlauncharguments). The test project opens the test that `--test <code>` names, so its UI tests start on the test they check. A test that opens another test through the search of the menu calls `openFoundTest`, which ends the editing with a tap on the caption of the menu and waits until the keyboard is gone before it taps the result, since XCUITest never sees the animations of the keyboard go idle when a field takes the keyboard back while it is still hiding.
 
 ### Apple platforms
 

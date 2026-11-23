@@ -6,10 +6,10 @@ class TextInputTests: HaylenUITestCase {
     override func setUp() async throws {
         try await super.setUp()
         // The search of the menu finds the test, and typing its words takes the keyboard too.
-        waitFor(element(matching: "Search by code or title.*")).tap()
+        waitFor(menuSearch).tap()
         waitFor(app.keyboards.firstMatch)
         typeOnKeyboard("text fields")
-        waitFor(element(matching: "GUI-005\\s+Text fields.*")).tap()
+        openFoundTest("GUI-005\\s+Text fields.*")
         waitFor(element("https://haylen.dev"))
     }
 
@@ -101,13 +101,13 @@ class TextInputTests: HaylenUITestCase {
     // The plain keyboard of the test "Text input" gives the native input to the message field and takes it back once the field sends, and closes when the test hides it as it exits.
     func testThePlainKeyboardOfTheAppComesBackAfterAField() throws {
         tap("Back")
-        waitFor(element(matching: "Search by code or title.*")).tap()
+        waitFor(menuSearch).tap()
         waitFor(app.keyboards.firstMatch)
         for _ in 0..<"text fields".count {
             waitFor(app.keyboards.keys["delete"]).tap()
         }
         typeOnKeyboard("text input")
-        waitFor(element(matching: "GUI-018\\s+Text input.*")).tap()
+        openFoundTest("GUI-018\\s+Text input.*")
         tap("Show the plain keyboard")
         waitFor(app.keyboards.firstMatch)
 

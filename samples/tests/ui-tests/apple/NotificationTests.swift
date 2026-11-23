@@ -34,9 +34,9 @@ class NotificationTests: TestProjectCase {
         app.terminate()
         XCUIDevice.shared.orientation = .landscapeLeft
         tapNotification(containing: Self.notification)
-        waitFor(element(matching: "Search by code or title.*")).tap()
+        waitFor(menuSearch).tap()
         typeOnKeyboard(Self.search)
-        waitFor(element(matching: "PLG-025\\s+Local notifications")).tap()
+        openFoundTest("PLG-025\\s+Local notifications")
         expectCheck(Self.tapName, containing: "received 1 taps")
         try saveScreenshot("notification-launched")
     }
