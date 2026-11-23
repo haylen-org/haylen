@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 
-#include "content/LuaBytecodeAbi.hpp"
 #include "content/crypto/Digest.hpp"
 #include "content/format/Manifest.hpp"
 
@@ -15,7 +14,9 @@ class Compatibility final {
     Digest application;
     std::uint64_t appBuild = 0;
     std::string profile;
-    std::string luaAbi = LuaBytecodeAbi::get();
+
+    // The format of the Lua bytecode that the build loads, which the bootstrap of the build names.
+    std::string luaAbi;
 
     // Throws `ManifestIncompatible` with the reason when the manifest is not for this build of the app, and `LuaBytecodeIncompatible` when its Lua bytecode does not load into it, both naming the manifest and the profile in their details.
     void check(const Manifest& manifest) const;

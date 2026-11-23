@@ -39,7 +39,7 @@ class BootstrapTest : public ::testing::Test {
 
     // The bootstrap that a release build of the test app compiles in.
     [[nodiscard]] Bootstrap makeBootstrap() const {
-        Bootstrap bootstrap{.identifier = std::string(test::ReleaseFixture::kIdentifier), .appBuild = test::ReleaseFixture::kAppBuild, .profile = std::string(test::ReleaseFixture::kProfile)};
+        Bootstrap bootstrap{.identifier = std::string(test::ReleaseFixture::kIdentifier), .appBuild = test::ReleaseFixture::kAppBuild, .profile = std::string(test::ReleaseFixture::kProfile), .luaAbi = release.getCompiler().getAbi()};
         Bootstrap::PublicKey trusted{};
         std::ranges::copy(release.getSigningKey().getVerifyingKey().getBytes(), trusted.begin());
         bootstrap.trustedKeys.push_back(trusted);

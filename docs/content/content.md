@@ -104,11 +104,12 @@ Every other consumer reads a file whole, within `Package::kMaxReadSize`, because
 
 ## Building content
 
-The class `content::ReleaseBuilder` builds the release of an app package into a folder of its own: `app.hmanifest` with the shards of the app domain and `content.hmanifest` with the shards of the content domain.
+The class `content::ReleaseBuilder` builds the release of an app package into a folder of its own: `app.hmanifest` with the shards of the app domain and `content.hmanifest` with the shards of the content domain. It compiles the modules of the scripts with the `content::ModuleCompiler` that it receives, and the format of releases never depends on the language of the scripts, so the Lua layer brings the compiler of Lua modules, `content::LuaCompiler`, which the content tool hands the builder.
 
 ```cpp
+const content::LuaCompiler compiler;
 content::ReleaseBuilder builder(keys, activeKeyId, signingKey, std::make_shared<const content::RecordCache>(cacheFolder));
-content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 14});
+content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), compiler, releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 14, .sections = lua::Application::kSections});
 ```
 
 The app domain takes `haylen.json`, every file under `source` and, for every plugin that `haylen.json` lists, its `plugin.json` and the files under its `source`. The content domain takes every file under `content`. Nothing else of the package folder takes part, so native sources, notes, plugins that the app does not list and the `.DS_Store` files of file managers never reach a release. The builder decides the domain of every file by its folder, so no file of `source` can ever become content. The file `haylen.json` must be valid, as the engine reads it.
@@ -151,13 +152,13 @@ Records hold only ciphertext, so the cache holds no plain content. Sealing is de
 
 ## Lua bytecode
 
-A release ships no Lua text. The class `content::LuaCompiler` compiles every Lua module of the app domain, the files ending in `.lua` under `source` and under `source` of every plugin, with the Lua that the engine itself runs. The catalog marks each one as `LuaBytecode` under the path of its module. So `require('scenes.menu')`, the autoloads and `source/main.lua` resolve exactly as they do in development. A module that does not compile stops the build with the message of Lua, which names the file and the line. Compiling is deterministic, so an unchanged module keeps its chunk and its record from build to build, and a release loads its modules without parsing them.
+A release ships no Lua text. The class `content::LuaCompiler` of the Lua layer, the module compiler that the content tool gives the release builder, compiles every Lua module of the app domain, the files ending in `.lua` under `source` and under `source` of every plugin, with the Lua that the engine itself runs. The catalog marks each one as `LuaBytecode` under the path of its module. So `require('scenes.menu')`, the autoloads and `source/main.lua` resolve exactly as they do in development. A module that does not compile stops the build with the message of Lua, which names the file and the line. Compiling is deterministic, so an unchanged module keeps its chunk and its record from build to build, and a release loads its modules without parsing them.
 
 The bytecode keeps all of its debug information. The chunk name is the package path of the module, such as `source/scenes/menu.lua`, and the lines and the names of local variables stay. So an error in a release reads as in development, as [errors in a release](loading.md#errors-in-a-release) shows. No folder of the machine that built the release enters a chunk, and the bytecode is encrypted in its shard like every other file.
 
 ### The format of the bytecode
 
-Bytecode of the wrong format can crash the Lua virtual machine, so its format is part of the release. The function `LuaBytecodeAbi::get` names the format from the header that Lua writes into every chunk, such as `lua-5.5-f0-i4-x4-l8-n8-le`. The name holds the version of Lua, its format, the sizes of an `int`, an instruction, a Lua integer and a Lua number, and the byte order. The app manifest records it, and a build whose Lua differs refuses the release with `LuaBytecodeIncompatible` before it reads a module. Every target of the engine runs a little-endian Lua with those sizes, the 32-bit ARM of Android TV and the web included. So the bytecode that the content tool compiles on the build machine loads everywhere.
+Bytecode of the wrong format can crash the Lua virtual machine, so its format is part of the release. The function `LuaBytecodeAbi::get` names the format from the header that Lua writes into every chunk, such as `lua-5.5-f0-i4-x4-l8-n8-le`. The name holds the version of Lua, its format, the sizes of an `int`, an instruction, a Lua integer and a Lua number, and the byte order. The compiler names it with `ModuleCompiler::getAbi`, the app manifest records it, and the content tool writes it into the bootstrap of the build, as `Bootstrap::luaAbi`, from its own Lua, which is the Lua of the SDK that the app links. A release or an update whose bytecode has another format is refused with `LuaBytecodeIncompatible` before the build reads a module. Every target of the engine runs a little-endian Lua with those sizes, the 32-bit ARM of Android TV and the web included. So the bytecode that the content tool compiles on the build machine loads everywhere.
 
 ### Who may load bytecode
 
@@ -226,7 +227,7 @@ The private signing key exists only where content is published. An app carries o
 
 An app opens the release it ships with the bootstrap that its release build compiles in, `content::Bootstrap` in `haylen/content/Bootstrap.hpp`. The bootstrap holds:
 
-- The identifier of the app, its build number and its content profile, which a release must match.
+- The identifier of the app, its build number, its content profile and the format of the Lua bytecode that the build loads, which a release must match.
 - The public keys that sign its manifests.
 - The `content::KeyProvider` of its content keys.
 
@@ -428,7 +429,7 @@ The envelope before the catalog fields is the context of the manifest, the addit
 
 ## Compatibility and generations
 
-A `content::Compatibility` holds what the running build accepts: the digest of its app, its build number, its profile and the ABI of its Lua. A manifest of another app, one made for another profile, or one whose range of app builds leaves the build out raises `ManifestIncompatible` with the reason. A manifest whose Lua bytecode has another ABI raises `LuaBytecodeIncompatible`. The versions of the shard and catalog formats are checked when a manifest is read, and unknown versions raise `UnsupportedVersion`.
+A `content::Compatibility` holds what the running build accepts: the digest of its app, its build number, its profile and the ABI of its Lua, which whoever opens or builds the release gives it, such as the bootstrap of the build. A manifest of another app, one made for another profile, or one whose range of app builds leaves the build out raises `ManifestIncompatible` with the reason. A manifest whose Lua bytecode has another ABI raises `LuaBytecodeIncompatible`. The versions of the shard and catalog formats are checked when a manifest is read, and unknown versions raise `UnsupportedVersion`.
 
 The publisher of a channel raises the generation with every release. The function `ChannelDescriptor::offersUpdate` tells whether a descriptor offers content newer than the generation and the manifest that the app accepted last. It raises `ManifestRollbackRejected` for an older generation, or for the same generation with another manifest, so a server that replays an old descriptor cannot roll an app back. A rollback is published as a new generation that names the earlier content. The function `ChannelDescriptor::describes` tells whether a manifest is the content manifest that a descriptor names for its app, channel and generation.
 

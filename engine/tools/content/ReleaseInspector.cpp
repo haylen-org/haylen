@@ -95,7 +95,7 @@ ReleaseInspector::Verification ReleaseInspector::verify(const std::filesystem::p
 
     // Reading every file whole checks every chunk, with the build range and profile the manifests themselves name.
     const Manifest::Envelope& envelope = app.getEnvelope();
-    const Compatibility compatibility{.application = envelope.application, .appBuild = envelope.minimumAppBuild, .profile = envelope.profile};
+    const Compatibility compatibility{.application = envelope.application, .appBuild = envelope.minimumAppBuild, .profile = envelope.profile, .luaAbi = envelope.luaAbi};
     const std::unique_ptr<io::Package> package = ReleasePackage::open(io::Package::openDirectory(folder), keys, trusted, compatibility);
     std::vector<std::uint8_t> buffer(ChunkRecord::kMaximumPlainSize);
     for (const std::string& path : package->list("")) {

@@ -33,10 +33,10 @@ class LuaCompilerTest : public ::testing::Test {
 };
 
 TEST_F(LuaCompilerTest, CompilesModulesIntoBytecodeThatKeepsTheirNamesAndLines) {
-    const std::vector<std::uint8_t> chunk = LuaCompiler::compile("local menu = {}\nfunction menu.open(value)\n    return value.title\nend\nreturn menu", "source/scenes/menu.lua");
+    const std::vector<std::uint8_t> chunk = LuaCompiler().compile("local menu = {}\nfunction menu.open(value)\n    return value.title\nend\nreturn menu", "source/scenes/menu.lua");
     ASSERT_GT(chunk.size(), 4U);
     EXPECT_EQ(std::string(chunk.begin(), chunk.begin() + 4), LUA_SIGNATURE);
-    EXPECT_EQ(LuaCompiler::compile("local menu = {}\nfunction menu.open(value)\n    return value.title\nend\nreturn menu", "source/scenes/menu.lua"), chunk) << "The same module always compiles to the same bytes.";
+    EXPECT_EQ(LuaCompiler().compile("local menu = {}\nfunction menu.open(value)\n    return value.title\nend\nreturn menu", "source/scenes/menu.lua"), chunk) << "The same module always compiles to the same bytes.";
     EXPECT_NE(load(chunk, "t").find("binary chunk"), std::string::npos) << "Text loading never runs bytecode.";
 
     // The module keeps its package path, its lines and the names of its locals, so its errors read as they do from the source.
@@ -51,7 +51,7 @@ TEST_F(LuaCompilerTest, CompilesModulesIntoBytecodeThatKeepsTheirNamesAndLines) 
 
 TEST_F(LuaCompilerTest, NamesTheModuleAndTheLineOfASyntaxError) {
     try {
-        (void)LuaCompiler::compile("local menu = {}\nlocal = 1\n", "source/scenes/menu.lua");
+        (void)LuaCompiler().compile("local menu = {}\nlocal = 1\n", "source/scenes/menu.lua");
         FAIL() << "A module that does not compile must fail.";
     } catch (const std::invalid_argument& error) {
         EXPECT_NE(std::string(error.what()).find("The Lua module \"source/scenes/menu.lua\" does not compile: source/scenes/menu.lua:2:"), std::string::npos) << error.what();

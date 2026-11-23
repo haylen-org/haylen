@@ -43,7 +43,7 @@ std::unique_ptr<ReleasePackage> ReleasePackage::open(std::shared_ptr<const io::P
         trusted.emplace_back(key);
     }
 
-    const Compatibility compatibility{.application = Manifest::identifyApplication(bootstrap.identifier), .appBuild = bootstrap.appBuild, .profile = bootstrap.profile};
+    const Compatibility compatibility{.application = Manifest::identifyApplication(bootstrap.identifier), .appBuild = bootstrap.appBuild, .profile = bootstrap.profile, .luaAbi = bootstrap.luaAbi};
 
     // The store only holds what downloads can bring again, so a device that refuses it leaves the app with the content it ships.
     std::shared_ptr<LocalStore> store;

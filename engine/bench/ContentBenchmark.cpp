@@ -21,6 +21,7 @@
 
 #include "content/FolderStoreFiles.hpp"
 #include "content/LocalStore.hpp"
+#include "content/LuaCompiler.hpp"
 #include "content/RangePlanner.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/ReleasePackage.hpp"
@@ -70,13 +71,14 @@ class ContentBenchmark final {
         auto keys = std::make_shared<content::KeyRing>();
         const content::Digest keyId = keys->add(makeKey(1));
         auto signing = std::make_shared<const content::SigningKey>(makeKey(101));
+        const content::LuaCompiler compiler;
         const content::ReleaseBuilder builder(keys, keyId, signing);
         const content::Compatibility compatibility{.application = content::Manifest::identifyApplication(kIdentifier), .appBuild = 1, .profile = "desktop"};
         const content::VerifyingKey trusted = signing->getVerifyingKey();
 
         std::printf("%-52s %16s %14s\n", "Measurement", "Result", "Largest alloc");
         const double sourceMegabytes = static_cast<double>(kLargeFile + kTextFile + kSmallFiles * kSmallFile) / kMegabyte;
-        report("Build a release", [&] { (void)builder.build(*io::Package::openDirectory(root / "source"), root / "release", std::nullopt, {.profile = "desktop", .appBuild = 1}); }, sourceMegabytes, "MiB/s");
+        report("Build a release", [&] { (void)builder.build(*io::Package::openDirectory(root / "source"), compiler, root / "release", std::nullopt, {.profile = "desktop", .appBuild = 1}); }, sourceMegabytes, "MiB/s");
 
         std::unique_ptr<content::ReleasePackage> release;
         report("Open the release", [&] { release = content::ReleasePackage::open(io::Package::openDirectory(root / "release"), keys, std::span(&trusted, 1), compatibility); }, 0.0, "ms");
@@ -115,7 +117,7 @@ class ContentBenchmark final {
         // A small update keeps every unchanged chunk of the release it follows.
         writeUpdate(root / "source");
         content::ReleaseBuilder::Result update;
-        report("Build an update that changed two files", [&] { update = builder.build(*io::Package::openDirectory(root / "source"), root / "update", root / "release", {.profile = "desktop", .appBuild = 1}); }, 0.0, "ms");
+        report("Build an update that changed two files", [&] { update = builder.build(*io::Package::openDirectory(root / "source"), compiler, root / "update", root / "release", {.profile = "desktop", .appBuild = 1}); }, 0.0, "ms");
         printValue("Bytes the update stores beyond the release", static_cast<double>(update.content.statistics.storedBytes) / 1024.0, "KiB");
         printValue("Bytes of chunks the update reuses", static_cast<double>(update.content.statistics.reusedBytes) / kMegabyte, "MiB");
 
@@ -124,7 +126,7 @@ class ContentBenchmark final {
 
         // A release of tens of thousands of small files keeps opening and finding files cheap.
         writeManyFiles(root / "many");
-        report("Build a release of 20000 files", [&] { (void)builder.build(*io::Package::openDirectory(root / "many"), root / "many-release", std::nullopt, {.profile = "desktop", .appBuild = 1}); }, 0.0, "ms");
+        report("Build a release of 20000 files", [&] { (void)builder.build(*io::Package::openDirectory(root / "many"), compiler, root / "many-release", std::nullopt, {.profile = "desktop", .appBuild = 1}); }, 0.0, "ms");
         std::unique_ptr<content::ReleasePackage> many;
         report("Open the release of 20000 files", [&] { many = content::ReleasePackage::open(io::Package::openDirectory(root / "many-release"), keys, std::span(&trusted, 1), compatibility); }, 0.0, "ms");
         report("Find and read 20000 files in it", [&] { readManyFiles(*many); }, 0.0, "ms");

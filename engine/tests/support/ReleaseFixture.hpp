@@ -10,6 +10,7 @@
 
 #include "content/Compatibility.hpp"
 #include "content/ContentBuilder.hpp"
+#include "content/LuaCompiler.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
@@ -56,6 +57,11 @@ class ReleaseFixture final {
     [[nodiscard]] const content::ContentBuilder::Statistics& getStatistics(content::Manifest::Domain domain) const;
     [[nodiscard]] content::ReleaseBuilder makeBuilder() const;
 
+    // The compiler of the Lua modules of the releases that the fixture builds.
+    [[nodiscard]] const content::ModuleCompiler& getCompiler() const noexcept {
+        return compiler;
+    }
+
     [[nodiscard]] static std::array<std::uint8_t, 32> makeKey(std::uint8_t first) noexcept;
 
   private:
@@ -63,6 +69,7 @@ class ReleaseFixture final {
     std::shared_ptr<content::KeyRing> keys = std::make_shared<content::KeyRing>();
     content::Digest contentKeyId;
     std::shared_ptr<const content::SigningKey> signingKey;
+    content::LuaCompiler compiler;
     int builds = 0;
     std::filesystem::path folder;
     content::ReleaseBuilder::Result result;

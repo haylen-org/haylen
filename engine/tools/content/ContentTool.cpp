@@ -13,6 +13,7 @@
 
 #include "content/BootstrapWriter.hpp"
 #include "content/ChannelPublisher.hpp"
+#include "content/LuaCompiler.hpp"
 #include "content/RecordCache.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/ReleasePackage.hpp"
@@ -224,9 +225,10 @@ void ContentTool::runBuild(Arguments& arguments) {
         throw std::invalid_argument("The app \"" + config.identifier + "\" cannot build with the keys of \"" + store.getIdentifier() + "\".");
     }
 
+    const LuaCompiler compiler;
     const ReleaseBuilder builder(store.getContentKeys(), store.getActiveKeyId(), store.getSigningKey(), cache ? std::make_shared<const RecordCache>(*cache) : nullptr);
     const std::optional<std::filesystem::path> previous = earlier ? std::optional<std::filesystem::path>(*earlier) : std::nullopt;
-    const ReleaseBuilder::Result result = builder.build(*package, folder, previous, options);
+    const ReleaseBuilder::Result result = builder.build(*package, compiler, folder, previous, options);
     output << "Built the release of \"" << config.identifier << "\" for the profile \"" << options.profile << "\" in \"" << folder.generic_string() << "\".\n";
     printStatistics(Manifest::Domain::App, result.app.statistics);
     printStatistics(Manifest::Domain::Content, result.content.statistics);
@@ -404,7 +406,7 @@ void ContentTool::runBootstrap(Arguments& arguments) {
     arguments.finish();
 
     // An unchanged bootstrap keeps its file as it is, so builds of the app do not compile it again.
-    const std::string source = BootstrapWriter::write(store, profile, build);
+    const std::string source = BootstrapWriter::write(store, profile, build, LuaCompiler().getAbi());
     std::ifstream existing(file, std::ios::binary);
     if (std::string(std::istreambuf_iterator<char>(existing), std::istreambuf_iterator<char>()) != source) {
         existing.close();

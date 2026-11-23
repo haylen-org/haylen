@@ -87,7 +87,7 @@ TEST_F(ReleaseLuaTest, ReportsErrorsWithTheModuleTheLineAndTheLocals) {
 
 TEST_F(ReleaseLuaTest, LoadsBytecodeOnlyFromAnAuthenticatedRelease) {
     // Bytecode in any other package stays a file that loads only as text, so it never runs.
-    const std::vector<std::uint8_t> chunk = LuaCompiler::compile("loaded = 'bytecode'", "source/main.lua");
+    const std::vector<std::uint8_t> chunk = LuaCompiler().compile("loaded = 'bytecode'", "source/main.lua");
     test::EngineFixture fixture({{"source/main.lua", std::string(chunk.begin(), chunk.end())}});
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.engine().getError()->getMessage().find("binary chunk"), std::string::npos) << fixture.engine().getError()->getMessage();

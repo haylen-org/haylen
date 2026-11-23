@@ -321,7 +321,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/HpakPackage.cpp
   src/content/HttpTransport.cpp
   src/content/LocalStore.cpp
-  src/content/LuaBytecodeAbi.cpp
   src/content/PublicationLayout.cpp
   src/content/RangePlanner.cpp
   src/content/ReleasePackage.cpp
@@ -509,6 +508,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/Userdata.cpp
   src/lua/Warnings.cpp
   src/lua/WeakReference.cpp
+  lua/src/content/LuaBytecodeAbi.cpp
+  lua/src/content/LuaCompiler.cpp
   lua/src/content/LuaPackSource.cpp
   lua/src/core/ScriptedTrack.cpp
   lua/src/debug/Breakpoints.cpp
@@ -916,7 +917,7 @@ if(HAYLEN_LINK_TIME_OPTIMIZATION AND CMAKE_BUILD_TYPE STREQUAL "Release")
   endif()
 endif()
 
-# The writing side of the content format, which builds, seals, signs and compiles releases on the machines that make them: the content tool, the tests and the benchmarks link it, while apps link only the reading side of the engine, so it builds only for them.
+# The writing side of the content format, which builds, seals and signs releases on the machines that make them with the modules that a module compiler of the scripts compiles: the content tool, the tests and the benchmarks link it, while apps link only the reading side of the engine, so it builds only for them.
 add_library(haylen-content-writer STATIC EXCLUDE_FROM_ALL
   src/content/ContentBuilder.cpp
   src/content/crypto/SigningKey.cpp
@@ -926,7 +927,6 @@ add_library(haylen-content-writer STATIC EXCLUDE_FROM_ALL
   src/content/format/Compressor.cpp
   src/content/format/ManifestWriter.cpp
   src/content/format/RecordSealer.cpp
-  src/content/LuaCompiler.cpp
   src/content/RecordCache.cpp
   src/content/ReleaseBuilder.cpp
   src/content/ShardWriter.cpp
@@ -1281,7 +1281,7 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
 
   # The content benchmark times building, opening and reading a protected release, catalog lookups, the planning of update ranges and the local store, with the largest allocation of each.
   add_executable(haylen-content-benchmark bench/ContentBenchmark.cpp)
-  target_include_directories(haylen-content-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_include_directories(haylen-content-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src" "${CMAKE_CURRENT_LIST_DIR}/lua/src")
   target_link_libraries(haylen-content-benchmark PRIVATE haylen-content-writer haylen::headless)
   set_target_properties(haylen-content-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-content-benchmark)

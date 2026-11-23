@@ -7,8 +7,6 @@
 #include <system_error>
 #include <utility>
 
-#include "content/LuaBytecodeAbi.hpp"
-#include "content/LuaCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/ManifestWriter.hpp"
 #include "haylen/io/Path.hpp"
@@ -17,7 +15,7 @@ namespace haylen::content {
 
 ReleaseBuilder::ReleaseBuilder(std::shared_ptr<const KeyRing> contentKeys, const Digest& activeKeyId, std::shared_ptr<const SigningKey> signing, std::shared_ptr<const RecordCache> recordCache) : keys(std::move(contentKeys)), activeKey(keys->get(activeKeyId)), signingKey(std::move(signing)), cache(std::move(recordCache)) {}
 
-ReleaseBuilder::Result ReleaseBuilder::build(const io::Package& app, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const {
+ReleaseBuilder::Result ReleaseBuilder::build(const io::Package& app, const ModuleCompiler& compiler, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const {
     core::AppConfig config = core::AppConfig::fromPackage(app, options.sections);
     config.content.expandGroups(app);
 
@@ -27,7 +25,7 @@ ReleaseBuilder::Result ReleaseBuilder::build(const io::Package& app, const std::
 
     const EarlierFiles files = earlier ? findEarlierFiles(*earlier) : EarlierFiles{};
     std::filesystem::create_directories(output);
-    return {.app = buildRelease(app, config, Manifest::Domain::App, output, files, options), .content = buildRelease(app, config, Manifest::Domain::Content, output, files, options)};
+    return {.app = buildRelease(app, compiler, config, Manifest::Domain::App, output, files, options), .content = buildRelease(app, compiler, config, Manifest::Domain::Content, output, files, options)};
 }
 
 ReleaseBuilder::EarlierFiles ReleaseBuilder::findEarlierFiles(const std::filesystem::path& folder) {
@@ -57,7 +55,7 @@ ReleaseBuilder::EarlierFiles ReleaseBuilder::findEarlierFiles(const std::filesys
     return files;
 }
 
-ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const EarlierFiles& earlier, const Options& options) const {
+ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, const ModuleCompiler& compiler, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const EarlierFiles& earlier, const Options& options) const {
     const std::string_view manifestFile = ReleasePackage::getManifestFile(domain);
     std::optional<Manifest> previous;
     if (!earlier.empty()) {
@@ -69,8 +67,8 @@ ReleaseBuilder::Domain ReleaseBuilder::buildRelease(const io::Package& app, cons
     std::vector<ContentBuilder::Input> inputs = listFiles(app, config, domain);
     std::unique_ptr<io::MemoryPackage> compiled;
     if (domain == Manifest::Domain::App) {
-        compiled = compileModules(app, inputs);
-        envelope.luaAbi = LuaBytecodeAbi::get();
+        compiled = compileModules(app, compiler, inputs);
+        envelope.luaAbi = compiler.getAbi();
     }
 
     DomainBuild built = buildDomain(compiled ? *compiled : app, std::move(inputs), std::move(envelope), previous ? &*previous : nullptr, earlier, output, options.shardTarget);
@@ -122,12 +120,12 @@ Manifest ReleaseBuilder::readManifest(const std::filesystem::path& file) const {
     return Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, std::span(&trusted, 1));
 }
 
-std::unique_ptr<io::MemoryPackage> ReleaseBuilder::compileModules(const io::Package& app, std::vector<ContentBuilder::Input>& inputs) {
+std::unique_ptr<io::MemoryPackage> ReleaseBuilder::compileModules(const io::Package& app, const ModuleCompiler& compiler, std::vector<ContentBuilder::Input>& inputs) {
     std::map<std::string, std::vector<std::uint8_t>> files;
     for (ContentBuilder::Input& input : inputs) {
         std::vector<std::uint8_t> bytes = app.read(input.path);
         if (Manifest::isLuaModule(input.path)) {
-            bytes = LuaCompiler::compile({reinterpret_cast<const char*>(bytes.data()), bytes.size()}, input.path);
+            bytes = compiler.compile({reinterpret_cast<const char*>(bytes.data()), bytes.size()}, input.path);
             input.kind = Catalog::Kind::LuaBytecode;
         }
 

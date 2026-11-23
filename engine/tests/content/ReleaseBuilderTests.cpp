@@ -6,14 +6,18 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "content/RecordCache.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/Chunker.hpp"
+#include "haylen/content/Error.hpp"
+#include "haylen/content/ModuleCompiler.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/MemoryReader.hpp"
 #include "support/ReleaseFiles.hpp"
@@ -68,6 +72,17 @@ class ReleaseBuilderTest : public ::testing::Test {
         mutable std::map<std::string, int> opened;
     };
 
+    // A compiler of modules that marks their text, so the release shows which modules it compiled and under which format.
+    class MarkingCompiler final : public ModuleCompiler {
+      public:
+        [[nodiscard]] std::string getAbi() const override {
+            return "marked-1";
+        }
+        [[nodiscard]] std::vector<std::uint8_t> compile(std::string_view source, std::string_view path) const override {
+            return test::TestFiles::bytes("compiled " + std::string(path) + ": " + std::string(source));
+        }
+    };
+
     [[nodiscard]] static Files makeFiles() {
         Files files;
         const auto text = [&files](const std::string& path, const std::string& content) { files.emplace(path, test::TestFiles::bytes(content)); };
@@ -83,7 +98,7 @@ class ReleaseBuilderTest : public ::testing::Test {
     ReleaseBuilder::Result build(const io::Package& source, const std::string& name, const std::string& earlier = "", std::shared_ptr<const RecordCache> cache = nullptr, std::uint64_t shardTarget = ContentBuilder::kDefaultShardTarget) const {
         const ReleaseBuilder builder(fixture.getKeys(), fixture.getContentKey()->getId(), std::make_shared<const SigningKey>(test::ReleaseFixture::makeKey(101)), std::move(cache));
         const std::optional<std::filesystem::path> previous = earlier.empty() ? std::nullopt : std::optional(directory.getPath() / earlier);
-        return builder.build(source, directory.getPath() / name, previous, {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild, .shardTarget = shardTarget});
+        return builder.build(source, fixture.getCompiler(), directory.getPath() / name, previous, {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild, .shardTarget = shardTarget});
     }
 
     [[nodiscard]] std::unique_ptr<io::Package> open(const std::string& name) const {
@@ -115,6 +130,25 @@ TEST_F(ReleaseBuilderTest, ReleasesOnlyThePackageOfTheApp) {
     for (const auto& [name, bytes] : test::ReleaseFiles::read(directory.getPath() / "release")) {
         EXPECT_TRUE(name.ends_with(".hpak") || name.ends_with(".hmanifest")) << name;
     }
+}
+
+// The modules of the app and of its plugins reach the release as the compiler wrote them, and the manifest of the app domain names its format, which a build that loads them must name too.
+TEST_F(ReleaseBuilderTest, CompilesTheModulesWithItsCompiler) {
+    const MarkingCompiler compiler;
+    const ReleaseBuilder builder(fixture.getKeys(), fixture.getContentKey()->getId(), std::make_shared<const SigningKey>(test::ReleaseFixture::makeKey(101)));
+    (void)builder.build(io::MemoryPackage("source", makeFiles()), compiler, directory.getPath() / "marked", std::nullopt, {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = test::ReleaseFixture::kAppBuild});
+
+    const VerifyingKey trusted = fixture.getSigningKey().getVerifyingKey();
+    Compatibility compatibility = fixture.getCompatibility();
+    compatibility.luaAbi = compiler.getAbi();
+    const std::unique_ptr<io::Package> release = ReleasePackage::open(io::Package::openDirectory(directory.getPath() / "marked"), fixture.getKeys(), std::span(&trusted, 1), compatibility);
+    EXPECT_EQ(release->readText("source/main.lua"), "compiled source/main.lua: loaded = true");
+    EXPECT_EQ(release->readText("plugins/ads/source/init.lua"), "compiled plugins/ads/source/init.lua: return {}");
+    EXPECT_TRUE(release->isLuaBytecode("source/main.lua"));
+    EXPECT_EQ(release->readText("content/data/config.json"), R"({"level": 3})");
+
+    compatibility.luaAbi = fixture.getCompiler().getAbi();
+    EXPECT_THROW((void)ReleasePackage::open(io::Package::openDirectory(directory.getPath() / "marked"), fixture.getKeys(), std::span(&trusted, 1), compatibility), Error);
 }
 
 // A clean build machine follows the release that shipped, such as the files of the depots of a store, where packs keep their shards in folders of their own, and builds again only the content whose shards the folder lacks.

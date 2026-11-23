@@ -10,7 +10,7 @@
 
 namespace haylen::content {
 
-// What the release build of an app compiles into its binary to open the protected release it ships with: the identifier of the app, its build number and its content profile, which a release must match, the public keys that sign its manifests and the provider of its content keys. The content tool writes the bootstrap of each app from its key folder, and a static member of the generated code installs it before `main`. It has no Lua binding, since keys never reach Lua.
+// What the release build of an app compiles into its binary to open the protected release it ships with: the identifier of the app, its build number, its content profile and the format of the Lua bytecode that the build loads, which a release must match, the public keys that sign its manifests and the provider of its content keys. The content tool writes the bootstrap of each app from its key folder, and a static member of the generated code installs it before `main`. It has no Lua binding, since keys never reach Lua.
 class Bootstrap final {
   public:
     using PublicKey = std::array<std::uint8_t, 32>;
@@ -18,6 +18,7 @@ class Bootstrap final {
     std::string identifier;
     std::uint64_t appBuild = 0;
     std::string profile;
+    std::string luaAbi;
     std::vector<PublicKey> trustedKeys;
     std::shared_ptr<const KeyProvider> keys;
 

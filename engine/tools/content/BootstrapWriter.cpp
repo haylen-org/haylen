@@ -31,7 +31,7 @@ std::string BootstrapWriter::writeText(std::string_view text) {
     return literal + "\"";
 }
 
-std::string BootstrapWriter::write(const KeyStore& keys, std::string_view profile, std::uint64_t appBuild) {
+std::string BootstrapWriter::write(const KeyStore& keys, std::string_view profile, std::uint64_t appBuild, std::string_view luaAbi) {
     std::string sealed;
     for (const EmbeddedKeyProvider::SealedKey& key : keys.sealContentKeys()) {
         sealed += std::format("        {{.id = {}, .mask = {}, .sealed = {}}},\n", writeBytes(key.id), writeBytes(key.mask), writeBytes(key.sealed));
@@ -57,12 +57,12 @@ class HaylenBootstrap final {{
 bool HaylenBootstrap::install() {{
     std::vector<haylen::content::EmbeddedKeyProvider::SealedKey> keys = {{
 {}    }};
-    return haylen::content::Bootstrap::install({{.identifier = {}, .appBuild = {}U, .profile = {}, .trustedKeys = {{{}}}, .keys = std::make_shared<const haylen::content::EmbeddedKeyProvider>(std::move(keys))}});
+    return haylen::content::Bootstrap::install({{.identifier = {}, .appBuild = {}U, .profile = {}, .luaAbi = {}, .trustedKeys = {{{}}}, .keys = std::make_shared<const haylen::content::EmbeddedKeyProvider>(std::move(keys))}});
 }}
 
 const bool HaylenBootstrap::kInstalled = HaylenBootstrap::install();
 )",
-                       sealed, writeText(keys.getIdentifier()), appBuild, writeText(profile), writeBytes(verifying.getBytes()));
+                       sealed, writeText(keys.getIdentifier()), appBuild, writeText(profile), writeText(luaAbi), writeBytes(verifying.getBytes()));
 }
 
 } // namespace haylen::content

@@ -5,11 +5,11 @@
 #include <functional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "content/Compatibility.hpp"
-#include "content/LuaBytecodeAbi.hpp"
 #include "content/crypto/KeyRing.hpp"
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/CatalogWriter.hpp"
@@ -30,6 +30,9 @@ class ManifestTest : public ::testing::Test {
     static constexpr std::size_t kDomainOffset = 16;
     static constexpr std::size_t kShardVersionOffset = 18;
     static constexpr std::size_t kProfileOffset = 176;
+
+    // The format of the Lua bytecode of a build, as the bootstrap and the manifests name it.
+    static constexpr std::string_view kLuaAbi = "lua-5.5-f0-i4-x4-l8-n8-le";
 
     ManifestTest() : signingKey(test::ReleaseFixture::makeKey(101)), trusted{signingKey.getVerifyingKey()} {
         keyId = keys.add(test::ReleaseFixture::makeKey(1));
@@ -190,12 +193,12 @@ TEST_F(ManifestTest, KeepsEachDomainToItsOwnFiles) {
 
 TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     Manifest::Envelope app = makeEnvelope(Manifest::Domain::App);
-    app.luaAbi = LuaBytecodeAbi::get();
+    app.luaAbi = kLuaAbi;
     const auto decrypt = [this](const Manifest::Envelope& envelope, const std::string& path) { return Manifest::read(write(envelope, makeCatalog(path, Delivery::Required, Catalog::Kind::LuaBytecode)), trusted).decryptCatalog(keys).getFileCount(); };
     EXPECT_EQ(decrypt(app, "source/main.lua"), 1U);
     EXPECT_EQ(decrypt(app, "source/scenes/menu.lua"), 1U);
     EXPECT_EQ(decrypt(app, "plugins/ads/source/init.lua"), 1U);
-    EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, LuaBytecodeAbi::get());
+    EXPECT_EQ(Manifest::read(write(app, makeCatalog("source/main.lua")), trusted).getEnvelope().luaAbi, kLuaAbi);
 
     for (const char* path : {"haylen.json", "source/notes.txt", "plugins/ads/plugin.json", "plugins/ads/main.lua", "plugins/source/init.lua"}) {
         expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, path); });
@@ -204,7 +207,7 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
     EXPECT_FALSE(Manifest::isLuaModule("content/script.lua")) << "Only the source folders of the app and its plugins hold modules.";
 
     Manifest::Envelope content = makeEnvelope(Manifest::Domain::Content);
-    content.luaAbi = LuaBytecodeAbi::get();
+    content.luaAbi = kLuaAbi;
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(content, "content/script.lua"); });
     app.luaAbi.clear();
     expectCode(Error::Code::CorruptCatalog, [&] { (void)decrypt(app, "source/main.lua"); });
@@ -212,7 +215,7 @@ TEST_F(ManifestTest, KeepsLuaBytecodeToTheModulesOfTheAppDomain) {
 
 TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     const Manifest manifest = Manifest::read(write(), trusted);
-    const Compatibility compatibility{.application = Manifest::identifyApplication("com.haylen.tests"), .appBuild = 5, .profile = "desktop"};
+    const Compatibility compatibility{.application = Manifest::identifyApplication("com.haylen.tests"), .appBuild = 5, .profile = "desktop", .luaAbi = std::string(kLuaAbi)};
     compatibility.check(manifest);
     Compatibility newest = compatibility;
     newest.appBuild = 9;
@@ -236,7 +239,7 @@ TEST_F(ManifestTest, ChecksTheCompatibilityOfTheApp) {
     app.luaAbi = "lua-5.4-f0-i4-x4-l8-n8-le";
     const Manifest older54 = Manifest::read(write(app, makeCatalog("source/main.lua", Delivery::Required, Catalog::Kind::LuaBytecode)), trusted);
     expectCode(Error::Code::LuaBytecodeIncompatible, [&] { compatibility.check(older54); });
-    app.luaAbi = LuaBytecodeAbi::get();
+    app.luaAbi = kLuaAbi;
     compatibility.check(Manifest::read(write(app, makeCatalog("source/main.lua", Delivery::Required, Catalog::Kind::LuaBytecode)), trusted));
 }
 

@@ -53,9 +53,9 @@ class BootstrapWriterTest : public ::testing::Test {
 TEST_F(BootstrapWriterTest, WritesTheIdentityAndSealedKeysOfTheApp) {
     KeyStore keys = KeyStore::create(directory.getPath() / "keys", "com.haylen.tests");
     keys.rotate();
-    const std::string source = BootstrapWriter::write(keys, "apple", 1002003);
-    EXPECT_EQ(BootstrapWriter::write(keys, "apple", 1002003), source) << "The same keys always write the same bootstrap.";
-    EXPECT_NE(source.find(".identifier = \"com.haylen.tests\", .appBuild = 1002003U, .profile = \"apple\""), std::string::npos) << source;
+    const std::string source = BootstrapWriter::write(keys, "apple", 1002003, "lua-5.5-f0-i4-x4-l8-n8-le");
+    EXPECT_EQ(BootstrapWriter::write(keys, "apple", 1002003, "lua-5.5-f0-i4-x4-l8-n8-le"), source) << "The same keys always write the same bootstrap.";
+    EXPECT_NE(source.find(".identifier = \"com.haylen.tests\", .appBuild = 1002003U, .profile = \"apple\", .luaAbi = \"lua-5.5-f0-i4-x4-l8-n8-le\""), std::string::npos) << source;
     EXPECT_NE(source.find("const bool HaylenBootstrap::kInstalled = HaylenBootstrap::install();"), std::string::npos);
 
     // Each sealed key opens to the key of its file, while the source holds neither a key nor the seed of the signing key in any form.
@@ -79,7 +79,7 @@ TEST_F(BootstrapWriterTest, WritesTheIdentityAndSealedKeysOfTheApp) {
 
 TEST_F(BootstrapWriterTest, EscapesTheTextItWrites) {
     const KeyStore keys = KeyStore::create(directory.getPath() / "keys", "dev.haylen.\"quoted\\");
-    const std::string source = BootstrapWriter::write(keys, "apple", 1);
+    const std::string source = BootstrapWriter::write(keys, "apple", 1, "lua-5.5-f0-i4-x4-l8-n8-le");
     EXPECT_NE(source.find(".identifier = \"dev.haylen.\\042quoted\\134\""), std::string::npos) << source;
 }
 

@@ -18,13 +18,14 @@
 #include "content/crypto/SigningKey.hpp"
 #include "content/format/Manifest.hpp"
 #include "content/format/ShardReference.hpp"
+#include "haylen/content/ModuleCompiler.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 
 namespace haylen::content {
 
-// Builds the protected release of an app package into a folder of its own: the app domain from `haylen.json`, the Lua modules under `source`, compiled into bytecode, and the manifest and Lua modules of every plugin the app lists, and the content domain from the assets under `content`, each into its own shards and signed manifest. Nothing else of the package folder takes part, so the platform projects, notes and build files next to it never reach a release, and a file can never move from one domain to the other. A build that follows an earlier release of the app reuses its shards the way `ContentBuilder` does, and links or copies the shards it keeps into the new folder, so unchanged content keeps its shard files byte for byte. The earlier release may lie anywhere under its folder, as in the depots of a store, an unpacked app or a release folder, and only the shards the folder holds can be kept.
+// Builds the protected release of an app package into a folder of its own: the app domain from `haylen.json`, the Lua modules under `source`, which the module compiler turns into bytecode, and the manifest and Lua modules of every plugin the app lists, and the content domain from the assets under `content`, each into its own shards and signed manifest. Nothing else of the package folder takes part, so the platform projects, notes and build files next to it never reach a release, and a file can never move from one domain to the other. A build that follows an earlier release of the app reuses its shards the way `ContentBuilder` does, and links or copies the shards it keeps into the new folder, so unchanged content keeps its shard files byte for byte. The earlier release may lie anywhere under its folder, as in the depots of a store, an unpacked app or a release folder, and only the shards the folder holds can be kept.
 class ReleaseBuilder final {
   public:
     struct Options {
@@ -58,8 +59,8 @@ class ReleaseBuilder final {
     // New content is encrypted under the content key with the active ID, and the ring opens earlier releases under any of its keys.
     ReleaseBuilder(std::shared_ptr<const KeyRing> contentKeys, const Digest& activeKeyId, std::shared_ptr<const SigningKey> signing, std::shared_ptr<const RecordCache> recordCache = nullptr);
 
-    // Builds the release of an app package into an output folder that does not exist yet, reusing the release under an earlier folder when one is given. Throws `std::invalid_argument` for an output folder that exists or an earlier folder that holds no release or two of them, and the errors of `AppConfig` for a `haylen.json` that is not valid.
-    Result build(const io::Package& app, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const;
+    // Builds the release of an app package into an output folder that does not exist yet, with its modules compiled by the compiler, reusing the release under an earlier folder when one is given. Throws `std::invalid_argument` for an output folder that exists or an earlier folder that holds no release or two of them, and the errors of `AppConfig` for a `haylen.json` that is not valid.
+    Result build(const io::Package& app, const ModuleCompiler& compiler, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const;
 
     // The files of an earlier release by name: its manifests and the shard files at hand.
     using EarlierFiles = std::map<std::string, std::filesystem::path>;
@@ -79,10 +80,10 @@ class ReleaseBuilder final {
   private:
     static constexpr std::string_view kFolderFile = ".DS_Store";
 
-    [[nodiscard]] Domain buildRelease(const io::Package& app, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const EarlierFiles& earlier, const Options& options) const;
+    [[nodiscard]] Domain buildRelease(const io::Package& app, const ModuleCompiler& compiler, const core::AppConfig& config, Manifest::Domain domain, const std::filesystem::path& output, const EarlierFiles& earlier, const Options& options) const;
 
     // Turns the Lua modules of the app domain into bytecode and marks them so, and keeps every other file as it is.
-    [[nodiscard]] static std::unique_ptr<io::MemoryPackage> compileModules(const io::Package& app, std::vector<ContentBuilder::Input>& inputs);
+    [[nodiscard]] static std::unique_ptr<io::MemoryPackage> compileModules(const io::Package& app, const ModuleCompiler& compiler, std::vector<ContentBuilder::Input>& inputs);
     static void keepShard(const std::filesystem::path& source, const std::filesystem::path& output, const ShardReference& shard);
 
     std::shared_ptr<const KeyRing> keys;

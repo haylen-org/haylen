@@ -10,7 +10,11 @@
 
 namespace haylen::content {
 
-std::vector<std::uint8_t> LuaCompiler::compile(std::string_view source, std::string_view path) {
+std::string LuaCompiler::getAbi() const {
+    return LuaBytecodeAbi::get();
+}
+
+std::vector<std::uint8_t> LuaCompiler::compile(std::string_view source, std::string_view path) const {
     const std::unique_ptr<lua_State, decltype(&lua_close)> state(luaL_newstate(), &lua_close);
 
     if (state == nullptr) {

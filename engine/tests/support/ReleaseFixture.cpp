@@ -29,7 +29,7 @@ std::shared_ptr<const content::ContentKey> ReleaseFixture::getContentKey() const
 }
 
 content::Compatibility ReleaseFixture::getCompatibility() const {
-    return {.application = content::Manifest::identifyApplication(kIdentifier), .appBuild = kAppBuild, .profile = std::string(kProfile)};
+    return {.application = content::Manifest::identifyApplication(kIdentifier), .appBuild = kAppBuild, .profile = std::string(kProfile), .luaAbi = compiler.getAbi()};
 }
 
 const content::ContentBuilder::Statistics& ReleaseFixture::getStatistics(content::Manifest::Domain domain) const {
@@ -52,7 +52,7 @@ void ReleaseFixture::build(const std::map<std::string, std::string>& files, std:
 void ReleaseFixture::build(const io::Package& source, std::uint64_t shardTarget) {
     const std::optional<std::filesystem::path> earlier = builds > 0 ? std::optional(folder) : std::nullopt;
     folder = directory.getPath() / ("release-" + std::to_string(++builds));
-    result = makeBuilder().build(source, folder, earlier, {.profile = std::string(kProfile), .appBuild = kAppBuild, .shardTarget = shardTarget, .sections = lua::Application::kSections});
+    result = makeBuilder().build(source, compiler, folder, earlier, {.profile = std::string(kProfile), .appBuild = kAppBuild, .shardTarget = shardTarget, .sections = lua::Application::kSections});
 }
 
 std::shared_ptr<const io::Package> ReleaseFixture::getFiles() const {
