@@ -28,7 +28,7 @@ class CleanTest:
         for message in ("Cleaned the build folder.", "The build folder is already clean."):
             recorded = CleanTest.clean(tmp_path)
             assert not build.exists()
-            assert recorded.output.getvalue().strip() == message
+            assert recorded.output.getvalue().strip() == f"\u2713 {message}"
 
     @pytest.mark.skipif(os.name == "nt" or os.geteuid() == 0, reason="Only a POSIX user who is not root keeps the files of a read-only folder.")
     def test_a_folder_that_stays_is_an_error_and_not_a_clean(self, tmp_path, monkeypatch):

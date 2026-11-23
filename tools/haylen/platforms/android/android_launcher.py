@@ -28,6 +28,7 @@ class AndroidLauncher:
     LOG_TAG = "haylen"
     CRASH_TAG = "AndroidRuntime"
     POLL_SECONDS = 1.0
+    SYSTEM = "Android"
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
@@ -43,10 +44,10 @@ class AndroidLauncher:
             serial, state = line.split()[:2]
             kind = "emulator" if serial.startswith("emulator-") else "device"
             if state != "device":
-                found.append(Device(serial, serial, kind, state, (AndroidPlatform.TARGET,)))
+                found.append(Device(serial, serial, kind, AndroidLauncher.SYSTEM, "", state, (AndroidPlatform.TARGET,)))
                 continue
             version = self.bridge.property(serial, "ro.build.version.release")
-            found.append(Device(serial, f"{self.bridge.name(serial)}, Android {version}", kind, "ready", (AndroidPlatform.TARGET,)))
+            found.append(Device(serial, self.bridge.name(serial), kind, AndroidLauncher.SYSTEM, version, "ready", (AndroidPlatform.TARGET,)))
         return tuple(found)
 
     @staticmethod

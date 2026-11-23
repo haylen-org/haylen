@@ -23,11 +23,14 @@ from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.target_environment import TargetEnvironment
 from haylen.platforms.backend_registry import BackendRegistry
+from haylen.platforms.capability import Capability
+from haylen.platforms.device import Device
 from haylen.platforms.platform_description import PlatformDescription
 from haylen.platforms.port_description import PortDescription
 from haylen.platforms.port_target import PortTarget
 from haylen.platforms.sdk_request import SdkRequest
 from haylen.sdk.sdk_manifest import SdkManifest
+from haylen.terminal import Terminal
 from tests.content.test_content_tool import ContentToolTest
 from tests.support.fake_backend import FakeBackend
 from tests.support.fake_port import FakePort
@@ -36,6 +39,24 @@ from tests.support.tooling_fixture import ToolingFixture
 
 class CommandsTest:
     """The commands run through the parser of the command line against the fake backend, whose SDKs and plugins come from the fixture."""
+
+    class DeviceBackend(FakeBackend):
+        """The fake backend with the devices of several platforms, in the order a backend reports them."""
+
+        DEVICES = (
+            Device("SIM-OLD", "iPhone 17", "simulator", "iOS", "26.0", "shutdown", ("ios-simulator",)),
+            Device("SIM-NEW", "iPad (A16)", "simulator", "iPadOS", "27.2", "booted", ("ios-simulator",)),
+            Device("00008110-001428CC0CD0401E", "My iPhone", "device", "iOS", "27.2.1", "disconnected", ("ios",)),
+            Device("emulator-5554", "Pixel_10a", "emulator", "Android", "17", "ready", ("android",)),
+            Device("CONSOLE", "Dev kit", "device", "fakeos", "", "ready", ("fake",)),
+        )
+
+        def describe(self) -> PlatformDescription:
+            described = super().describe()
+            return replace(described, capabilities=described.capabilities | {Capability.DEVICES})
+
+        def devices(self) -> tuple[Device, ...]:
+            return CommandsTest.DeviceBackend.DEVICES
 
     @staticmethod
     def session(fixture: ToolingFixture, monkeypatch: pytest.MonkeyPatch, structured: bool = False) -> CommandSession:
@@ -105,6 +126,78 @@ class CommandsTest:
         assert [(plugin["id"], plugin["listed"]) for plugin in listed["plugins"]] == [("kit", True), ("stray", False)]
         assert 'stray  1.0.0, fake, from plugins/stray, Not in "haylen.json", so no build carries it' in fixture.output.getvalue()
 
+    def test_devices_print_a_group_of_every_platform_in_the_order_developers_look_for_them(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        session = CommandsTest.session(fixture, monkeypatch)
+        session.registry = fixture.registry([CommandsTest.DeviceBackend])
+        CommandsTest.run(session, ["devices"])
+
+        assert fixture.output.getvalue().splitlines() == [
+            "Android  1",
+            "  Name        Kind       System       State           Identifier",
+            "  Pixel_10a   Emulator   Android 17   \u25cf Ready         emulator-5554",
+            "",
+            "iOS and iPadOS  3",
+            "  Name        Kind       System       State           Identifier",
+            "  My iPhone   Device     iOS 27.2.1   \u00d7 Disconnected  00008110-001428CC0CD0401E",
+            "  iPad (A16)  Simulator  iPadOS 27.2  \u25cf Booted        SIM-NEW",
+            "  iPhone 17   Simulator  iOS 26.0     \u25cb Shutdown      SIM-OLD",
+            "",
+            "fakeos  1",
+            "  Name        Kind       System       State           Identifier",
+            "  Dev kit     Device     fakeos       \u25cf Ready         CONSOLE",
+        ]
+
+    def test_the_json_of_devices_holds_every_field_of_every_device_and_the_terminal_prints_nothing(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        session = CommandsTest.session(fixture, monkeypatch, structured=True)
+        session.registry = fixture.registry([CommandsTest.DeviceBackend])
+        listed = CommandsTest.run(session, ["devices"])
+
+        assert listed == {"devices": [{"backend": "fake", **device.describe()} for device in CommandsTest.DeviceBackend.DEVICES], "problems": []}
+        assert listed["devices"][0] == {
+            "backend": "fake",
+            "identifier": "SIM-OLD",
+            "name": "iPhone 17",
+            "kind": "simulator",
+            "system": "iOS",
+            "version": "26.0",
+            "state": "shutdown",
+            "targets": ["ios-simulator"],
+        }
+        assert fixture.output.getvalue() == ""
+
+    def test_the_doctor_sums_up_the_targets_in_a_table_and_lists_every_problem_once(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["doctor"])
+        lines = fixture.output.getvalue().splitlines()
+
+        assert lines[0] == f"Haylen {Repository.engine_version()} on {Host.system()} {Host.architecture()}"
+        assert lines[2:6] == [
+            "Targets  2",
+            "  Target          Backend  Engine port  SDK  State",
+            "  fake            fake     \u2014            \u2014    \u2717 Problems",
+            "  fake-simulator  fake     \u2014            \u2014    \u2717 Problems",
+        ]
+        assert lines[7] == "Problems  2"
+        assert lines[8].startswith('  \u2717 No installed engine port builds the engine for "fake"')
+
+    def test_the_json_of_the_doctor_keeps_its_fields(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        fixture.sdk()
+        described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["doctor", "--target", "fake"])
+
+        target = described["targets"][0]
+        assert list(described) == ["host", "problems", "targets"]
+        assert list(target) == ["target", "backend", "capabilities", "port", "sdk", "tools", "problems", "ready"]
+        assert target["port"].startswith('No installed engine port builds the engine for "fake"')
+        assert target["sdk"].endswith("(Release)")
+        assert (target["tools"], target["problems"], target["ready"]) == ([], [], True)
+        assert fixture.output.getvalue() == ""
+
     def test_inspect_shows_the_settings_of_the_target_with_their_origins(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
         fixture.sdk()
@@ -121,9 +214,9 @@ class CommandsTest:
         missing = {"name": "Gradle", "version": "9.8.2", "path": None, "problem": None}
         found = {"name": "cmake", "version": "cmake version 4.4.3", "path": "/opt/homebrew/bin/cmake", "problem": None}
         broken = {"name": "Xcode", "version": None, "path": None, "problem": 'The command "xcodebuild" does not run.'}
-        assert DoctorCommand.tool_state(missing) == "9.8.2, which the first build that needs it downloads into `.tools`"
-        assert DoctorCommand.tool_state(found) == "cmake version 4.4.3 at `/opt/homebrew/bin/cmake`"
-        assert DoctorCommand.tool_state(broken) == 'The command "xcodebuild" does not run.'
+        assert [DoctorCommand.version(tool) for tool in (missing, found, broken)] == ["9.8.2", "4.4.3", ""]
+        assert [DoctorCommand.tool_path(tool) for tool in (missing, found, broken)] == ["Downloads with the first build", "/opt/homebrew/bin/cmake", ""]
+        assert [DoctorCommand.tool_cell(tool).sign for tool in (missing, found, broken)] == [Terminal.Sign.IDLE, Terminal.Sign.READY, Terminal.Sign.FAILED]
 
     def test_an_app_build_builds_the_sdk_that_no_installed_sdk_of_the_sources_holds_while_an_inspection_never_builds(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)

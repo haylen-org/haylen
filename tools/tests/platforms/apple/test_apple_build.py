@@ -122,16 +122,22 @@ class AppleBuildTest:
         target = AppleFixture.spec(apple.prepare(app, "macos"))["targets"]["App"]
         assert {"framework": str(app / "native" / "libvendor.dylib"), "embed": True, "link": False, "codeSign": True} in target["dependencies"]
 
-    def test_simulators_and_devices_list_with_their_targets(self, apple):
+    def test_simulators_list_with_their_system_version_and_targets(self, apple):
+        kinds = "com.apple.CoreSimulator.SimDeviceType"
         simulators = {
             "devices": {
-                "com.apple.CoreSimulator.SimRuntime.iOS-26-0": [{"udid": "A", "name": "iPhone 17e", "state": "Booted"}],
-                "com.apple.CoreSimulator.SimRuntime.xrOS-26-0": [{"udid": "B", "name": "Apple Vision Pro", "state": "Shutdown"}],
+                "com.apple.CoreSimulator.SimRuntime.iOS-26-0": [{"udid": "A", "name": "iPhone 17e", "state": "Booted", "deviceTypeIdentifier": f"{kinds}.iPhone-17e"}],
+                "com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4": [{"udid": "C", "name": "iPad (A16)", "state": "Shutdown", "deviceTypeIdentifier": f"{kinds}.iPad-A16"}],
+                "com.apple.CoreSimulator.SimRuntime.xrOS-26-0": [{"udid": "B", "name": "Apple Vision Pro", "state": "Shutdown", "deviceTypeIdentifier": f"{kinds}.Apple-Vision-Pro-4K"}],
             }
         }
         apple.recorded.answer = lambda command: json.dumps(simulators)
         found = AppleDevices(apple.context).simulators()
-        assert [(device.identifier, device.state, device.targets) for device in found] == [("A", "booted", ("ios-simulator",)), ("B", "shutdown", ("visionos-simulator",))]
+        assert [(device.identifier, device.system, device.version, device.state, device.targets) for device in found] == [
+            ("A", "iOS", "26.0", "booted", ("ios-simulator",)),
+            ("C", "iPadOS", "27.2", "shutdown", ("ios-simulator",)),
+            ("B", "visionOS", "26.0", "shutdown", ("visionos-simulator",)),
+        ]
 
     def test_the_launcher_of_simulators_leaves_out_its_own_lines(self):
         assert AppleLauncher.simulator_line("com.haylen.tests", "com.haylen.tests: 4242") is None

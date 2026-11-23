@@ -36,8 +36,8 @@ class AndroidLauncherTest:
         devices = [device.describe() for device in AndroidLauncher(fixture.context).devices()]
 
         assert devices == [
-            {"identifier": "emulator-5554", "name": "Pixel_10a, Android 17", "kind": "emulator", "state": "ready", "targets": ["android"]},
-            {"identifier": "R58M", "name": "R58M", "kind": "device", "state": "unauthorized", "targets": ["android"]},
+            {"identifier": "emulator-5554", "name": "Pixel_10a", "kind": "emulator", "system": "Android", "version": "17", "state": "ready", "targets": ["android"]},
+            {"identifier": "R58M", "name": "R58M", "kind": "device", "system": "Android", "version": "", "state": "unauthorized", "targets": ["android"]},
         ]
 
     def test_an_app_built_without_the_abi_of_the_device_stops_before_it_installs(self, tmp_path, monkeypatch):

@@ -15,6 +15,11 @@ class AppleDevices:
     # The simulator target of each family of simulator runtimes and the device target of each platform that devicectl reports.
     SIMULATOR_TARGETS = {"iOS": "ios-simulator", "tvOS": "tvos-simulator", "xrOS": "visionos-simulator"}
     DEVICE_TARGETS = {"iOS": "ios", "tvOS": "tvos", "visionOS": "visionos"}
+    # The system that people know each family of simulator runtimes by, and the one of an iPad, which runs iPadOS from the iOS runtime and the iOS platform.
+    SYSTEMS = {"iOS": "iOS", "tvOS": "tvOS", "xrOS": "visionOS", "visionOS": "visionOS"}
+    IPAD = "iPadOS"
+    # A runtime of simulators names its family and version, such as "iOS-27-2", and a runtime of one device type adds the type after them.
+    RUNTIME = re.compile(r"SimRuntime\.([A-Za-z]+)-(\d+(?:-\d+)*)")
 
     def __init__(self, context: ToolingContext) -> None:
         self.context = context
@@ -26,12 +31,19 @@ class AppleDevices:
         listing = json.loads(self.context.process.capture(["xcrun", "simctl", "list", "devices", "available", "--json"]))["devices"]
         found = []
         for runtime, entries in listing.items():
-            match = re.search(r"SimRuntime\.(\w+)-([\d-]+)$", runtime)
+            match = AppleDevices.RUNTIME.search(runtime)
             if match is None or match[1] not in AppleDevices.SIMULATOR_TARGETS:
                 continue
             target = AppleDevices.SIMULATOR_TARGETS[match[1]]
-            found += [Device(entry["udid"], entry["name"], "simulator", entry["state"].lower(), (target,)) for entry in entries]
+            version = match[2].replace("-", ".")
+            for entry in entries:
+                system = AppleDevices.system(match[1], ".iPad" in entry["deviceTypeIdentifier"])
+                found.append(Device(entry["udid"], entry["name"], "simulator", system, version, entry["state"].lower(), (target,)))
         return found
+
+    @staticmethod
+    def system(family: str, ipad: bool) -> str:
+        return AppleDevices.IPAD if ipad else AppleDevices.SYSTEMS[family]
 
     def physical(self) -> list[Device]:
         """The devices paired with this Mac, as devicectl reports them in its JSON file."""
@@ -46,7 +58,9 @@ class AppleDevices:
             if hardware.get("reality") != "physical" or hardware.get("platform") not in AppleDevices.DEVICE_TARGETS:
                 continue
             state = properties.get("connection", {}).get("state", "unavailable")
-            found.append(Device(hardware["udid"], properties["state"]["name"], "device", state, (AppleDevices.DEVICE_TARGETS[hardware["platform"]],)))
+            system = AppleDevices.system(hardware["platform"], hardware.get("deviceType") == "iPad")
+            version = properties.get("software", {}).get("osVersionNumber", {}).get("stringValue", "")
+            found.append(Device(hardware["udid"], properties["state"]["name"], "device", system, version, state, (AppleDevices.DEVICE_TARGETS[hardware["platform"]],)))
         return found
 
     def tunnel_address(self, device: Device) -> str:
