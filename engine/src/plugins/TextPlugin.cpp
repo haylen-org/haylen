@@ -153,9 +153,6 @@ void TextPlugin::start(core::Engine& engine) {
             return font;
         },
     });
-
-    for (const char* type : {"bitmapFont", "gridFont"}) {
-    }
     // clang-format on
 }
 
