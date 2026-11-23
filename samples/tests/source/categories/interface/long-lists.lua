@@ -78,7 +78,7 @@ function LongLists:columns()
             end},
         }),
         layout.section('Scroll to an entry', {grow = 1, align = 'stretch',
-            ui.numberField{id = 'target', value = self.target, min = 1, max = LongLists.count, onChange = function(event) self.target = event.value end},
+            ui.numberField{id = 'target', accessibilityLabel = 'Entry to scroll to', value = self.target, min = 1, max = LongLists.count, onChange = function(event) self.target = event.value end},
             ui.segmentedControl{id = 'align', items = {{id = 'start', text = 'Start'}, {id = 'center', text = 'Center'}, {id = 'end', text = 'End'}}, selected = self.align, onChange = function(event)
                 self.align = event.value
             end},

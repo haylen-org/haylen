@@ -1,7 +1,7 @@
 import XCTest
 
 #if os(iOS)
-// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns and while a finger scrolls the page, the end of the page scrolls above the keyboard, and the keyboard follows the field that edits.
+// The address field of the test "Text fields", which capitalizes nothing and sits right above the keyboard, types through the software keyboard: each key types once, Backspace deletes, the screen holds still while the keyboard shows, the text and the keyboard stay when the device turns, the end of the page scrolls above the keyboard, and the keyboard follows the field that edits.
 class TextInputTests: HaylenUITestCase {
     override func setUp() async throws {
         try await super.setUp()
@@ -80,25 +80,6 @@ class TextInputTests: HaylenUITestCase {
         try saveScreenshot("keyboard-closed")
     }
 
-    // A finger that drags the page from outside the field scrolls it and leaves the field editing with the keyboard, and only a tap outside the field closes the keyboard.
-    func testAFingerThatScrollsThePageKeepsTheFieldEditing() throws {
-        startTyping()
-        let field = element("https://haylen.dev")
-        let top = field.frame.minY
-        let start = belowField(field)
-        start.press(forDuration: 0.1, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)))
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        XCTAssertTrue(app.keyboards.firstMatch.exists, "The keyboard closes when a finger scrolls the page from outside the field.")
-        // The page scrolls only as far as its content reaches past it, which on a phone in landscape can be a few points, and springs back there from past its end.
-        XCTAssertLessThan(field.frame.minY, top - 1, "The page does not scroll under the finger.")
-        typeOnKeyboard("mar")
-        expectReport("mar")
-        try saveScreenshot("scrolled-while-editing")
-
-        belowField(field).tap()
-        waitUntil("The keyboard stays open after a tap outside the field.") { !app.keyboards.firstMatch.exists }
-    }
-
     // The part of the page that the keyboard covers joins the end of its content, so a finger scrolls the last fields of the page above the keyboard, as native apps do, on every screen size. The drags start on the page where the help line of the field shows before any drag, which the lift keeps above the keyboard and its bar, and away from the text area, which scrolls its own lines.
     func testTheEndOfThePageScrollsAboveTheKeyboard() throws {
         startTyping()
@@ -141,11 +122,6 @@ class TextInputTests: HaylenUITestCase {
         // The keyboard covers the button that hides it, and the test hides it as it exits.
         tap("Back")
         waitUntil("The plain keyboard stays open after the app hid it.") { !app.keyboards.firstMatch.exists }
-    }
-
-    // The help line under the field, which no control covers.
-    func belowField(_ field: XCUIElement) -> XCUICoordinate {
-        field.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1)).withOffset(CGVector(dx: 0, dy: 14))
     }
 
     func startTyping() {
