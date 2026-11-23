@@ -75,12 +75,13 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
 
     private fun registerCamera() {
         context.register("startCamera") { params, reply ->
-            val facing = (params as? JSONObject)?.optString("facing", "back") ?: "back"
+            val facing = (params as? JSONObject)?.optString("facing").orEmpty()
             access.check("camera")
+            val chosen = chooseCamera(facing)
             val stream = context.openVideoStream("camera", Camera.WIDTH, Camera.HEIGHT, HaylenVideoStream.Format.RGBA8)
             cancelWaitingCamera()
             closeCamera()
-            waitingCamera = CameraRequest(facing, stream, reply)
+            waitingCamera = CameraRequest(chosen, stream, reply)
             openWaitingCamera()
         }
 
@@ -118,8 +119,34 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
         }
 
         waitingCamera = null
-        camera = Camera(context.application(), request.facing, request.stream, request::answer)
+        camera = Camera(context.application(), request.camera.id, request.stream, request::answer)
     }
+
+    // The camera that faces the way the app asked, or without a facing the first camera that Camera2 lists. A device without a camera that faces that way fails, since another camera would show the app what it did not ask for.
+    private fun chooseCamera(facing: String): ChosenCamera {
+        val cameras = context.application().getSystemService(CameraManager::class.java)
+        val listed = cameras.cameraIdList.map { ChosenCamera(it, facingOf(cameras.getCameraCharacteristics(it))) }
+        if (listed.isEmpty()) {
+            throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
+        }
+
+        if (facing.isEmpty()) {
+            return listed.first()
+        }
+
+        return listed.firstOrNull { it.facing == facing } ?: throw HaylenBridge.Failure("This device has no camera that faces $facing.", "unsupported", null)
+    }
+
+    private fun facingOf(characteristics: CameraCharacteristics): String {
+        return when (characteristics.get(CameraCharacteristics.LENS_FACING)) {
+            CameraCharacteristics.LENS_FACING_FRONT -> "front"
+            CameraCharacteristics.LENS_FACING_BACK -> "back"
+            else -> "unspecified"
+        }
+    }
+
+    // A camera of Camera2 and the way the system says it faces.
+    private class ChosenCamera(val id: String, val facing: String)
 
     private fun cancelWaitingCamera() {
         waitingCamera?.answer("The camera stopped before it started.", "cancelled")
@@ -127,7 +154,7 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
     }
 
     // A request of a camera that waits for the cameras before it to close, and the answer to its call.
-    private class CameraRequest(val facing: String, val stream: HaylenVideoStream, private val reply: HaylenBridge.Reply) {
+    private class CameraRequest(val camera: ChosenCamera, val stream: HaylenVideoStream, private val reply: HaylenBridge.Reply) {
         fun answer(failure: String?) {
             answer(failure, "cameraFailed")
         }
@@ -138,7 +165,7 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
                 return
             }
 
-            reply.success(JSONObject().put("width", Camera.WIDTH).put("height", Camera.HEIGHT).put("facing", facing).put("language", LANGUAGE))
+            reply.success(JSONObject().put("width", Camera.WIDTH).put("height", Camera.HEIGHT).put("facing", camera.facing).put("language", LANGUAGE))
         }
     }
 
@@ -246,7 +273,7 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
 
     // The camera through Camera2, whose YUV frames of 640 by 480 pixels arrive on a thread of their own, which turns them into RGBA pixels, pushes them into the stream and keeps the newest one for a photo. It calls `started` once, with nothing once the capture runs or with the reason it does not.
     @SuppressLint("MissingPermission")
-    private class Camera(context: Context, facing: String, private val stream: HaylenVideoStream, private val started: (String?) -> Unit) {
+    private class Camera(context: Context, id: String, private val stream: HaylenVideoStream, private val started: (String?) -> Unit) {
         private val thread = HandlerThread("native-demo-camera").apply { start() }
         private val handler = Handler(thread.looper)
         private val reader = ImageReader.newInstance(WIDTH, HEIGHT, ImageFormat.YUV_420_888, 2)
@@ -262,8 +289,6 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val acc
 
         init {
             val cameras = context.getSystemService(CameraManager::class.java)
-            val wanted = if (facing == "front") CameraCharacteristics.LENS_FACING_FRONT else CameraCharacteristics.LENS_FACING_BACK
-            val id = cameras.cameraIdList.firstOrNull { cameras.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) == wanted } ?: cameras.cameraIdList.first()
             reader.setOnImageAvailableListener({ source -> receive(source) }, handler)
             cameras.openCamera(id, object : CameraDevice.StateCallback() {
                 override fun onOpened(camera: CameraDevice) {

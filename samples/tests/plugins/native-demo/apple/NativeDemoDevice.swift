@@ -19,7 +19,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
     struct Empty: Codable {}
 
     struct Facing: Decodable {
-        let facing: String
+        let facing: String?
     }
 
     struct CameraStarted: Encodable {
@@ -123,8 +123,9 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
                 throw HaylenFailure("The video stream \"camera\" did not open.", code: "streamFailed")
             }
             self.camera?.stop()
-            self.camera = try NativeDemoCamera(facing: params.facing, stream: stream)
-            return CameraStarted(width: NativeDemoCamera.width, height: NativeDemoCamera.height, facing: params.facing, language: Self.language)
+            let camera = try NativeDemoCamera(facing: params.facing, stream: stream)
+            self.camera = camera
+            return CameraStarted(width: NativeDemoCamera.width, height: NativeDemoCamera.height, facing: camera.facing, language: Self.language)
             #endif
         }
 
@@ -303,23 +304,22 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     private let queue = DispatchQueue(label: "com.haylen.plugins.native-demo.camera")
     private let lock = NSLock()
     private var newest: CVPixelBuffer?
+    // The way the system says the camera faces: "front", "back" or "unspecified", which the cameras of a Mac and the persona camera of visionOS report.
+    let facing: String
 
-    init(facing: String, stream: HaylenVideoStream) throws {
+    init(facing requested: String?, stream: HaylenVideoStream) throws {
         self.stream = stream
-        super.init()
-        #if os(macOS)
-        let device = AVCaptureDevice.default(for: .video)
-        #elseif os(visionOS)
+        #if os(visionOS)
         // Apple Vision Pro gives apps the camera of the persona of the wearer, which visionOS lists from version 2.1.
         guard #available(visionOS 2.1, *) else {
             throw HaylenFailure("visionOS gives apps a camera from version 2.1.", code: "unsupported")
         }
-        let device = AVCaptureDevice.default(for: .video)
-        #else
-        let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: facing == "front" ? .front : .back) ?? AVCaptureDevice.default(for: .video)
         #endif
-        guard let device, let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
-            throw HaylenFailure("This device has no camera.", code: "unsupported")
+        let device = try Self.device(facing: requested)
+        facing = Self.facing(of: device)
+        super.init()
+        guard let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
+            throw HaylenFailure("The camera of this device does not open.", code: "unsupported")
         }
         session.beginConfiguration()
         // The persona camera of visionOS chooses its own format.
@@ -344,6 +344,34 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
     func stop() {
         queue.async {
             self.session.stopRunning()
+        }
+    }
+
+    // The camera that faces the way the app asked, or without a facing the default camera of the system. A device without a camera that faces that way fails, since another camera would show the app what it did not ask for.
+    @available(visionOS 2.1, *)
+    private static func device(facing: String?) throws -> AVCaptureDevice {
+        guard let facing else {
+            guard let device = AVCaptureDevice.default(for: .video) else {
+                throw HaylenFailure("This device has no camera.", code: "unsupported")
+            }
+            return device
+        }
+        let position: AVCaptureDevice.Position = facing == "front" ? .front : .back
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: position) else {
+            throw HaylenFailure("This device has no camera that faces \(facing).", code: "unsupported")
+        }
+        return device
+    }
+
+    @available(visionOS 2.1, *)
+    private static func facing(of device: AVCaptureDevice) -> String {
+        switch device.position {
+        case .front:
+            return "front"
+        case .back:
+            return "back"
+        default:
+            return "unspecified"
         }
     }
 

@@ -227,9 +227,12 @@ end
 
 -- The simulations below stand in for the SDKs that real plugins bring, such as cameras, maps, stores, ads and sign-in, with the APIs of each platform alone. Each one answers with what the platform gives, and fails with the code `unsupported` and the reason where the platform cannot run it. A purchase, an ad and a sign-in take over the app until they end, so they are screens of the plugin, which the engine covers the app for, and the table `options` of each takes the `state`, `opaque` and `timeout` of `handle:openScreen`.
 
--- Starts the camera, once the person allowed it, whose frames the native part pushes into the video stream `camera`, and returns `{width, height, facing, language}` inside a task, or `nil` and the `PlatformError`. The argument `facing` is `'back'`, the default, or `'front'`.
+-- Starts the camera, once the person allowed it, whose frames the native part pushes into the video stream `camera`, and returns `{width, height, facing, language}` inside a task, or `nil` and the `PlatformError`. The argument `facing`, `'front'` or `'back'`, asks for the camera that faces that way, and a device without one fails with the code `unsupported`, while without it the default camera of the system starts. The answer tells the way that the system says the camera faces, `'front'`, `'back'` or `'unspecified'`.
 function demo.startCamera(facing)
-    return callWithAccess('camera', 'startCamera', {facing = facing or 'back'})
+    if facing ~= nil and facing ~= 'front' and facing ~= 'back' then
+        error(string.format('The facing of a camera is "front" or "back", or nil for the default camera, and not "%s".', tostring(facing)), 2)
+    end
+    return callWithAccess('camera', 'startCamera', {facing = facing})
 end
 
 function demo.stopCamera()

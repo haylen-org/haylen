@@ -432,7 +432,7 @@ local async = require('async')
 local demo = require('native-demo')
 
 async.spawn(function()
-    local started, err = demo.startCamera('back')
+    local started, err = demo.startCamera()
     if err and err.code == 'denied' then
         print('The person refused the camera: ' .. err.message)
     end
@@ -517,7 +517,9 @@ The functions below stand in for the SDKs that real plugins bring. Each answers 
 
 ### demo.startCamera(facing), demo.stopCamera(), demo.cameraStream(), demo.takePhoto()
 
-Starts the camera, `'back'` by default or `'front'`, once the person allowed it, and returns `{width, height, facing, language}` inside a task once frames flow, as [the prompts of the system](#the-prompts-of-the-system) describe. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C++ library fail with `unsupported`, a refusal of the person with `denied`, and `takePhoto` without a camera with `cameraOff`.
+Starts the camera once the person allowed it, and returns `{width, height, facing, language}` inside a task once frames flow, as [the prompts of the system](#the-prompts-of-the-system) describe. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C++ library fail with `unsupported`, a refusal of the person with `denied`, and `takePhoto` without a camera with `cameraOff`.
+
+Without `facing`, the default camera of the system starts: `AVCaptureDevice.default(for:)` on Apple platforms, the first camera that Camera2 lists on Android and the camera that the browser picks on the web. The argument `facing`, `'front'` or `'back'`, asks for the camera that faces that way, and only that one: Android picks it by `LENS_FACING`, Apple platforms by the `position` of the wide angle camera and the web with the exact `facingMode` `'user'` or `'environment'`. A device without a camera that faces that way fails with `unsupported` and a sentence that names the facing, such as `This device has no camera that faces front.`, instead of starting another camera. The cameras of a Mac, the persona camera of visionOS and the webcams of computers tell no facing, so there only the default camera starts. The field `facing` of the answer is the way that the system says the camera that started faces, `'front'`, `'back'` or `'unspecified'`, and any other value of the argument raises an error.
 
 ```lua
 local async = require('async')
@@ -525,14 +527,18 @@ local graphics = require('haylen.graphics')
 local demo = require('native-demo')
 
 async.spawn(function()
-    local started, err = demo.startCamera('back')
+    local started, err = demo.startCamera('front')
+    if err and err.code == 'unsupported' then
+        print('No front camera here: ' .. err.message)
+        started, err = demo.startCamera()
+    end
     if err then
         print('No camera', err.code, err.message)
         return
     end
     local photo = demo.takePhoto():await()
     local texture = graphics.newTexture(photo.jpeg)
-    print(started.width, started.height, texture.width, demo.cameraStream().texture.width)
+    print(started.facing, started.width, started.height, texture.width, demo.cameraStream().texture.width)
 end)
 ```
 

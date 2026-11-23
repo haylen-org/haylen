@@ -10,7 +10,7 @@ local demo = require('native-demo')
 local Camera = haylen.class('Camera', DemoTest)
 
 Camera.code = [[
-local started, err = demo.startCamera('back')  -- The system asks the person first.
+local started, err = demo.startCamera()  -- Or 'front', which a device may lack.
 ui.setImage('@native-camera', demo.cameraStream().texture)
 local photo = demo.takePhoto():await()
 local texture = graphics.newTexture(photo.jpeg)
@@ -18,6 +18,7 @@ demo.startMicrophone()]]
 
 Camera.framesToPass = 30
 Camera.cameraName = 'The frames of the camera reach the texture'
+Camera.frontName = 'The frames of the front camera reach the texture'
 Camera.photoName = 'A photo arrives as JPEG bytes'
 Camera.microphoneName = 'The microphone fills its stream and reports its level'
 Camera.viewfinder = '@native-camera'
@@ -30,11 +31,11 @@ function Camera:enter()
         focus = 'camera',
         checksEmpty = 'Start the camera or the microphone to check them.',
         controls = {
-            ui.button{id = 'camera', text = 'Start the back camera', variant = 'primary', onClick = function() self:toggleCamera('back') end},
+            ui.button{id = 'camera', text = 'Start the camera', variant = 'primary', onClick = function() self:toggleCamera(nil) end},
             ui.button{id = 'front', text = 'Start the front camera', onClick = function() self:toggleCamera('front') end},
             ui.button{id = 'photo', text = 'Take a photo', enabled = false, onClick = function() self:takePhoto() end},
             ui.button{id = 'microphone', text = 'Start the microphone', onClick = function() self:toggleMicrophone() end},
-            ui.label{text = 'AVFoundation on iOS, iPadOS, Mac Catalyst and macOS, Camera2 and "AudioRecord" on Android, and "getUserMedia" on the web. The system asks the person for the camera and the microphone the first time, on Android through a screen of the plugin.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'AVFoundation on iOS, iPadOS, Mac Catalyst and macOS, Camera2 and "AudioRecord" on Android, and "getUserMedia" on the web. The system asks the person for the camera and the microphone the first time, on Android through a screen of the plugin. A device without a front camera, such as a Mac, tells so in the checks.', color = 'textMuted', font = 'caption'},
         },
         showcase = {
             ui.row{grow = 1, gap = 16, align = 'stretch',
@@ -70,24 +71,28 @@ function Camera:exit()
     Camera.super.exit(self)
 end
 
+-- The front camera, or the default camera of the system without a facing, checks in a row of its own, where a device without a front camera shows the reason as a check that does not apply there.
 function Camera:toggleCamera(facing)
     if self.cameraFeed then
         self:stopCamera()
         return
     end
+    local key = facing or 'camera'
+    local name = facing and Camera.frontName or Camera.cameraName
     self:act(function()
-        self.results:set('camera', 'waiting', Camera.cameraName, 'The camera starts.')
+        self.results:set(key, 'waiting', name, 'The camera starts.')
         local started, err = demo.startCamera(facing)
         if err then
-            self.results:failure('camera', Camera.cameraName, err)
+            self.results:failure(key, name, err)
             return
         end
+        local camera = started.facing == 'unspecified' and 'camera' or started.facing .. ' camera'
         self.cameraFeed = demo.cameraStream()
         self.cameraFrames = 0
         self.frames = self.cameraFeed:on('frame', function()
             self.cameraFrames = self.cameraFrames + 1
             local state = self.cameraFrames >= Camera.framesToPass and 'pass' or 'waiting'
-            self.results:set('camera', state, Camera.cameraName, string.format('%d frames of the %s camera of %d by %d pixels reached the texture through %s.', self.cameraFrames, started.facing, self.cameraFeed.width, self.cameraFeed.height, started.language))
+            self.results:set(key, state, name, string.format('%d frames of the %s of %d by %d pixels reached the texture through %s.', self.cameraFrames, camera, self.cameraFeed.width, self.cameraFeed.height, started.language))
         end)
         ui.setImage(Camera.viewfinder, self.cameraFeed.texture)
         self:set('cameraFrame', {image = Camera.viewfinder, visible = true})
@@ -106,7 +111,7 @@ function Camera:stopCamera()
     demo.stopCamera()
     self:set('cameraFrame', {visible = false})
     self:set('cameraOff', {visible = true})
-    self:set('camera', {text = 'Start the back camera'})
+    self:set('camera', {text = 'Start the camera'})
     self:set('photo', {enabled = false})
     ui.removeImage(Camera.viewfinder)
 end

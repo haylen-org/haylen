@@ -18,6 +18,9 @@ const openMedia = async (constraints, capability, absent, failed) => {
     }
 };
 
+// The facing modes of Media Capture for the facings of the plugin, the camera toward the person and the one away from them.
+const facingModes = { front: "user", back: "environment" };
+
 const products = [
     { id: "coins.small", title: "A pouch of coins", description: "100 coins for the shop of the app.", price: "0.99", currency: "USD", kind: "consumable" },
     { id: "coins.large", title: "A chest of coins", description: "1200 coins for the shop of the app.", price: "9.99", currency: "USD", kind: "consumable" },
@@ -176,15 +179,23 @@ export default function simulate(context) {
         map = null;
     };
 
-    // The camera plays in a video element of its own, which a timer copies into the stream 30 times per second.
+    // The camera plays in a video element of its own, which a timer copies into the stream 30 times per second. A facing asks the browser for exactly that camera, so a device without one fails instead of showing another camera, and the answer tells the facing that the browser reports for the camera that opened.
     context.register("startCamera", async (params) => {
         context.require({ secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" });
         stopCamera();
-        camera.media = await openMedia({ video: { width: 640, height: 480, facingMode: params.facing === "front" ? "user" : "environment" } }, "the camera", "This device has no camera.", { message: "The camera did not start: ", code: "cameraFailed" });
+        const video = { width: 640, height: 480 };
+        let absent = "This device has no camera.";
+        if (params.facing) {
+            video.facingMode = { exact: facingModes[params.facing] };
+            absent = `This device has no camera that faces ${params.facing}.`;
+        }
+        camera.media = await openMedia({ video }, "the camera", absent, { message: "The camera did not start: ", code: "cameraFailed" });
         camera.video = Object.assign(document.createElement("video"), { muted: true, playsInline: true, srcObject: camera.media });
         await camera.video.play();
         camera.timer = setInterval(() => camera.stream.push(camera.video), 1000 / 30);
-        return { width: camera.video.videoWidth, height: camera.video.videoHeight, facing: params.facing || "back", language };
+        const reported = camera.media.getVideoTracks()[0].getSettings().facingMode;
+        const facing = Object.keys(facingModes).find((name) => facingModes[name] === reported) || "unspecified";
+        return { width: camera.video.videoWidth, height: camera.video.videoHeight, facing, language };
     });
 
     context.register("stopCamera", () => {

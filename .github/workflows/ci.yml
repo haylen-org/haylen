@@ -414,8 +414,12 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      # The device profile has a back camera alone, and the camera test of the test project starts the front camera too.
       - name: Create the virtual device
-        run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --device medium_phone --package "system-images;android-37.0;default;x86_64"
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-ui-tests --device medium_phone --package "system-images;android-37.0;default;x86_64"
+          sed -i '/^hw.camera.front=/d' "$ANDROID_AVD_HOME/haylen-ui-tests.avd/config.ini"
+          echo "hw.camera.front=emulated" >> "$ANDROID_AVD_HOME/haylen-ui-tests.avd/config.ini"
       - name: Create an upload key
         run: uv run --locked haylen --verbose app sign samples/tests --target android
       - name: Start the protected release

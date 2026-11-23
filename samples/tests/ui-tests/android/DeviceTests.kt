@@ -8,27 +8,27 @@ import java.util.Locale
 import java.util.regex.Pattern
 import org.junit.Test
 
-// PLG-016: the back and the front cameras fill the video stream, a photo arrives as JPEG bytes that decode into a texture, and the microphone fills its stream with its level, after the permission dialogs that the screens of the plugin show.
+// PLG-016: the default and the front cameras fill the video stream, a photo arrives as JPEG bytes that decode into a texture, and the microphone fills its stream with its level, after the permission dialogs that the screens of the plugin show.
 class CameraTests : TestProjectCase() {
     override val code = "PLG-016"
     override val revokedPermissions = listOf(CAMERA, RECORD_AUDIO)
 
     @Test
     fun theCamerasThePhotoAndTheMicrophoneReachTheApp() {
-        tap("Start the back camera")
+        tap("Start the camera")
         answerPermission(*ALLOW_WHILE_USING)
-        expectCheck("The frames of the camera reach the texture", containing = "of the back camera")
+        expectCheck("The frames of the camera reach the texture", containing = "reached the texture")
         tap("Take a photo")
         expectCheck("A photo arrives as JPEG bytes", containing = "decoded into a texture")
-        saveScreenshot("back-camera")
+        saveScreenshot("camera")
         // Both camera buttons toggle, so the next one waits until the app shows the camera stopped, or a slow emulator would hand it the button while the camera still runs.
         tap("Stop the camera")
-        waitFor("Start the back camera")
+        waitFor("Start the camera")
         tap("Start the front camera")
-        expectCheck("The frames of the camera reach the texture", containing = "of the front camera")
+        expectCheck("The frames of the front camera reach the texture", containing = "of the front camera")
         saveScreenshot("front-camera")
         tap("Stop the camera")
-        waitFor("Start the back camera")
+        waitFor("Start the camera")
 
         tap("Start the microphone")
         answerPermission(*ALLOW_WHILE_USING)
