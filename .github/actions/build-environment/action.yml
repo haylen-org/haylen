@@ -191,10 +191,13 @@ runs:
         if [ ! -d "$folder" ]; then
           archive="$RUNNER_TEMP/sccache.tar.gz"
           curl --fail --silent --show-error --location --output "$archive" "https://github.com/mozilla/sccache/releases/download/$version/sccache-$version-$target.tar.gz"
-          echo "$sum  $archive" | shasum -a 256 --check --status
+          # The command "sha256sum" of macOS reads the sums only from a file, and a bare name keeps the folders of Windows out of it.
+          echo "$sum  sccache.tar.gz" > "$RUNNER_TEMP/sccache.tar.gz.sha256"
+          (cd "$RUNNER_TEMP" && sha256sum --check sccache.tar.gz.sha256)
           mkdir -p .tools
-          tar -xzf "$archive" -C .tools
-          rm "$archive"
+          # The tar of Git Bash takes a path that starts with a drive, such as "D:", for a remote host, so tar reads the archive from its input.
+          tar -xzf - -C .tools < "$archive"
+          rm "$archive" "$archive.sha256"
         fi
         program="$folder/sccache"
         if [ "$RUNNER_OS" = "Windows" ]; then
