@@ -677,7 +677,7 @@ TEST_F(UiLuaTest, TurnsImGuiMisuseIntoScriptErrors) {
     // clang-format on
     fixture.frames(2);
     ASSERT_NE(getEngine().getError(), nullptr);
-    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The Dear ImGui check \""), std::string::npos);
+    EXPECT_NE(std::string_view(getEngine().getError()->what()).find("Dear ImGui refused a call out of order, with the reason \""), std::string::npos);
 }
 
 // Dear ImGui trusts that a row goes into an open table and a tree pop closes an open node, so these checks happen before it runs.

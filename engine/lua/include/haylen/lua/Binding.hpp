@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <exception>
+#include <new>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -19,11 +20,13 @@ namespace haylen::lua {
 // Turns C++ functions, member functions and data members into Lua functions and registers modules.
 class Binding final {
   public:
-    // Runs `body` and turns a C++ exception into a Lua error with the same message. Lua errors raised inside `body` pass through untouched.
+    // Runs `body` and turns a C++ exception into a Lua error with the same message, and a failed allocation into a sentence that says the app ran out of memory. Lua errors raised inside `body` pass through untouched.
     template <typename Body> static int guarded(lua_State* L, Body&& body) {
         std::string message;
         try {
             return body();
+        } catch (const std::bad_alloc&) {
+            message = "The app ran out of memory.";
         } catch (const std::exception& exception) {
             message = exception.what();
         }

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <limits>
 #include <mutex>
+#include <new>
 #include <optional>
 #include <stdexcept>
 #include <utility>
@@ -518,12 +519,27 @@ void Manager::queueUpload(Upload upload, const Type& assetType) {
 
 std::shared_ptr<void> Manager::decode(Request& request, const Decoder& decoder) {
     const debug::TraceSpan span("decode", request.path);
-    return decoder(request);
+    try {
+        return decoder(request);
+    } catch (const core::Json::exception& failure) {
+        throw std::invalid_argument(describeJson(failure, request));
+    } catch (const std::bad_alloc&) {
+        throw std::runtime_error("The asset \"" + request.path + "\" needs more memory than the app has.");
+    }
 }
 
 std::shared_ptr<void> Manager::finalize(std::shared_ptr<void> decoded, const Request& request, const Finalizer& finalizer) {
     const debug::TraceSpan span("create", request.path);
-    return finalizer(std::move(decoded), request);
+    try {
+        return finalizer(std::move(decoded), request);
+    } catch (const core::Json::exception& failure) {
+        throw std::invalid_argument(describeJson(failure, request));
+    }
+}
+
+std::string Manager::describeJson(const core::Json::exception& failure, const Request& request) {
+    const std::string_view text(reinterpret_cast<const char*>(request.bytes.data()), request.bytes.size());
+    return core::JsonValidator::describe(failure, text, "The asset \"" + request.path + "\"");
 }
 
 bool Manager::isStreamed(const Request& request, const Type& assetType) {

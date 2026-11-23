@@ -240,9 +240,12 @@ class Manager final {
     void readFile(Request& request, bool streamed) const;
     [[nodiscard]] static bool isStreamed(const Request& request, const Type& assetType);
 
-    // Run the decoder and the finalizer of an asset inside the trace spans that name them by the path of the asset.
+    // Run the decoder and the finalizer of an asset inside the trace spans that name them by the path of the asset, and turn a failure of the JSON reader into a sentence that names the asset.
     [[nodiscard]] static std::shared_ptr<void> decode(Request& request, const Decoder& decoder);
     [[nodiscard]] static std::shared_ptr<void> finalize(std::shared_ptr<void> decoded, const Request& request, const Finalizer& finalizer);
+
+    // A failure of the JSON reader in a file of an asset, in plain words that name the asset.
+    [[nodiscard]] static std::string describeJson(const core::Json::exception& failure, const Request& request);
 
     // Throws for an asset whose bytes are not on the device, which a synchronous read never waits for.
     void requireLocal(std::string_view path) const;

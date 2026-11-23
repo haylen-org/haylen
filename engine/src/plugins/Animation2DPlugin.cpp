@@ -1,6 +1,7 @@
 #include "haylen/plugins/Animation2DPlugin.hpp"
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -9,6 +10,7 @@
 #include "haylen/2d/animation/SpriteAtlas.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JsonValidator.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
@@ -59,8 +61,12 @@ void Animation2DPlugin::start(core::Engine& engine) {
             auto decoded = std::make_shared<DecodedSkeleton>();
             decoded->document = core::Json::parse(request.bytes.begin(), request.bytes.end());
             decoded->atlasPath = io::Path::join(io::Path::directory(request.path), animation2d::SkeletonData::atlasPath(decoded->document));
-            const std::vector<std::uint8_t> atlasBytes = request.package->readAsset(decoded->atlasPath);
-            decoded->atlas.document = nlohmann::ordered_json::parse(atlasBytes.begin(), atlasBytes.end());
+            const std::string atlasText = request.package->readAssetText(decoded->atlasPath);
+            try {
+                decoded->atlas.document = nlohmann::ordered_json::parse(atlasText);
+            } catch (const core::Json::exception& failure) {
+                throw std::invalid_argument(core::JsonValidator::describe(failure, atlasText, "The atlas \"" + decoded->atlasPath + "\""));
+            }
             decoded->atlas.imagePath = io::Path::join(io::Path::directory(decoded->atlasPath), animation2d::SpriteAtlas::imagePath(decoded->atlas.document));
             decoded->atlas.image = graphics::Image::decodeFor(request.package->readAsset(decoded->atlas.imagePath), assets::Manager::textureOptionsFromJson(request.options));
             return decoded;

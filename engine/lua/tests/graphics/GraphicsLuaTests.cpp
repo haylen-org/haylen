@@ -45,7 +45,7 @@ TEST(GraphicsLuaTest, CreatesTexturesFromTheBytesOfImageFiles) {
 
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png) return t.width .. 'x' .. t.height .. ' ' .. t.filter"), "5x3 nearest");
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(png, {dynamic = true, filter = 'linear', wrap = 'repeat'}) t:update(string.rep('\\0', 60)) return t.filter .. ' ' .. t.wrap"), "linear repeat");
-    EXPECT_NE(fixture.lua("graphics.newTexture('not an image')").find("The image could not be decoded"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newTexture('not an image')").find("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file."), std::string::npos);
     EXPECT_NE(fixture.lua("graphics.newTexture(png, {fill = '#FF0000'})").find("fill"), std::string::npos);
 }
 
@@ -115,7 +115,7 @@ TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
 
     // Areas and places far outside the image clip to nothing instead of wrapping around onto its pixels.
     EXPECT_EQ(fixture.lua("canvas:blit(tile, 2000000000, 0, {source = {-1000000000, 0, 4, 4}}) canvas:fillGradient({colors = {'#000000'}}, {-1073741824, 0, 1073741824, 4}) return canvas:pixel(13, 1):toHex()"), "#FFFF0000");
-    EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image could not be decoded"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file."), std::string::npos);
     EXPECT_EQ(fixture.lua("return graphics.maxImageSize()"), "16384");
     EXPECT_EQ(fixture.lua("return graphics.decodeImage(png, {maxSize = 6}).width"), "6");
     EXPECT_NE(fixture.lua("graphics.decodeImage(png, {maxSize = 4})").find("pixels is too large to decode. The image may have at most 4 pixels on a side."), std::string::npos);

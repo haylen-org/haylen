@@ -391,8 +391,8 @@ TEST(PlatformLuaTest, ExplainsPluginManifestsItCannotRead) {
     });
     // clang-format on
     fixture.runLua("platform = require('haylen.platform')");
-    EXPECT_NE(fixture.lua("platform.plugin('broken')").find("The file \"plugins/broken/plugin.json\" of the package is not a JSON object."), std::string::npos);
-    EXPECT_NE(fixture.lua("platform.plugins()").find("The file \"plugins/broken/plugin.json\" of the package is not a JSON object."), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.plugin('broken')").find("The file \"plugins/broken/plugin.json\" is not valid JSON, since it ends before its last value is complete."), std::string::npos);
+    EXPECT_NE(fixture.lua("platform.plugins()").find("The file \"plugins/broken/plugin.json\" is not valid JSON, since it ends before its last value is complete."), std::string::npos);
     fixture.package().setFile("plugins/broken/plugin.json", test::TestFiles::bytes(R"({"id": "broken", "version": "1", "implementations": {"ios": "lua"}})"));
     EXPECT_NE(fixture.lua("platform.plugin('unversioned')").find("The file \"plugins/unversioned/plugin.json\" of the package has no version."), std::string::npos);
 }

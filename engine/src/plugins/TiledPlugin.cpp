@@ -139,7 +139,7 @@ void TiledPlugin::start(core::Engine& engine) {
         },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
             const io::Package& package = *request.package;
-            const auto reader = [&package](const std::string& path) { return core::Json::parse(package.readAssetText(path)); };
+            const auto reader = [&package](const std::string& path) { return core::JsonValidator::parse(package.readAssetText(path), path); };
             auto decoded = std::make_shared<DecodedMap>();
             const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(getTextureOptions(request.options));
             decoded->map = tiled::Map::parse(core::Json::parse(request.bytes.begin(), request.bytes.end()), request.path, reader);
@@ -163,7 +163,7 @@ void TiledPlugin::start(core::Engine& engine) {
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
             const io::Package& package = *request.package;
             const auto readText = [&package](const std::string& path) { return package.readAssetText(path); };
-            const auto readJson = [&package](const std::string& path) { return core::Json::parse(package.readAssetText(path)); };
+            const auto readJson = [&package](const std::string& path) { return core::JsonValidator::parse(package.readAssetText(path), path); };
             auto decoded = std::make_shared<DecodedRules>();
             decoded->mapper = std::make_shared<tiled::AutoMapper>(tiled::AutoMapper::load(request.path, readText, readJson));
             const graphics::Texture::Options options = assets::Manager::textureOptionsFromJson(request.options);

@@ -128,7 +128,7 @@ async.spawn(function()
     local _, failure = assets.loadAsync('broken.png', 'texture'):await()
     error(failure, 0)
 end)
-)", "The image could not be decoded", 5},
+)", "The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.", 5},
     FailingCode{"socketListener", R"(local net = require('haylen.net')
 local socket = net.connectWebSocket('ws://127.0.0.1:1/')
 socket:on('error', function()

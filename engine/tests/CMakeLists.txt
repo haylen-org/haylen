@@ -57,6 +57,7 @@ set(HAYLEN_TEST_SOURCES
   core/Base64Tests.cpp
   core/ContainerTests.cpp
   core/CoreTests.cpp
+  core/JsonValidatorTests.cpp
   core/RuntimeTests.cpp
   core/SceneManagerTests.cpp
   core/SignalTests.cpp

@@ -49,14 +49,15 @@ TEST(PluginManifestTest, RefusesWhatTheSchemaRefuses) {
         package.setFile("plugins/kit/plugin.json", test::TestFiles::bytes(manifest));
         try {
             static_cast<void>(PluginManifest::read(package, "kit"));
-        } catch (const std::runtime_error& error) {
+        } catch (const std::exception& error) {
             return std::string(error.what());
         }
         return std::string();
     };
     // clang-format on
 
-    EXPECT_EQ(failure("["), "The file \"plugins/kit/plugin.json\" of the package is not a JSON object.");
+    EXPECT_EQ(failure("["), "The file \"plugins/kit/plugin.json\" is not valid JSON, since it ends before its last value is complete.");
+    EXPECT_EQ(failure("[]"), "The file \"plugins/kit/plugin.json\" of the package is not a JSON object.");
     EXPECT_EQ(failure(R"({"implementations": {"ios": "lua"}})"), "The file \"plugins/kit/plugin.json\" of the package has no version.");
     EXPECT_EQ(failure(R"({"version": "1"})"), "The file \"plugins/kit/plugin.json\" of the package has no \"implementations\", the object that says whether the plugin works with its native part or with its Lua alone on each platform, such as {\"ios\": \"native\", \"web\": \"lua\"}.");
     EXPECT_EQ(failure(R"({"version": "1", "implementations": {"ios": "swift"}})"), "The implementation of \"plugins/kit/plugin.json\" in the package for \"ios\" must be \"native\" or \"lua\", not \"swift\".");

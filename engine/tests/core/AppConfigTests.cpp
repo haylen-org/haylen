@@ -158,6 +158,11 @@ TEST_F(AppConfigTest, TheBuildNumberIsAWholeNumberFromOne) {
     }
 }
 
+// A mistake of syntax in "haylen.json" names the file, its line and its column.
+TEST_F(AppConfigTest, NamesTheLineOfAMistakeOfSyntax) {
+    EXPECT_EQ(refusalOfPackage("{\n  \"name\": \"Cave\",\n  \"version\": 1.0.0\n}", "{}"), "The file \"haylen.json\" is not valid JSON. Check line 3, column 17.");
+}
+
 TEST_F(AppConfigTest, RejectsInvalidValues) {
     for (const char* document : {R"([])", R"({"name": 3})", R"({"company": 3})", R"({"description": false})", R"({"window": {"width": 0}})", R"({"design": {"scaling": "zoom"}})", R"({"design": {"height": -1}})", R"({"orientation": "sideways"})", R"({"fixedRate": 0})", R"({"clearColor": "blue"})", R"({"title": "typo"})", R"({"window": {"fullScreen": true}})", R"({"design": {"widht": 10}})", R"({"splash": {"background": "blue"}})", R"({"splash": {"image": "logo.png"}})", R"({"splash": {"darkBackground": ""}})", R"({"splash": {"duration": -1}})", R"({"splash": {"fadeOut": "slow"}})"}) {
         EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;

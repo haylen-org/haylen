@@ -63,7 +63,13 @@ TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
     EXPECT_EQ(assets.list("images").size(), 3U);
 
     EXPECT_THROW((void)assets.texture("images/missing.png"), std::runtime_error);
-    EXPECT_THROW((void)assets.json("data/broken.json"), haylen::core::Json::exception);
+    try {
+        (void)assets.json("data/broken.json");
+        ADD_FAILURE() << "A JSON asset that is not valid JSON loads.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The asset \"data/broken.json\" is not valid JSON, since it ends before its last value is complete.");
+    }
+
     EXPECT_THROW((void)assets.load("model", "images/red.png"), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "blurry"}}), std::invalid_argument);
     EXPECT_THROW((void)assets.getTypeForPath("images/readme.txt"), std::invalid_argument);
@@ -200,6 +206,7 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     std::string decodeError;
     assets.loadAsync("json", "data/broken.json", [&](std::shared_ptr<void>, std::string message) { decodeError = message; });
     ASSERT_TRUE(fixture.frameUntil([&] { return !decodeError.empty(); }));
+    EXPECT_EQ(decodeError, "The asset \"data/broken.json\" is not valid JSON, since it ends before its last value is complete.");
 }
 
 TEST_F(AssetsManagerTest, SharesOneAssetBetweenBackgroundAndDirectLoads) {

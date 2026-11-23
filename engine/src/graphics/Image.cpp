@@ -95,7 +95,7 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     int rows = 0;
     int channels = 0;
     if (stbi_info_from_memory(encoded.data(), size, &columns, &rows, &channels) == 0) {
-        throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
+        throw std::runtime_error("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
     }
 
     if (columns < 1 || rows < 1) {
@@ -113,7 +113,7 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     }
 
     if (decoded == nullptr) {
-        throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
+        throw std::runtime_error("The image is damaged, or it is not a PNG, JPEG, TGA, BMP or GIF file.");
     }
 
     return {columns, rows, Pixels(decoded, static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U)};

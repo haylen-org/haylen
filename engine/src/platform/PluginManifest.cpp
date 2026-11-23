@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "haylen/core/JsonValidator.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/platform/SystemAnswer.hpp"
@@ -11,7 +12,7 @@ namespace haylen::platform {
 
 PluginManifest PluginManifest::read(const io::Package& package, std::string_view id) {
     const std::string path = io::Path::plugin(id, io::Path::kPluginManifestFile);
-    const core::Json manifest = core::Json::parse(package.readText(path), nullptr, false);
+    const core::Json manifest = core::JsonValidator::parse(package.readText(path), path);
     if (!manifest.is_object()) {
         throw std::runtime_error("The file \"" + path + "\" of the package is not a JSON object.");
     }

@@ -427,7 +427,7 @@ void AppConfig::Content::expandGroups(const io::Package& package) {
         throw std::invalid_argument("The group manifest \"" + manifest + "\" that \"content.groups\" in \"haylen.json\" names is not in the package.");
     }
 
-    const std::map<std::string, std::vector<assets::GroupManifest::Entry>> defined = assets::GroupManifest::read(Json::parse(package.readText(manifest)));
+    const std::map<std::string, std::vector<assets::GroupManifest::Entry>> defined = assets::GroupManifest::read(JsonValidator::parse(package.readText(manifest), manifest));
     std::vector<Rule> expanded;
     for (Rule& rule : delivery) {
         if (rule.group.empty() || !rule.match.empty()) {
@@ -453,13 +453,13 @@ void AppConfig::Content::expandGroups(const io::Package& package) {
 }
 
 AppConfig AppConfig::fromPackage(const io::Package& package, std::span<const std::string_view> applicationSections) {
-    AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)), applicationSections);
+    AppConfig config = fromJson(JsonValidator::parse(package.readText(io::Path::kAppConfigFile), io::Path::kAppConfigFile), applicationSections);
     requirePluginManifests(package, config);
     return config;
 }
 
 std::map<std::string, AppConfig::Plugin> AppConfig::readPlugins(const io::Package& package) {
-    const Json document = Json::parse(package.readText(io::Path::kAppConfigFile));
+    const Json document = JsonValidator::parse(package.readText(io::Path::kAppConfigFile), io::Path::kAppConfigFile);
     AppConfig config;
     if (document.contains("plugins")) {
         readPlugins(document.at("plugins"), config);

@@ -169,8 +169,8 @@ Json MessagePack::decode(std::span<const std::byte> bytes) {
     const auto* first = reinterpret_cast<const std::uint8_t*>(bytes.data());
     try {
         return Json::from_msgpack(first, first + bytes.size(), true, true);
-    } catch (const Json::exception& error) {
-        throw std::invalid_argument(std::string("The bytes are not valid MessagePack: ") + error.what() + ".");
+    } catch (const Json::exception&) {
+        throw std::invalid_argument("The bytes are not valid MessagePack: a map in them has a key that is not a text, or a text in them is not valid UTF-8.");
     }
 }
 

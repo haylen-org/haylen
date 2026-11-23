@@ -13,6 +13,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/core/JsonValidator.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
@@ -69,7 +70,8 @@ int StorageBinding::writeText(lua_State* L) {
 }
 
 int StorageBinding::readJson(lua_State* L) {
-    lua::JsonConverter::push(L, haylen::core::Json::parse(getUserStorage(L).readText(lua::Stack::read<std::string_view>(L, 1))));
+    const auto path = lua::Stack::read<std::string_view>(L, 1);
+    lua::JsonConverter::push(L, haylen::core::JsonValidator::parse(getUserStorage(L).readText(path), path));
     return 1;
 }
 
@@ -342,7 +344,7 @@ int StorageBinding::writeTextAsync(lua_State* L) {
 
 int StorageBinding::readJsonAsync(lua_State* L) {
     haylen::storage::UserStorage& storage = getUserStorage(L);
-    return queue(L, false, [&storage, path = lua::Stack::read<std::string>(L, 1)] { return pushJson(haylen::core::Json::parse(storage.readText(path))); });
+    return queue(L, false, [&storage, path = lua::Stack::read<std::string>(L, 1)] { return pushJson(haylen::core::JsonValidator::parse(storage.readText(path), path)); });
 }
 
 // The value becomes JSON on the frame thread, which owns the Lua state, and its text reaches the disk on the I/O pool.

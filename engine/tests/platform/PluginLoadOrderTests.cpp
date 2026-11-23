@@ -36,7 +36,7 @@ TEST(PluginLoadOrderTest, RejectsFilesThatAreNotJsonObjects) {
         try {
             static_cast<void>(PluginLoadOrder::read(package));
             ADD_FAILURE() << "The package was read: " << reason;
-        } catch (const std::runtime_error& error) {
+        } catch (const std::exception& error) {
             EXPECT_EQ(error.what(), reason);
         }
     };
@@ -46,7 +46,7 @@ TEST(PluginLoadOrderTest, RejectsFilesThatAreNotJsonObjects) {
     rejects("The file \"haylen.json\" of the package is not a JSON object.");
     package.setFile("haylen.json", test::TestFiles::bytes(R"({"plugins": {"broken": {}}})"));
     package.setFile("plugins/broken/plugin.json", test::TestFiles::bytes("{"));
-    rejects("The file \"plugins/broken/plugin.json\" of the package is not a JSON object.");
+    rejects("The file \"plugins/broken/plugin.json\" is not valid JSON, since it ends before its last value is complete.");
 }
 
 } // namespace haylen::platform

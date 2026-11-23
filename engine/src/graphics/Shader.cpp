@@ -50,8 +50,8 @@ Shader Shader::parse(std::span<const std::uint8_t> bytes) {
     auto resource = std::make_shared<ShaderResource>();
     try {
         resource->read(core::Json::parse(bytes.begin(), bytes.end()));
-    } catch (const core::Json::exception& error) {
-        throw std::invalid_argument(std::format("The shader file is malformed, and the JSON reader reported \"{}\".", error.what()));
+    } catch (const core::Json::exception&) {
+        throw std::invalid_argument("The shader file is damaged or was not made by the Haylen shader compiler. Compile it again with \"haylen app shaders\".");
     } catch (const std::invalid_argument& error) {
         throw std::invalid_argument(std::format("The shader file is malformed: {}", error.what()));
     }

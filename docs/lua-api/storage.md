@@ -103,7 +103,7 @@ storage.writeText('logs/last-run.txt', 'Finished day 3 with 42 coins.')
 
 ### storage.readJson(path)
 
-Reads a JSON file and returns it as plain Lua values, as [JSON values](#json-values) describes. A missing file raises the same error as `storage.readText`. Invalid JSON raises the message of the parser, which starts with `[json.exception.parse_error.101]`.
+Reads a JSON file and returns it as plain Lua values, as [JSON values](#json-values) describes. A missing file raises the same error as `storage.readText`. Invalid JSON raises `The file "<path>" is not valid JSON. Check line <line>, column <column>.`.
 
 ```lua
 local storage = require('haylen.storage')
@@ -698,7 +698,7 @@ These messages come from the files and their paths.
 | `The storage file "<path>" could not be written.` | The write failed, such as over a folder or below a path that names a file. |
 | `The storage folder "<directory>" could not be listed, and the file system reported "<reason>".` | A folder below `directory` cannot be read. |
 | `The user storage could not be listed, and the file system reported "<reason>".` | A folder cannot be read while the whole storage is listed. |
-| `[json.exception.parse_error.101] <details>` | The file that `storage.readJson` or `storage.readJsonAsync` read is not valid JSON. |
+| `The file "<path>" is not valid JSON. Check line <line>, column <column>.` | The file that `storage.readJson` or `storage.readJsonAsync` read is not valid JSON. |
 
 These messages come from the conversion of [JSON values](#json-values).
 
