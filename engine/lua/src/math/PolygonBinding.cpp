@@ -186,7 +186,7 @@ int PolygonBinding::traceBitmap(lua_State* L) {
         lua::Table::readField(L, 4, "origin", origin);
     }
 
-    const auto count = lua_rawlen(L, 1);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, 1));
     std::vector<std::uint8_t> pixels(count);
     for (std::size_t pixel = 0; pixel < count; ++pixel) {
         const int type = lua_rawgeti(L, 1, static_cast<lua_Integer>(pixel + 1));

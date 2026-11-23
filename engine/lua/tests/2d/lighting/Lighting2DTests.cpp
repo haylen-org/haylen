@@ -93,7 +93,6 @@ TEST(LightFlickerTest, WaversBelowOneDeterministically) {
 }
 
 TEST(LightTest, ResolvesNamesAndRejectsValuesOutOfRange) {
-    using Light = haylen::lighting2d::Light;
     EXPECT_EQ(haylen::lighting2d::Light::typeFromName("spot"), haylen::lighting2d::Light::Type::Spot);
     EXPECT_EQ(haylen::lighting2d::Light::typeName(haylen::lighting2d::Light::Type::Directional), "directional");
     EXPECT_EQ(haylen::lighting2d::Light::blendFromName("subtract"), haylen::lighting2d::Light::Blend::Subtract);
@@ -117,7 +116,6 @@ TEST(LightTest, ResolvesNamesAndRejectsValuesOutOfRange) {
 }
 
 TEST(LightTest, FallsOffAroundPointsInsideSpotConesAndEverywhereFromDirections) {
-    using Light = haylen::lighting2d::Light;
     const haylen::lighting2d::Light point{.position = {100.0F, 100.0F}, .radius = 50.0F};
     EXPECT_FLOAT_EQ(point.getStrengthAt({100.0F, 100.0F}), 1.0F);
     EXPECT_FLOAT_EQ(point.getStrengthAt({125.0F, 100.0F}), haylen::lighting2d::Light::falloff(0.5F));
@@ -143,7 +141,6 @@ TEST(LightTest, FallsOffAroundPointsInsideSpotConesAndEverywhereFromDirections) 
 }
 
 TEST(LightTest, CombinesBlendModesInDrawOrderBeyondOne) {
-    using Light = haylen::lighting2d::Light;
     const haylen::math::Color ambient{0.2F, 0.2F, 0.2F, 1.0F};
     const haylen::lighting2d::Light bright{.radius = 100.0F, .intensity = 3.0F};
     const haylen::lighting2d::Light dimmer{.radius = 100.0F, .color = haylen::math::Color::white(), .intensity = 0.5F, .blend = haylen::lighting2d::Light::Blend::Subtract};
@@ -164,7 +161,6 @@ TEST(LightTest, CombinesBlendModesInDrawOrderBeyondOne) {
 }
 
 TEST(LightTest, KeepsTheBrighterChannelWithTheMaximumBlend) {
-    using Light = haylen::lighting2d::Light;
     EXPECT_EQ(haylen::lighting2d::Light::blendFromName("max"), haylen::lighting2d::Light::Blend::Max);
     const haylen::lighting2d::Light warm{.radius = 100.0F, .color = {1.0F, 0.5F, 0.0F, 1.0F}, .intensity = 0.8F, .blend = haylen::lighting2d::Light::Blend::Max};
     const haylen::lighting2d::Light torch{.position = {40.0F, 0.0F}, .radius = 100.0F, .color = {0.6F, 0.6F, 0.6F, 1.0F}, .blend = haylen::lighting2d::Light::Blend::Max};
@@ -178,7 +174,6 @@ TEST(LightTest, KeepsTheBrighterChannelWithTheMaximumBlend) {
 }
 
 TEST(LightTest, ReachesDrawsByLightMaskAndLayerRange) {
-    using Light = haylen::lighting2d::Light;
     const haylen::lighting2d::Light light{.radius = 100.0F, .itemMask = 0b0110, .layerMin = -1, .layerMax = 2};
     EXPECT_TRUE(light.affects(0b0010, 0));
     EXPECT_TRUE(light.affects(0b0100, 2));

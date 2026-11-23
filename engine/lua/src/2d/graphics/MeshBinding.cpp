@@ -31,7 +31,7 @@ void MeshBinding::readVertex(lua_State* L, int index, haylen::graphics2d::MeshVe
 
 void MeshBinding::readVertices(lua_State* L, int index, std::vector<haylen::graphics2d::MeshVertex>& vertices) {
     luaL_checktype(L, index, LUA_TTABLE);
-    vertices.assign(lua_rawlen(L, index), haylen::graphics2d::MeshVertex{});
+    vertices.assign(static_cast<std::size_t>(lua_rawlen(L, index)), haylen::graphics2d::MeshVertex{});
     for (std::size_t place = 0; place < vertices.size(); ++place) {
         lua_rawgeti(L, index, static_cast<lua_Integer>(place + 1));
         readVertex(L, lua_gettop(L), vertices[place]);

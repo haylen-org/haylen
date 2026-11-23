@@ -252,7 +252,7 @@ haylen::nodes2d::Node Nodes2DBinding::addNode(lua_State* L, haylen::nodes2d::Nod
 
 std::vector<haylen::nodes2d::Node> Nodes2DBinding::readNodes(lua_State* L, int index) {
     luaL_checktype(L, index, LUA_TTABLE);
-    const auto count = lua_rawlen(L, index);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, index));
     std::vector<haylen::nodes2d::Node> nodes;
     nodes.reserve(count);
     for (std::size_t place = 1; place <= count; ++place) {

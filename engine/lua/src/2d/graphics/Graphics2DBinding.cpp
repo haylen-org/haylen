@@ -380,7 +380,7 @@ int Graphics2DBinding::drawBatch(lua_State* L) {
     std::vector<haylen::graphics2d::SpriteInstance>& sprites = batchSprites;
     std::vector<haylen::graphics2d::PartColors>& partColors = batchPartColors;
     std::vector<haylen::graphics2d::SpriteData>& data = batchData;
-    sprites.resize(lua_rawlen(L, 2));
+    sprites.resize(static_cast<std::size_t>(lua_rawlen(L, 2)));
     partColors.clear();
     data.clear();
     for (std::size_t index = 0; index < sprites.size(); ++index) {
@@ -663,7 +663,7 @@ int Graphics2DBinding::drawOccluder(lua_State* L) {
 // Draws metaballs with `drawMetaballs({x1, y1, x2, y2, ...}, radius, {color, outlineColor, outlineWidth, threshold, layer, depth, ...})`, whose flat list of positions needs no table per point.
 int Graphics2DBinding::drawMetaballs(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    const auto count = lua_rawlen(L, 1);
+    const auto count = static_cast<std::size_t>(lua_rawlen(L, 1));
     luaL_argcheck(L, count % 2 == 0, 1, "metaball positions need two numbers per point");
     std::vector<haylen::math::Vec2>& points = pointScratch;
     points.resize(count / 2);

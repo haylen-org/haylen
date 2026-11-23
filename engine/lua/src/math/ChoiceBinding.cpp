@@ -43,7 +43,7 @@ void ChoiceBinding::pushItem(lua_State* L, std::size_t item) {
 // Creates a bag with `shuffleBag(items, {counts = {...}, seed = n})`, where item `i` goes into the bag `counts[i]` times.
 int ChoiceBinding::newShuffleBag(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
-    const auto size = lua_rawlen(L, 1);
+    const auto size = static_cast<std::size_t>(lua_rawlen(L, 1));
     std::vector<std::uint32_t> counts(size, 1);
     std::optional<lua_Integer> seed;
     if (!lua_isnoneornil(L, 2)) {
