@@ -1047,7 +1047,7 @@ scene.push({
 
 ## Glass
 
-A glass draw shows what lies behind its shape blurred, graded, tinted and lit at its rim. It ends the pass of its destination to read it, and a screen with glass draws into an image of its own first. The [effects guide](effects.md#glass) explains the steps, the glass of the UI and the cost.
+A glass draw shows what lies behind its shape blurred, graded, tinted and lit at its rim. It ends the pass of its destination to read it, an end that the glass draws after it share while nothing drawn since then reaches what they read, and a screen with glass draws into an image of its own first. The [effects guide](effects.md#glass) explains the steps, the glass of the UI and the cost.
 
 ## Custom shaders
 

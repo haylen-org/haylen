@@ -8,6 +8,7 @@
 #include <span>
 
 #include "graphics/TextureResource.hpp"
+#include "haylen/math/Geometry.hpp"
 #include "haylen/math/Math.hpp"
 #include "math/HalfFloat.hpp"
 
@@ -182,6 +183,31 @@ std::array<math::Vec2, 4> GpuInstance::getCorners() const noexcept {
     }
 
     return corners;
+}
+
+math::Rect GpuInstance::getBounds() const noexcept {
+    const float skew = static_cast<float>(static_cast<std::int8_t>(parameters[2])) / kSkewScale;
+    const float cosine = std::cos(rotation);
+    const float sine = std::sin(rotation);
+    const math::Vec2 origin{position[0], position[1]};
+    std::array<math::Vec2, 5> points{math::Vec2{0.0F, 0.0F}, math::Vec2{1.0F, 0.0F}, math::Vec2{1.0F, 1.0F}, math::Vec2{0.0F, 1.0F}, origin};
+    for (std::size_t index = 0; index < 4; ++index) {
+        math::Vec2 local = (points[index] - math::Vec2{pivot[0], pivot[1]}) * math::Vec2{size[0], size[1]};
+        local.x -= skew * local.y;
+        points[index] = origin + math::Vec2{local.x * cosine - local.y * sine, local.x * sine + local.y * cosine};
+    }
+
+    return math::Geometry::bounds(points);
+}
+
+math::Rect GpuInstance::getShapeBounds() const noexcept {
+    const ShapeRecord record = std::bit_cast<ShapeRecord>(*this);
+    const float margin = math::HalfFloat::toFloat(record.reach[1]);
+    const math::Vec2 half{record.halfSize[0] + margin, record.halfSize[1] + margin};
+    const float cosine = std::abs(std::cos(record.rotation));
+    const float sine = std::abs(std::sin(record.rotation));
+    const math::Vec2 extent{half.x * cosine + half.y * sine, half.x * sine + half.y * cosine};
+    return math::Rect::fromCenter(math::Vec2{record.center[0], record.center[1]}, extent * 2.0F);
 }
 
 } // namespace haylen::graphics2d

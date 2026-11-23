@@ -11,11 +11,15 @@ class HalfFloat final {
     static constexpr float kLargest = 65504.0F;
     static constexpr float kSmallestNormal = 6.103515625e-05F;
     static constexpr float kSubnormalSteps = 16777216.0F;
+    static constexpr std::uint16_t kFirstNormal = 0x0400U;
 
     HalfFloat() = delete;
 
     // Converts a value of zero or more to the bits of a half float, rounding to the nearest and keeping it within the largest finite half.
     [[nodiscard]] static std::uint16_t fromFloat(float value) noexcept;
+
+    // Converts the bits of a finite half float of zero or more back to its value.
+    [[nodiscard]] static float toFloat(std::uint16_t bits) noexcept;
 };
 
 } // namespace haylen::math

@@ -9,6 +9,7 @@
 
 #include "2d/graphics/MaterialResource.hpp"
 #include "2d/graphics/RendererState.hpp"
+#include "2d/graphics/StaticBatchResource.hpp"
 #include "graphics/DeviceState.hpp"
 #include "graphics/RenderTargetResource.hpp"
 #include "graphics/TextureResource.hpp"
@@ -419,6 +420,7 @@ void FrameSubmitter::upload() {
         source = &state.upload;
     }
 
+    uploaded = *source;
     splatBase = source->size();
     glassBase = splatBase + state.splats.size();
     const std::size_t total = glassBase + state.glassInstances.size();
@@ -783,6 +785,24 @@ void FrameSubmitter::beginOffscreenPass(const graphics::RenderTarget& renderTarg
     ++state.stats.passes;
 }
 
+// A tile GPU loads none of what a pass that discards its target held, and the pixels around the region of such a pass hold whatever the GPU leaves there.
+void FrameSubmitter::beginFilterPass(const graphics::RenderTarget& destination, const std::optional<math::Rect>& region, bool keeps) {
+    if (!region) {
+        beginOffscreenPass(destination, math::Color::transparent());
+        return;
+    }
+
+    if (keeps) {
+        beginOffscreenPass(destination, std::nullopt);
+        return;
+    }
+
+    const gpu::Device::ColorAttachment attachment{.image = destination.getTexture().getResource()->image, .load = gpu::Device::Load::DontCare};
+    state.getGpu().beginPass({.colors = std::span(&attachment, 1), .label = "haylen-region-pass"});
+    passOpen = true;
+    ++state.stats.passes;
+}
+
 // The info image starts with the light mask 1 and the layer 0 of draws that set neither, so lights reach the background like such a draw.
 void FrameSubmitter::beginLitPass(const LitTargets& targets, math::Color clear) {
     const std::array<gpu::Device::ColorAttachment, 4> attachments{{
@@ -847,10 +867,9 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     ++state.stats.drawCalls;
 }
 
-// A pass that writes a region keeps the pixels of the target around it.
-void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step, const std::optional<math::Rect>& region) {
+void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step, const std::optional<math::Rect>& region, bool keeps) {
     const math::Vec2 size = source.getSize();
-    beginOffscreenPass(destination, region ? std::nullopt : std::optional<math::Color>(math::Color::transparent()));
+    beginFilterPass(destination, region, keeps);
     state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
     if (region) {
         state.getGpu().applyScissor(*region);
@@ -873,8 +892,8 @@ void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics
     endPass();
 }
 
-void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, const std::optional<math::Rect>& region) {
-    beginOffscreenPass(destination, region ? std::nullopt : std::optional<math::Color>(math::Color::transparent()));
+void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, const std::optional<math::Rect>& region, bool keeps) {
+    beginFilterPass(destination, region, keeps);
     state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Offscreen));
     if (region) {
         state.getGpu().applyScissor(*region);
@@ -894,16 +913,9 @@ void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::
 
 // Nine taps of the blur span four steps on each side, so the steps of a radius are a quarter of it in texels. The image shrinks into smaller sizes until the radius spans at most four texels, where the taps lie a texel or less apart and leave no gap for rings, blurs there and grows back size by size, each step averaging four taps around every texel. A blur of a region writes at each size the region moved out by a margin of texels of the smallest size, which holds every texel the taps reach from the region, so it costs what the region covers whatever the radius.
 void FrameSubmitter::blurInto(const graphics::RenderTarget& image, std::vector<std::array<graphics::RenderTarget, 2>>& chain, float threshold, float radius, const std::optional<math::Rect>& region) {
-    growChain(chain, 1, image.getWidth(), image.getHeight());
-    const graphics::RenderTarget& first = chain.front()[0];
-    float reach = radius * first.getSize().x / image.getSize().x;
-    std::size_t level = 0;
-    while (reach > kBlurReach && level + 1 < kBlurLevels && std::min(first.getWidth(), first.getHeight()) >> (level + 1) >= kBlurSmallest) {
-        reach *= 0.5F;
-        ++level;
-    }
-
+    const std::size_t level = getBlurLevel(image.getWidth(), image.getHeight(), radius);
     growChain(chain, level + 1, image.getWidth(), image.getHeight());
+    const float reach = std::ldexp(radius * chain.front()[0].getSize().x / image.getSize().x, -static_cast<int>(level));
 
     const std::optional<math::Rect> around = region ? std::optional<math::Rect>(region->expanded(kBlurMargin * std::ldexp(1.0F, static_cast<int>(level) + 1))) : std::nullopt;
     filter(image, chain[0][0], threshold, {}, getChainRegion(around, chain, 0));
@@ -919,6 +931,19 @@ void FrameSubmitter::blurInto(const graphics::RenderTarget& image, std::vector<s
     for (std::size_t index = level; index > 0; --index) {
         filter(chain[index][0], chain[index - 1][0], -1.0F, {}, getChainRegion(around, chain, index - 1));
     }
+}
+
+std::size_t FrameSubmitter::getBlurLevel(int width, int height, float radius) noexcept {
+    const int firstWidth = std::max(1, width >> 1);
+    const int firstHeight = std::max(1, height >> 1);
+    float reach = radius * static_cast<float>(firstWidth) / static_cast<float>(width);
+    std::size_t level = 0;
+    while (reach > kBlurReach && level + 1 < kBlurLevels && std::min(firstWidth, firstHeight) >> (level + 1) >= kBlurSmallest) {
+        reach *= 0.5F;
+        ++level;
+    }
+
+    return level;
 }
 
 std::optional<math::Rect> FrameSubmitter::getChainRegion(const std::optional<math::Rect>& region, const std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t index) noexcept {
@@ -1029,7 +1054,11 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
                 throw std::logic_error("A glass draws only into a pass that draws into an image.");
             }
 
-            drawGlass(canvas, command, matrix, passRect, *image);
+            if (!state.glasses[command.first].ready) {
+                prepareGlasses(canvas, index, end, passRect, *image);
+            }
+
+            drawGlass(canvas, command, matrix, passRect);
             currentPipeline = {};
             currentClip.reset();
             continue;
@@ -1217,28 +1246,166 @@ void FrameSubmitter::drawBackdrop(const Canvas& canvas, const Command& command, 
     ++state.stats.drawCalls;
 }
 
-// The glass ends the pass of its destination and renders what lies behind it into the image of glass of the size of the destination, through the smaller images of its blur when it blurs. The pass goes on keeping what the destination holds, and the shape draws over the image behind it, read at its own pixels, with the program of the glass or the shape program of its material.
-void FrameSubmitter::drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect, const graphics::RenderTarget& image) {
-    const GlassDraw& draw = state.glasses[command.first];
-    GlassTargets& targets = state.glassTargets[draw.targets];
-    const math::Rect clip = getClipScissor(canvas, command.clip, passRect);
+// A glass whose image behind it reads no pixel draws nothing.
+void FrameSubmitter::prepareGlasses(const Canvas& canvas, std::size_t first, std::size_t end, const math::Rect& passRect, const graphics::RenderTarget& image) {
     const math::Rect bounds{0.0F, 0.0F, image.getSize().x, image.getSize().y};
-    const math::Rect read = getPixels(canvas, draw.corners, passRect, true).intersection(clip.expanded(std::ceil(draw.refractionPixels))).intersection(bounds);
-    if (read.width <= 0.0F || read.height <= 0.0F) {
+    std::optional<math::Rect> drawn;
+    std::size_t last = first;
+    for (std::size_t index = first; index < end; ++index) {
+        const Command& command = state.commands[index];
+        if (!showsPixels(canvas, command.clip, passRect)) {
+            continue;
+        }
+
+        if (command.program == Program::Glass) {
+            GlassDraw& draw = state.glasses[command.first];
+            const math::Rect clip = getClipScissor(canvas, command.clip, passRect);
+            const math::Rect read = getPixels(canvas, draw.corners, passRect, true).intersection(clip.expanded(std::ceil(draw.refractionPixels))).intersection(bounds);
+            const bool reads = read.width > 0.0F && read.height > 0.0F;
+            const bool untouched = !drawn || !drawn->intersects(getGlassSource(read, draw.blurPixels, image));
+            bool apart = true;
+            for (std::size_t other = first; other < index && apart; ++other) {
+                const Command& earlier = state.commands[other];
+                apart = earlier.program != Program::Glass || !state.glasses[earlier.first].read.intersects(read);
+            }
+
+            // A glass that cannot join ends the group, so no glass of the group draws after another end of the pass rewrote the image behind it.
+            if (index != first && reads && !(untouched && apart)) {
+                break;
+            }
+
+            draw.read = reads ? read : math::Rect{};
+            draw.ready = true;
+            last = index;
+        }
+
+        const std::optional<math::Rect> pixels = getCommandPixels(canvas, command, passRect);
+        if (!pixels) {
+            break;
+        }
+
+        if (!pixels->isEmpty()) {
+            drawn = drawn ? drawn->merged(*pixels) : *pixels;
+        }
+    }
+
+    bool ended = false;
+    for (std::size_t index = first; index <= last; ++index) {
+        const Command& command = state.commands[index];
+        if (command.program != Program::Glass || !state.glasses[command.first].ready || state.glasses[command.first].read.isEmpty()) {
+            continue;
+        }
+
+        if (!ended) {
+            endPass();
+        }
+
+        renderBehindGlass(state.glasses[command.first], image, ended);
+        ended = true;
+    }
+
+    if (ended) {
+        beginOffscreenPass(image, std::nullopt);
+        state.getGpu().applyViewport(passRect);
+    }
+}
+
+void FrameSubmitter::renderBehindGlass(const GlassDraw& draw, const graphics::RenderTarget& image, bool keeps) {
+    GlassTargets& targets = state.glassTargets[draw.targets];
+    if (draw.blurPixels > 0.0F) {
+        blurInto(image, targets.chain, -1.0F, draw.blurPixels, draw.read);
+        filter(targets.chain.front()[0], targets.image, -1.0F, {}, draw.read, keeps);
+    } else {
+        copy(image, targets.image, draw.read, keeps);
+    }
+}
+
+math::Rect FrameSubmitter::getGlassSource(const math::Rect& read, float blurPixels, const graphics::RenderTarget& image) noexcept {
+    if (blurPixels <= 0.0F) {
+        return read;
+    }
+
+    const std::size_t level = getBlurLevel(image.getWidth(), image.getHeight(), blurPixels);
+    return read.expanded(kBlurMargin * std::ldexp(1.0F, static_cast<int>(level) + 1));
+}
+
+std::optional<math::Rect> FrameSubmitter::getCommandPixels(const Canvas& canvas, const Command& command, const math::Rect& passRect) const {
+    const std::optional<math::Rect> units = getCommandBounds(command);
+    if (!units) {
+        return std::nullopt;
+    }
+
+    const math::Rect moved = units->translated(command.offset);
+    const std::array<math::Vec2, 4> corners{moved.getMin(), math::Vec2{moved.getRight(), moved.y}, moved.getMax(), math::Vec2{moved.x, moved.getBottom()}};
+    return getPixels(canvas, corners, passRect, true).intersection(getClipScissor(canvas, command.clip, passRect));
+}
+
+// The quads of sprites, glyphs and shapes, the vertices of meshes and the bounds of baked batches hold what their draws change, while the quads of effects reach past their sprites by an outline and a glow, and image blends, groups and metaballs cover areas of their own.
+std::optional<math::Rect> FrameSubmitter::getCommandBounds(const Command& command) const {
+    if (command.program == Program::Glass) {
+        return math::Geometry::bounds(state.glasses[command.first].corners);
+    }
+
+    if (command.batch != nullptr) {
+        return command.batch->bounds;
+    }
+
+    std::optional<math::Rect> bounds;
+    const auto merge = [&bounds](const math::Rect& next) { bounds = bounds ? bounds->merged(next) : next; };
+    switch (command.program) {
+    case Program::Mesh:
+        for (std::size_t index = command.first; index < command.first + command.count; ++index) {
+            const GpuVertex& vertex = state.vertices[state.uploadIndices[index]];
+            merge(math::Rect{vertex.position[0], vertex.position[1], 0.0F, 0.0F});
+        }
+
+        return bounds;
+    case Program::Shape:
+        for (std::size_t index = command.first; index < command.first + command.count; ++index) {
+            merge(uploaded[index].getShapeBounds());
+        }
+
+        return bounds;
+    case Program::Sprite:
+    case Program::Text:
+    case Program::PlainText:
+    case Program::Recolor:
+    case Program::Batch:
+    case Program::GradientText: {
+        const std::size_t stride = isPaired(command.program) ? 2 : 1;
+        for (std::size_t index = command.first; index < command.first + command.count; index += stride) {
+            merge(uploaded[index].getBounds());
+        }
+
+        return bounds;
+    }
+    case Program::ImageBlend:
+    case Program::Composite:
+    case Program::Light:
+    case Program::Metaball:
+    case Program::Filter:
+    case Program::Effect:
+    case Program::Backdrop:
+    case Program::Glass:
+    case Program::LitComposite:
+    case Program::PlainComposite:
+    case Program::ShadowedLight:
+    case Program::UniformLight:
+    case Program::ShadowedUniformLight:
+        break;
+    }
+
+    return std::nullopt;
+}
+
+// The shape draws over the image behind it, read at its own pixels, with the program of the glass or the shape program of its material.
+void FrameSubmitter::drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect) {
+    const GlassDraw& draw = state.glasses[command.first];
+    if (draw.read.isEmpty()) {
         return;
     }
 
-    endPass();
-    if (draw.blurPixels > 0.0F) {
-        blurInto(image, targets.chain, -1.0F, draw.blurPixels, read);
-        filter(targets.chain.front()[0], targets.image, -1.0F, {}, read);
-    } else {
-        copy(image, targets.image, read);
-    }
-
-    beginOffscreenPass(image, std::nullopt);
-    state.getGpu().applyViewport(passRect);
-
+    const GlassTargets& targets = state.glassTargets[draw.targets];
     const Shade& shade = state.shades[command.shade];
     const auto blend = static_cast<std::uint8_t>(command.blend);
     const graphics::PassTarget pass = graphics::PassTarget::Offscreen;

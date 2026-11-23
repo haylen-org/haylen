@@ -90,6 +90,32 @@ TEST_F(GlassTest, ReadsARenderTargetCanvasWhereItDraws) {
     EXPECT_EQ(stats.drawCalls, 7U);
 }
 
+// Glass draws share one end of the pass of their destination while nothing drawn since then reaches what they read, so a bar at the top and a bar at the bottom end it once with a title between them. A glass over another glass, or after a draw whose reach the renderer cannot tell, ends it again.
+TEST_F(GlassTest, SharesOneEndOfThePassWhileNothingDrawnSinceReachesWhatTheyRead) {
+    const graphics::RenderTarget target = fixture.engine().getGraphics().createRenderTarget(512, 512);
+    const graphics::Texture white = fixture.engine().getGraphics().getWhiteTexture();
+    // clang-format off
+    const auto passes = [&](const std::function<void(core::Engine&, Renderer&)>& between, const Shape& second) {
+        const Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+            Renderer& renderer = engine.getRenderer2D();
+            renderer.beginTarget(target, topLeft(), {.clear = math::Color::black()});
+            renderer.drawCircle({256.0F, 256.0F}, 200.0F, math::Color::white());
+            renderer.drawGlass({.bounds = {0.0F, 0.0F, 512.0F, 48.0F}}, {.blur = 8.0F});
+            between(engine, renderer);
+            renderer.drawGlass(second, {.blur = 8.0F});
+        });
+        EXPECT_EQ(fixture.engine().getError(), nullptr);
+        return stats.passes;
+    };
+    const Shape bottom{.bounds = {0.0F, 464.0F, 512.0F, 48.0F}};
+    const std::size_t shared = passes([](core::Engine& engine, Renderer& renderer) { renderer.drawText(*engine.getDefaultFont(), "Title", {16.0F, 12.0F}, {.size = 20.0F}); }, bottom);
+    const std::size_t stacked = passes([](core::Engine&, Renderer&) {}, {.bounds = {0.0F, 24.0F, 512.0F, 48.0F}});
+    const std::size_t unknown = passes([&white](core::Engine&, Renderer& renderer) { renderer.drawImageBlend({.from = white, .to = white, .area = {0.0F, 200.0F, 64.0F, 64.0F}}); }, bottom);
+    // clang-format on
+    EXPECT_EQ(shared + 1, stacked);
+    EXPECT_EQ(shared + 1, unknown);
+}
+
 // A glass that its clip hides reads nothing and keeps the pass of its canvas.
 TEST_F(GlassTest, SkipsAGlassOutsideItsClip) {
     const graphics::RenderTarget target = fixture.engine().getGraphics().createRenderTarget(256, 256);

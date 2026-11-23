@@ -31,6 +31,7 @@ struct TextureResource;
 namespace haylen::graphics2d {
 
 struct Command;
+struct GlassDraw;
 struct RendererState;
 struct Shade;
 
@@ -241,12 +242,18 @@ class FrameSubmitter final {
     void composite(const Canvas& canvas, graphics::PassTarget pass, Stage stage);
 
     // Draws the source into the target with the filter program, which shrinks it to half its size, keeping what passes the threshold when it is not negative, or blurs it along the step in texels of the source, writing only the pixels of the region of the target when it has one.
-    void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step, const std::optional<math::Rect>& region = std::nullopt);
-    void copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, const std::optional<math::Rect>& region = std::nullopt);
+    void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step, const std::optional<math::Rect>& region = std::nullopt, bool keeps = false);
+    void copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, const std::optional<math::Rect>& region = std::nullopt, bool keeps = false);
+
+    // Begins the pass of a filter, which clears the whole destination, discards it around a region that nothing reads outside it, or keeps it around the region.
+    void beginFilterPass(const graphics::RenderTarget& destination, const std::optional<math::Rect>& region, bool keeps);
 
     // Blurs the image over the radius in its pixels into the first target of the chain, at half its size, through the smaller sizes the radius needs, keeping to what the region of the image needs when it has one.
     void blurInto(const graphics::RenderTarget& image, std::vector<std::array<graphics::RenderTarget, 2>>& chain, float threshold, float radius, const std::optional<math::Rect>& region = std::nullopt);
     void growChain(std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t levels, int width, int height);
+
+    // Returns how many times a blur of the radius halves its image after the first half size, until the radius spans at most `kBlurReach` texels.
+    [[nodiscard]] static std::size_t getBlurLevel(int width, int height, float radius) noexcept;
 
     // Returns the texels of a size of the chain that a region of the image covers, the ones it touches.
     [[nodiscard]] static std::optional<math::Rect> getChainRegion(const std::optional<math::Rect>& region, const std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t index) noexcept;
@@ -262,7 +269,20 @@ class FrameSubmitter final {
     [[nodiscard]] gpu::Device::Bindings makeBindings(const Command& command, const Shade& shade, graphics::PassTarget pass);
     void drawImageBlend(const Command& command, const Matrix& matrix);
     void drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
-    void drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect, const graphics::RenderTarget& image);
+    void drawGlass(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
+
+    // Ends the pass of the destination of the glass of the first command and renders what lies behind it, and behind every later glass of the commands where nothing drawn since then reaches what it reads and whose pixels no glass before it reads, which share that end of the pass. The pass then goes on keeping what the destination holds.
+    void prepareGlasses(const Canvas& canvas, std::size_t first, std::size_t end, const math::Rect& passRect, const graphics::RenderTarget& image);
+
+    // Renders what lies behind a glass into its image of glass, blurred when it blurs, writing only the pixels the glass reads, and keeping the other pixels of the image when another glass of the same end of the pass already wrote them.
+    void renderBehindGlass(const GlassDraw& draw, const graphics::RenderTarget& image, bool keeps);
+
+    // Returns the pixels of the destination whose colors the image behind a glass takes: the pixels it reads and the margin that its blur reaches around them.
+    [[nodiscard]] static math::Rect getGlassSource(const math::Rect& read, float blurPixels, const graphics::RenderTarget& image) noexcept;
+
+    // Returns the pixels of the pass that the draws of a command may change, or nothing when it cannot tell, such as for effects that reach past the quads of their sprites.
+    [[nodiscard]] std::optional<math::Rect> getCommandPixels(const Canvas& canvas, const Command& command, const math::Rect& passRect) const;
+    [[nodiscard]] std::optional<math::Rect> getCommandBounds(const Command& command) const;
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend, math::Vec2 viewport);
     void applyTurn();
@@ -288,6 +308,8 @@ class FrameSubmitter final {
     std::size_t instanceCursor = 0;
     std::size_t splatBase = 0;
     std::size_t glassBase = 0;
+    // The instances of the draws as the frame uploaded them, in the order of the commands.
+    std::span<const GpuInstance> uploaded;
     std::size_t commandFloor = 0;
     bool identity = true;
     bool passOpen = false;

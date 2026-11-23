@@ -13,8 +13,16 @@
 #include "haylen/math/ShuffleBag.hpp"
 #include "haylen/math/Spring.hpp"
 #include "haylen/math/WeightedChoice.hpp"
+#include "math/HalfFloat.hpp"
 
 namespace haylen::math {
+
+// The halves that shapes keep their softness and margin in read back as the values they stored, to the precision of a half.
+TEST(HalfFloatTest, ReadsBackTheValuesItStores) {
+    for (const float value : {0.0F, 0.00003F, 0.5F, 1.0F, 1.5F, 24.0F, 1000.25F, 65504.0F}) {
+        EXPECT_NEAR(HalfFloat::toFloat(HalfFloat::fromFloat(value)), value, value / 1024.0F + 0.0000001F);
+    }
+}
 
 TEST(SpringTest, ReachesTheTargetWithoutOvershooting) {
     Spring spring(0.0F, 0.25F);

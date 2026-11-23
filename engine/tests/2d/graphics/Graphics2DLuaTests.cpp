@@ -532,7 +532,7 @@ TEST_F(Graphics2DLuaTest, DrawsStrokesAndKeptMeshes) {
     EXPECT_NE(lua("graphics2d.newGridMesh(nil, 1, 1, {depth = 1})").find("Unknown option \"depth\"."), std::string::npos);
 }
 
-// Two glass draws over a world canvas: the screen draws into its image, and each glass shrinks what lies behind it to the size where its blur spans four texels.
+// Two glass draws over a world canvas: the screen draws into its image, and each glass shrinks what lies behind it to the size where its blur spans four texels, while the second glass shares the end of the pass of the first, since nothing drawn since then reaches what it reads.
 TEST_F(Graphics2DLuaTest, DrawsGlassOverWhatLiesBehindIt) {
     // clang-format off
     const std::string body = R"(
@@ -544,7 +544,7 @@ TEST_F(Graphics2DLuaTest, DrawsGlassOverWhatLiesBehindIt) {
     )";
     // clang-format on
     EXPECT_EQ(render(body), "nil");
-    EXPECT_EQ(lua("return graphics2d.stats().passes"), "18");
+    EXPECT_EQ(lua("return graphics2d.stats().passes"), "17");
 
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawGlass({0, 0, 8, 8}, {texture = hero})").find("Unknown option \"texture\"."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawGlass({0, 0, 8, 8}, {frost = 1})").find("Unknown option \"frost\"."), std::string::npos);

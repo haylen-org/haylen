@@ -516,7 +516,7 @@ TEST(UiLuaThemeTest, FollowsTheContrastAndTransparencyOfTheSystem) {
     EXPECT_NE(fixture.lua("ui.setTheme('lost')").find("The theme \"lost\" names the high contrast theme \"missing\", which the UI does not know."), std::string::npos);
 }
 
-// A panel, a card and a dialog with `glass` draw glass with the look of the theme, which makes the screen draw into an image the glass reads, and reduced transparency draws them as plain surfaces of the opaque glass color, which reads nothing.
+// A panel, a card and a dialog with `glass` draw glass with the look of the theme, which makes the screen draw into an image the glass reads, where a glass shares the end of the pass of the glass before it while nothing drawn since then reaches what it reads, and reduced transparency draws them as plain surfaces of the opaque glass color, which reads nothing.
 TEST(UiLuaThemeTest, DrawsGlassSurfacesPlainWhileTheSystemReducesTransparency) {
     test::EngineFixture fixture;
     // clang-format off
@@ -532,7 +532,7 @@ TEST(UiLuaThemeTest, DrawsGlassSurfacesPlainWhileTheSystemReducesTransparency) {
     // clang-format on
     fixture.frames(3);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_EQ(fixture.lua("return graphics2d.stats().passes"), "29");
+    EXPECT_EQ(fixture.lua("return graphics2d.stats().passes"), "28");
 
     fixture.host().setAccessibilitySettings({.reducedTransparency = true});
     fixture.frames(2);

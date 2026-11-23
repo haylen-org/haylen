@@ -23,13 +23,13 @@ Glass reads the pixels that lie behind its shape at the moment it draws. Behind 
 
 A glass goes through these steps when the frame is submitted:
 
-1. It ends the pass of its destination, so the pixels behind it can be read.
+1. It ends the pass of its destination, so the pixels behind it can be read. The glass draws after it share that end of the pass while nothing drawn since then reaches the pixels they read and they read no pixel that a glass before them reads, such as a bar at the top of a screen and a bar at the bottom, so one end of the pass serves them all.
 2. It shrinks the region it needs to half its size, then to smaller sizes, each half the one before, until the blur spans at most four texels.
 3. At the smallest size, it blurs the region across and then down with nine taps of a Gaussian curve.
 4. It grows the blurred region back size by size into an image with the size of its destination.
 5. It goes on drawing in a new pass that keeps what the destination holds. Its shape reads that image at its own pixels, moved outward near the edge by the refraction, then grades, tints and lights it.
 
-The region is the area of the shape, the refraction around it and a margin that the blur needs. Every step writes only that region, so a glass costs the same few passes whatever its radius, and a wider blur adds one more small pass each time it doubles. A blur never loops over its radius in a pixel.
+The region is the area of the shape, the refraction around it and a margin that the blur needs. Every step writes only that region and lets the GPU discard the rest of its image, which a tile GPU then never loads, so a glass costs the same few passes whatever its radius, and a wider blur adds one more small pass each time it doubles. A blur never loops over its radius in a pixel.
 
 The screen is the one destination that cannot be read back. A frame whose screen canvases hold glass draws them into an image with the size of the window instead, and that image reaches the swapchain in one copy at the end of the frame. A frame without glass on the screen draws as before and pays nothing. Render target canvases, captures and canvases with post-processing already draw into images, so their glass reads them directly. A glass inside a group reads only what the group drew before it, since the group draws into an image of its own.
 

@@ -10,6 +10,7 @@
 #include "haylen/2d/graphics/SpriteEffect.hpp"
 #include "haylen/2d/graphics/SpriteFlip.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
+#include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Gradient.hpp"
 
@@ -71,6 +72,12 @@ struct GpuInstance {
 
     // Returns the corners of the quad on its canvas from the top-left one clockwise, where the vertex stage places them, without the skew of italic glyphs.
     [[nodiscard]] std::array<math::Vec2, 4> getCorners() const noexcept;
+
+    // Returns the box on its canvas that a sprite or a glyph may cover: its quad with the skew, and the point it stands on, toward which a tilt shortens the quad.
+    [[nodiscard]] math::Rect getBounds() const noexcept;
+
+    // Returns the box on its canvas that the quad of a shape covers, with the margin where its edge fades.
+    [[nodiscard]] math::Rect getShapeBounds() const noexcept;
 
   private:
     // The dissolve, outline and glow colors, the dissolve, its edge and the size of its noise, the reach of the quad and the outline and glow widths in pixels.

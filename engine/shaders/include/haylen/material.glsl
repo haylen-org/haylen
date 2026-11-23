@@ -284,6 +284,18 @@ float haylen_shape_sector() {
     return abs(turned.y) * cos(half_angle) - turned.x * sin(half_angle);
 }
 
+// The signed distance from the center of the pixel to the edge of the shape, which its coverage and a material such as glass both read, so each pixel measures it once.
+float haylen_shape_edge = 0.0;
+bool haylen_shape_measured = false;
+
+float haylen_shape_distance() {
+    if (!haylen_shape_measured) {
+        haylen_shape_edge = haylen_shape_box(haylen_shape_frame.xy);
+        haylen_shape_measured = true;
+    }
+    return haylen_shape_edge;
+}
+
 // The coverage of the pixel, which the paint of a shape and its output both read, so each pixel measures it once.
 vec2 haylen_shape_coverage = vec2(0.0);
 bool haylen_shape_covered = false;
@@ -294,9 +306,8 @@ vec2 haylen_shape_cover() {
         return haylen_shape_coverage;
     }
 
-    vec2 point = haylen_shape_frame.xy;
     float ramp = haylen_shape_form.y;
-    float box = haylen_shape_box(point);
+    float box = haylen_shape_distance();
     float sector = haylen_shape_sector();
     float beyond = clamp(0.5 - (box + 2.0 * haylen_shape_form.z) / ramp, 0.0, 1.0);
     float outer = clamp(0.5 - max(box, sector) / ramp, 0.0, 1.0) - beyond;
