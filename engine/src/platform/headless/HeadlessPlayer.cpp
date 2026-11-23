@@ -82,7 +82,7 @@ int HeadlessPlayer::play(const Options& options) {
     auto next = std::chrono::steady_clock::now();
     while (engine->isRunning() || !launchers.empty()) {
         if (!engine->isRunning()) {
-            end(host, engine);
+            engine.reset();
             engine = returnToLauncher(host, launchers, playing);
         }
 
@@ -96,7 +96,7 @@ int HeadlessPlayer::play(const Options& options) {
         }
 
         if (engine->isRestartRequested()) {
-            end(host, engine);
+            engine.reset();
             engine = launch(host, playing);
         } else if (const std::optional<core::Engine::Launch> request = engine->getLaunchRequest()) {
             const std::span<const std::string> arguments = host.getLaunchArguments();
@@ -104,7 +104,7 @@ int HeadlessPlayer::play(const Options& options) {
             host.setLaunched(true);
             host.setLaunchArguments({});
             host.setNativeAccess(host.hasNativeAccess() && request->nativeAccess);
-            end(host, engine);
+            engine.reset();
             engine = launchPackage(host, *request, playing);
             if (engine == nullptr) {
                 engine = returnToLauncher(host, launchers, playing);
@@ -119,7 +119,7 @@ int HeadlessPlayer::play(const Options& options) {
     }
 
     const int status = host.getErrorReports().empty() ? engine->getExitStatus() : 1;
-    end(host, engine);
+    engine.reset();
     return status;
 }
 
@@ -164,10 +164,6 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const s
     auto engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
     engine->start();
     return engine;
-}
-
-void HeadlessPlayer::end(HeadlessHost& host, std::unique_ptr<core::Engine>& engine) {
-    engine.reset();
 }
 
 } // namespace haylen::platform

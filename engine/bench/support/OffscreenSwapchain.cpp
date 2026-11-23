@@ -116,6 +116,10 @@ void OffscreenSwapchain::beginPass(const PassDesc& desc) {
     device->beginPass(offscreen);
 }
 
+int OffscreenSwapchain::getPassTurns() const noexcept {
+    return device->getPassTurns();
+}
+
 void OffscreenSwapchain::applyViewport(const math::Rect& pixels) {
     device->applyViewport(pixels);
 }
