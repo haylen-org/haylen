@@ -50,7 +50,7 @@ FrameSubmitter::Matrix FrameSubmitter::projection(const math::Transform2D& view,
 }
 
 bool FrameSubmitter::isInstanced(const DrawItem& item) noexcept {
-    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape || item.program == Program::Batch || item.program == Program::GradientText) && item.batch == nullptr;
+    return (item.program == Program::Sprite || item.program == Program::Text || item.program == Program::PlainText || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Shape || item.program == Program::Batch || item.program == Program::GradientText) && item.batch == nullptr;
 }
 
 void FrameSubmitter::submit() {

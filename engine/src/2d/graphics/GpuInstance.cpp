@@ -168,6 +168,10 @@ void GpuInstance::fadeShape(float amount) noexcept {
     *this = std::bit_cast<GpuInstance>(record);
 }
 
+bool GpuInstance::isPlainGlyph() const noexcept {
+    return parameters[0] == 0 && parameters[1] == 0 && parameters[3] == 0 && (flash >> 24U) == 0;
+}
+
 std::array<math::Vec2, 4> GpuInstance::getCorners() const noexcept {
     const float cosine = std::cos(rotation);
     const float sine = std::sin(rotation);

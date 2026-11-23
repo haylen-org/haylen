@@ -72,7 +72,7 @@ class TextPainter final {
     // Returns the weight, the width and the skew of a glyph in the units of the distance field of its font, without an outline or a softness.
     [[nodiscard]] static GpuInstance::TextParameters getParameters(const text::Layout::Look& look, const text::Layout::Glyph& glyph) noexcept;
 
-    void add(Program program, const graphics::Texture& texture, const GpuInstance& instance);
+    void add(Program requested, const graphics::Texture& texture, const GpuInstance& instance);
     void addGradientGlyph(const graphics::Texture& page, const GpuInstance& glyph, const GpuInstance& gradient);
     [[nodiscard]] GpuInstance makeGradient(const text::Layout& layout, const text::Layout::Glyph& glyph, const text::Gradient& gradient) const noexcept;
     void addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance instance);

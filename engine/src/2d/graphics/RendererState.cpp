@@ -46,6 +46,7 @@ const std::array<RendererState::ProgramSource, RendererState::kProgramCount> Ren
     {.package = 5, .program = "light_shadowed", .lit = ""},
     {.package = 5, .program = "light_uniform", .lit = ""},
     {.package = 5, .program = "light_uniform_shadowed", .lit = ""},
+    {.package = 1, .program = "text_plain", .lit = "text_plain_lit"},
 }};
 // clang-format on
 
@@ -829,6 +830,7 @@ RendererState::Layout RendererState::describeLayout(Program program) {
     case Program::Glass:
     case Program::Sprite:
     case Program::Text:
+    case Program::PlainText:
         break;
     }
 
@@ -955,6 +957,7 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     case Program::Sprite:
         return lit ? "sprite_lit" : "sprite";
     case Program::Text:
+    case Program::PlainText:
         return lit ? "text_lit" : "text";
     case Program::Mesh:
         return lit ? "mesh_lit" : "mesh";

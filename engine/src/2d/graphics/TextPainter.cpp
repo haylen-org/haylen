@@ -28,7 +28,9 @@ void TextPainter::clear() noexcept {
     batchCount = 0;
 }
 
-void TextPainter::add(Program program, const graphics::Texture& texture, const GpuInstance& instance) {
+// A glyph that fills its shape alone draws with the program of plain glyphs, which skips the work of outlines, synthetic bold and softness.
+void TextPainter::add(Program requested, const graphics::Texture& texture, const GpuInstance& instance) {
+    const Program program = requested == Program::Text && instance.isPlainGlyph() ? Program::PlainText : requested;
     if (batchCount == 0 || batches[batchCount - 1].program != program || batches[batchCount - 1].texture != texture) {
         if (batchCount == batches.size()) {
             batches.emplace_back();

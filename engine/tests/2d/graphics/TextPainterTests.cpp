@@ -82,13 +82,15 @@ class TextPainterTest : public ::testing::Test {
     VectorAtlas atlas{fixture.engine().getGraphics(), fixture.engine().getJobs()};
 };
 
-// A synthetic bold spreads the glyph by a share of its quad along the baseline instead of moving the edge of its field, so the gaps above and below its strokes stay as the font draws them.
+// A synthetic bold spreads the glyph by a share of its quad along the baseline instead of moving the edge of its field, so the gaps above and below its strokes stay as the font draws them. The outline and the bold glyph draw with the text program, and the italic glyph and the fill over the outline, which fill their shapes alone, with the program of plain glyphs.
 TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
     text::RichText styled = make("[b]b[/b][i]i[/i][outline=2 color=red]o[/outline]", {.size = 32.0F});
     const std::vector<TextPainter::Batch> batches = paint(styled);
-    ASSERT_EQ(batches.size(), 1U);
+    ASSERT_EQ(batches.size(), 2U);
     EXPECT_EQ(batches[0].program, Program::Text);
-    ASSERT_EQ(batches[0].instances.size(), 4U);
+    ASSERT_EQ(batches[0].instances.size(), 2U);
+    EXPECT_EQ(batches[1].program, Program::PlainText);
+    ASSERT_EQ(batches[1].instances.size(), 2U);
 
     const GpuInstance& bold = batches[0].instances[1];
     const text::Font& font = *styled.getLayout().looks[0].font;
@@ -98,7 +100,7 @@ TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
     EXPECT_EQ(bold.parameters[0], 0U);
 
     // Italics lean around the baseline, where their pivot sits.
-    const GpuInstance& italic = batches[0].instances[2];
+    const GpuInstance& italic = batches[1].instances[0];
     EXPECT_EQ(signedByte(italic.parameters[2]), static_cast<int>(std::lround(0.2F * 127.0F)));
     EXPECT_EQ(italic.parameters[1], 0U);
     const text::Layout::Glyph& leaning = styled.getLayout().glyphs[1];
@@ -107,7 +109,7 @@ TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
 
     // The outline is a glyph of its own under every fill, and the fill over it has none.
     const GpuInstance& outline = batches[0].instances[0];
-    const GpuInstance& outlined = batches[0].instances[3];
+    const GpuInstance& outlined = batches[1].instances[1];
     EXPECT_NEAR(static_cast<float>(outline.parameters[0]) / 255.0F * 0.5F, font.toDistance(2.0F, 32.0F), 0.5F / 255.0F);
     EXPECT_EQ(outline.flash, math::Color::fromHex(0xFF0000FFU).toRgba8());
     EXPECT_EQ(outline.color >> 24U, 0U);
@@ -122,13 +124,16 @@ TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
     const text::Style style{.size = 48.0F, .color = math::Color::white(), .outlineWidth = 4.0F, .outlineColor = math::Color::black()};
     TextPainter painter = makePainter();
     painter.paintText(*font.layout("WAVE", style), {}, style, {});
-    ASSERT_EQ(painter.getBatches().size(), 1U);
-    const std::vector<GpuInstance>& instances = painter.getBatches()[0].instances;
-    ASSERT_EQ(instances.size(), 8U);
+    ASSERT_EQ(painter.getBatches().size(), 2U);
+    EXPECT_EQ(painter.getBatches()[1].program, Program::PlainText);
+    const std::vector<GpuInstance>& outlines = painter.getBatches()[0].instances;
+    const std::vector<GpuInstance>& fills = painter.getBatches()[1].instances;
+    ASSERT_EQ(outlines.size(), 4U);
+    ASSERT_EQ(fills.size(), 4U);
 
     for (std::size_t index = 0; index < 4; ++index) {
-        const GpuInstance& outline = instances[index];
-        const GpuInstance& fill = instances[index + 4];
+        const GpuInstance& outline = outlines[index];
+        const GpuInstance& fill = fills[index];
         EXPECT_GT(outline.parameters[0], 0U);
         EXPECT_EQ(outline.color >> 24U, 0U);
         EXPECT_EQ(outline.flash, math::Color::black().toRgba8());
@@ -140,12 +145,13 @@ TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
 
     text::RichText rich = make("[outline=4 color=black]WAVE[/outline]", {.size = 48.0F});
     const std::vector<TextPainter::Batch> batches = paint(rich);
-    ASSERT_EQ(batches.size(), 1U);
-    ASSERT_EQ(batches[0].instances.size(), 8U);
+    ASSERT_EQ(batches.size(), 2U);
+    ASSERT_EQ(batches[0].instances.size(), 4U);
+    ASSERT_EQ(batches[1].instances.size(), 4U);
 
     for (std::size_t index = 0; index < 4; ++index) {
         EXPECT_GT(batches[0].instances[index].parameters[0], 0U);
-        EXPECT_EQ(batches[0].instances[index + 4].parameters[0], 0U);
+        EXPECT_EQ(batches[1].instances[index].parameters[0], 0U);
     }
 }
 
@@ -169,17 +175,19 @@ TEST_F(TextPainterTest, ScalesAndTintsRichTextFromItsCorner) {
 TEST_F(TextPainterTest, DrawsShadowsAndGlowsUnderTheGlyphs) {
     text::RichText lit = make("[bgcolor=#203040][glow=6 color=yellow][shadow=3,3 blur=2]g[/shadow][/glow][/bgcolor][u]u[/u]", {.size = 32.0F});
     const std::vector<TextPainter::Batch> batches = paint(lit);
-    ASSERT_EQ(batches.size(), 3U);
+    ASSERT_EQ(batches.size(), 4U);
     EXPECT_EQ(batches[0].program, Program::Sprite);
     EXPECT_EQ(batches[0].instances.size(), 1U);
     EXPECT_EQ(batches[0].instances[0].color, math::Color::fromHex(0x203040FFU).toRgba8());
     EXPECT_EQ(batches[1].program, Program::Text);
-    ASSERT_EQ(batches[1].instances.size(), 4U);
-    EXPECT_EQ(batches[2].program, Program::Sprite);
+    ASSERT_EQ(batches[1].instances.size(), 2U);
+    EXPECT_EQ(batches[2].program, Program::PlainText);
+    ASSERT_EQ(batches[2].instances.size(), 2U);
+    EXPECT_EQ(batches[3].program, Program::Sprite);
 
     const GpuInstance& glow = batches[1].instances[0];
     const GpuInstance& shadow = batches[1].instances[1];
-    const GpuInstance& glyph = batches[1].instances[2];
+    const GpuInstance& glyph = batches[2].instances[0];
     EXPECT_GT(glow.parameters[0], 0U);
     EXPECT_EQ(glow.parameters[1], 0U);
     EXPECT_GT(glow.parameters[3], 0U);
@@ -217,10 +225,11 @@ TEST_F(TextPainterTest, DrawsBitmapGlyphsAsSprites) {
     text::Font& field = *fixture.engine().getDefaultFont();
     TextPainter smooth = makePainter();
     smooth.paintText(*field.layout("AB", style), {}, style, {});
-    ASSERT_EQ(smooth.getBatches().size(), 1U);
+    ASSERT_EQ(smooth.getBatches().size(), 2U);
     EXPECT_EQ(smooth.getBatches()[0].program, Program::Text);
     EXPECT_GT(smooth.getBatches()[0].instances[0].parameters[3], 0U);
-    EXPECT_EQ(smooth.getBatches()[0].instances[2].parameters[3], 0U);
+    EXPECT_EQ(smooth.getBatches()[1].program, Program::PlainText);
+    EXPECT_EQ(smooth.getBatches()[1].instances[0].parameters[3], 0U);
 }
 
 // A color glyph draws the raster of its vector image through the sprite program in its own colors with the alpha of the text, its shadow is its silhouette, and it takes no outline.
@@ -229,7 +238,7 @@ TEST_F(TextPainterTest, DrawsColorGlyphsAsRastersInTheirOwnColors) {
     text::RichText mixed = make("A\U0001F600", {.family = family, .size = 32.0F, .color = math::Color{1.0F, 0.0F, 0.0F, 0.5F}});
     const std::vector<TextPainter::Batch> batches = paint(mixed);
     ASSERT_EQ(batches.size(), 2U);
-    EXPECT_EQ(batches[0].program, Program::Text);
+    EXPECT_EQ(batches[0].program, Program::PlainText);
     EXPECT_EQ(batches[1].program, Program::Sprite);
     ASSERT_EQ(batches[1].instances.size(), 1U);
     const GpuInstance& emoji = batches[1].instances[0];
@@ -404,7 +413,7 @@ TEST_F(TextPainterTest, FillsTheGlyphsOfAGradientTag) {
     ASSERT_EQ(batches[1].instances.size(), 2U);
     EXPECT_EQ(at<std::uint16_t>(batches[1].instances[1], 28), static_cast<std::uint16_t>(0.2F * 65535.0F + 0.5F));
     EXPECT_EQ(at<std::uint16_t>(batches[1].instances[1], 30), static_cast<std::uint16_t>(0.6F * 65535.0F + 0.5F));
-    EXPECT_EQ(batches[2].program, Program::Text);
+    EXPECT_EQ(batches[2].program, Program::PlainText);
     EXPECT_EQ(batches[2].instances.size(), 1U);
 
     const graphics::Texture page = fixture.engine().getGraphics().createTexture(graphics::Image(16, 8, math::Color::white()));

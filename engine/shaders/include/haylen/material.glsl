@@ -477,7 +477,7 @@ float haylen_text_smoothing(vec2 point, vec4 texels) {
     return abs(horizontal) + abs(vertical);
 }
 
-// A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. A synthetic bold spreads the glyph along its baseline by a share of its quad to each side, the union of the glyph moved left and moved right, so its strokes widen while the gaps above and below them, such as the one between the dot of an i and its stem, stay as open as the font draws them. The softness widens the edge into a blur for soft shadows and glows. With the smoothing of the edge on screen the outline and the softness shrink together to stop a sixteenth of the field short of 0, which the border of the quad of the glyph reaches, so a glyph never shows its quad at any size. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
+// A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. The text program of the engine compiles once more with `HAYLEN_TEXT_PLAIN` for the glyphs without an outline, a synthetic bold or softness, which most text is, since a modest GPU does the work of the outline and the softness for every glyph that a branch would skip. A synthetic bold spreads the glyph along its baseline by a share of its quad to each side, the union of the glyph moved left and moved right, so its strokes widen while the gaps above and below them, such as the one between the dot of an i and its stem, stay as open as the font draws them. The softness widens the edge into a blur for soft shadows and glows. With the smoothing of the edge on screen the outline and the softness shrink together to stop a sixteenth of the field short of 0, which the border of the quad of the glyph reaches, so a glyph never shows its quad at any size. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
 vec4 haylen_text(vec2 point) {
 #ifdef HAYLEN_TEXT
     vec4 texels = haylen_source_texels();
@@ -485,13 +485,17 @@ vec4 haylen_text(vec2 point) {
     vec4 texels = vec4(0.0);
 #endif
     float distance = haylen_text_field(point, texels);
+#ifdef HAYLEN_TEXT_PLAIN
+    float smoothing = max(haylen_text_smoothing(point, texels) * 0.7, 0.0001);
+    return vec4(color.rgb, color.a * smoothstep(0.5 - smoothing, 0.5 + smoothing, distance));
+#else
     if (haylen_text_style.y > 0.0) {
         vec2 spread = vec2(haylen_text_style.y * (haylen_source.z - haylen_source.x), 0.0);
         distance = max(haylen_text_field(point - spread, texels), haylen_text_field(point + spread, texels));
     }
     float smoothing = max(haylen_text_smoothing(point, texels) * 0.7, 0.0001);
 
-    // A glyph without a visible outline and without softness is its fill alone, which most text is.
+    // A glyph without a visible outline and without softness is its fill alone.
     if (haylen_flash.a <= 0.0 && haylen_text_style.z <= 0.0) {
         return vec4(color.rgb, color.a * smoothstep(0.5 - smoothing, 0.5 + smoothing, distance));
     }
@@ -507,6 +511,7 @@ vec4 haylen_text(vec2 point) {
     vec4 outer = vec4(haylen_flash.rgb * haylen_flash.a, haylen_flash.a) * border;
     vec4 glyph = inner + outer * (1.0 - inner.a);
     return vec4(glyph.rgb / max(glyph.a, 0.0001), glyph.a);
+#endif
 }
 
 // The color the draw has without a material: the sprite, or the glyph when the material draws text.

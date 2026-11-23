@@ -63,6 +63,9 @@ struct GpuInstance {
     void fade(float amount) noexcept;
     void fadeShape(float amount) noexcept;
 
+    // Tells whether a glyph fills its shape alone, without an outline, a synthetic bold or softness.
+    [[nodiscard]] bool isPlainGlyph() const noexcept;
+
     // Returns the texture of the batch that the record of the data of a sprite names.
     [[nodiscard]] std::size_t getDataTexture() const noexcept;
 

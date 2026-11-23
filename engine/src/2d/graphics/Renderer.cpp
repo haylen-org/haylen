@@ -1140,7 +1140,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
     for (std::size_t index = canvas.itemBegin; index < end; ++index) {
         const DrawItem item = state->items[index];
         const bool sprite = item.program == Program::Sprite || item.program == Program::Recolor || item.program == Program::Effect || item.program == Program::Batch;
-        const bool text = item.program == Program::Text || item.program == Program::GradientText;
+        const bool text = item.program == Program::Text || item.program == Program::PlainText || item.program == Program::GradientText;
         if ((!sprite && !text) || item.distortion || item.texture == state->white.getResource().get()) {
             continue;
         }
