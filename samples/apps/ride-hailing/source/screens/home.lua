@@ -4,6 +4,7 @@ local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
+local window = require('haylen.window')
 
 local MapView = require('map-view')
 local Page = require('page')
@@ -99,6 +100,9 @@ end
 -- Fits the place of the rider into the part of the screen the sheet leaves.
 function Home:update(dt)
     Page.update(self, dt)
+
+    -- The map moves its traffic by itself, so the screen asks for every frame while it shows.
+    window.requestRedraw()
     local sheet = self.gui:bounds('sheet')
     if not sheet then
         return

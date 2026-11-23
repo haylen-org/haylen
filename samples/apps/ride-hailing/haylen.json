@@ -10,6 +10,7 @@
         "height": 820,
         "resizable": true,
         "maxPixelDensity": 0,
+        "redraw": "onChange",
         "statusBar": "dark"
     },
     "design": {

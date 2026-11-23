@@ -86,9 +86,11 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
         }
     }
 
+    // What a reload changed shows in the next frame, also in an app that redraws on change.
     const std::vector<std::string> changed = session->takeChanges();
     if (!changed.empty()) {
         apply(engine, changed);
+        engine.requestRedraw();
     }
 }
 

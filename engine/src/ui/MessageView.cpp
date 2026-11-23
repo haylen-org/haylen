@@ -148,6 +148,12 @@ void MessageView::drawMessage(Message& message, const math::Rect& area) {
         return;
     }
 
+    // A message that counts its time, comes in, leaves or moves to its place keeps the frames coming.
+    const bool counting = message.phase == Message::Phase::Shown && duration > 0.0F;
+    if (counting || going || message.appear < 1.0F || std::fabs(target - message.offset) > kSettled || std::fabs(depth - message.depth) > kSettledDepth) {
+        context.requestFrame();
+    }
+
     // Start and end stacks line up with the sides of the area the UI starts and ends at. A toast comes in from the edge of its stack, and a snackbar and a banner travel their whole height, so a banner drops in under the status bar.
     const MessageStack::Position position = content.position;
     const bool start = position == MessageStack::Position::TopStart || position == MessageStack::Position::BottomStart;
@@ -491,6 +497,9 @@ void MessageView::followSwipe(Message& message, float width) {
 
     const float target = message.phase == Message::Phase::Leaving && message.reason == Message::Reason::Swiped ? std::copysign(width, message.swipe) : 0.0F;
     message.swipe += (target - message.swipe) * std::min(1.0F, context.getDeltaSeconds() * kSwipeSpeed);
+    if (std::fabs(target - message.swipe) > kSettled) {
+        context.requestFrame();
+    }
 }
 
 void MessageView::describe(const Message& message) {

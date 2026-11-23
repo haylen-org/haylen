@@ -262,6 +262,14 @@ class Context final {
         return deltaSeconds;
     }
 
+    // Asks for the next frame, for a part of the UI that still moves or waits for time to pass, such as a list that glides, a message that counts its time or a tooltip that waits for its delay, so an app that redraws on change draws until the UI rests. Every frame starts without the request.
+    void requestFrame() noexcept {
+        frameRequested = true;
+    }
+    [[nodiscard]] bool isFrameRequested() const noexcept {
+        return frameRequested;
+    }
+
     // Events go to the queue of the GUI being drawn.
     void setEventQueue(std::vector<Event>* value) noexcept {
         events = value;
@@ -380,6 +388,7 @@ class Context final {
     double time = 0.0;
     float deltaSeconds = 0.0F;
     float textScale = 1.0F;
+    bool frameRequested = false;
     AccessibilityTree accessibility;
 };
 

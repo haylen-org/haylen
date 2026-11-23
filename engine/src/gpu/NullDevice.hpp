@@ -145,6 +145,11 @@ class NullDevice final : public Device {
         return lastFrame;
     }
 
+    // How many frames the device committed, which a frame that draws nothing leaves as it was.
+    [[nodiscard]] std::uint64_t getCommittedFrames() const noexcept {
+        return frame - 1;
+    }
+
     [[nodiscard]] int getPreparedPrograms() const noexcept {
         return preparedPrograms;
     }

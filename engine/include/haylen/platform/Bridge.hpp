@@ -108,7 +108,8 @@ class Bridge final {
     void emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers = {}, const EmitOptions& options = kDefaultEmitOptions);
     [[nodiscard]] Mailbox getMailbox() const;
 
-    void pump();
+    // Delivers what arrived since the last pump and fails the calls whose time ran out, and returns whether it delivered or failed anything.
+    bool pump();
     [[nodiscard]] std::size_t getPendingCallCount() const;
 
     // Reads an answer of native code the way `resolve` does: JSON that is not valid fails with the code `invalidJson`, JSON that refers to a buffer it lacks fails with the code `invalidBytes`, a token that names no live view fails with the code `invalidView`, and a failure keeps its message, code and data but drops its buffers and views.
@@ -181,10 +182,10 @@ class Bridge final {
     void start(std::uint64_t id, std::string_view method, const Payload& params, std::span<const varn::dataview::DataView> views, Reply reply);
 
     // Delivers the retained events of a name once it has listeners, and keeps them otherwise.
-    void deliverRetained(const std::string& name);
+    bool deliverRetained(const std::string& name);
 
     // Gives up the calls whose timeout passed and tells native code about each one.
-    void expireCalls();
+    bool expireCalls();
 
     Dispatcher dispatcher;
     Canceller canceller;

@@ -23,7 +23,8 @@ EventBus::Listeners* EventBus::State::findTyped(std::type_index type) const {
 }
 
 bool EventBus::State::deliver(Listeners* listeners, Event event) {
-    if (listeners != nullptr) {
+    if (listeners != nullptr && !listeners->empty()) {
+        ++heard;
         listeners->emit(event);
     }
 
@@ -76,14 +77,14 @@ Connection EventBus::on(std::string_view name, Handler handler, Options options)
 }
 
 bool EventBus::emit(std::string_view name, const Json& data, std::string_view channel) {
-    return State::deliver(state->findNamed(name), Event(name, channel, data, nullptr, std::type_index(typeid(void))));
+    return state->deliver(state->findNamed(name), Event(name, channel, data, nullptr, std::type_index(typeid(void))));
 }
 
 void EventBus::post(std::string name, Json data, std::string channel) {
     // clang-format off
     queue.post([weak = std::weak_ptr<State>(state), name = std::move(name), data = std::move(data), channel = std::move(channel)] {
         if (const std::shared_ptr<State> target = weak.lock()) {
-            State::deliver(target->findNamed(name), Event(name, channel, data, nullptr, std::type_index(typeid(void))));
+            target->deliver(target->findNamed(name), Event(name, channel, data, nullptr, std::type_index(typeid(void))));
         }
     });
     // clang-format on

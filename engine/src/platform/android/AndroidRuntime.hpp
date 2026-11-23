@@ -82,6 +82,7 @@ class AndroidRuntime final {
     void closeWindow();
     void requestFrame();
     void voteFrameRate();
+    [[nodiscard]] static float getHighestRefreshRate();
     void drawFrame(double now);
     void replaceLostDevice();
     [[nodiscard]] int tick();
@@ -95,6 +96,9 @@ class AndroidRuntime final {
     AndroidMessageQueue messages;
     AndroidFramePacer pacer;
     FrameRateGate frameRate;
+
+    // Paces the frames that present nothing at the refresh of the display, on devices whose loop the swap of each frame paces instead of the Choreographer.
+    FrameRateGate refreshRate;
 
     // The keys that the app took from the views, which only the UI thread reaches.
     AndroidKeyClaims keys;

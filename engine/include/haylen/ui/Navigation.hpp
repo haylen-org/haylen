@@ -153,6 +153,9 @@ class Navigation final {
     // Moves the transitions on, runs the update hook of the screens that draw and tells the app what its messages did.
     void update(float deltaSeconds);
 
+    // Whether a transition plays, a presentation moves or the app has still to hear what its messages did, which the next frames move on.
+    [[nodiscard]] bool isAnimating() const;
+
     // Tells the app that its messages came on screen, that the person tapped them or pressed their actions, and that they left, and lets a snackbar or a banner that waits replace the one of its style and position that shows with a lower priority.
     void updateMessages();
     void followLaunchLink();

@@ -43,10 +43,11 @@ void AudioPlugin::start(core::Engine& engine) {
     });
     // clang-format on
 
-    audio::Mixer& mixer = engine.getAudio();
-    mixer.setProcessPaused(engine.isPaused());
-    pauseConnection = core::ScopedConnection(engine.pausedChanged.connect([&mixer](bool paused) { mixer.setProcessPaused(paused); }));
-    deviceConnection = core::ScopedConnection(mixer.deviceEventReceived.connect([this, &engine](audio::Mixer::DeviceEvent deviceEvent) { handleDeviceEvent(engine, deviceEvent); }));
+    audio::Mixer& output = engine.getAudio();
+    mixer = &output;
+    output.setProcessPaused(engine.isPaused());
+    pauseConnection = core::ScopedConnection(engine.pausedChanged.connect([&output](bool paused) { output.setProcessPaused(paused); }));
+    deviceConnection = core::ScopedConnection(output.deviceEventReceived.connect([this, &engine](audio::Mixer::DeviceEvent deviceEvent) { handleDeviceEvent(engine, deviceEvent); }));
     // Because iOS does not always report the end of an interruption, the audio comes back whenever the app becomes active again, as Apple recommends, and an output that the system refused tries to open again then.
     // clang-format off
     appStateConnection = core::ScopedConnection(engine.appStateChanged.connect([this, &engine](core::Engine::AppState value) {
@@ -69,9 +70,14 @@ void AudioPlugin::stop(core::Engine& engine) {
     pauseConnection.disconnect();
     deviceConnection.disconnect();
     appStateConnection.disconnect();
+    mixer = nullptr;
 
     // A camera that Lua holds goes away with the Lua state.
     engine.getAudio().followCamera(nullptr);
+}
+
+bool AudioPlugin::isAnimating() const {
+    return mixer != nullptr && mixer->getOutputState() != outputState;
 }
 
 void AudioPlugin::installLua(core::Engine&, lua_State* L) {
@@ -107,19 +113,19 @@ void AudioPlugin::handleDeviceEvent(core::Engine& engine, audio::Mixer::DeviceEv
 }
 
 void AudioPlugin::beginInterruption(core::Engine& engine) {
-    audio::Mixer& mixer = engine.getAudio();
-    if (mixer.isInterrupted()) {
+    audio::Mixer& output = engine.getAudio();
+    if (output.isInterrupted()) {
         return;
     }
 
-    mixer.beginInterruption();
+    output.beginInterruption();
     engine.getEvents().emit(core::LifecycleEvent::kAudioInterrupted);
 }
 
 void AudioPlugin::endInterruption(core::Engine& engine) {
-    audio::Mixer& mixer = engine.getAudio();
-    const bool interrupted = mixer.isInterrupted();
-    mixer.endInterruption();
+    audio::Mixer& output = engine.getAudio();
+    const bool interrupted = output.isInterrupted();
+    output.endInterruption();
 
     if (interrupted) {
         engine.getEvents().emit(core::LifecycleEvent::kAudioResumed);

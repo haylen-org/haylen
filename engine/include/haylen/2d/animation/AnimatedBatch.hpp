@@ -80,6 +80,9 @@ class AnimatedBatch final {
     void update(float deltaSeconds, core::JobSystem* jobs = nullptr);
     void step(std::uint32_t count, core::JobSystem* jobs = nullptr);
 
+    // Whether a sprite plays an animation that loops or has not reached its end, at a speed other than 0.
+    [[nodiscard]] bool isPlaying() const noexcept;
+
     // The sprites whose one-shot animation ended in the last update or step, in index order.
     [[nodiscard]] std::span<const std::size_t> getFinished() const noexcept {
         return endedSprites;

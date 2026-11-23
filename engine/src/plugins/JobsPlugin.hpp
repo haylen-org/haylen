@@ -20,6 +20,9 @@ class JobsPlugin final : public Plugin {
 
     void stop(core::Engine& engine) override;
     void update(core::Engine& engine, float deltaSeconds) override;
+
+    // Whether jobs wait for the next frame to go on.
+    [[nodiscard]] bool isAnimating() const override;
     void installLua(core::Engine& engine, lua_State* L) override;
 
     // Starts the function on top of the stack as a job, which ends with the owner at `owner` when the index is not 0.

@@ -16,6 +16,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
+#include "plugins/Animation2DPlugin.hpp"
 
 namespace haylen::animation2d {
 
@@ -38,6 +39,7 @@ int AnimatedBatchLua::create(lua_State* L) {
         lua_pop(L, 1);
     }
 
+    lua::Runtime::getEngine(L).getPlugin<plugins::Animation2DPlugin>().track(batch);
     lua::Userdata::emplace<AnimatedBatch>(L, std::move(batch));
     return 1;
 }

@@ -190,12 +190,14 @@ void AndroidRuntime::loop() {
             continue;
         }
 
+        // A frame that presented nothing, such as one of an app that redraws on change while nothing changed, left no swap to pace the next one, so the refresh of the display paces it.
         const double now = getTime();
-        if (pacer.isDrawing() && frameRate.takeFrame(now)) {
+        FrameRateGate& gate = frameRate.getTarget() == 0 && !Player::isDrawing() ? refreshRate : frameRate;
+        if (pacer.isDrawing() && gate.takeFrame(now)) {
             drawFrame(now);
         }
 
-        ALooper_pollOnce(pacer.isDrawing() ? static_cast<int>(std::ceil(frameRate.getWaitSeconds(getTime()) * 1000.0)) : tick(), nullptr, nullptr, nullptr);
+        ALooper_pollOnce(pacer.isDrawing() ? static_cast<int>(std::ceil(gate.getWaitSeconds(getTime()) * 1000.0)) : tick(), nullptr, nullptr, nullptr);
     }
 }
 
@@ -256,6 +258,7 @@ void AndroidRuntime::openWindow(const AndroidMessageQueue::Window& message) {
 
     if (!resized) {
         voteFrameRate();
+        refreshRate.setTarget(static_cast<int>(std::lround(getHighestRefreshRate())));
     }
 
     try {
@@ -309,22 +312,30 @@ void AndroidRuntime::voteFrameRate() {
 
     float rate = static_cast<float>(frameRate.getTarget());
     if (rate == 0.0F) {
-        const std::string id = AndroidDisplays::getWindowDisplayId();
-        for (const Display& display : AndroidDisplays::getDisplays()) {
-            if (display.id != id) {
-                continue;
-            }
-
-            rate = display.refreshRate;
-            for (const Display::Mode& mode : display.modes) {
-                rate = std::max(rate, mode.refreshRate);
-            }
-        }
+        rate = getHighestRefreshRate();
     }
 
     if (setWindowFrameRate(nativeWindow, rate, ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT) != 0) {
         core::Log::warning("Android refused the frame rate {} of the window.", rate);
     }
+}
+
+// The highest refresh among the modes of the display of the window, or 0 when the window lies on no display that Android lists.
+float AndroidRuntime::getHighestRefreshRate() {
+    float rate = 0.0F;
+    const std::string id = AndroidDisplays::getWindowDisplayId();
+    for (const Display& display : AndroidDisplays::getDisplays()) {
+        if (display.id != id) {
+            continue;
+        }
+
+        rate = display.refreshRate;
+        for (const Display::Mode& mode : display.modes) {
+            rate = std::max(rate, mode.refreshRate);
+        }
+    }
+
+    return rate;
 }
 
 // The app starts with the first frame, when the activity first shows its window.

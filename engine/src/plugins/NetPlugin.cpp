@@ -49,10 +49,16 @@ void NetPlugin::stop(core::Engine&) {
 }
 
 // Listeners run during the pump, so the sockets are pumped from a copy, and sockets they open wait for the next frame. The copy keeps its memory from frame to frame.
-void NetPlugin::beginFrame(core::Engine&, float) {
+// What a socket delivered may change what the app shows, which an app that redraws on change draws in the next frame.
+void NetPlugin::beginFrame(core::Engine& engine, float) {
     pumping.assign(sockets.begin(), sockets.end());
+    bool delivered = false;
     for (const std::shared_ptr<net::WebSocket>& socket : pumping) {
-        socket->pump();
+        delivered = socket->pump() || delivered;
+    }
+
+    if (delivered) {
+        engine.requestRedraw();
     }
 
     pumping.clear();

@@ -46,6 +46,10 @@ void ContentPlugin::update(core::Engine& engine, float) {
     screen->update();
 }
 
+bool ContentPlugin::isAnimating() const {
+    return screen != nullptr;
+}
+
 void ContentPlugin::renderOverlay(core::Engine&) {
     if (screen) {
         screen->render();

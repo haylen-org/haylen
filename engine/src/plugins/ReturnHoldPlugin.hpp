@@ -21,6 +21,9 @@ class ReturnHoldPlugin final : public Plugin {
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
     void renderOverlay(core::Engine& engine) override;
 
+    // Whether a hold lasts, whose progress shows once it lasted long enough.
+    [[nodiscard]] bool isAnimating() const override;
+
   private:
     static constexpr float kWidth = 320.0F;
     static constexpr float kHeight = 64.0F;

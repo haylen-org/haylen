@@ -376,6 +376,7 @@ void Context::beginFrame(double now, float delta) noexcept {
     messages.beginFrame();
     time = now;
     deltaSeconds = delta;
+    frameRequested = false;
 }
 
 void Context::emit(const Component& component, std::string name, core::Json value) {

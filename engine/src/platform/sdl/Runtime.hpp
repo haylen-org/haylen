@@ -143,6 +143,8 @@ class Runtime final {
     void followWindow(const SDL_Event& event);
     void followDrawable();
     void updateCallbackRate();
+    void followPresents();
+    [[nodiscard]] int getRefreshRate() const;
 
     // The host of the player, which the player owns while the window lives.
     Host* host = nullptr;
@@ -174,8 +176,9 @@ class Runtime final {
     bool recovering = false;
     DeviceRecovery deviceRecovery;
 
-    // Whether the frames run at the rate of a window that shows nothing.
+    // Whether the frames run at the rate of a window that shows nothing, and whether the last frame presented, whose present then paced the iterations.
     bool hidden = false;
+    bool presenting = true;
 #if defined(__APPLE__) && !TARGET_OS_OSX
 
     // The check of debug builds that the view and the drawable of the window cover the window at every frame.

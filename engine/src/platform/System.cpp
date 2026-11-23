@@ -118,7 +118,7 @@ void System::stopRumbles() {
     rumbling.reset();
 }
 
-void System::pump() {
+bool System::pump() {
     std::vector<Reply> replies;
     {
         const std::scoped_lock lock(inbox->mutex);
@@ -136,30 +136,35 @@ void System::pump() {
         callback(std::move(reply.answer), std::move(reply.text));
     }
 
-    publishChanges();
+    return publishChanges() || !replies.empty();
 }
 
-void System::publishChanges() {
+bool System::publishChanges() {
+    bool published = false;
     const Theme reportedTheme = host.getTheme();
     if (reportedTheme != theme) {
+        published = true;
         theme = reportedTheme;
         events.emit(core::LifecycleEvent::kSystemThemeChanged, {{"theme", themeName(theme)}});
     }
 
     const Battery reportedBattery = host.getBattery();
     if (reportedBattery != battery) {
+        published = true;
         battery = reportedBattery;
         events.emit(core::LifecycleEvent::kBatteryChanged, battery.toJson());
     }
 
     const std::optional<bool> reportedPowerSaving = host.getPowerSaving();
     if (reportedPowerSaving != powerSaving) {
+        published = true;
         powerSaving = reportedPowerSaving;
         events.emit(core::LifecycleEvent::kPowerSavingChanged, {{"enabled", powerSaving.has_value() ? core::Json(*powerSaving) : core::Json()}});
     }
 
     std::string reportedTimeZone = host.getTimeZone();
     if (reportedTimeZone != timeZone) {
+        published = true;
         // The C library keeps the zone it read first, so the local times of the app follow a new one only once it reads the zone again.
         timeZone = std::move(reportedTimeZone);
         localization::LocalTime::reloadZone();
@@ -169,7 +174,7 @@ void System::publishChanges() {
     // The revision tells of a change without a copy of the list, and a list that changed back between two frames publishes nothing.
     const std::uint64_t reportedRevision = host.getLanguagesRevision();
     if (reportedRevision == languagesRevision) {
-        return;
+        return published;
     }
 
     languagesRevision = reportedRevision;
@@ -177,7 +182,10 @@ void System::publishChanges() {
     if (reportedLanguages != languages) {
         languages = std::move(reportedLanguages);
         events.emit(core::LifecycleEvent::kSystemLanguagesChanged, {{"languages", languages}});
+        published = true;
     }
+
+    return published;
 }
 
 std::string_view System::themeName(Theme value) noexcept {

@@ -120,6 +120,7 @@ set(HAYLEN_TEST_SOURCES
   core/EngineTests.cpp
   core/ErrorReportTests.cpp
   core/ErrorScreenTests.cpp
+  core/RedrawTests.cpp
   core/RuntimeTests.cpp
   core/SceneManagerTests.cpp
   core/SignalTests.cpp
@@ -323,6 +324,7 @@ set(HAYLEN_TEST_SOURCES
   ui/TransformTests.cpp
   ui/UiLuaFontTests.cpp
   ui/UiLuaTests.cpp
+  ui/UiRedrawTests.cpp
   ui/WheelTests.cpp
 )
 

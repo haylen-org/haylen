@@ -92,6 +92,11 @@ class ScrollArbiter final {
         return held.has_value();
     }
 
+    // Whether a gesture of a wheel without phases lasts, which only a pause between its motions ends, so the frames keep counting the pause.
+    [[nodiscard]] bool isWaitingForPause() const noexcept {
+        return gesture && !phased && !fingers;
+    }
+
     // Holds an item that the pointer drags outside drag and drop, such as the lifted item of a collection, for the next frame, so it scrolls the areas it nears as a dragged item does.
     void carryItem() noexcept {
         carrying = true;

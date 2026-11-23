@@ -31,12 +31,19 @@ void VideoPlugin::installLua(core::Engine&, lua_State* L) {
 void VideoPlugin::beginFrame(core::Engine& engine, float) {
     const core::FrameClock& clock = engine.getClock();
     updating.assign(videos.begin(), videos.end());
+    animating = false;
     for (const std::shared_ptr<graphics::Video>& video : updating) {
         const core::ProcessMode mode = video->getProcessMode() == core::ProcessMode::Inherit ? core::ProcessMode::Pausable : video->getProcessMode();
-        video->update(clock.getUnscaledDelta(), clock.canProcess(mode));
+        const bool running = clock.canProcess(mode);
+        video->update(clock.getUnscaledDelta(), running);
+        animating = animating || video->getState() == graphics::Video::State::Loading || (video->isPlaying() && running);
     }
 
     updating.clear();
+}
+
+bool VideoPlugin::isAnimating() const {
+    return animating;
 }
 
 std::shared_ptr<graphics::Video> VideoPlugin::create(core::Engine& engine, const std::string& path, const graphics::Video::Options& options) {

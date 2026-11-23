@@ -113,6 +113,9 @@ class Input final {
         return lastDevice;
     }
 
+    // Whether a key, a mouse button, a finger, a button of a gamepad or a finger on its touchpad is held or let go in the frame, or a stick or a trigger leans past the dead zone or comes back from it, so the frame carries input that the app reads even without an event, such as a long press or a stick held to one side.
+    [[nodiscard]] bool isActive() const noexcept;
+
   private:
     static const GamepadState kDisconnectedGamepad;
 
@@ -122,6 +125,7 @@ class Input final {
 
     void handleTouches(const platform::Event& event, const graphics::Viewport& viewport);
     [[nodiscard]] bool hasGamepadPress(std::size_t index) const noexcept;
+    [[nodiscard]] bool isGamepadActive(std::size_t index) const noexcept;
 
     std::bitset<Controls::kKeyCount> keysDown;
     std::bitset<Controls::kKeyCount> keysPressed;

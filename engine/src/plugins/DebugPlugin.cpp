@@ -391,16 +391,26 @@ void DebugPlugin::setInspectorVisible(bool value) {
 }
 
 // A trace of a number of frames stops at the start of the next frame, since the profiler records the end of the last one after the plugins end their frame.
-void DebugPlugin::beginFrame(core::Engine&, float) {
+void DebugPlugin::beginFrame(core::Engine& engine, float) {
     if (tracing && traceFramesLeft && *traceFramesLeft <= 0) {
         detachTrace();
     }
 
-    runRelayedLines();
+    runRelayedLines(engine);
 }
 
-void DebugPlugin::runRelayedLines() {
-    for (const platform::ConsoleRelay::Request& request : platform::ConsoleRelay::take()) {
+bool DebugPlugin::isAnimating() const {
+    return statsMode != debug::StatsDisplay::Mode::Off || inspectorVisible || tracing;
+}
+
+// The lines of the console and the inspections may change what the app shows, which an app that redraws on change draws in the next frame.
+void DebugPlugin::runRelayedLines(core::Engine& engine) {
+    std::vector<platform::ConsoleRelay::Request> requests = platform::ConsoleRelay::take();
+    if (!requests.empty()) {
+        engine.requestRedraw();
+    }
+
+    for (const platform::ConsoleRelay::Request& request : requests) {
         if (!consoleEnabled) {
             request.reply({.ok = false, .output = "The console is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on."});
             continue;

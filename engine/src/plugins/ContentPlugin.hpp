@@ -29,6 +29,9 @@ class ContentPlugin final : public Plugin {
     void renderOverlay(core::Engine& engine) override;
     [[nodiscard]] bool isCapturingBack() const override;
 
+    // Whether the update screen shows the progress of the content that the start of the app waits for.
+    [[nodiscard]] bool isAnimating() const override;
+
   private:
     std::unique_ptr<content::UpdateScreen> screen;
 };

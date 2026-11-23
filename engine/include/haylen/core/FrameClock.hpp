@@ -22,6 +22,9 @@ class FrameClock final {
         skipNext = true;
     }
 
+    // Takes the time of the current frame back out of the fixed steps, for a frame that updates nothing, such as a frame of an app that redraws on change in which nothing changed, so the frame that updates after it owes no steps for the frames it skipped.
+    void skipFixedSteps() noexcept;
+
     // Negative scales count as zero. Throws std::invalid_argument for a scale that is not finite.
     void setTimeScale(double value);
     [[nodiscard]] double getTimeScale() const noexcept {
@@ -74,6 +77,7 @@ class FrameClock final {
     double delta = 0.0;
     double unscaledDelta = 0.0;
     double accumulator = 0.0;
+    double accumulated = 0.0;
     double elapsed = 0.0;
     std::uint64_t frameIndex = 0;
     std::uint32_t fixedSteps = 0;

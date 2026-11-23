@@ -52,6 +52,10 @@ bool JobsPlugin::isOutOfTime(lua_State* L) const {
 }
 
 // Jobs take turns in order, so a job that used the whole budget goes last on the next frame. The first turn of a frame always runs, so the jobs move on even in a frame whose thread was held up past the budget.
+bool JobsPlugin::isAnimating() const {
+    return !jobs.empty();
+}
+
 void JobsPlugin::update(core::Engine&, float) {
     const auto now = std::chrono::steady_clock::now();
     const auto remaining = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::time_point::max() - now);

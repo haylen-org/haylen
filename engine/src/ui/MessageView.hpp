@@ -60,6 +60,10 @@ class MessageView final {
     static constexpr float kSwipeShare = 0.3F;
     static constexpr float kSwipeSpeed = 18.0F;
 
+    // A message that lies this close to its place, in UI units, and to its depth rests there, so it asks for no more frames.
+    static constexpr float kSettled = 0.5F;
+    static constexpr float kSettledDepth = 0.01F;
+
     // The picture at the start of a banner, as a share of the height of a line of its text.
     static constexpr float kIconLines = 2.0F;
 

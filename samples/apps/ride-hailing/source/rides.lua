@@ -1,5 +1,6 @@
 -- The rides of the person: the kinds of ride, the trip in progress, the past trips, the wallet and the traffic of the city. It is an autoload, so a trip goes on through its stages on every screen: the app looks for a driver, the driver comes, waits at the pickup and rides the route to the destination. Every change of stage emits "tripChanged" and shows a notice.
 local events = require('haylen.events')
+local window = require('haylen.window')
 
 local City = require('city')
 local Places = require('data.places')
@@ -230,6 +231,9 @@ function Rides:update(dt)
     if not trip or trip.stage == #Rides.stages then
         return
     end
+
+    -- A trip moves on with the time of the frames, so the app asks for every frame while one runs.
+    window.requestRedraw()
     trip.elapsed = trip.elapsed + dt
     local stage = trip.stage
     while stage < #Rides.stages and trip.elapsed >= Rides.stageStart(trip, stage + 1) do

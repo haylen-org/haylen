@@ -265,4 +265,8 @@ void AnimatedBatch::draw(graphics2d::Renderer& renderer, const graphics2d::DrawO
     batch.draw(renderer, order);
 }
 
+bool AnimatedBatch::isPlaying() const noexcept {
+    return std::ranges::any_of(states, [](const State& state) { return !state.ended && state.speed != 0.0F; });
+}
+
 } // namespace haylen::animation2d

@@ -14,6 +14,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
+#include "plugins/Animation2DPlugin.hpp"
 
 namespace haylen::animation2d {
 
@@ -49,6 +50,7 @@ int SkeletonLua::newSkeleton(lua_State* L) {
     }
 
     skeleton->pose();
+    lua::Runtime::getEngine(L).getPlugin<plugins::Animation2DPlugin>().track(skeleton);
     lua::Userdata::emplace<Skeleton>(L, std::move(skeleton));
     return 1;
 }

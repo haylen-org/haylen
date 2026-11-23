@@ -373,6 +373,10 @@ void Skeleton::update(float deltaSeconds) {
     passed = std::move(events);
 }
 
+bool Skeleton::isPlaying() const noexcept {
+    return std::ranges::any_of(tracks, [](const Track& track) { return track.current && (track.current->loop || track.current->time < track.current->animation->duration || track.previous); });
+}
+
 std::optional<math::Vec2> Skeleton::getPoint(std::string_view slot) const {
     const std::optional<std::size_t> found = data->findSlot(slot);
     if (!found) {

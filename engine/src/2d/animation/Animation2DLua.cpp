@@ -15,12 +15,15 @@
 #include "haylen/2d/animation/SpriteAtlas.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
 #include "haylen/2d/nodes/Node.hpp"
+#include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "plugins/Animation2DPlugin.hpp"
 
 namespace haylen::animation2d {
 
@@ -261,7 +264,9 @@ int Animation2DLua::animationCountsTicks(lua_State* L) {
 }
 
 int Animation2DLua::newAnimator(lua_State* L) {
-    lua::Userdata::emplace<Animator>(L, std::make_shared<Animator>());
+    const auto animator = std::make_shared<Animator>();
+    lua::Runtime::getEngine(L).getPlugin<plugins::Animation2DPlugin>().track(animator);
+    lua::Userdata::emplace<Animator>(L, animator);
     return 1;
 }
 

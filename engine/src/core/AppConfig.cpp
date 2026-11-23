@@ -482,7 +482,7 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
 }
 
 void AppConfig::readWindow(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"title", "width", "height", "fullscreen", "maxPixelDensity", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "externalDisplays", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"haylen.json\"");
+    JsonValidator::requireKnownKeys(section, {"title", "width", "height", "fullscreen", "maxPixelDensity", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "redraw", "externalDisplays", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"haylen.json\"");
     readValue(section, "window", "title", config.window.title);
     readValue(section, "window", "width", config.window.width);
     readValue(section, "window", "height", config.window.height);
@@ -534,6 +534,17 @@ void AppConfig::readWindow(const Json& section, AppConfig& config) {
         }
 
         config.window.systemGestures = *systemGestures;
+    }
+
+    if (section.contains("redraw")) {
+        std::string redrawText;
+        readValue(section, "window", "redraw", redrawText);
+        const std::optional<platform::Window::Redraw> redraw = platform::Window::redrawFromName(redrawText);
+        if (!redraw) {
+            throw std::invalid_argument("The \"window.redraw\" value \"" + redrawText + "\" in \"haylen.json\" is unknown. It is \"always\" or \"onChange\".");
+        }
+
+        config.window.redraw = *redraw;
     }
 
     std::string statusBarColorText;
@@ -887,6 +898,7 @@ Json AppConfig::toJson() const {
     Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"maxPixelDensity", JsonNumber::fromFloat(window.maxPixelDensity)}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"frameRate", window.frameRate}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"externalDisplays", window.externalDisplays}, {"lowPowerGpu", window.lowPowerGpu}};
     windowJson["statusBar"] = platform::Window::statusBarName(window.statusBar);
     windowJson["systemGestures"] = platform::Window::systemGesturesName(window.systemGestures);
+    windowJson["redraw"] = platform::Window::redrawName(window.redraw);
 
     if (window.statusBarColor) {
         windowJson["statusBarColor"] = window.statusBarColor->toHex();

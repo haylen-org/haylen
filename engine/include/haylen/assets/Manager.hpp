@@ -162,8 +162,8 @@ class Manager final {
     // Makes loads ask the availability before they read, so a synchronous load of an asset that is not on the device fails at once and an asynchronous load or a preload brings it first. Without one every asset is on the device.
     void setAvailability(Availability value);
 
-    // Finalizes the assets that finished decoding in the background, creating their GPU resources, until the upload budget of the frame runs out, and at least one per call so loading always moves on. The engine calls it once per frame and never while the app is in the background.
-    void finalizePending();
+    // Finalizes the assets that finished decoding in the background, creating their GPU resources, until the upload budget of the frame runs out, and at least one per call so loading always moves on, and returns whether it finished any. The engine calls it once per frame and never while the app is in the background.
+    bool finalizePending();
     void setUploadBudget(double seconds);
     [[nodiscard]] double getUploadBudget() const noexcept {
         return uploadBudget;

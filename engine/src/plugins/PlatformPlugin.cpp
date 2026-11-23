@@ -29,6 +29,10 @@ void PlatformPlugin::stop(core::Engine& engine) {
     updating.clear();
 }
 
+bool PlatformPlugin::isAnimating() const {
+    return std::ranges::any_of(videoStreams, [](const std::shared_ptr<platform::VideoStream>& stream) { return stream->hasNewFrame(); });
+}
+
 void PlatformPlugin::installLua(core::Engine&, lua_State* L) {
     platform::PlatformLua::install(L);
     platform::SystemLua::install(L);

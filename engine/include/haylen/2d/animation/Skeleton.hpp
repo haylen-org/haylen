@@ -90,6 +90,9 @@ class Skeleton final {
     // Advances the tracks, poses the skeleton and emits the events the tracks passed, in track order.
     void update(float deltaSeconds);
 
+    // Whether a track plays an animation that loops or has not reached its end, or still fades out the one before.
+    [[nodiscard]] bool isPlaying() const noexcept;
+
     // Poses the bones from the setup pose and the tracks at their current times, without advancing them.
     void pose();
 

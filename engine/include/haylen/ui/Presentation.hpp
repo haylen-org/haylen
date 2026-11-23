@@ -219,6 +219,9 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
     // Opens the presentation: its screen joins, builds its GUI and appears.
     void open();
     void advance(float deltaSeconds);
+
+    // Whether the presentation arrives, leaves or glides toward its place, which its next frames move.
+    [[nodiscard]] bool isMoving() const noexcept;
     void finishArriving();
     void finishLeaving();
 

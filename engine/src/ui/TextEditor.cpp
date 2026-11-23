@@ -323,7 +323,13 @@ void TextEditor::drawCaret(const Editing& editing, const ImGuiInputTextState& st
         caret.x = *placeholderEdge + (editing.rightToLeft ? width * 1.5F : -width * 1.5F);
     }
 
-    const bool lit = !ImGui::GetIO().ConfigInputTextCursorBlink || state.CursorAnim <= 0.0F || std::fmod(state.CursorAnim, 1.20F) <= 0.80F;
+    // The blink counts the time of the frames, which keep coming while the caret shows.
+    const bool blinking = ImGui::GetIO().ConfigInputTextCursorBlink;
+    if (blinking) {
+        context.requestFrame();
+    }
+
+    const bool lit = !blinking || state.CursorAnim <= 0.0F || std::fmod(state.CursorAnim, 1.20F) <= 0.80F;
     if (lit) {
         Surfaces::fill(context, {caret.x - width * 0.5F, caret.y, width, caret.height}, context.getColor(Theme::Color::Caret), 0.0F);
     }

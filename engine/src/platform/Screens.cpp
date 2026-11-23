@@ -147,8 +147,10 @@ bool Screens::isShowing() const {
     return ScreenRelay::getShowing().has_value();
 }
 
-void Screens::pump() {
-    for (ScreenRelay::Ending& ending : ScreenRelay::take()) {
+bool Screens::pump() {
+    std::vector<ScreenRelay::Ending> endings = ScreenRelay::take();
+    const bool delivered = !endings.empty() || !failed.empty();
+    for (ScreenRelay::Ending& ending : endings) {
         const auto found = pending.find(ending.screen.id);
         if (found != pending.end()) {
             Callback callback = std::move(found->second.callback);
@@ -186,14 +188,14 @@ void Screens::pump() {
         }
     }
 
-    expire();
+    return expire() || delivered;
 }
 
 std::size_t Screens::getPendingCount() const noexcept {
     return pending.size() + failed.size();
 }
 
-void Screens::expire() {
+bool Screens::expire() {
     const auto now = std::chrono::steady_clock::now();
     std::vector<std::uint64_t> overdue;
     for (const auto& [id, entry] : pending) {
@@ -216,6 +218,8 @@ void Screens::expire() {
             entry.callback({.error = {.message = std::format("The screen \"{}\" of \"{}\" timed out.", entry.screen, entry.plugin), .code = "timeout"}});
         }
     }
+
+    return !overdue.empty();
 }
 
 } // namespace haylen::platform

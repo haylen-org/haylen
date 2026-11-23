@@ -245,6 +245,21 @@ void NodeTree::advanceParticles(float deltaSeconds, core::JobSystem* jobs) {
     }
 }
 
+bool NodeTree::hasLiveParticles() const noexcept {
+    for (const std::uint32_t index : particles) {
+        const NodeContent::Value& value = details[index].content.value;
+        if (const auto* emitter = std::get_if<std::shared_ptr<particles2d::Emitter>>(&value); emitter != nullptr && (*emitter)->isAlive()) {
+            return true;
+        }
+
+        if (const auto* system = std::get_if<std::shared_ptr<particles2d::System>>(&value); system != nullptr && (*system)->isAlive()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void NodeTree::draw(graphics2d::Renderer& renderer) {
     const math::Rect view = renderer.getCanvasBounds();
     refresh(nullptr);

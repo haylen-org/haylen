@@ -73,8 +73,8 @@ class System final {
     // Keeps the callback of a call that a platform may gate until its answer, and returns what the platform calls with the answer from any thread, which reaches the callback at the next pump, such as the answers of the fullscreen of the window.
     [[nodiscard]] std::function<void(SystemAnswer)> awaitAnswer(std::function<void(SystemAnswer)> callback);
 
-    // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving, the time zone and the languages. The engine calls it at the start of every frame.
-    void pump();
+    // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving, the time zone and the languages, and returns whether it delivered or published anything. The engine calls it at the start of every frame.
+    bool pump();
 
     [[nodiscard]] static std::string_view themeName(Theme value) noexcept;
 
@@ -100,7 +100,7 @@ class System final {
     [[nodiscard]] Callback awaitReply(Callback callback);
 
     // Publishes what the platform reported since the last pump, each value once per change.
-    void publishChanges();
+    bool publishChanges();
 
     Host& host;
     core::EventBus& events;

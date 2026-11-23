@@ -113,4 +113,26 @@ void Particles2DPlugin::installLua(core::Engine&, lua_State* L) {
     particles2d::Particles2DLua::install(L);
 }
 
+void Particles2DPlugin::stop(core::Engine&) {
+    emitters.clear();
+    systems.clear();
+    trails.clear();
+}
+
+bool Particles2DPlugin::isAnimating() const {
+    return emitters.any([](const particles2d::Emitter& emitter) { return emitter.isAlive(); }) || systems.any([](const particles2d::System& system) { return system.isAlive(); }) || trails.any([](const particles2d::Trail& trail) { return trail.isAlive(); });
+}
+
+void Particles2DPlugin::track(const std::shared_ptr<particles2d::Emitter>& emitter) {
+    emitters.add(emitter);
+}
+
+void Particles2DPlugin::track(const std::shared_ptr<particles2d::System>& system) {
+    systems.add(system);
+}
+
+void Particles2DPlugin::track(const std::shared_ptr<particles2d::Trail>& trail) {
+    trails.add(trail);
+}
+
 } // namespace haylen::plugins

@@ -784,6 +784,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-009` | Second display | A scoreboard on a display other than the one of the window, drawn into the target of an output every frame, with its preview, its events and the clicks on its window. |  |
 | `PLT-011` | Frame rate | The app aiming for every refresh of the display or for 120, 60, 30 or 24 frames per second, with the frames it played in the last second, a ball that swings by the real time and a mark for each frame. |  |
 | `PLT-012` | Pixel density | The framebuffer capped at 2, 1.5, 1 or 0.5 pixels in each point or taking every pixel of the display, with its size and scale, the points of the window that stay the same, and rings, hairlines and text that soften as the cap lowers. |  |
+| `PLT-013` | Redraw | The app drawing in every frame or only in the frames that something changed in, with the frames it drew in the last second, a mark for each one, a box that a tween slides and a dial whose own code asks for its frames. |  |
 
 #### Plugins (PLG)
 

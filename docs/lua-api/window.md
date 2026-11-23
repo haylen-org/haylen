@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, the pixel density, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `haylen.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, the pixel density, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on, the frame rate, when the app redraws and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `haylen.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -483,6 +483,63 @@ end
 
 openMenu()
 startRace()
+```
+
+## Redraw
+
+### window.redraw()
+
+Returns when the app updates and draws, `'always'` or `'onChange'`. It starts as `window.redraw` of `haylen.json` says, `'always'` by default.
+
+```lua
+local window = require('haylen.window')
+
+print('Redraw:', window.redraw())
+```
+
+### window.setRedraw(value)
+
+Decides when the app updates and draws. An unknown name raises a bad argument error.
+
+| Value | What it does |
+| --- | --- |
+| `'always'` | Every frame runs the updates of the scenes, the autoloads and the plugins and draws the screen again. It suits games, whose world moves in every frame. |
+| `'onChange'` | Only the frames that something changed in update and draw, and the other frames leave the picture of the last one on the screen, which saves the GPU and the battery. It suits apps of forms, lists and pages, such as a shop, a reader or a settings screen. |
+
+An app that redraws on change still plays a frame at every refresh of the display, so input reaches it at once, and its timers, its event loop and the replies of the platform go on in every frame. A frame updates and draws when input or another event reaches the app, a timer fires, a tween plays, the scenes change, an asset or a reply arrives, the window changes, the UI or another part of the engine moves by itself, such as a list that glides, a video that plays or particles that live, or the app asks with [`window.requestRedraw`](#windowrequestredraw), and a couple of frames after each such frame draw too, so the UI settles. The [architecture guide](../core/architecture.md#redraw-on-change) lists every reason and what each platform does. Code that moves something by itself in an `update` hook draws only in those frames, so a game keeps `'always'`. The value ends with the app, and a restarted app starts with the value of `haylen.json` again.
+
+```lua
+local window = require('haylen.window')
+
+-- The menus and the shop of a game redraw on change, and the levels draw every frame.
+local function openShop()
+    window.setRedraw('onChange')
+end
+
+local function startLevel()
+    window.setRedraw('always')
+end
+
+openShop()
+startLevel()
+```
+
+### window.requestRedraw()
+
+Asks an app that redraws on change to update and draw the next frame, for a change that the engine cannot see, such as a value that code of the app moves by itself. An app that redraws always draws every frame anyway.
+
+```lua
+local window = require('haylen.window')
+
+local clock = {seconds = 0}
+
+-- A stopwatch that its own code moves asks for the frames that show it.
+local function tick(deltaSeconds)
+    clock.seconds = clock.seconds + deltaSeconds
+    window.requestRedraw()
+end
+
+tick(1 / 60)
 ```
 
 ## Folds and dual screens

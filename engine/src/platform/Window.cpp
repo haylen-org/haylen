@@ -13,6 +13,8 @@ const std::array<std::pair<std::string_view, Orientation>, 3> Window::kOrientati
 const std::array<std::pair<std::string_view, Window::StatusBar>, 4> Window::kStatusBarNames{{{"hidden", StatusBar::Hidden}, {"auto", StatusBar::Auto}, {"light", StatusBar::Light}, {"dark", StatusBar::Dark}}};
 const std::array<std::pair<std::string_view, Window::SystemGestures>, 3> Window::kSystemGesturesNames{{{"system", SystemGestures::System}, {"deferred", SystemGestures::Deferred}, {"autoHideIndicator", SystemGestures::AutoHideIndicator}}};
 
+const std::array<std::pair<std::string_view, Window::Redraw>, 2> Window::kRedrawNames{{{"always", Redraw::Always}, {"onChange", Redraw::OnChange}}};
+
 std::optional<Orientation> Window::orientationFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kOrientationNames, name, &std::pair<std::string_view, Orientation>::first);
     return found != kOrientationNames.end() ? std::optional(found->second) : std::nullopt;
@@ -50,6 +52,15 @@ std::optional<Window::SystemGestures> Window::systemGesturesFromName(std::string
 
 std::string_view Window::systemGesturesName(SystemGestures value) noexcept {
     return std::ranges::find(kSystemGesturesNames, value, &std::pair<std::string_view, SystemGestures>::second)->first;
+}
+
+std::optional<Window::Redraw> Window::redrawFromName(std::string_view name) noexcept {
+    const auto found = std::ranges::find(kRedrawNames, name, &std::pair<std::string_view, Redraw>::first);
+    return found != kRedrawNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+std::string_view Window::redrawName(Redraw value) noexcept {
+    return std::ranges::find(kRedrawNames, value, &std::pair<std::string_view, Redraw>::second)->first;
 }
 
 // An empty callback stands for a caller that does not want the answer, so the window answers nobody.

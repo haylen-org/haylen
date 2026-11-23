@@ -388,6 +388,9 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const float step = duration > 0.0F ? context.getDeltaSeconds() / duration : 1.0F;
     position = position < target ? std::min(target, position + step) : std::max(target, position - step);
     const float eased = position * position * (3.0F - 2.0F * position);
+    if (position != target) {
+        context.requestFrame();
+    }
 
     // The track never moves or changes its shape: the on color fades in over the whole groove while the knob slides, and a right-to-left UI mirrors the switch, which then turns on toward the left.
     const float width = context.getMetric(Theme::Metric::ToggleWidth);
@@ -521,8 +524,10 @@ math::Rect Widgets::progress(Context& context, const math::Rect& bounds, float v
 }
 
 // The stroke is a band along the edge of a circle that reaches half its width past the radius, cut to three quarters of a turn.
+// A spinner turns with the time, so it keeps the frames coming while it shows.
 void Widgets::spinner(Context& context, math::Vec2 center, float radius, math::Color color) {
     constexpr float kArc = std::numbers::pi_v<float> * 1.5F;
+    context.requestFrame();
     const auto start = static_cast<float>(std::fmod(context.getTime() * 6.0, 2.0 * std::numbers::pi));
     const float stroke = std::max(2.0F, radius * 0.2F);
     const float outer = radius + stroke * 0.5F;

@@ -7,6 +7,7 @@ local haylen = require('haylen')
 local math2d = require('haylen.math')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
+local window = require('haylen.window')
 
 local Catalog = require('data.catalog')
 local Covers = require('covers')
@@ -25,6 +26,9 @@ NowPlaying.sleepItems = {{id = 'off', text = 'Off'}, {id = '5', text = 'In 5 min
 NowPlaying.bars = 36
 NowPlaying.rise = 28
 NowPlaying.fall = 6
+
+-- A bar lower than this share of its height rests, so the visualizer asks for no more frames once the song stops.
+NowPlaying.rest = 0.002
 
 NowPlaying.clear = {clear = '#00000000'}
 
@@ -260,6 +264,9 @@ function NowPlaying:update(dt)
         local height = self.heights[index]
         local speed = target > height and NowPlaying.rise or NowPlaying.fall
         self.heights[index] = height + (target - height) * math.min(1, dt * speed)
+        if self.heights[index] > NowPlaying.rest then
+            window.requestRedraw()
+        end
     end
 end
 

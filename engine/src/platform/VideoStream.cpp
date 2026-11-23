@@ -91,6 +91,11 @@ bool VideoStream::update(graphics::Device& device) {
     return true;
 }
 
+bool VideoStream::hasNewFrame() {
+    const std::scoped_lock lock(mutex);
+    return fresh;
+}
+
 const graphics::Texture& VideoStream::getTexture(graphics::Device& device) {
     if (!texture.isValid()) {
         createTexture(device);

@@ -41,6 +41,9 @@ class TextPlugin final : public Plugin {
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
     void endFrame(core::Engine& engine) override;
 
+    // Whether rich text that the last frame drew moves by itself, through an effect or a reveal that runs.
+    [[nodiscard]] bool isAnimating() const override;
+
     [[nodiscard]] const std::shared_ptr<text::RichTextRegistry>& getRegistry() const;
 
     // The fonts of the system that the families of the engine and of the app share.

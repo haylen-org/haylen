@@ -64,8 +64,8 @@ class Accessibility final {
     // Moves the requests that arrived since the last call into `taken`, which the caller reuses from frame to frame.
     void takeRequests(std::vector<Request>& taken);
 
-    // Publishes the change of the settings that the platform reported since the last pump and reads whether the platform wants the tree. The engine calls it at the start of every frame.
-    void pump();
+    // Publishes the change of the settings that the platform reported since the last pump and reads whether the platform wants the tree. It returns whether the settings or the wish for the tree changed or an action waits, which the UI then shows. The engine calls it at the start of every frame.
+    bool pump();
 
   private:
     Host& host;

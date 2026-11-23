@@ -45,7 +45,7 @@ function Tour.steps()
         {'Place without a street', function() local page = Shell.top() page.fields.street = '' page.gui:set('street', {value = ''}) page:place() end},
         {'Place the order', function() local page = Shell.top() page.fields.street = '12 Harbor Lane' page.gui:set('street', {value = '12 Harbor Lane'}) page:place() end},
         {'Follow the order', function() local page = Shell.top() page.gui:command('track', 'focus') page:follow() end},
-        {'Ship the order', function() Orders.list[1].elapsed = Orders.stageStart(4) + 1 end},
+        {'Ship the order', function() Orders.advance(Orders.list[1], 4) end},
         {'Back to the orders', function() ui.goBack() end},
         {'Save products', function() Wishlist.toggle(Store.products[11]) Wishlist.toggle(Store.products[12]) Wishlist.toggle(Store.products[30]) Shell.showTab('saved') end},
         {'Open the account', function() Shell.showTab('account') end},

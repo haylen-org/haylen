@@ -23,6 +23,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
+#include "plugins/Nodes2DPlugin.hpp"
 
 namespace haylen::nodes2d {
 
@@ -273,6 +274,7 @@ int Nodes2DLua::newTree(lua_State* L) {
         clearData(destroying != nullptr ? destroying : main, raw, node.getKey());
     });
     // clang-format on
+    lua::Runtime::getEngine(L).getPlugin<plugins::Nodes2DPlugin>().track(tree);
     lua::Userdata::emplace<NodeTree>(L, std::move(tree));
     lua_getfield(L, LUA_REGISTRYINDEX, kTrees);
     lua_pushvalue(L, -2);

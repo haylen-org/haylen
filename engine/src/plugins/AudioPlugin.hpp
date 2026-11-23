@@ -18,6 +18,9 @@ class AudioPlugin final : public Plugin {
     void event(core::Engine& engine, const platform::Event& event) override;
     void update(core::Engine& engine, float deltaSeconds) override;
 
+    // Whether the state of the output changed since the last update, which the next update publishes.
+    [[nodiscard]] bool isAnimating() const override;
+
   private:
     void handleDeviceEvent(core::Engine& engine, audio::Mixer::DeviceEvent deviceEvent);
     void beginInterruption(core::Engine& engine);
@@ -27,6 +30,7 @@ class AudioPlugin final : public Plugin {
     core::ScopedConnection appStateConnection;
     core::ScopedConnection deviceConnection;
     audio::Mixer::OutputState outputState = audio::Mixer::OutputState::Unavailable;
+    const audio::Mixer* mixer = nullptr;
 };
 
 } // namespace haylen::plugins

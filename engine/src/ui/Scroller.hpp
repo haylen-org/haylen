@@ -40,6 +40,11 @@ class Scroller final {
         return motion == Motion::Flinging || motion == Motion::Animating;
     }
 
+    // Whether the content moves by itself, as a glide does or the spring back from past an end, so the area asks for the next frame.
+    [[nodiscard]] bool isMoving() const noexcept {
+        return isGliding() || motion == Motion::Returning;
+    }
+
     // Jumps to an offset within the range and stops.
     void jumpTo(double value) noexcept;
 

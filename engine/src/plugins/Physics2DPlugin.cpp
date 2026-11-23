@@ -53,6 +53,16 @@ std::shared_ptr<Physics2DPlugin::TrackedWorld> Physics2DPlugin::track(const std:
     return worlds.emplace_back(std::make_shared<TrackedWorld>(world));
 }
 
+bool Physics2DPlugin::isAnimating() const {
+    for (const std::shared_ptr<TrackedWorld>& known : worlds) {
+        if (const std::shared_ptr<physics2d::World> world = known->lock(); world && world->getAwakeBodyCount() > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void Physics2DPlugin::draw(graphics2d::Renderer& renderer) {
     if (renderer.getCanvasKind() == graphics2d::Renderer::CanvasKind::Screen) {
         return;

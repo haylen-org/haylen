@@ -459,6 +459,18 @@ gpu::Device* Player::getGpuDevice() noexcept {
 }
 
 // The back button leaves the app from its root screen, which on the Apple TV means the system takes the press, and goes back inside the app everywhere else. A launched app leaves to the app that launched it instead.
+bool Player::isDrawing() noexcept {
+    const std::unique_ptr<Player>& current = getProcess().current;
+    return current != nullptr && current->engine != nullptr && current->engine->isDrawing();
+}
+
+void Player::requestRedraw() noexcept {
+    const std::unique_ptr<Player>& current = getProcess().current;
+    if (current != nullptr && current->engine != nullptr) {
+        current->engine->requestRedraw();
+    }
+}
+
 Player::Back Player::routeBack(bool pressed) {
     Player& runtime = getCurrent();
     if (runtime.engine == nullptr) {

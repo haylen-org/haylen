@@ -40,14 +40,20 @@ void Accessibility::takeRequests(std::vector<Request>& taken) {
     taken.swap(requests);
 }
 
-void Accessibility::pump() {
+bool Accessibility::pump() {
     const AccessibilitySettings reported = host.getAccessibilitySettings();
-    if (reported != settings) {
+    const bool changed = reported != settings;
+    if (changed) {
         settings = reported;
         events.emit(core::LifecycleEvent::kAccessibilitySettingsChanged, settings.toJson());
     }
 
-    treeWanted = host.isAccessibilityTreeWanted();
+    const bool wanted = host.isAccessibilityTreeWanted();
+    const bool wish = wanted != treeWanted;
+    treeWanted = wanted;
+
+    const std::scoped_lock lock(mutex);
+    return changed || wish || !requests.empty();
 }
 
 } // namespace haylen::platform

@@ -96,6 +96,18 @@ void TweenManager::advanceAll(const FrameClock& clock, bool fixed) {
     finishUpdate();
 }
 
+bool TweenManager::isAnimating(const FrameClock& clock) const {
+    for (const auto* list : {&tweens, &pending}) {
+        for (const std::shared_ptr<Tween>& tween : *list) {
+            if (tween->manager == this && tween->isPlaying() && clock.canProcess(tween->resolveProcessMode())) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void TweenManager::update(const FrameClock& clock) {
     advanceAll(clock, false);
 }

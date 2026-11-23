@@ -59,6 +59,9 @@ class TweenManager final {
     // Drops every tween without running any callback, which is what shutdown needs.
     void clear() noexcept;
 
+    // Whether a tween plays that the clock advances, by its process mode and the pause, which keeps an app that redraws on change drawing until the tween ends.
+    [[nodiscard]] bool isAnimating(const FrameClock& clock) const;
+
     // Counts the root tweens that are still alive, including delayed, paused and finished ones that do not auto-kill.
     [[nodiscard]] std::size_t size() const noexcept;
 

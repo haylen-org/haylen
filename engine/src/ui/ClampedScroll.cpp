@@ -27,6 +27,10 @@ double ClampedScroll::update(Context& context, ImGuiID id, const math::Rect& bou
 
     static_cast<void>(finger.follow(context, motion, id, bounds, false, hovered));
     motion.update(seconds);
+    if (motion.isMoving()) {
+        context.requestFrame();
+    }
+
     return std::clamp(motion.getOffset(), 0.0, maximum);
 }
 

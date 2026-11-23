@@ -48,7 +48,10 @@ class Physics2DPlugin final : public Plugin {
     void stop(core::Engine& engine) override;
     void installLua(core::Engine& engine, lua_State* L) override;
 
-    // Keeps a world for the debug drawing for as long as it lives and the returned link holds, which the owner of the world ends.
+    // Whether a world that its owner does not hold has awake bodies, which move at its next step.
+    [[nodiscard]] bool isAnimating() const override;
+
+    // Keeps a world for the debug drawing, and for the frames of an app that redraws on change while its bodies are awake, for as long as it lives and the returned link holds, which the owner of the world ends.
     [[nodiscard]] std::shared_ptr<TrackedWorld> track(const std::shared_ptr<physics2d::World>& world);
 
   private:

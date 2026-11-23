@@ -468,7 +468,9 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
         hoverStarted = context.getTime();
     }
 
+    // The delay counts the time of the frames, which keep coming until the tooltip shows.
     if (context.getTime() - hoverStarted < context.getMetric(Theme::Metric::TooltipDelay)) {
+        context.requestFrame();
         return;
     }
 

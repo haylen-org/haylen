@@ -31,6 +31,11 @@ class ReturnHold final {
     // How far the hold is, from 0 to 1, once it lasted longer than the delay of the hint, or 0.
     [[nodiscard]] float getProgress() const noexcept;
 
+    // Whether a hold lasts that has not completed yet.
+    [[nodiscard]] bool isPending() const noexcept {
+        return held > 0.0F && !completed;
+    }
+
   private:
     struct Finger {
         std::uint64_t id = 0;

@@ -142,6 +142,9 @@ class Backend final {
     [[nodiscard]] bool isUsingPointer() const;
     [[nodiscard]] bool isUsingKeyboard() const;
 
+    // Whether ImGui or the input of the UI has still to settle in the next frames: input that ImGui keeps in its queue for the next frame, a move of the focus whose result ImGui applies in the next frame, a text field that edits and blinks its caret, the UI that glides above the keyboard or a gesture of a wheel that waits for its pause.
+    [[nodiscard]] bool isSettling() const;
+
     // Keeps the pointer from the app over an area of a surface, which also takes the pointer from the GUIs drawn under it.
     void blockPointer(const math::Rect& area);
 

@@ -239,6 +239,9 @@ function Story:update(dt)
     if self.held or self.typing or self.exiting then
         return
     end
+
+    -- The bar of the story fills by itself, so the screen asks for every frame while the story plays.
+    window.requestRedraw()
     self.elapsed = self.elapsed + dt
     if self.elapsed >= Story.duration then
         self:next()

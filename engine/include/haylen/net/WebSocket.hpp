@@ -80,8 +80,8 @@ class WebSocket final {
     // Starts the closing handshake, or ends a wait for the next attempt. The code is 1000 or between 3000 and 4999 and the reason fits in 123 bytes, as browsers require. A socket closed while it connects never opens.
     void close(int code = 1000, std::string_view reason = {});
 
-    // Delivers the events that arrived since the last call and starts the next attempt once its wait is over.
-    void pump();
+    // Delivers the events that arrived since the last call and starts the next attempt once its wait is over, and returns whether it delivered an event or changed the state of the socket.
+    bool pump();
     void dropListeners() noexcept;
 
     [[nodiscard]] State getState() const noexcept {

@@ -96,4 +96,24 @@ TEST(WindowConfigTest, ReadsTheSystemGesturesOfHaylenJson) {
     }
 }
 
+TEST(WindowConfigTest, ReadsTheRedrawOfHaylenJson) {
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"redraw": "onChange"}})"));
+    EXPECT_EQ(config.window.redraw, Window::Redraw::OnChange);
+    EXPECT_EQ(config.toJson().at("window").at("redraw"), "onChange");
+    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
+
+    const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
+    EXPECT_EQ(defaults.window.redraw, Window::Redraw::Always);
+    EXPECT_EQ(defaults.toJson().at("window").at("redraw"), "always");
+
+    try {
+        (void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"redraw": "sometimes"}})"));
+        FAIL();
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), R"(The "window.redraw" value "sometimes" in "haylen.json" is unknown. It is "always" or "onChange".)");
+    }
+
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"redraw": true}})")), std::invalid_argument);
+}
+
 } // namespace haylen::platform

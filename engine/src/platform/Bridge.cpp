@@ -194,7 +194,7 @@ Bridge::Mailbox Bridge::getMailbox() const {
 }
 
 // Replies, native events and posted work reach the app in the order they arrived, after the retained events that listeners connected since the last pump wait for.
-void Bridge::pump() {
+bool Bridge::pump() {
     std::vector<Arrival> arrivals;
     {
         const std::scoped_lock lock(inbox->mutex);
@@ -207,8 +207,9 @@ void Bridge::pump() {
         waiting.push_back(name);
     }
 
+    bool delivered = !arrivals.empty() || !cancelled.empty();
     for (const std::string& name : waiting) {
-        deliverRetained(name);
+        delivered = deliverRetained(name) || delivered;
     }
 
     for (Arrival& arrival : gather(std::move(arrivals))) {
@@ -227,7 +228,7 @@ void Bridge::pump() {
         }
     }
 
-    expireCalls();
+    return expireCalls() || delivered;
 }
 
 // A reply for a call this bridge never made, or already settled, belongs to nobody and is dropped.
@@ -302,11 +303,11 @@ std::vector<Bridge::Arrival> Bridge::gather(std::vector<Arrival> arrivals) {
     return gathered;
 }
 
-void Bridge::deliverRetained(const std::string& name) {
+bool Bridge::deliverRetained(const std::string& name) {
     const auto queued = retained.find(name);
     const auto found = signals.find(name);
     if (queued == retained.end() || found == signals.end() || found->second->empty()) {
-        return;
+        return false;
     }
 
     // Listeners may connect to other events while they run, which moves the entries of the signal table but never the signals.
@@ -317,13 +318,15 @@ void Bridge::deliverRetained(const std::string& name) {
     for (const Payload& payload : payloads) {
         signal.emit(payload);
     }
+
+    return true;
 }
 
 std::size_t Bridge::getPendingCallCount() const {
     return pending.size() + cancelled.size();
 }
 
-void Bridge::expireCalls() {
+bool Bridge::expireCalls() {
     const auto now = std::chrono::steady_clock::now();
     std::vector<std::uint64_t> overdue;
     for (const auto& [id, entry] : pending) {
@@ -349,6 +352,8 @@ void Bridge::expireCalls() {
             entry.callback({.error = {.message = std::format("The platform call \"{}\" timed out.", entry.method), .code = "timeout"}});
         }
     }
+
+    return !overdue.empty();
 }
 
 // A failed call carries a plain message or an object with `message`, `code` and `data`, and any other payload still fails with a message.

@@ -837,6 +837,15 @@ void Collection::noteEntering(std::size_t first, std::size_t count) {
     }
 }
 
+// The content that glides, a scroll that aims at an item, a snap that waits for the content to rest and cells that slide or fade keep the frames coming.
+bool Collection::isMoving() const {
+    if (scroller->isMoving() || pendingScroll || !leaving.empty() || (snap != Snap::None && !dragging && idle < kSnapDelay)) {
+        return true;
+    }
+
+    return std::ranges::any_of(cells, [](const std::shared_ptr<CollectionCell>& cell) { return !cell->slide.isZero() || cell->opacity < 1.0F; });
+}
+
 // Moved cells slide from where they drew before the change to their new place, new cells fade in, and the cells of removed items fade out and go back to their pools. A new cell never shows under a cell that moves: it takes the slide of the cell before it, so a block of cells that moves carries it along, such as a feed whose rows move up as a row arrives at its end, and it fades in only once no moving cell covers its place.
 void Collection::animate() {
     const float decay = std::exp(-kSlideSpeed * delta);
@@ -1071,6 +1080,10 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     if (getCount() == 0) {
         laneReserved = false;
         animate();
+        if (isMoving()) {
+            context.requestFrame();
+        }
+
         drawEmpty(context);
         context.pushClip(bounds);
         drawLeaving(context);
@@ -1089,6 +1102,10 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     types->trim(static_cast<std::size_t>(poolSize));
     settle();
     animate();
+    if (isMoving()) {
+        context.requestFrame();
+    }
+
     drawContent(context, bounds);
     context.blockPointer(bounds);
     report(context);

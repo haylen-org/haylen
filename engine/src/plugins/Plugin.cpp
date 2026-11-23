@@ -32,6 +32,10 @@ bool Plugin::isFrameComplete() const {
     return true;
 }
 
+bool Plugin::isAnimating() const {
+    return false;
+}
+
 void Plugin::packageChanged(core::Engine&, std::span<const std::string>) {}
 
 } // namespace haylen::plugins

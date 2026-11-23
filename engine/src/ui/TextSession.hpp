@@ -44,6 +44,11 @@ class TextSession final {
     // Starts a frame over the visible area, whose origin is the origin of UI coordinates, at the design units one UI unit spans, and moves the UI toward the offset that keeps the focused field above the keyboard. The UI holds its place while `pressed`, so a press that ends the editing, such as a tap on a send button next to the field, releases over the control it pressed.
     void beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds, bool pointerDown);
 
+    // Whether the UI still glides toward the offset that keeps the focused field above the keyboard.
+    [[nodiscard]] bool isLifting() const noexcept {
+        return keyboardLift != keyboardTarget;
+    }
+
     // Declares a text field drawn this frame before its `InputText` call, whose callback synchronizes it.
     void addField(ImGuiID id, const math::Rect& bounds, const platform::TextInput::Options& options);
 
@@ -146,6 +151,7 @@ class TextSession final {
     platform::TextInput::Options options;
     math::Rect keyboard;
     float keyboardLift = 0.0F;
+    float keyboardTarget = 0.0F;
     float keyboardOffset = 0.0F;
 };
 

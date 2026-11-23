@@ -19,6 +19,9 @@ class PlatformPlugin final : public Plugin {
     void installLua(core::Engine& engine, lua_State* L) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
 
+    // Whether a video stream received a frame that the next frame shows.
+    [[nodiscard]] bool isAnimating() const override;
+
     // Uploads the newest frame of the stream at the start of every frame from now on, until the app stops, which lets go of its texture and its listeners.
     void watch(std::shared_ptr<platform::VideoStream> stream);
 

@@ -43,6 +43,12 @@ class TimerScheduler final {
     void clear() noexcept;
     void update(const FrameClock& clock);
 
+    // Whether an update with the clock fires a timer, which the engine asks before each frame of an app that redraws on change.
+    [[nodiscard]] bool isDue(const FrameClock& clock) const;
+
+    // Counts the time of a frame that updates nothing, such as a frame that an app that redraws on change skips, without firing any timer, so a timer that the time made due fires in the next update.
+    void advance(const FrameClock& clock);
+
     // Returns a connection that cancels the timer, which ties it to a `ConnectionScope`. Blocking the connection pauses the timer.
     [[nodiscard]] Connection getConnection(Id id);
 
@@ -79,6 +85,8 @@ class TimerScheduler final {
     };
 
     [[nodiscard]] static ProcessMode resolveMode(const Options& options);
+    [[nodiscard]] static bool isRunning(const Timer& timer, const FrameClock& clock);
+    [[nodiscard]] static float getStep(const Timer& timer, const FrameClock& clock) noexcept;
 
     Id add(float interval, float delay, int count, std::function<void()> callback, Options options);
     [[nodiscard]] Timer* find(Id id) const noexcept;

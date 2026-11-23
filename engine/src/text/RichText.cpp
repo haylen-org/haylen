@@ -268,6 +268,10 @@ bool RichText::isRevealing() {
     return getVisibleCharacters() < getCharacterCount();
 }
 
+bool RichText::isAnimating() {
+    return !effects.empty() || (options.revealSpeed > 0.0F && isRevealing());
+}
+
 std::optional<std::string> RichText::getLinkAt(math::Vec2 point) {
     for (const Layout::Area& area : getLayout().links) {
         if (area.rect.contains(point)) {

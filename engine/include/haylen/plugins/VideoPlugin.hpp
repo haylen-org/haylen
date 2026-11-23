@@ -25,6 +25,9 @@ class VideoPlugin final : public Plugin {
     void installLua(core::Engine& engine, lua_State* L) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
 
+    // Whether a video loads or plays in a frame that its process mode runs, so its picture changes.
+    [[nodiscard]] bool isAnimating() const override;
+
     // Creates a video of a file of the package, by its path relative to `content`, which opens at once when the file is on the device and once the content manager brought it otherwise. Throws `std::invalid_argument` for invalid options and for an asset that does not exist.
     [[nodiscard]] std::shared_ptr<graphics::Video> create(core::Engine& engine, const std::string& path, const graphics::Video::Options& options);
 
@@ -39,8 +42,9 @@ class VideoPlugin final : public Plugin {
     platform::Host& host;
     std::vector<std::shared_ptr<graphics::Video>> videos;
 
-    // The videos the frame updates, kept between frames so they allocate nothing.
+    // The videos the frame updates, kept between frames so they allocate nothing, and whether one of them loaded or played in the last frame.
     std::vector<std::shared_ptr<graphics::Video>> updating;
+    bool animating = false;
 };
 
 } // namespace haylen::plugins

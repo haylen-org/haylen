@@ -158,6 +158,12 @@ struct EngineState {
     // Whether the current frame draws the app, which it decides before the plugins begin it.
     bool drawing = false;
 
+    // When the app updates and draws, whether something asked for the next frame of an app that redraws on change, how many frames it still draws to settle after the last frame that a change needed, and how many events had reached a listener of the event bus when the frame before decided.
+    platform::Window::Redraw redraw = config.window.redraw;
+    bool redrawRequested = true;
+    int settleFrames = 0;
+    std::uint64_t heardEvents = 0;
+
     // Whether the frame that rendered last drew the app complete, which no frame did before the first one rendered.
     bool frameComplete = false;
 

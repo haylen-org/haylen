@@ -25,6 +25,7 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "plugins/Particles2DPlugin.hpp"
 
 namespace haylen::lua {
 
@@ -729,7 +730,9 @@ int Particles2DLua::newEmitter(lua_State* L) {
         lua::Table::readField(L, options, "seed", seed);
     }
 
-    lua::Userdata::emplace<Emitter>(L, std::make_shared<Emitter>(std::move(config), static_cast<std::uint64_t>(seed)));
+    const auto emitter = std::make_shared<Emitter>(std::move(config), static_cast<std::uint64_t>(seed));
+    lua::Runtime::getEngine(L).getPlugin<plugins::Particles2DPlugin>().track(emitter);
+    lua::Userdata::emplace<Emitter>(L, emitter);
     return 1;
 }
 
@@ -743,7 +746,9 @@ int Particles2DLua::newSystem(lua_State* L) {
         lua::Table::readField(L, 2, "seed", seed);
     }
 
-    lua::Userdata::emplace<System>(L, std::make_shared<System>(effect, static_cast<std::uint64_t>(seed)));
+    const auto system = std::make_shared<System>(effect, static_cast<std::uint64_t>(seed));
+    lua::Runtime::getEngine(L).getPlugin<plugins::Particles2DPlugin>().track(system);
+    lua::Userdata::emplace<System>(L, system);
     return 1;
 }
 
@@ -772,7 +777,9 @@ Trail::Options Particles2DLua::readTrailOptions(lua_State* L, int index, Trail::
 }
 
 int Particles2DLua::newTrail(lua_State* L) {
-    lua::Userdata::emplace<Trail>(L, std::make_shared<Trail>(readTrailOptions(L, 1, {})));
+    const auto trail = std::make_shared<Trail>(readTrailOptions(L, 1, {}));
+    lua::Runtime::getEngine(L).getPlugin<plugins::Particles2DPlugin>().track(trail);
+    lua::Userdata::emplace<Trail>(L, trail);
     return 1;
 }
 

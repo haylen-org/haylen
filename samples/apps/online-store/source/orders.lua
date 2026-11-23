@@ -1,5 +1,6 @@
--- The orders of the person. It is an autoload, so an order moves on through its stages on every screen: the warehouse packs it, the carrier ships it, the courier brings it and it arrives at the door. Every change of stage emits "orderChanged" and shows a notice.
+-- The orders of the person. It is an autoload, so an order moves on through its stages on every screen: the warehouse packs it, the carrier ships it, the courier brings it and it arrives at the door. A timer counts the time of each stage, and every change of stage emits "orderChanged" and shows a notice.
 local events = require('haylen.events')
+local timer = require('haylen.timer')
 
 local Random = require('random')
 local Store = require('data.store')
@@ -57,12 +58,32 @@ function Orders.place(lines, totals, express)
         express = express,
         date = 'Today',
         stage = 1,
-        elapsed = 0,
     }
     Orders.describe(order)
     table.insert(Orders.list, 1, order)
     events.emit('orderChanged', order)
+    Orders.wait(order)
     return order
+end
+
+-- Moves an order on to a stage, tells about it and waits for the stage after it.
+function Orders.advance(order, stage)
+    if order.timer then
+        timer.cancel(order.timer)
+    end
+    order.stage = stage
+    Orders.describe(order)
+    events.emit('orderChanged', order)
+    events.emit('notice', order.number .. ': ' .. Orders.stages[stage].message)
+    Orders.wait(order)
+end
+
+-- The last stage lasts for good, so it waits for nothing.
+function Orders.wait(order)
+    local seconds = Orders.stages[order.stage].seconds
+    if seconds then
+        order.timer = timer.after(seconds, function() Orders.advance(order, order.stage + 1) end, {owner = Orders})
+    end
 end
 
 function Orders.find(id)
@@ -71,15 +92,6 @@ function Orders.find(id)
             return order
         end
     end
-end
-
--- Seconds from the order to the start of a stage.
-function Orders.stageStart(stage)
-    local start = 0
-    for index = 1, stage - 1 do
-        start = start + Orders.stages[index].seconds
-    end
-    return start
 end
 
 -- Fills the texts and the picture a row of the orders shows.
@@ -94,24 +106,6 @@ function Orders.describe(order)
     order.caption = string.format('%s · %d %s · %s', order.date, count, count == 1 and 'item' or 'items', Store.money(order.total))
     order.status = Orders.stages[order.stage].title
     order.tone = order.stage == #Orders.stages and 'success' or 'neutral'
-end
-
-function Orders:update(dt)
-    for _, order in ipairs(self.list) do
-        if order.elapsed and order.stage < #Orders.stages then
-            order.elapsed = order.elapsed + dt
-            local stage = order.stage
-            while stage < #Orders.stages and order.elapsed >= Orders.stageStart(stage + 1) do
-                stage = stage + 1
-            end
-            if stage ~= order.stage then
-                order.stage = stage
-                Orders.describe(order)
-                events.emit('orderChanged', order)
-                events.emit('notice', order.number .. ': ' .. Orders.stages[stage].message)
-            end
-        end
-    end
 end
 
 return Orders

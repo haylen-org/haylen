@@ -92,6 +92,7 @@ void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiSc
         target = std::clamp(overlap, 0.0F, std::max(0.0F, top - kKeyboardMargin));
     }
 
+    keyboardTarget = target;
     keyboardLift += (target - keyboardLift) * std::min(1.0F, deltaSeconds * kKeyboardSpeed);
     if (std::abs(target - keyboardLift) < 0.5F) {
         keyboardLift = target;

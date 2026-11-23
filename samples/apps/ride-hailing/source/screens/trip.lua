@@ -4,6 +4,7 @@ local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
+local window = require('haylen.window')
 
 local MapView = require('map-view')
 local Page = require('page')
@@ -289,6 +290,9 @@ end
 
 function Trip:update(dt)
     Page.update(self, dt)
+
+    -- The map moves its traffic by itself, so the screen asks for every frame while it shows.
+    window.requestRedraw()
     local trip = self.trip
     if trip.stage < #Rides.stages then
         local minutes = tostring(Rides.minutesLeft(trip))

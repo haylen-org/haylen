@@ -374,11 +374,15 @@ void Engine::frame(double frameSeconds) {
         }
 
         // Decoded assets create their GPU resources within the upload budget of the frame, so a burst of loads never stalls it, and before the event loop runs, so the promises they settle resume their coroutines in this frame. An app in the background creates none.
-        if (!hidden) {
-            current.assets->finalizePending();
+        if (!hidden && current.assets->finalizePending()) {
+            requestRedraw();
         }
 
         runScripts(frameSeconds);
+
+        // A frame that an app that redraws on change skips draws nothing and updates nothing, so the picture of the frame before stays on the screen, and it only lets the time of the timers pass and keeps its time out of the fixed steps, so the frame after it neither jumps nor catches up.
+        const bool updating = takeRedraw(halted);
+        current.drawing = current.drawing && updating;
 
         if (!hidden) {
             for (std::size_t index = 0; index < plugins; ++index) {
@@ -386,8 +390,11 @@ void Engine::frame(double frameSeconds) {
             }
         }
 
-        if (!current.errorScreen && !halted) {
+        if (!current.errorScreen && !halted && updating) {
             updateApp(plugins, delta);
+        } else if (!current.errorScreen && !halted) {
+            current.clock.skipFixedSteps();
+            current.timers.advance(current.clock);
         }
 
         current.audio->update(static_cast<float>(current.clock.getUnscaledDelta()));
@@ -402,8 +409,12 @@ void Engine::frame(double frameSeconds) {
         current.frameComplete = checkFrameComplete();
     }
 
-    // Deferred signal slots and queued events run last, after everything the frame did.
+    // Deferred signal slots and queued events run last, after everything the frame did, so what they change shows in the next frame.
     try {
+        if (current.frameQueue.size() > 0) {
+            requestRedraw();
+        }
+
         current.frameQueue.flush();
     } catch (const std::exception& exception) {
         reportError(exception);
@@ -414,16 +425,19 @@ void Engine::frame(double frameSeconds) {
     profiler.endFrame();
 }
 
-// The replies of the platform settle their promises before the event loop runs, so a coroutine that awaits a native call resumes in the frame its reply reaches.
+// The replies of the platform settle their promises before the event loop runs, so a coroutine that awaits a native call resumes in the frame its reply reaches, and whatever arrived asks an app that redraws on change for this frame.
 void Engine::runScripts(double frameSeconds) {
     EngineState& current = *state;
     const debug::ProfileScope scope(current.profiler, "scripts");
-    current.platform->pump();
-    current.system->pump();
+    const bool replied = current.platform->pump();
+    const bool answered = current.system->pump();
     publishLinks();
-    current.accessibility->pump();
+    const bool accessed = current.accessibility->pump();
     current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
-    current.screens->pump();
+    const bool ended = current.screens->pump();
+    if (replied || answered || accessed || ended) {
+        requestRedraw();
+    }
 
     // A screen that ended in the pump uncovers the app before the code that awaited its answer resumes.
     applyCover();
@@ -431,6 +445,57 @@ void Engine::runScripts(double frameSeconds) {
     const std::chrono::nanoseconds budget = getPollBudget(frameSeconds);
     const varn::runtime::EventLoop::PollResult polled = current.scheduler->poll(budget);
     current.loopPoll = {.budget = budget, .ran = polled.ran, .pending = polled.pending, .idleMilliseconds = polled.idleMilliseconds};
+}
+
+// An app that redraws always needs every frame. The frame that a change needs starts the settle of the frames after it, and a frame without a change still draws while the settle lasts.
+bool Engine::takeRedraw(bool halted) {
+    EngineState& current = *state;
+    if (current.redraw == platform::Window::Redraw::Always) {
+        return true;
+    }
+
+    const bool needed = isRedrawNeeded(halted);
+    current.redrawRequested = false;
+    current.heardEvents = current.events.getHeardCount();
+    if (needed) {
+        current.settleFrames = kSettleFrames;
+        return true;
+    }
+
+    if (current.settleFrames > 0) {
+        --current.settleFrames;
+        return true;
+    }
+
+    return false;
+}
+
+// The checks run from the cheapest, and the plugins answer last.
+bool Engine::isRedrawNeeded(bool halted) const {
+    const EngineState& current = *state;
+    if (current.redrawRequested || current.loopPoll.ran || current.events.getHeardCount() != current.heardEvents) {
+        return true;
+    }
+
+    if (!current.frameComplete || current.errorScreen || current.applicationPending || current.input.isActive() || current.scenes->isTransitioning()) {
+        return true;
+    }
+
+    if (!current.screenCaptures.empty() || current.graphics->isCapturing() || current.graphics->getPendingReadCount() > 0) {
+        return true;
+    }
+
+    if (!halted && (current.timers.isDue(current.clock) || current.tweens.isAnimating(current.clock))) {
+        return true;
+    }
+
+    for (std::size_t index = 0; index < current.startedPlugins.size(); ++index) {
+        if (current.startedPlugins[index]->isAnimating()) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // The fixed steps the clock owes run first, then the frame update of the timers, the tweens, the plugins and the scenes.
@@ -671,8 +736,10 @@ void Engine::handleEvent(const platform::Event& event) {
     }
 }
 
+// Every event of the platform may change what the app shows, so it asks an app that redraws on change for the next frame.
 void Engine::dispatchEvent(const platform::Event& event) {
     EngineState& current = *state;
+    requestRedraw();
 
     // The reports and the pointers of outputs on other displays belong to the outputs, apart from the input of the window.
     if (event.output != 0) {
@@ -1068,6 +1135,10 @@ void Engine::remapViewport() {
     if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
         current.input.followViewport(previous, current.viewport);
     }
+
+    if (current.viewport.getFramebufferSize() != previous.getFramebufferSize() || current.viewport.getDesignSize() != previous.getDesignSize() || current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getSafeRect() != previous.getSafeRect()) {
+        requestRedraw();
+    }
 }
 
 void Engine::flushUserData() {
@@ -1213,6 +1284,19 @@ bool Engine::isBackCaptured() const {
     }
 
     return false;
+}
+
+void Engine::setRedraw(platform::Window::Redraw value) noexcept {
+    state->redraw = value;
+    requestRedraw();
+}
+
+platform::Window::Redraw Engine::getRedraw() const noexcept {
+    return state->redraw;
+}
+
+void Engine::requestRedraw() noexcept {
+    state->redrawRequested = true;
 }
 
 bool Engine::isFrameComplete() const noexcept {

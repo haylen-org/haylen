@@ -337,6 +337,10 @@ text::RichText& TextPlugin::getDrawnText(std::string_view markup, const text::Ri
     return *drawn.text;
 }
 
+bool TextPlugin::isAnimating() const {
+    return std::ranges::any_of(drawnTexts, [](const auto& entry) { return entry.second.text->isAnimating(); });
+}
+
 graphics::Texture TextPlugin::getImage(core::Engine& engine, std::string_view path) {
     auto found = images.find(path);
     if (found == images.end()) {

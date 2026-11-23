@@ -44,6 +44,7 @@
                 "statusBar": {"enum": ["hidden", "auto", "light", "dark"]},
                 "statusBarColor": {"$ref": "#/$defs/color"},
                 "systemGestures": {"enum": ["system", "deferred", "autoHideIndicator"]},
+                "redraw": {"enum": ["always", "onChange"], "description": "When the app updates and draws: \"always\" in every frame, as a game does, or \"onChange\" only in the frames that something changed in."},
                 "externalDisplays": {"type": "boolean", "description": "Whether the app shows outputs on the external displays of an iPhone or an iPad of iOS 27 and later, which mirror the app without it."},
                 "graphicsApis": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
                 "lowPowerGpu": {"type": "boolean"}

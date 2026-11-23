@@ -12,9 +12,12 @@ void FrameClock::advance(double frameSeconds) noexcept {
     unscaledDelta = skipNext ? 0.0 : std::clamp(frameSeconds, 0.0, maxFrameTime);
     skipNext = false;
     delta = unscaledDelta * timeScale;
+    const double before = accumulator;
     if (!paused) {
         accumulator = std::min(accumulator + delta, fixedStep * kMaxFixedSteps);
     }
+
+    accumulated = accumulator - before;
 
     elapsed += delta;
     ++frameIndex;
@@ -29,6 +32,11 @@ bool FrameClock::consumeFixedStep() noexcept {
     accumulator -= fixedStep;
     ++fixedSteps;
     return true;
+}
+
+void FrameClock::skipFixedSteps() noexcept {
+    accumulator -= accumulated;
+    accumulated = 0.0;
 }
 
 // An infinite scale would turn every scaled time into infinity or NaN.

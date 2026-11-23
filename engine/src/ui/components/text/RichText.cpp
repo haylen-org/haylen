@@ -94,6 +94,10 @@ void RichText::render(Context& context, const math::Rect& bounds) {
         prepared.update(context.getDeltaSeconds());
     }
 
+    if (prepared.isAnimating()) {
+        context.requestFrame();
+    }
+
     prepared.setMaxWidth(wrap ? bounds.width : 0.0F);
 
     // Text that does not wrap aligns as one block inside the bounds, where start and end follow the direction of the UI.

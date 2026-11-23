@@ -80,6 +80,9 @@ class DebugPlugin final : public Plugin {
     void endFrame(core::Engine& engine) override;
     void installLua(core::Engine& engine, lua_State* L) override;
 
+    // Whether the statistics, the inspector or a trace show what changes from frame to frame.
+    [[nodiscard]] bool isAnimating() const override;
+
     void setStatsMode(debug::StatsDisplay::Mode value) noexcept {
         statsMode = value;
     }
@@ -224,7 +227,7 @@ class DebugPlugin final : public Plugin {
 
     void record(core::Log::Level level, std::string_view line);
     void addBuiltInCommands(core::Engine& engine);
-    void runRelayedLines();
+    void runRelayedLines(core::Engine& engine);
     void answerInspection(const std::vector<std::string>& path, const std::function<void(bool ok, const core::Json& result)>& reply) const;
     [[nodiscard]] core::Json describeCommands() const;
     void detachTrace();

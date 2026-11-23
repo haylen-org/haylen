@@ -64,6 +64,10 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
         shown = goal;
     }
 
+    if (shown != goal) {
+        context.requestFrame();
+    }
+
     drawPages(context, area);
     layers.Merge(&list);
 
@@ -102,7 +106,9 @@ void Carousel::render(Context& context, const math::Rect& bounds) {
         target = page + Widgets::getStep(context, *direction);
     }
 
+    // A carousel that turns by itself counts the time of the frames, which keep coming while it waits.
     if (interval > 0.0F && !swipe.held && target == page) {
+        context.requestFrame();
         waited += context.getDeltaSeconds();
         if (waited >= interval) {
             const bool looped = std::exchange(loop, true);

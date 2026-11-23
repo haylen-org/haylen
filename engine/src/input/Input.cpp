@@ -272,6 +272,48 @@ bool Input::isGamepadReleased(std::size_t index, GamepadButton button) const noe
     return index < kMaxGamepads && !gamepads[index].buttons[slot] && previousGamepads[index].buttons[slot];
 }
 
+bool Input::isActive() const noexcept {
+    if (keysDown.any() || keysReleased.any() || mouseDown.any() || mouseReleased.any() || !touches.empty()) {
+        return true;
+    }
+
+    for (std::size_t index = 0; index < kMaxGamepads; ++index) {
+        if (isGamepadActive(index)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Input::isGamepadActive(std::size_t index) const noexcept {
+    const GamepadState& state = gamepads[index];
+    const GamepadState& previous = previousGamepads[index];
+    if (!state.connected && !previous.connected) {
+        return false;
+    }
+
+    for (std::size_t slot = 0; slot < Controls::kGamepadButtonCount; ++slot) {
+        if (state.buttons[slot] || previous.buttons[slot]) {
+            return true;
+        }
+    }
+
+    for (std::size_t slot = 0; slot < Controls::kGamepadAxisCount; ++slot) {
+        if (std::fabs(state.axes[slot]) > deadzone || std::fabs(previous.axes[slot]) > deadzone) {
+            return true;
+        }
+    }
+
+    for (std::size_t slot = 0; slot < Controls::kTouchpadFingerCount; ++slot) {
+        if (state.touchpad[slot].down || previous.touchpad[slot].down) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 float Input::getGamepadAxis(std::size_t index, GamepadAxis axis) const noexcept {
     if (index >= kMaxGamepads) {
         return 0.0F;

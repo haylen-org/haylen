@@ -138,6 +138,12 @@ class Player final {
     // The GPU device of the running app, which the platform layer tells when the surface of its window changes, or null while no app runs. It runs on the frame thread.
     [[nodiscard]] static gpu::Device* getGpuDevice() noexcept;
 
+    // Whether the last frame of the running app drew and presented, whose present then paced the frame thread. A frame that draws nothing, such as one of an app that redraws on change while nothing changed, leaves the pace to the platform layer. It runs on the frame thread.
+    [[nodiscard]] static bool isDrawing() noexcept;
+
+    // Asks the running app for the next frame because the platform lost what its window showed, such as a window of a desktop that the system shows again without keeping its picture. It runs on the frame thread.
+    static void requestRedraw() noexcept;
+
   private:
     // Stands in for the app when its package cannot be opened or its `haylen.json` is invalid, so the window explains the problem instead of closing.
     class FailedApplication final : public core::Application {

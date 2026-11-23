@@ -119,6 +119,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | `window.statusBar` | string | `"hidden"` | How the status bar of phones and tablets shows when the app launches: `"hidden"`, or `"auto"`, `"light"` or `"dark"` content, as [`window.setStatusBar`](window.md#windowsetstatusbarvalue) describes. |
 | `window.graphicsApis` | array of strings | `[]` | The graphics APIs that the window tries first, in order, such as `["vulkan", "openGl"]`. The names are `"metal"`, `"direct3D12"`, `"direct3D11"`, `"vulkan"`, `"openGl"`, `"openGlEs"`, `"webGpu"`, `"webGl2"` and `"port"`. After them the window tries the other APIs of the build in the order of the platform, and it leaves out the APIs that the build lacks, so one list serves every platform. The option `--graphics-api` of the player replaces it. Scripts read the API that draws in [`haylen.graphicsApi`](#haylengraphicsapi). |
 | `window.systemGestures` | string | `"system"` | How the system gestures at the edges of phones and tablets answer a swipe: `"system"`, `"deferred"` or `"autoHideIndicator"`, as [`window.setSystemGestures`](window.md#windowsetsystemgesturesvalue) describes. |
+| `window.redraw` | string | `"always"` | When the app updates and draws: `"always"` in every frame, as a game does, or `"onChange"` only in the frames that something changed in, as an app of forms and lists does, which [`window.setRedraw`](window.md#windowsetredrawvalue) describes. |
 | `window.externalDisplays` | boolean | `false` | Whether the app shows [outputs](display.md#displayopenid-options) on the external displays of an iPhone or an iPad of iOS 27 and later, whose scene UIKit connects only for an app that registers the scene accessory of external displays. Without it such a display mirrors the app. Every other platform connects external displays on its own, as the [displays guide](../platform/displays.md#content-on-another-display) explains. |
 | `window.statusBarColor` | string | Absent | The color, such as `"#FF1E2A44"`, that the engine paints behind the status bar while it shows, as [`window.setStatusBarColor`](window.md#windowsetstatusbarcolorcolor) describes. |
 
@@ -453,7 +454,7 @@ print('Halted: ' .. tostring(haylen.halted()) .. '.')
 
 ### haylen.drawing()
 
-Returns `true` while the current frame draws the app. A frame draws nothing while the app is in the background and while an opaque screen of a plugin hides it, and a covered app draws one frame once the cover began, which stays on screen, and no more while the cover lasts. Work that only prepares what a frame shows can skip the frames that draw nothing.
+Returns `true` while the current frame draws the app. A frame draws nothing while the app is in the background and while an opaque screen of a plugin hides it, a covered app draws one frame once the cover began, which stays on screen, and no more while the cover lasts, and an app that [redraws on change](window.md#windowsetredrawvalue) draws only the frames that something changed in. Work that only prepares what a frame shows can skip the frames that draw nothing.
 
 ```lua
 local haylen = require('haylen')

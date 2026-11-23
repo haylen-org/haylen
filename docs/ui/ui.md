@@ -871,6 +871,18 @@ A change of the items costs only the items it touches. The methods `reload` and 
 
 A frame at rest binds nothing, calls no binder and creates no cell. The engine tests check that it calls no Lua and that the collection allocates nothing in it. A frame of a fling binds only the items that enter the window. The cells stay bounded by the window, its prefetch and the pools of the types. The components inside the cells keep their own costs, since every visible container measures its children every frame. So cells with few parts keep long lists cheapest.
 
+## Redraw only when something changes
+
+A screen of forms, lists and pages looks the same in most of its frames, and drawing it again in every frame costs the GPU and the battery as much as a frame that scrolls. An app made of such screens sets `window.redraw` to `"onChange"` in `haylen.json`, and then updates and draws only the frames that something changed in, while the picture of the last one stays on the screen. A game keeps the default `"always"`, since its world moves in every frame, and a game can switch to `"onChange"` for its menus with [`window.setRedraw`](../lua-api/window.md#windowsetredrawvalue).
+
+```json
+{
+    "window": {"redraw": "onChange"}
+}
+```
+
+The UI keeps drawing while something of it moves or waits for time to pass, without any code of the app: an area that glides, springs back or snaps, a collection whose cells slide or fade, the knob of a toggle, a carousel, a spinner, a tooltip that waits for its delay, a caret that blinks, rich text with effects, a message that counts its time or moves, and every transition and presentation of the [navigation](navigation.md). Input, timers, tweens, replies of the platform and of the network, assets that arrive and scene changes draw their frames too, and a couple of frames after each of them draw so the hover and the focus settle. So an app that moves its nodes with tweens and changes them from its handlers needs nothing more. Code that moves something by itself in an `update` hook asks for the frames it needs with [`window.requestRedraw`](../lua-api/window.md#windowrequestredraw), and the [architecture guide](../core/architecture.md#redraw-on-change) lists every reason for a frame.
+
 ## Text entry
 
 The text kinds `textField`, `secretField`, `textArea`, `filterField` and `numberField` let the player type. They edit through the native text input of the platform. So phones, tablets, TVs and mobile browsers open their on-screen keyboard. Every platform also brings what its own fields have, such as input methods for Japanese and Chinese, dictation, the emoji picker and paste. Autocorrection is off unless the field asks for it with `autocorrect`. The properties `keyboard`, `returnKey`, `autocorrect`, `autocapitalize` and `maxLength` choose the keyboard, as the [reference](../lua-api/ui.md#uitextfieldproperties) lists.

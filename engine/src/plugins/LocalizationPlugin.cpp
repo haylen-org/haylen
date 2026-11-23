@@ -68,7 +68,9 @@ void LocalizationPlugin::beginFrame(core::Engine& engine, float) {
         return;
     }
 
+    // Text in the new language shows in the next frame, also in an app that redraws on change.
     std::string previous = std::exchange(announced, catalog.getLanguage());
+    engine.requestRedraw();
     engine.getEvents().emit(core::LifecycleEvent::kLanguageChanged, {{"language", announced}, {"previous", std::move(previous)}});
 }
 

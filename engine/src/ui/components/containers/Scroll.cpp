@@ -202,6 +202,11 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
 
         settle();
 
+        // The content that moves, a scroll that a request still aims and a snap that waits for the content to rest keep the frames coming.
+        if (scroller.isMoving() || request || (snap && idle < kSnapDelay)) {
+            context.requestFrame();
+        }
+
         if (overflowing) {
             scrollbar.draw(context, 1.0F);
         }

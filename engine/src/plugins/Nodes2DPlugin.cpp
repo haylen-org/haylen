@@ -35,4 +35,16 @@ void Nodes2DPlugin::installLua(core::Engine&, lua_State* L) {
     nodes2d::Nodes2DLua::install(L);
 }
 
+void Nodes2DPlugin::stop(core::Engine&) {
+    trees.clear();
+}
+
+bool Nodes2DPlugin::isAnimating() const {
+    return trees.any([](const nodes2d::NodeTree& tree) { return tree.hasLiveParticles(); });
+}
+
+void Nodes2DPlugin::track(const std::shared_ptr<nodes2d::NodeTree>& tree) {
+    trees.add(tree);
+}
+
 } // namespace haylen::plugins

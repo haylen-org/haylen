@@ -3,6 +3,7 @@ local async = require('async')
 local audio = require('haylen.audio')
 local events = require('haylen.events')
 local jobs = require('haylen.jobs')
+local window = require('haylen.window')
 
 local Catalog = require('data.catalog')
 local Random = require('random')
@@ -243,6 +244,9 @@ function Player:update(dt)
     if not track or not Player.playing or Player.loading then
         return
     end
+
+    -- The time of the song moves its bars on every screen, so the app asks for every frame while a song plays.
+    window.requestRedraw()
     if type(Player.sleepLeft) == 'number' then
         Player.sleepLeft = Player.sleepLeft - dt
         if Player.sleepLeft <= 0 then

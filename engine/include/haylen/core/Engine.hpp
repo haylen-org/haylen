@@ -327,8 +327,18 @@ class Engine final {
     // Whether the frame that rendered last drew the app complete, which no frame did before the first one rendered: the error screen or the update screen, or the app with its first scene loaded and nothing that a plugin draws still loading. A frame that renders nothing, such as one of an app in the background or covered by native UI, leaves the answer of the frame before. The platform shows the app for the first time with such a frame, so a splash screen hands over to the first real frame of the app.
     [[nodiscard]] bool isFrameComplete() const noexcept;
 
-    // Whether the current frame draws the app, which it does unless the app is in the background, an opaque screen of a plugin hides it, a covered app already drew the frame that stays on screen under the cover or the window has no area. Plugins that prepare drawing in `beginFrame` skip a frame that draws nothing.
+    // Whether the current frame draws the app, which it does unless the app is in the background, an opaque screen of a plugin hides it, a covered app already drew the frame that stays on screen under the cover, the window has no area or an app that redraws on change skips the frame. Plugins that prepare drawing in `beginFrame` skip a frame that draws nothing.
     [[nodiscard]] bool isDrawing() const noexcept;
+
+    // When the app updates and draws, which starts as the `window.redraw` of haylen.json. An app that redraws always updates and draws in every frame. An app that redraws on change updates its plugins and scenes and draws only in the frames that need it, and in the other frames it keeps its time, its timers, its event loop and the replies of the platform going and leaves the picture it drew last on the screen. A frame needs it when an event of the platform reached the app, the event loop ran work, an event reached a listener of the event bus, a timer fires, a tween plays, the scenes change, the window or the viewport changed, input is held, the app has not drawn a complete frame yet, the error screen shows, a capture or a read of the GPU waits, the app asked for it with `requestRedraw` or a plugin animates, and the `kSettleFrames` frames after such a frame need it too.
+    void setRedraw(platform::Window::Redraw value) noexcept;
+    [[nodiscard]] platform::Window::Redraw getRedraw() const noexcept;
+
+    // An app that redraws on change draws this many frames after each frame that a change needed, because state that follows input a frame behind, such as the hover and the focus of the UI, settles only then.
+    static constexpr int kSettleFrames = 2;
+
+    // Asks an app that redraws on change to update and draw the next frame, for a change that the engine cannot see, such as state that code of the app moves by itself. An app that redraws always draws every frame anyway.
+    void requestRedraw() noexcept;
 
     // The color that the engine paints behind the status bar while it shows, over everything the app drew there, or none to leave what the app drew. Only the visible area of the viewport takes it, so the clear color shows where letterbox bars cover the top of the screen.
     void setStatusBarColor(std::optional<math::Color> value) noexcept;
@@ -368,6 +378,8 @@ class Engine final {
     void leaveErrorScreen();
     void runScripts(double frameSeconds);
     void updateApp(std::size_t plugins, float delta);
+    [[nodiscard]] bool takeRedraw(bool halted);
+    [[nodiscard]] bool isRedrawNeeded(bool halted) const;
     void showError(const lua::Error& error, bool resumable);
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);

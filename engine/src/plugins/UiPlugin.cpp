@@ -852,9 +852,11 @@ void UiPlugin::add(Mounted entry) {
         entry.drawLayer = entry.screen != nullptr ? kPresentationLayer : entry.layer;
     }
 
+    // A GUI that comes or goes changes the screen, so an app that redraws on change draws the next frame.
     const std::shared_ptr<ui::Gui> gui = entry.gui;
     guis.push_back(std::move(entry));
     gui->attach([this](ui::Gui& target, const ui::Event& event) { deliverAtOnce(target, event); });
+    owner->requestRedraw();
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiMounted, gui);
 }
 
@@ -874,6 +876,7 @@ bool UiPlugin::unmount(const ui::Gui& gui) {
         deliverAtOnce(*unmounted, event);
     }
 
+    owner->requestRedraw();
     owner->getEvents().emitWith(core::LifecycleEvent::kGuiUnmounted, unmounted);
     ui::UiLua::forgetGui(owner->getLuaState(), gui);
     if (navigation) {
@@ -1161,6 +1164,18 @@ bool UiPlugin::isCapturingBack() const {
 }
 
 // A GUI lays out as it draws for the first time, so the code of the app that places the world around its nodes finds their bounds only from the next frame. A picture that is still loading leaves its place empty.
+bool UiPlugin::isAnimating() const {
+    if (!backend) {
+        return false;
+    }
+
+    if (context->isFrameRequested() || backRequested || navigation->isAnimating() || presentationView->hasRequests() || backend->isSettling()) {
+        return true;
+    }
+
+    return std::ranges::any_of(guis, [](const Mounted& entry) { return entry.gui->hasEvents(); });
+}
+
 bool UiPlugin::isFrameComplete() const {
     return !guiAppeared && !(images && images->isWaiting());
 }

@@ -94,4 +94,26 @@ void Animation2DPlugin::installLua(core::Engine&, lua_State* L) {
     animation2d::Animation2DLua::install(L);
 }
 
+void Animation2DPlugin::stop(core::Engine&) {
+    animators.clear();
+    skeletons.clear();
+    batches.clear();
+}
+
+bool Animation2DPlugin::isAnimating() const {
+    return animators.any([](const animation2d::Animator& animator) { return animator.isPlaying() && !animator.isFinished() && animator.speed != 0.0F; }) || skeletons.any([](const animation2d::Skeleton& skeleton) { return skeleton.isPlaying(); }) || batches.any([](const animation2d::AnimatedBatch& batch) { return batch.isPlaying(); });
+}
+
+void Animation2DPlugin::track(const std::shared_ptr<animation2d::Animator>& animator) {
+    animators.add(animator);
+}
+
+void Animation2DPlugin::track(const std::shared_ptr<animation2d::Skeleton>& skeleton) {
+    skeletons.add(skeleton);
+}
+
+void Animation2DPlugin::track(const std::shared_ptr<animation2d::AnimatedBatch>& batch) {
+    batches.add(batch);
+}
+
 } // namespace haylen::plugins

@@ -35,6 +35,9 @@ class VideoStream final {
     // Uploads the newest frame into the texture when it is new, emits `frameReceived` and returns `true`, and returns `false` when no frame arrived since the last update.
     bool update(graphics::Device& device);
 
+    // Whether a frame arrived that the next update uploads.
+    [[nodiscard]] bool hasNewFrame();
+
     // Returns the texture of the stream, created on the device the first time. Until the first frame it holds transparent pixels of the size the stream opened with, or a single one.
     [[nodiscard]] const graphics::Texture& getTexture(graphics::Device& device);
 

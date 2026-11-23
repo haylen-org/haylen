@@ -1,6 +1,7 @@
 #include "platform/sdl/Runtime.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <exception>
 #include <optional>
@@ -15,6 +16,7 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_touch.h>
+#include <SDL3/SDL_video.h>
 
 #include "gpu/DeviceFactory.hpp"
 #include "haylen/core/Log.hpp"
@@ -320,6 +322,7 @@ SDL_AppResult Runtime::iterate() {
     if (!closing) {
         recover();
         Player::frame(timer.next(now));
+        followPresents();
     }
 #if defined(__APPLE__) && !TARGET_OS_OSX && !defined(NDEBUG)
     AppleApplication::checkSurface(surfaceCheck);
@@ -490,6 +493,11 @@ void Runtime::followWindow(const SDL_Event& event) {
             updateCallbackRate();
         }
 
+        // A window that shows again may have lost its picture, such as one of X11 without a compositor, so an app that redraws on change draws it again.
+        if (event.type == SDL_EVENT_WINDOW_EXPOSED) {
+            Player::requestRedraw();
+        }
+
         return;
     }
     case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
@@ -526,7 +534,7 @@ void Runtime::setFrameRate(int framesPerSecond) {
     updateCallbackRate();
 }
 
-// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on desktops and by the rate of the display link on UIKit, and the display paces them without one. A hidden window, which no display paces, runs them at most at `kHiddenRate`. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
+// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on desktops and by the rate of the display link on UIKit, and the present of each frame paces them without one. A hidden window, which no display paces, runs them at most at `kHiddenRate`, and on a desktop the frames that present nothing run at the refresh of the display of the window, so input still reaches the app at once. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
 void Runtime::updateCallbackRate() {
     const int target = frameRate.getTarget();
     int rate = target;
@@ -537,8 +545,33 @@ void Runtime::updateCallbackRate() {
     if (!hidden) {
         rate = 0;
     }
+#elif !defined(__APPLE__) || TARGET_OS_OSX
+    if (!hidden && !presenting && target == 0) {
+        rate = getRefreshRate();
+    }
 #endif
     SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, std::to_string(rate).c_str());
+}
+
+// A frame that draws nothing presents nothing that the display could pace, so the rate of the iterations changes whenever the app starts or stops presenting.
+void Runtime::followPresents() {
+    const bool presented = Player::isDrawing();
+    if (presented == presenting) {
+        return;
+    }
+
+    presenting = presented;
+    updateCallbackRate();
+}
+
+// A display that reports no refresh paces like a hidden window.
+int Runtime::getRefreshRate() const {
+    const SDL_DisplayMode* mode = SDL_GetCurrentDisplayMode(SDL_GetDisplayForWindow(window.get()));
+    if (mode == nullptr || mode->refresh_rate <= 0.0F) {
+        return kHiddenRate;
+    }
+
+    return static_cast<int>(std::lround(mode->refresh_rate));
 }
 
 } // namespace haylen::platform::sdl

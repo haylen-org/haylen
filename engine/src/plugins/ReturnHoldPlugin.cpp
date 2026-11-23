@@ -40,6 +40,10 @@ void ReturnHoldPlugin::beginFrame(core::Engine& engine, float deltaSeconds) {
     }
 }
 
+bool ReturnHoldPlugin::isAnimating() const {
+    return hold.isPending();
+}
+
 // A panel at the top of the safe area fills its bar as the hold goes on, in the points of the screen at any design size.
 void ReturnHoldPlugin::renderOverlay(core::Engine& engine) {
     const float progress = hold.getProgress();

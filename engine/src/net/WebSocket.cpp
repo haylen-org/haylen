@@ -156,7 +156,8 @@ void WebSocket::scheduleReconnect() {
     reconnecting.emit(attempt, delay);
 }
 
-void WebSocket::pump() {
+bool WebSocket::pump() {
+    const State before = state;
     if (state == State::Reconnecting && clock() >= nextAttemptAt) {
         connect();
     }
@@ -201,7 +202,9 @@ void WebSocket::pump() {
         }
     }
 
+    const bool delivered = !events.empty() || state != before;
     events.clear();
+    return delivered;
 }
 
 // A transport reports nothing after closing, so the next attempt opens a fresh one, and the disconnect listeners already see the state that follows.

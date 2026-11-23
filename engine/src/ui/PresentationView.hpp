@@ -41,6 +41,11 @@ class PresentationView final {
 
     [[nodiscard]] Requests takeRequests() noexcept;
 
+    // Whether a request of the person waits for the next update.
+    [[nodiscard]] bool hasRequests() const noexcept {
+        return !requests.tapped.expired() || !requests.released.expired() || !requests.cycled.expired();
+    }
+
   private:
     // How long a motion of the pointer counts toward the speed of a drag, in seconds.
     static constexpr float kSpeedWindow = 0.08F;

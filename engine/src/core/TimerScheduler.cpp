@@ -120,7 +120,7 @@ void TimerScheduler::update(const FrameClock& clock) {
     // A timer that its process mode holds keeps its remaining time and cannot fire in this update.
     for (std::size_t index = 0; index < timers.size(); ++index) {
         Timer& timer = *timers[index];
-        const bool running = !timer.cancelled && !timer.paused && clock.canProcess(resolveMode(timer.options));
+        const bool running = isRunning(timer, clock);
         timer.firedThisUpdate = !running;
         timer.callsThisUpdate = 0;
 
@@ -128,7 +128,7 @@ void TimerScheduler::update(const FrameClock& clock) {
             continue;
         }
 
-        timer.remaining -= static_cast<float>(timer.options.unscaled ? clock.getUnscaledDelta() : clock.getDelta());
+        timer.remaining -= getStep(timer, clock);
         if (timer.remaining <= 0.0F && timer.repeatsLeft != 0) {
             due.emplace_back(timer.remaining, index);
         }
@@ -173,6 +173,36 @@ void TimerScheduler::update(const FrameClock& clock) {
     }
 
     finishUpdate();
+}
+
+bool TimerScheduler::isDue(const FrameClock& clock) const {
+    if (!pending.empty()) {
+        return true;
+    }
+
+    for (const std::shared_ptr<Timer>& timer : timers) {
+        if (timer->repeatsLeft != 0 && isRunning(*timer, clock) && timer->remaining - getStep(*timer, clock) <= 0.0F) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void TimerScheduler::advance(const FrameClock& clock) {
+    for (const std::shared_ptr<Timer>& timer : timers) {
+        if (isRunning(*timer, clock)) {
+            timer->remaining -= getStep(*timer, clock);
+        }
+    }
+}
+
+bool TimerScheduler::isRunning(const Timer& timer, const FrameClock& clock) {
+    return !timer.cancelled && !timer.paused && clock.canProcess(resolveMode(timer.options));
+}
+
+float TimerScheduler::getStep(const Timer& timer, const FrameClock& clock) noexcept {
+    return static_cast<float>(timer.options.unscaled ? clock.getUnscaledDelta() : clock.getDelta());
 }
 
 void TimerScheduler::finishUpdate() {

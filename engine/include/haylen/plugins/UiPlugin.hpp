@@ -62,6 +62,9 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] bool isCapturingBack() const override;
     [[nodiscard]] bool isFrameComplete() const override;
 
+    // Whether the UI still moves or waits for time to pass, as `ui::Context::requestFrame` asks, a transition or a presentation of the navigation moves, ImGui settles, or events of the GUIs and requests of the person wait for the next update.
+    [[nodiscard]] bool isAnimating() const override;
+
     // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme, loads the sounds of the UI read from changed files again, and reads a changed font file of a UI font again, which reaches ImGui before its next frame.
     void packageChanged(core::Engine& engine, std::span<const std::string> paths) override;
 

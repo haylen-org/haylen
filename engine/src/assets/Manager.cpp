@@ -944,12 +944,13 @@ std::size_t Manager::releaseUnused() {
     return static_cast<std::size_t>(std::erase_if(cache, [](const auto& entry) { return entry.second.asset.expired(); }));
 }
 
-void Manager::finalizePending() {
+bool Manager::finalizePending() {
     const auto start = std::chrono::steady_clock::now();
     const auto budget = std::chrono::duration<double>(uploadBudget);
+    bool finished = false;
     do {
         if (uploads.empty()) {
-            return;
+            return finished;
         }
 
         Upload upload = std::move(uploads.front());
@@ -970,7 +971,10 @@ void Manager::finalizePending() {
         }
 
         finish(upload.key, asset, upload.error);
+        finished = true;
     } while (std::chrono::steady_clock::now() - start < budget);
+
+    return finished;
 }
 
 void Manager::setUploadBudget(double seconds) {

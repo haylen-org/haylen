@@ -163,6 +163,10 @@ void Presentation::advance(float deltaSeconds) {
     finishLeaving();
 }
 
+bool Presentation::isMoving() const noexcept {
+    return phase == Phase::Arriving || phase == Phase::Leaving || (!dragging && (offset != 0.0F || detent != restedDetent));
+}
+
 void Presentation::finishArriving() {
     phase = Phase::Shown;
     if (screen->getState() == Screen::State::Appearing) {

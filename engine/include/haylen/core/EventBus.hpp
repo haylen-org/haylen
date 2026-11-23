@@ -147,6 +147,11 @@ class EventBus final {
 
     void clear() noexcept;
 
+    // Counts the events that reached a listener, so the engine tells whether anything happened between two frames.
+    [[nodiscard]] std::uint64_t getHeardCount() const noexcept {
+        return state->heard;
+    }
+
     // Fills `topics` with every named event that has ever had a listener, with its listener count, its emits since then and the listeners whose owner is gone, in the storage it holds.
     void readTopics(std::vector<Topic>& topics) const;
 
@@ -159,7 +164,9 @@ class EventBus final {
 
         [[nodiscard]] Listeners* findNamed(std::string_view name) const;
         [[nodiscard]] Listeners* findTyped(std::type_index type) const;
-        static bool deliver(Listeners* listeners, Event event);
+        bool deliver(Listeners* listeners, Event event);
+
+        std::uint64_t heard = 0;
     };
 
     static const Json& kNull;

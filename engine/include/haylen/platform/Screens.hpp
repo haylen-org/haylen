@@ -53,7 +53,8 @@ class Screens final {
     // Hands the screen that the app asked for to the platform, which the engine does at the start of a frame, right after the cover took hold.
     void present();
 
-    void pump();
+    // Delivers the ends of screens and the failures since the last pump and fails the screens whose time ran out, and returns whether it delivered or failed anything.
+    bool pump();
     [[nodiscard]] std::size_t getPendingCount() const noexcept;
 
   private:
@@ -78,7 +79,7 @@ class Screens final {
     void giveUp(std::uint64_t id, const Pending& entry);
 
     // Gives up the screens whose timeout passed.
-    void expire();
+    bool expire();
 
     Host& host;
     Bridge& bridge;

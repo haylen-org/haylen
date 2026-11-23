@@ -71,6 +71,9 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
     // Brings the world transform, color, visibility, layer and bounds of every node whose local state changed, or whose ancestor's did, up to date, moves the nodes that follow bodies, at `blend` between the last two steps of the worlds that interpolate, and advances the particles the nodes hold by the time.
     void update(float deltaSeconds, float blend = 1.0F, core::JobSystem* jobs = nullptr);
 
+    // Whether the particles of a node live, which the next update moves.
+    [[nodiscard]] bool hasLiveParticles() const noexcept;
+
     // Draws the content of every visible node into the open canvas, parents before their children and siblings in order, and leaves out the nodes whose bounds lie outside the area the canvas shows. Particles are never left out. Nodes that changed since the last update take their new place first, without advancing particles.
     void draw(graphics2d::Renderer& renderer);
 

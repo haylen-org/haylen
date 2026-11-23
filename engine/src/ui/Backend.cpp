@@ -1003,6 +1003,20 @@ void Backend::blockPointer(const math::Rect& area) {
     takePointer(area);
 }
 
+bool Backend::isSettling() const {
+    const ImGuiContext& state = *imguiContext;
+    if (!state.InputEventsQueue.empty() || state.NavMoveSubmitted || state.NavMoveScoringItems || state.NavInitRequest) {
+        return true;
+    }
+
+    // A text field of ImGui that edits blinks its caret with the time of the frames.
+    if (state.ActiveId != 0 && state.ActiveId == state.InputTextState.ID) {
+        return true;
+    }
+
+    return textSession->isLifting() || scrollArbiter->isWaitingForPause();
+}
+
 bool Backend::isUsingPointer() const {
     const ImGuiContext& state = *imguiContext;
     if (!state.IO.WantCaptureMouse) {

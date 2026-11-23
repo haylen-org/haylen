@@ -148,9 +148,11 @@ std::shared_ptr<Presentation> Navigation::presentAlert(Alert alert) {
     return present(std::move(screen), std::move(options));
 }
 
+// The message comes on screen as the UI draws, so it asks an app that redraws on change for the next frame.
 std::shared_ptr<Message> Navigation::showMessage(const core::Json& properties) {
     auto created = std::make_shared<Message>(properties);
     messages.push_back(created);
+    engine.requestRedraw();
     return created;
 }
 
@@ -612,6 +614,22 @@ void Navigation::followLaunchLink() {
 }
 
 // The handlers of the app may show and dismiss messages, so the pass walks a copy.
+bool Navigation::isAnimating() const {
+    if (std::ranges::any_of(stacks, [](const std::shared_ptr<NavigationStack>& stack) { return stack->isTransitioning(); })) {
+        return true;
+    }
+
+    if (std::ranges::any_of(presentations, [](const std::shared_ptr<Presentation>& presentation) { return presentation->isMoving(); })) {
+        return true;
+    }
+
+    // clang-format off
+    return std::ranges::any_of(messages, [](const std::shared_ptr<Message>& message) {
+        return (message->shownOnce && !message->appearReported) || (message->reason && !message->leaveReported) || message->phase == Message::Phase::Gone;
+    });
+    // clang-format on
+}
+
 void Navigation::updateMessages() {
     replaceMessages();
     walkedMessages.assign(messages.begin(), messages.end());

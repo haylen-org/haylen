@@ -83,6 +83,11 @@ class Gui final {
     void skip(Context& context);
     [[nodiscard]] std::vector<Event> takeEvents();
 
+    // Whether events wait for the owner to take them.
+    [[nodiscard]] bool hasEvents() const noexcept {
+        return !events.empty();
+    }
+
     [[nodiscard]] bool isVisible() const noexcept {
         return visible;
     }

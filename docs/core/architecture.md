@@ -139,6 +139,7 @@ Every subsystem of the engine is a plugin. A plugin derives from `haylen::plugin
 | `endFrame(core::Engine&)` | After the frame is submitted, even while the error screen shows. |
 | `isCapturingBack()` | Asked when the player presses the back button of the platform. A plugin that returns `true` takes the press, so it never leaves the app, such as the UI while a popup is open. |
 | `isFrameComplete()` | Asked after each frame that renders. A plugin that returns `false` drew something that still loads, such as the UI while a picture has not arrived, so the splash screen stays over that frame. |
+| `isAnimating()` | Asked before each frame of an app that redraws on change. A plugin that returns `true` changes what it draws by itself, without input, such as the UI while a list glides or the particles while an emitter lives, so the frame updates and draws, as [redraw on change](#redraw-on-change) describes. |
 | `packageChanged(core::Engine&, paths)` | In development, after the assets read from the changed paths of the package reloaded. A plugin then rebuilds what it built from files outside the asset cache, such as the texts of localization and the themes of the UI. |
 | `stop(core::Engine&)` | Once, when the engine stops, in reverse order of registration. |
 
@@ -296,7 +297,7 @@ Android apps run in `dev.haylen.HaylenActivity`, a GameActivity of AndroidX, whi
 | --- | --- | --- |
 | `AndroidRuntime` | `AndroidRuntime.hpp` | The entry point `GameActivity_onCreate` and the frame thread of each activity. The thread creates the player, starts the app with the first frame that the activity shows, and ends the app when it quits or the activity is destroyed. A quit finishes the activity and the process lives on, since an `exit()` would run the destructors of static objects while the threads of Android still use them. Before each frame and tick it checks whether the GPU device stopped working, as `gpu::Device::isLost` or the EGL context reports, and then logs which API stopped, makes a new device and calls `Player::restart`. |
 | `AndroidMessageQueue` | `AndroidMessageQueue.hpp` | Carries the callbacks of the UI thread to the frame thread in order: the lifecycle, the window and the input. It grows when a slow frame fills it, so no release of a key or a touch is lost. The callbacks that end the window or the activity wait until the frame thread let go of them. |
-| `AndroidFramePacer` | `AndroidFramePacer.hpp` | Decides when the app plays. A resumed activity with a window draws a frame for each refresh of the display, which the Choreographer paces from Android 10 on and the swap of each frame before it. A paused activity ticks the app every 100 milliseconds, so timers and callbacks go on under another activity and in the background. `AndroidFramePacerTests.cpp` tests it. |
+| `AndroidFramePacer` | `AndroidFramePacer.hpp` | Decides when the app plays. A resumed activity with a window draws a frame for each refresh of the display, which the Choreographer paces from Android 10 on and the swap of each frame before it, where a frame that presents nothing waits for the next refresh of the display instead. A paused activity ticks the app every 100 milliseconds, so timers and callbacks go on under another activity and in the background. `AndroidFramePacerTests.cpp` tests it. |
 | `AndroidKeyClaims` | `AndroidKeyClaims.hpp` | Remembers which keys the app took from the views. The press of a key decides for its repeats and its release, so a release whose press went to a text field never reaches the app. `AndroidKeyClaimsTests.cpp` tests it. |
 | `AndroidInputEvents` | `AndroidInputEvents.hpp` | Turns the input of GameActivity into engine events: controllers, the wheels of mice, keys with the characters they type, and touches in framebuffer pixels. |
 | `AndroidGraphics` | `AndroidGraphics.hpp` | Makes the GPU device of each app through the first graphics API that starts, in the order of `Player::getGraphicsApis`, which is Vulkan and then OpenGL ES unless `window.graphicsApis` of `haylen.json` says otherwise, and hands the device the window as it comes, changes its size and goes, through `attachSurface`, `resizeSurface` and `detachSurface`. |
@@ -354,18 +355,19 @@ The worker layer in `engine/src/platform/worker/` runs the web runtime in the Wo
     - `Bridge::pump()` delivers bridge replies and native events, with the batched events of a name as one list. `System::pump()` delivers the answers of opened urls and publishes the changes of the theme and the battery. The media session and the accessibility of the app deliver their commands and changes, and tweens learn whether the system asks for reduced motion. `Screens::pump()` delivers the ends of screens, their cancellations and their timeouts, and sends the end of a screen that an earlier app opened as the retained event `<plugin>.screenRestored`.
     - All of this happens before the event loop runs, and the engine applies the cover of the app again after it. So a task that awaits a reply resumes in the frame that the reply reaches, and sees the app uncovered once the screen that answered it ended.
 6. **The event loop.** `Scheduler::poll(budget)` advances Varn's event loop within a budget of a quarter of the frame time, between 1 and 8 milliseconds. Promises settle, `async` tasks and scene tasks resume, Varn timers fire, HTTP and socket callbacks run, and completions posted from worker threads run, such as decoded assets that join the upload queue. The loop works in passes. Each pass takes the jobs that were queued and the timers that were due when it started, and then serves every socket until it would block. Passes repeat while they make progress and the budget lasts. So a task that awaits a promise settled during a pass, or a timer of zero milliseconds, resumes in the next pass of the same frame, or in the next frame once the budget is spent. A poll overruns its budget by at most one job and one pass over the sockets, so tasks that wake in great numbers spread over frames instead of holding one up. `Engine::getEventLoopPoll` keeps what the poll reported, which the debug overlay and `debug.stats()` show.
-7. **`beginFrame`.** Unless the app is in the background, every plugin runs `beginFrame`. There the platform plugin uploads the newest frame of every video stream that the app draws into its texture.
-8. **Fixed steps.** For each step the clock owes, the scenes run `fixedUpdate`, fixed-step tweens advance, and then every plugin runs `fixedUpdate`.
-9. **Updates.** App timers, tweens, plugin `update` and the scene update run, in that order. Inside the scene update, loads that finished or failed settle, the pending scene change moves through its phases, the loading view updates and the top scene runs `update`.
-10. **Audio.** The audio mixer updates with the real frame time, also while the app is halted.
-11. **Drawing.** The renderer begins the frame. `SceneManager::prepareViews` works out the views of the frame, the `core::SceneView` values that plugins read through `getViews`. For each view, the scenes and the loading view draw the world, the plugins run `render` in the current view, the scenes and the loading view draw their UI, and the plugins run `renderUi` with the view.
+7. **The redraw.** An app that redraws on change decides whether the frame updates and draws, as [redraw on change](#redraw-on-change) describes. A frame that it skips runs neither the fixed steps, the updates, the drawing nor the submit, lets only the time of the timers pass and keeps its time out of the fixed steps, and an app that redraws always runs every step.
+8. **`beginFrame`.** Unless the app is in the background, every plugin runs `beginFrame`. There the platform plugin uploads the newest frame of every video stream that the app draws into its texture.
+9. **Fixed steps.** For each step the clock owes, the scenes run `fixedUpdate`, fixed-step tweens advance, and then every plugin runs `fixedUpdate`.
+10. **Updates.** App timers, tweens, plugin `update` and the scene update run, in that order. Inside the scene update, loads that finished or failed settle, the pending scene change moves through its phases, the loading view updates and the top scene runs `update`.
+11. **Audio.** The audio mixer updates with the real frame time, also while the app is halted.
+12. **Drawing.** The renderer begins the frame. `SceneManager::prepareViews` works out the views of the frame, the `core::SceneView` values that plugins read through `getViews`. For each view, the scenes and the loading view draw the world, the plugins run `render` in the current view, the scenes and the loading view draw their UI, and the plugins run `renderUi` with the view.
     - During a scene transition, the scenes before and after the change do this inside a capture of their own image. The plugins draw with the current scenes, the UI draws the GUIs of each scene into its image, and the view of the effect draws the effect on the screen.
     - While the transition holds the covered screen for a load, no scene draws, and the loading view and the plugins draw over the effect.
     - The error screen draws instead of the scenes while it shows. The engine then paints the background of the status bar, and every plugin runs `renderOverlay`.
-12. **Submit.** The renderer submits the whole frame to the GPU device, which draws it into the window of the host. Every plugin then runs `endFrame`.
-13. **The end of the frame.** The `FrameQueue` runs the calls posted during the frame, such as queued events and deferred signal slots. The graphics device destroys released GPU objects, input closes the frame by clearing its pressed and released edges, and the profiler closes the frame.
+13. **Submit.** The renderer submits the whole frame to the GPU device, which draws it into the window of the host. Every plugin then runs `endFrame`.
+14. **The end of the frame.** The `FrameQueue` runs the calls posted during the frame, such as queued events and deferred signal slots. The graphics device destroys released GPU objects, input closes the frame by clearing its pressed and released edges, and the profiler closes the frame.
 
-A halted app, which the lifecycle options decide by the app state, skips steps 8 and 9 and advances the clock by zero. An app in the background, or under an opaque screen of a plugin, also skips drawing, like a covered app once it drew its covered frame, as the [lifecycle guide](lifecycle.md) explains. The game pause of `Engine::setPaused` gates scenes, autoloads, timers and tweens by their `ProcessMode` inside those steps.
+A halted app, which the lifecycle options decide by the app state, skips steps 9 and 10 and advances the clock by zero. An app in the background, or under an opaque screen of a plugin, also skips drawing, like a covered app once it drew its covered frame, as the [lifecycle guide](lifecycle.md) explains. The game pause of `Engine::setPaused` gates scenes, autoloads, timers and tweens by their `ProcessMode` inside those steps.
 
 ### Frame rate
 
@@ -383,6 +385,53 @@ local window = require('haylen.window')
 
 window.setFrameRate(30)
 print(window.frameRate())
+```
+
+### Redraw on change
+
+An app updates and draws in every frame by default, which a game needs, since its world moves in every frame. An app of forms, lists and pages shows the same picture for most of its frames, and drawing that picture again costs the GPU and the battery as much as a frame that scrolls. Such an app sets `window.redraw` of `haylen.json` to `"onChange"`, or calls [`window.setRedraw`](../lua-api/window.md#windowsetredrawvalue), and then updates and draws only the frames that something changed in, as user interface toolkits do.
+
+The platform layer keeps playing a frame at every refresh of the display, so input still reaches the app at once. `Engine::frame` always runs the cheap part of the frame: the covers, the viewport, the input, the clock, the news of the platform and the event loop. Then `Engine::takeRedraw` decides whether the frame updates and draws. A frame needs it when any of these holds:
+
+- An event of the platform reached the engine, such as input, a change of the window, of the lifecycle or of the keyboard.
+- The event loop ran work, the bridge, the system or a screen of a plugin delivered something, or an event of the `EventBus` reached a listener.
+- A timer fires, a tween plays, a scene changes or input is held, such as a finger that rests on the screen or a stick held to one side.
+- An asset arrived, the viewport changed, the app has not drawn a complete frame yet, the error screen shows, or a capture of the screen or of the GPU, or a read of the GPU, waits.
+- The app asked for it with `window.requestRedraw`, `Engine::requestRedraw` in C++, or a plugin answers `isAnimating`.
+
+A frame that a change needed is followed by `Engine::kSettleFrames` frames that draw too, because state that follows input a frame behind, such as the hover and the focus of the UI, settles only then. A frame that the decision skips draws nothing, so the picture of the frame before stays on the screen, and `Engine::isDrawing` answers `false`. It still runs `beginFrame`, the audio and the end of the frame, lets the time of the timers pass with `TimerScheduler::advance` and keeps its time out of the fixed steps with `FrameClock::skipFixedSteps`. So a timer fires on time, and the frame after a long idle neither makes a tween jump nor runs the fixed steps of the idle time.
+
+The built-in plugins that change what they draw by themselves answer `isAnimating`:
+
+| Plugin | Animates while |
+| --- | --- |
+| `animation2d` | An animator, a skeleton or an animated batch that Lua made plays. |
+| `audio` | The output changed its state, which the next update publishes. |
+| `content` | The update screen shows the progress of the content that the start waits for. |
+| `debug` | The statistics, the inspector or a trace show. |
+| `jobs` | Lua jobs wait for the next frame. |
+| `nodes2d` | Particles of a node of a tree that Lua made live. |
+| `particles2d` | An emitter, a system or a trail that Lua made lives. |
+| `physics2d` | A world that Lua made has awake bodies. |
+| `platform` | A video stream received a frame. |
+| `returnHold` | A hold that leaves a launched app lasts. |
+| `text` | Rich text that the last frame drew has an effect or a reveal that runs. |
+| `ui` | Something of the UI still moves or waits for time to pass, a transition or a presentation of the navigation moves, ImGui settles, or events of the GUIs wait for the next update. |
+| `video` | A video loads or plays. |
+
+The UI learns what moves while it draws: every part of it that moves or waits for time to pass calls `ui::Context::requestFrame`, such as an area that glides or springs back, a collection whose cells slide or fade, a toggle whose knob slides, a carousel that turns or waits to turn, a spinner, a tooltip that waits for its delay, a caret that blinks, rich text with effects and a message that counts its time or moves. The plugins of hot reload, of the network, of localization and of the console call `Engine::requestRedraw` once they applied a reload, delivered an event of a socket, changed the language or ran a line, and the UI calls it once a GUI mounts or unmounts or a message shows.
+
+Code of the app that moves something by itself in its `update` hooks, such as a game, keeps the default, or calls `window.requestRedraw` in every frame it moves something.
+
+A frame that draws nothing presents nothing, so the swapchain of every GPU device keeps showing its last image: the layer of Metal, the swapchains of Vulkan and DXGI, the buffers of OpenGL, OpenGL ES and EGL, and the canvases of WebGPU and WebGL2. The platform layer paces a frame without a present at the refresh of the display, since no present paces it: the SDL platform layer of the desktops sets the callback rate of SDL to the refresh of the display of the window, the display link of UIKit, the Choreographer of Android and the animation frames of the browser pace every frame anyway, and an Android device without the frame callback of the Choreographer waits for the next refresh through a `platform::FrameRateGate`. A window of a desktop that the system shows again without its picture, which SDL reports as exposed, asks the app for a frame through `Player::requestRedraw`.
+
+```lua
+local window = require('haylen.window')
+
+-- The settings screen of a game draws only what changes, and its levels draw every frame again.
+window.setRedraw('onChange')
+print(window.redraw())
+window.setRedraw('always')
 ```
 
 ### Events between frames

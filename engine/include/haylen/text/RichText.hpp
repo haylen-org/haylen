@@ -73,6 +73,9 @@ class RichText final {
     // Tells whether the reveal still has characters to show.
     [[nodiscard]] bool isRevealing();
 
+    // Tells whether the text still moves by itself, through an effect or a reveal that runs.
+    [[nodiscard]] bool isAnimating();
+
   private:
     // A layout with what it waited for when it was built: the revisions of the fonts of the system of its families and how many images of the markup were ready, and the revisions of the fonts of its families, which lay it out again once one of them changed.
     struct CachedLayout {

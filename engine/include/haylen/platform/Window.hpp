@@ -74,6 +74,12 @@ class Window {
         AutoHideIndicator,
     };
 
+    // When the app updates and draws: in every frame, as a game does, or only in the frames that something changed in, such as input, an animation, a tween, a timer that fired or work of the event loop, as an app of forms and lists does, which keeps the picture it drew on the screen and saves the GPU and the battery in between.
+    enum class Redraw : std::uint8_t {
+        Always,
+        OnChange,
+    };
+
     // Where and how the window goes fullscreen, as `enterFullscreen` describes. A mode with a refresh rate of 0 runs at the highest rate of its size.
     struct Fullscreen {
         std::string display;
@@ -102,6 +108,10 @@ class Window {
     // Resolves the system gesture names `system`, `deferred` and `autoHideIndicator` that `haylen.json` and Lua share.
     [[nodiscard]] static std::optional<SystemGestures> systemGesturesFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view systemGesturesName(SystemGestures value) noexcept;
+
+    // Resolves the redraw names `always` and `onChange` that `haylen.json` and Lua share.
+    [[nodiscard]] static std::optional<Redraw> redrawFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view redrawName(Redraw value) noexcept;
 
     [[nodiscard]] virtual math::Vec2 getFramebufferSize() const noexcept = 0;
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
@@ -214,6 +224,7 @@ class Window {
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;
     static const std::array<std::pair<std::string_view, StatusBar>, 4> kStatusBarNames;
     static const std::array<std::pair<std::string_view, SystemGestures>, 3> kSystemGesturesNames;
+    static const std::array<std::pair<std::string_view, Redraw>, 2> kRedrawNames;
 };
 
 } // namespace haylen::platform

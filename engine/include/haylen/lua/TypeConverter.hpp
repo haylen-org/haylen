@@ -603,6 +603,15 @@ template <> struct EnumNames<platform::Window::SystemGestures> {
     }
 };
 
+template <> struct EnumNames<platform::Window::Redraw> {
+    static std::optional<platform::Window::Redraw> fromName(std::string_view name) {
+        return platform::Window::redrawFromName(name);
+    }
+    static std::string_view name(platform::Window::Redraw value) {
+        return platform::Window::redrawName(value);
+    }
+};
+
 template <> struct EnumNames<platform::Orientation> {
     static std::optional<platform::Orientation> fromName(std::string_view name) {
         return platform::Window::orientationFromName(name);
