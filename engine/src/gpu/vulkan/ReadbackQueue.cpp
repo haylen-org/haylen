@@ -11,6 +11,7 @@
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::vulkan {
 
@@ -34,7 +35,7 @@ ReadbackQueue::~ReadbackQueue() {
 
 std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) {
     if (ImageInfo::isDepth(source.format)) {
-        throw std::invalid_argument("The Vulkan device reads back color images only.");
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     auto copy = std::make_shared<Copy>(Copy{.queue = this, .width = source.width, .height = source.height, .format = source.format});

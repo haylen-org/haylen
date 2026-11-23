@@ -3,6 +3,8 @@
 #include <format>
 #include <stdexcept>
 
+#include "haylen/gpu/ContractError.hpp"
+
 namespace haylen::gpu::d3d12 {
 
 std::unique_ptr<PixCapturer> PixCapturer::find() {
@@ -22,7 +24,7 @@ std::unique_ptr<PixCapturer> PixCapturer::find() {
 
 void PixCapturer::begin(const std::filesystem::path& path) {
     if (capturing) {
-        throw std::logic_error("A capture began while another one records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     document = path;
@@ -39,7 +41,7 @@ void PixCapturer::begin(const std::filesystem::path& path) {
 
 std::filesystem::path PixCapturer::end() {
     if (!capturing) {
-        throw std::logic_error("A capture ended while none records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     capturing = false;

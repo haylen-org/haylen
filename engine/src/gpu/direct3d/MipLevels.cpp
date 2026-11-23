@@ -5,6 +5,7 @@
 #include <stdexcept>
 
 #include "gpu/direct3d/Formats.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::direct3d {
 
@@ -20,13 +21,13 @@ MipLevels::Level MipLevels::describe(Device::TextureType type, int width, int he
 
 void MipLevels::check(const Device::ImageDesc& desc) {
     if (desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw std::logic_error(std::format("The texture \"{}\" has {} mip levels and pixels for {}.", desc.label, desc.mipLevels, desc.levels.size()));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     for (std::size_t index = 0; index < desc.levels.size(); ++index) {
         const Level level = describe(desc.type, desc.width, desc.height, desc.layers, desc.format, static_cast<int>(index));
         if (desc.levels[index].size() != level.sliceBytes * level.layers) {
-            throw std::logic_error(std::format("The mip level {} of the texture \"{}\" does not hold {} layers of {}x{} pixels.", index, desc.label, level.layers, level.width, level.height));
+            throw ContractError(ContractError::Rule::Image);
         }
     }
 }

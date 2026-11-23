@@ -7,6 +7,7 @@
 
 #include "gpu/support/GpuFixture.hpp"
 #include "gpu/support/SecondSurface.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu {
 
@@ -105,8 +106,8 @@ TEST_P(GpuSurfaceTest, DrawsIntoSurfacesBeyondTheWindow) {
     EXPECT_FALSE(device().isLost());
 
     // Only a surface that "addSurface" made and that is still there goes away, never the window, which is the surface 0.
-    EXPECT_THROW(device().removeSurface(board), std::logic_error);
-    EXPECT_THROW(device().removeSurface(0), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().removeSurface(board); }), gpu::ContractError::Rule::Surface);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().removeSurface(0); }), gpu::ContractError::Rule::Surface);
 }
 
 // A drawable of fewer pixels than its window, as when the app caps its pixel density, takes the passes of each frame, which the system or the device stretches over the window, and follows the window as it resizes, scaled and not, with the validation of its API watching.

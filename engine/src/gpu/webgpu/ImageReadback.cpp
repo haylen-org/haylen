@@ -9,12 +9,13 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/webgpu/Conversion.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::webgpu {
 
 ImageReadback::ImageReadback(WGPUDevice device, WGPUQueue queue, WGPUTexture texture, Device::PixelFormat pixelFormat, int pixelsWide, int pixelsHigh) : format(pixelFormat), width(pixelsWide), height(pixelsHigh) {
     if (ImageInfo::isDepth(format)) {
-        throw std::logic_error("Only the pixels of color render targets can be read back.");
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     const auto bytesPerPixel = static_cast<std::uint32_t>(ImageInfo::getBytesPerPixel(format));

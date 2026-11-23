@@ -4,12 +4,13 @@
 #include <stdexcept>
 
 #include "gpu/opengl/Conversions.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::opengl {
 
 VertexArray::VertexArray(Gl& functions, StateCache& cache, std::span<const Device::VertexBufferLayout> layouts, std::span<const Device::VertexAttribute> attributes) : gl(functions), state(cache) {
     if (layouts.size() > Device::kMaxVertexBuffers || attributes.size() > Device::kMaxAttributes) {
-        throw std::logic_error("A pipeline reads at most four vertex buffers and sixteen attributes.");
+        throw ContractError(ContractError::Rule::Pipeline);
     }
 
     bufferCount = layouts.size();
@@ -20,7 +21,7 @@ VertexArray::VertexArray(Gl& functions, StateCache& cache, std::span<const Devic
 
     for (const Device::VertexAttribute& attribute : attributes) {
         if (attribute.buffer < 0 || static_cast<std::size_t>(attribute.buffer) >= bufferCount || attribute.location < 0 || attribute.location >= static_cast<int>(Device::kMaxAttributes)) {
-            throw std::logic_error("An attribute of a pipeline reads a vertex buffer it does not lay out or a location past the sixteen a pipeline has.");
+            throw ContractError(ContractError::Rule::Pipeline);
         }
 
         const Conversions::Vertex vertex = Conversions::getVertex(attribute.format);

@@ -9,6 +9,8 @@
 #include <dlfcn.h>
 #endif
 
+#include "haylen/gpu/ContractError.hpp"
+
 namespace haylen::gpu::renderdoc {
 
 // RenderDoc names its library `renderdoc.dll` on Windows, `librenderdoc.so` on Linux and `libVkLayer_GLES_RenderDoc.so` on Android, where it is the layer it injects into the app.
@@ -49,7 +51,7 @@ std::unique_ptr<Capturer> Capturer::find() {
 
 void Capturer::begin(void* device, const std::filesystem::path& path) {
     if (capturing) {
-        throw std::logic_error("A capture began while another one records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     const std::u8string text = path.u8string();
@@ -66,7 +68,7 @@ void Capturer::begin(void* device, const std::filesystem::path& path) {
 
 std::filesystem::path Capturer::end(void* device) {
     if (!capturing) {
-        throw std::logic_error("A capture ended while none records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     capturing = false;

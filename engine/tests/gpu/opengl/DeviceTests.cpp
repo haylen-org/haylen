@@ -17,6 +17,7 @@
 #include "gpu/opengl/OpenGlTest.hpp"
 #include "gpu/opengl/PixelReadback.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu::opengl {
 
@@ -201,9 +202,9 @@ TEST_P(OpenGlDeviceTest, FailsAReadbackWhoseBufferTheContextCannotHandOver) {
 
 // The context would refuse the storage of such an image with an error that only validation shows, and the image would read as empty.
 TEST_P(OpenGlDeviceTest, RefusesImagesWhoseShapeTheContextCannotStore) {
-    EXPECT_THROW((void)device->makeImage({.width = 16, .height = 16, .mipLevels = 6, .kind = Device::ImageKind::RenderTarget, .label = "too-many-levels"}), std::logic_error);
-    EXPECT_THROW((void)device->makeImage({.width = 16, .height = 16, .layers = 2, .kind = Device::ImageKind::RenderTarget, .label = "flat-with-layers"}), std::logic_error);
-    EXPECT_THROW((void)device->makeImage({.type = Device::TextureType::Volume, .width = 16, .height = 16, .layers = 1 << 20, .kind = Device::ImageKind::RenderTarget, .label = "deep-volume"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeImage({.width = 16, .height = 16, .mipLevels = 6, .kind = Device::ImageKind::RenderTarget, .label = "too-many-levels"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeImage({.width = 16, .height = 16, .layers = 2, .kind = Device::ImageKind::RenderTarget, .label = "flat-with-layers"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeImage({.type = Device::TextureType::Volume, .width = 16, .height = 16, .layers = 1 << 20, .kind = Device::ImageKind::RenderTarget, .label = "deep-volume"}); }), gpu::ContractError::Rule::Image);
 }
 
 // A texture names its last level, so a driver that ignores the level count of immutable storage still samples a texture of one level as complete.
@@ -222,7 +223,7 @@ TEST_P(OpenGlDeviceTest, TakesBackOnlyTheContextItWasMadeWith) {
     device->detachSurface();
     {
         test::OffscreenGlContext other(GetParam(), kSize, kSize);
-        EXPECT_THROW(device->attachSurface(other.getSurface()), std::logic_error);
+        EXPECT_EQ(test::ContractRule::of([&] { (void)device->attachSurface(other.getSurface()); }), gpu::ContractError::Rule::Context);
     }
     device->attachSurface(context->getSurface());
 }
@@ -274,7 +275,7 @@ TEST_P(OpenGlDeviceTest, PresentsADrawableBeforeAPassLeavesIt) {
     device->endPass();
     device->beginPass({.surface = number});
     device->endPass();
-    EXPECT_THROW(device->beginPass({.load = Device::Load::Keep}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->beginPass({.load = Device::Load::Keep}); }), gpu::ContractError::Rule::Surface);
     device->commit();
     EXPECT_EQ(log, (std::vector<std::string>{"window swap", "board current", "board swap", "window current"}));
     device->removeSurface(number);

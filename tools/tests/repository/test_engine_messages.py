@@ -11,6 +11,9 @@ class EngineMessagesTest:
     CALL = re.compile(r"\bthrow\s+[\w:]+\s*[({]|\bluaL_error\s*\(|\bLog::(?:error|warning|info|debug)\s*\(")
     # An index of a list after a name, with a number or a value that the message fills in, the root of a JSON path, a constant of the code, a code of an enum and a name of the standard library.
     INTERNAL = re.compile(r"\w\[(?:\d+|\{\})\]|\$\.|\bk[A-Z][A-Za-z0-9]+\b|\bCode::|\bstd::")
+    # A failure of a GPU device that describes a broken contract in words instead of throwing the rule that the call breaks.
+    CONTRACT_TEXT = re.compile(r'throw std::(?:logic_error|invalid_argument|out_of_range)\(\s*(?:std::format\(\s*)?"')
+    GPU_SOURCES = ("engine/src/gpu/*.cpp", "engine/src/gpu/*.hpp", "engine/src/gpu/*.mm")
     SOURCES = (
         "engine/src/*.cpp",
         "engine/src/*.hpp",
@@ -70,4 +73,17 @@ class EngineMessagesTest:
             for line, text in EngineMessagesTest.messages((Repository.ROOT / name).read_text(encoding="utf-8")):
                 if EngineMessagesTest.INTERNAL.search(text):
                     wrong.append(f"{name}:{line}: {text}")
+        assert wrong == []
+
+    def test_the_rule_finds_a_contract_described_in_words(self):
+        source = 'throw std::logic_error(std::format("The pipeline {} does not exist.", id));\nthrow ContractError(ContractError::Rule::PassOrder);\nthrow std::runtime_error("The GPU ran out of memory.");\n'
+        assert len(EngineMessagesTest.CONTRACT_TEXT.findall(source)) == 1
+
+    def test_the_gpu_devices_throw_the_rule_of_a_broken_contract(self):
+        """Only a bug of the engine or of a port breaks the contract of a GPU device, so the devices throw `gpu::ContractError`, whose message asks the person to report it, and never a text that describes the objects of the device."""
+        wrong = []
+        for name in TrackedFiles.names(*EngineMessagesTest.GPU_SOURCES):
+            source = (Repository.ROOT / name).read_text(encoding="utf-8")
+            for match in EngineMessagesTest.CONTRACT_TEXT.finditer(source):
+                wrong.append(f"{name}:{source.count(chr(10), 0, match.start()) + 1}")
         assert wrong == []

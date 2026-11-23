@@ -4,6 +4,7 @@
 #include <stdexcept>
 
 #include "gpu/direct3d/HResult.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::d3d12 {
 
@@ -22,7 +23,7 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
 
     for (const Device::BlockBinding& block : desc.blocks) {
         if (block.slot < 0 || block.slot >= static_cast<int>(Device::kMaxBlocks) || block.size == 0 || block.binding < 0) {
-            throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that the device cannot bind.", desc.label, block.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         D3D12_ROOT_PARAMETER1 parameter{};
@@ -38,7 +39,7 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
     std::array<std::vector<D3D12_DESCRIPTOR_RANGE1>, 4> ranges;
     for (const Device::TextureBinding& texture : desc.textures) {
         if (texture.slot < 0 || texture.slot >= static_cast<int>(Device::kMaxTextures) || texture.binding < 0) {
-            throw std::logic_error(std::format("The program \"{}\" has a texture at slot {} that the device cannot bind.", desc.label, texture.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         const std::size_t stage = texture.stage == Device::Stage::Vertex ? 0 : 1;
@@ -48,7 +49,7 @@ RootSignatures::Layout RootSignatures::make(const Device::ProgramDesc& desc) {
 
     for (const Device::SamplerBinding& sampler : desc.samplers) {
         if (sampler.slot < 0 || sampler.slot >= static_cast<int>(Device::kMaxSamplers) || sampler.binding < 0) {
-            throw std::logic_error(std::format("The program \"{}\" has a sampler at slot {} that the device cannot bind.", desc.label, sampler.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         const std::size_t stage = sampler.stage == Device::Stage::Vertex ? 0 : 1;

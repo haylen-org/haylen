@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "gpu/support/GpuFixture.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu {
 
@@ -250,11 +251,11 @@ TEST_P(GpuDrawTest, KeepsUniformBlocksWhileLaterBlocksFillTheUploadMemory) {
 // A pipeline takes no more color targets and vertex buffers than the contract holds.
 TEST_P(GpuDrawTest, RefusesPipelinesBeyondTheLimitsOfTheContract) {
     const std::array<Device::ColorTarget, Device::kMaxColorTargets + 1> colors{};
-    EXPECT_THROW((void)device().makePipeline({.program = program("plane"), .colors = colors, .label = "haylen-test-colors"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makePipeline({.program = program("plane"), .colors = colors, .label = "haylen-test-colors"}); }), gpu::ContractError::Rule::Pipeline);
 
     const std::array<Device::VertexBufferLayout, Device::kMaxVertexBuffers + 1> buffers{};
     const std::array<Device::ColorTarget, 1> color{};
-    EXPECT_THROW((void)device().makePipeline({.program = program("plane"), .buffers = buffers, .colors = color, .label = "haylen-test-buffers"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().makePipeline({.program = program("plane"), .buffers = buffers, .colors = color, .label = "haylen-test-buffers"}); }), gpu::ContractError::Rule::Pipeline);
 }
 
 // Uniforms fill the block of their slot exactly, so every device refuses a block that the program lacks and data of another size.
@@ -265,8 +266,8 @@ TEST_P(GpuDrawTest, RefusesUniformsThatDoNotFillTheirBlock) {
 
     beginPass();
     device().applyPipeline(pipeline);
-    EXPECT_THROW(device().applyUniforms(0, std::as_bytes(std::span(half))), std::logic_error);
-    EXPECT_THROW(device().applyUniforms(2, std::as_bytes(std::span(block))), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().applyUniforms(0, std::as_bytes(std::span(half))); }), gpu::ContractError::Rule::Uniforms);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().applyUniforms(2, std::as_bytes(std::span(block))); }), gpu::ContractError::Rule::Uniforms);
     device().applyUniforms(0, std::as_bytes(std::span(block)));
     static_cast<void>(finish());
     device().destroy(pipeline);

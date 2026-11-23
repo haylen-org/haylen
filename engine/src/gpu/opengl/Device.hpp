@@ -191,7 +191,7 @@ class Device final : public gpu::Device {
     void beginFrame();
     void applySizes();
     void waitForFrame(std::size_t slot);
-    void requirePass(std::string_view call) const;
+    void requirePass() const;
     [[nodiscard]] Drawable& requireDrawable(int number);
     void makeDrawableCurrent(int number, GlContext& drawable);
     void scaleDrawable(std::unique_ptr<ScaledDrawable>& scaled, const Surface::Size& size);

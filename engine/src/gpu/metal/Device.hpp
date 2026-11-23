@@ -84,7 +84,7 @@ class Device final : public gpu::Device {
 
     explicit Device(std::unique_ptr<Native> state);
 
-    void requirePass(const char* call) const;
+    void requirePass() const;
     void openFrame();
     void endPendingPass();
     void submitTransfers();

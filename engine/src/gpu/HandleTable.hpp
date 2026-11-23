@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/gpu/ContractError.hpp"
+
 namespace haylen::gpu {
 
 // The records of one kind of object of a device under the ids of their handles. The low bits of an id name the slot of its record and the high bits the generation of that slot, which grows each time the slot is freed, so the id of a destroyed object never finds the record that takes its slot later. The generation wraps only after a slot was taken 2^40 times, which no app reaches. Id 0 names nothing, and records never move while they live.
@@ -63,7 +65,7 @@ template <typename Record> class HandleTable final {
     [[nodiscard]] Record& get(std::uint64_t id) {
         Record* record = find(id);
         if (record == nullptr) {
-            throw std::logic_error(std::format("The {} {} does not exist.", name, id));
+            throw ContractError(ContractError::Rule::MissingObject);
         }
 
         return *record;

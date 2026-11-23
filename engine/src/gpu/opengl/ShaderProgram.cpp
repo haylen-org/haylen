@@ -7,6 +7,7 @@
 #include <string>
 
 #include "gpu/opengl/Conversions.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::opengl {
 
@@ -96,7 +97,7 @@ void ShaderProgram::readBlocks(const Device::ProgramDesc& desc) {
     blocks.reserve(desc.blocks.size());
     for (const Device::BlockBinding& binding : desc.blocks) {
         if (binding.slot < 0 || binding.slot >= static_cast<int>(Device::kMaxBlocks) || binding.glslName.empty() || static_cast<std::uint32_t>(binding.glslCount) * 16U != binding.size) {
-            throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that OpenGL cannot read as an array of vectors.", desc.label, binding.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         blockIndices[static_cast<std::size_t>(binding.slot)] = static_cast<std::int8_t>(blocks.size());
@@ -106,7 +107,7 @@ void ShaderProgram::readBlocks(const Device::ProgramDesc& desc) {
 
 void ShaderProgram::readUnits(const Device::ProgramDesc& desc) {
     if (desc.pairs.size() > StateCache::kMaxUnits) {
-        throw std::logic_error(std::format("The program \"{}\" samples {} textures, and OpenGL programs sample at most {}.", desc.label, desc.pairs.size(), StateCache::kMaxUnits));
+        throw ContractError(ContractError::Rule::Program);
     }
 
     state.useProgram(name);
@@ -114,11 +115,11 @@ void ShaderProgram::readUnits(const Device::ProgramDesc& desc) {
     for (const Device::TexturePair& pair : desc.pairs) {
         const auto texture = std::ranges::find(desc.textures, pair.texture, &Device::TextureBinding::slot);
         if (texture == desc.textures.end() || pair.sampler < 0 || pair.sampler >= static_cast<int>(Device::kMaxSamplers)) {
-            throw std::logic_error(std::format("The texture sampler pair \"{}\" of the program \"{}\" names a texture or a sampler the program does not declare.", pair.glslName, desc.label));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         if (texture->multisampled) {
-            throw std::logic_error(std::format("The program \"{}\" samples a multisampled texture, which the OpenGL device resolves instead of sampling.", desc.label));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         gl.uniform1i(gl.getUniformLocation(name, std::string(pair.glslName).c_str()), static_cast<Gl::Int>(units.size()));
@@ -129,12 +130,12 @@ void ShaderProgram::readUnits(const Device::ProgramDesc& desc) {
 void ShaderProgram::applyUniforms(int slot, std::span<const std::byte> data) {
     const std::int8_t index = slot >= 0 && slot < static_cast<int>(Device::kMaxBlocks) ? blockIndices[static_cast<std::size_t>(slot)] : std::int8_t{-1};
     if (index < 0) {
-        throw std::logic_error(std::format("The program has no uniform block at slot {}.", slot));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     Block& block = blocks[static_cast<std::size_t>(index)];
     if (data.size() != block.values.size()) {
-        throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, block.values.size(), data.size()));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     if (block.location < 0 || (block.written && std::memcmp(block.values.data(), data.data(), data.size()) == 0)) {

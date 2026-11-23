@@ -9,6 +9,7 @@
 #include "gpu/ImageInfo.hpp"
 #include "gpu/webgpu/Conversion.hpp"
 #include "gpu/webgpu/ImageReadback.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::webgpu {
 
@@ -446,7 +447,7 @@ WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
 
     if (desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
-        throw std::logic_error(std::format("The pipeline \"{}\" draws into at most {} color targets from at most {} vertex buffers.", desc.label, kMaxColorTargets, kMaxVertexBuffers));
+        throw ContractError(ContractError::Rule::Pipeline);
     }
 
     std::array<std::vector<WGPUVertexAttribute>, kMaxVertexBuffers> attributes;
@@ -628,11 +629,11 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     const BufferRecord& record = buffers.get(buffer.id);
 
     if (offset % 4U != 0) {
-        throw std::logic_error(std::format("WebGPU writes buffers at offsets that are multiples of four bytes, not at {}.", offset));
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     if (offset + data.size() > record.size) {
-        throw std::logic_error(std::format("The write of {} bytes at {} ends past the {} bytes of the buffer.", data.size(), offset, record.size));
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     const std::size_t whole = data.size() & ~std::size_t{3U};
@@ -653,7 +654,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     for (const ImageWrite& write : writes) {
         const ImageRecord& image = images.get(write.image.id);
         if (image.kind != ImageKind::Dynamic) {
-            throw std::logic_error(std::format("The image {} is not dynamic, so it keeps the pixels it was made with.", write.image.id));
+            throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         writeLevel(image.texture, 0, image.width, image.height, image.layers, image.format, write.pixels);
@@ -688,7 +689,7 @@ WGPUTextureView Device::getAttachmentView(ImageRecord& image, int mipLevel, int 
 
 void Device::beginPass(const PassDesc& desc) {
     if (pass != nullptr || skipping) {
-        throw std::logic_error("A pass begins while another pass is open.");
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 
     openEncoder();
@@ -741,7 +742,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
-        throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
+        throw ContractError(ContractError::Rule::PassAttachments);
     }
 
     std::array<WGPURenderPassColorAttachment, kMaxColorTargets> colors{};
@@ -751,7 +752,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
         if (image.kind != ImageKind::RenderTarget) {
-            throw std::logic_error("A pass draws only into render targets.");
+            throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         colors[index] = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
@@ -773,7 +774,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
         if (image.kind != ImageKind::DepthStencil) {
-            throw std::logic_error("A pass takes only a depth stencil image as its depth and stencil attachment.");
+            throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         depth.view = getAttachmentView(image, 0, 0);
@@ -867,23 +868,23 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     }
 
     if (currentPipeline == 0) {
-        throw std::logic_error("Uniforms were applied before a pipeline.");
+        throw ContractError(ContractError::Rule::PipelineState);
     }
 
     const ProgramRecord& program = programs.get(pipelines.get(currentPipeline).program);
     const auto slots = std::span(program.blockSlots).first(program.blockCount);
     const auto found = std::ranges::find(slots, slot);
     if (found == slots.end()) {
-        throw std::logic_error(std::format("The program has no uniform block at slot {}.", slot));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     const std::uint32_t size = program.blocks->blocks[static_cast<std::size_t>(found - slots.begin())].second;
     if (data.size() != size) {
-        throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, size, data.size()));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     if (data.size() > std::min<std::uint64_t>(connection->getLimits().maxUniformBufferBindingSize, UniformRing::kMaxBlockSize)) {
-        throw std::logic_error(std::format("A uniform block of {} bytes is larger than WebGPU binds.", data.size()));
+        throw ContractError(ContractError::Rule::Program);
     }
 
     if (!ring.fits(data.size())) {
@@ -952,7 +953,7 @@ WGPUBindGroup Device::makeImageGroup(const ProgramRecord& program, const BindGro
     for (const TextureBinding& texture : program.textures) {
         const ImageRecord* image = images.find(key.images[static_cast<std::size_t>(texture.slot)]);
         if (image == nullptr) {
-            throw std::logic_error(std::format("The draw binds no image at the texture slot {}, which the program samples.", texture.slot));
+            throw ContractError(ContractError::Rule::Bindings);
         }
 
         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
@@ -964,7 +965,7 @@ WGPUBindGroup Device::makeImageGroup(const ProgramRecord& program, const BindGro
     for (const SamplerBinding& sampler : program.samplers) {
         const SamplerRecord* record = samplers.find(key.samplers[static_cast<std::size_t>(sampler.slot)]);
         if (record == nullptr) {
-            throw std::logic_error(std::format("The draw binds no sampler at the slot {}, which the program samples with.", sampler.slot));
+            throw ContractError(ContractError::Rule::Bindings);
         }
 
         WGPUBindGroupEntry entry = WGPU_BIND_GROUP_ENTRY_INIT;
@@ -1190,7 +1191,7 @@ Swapchain& Device::requireSwapchain(int surface) {
 
 std::unique_ptr<Swapchain>& Device::requireAddedSurface(int surface) {
     if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
-        throw std::logic_error(std::format("The device has no surface {}.", surface));
+        throw ContractError(ContractError::Rule::Surface);
     }
 
     return surfaces[static_cast<std::size_t>(surface - 1)];
@@ -1207,11 +1208,11 @@ void Device::removeSurface(int surface) {
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
     if (record.kind != ImageKind::RenderTarget || record.sampleCount != 1) {
-        throw std::logic_error(std::format("The image {} is not a render target of one sample, whose pixels can be read back.", image.id));
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
-        throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     return std::make_unique<ImageReadback>(device, queue, record.texture, record.format, width, height);
@@ -1226,7 +1227,7 @@ void Device::beginCapture(const std::filesystem::path&) {
 }
 
 std::filesystem::path Device::endCapture() {
-    throw std::logic_error("A capture ended while none records.");
+    throw ContractError(ContractError::Rule::Capture);
 }
 
 } // namespace haylen::gpu::webgpu

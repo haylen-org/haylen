@@ -13,6 +13,7 @@
 
 #include "gpu/ImageInfo.hpp"
 #include "gpu/support/GpuFixture.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu {
 
@@ -332,7 +333,7 @@ TEST_P(GpuTextureTest, RefusesNewPixelsForImagesThatAreNotDynamic) {
     const Device::Image target = makeTarget(2, 2);
     const std::array<std::byte, 16> texels{};
     const std::array<Device::ImageWrite, 1> writes{{{.image = target, .pixels = texels}}};
-    EXPECT_THROW(device().writeImages(writes), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().writeImages(writes); }), gpu::ContractError::Rule::ImageWrite);
 }
 
 // Every color format that the device samples reads back the color that a write of a dynamic image of the format gave it, which reaches the image the way the glyph atlases of text do.

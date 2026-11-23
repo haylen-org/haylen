@@ -20,6 +20,7 @@
 #include "gpu/direct3d/WideText.hpp"
 #include "gpu/direct3d/WindowSamples.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::d3d12 {
 
@@ -355,11 +356,11 @@ ComPtr<ID3D12Resource> Device::makeBufferResource(D3D12_HEAP_TYPE heap, UINT64 s
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     const std::size_t size = desc.data.empty() ? desc.size : desc.data.size();
     if (size == 0) {
-        throw std::logic_error(std::format("The buffer \"{}\" has no size.", desc.label));
+        throw ContractError(ContractError::Rule::Buffer);
     }
 
     if (desc.usage == Usage::Immutable && desc.data.empty()) {
-        throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
+        throw ContractError(ContractError::Rule::Buffer);
     }
 
     BufferArena::Allocation allocation = bufferArena->allocate(size);
@@ -468,18 +469,18 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize) {
-        throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     const bool depth = Formats::isDepth(desc.format);
     if (depth != (desc.kind == ImageKind::DepthStencil)) {
-        throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     if (desc.kind == ImageKind::Texture) {
         direct3d::MipLevels::check(desc);
     } else if (!desc.levels.empty()) {
-        throw std::logic_error(std::format("The image \"{}\" starts without pixels, since only a texture is made with them.", desc.label));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     D3D12_RESOURCE_DESC made{};
@@ -534,7 +535,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
 
     if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
-        throw std::logic_error(std::format("The pipeline \"{}\" needs one to {} color targets and at most {} vertex buffers.", desc.label, kMaxColorTargets, kMaxVertexBuffers));
+        throw ContractError(ContractError::Rule::Pipeline);
     }
 
     PipelineRecord record{.layout = program.layout, .topology = StateDescriptions::toTopology(desc.primitive), .bufferCount = static_cast<UINT>(desc.buffers.size()), .indexFormat = Formats::getIndexFormat(desc.indexType), .swapchain = desc.swapchain, .vertexCode = program.vertexCode, .fragmentCode = program.fragmentCode};
@@ -544,7 +545,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
 
     for (const VertexAttribute& attribute : desc.attributes) {
         if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size())) {
-            throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
+            throw ContractError(ContractError::Rule::Pipeline);
         }
 
         const bool instanced = desc.buffers[static_cast<std::size_t>(attribute.buffer)].perInstance;
@@ -658,11 +659,11 @@ void Device::destroy(Pipeline pipeline) noexcept {
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
     const BufferRecord& record = buffers.get(buffer.id);
     if (record.usage != Usage::Dynamic) {
-        throw std::logic_error("Only a dynamic buffer takes new contents.");
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     if (offset + data.size() > record.size) {
-        throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", record.size, data.size(), offset));
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     if (data.empty()) {
@@ -679,12 +680,12 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     for (const ImageWrite& write : writes) {
         const ImageRecord& image = images.get(write.image.id);
         if (image.kind != ImageKind::Dynamic) {
-            throw std::logic_error("Only a dynamic image takes new pixels.");
+            throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         const direct3d::MipLevels::Level level = direct3d::MipLevels::describe(image.type, image.width, image.height, image.layers, image.format, 0);
         if (write.pixels.size() != level.sliceBytes * level.layers) {
-            throw std::logic_error(std::format("The pixels do not fill the image of {}x{} with {} layers.", image.width, image.height, image.layers));
+            throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         const std::array<std::span<const std::byte>, 1> levels{write.pixels};
@@ -705,7 +706,7 @@ std::unique_ptr<Device::SurfaceChain> Device::makeChain(const std::optional<Surf
 
 Device::SurfaceChain& Device::requireChain(int number) const {
     if (number < 0 || static_cast<std::size_t>(number) >= chains.size() || chains[static_cast<std::size_t>(number)] == nullptr) {
-        throw std::logic_error(std::format("The device has no surface {}.", number));
+        throw ContractError(ContractError::Rule::Surface);
     }
 
     return *chains[static_cast<std::size_t>(number)];
@@ -713,7 +714,7 @@ Device::SurfaceChain& Device::requireChain(int number) const {
 
 Device::SurfaceChain& Device::requireAddedChain(int number) const {
     if (number == 0) {
-        throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
+        throw ContractError(ContractError::Rule::Surface);
     }
 
     return requireChain(number);
@@ -801,7 +802,7 @@ void Device::setViewportAndScissor(int width, int height) {
 // The pass opens once its render pass began, so a pass that fails to begin leaves no pass open, and its label names the commands inside the render pass.
 void Device::beginPass(const PassDesc& desc) {
     if (passOpen) {
-        throw std::logic_error("A pass began while another pass was open.");
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 
     openFrame();
@@ -861,7 +862,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 // The attachments leave the state that shaders read for the pass, and the barriers that bring them back wait for its end. A multisampled attachment resolves as its render pass ends, which tile GPUs do without writing the samples back to memory.
 void Device::beginOffscreenPass(const PassDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets) {
-        throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
+        throw ContractError(ContractError::Rule::PassAttachments);
     }
 
     std::array<D3D12_RESOURCE_BARRIER, kMaxColorTargets * 2 + 1> barriers{};
@@ -874,7 +875,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const ColorAttachment& attachment = desc.colors[index];
         ImageRecord& image = images.get(attachment.image.id);
         if (image.kind != ImageKind::RenderTarget) {
-            throw std::logic_error("A pass draws only into render targets.");
+            throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         const UINT subresource = image.type == TextureType::Volume ? static_cast<UINT>(attachment.mipLevel) : static_cast<UINT>(attachment.mipLevel + attachment.layer * image.mipLevels);
@@ -907,7 +908,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         ImageRecord& image = images.get(attachment.image.id);
         if (image.kind != ImageKind::DepthStencil) {
-            throw std::logic_error("A pass takes only a depth stencil image as its depth and stencil attachment.");
+            throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         barriers[barrierCount++] = makeTransition(image.resource.Get(), image.home, D3D12_RESOURCE_STATE_DEPTH_WRITE);
@@ -1126,7 +1127,7 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
     const PipelineRecord& pipeline = pipelines.get(bound.pipeline);
     const bool known = slot >= 0 && slot < static_cast<int>(kMaxBlocks) && pipeline.layout.blockParameters[static_cast<std::size_t>(slot)] >= 0;
     if (!known || data.size() != pipeline.layout.blockSizes[static_cast<std::size_t>(slot)]) {
-        throw std::logic_error(std::format("The program has no uniform block of {} bytes at slot {}.", data.size(), slot));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     const UploadAllocator::Allocation staged = uploads->allocate(data.size(), kUniformAlignment);
@@ -1163,7 +1164,7 @@ void Device::draw(int first, int count, int instances) {
 
 void Device::endPass() {
     if (!passOpen) {
-        throw std::logic_error("A pass ended while no pass was open.");
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 
     if (pass.labeled) {
@@ -1198,7 +1199,7 @@ void Device::popDebugGroup() {
 
 void Device::commit() {
     if (passOpen) {
-        throw std::logic_error("The frame was committed while a pass was open.");
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 
     openFrame();
@@ -1321,11 +1322,11 @@ void Device::attachSurface(const Surface& target) {
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const ImageRecord& record = images.get(image.id);
     if (record.kind != ImageKind::RenderTarget || record.sampleCount > 1 || record.type == TextureType::Volume) {
-        throw std::logic_error("Only a render target of one sample can be read.");
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     if (width <= 0 || height <= 0 || width > record.width || height > record.height) {
-        throw std::logic_error(std::format("A region of {}x{} pixels does not fit the render target of {}x{}.", width, height, record.width, record.height));
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     const UINT rowBytes = static_cast<UINT>(width) * static_cast<UINT>(Formats::getBytesPerPixel(record.format));
@@ -1376,7 +1377,7 @@ void Device::resizeSurface(int number, const Surface::Size& size) {
 void Device::removeSurface(int number) {
     SurfaceChain& chain = requireAddedChain(number);
     if (chain.presentPending) {
-        throw std::logic_error("A surface goes between frames, after \"commit\".");
+        throw ContractError(ContractError::Rule::Surface);
     }
 
     waitIdle();
@@ -1406,7 +1407,7 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
 
 void Device::beginCapture(const std::filesystem::path& path) {
     if (passOpen) {
-        throw std::logic_error("A capture began while a pass was open.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     if (pix) {
@@ -1427,7 +1428,7 @@ std::filesystem::path Device::endCapture() {
     }
 
     if (!renderDoc) {
-        throw std::logic_error("A capture ended while none records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     return renderDoc->end(device.Get());

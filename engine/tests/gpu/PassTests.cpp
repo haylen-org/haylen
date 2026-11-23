@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "gpu/support/GpuFixture.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu {
 
@@ -200,7 +201,7 @@ TEST_P(GpuPassTest, DrawsIntoMipLevelsAndLayers) {
 TEST_P(GpuPassTest, OpensNoPassWhenAPassFailsToBegin) {
     const Device::Image dynamic = makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"});
     const std::array<Device::ColorAttachment, 1> notTarget{{{.image = dynamic}}};
-    EXPECT_THROW(device().beginPass({.colors = notTarget}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().beginPass({.colors = notTarget}); }), gpu::ContractError::Rule::PassAttachments);
 
     std::array<Device::ColorAttachment, Device::kMaxColorTargets + 1> tooMany{};
 
@@ -208,7 +209,7 @@ TEST_P(GpuPassTest, OpensNoPassWhenAPassFailsToBegin) {
         color.image = makeTarget(kSize, kSize);
     }
 
-    EXPECT_THROW(device().beginPass({.colors = tooMany}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().beginPass({.colors = tooMany}); }), gpu::ContractError::Rule::PassAttachments);
 
     const math::Color color{0.0F, 1.0F, 0.0F, 1.0F};
     EXPECT_TRUE(isNear(clearAndRead(color, 2, 2).at(1, 1), color));
@@ -217,8 +218,8 @@ TEST_P(GpuPassTest, OpensNoPassWhenAPassFailsToBegin) {
 // A readback copies only a region inside its render target, and hands its pixels over once.
 TEST_P(GpuPassTest, ReadsBackRegionsOfTheTargetOnce) {
     const Device::Image target = makeTarget(kSize, kSize);
-    EXPECT_THROW((void)device().readImage(target, kSize + 1, kSize), std::logic_error);
-    EXPECT_THROW((void)device().readImage(target, kSize, 0), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().readImage(target, kSize + 1, kSize); }), gpu::ContractError::Rule::Readback);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device().readImage(target, kSize, 0); }), gpu::ContractError::Rule::Readback);
 
     const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = math::Color::white()}}};
     device().beginPass({.colors = colors});

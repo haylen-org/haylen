@@ -237,9 +237,9 @@ class NullDevice final : public Device {
     [[nodiscard]] BufferState& getBuffer(Buffer buffer);
     [[nodiscard]] const BufferState& getBuffer(Buffer buffer) const;
     [[nodiscard]] const ImageDesc& getImage(Image image) const;
-    [[nodiscard]] const PipelineState& getAppliedPipeline(std::string_view call) const;
-    void requirePass(std::string_view call) const;
-    void requireNoPass(std::string_view call) const;
+    [[nodiscard]] const PipelineState& getAppliedPipeline() const;
+    void requirePass() const;
+    void requireNoPass() const;
     void recordPass(bool swapchain, int surface, Load load, math::Color clear, std::size_t colors);
     void requireFollowingPasses(int surface) const;
     void requireKeptSamples(int surface) const;

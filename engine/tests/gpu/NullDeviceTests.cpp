@@ -12,6 +12,7 @@
 
 #include "gpu/NullDevice.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu {
 
@@ -39,21 +40,21 @@ TEST_F(NullDeviceTest, WritesTheImagesOfAFrameInOneCallBeforeItsPasses) {
     const Device::Image image = makeDynamic(device);
     const std::array<Device::ImageWrite, 1> writes{{{.image = image, .pixels = pixels}}};
     device.writeImages(writes);
-    EXPECT_THROW(device.writeImages(writes), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(writes); }), gpu::ContractError::Rule::ImageWrite);
     device.commit();
     EXPECT_EQ(device.getLastFrame().imageWrites, 1);
     EXPECT_EQ(device.getLastFrame().imageWriteBytes, pixels.size());
 
     device.beginPass({});
     device.endPass();
-    EXPECT_THROW(device.writeImages(writes), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(writes); }), gpu::ContractError::Rule::ImageWrite);
     device.commit();
     device.writeImages(writes);
 
     const Device::Image texture = device.makeImage({.width = 2, .height = 2, .levels = std::array<std::span<const std::byte>, 1>{pixels}, .label = "texture"});
     const std::array<Device::ImageWrite, 1> fixed{{{.image = texture, .pixels = pixels}}};
     device.commit();
-    EXPECT_THROW(device.writeImages(fixed), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeImages(fixed); }), gpu::ContractError::Rule::ImageWrite);
 }
 
 // The device holds room for a bounded number of objects of each kind, like a real one, and reports it.
@@ -94,9 +95,9 @@ TEST_F(NullDeviceTest, RejectsPipelinesWhoseColorsBlendApartWithoutIndependentBl
     const std::array<Device::ColorTarget, 2> alike{{{.blend = adding}, {.blend = adding}}};
     EXPECT_NO_THROW((void)device.makePipeline({.program = program, .colors = alike, .label = "alike"}));
     const std::array<Device::ColorTarget, 2> blends{{{.blend = adding}, {}}};
-    EXPECT_THROW((void)device.makePipeline({.program = program, .colors = blends, .label = "blends"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makePipeline({.program = program, .colors = blends, .label = "blends"}); }), gpu::ContractError::Rule::Pipeline);
     const std::array<Device::ColorTarget, 2> masks{{{.blend = adding}, {.writeMask = Device::ColorMask::None, .blend = adding}}};
-    EXPECT_THROW((void)device.makePipeline({.program = program, .colors = masks, .label = "masks"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makePipeline({.program = program, .colors = masks, .label = "masks"}); }), gpu::ContractError::Rule::Pipeline);
 
     Device::Capabilities capabilities = NullDevice::getDefaultCapabilities();
     capabilities.independentBlend = true;
@@ -105,21 +106,21 @@ TEST_F(NullDeviceTest, RejectsPipelinesWhoseColorsBlendApartWithoutIndependentBl
     EXPECT_NO_THROW((void)independent.makePipeline({.program = made, .colors = blends, .label = "blends"}));
 
     const std::array<Device::ColorTarget, 1> wide{{{.format = Device::PixelFormat::Rgba32Float, .blend = adding}}};
-    EXPECT_THROW((void)device.makePipeline({.program = program, .colors = wide, .label = "wide"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makePipeline({.program = program, .colors = wide, .label = "wide"}); }), gpu::ContractError::Rule::Pipeline);
 }
 
 // Every draw needs a pass and a pipeline, and the record of the last frame says what each pass cleared to and wrote.
 TEST_F(NullDeviceTest, ChecksDrawsAndRecordsTheFramesWithoutAllocatingOnceSteady) {
     NullDevice device;
-    EXPECT_THROW(device.draw(0, 3, 1), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.draw(0, 3, 1); }), gpu::ContractError::Rule::PassOrder);
     const Device::Program program = device.makeProgram({.label = "empty"});
     const std::array<Device::ColorTarget, 1> colors{{{.writeMask = Device::ColorMask::Rgb}}};
     const Device::Pipeline pipeline = device.makePipeline({.program = program, .colors = colors, .swapchain = true, .label = "swapchain"});
     device.beginPass({});
-    EXPECT_THROW(device.beginPass({}), std::logic_error);
-    EXPECT_THROW(device.draw(0, 3, 1), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({}); }), gpu::ContractError::Rule::PassOrder);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.draw(0, 3, 1); }), gpu::ContractError::Rule::PipelineState);
     device.endPass();
-    EXPECT_THROW(device.applyPipeline(pipeline), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyPipeline(pipeline); }), gpu::ContractError::Rule::PassOrder);
     device.commit();
 
     drawFrame(device, pipeline);
@@ -143,13 +144,13 @@ TEST_F(NullDeviceTest, ChecksDrawsAndRecordsTheFramesWithoutAllocatingOnceSteady
 // Images fit their type, layers, mip levels and sample count, textures bring the pixels of every layer of every level, and depth formats belong to depth stencil images alone.
 TEST_F(NullDeviceTest, ChecksTheShapeLevelsAndFormatOfImages) {
     NullDevice device;
-    EXPECT_THROW((void)device.makeImage({.width = 2, .height = 2, .layers = 2, .kind = Device::ImageKind::RenderTarget, .label = "flat"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.type = Device::TextureType::Cube, .width = 2, .height = 2, .layers = 4, .kind = Device::ImageKind::RenderTarget, .label = "cube"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.width = 4, .height = 4, .mipLevels = 4, .kind = Device::ImageKind::RenderTarget, .label = "levels"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.width = 4, .height = 4, .sampleCount = 3, .kind = Device::ImageKind::RenderTarget, .label = "samples"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .kind = Device::ImageKind::Dynamic, .label = "multisampled"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::RenderTarget, .label = "depth"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::DepthStencil, .label = "color"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 2, .height = 2, .layers = 2, .kind = Device::ImageKind::RenderTarget, .label = "flat"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Cube, .width = 2, .height = 2, .layers = 4, .kind = Device::ImageKind::RenderTarget, .label = "cube"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .mipLevels = 4, .kind = Device::ImageKind::RenderTarget, .label = "levels"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .sampleCount = 3, .kind = Device::ImageKind::RenderTarget, .label = "samples"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .kind = Device::ImageKind::Dynamic, .label = "multisampled"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::RenderTarget, .label = "depth"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::DepthStencil, .label = "color"}); }), gpu::ContractError::Rule::Image);
     EXPECT_NO_THROW((void)device.makeImage({.width = 4, .height = 4, .mipLevels = 3, .kind = Device::ImageKind::RenderTarget, .label = "levels"}));
     EXPECT_NO_THROW((void)device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::Depth24Stencil8, .kind = Device::ImageKind::DepthStencil, .label = "depth"}));
 
@@ -162,8 +163,8 @@ TEST_F(NullDeviceTest, ChecksTheShapeLevelsAndFormatOfImages) {
     const std::vector<std::byte> volumeTop(1 * 1 * 1 * 4);
     const std::array<std::span<const std::byte>, 2> volumeLevels{volumeBase, volumeTop};
     EXPECT_NO_THROW((void)device.makeImage({.type = Device::TextureType::Volume, .width = 2, .height = 2, .layers = 2, .mipLevels = 2, .levels = volumeLevels, .label = "volume"}));
-    EXPECT_THROW((void)device.makeImage({.type = Device::TextureType::Volume, .width = 2, .height = 2, .layers = 2, .mipLevels = 2, .levels = arrayLevels, .label = "volume"}), std::logic_error);
-    EXPECT_THROW((void)device.makeImage({.width = 2, .height = 2, .mipLevels = 1, .levels = volumeLevels, .label = "texture"}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.type = Device::TextureType::Volume, .width = 2, .height = 2, .layers = 2, .mipLevels = 2, .levels = arrayLevels, .label = "volume"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.makeImage({.width = 2, .height = 2, .mipLevels = 1, .levels = volumeLevels, .label = "texture"}); }), gpu::ContractError::Rule::Image);
 }
 
 // The attachments of a pass share one size and sample count, a multisampled color resolves into a render target of one sample of its format, and every pipeline drawn in a pass draws into its attachments.
@@ -176,11 +177,11 @@ TEST_F(NullDeviceTest, ChecksTheAttachmentsOfPassesAndThePipelinesDrawnInThem) {
     const Device::Image small = device.makeImage({.width = 4, .height = 4, .sampleCount = 4, .format = Device::PixelFormat::Depth32Float, .kind = Device::ImageKind::DepthStencil, .label = "small"});
 
     const std::array<Device::ColorAttachment, 1> wrongResolve{{{.image = samples, .resolve = halfFloat}}};
-    EXPECT_THROW(device.beginPass({.colors = wrongResolve}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({.colors = wrongResolve}); }), gpu::ContractError::Rule::PassAttachments);
     const std::array<Device::ColorAttachment, 1> singleResolve{{{.image = resolved, .resolve = halfFloat}}};
-    EXPECT_THROW(device.beginPass({.colors = singleResolve}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({.colors = singleResolve}); }), gpu::ContractError::Rule::PassAttachments);
     const std::array<Device::ColorAttachment, 1> colors{{{.image = samples, .store = Device::Store::Discard, .resolve = resolved}}};
-    EXPECT_THROW(device.beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = small}}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = small}}); }), gpu::ContractError::Rule::PassAttachments);
 
     const Device::Program program = device.makeProgram({.label = "empty"});
     const std::array<Device::ColorTarget, 1> targets{};
@@ -188,8 +189,8 @@ TEST_F(NullDeviceTest, ChecksTheAttachmentsOfPassesAndThePipelinesDrawnInThem) {
     const Device::Pipeline matching = device.makePipeline({.program = program, .colors = targets, .depthStencil = {.format = Device::PixelFormat::Depth32Float}, .sampleCount = 4, .label = "matching"});
     const Device::Pipeline swapchain = device.makePipeline({.program = program, .colors = targets, .swapchain = true, .label = "swapchain"});
     device.beginPass({.colors = colors, .depthStencil = Device::DepthStencilAttachment{.image = depth}});
-    EXPECT_THROW(device.applyPipeline(single), std::logic_error);
-    EXPECT_THROW(device.applyPipeline(swapchain), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyPipeline(single); }), gpu::ContractError::Rule::PassAttachments);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyPipeline(swapchain); }), gpu::ContractError::Rule::PassAttachments);
     EXPECT_NO_THROW(device.applyPipeline(matching));
     device.endPass();
     device.commit();
@@ -215,17 +216,17 @@ TEST_F(NullDeviceTest, RequiresTheBindingsAndUniformsOfEveryDraw) {
     Device::Bindings bindings;
     bindings.textures[0] = target;
     bindings.samplers[0] = sampler;
-    EXPECT_THROW(device.applyBindings(bindings), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
     bindings.textures[0] = other;
     bindings.samplers[0] = comparing;
-    EXPECT_THROW(device.applyBindings(bindings), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
     bindings.samplers[0] = sampler;
     device.applyBindings(bindings);
-    EXPECT_THROW(device.draw(0, 3, 1), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.draw(0, 3, 1); }), gpu::ContractError::Rule::PipelineState);
     device.applyUniforms(0, pixels);
     EXPECT_NO_THROW(device.draw(0, 3, 1));
     device.applyPipeline(pipeline);
-    EXPECT_THROW(device.draw(0, 3, 1), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.draw(0, 3, 1); }), gpu::ContractError::Rule::PipelineState);
     device.endPass();
     device.commit();
 }
@@ -252,9 +253,9 @@ TEST_F(NullDeviceTest, FiltersOnlyTheFormatsTheDeviceFilters) {
     bindings.textures[0] = floats;
     bindings.samplers[0] = linear;
     device.applyPipeline(filters);
-    EXPECT_THROW(device.applyBindings(bindings), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
     device.applyPipeline(reads);
-    EXPECT_THROW(device.applyBindings(bindings), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.applyBindings(bindings); }), gpu::ContractError::Rule::Bindings);
     bindings.samplers[0] = nearest;
     EXPECT_NO_THROW(device.applyBindings(bindings));
     device.endPass();
@@ -268,8 +269,8 @@ TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices)
     const Device::Buffer indices = device.makeBuffer({.size = 12, .usage = Device::Usage::Dynamic, .index = true, .label = "indices"});
     device.writeBuffer(vertices, 0, pixels);
     device.writeBuffer(vertices, 16, pixels);
-    EXPECT_THROW(device.writeBuffer(vertices, 8, pixels), std::logic_error);
-    EXPECT_THROW(device.writeBuffer(vertices, 34, std::span<const std::byte>(pixels).first(4)), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeBuffer(vertices, 8, pixels); }), gpu::ContractError::Rule::BufferWrite);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeBuffer(vertices, 34, std::span<const std::byte>(pixels).first(4)); }), gpu::ContractError::Rule::BufferWrite);
 
     const Device::Program program = device.makeProgram({.label = "empty"});
     const std::array<Device::VertexBufferLayout, 1> layouts{{{.stride = 8}}};
@@ -283,9 +284,9 @@ TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices)
     bindings.indexOffset = 2;
     device.applyBindings(bindings);
     EXPECT_NO_THROW(device.draw(0, 5, 1));
-    EXPECT_THROW(device.draw(1, 5, 1), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.draw(1, 5, 1); }), gpu::ContractError::Rule::Draw);
     device.endPass();
-    EXPECT_THROW(device.writeBuffer(vertices, 32, pixels), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.writeBuffer(vertices, 32, pixels); }), gpu::ContractError::Rule::BufferWrite);
     device.commit();
     EXPECT_NO_THROW(device.writeBuffer(vertices, 0, pixels));
 }
@@ -293,15 +294,15 @@ TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices)
 // A debug group pushed inside a pass closes in that pass, one pushed between passes closes between them, and a frame commits with none open.
 TEST_F(NullDeviceTest, BalancesDebugGroupsWithinTheirPasses) {
     NullDevice device;
-    EXPECT_THROW(device.popDebugGroup(), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.popDebugGroup(); }), gpu::ContractError::Rule::DebugGroup);
     device.pushDebugGroup("frame");
     device.beginPass({});
-    EXPECT_THROW(device.popDebugGroup(), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.popDebugGroup(); }), gpu::ContractError::Rule::DebugGroup);
     device.pushDebugGroup("sprites");
-    EXPECT_THROW(device.endPass(), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.endPass(); }), gpu::ContractError::Rule::DebugGroup);
     device.popDebugGroup();
     device.endPass();
-    EXPECT_THROW(device.commit(), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.commit(); }), gpu::ContractError::Rule::DebugGroup);
     device.popDebugGroup();
     EXPECT_NO_THROW(device.commit());
 }
@@ -310,23 +311,23 @@ TEST_F(NullDeviceTest, BalancesDebugGroupsWithinTheirPasses) {
 TEST_F(NullDeviceTest, TakesTheSurfaceInTurnBetweenFrames) {
     NullDevice device;
     const Surface::Size eight{.width = 8, .height = 8, .windowWidth = 8, .windowHeight = 8};
-    EXPECT_THROW(device.attachSurface({.size = eight}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.attachSurface({.size = eight}); }), gpu::ContractError::Rule::Surface);
     device.detachSurface();
-    EXPECT_THROW(device.detachSurface(), std::logic_error);
-    EXPECT_THROW(device.attachSurface({.size = eight, .sampleCount = 3}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.detachSurface(); }), gpu::ContractError::Rule::Surface);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.attachSurface({.size = eight, .sampleCount = 3}); }), gpu::ContractError::Rule::Surface);
     device.attachSurface({.size = eight});
     EXPECT_EQ(device.getSurfaceSize(), eight);
-    EXPECT_THROW(device.resizeSurface({}), std::logic_error);
-    EXPECT_THROW(device.resizeSurface({.width = -1, .height = 4, .windowWidth = 4, .windowHeight = 4}), std::logic_error);
-    EXPECT_THROW(device.resizeSurface({.width = 8, .height = 8, .windowWidth = 4, .windowHeight = 8}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.resizeSurface({}); }), gpu::ContractError::Rule::Surface);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.resizeSurface({.width = -1, .height = 4, .windowWidth = 4, .windowHeight = 4}); }), gpu::ContractError::Rule::Surface);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.resizeSurface({.width = 8, .height = 8, .windowWidth = 4, .windowHeight = 8}); }), gpu::ContractError::Rule::Surface);
 
     const Surface::Size scaled{.width = 4, .height = 4, .windowWidth = 8, .windowHeight = 8};
     device.resizeSurface(scaled);
     EXPECT_EQ(device.getSurfaceSize(), scaled);
     EXPECT_TRUE(device.getSurfaceSize().isScaled());
     device.beginPass({});
-    EXPECT_THROW(device.resizeSurface(eight), std::logic_error);
-    EXPECT_THROW(device.detachSurface(), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.resizeSurface(eight); }), gpu::ContractError::Rule::PassOrder);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.detachSurface(); }), gpu::ContractError::Rule::PassOrder);
     device.endPass();
     device.commit();
 }
@@ -345,7 +346,7 @@ TEST_F(NullDeviceTest, KeepsThePassesOfAFrameIntoOneSurfaceTogether) {
     device.endPass();
     device.beginPass({.surface = board});
     device.endPass();
-    EXPECT_THROW(device.beginPass({.load = Device::Load::Keep}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({.load = Device::Load::Keep}); }), gpu::ContractError::Rule::Surface);
     device.commit();
 
     device.beginPass({.surface = board});
@@ -371,7 +372,7 @@ TEST_F(NullDeviceTest, RefusesToKeepTheColorOfAMultisampledWindowAcrossAnOffscre
     device.endPass();
     device.beginPass({.colors = attachments});
     device.endPass();
-    EXPECT_THROW(device.beginPass({.load = Device::Load::Keep}), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.beginPass({.load = Device::Load::Keep}); }), gpu::ContractError::Rule::Surface);
     EXPECT_NO_THROW(device.beginPass({.load = Device::Load::Clear}));
     device.endPass();
     device.commit();
@@ -392,8 +393,8 @@ TEST_F(NullDeviceTest, ReadsWholeRenderTargetsOfOneSample) {
     NullDevice device;
     const Device::Image target = device.makeImage({.width = 4, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "target"});
     const Device::Image samples = device.makeImage({.width = 4, .height = 2, .sampleCount = 4, .kind = Device::ImageKind::RenderTarget, .label = "samples"});
-    EXPECT_THROW((void)device.readImage(samples, 4, 2), std::logic_error);
-    EXPECT_THROW((void)device.readImage(target, 2, 2), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(samples, 4, 2); }), gpu::ContractError::Rule::Readback);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device.readImage(target, 2, 2); }), gpu::ContractError::Rule::Readback);
     const std::unique_ptr<Device::Readback> copy = device.readImage(target, 4, 2);
     EXPECT_FALSE(copy->poll().has_value());
     const std::optional<std::vector<std::uint8_t>> pixels = copy->poll();

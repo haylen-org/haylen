@@ -28,6 +28,7 @@
 #include "gpu/metal/Swapchain.hpp"
 #include "gpu/metal/UploadRing.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu::metal {
 
@@ -348,7 +349,7 @@ Swapchain& Device::Native::requireSwapchain(int surface) {
 
 std::unique_ptr<Swapchain>& Device::Native::requireAddedSurface(int surface) {
     if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
-        throw std::logic_error(std::format("The device has no surface {}.", surface));
+        throw ContractError(ContractError::Rule::Surface);
     }
 
     return surfaces[static_cast<std::size_t>(surface - 1)];
@@ -357,7 +358,7 @@ std::unique_ptr<Swapchain>& Device::Native::requireAddedSurface(int surface) {
 Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
     BufferEntry* entry = buffers.find(buffer.id);
     if (entry == nullptr) {
-        throw std::logic_error(std::format("The buffer {} does not exist.", buffer.id));
+        throw ContractError(ContractError::Rule::MissingObject);
     }
 
     return *entry;
@@ -366,7 +367,7 @@ Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
 Device::Native::ImageEntry& Device::Native::requireImage(Image image) {
     ImageEntry* entry = images.find(image.id);
     if (entry == nullptr) {
-        throw std::logic_error(std::format("The image {} does not exist.", image.id));
+        throw ContractError(ContractError::Rule::MissingObject);
     }
 
     return *entry;
@@ -375,7 +376,7 @@ Device::Native::ImageEntry& Device::Native::requireImage(Image image) {
 Device::Native::ProgramEntry& Device::Native::requireProgram(Program program) {
     ProgramEntry* entry = programs.find(program.id);
     if (entry == nullptr) {
-        throw std::logic_error(std::format("The program {} does not exist.", program.id));
+        throw ContractError(ContractError::Rule::MissingObject);
     }
 
     return *entry;
@@ -447,47 +448,47 @@ NSUInteger Device::Native::getRegionOffset(const BufferEntry& entry) const noexc
 void Device::Native::checkImage(const ImageDesc& desc) const {
     const int maxSize = capabilities.maxImageSize;
     if (desc.width <= 0 || desc.height <= 0 || desc.width > maxSize || desc.height > maxSize || desc.layers <= 0 || desc.mipLevels <= 0) {
-        throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     if (desc.type == TextureType::Cube && desc.layers != 6) {
-        throw std::logic_error(std::format("The cube image \"{}\" needs 6 layers, not {}.", desc.label, desc.layers));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     if (desc.sampleCount > 1 && (desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic || desc.mipLevels > 1 || desc.type == TextureType::Volume || desc.type == TextureType::Cube || ![device supportsTextureSampleCount:static_cast<NSUInteger>(desc.sampleCount)])) {
-        throw std::logic_error(std::format("The image \"{}\" cannot have {} samples, which only flat or array attachments of one level up to {} samples have.", desc.label, desc.sampleCount, capabilities.maxSampleCount));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     if (Formats::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
-        throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     if ((desc.kind == ImageKind::Texture) != !desc.levels.empty()) {
-        throw std::logic_error(std::format("The image \"{}\" comes with pixels exactly when it is a texture.", desc.label));
+        throw ContractError(ContractError::Rule::Image);
     }
 
     if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw std::logic_error(std::format("The texture \"{}\" has {} levels and comes with the pixels of {}.", desc.label, desc.mipLevels, desc.levels.size()));
+        throw ContractError(ContractError::Rule::Image);
     }
 }
 
 void Device::Native::checkPipeline(const PipelineDesc& desc) {
     if (desc.colors.size() > kMaxColorTargets || (desc.colors.empty() && !desc.swapchain && !desc.depthStencil.format)) {
-        throw std::logic_error(std::format("The pipeline \"{}\" needs a depth format or one to {} color targets.", desc.label, kMaxColorTargets));
+        throw ContractError(ContractError::Rule::Pipeline);
     }
 
     if (desc.buffers.size() > kMaxVertexBuffers) {
-        throw std::logic_error(std::format("The pipeline \"{}\" lays out more than {} vertex buffers.", desc.label, kMaxVertexBuffers));
+        throw ContractError(ContractError::Rule::Pipeline);
     }
 
     for (const VertexAttribute& attribute : desc.attributes) {
         if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size()) || attribute.location < 0 || attribute.location >= static_cast<int>(kMaxAttributes)) {
-            throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
+            throw ContractError(ContractError::Rule::Pipeline);
         }
     }
 
     if (!desc.swapchain && desc.depthStencil.format && !Formats::isDepth(*desc.depthStencil.format)) {
-        throw std::logic_error(std::format("The depth format of the pipeline \"{}\" is a color format.", desc.label));
+        throw ContractError(ContractError::Rule::Pipeline);
     }
 }
 
@@ -655,11 +656,11 @@ bool Device::isLost() const noexcept {
 gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     const std::size_t size = desc.data.empty() ? desc.size : desc.data.size();
     if (size == 0) {
-        throw std::logic_error(std::format("The buffer \"{}\" has no size.", desc.label));
+        throw ContractError(ContractError::Rule::Buffer);
     }
 
     if (desc.usage == Usage::Immutable && desc.data.empty()) {
-        throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
+        throw ContractError(ContractError::Rule::Buffer);
     }
 
     Native::BufferEntry entry{.size = size, .dynamic = desc.usage == Usage::Dynamic, .index = desc.index};
@@ -733,7 +734,7 @@ void Device::uploadLevels(Image image, std::span<const std::span<const std::byte
         const auto layers = static_cast<std::size_t>(entry.type == TextureType::Volume ? std::max(1, entry.layers >> shift) : entry.layers);
         const std::size_t expected = static_cast<std::size_t>(std::max(1, entry.width >> shift)) * static_cast<std::size_t>(std::max(1, entry.height >> shift)) * layers * pixel;
         if (levels[level].size() != expected) {
-            throw std::logic_error(std::format("The level {} of a texture holds {} bytes instead of {}.", level, levels[level].size(), expected));
+            throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         offsets[level] = total;
@@ -789,13 +790,13 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
 // The stages come from the library cache, where a program that `prepareProgram` announced finds its libraries made or in the making on the I/O pool.
 gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     if (desc.vertex.source.empty() || desc.fragment.source.empty()) {
-        throw std::logic_error(std::format("The program \"{}\" has no Metal code.", desc.label));
+        throw ContractError(ContractError::Rule::Program);
     }
 
     Native::ProgramEntry entry;
     for (const BlockBinding& block : desc.blocks) {
         if (block.slot < 0 || block.slot >= static_cast<int>(kMaxBlocks) || block.size == 0 || block.binding < 0 || block.binding >= static_cast<int>(Native::kFirstVertexBuffer)) {
-            throw std::logic_error(std::format("The program \"{}\" has a uniform block at slot {} that the device cannot bind.", desc.label, block.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         entry.blocks[static_cast<std::size_t>(block.slot)] = {.used = true, .stage = block.stage, .size = block.size, .binding = static_cast<NSUInteger>(block.binding)};
@@ -803,7 +804,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
 
     for (const TextureBinding& texture : desc.textures) {
         if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures) || texture.binding < 0 || texture.binding >= static_cast<int>(EncoderState::kTextureSlots)) {
-            throw std::logic_error(std::format("The program \"{}\" has a texture at slot {} that the device cannot bind.", desc.label, texture.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         if (texture.binding >= native->textureBindings) {
@@ -815,7 +816,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
 
     for (const SamplerBinding& sampler : desc.samplers) {
         if (sampler.slot < 0 || sampler.slot >= static_cast<int>(kMaxSamplers) || sampler.binding < 0 || sampler.binding >= static_cast<int>(EncoderState::kSamplerSlots)) {
-            throw std::logic_error(std::format("The program \"{}\" has a sampler at slot {} that the device cannot bind.", desc.label, sampler.slot));
+            throw ContractError(ContractError::Rule::Program);
         }
 
         entry.samplers.push_back({.slot = static_cast<std::size_t>(sampler.slot), .stage = sampler.stage, .binding = static_cast<NSUInteger>(sampler.binding)});
@@ -967,15 +968,15 @@ void Device::destroy(Pipeline pipeline) noexcept {
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
     const Native::BufferEntry& entry = native->requireBuffer(buffer);
     if (!entry.dynamic) {
-        throw std::logic_error("Only a dynamic buffer takes new contents.");
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     if (native->passOpen) {
-        throw std::logic_error("Buffers take new contents before the passes of a frame.");
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     if (offset + data.size() > entry.size) {
-        throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", entry.size, data.size(), offset));
+        throw ContractError(ContractError::Rule::BufferWrite);
     }
 
     openFrame();
@@ -985,11 +986,11 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
 // Every image goes into the upload ring of the frame before the blit copies any of them, and the blit runs before the first pass of the frame.
 void Device::writeImages(std::span<const ImageWrite> writes) {
     if (native->frameOpen && native->passes > 0) {
-        throw std::logic_error("Images take new pixels before the first pass of a frame.");
+        throw ContractError(ContractError::Rule::ImageWrite);
     }
 
     if (native->frameOpen && native->imagesWritten) {
-        throw std::logic_error("The images of a frame take their pixels in one call, and this frame made it already.");
+        throw ContractError(ContractError::Rule::ImageWrite);
     }
 
     openFrame();
@@ -1004,12 +1005,12 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     for (const ImageWrite& write : writes) {
         const Native::ImageEntry& image = native->requireImage(write.image);
         if (image.kind != ImageKind::Dynamic) {
-            throw std::logic_error("Only a dynamic image takes new pixels.");
+            throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         const std::size_t expected = static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height) * static_cast<std::size_t>(image.layers) * Formats::getBytesPerPixel(image.format);
         if (write.pixels.size() != expected) {
-            throw std::logic_error(std::format("The pixels do not fill the image of {}x{}.", image.width, image.height));
+            throw ContractError(ContractError::Rule::ImageWrite);
         }
 
         native->staged.push_back(ring.write(write.pixels, 16));
@@ -1027,7 +1028,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
 
 void Device::beginPass(const PassDesc& desc) {
     if (native->passOpen) {
-        throw std::logic_error("A pass began while another pass was open.");
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 
     openFrame();
@@ -1106,7 +1107,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     endPendingPass();
 
     if (desc.colors.size() > kMaxColorTargets) {
-        throw std::logic_error(std::format("A pass draws into at most {} color attachments.", kMaxColorTargets));
+        throw ContractError(ContractError::Rule::PassAttachments);
     }
 
     MTLRenderPassDescriptor* pass = native->passDesc;
@@ -1124,7 +1125,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const ColorAttachment& attachment = desc.colors[index];
         const Native::ImageEntry& image = native->requireImage(attachment.image);
         if (image.kind != ImageKind::RenderTarget) {
-            throw std::logic_error("A pass draws its colors only into render targets.");
+            throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         color.texture = image.texture;
@@ -1151,7 +1152,7 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         const DepthStencilAttachment& attachment = *desc.depthStencil;
         const Native::ImageEntry& image = native->requireImage(attachment.image);
         if (image.kind != ImageKind::DepthStencil) {
-            throw std::logic_error("A pass draws its depth and stencil only into depth stencil images.");
+            throw ContractError(ContractError::Rule::PassAttachments);
         }
 
         pass.depthAttachment.texture = image.texture;
@@ -1180,14 +1181,14 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
     }
 }
 
-void Device::requirePass(const char* call) const {
+void Device::requirePass() const {
     if (!native->passOpen) {
-        throw std::logic_error(std::format("The call \"{}\" happened outside a pass.", call));
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 }
 
 void Device::applyViewport(const math::Rect& pixels) {
-    requirePass("applyViewport");
+    requirePass();
 
     if (native->encoder.get() != nil) {
         native->encoder.setViewport(pixels);
@@ -1195,7 +1196,7 @@ void Device::applyViewport(const math::Rect& pixels) {
 }
 
 void Device::applyScissor(const math::Rect& pixels) {
-    requirePass("applyScissor");
+    requirePass();
 
     if (native->encoder.get() != nil) {
         native->encoder.setScissor(pixels);
@@ -1203,10 +1204,10 @@ void Device::applyScissor(const math::Rect& pixels) {
 }
 
 void Device::applyPipeline(Pipeline pipeline) {
-    requirePass("applyPipeline");
+    requirePass();
     const Native::PipelineEntry* entry = native->pipelines.find(pipeline.id);
     if (entry == nullptr) {
-        throw std::logic_error(std::format("The pipeline {} does not exist.", pipeline.id));
+        throw ContractError(ContractError::Rule::MissingObject);
     }
 
     native->applied = {.program = entry->program, .primitive = entry->primitive, .indexType = entry->indexType, .indexSize = entry->indexSize, .buffers = entry->buffers, .valid = true};
@@ -1222,10 +1223,10 @@ void Device::applyPipeline(Pipeline pipeline) {
 
 // Bindings equal to the ones the pass applied last with the same pipeline change nothing, and the others reach Metal only where they differ from what the encoder holds.
 void Device::applyBindings(const Bindings& bindings) {
-    requirePass("applyBindings");
+    requirePass();
 
     if (!native->applied.valid) {
-        throw std::logic_error("Bindings were applied before a pipeline.");
+        throw ContractError(ContractError::Rule::PipelineState);
     }
 
     if (native->encoder.get() == nil || (native->bindingsApplied && bindings == native->bindings)) {
@@ -1240,7 +1241,7 @@ void Device::applyBindings(const Bindings& bindings) {
     if (native->applied.indexSize != 0) {
         const Native::BufferEntry& buffer = native->requireBuffer(bindings.indexBuffer);
         if (!buffer.index) {
-            throw std::logic_error("An indexed pipeline needs an index buffer.");
+            throw ContractError(ContractError::Rule::PipelineState);
         }
 
         native->indexBuffer = buffer.buffer;
@@ -1255,7 +1256,7 @@ void Device::applyBindings(const Bindings& bindings) {
     for (const Native::ResourceSlot& sampler : program.samplers) {
         const id<MTLSamplerState>* state = native->samplers.find(bindings.samplers[sampler.slot].id);
         if (state == nullptr) {
-            throw std::logic_error(std::format("The sampler slot {} of the program is empty.", sampler.slot));
+            throw ContractError(ContractError::Rule::Bindings);
         }
 
         native->encoder.setSampler(sampler.stage, *state, sampler.binding);
@@ -1266,20 +1267,20 @@ void Device::applyBindings(const Bindings& bindings) {
 }
 
 void Device::applyUniforms(int slot, std::span<const std::byte> data) {
-    requirePass("applyUniforms");
+    requirePass();
 
     if (!native->applied.valid) {
-        throw std::logic_error("Uniforms were applied before a pipeline.");
+        throw ContractError(ContractError::Rule::PipelineState);
     }
 
     const Native::ProgramEntry& program = native->requireProgram(native->applied.program);
     if (slot < 0 || slot >= static_cast<int>(kMaxBlocks) || !program.blocks[static_cast<std::size_t>(slot)].used) {
-        throw std::logic_error(std::format("The program has no uniform block at slot {}.", slot));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     const Native::BlockSlot& block = program.blocks[static_cast<std::size_t>(slot)];
     if (data.size() != block.size) {
-        throw std::logic_error(std::format("The uniform block at slot {} holds {} bytes, not {}.", slot, block.size, data.size()));
+        throw ContractError(ContractError::Rule::Uniforms);
     }
 
     if (native->encoder.get() == nil) {
@@ -1296,7 +1297,7 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
 }
 
 void Device::applyStencilReference(std::uint8_t value) {
-    requirePass("applyStencilReference");
+    requirePass();
 
     if (native->encoder.get() != nil) {
         native->encoder.setStencilReference(value);
@@ -1304,7 +1305,7 @@ void Device::applyStencilReference(std::uint8_t value) {
 }
 
 void Device::applyBlendColor(math::Color value) {
-    requirePass("applyBlendColor");
+    requirePass();
 
     if (native->encoder.get() != nil) {
         native->encoder.setBlendColor(value);
@@ -1312,14 +1313,14 @@ void Device::applyBlendColor(math::Color value) {
 }
 
 void Device::draw(int first, int count, int instances) {
-    requirePass("draw");
+    requirePass();
 
     if (!native->applied.valid) {
-        throw std::logic_error("A draw happened before a pipeline.");
+        throw ContractError(ContractError::Rule::PipelineState);
     }
 
     if (first < 0 || count < 0 || instances < 0) {
-        throw std::logic_error("A draw needs counts of zero or more.");
+        throw ContractError(ContractError::Rule::Draw);
     }
 
     const id<MTLRenderCommandEncoder> encoder = native->encoder.get();
@@ -1337,7 +1338,7 @@ void Device::draw(int first, int count, int instances) {
 }
 
 void Device::endPass() {
-    requirePass("endPass");
+    requirePass();
     closeDebugGroups(native->passSerial);
     native->passOpen = false;
     if (native->encoder.get() == nil) {
@@ -1467,7 +1468,7 @@ void Device::reportErrors() {
 // The copies of objects made with contents run before the frame, which presents its drawable once the GPU drew it.
 void Device::commit() {
     if (native->passOpen) {
-        throw std::logic_error("The frame was committed while a pass was open.");
+        throw ContractError(ContractError::Rule::PassOrder);
     }
 
     submitTransfers();
@@ -1535,15 +1536,15 @@ void Device::removeSurface(int surface) {
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
     const Native::ImageEntry& entry = native->requireImage(image);
     if (entry.kind != ImageKind::RenderTarget) {
-        throw std::logic_error("Only a render target can be read.");
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     if (entry.sampleCount > 1) {
-        throw std::logic_error("A multisampled render target is read through the image it resolves into.");
+        throw ContractError(ContractError::Rule::PassAttachments);
     }
 
     if (width <= 0 || height <= 0 || width > entry.width || height > entry.height) {
-        throw std::logic_error(std::format("The render target of {}x{} pixels has no {}x{} pixels to read.", entry.width, entry.height, width, height));
+        throw ContractError(ContractError::Rule::Readback);
     }
 
     return std::make_unique<ImageReadback>(native->queue, entry.texture, entry.format, width, height);
@@ -1560,11 +1561,11 @@ gpu::Device::CaptureSupport Device::getCaptureSupport() const {
 // The capture covers every command queue of the device, and its document must not exist yet.
 void Device::beginCapture(const std::filesystem::path& path) {
     if (native->passOpen) {
-        throw std::logic_error("A capture began while a pass was open.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     if (native->capturePath) {
-        throw std::logic_error("A capture began while another one records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     MTLCaptureManager* manager = [MTLCaptureManager sharedCaptureManager];
@@ -1588,7 +1589,7 @@ void Device::beginCapture(const std::filesystem::path& path) {
 
 std::filesystem::path Device::endCapture() {
     if (!native->capturePath) {
-        throw std::logic_error("A capture ended while none records.");
+        throw ContractError(ContractError::Rule::Capture);
     }
 
     [[MTLCaptureManager sharedCaptureManager] stopCapture];

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "gpu/HandleTable.hpp"
+#include "haylen/gpu/ContractError.hpp"
 
 namespace haylen::gpu {
 
@@ -40,8 +41,9 @@ TEST(HandleTableTest, NamesNoRecordWithIdZeroOrAnIdItNeverGave) {
     try {
         (void)table.get(id + 1);
         FAIL() << "A missing record was found.";
-    } catch (const std::logic_error& error) {
-        EXPECT_EQ(std::string(error.what()), "The buffer " + std::to_string(id + 1) + " does not exist.");
+    } catch (const ContractError& error) {
+        EXPECT_EQ(error.getRule(), ContractError::Rule::MissingObject);
+        EXPECT_STREQ(error.what(), "Haylen hit an internal error in its graphics device. Report it with the steps that led to it.");
     }
 }
 

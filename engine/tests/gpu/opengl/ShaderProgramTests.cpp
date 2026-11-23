@@ -10,6 +10,7 @@
 #include "gpu/opengl/GlCallCounter.hpp"
 #include "gpu/opengl/OpenGlTest.hpp"
 #include "gpu/opengl/ShaderProgram.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu::opengl {
 
@@ -70,8 +71,8 @@ TEST_P(ShaderProgramTest, SendsAUniformBlockOnlyWhenItsBytesChange) {
     values[5] = 1.0F;
     program.applyUniforms(2, std::as_bytes(std::span(values)));
     EXPECT_EQ(counter.getCalls(), 2);
-    EXPECT_THROW(program.applyUniforms(2, std::as_bytes(std::span(values)).first(16)), std::logic_error);
-    EXPECT_THROW(program.applyUniforms(0, std::as_bytes(std::span(values))), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)program.applyUniforms(2, std::as_bytes(std::span(values)).first(16)); }), gpu::ContractError::Rule::Uniforms);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)program.applyUniforms(0, std::as_bytes(std::span(values))); }), gpu::ContractError::Rule::Uniforms);
 }
 
 TEST_P(ShaderProgramTest, GivesEachTexturePairTheUnitOfItsIndex) {
@@ -94,7 +95,7 @@ TEST_P(ShaderProgramTest, NamesTheStageThatDidNotCompile) {
 
 TEST_P(ShaderProgramTest, RefusesToSampleAMultisampledTexture) {
     textures[0].multisampled = true;
-    EXPECT_THROW(ShaderProgram(opened.gl, opened.state, describe()), std::logic_error);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)ShaderProgram(opened.gl, opened.state, describe()); }), gpu::ContractError::Rule::Program);
 }
 
 INSTANTIATE_TEST_SUITE_P(Flavours, ShaderProgramTest, ::testing::Values(Device::Api::OpenGl, Device::Api::OpenGlEs), OpenGlTest::getFlavourName);
