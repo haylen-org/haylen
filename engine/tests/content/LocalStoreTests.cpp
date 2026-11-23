@@ -433,7 +433,7 @@ TEST(StoreFormatTest, ReadsWhatItWritesAndRefusesTornCopies) {
         (void)StoreState::parse(bytes);
         FAIL() << "A torn state parses.";
     } catch (const Error& error) {
-        EXPECT_STREQ(error.what(), "The store state has a checksum that does not match, so a write tore it.");
+        EXPECT_STREQ(error.what(), "The content store of the app is damaged or was not made by this version of Haylen.");
     }
 
     EXPECT_THROW((void)StoreState::parse(std::span(bytes).first(10)), Error);

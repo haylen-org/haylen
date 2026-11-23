@@ -74,6 +74,8 @@ class ContentTool final {
 
     // The delivery rules of the app folder, with the rules that name preload groups replaced by the entries of the groups.
     [[nodiscard]] static core::AppConfig::Content readDeliveryRules(const std::filesystem::path& app);
+    // A failure of the file system in plain words, with the path it concerns and the reason of the system, without the name of the operation of the standard library.
+    [[nodiscard]] static std::string describeFileSystem(const std::filesystem::filesystem_error& error);
     [[nodiscard]] static std::string_view getKindName(Catalog::Kind kind) noexcept;
     [[nodiscard]] static std::string_view getDomainName(Manifest::Domain domain) noexcept;
 

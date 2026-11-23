@@ -36,17 +36,17 @@ Catalog Catalog::parse(std::vector<std::uint8_t> plain, std::uint64_t shardCount
     // The catalog owns the bytes before it reads them, so they are wiped however the parsing ends.
     Catalog catalog(std::move(plain));
     const std::span<const std::uint8_t> table(catalog.bytes);
-    BinaryReader reader(table, Error::Code::CorruptCatalog, "catalog");
+    BinaryReader reader(table, Error::Code::CorruptCatalog, "The catalog of the manifest");
     if (table.size() < kHeaderSize) {
-        reader.fail("ends before its header does");
+        reader.fail();
     }
 
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
-        throw Error(Error::Code::UnsupportedFormat, "The catalog does not start with the catalog magic.");
+        throw Error(Error::Code::UnsupportedFormat, BinaryReader::describeDamage("The catalog of the manifest"));
     }
 
     if (reader.read<std::uint16_t>() != kVersion) {
-        throw Error(Error::Code::UnsupportedVersion, "The catalog has a version this app does not read.");
+        throw Error(Error::Code::UnsupportedVersion, "The catalog of the manifest was made by another version of Haylen. Build the release again with this version.");
     }
 
     reader.skipZeros(sizeof(std::uint16_t));
@@ -60,14 +60,14 @@ Catalog Catalog::parse(std::vector<std::uint8_t> plain, std::uint64_t shardCount
     std::uint64_t total = kHeaderSize;
     for (const auto& [count, size] : {std::pair{files, kFileSize}, std::pair{chunks, kChunkSize}, std::pair{parts, kPartSize}, std::pair{strings, std::size_t{1}}}) {
         if (count > (table.size() - total) / size) {
-            reader.fail("declares tables larger than its bytes");
+            reader.fail();
         }
 
         total += count * size;
     }
 
     if (total != table.size()) {
-        reader.fail("has bytes its tables do not account for");
+        reader.fail();
     }
 
     catalog.fileCount = files;
@@ -98,27 +98,27 @@ bool Catalog::isValidPath(std::string_view path) {
 }
 
 void Catalog::validate(std::uint64_t shardCount) const {
-    const auto fail = [](const std::string& problem) { throw Error(Error::Code::CorruptCatalog, "The catalog " + problem + "."); };
+    const auto fail = [] { throw Error(Error::Code::CorruptCatalog, BinaryReader::describeDamage("The catalog of the manifest")); };
 
     for (std::uint64_t index = 0; index < chunkCount; ++index) {
         const std::size_t row = chunkTable + static_cast<std::size_t>(index) * kChunkSize;
         const auto codec = load<std::uint8_t>(row + ChunkLayout::kCodec);
         const auto profile = load<std::uint8_t>(row + ChunkLayout::kProfile);
         if (!Compression::isSupported(codec, profile) || load<std::uint16_t>(row + ChunkLayout::kReserved) != 0) {
-            fail("names a codec this app does not decode");
+            fail();
         }
 
         const Chunk chunk = getChunk(index);
         if (!ChunkRecord::hasValidSizes(chunk.codec, chunk.plainSize, chunk.encodedSize)) {
-            fail("declares a chunk of sizes no chunk has");
+            fail();
         }
 
         if (chunk.shard >= shardCount) {
-            fail("places a chunk in a shard its manifest does not name");
+            fail();
         }
 
         if (index > 0 && !(getChunk(index - 1).storedId < chunk.storedId)) {
-            fail("lists chunks out of order or twice");
+            fail();
         }
     }
 
@@ -127,24 +127,24 @@ void Catalog::validate(std::uint64_t shardCount) const {
         const auto pathOffset = load<std::uint64_t>(row + FileLayout::kPathOffset);
         const auto pathLength = load<std::uint32_t>(row + FileLayout::kPathLength);
         if (pathOffset > stringSize || pathLength > stringSize - pathOffset) {
-            fail("places a path outside its string table");
+            fail();
         }
 
         if (load<std::uint8_t>(row + FileLayout::kKind) > static_cast<std::uint8_t>(Kind::LuaBytecode) || load<std::uint8_t>(row + FileLayout::kDelivery) > static_cast<std::uint8_t>(Delivery::OnDemand) || load<std::uint16_t>(row + FileLayout::kReserved) != 0) {
-            fail("declares a file of a kind or delivery this app does not know");
+            fail();
         }
 
         const File file = getFile(index);
         if (!isValidPath(file.path)) {
-            fail("holds a path that is not a normalized UTF-8 package path");
+            fail();
         }
 
         if (index > 0 && !(getPath(index - 1) < file.path)) {
-            fail("lists paths out of order or twice");
+            fail();
         }
 
         if (file.firstPart > partCount || file.partCount > partCount - file.firstPart) {
-            fail("gives a file parts outside its part table");
+            fail();
         }
 
         // The parts of a file follow each other without gaps and end exactly at its size.
@@ -152,19 +152,19 @@ void Catalog::validate(std::uint64_t shardCount) const {
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
             const Part piece = getPart(part);
             if (piece.chunk >= chunkCount || piece.offset != expected) {
-                fail("gives a file parts that do not follow each other");
+                fail();
             }
 
             const std::uint64_t plainSize = getChunk(piece.chunk).plainSize;
             if (plainSize > std::numeric_limits<std::uint64_t>::max() - expected) {
-                fail("gives a file more bytes than any file holds");
+                fail();
             }
 
             expected += plainSize;
         }
 
         if (expected != file.size) {
-            fail("gives a file parts that do not add up to its size");
+            fail();
         }
     }
 }

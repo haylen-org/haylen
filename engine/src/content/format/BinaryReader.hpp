@@ -12,10 +12,10 @@
 
 namespace haylen::content {
 
-// Reads the fields that `BinaryWriter` writes from bytes that may be hostile. Every read is bounds-checked, and a read past the end or a broken rule throws an `Error` with the code and the name of the structure being read.
+// Reads the fields that `BinaryWriter` writes from bytes that may be hostile. Every read is bounds-checked, and a read past the end or a broken rule throws an `Error` with the code and a sentence that names what is damaged, such as `The manifest`, without the fields or offsets of the format.
 class BinaryReader final {
   public:
-    BinaryReader(std::span<const std::uint8_t> source, Error::Code errorCode, std::string_view structure) noexcept;
+    BinaryReader(std::span<const std::uint8_t> source, Error::Code errorCode, std::string_view subject) noexcept;
 
     template <std::unsigned_integral T> [[nodiscard]] T read() {
         const std::span<const std::uint8_t> field = readBytes(sizeof(T));
@@ -47,8 +47,11 @@ class BinaryReader final {
         return bytes.size() - position;
     }
 
-    // Throws the error of the structure with a sentence that says what is wrong with it.
-    [[noreturn]] void fail(std::string_view problem) const;
+    // Throws the error of the structure, which says that it is damaged or was not made by this version of Haylen.
+    [[noreturn]] void fail() const;
+
+    // The sentence of a failure of hostile bytes, such as `The manifest is damaged or was not made by this version of Haylen.`, which names what the person knows and no field of the format.
+    [[nodiscard]] static std::string describeDamage(std::string_view subject);
 
   private:
     std::span<const std::uint8_t> bytes;

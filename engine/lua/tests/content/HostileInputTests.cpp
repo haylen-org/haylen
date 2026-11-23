@@ -111,13 +111,13 @@ TEST_F(HostileInputTest, ParsersRejectDamagedFiles) {
 
 TEST(BinaryReaderTest, NeverMovesPastItsBytes) {
     const std::vector<std::uint8_t> bytes = {2, 0, 'a', 'b', 0};
-    haylen::content::BinaryReader reader(bytes, haylen::content::Error::Code::CorruptIndex, "test structure");
+    haylen::content::BinaryReader reader(bytes, haylen::content::Error::Code::CorruptIndex, "The test structure");
     try {
         reader.skip(bytes.size() + 1);
         FAIL() << "A skip past the end must fail.";
     } catch (const haylen::content::Error& error) {
         EXPECT_EQ(error.getCode(), haylen::content::Error::Code::CorruptIndex);
-        EXPECT_EQ(std::string(error.what()), "The test structure ends before its fields do.");
+        EXPECT_EQ(std::string(error.what()), "The test structure is damaged or was not made by this version of Haylen.");
     }
 
     EXPECT_EQ(reader.getPosition(), 0U);

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <memory>
 
+#include "content/format/BinaryReader.hpp"
 #include "haylen/content/Error.hpp"
 
 namespace haylen::content {
@@ -16,7 +17,7 @@ bool Compression::isSupported(std::uint8_t codec, std::uint8_t profile) noexcept
 void Compression::decode(Codec codec, std::span<const std::uint8_t> encoded, std::span<std::uint8_t> plain) {
     if (codec == Codec::None) {
         if (encoded.size() != plain.size()) {
-            throw Error(Error::Code::CorruptChunk, "A stored chunk does not have the size its record declares.");
+            throw Error(Error::Code::CorruptChunk, BinaryReader::describeDamage("A chunk of a shard"));
         }
 
         std::ranges::copy(encoded, plain.begin());
@@ -29,12 +30,12 @@ void Compression::decode(Codec codec, std::span<const std::uint8_t> encoded, std
     ZSTD_DCtx_setParameter(context.get(), ZSTD_d_windowLogMax, kMaximumWindowLog);
 
     if (ZSTD_getFrameContentSize(encoded.data(), encoded.size()) != plain.size()) {
-        throw Error(Error::Code::CorruptChunk, "A compressed chunk does not declare the size its record declares.");
+        throw Error(Error::Code::CorruptChunk, BinaryReader::describeDamage("A chunk of a shard"));
     }
 
     const std::size_t size = ZSTD_decompressDCtx(context.get(), plain.data(), plain.size(), encoded.data(), encoded.size());
     if (ZSTD_isError(size) != 0 || size != plain.size()) {
-        throw Error(Error::Code::CorruptChunk, "A compressed chunk could not be decoded to the size its record declares.");
+        throw Error(Error::Code::CorruptChunk, BinaryReader::describeDamage("A chunk of a shard"));
     }
 }
 

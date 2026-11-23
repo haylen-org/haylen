@@ -28,7 +28,7 @@ std::optional<StoreEntry> StoreEntry::parse(std::span<const std::uint8_t, kSize>
         return std::nullopt;
     }
 
-    BinaryReader reader(bytes.first<kCheckOffset>(), Error::Code::CacheCorrupt, "store entry");
+    BinaryReader reader(bytes.first<kCheckOffset>(), Error::Code::CacheCorrupt, "The content store of the app");
     StoreEntry entry{.storedId = reader.readDigest(), .keyId = reader.readDigest(), .segment = reader.read<std::uint32_t>()};
     const auto flags = reader.read<std::uint32_t>();
     entry.offset = reader.read<std::uint64_t>();

@@ -231,12 +231,12 @@ void ReleasePackage::recover() {
         try {
             std::optional<std::vector<std::uint8_t>> bytes = store->readManifest(id);
             if (!bytes) {
-                throw Error(Error::Code::MissingManifest, "The store lost the manifest.");
+                throw Error(Error::Code::MissingManifest, "The content store of the app lost the manifest of its content.");
             }
 
             std::shared_ptr<const Content> loaded = load(std::move(*bytes));
             if (loaded->manifest->getId() != id) {
-                throw Error(Error::Code::CorruptManifest, "The file of the manifest holds another manifest.");
+                throw Error(Error::Code::CorruptManifest, "The file of the manifest of the content holds another manifest, so the content store of the app is damaged.");
             }
 
             content = std::move(loaded);

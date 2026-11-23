@@ -9,6 +9,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -121,6 +122,7 @@ class ShardTest : public ::testing::Test {
             ADD_FAILURE() << "The index must be rejected.";
         } catch (const Error& error) {
             EXPECT_EQ(error.getCode(), code) << error.what();
+            EXPECT_TRUE(std::string_view(error.what()).starts_with("The shard \"" + shard.second.getFileName() + "\" ")) << error.what();
         }
     }
 

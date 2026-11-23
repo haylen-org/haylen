@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -26,12 +27,19 @@ Manifest ReleaseInspector::readManifest(const std::filesystem::path& folder, Man
         throw std::runtime_error("The release folder \"" + folder.generic_string() + "\" has no \"" + file.filename().generic_string() + "\".");
     }
 
-    Manifest manifest = Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, trusted);
+    std::optional<Manifest> read;
+    try {
+        read = Manifest::read({std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()}, trusted);
+    } catch (const Error& failure) {
+        throw Error(failure.getCode(), "The manifest \"" + file.generic_string() + "\" could not be read. " + failure.what(), failure.getDetails());
+    }
+
+    Manifest& manifest = *read;
     if (manifest.getEnvelope().domain != domain) {
         throw Error(Error::Code::CorruptManifest, "The manifest \"" + file.generic_string() + "\" belongs to the other domain.");
     }
 
-    return manifest;
+    return std::move(manifest);
 }
 
 ReleaseInspector::Domain ReleaseInspector::inspectDomain(const std::filesystem::path& folder, Manifest::Domain domain) const {

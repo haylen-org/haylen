@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "content/crypto/ContentKey.hpp"
@@ -10,6 +11,7 @@
 #include "content/format/ShardHeader.hpp"
 #include "content/format/ShardIndex.hpp"
 #include "content/format/ShardReference.hpp"
+#include "haylen/content/Error.hpp"
 #include "haylen/io/PackageReader.hpp"
 
 namespace haylen::content {
@@ -31,9 +33,13 @@ class ShardReader final {
 
   private:
     [[nodiscard]] static ShardHeader readHeader(io::PackageReader& source, const ShardReference& reference);
-    [[nodiscard]] static ShardIndex readIndex(io::PackageReader& source, const ShardHeader& parsed, const ContentKey& indexKey);
+    [[nodiscard]] static ShardIndex readIndex(io::PackageReader& source, const ShardHeader& parsed, const ContentKey& indexKey, const std::string& fileName);
+
+    // The failure of the format that reading the shard file found, with the name of the file in front of it.
+    [[nodiscard]] static Error nameFile(const Error& failure, const std::string& fileName);
 
     std::unique_ptr<io::PackageReader> file;
+    std::string name;
     ShardHeader header;
     std::shared_ptr<const ContentKey> key;
     ShardIndex index;

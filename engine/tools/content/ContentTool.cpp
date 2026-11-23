@@ -159,6 +159,9 @@ int ContentTool::run(std::span<const std::string> arguments) {
         }
 
         return 0;
+    } catch (const std::filesystem::filesystem_error& error) {
+        errors << "Error: " << describeFileSystem(error) << '\n';
+        return 1;
     } catch (const std::exception& error) {
         errors << "Error: " << error.what() << '\n';
         return 1;
@@ -419,6 +422,15 @@ void ContentTool::runBootstrap(Arguments& arguments) {
     }
 
     output << "Wrote the bootstrap of \"" << store.getIdentifier() << "\" for the profile \"" << profile << "\" into \"" << file.generic_string() << "\".\n";
+}
+
+std::string ContentTool::describeFileSystem(const std::filesystem::filesystem_error& error) {
+    const std::string reason = error.code().message();
+    if (error.path1().empty()) {
+        return "The file system refused the command: " + reason + ".";
+    }
+
+    return "The file system refused to work with \"" + error.path1().generic_string() + "\": " + reason + ".";
 }
 
 std::string_view ContentTool::getKindName(Catalog::Kind kind) noexcept {

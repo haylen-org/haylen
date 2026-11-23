@@ -10,21 +10,21 @@
 namespace haylen::content {
 
 ShardHeader ShardHeader::parse(std::span<const std::uint8_t, kSize> bytes, std::uint64_t fileSize) {
-    BinaryReader reader(bytes, Error::Code::CorruptHeader, "shard header");
+    BinaryReader reader(bytes, Error::Code::CorruptHeader, "The shard");
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
-        throw Error(Error::Code::UnsupportedFormat, "The file is not an HPAK shard.");
+        throw Error(Error::Code::UnsupportedFormat, "The file is not a shard of a Haylen release.");
     }
 
     if (reader.read<std::uint16_t>() != kVersion) {
-        throw Error(Error::Code::UnsupportedVersion, "The HPAK shard has a version this app does not read.");
+        throw Error(Error::Code::UnsupportedVersion, "The shard was made by another version of Haylen. Build the release again with this version.");
     }
 
     if (reader.read<std::uint16_t>() != kSize) {
-        reader.fail("declares a size other than its version has");
+        reader.fail();
     }
 
     if (reader.read<std::uint32_t>() != 0) {
-        reader.fail("sets flags its version does not define");
+        reader.fail();
     }
 
     ShardHeader header;
@@ -39,11 +39,11 @@ ShardHeader ShardHeader::parse(std::span<const std::uint8_t, kSize> bytes, std::
 
     // The counts are checked before they are multiplied, so no product wraps around.
     if (header.entryCount == 0 || header.entryCount > ShardIndex::kMaximumEntries || header.indexSize != header.entryCount * ShardIndex::kEntrySize) {
-        reader.fail("declares an index size that does not match its entry count");
+        reader.fail();
     }
 
     if (header.indexOffset < kSize || header.indexOffset > fileSize || fileSize - header.indexOffset != header.indexSize) {
-        reader.fail("places its index anywhere but at the end of the file");
+        reader.fail();
     }
 
     return header;

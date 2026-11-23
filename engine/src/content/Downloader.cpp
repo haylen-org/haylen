@@ -616,7 +616,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
         try {
             const ChunkRecord header = ChunkRecord::parse(std::span(record).first<ChunkRecord::kHeaderSize>());
             if (!header.describes(chunk) || header.codec != entry.codec || header.profile != entry.profile || header.plainSize != entry.plainSize) {
-                throw Error(Error::Code::CorruptChunk, "The downloaded record of the chunk \"" + chunk.storedId.toHex() + "\" does not match its catalog and the index of its shard.");
+                throw Error(Error::Code::CorruptChunk, "The downloaded chunk \"" + chunk.storedId.toHex() + "\" is damaged or was changed on its way.");
             }
 
             std::vector<std::uint8_t> ciphertext(record.begin() + ChunkRecord::kHeaderSize, record.end());
@@ -712,7 +712,7 @@ void Downloader::receiveWholePiece(const Digest& shardId, WholeShard& whole) {
         const ChunkRecord record = ChunkRecord::parse(std::span(whole.piece).first<ChunkRecord::kHeaderSize>());
         whole.pieceEnd = whole.pieceStart + ChunkRecord::kHeaderSize + record.encodedSize;
         if (whole.pieceEnd > header.indexOffset) {
-            throw Error(Error::Code::CorruptChunk, "A record of the shard \"" + shardId.toHex() + "\" reaches past the start of its index.");
+            throw Error(Error::Code::CorruptChunk, "The downloaded shard \"" + shardId.toHex() + "\" is damaged or was not made by this version of Haylen.");
         }
 
         return;
@@ -758,7 +758,7 @@ void Downloader::keepRecord(const Digest& shardId, const Digest& keyId, std::uin
         std::optional<Error> failure;
         try {
             if (chunk && !header.describes(*chunk)) {
-                throw Error(Error::Code::CorruptChunk, "The downloaded record of the chunk \"" + chunk->storedId.toHex() + "\" does not match its catalog.");
+                throw Error(Error::Code::CorruptChunk, "The downloaded chunk \"" + chunk->storedId.toHex() + "\" is damaged or was changed on its way.");
             }
 
             std::vector<std::uint8_t> ciphertext(record.begin() + ChunkRecord::kHeaderSize, record.end());

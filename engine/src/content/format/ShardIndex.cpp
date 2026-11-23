@@ -20,9 +20,9 @@ ShardIndex::ShardIndex(std::vector<Entry> chunks) : entries(std::move(chunks)) {
 }
 
 ShardIndex ShardIndex::parse(std::span<const std::uint8_t> bytes, std::uint64_t dataBegin, std::uint64_t dataEnd) {
-    BinaryReader reader(bytes, Error::Code::CorruptIndex, "shard index");
+    BinaryReader reader(bytes, Error::Code::CorruptIndex, "The index of the shard");
     if (bytes.size() % kEntrySize != 0 || bytes.size() / kEntrySize > kMaximumEntries) {
-        reader.fail("has a size that is no whole number of entries within its limit");
+        reader.fail();
     }
 
     ShardIndex index;
@@ -39,20 +39,20 @@ ShardIndex ShardIndex::parse(std::span<const std::uint8_t> bytes, std::uint64_t 
         reader.skipZeros(kPaddingSize);
 
         if (!Compression::isSupported(codec, entry.profile)) {
-            reader.fail("names a codec this app does not decode");
+            reader.fail();
         }
 
         entry.codec = static_cast<Compression::Codec>(codec);
         if (!ChunkRecord::hasValidSizes(entry.codec, entry.plainSize, entry.encodedSize)) {
-            reader.fail("declares sizes no chunk has");
+            reader.fail();
         }
 
         if (!index.entries.empty() && !(index.entries.back().storedId < entry.storedId)) {
-            reader.fail("is not sorted by stored ID without repeats");
+            reader.fail();
         }
 
         if (entry.recordOffset < dataBegin || entry.recordOffset > dataEnd || dataEnd - entry.recordOffset < ChunkRecord::kHeaderSize + entry.encodedSize) {
-            throw Error(Error::Code::InvalidOffset, "The shard index places a record outside the data of its shard.");
+            throw Error(Error::Code::InvalidOffset, BinaryReader::describeDamage("The index of the shard"));
         }
 
         index.entries.push_back(entry);
@@ -68,7 +68,7 @@ ShardIndex ShardIndex::parse(std::span<const std::uint8_t> bytes, std::uint64_t 
 
     for (std::size_t record = 1; record < records.size(); ++record) {
         if (records[record].first < records[record - 1].second) {
-            throw Error(Error::Code::InvalidOffset, "The shard index places two records over each other.");
+            throw Error(Error::Code::InvalidOffset, BinaryReader::describeDamage("The index of the shard"));
         }
     }
 

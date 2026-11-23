@@ -29,19 +29,19 @@ bool ChunkRecord::hasValidSizes(Compression::Codec storedCodec, std::uint64_t pl
 }
 
 ChunkRecord ChunkRecord::parse(std::span<const std::uint8_t, kHeaderSize> header) {
-    BinaryReader reader(header, Error::Code::CorruptChunk, "chunk record");
+    BinaryReader reader(header, Error::Code::CorruptChunk, "A record of a shard");
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
-        throw Error(Error::Code::UnsupportedFormat, "The chunk record does not start with the HPAK record magic.");
+        throw Error(Error::Code::UnsupportedFormat, BinaryReader::describeDamage("A record of a shard"));
     }
 
     if (reader.read<std::uint16_t>() != kVersion) {
-        throw Error(Error::Code::UnsupportedVersion, "The chunk record has a version this app does not read.");
+        throw Error(Error::Code::UnsupportedVersion, "A record of a shard was made by another version of Haylen. Build the release again with this version.");
     }
 
     const auto codecByte = reader.read<std::uint8_t>();
     const auto profileByte = reader.read<std::uint8_t>();
     if (!Compression::isSupported(codecByte, profileByte)) {
-        reader.fail("names a codec this app does not decode");
+        reader.fail();
     }
 
     ChunkRecord record;
@@ -50,7 +50,7 @@ ChunkRecord ChunkRecord::parse(std::span<const std::uint8_t, kHeaderSize> header
     record.plainSize = reader.read<std::uint64_t>();
     record.encodedSize = reader.read<std::uint64_t>();
     if (!hasValidSizes(record.codec, record.plainSize, record.encodedSize)) {
-        reader.fail("declares sizes no chunk has");
+        reader.fail();
     }
 
     record.contentId = reader.readDigest();
@@ -93,7 +93,7 @@ void ChunkRecord::open(const ContentKey& key, std::span<std::uint8_t> ciphertext
     if (identifyContent(plain) != contentId) {
         crypto_wipe(plain.data(), plain.size());
         plain.clear();
-        throw Error(Error::Code::ChunkHashMismatch, "The chunk \"" + storedId.toHex() + "\" decoded to bytes other than its content ID names.");
+        throw Error(Error::Code::ChunkHashMismatch, "The chunk \"" + storedId.toHex() + "\" is damaged or was changed, since it does not hold the content it names.");
     }
 }
 

@@ -10,12 +10,12 @@ namespace haylen::content {
 
 ShardIndexFile::ShardIndexFile(std::vector<std::uint8_t> headerAndIndex, const ShardReference& reference) : bytes(std::move(headerAndIndex)), fileSize(reference.fileSize), indexOffset(0) {
     if (bytes.size() < ShardHeader::kSize) {
-        throw Error(Error::Code::CorruptHeader, std::format("The header of the shard \"{}\" is incomplete.", reference.shardId.toHex()));
+        throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" is damaged or was not made by this version of Haylen.", reference.getFileName()));
     }
 
     const ShardHeader header = ShardHeader::parse(std::span(bytes).first<ShardHeader::kSize>(), fileSize);
     if (bytes.size() != ShardHeader::kSize + header.indexSize) {
-        throw Error(Error::Code::CorruptHeader, std::format("The index of the shard \"{}\" does not have the size its header names.", reference.shardId.toHex()));
+        throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" is damaged or was not made by this version of Haylen.", reference.getFileName()));
     }
 
     indexOffset = header.indexOffset;
@@ -30,7 +30,7 @@ std::size_t ShardIndexFile::read(std::uint64_t offset, std::span<std::uint8_t> t
     } else if (offset >= indexOffset && offset - indexOffset + target.size() <= indexSize) {
         source = static_cast<std::size_t>(ShardHeader::kSize + offset - indexOffset);
     } else {
-        throw Error(Error::Code::MissingChunk, std::format("The bytes {} to {} of a shard are not on the device.", offset, offset + target.size()));
+        throw Error(Error::Code::MissingChunk, "A chunk of a shard is not on the device yet, so it must be downloaded before it is read.");
     }
 
     std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(source), target.size(), target.begin());

@@ -47,17 +47,17 @@ bool Manifest::belongsToDomain(std::string_view path, Domain domain) noexcept {
 }
 
 Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const VerifyingKey> trustedKeys) {
-    BinaryReader prefix(file, Error::Code::CorruptManifest, "manifest");
+    BinaryReader prefix(file, Error::Code::CorruptManifest, "The manifest");
     if (file.size() < kPrefixSize + VerifyingKey::kSignatureSize) {
-        prefix.fail("ends before its envelope and signature do");
+        prefix.fail();
     }
 
     if (!std::ranges::equal(prefix.readBytes(kMagic.size()), kMagic)) {
-        throw Error(Error::Code::UnsupportedFormat, "The file is not a Haylen manifest.");
+        throw Error(Error::Code::UnsupportedFormat, "The file is not a manifest of a Haylen release.");
     }
 
     if (prefix.read<std::uint16_t>() != kVersion) {
-        throw Error(Error::Code::UnsupportedVersion, "The manifest has a version this app does not read.");
+        throw Error(Error::Code::UnsupportedVersion, "The manifest was made by another version of Haylen. Build the release again with this version.");
     }
 
     prefix.skipZeros(sizeof(std::uint16_t));
@@ -65,7 +65,7 @@ Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const Verifyin
     // Only the size of the envelope is trusted before the signature, and only to find the signature.
     const auto envelopeSize = prefix.read<std::uint32_t>();
     if (envelopeSize < kSigningKeyOffset + Digest::kSize || envelopeSize > kMaximumEnvelopeSize || envelopeSize > file.size() - VerifyingKey::kSignatureSize) {
-        prefix.fail("declares an envelope that does not fit in it");
+        prefix.fail();
     }
 
     const std::span<const std::uint8_t> signedBytes = std::span(file).first(envelopeSize);
@@ -86,7 +86,7 @@ Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const Verifyin
     manifest.parseEnvelope(signedBytes);
     manifest.id = Hasher().updateLabel("haylen/hpak/v1/manifest-id").update(signedBytes).finish();
     if (manifest.catalogSize != file.size() - envelopeSize - VerifyingKey::kSignatureSize) {
-        prefix.fail("holds a catalog of another size than its envelope signs");
+        prefix.fail();
     }
 
     manifest.bytes = std::move(file);
@@ -94,19 +94,19 @@ Manifest Manifest::read(std::vector<std::uint8_t> file, std::span<const Verifyin
 }
 
 void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
-    BinaryReader reader(signedBytes, Error::Code::CorruptManifest, "manifest envelope");
+    BinaryReader reader(signedBytes, Error::Code::CorruptManifest, "The manifest");
     reader.skip(kPrefixSize);
 
     const auto domain = reader.read<std::uint8_t>();
     if (domain > static_cast<std::uint8_t>(Domain::Content)) {
-        reader.fail("names a domain this app does not know");
+        reader.fail();
     }
 
     envelope.domain = static_cast<Domain>(domain);
     reader.skipZeros(1);
 
     if (reader.read<std::uint16_t>() != ShardHeader::kVersion || reader.read<std::uint16_t>() != Catalog::kVersion) {
-        throw Error(Error::Code::UnsupportedVersion, "The manifest uses shard or catalog versions this app does not read.");
+        throw Error(Error::Code::UnsupportedVersion, "The manifest was made by another version of Haylen. Build the release again with this version.");
     }
 
     reader.skipZeros(sizeof(std::uint16_t));
@@ -122,12 +122,12 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
     envelope.channel = reader.readString(kMaximumNameLength);
     envelope.luaAbi = reader.readString(kMaximumNameLength);
     if (envelope.profile.empty() || !isValidName(envelope.profile) || !isValidName(envelope.channel) || !isValidName(envelope.luaAbi) || envelope.minimumAppBuild > envelope.maximumAppBuild) {
-        reader.fail("holds a profile, a channel, a Lua ABI or a build range that is not valid");
+        reader.fail();
     }
 
     const auto shardCount = reader.read<std::uint64_t>();
     if (shardCount > kMaximumShards || shardCount > reader.getRemaining() / kShardReferenceSize) {
-        reader.fail("lists more shards than it holds");
+        reader.fail();
     }
 
     envelope.shards.reserve(static_cast<std::size_t>(shardCount));
@@ -149,7 +149,7 @@ void Manifest::parseEnvelope(std::span<const std::uint8_t> signedBytes) {
     reader.requireEnd();
 
     if (catalogSize > kMaximumCatalogSize) {
-        reader.fail("declares a catalog larger than the limit");
+        reader.fail();
     }
 }
 
@@ -171,12 +171,12 @@ void Manifest::checkFiles(const Catalog& catalog) const {
     for (std::uint64_t index = 0; index < catalog.getFileCount(); ++index) {
         const Catalog::File file = catalog.getFile(index);
         if (!belongsToDomain(file.path, envelope.domain) || (envelope.domain == Domain::App && file.delivery != Delivery::Required)) {
-            throw Error(Error::Code::CorruptCatalog, "The catalog of the manifest \"" + id.toHex() + "\" holds a file that its domain does not allow.");
+            throw Error(Error::Code::CorruptCatalog, "The catalog of the manifest \"" + id.toHex() + "\" is damaged or was not made by this version of Haylen.");
         }
 
         // Only the app domain holds bytecode, only of Lua modules, and only in the ABI its envelope signs.
         if (file.kind == Catalog::Kind::LuaBytecode && (envelope.domain != Domain::App || !isLuaModule(file.path) || envelope.luaAbi.empty())) {
-            throw Error(Error::Code::CorruptCatalog, "The catalog of the manifest \"" + id.toHex() + "\" holds Lua bytecode where only Lua modules of the app domain with the ABI of its manifest may.");
+            throw Error(Error::Code::CorruptCatalog, "The catalog of the manifest \"" + id.toHex() + "\" is damaged or was not made by this version of Haylen.");
         }
     }
 }

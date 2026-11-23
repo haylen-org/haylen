@@ -121,7 +121,7 @@ void ShardSet::readRecord(const Catalog::Chunk& chunk, std::vector<std::uint8_t>
     try {
         const ChunkRecord record = ChunkRecord::parse(std::span(scratch).first<ChunkRecord::kHeaderSize>());
         if (!record.describes(chunk) || scratch.size() != record.getRecordSize()) {
-            throw Error(Error::Code::CorruptChunk, "The record does not match its catalog.");
+            throw Error(Error::Code::CorruptChunk, "It does not hold the content that the catalog of its manifest names.");
         }
 
         record.open(*keys->get(keyId), std::span(scratch).subspan(ChunkRecord::kHeaderSize), plain);

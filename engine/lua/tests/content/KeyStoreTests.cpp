@@ -79,13 +79,13 @@ TEST_F(KeyStoreTest, RefusesDamagedKeyFolders) {
 
     // An index that is no JSON, that names a content key by anything but its ID or that names another signing key than the folder holds is never used.
     const haylen::core::Json valid = haylen::core::Json::parse(test::TestFiles::readText(getFolder() / haylen::content::KeyStore::kIndexFile));
-    const std::string index = (getFolder() / haylen::content::KeyStore::kIndexFile).generic_string();
+    const std::string damaged = "The key folder \"" + getFolder().generic_string() + "\" is damaged or was not made by Haylen. Restore it from a backup, since every release of the app needs its keys.";
     test::TestFiles::write(getFolder() / haylen::content::KeyStore::kIndexFile, "keys");
-    expectError("The file \"" + index + "\" is not the JSON index of a key folder.", [&] { (void)haylen::content::KeyStore::open(getFolder()); });
+    expectError(damaged, [&] { (void)haylen::content::KeyStore::open(getFolder()); });
     haylen::core::Json changed = valid;
     changed["contentKeys"] = haylen::core::Json::array({"abc"});
     writeIndex(changed);
-    expectError("The file \"" + index + "\" lists a content key ID that is not 64 hexadecimal digits.", [&] { (void)haylen::content::KeyStore::open(getFolder()); });
+    expectError(damaged, [&] { (void)haylen::content::KeyStore::open(getFolder()); });
     changed = valid;
     changed["signingKey"] = store.getActiveKeyId().toHex();
     writeIndex(changed);

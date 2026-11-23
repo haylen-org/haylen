@@ -19,24 +19,24 @@ std::vector<std::uint8_t> StoreState::write() const {
 }
 
 StoreState StoreState::parse(std::span<const std::uint8_t> bytes) {
-    BinaryReader reader(bytes, Error::Code::CacheCorrupt, "store state");
+    BinaryReader reader(bytes, Error::Code::CacheCorrupt, "The content store of the app");
     if (bytes.size() < Digest::kSize || bytes.size() > kMaximumSize) {
-        reader.fail("has a size that is not the size of a state");
+        reader.fail();
     }
 
     const std::span<const std::uint8_t> body = bytes.first(bytes.size() - Digest::kSize);
     if (Digest::of(body) != Digest(bytes.last<Digest::kSize>())) {
-        reader.fail("has a checksum that does not match, so a write tore it");
+        reader.fail();
     }
 
-    BinaryReader fields(body, Error::Code::CacheCorrupt, "store state");
+    BinaryReader fields(body, Error::Code::CacheCorrupt, "The content store of the app");
     const std::span<const std::uint8_t> magic = fields.readBytes(kMagic.size());
     if (!std::equal(magic.begin(), magic.end(), kMagic.begin())) {
-        fields.fail("does not start with the magic of a state");
+        fields.fail();
     }
 
     if (fields.read<std::uint16_t>() != kVersion) {
-        fields.fail("has a version this build does not read");
+        fields.fail();
     }
 
     fields.skipZeros(6);

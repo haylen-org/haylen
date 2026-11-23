@@ -9,17 +9,17 @@
 namespace haylen::content {
 
 ChannelDescriptor ChannelDescriptor::read(std::span<const std::uint8_t> bytes, std::span<const VerifyingKey> trustedKeys) {
-    BinaryReader reader(bytes, Error::Code::CorruptManifest, "channel descriptor");
+    BinaryReader reader(bytes, Error::Code::CorruptManifest, "The channel descriptor");
     if (bytes.size() < kSigningKeyOffset + Digest::kSize + VerifyingKey::kSignatureSize) {
-        reader.fail("ends before its fields and signature do");
+        reader.fail();
     }
 
     if (!std::ranges::equal(reader.readBytes(kMagic.size()), kMagic)) {
-        throw Error(Error::Code::UnsupportedFormat, "The file is not a Haylen channel descriptor.");
+        throw Error(Error::Code::UnsupportedFormat, "The file is not a channel descriptor of Haylen.");
     }
 
     if (reader.read<std::uint16_t>() != kVersion) {
-        throw Error(Error::Code::UnsupportedVersion, "The channel descriptor has a version this app does not read.");
+        throw Error(Error::Code::UnsupportedVersion, "The channel descriptor was made by another version of Haylen. Publish the channel again with this version.");
     }
 
     const std::span<const std::uint8_t> signedBytes = bytes.first(bytes.size() - VerifyingKey::kSignatureSize);
@@ -36,7 +36,7 @@ ChannelDescriptor ChannelDescriptor::read(std::span<const std::uint8_t> bytes, s
         throw Error(Error::Code::ManifestSignatureInvalid, "The signature of the channel descriptor is not valid, so it is damaged or was changed.");
     }
 
-    BinaryReader fields(signedBytes, Error::Code::CorruptManifest, "channel descriptor");
+    BinaryReader fields(signedBytes, Error::Code::CorruptManifest, "The channel descriptor");
     fields.skip(kMagic.size() + sizeof(std::uint16_t));
     fields.skipZeros(sizeof(std::uint16_t));
     ChannelDescriptor descriptor;

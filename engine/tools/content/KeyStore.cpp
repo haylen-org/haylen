@@ -60,18 +60,18 @@ KeyStore KeyStore::open(const std::filesystem::path& folder) {
     try {
         index = core::Json::parse(stream);
     } catch (const core::Json::exception&) {
-        throw std::runtime_error("The file \"" + (folder / kIndexFile).generic_string() + "\" is not the JSON index of a key folder.");
+        throw std::runtime_error("The key folder \"" + folder.generic_string() + "\" is damaged or was not made by Haylen. Restore it from a backup, since every release of the app needs its keys.");
     }
 
     if (!index.is_object() || !index.contains("identifier") || !index["identifier"].is_string() || !index.contains("contentKeys") || !index["contentKeys"].is_array() || index["contentKeys"].empty() || !index.contains("signingKey") || !index["signingKey"].is_string()) {
-        throw std::runtime_error("The file \"" + (folder / kIndexFile).generic_string() + "\" needs the \"identifier\" of the app, its \"contentKeys\" and its \"signingKey\".");
+        throw std::runtime_error("The key folder \"" + folder.generic_string() + "\" is damaged or was not made by Haylen. Restore it from a backup, since every release of the app needs its keys.");
     }
 
     KeyStore store(folder, index["identifier"].get<std::string>());
     for (const core::Json& entry : index["contentKeys"]) {
         const std::optional<Digest> id = entry.is_string() ? Digest::fromHex(entry.get<std::string>()) : std::nullopt;
         if (!id) {
-            throw std::runtime_error("The file \"" + (folder / kIndexFile).generic_string() + "\" lists a content key ID that is not 64 hexadecimal digits.");
+            throw std::runtime_error("The key folder \"" + folder.generic_string() + "\" is damaged or was not made by Haylen. Restore it from a backup, since every release of the app needs its keys.");
         }
 
         Secret master = readSecret(folder / getContentKeyFile(*id));
