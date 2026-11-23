@@ -21,11 +21,14 @@ class CameraTests : TestProjectCase() {
         tap("Take a photo")
         expectCheck("A photo arrives as JPEG bytes", containing = "decoded into a texture")
         saveScreenshot("back-camera")
+        // Both camera buttons toggle, so the next one waits until the app shows the camera stopped, or a slow emulator would hand it the button while the camera still runs.
         tap("Stop the camera")
+        waitFor("Start the back camera")
         tap("Start the front camera")
         expectCheck("The frames of the camera reach the texture", containing = "of the front camera")
         saveScreenshot("front-camera")
         tap("Stop the camera")
+        waitFor("Start the back camera")
 
         tap("Start the microphone")
         answerPermission(*ALLOW_WHILE_USING)
