@@ -3,6 +3,7 @@ from pathlib import Path
 
 from haylen.core.configuration import Configuration
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
+from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.host import Host
 from haylen.core.repository import Repository
 from haylen.core.target_environment import TargetEnvironment
@@ -13,7 +14,7 @@ from haylen.sdk.sdk_manifest import SdkManifest
 
 
 class ContentTool:
-    """The content tool `haylen-content`, a host tool of the desktop SDK that builds, stages, verifies, inspects, compares and publishes protected releases and writes the bootstrap of release builds with the format library of the engine. The tooling finds it in an installed SDK of this machine that was built from the engine sources of this checkout, and never builds the engine for it. It prints key IDs and public keys only, so its output may reach the log of a command."""
+    """The content tool `haylen-content`, a host tool of the desktop SDK that builds, stages, verifies, inspects, compares and publishes protected releases and writes the bootstrap of release builds with the format library of the engine. The tooling finds it in an installed SDK of this machine that was built from the engine sources of this checkout, which the app commands that build in Release build first through the engine port whose SDK carries it when no installed SDK holds it. It prints key IDs and public keys only, so its output may reach the log of a command."""
 
     NAME = "haylen-content"
 
@@ -24,18 +25,30 @@ class ContentTool:
     @staticmethod
     def locate(context: ToolingContext, registry: BackendRegistry) -> ContentTool:
         """Finds the content tool in the installed SDKs, or fails with the command that builds the SDK of this machine, which carries it."""
-        hosts = [
-            target.description.name
-            for target in registry.targets()
-            if target.description.system == Host.system() and target.description.environment is TargetEnvironment.HOST and Host.system() in target.description.hosts
-        ]
+        hosts = ContentTool.host_targets(registry)
         if hosts:
-            commands = " or ".join(f'"haylen sdk build --target {name}"' for name in sorted(hosts))
+            commands = " or ".join(f'"haylen sdk build --target {name}"' for name in hosts)
             build = f"Build the SDK of this machine, which carries it, with {commands}."
         else:
             build = "Install the engine port that builds the SDK of this machine, which carries it, and build that SDK."
         manifests = SdkCatalog(context.environment).manifests()
         return ContentTool(context, ContentTool.find(manifests, Repository.engine_revision(), build))
+
+    @staticmethod
+    def host_targets(registry: BackendRegistry) -> tuple[str, ...]:
+        """The targets of this machine, in the order of their names, whose engine port builds an SDK that carries the content tool."""
+        names = []
+        for target in registry.targets():
+            description = target.description
+            if description.system != Host.system() or description.environment is not TargetEnvironment.HOST or Host.system() not in description.hosts:
+                continue
+            try:
+                port, _ = registry.port_for(description)
+            except UnsupportedTarget:
+                continue
+            if ContentTool.NAME in port.description.host_tools:
+                names.append(description.name)
+        return tuple(sorted(names))
 
     @staticmethod
     def find(manifests: Sequence[SdkManifest], revision: str, build: str) -> Path:

@@ -21,7 +21,7 @@ class FakePort(EnginePort):
     def describe(self) -> PortDescription:
         abis = MappingProxyType({"arm64": "fake-arm64", "x86_64": "fake-x86_64"})
         target = PortTarget("fake-device", "fakeos", TargetEnvironment.DEVICE, abis, "fakecc", "libfake", "1.0", ("fakeGl",), (), self.CAPABILITIES)
-        return PortDescription("fake", 1, "1.0.0", (target,), ())
+        return PortDescription("fake", 1, "1.0.0", (target,), (), ())
 
     def check_environment(self, target: str) -> EnvironmentReport:
         return EnvironmentReport((), ())

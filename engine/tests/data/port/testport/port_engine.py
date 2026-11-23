@@ -54,7 +54,7 @@ class PortEngine(EnginePort):
             shader_languages=PortEngine.SHADER_LANGUAGES,
             capabilities=PortEngine.CAPABILITIES,
         )
-        return PortDescription(PortEngine.NAME, Contract.ENGINE_PORT, PortEngine.VERSION, (target,), PortEngine.TOOLS)
+        return PortDescription(PortEngine.NAME, Contract.ENGINE_PORT, PortEngine.VERSION, (target,), PortEngine.TOOLS, ())
 
     def check_environment(self, target: str) -> EnvironmentReport:
         problems = []

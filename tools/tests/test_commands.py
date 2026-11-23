@@ -1,6 +1,8 @@
 import json
 import re
+from dataclasses import replace
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
@@ -8,18 +10,25 @@ from haylen.cli.application import Application
 from haylen.cli.arguments import Arguments
 from haylen.cli.command_session import CommandSession
 from haylen.cli.commands.doctor import DoctorCommand
+from haylen.content.content_tool import ContentTool
 from haylen.core.app_pipeline import AppPipeline
 from haylen.core.configuration import Configuration
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.errors.unsupported_target import UnsupportedTarget
+from haylen.core.host import Host
 from haylen.core.product_request import ProductRequest
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
+from haylen.core.target_environment import TargetEnvironment
 from haylen.platforms.backend_registry import BackendRegistry
+from haylen.platforms.platform_description import PlatformDescription
+from haylen.platforms.port_description import PortDescription
+from haylen.platforms.port_target import PortTarget
 from haylen.platforms.sdk_request import SdkRequest
 from haylen.sdk.sdk_manifest import SdkManifest
+from tests.content.test_content_tool import ContentToolTest
 from tests.support.fake_backend import FakeBackend
 from tests.support.fake_port import FakePort
 from tests.support.tooling_fixture import ToolingFixture
@@ -146,6 +155,44 @@ class CommandsTest:
         with pytest.raises(UnsupportedTarget, match='The plugin "kit" does not support "fake"'):
             session.pipeline.resolve(ProductRequest(broken, "fake", Configuration.DEBUG, Configuration.RELEASE, ("x86_64",)), build_sdk=True)
         assert len(requests) == 1
+
+    def test_a_release_build_builds_the_sdk_of_this_machine_that_carries_the_content_tool_when_none_holds_it(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        fixture = ToolingFixture(tmp_path)
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+        monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
+        fixture.sdk()
+        ContentToolTest.sdk(tmp_path / "sdk" / "stale", revision="b" * 64)
+        abis = MappingProxyType({Host.architecture(): "host"})
+        requests: list[SdkRequest] = []
+
+        class HostBackend(FakeBackend):
+            def describe(self) -> PlatformDescription:
+                description = super().describe()
+                host = replace(FakeBackend.target("fake-host", TargetEnvironment.HOST, dict(abis), (Host.architecture(),)), system=Host.system())
+                return replace(description, targets=(*description.targets, host))
+
+        class HostPort(FakePort):
+            def describe(self) -> PortDescription:
+                target = PortTarget("fake-host-port", Host.system(), TargetEnvironment.HOST, abis, "fakecc", "libfake", "1.0", (), (), self.CAPABILITIES)
+                return PortDescription("fake-host", 1, "1.0.0", (target,), (), (ContentTool.NAME,))
+
+            def build_sdk(self, request: SdkRequest) -> SdkManifest:
+                requests.append(request)
+                return ContentToolTest.sdk(tmp_path / "sdk" / "host")
+
+        session = CommandSession(fixture.context, False)
+        session.registry = BackendRegistry(fixture.context, [("HostBackend", lambda: HostBackend)], [("FakePort", lambda: FakePort), ("HostPort", lambda: HostPort)])
+        app = fixture.app({})
+        session.pipeline.resolve(ProductRequest(app, "fake", Configuration.DEBUG, Configuration.RELEASE, ("arm64",)), build_sdk=True)
+        session.pipeline.resolve(ProductRequest(app, "fake", Configuration.RELEASE, Configuration.RELEASE, ("arm64",)), build_sdk=False)
+        assert requests == []
+
+        release = ProductRequest(app, "fake", Configuration.RELEASE, Configuration.RELEASE, ("arm64",))
+        session.pipeline.resolve(release, build_sdk=True)
+        session.pipeline.resolve(release, build_sdk=True)
+        assert [(built.targets, built.architectures, built.configuration) for built in requests] == [(("fake-host-port",), None, Configuration.RELEASE)]
+        assert AppPipeline.HOST_TOOLS_NOTE in fixture.output.getvalue()
+        assert ContentTool.locate(fixture.context, session.registry).executable == tmp_path / "sdk" / "host" / "bin" / Host.executable(ContentTool.NAME)
 
     def test_sdks_join_only_with_one_port_sources_and_configuration_whose_port_declares_joining(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)

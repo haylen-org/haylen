@@ -33,7 +33,7 @@ class DesktopPort(EnginePort):
 
     def describe(self) -> PortDescription:
         targets = tuple(DesktopPort.port_target(system) for system in DesktopSystem.all())
-        return PortDescription(DesktopPort.NAME, Contract.ENGINE_PORT, DesktopPort.VERSION, targets, DesktopPort.TOOLS)
+        return PortDescription(DesktopPort.NAME, Contract.ENGINE_PORT, DesktopPort.VERSION, targets, DesktopPort.TOOLS, (DesktopPort.PLAYER, DesktopPort.CONTENT_TOOL))
 
     @staticmethod
     def port_target(system: DesktopSystem) -> PortTarget:

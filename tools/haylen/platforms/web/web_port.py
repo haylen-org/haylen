@@ -50,7 +50,7 @@ class WebPort(EnginePort):
             shader_languages=WebPort.SHADER_LANGUAGES,
             capabilities=frozenset(),
         )
-        return PortDescription(WebPort.NAME, Contract.ENGINE_PORT, WebPort.VERSION, (target,), WebPort.TOOLS)
+        return PortDescription(WebPort.NAME, Contract.ENGINE_PORT, WebPort.VERSION, (target,), WebPort.TOOLS, ())
 
     def check_environment(self, target: str) -> EnvironmentReport:
         """Needs CMake and Ninja on the path. Emscripten installs on the first build, so its absence is no problem here."""

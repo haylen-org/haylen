@@ -42,7 +42,7 @@ class AppleEnginePort(EnginePort):
 
     def describe(self) -> PortDescription:
         targets = tuple(target.port_target() for target in AppleTargets.ALL)
-        return PortDescription(AppleEnginePort.NAME, Contract.ENGINE_PORT, AppleEnginePort.VERSION, targets, AppleEnginePort.TOOLS, frozenset({PortCapability.JOIN}))
+        return PortDescription(AppleEnginePort.NAME, Contract.ENGINE_PORT, AppleEnginePort.VERSION, targets, AppleEnginePort.TOOLS, (), frozenset({PortCapability.JOIN}))
 
     def check_environment(self, target: str) -> EnvironmentReport:
         if Host.system() != "macos":

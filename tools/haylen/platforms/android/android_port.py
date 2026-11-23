@@ -50,7 +50,7 @@ class AndroidPort(EnginePort):
             shader_languages=AndroidPlatform.SHADER_LANGUAGES,
             capabilities=AndroidPlatform.CAPABILITIES,
         )
-        return PortDescription(AndroidPort.NAME, Contract.ENGINE_PORT, AndroidPort.VERSION, (target,), ("Android SDK", "Android NDK", "JDK", "Gradle", "cmake", "ninja"))
+        return PortDescription(AndroidPort.NAME, Contract.ENGINE_PORT, AndroidPort.VERSION, (target,), ("Android SDK", "Android NDK", "JDK", "Gradle", "cmake", "ninja"), ())
 
     def check_environment(self, target: str) -> EnvironmentReport:
         sdk = AndroidSdk(self.context.environment)
