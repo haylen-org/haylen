@@ -13,10 +13,6 @@ namespace haylen::io {
 class Package;
 }
 
-namespace haylen::debug {
-class ExecutionBudget;
-}
-
 namespace haylen::platform {
 
 class DevelopmentSession;
@@ -56,7 +52,6 @@ class HeadlessPlayer final {
 
     // Ends the app of the engine, whose stop the execution budget of development times like every other call into the engine.
     static void end(HeadlessHost& host, std::unique_ptr<core::Engine>& engine);
-    [[nodiscard]] static debug::ExecutionBudget* getExecutionBudget(HeadlessHost& host) noexcept;
 };
 
 } // namespace haylen::platform

@@ -101,6 +101,7 @@ struct EngineState {
 
     std::shared_ptr<text::Font> defaultFont;
     std::unique_ptr<JobSystem> jobs;
+    Engine::EntryObserver* entryObserver = nullptr;
     Engine::EventLoopPoll loopPoll;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};
 

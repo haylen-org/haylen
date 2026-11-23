@@ -7,11 +7,11 @@
 #include <vector>
 
 #include "debug/ExecutionBudget.hpp"
+#include "development/Development.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneView.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/plugins/DebugPlugin.hpp"
 #include "lua/Autoloads.hpp"
 #include "lua/Environment.hpp"
 #include "lua/Jobs.hpp"
@@ -34,7 +34,7 @@ ScriptPlugin::~ScriptPlugin() {
     runtime.reset();
 
     if (session != nullptr) {
-        session->getExecutionBudget().detach();
+        Development::of(*session).getExecutionBudget().detach();
     }
 }
 
@@ -59,12 +59,6 @@ void ScriptPlugin::start(core::Engine& engine) {
     }
 
     Environment::checkModules(engine);
-
-    // clang-format off
-    engine.getPlugin<plugins::DebugPlugin>().setScriptMemory([L] {
-        return static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNT, 0)) * 1024 + static_cast<std::size_t>(lua_gc(L, LUA_GCCOUNTB, 0));
-    });
-    // clang-format on
 }
 
 void ScriptPlugin::install(Module& module) {
@@ -85,7 +79,7 @@ void ScriptPlugin::attachBudget(core::Engine& engine, lua_State* L) {
     };
     // clang-format on
     const core::AppConfig::Debug& debug = engine.getConfig().debug;
-    session->getExecutionBudget().attach(L, {.time = debug.executionBudget, .memory = debug.memoryBudget}, cancel, stage);
+    Development::of(*session).getExecutionBudget().attach(L, {.time = debug.executionBudget, .memory = debug.memoryBudget}, cancel, stage);
 
     debug::ExecutionBudget::guardMessageHandlers(L);
     debug::ExecutionBudget::guardFinalizers(L);
@@ -101,7 +95,6 @@ int ScriptPlugin::refuseHook(lua_State* L) {
 
 // The app stops its autoloads before the plugins stop, and the jobs and the modules let go of their Lua values here, while every plugin of the engine still runs.
 void ScriptPlugin::stop(core::Engine& engine) {
-    engine.getPlugin<plugins::DebugPlugin>().setScriptMemory({});
     autoloads->stop(engine);
     jobs->stop();
     for (std::size_t index = modules.size(); index > 0; --index) {

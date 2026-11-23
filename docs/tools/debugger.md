@@ -62,7 +62,7 @@ Visual Studio Code attaches through a debug type that an extension registers. An
 }
 ```
 
-The development server takes one editor at a time and turns away another one while an editor is attached. It keeps the breakpoints and the error filter that the editor set and gives them again to every app that connects later, such as an app that you relaunched. Inside a running app, they also outlive every hot reload and every restart of the app, because the debugger belongs to the development session of the process, not to the app.
+The development server takes one editor at a time and turns away another one while an editor is attached. It keeps the breakpoints and the error filter that the editor set and gives them again to every app that connects later, such as an app that you relaunched. Inside a running app, they also outlive every hot reload and every restart of the app, because the debugger belongs to the development session of the process, not to the app. The debugger lives in the Lua layer of the engine, in `engine/lua/src/debug/`, and the session keeps it in the part of development that Lua brings, as [the architecture guide](../core/architecture.md#development-and-hot-reload) describes.
 
 ## Breakpoints
 

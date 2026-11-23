@@ -17,11 +17,13 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Connection.hpp"
+#include "haylen/core/EventBus.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/core/RingBuffer.hpp"
 #include "haylen/debug/Breadcrumb.hpp"
 #include "haylen/debug/Console.hpp"
+#include "haylen/debug/Inspector.hpp"
 #include "haylen/debug/LogLine.hpp"
 #include "haylen/debug/Monitor.hpp"
 #include "haylen/debug/Stats.hpp"
@@ -189,6 +191,15 @@ class DebugPlugin final : public Plugin {
     // The bytes that the scripts of the app hold, or 0 for an app without scripts.
     [[nodiscard]] std::size_t getScriptMemory() const;
 
+    // Gives the statistics the reader of the named signals of the scripts of the app with their listeners, or an empty reader once the scripts stopped.
+    void setScriptSignals(std::function<void(std::vector<core::EventBus::Topic>&)> reader);
+
+    // Reads the named signals of the scripts of the app into the storage of the list, which an app without scripts leaves empty.
+    void readScriptSignals(std::vector<core::EventBus::Topic>& signals) const;
+
+    // Gives the inspector the provider of the values of the app, such as the values of its Lua state, or none.
+    void setInspected(debug::Inspector::Provider* value) noexcept;
+
     // Turns every drawing off while any is on, and otherwise turns on every drawing the engine and the app know, as the key of the drawings does.
     void toggleDrawings();
 
@@ -233,6 +244,9 @@ class DebugPlugin final : public Plugin {
     void record(core::Log::Level level, std::string_view line);
     void addBuiltInCommands(core::Engine& engine);
     void runRelayedLines(core::Engine& engine);
+    // Throws `std::logic_error` while no provider gives the inspector the values of the app.
+    [[nodiscard]] debug::Inspector::Provider& getInspected() const;
+
     void answerInspection(const std::vector<std::string>& path, const std::function<void(bool ok, const core::Json& result)>& reply) const;
     [[nodiscard]] core::Json describeCommands() const;
     void detachTrace();
@@ -240,7 +254,6 @@ class DebugPlugin final : public Plugin {
     void publishCrashContext(core::Engine& engine);
     [[nodiscard]] static std::string cut(std::string_view text);
     [[nodiscard]] static std::string describeNames(const std::vector<std::string>& names);
-    [[nodiscard]] static std::string runLua(core::Engine& engine, const std::string& chunk);
     [[nodiscard]] static std::string makeCaptureName();
     void reportCapture(int frames, const std::optional<std::filesystem::path>& path, const std::string& error);
 
@@ -272,6 +285,8 @@ class DebugPlugin final : public Plugin {
     std::vector<core::Connection> builtInCommands;
     std::optional<input::Key> inspectorKey = input::Key::F2;
     std::function<std::size_t()> scriptMemory;
+    std::function<void(std::vector<core::EventBus::Topic>&)> scriptSignals;
+    debug::Inspector::Provider* inspected = nullptr;
     core::RingBuffer<debug::Breadcrumb> breadcrumbs{kBreadcrumbs};
     core::Json lastCrash;
     std::atomic<bool> logChanged = false;

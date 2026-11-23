@@ -26,10 +26,6 @@
 #include "platform/NativeHost.hpp"
 #include "platform/ReportedState.hpp"
 
-namespace haylen::debug {
-class ExecutionBudget;
-}
-
 namespace haylen::gpu {
 class Device;
 }
@@ -197,7 +193,6 @@ class Player final {
     [[nodiscard]] static Player& getCurrent() noexcept;
 
     // The execution budget of the development session, which times every call of the player into the engine, or null for an app that plays as it ships.
-    [[nodiscard]] debug::ExecutionBudget* getExecutionBudget() const noexcept;
     [[nodiscard]] App load(const std::function<std::shared_ptr<io::Package>()>& open);
     [[nodiscard]] std::vector<gpu::Device::Api> resolveGraphicsApis(std::string_view requested, std::span<const gpu::Device::Api> configured);
     [[nodiscard]] static std::vector<Event> takePostedEvents();

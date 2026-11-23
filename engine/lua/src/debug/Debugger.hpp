@@ -13,7 +13,7 @@
 #include "haylen/core/Json.hpp"
 
 namespace haylen::platform {
-class Host;
+class DevelopmentSession;
 }
 
 namespace haylen::debug {
@@ -35,7 +35,8 @@ class Debugger final {
     // The one thread that the client sees, since the coroutines of Lua take turns on the frame thread.
     static constexpr int kThreadId = 1;
 
-    Debugger(platform::Host& host, Send send, Pump pump);
+    // The session tells whether the frames of the host may halt and keeps the platform responsive during a halt.
+    Debugger(platform::DevelopmentSession& developmentSession, Send send, Pump pump);
     ~Debugger();
 
     Debugger(const Debugger&) = delete;
@@ -111,7 +112,7 @@ class Debugger final {
     [[nodiscard]] static int readInt(const core::Json& object, const char* key, int fallback);
     [[nodiscard]] static std::string readText(const core::Json& object, const char* key);
 
-    platform::Host& host;
+    platform::DevelopmentSession& session;
     Send send;
     Pump pump;
     Tracer tracer{*this};

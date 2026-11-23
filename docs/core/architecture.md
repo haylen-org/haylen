@@ -90,7 +90,7 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | `ScreenRelay` | Keeps the screen of a plugin that shows and carries the ends of screens. |
 | `ConsoleRelay` | Carries the lines of the developer console that come from the development server or the web page, and the requests of the terminal for its commands. |
 | `CrashGuard` | Captures the native crashes of the process into a report that the next start reads. |
-| `DevelopmentSession` and `DevelopmentConnection` | Hold the state of [development](#development-and-hot-reload). |
+| `DevelopmentSession` and `DevelopmentConnection` | Hold the state of [development](#development-and-hot-reload), with the `DevelopmentSession::Extension` that the runtime of the scripts brings. |
 | `NativeViews` | The edges that native views of plugins reserve and the covers of the app. |
 | `PluginLoadOrder` | Orders the native parts of plugins from the package, where the platform reads them there. |
 | `native/` | The native libraries, callbacks and C interface of `haylen.native`: `NativeLibraries` with the symbols of the libraries linked into the app, `NativeSignature`, `NativeCallback`, whose calls reach the `NativeCallback::Receiver` of the app that made it on the frame thread, `NativeApi` and `NativeLua`. |
@@ -672,9 +672,11 @@ An app runs in development when the player gets `--dev` or `--dev-server`, when 
 
 **The session.** The runtime gives its host a `platform::DevelopmentSession`, which belongs to the process and outlives every engine. At launch, the session takes a snapshot of `haylen.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of the folder. It holds the queue of changed paths. Because the session keeps the snapshot and the queue, changes saved while the app restarts reach the next app. An app that another app launches plays with a session of its own, which connects to the server that the launch named, or with none, while the app that launched it keeps its session for its return. The launched app closes before its session ends, since its plugins hold the session.
 
+**The parts of development.** The core of the engine holds what every app in development has: the session with its scans and its connection, the reload of assets, the restarts, the console, the statistics, the inspector window and the captures of the GPU. The Lua layer brings the rest, in `engine/lua/src/development/`, `engine/lua/src/debug/` and `engine/lua/src/plugins/`. Its `lua::Development` is the `platform::DevelopmentSession::Extension` of the session, which the first app that runs Lua in the session makes and which the session keeps, with the debugger and the execution budget, so the breakpoints live across restarts. The execution budget is the `core::Engine::EntryObserver` of every engine of a Lua app, which the engine tells of each call of the host into it: the start, every frame, every event, the stop and its end. `lua::ModuleHotReload` is the `HotReloadPlugin::Scripts` that reloads the Lua modules for the hot reload plugin, and `debug::ScriptInspector` is the `debug::Inspector::Provider` that lists the values of the Lua state for the inspector of the debug plugin, which `DebugModule` gives the plugin with the memory and the named signals of the state and the console command `lua`.
+
 **The scan.** Every half second of real time, also while the app is halted, `HotReloadPlugin` posts a scan of the folder to the I/O pool, and the scan queues the changed paths in the session. The plugin takes the queue at the start of a frame, even from the error screen. A scan ignores hidden files, backup files and files under the `source/` folders that are not Lua, and it leaves files that are still being written for the next scan.
 
-**The module graph.** In development, the plugin replaces `require` with the one of `lua::ModuleGraph`. The graph records, for every module of the package:
+**The module graph.** In development, `lua::ModuleHotReload` replaces `require` with the one of `lua::ModuleGraph`. The graph records, for every module of the package:
 
 - its name, its source and its dependencies,
 - the owner of what its top level registered without an owner, which the bindings take from `lua::Owners::pushDefault`,
@@ -696,7 +698,7 @@ The command `haylen app run <app> --target web` serves the site with that server
 
 ### The debugger
 
-The session owns the Lua debugger, `debug::Debugger`, so its editor, its breakpoints and the errors it watches outlive every app that restarts under it. The [debugger guide](../tools/debugger.md) explains what a person does with it. An editor attaches to a TCP port of `haylen app run`, and the development server carries the messages of the Debug Adapter Protocol through the development connection, as text messages of the type `debug`. The debugger is made of these classes of `engine/src/debug/`:
+The `lua::Development` of the session owns the Lua debugger, `debug::Debugger`, so its editor, its breakpoints and the errors it watches outlive every app that restarts under it. The [debugger guide](../tools/debugger.md) explains what a person does with it. An editor attaches to a TCP port of `haylen app run`, and the development server carries the messages of the Debug Adapter Protocol through the development connection, as text messages of the type `debug`. The debugger is made of these classes of `engine/src/debug/`:
 
 | Class | What it does |
 | --- | --- |

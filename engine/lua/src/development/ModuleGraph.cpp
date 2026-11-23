@@ -1,4 +1,4 @@
-#include "lua/ModuleGraph.hpp"
+#include "development/ModuleGraph.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6,12 +6,12 @@
 #include <set>
 #include <utility>
 
+#include "development/ModuleClosures.hpp"
+#include "development/ModuleSnapshot.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
-#include "lua/ModuleClosures.hpp"
-#include "lua/ModuleSnapshot.hpp"
 #include "lua/Owners.hpp"
 
 namespace haylen::lua {

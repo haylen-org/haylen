@@ -10,8 +10,9 @@
 #include "haylen/core/Json.hpp"
 
 namespace haylen::platform {
+class DevelopmentSession;
 class Host;
-}
+} // namespace haylen::platform
 
 namespace haylen::test {
 
@@ -20,7 +21,12 @@ class DebugClient final {
   public:
     using Step = std::function<void(DebugClient& client)>;
 
+    // The client keeps a development session of its own on the host, which tells the debugger whether the frames of the host may halt.
     explicit DebugClient(platform::Host& host);
+    ~DebugClient();
+
+    DebugClient(const DebugClient&) = delete;
+    DebugClient& operator=(const DebugClient&) = delete;
 
     [[nodiscard]] debug::Debugger& getDebugger() noexcept {
         return *debugger;
@@ -49,6 +55,7 @@ class DebugClient final {
   private:
     void pump();
 
+    std::unique_ptr<platform::DevelopmentSession> session;
     std::unique_ptr<debug::Debugger> debugger;
     std::vector<core::Json> received;
     std::deque<Step> steps;

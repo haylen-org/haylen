@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include "debug/Inspector.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/audio/Mixer.hpp"
@@ -20,6 +19,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
+#include "haylen/debug/Inspector.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"

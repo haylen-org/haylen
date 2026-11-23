@@ -1,17 +1,17 @@
-#include "lua/ModuleReloader.hpp"
+#include "development/ModuleReloader.hpp"
 
 #include <array>
 #include <utility>
 
+#include "development/ModuleClosures.hpp"
+#include "development/ModuleGraph.hpp"
+#include "development/ModuleSnapshot.hpp"
+#include "development/ValueRemap.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "lua/ErrorReader.hpp"
-#include "lua/ModuleClosures.hpp"
-#include "lua/ModuleGraph.hpp"
-#include "lua/ModuleSnapshot.hpp"
 #include "lua/Owners.hpp"
-#include "lua/ValueRemap.hpp"
 
 namespace haylen::lua {
 

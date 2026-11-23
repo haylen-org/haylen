@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include "debug/ExecutionBudget.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
@@ -112,10 +111,7 @@ int HeadlessPlayer::play(const Options& options) {
             }
         }
 
-        {
-            const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "frame");
-            engine->frame(std::chrono::duration<double>(kFrameTime).count());
-        }
+        engine->frame(std::chrono::duration<double>(kFrameTime).count());
 
         ++frame;
         next += kFrameTime;
@@ -166,19 +162,12 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const s
     }
 
     auto engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
-    const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "start");
     engine->start();
     return engine;
 }
 
 void HeadlessPlayer::end(HeadlessHost& host, std::unique_ptr<core::Engine>& engine) {
-    const debug::ExecutionBudget::Entry entry(getExecutionBudget(host), "stop");
     engine.reset();
-}
-
-debug::ExecutionBudget* HeadlessPlayer::getExecutionBudget(HeadlessHost& host) noexcept {
-    DevelopmentSession* session = host.getDevelopmentSession();
-    return session != nullptr ? &session->getExecutionBudget() : nullptr;
 }
 
 } // namespace haylen::platform

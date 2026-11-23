@@ -111,7 +111,6 @@ class TypeConverter final {
     static const NameTable<input::TouchPhase, 5> kPhases;
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
-    static const NameTable<core::ProcessMode, 5> kProcessModes;
     static const NameTable<core::MotionReduction, 3> kMotionReductions;
     static constexpr std::array<std::string_view, 8> kEasingFields{"curve", "overshoot", "amplitude", "period", "steps", "position", "cubicBezier", "points"};
     static constexpr std::array<std::string_view, 4> kPartColorFields{"red", "green", "blue", "yellow"};
@@ -478,15 +477,6 @@ template <> struct EnumNames<math::Easing::StepPosition> {
     }
     static std::string_view name(math::Easing::StepPosition value) {
         return math::Easing::stepPositionName(value);
-    }
-};
-
-template <> struct EnumNames<core::ProcessMode> {
-    static std::optional<core::ProcessMode> fromName(std::string_view name) {
-        return lua::TypeConverter::fromTable(lua::TypeConverter::kProcessModes, name);
-    }
-    static std::string_view name(core::ProcessMode value) {
-        return lua::TypeConverter::toName(lua::TypeConverter::kProcessModes, value);
     }
 };
 

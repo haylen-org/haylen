@@ -8,8 +8,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "debug/DebugLua.hpp"
-#include "debug/Inspector.hpp"
 #include "debug/InspectorWindow.hpp"
 #include "debug/OverlayWindow.hpp"
 #include "haylen/core/Engine.hpp"
@@ -18,11 +16,10 @@
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/SceneView.hpp"
+#include "haylen/debug/Inspector.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/graphics/Device.hpp"
-#include "haylen/lua/Runtime.hpp"
-#include "haylen/lua/ScriptPlugin.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
@@ -57,7 +54,7 @@ void DebugPlugin::start(core::Engine& engine) {
     overlay = engine.getRenderer2D().addCanvasOverlay([this, &engine](graphics2d::Renderer& renderer) { drawOverlay(engine, renderer); });
 }
 
-// The commands of Lua hold functions of the Lua state, which closes after the plugins stop.
+// The commands that scripts add hold functions of their runtime, which closes after the plugins stop.
 void DebugPlugin::stop(core::Engine& engine) {
     for (core::Connection& command : std::exchange(builtInCommands, {})) {
         command.disconnect();
@@ -375,7 +372,7 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
     }
 
     if (inspectorVisible) {
-        inspectorVisible = inspectorWindow->draw(engine.getPlugin<lua::ScriptPlugin>().getState(), backend);
+        inspectorVisible = inspected != nullptr && inspectorWindow->draw(*inspected, backend);
     }
 }
 
@@ -439,7 +436,7 @@ void DebugPlugin::answerInspection(const std::vector<std::string>& path, const s
     core::Json entries = core::Json::array();
     try {
         debug::Inspector::Listing listing;
-        debug::Inspector::list(owner->getPlugin<lua::ScriptPlugin>().getState(), path, listing);
+        getInspected().list(path, listing);
         for (const debug::Inspector::Entry& entry : listing.entries) {
             entries.push_back({{"key", entry.key}, {"type", entry.type}, {"value", entry.value}, {"expandable", entry.expandable}});
         }
@@ -596,20 +593,20 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         engine.requestRestart();
         return std::string("The app restarts.");
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "inspect", .help = "Lists the values at a path of the inspector, such as \"scenes.1\", or its roots when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [&engine](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "inspect", .help = "Lists the values at a path of the inspector, such as \"scenes.1\", or its roots when the line names none.", .parameters = {{.kind = Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) {
         const std::vector<std::string> path = debug::Inspector::splitPath(arguments.empty() ? std::string_view() : arguments[0].get_ref<const std::string&>());
         std::string text;
         debug::Inspector::Listing listing;
-        debug::Inspector::list(engine.getPlugin<lua::ScriptPlugin>().getState(), path, listing);
+        getInspected().list(path, listing);
         for (const debug::Inspector::Entry& entry : listing.entries) {
             text += std::format("{}{}  {}{}{}", text.empty() ? "" : "\n", entry.key, entry.type, entry.value.empty() ? "" : "  ", entry.value);
         }
 
         return text;
     }}));
-    builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets a number, a boolean or a string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
+    builtInCommands.push_back(console.addCommand({.name = "set", .help = "Sets a number, a boolean or a string at a path of the inspector, such as \"set watched.player.speed 300\".", .parameters = {{.kind = Kind::String}, {.kind = Kind::Text}}, .handler = [this](const core::Json& arguments) {
         const std::string& path = arguments[0].get_ref<const std::string&>();
-        debug::Inspector::set(engine.getPlugin<lua::ScriptPlugin>().getState(), debug::Inspector::splitPath(path), arguments[1].get_ref<const std::string&>());
+        getInspected().set(debug::Inspector::splitPath(path), arguments[1].get_ref<const std::string&>());
         return std::format("Set \"{}\".", path);
     }}));
     builtInCommands.push_back(console.addCommand({.name = "inspector", .help = "Shows or hides the inspector window, or switches it when the line leaves the state out.", .parameters = {{.kind = Kind::Boolean, .optional = true}}, .handler = [this](const core::Json& arguments) {
@@ -622,11 +619,6 @@ void DebugPlugin::addBuiltInCommands(core::Engine& engine) {
         const std::string_view tool = gpu::Device::kCaptureToolNames[static_cast<std::size_t>(engine.getGraphics().getCaptureSupport().tool)].first;
         return std::format("Capturing the next {} {} with \"{}\".", frames, frames == 1 ? "frame" : "frames", tool);
     }}));
-    if (development) {
-        builtInCommands.push_back(console.addCommand({.name = "lua", .help = "Runs Lua code in the app and prints what it returns.", .parameters = {{.kind = Kind::Text}}, .handler = [&engine](const core::Json& arguments) {
-            return runLua(engine, arguments[0].get_ref<const std::string&>());
-        }}));
-    }
     // clang-format on
 }
 
@@ -649,47 +641,30 @@ std::size_t DebugPlugin::getScriptMemory() const {
     return scriptMemory ? scriptMemory() : 0;
 }
 
-// The code runs as an expression first, so `player.speed` prints its value, and as statements when it is not one.
-std::string DebugPlugin::runLua(core::Engine& engine, const std::string& chunk) {
-    lua_State* L = engine.getPlugin<lua::ScriptPlugin>().getState();
-    const int top = lua_gettop(L);
-    const std::string expression = "return " + chunk;
-    if (luaL_loadbufferx(L, expression.data(), expression.size(), "=console", "t") != LUA_OK) {
-        lua_pop(L, 1);
-        if (luaL_loadbufferx(L, chunk.data(), chunk.size(), "=console", "t") != LUA_OK) {
-            std::string message = lua_tostring(L, -1);
-            lua_settop(L, top);
-            throw std::invalid_argument(message);
-        }
+void DebugPlugin::setScriptSignals(std::function<void(std::vector<core::EventBus::Topic>&)> reader) {
+    scriptSignals = std::move(reader);
+}
+
+// The reader fills the storage of the list again, so the signals that the overlay shows every frame allocate nothing.
+void DebugPlugin::readScriptSignals(std::vector<core::EventBus::Topic>& signals) const {
+    if (scriptSignals) {
+        scriptSignals(signals);
+        return;
     }
 
-    lua::Runtime::protectedCall(L, 0, LUA_MULTRET);
+    signals.clear();
+}
 
-    std::string text;
-    for (int index = top + 1; index <= lua_gettop(L); ++index) {
-        if (index > top + 1) {
-            text += "  ";
-        }
+void DebugPlugin::setInspected(debug::Inspector::Provider* value) noexcept {
+    inspected = value;
+}
 
-        switch (lua_type(L, index)) {
-        case LUA_TNIL:
-            text += "nil";
-            break;
-        case LUA_TBOOLEAN:
-            text += lua_toboolean(L, index) != 0 ? "true" : "false";
-            break;
-        case LUA_TNUMBER:
-        case LUA_TSTRING:
-            text += lua_tostring(L, index);
-            break;
-        default:
-            text += std::format("{}: {}", luaL_typename(L, index), lua_topointer(L, index));
-            break;
-        }
+debug::Inspector::Provider& DebugPlugin::getInspected() const {
+    if (inspected == nullptr) {
+        throw std::logic_error("The app holds no values that the inspector lists, since none of its code runs as scripts.");
     }
 
-    lua_settop(L, top);
-    return text;
+    return *inspected;
 }
 
 void DebugPlugin::renderOverlay(core::Engine& engine) {

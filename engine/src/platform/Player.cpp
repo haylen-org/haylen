@@ -12,8 +12,6 @@
 #include <utility>
 
 #include "content/ReleasePackage.hpp"
-#include "debug/Debugger.hpp"
-#include "debug/ExecutionBudget.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/AppError.hpp"
@@ -183,7 +181,6 @@ void Player::setPaused(bool value) {
     }
 
     if (const std::optional<Event> event = runtime.reported.setPaused(value)) {
-        const debug::ExecutionBudget::Entry entry(runtime.getExecutionBudget(), "event");
         runtime.engine->handleEvent(*event);
     }
 }
@@ -216,7 +213,7 @@ bool Player::isHalted() noexcept {
     }
 
     const DevelopmentSession* session = current->host->getDevelopmentSession();
-    return session != nullptr && session->getDebugger().isHalted();
+    return session != nullptr && session->isHalted();
 }
 
 void Player::postEvent(Event event) {
@@ -258,11 +255,6 @@ void Player::pressBack() {
 
     deliver({.type = Event::Type::KeyDown, .key = input::Key::Escape});
     deliver({.type = Event::Type::KeyUp, .key = input::Key::Escape});
-}
-
-debug::ExecutionBudget* Player::getExecutionBudget() const noexcept {
-    const DevelopmentSession* session = host->getDevelopmentSession();
-    return session != nullptr ? &session->getExecutionBudget() : nullptr;
 }
 
 Player::Process& Player::getProcess() noexcept {
@@ -369,9 +361,8 @@ void Player::frame(double seconds) {
     }
 }
 
-// The events that wait and the frame run as one call into the engine, which the execution budget of development times, before the frame decides whether another app takes over.
+// The events that wait run before the frame, and the frame decides whether another app takes over.
 void Player::play(double seconds) {
-    const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "frame");
     host->setBackHeld(getProcess().backHeld.load());
     Services::updateWindow();
 
@@ -527,7 +518,6 @@ void Player::launch() {
         return;
     }
 
-    const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "start");
     engine->start();
 
     for (const Event& event : reported.getReplay()) {
@@ -568,10 +558,7 @@ void Player::close() noexcept {
 
     host->appStopping();
     getProcess().exitStatus = engine->getExitStatus();
-    {
-        const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "stop");
-        engine.reset();
-    }
+    engine.reset();
 
     host->appStopped(playing);
 }
@@ -583,7 +570,6 @@ void Player::deliver(const Event& event) {
         return;
     }
 
-    const debug::ExecutionBudget::Entry entry(getExecutionBudget(), "event");
     const bool typed = event.type == Event::Type::TextEdited || event.type == Event::Type::TextAction;
     if (!typed || event.textEdit.field != TextInput::kKeyboardField) {
         engine->handleEvent(event);

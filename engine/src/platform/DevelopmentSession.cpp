@@ -5,8 +5,6 @@
 #include <optional>
 #include <utility>
 
-#include "debug/Debugger.hpp"
-#include "debug/ExecutionBudget.hpp"
 #include "haylen/core/Log.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentConnection.hpp"
@@ -14,15 +12,7 @@
 
 namespace haylen::platform {
 
-// The debugger talks to its client through the connection, and while it halts the app it pumps the connection itself, since no frame pumps it then.
-DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem::path> folder, std::string server) : executionBudget(std::make_unique<debug::ExecutionBudget>()) {
-    // clang-format off
-    debugger = std::make_unique<debug::Debugger>(host, [this](const core::Json& message) {
-        if (connection) {
-            connection->sendDebug(message);
-        }
-    }, [this] { pump(); });
-    // clang-format on
+DevelopmentSession::DevelopmentSession(Host& owner, std::optional<std::filesystem::path> folder, std::string server) : host(owner) {
     if (folder) {
         watcher = std::make_unique<io::PackageWatcher>(*folder);
         core::Log::info("Watching \"{}\" for changes.", folder->generic_string());
@@ -38,6 +28,24 @@ DevelopmentSession::~DevelopmentSession() = default;
 
 void DevelopmentSession::setOverlay(std::shared_ptr<io::OverlayPackage> value) {
     overlay = std::move(value);
+}
+
+void DevelopmentSession::setExtension(std::unique_ptr<Extension> value) {
+    extension = std::move(value);
+}
+
+void DevelopmentSession::sendDebug(const core::Json& message) const {
+    if (connection) {
+        connection->sendDebug(message);
+    }
+}
+
+bool DevelopmentSession::canHaltFrames() const {
+    return host.canHaltFrames();
+}
+
+bool DevelopmentSession::pumpHaltedEvents() {
+    return host.pumpHaltedEvents();
 }
 
 void DevelopmentSession::pump() {

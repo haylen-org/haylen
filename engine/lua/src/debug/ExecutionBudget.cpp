@@ -11,24 +11,24 @@
 
 namespace haylen::debug {
 
-ExecutionBudget::Entry::Entry(ExecutionBudget* owner, std::string_view stage) noexcept : budget(owner) {
-    if (budget == nullptr || budget->entries++ > 0) {
+void ExecutionBudget::enter(std::string_view stage) noexcept {
+    if (entries++ > 0) {
         return;
     }
 
-    budget->deadline = Clock::now() + budget->limits.time;
-    budget->entryStage = stage;
+    deadline = Clock::now() + limits.time;
+    entryStage = stage;
 }
 
-ExecutionBudget::Entry::~Entry() {
-    if (budget == nullptr || --budget->entries > 0) {
+void ExecutionBudget::leave() noexcept {
+    if (--entries > 0) {
         return;
     }
 
-    budget->deadline = Clock::time_point::max();
+    deadline = Clock::time_point::max();
 
-    if (budget->memoryExhausted && !budget->exhausted) {
-        budget->cancelForMemory();
+    if (memoryExhausted && !exhausted) {
+        cancelForMemory();
     }
 }
 

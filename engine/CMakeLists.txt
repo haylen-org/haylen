@@ -375,17 +375,12 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/TweenProperty.cpp
   src/core/TweenValue.cpp
   src/core/Utf8.cpp
-  src/debug/Breakpoints.cpp
   src/debug/Console.cpp
   src/debug/ConsoleLua.cpp
   src/debug/CrashLua.cpp
   src/debug/DebugLua.cpp
   src/debug/DebugWindow.cpp
-  src/debug/Debugger.cpp
-  src/debug/Evaluation.cpp
-  src/debug/ExecutionBudget.cpp
   src/debug/GpuCaptureLua.cpp
-  src/debug/HaltedStack.cpp
   src/debug/Inspector.cpp
   src/debug/InspectorLua.cpp
   src/debug/InspectorWindow.cpp
@@ -395,11 +390,9 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Profiler.cpp
   src/debug/Stats.cpp
   src/debug/StatsDisplay.cpp
-  src/debug/ThreadWalk.cpp
   src/debug/TraceLua.cpp
   src/debug/TraceRecorder.cpp
   src/debug/TraceSpan.cpp
-  src/debug/Tracer.cpp
   src/gpu/SurfaceTurn.cpp
   src/graphics/BlendMode.cpp
   src/graphics/Device.cpp
@@ -474,9 +467,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/JobsLua.cpp
   src/lua/JsonConverter.cpp
   src/lua/Module.cpp
-  src/lua/ModuleClosures.cpp
-  src/lua/ModuleGraph.cpp
-  src/lua/ModuleReloader.cpp
   src/lua/Modules.cpp
   src/lua/modules/Animation2DModule.cpp
   src/lua/modules/AssetsModule.cpp
@@ -504,7 +494,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/modules/TiledModule.cpp
   src/lua/modules/UiModule.cpp
   src/lua/modules/VideoModule.cpp
-  src/lua/ModuleSnapshot.cpp
   src/lua/NativeProperty.cpp
   src/lua/Owners.cpp
   src/lua/Promise.cpp
@@ -518,12 +507,28 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/Task.cpp
   src/lua/TypeConverter.cpp
   src/lua/Userdata.cpp
-  src/lua/ValueRemap.cpp
   src/lua/Warnings.cpp
   src/lua/WeakReference.cpp
   lua/src/content/LuaPackSource.cpp
-  lua/src/platform/native/NativeCallbacks.cpp
   lua/src/core/ScriptedTrack.cpp
+  lua/src/debug/Breakpoints.cpp
+  lua/src/debug/Debugger.cpp
+  lua/src/debug/Evaluation.cpp
+  lua/src/debug/ExecutionBudget.cpp
+  lua/src/debug/HaltedStack.cpp
+  lua/src/debug/ScriptInspector.cpp
+  lua/src/debug/ThreadWalk.cpp
+  lua/src/debug/Tracer.cpp
+  lua/src/development/Development.cpp
+  lua/src/development/ModuleClosures.cpp
+  lua/src/development/ModuleGraph.cpp
+  lua/src/development/ModuleHotReload.cpp
+  lua/src/development/ModuleReloader.cpp
+  lua/src/development/ModuleSnapshot.cpp
+  lua/src/development/ValueRemap.cpp
+  lua/src/platform/native/NativeCallbacks.cpp
+  lua/src/plugins/DebuggerPlugin.cpp
+  lua/src/plugins/ExecutionBudgetPlugin.cpp
   lua/src/ui/LuaItemSource.cpp
   lua/src/ui/LuaPageSource.cpp
   lua/src/ui/ScriptedScreen.cpp
@@ -616,8 +621,6 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/ContentPlugin.cpp
   src/plugins/ConversationPlugin.cpp
   src/plugins/DebugPlugin.cpp
-  src/plugins/DebuggerPlugin.cpp
-  src/plugins/ExecutionBudgetPlugin.cpp
   src/plugins/HotReloadPlugin.cpp
   src/plugins/LocalizationPlugin.cpp
   src/plugins/NetPlugin.cpp

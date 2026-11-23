@@ -6,7 +6,6 @@
 #include <string_view>
 #include <utility>
 
-#include "debug/Debugger.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/core/Version.hpp"
 #include "haylen/io/PackageWatcher.hpp"
@@ -30,7 +29,7 @@ void DevelopmentConnection::pump() {
         return;
     }
 
-    if (!held.empty() && !session.getDebugger().isHalted()) {
+    if (!held.empty() && !session.isHalted()) {
         for (const auto& [data, binary] : std::exchange(held, {})) {
             receive(data, binary);
         }
@@ -44,7 +43,13 @@ void DevelopmentConnection::open() {
     socket->opened.connect([this] { sendHello(); });
     socket->received.connect([this](std::string_view data, bool binary) { receive(data, binary); });
     socket->failed.connect([](std::string_view message) { core::Log::warning("The development server is out of reach: {}", message); });
-    socket->disconnected.connect([this](int, std::string_view) { session.getDebugger().reset(); });
+    // clang-format off
+    socket->disconnected.connect([this](int, std::string_view) {
+        if (DevelopmentSession::Extension* extension = session.getExtension()) {
+            extension->disconnect();
+        }
+    });
+    // clang-format on
 }
 
 // The session and revision of the last batch tell the server which files the app already has, so after a restart of the server or the app it sends only what changed since.
@@ -74,7 +79,7 @@ void DevelopmentConnection::sendDebug(const core::Json& value) {
 }
 
 void DevelopmentConnection::receive(std::string_view data, bool binary) {
-    const bool halted = session.getDebugger().isHalted();
+    const bool halted = session.isHalted();
     if (binary && halted) {
         held.emplace_back(data, true);
         return;
@@ -94,7 +99,10 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
     const core::Json message = core::Json::parse(data, nullptr, false);
     const std::string type = readText(message, "type");
     if (type == "debug" && message.contains("message")) {
-        session.getDebugger().receive(message.at("message"));
+        if (DevelopmentSession::Extension* extension = session.getExtension()) {
+            extension->receive(message.at("message"));
+        }
+
         return;
     }
 

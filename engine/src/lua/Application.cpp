@@ -3,6 +3,8 @@
 #include <memory>
 #include <string>
 
+#include "debug/ExecutionBudget.hpp"
+#include "development/Development.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
@@ -14,8 +16,12 @@
 
 namespace haylen::lua {
 
-// The tools of development that follow the Lua state start after the script plugin made it.
+// The tools of development that follow the Lua state start after the script plugin made it, and the execution budget of development times every call of the host into the engine from its start on.
 void Application::addPlugins(core::Engine& engine) {
+    if (platform::DevelopmentSession* session = engine.getDevelopmentSession()) {
+        engine.setEntryObserver(&Development::of(*session).getExecutionBudget());
+    }
+
     engine.addPlugin(std::make_unique<ScriptPlugin>());
     engine.addPlugin(std::make_unique<plugins::ExecutionBudgetPlugin>(engine.getDevelopmentSession()));
     engine.addPlugin(std::make_unique<plugins::DebuggerPlugin>(engine.getDevelopmentSession()));

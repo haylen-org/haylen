@@ -21,7 +21,7 @@ double InspectorWindow::getSteadySeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-bool InspectorWindow::draw(lua_State* L, ui::Backend& backend) {
+bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend) {
     const math::Rect safe = backend.getSafeRect();
     const float width = std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F);
     const math::Rect initial{safe.x + safe.width - width - DebugWindow::kMargin, safe.y + DebugWindow::kMargin, width, safe.height - DebugWindow::kMargin * 2.0F};
@@ -41,7 +41,7 @@ bool InspectorWindow::draw(lua_State* L, ui::Backend& backend) {
         if (ImGui::BeginTable("##values", 2, flags)) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 1.4F);
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-            drawRows(L, 0, rootPath, clock());
+            drawRows(provider, 0, rootPath, clock());
             ImGui::EndTable();
         }
     }
@@ -64,8 +64,8 @@ void InspectorWindow::reset() {
 }
 
 // Each value is a row whose name opens the values it holds in the rows below it, one level deeper. The map keeps every snapshot where it is while rows below add theirs.
-void InspectorWindow::drawRows(lua_State* L, std::size_t depth, const std::string& key, double now) {
-    const Snapshot& snapshot = snapshotOf(L, depth, key, now);
+void InspectorWindow::drawRows(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now) {
+    const Snapshot& snapshot = snapshotOf(provider, depth, key, now);
     if (!snapshot.error.empty()) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
@@ -100,10 +100,10 @@ void InspectorWindow::drawRows(lua_State* L, std::size_t depth, const std::strin
         const ImGuiTreeNodeFlags kind = entry.expandable ? ImGuiTreeNodeFlags_None : ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
         const bool opened = ImGui::TreeNodeEx("##row", kind | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", entry.key.c_str());
         ImGui::TableNextColumn();
-        drawValue(L, depth + 1, entryPath, entry);
+        drawValue(provider, depth + 1, entryPath, entry);
 
         if (opened && entry.expandable) {
-            drawRows(L, depth + 1, entryPath, now);
+            drawRows(provider, depth + 1, entryPath, now);
             ImGui::TreePop();
         }
 
@@ -112,7 +112,7 @@ void InspectorWindow::drawRows(lua_State* L, std::size_t depth, const std::strin
 }
 
 // A boolean shows a check box and a number or a string a field, while every other value shows what it holds, or its type when it tells nothing more, such as an object of a bound type.
-void InspectorWindow::drawValue(lua_State* L, std::size_t depth, const std::string& key, const Inspector::Entry& entry) {
+void InspectorWindow::drawValue(Inspector::Provider& provider, std::size_t depth, const std::string& key, const Inspector::Entry& entry) {
     if (!entry.editable) {
         ImGui::TextDisabled("%s", entry.value.empty() ? entry.type.c_str() : entry.value.c_str());
         return;
@@ -121,17 +121,17 @@ void InspectorWindow::drawValue(lua_State* L, std::size_t depth, const std::stri
     if (entry.type == "boolean") {
         bool checked = entry.value == "true";
         if (ImGui::Checkbox("##value", &checked)) {
-            edit(L, depth, checked ? "true" : "false");
+            edit(provider, depth, checked ? "true" : "false");
         }
 
         return;
     }
 
-    drawField(L, depth, key, entry);
+    drawField(provider, depth, key, entry);
 }
 
 // A field shows the value it read until the player edits it, and the edit goes through the setter of the value once Enter confirms it or the field lets go of the focus.
-void InspectorWindow::drawField(lua_State* L, std::size_t depth, const std::string& key, const Inspector::Entry& entry) {
+void InspectorWindow::drawField(Inspector::Provider& provider, std::size_t depth, const std::string& key, const Inspector::Entry& entry) {
     auto found = edits.find(key);
     if (found == edits.end()) {
         found = edits.emplace(key, entry.value).first;
@@ -152,14 +152,14 @@ void InspectorWindow::drawField(lua_State* L, std::size_t depth, const std::stri
     }
 
     if (ImGui::IsItemDeactivatedAfterEdit()) {
-        edit(L, depth, text);
+        edit(provider, depth, text);
     }
 }
 
-void InspectorWindow::edit(lua_State* L, std::size_t depth, std::string_view text) {
+void InspectorWindow::edit(Inspector::Provider& provider, std::size_t depth, std::string_view text) {
     const std::span<const std::string> edited(path.data(), depth);
     try {
-        Inspector::set(L, edited, text);
+        provider.set(edited, text);
         status = std::format("Set \"{}\" to {}.", Inspector::joinPath(edited), text);
         failed = false;
     } catch (const std::exception& error) {
@@ -171,7 +171,7 @@ void InspectorWindow::edit(lua_State* L, std::size_t depth, std::string_view tex
 }
 
 // A refresh lists the values again into the storage of the snapshot, and the path of each value takes the storage it had.
-const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(lua_State* L, std::size_t depth, const std::string& key, double now) {
+const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now) {
     auto found = snapshots.find(key);
     if (found == snapshots.end()) {
         found = snapshots.emplace(key, Snapshot{}).first;
@@ -184,7 +184,7 @@ const InspectorWindow::Snapshot& InspectorWindow::snapshotOf(lua_State* L, std::
 
     snapshot.time = now;
     try {
-        Inspector::list(L, std::span<const std::string>(path.data(), depth), snapshot.listing);
+        provider.list(std::span<const std::string>(path.data(), depth), snapshot.listing);
         snapshot.error.clear();
     } catch (const std::exception& error) {
         snapshot.listing.entries.clear();

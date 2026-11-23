@@ -144,6 +144,15 @@ class Engine final {
         long long idleMilliseconds = -1;
     };
 
+    // Hears every call of the host into the engine, the start, each frame, each event, the stop and the end of the engine, from its beginning to its end under the name of its step, such as the execution budget of development, which times the code of the app in each call. A call inside another one counts as part of the outer one.
+    class EntryObserver {
+      public:
+        virtual ~EntryObserver() = default;
+
+        virtual void enter(std::string_view stage) noexcept = 0;
+        virtual void leave() noexcept = 0;
+    };
+
     Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppConfig config, std::unique_ptr<Application> application);
     ~Engine();
 
@@ -154,6 +163,9 @@ class Engine final {
     void frame(double frameSeconds);
     void handleEvent(const platform::Event& event);
     void stop();
+
+    // Gives the engine the observer of the calls of the host into it, which outlives the engine, or none.
+    void setEntryObserver(EntryObserver* value) noexcept;
 
     [[nodiscard]] const AppConfig& getConfig() const noexcept;
     [[nodiscard]] platform::Window& getWindow() noexcept;
@@ -362,6 +374,19 @@ class Engine final {
     Signal<platform::Event::MemoryLevel> lowMemory;
 
   private:
+    // Tells the observer of the calls of the host that one runs, for as long as the scope lives.
+    class EntryScope final {
+      public:
+        EntryScope(const Engine& owner, std::string_view stage) noexcept;
+        ~EntryScope();
+
+        EntryScope(const EntryScope&) = delete;
+        EntryScope& operator=(const EntryScope&) = delete;
+
+      private:
+        EntryObserver* observer;
+    };
+
     // Holds the one engine of the process while it lives, because the GPU device, the renderer and the interface keep state of the process that one engine at a time owns.
     class Claim final {
       public:

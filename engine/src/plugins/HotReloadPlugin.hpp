@@ -15,9 +15,6 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/plugins/Plugin.hpp"
-#include "lua/ModuleGraph.hpp"
-
-struct lua_State;
 
 namespace haylen::platform {
 class DevelopmentSession;
@@ -25,7 +22,7 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, a removed module that no code of the app requires leaves the app in place, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app still requires, a module that cannot merge and any module in the mode `restart`. The report of every batch tells for each changed file whether it applied in place, waits for the next load, never counts, was rejected or restarts the app, and why. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The Lua module of hot reload installs `haylen.hotReload` in every app that runs Lua, and the module graph only in development, so apps that ship load their modules exactly as before.
+// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, a removed module that no code of the app requires leaves the app in place, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app still requires, a module that cannot merge and any module in the mode `restart`. The report of every batch tells for each changed file whether it applied in place, waits for the next load, never counts, was rejected or restarts the app, and why. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The runtime of the scripts reloads their code through `Scripts`, which the Lua module of hot reload gives the plugin only in development, so apps that ship load their modules exactly as before.
 class HotReloadPlugin final : public Plugin {
   public:
     static constexpr std::chrono::milliseconds kScanInterval{500};
@@ -73,6 +70,24 @@ class HotReloadPlugin final : public Plugin {
         [[nodiscard]] core::Json toJson() const;
     };
 
+    // What reloads the code of the scripts of an app in development, such as the modules of Lua, which the runtime of the scripts gives the plugin while the app runs.
+    class Scripts {
+      public:
+        virtual ~Scripts() = default;
+
+        // Whether the app loaded the file as code.
+        [[nodiscard]] virtual bool isLoaded(std::string_view path) const = 0;
+
+        // The reason why a change of the file of loaded code restarts the app, or an empty text when it applies in place.
+        [[nodiscard]] virtual std::string findRestartReason(core::Engine& engine, const std::string& path) const = 0;
+
+        // Takes the code of a removed file that no code of the app requires out of the app.
+        virtual void remove(core::Engine& engine, const std::string& path) = 0;
+
+        // Reloads the code of the files in the order the code requires each other, writes what each file did into the report and returns whether all of them and their hooks applied. A file that cannot apply in place writes a restart with its reason into the report and names itself in `restartFile`.
+        [[nodiscard]] virtual bool reload(core::Engine& engine, const std::vector<std::string>& paths, Report& report, std::string& restartFile) = 0;
+    };
+
     explicit HotReloadPlugin(platform::DevelopmentSession* developmentSession) noexcept : session(developmentSession) {}
 
     [[nodiscard]] std::string_view getName() const noexcept override {
@@ -86,13 +101,8 @@ class HotReloadPlugin final : public Plugin {
         return session != nullptr;
     }
 
-    // Makes the module graph replace `require` of the Lua state in development, before the app loads any module, so the graph records the modules that the app loads.
-    void installGraph(lua_State* L);
-
-    // The loaded modules of the app, which only an app in development records, or null.
-    [[nodiscard]] lua::ModuleGraph* getGraph() noexcept {
-        return graph.get();
-    }
+    // Gives the plugin what reloads the code of the scripts of the app while the app runs in development, or none.
+    void setScripts(Scripts* value) noexcept;
 
     // Fires after every batch that did something, with its report.
     core::Signal<const Report&> reloaded;
@@ -120,15 +130,10 @@ class HotReloadPlugin final : public Plugin {
     // Restarts the app for the reason, and marks every changed file that the batch would apply as applied by the restart.
     void restart(core::Engine& engine, const Batch& batch, Report& report, const std::string& reason, const std::string& file);
 
-    // Reloads the modules in dependency order and returns whether all of them and their hooks applied, or leaves a restart reason in the report and the module that asked for it in `restartFile`.
-    [[nodiscard]] bool reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report, std::string& restartFile);
-
-    // Calls the `reloaded` hooks and returns the error of the first one that failed.
-    [[nodiscard]] std::optional<core::AppError> callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const;
     void finish(const Report& report);
 
     platform::DevelopmentSession* session;
-    std::unique_ptr<lua::ModuleGraph> graph;
+    Scripts* scripts = nullptr;
     core::AppConfig::Debug::Reload mode = core::AppConfig::Debug::Reload::Module;
     std::chrono::steady_clock::time_point lastScan;
 };

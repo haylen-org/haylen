@@ -13,11 +13,11 @@
 #include "debug/ExecutionBudget.hpp"
 #include "debug/HaltedStack.hpp"
 #include "haylen/core/Log.hpp"
-#include "platform/Host.hpp"
+#include "platform/DevelopmentSession.hpp"
 
 namespace haylen::debug {
 
-Debugger::Debugger(platform::Host& platformHost, Send sender, Pump pumper) : host(platformHost), send(std::move(sender)), pump(std::move(pumper)) {}
+Debugger::Debugger(platform::DevelopmentSession& developmentSession, Send sender, Pump pumper) : session(developmentSession), send(std::move(sender)), pump(std::move(pumper)) {}
 
 Debugger::~Debugger() = default;
 
@@ -91,7 +91,7 @@ void Debugger::breakHere(lua_State* L) {
 
 // The collector holds while the app halts, so no finalizer of the app runs while the person looks at its values. The platform may ask the frame to finish, such as when the person quits, and then the app goes on without halting until the next frame.
 bool Debugger::halt(const Tracer::Halt& value) {
-    if (!attached || state == nullptr || !host.canHaltFrames()) {
+    if (!attached || state == nullptr || !session.canHaltFrames()) {
         return false;
     }
 
@@ -139,7 +139,7 @@ bool Debugger::halt(const Tracer::Halt& value) {
 
 bool Debugger::waitForResume(lua_State* thread) {
     while (next == Resume::None) {
-        if (host.pumpHaltedEvents()) {
+        if (session.pumpHaltedEvents()) {
             tracer.suspendUntilFrame();
             output("The app goes on to the end of its frame without halting, since the platform asked it to finish.\n");
             next = Resume::Continue;
@@ -231,7 +231,7 @@ void Debugger::dispatch(const core::Json& request, const core::Json& arguments, 
 
 // A page of the web runs the app on the thread that delivers every message, so it cannot halt, and only log points and the errors it reports work there.
 core::Json Debugger::getCapabilities() const {
-    const bool halts = host.canHaltFrames();
+    const bool halts = session.canHaltFrames();
     core::Json filters = core::Json::array();
     if (halts) {
         filters.push_back({{"filter", kErrorFilter}, {"label", "Uncaught errors"}, {"description", "Halts where an error rises that no pcall or xpcall of the app catches, before its stack unwinds."}, {"default", true}});
@@ -248,7 +248,7 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
         return;
     }
 
-    const bool halts = host.canHaltFrames();
+    const bool halts = session.canHaltFrames();
     std::vector<Breakpoints::Request> requests;
     std::vector<std::size_t> kept;
     const core::Json asked = readArray(arguments, "breakpoints");
@@ -294,7 +294,7 @@ void Debugger::setBreakpoints(const core::Json& request, const core::Json& argum
 
 void Debugger::setExceptionBreakpoints(const core::Json& request, const core::Json& arguments, lua_State* L) {
     const core::Json filters = readArray(arguments, "filters");
-    tracer.setErrorsWatched(host.canHaltFrames() && std::find(filters.begin(), filters.end(), core::Json(kErrorFilter)) != filters.end());
+    tracer.setErrorsWatched(session.canHaltFrames() && std::find(filters.begin(), filters.end(), core::Json(kErrorFilter)) != filters.end());
     if (state != nullptr) {
         tracer.refresh(L);
     }
@@ -361,7 +361,7 @@ void Debugger::resume(const core::Json& request, Resume value) {
 
 // A pause halts at the next line of the app that runs, in any coroutine.
 void Debugger::pause(const core::Json& request, lua_State* L) {
-    if (!host.canHaltFrames()) {
+    if (!session.canHaltFrames()) {
         fail(request, "A web page cannot halt, since it runs the app on the thread that delivers every message.");
         return;
     }

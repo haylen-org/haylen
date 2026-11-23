@@ -4,11 +4,15 @@
 #include <stdexcept>
 #include <utility>
 
+#include "platform/DevelopmentSession.hpp"
+
 namespace haylen::test {
 
-DebugClient::DebugClient(platform::Host& host) {
-    debugger = std::make_unique<debug::Debugger>(host, [this](const core::Json& message) { received.push_back(message); }, [this] { pump(); });
+DebugClient::DebugClient(platform::Host& host) : session(std::make_unique<platform::DevelopmentSession>(host)) {
+    debugger = std::make_unique<debug::Debugger>(*session, [this](const core::Json& message) { received.push_back(message); }, [this] { pump(); });
 }
+
+DebugClient::~DebugClient() = default;
 
 int DebugClient::request(const std::string& command, core::Json arguments) {
     ++sequence;

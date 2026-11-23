@@ -138,7 +138,25 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.application->addPlugins(*this);
 }
 
+Engine::EntryScope::EntryScope(const Engine& owner, std::string_view stage) noexcept : observer(owner.state->entryObserver) {
+    if (observer != nullptr) {
+        observer->enter(stage);
+    }
+}
+
+Engine::EntryScope::~EntryScope() {
+    if (observer != nullptr) {
+        observer->leave();
+    }
+}
+
+void Engine::setEntryObserver(EntryObserver* value) noexcept {
+    state->entryObserver = value;
+}
+
+// The end of the engine counts as the stop of the app, so the code of the app that runs while the plugins let go of it, such as its finalizers, is timed like the rest of the stop.
 Engine::~Engine() {
+    const EntryScope entry(*this, "stop");
     stop();
 
     // Everything that holds values of the scripts of the app lets go before the plugin that runs them closes their runtime, including scenes that stop hooks requested and work still queued on the pools, and the worker pools stop before the plugins, assets and GPU resources that their work still references. The job system drops what is posted from then on, so what the closing runtime and the services after it post is dropped at once, and it outlives every service that holds it.
@@ -182,6 +200,7 @@ void Engine::activatePlugin(plugins::Plugin& plugin) {
 }
 
 void Engine::start() {
+    const EntryScope entry(*this, "start");
     EngineState& current = *state;
     if (current.started) {
         return;
@@ -270,6 +289,7 @@ void Engine::applyWindowOptions() {
 }
 
 void Engine::stop() {
+    const EntryScope entry(*this, "stop");
     EngineState& current = *state;
     if (!current.started) {
         return;
@@ -306,6 +326,7 @@ void Engine::stop() {
 }
 
 void Engine::frame(double frameSeconds) {
+    const EntryScope entry(*this, "frame");
     EngineState& current = *state;
     if (!current.running) {
         return;
@@ -714,6 +735,7 @@ void Engine::renderScenes(std::size_t plugins) {
 
 // The mouse and the fingers reach the app as the device the app asked for, which may turn one event into several, and the scroll speed of the app scales every scroll.
 void Engine::handleEvent(const platform::Event& event) {
+    const EntryScope entry(*this, "event");
     platform::Event scaled = event;
     scaled.scroll *= state->input.getScrollSpeed();
     for (const platform::Event& converted : state->pointerEmulation.convert(scaled)) {

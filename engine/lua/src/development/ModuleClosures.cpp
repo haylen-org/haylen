@@ -1,9 +1,9 @@
-#include "lua/ModuleClosures.hpp"
+#include "development/ModuleClosures.hpp"
 
 #include <algorithm>
 #include <string>
 
-#include "lua/ModuleSnapshot.hpp"
+#include "development/ModuleSnapshot.hpp"
 
 namespace haylen::lua {
 

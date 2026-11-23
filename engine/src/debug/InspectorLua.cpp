@@ -6,8 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "debug/Inspector.hpp"
+#include "debug/ScriptInspector.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/debug/Inspector.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -20,14 +21,14 @@ namespace haylen::debug {
 int InspectorLua::watch(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     luaL_checkany(L, 2);
-    Inspector::watch(L, name, 2);
+    ScriptInspector::watch(L, name, 2);
     return 0;
 }
 
 int InspectorLua::unwatch(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     lua_pushnil(L);
-    Inspector::watch(L, name, -1);
+    ScriptInspector::watch(L, name, -1);
     return 0;
 }
 
@@ -36,7 +37,7 @@ int InspectorLua::inspect(lua_State* L) {
     const std::string_view text = lua_isnoneornil(L, 1) ? std::string_view() : lua::Stack::read<std::string_view>(L, 1);
     const std::vector<std::string> path = Inspector::splitPath(text);
     Inspector::Listing listing;
-    Inspector::list(L, path, listing);
+    ScriptInspector(L).list(path, listing);
     const std::vector<Inspector::Entry>& entries = listing.entries;
     lua_createtable(L, static_cast<int>(entries.size()), 0);
     for (std::size_t index = 0; index < entries.size(); ++index) {

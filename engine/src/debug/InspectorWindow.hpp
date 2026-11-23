@@ -7,9 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "debug/Inspector.hpp"
-
-struct lua_State;
+#include "haylen/debug/Inspector.hpp"
 
 namespace haylen::ui {
 class Backend;
@@ -31,7 +29,7 @@ class InspectorWindow final {
     explicit InspectorWindow(Clock source = {});
 
     // Draws the window and returns `false` once the player closed it.
-    bool draw(lua_State* L, ui::Backend& backend);
+    bool draw(Inspector::Provider& provider, ui::Backend& backend);
 
   private:
     // The values at one path as the last refresh listed them, with the path of each value.
@@ -45,11 +43,11 @@ class InspectorWindow final {
     [[nodiscard]] static double getSteadySeconds();
 
     // Each row reads the keys from the root to it in the first `depth` keys of `path`, and `key` is the whole path joined, which names its snapshot and its edit.
-    void drawRows(lua_State* L, std::size_t depth, const std::string& key, double now);
-    void drawValue(lua_State* L, std::size_t depth, const std::string& key, const Inspector::Entry& entry);
-    void drawField(lua_State* L, std::size_t depth, const std::string& key, const Inspector::Entry& entry);
-    void edit(lua_State* L, std::size_t depth, std::string_view text);
-    [[nodiscard]] const Snapshot& snapshotOf(lua_State* L, std::size_t depth, const std::string& key, double now);
+    void drawRows(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now);
+    void drawValue(Inspector::Provider& provider, std::size_t depth, const std::string& key, const Inspector::Entry& entry);
+    void drawField(Inspector::Provider& provider, std::size_t depth, const std::string& key, const Inspector::Entry& entry);
+    void edit(Inspector::Provider& provider, std::size_t depth, std::string_view text);
+    [[nodiscard]] const Snapshot& snapshotOf(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now);
     void reset();
 
     Clock clock;

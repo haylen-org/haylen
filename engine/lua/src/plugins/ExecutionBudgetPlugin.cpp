@@ -3,6 +3,7 @@
 #include <limits>
 
 #include "debug/ExecutionBudget.hpp"
+#include "development/Development.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
@@ -18,7 +19,7 @@ void ExecutionBudgetPlugin::start(core::Engine& engine) {
 
     // clang-format off
     stopping = core::ScopedConnection(engine.getEvents().on(core::LifecycleEvent::kAppStopping, [this](core::EventBus::Event&) {
-        session->getExecutionBudget().finishApp();
+        lua::Development::of(*session).getExecutionBudget().finishApp();
     }, {.priority = std::numeric_limits<int>::max()}));
     // clang-format on
 }
