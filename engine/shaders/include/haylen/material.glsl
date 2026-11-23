@@ -220,7 +220,7 @@ flat in vec4 haylen_shape_form;
 flat in vec4 haylen_shape_radii;
 flat in vec4 haylen_shape_border;
 
-// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, exact at any ratio of its radii. A circle measures from its center. With the longer radius along x and the point in the first quarter, the nearest point of the edge is `(r x / (t + r - 1), y / t)` for the ratio `r` of the squared radii and the root `t` of the equation of the edge, which the bisection finds between bounds that always hold it, while a point on the long axis has the nearest point in closed form.
+// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, exact at any ratio of its radii. A circle measures from its center. With the longer radius along x and the point in the first quarter, the nearest point of the edge is `(r x / (t + r - 1), y / t)` for the ratio `r` of the squared radii and the root `t` of the equation of the edge, between bounds that always hold it, while a point on the long axis has the nearest point in closed form. Four steps toward the nearest point along the circles of curvature of the edge, whose centers lie on the evolute of the ellipse, find the root closely at any ratio, and one Newton step on `1 / |q| - 1`, which is linear in the root for a circle, takes it to the precision of a float, so the distance holds within a fiftieth of a pixel for ellipses thousands of pixels long at any ratio.
 float haylen_shape_ellipse(vec2 point) {
     if (haylen_shape_frame.z == haylen_shape_frame.w) {
         return length(point) - haylen_shape_frame.z;
@@ -244,16 +244,21 @@ float haylen_shape_ellipse(vec2 point) {
     float pull = ratio * scaled.x;
     float low = scaled.y;
     float high = level < 0.0 ? 1.0 : length(vec2(pull, scaled.y));
-    float root = high;
-    for (int iteration = 0; iteration < 32; iteration++) {
-        root = 0.5 * (low + high);
-        vec2 part = vec2(pull / (root + ratio - 1.0), scaled.y / root);
-        if (dot(part, part) > 1.0) {
-            low = root;
-        } else {
-            high = root;
-        }
+    float spread = radii.x * radii.x - radii.y * radii.y;
+    vec2 reach = vec2(spread, -spread) / radii;
+    vec2 turn = vec2(0.70710678);
+    for (int iteration = 0; iteration < 4; iteration++) {
+        vec2 center = reach * turn * turn * turn;
+        vec2 toward = at - center;
+        float curvature = length(radii * turn - center);
+        turn = clamp((toward * (curvature / max(length(toward), 0.000001)) + center) / radii, 0.0, 1.0);
+        turn /= max(length(turn), 0.000001);
     }
+    float root = clamp(scaled.y / max(turn.y, 0.000001), low, high);
+    float shifted = root + ratio - 1.0;
+    vec2 part = vec2(pull / shifted, scaled.y / root);
+    float size = length(part);
+    root = clamp(root - size * size * (1.0 - size) / (part.x * part.x / shifted + part.y * part.y / root), low, high);
     float gap = length(vec2(ratio * at.x / (root + ratio - 1.0), at.y / root) - at);
     return level < 0.0 ? -gap : gap;
 }
