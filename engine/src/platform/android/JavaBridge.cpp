@@ -163,7 +163,7 @@ void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string
 
     // A call that the Java registry never took would wait forever, so it fails at once.
     if (clearException(env, "dev.haylen.HaylenBridge.dispatch")) {
-        const std::string message = "The call \"" + std::string(method) + "\" failed, because the Java method \"dev.haylen.HaylenBridge.dispatch\" threw an exception.";
+        const std::string message = "The call \"" + std::string(method) + "\" failed, because its Android code threw an exception, whose stack logcat shows under the tag \"System.err\".";
         BridgeRelay::resolve(id, false, core::Json{{"message", message}, {"code", "exception"}}.dump());
     }
 }
@@ -344,7 +344,7 @@ void JavaBridge::openScreen(const ScreenRequest& request) {
     }
 
     if (clearException(env, "dev.haylen.HaylenScreens.open")) {
-        ScreenRelay::finish(request.id, false, core::Json{{"message", "The screen failed, because the Java method \"dev.haylen.HaylenScreens.open\" threw an exception."}, {"code", "exception"}}.dump());
+        ScreenRelay::finish(request.id, false, core::Json{{"message", "The screen \"" + request.plugin + "." + request.screen + "\" failed, because its Android code threw an exception, whose stack logcat shows under the tag \"System.err\"."}, {"code", "exception"}}.dump());
     }
 }
 
