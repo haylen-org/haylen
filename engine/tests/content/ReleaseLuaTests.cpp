@@ -28,8 +28,8 @@ class ReleaseLuaTest : public ::testing::Test {
     void start(const std::map<std::string, std::string>& files) {
         release.build(files);
         package = release.open();
-        core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
+        core::AppConfig config = core::AppConfig::fromPackage(*package, application->getSections());
         application->configure(config);
         engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
         engine->start();
@@ -53,7 +53,7 @@ class ReleaseLuaTest : public ::testing::Test {
 
 TEST_F(ReleaseLuaTest, RunsModulesPluginsAndAutoloadsFromBytecode) {
     start({
-        {"haylen.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests", "autoload": ["state.player"], "plugins": {"ads": {}}})"},
+        {"haylen.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests", "lua": {"autoloads": ["state.player"]}, "plugins": {"ads": {}}})"},
         {"source/main.lua", "local menu = require('scenes.menu')\nlocal ads = require('ads')\nloaded = menu.name .. ' ' .. tostring(ads.ready) .. ' ' .. require('state.player').name"},
         {"source/scenes/menu.lua", "return {name = 'menu'}"},
         {"source/state/player.lua", "return {name = 'player'}"},

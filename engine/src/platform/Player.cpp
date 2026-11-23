@@ -266,13 +266,13 @@ Player& Player::getCurrent() noexcept {
     return *getProcess().current;
 }
 
-// Reads the package configuration and creates the application, turning any failure into an app that shows the error. A package that opened stays with the failed app, so a restart tries it again, and an app in development restarts as soon as its files change.
+// Creates the application and reads the package configuration with the sections the application reads, turning any failure into an app that shows the error. A package that opened stays with the failed app, so a restart tries it again, and an app in development restarts as soon as its files change.
 Player::App Player::load(const std::function<std::shared_ptr<io::Package>()>& open) {
     App app;
     try {
         app.package = withOverlay(open());
-        app.config = core::AppConfig::fromPackage(*app.package);
         app.application = core::Application::create();
+        app.config = core::AppConfig::fromPackage(*app.package, app.application->getSections());
         app.application->configure(app.config);
     } catch (const std::exception& error) {
         core::Log::error("The app could not be loaded: {}", error.what());

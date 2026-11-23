@@ -86,8 +86,8 @@ class AppManifestTest:
             AppManifest.load(tmp_path)
 
     def test_the_document_is_frozen(self, tmp_path):
-        manifest = AppManifest.load(ToolingFixture(tmp_path).app({"autoload": ["state"]}))
+        manifest = AppManifest.load(ToolingFixture(tmp_path).app({"lua": {"autoloads": ["state"]}}))
         with pytest.raises(TypeError):
             manifest.document["name"] = "Other"
-        assert manifest.document["autoload"] == ("state",)
-        assert json.loads((manifest.folder / AppManifest.FILE).read_text(encoding="utf-8"))["autoload"] == ["state"]
+        assert manifest.document["lua"]["autoloads"] == ("state",)
+        assert json.loads((manifest.folder / AppManifest.FILE).read_text(encoding="utf-8"))["lua"]["autoloads"] == ["state"]

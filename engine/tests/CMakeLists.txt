@@ -180,6 +180,7 @@ set(HAYLEN_TEST_SOURCES
   lua/GeometryLuaTests.cpp
   lua/InputLuaTests.cpp
   lua/MathLuaTests.cpp
+  lua/LuaConfigTests.cpp
   lua/LuaReferenceTests.cpp
   lua/ModuleReloadTests.cpp
   lua/SceneLuaTests.cpp

@@ -25,6 +25,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
+#include "haylen/lua/Application.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
@@ -36,6 +37,7 @@
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/Window.hpp"
 #include "lua/Autoloads.hpp"
+#include "runtime/LuaConfig.hpp"
 
 namespace haylen::core {
 
@@ -128,7 +130,7 @@ CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path)
     }
 
     const std::unique_ptr<io::Package> package = io::Package::open(path);
-    const AppConfig config = AppConfig::fromPackage(*package);
+    const AppConfig config = AppConfig::fromPackage(*package, lua::Application::kSections);
     PackageInfo info{.name = config.name, .identifier = config.identifier, .version = config.version, .build = config.build, .logo = config.splash.logo};
     if (!info.logo.empty()) {
         info.logoBytes = package->read(io::Path::asset(info.logo));
@@ -354,7 +356,9 @@ int CoreLua::openRoot(lua_State* L) {
     lua_setfield(L, -2, "platform");
     lua::Stack::push(L, owner.getGraphics().getApiName());
     lua_setfield(L, -2, "graphicsApi");
-    lua::JsonConverter::push(L, owner.getConfig().toJson());
+    Json config = owner.getConfig().toJson();
+    config[lua::LuaConfig::kSection] = owner.getPlugin<lua::ScriptPlugin>().getConfig().toJson();
+    lua::JsonConverter::push(L, config);
     lua_setfield(L, -2, "config");
     return 1;
 }

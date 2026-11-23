@@ -1,7 +1,6 @@
 #include "lua/HotReloadLua.hpp"
 
 #include "development/ModuleGraph.hpp"
-#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -9,6 +8,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "lua/modules/HotReloadModule.hpp"
 #include "plugins/HotReloadPlugin.hpp"
+#include "runtime/LuaConfig.hpp"
 
 namespace haylen::lua {
 
@@ -18,7 +18,7 @@ int HotReloadLua::active(lua_State* L) {
 }
 
 int HotReloadLua::mode(lua_State* L) {
-    Stack::push(L, core::AppConfig::reloadName(Runtime::getEngine(L).getConfig().debug.reload));
+    Stack::push(L, LuaConfig::reloadName(Runtime::getEngine(L).getPlugin<ScriptPlugin>().getConfig().reload));
     return 1;
 }
 

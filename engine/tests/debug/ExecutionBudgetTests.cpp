@@ -27,7 +27,7 @@ namespace haylen::debug {
 // Runs apps in development with a short execution budget, whose code never ends in every way a script can try to outlast it.
 class ExecutionBudgetTest : public ::testing::Test {
   protected:
-    static constexpr const char* kAppJson = R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 0.1}})";
+    static constexpr const char* kAppJson = R"({"name": "Budget", "identifier": "com.haylen.budget", "lua": {"executionBudget": 0.1}})";
 
     void start(const std::string& main, std::map<std::string, std::string> files = {}) {
         files["haylen.json"] = kAppJson;
@@ -184,7 +184,7 @@ TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
     };
     for (const std::string& attempt : attempts) {
         SCOPED_TRACE(attempt);
-        std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "require('haylen.scene').push({update = function() " + attempt + " end})"}};
+        std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "lua": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "require('haylen.scene').push({update = function() " + attempt + " end})"}};
         fixture.reset();
         fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
         runUntilCancelled();
@@ -195,7 +195,7 @@ TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
 
 // The code that stops an app whose memory ran out runs with its whole time and room for a share of the memory budget, so the unload of its scene ends what it holds.
 TEST_F(ExecutionBudgetTest, LetsTheStopOfAnAppWhoseMemoryRanOutRun) {
-    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "kept = {} require('haylen.scene').push({update = function() while true do kept[#kept + 1] = string.rep('x', 4096) .. #kept end end, unload = function() local made = {} for index = 1, 2000 do made[index] = string.rep('u', 512) .. index end print('Unloaded with ' .. #made .. ' texts.') end})"}};
+    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "lua": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "kept = {} require('haylen.scene').push({update = function() while true do kept[#kept + 1] = string.rep('x', 4096) .. #kept end end, unload = function() local made = {} for index = 1, 2000 do made[index] = string.rep('u', 512) .. index end print('Unloaded with ' .. #made .. ' texts.') end})"}};
     fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
     runUntilCancelled();
     ASSERT_EQ(error().getCode(), core::AppError::Code::Memory);
@@ -209,7 +209,7 @@ TEST_F(ExecutionBudgetTest, LetsTheStopOfAnAppWhoseMemoryRanOutRun) {
 
 // Garbage that a full collection frees never runs the budget out, however much the app allocated in total.
 TEST_F(ExecutionBudgetTest, CountsOnlyTheMemoryThatStaysAfterACollection) {
-    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"memoryBudget": 32}})"}, {"source/main.lua", "for round = 1, 20 do local scratch = {} for index = 1, 50000 do scratch[index] = {index} end end done = true"}};
+    std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "lua": {"memoryBudget": 32}})"}, {"source/main.lua", "for round = 1, 20 do local scratch = {} for index = 1, 50000 do scratch[index] = {index} end end done = true"}};
     fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
     EXPECT_EQ(fixture->engine().getError(), nullptr);
     EXPECT_EQ(fixture->lua("return done"), "true");

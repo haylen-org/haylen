@@ -189,9 +189,17 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 | `debug.safeArea` | string, number or array | Absent | A safe area to simulate instead of the one of the device: a device name such as `"iphoneDynamicIsland"`, or insets in window points, one number for every side, two for the top and bottom and the sides, or four for the top, right, bottom and left, as [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue) describes. |
 | `debug.fold` | string or object | Absent | A fold to simulate instead of the one of the device: a preset such as `"book"` or `"tabletop"`, or an object with `axis`, `state` and `hinge`, as [`window.setFoldSimulation`](window.md#windowsetfoldsimulationvalue) describes. |
 | `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) describes. |
-| `debug.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development. `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](../core/lua.md#hot-reload) describes. |
-| `debug.executionBudget` | number | `5` | The seconds that the code of an app in development may run each time the platform enters the engine, such as for one frame, before the engine stops the app, from 0.1 to 600, as [the execution budget](../core/lua.md#the-execution-budget) describes. |
-| `debug.memoryBudget` | number | `1024` | The megabytes that the Lua state of an app in development may hold before the engine stops the app, from 16 to 4096, as [the execution budget](../core/lua.md#the-execution-budget) describes. |
+
+#### Lua
+
+The Lua layer of the engine reads these fields, which load before any Lua runs. In `haylen.config` the section `lua` holds every one of them with its default.
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `lua.autoloads` | list of strings | `[]` | The modules that load as [autoloads](#haylenautoloadname-module) before `source/main.lua`, such as `"state.player-data"`. |
+| `lua.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development. `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](../core/lua.md#hot-reload) describes. |
+| `lua.executionBudget` | number | `5` | The seconds that the code of an app in development may run each time the platform enters the engine, such as for one frame, before the engine stops the app, from 0.1 to 600, as [the execution budget](../core/lua.md#the-execution-budget) describes. |
+| `lua.memoryBudget` | number | `1024` | The megabytes that the Lua state of an app in development may hold before the engine stops the app, from 16 to 4096, as [the execution budget](../core/lua.md#the-execution-budget) describes. |
 
 #### Localization
 
@@ -203,14 +211,13 @@ These fields load the texts of the app before any Lua runs, as the [localization
 | `localization.fallback` | string | The first language of the folder | The language that gives the texts that the current language lacks, and the current language when no language of the app is close to the one wanted. Its file must be in the folder. |
 | `localization.language` | string | Absent | The language that the app starts in, as [`localization.setLanguage`](localization.md#localizationsetlanguagetag) picks it. Without it the app follows the languages of the system. |
 
-#### Content, autoloads, native libraries and plugins
+#### Content, native libraries and plugins
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `content.updates` | object | Absent | The server of the protected content of a release, with `baseUrl`, `channel`, `"stable"` by default, and `enabled`, `true` by default. Without it the app has no content server. The [delivery settings](../content/content.md#delivery) describe it. |
 | `content.delivery` | list of objects | `[]` | The rules that let assets arrive after the start of the app. Each rule has `match`, a pattern of paths relative to `content/`, or `group`, the name of a preload group, and either `mode`, which is `"required"`, `"prefetch"` or `"onDemand"`, or `pack`, the name of a pack that a store delivers on its own. The first rule that matches an asset decides. Without rules every asset is required. In `haylen.config` a rule that names a group becomes one rule with `match` for each entry of the group. See [`haylen.content`](content.md) and the [delivery settings](../content/content.md#delivery). |
 | `content.groups` | string | Absent | The group manifest that defines the groups the rules name, relative to `content/`, such as `"groups.json"`. |
-| `autoload` | list of strings | `[]` | The modules that load as [autoloads](#haylenautoloadname-module) before `source/main.lua`, such as `"state.player-data"`. |
 | `category` | string | Absent | The category that the stores and the app menus show the app in: `"game"`, `"entertainment"`, `"education"`, `"productivity"`, `"utility"`, `"graphics"`, `"music"`, `"video"`, `"social"` or `"developer"`. The tooling needs it and maps it to the category of each platform, as the [distribution guide](../tools/distribution.md#category) lists. The engine checks only its value. |
 | `kind` | string | `"lua"` | The kind of the app: `"lua"`, whose code is Lua that the player of the engine runs, or `"cpp"`, whose C++ code of the `cpp` section compiles against the engine SDK. The engine checks only its value, and the tooling builds the app from it. |
 | `cpp` | object | Absent | The C++ code of a C++ app, which the backend of every target compiles: `sources`, the folders and files of its sources relative to the app folder, `includeDirectories` and `definitions`. The engine checks only that it is an object. |
@@ -918,7 +925,7 @@ The engine checks `haylen.json` before any Lua runs. A package whose `haylen.jso
 
 | Message | Cause |
 | --- | --- |
-| `Unknown key "<key>" in "haylen.json".` | The file has a field that the engine does not know. A field of a section names its section, such as `Unknown key "widht" in the "window" section of "haylen.json".` |
+| `Unknown key "<key>" in "haylen.json".` | The file has a field that neither the engine nor the Lua layer reads. A field of a section names its section, such as `Unknown key "widht" in the "window" section of "haylen.json".` |
 | `The value of "<key>" in "haylen.json" has the wrong type.` | A value is not of the type that the tables above give. The key names its section, such as `window.width`. |
 | `The value of "<key>" in "haylen.json" must be a whole number from <minimum> to <maximum>.` | A whole number, such as `window.width` or `window.frameRate`, has a fraction, such as `800.5`, or lies outside the numbers it can hold, such as `1e20`. |
 | `The value of "<key>" in "haylen.json" must be a number from <minimum> to <maximum>.` | A number with a fraction, such as `splash.duration`, lies outside the numbers it can hold. |
@@ -944,12 +951,15 @@ The engine checks `haylen.json` before any Lua runs. A package whose `haylen.jso
 | `The "debug.drawings" list in "haylen.json" has an empty drawing name.` | A debug drawing has an empty name. |
 | `The "debug.safeArea" in "haylen.json" is invalid. <reason>` | The simulated safe area is wrong, for the reason that follows. |
 | `The "debug.fold" in "haylen.json" is invalid. <reason>` | The simulated fold is wrong, for the reason that follows. |
-| `The "debug.reload" value "<value>" in "haylen.json" is unknown. It is "module" or "restart".` | The reload mode has another value. |
+| `The "lua.reload" value "<value>" in "haylen.json" is unknown. It is "module" or "restart".` | The reload mode has another value. |
 | `The "localization.<key>" value "<value>" in "haylen.json" is no language tag. Write a language such as "en", "pt-BR" or "pt_BR".` | The `localization.fallback` or `localization.language` is not a language tag. |
 | `The "localization.fallback" of "haylen.json" needs a "localization.folder" that holds its language file.` | The fallback is set without the folder. |
 | `The folder "<folder>" of "localization.folder" in "haylen.json" holds no language file. Add a file such as "<folder>/en.json".` | The folder has no `.json` file. The app shows it on the error screen once it starts. |
 | `The "localization.fallback" of "haylen.json" names "<language>", whose file the folder "<folder>" lacks.` | The folder has no file of the fallback language. The app shows it on the error screen once it starts. |
-| `The "autoload" list in "haylen.json" has an empty module name.` | An autoload has an empty name. |
+| `The value of "lua.autoloads" in "haylen.json" must be a list of module names.` | The autoloads are not a list of strings. |
+| `The "lua.autoloads" list in "haylen.json" has an empty module name.` | An autoload has an empty name. |
+| `The "lua.executionBudget" value in "haylen.json" must be a number of seconds from 0.1 to 600.` | The execution budget is not a number of seconds in its range. |
+| `The "lua.memoryBudget" value in "haylen.json" must be a number of megabytes from 16 to 4096.` | The memory budget is not a number of megabytes in its range. |
 | `The "native" section of "haylen.json" must be an object of libraries.` | The section `native` is not an object. |
 | `The "plugins" section of "haylen.json" must be an object of plugins by id.` | The section `plugins` is not an object. |
 | `The plugin id "<id>" in "haylen.json" is not in "dash-case", such as "cloud-analytics".` | A plugin id has other characters. |

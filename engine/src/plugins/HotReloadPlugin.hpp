@@ -10,7 +10,6 @@
 #include <string_view>
 #include <vector>
 
-#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/AppError.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Signal.hpp"
@@ -22,7 +21,7 @@ class DevelopmentSession;
 
 namespace haylen::plugins {
 
-// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app in the mode `module` of `debug.reload`, a removed module that no code of the app requires leaves the app in place, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app still requires, a module that cannot merge and any module in the mode `restart`. The report of every batch tells for each changed file whether it applied in place, waits for the next load, never counts, was rejected or restarts the app, and why. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The runtime of the scripts reloads their code through `Scripts`, which the Lua module of hot reload gives the plugin only in development, so apps that ship load their modules exactly as before.
+// Applies the changes of an app in development, even while the error screen shows. Changed assets reload in place, a changed Lua module reloads in place with the state of the app, a removed module that no code of the app requires leaves the app in place, and a change that cannot apply in place restarts the app: `haylen.json`, `source/main.lua`, a plugin manifest, a removed module that code of the app still requires, a module that cannot merge and any module while `lua.reload` is `restart`. The report of every batch tells for each changed file whether it applied in place, waits for the next load, never counts, was rejected or restarts the app, and why. A batch that fixed an error of frame code or of a reload resumes the app from the error screen. The changes come from the development session of the host, from its scans of the package folder, the page or the development server. The runtime of the scripts reloads their code through `Scripts`, which the Lua module of hot reload gives the plugin only in development, so apps that ship load their modules exactly as before.
 class HotReloadPlugin final : public Plugin {
   public:
     static constexpr std::chrono::milliseconds kScanInterval{500};
@@ -56,7 +55,6 @@ class HotReloadPlugin final : public Plugin {
 
     // What one batch of changes did, for the log, the page and the development server, with every changed file. The restored modules are those whose file holds again the code that runs, after a reload of it failed.
     struct Report {
-        core::AppConfig::Debug::Reload mode = core::AppConfig::Debug::Reload::Module;
         std::vector<File> files;
         std::vector<std::string> modules;
         std::vector<std::string> restored;
@@ -93,7 +91,6 @@ class HotReloadPlugin final : public Plugin {
     [[nodiscard]] std::string_view getName() const noexcept override {
         return "hotReload";
     }
-    void start(core::Engine& engine) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
 
     // Whether the app runs in development, where changes to its files reach it.
@@ -134,7 +131,6 @@ class HotReloadPlugin final : public Plugin {
 
     platform::DevelopmentSession* session;
     Scripts* scripts = nullptr;
-    core::AppConfig::Debug::Reload mode = core::AppConfig::Debug::Reload::Module;
     std::chrono::steady_clock::time_point lastScan;
 };
 

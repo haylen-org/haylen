@@ -2,8 +2,10 @@
 
 #include <exception>
 #include <filesystem>
+#include <map>
 #include <memory>
 #include <optional>
+#include <string>
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Log.hpp"
@@ -126,7 +128,7 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
     }
 
     const std::shared_ptr<io::Package> package = Services::openBundledPackage();
-    const core::AppConfig config = core::AppConfig::fromPackage(*package);
+    const std::map<std::string, core::AppConfig::Plugin> listed = core::AppConfig::readPlugins(*package);
     std::vector<Declaration> declarations;
     for (const std::string& identifier : PluginLoadOrder::read(*package)) {
         const std::optional<std::string> className = PluginManifest::read(*package, identifier).findAppleClass(getDestination());
@@ -134,7 +136,7 @@ std::vector<ApplePlugins::Declaration> ApplePlugins::readDeclarations() {
             continue;
         }
 
-        declarations.push_back({.identifier = identifier, .className = *className, .config = AppPlugin::read(*package, identifier, config.plugins.at(identifier).parameters).config});
+        declarations.push_back({.identifier = identifier, .className = *className, .config = AppPlugin::read(*package, identifier, listed.at(identifier).parameters).config});
     }
 
     return declarations;

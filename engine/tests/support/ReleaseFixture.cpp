@@ -6,6 +6,7 @@
 
 #include "content/ReleasePackage.hpp"
 #include "haylen/io/MemoryPackage.hpp"
+#include "haylen/lua/Application.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::test {
@@ -51,7 +52,7 @@ void ReleaseFixture::build(const std::map<std::string, std::string>& files, std:
 void ReleaseFixture::build(const io::Package& source, std::uint64_t shardTarget) {
     const std::optional<std::filesystem::path> earlier = builds > 0 ? std::optional(folder) : std::nullopt;
     folder = directory.getPath() / ("release-" + std::to_string(++builds));
-    result = makeBuilder().build(source, folder, earlier, {.profile = std::string(kProfile), .appBuild = kAppBuild, .shardTarget = shardTarget});
+    result = makeBuilder().build(source, folder, earlier, {.profile = std::string(kProfile), .appBuild = kAppBuild, .shardTarget = shardTarget, .sections = lua::Application::kSections});
 }
 
 std::shared_ptr<const io::Package> ReleaseFixture::getFiles() const {

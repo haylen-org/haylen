@@ -21,6 +21,7 @@
 #include "lua/Autoloads.hpp"
 #include "lua/ErrorReader.hpp"
 #include "lua/ScriptedScene.hpp"
+#include "runtime/LuaConfig.hpp"
 
 namespace haylen::lua {
 
@@ -40,8 +41,8 @@ std::string ModuleHotReload::findRestartReason(core::Engine& engine, const std::
         return {};
     }
 
-    if (engine.getConfig().debug.reload == core::AppConfig::Debug::Reload::Restart) {
-        return "The module \"" + module->names.front() + "\" changed while \"debug.reload\" of \"haylen.json\" is \"restart\", so the app restarts.";
+    if (engine.getPlugin<ScriptPlugin>().getConfig().reload == LuaConfig::Reload::Restart) {
+        return "The module \"" + module->names.front() + "\" changed while \"lua.reload\" of \"haylen.json\" is \"restart\", so the app restarts.";
     }
 
     if (engine.getPackage().exists(path)) {

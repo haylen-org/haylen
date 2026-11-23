@@ -19,6 +19,7 @@
 #include "content/ReleaseStager.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/lua/Application.hpp"
 
 namespace haylen::content {
 
@@ -206,7 +207,7 @@ void ContentTool::printKeys(const KeyStore& store) {
 void ContentTool::runBuild(Arguments& arguments) {
     const std::filesystem::path app = arguments.takePositional("app folder");
     const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
-    ReleaseBuilder::Options options{.profile = arguments.takeOption("profile"), .appBuild = arguments.takeNumber("build")};
+    ReleaseBuilder::Options options{.profile = arguments.takeOption("profile"), .appBuild = arguments.takeNumber("build"), .sections = lua::Application::kSections};
     const std::filesystem::path folder = arguments.takeOption("output");
     const std::optional<std::string> earlier = arguments.takeOptional("previous");
     const std::optional<std::string> cache = arguments.takeOptional("cache");
@@ -218,7 +219,7 @@ void ContentTool::runBuild(Arguments& arguments) {
     }
 
     const std::shared_ptr<const io::Package> package = io::Package::openDirectory(app);
-    const core::AppConfig config = core::AppConfig::fromPackage(*package);
+    const core::AppConfig config = core::AppConfig::fromPackage(*package, lua::Application::kSections);
     if (config.identifier != store.getIdentifier()) {
         throw std::invalid_argument("The app \"" + config.identifier + "\" cannot build with the keys of \"" + store.getIdentifier() + "\".");
     }
@@ -245,7 +246,7 @@ ReleaseInspector ContentTool::makeInspector(const KeyStore& store) {
 
 core::AppConfig::Content ContentTool::readDeliveryRules(const std::filesystem::path& app) {
     const std::shared_ptr<const io::Package> package = io::Package::openDirectory(app);
-    core::AppConfig::Content rules = core::AppConfig::fromPackage(*package).content;
+    core::AppConfig::Content rules = core::AppConfig::fromPackage(*package, lua::Application::kSections).content;
     rules.expandGroups(*package);
     return rules;
 }
@@ -362,14 +363,14 @@ void ContentTool::runDiff(Arguments& arguments) {
 void ContentTool::runPublish(Arguments& arguments) {
     const std::filesystem::path app = arguments.takePositional("app folder");
     const KeyStore store = KeyStore::open(arguments.takeOption("keys"));
-    ChannelPublisher::Options options{.profile = arguments.takeOption("profile"), .appBuild = arguments.takeNumber("build"), .channel = arguments.takeOption("channel")};
+    ChannelPublisher::Options options{.profile = arguments.takeOption("profile"), .appBuild = arguments.takeNumber("build"), .channel = arguments.takeOption("channel"), .sections = lua::Application::kSections};
     const std::filesystem::path tree = arguments.takeOption("output");
     const std::optional<std::string> cache = arguments.takeOptional("cache");
     options.release = arguments.takeOptional("release").value_or("");
     arguments.finish();
 
     const std::shared_ptr<const io::Package> package = io::Package::openDirectory(app);
-    if (core::AppConfig::fromPackage(*package).identifier != store.getIdentifier()) {
+    if (core::AppConfig::fromPackage(*package, lua::Application::kSections).identifier != store.getIdentifier()) {
         throw std::invalid_argument("The app cannot publish with the keys of \"" + store.getIdentifier() + "\".");
     }
 

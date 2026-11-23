@@ -17,8 +17,8 @@ class LuaBenchmark final {
     static int run(const std::filesystem::path& folder) {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-lua-benchmark");
         const std::shared_ptr<io::Package> package = io::Package::open(folder);
-        core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
+        core::AppConfig config = core::AppConfig::fromPackage(*package, application->getSections());
         application->configure(config);
 
         core::Engine engine(host, package, std::move(config), std::move(application));

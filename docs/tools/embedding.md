@@ -275,9 +275,10 @@ std::unique_ptr<haylen::core::Application> haylen::core::Application::create() {
 }
 ```
 
-The class `core::Application` has three hooks:
+The class `core::Application` has these hooks:
 
-- `configure(AppConfig&)` runs before the window exists, and may change the configuration read from `haylen.json`.
+- `getSections()` names the sections of `haylen.json` that the app reads itself, which `AppConfig::sections` keeps as `haylen.json` wrote them. The engine refuses every other key that it does not read, and a `lua::Application` names the `lua` section.
+- `configure(AppConfig&)` runs before the window exists, may change the configuration read from `haylen.json` and reads the sections of the app, whose errors fail the app with their reason.
 - `addPlugins(Engine&)` runs when the engine is made, and adds the plugins of the app after the plugins of the engine.
 - `start(Engine&)` runs once the engine is ready.
 - `stop(Engine&)` runs when the app ends.

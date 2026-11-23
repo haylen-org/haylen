@@ -46,7 +46,7 @@ end
 
 ### hotReload.mode()
 
-Returns how a changed module applies in development, which is the value `debug.reload` of `haylen.json`:
+Returns how a changed module applies in development, which is the value `lua.reload` of `haylen.json`:
 
 - `'module'`, the default, reloads the module in place.
 - `'restart'` restarts the app for every changed module that the app loaded.

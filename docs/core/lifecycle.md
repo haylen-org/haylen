@@ -709,7 +709,7 @@ Autoloads are Lua modules that load before the first scene and live for the whol
 
 How autoloads are added and named:
 
-- The `autoload` list of `haylen.json` names the modules, which load in its order before `source/main.lua` runs.
+- The list `autoloads` of the `lua` section of `haylen.json` names the modules, which load in its order before `source/main.lua` runs.
 - The function `haylen.autoload(module)` adds one later, and `haylen.autoload(name, module)` gives it a name of its own.
 - The name defaults to the last part of the module in camel case, so `state.player-data` becomes `playerData`. Then `haylen.autoloads.playerData` holds the table, which `require('state.player-data')` returns too.
 - The `processMode` field of the table sets its process mode. Without one, an autoload counts as `'pausable'`.
@@ -721,7 +721,7 @@ In a release, the autoloads load after the content that the app needs to start i
 {
     "name": "Tiny Island",
     "identifier": "com.haylen.tinyisland",
-    "autoload": ["state.player-data"]
+    "lua": {"autoloads": ["state.player-data"]}
 }
 ```
 

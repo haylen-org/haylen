@@ -6,9 +6,10 @@ from haylen.core.repository import Repository
 
 
 class EngineAppKeysTest:
-    """The engine reads the runtime keys of `haylen.json` and the tooling validates the whole file, so the keys that `AppConfig.cpp` takes in each section are the keys of the schema in the same section."""
+    """The engine reads the runtime keys of `haylen.json`, the Lua layer reads its `lua` section and the tooling validates the whole file, so the keys that `AppConfig.cpp` and `LuaConfig.cpp` take in each section are the keys of the schema in the same section, and the top level holds the keys of the engine and the sections of the Lua layer."""
 
-    SOURCE = Repository.ENGINE / "src" / "core" / "AppConfig.cpp"
+    SOURCES = (Repository.ENGINE / "src" / "core" / "AppConfig.cpp", Repository.ENGINE / "lua" / "src" / "runtime" / "LuaConfig.cpp")
+    TOP_LEVEL = re.compile(r"AppConfig::kKeys\{([^}]*)\}")
     KNOWN_KEYS = re.compile(r'requireKnownKeys\(\w+, \{([^}]*)\}, "((?:[^"\\]|\\.)*)"')
     SECTION = re.compile(r'^the \\"([a-zA-Z.]+)\\" section of')
     # The sections that the tooling alone reads, which the engine checks only for their types.
@@ -16,10 +17,18 @@ class EngineAppKeysTest:
 
     @staticmethod
     def engine_sections() -> dict[tuple[str, ...], set[str]]:
-        """Returns the keys that each `requireKnownKeys` of `AppConfig.cpp` takes, by the path of its section in the schema."""
+        """Returns the keys that each `requireKnownKeys` of `AppConfig.cpp` and `LuaConfig.cpp` takes, by the path of its section in the schema, with the top level of `AppConfig::kKeys` and the sections that the Lua layer reads."""
         sections: dict[tuple[str, ...], set[str]] = {}
-        for keys, context in EngineAppKeysTest.KNOWN_KEYS.findall(EngineAppKeysTest.SOURCE.read_text(encoding="utf-8")):
-            sections[EngineAppKeysTest.schema_path(context)] = set(re.findall(r'"([A-Za-z]+)"', keys))
+        layer_sections: set[str] = set()
+        for index, source in enumerate(EngineAppKeysTest.SOURCES):
+            for keys, context in EngineAppKeysTest.KNOWN_KEYS.findall(source.read_text(encoding="utf-8")):
+                path = EngineAppKeysTest.schema_path(context)
+                sections[path] = set(re.findall(r'"([A-Za-z]+)"', keys))
+                if index > 0:
+                    layer_sections.add(path[1])
+        top_level = EngineAppKeysTest.TOP_LEVEL.search(EngineAppKeysTest.SOURCES[0].read_text(encoding="utf-8"))
+        assert top_level, "The file AppConfig.cpp defines no AppConfig::kKeys."
+        sections[("properties",)] = set(re.findall(r'"([A-Za-z]+)"', top_level.group(1))) | layer_sections
         return sections
 
     @staticmethod

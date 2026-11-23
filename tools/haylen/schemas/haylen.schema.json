@@ -117,10 +117,7 @@
                 "console": {"type": "boolean"},
                 "safeArea": {"type": ["string", "number", "array"], "description": "A safe area to simulate: the name of a device, or one, two or four insets in window points."},
                 "fold": {"type": ["string", "object"], "description": "A fold to simulate: the name of a preset, or an object with \"axis\", \"state\" and \"hinge\"."},
-                "showSafeArea": {"type": "boolean"},
-                "reload": {"enum": ["module", "restart"]},
-                "executionBudget": {"type": "number", "minimum": 0.1, "maximum": 600},
-                "memoryBudget": {"type": "number", "minimum": 16, "maximum": 4096}
+                "showSafeArea": {"type": "boolean"}
             }
         },
         "content": {
@@ -162,7 +159,17 @@
                 "language": {"type": "string"}
             }
         },
-        "autoload": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "lua": {
+            "type": "object",
+            "description": "The settings of the Lua of the app, which the Lua layer reads.",
+            "additionalProperties": false,
+            "properties": {
+                "autoloads": {"type": "array", "items": {"type": "string", "minLength": 1}},
+                "reload": {"enum": ["module", "restart"]},
+                "executionBudget": {"type": "number", "minimum": 0.1, "maximum": 600},
+                "memoryBudget": {"type": "number", "minimum": 16, "maximum": 4096}
+            }
+        },
         "native": {
             "type": "object",
             "description": "The native libraries of the app by name, which Lua loads with \"native.load\".",

@@ -37,8 +37,8 @@ class ParticleBenchmark final {
         files.emplace("haylen.json", bytes(R"({"name": "Particle Benchmark", "identifier": "com.haylen.particlebenchmark"})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
         const auto package = std::make_shared<io::MemoryPackage>("particle-benchmark", std::move(files));
-        core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
+        core::AppConfig config = core::AppConfig::fromPackage(*package, application->getSections());
         application->configure(config);
         core::Engine engine(host, package, std::move(config), std::move(application));
         engine.start();

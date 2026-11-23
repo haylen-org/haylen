@@ -25,7 +25,7 @@
         "background": "#FFE9E6DC"
     },
     "clearColor": "#FFE9E6DC",
-    "autoload": [
-        "rides"
-    ]
+    "lua": {
+        "autoloads": ["rides"]
+    }
 }

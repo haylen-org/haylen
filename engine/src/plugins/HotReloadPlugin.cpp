@@ -35,11 +35,7 @@ core::Json HotReloadPlugin::Report::toJson() const {
         error["phase"] = core::Engine::kPhaseNames[static_cast<std::size_t>(core::Engine::Phase::Reload)];
         rejections.push_back({{"path", rejection.path}, {"error", std::move(error)}});
     }
-    return {{"restarted", false}, {"mode", core::AppConfig::reloadName(mode)}, {"files", std::move(changes)}, {"modules", modules}, {"restored", restored}, {"assets", assets}, {"rejected", std::move(rejections)}, {"resumed", resumed}, {"milliseconds", milliseconds}};
-}
-
-void HotReloadPlugin::start(core::Engine& engine) {
-    mode = engine.getConfig().debug.reload;
+    return {{"restarted", false}, {"files", std::move(changes)}, {"modules", modules}, {"restored", restored}, {"assets", assets}, {"rejected", std::move(rejections)}, {"resumed", resumed}, {"milliseconds", milliseconds}};
 }
 
 void HotReloadPlugin::setScripts(Scripts* value) noexcept {
@@ -78,7 +74,7 @@ void HotReloadPlugin::beginFrame(core::Engine& engine, float) {
     }
 }
 
-// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. Every file of the batch gets its entry in the report, and a batch restarts the app for `haylen.json`, `source/main.lua` and plugin manifests, for a removed module that code of the app still requires, for any loaded module in the mode `restart`, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
+// A Lua file that no module loaded yet changes nothing, because the next `require` reads it, except while an error shows, since the file may hold the module whose first load failed: the batch then resumes the app, so the code that failed requires it again. Every file of the batch gets its entry in the report, and a batch restarts the app for `haylen.json`, `source/main.lua` and plugin manifests, for a removed module that code of the app still requires, for any loaded module that the runtime of the scripts restarts the app for, for more loaded modules than reload in place, and for any change while an error that cannot resume shows.
 HotReloadPlugin::Batch HotReloadPlugin::classify(core::Engine& engine, const std::vector<std::string>& changed, Report& report) const {
     Batch batch;
     for (const std::string& path : changed) {
@@ -176,7 +172,7 @@ void HotReloadPlugin::restart(core::Engine& engine, const Batch& batch, Report& 
 
 void HotReloadPlugin::apply(core::Engine& engine, const std::vector<std::string>& changed) {
     const auto started = std::chrono::steady_clock::now();
-    Report report{.mode = mode};
+    Report report;
     const Batch batch = classify(engine, changed, report);
     if (!batch.restart.empty()) {
         restart(engine, batch, report, batch.restart, batch.restartFile);

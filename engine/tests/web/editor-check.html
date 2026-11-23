@@ -20,7 +20,7 @@
         "audio.play(beep, {loop = true})",
     ].join("\n");
     const check = {
-        app: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", debug: { executionBudget: 1 } }),
+        app: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", lua: { executionBudget: 1 } }),
         main: "settings = require('settings')\ncount = 0\nrequire('haylen.scene').push({update = function() count = count + settings.step end})\n" + tone,
         first: "return {step = 1}",
         second: "return {step = 2}",
@@ -34,7 +34,7 @@
         stale: tone + "\nrequire('haylen.timer').after(3, function() print('Stale timer of the first run.') end)\nlocal async = require('async')\nasync.spawn(function() async.sleep(3):await() print('Stale task of the first run.') end)",
         finalizer: "require('haylen.scene').push({update = function() setmetatable({}, {__gc = function() while true do end end}) collectgarbage() end})",
         // Code that holds the worker longer than the check waits, under a budget of ten minutes.
-        stuckApp: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", debug: { executionBudget: 600 } }),
+        stuckApp: JSON.stringify({ name: "Editor Check", identifier: "com.haylen.editorcheck", lua: { executionBudget: 600 } }),
         stuck: "require('haylen.scene').push({update = function() while true do end end})",
         gamepad: "input = require('haylen.input')\nrequire('haylen.scene').push({update = function() pad = {tostring(input.gamepadConnected(1)), input.gamepadName(1) or '', tostring(input.gamepadDown('south', 1)), string.format('%.2f', input.gamepadAxis('rightTrigger', 1))} end})",
         interface: "ui = require('haylen.ui')\nclicked = false\nrequire('haylen.scene').push({enter = function(self) self.gui = ui.mount(ui.column{ui.button{text = 'Play', onClick = function() clicked = true end}}, {owner = self}) end})",

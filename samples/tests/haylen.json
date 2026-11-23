@@ -24,7 +24,9 @@
     "debug": {
         "console": true
     },
-    "autoload": ["categories.events.player-data"],
+    "lua": {
+        "autoloads": ["categories.events.player-data"]
+    },
     "localization": {
         "folder": "localization/locale",
         "fallback": "en"

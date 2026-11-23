@@ -13,7 +13,7 @@ local Autoloads = haylen.class('Autoloads', EventsTest)
 Autoloads.coinCounter = true
 
 local kCode = [[
--- The file "haylen.json" lists "categories.events.player-data" in "autoload".
+-- The file "haylen.json" lists "categories.events.player-data" in "lua.autoloads".
 local playerData = haylen.autoloads.playerData
 playerData:earn(10)
 haylen.autoload('categories.events.jukebox')  -- Named "jukebox".

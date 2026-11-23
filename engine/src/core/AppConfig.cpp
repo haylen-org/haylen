@@ -23,7 +23,7 @@
 
 namespace haylen::core {
 
-const std::array<std::pair<std::string_view, AppConfig::Debug::Reload>, 2> AppConfig::kReloadNames{{{"module", Debug::Reload::Module}, {"restart", Debug::Reload::Restart}}};
+const std::array<std::string_view, 28> AppConfig::kKeys{"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "native", "plugins", "category", "kind", "cpp", "platforms"};
 
 const std::array<std::pair<std::string_view, content::Delivery>, 3> AppConfig::kDeliveryNames{{{"required", content::Delivery::Required}, {"prefetch", content::Delivery::Prefetch}, {"onDemand", content::Delivery::OnDemand}}};
 
@@ -192,15 +192,6 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
     for (const Json& rule : rules) {
         config.content.delivery.push_back(readDeliveryRule(rule, config.content.groups));
     }
-}
-
-std::optional<AppConfig::Debug::Reload> AppConfig::reloadFromName(std::string_view name) noexcept {
-    const auto found = std::ranges::find(kReloadNames, name, &std::pair<std::string_view, Debug::Reload>::first);
-    return found != kReloadNames.end() ? std::optional(found->second) : std::nullopt;
-}
-
-std::string_view AppConfig::reloadName(Debug::Reload value) noexcept {
-    return std::ranges::find(kReloadNames, value, &std::pair<std::string_view, Debug::Reload>::second)->first;
 }
 
 // A number reaches a field only when the field holds it as it is, so a fraction never truncates into a whole number and no number falls outside its type.
@@ -461,9 +452,42 @@ void AppConfig::Content::expandGroups(const io::Package& package) {
     delivery = std::move(expanded);
 }
 
-AppConfig AppConfig::fromPackage(const io::Package& package) {
-    AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)));
+AppConfig AppConfig::fromPackage(const io::Package& package, std::span<const std::string_view> applicationSections) {
+    AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)), applicationSections);
+    requirePluginManifests(package, config);
+    return config;
+}
 
+std::map<std::string, AppConfig::Plugin> AppConfig::readPlugins(const io::Package& package) {
+    const Json document = Json::parse(package.readText(io::Path::kAppConfigFile));
+    AppConfig config;
+    if (document.contains("plugins")) {
+        readPlugins(document.at("plugins"), config);
+    }
+
+    requirePluginManifests(package, config);
+    return std::move(config.plugins);
+}
+
+// The sections that the application reads itself stay as `haylen.json` wrote them, and every other key is one that the engine reads.
+void AppConfig::readKeys(const Json& document, std::span<const std::string_view> applicationSections, AppConfig& config) {
+    if (!document.is_object()) {
+        throw std::invalid_argument("Expected \"haylen.json\" to be a JSON object.");
+    }
+
+    for (const auto& [key, value] : document.items()) {
+        if (std::ranges::find(applicationSections, key) != applicationSections.end()) {
+            config.sections.emplace(key, value);
+            continue;
+        }
+
+        if (std::ranges::find(kKeys, key) == kKeys.end()) {
+            throw std::invalid_argument("Unknown key \"" + key + "\" in \"haylen.json\".");
+        }
+    }
+}
+
+void AppConfig::requirePluginManifests(const io::Package& package, const AppConfig& config) {
     for (const auto& [id, plugin] : config.plugins) {
         const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
         if (package.exists(manifest)) {
@@ -477,8 +501,6 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
 
         throw std::invalid_argument("The plugin \"" + id + "\" in \"haylen.json\" has no \"" + manifest + "\" in the package.");
     }
-
-    return config;
 }
 
 void AppConfig::readWindow(const Json& section, AppConfig& config) {
@@ -677,7 +699,7 @@ void AppConfig::readUi(const Json& section, AppConfig& config) {
 }
 
 void AppConfig::readDebug(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea", "reload", "executionBudget", "memoryBudget"}, "the \"debug\" section of \"haylen.json\"");
+    JsonValidator::requireKnownKeys(section, {"stats", "statsItems", "drawings", "objectEvents", "console", "safeArea", "fold", "showSafeArea"}, "the \"debug\" section of \"haylen.json\"");
     std::string stats;
     readValue(section, "debug", "stats", stats);
 
@@ -731,43 +753,11 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
     }
 
     readValue(section, "debug", "showSafeArea", config.debug.showSafeArea);
-
-    if (section.contains("reload")) {
-        std::string reload;
-        readValue(section, "debug", "reload", reload);
-        const auto mode = reloadFromName(reload);
-        if (!mode) {
-            throw std::invalid_argument("The \"debug.reload\" value \"" + reload + "\" in \"haylen.json\" is unknown. It is \"module\" or \"restart\".");
-        }
-
-        config.debug.reload = *mode;
-    }
-
-    if (section.contains("executionBudget")) {
-        double seconds = 0.0;
-        readValue(section, "debug", "executionBudget", seconds);
-        if (!(seconds >= kMinExecutionBudget && seconds <= kMaxExecutionBudget)) {
-            throw std::invalid_argument("The \"debug.executionBudget\" value in \"haylen.json\" must be a number of seconds from 0.1 to 600.");
-        }
-
-        config.debug.executionBudget = std::chrono::milliseconds(std::llround(seconds * 1000.0));
-    }
-
-    if (section.contains("memoryBudget")) {
-        double megabytes = 0.0;
-        readValue(section, "debug", "memoryBudget", megabytes);
-        if (!(megabytes >= kMinMemoryBudget && megabytes <= kMaxMemoryBudget)) {
-            throw std::invalid_argument("The \"debug.memoryBudget\" value in \"haylen.json\" must be a number of megabytes from 16 to 4096.");
-        }
-
-        config.debug.memoryBudget = static_cast<std::size_t>(std::llround(megabytes * 1024.0 * 1024.0));
-    }
 }
 
-AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "build", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "autoload", "native", "plugins", "category", "kind", "cpp", "platforms"}, "\"haylen.json\"");
-
+AppConfig AppConfig::fromJson(const Json& document, std::span<const std::string_view> applicationSections) {
     AppConfig config;
+    readKeys(document, applicationSections, config);
     readValue(document, "", "name", config.name);
     readValue(document, "", "identifier", config.identifier);
     readValue(document, "", "version", config.version);
@@ -843,14 +833,6 @@ AppConfig AppConfig::fromJson(const Json& document) {
         readDebug(document.at("debug"), config);
     }
 
-    readValue(document, "", "autoload", config.autoloads);
-
-    for (const std::string& module : config.autoloads) {
-        if (module.empty()) {
-            throw std::invalid_argument("The \"autoload\" list in \"haylen.json\" has an empty module name.");
-        }
-    }
-
     if (document.contains("native")) {
         if (!document.at("native").is_object()) {
             throw std::invalid_argument("The \"native\" section of \"haylen.json\" must be an object of libraries.");
@@ -881,7 +863,7 @@ Json AppConfig::toJson() const {
         statsItems.push_back(debug::StatsDisplay::itemName(item));
     }
 
-    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"statsItems", statsItems}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}, {"reload", reloadName(debug.reload)}, {"executionBudget", static_cast<double>(debug.executionBudget.count()) / 1000.0}, {"memoryBudget", static_cast<double>(debug.memoryBudget) / (1024.0 * 1024.0)}};
+    Json debugJson = {{"stats", debug::StatsDisplay::modeName(debug.stats)}, {"statsItems", statsItems}, {"drawings", debug.drawings}, {"objectEvents", debug.objectEvents}, {"console", debug.console}, {"showSafeArea", debug.showSafeArea}};
     if (debug.safeArea) {
         debugJson["safeArea"] = debug.safeArea->toJson();
     }
@@ -966,9 +948,14 @@ Json AppConfig::toJson() const {
         localizationJson["language"] = localization.language;
     }
 
-    return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
+    Json document{
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"build", build}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"native", native}, {"plugins", pluginsJson},
     };
+    for (const auto& [section, value] : sections) {
+        document[section] = value;
+    }
+
+    return document;
 }
 
 } // namespace haylen::core

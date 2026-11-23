@@ -18,11 +18,12 @@
 #include "lua/Warnings.hpp"
 #include "lua/modules/BuiltInModules.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "runtime/LuaConfig.hpp"
 #include "varn/runtime/Runtime.h"
 
 namespace haylen::lua {
 
-ScriptPlugin::ScriptPlugin() : warnings(std::make_unique<Warnings>()), autoloads(std::make_unique<Autoloads>()), jobs(std::make_unique<Jobs>()) {
+ScriptPlugin::ScriptPlugin(const LuaConfig& settings) : config(std::make_unique<const LuaConfig>(settings)), warnings(std::make_unique<Warnings>()), autoloads(std::make_unique<Autoloads>()), jobs(std::make_unique<Jobs>()) {
     lua::modules::BuiltInModules::registerAll(modules);
 }
 
@@ -78,8 +79,7 @@ void ScriptPlugin::attachBudget(core::Engine& engine, lua_State* L) {
         return engine.getProfiler().getScopeName();
     };
     // clang-format on
-    const core::AppConfig::Debug& debug = engine.getConfig().debug;
-    Development::of(*session).getExecutionBudget().attach(L, {.time = debug.executionBudget, .memory = debug.memoryBudget}, cancel, stage);
+    Development::of(*session).getExecutionBudget().attach(L, {.time = config->executionBudget, .memory = config->memoryBudget}, cancel, stage);
 
     debug::ExecutionBudget::guardMessageHandlers(L);
     debug::ExecutionBudget::guardFinalizers(L);
@@ -138,6 +138,10 @@ lua_State* ScriptPlugin::getState() const noexcept {
 
 varn::runtime::Runtime& ScriptPlugin::getRuntime() noexcept {
     return *runtime;
+}
+
+const LuaConfig& ScriptPlugin::getConfig() const noexcept {
+    return *config;
 }
 
 Autoloads& ScriptPlugin::getAutoloads() noexcept {

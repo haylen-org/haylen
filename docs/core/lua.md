@@ -64,9 +64,10 @@ These are the parts of `haylen.json` that most apps set.
 | `design` | The design resolution: the space of units that the app draws in, whatever the size of the screen. |
 | `orientation`, `splash` | How a phone holds the app, and the launch screen. |
 | `lifecycle`, `audio` | What the app does when it loses the focus, and how it shares sound with other apps. |
-| `debug` | The debug statistics, drawings and the reload mode of development. |
+| `debug` | The debug statistics and drawings. |
 | `localization` | The folder of the texts of each language and the fallback language, which the [localization guide](localization.md#configuring-the-languages) explains. |
-| `autoload`, `plugins` | The modules that load before the first scene, and the plugins of the app. |
+| `lua` | The modules that load before the first scene, the reload mode and the execution budget of development, which the Lua layer of the engine reads. |
+| `plugins` | The plugins of the app. |
 
 The reference of [`haylen.config`](../lua-api/haylen.md#haylenconfig) lists every field with its default. Scripts read the same settings, with every default filled in, from `require('haylen').config`.
 
@@ -205,13 +206,13 @@ A scene can also load what it needs in its `load` hook before it shows, with pro
 
 ## Autoloads
 
-Some things live longer than any scene, such as the profile of the player, the music or a connection to a server. Make such a module an autoload: list it in the `autoload` array of `haylen.json`, and it loads before `source/main.lua` runs and lives for the whole app. An autoload is the table that its module returns. It receives hooks like a scene, such as `start`, `update` and `stop`.
+Some things live longer than any scene, such as the profile of the player, the music or a connection to a server. Make such a module an autoload: list it in the `autoloads` array of the `lua` section of `haylen.json`, and it loads before `source/main.lua` runs and lives for the whole app. An autoload is the table that its module returns. It receives hooks like a scene, such as `start`, `update` and `stop`.
 
 ```json
 {
     "name": "Tiny Island",
     "identifier": "com.haylen.tinyisland",
-    "autoload": ["state.session"]
+    "lua": {"autoloads": ["state.session"]}
 }
 ```
 
@@ -512,17 +513,17 @@ Warnings of Lua, such as an error in a `__gc` metamethod or a call of `warn`, go
 
 ### The execution budget
 
-Code that never ends, such as a loop without an exit, would hold the frame thread forever, and a browser page or a window would freeze with it. So an app in development runs its code under an execution budget: each time the platform enters the engine, such as for one frame, the start of the app, an event or the stop of the app, the code of the app may run for `debug.executionBudget` seconds of `haylen.json`, 5 by default. That covers everything the app runs in that call: the start of the app and `source/main.lua`, the modules it requires, scene hooks, `update`, `fixedUpdate` and `render`, timers, tweens, listeners, the callbacks of promises and tasks, hot reload and the code that runs while the app stops.
+Code that never ends, such as a loop without an exit, would hold the frame thread forever, and a browser page or a window would freeze with it. So an app in development runs its code under an execution budget: each time the platform enters the engine, such as for one frame, the start of the app, an event or the stop of the app, the code of the app may run for `lua.executionBudget` seconds of `haylen.json`, 5 by default. That covers everything the app runs in that call: the start of the app and `source/main.lua`, the modules it requires, scene hooks, `update`, `fixedUpdate` and `render`, timers, tweens, listeners, the callbacks of promises and tasks, hot reload and the code that runs while the app stops.
 
 When the time runs out, the engine stops the app for good. The error screen shows the error with the code `executionBudget`, the file and line that ran when the time ran out, its stack, and the step of the engine it ran in, such as `update`, `render` or `reload`, which the error carries as `callback`. Every instruction of the app raises that error again from then on. So a `pcall`, an `xpcall` or a coroutine of the app catches it only to raise it again at its next instruction, the message handler of an `xpcall` never sees it, and the app cannot reset the budget. No fix resumes the app and it cannot go back from the error screen. Saving a file restarts it, and so do `R` and `run` of a web page. The page and every editor also receive the error, as [where the report goes](#where-the-report-goes) describes.
 
-The Lua state of an app in development has a memory budget too, `debug.memoryBudget` megabytes of `haylen.json`, 1024 by default. Once the state holds that much and a full collection of its garbage cannot make room, the allocation fails and the engine stops the app the same way, with the code `memory`.
+The Lua state of an app in development has a memory budget too, `lua.memoryBudget` megabytes of `haylen.json`, 1024 by default. Once the state holds that much and a full collection of its garbage cannot make room, the allocation fails and the engine stops the app the same way, with the code `memory`.
 
 Once the app stops, such as for a restart, the code that stops it runs again, even after the budget ran out: the listeners of `appStopping`, the hooks of the scenes that unload and the `stop` of its autoloads. That code gets its whole time again, and room for a quarter of the memory budget beyond what the state holds, so it can end what the app holds while its memory stays bounded.
 
 ```json
 {
-    "debug": {"executionBudget": 2, "memoryBudget": 256}
+    "lua": {"executionBudget": 2, "memoryBudget": 256}
 }
 ```
 
@@ -562,7 +563,7 @@ The player checks `haylen.json`, `source/`, `content/` and the `plugin.json` and
 - **A file under `content/`** reloads the assets read from it without a restart. Textures, shaders, JSON, fonts and sounds change in place, so sprites that already use a texture show the new pixels, text lays out again with the new glyphs and the next voice of a sound plays the new samples. Other asset types leave the cache, so the next load reads the new file, and every live asset that went stale gets the event `assetChanged`, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files.
 - **A removed module** that no code of the app requires leaves the app in place: its names leave `package.loaded`, and what its top level registered without an owner ends with it, so a later `require` of it fails as for a module that never existed. A module that another module, `source/main.lua` or another file of the app that is no module requires, or that the app keeps as an autoload, restarts the app instead.
 - **A Lua file that no module loaded yet** changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.
-- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `haylen.json`, `source/main.lua` or `plugin.json`, a removed module that code of the app requires, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `debug.reload` of `haylen.json` is `"restart"`. A restart works even from an app whose `haylen.json` failed to load, so fixing the file restarts it.
+- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `haylen.json`, `source/main.lua` or `plugin.json`, a removed module that code of the app requires, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `lua.reload` of `haylen.json` is `"restart"`. A restart works even from an app whose `haylen.json` failed to load, so fixing the file restarts it.
 - **Other files** never count: hidden files, backup files and files under `source/` that are not Lua. So the swap and backup files that editors write change nothing. A file that is still being written waits for the next check, and a change saved while the app restarts reaches the app that starts.
 
 ### Resume or restart

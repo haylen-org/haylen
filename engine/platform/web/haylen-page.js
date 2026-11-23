@@ -1140,7 +1140,7 @@ Module.haylen = Module.haylen || {};
         notify("onSplashEnded", { fadeOut });
     };
 
-    // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, mode, modules, restored, assets, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
+    // Reports of hot reload arrive after every batch of changes that applied, as `{restarted: false, files, modules, restored, assets, rejected, resumed, milliseconds}`, or as `{restarted: true, reason}` before a restart.
     haylen.reportReloaded = function (report) {
         notify("onReloaded", report);
     };

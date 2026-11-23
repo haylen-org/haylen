@@ -652,7 +652,7 @@ TEST_F(ModuleReloadTest, ReloadsChangedModulesInDependencyOrder) {
 }
 
 TEST_F(ModuleReloadTest, CallsReloadedOnModulesDependentsAutoloadsScenesAndInstances) {
-    start({{"haylen.json", R"({"name": "Hooks", "autoload": ["service"]})"},
+    start({{"haylen.json", R"({"name": "Hooks", "lua": {"autoloads": ["service"]}})"},
         {"source/core.lua", R"(
 local haylen = require('haylen')
 local M = {}
@@ -893,7 +893,7 @@ TEST_F(ModuleReloadTest, RestartsForHaylenJsonMainAndPluginManifests) {
 }
 
 TEST_F(ModuleReloadTest, RestartsInTheRestartModeAndForMarkedModules) {
-    start({{"haylen.json", R"({"name": "Restart", "debug": {"reload": "restart"}})"}, {"source/a.lua", "return {}"}, {"source/main.lua", "require('a')"}});
+    start({{"haylen.json", R"({"name": "Restart", "lua": {"reload": "restart"}})"}, {"source/a.lua", "return {}"}, {"source/main.lua", "require('a')"}});
     EXPECT_EQ(lua("return require('haylen.hotReload').mode()"), "restart");
     edit({{"source/a.lua", "return {edited = true}"}});
     EXPECT_TRUE(restarted());
@@ -903,7 +903,6 @@ TEST_F(ModuleReloadTest, RestartsInTheRestartModeAndForMarkedModules) {
     EXPECT_FALSE(restarted());
     edit({{"source/marked.lua", "require('haylen.hotReload').restartOnChange() return {edited = true}"}});
     EXPECT_TRUE(restarted());
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"reload": "always"}})")), std::invalid_argument);
 }
 
 TEST_F(ModuleReloadTest, RestartsForAmbiguousUpvalues) {

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <array>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -108,17 +109,19 @@ TEST_F(AppConfigTest, ReadsEveryField) {
     }
 
     EXPECT_EQ(AppConfig::fromJson(Json::object()).window.title, "Haylen App");
+}
 
-    for (const char* reload : {"module", "restart"}) {
-        EXPECT_EQ(AppConfig::fromJson(Json{{"debug", {{"reload", reload}}}}).toJson().at("debug").at("reload"), reload);
-    }
+// The sections that the application reads itself stay as they are for it, and the engine refuses them for an application that does not read them.
+TEST_F(AppConfigTest, KeepsTheSectionsThatTheApplicationReads) {
+    const Json document = Json::parse(R"({"name": "Sections", "lua": {"autoloads": ["state"]}})");
+    static constexpr std::array<std::string_view, 1> kSections{"lua"};
+    const AppConfig config = AppConfig::fromJson(document, kSections);
 
-    try {
-        (void)AppConfig::fromJson(Json{{"debug", {{"reload", "always"}}}});
-        ADD_FAILURE() << "An unknown reload mode must be refused.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"debug.reload\" value \"always\" in \"haylen.json\" is unknown. It is \"module\" or \"restart\".");
-    }
+    ASSERT_TRUE(config.sections.contains("lua"));
+    EXPECT_EQ(config.sections.at("lua"), document.at("lua"));
+    EXPECT_EQ(config.toJson().at("lua"), document.at("lua"));
+    EXPECT_EQ(refusal(document.dump()), "Unknown key \"lua\" in \"haylen.json\".");
+    EXPECT_FALSE(AppConfig::fromJson(Json::object(), kSections).sections.contains("lua"));
 }
 
 // The description, the company and the copyright that desktops and installers show follow the name of the app until it gives its own, and the website stays empty.
@@ -163,13 +166,6 @@ TEST_F(AppConfigTest, RejectsInvalidValues) {
     // An empty text is a value like any other, never a way to ask for the default.
     for (const char* document : {R"({"window": {"statusBar": ""}})", R"({"window": {"statusBarColor": ""}})", R"({"design": {"scaling": ""}})", R"({"ui": {"scaleMode": ""}})", R"({"debug": {"stats": ""}})", R"({"orientation": ""})", R"({"clearColor": ""})"}) {
         EXPECT_THROW((void)AppConfig::fromJson(Json::parse(document)), std::invalid_argument) << document;
-    }
-
-    try {
-        (void)AppConfig::fromJson(Json::parse(R"({"autoload": ["state.player", ""]})"));
-        FAIL() << "An autoload needs the name of its module.";
-    } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The \"autoload\" list in \"haylen.json\" has an empty module name.");
     }
 }
 

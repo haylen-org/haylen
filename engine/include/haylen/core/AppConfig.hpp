@@ -1,11 +1,11 @@
 #pragma once
 
 #include <array>
-#include <chrono>
-#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -98,14 +98,8 @@ struct AppConfig {
         float scrollSpeed = 1.0F;
     };
 
-    // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, whether the developer console works outside development, the safe area to simulate instead of the one of the device, whether the safe area shows over the app, and how a changed Lua module applies while the app runs in development.
+    // The debug statistics and the debug drawings the app starts with, whether counted objects publish `objectCreated` and `objectDestroyed`, whether the developer console works outside development, the safe area to simulate instead of the one of the device and whether the safe area shows over the app.
     struct Debug {
-        // A changed module reloads in place with the state of the app, or restarts the app. Changes that cannot apply in place restart it either way.
-        enum class Reload : std::uint8_t {
-            Module,
-            Restart,
-        };
-
         debug::StatsDisplay::Mode stats = debug::StatsDisplay::Mode::Off;
         std::vector<debug::StatsDisplay::Item> statsItems = debug::StatsDisplay::getDefaultItems();
         std::vector<std::string> drawings;
@@ -114,13 +108,6 @@ struct AppConfig {
         std::optional<platform::SafeAreaSimulation> safeArea;
         std::optional<platform::FoldSimulation> fold;
         bool showSafeArea = false;
-        Reload reload = Reload::Module;
-
-        // The time that the code of an app in development may run in each entry of the host, such as one frame, before the engine cancels the app.
-        std::chrono::milliseconds executionBudget{5000};
-
-        // The bytes that the Lua state of an app in development may hold before the engine cancels the app.
-        std::size_t memoryBudget = std::size_t{1024} * 1024 * 1024;
     };
 
     // How the content of a protected release reaches the device, from the `content` object: the server of its updates and downloads, and the files that need not be on the device before the app starts.
@@ -200,9 +187,6 @@ struct AppConfig {
     Content content{};
     Localization localization{};
 
-    // Lua modules that load before the first scene and live for the whole app.
-    std::vector<std::string> autoloads;
-
     // The native libraries the app ships by name, which the backend of each target builds and places in the app. The engine keeps the section as `haylen.json` wrote it.
     Json native = Json::object();
 
@@ -219,31 +203,27 @@ struct AppConfig {
     // The plugins the app uses by id.
     std::map<std::string, Plugin> plugins;
 
-    // Reads every present field and validates it. Throws `std::invalid_argument` with the offending field on bad values.
-    [[nodiscard]] static AppConfig fromJson(const Json& document);
+    // The sections of `haylen.json` that the application reads itself, such as the `lua` section of a Lua app, by name and as `haylen.json` wrote them.
+    std::map<std::string, Json, std::less<>> sections;
+
+    // Reads every present field and validates it, keeping the sections that the application names in `sections`, which the application reads itself. Throws `std::invalid_argument` with the offending field on bad values and on a key that neither the engine nor the application reads.
+    [[nodiscard]] static AppConfig fromJson(const Json& document, std::span<const std::string_view> applicationSections = {});
 
     // Reads `haylen.json` of the package like `fromJson` and also checks that the package holds `plugins/<id>/plugin.json` for every plugin the app lists, which a folder that the player runs directly lacks for a plugin that `haylen.json` references elsewhere. It reads no content, so the rules that name preload groups stay until `Content::expandGroups`.
-    [[nodiscard]] static AppConfig fromPackage(const io::Package& package);
+    [[nodiscard]] static AppConfig fromPackage(const io::Package& package, std::span<const std::string_view> applicationSections = {});
+
+    // Reads only the plugins that `haylen.json` of the package lists, as `fromPackage` checks them, for a runtime that loads their native parts before it creates the application.
+    [[nodiscard]] static std::map<std::string, Plugin> readPlugins(const io::Package& package);
     [[nodiscard]] Json toJson() const;
 
-    [[nodiscard]] static std::optional<Debug::Reload> reloadFromName(std::string_view name) noexcept;
-    [[nodiscard]] static std::string_view reloadName(Debug::Reload value) noexcept;
     [[nodiscard]] static std::optional<content::Delivery> deliveryFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view deliveryName(content::Delivery value) noexcept;
 
     // The largest build number, the largest version code that Google Play takes.
     static constexpr std::uint32_t kMaxBuild = 2'100'000'000;
 
-    // The bounds of `debug.executionBudget` in seconds.
-    static constexpr double kMinExecutionBudget = 0.1;
-    static constexpr double kMaxExecutionBudget = 600.0;
-
-    // The bounds of `debug.memoryBudget` in megabytes.
-    static constexpr double kMinMemoryBudget = 16.0;
-    static constexpr double kMaxMemoryBudget = 4096.0;
-
   private:
-    static const std::array<std::pair<std::string_view, Debug::Reload>, 2> kReloadNames;
+    static const std::array<std::string_view, 28> kKeys;
     static const std::array<std::pair<std::string_view, content::Delivery>, 3> kDeliveryNames;
     static const std::array<std::string_view, 10> kCategoryNames;
 
@@ -252,7 +232,9 @@ struct AppConfig {
     static void requirePositive(double value, const char* key);
     static void requireNonNegative(double value, const char* key);
     [[nodiscard]] static math::Color readColor(const Json& object, std::string_view section, const char* key);
+    static void readKeys(const Json& document, std::span<const std::string_view> applicationSections, AppConfig& config);
     static void readPlugins(const Json& section, AppConfig& config);
+    static void requirePluginManifests(const io::Package& package, const AppConfig& config);
     [[nodiscard]] static Plugin readPlugin(const std::string& id, const Json& entry);
     static void readPluginText(const Json& entry, const std::string& id, const char* key, std::string& target);
     static void requireToolingSections(const Json& document);

@@ -88,8 +88,8 @@ void ContentAppFixture::run(std::shared_ptr<const io::Package> files) {
 
     auto store = storeRefused ? nullptr : std::make_shared<content::LocalStore>(std::move(storeFiles), release.getCompatibility().application, ReleaseFixture::kAppBuild);
     package = content::ReleasePackage::open(std::move(files), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
-    core::AppConfig config = core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
+    core::AppConfig config = core::AppConfig::fromPackage(*package, application->getSections());
     application->configure(config);
     engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
     engine->start();

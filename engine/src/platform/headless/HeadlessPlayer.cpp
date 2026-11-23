@@ -66,7 +66,7 @@ int HeadlessPlayer::run(const Options& options) {
 int HeadlessPlayer::play(const Options& options) {
     const std::shared_ptr<io::Package> package = io::Package::open(options.package);
     // The apps keep their user data in the folder the run names, or in a folder of the app under the temporary directory of the system.
-    const std::filesystem::path dataDirectory = options.dataDirectory.value_or(std::filesystem::temp_directory_path() / "haylen-headless" / core::AppConfig::fromPackage(*package).identifier);
+    const std::filesystem::path dataDirectory = options.dataDirectory.value_or(std::filesystem::temp_directory_path() / "haylen-headless" / core::AppConfig::fromPackage(*package, lua::Application::kSections).identifier);
     HeadlessHost host(dataDirectory);
     host.setLaunchArguments(options.arguments);
     if (options.development) {
@@ -152,8 +152,8 @@ std::unique_ptr<core::Engine> HeadlessPlayer::returnToLauncher(HeadlessHost& hos
 }
 
 std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const std::shared_ptr<io::Package>& package) {
-    core::AppConfig config = core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
+    core::AppConfig config = core::AppConfig::fromPackage(*package, application->getSections());
     application->configure(config);
     host.setTransparencySupported(config.window.transparent);
     host.setWindowSampleCount(config.window.sampleCount);

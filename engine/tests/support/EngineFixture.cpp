@@ -53,11 +53,11 @@ void EngineFixture::stop() {
 }
 
 void EngineFixture::launch(std::unique_ptr<core::Application> application) {
-    core::AppConfig config = core::AppConfig::fromPackage(*playedPackage);
-
     if (!application) {
         application = std::make_unique<lua::Application>();
     }
+
+    core::AppConfig config = core::AppConfig::fromPackage(*playedPackage, application->getSections());
 
     application->configure(config);
     headlessHost.setTransparencySupported(config.window.transparent);

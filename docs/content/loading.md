@@ -105,7 +105,7 @@ An autoload is a Lua module of the app that loads before the first scene and liv
 {
     "name": "My Game",
     "identifier": "com.example.mygame",
-    "autoload": ["state.player-data"]
+    "lua": {"autoloads": ["state.player-data"]}
 }
 ```
 

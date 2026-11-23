@@ -529,6 +529,7 @@ set(HAYLEN_ENGINE_SOURCES
   lua/src/platform/native/NativeCallbacks.cpp
   lua/src/plugins/DebuggerPlugin.cpp
   lua/src/plugins/ExecutionBudgetPlugin.cpp
+  lua/src/runtime/LuaConfig.cpp
   lua/src/ui/LuaItemSource.cpp
   lua/src/ui/LuaPageSource.cpp
   lua/src/ui/ScriptedScreen.cpp

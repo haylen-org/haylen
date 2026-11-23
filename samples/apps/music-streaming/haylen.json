@@ -28,9 +28,9 @@
         "background": "#FF0B0A12"
     },
     "clearColor": "#FF0B0A12",
-    "autoload": [
-        "player"
-    ],
+    "lua": {
+        "autoloads": ["player"]
+    },
     "plugins": {
         "music-links": {}
     }

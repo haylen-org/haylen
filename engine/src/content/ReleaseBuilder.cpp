@@ -18,7 +18,7 @@ namespace haylen::content {
 ReleaseBuilder::ReleaseBuilder(std::shared_ptr<const KeyRing> contentKeys, const Digest& activeKeyId, std::shared_ptr<const SigningKey> signing, std::shared_ptr<const RecordCache> recordCache) : keys(std::move(contentKeys)), activeKey(keys->get(activeKeyId)), signingKey(std::move(signing)), cache(std::move(recordCache)) {}
 
 ReleaseBuilder::Result ReleaseBuilder::build(const io::Package& app, const std::filesystem::path& output, const std::optional<std::filesystem::path>& earlier, const Options& options) const {
-    core::AppConfig config = core::AppConfig::fromPackage(app);
+    core::AppConfig config = core::AppConfig::fromPackage(app, options.sections);
     config.content.expandGroups(app);
 
     if (std::filesystem::exists(output)) {

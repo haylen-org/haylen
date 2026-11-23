@@ -670,7 +670,7 @@ The machine fields never change with the language of the person, while `message`
 
 ### Reload reports
 
-A report of hot reload is `{restarted: false, mode, files, modules, restored, assets, rejected, resumed, milliseconds}`. The `files` hold one `{path, change, reason}` for every file of the batch, whose `change` says what the batch did with it and whose `reason` is the sentence that tells why:
+A report of hot reload is `{restarted: false, files, modules, restored, assets, rejected, resumed, milliseconds}`. The `files` hold one `{path, change, reason}` for every file of the batch, whose `change` says what the batch did with it and whose `reason` is the sentence that tells why:
 
 | Change | Meaning |
 | --- | --- |
@@ -747,7 +747,7 @@ A `dispose` ends the worker too, once the user data reached its database. The Wo
 - A browser opens popups, fullscreen, the pointer lock and the windows of outputs only shortly after an input of the person, so the request of the app reaches the page while that input still counts.
 - The worker needs the animation frames of workers and the `OffscreenCanvas` of WebGPU or WebGL2. Chromium and Safari offer both. A browser without the animation frames of workers reports the reason to `onError` instead of starting.
 
-A runtime on the page, or in a frame of the same origin, shares the thread of the editor, so code of the app that holds that thread freezes the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops Lua code that runs longer than `debug.executionBudget`, finalizers included, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. Those bounds stop the app, but only after its time ran out, and nothing bounds code outside development. So an editor that needs isolation uses the Worker mode, whose worker runs on a thread of its own in every browser and which `terminate()` ends at once. A frame of another site, such as a sandbox on a domain of its own, also runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, but not in every browser, and the editor then talks to it with `postMessage`.
+A runtime on the page, or in a frame of the same origin, shares the thread of the editor, so code of the app that holds that thread freezes the editor too. In development the [execution budget](../core/lua.md#the-execution-budget) stops Lua code that runs longer than `lua.executionBudget`, finalizers included, and the [bounds of native work](../core/lua.md#native-work-and-its-bounds) keep a native function of the engine from running away. Those bounds stop the app, but only after its time ran out, and nothing bounds code outside development. So an editor that needs isolation uses the Worker mode, whose worker runs on a thread of its own in every browser and which `terminate()` ends at once. A frame of another site, such as a sandbox on a domain of its own, also runs in a process of its own in the browsers that isolate sites, Chromium and Firefox, but not in every browser, and the editor then talks to it with `postMessage`.
 
 ## Android
 
