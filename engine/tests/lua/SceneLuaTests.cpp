@@ -8,9 +8,9 @@
 #include <thread>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneManager.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Event.hpp"
 #include "lua/ScriptedScene.hpp"

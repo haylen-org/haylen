@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "haylen/lua/Error.hpp"
+#include "haylen/core/AppError.hpp"
 
 namespace haylen::core {
 class Engine;
@@ -32,7 +32,7 @@ class Environment final {
     // Throws `std::runtime_error`, naming both files, when a module of the app has the name of a plugin module, which `require` would never load.
     static void checkModules(core::Engine& engine);
 
-    // Loads a module of the package and runs it, which is how the app starts with `source/main.lua`. Throws `Error` with the message and the stack when loading or running fails.
+    // Loads a module of the package and runs it, which is how the app starts with `source/main.lua`. Throws `core::AppError` with the message and the stack when loading or running fails.
     static void runModule(lua_State* L, const io::Package& package, const std::string& path);
 
   private:
@@ -42,12 +42,12 @@ class Environment final {
 
     [[nodiscard]] static std::string modulePath(std::string_view name);
     [[nodiscard]] static std::vector<std::string> getCandidates(const core::AppConfig& config, std::string_view name);
-    [[nodiscard]] static std::vector<Error::Frame> readFrames(lua_State* L, int index);
-    [[nodiscard]] static Error::Frame readFrame(lua_State* L, int index);
+    [[nodiscard]] static std::vector<core::AppError::Frame> readFrames(lua_State* L, int index);
+    [[nodiscard]] static core::AppError::Frame readFrame(lua_State* L, int index);
     [[nodiscard]] static std::string readText(lua_State* L, int index, const char* key);
     [[nodiscard]] static int readInteger(lua_State* L, int index, const char* key);
     static int reportFailure(lua_State* L);
-    [[nodiscard]] static Error describeRejection(const Error& error);
+    [[nodiscard]] static core::AppError describeRejection(const core::AppError& error);
 
     // Loads a module of the package, named after its package path, and leaves its function on the stack, or the message of Lua when it fails, and returns the status of Lua. A module that the authenticated catalog of a protected release holds as Lua bytecode loads as bytecode, whose bytes are wiped once Lua read them, and every other module loads as text, so no other file ever reaches Lua as bytecode.
     static int loadModule(lua_State* L, const io::Package& package, const std::string& path);

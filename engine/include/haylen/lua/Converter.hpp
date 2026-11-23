@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/Userdata.hpp"
 
@@ -209,13 +209,13 @@ template <typename T> struct Converter<std::vector<T>> {
     }
 };
 
-template <NamedEnum T> struct Converter<T> {
+template <core::NamedEnum T> struct Converter<T> {
     static void push(lua_State* L, T value) {
-        Converter<std::string_view>::push(L, EnumNames<T>::name(value));
+        Converter<std::string_view>::push(L, core::EnumNames<T>::name(value));
     }
     static T read(lua_State* L, int index) {
         const std::string_view name = Converter<std::string_view>::read(L, index);
-        const std::optional<T> value = EnumNames<T>::fromName(name);
+        const std::optional<T> value = core::EnumNames<T>::fromName(name);
         if (!value) {
             luaL_argerror(L, index, lua_pushfstring(L, "unknown value '%s'", std::string(name).c_str()));
         }
@@ -223,7 +223,7 @@ template <NamedEnum T> struct Converter<T> {
         return *value;
     }
     static bool is(lua_State* L, int index) {
-        return lua_type(L, index) == LUA_TSTRING && EnumNames<T>::fromName(Converter<std::string_view>::read(L, index)).has_value();
+        return lua_type(L, index) == LUA_TSTRING && core::EnumNames<T>::fromName(Converter<std::string_view>::read(L, index)).has_value();
     }
 };
 

@@ -30,6 +30,7 @@
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
 #include "haylen/audio/Sound.hpp"
 #include "haylen/core/Connection.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/core/MotionReduction.hpp"
 #include "haylen/core/ProcessMode.hpp"
 #include "haylen/graphics/BlendMode.hpp"
@@ -43,7 +44,6 @@
 #include "haylen/input/InputDevice.hpp"
 #include "haylen/input/TouchPhase.hpp"
 #include "haylen/lua/Converter.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/Userdata.hpp"
@@ -96,7 +96,7 @@ class TypeConverter final {
 
   private:
     template <typename T> friend struct Converter;
-    template <typename T> friend struct EnumNames;
+    template <typename T> friend struct core::EnumNames;
 
     template <typename T, std::size_t Size> using NameTable = std::array<std::pair<std::string_view, T>, Size>;
 
@@ -324,6 +324,10 @@ template <> struct Converter<math::FloatRange> {
     static math::FloatRange read(lua_State* L, int index);
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<graphics::BlendMode::Type> {
     static std::optional<graphics::BlendMode::Type> fromName(std::string_view name) {
         return graphics::BlendMode::parse(name);
@@ -371,10 +375,10 @@ template <> struct EnumNames<animation2d::Animation::Loop> {
 
 template <> struct EnumNames<graphics2d::Renderer::SortMode> {
     static std::optional<graphics2d::Renderer::SortMode> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kSortModes, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kSortModes, name);
     }
     static std::string_view name(graphics2d::Renderer::SortMode value) {
-        return TypeConverter::toName(TypeConverter::kSortModes, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kSortModes, value);
     }
 };
 
@@ -389,28 +393,28 @@ template <> struct EnumNames<graphics2d::Camera::Anchor> {
 
 template <> struct EnumNames<graphics2d::ImageBlend::Pattern> {
     static std::optional<graphics2d::ImageBlend::Pattern> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kBlendPatterns, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kBlendPatterns, name);
     }
     static std::string_view name(graphics2d::ImageBlend::Pattern value) {
-        return TypeConverter::toName(TypeConverter::kBlendPatterns, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kBlendPatterns, value);
     }
 };
 
 template <> struct EnumNames<graphics2d::SceneTransition::Kind> {
     static std::optional<graphics2d::SceneTransition::Kind> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kTransitions, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kTransitions, name);
     }
     static std::string_view name(graphics2d::SceneTransition::Kind value) {
-        return TypeConverter::toName(TypeConverter::kTransitions, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kTransitions, value);
     }
 };
 
 template <> struct EnumNames<graphics2d::SceneTransition::Direction> {
     static std::optional<graphics2d::SceneTransition::Direction> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kDirections, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kDirections, name);
     }
     static std::string_view name(graphics2d::SceneTransition::Direction value) {
-        return TypeConverter::toName(TypeConverter::kDirections, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kDirections, value);
     }
 };
 
@@ -479,64 +483,64 @@ template <> struct EnumNames<math::Easing::StepPosition> {
 
 template <> struct EnumNames<core::ProcessMode> {
     static std::optional<core::ProcessMode> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kProcessModes, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kProcessModes, name);
     }
     static std::string_view name(core::ProcessMode value) {
-        return TypeConverter::toName(TypeConverter::kProcessModes, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kProcessModes, value);
     }
 };
 
 template <> struct EnumNames<core::MotionReduction> {
     static std::optional<core::MotionReduction> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kMotionReductions, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kMotionReductions, name);
     }
     static std::string_view name(core::MotionReduction value) {
-        return TypeConverter::toName(TypeConverter::kMotionReductions, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kMotionReductions, value);
     }
 };
 
 template <> struct EnumNames<platform::Window::Cursor> {
     static std::optional<platform::Window::Cursor> fromName(std::string_view name) {
-        return TypeConverter::fromTable(platform::Window::kCursorNames, name);
+        return lua::TypeConverter::fromTable(platform::Window::kCursorNames, name);
     }
     static std::string_view name(platform::Window::Cursor value) {
-        return TypeConverter::toName(platform::Window::kCursorNames, value);
+        return lua::TypeConverter::toName(platform::Window::kCursorNames, value);
     }
 };
 
 template <> struct EnumNames<platform::Window::Passthrough> {
     static std::optional<platform::Window::Passthrough> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kPassthroughs, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kPassthroughs, name);
     }
     static std::string_view name(platform::Window::Passthrough value) {
-        return TypeConverter::toName(TypeConverter::kPassthroughs, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kPassthroughs, value);
     }
 };
 
 template <> struct EnumNames<input::InputDevice> {
     static std::optional<input::InputDevice> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kDevices, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kDevices, name);
     }
     static std::string_view name(input::InputDevice value) {
-        return TypeConverter::toName(TypeConverter::kDevices, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kDevices, value);
     }
 };
 
 template <> struct EnumNames<input::GamepadLabels> {
     static std::optional<input::GamepadLabels> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kGamepadLabels, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kGamepadLabels, name);
     }
     static std::string_view name(input::GamepadLabels value) {
-        return TypeConverter::toName(TypeConverter::kGamepadLabels, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kGamepadLabels, value);
     }
 };
 
 template <> struct EnumNames<input::TouchPhase> {
     static std::optional<input::TouchPhase> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kPhases, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kPhases, name);
     }
     static std::string_view name(input::TouchPhase value) {
-        return TypeConverter::toName(TypeConverter::kPhases, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kPhases, value);
     }
 };
 
@@ -587,10 +591,10 @@ template <> struct EnumNames<input::MotionSensor> {
 
 template <> struct EnumNames<platform::Event::Type> {
     static std::optional<platform::Event::Type> fromName(std::string_view name) {
-        return TypeConverter::fromTable(platform::Event::kTypeNames, name);
+        return lua::TypeConverter::fromTable(platform::Event::kTypeNames, name);
     }
     static std::string_view name(platform::Event::Type value) {
-        return TypeConverter::toName(platform::Event::kTypeNames, value);
+        return lua::TypeConverter::toName(platform::Event::kTypeNames, value);
     }
 };
 
@@ -632,11 +636,11 @@ template <> struct EnumNames<platform::Orientation> {
 
 template <> struct EnumNames<platform::TextInput::Action> {
     static std::optional<platform::TextInput::Action> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kTextActions, name);
+        return lua::TypeConverter::fromTable(lua::TypeConverter::kTextActions, name);
     }
     static std::string_view name(platform::TextInput::Action value) {
-        return TypeConverter::toName(TypeConverter::kTextActions, value);
+        return lua::TypeConverter::toName(lua::TypeConverter::kTextActions, value);
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core

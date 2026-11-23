@@ -30,7 +30,7 @@ void SceneLoad::Deferral::complete() {
     }
 }
 
-void SceneLoad::Deferral::fail(const lua::Error& failure) {
+void SceneLoad::Deferral::fail(const core::AppError& failure) {
     if (const std::shared_ptr<SceneLoad> target = std::exchange(load, {}).lock()) {
         target->fail(failure);
     }
@@ -89,7 +89,7 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
                 load->groups[part] = fraction;
             }
         }, [deferral, name = std::string(group), completion = std::move(completion)](std::vector<std::string> failures) {
-            const std::optional<lua::Error> failure = describeFailures(name, failures);
+            const std::optional<core::AppError> failure = describeFailures(name, failures);
             if (failure) {
                 deferral->fail(*failure);
             } else {
@@ -109,7 +109,7 @@ void SceneLoad::preload(std::string_view group, PreloadCompletion completion) {
     // clang-format on
 }
 
-std::optional<lua::Error> SceneLoad::describeFailures(std::string_view group, const std::vector<std::string>& failures) {
+std::optional<core::AppError> SceneLoad::describeFailures(std::string_view group, const std::vector<std::string>& failures) {
     if (failures.empty()) {
         return std::nullopt;
     }
@@ -119,7 +119,7 @@ std::optional<lua::Error> SceneLoad::describeFailures(std::string_view group, co
         text += ", " + failures[index];
     }
 
-    return lua::Error(text + ".");
+    return core::AppError(text + ".");
 }
 
 void SceneLoad::release() {
@@ -131,7 +131,7 @@ void SceneLoad::release() {
 }
 
 // A failure takes the place of a drop, which it explains, such as the error of a hook that dropped its deferral while it threw.
-void SceneLoad::fail(const lua::Error& failure) {
+void SceneLoad::fail(const core::AppError& failure) {
     if (cancelled || (isOver() && !dropped)) {
         return;
     }
@@ -145,7 +145,7 @@ void SceneLoad::drop() {
         return;
     }
 
-    error = lua::Error("The scene load was dropped before it finished.");
+    error = core::AppError("The scene load was dropped before it finished.");
     dropped = true;
 }
 

@@ -11,9 +11,9 @@
 #include <vector>
 
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Signal.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/plugins/Plugin.hpp"
 #include "lua/ModuleGraph.hpp"
 
@@ -52,7 +52,7 @@ class HotReloadPlugin final : public Plugin {
     // A changed file that the batch could not apply, with the error that kept it out.
     struct Rejection {
         std::string path;
-        lua::Error error;
+        core::AppError error;
     };
 
     // What one batch of changes did, for the log, the page and the development server, with every changed file. The restored modules are those whose file holds again the code that runs, after a reload of it failed.
@@ -120,7 +120,7 @@ class HotReloadPlugin final : public Plugin {
     [[nodiscard]] bool reloadModules(core::Engine& engine, const std::vector<std::string>& paths, Report& report, std::string& restartFile);
 
     // Calls the `reloaded` hooks and returns the error of the first one that failed.
-    [[nodiscard]] std::optional<lua::Error> callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const;
+    [[nodiscard]] std::optional<core::AppError> callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const;
     void finish(const Report& report);
 
     platform::DevelopmentSession* session;

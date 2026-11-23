@@ -16,10 +16,10 @@
 #include <vector>
 
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/gpu/Device.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
@@ -149,7 +149,7 @@ class Player final {
     class FailedApplication final : public core::Application {
       public:
         explicit FailedApplication(std::string reason) : error(std::move(reason)) {
-            error.setCode(lua::Error::Code::Package);
+            error.setCode(core::AppError::Code::Package);
         }
 
         void start(core::Engine&) override {
@@ -157,7 +157,7 @@ class Player final {
         }
 
       private:
-        lua::Error error;
+        core::AppError error;
     };
 
     // Keeps the window alive with an empty screen after the page stops the app.

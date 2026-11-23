@@ -16,6 +16,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/port/Contract.hpp"
+#include "lua/ErrorReader.hpp"
 
 namespace haylen::lua {
 
@@ -76,8 +77,8 @@ void Environment::checkModules(core::Engine& engine) {
 }
 
 // The outermost frames without a name are the native entries of Varn that ran the task or the callback, which the stack leaves out like the protected calls of the engine.
-std::vector<Error::Frame> Environment::readFrames(lua_State* L, int index) {
-    std::vector<Error::Frame> frames;
+std::vector<core::AppError::Frame> Environment::readFrames(lua_State* L, int index) {
+    std::vector<core::AppError::Frame> frames;
     const lua_Integer count = luaL_len(L, index);
     for (lua_Integer position = 1; position <= count; ++position) {
         lua_rawgeti(L, index, position);
@@ -85,7 +86,7 @@ std::vector<Error::Frame> Environment::readFrames(lua_State* L, int index) {
         lua_pop(L, 1);
     }
 
-    while (!frames.empty() && frames.back().kind == Error::Frame::Kind::C && frames.back().function == "?") {
+    while (!frames.empty() && frames.back().kind == core::AppError::Frame::Kind::Native && frames.back().function == "?") {
         frames.pop_back();
     }
 
@@ -93,7 +94,7 @@ std::vector<Error::Frame> Environment::readFrames(lua_State* L, int index) {
 }
 
 // Varn lists a level with the fields that `lua_getinfo` fills, leaving out those the level has none of, and stands for the middle of a deep stack with one frame of the kind `skipped`, so the frames read like those of the protected calls.
-Error::Frame Environment::readFrame(lua_State* L, int index) {
+core::AppError::Frame Environment::readFrame(lua_State* L, int index) {
     const std::string what = readText(L, index, "kind");
     if (what == "skipped") {
         return Runtime::makeSkippedFrame(readInteger(L, index, "count"));
@@ -121,12 +122,12 @@ int Environment::readInteger(lua_State* L, int index, const char* key) {
 
 // Receives the value that was raised, the traceback as text, the frames of where it was raised and the kind of the failure. A callback called from another thread, a closing variable of a cancelled task and a promise that native code rejected carry no frames.
 int Environment::reportFailure(lua_State* L) {
-    std::vector<Error::Frame> frames;
+    std::vector<core::AppError::Frame> frames;
     if (lua_istable(L, 3)) {
         frames = readFrames(L, 3);
     }
 
-    Error error(Runtime::describeValue(L, 1), std::move(frames));
+    core::AppError error = ErrorReader::read(Runtime::describeValue(L, 1), std::move(frames));
     if (lua_type(L, 4) == LUA_TSTRING && std::string_view(lua_tostring(L, 4)) == "rejection") {
         error = describeRejection(error);
     }
@@ -137,13 +138,13 @@ int Environment::reportFailure(lua_State* L) {
 }
 
 // The message of an unobserved rejection says that nothing awaited the promise, and the error keeps the file and line that its text or its frames gave.
-Error Environment::describeRejection(const Error& error) {
+core::AppError Environment::describeRejection(const core::AppError& error) {
     const std::string message = "A promise rejected, and nothing awaited or caught it. " + error.getMessage();
     if (error.getMessage() == error.what()) {
-        return Error(message, error.getFrames());
+        return ErrorReader::read(message, error.getFrames());
     }
 
-    return Error(std::format("{}:{}: {}", error.getFile(), error.getLine(), message), error.getFrames());
+    return ErrorReader::read(std::format("{}:{}: {}", error.getFile(), error.getLine(), message), error.getFrames());
 }
 
 // Varn hands the failures that no caller receives to the one handler of `async.onFailure`, which shows them on the error screen: those of the tasks of `async.spawn` and `async.run`, of the to-be-closed variables of cancelled tasks, of `ffi` callbacks that fail outside any `ffi` call, of the handlers of its HTTP and WebSocket servers and the callbacks of `http.client.stream`, and the rejections of promises that nothing awaited or caught.
@@ -173,10 +174,10 @@ int Environment::loadModule(lua_State* L, const io::Package& package, const std:
 void Environment::runModule(lua_State* L, const io::Package& package, const std::string& path) {
     const int status = loadModule(L, package, path);
     if (status != LUA_OK) {
-        Error error = Runtime::readError(L, -1);
+        core::AppError error = Runtime::readError(L, -1);
         lua_pop(L, 1);
         if (status == LUA_ERRSYNTAX) {
-            error.setCode(Error::Code::Syntax);
+            error.setCode(core::AppError::Code::Syntax);
         }
         throw error;
     }

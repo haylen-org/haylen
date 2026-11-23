@@ -9,11 +9,11 @@
 #include <vector>
 
 #include "haylen/audio/Mixer.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 
 struct lua_State;
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<audio::Mixer::Spatialization::Model> {
     using Model = audio::Mixer::Spatialization::Model;
@@ -40,7 +40,7 @@ template <> struct EnumNames<audio::Mixer::Spatialization::Model> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::audio {
 

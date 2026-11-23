@@ -13,6 +13,7 @@
 #include "graphics/FontLua.hpp"
 #include "graphics/ImageLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
@@ -21,7 +22,6 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -53,6 +53,10 @@ template <> struct Type<ui::Gui> {
     static constexpr const char* name = "haylen.Gui";
     using Storage = std::shared_ptr<ui::Gui>;
 };
+
+} // namespace haylen::lua
+
+namespace haylen::core {
 
 template <> struct EnumNames<ui::FocusNavigator::Owner> {
     static constexpr std::array<std::pair<std::string_view, ui::FocusNavigator::Owner>, 3> kOwners{{{"none", ui::FocusNavigator::Owner::None}, {"control", ui::FocusNavigator::Owner::Control}, {"playArea", ui::FocusNavigator::Owner::PlayArea}}};
@@ -102,7 +106,7 @@ template <> struct EnumNames<ui::Placement> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::ui {
 
@@ -416,7 +420,7 @@ int UiLua::mount(lua_State* L) {
         lua::Table::checkFields(L, 2, {kMountFields});
         const int kind = lua_getfield(L, 2, "placement");
         if (kind != LUA_TNIL) {
-            const std::optional<Placement> named = kind == LUA_TSTRING ? lua::EnumNames<Placement>::fromName(lua::Stack::read<std::string_view>(L, -1)) : std::nullopt;
+            const std::optional<Placement> named = kind == LUA_TSTRING ? core::EnumNames<Placement>::fromName(lua::Stack::read<std::string_view>(L, -1)) : std::nullopt;
             if (!named || *named == Placement::Region) {
                 return luaL_error(L, "The \"placement\" option must be \"safe\" or \"screen\". A screen of a navigation stack lays out in the area of its stack.");
             }
@@ -703,7 +707,7 @@ int UiLua::guiCollection(lua_State* L) {
 }
 
 int UiLua::guiPlacement(lua_State* L) {
-    lua::Stack::push(L, lua::EnumNames<Placement>::name(checkGui(L).getPlacement()));
+    lua::Stack::push(L, core::EnumNames<Placement>::name(checkGui(L).getPlacement()));
     return 1;
 }
 

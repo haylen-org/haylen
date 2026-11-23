@@ -16,12 +16,12 @@
 #include "debug/ExecutionBudget.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/Bootstrap.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/NativeLibraries.hpp"
 #include "io/OverlayPackage.hpp"
@@ -166,7 +166,7 @@ void Player::fail(std::string_view reason) {
     Player& runtime = getCurrent();
     runtime.close();
     core::Log::error("{}", reason);
-    Services::reportError(lua::Error(std::string(reason)).toJson());
+    Services::reportError(core::AppError(std::string(reason)).toJson());
     if (runtime.host->keepsWindowAfterFailure()) {
         return;
     }
@@ -516,7 +516,7 @@ void Player::launch() {
     } catch (const std::exception& error) {
         // Without an engine there is no error screen, so the failure goes to the log and the page.
         core::Log::error("The engine could not start: {}", error.what());
-        core::Json report = lua::Error(error.what()).toJson();
+        core::Json report = core::AppError(error.what()).toJson();
         report["phase"] = "startup";
         Services::reportError(report);
         host->appStartFailed(report);

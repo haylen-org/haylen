@@ -20,6 +20,7 @@
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "lua/Autoloads.hpp"
+#include "lua/ErrorReader.hpp"
 #include "lua/HotReloadLua.hpp"
 #include "lua/ModuleReloader.hpp"
 #include "lua/ModuleSnapshot.hpp"
@@ -283,8 +284,8 @@ void HotReloadPlugin::reloadAssets(core::Engine& engine, const Batch& batch, Rep
             }
         } catch (const std::exception& error) {
             core::Log::warning("The asset \"{}\" could not be reloaded yet: {}", asset, error.what());
-            lua::Error rejection(std::string("The asset \"") + asset + "\" could not be reloaded: " + error.what());
-            rejection.setCode(lua::Error::Code::Asset);
+            core::AppError rejection = lua::ErrorReader::read(std::string("The asset \"") + asset + "\" could not be reloaded: " + error.what());
+            rejection.setCode(core::AppError::Code::Asset);
             report.files.push_back({.path = path, .change = Change::Rejected, .reason = rejection.getMessage()});
             report.rejected.push_back({.path = path, .error = std::move(rejection)});
         }
@@ -306,14 +307,14 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
     const core::Engine::PhaseScope scope(engine, core::Engine::Phase::Reload);
     const int top = lua_gettop(L);
     lua::ModuleReloader reloader(L, *graph, engine.getPackage());
-    std::optional<lua::Error> failure;
+    std::optional<core::AppError> failure;
     for (const std::string& path : graph->order(paths)) {
         lua::ModuleReloader::Result result;
         try {
             result = reloader.reload(path);
         } catch (const std::exception& exception) {
             lua_settop(L, top);
-            result = {.status = lua::ModuleReloader::Status::Failed, .error = lua::Error(exception.what())};
+            result = {.status = lua::ModuleReloader::Status::Failed, .error = lua::ErrorReader::read(exception.what())};
         }
 
         if (result.status == lua::ModuleReloader::Status::Restart) {
@@ -352,7 +353,7 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
     reloader.finish();
 
     if (!report.modules.empty()) {
-        std::optional<lua::Error> hookFailure = callHooks(engine, report.modules, top + 1);
+        std::optional<core::AppError> hookFailure = callHooks(engine, report.modules, top + 1);
         if (!failure) {
             failure = std::move(hookFailure);
         }
@@ -374,7 +375,7 @@ bool HotReloadPlugin::reloadModules(core::Engine& engine, const std::vector<std:
 }
 
 // Every table hears `reloaded` once, in this order: the reloaded modules and the modules that require them, the autoloads, the scenes from the bottom of the stack to the top, and the instances of the patched tables. A module that returns a prototype, such as a class of `haylen.class`, defines the hook of its instances, so it is no module hook. Each call is protected like a scene hook.
-std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
+std::optional<core::AppError> HotReloadPlugin::callHooks(core::Engine& engine, const std::vector<std::string>& paths, int instances) const {
     lua_State* L = engine.getLuaState();
     const int top = lua_gettop(L);
     lua_createtable(L, 0, 2);
@@ -392,7 +393,7 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
     const lua::Reference info(L, -1);
 
     std::unordered_set<const void*> called;
-    std::optional<lua::Error> failure;
+    std::optional<core::AppError> failure;
     // clang-format off
     const auto call = [&](int index) {
         if (!lua_istable(L, index) || !called.insert(lua_topointer(L, index)).second) {
@@ -414,7 +415,7 @@ std::optional<lua::Error> HotReloadPlugin::callHooks(core::Engine& engine, const
                 info.push(state);
                 lua_call(state, 2, 0);
             });
-        } catch (const lua::Error& error) {
+        } catch (const core::AppError& error) {
             if (!failure) {
                 failure = error;
             }

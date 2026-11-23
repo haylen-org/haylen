@@ -3,15 +3,15 @@
 #include <cstdint>
 #include <optional>
 
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Polygon.hpp"
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<math::Polygon::Join> {
     static std::optional<math::Polygon::Join> fromName(std::string_view name) {
@@ -22,7 +22,7 @@ template <> struct EnumNames<math::Polygon::Join> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::math {
 

@@ -4,9 +4,9 @@
 #include <string>
 #include <utility>
 
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -19,6 +19,10 @@ template <> struct Type<ai::UtilityLua::Scripted> {
     using Storage = ai::UtilityLua::Scripted;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<ai::ResponseCurve::Shape> {
     static std::optional<ai::ResponseCurve::Shape> fromName(std::string_view name) {
         return ai::ResponseCurve::shapeFromName(name);
@@ -28,7 +32,7 @@ template <> struct EnumNames<ai::ResponseCurve::Shape> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::ai {
 

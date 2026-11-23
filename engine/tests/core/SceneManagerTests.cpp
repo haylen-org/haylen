@@ -15,6 +15,7 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/ConnectionScope.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
@@ -23,7 +24,6 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/core/ScopedConnection.hpp"
 #include "haylen/input/ActionMap.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
@@ -84,7 +84,7 @@ class SceneManagerTest : public ::testing::Test {
         }
         void unload(Engine&) override {
             if (!unloadFailure.empty()) {
-                throw lua::Error(unloadFailure);
+                throw core::AppError(unloadFailure);
             }
         }
 
@@ -206,9 +206,9 @@ TEST_F(SceneManagerTest, FinishesOnceTheHookAndEveryDeferralReleasedIt) {
     scenes.preload(twice, {}, [&](const SceneManager::Result& value) { result = value; });
     ASSERT_TRUE(early.has_value());
     ASSERT_TRUE(late.has_value());
-    early->fail(lua::Error("the first failure"));
+    early->fail(core::AppError("the first failure"));
     dropped.reset();
-    late->fail(lua::Error("the second failure"));
+    late->fail(core::AppError("the second failure"));
     fixture.frames(1);
     ASSERT_TRUE(result.has_value());
     EXPECT_EQ(result->outcome, SceneManager::Outcome::Failed);
@@ -617,7 +617,7 @@ TEST_F(SceneManagerTest, FailedLoadsKeepTheCurrentSceneAndRejectTheChange) {
     fixture.frames(2, 0.125);
     EXPECT_EQ(menu->getState(), Scene::State::Exiting);
     log.clear();
-    late->failLoad(lua::Error("late failed"));
+    late->failLoad(core::AppError("late failed"));
     fixture.frames(3, 0.125);
     EXPECT_EQ(log, (std::vector<std::string>{"sceneLoadFailed late late failed", "late:unload", "sceneUnloaded late", "transitionInStarted menu>menu", "transitionInFinished menu>menu", "menu:enterTransitionFinished", "sceneEnterTransitionFinished menu"}));
     EXPECT_EQ(scenes.getTop(), menu.get());
@@ -638,12 +638,12 @@ TEST_F(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
     auto view = std::make_shared<RecordingView>(log);
     auto shop = std::make_shared<test::RecordingScene>("shop", log);
     shop->loading = test::RecordingScene::Load::Deferred;
-    scenes.push(shop, {.transition = SceneManager::Transition::fade(0.5F), .loading = view, .minimumLoadingTime = 5.0F, .onError = [&](const lua::Error& error) { log.push_back(std::string("error ") + error.what()); }});
+    scenes.push(shop, {.transition = SceneManager::Transition::fade(0.5F), .loading = view, .minimumLoadingTime = 5.0F, .onError = [&](const core::AppError& error) { log.push_back(std::string("error ") + error.what()); }});
     fixture.frames(3, 0.125);
     EXPECT_EQ(menu->getState(), Scene::State::Covered);
     EXPECT_TRUE(scenes.isLoadingViewShown());
     log.clear();
-    shop->failLoad(lua::Error("closed"));
+    shop->failLoad(core::AppError("closed"));
     fixture.frames(3, 0.125);
     EXPECT_EQ(log, (std::vector<std::string>{"shop:unload", "view:exit", "menu:resume", "error closed", "menu:enterTransitionFinished"}));
     EXPECT_EQ(menu->getState(), Scene::State::Active);
@@ -654,7 +654,7 @@ TEST_F(SceneManagerTest, FailedLoadsRestoreWhatIsLeftOnTheStack) {
     scenes.replace(cave, {.transition = SceneManager::Transition::fade(0.5F)});
     fixture.frames(2, 0.125);
     log.clear();
-    cave->failLoad(lua::Error("flooded"));
+    cave->failLoad(core::AppError("flooded"));
     fixture.frames(1, 0.125);
     EXPECT_EQ(log, (std::vector<std::string>{"cave:unload", "base:resume"}));
     EXPECT_EQ(scenes.getTop(), base.get());
@@ -674,7 +674,7 @@ TEST_F(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler)
         broken->loading = test::RecordingScene::Load::Deferred;
         scenes.replace(broken, {.transition = SceneManager::Transition::fade(0.5F)});
         fixture.frames(2, 0.125);
-        broken->failLoad(lua::Error("no map"));
+        broken->failLoad(core::AppError("no map"));
         fixture.frames(1, 0.125);
         ASSERT_NE(fixture.engine().getError(), nullptr);
         EXPECT_STREQ(fixture.engine().getError()->what(), "no map");
@@ -701,14 +701,14 @@ TEST_F(SceneManagerTest, FailedLoadsAfterTheCurrentSceneLeftGoToTheErrorHandler)
     std::vector<std::string> errors;
     std::vector<SceneManager::Outcome> outcomes;
     // clang-format off
-    scenes.replace(broken, {.transition = SceneManager::Transition::fade(0.5F), .completion = [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); }, .onError = [&](const lua::Error& error) {
+    scenes.replace(broken, {.transition = SceneManager::Transition::fade(0.5F), .completion = [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); }, .onError = [&](const core::AppError& error) {
         errors.emplace_back(error.what());
         scenes.replace(fallback);
     }});
     // clang-format on
 
     fixture.frames(2, 0.125);
-    broken->failLoad(lua::Error("no map"));
+    broken->failLoad(core::AppError("no map"));
     fixture.frames(1, 0.125);
     EXPECT_EQ(errors, std::vector<std::string>{"no map"});
     EXPECT_TRUE(scenes.empty());
@@ -723,8 +723,8 @@ TEST_F(SceneManagerTest, LeavesLaterErrorsResumableWhenTheAppHandlesAFailedLoad)
     test::EngineFixture fixture;
     SceneManager& scenes = fixture.engine().getScenes();
     std::vector<std::string> errors;
-    auto broken = std::make_shared<LoadScene>([](SceneLoad&) { throw lua::Error("no map"); });
-    scenes.push(broken, {.onError = [&errors](const lua::Error& error) { errors.emplace_back(error.what()); }});
+    auto broken = std::make_shared<LoadScene>([](SceneLoad&) { throw core::AppError("no map"); });
+    scenes.push(broken, {.onError = [&errors](const core::AppError& error) { errors.emplace_back(error.what()); }});
     fixture.frames(1);
     EXPECT_EQ(errors, std::vector<std::string>{"no map"});
     ASSERT_EQ(fixture.engine().getError(), nullptr);
@@ -786,7 +786,7 @@ TEST_F(SceneManagerTest, ChangesWhoseHookFailsEndWhereTheyFailed) {
     // clang-format off
     pause->onHook = [](const std::string& entry) {
         if (entry == "pause:exit") {
-            throw lua::Error("the exit broke");
+            throw core::AppError("the exit broke");
         }
     };
     // clang-format on
@@ -914,7 +914,7 @@ TEST_F(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
     broken->unloadFailure = "the unload broke";
     std::vector<SceneManager::Outcome> outcomes;
     scenes.preload(broken, {}, [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); });
-    EXPECT_THROW(scenes.cancelPreload(*broken), lua::Error);
+    EXPECT_THROW(scenes.cancelPreload(*broken), core::AppError);
     EXPECT_EQ(outcomes, std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped});
 
     // A load that fails settles its preload with the failure, even when the unload that follows fails too.
@@ -922,7 +922,7 @@ TEST_F(SceneManagerTest, SettlesPreloadsWhoseSceneFailsToUnload) {
     failing->unloadFailure = "the unload broke";
     scenes.preload(failing, {}, [&](const SceneManager::Result& result) { outcomes.push_back(result.outcome); });
     ASSERT_TRUE(deferral.has_value());
-    deferral->fail(lua::Error("the load broke"));
+    deferral->fail(core::AppError("the load broke"));
     fixture.frames(1);
     EXPECT_EQ(outcomes, (std::vector<SceneManager::Outcome>{SceneManager::Outcome::Dropped, SceneManager::Outcome::Failed}));
     ASSERT_NE(fixture.engine().getError(), nullptr);
@@ -938,7 +938,7 @@ TEST_F(SceneManagerTest, UnloadsAFailedPreloadOnceWhenAListenerCancelsIt) {
     scenes.preload(broken);
     const Connection listener = fixture.engine().getEvents().on(LifecycleEvent::kSceneLoadFailed, [&](EventBus::Event&) { scenes.cancelPreload(*broken); });
 
-    broken->failLoad(lua::Error("broken cannot load"));
+    broken->failLoad(core::AppError("broken cannot load"));
     fixture.frames(1);
     EXPECT_EQ(std::count(log.begin(), log.end(), "broken:unload"), 1);
     EXPECT_EQ(broken->getState(), Scene::State::Unloaded);
@@ -1038,7 +1038,7 @@ TEST_F(SceneManagerTest, StoppingTheEngineDuringALoadUnloadsEveryScene) {
 
     // A deferral that finishes after the engine is gone changes nothing.
     game->completeLoad();
-    spare->failLoad(lua::Error("too late"));
+    spare->failLoad(core::AppError("too late"));
     EXPECT_EQ(game->getState(), Scene::State::Unloaded);
 }
 
@@ -1337,7 +1337,7 @@ TEST_F(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
         menu->onHook = clearOn;
         game->onHook = clearOn;
         const ScopedConnection listener(fixture.engine().getEvents().on(entry.trigger, [&clearOn, &entry](EventBus::Event&) { clearOn(entry.trigger); }));
-        const SceneManager::Options options{.transition = entry.covering ? SceneManager::Transition::fade(0.5F) : SceneManager::Transition{}, .unloadBeforeLoad = !entry.keepCurrent, .completion = [&outcomes](const SceneManager::Result& result) { outcomes.push_back(result.outcome); }, .onError = [&clearOn](const lua::Error&) { clearOn("onError"); }};
+        const SceneManager::Options options{.transition = entry.covering ? SceneManager::Transition::fade(0.5F) : SceneManager::Transition{}, .unloadBeforeLoad = !entry.keepCurrent, .completion = [&outcomes](const SceneManager::Result& result) { outcomes.push_back(result.outcome); }, .onError = [&clearOn](const core::AppError&) { clearOn("onError"); }};
         if (entry.push) {
             scenes.push(game, options);
         } else {
@@ -1348,7 +1348,7 @@ TEST_F(SceneManagerTest, DropsAChangeWhoseHookOrListenerClearedTheStack) {
         fixture.frames(2, 0.125);
 
         if (game->deferral && entry.failing) {
-            game->failLoad(lua::Error("the game cannot load"));
+            game->failLoad(core::AppError("the game cannot load"));
         } else if (game->deferral) {
             game->completeLoad();
         }
@@ -1421,7 +1421,7 @@ TEST_F(SceneManagerTest, ScenesThatFailToLeaveStillUnloadAndRaiseTheFirstFailure
         // clang-format off
         menu->onHook = [&entry](const std::string& hook) {
             if (std::find(entry.failing.begin(), entry.failing.end(), hook) != entry.failing.end()) {
-                throw lua::Error(hook + " failed");
+                throw core::AppError(hook + " failed");
             }
         };
         // clang-format on

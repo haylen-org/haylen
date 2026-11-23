@@ -15,7 +15,7 @@
 #include "haylen/2d/physics/Joint.hpp"
 #include "haylen/2d/physics/Shape.hpp"
 #include "haylen/2d/physics/World.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/Userdata.hpp"
 
@@ -40,6 +40,10 @@ template <> struct Type<physics2d::ScriptedHandle<physics2d::Joint>> {
     static constexpr const char* name = "haylen.Joint";
     using Storage = physics2d::ScriptedHandle<physics2d::Joint>;
 };
+
+} // namespace haylen::lua
+
+namespace haylen::core {
 
 template <> struct EnumNames<physics2d::Body::Type> {
     static std::optional<physics2d::Body::Type> fromName(std::string_view name) {
@@ -68,7 +72,7 @@ template <> struct EnumNames<physics2d::Joint::Type> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::physics2d {
 

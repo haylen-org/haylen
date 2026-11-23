@@ -19,8 +19,8 @@
 #include <SDL3/SDL_video.h>
 
 #include "gpu/DeviceFactory.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Log.hpp"
-#include "haylen/lua/Error.hpp"
 #include "platform/CrashGuard.hpp"
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
@@ -209,7 +209,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
         Player::create(argc, argv, std::move(created));
     } catch (const std::exception& error) {
         core::Log::error("The player could not start: {}", error.what());
-        Services::reportError(lua::Error(error.what()).toJson());
+        Services::reportError(core::AppError(error.what()).toJson());
         return SDL_APP_FAILURE;
     }
 

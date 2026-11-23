@@ -12,9 +12,9 @@
 #include <vector>
 
 #include "debug/ExecutionBudget.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
-#include "haylen/lua/Error.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "support/DebugClient.hpp"
 #include "support/EngineFixture.hpp"
@@ -47,8 +47,8 @@ class ExecutionBudgetTest : public ::testing::Test {
         ASSERT_TRUE(fixture->engine().isCancelled());
     }
 
-    [[nodiscard]] const lua::Error& error() const {
-        const lua::Error* stopped = fixture->engine().getError();
+    [[nodiscard]] const core::AppError& error() const {
+        const core::AppError* stopped = fixture->engine().getError();
         if (stopped == nullptr) {
             throw std::runtime_error("The app holds no error.");
         }
@@ -70,7 +70,7 @@ scene.push({update = function()
 end})
 )");
     runUntilCancelled();
-    EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+    EXPECT_EQ(error().getCode(), core::AppError::Code::ExecutionBudget);
     EXPECT_EQ(error().getCallback(), "update");
     EXPECT_EQ(error().getFile(), "source/main.lua");
     EXPECT_GE(error().getLine(), 5);
@@ -94,7 +94,7 @@ TEST_F(ExecutionBudgetTest, CannotBeCaughtByProtectedCallsOrCoroutines) {
         SCOPED_TRACE(attempt);
         start("require('haylen.scene').push({update = function() " + attempt + " end})");
         runUntilCancelled();
-        EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+        EXPECT_EQ(error().getCode(), core::AppError::Code::ExecutionBudget);
     }
 }
 
@@ -109,7 +109,7 @@ TEST_F(ExecutionBudgetTest, CancelsAFinalizerThatNeverEnds) {
         SCOPED_TRACE(attempt);
         start("require('haylen.scene').push({update = function() " + attempt + " end})");
         runUntilCancelled();
-        EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+        EXPECT_EQ(error().getCode(), core::AppError::Code::ExecutionBudget);
         EXPECT_EQ(error().getCallback(), "update");
         EXPECT_EQ(error().getFile(), "source/main.lua");
     }
@@ -162,7 +162,7 @@ TEST_F(ExecutionBudgetTest, ReplacesAResumableErrorAndRunsAgainAfterARestart) {
     fixture->runLua("broken = true");
     fixture->engine().clearError();
     runUntilCancelled();
-    EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+    EXPECT_EQ(error().getCode(), core::AppError::Code::ExecutionBudget);
     fixture->engine().recover();
     fixture->frames(1);
     EXPECT_TRUE(fixture->engine().isCancelled());
@@ -187,7 +187,7 @@ TEST_F(ExecutionBudgetTest, CancelsAnAppThatTakesMoreMemoryThanItsBudget) {
         fixture.reset();
         fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
         runUntilCancelled();
-        EXPECT_EQ(error().getCode(), lua::Error::Code::Memory);
+        EXPECT_EQ(error().getCode(), core::AppError::Code::Memory);
         EXPECT_NE(error().getMessage().find("took more than 32 MB of Lua memory in \"update\""), std::string::npos);
     }
 }
@@ -197,7 +197,7 @@ TEST_F(ExecutionBudgetTest, LetsTheStopOfAnAppWhoseMemoryRanOutRun) {
     std::map<std::string, std::string> files{{"haylen.json", R"({"name": "Budget", "identifier": "com.haylen.budget", "debug": {"executionBudget": 30, "memoryBudget": 32}})"}, {"source/main.lua", "kept = {} require('haylen.scene').push({update = function() while true do kept[#kept + 1] = string.rep('x', 4096) .. #kept end end, unload = function() local made = {} for index = 1, 2000 do made[index] = string.rep('u', 512) .. index end print('Unloaded with ' .. #made .. ' texts.') end})"}};
     fixture = std::make_unique<test::EngineFixture>(std::move(files), nullptr, test::EngineFixture::Options{.development = true});
     runUntilCancelled();
-    ASSERT_EQ(error().getCode(), lua::Error::Code::Memory);
+    ASSERT_EQ(error().getCode(), core::AppError::Code::Memory);
 
     std::vector<std::string> lines;
     const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level, std::string_view line) { lines.emplace_back(line); });
@@ -230,7 +230,7 @@ end})
     test::DebugClient client{fixture->host()};
     client.connect(fixture->engine().getLuaState());
     runUntilCancelled();
-    EXPECT_EQ(error().getCode(), lua::Error::Code::ExecutionBudget);
+    EXPECT_EQ(error().getCode(), core::AppError::Code::ExecutionBudget);
 }
 
 // The budget waits while the app halts, so an evaluation that resumes a coroutine of the app after a halt longer than the budget finds the budget whole. The evaluation runs only enough instructions of the app for the budget to look at its clock many times, so it ends far inside the time limit of evaluations on any build, such as under a sanitizer.

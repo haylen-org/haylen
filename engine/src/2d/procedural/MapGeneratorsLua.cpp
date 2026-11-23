@@ -10,9 +10,9 @@
 #include "2d/spatial/GridLua.hpp"
 #include "haylen/2d/procedural/Autotile.hpp"
 #include "haylen/2d/tiled/WangSet.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -28,6 +28,10 @@ template <> struct Type<procedural2d::WaveFunctionCollapse::Rules> {
     static constexpr const char* name = "haylen.WaveFunctionCollapseRules";
     using Storage = procedural2d::WaveFunctionCollapse::Rules;
 };
+
+} // namespace haylen::lua
+
+namespace haylen::core {
 
 template <> struct EnumNames<procedural2d::Dungeon::Method> {
     static std::optional<procedural2d::Dungeon::Method> fromName(std::string_view name) {
@@ -59,7 +63,7 @@ template <> struct EnumNames<procedural2d::WaveFunctionCollapse::Direction> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::procedural2d {
 

@@ -12,9 +12,9 @@
 
 #include "core/ClassLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Reference.hpp"
@@ -66,6 +66,15 @@ template <> struct Type<ui::Message> {
     using Storage = std::shared_ptr<ui::Message>;
 };
 
+template <> struct Type<ui::Router> {
+    static constexpr const char* name = "haylen.Router";
+    using Storage = std::shared_ptr<ui::Router>;
+};
+
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<ui::NavigationTransition::Effect> {
     static std::optional<ui::NavigationTransition::Effect> fromName(std::string_view name) {
         return ui::NavigationTransition::effectFromName(name);
@@ -82,11 +91,6 @@ template <> struct EnumNames<ui::Presentation::Style> {
     static std::string_view name(ui::Presentation::Style value) {
         return ui::Presentation::styleName(value);
     }
-};
-
-template <> struct Type<ui::Router> {
-    static constexpr const char* name = "haylen.Router";
-    using Storage = std::shared_ptr<ui::Router>;
 };
 
 template <> struct EnumNames<ui::Router::Type> {
@@ -138,7 +142,7 @@ template <> struct EnumNames<ui::Screen::State> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::ui {
 
@@ -946,7 +950,7 @@ int NavigationLua::screenState(lua_State* L) {
         return luaL_error(L, "A screen is a table with a \"build\" method, not %s.", luaL_typename(L, 1));
     }
 
-    lua::Stack::push(L, lua::EnumNames<Screen::State>::name(ScriptedScreen::findState(L, 1)));
+    lua::Stack::push(L, core::EnumNames<Screen::State>::name(ScriptedScreen::findState(L, 1)));
     return 1;
 }
 

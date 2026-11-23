@@ -128,7 +128,7 @@ void ModuleGraph::pushKept(lua_State* L, const std::string& key, int create) {
     try {
         const Owners::DefaultScope scope(L, owner);
         Runtime::protectedCall(L, 0, 1);
-    } catch (const Error&) {
+    } catch (const core::AppError&) {
         Owners::release(L, owner);
         throw;
     }

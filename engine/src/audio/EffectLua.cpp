@@ -33,7 +33,7 @@ int EffectLua::newEffect(lua_State* L) {
         return 1;
     }
 
-    const std::optional<Filter::Kind> filter = lua::EnumNames<Filter::Kind>::fromName(kind);
+    const std::optional<Filter::Kind> filter = core::EnumNames<Filter::Kind>::fromName(kind);
     if (!filter) {
         throw std::invalid_argument("The audio effect must be \"lowpass\", \"highpass\", \"bandpass\", \"notch\", \"peak\", \"lowShelf\", \"highShelf\", \"delay\", \"reverb\" or \"limiter\", not \"" + std::string(kind) + "\".");
     }

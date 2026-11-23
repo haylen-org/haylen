@@ -139,7 +139,7 @@ A binding test runs Lua through the fixture and checks what matters to an app: r
 
 - Compare returned values as strings. The call `fixture.lua("return hash.size")` returns `"3"`, and a float returns `"32.0"`.
 - Check validation with the message that an app would see, as in `EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos)`.
-- Check callbacks that fail through `fixture.engine().getError()`, the `lua::Error` that the error screen shows, with its message, position and frames.
+- Check callbacks that fail through `fixture.engine().getError()`, the `core::AppError` that the error screen shows, with its message, position and frames.
 - Advance frames for anything asynchronous. Promises settle and coroutines resume during a frame, so a test waits with `frameUntil`.
 - Check engine state through `fixture.engine()` and `fixture.host()` when a binding changes the engine, such as the window title or a platform call.
 

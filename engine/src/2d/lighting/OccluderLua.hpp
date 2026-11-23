@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "haylen/2d/lighting/Occluder.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -19,6 +19,10 @@ template <> struct Type<lighting2d::Occluder> {
     using Storage = lighting2d::Occluder;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<lighting2d::Occluder::Cull> {
     static std::optional<lighting2d::Occluder::Cull> fromName(std::string_view name) {
         return lighting2d::Occluder::cullFromName(name);
@@ -28,7 +32,7 @@ template <> struct EnumNames<lighting2d::Occluder::Cull> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::lighting2d {
 

@@ -103,7 +103,7 @@ bool JobsPlugin::resume(Job& job) {
     // The failed coroutine keeps its stack, so the rejection carries the stack of the job without the tab characters of a Lua traceback.
     if (status != LUA_OK) {
         const char* message = lua_tostring(job.state, -1);
-        const lua::Error error = lua::Runtime::captureError(job.state, message != nullptr ? message : "The job failed with an error that is not a string.", 0);
+        const core::AppError error = lua::Runtime::captureError(job.state, message != nullptr ? message : "The job failed with an error that is not a string.", 0);
         job.promise.reject(std::string(error.what()) + "\n" + error.getTraceback());
         return false;
     }

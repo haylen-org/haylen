@@ -495,7 +495,7 @@ Chunk names are paths of the package, so every position in a message points at a
 
 ### Where the report goes
 
-The log receives the report on every platform. In the browser, the page receives the error in `Module.haylen.onError` as `{message, file, line, traceback, frames}`. There `traceback` is the stack as text, and `frames` lists every frame as `{source, line, function, kind}` with the kind `lua`, `c` or `main`. The native parts of [plugins](../platform/plugins.md#errors-of-the-app) receive the same report, so a crash reporter records it with the stack of the Lua code.
+The log receives the report on every platform. In the browser, the page receives the error in `Module.haylen.onError` as `{message, file, line, traceback, frames}`. There `traceback` is the stack as text, and `frames` lists every frame as `{source, line, function, kind}` with the kind `script`, `native` or `main`. The native parts of [plugins](../platform/plugins.md#errors-of-the-app) receive the same report, so a crash reporter records it with the stack of the Lua code.
 
 The function [`haylen.reportError(message)`](../lua-api/haylen.md#haylenreporterrormessage) stops the app the same way, with a message of the app and the stack of the code that reported it.
 
@@ -707,15 +707,14 @@ Keep `buffer[index]` for values that C++ fills, such as the transforms that `wor
 
 ## Extending the engine from C++
 
-A C++ project can add Lua modules of its own, backed by a plugin of its own, while the app itself stays in Lua. The public binding toolkit in `engine/include/haylen/lua/` is the same one that every built-in module uses, and everything in it lives in the namespace `haylen::lua`.
+A C++ project can add Lua modules of its own, backed by a plugin of its own, while the app itself stays in Lua. The public binding toolkit in `engine/include/haylen/lua/` is the same one that every built-in module uses, and everything in it lives in the namespace `haylen::lua`. A failed protected call throws `core::AppError` of `haylen/core/AppError.hpp`, with the message, the script position and the frames of the stack.
 
 | Header | What it gives |
 | --- | --- |
 | `Stack.hpp` | `Stack::push`, `Stack::read` and `Stack::is`, which move C++ values on and off the Lua stack through their converters, and `Stack::readInto`, which reads a list into a `std::vector` that the caller keeps, so a list read every frame allocates nothing once it has grown. |
 | `Userdata.hpp` | `Userdata::check`, `Userdata::checkShared`, `Userdata::test` and `Userdata::emplace` for bound objects, `Userdata::equal` for an `__eq` that compares the bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction`, which store Lua callbacks on userdata. |
 | `Type.hpp` | The trait `Type<T>`, which binds a C++ type as userdata. |
-| `Converter.hpp` | The trait `Converter<T>`, with the conversions of scalars, strings, optionals, vectors and bound types. |
-| `EnumNames.hpp` | The trait `EnumNames<T>` for enums passed as strings. Every engine enum has one table of its names, which its specialization and the file parsers share. Its class usually owns it, such as `Texture::filterFromName` and `Texture::filterName`. |
+| `Converter.hpp` | The trait `Converter<T>`, with the conversions of scalars, strings, optionals, vectors and bound types, and of every enum that has a specialization of the trait `core::EnumNames<T>` of `haylen/core/EnumNames.hpp`. Every engine enum has one table of its names, which its specialization and the file parsers share. Its class usually owns it, such as `Texture::filterFromName` and `Texture::filterName`. |
 | `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors, and `Table::readFields` with `Table::readValue`, which read an option table in one pass over the keys it holds, for options read on every draw. An option that holds a list reads into the storage of its `std::vector`. |
 | `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule`, and the wrappers `Binding::native`, `Binding::function` and `Binding::method`. |
 | `ClassBuilder.hpp` | `ClassBuilder`, which builds metatables with methods and properties. |
@@ -724,7 +723,6 @@ A C++ project can add Lua modules of its own, backed by a plugin of its own, whi
 | `JsonConverter.hpp` | `JsonConverter::push` and `JsonConverter::read`, which move JSON between C++ and Lua tables. |
 | `Promise.hpp` | `Promise`, a result that a Lua task awaits and that native code settles later, from any thread, with `Promise::isSettled`, and `Promise::isPromise`, which recognizes any Varn promise on the stack. |
 | `TypeConverter.hpp` | The bindings of engine types such as `math::Vec2`, `math::Rect`, `math::Color`, `graphics::Texture` and `graphics2d::Sprite`, so bindings take and return them. |
-| `Error.hpp` | `Error`, the exception that a failed protected call throws, with the message, the script position and the frames of the stack. |
 | `Application.hpp` | `Application`, the application that runs `source/main.lua`. |
 
 ### A module of your own

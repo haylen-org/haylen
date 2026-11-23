@@ -5,11 +5,11 @@
 #include <string_view>
 
 #include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 
 struct lua_State;
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<graphics2d::Renderer::MaskMode> {
     static std::optional<graphics2d::Renderer::MaskMode> fromName(std::string_view name) {
@@ -20,7 +20,7 @@ template <> struct EnumNames<graphics2d::Renderer::MaskMode> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::graphics2d {
 

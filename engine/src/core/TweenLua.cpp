@@ -11,11 +11,11 @@
 
 #include "core/ScriptedTrack.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/core/PropertyTrack.hpp"
 #include "haylen/core/TweenManager.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/NativeProperty.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -36,6 +36,10 @@ template <> struct Type<core::Timeline> {
     static constexpr const char* name = "haylen.Timeline";
     using Storage = std::shared_ptr<core::Timeline>;
 };
+
+} // namespace haylen::lua
+
+namespace haylen::core {
 
 template <> struct EnumNames<core::Tween::LoopMode> {
     static constexpr std::array<std::pair<std::string_view, core::Tween::LoopMode>, 3> kModes{{{"restart", core::Tween::LoopMode::Restart}, {"yoyo", core::Tween::LoopMode::Yoyo}, {"incremental", core::Tween::LoopMode::Incremental}}};
@@ -72,10 +76,6 @@ template <> struct EnumNames<core::Timeline::StaggerOrigin> {
         return kOrigins[static_cast<std::size_t>(value)].first;
     }
 };
-
-} // namespace haylen::lua
-
-namespace haylen::core {
 
 std::shared_ptr<Tween> TweenLua::check(lua_State* L, int index) {
     if (auto* tween = static_cast<std::shared_ptr<Tween>*>(luaL_testudata(L, index, lua::Type<Tween>::name)); tween != nullptr && *tween) {

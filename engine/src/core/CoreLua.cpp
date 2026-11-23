@@ -17,6 +17,7 @@
 #include "core/ClassLua.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/Version.hpp"
@@ -25,7 +26,6 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/lua/Binding.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -37,7 +37,7 @@
 #include "lua/Autoloads.hpp"
 #include "plugins/CorePlugin.hpp"
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<core::Log::Level> {
     static constexpr std::array<std::pair<std::string_view, core::Log::Level>, 4> kLevels{{{"debug", core::Log::Level::Debug}, {"info", core::Log::Level::Info}, {"warning", core::Log::Level::Warning}, {"error", core::Log::Level::Error}}};
@@ -62,10 +62,6 @@ template <> struct EnumNames<core::Log::Level> {
         return kLevels.front().first;
     }
 };
-
-} // namespace haylen::lua
-
-namespace haylen::core {
 
 std::string CoreLua::joinArguments(lua_State* L) {
     std::string line;

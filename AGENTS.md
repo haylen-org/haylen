@@ -144,7 +144,7 @@ This file is binding for every change. It describes the project as it is and the
 
 ## Lua bindings
 
-- Each context keeps its Lua binding class next to it, such as `engine/src/2d/physics/Physics2DLua.cpp`, built with the public toolkit in `engine/include/haylen/lua/` (`Binding`, `ClassBuilder`, `Userdata`, `Stack`, `Converter`, `EnumNames`, `Table`, `Promise`, `Reference`, `TypeConverter` and `Runtime`). Projects that extend the engine use the same toolkit.
+- Each context keeps its Lua binding class next to it, such as `engine/src/2d/physics/Physics2DLua.cpp`, built with the public toolkit in `engine/include/haylen/lua/` (`Binding`, `ClassBuilder`, `Userdata`, `Stack`, `Converter`, `Table`, `Promise`, `Reference`, `TypeConverter` and `Runtime`), whose `Converter` passes every enum by the names of its `core::EnumNames` specialization. Projects that extend the engine use the same toolkit.
 - Every public C++ and Lua API follows `docs/tools/api-policy.md`, which says what is public and stable and how an API grows without breaking apps: options in a trailing table, returns that describe something as tables, event payloads as one table or at most two values in a fixed order, the same words for the same ideas across modules, and an `owner` on everything that registers a callback, a task or a job.
 - The Lua API is the same on every platform and graphics API. A Lua binding never includes a host or a platform folder, which `tools/tests/repository/test_layer_isolation.py` checks, so what a script sees never depends on what draws the app.
 - Options are passed as tables whose unknown keys raise `Unknown option "<key>".`, and enums are passed as their string names.

@@ -1353,11 +1353,11 @@ void Engine::reportError(const std::exception& exception) {
         return;
     }
 
-    const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
-    showError(scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
+    const auto* scriptError = dynamic_cast<const core::AppError*>(&exception);
+    showError(scriptError != nullptr ? *scriptError : core::AppError(exception.what()), !lifecycle);
 }
 
-void Engine::cancel(const lua::Error& error) {
+void Engine::cancel(const core::AppError& error) {
     EngineState& current = *state;
     current.cancelled = true;
     current.recovering = false;
@@ -1370,7 +1370,7 @@ bool Engine::isCancelled() const noexcept {
 }
 
 // The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
-void Engine::showError(const lua::Error& error, bool resumable) {
+void Engine::showError(const core::AppError& error, bool resumable) {
     EngineState& current = *state;
     current.errorScreen = std::make_unique<ErrorScreen>(*this, error, resumable);
     current.host.setMouseLocked(false, [](const platform::SystemAnswer&) {});
@@ -1390,10 +1390,10 @@ void Engine::showError(const lua::Error& error, bool resumable) {
 }
 
 void Engine::reportError(const std::string& message) {
-    reportError(lua::Error(message));
+    reportError(core::AppError(message));
 }
 
-const lua::Error* Engine::getError() const noexcept {
+const core::AppError* Engine::getError() const noexcept {
     return state->errorScreen ? &state->errorScreen->getError() : nullptr;
 }
 

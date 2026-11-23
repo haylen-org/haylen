@@ -5,9 +5,9 @@
 #include <optional>
 
 #include "haylen/ai/InfluenceMap.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -19,6 +19,10 @@ template <> struct Type<ai::InfluenceMap> {
     using Storage = ai::InfluenceMap;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<ai::InfluenceMap::Falloff> {
     static std::optional<ai::InfluenceMap::Falloff> fromName(std::string_view name) {
         return ai::InfluenceMap::falloffFromName(name);
@@ -28,7 +32,7 @@ template <> struct EnumNames<ai::InfluenceMap::Falloff> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::ai {
 

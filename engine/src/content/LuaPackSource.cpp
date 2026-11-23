@@ -66,7 +66,7 @@ void LuaPackSource::acquire(const std::string& pack, std::function<void(const Pr
     lua_pushcclosure(L, &reportProgress, 1);
 
     // clang-format off
-    lua::Task::start(L, runner, 3, ownerIndex, [answer, pack](const std::optional<lua::Error>& error) {
+    lua::Task::start(L, runner, 3, ownerIndex, [answer, pack](const std::optional<core::AppError>& error) {
         if (error) {
             answer->deliver(std::nullopt, Error(Error::Code::StoreAssetUnavailable, "The source of packs failed to deliver the pack \"" + pack + "\". " + error->getMessage()));
         }

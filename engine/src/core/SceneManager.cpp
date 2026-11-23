@@ -273,10 +273,10 @@ void SceneManager::startLoad(const std::shared_ptr<Scene>& scene, std::any param
         const Engine::PhaseScope scope(engine, Engine::Phase::Lifecycle);
         try {
             scene->load(engine, *load);
-        } catch (const lua::Error& error) {
+        } catch (const core::AppError& error) {
             load->fail(error);
         } catch (const std::exception& exception) {
-            load->fail(lua::Error(exception.what()));
+            load->fail(core::AppError(exception.what()));
         }
     }
 
@@ -301,7 +301,7 @@ void SceneManager::settle(const std::shared_ptr<Scene>& scene) {
     }
 
     // A listener may clear the stack or cancel the preload, which already unloaded the scene.
-    const lua::Error error = *load->getError();
+    const core::AppError error = *load->getError();
     (void)engine.getEvents().emitWith(LifecycleEvent::kSceneLoadFailed, LoadFailure{.scene = scene.get(), .error = &error});
 
     if (scene->loading != load) {
@@ -422,8 +422,8 @@ void SceneManager::advance(float deltaSeconds) {
                 takeNext();
 
                 if (change->options.completion) {
-                    const auto* error = dynamic_cast<const lua::Error*>(&exception);
-                    change->options.completion({.outcome = Outcome::Failed, .error = error != nullptr ? *error : lua::Error(exception.what())});
+                    const auto* error = dynamic_cast<const core::AppError*>(&exception);
+                    change->options.completion({.outcome = Outcome::Failed, .error = error != nullptr ? *error : core::AppError(exception.what())});
                 }
             }
 
@@ -554,12 +554,12 @@ void SceneManager::start(const std::shared_ptr<Change>& change) {
     change->from = getTopShared();
     const std::shared_ptr<Scene>& scene = change->scene;
     if (scene && (find(*scene) || std::ranges::find(leaving, scene) != leaving.end())) {
-        throw lua::Error("The scene is already on the stack.");
+        throw core::AppError("The scene is already on the stack.");
     }
 
     if (const auto taken = std::ranges::find(preloaded, scene); scene && taken != preloaded.end()) {
         if (change->options.params.has_value()) {
-            throw lua::Error("A preloaded scene keeps the \"params\" of its preload.");
+            throw core::AppError("A preloaded scene keeps the \"params\" of its preload.");
         }
 
         preloaded.erase(taken);
@@ -913,7 +913,7 @@ void SceneManager::takeNext() noexcept {
 
 // An error handler of the change takes the failure. Otherwise the log reports it while a scene the change kept stays on screen, and the error screen shows it when no such scene is left.
 void SceneManager::reportFailure(const Change& change, bool currentKept) {
-    const lua::Error& error = *change.failure;
+    const core::AppError& error = *change.failure;
     if (change.options.onError) {
         change.options.onError(error);
         return;

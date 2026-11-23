@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "haylen/2d/lighting/Light.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 
 namespace haylen::lua {
@@ -16,6 +16,10 @@ template <> struct Type<lighting2d::Light> {
     static constexpr const char* name = "haylen.Light";
     using Storage = lighting2d::Light;
 };
+
+} // namespace haylen::lua
+
+namespace haylen::core {
 
 template <> struct EnumNames<lighting2d::Light::Type> {
     static std::optional<lighting2d::Light::Type> fromName(std::string_view name) {
@@ -44,7 +48,7 @@ template <> struct EnumNames<lighting2d::Light::ShadowFilter> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::lighting2d {
 

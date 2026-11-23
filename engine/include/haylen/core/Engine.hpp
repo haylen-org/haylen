@@ -15,9 +15,9 @@
 #include <vector>
 
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Signal.hpp"
 #include "haylen/graphics/Device.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/AppPlugin.hpp"
 #include "haylen/platform/Event.hpp"
@@ -214,16 +214,16 @@ class Engine final {
         return added;
     }
 
-    // Stops app updates and shows the error screen until the app is restarted. Script errors end up here, and a lua::Error keeps its stack. Only the first error of an app counts.
+    // Stops app updates and shows the error screen until the app is restarted. Script errors end up here, and a core::AppError keeps its stack. Only the first error of an app counts.
     void reportError(const std::exception& exception);
     void reportError(const std::string& message);
 
     // Stops the app for good with the error, which replaces any error that shows and which only a restart clears, so no fix resumes the app and it cannot go back from the error screen. The host cancels an app this way, such as when its code ran longer than the execution budget of development.
-    void cancel(const lua::Error& error);
+    void cancel(const core::AppError& error);
     [[nodiscard]] bool isCancelled() const noexcept;
 
     // Returns the error that stopped the app, or null while it runs.
-    [[nodiscard]] const lua::Error* getError() const noexcept;
+    [[nodiscard]] const core::AppError* getError() const noexcept;
 
     // The record of the error that stopped the app, as the page and the event `appError` receive it with the phase where it rose, or null while the app runs.
     [[nodiscard]] Json getErrorRecord() const;
@@ -344,7 +344,7 @@ class Engine final {
     void setStatusBarColor(std::optional<math::Color> value) noexcept;
     [[nodiscard]] std::optional<math::Color> getStatusBarColor() const noexcept;
 
-    Signal<const lua::Error&> errorRaised;
+    Signal<const core::AppError&> errorRaised;
     Signal<bool> pausedChanged;
     Signal<AppState> appStateChanged;
     Signal<> resized;
@@ -380,7 +380,7 @@ class Engine final {
     void updateApp(std::size_t plugins, float delta);
     [[nodiscard]] bool takeRedraw(bool halted);
     [[nodiscard]] bool isRedrawNeeded(bool halted) const;
-    void showError(const lua::Error& error, bool resumable);
+    void showError(const core::AppError& error, bool resumable);
     void publishDeviceChanges();
     void publishKeyboard(const math::Rect& value);
     [[nodiscard]] Json describeFold(const std::optional<platform::Fold>& fold) const;

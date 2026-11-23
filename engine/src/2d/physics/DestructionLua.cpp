@@ -26,6 +26,10 @@ template <> struct Type<physics2d::ScriptedOwner<physics2d::Terrain>> {
     using Storage = physics2d::ScriptedOwner<physics2d::Terrain>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<physics2d::Explosion::Falloff> {
     static std::optional<physics2d::Explosion::Falloff> fromName(std::string_view name) {
         return physics2d::Explosion::falloffFromName(name);
@@ -36,7 +40,7 @@ template <> struct EnumNames<physics2d::Explosion::Falloff> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::physics2d {
 

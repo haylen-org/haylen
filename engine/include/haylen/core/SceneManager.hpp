@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/LoadingView.hpp"
 #include "haylen/core/MotionReduction.hpp"
@@ -19,7 +20,6 @@
 #include "haylen/core/SceneView.hpp"
 #include "haylen/core/TransitionEffect.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/EasingCurve.hpp"
 
@@ -58,11 +58,11 @@ class SceneManager final {
 
     struct Result {
         Outcome outcome = Outcome::Completed;
-        std::optional<lua::Error> error;
+        std::optional<core::AppError> error;
     };
 
     using Completion = std::function<void(const Result& result)>;
-    using ErrorHandler = std::function<void(const lua::Error& error)>;
+    using ErrorHandler = std::function<void(const core::AppError& error)>;
 
     // The options of `push` and `replace`.
     struct Options {
@@ -97,7 +97,7 @@ class SceneManager final {
     // What `sceneLoadFailed` carries.
     struct LoadFailure {
         const Scene* scene = nullptr;
-        const lua::Error* error = nullptr;
+        const core::AppError* error = nullptr;
     };
 
     explicit SceneManager(Engine& owner);
@@ -214,7 +214,7 @@ class SceneManager final {
         Options options;
         Phase phase = Phase::Start;
         std::shared_ptr<Scene> from;
-        std::optional<lua::Error> failure;
+        std::optional<core::AppError> failure;
         float elapsed = 0.0F;
         float waited = 0.0F;
         float shown = 0.0F;

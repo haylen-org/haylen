@@ -5,9 +5,9 @@
 #include <string_view>
 
 #include "core/FailingCode.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
-#include "haylen/lua/Error.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::core {
@@ -38,11 +38,11 @@ TEST_P(ErrorReportTest, ShowsTheErrorWithItsStackAndRecovers) {
     test::EngineFixture fixture({{"source/main.lua", std::string(kMain)}, {"source/fault.lua", std::string(code.module)}, {"content/broken.png", "not an image"}});
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; })) << code.name;
 
-    const lua::Error& error = *fixture.engine().getError();
+    const core::AppError& error = *fixture.engine().getError();
     EXPECT_TRUE(error.getMessage().starts_with(code.message)) << error.getMessage();
     EXPECT_EQ(error.getFile(), "source/fault.lua");
     EXPECT_EQ(error.getLine(), code.line);
-    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [&](const lua::Error::Frame& frame) { return frame.source == "source/fault.lua" && frame.line == code.line; })) << error.getTraceback();
+    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [&](const core::AppError::Frame& frame) { return frame.source == "source/fault.lua" && frame.line == code.line; })) << error.getTraceback();
     ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
     EXPECT_EQ(fixture.host().getErrorReports().front(), fixture.engine().getErrorRecord());
     fixture.frames(1);

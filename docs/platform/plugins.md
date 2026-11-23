@@ -484,7 +484,7 @@ end)
 
 ### Errors of the app
 
-Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as a report `{message, file, line, traceback, frames}`. The list `frames` holds `{source, line, function, kind}` from the innermost call outward, with the kind `lua`, `c` or `main`. It is the shape that the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code.
+Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as a report `{message, file, line, traceback, frames}`. The list `frames` holds `{source, line, function, kind}` from the innermost call outward, with the kind `script`, `native` or `main`. It is the shape that the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code.
 
 | Native part | Receives the report in |
 | --- | --- |

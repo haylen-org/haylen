@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-#include "haylen/lua/Error.hpp"
+#include "haylen/core/AppError.hpp"
 
 namespace haylen::debug {
 
@@ -17,7 +17,7 @@ namespace haylen::debug {
 class ExecutionBudget final {
   public:
     // Cancels the app with the error of the budget that ran out.
-    using Cancel = std::function<void(const lua::Error& error)>;
+    using Cancel = std::function<void(const core::AppError& error)>;
 
     // Names the step of the engine that runs now, such as `update` or `reload`, or answers an empty text where the step of the host names it.
     using StageReader = std::function<std::string_view()>;
@@ -100,7 +100,7 @@ class ExecutionBudget final {
     static int setGuardedMetatable(lua_State* L);
     static int runFinalizer(lua_State* L);
     static void* allocate(void* data, void* block, std::size_t oldSize, std::size_t newSize);
-    void exhaust(lua_State* L, const std::string& reason, lua::Error::Code code);
+    void exhaust(lua_State* L, const std::string& reason, core::AppError::Code code);
     [[nodiscard]] std::string readCurrentStage() const;
     [[nodiscard]] std::string describeMemory() const;
     [[nodiscard]] static std::string describe(const std::string& reason, const std::string& stage);

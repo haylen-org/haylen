@@ -196,7 +196,7 @@ TEST_F(NativeLuaTest, ReportsFailuresOfFfiCallbacksOutsideAnyCall) {
         const Visitor visitor = castVisitor(fixture, "function() error('failed outside any call') end");
         visitor(1, "one");
         ASSERT_NE(fixture.engine().getError(), nullptr);
-        const lua::Error& error = *fixture.engine().getError();
+        const core::AppError& error = *fixture.engine().getError();
         EXPECT_NE(std::string(error.what()).find("failed outside any call"), std::string::npos);
         ASSERT_EQ(error.getFrames().size(), 2U);
         EXPECT_EQ(error.getFrames()[0].function, "global 'error'");

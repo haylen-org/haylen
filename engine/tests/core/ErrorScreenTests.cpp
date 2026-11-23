@@ -14,6 +14,7 @@
 #include "core/ErrorScreen.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/core/SceneManager.hpp"
@@ -23,7 +24,6 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageReader.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/DrawingScene.hpp"
@@ -90,6 +90,11 @@ class ErrorScreenTest : public ::testing::Test {
         fixture.frames(1);
     }
 
+    // An error raised at a line of a file of the package, split as the runtime of the code that raised it splits it.
+    static AppError raiseAt(const std::string& file, int line, const std::string& message) {
+        return {file + ":" + std::to_string(line) + ": " + message, {.message = message, .file = file, .line = line}};
+    }
+
     // Sends a mouse or touch event at a point in design units, which the platform reports in framebuffer pixels.
     static void point(test::EngineFixture& fixture, ErrorScreen& screen, platform::Event::Type type, math::Vec2 design, input::MouseButton button = input::MouseButton::Left) {
         platform::Event event;
@@ -105,7 +110,7 @@ class ErrorScreenTest : public ::testing::Test {
 TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     test::EngineFixture fixture = startFailingApp();
 
-    const ErrorScreen middle(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    const ErrorScreen middle(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
     const std::vector<ErrorScreen::SourceLine>& lines = middle.getExcerpt();
     ASSERT_EQ(lines.size(), 6U);
     EXPECT_EQ(lines.front().number, 3);
@@ -114,17 +119,17 @@ TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     EXPECT_EQ(lines[3].text, "    local damage = strike(nil)");
     EXPECT_EQ(lines[1].text, "");
 
-    const ErrorScreen first(fixture.engine(), lua::Error("source/scenes/battle.lua:1: boom"), true);
+    const ErrorScreen first(fixture.engine(), raiseAt("source/scenes/battle.lua", 1, "boom"), true);
     ASSERT_EQ(first.getExcerpt().size(), 4U);
     EXPECT_EQ(first.getExcerpt().front().text, "local function strike(enemy)");
 
-    EXPECT_TRUE(ErrorScreen(fixture.engine(), lua::Error("source/scenes/battle.lua:40: past the end"), true).getExcerpt().empty());
-    EXPECT_TRUE(ErrorScreen(fixture.engine(), lua::Error("source/scenes/missing.lua:3: boom"), true).getExcerpt().empty());
-    EXPECT_TRUE(ErrorScreen(fixture.engine(), lua::Error("The app could not be loaded."), true).getExcerpt().empty());
+    EXPECT_TRUE(ErrorScreen(fixture.engine(), raiseAt("source/scenes/battle.lua", 40, "past the end"), true).getExcerpt().empty());
+    EXPECT_TRUE(ErrorScreen(fixture.engine(), raiseAt("source/scenes/missing.lua", 3, "boom"), true).getExcerpt().empty());
+    EXPECT_TRUE(ErrorScreen(fixture.engine(), core::AppError("The app could not be loaded."), true).getExcerpt().empty());
 
     // Lines that end with a carriage return show without it.
     fixture.package().setFile("source/scenes/windows.lua", test::TestFiles::bytes("local damage = 1\r\nerror('boom')\r\n"));
-    const ErrorScreen windows(fixture.engine(), lua::Error("source/scenes/windows.lua:2: boom"), true);
+    const ErrorScreen windows(fixture.engine(), raiseAt("source/scenes/windows.lua", 2, "boom"), true);
     ASSERT_EQ(windows.getExcerpt().size(), 2U);
     EXPECT_EQ(windows.getExcerpt()[0].text, "local damage = 1");
     EXPECT_EQ(windows.getExcerpt()[1].text, "error('boom')");
@@ -137,7 +142,7 @@ TEST_F(ErrorScreenTest, ShowsNoExcerptOfAFileThatCannotBeRead) {
     Engine engine(host, std::make_shared<UnreadablePackage>(files, "source/broken.lua"), AppConfig{}, std::make_unique<test::TestApplication>(nullptr));
     std::vector<std::string> lines;
     const std::uint64_t listener = Log::addListener([&lines](Log::Level, std::string_view line) { lines.emplace_back(line); });
-    const ErrorScreen screen(engine, lua::Error("source/broken.lua:1: boom"), true);
+    const ErrorScreen screen(engine, raiseAt("source/broken.lua", 1, "boom"), true);
     Log::removeListener(listener);
 
     // The screen explains an error that already happened, so a file it cannot read only costs it the excerpt.
@@ -184,7 +189,7 @@ TEST_F(ErrorScreenTest, CopiesTheReportAndRestartsTheAppFromTheKeyboard) {
 
 TEST_F(ErrorScreenTest, TellsWhetherTheClipboardTookTheReportOnceItAnswers) {
     test::EngineFixture fixture({{"source/main.lua", ""}});
-    auto screen = std::make_unique<ErrorScreen>(fixture.engine(), lua::Error("source/main.lua:1: attempt to call a nil value"), true);
+    auto screen = std::make_unique<ErrorScreen>(fixture.engine(), raiseAt("source/main.lua", 1, "attempt to call a nil value"), true);
 
     // The clipboard answers at the next frame, and a browser may refuse the copy.
     screen->copyReport();
@@ -244,7 +249,7 @@ TEST_F(ErrorScreenTest, FollowsTheArrowKeysAndEnterOfATvRemote) {
 
 TEST_F(ErrorScreenTest, CopiesAndRestartsWithAClickOrATap) {
     test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
-    ErrorScreen screen(fixture.engine(), lua::Error("source/scenes/battle.lua:6: attempt to call a nil value"), true);
+    ErrorScreen screen(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "attempt to call a nil value"), true);
     fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](Engine&) { screen.render(); }));
     fixture.frames(2);
 
@@ -295,9 +300,9 @@ TEST_F(ErrorScreenTest, GoesBackToARecoverableAppAfterItsListenersRan) {
 
 TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
     test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
-    ErrorScreen plain(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    ErrorScreen plain(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
     fixture.engine().setRecoverable(true);
-    ErrorScreen recoverable(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    ErrorScreen recoverable(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
     EXPECT_EQ(plain.getFocusedAction(), ErrorScreen::Action::Restart);
     EXPECT_EQ(recoverable.getFocusedAction(), ErrorScreen::Action::Back);
 
@@ -321,9 +326,9 @@ TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
 
 TEST_F(ErrorScreenTest, ClosesAnAppThatAnotherAppLaunched) {
     test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
-    ErrorScreen plain(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    ErrorScreen plain(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
     fixture.host().setLaunched(true);
-    ErrorScreen launched(fixture.engine(), lua::Error("source/scenes/battle.lua:6: boom"), true);
+    ErrorScreen launched(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
 
     // clang-format off
     fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](Engine&) {
@@ -366,7 +371,7 @@ TEST_F(ErrorScreenTest, GoesBackWithTheButtonsOfAGamepad) {
 TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
     test::EngineFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
     fixture.host().resize({480.0F, 320.0F});
-    ErrorScreen screen(fixture.engine(), lua::Error("source/scenes/battle.lua:6: attempt to call a nil value"), true);
+    ErrorScreen screen(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "attempt to call a nil value"), true);
     fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](Engine&) { screen.render(); }));
     fixture.frames(2);
     ASSERT_GT(screen.getMaxScroll(), 0.0F);

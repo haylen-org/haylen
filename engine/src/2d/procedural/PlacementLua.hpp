@@ -7,9 +7,9 @@
 #include <string_view>
 
 #include "haylen/2d/procedural/Placement.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<procedural2d::Placement::Shape::Kind> {
     static std::optional<procedural2d::Placement::Shape::Kind> fromName(std::string_view name) {
@@ -29,7 +29,7 @@ template <> struct EnumNames<procedural2d::Placement::Order> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::procedural2d {
 

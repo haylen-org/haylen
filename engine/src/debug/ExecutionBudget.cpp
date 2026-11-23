@@ -7,6 +7,7 @@
 #include "debug/ThreadWalk.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "lua/ErrorReader.hpp"
 
 namespace haylen::debug {
 
@@ -170,7 +171,7 @@ void ExecutionBudget::check(lua_State* L) {
     }
 
     if (!budget->exhausted && budget->memoryExhausted) {
-        budget->exhaust(L, budget->describeMemory(), lua::Error::Code::Memory);
+        budget->exhaust(L, budget->describeMemory(), core::AppError::Code::Memory);
     }
 
     if (!budget->exhausted) {
@@ -178,7 +179,7 @@ void ExecutionBudget::check(lua_State* L) {
             return;
         }
 
-        budget->exhaust(L, "ran for more than " + std::to_string(budget->limits.time.count()) + " ms", lua::Error::Code::ExecutionBudget);
+        budget->exhaust(L, "ran for more than " + std::to_string(budget->limits.time.count()) + " ms", core::AppError::Code::ExecutionBudget);
     }
 
     lua_sethook(L, lua_gethook(L), lua_gethookmask(L), 1);
@@ -320,8 +321,8 @@ void ExecutionBudget::cancelForMemory() noexcept {
 
     try {
         message = describe(describeMemory(), memoryStage);
-        lua::Error error(message);
-        error.setCode(lua::Error::Code::Memory);
+        core::AppError error = lua::ErrorReader::read(message);
+        error.setCode(core::AppError::Code::Memory);
         error.setCallback(memoryStage);
         cancelApp(error);
     } catch (const std::exception& failure) {
@@ -329,16 +330,16 @@ void ExecutionBudget::cancelForMemory() noexcept {
     }
 }
 
-void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, lua::Error::Code code) {
+void ExecutionBudget::exhaust(lua_State* L, const std::string& reason, core::AppError::Code code) {
     exhausted = true;
-    const std::string stage = code == lua::Error::Code::Memory ? memoryStage : readCurrentStage();
+    const std::string stage = code == core::AppError::Code::Memory ? memoryStage : readCurrentStage();
     message = describe(reason, stage);
 
     if (!cancelApp) {
         return;
     }
 
-    lua::Error error = lua::Runtime::captureError(L, message, 0);
+    core::AppError error = lua::Runtime::captureError(L, message, 0);
     error.setCode(code);
     error.setCallback(stage);
 

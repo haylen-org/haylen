@@ -6,6 +6,7 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Runtime.hpp"
+#include "lua/ErrorReader.hpp"
 #include "lua/ModuleClosures.hpp"
 #include "lua/ModuleGraph.hpp"
 #include "lua/ModuleSnapshot.hpp"
@@ -46,9 +47,9 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
     const std::string chunkName = "@" + file;
     const int loaded = luaL_loadbufferx(state, source.data(), source.size(), chunkName.c_str(), "t");
     if (loaded != LUA_OK) {
-        Error error(lua_tostring(state, -1));
+        core::AppError error = ErrorReader::read(lua_tostring(state, -1));
         if (loaded == LUA_ERRSYNTAX) {
-            error.setCode(Error::Code::Syntax);
+            error.setCode(core::AppError::Code::Syntax);
         }
         lua_settop(state, top);
         return {.status = Status::Failed, .error = std::move(error)};
@@ -84,7 +85,7 @@ ModuleReloader::Result ModuleReloader::reload(const std::string& file) {
 
     try {
         Runtime::protectedCall(state, 2, 1);
-    } catch (const Error& error) {
+    } catch (const core::AppError& error) {
         graph.endLoad(state, false);
         abandon();
         return {.status = Status::Failed, .error = error};

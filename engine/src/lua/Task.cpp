@@ -8,6 +8,7 @@
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "lua/ErrorReader.hpp"
 #include "lua/Owners.hpp"
 #include "lua/StackScope.hpp"
 #include "varn/async/Promise.h"
@@ -91,7 +92,7 @@ int Task::continueBody(lua_State* L, int status, lua_KContext context) {
     }
 
     if (context == kAwaited && !lua_isnil(L, -1)) {
-        task.finish(Error(Runtime::describeValue(L, -1)));
+        task.finish(ErrorReader::read(Runtime::describeValue(L, -1)));
         return 0;
     }
 
@@ -107,7 +108,7 @@ int Task::collectHolder(lua_State* L) {
 }
 
 // A task cancelled while its own code ran goes on to its next wait, so an error of that code still reaches the completion, and only its normal end goes unreported.
-void Task::finish(const std::optional<Error>& error) {
+void Task::finish(const std::optional<core::AppError>& error) {
     finished = true;
     release();
 

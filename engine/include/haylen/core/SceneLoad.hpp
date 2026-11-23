@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "haylen/lua/Error.hpp"
+#include "haylen/core/AppError.hpp"
 
 namespace haylen::core {
 
@@ -36,7 +36,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
         Deferral& operator=(Deferral&& other) noexcept;
 
         void complete();
-        void fail(const lua::Error& failure);
+        void fail(const core::AppError& failure);
 
       private:
         friend class SceneLoad;
@@ -49,7 +49,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     };
 
     // Receives the failure of a preload, or nothing once its group loaded.
-    using PreloadCompletion = std::function<void(const std::optional<lua::Error>& failure)>;
+    using PreloadCompletion = std::function<void(const std::optional<core::AppError>& failure)>;
 
     SceneLoad(Engine& owner, std::any value);
 
@@ -72,7 +72,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     [[nodiscard]] bool isFinished() const noexcept {
         return pending == 0 && !error && !cancelled;
     }
-    [[nodiscard]] const std::optional<lua::Error>& getError() const noexcept {
+    [[nodiscard]] const std::optional<core::AppError>& getError() const noexcept {
         return error;
     }
 
@@ -84,11 +84,11 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
   private:
     friend class SceneManager;
 
-    [[nodiscard]] static std::optional<lua::Error> describeFailures(std::string_view group, const std::vector<std::string>& failures);
+    [[nodiscard]] static std::optional<core::AppError> describeFailures(std::string_view group, const std::vector<std::string>& failures);
 
     // Releases one hold on the load: the load hook itself, which the scene manager releases once it returned, or a deferral.
     void release();
-    void fail(const lua::Error& failure);
+    void fail(const core::AppError& failure);
     void drop();
     void cancel() noexcept;
 
@@ -98,7 +98,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
     std::string message;
     std::vector<float> groups;
     std::size_t pending = 1;
-    std::optional<lua::Error> error;
+    std::optional<core::AppError> error;
     bool dropped = false;
     bool cancelled = false;
 };

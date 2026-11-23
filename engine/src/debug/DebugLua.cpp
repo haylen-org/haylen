@@ -17,12 +17,12 @@
 #include "debug/InspectorLua.hpp"
 #include "debug/TraceLua.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/debug/ProfileScope.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/debug/Stats.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/lua/Binding.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -31,7 +31,7 @@
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "lua/Owners.hpp"
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<debug::StatsDisplay::Mode> {
     static std::optional<debug::StatsDisplay::Mode> fromName(std::string_view name) {
@@ -51,7 +51,7 @@ template <> struct EnumNames<debug::StatsDisplay::Item> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::debug {
 

@@ -3,9 +3,9 @@
 #include <string>
 
 #include "haylen/content/ContentManager.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/MemoryPackage.hpp"
-#include "haylen/lua/Error.hpp"
 #include "support/ContentAppFixture.hpp"
 #include "support/TestFiles.hpp"
 

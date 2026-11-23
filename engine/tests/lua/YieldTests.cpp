@@ -3,8 +3,8 @@
 
 #include <string>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/lua/Error.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 

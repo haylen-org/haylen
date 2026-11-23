@@ -47,6 +47,10 @@ template <> struct Type<navigation2d::HierarchicalPathfinder> {
     using Storage = navigation2d::HierarchicalPathfinder;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<navigation2d::Grid::Topology> {
     static std::optional<navigation2d::Grid::Topology> fromName(std::string_view name) {
         return navigation2d::Grid::topologyFromName(name);
@@ -67,7 +71,7 @@ template <> struct EnumNames<navigation2d::Grid::Heuristic> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::navigation2d {
 

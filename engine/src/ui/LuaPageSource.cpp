@@ -133,7 +133,7 @@ void LuaPageSource::load(std::size_t page) {
     lua_State* main = state;
 
     // clang-format off
-    lua::Task::start(L, lua_gettop(L) - 1, 1, 0, [main](const std::optional<lua::Error>& error) {
+    lua::Task::start(L, lua_gettop(L) - 1, 1, 0, [main](const std::optional<core::AppError>& error) {
         if (error) {
             lua::Runtime::reportError(main, *error);
         }

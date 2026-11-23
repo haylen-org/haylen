@@ -211,7 +211,7 @@ void OverlayWindow::drawScenes(const core::SceneManager& scenes) {
         const std::string_view state = core::Scene::stateName(scene.getState());
         ImGui::TextUnformatted(state.data(), state.data() + state.size());
         ImGui::TableNextColumn();
-        const std::string_view mode = lua::EnumNames<core::ProcessMode>::name(scenes.getProcessMode(index));
+        const std::string_view mode = core::EnumNames<core::ProcessMode>::name(scenes.getProcessMode(index));
         ImGui::TextUnformatted(mode.data(), mode.data() + mode.size());
         ImGui::TableNextColumn();
         ImGui::TextUnformatted(scene.isTransparent() ? "Yes" : "No");

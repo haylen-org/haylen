@@ -337,6 +337,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/conversation/ConversationState.cpp
   src/conversation/Expression.cpp
   src/core/AppConfig.cpp
+  src/core/AppError.cpp
   src/core/Base64.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp
@@ -469,7 +470,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/lua/Autoloads.cpp
   src/lua/Binding.cpp
   src/lua/Environment.cpp
-  src/lua/Error.cpp
+  src/lua/ErrorReader.cpp
   src/lua/HotReloadLua.cpp
   src/lua/JobsLua.cpp
   src/lua/JsonConverter.cpp

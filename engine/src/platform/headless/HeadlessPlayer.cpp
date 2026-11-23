@@ -11,11 +11,11 @@
 
 #include "debug/ExecutionBudget.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
-#include "haylen/lua/Error.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
@@ -139,7 +139,7 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launchPackage(HeadlessHost& host, 
         return launch(host, playing);
     } catch (const std::exception& error) {
         core::Log::error("The launched app could not start: {}", error.what());
-        host.reportError(lua::Error(error.what()).toJson());
+        host.reportError(core::AppError(error.what()).toJson());
         return nullptr;
     }
 }

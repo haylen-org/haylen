@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-#include "haylen/lua/Error.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -46,9 +46,9 @@ class ErrorScreen final {
     static constexpr std::string_view kTitle = "The app stopped with an error";
 
     // A resumable error came from code that runs again, so fixing it in development resumes the app.
-    ErrorScreen(Engine& owner, lua::Error failure, bool resumable);
+    ErrorScreen(Engine& owner, core::AppError failure, bool resumable);
 
-    [[nodiscard]] const lua::Error& getError() const noexcept {
+    [[nodiscard]] const core::AppError& getError() const noexcept {
         return error;
     }
     [[nodiscard]] bool isResumable() const noexcept {
@@ -169,7 +169,7 @@ class ErrorScreen final {
     [[nodiscard]] math::Rect drawAction(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 position, Action action, std::string_view key, std::string_view label, float unit) const;
 
     Engine& engine;
-    lua::Error error;
+    core::AppError error;
     std::vector<SourceLine> excerpt;
     std::string report;
     float scroll = 0.0F;

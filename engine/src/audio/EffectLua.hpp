@@ -12,7 +12,7 @@
 #include "haylen/audio/Filter.hpp"
 #include "haylen/audio/Limiter.hpp"
 #include "haylen/audio/Reverb.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 
 namespace haylen::lua {
@@ -37,6 +37,10 @@ template <> struct Type<audio::Limiter> {
     using Storage = std::shared_ptr<audio::Limiter>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<audio::Filter::Kind> {
     static constexpr std::array<std::pair<std::string_view, audio::Filter::Kind>, 7> kNames{{{"lowpass", audio::Filter::Kind::Lowpass}, {"highpass", audio::Filter::Kind::Highpass}, {"bandpass", audio::Filter::Kind::Bandpass}, {"notch", audio::Filter::Kind::Notch}, {"peak", audio::Filter::Kind::Peak}, {"lowShelf", audio::Filter::Kind::LowShelf}, {"highShelf", audio::Filter::Kind::HighShelf}}};
 
@@ -60,7 +64,7 @@ template <> struct EnumNames<audio::Filter::Kind> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::audio {
 

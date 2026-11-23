@@ -664,7 +664,7 @@ Every error that stops an app reaches `onError` as one record, and the answers o
 | `file`, `line` | The project-relative path of the file, such as `source/player.lua`, and the line, or an empty `file` and line 0 when no script position is known. Lua tells lines only, so a record has no column. |
 | `callback` | For an error of the execution budget, the step of the engine that ran too long, such as `start`, `update`, `fixedUpdate`, `render`, `scripts` for the callbacks of promises and tasks, `event` or `reload`. |
 | `traceback` | The stack as text, one frame per line. |
-| `frames` | The same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
+| `frames` | The same frames as `{source, line, function, kind}` objects, innermost first, with the kind `script`, `native` or `main`. |
 
 The machine fields never change with the language of the person, while `message` and `traceback` are text for the person.
 

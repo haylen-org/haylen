@@ -5,7 +5,7 @@
 #include <string_view>
 #include <type_traits>
 
-namespace haylen::lua {
+namespace haylen::core {
 
 // Enums cross the boundary as strings. Specializations provide the conversion both ways.
 template <typename T> struct EnumNames;
@@ -16,4 +16,4 @@ concept NamedEnum = std::is_enum_v<T> && requires(std::string_view name, T value
     { EnumNames<T>::name(value) } -> std::convertible_to<std::string_view>;
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core

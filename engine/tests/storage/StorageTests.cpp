@@ -19,9 +19,9 @@
 #include <thread>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/StoragePlugin.hpp"
 #include "haylen/storage/Preferences.hpp"

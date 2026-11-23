@@ -37,7 +37,7 @@ void ExecutionBudgetPlugin::installLua(core::Engine& engine, lua_State* L) {
     }
 
     // clang-format off
-    const auto cancel = [&engine](const lua::Error& error) {
+    const auto cancel = [&engine](const core::AppError& error) {
         engine.cancel(error);
     };
     const auto stage = [&engine]() -> std::string_view {

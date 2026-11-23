@@ -9,9 +9,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
-#include "haylen/lua/Error.hpp"
 #include "platform/CrashGuard.hpp"
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
@@ -53,7 +53,7 @@ int Runtime::run(int argc, char* argv[]) {
     if (!hasAnimationFrames()) {
         const std::string reason = "This browser runs no animation frames in workers, which the Worker mode of the runtime needs. Run the runtime on the page instead.";
         core::Log::error("{}", reason);
-        Services::reportError(lua::Error(reason).toJson());
+        Services::reportError(core::AppError(reason).toJson());
         return 1;
     }
 
@@ -169,7 +169,7 @@ int Runtime::initialize(int argc, char* argv[]) {
         Player::create(argc, argv, std::make_unique<Host>(*this));
     } catch (const std::exception& error) {
         core::Log::error("The player could not start: {}", error.what());
-        Services::reportError(lua::Error(error.what()).toJson());
+        Services::reportError(core::AppError(error.what()).toJson());
         running = nullptr;
         delete this;
         return 1;
@@ -206,7 +206,7 @@ void Runtime::start() {
         }
     } catch (const std::exception& error) {
         core::Log::error("{}", error.what());
-        Services::reportError(lua::Error(error.what()).toJson());
+        Services::reportError(core::AppError(error.what()).toJson());
         closing = true;
         return;
     }

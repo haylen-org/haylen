@@ -94,7 +94,7 @@ class Host : public Window {
     // The ids of the plugins whose native part the platform loaded.
     [[nodiscard]] virtual std::vector<std::string> getNativePlugins() const = 0;
 
-    // Hands the error that stopped the app to native code as the JSON report of `lua::Error::toJson`, with its `message`, `file`, `line`, `traceback` and `frames`.
+    // Hands the error that stopped the app to native code as the JSON report of `core::AppError::toJson`, with its `message`, `file`, `line`, `traceback` and `frames`.
     virtual void reportError(const core::Json& report) = 0;
 
     // What the device and its operating system are, read once when an app starts. The graphics device names the GPU, so `gpuName` stays empty here.

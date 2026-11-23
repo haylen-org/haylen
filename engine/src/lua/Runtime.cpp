@@ -8,6 +8,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "lua/ErrorReader.hpp"
 #include "lua/Task.hpp"
 #include "varn/async/AsyncModule.h"
 
@@ -31,17 +32,24 @@ lua_State* Runtime::getMainThread(lua_State* L) noexcept {
     return main;
 }
 
+// An exception of native code that Lua code reached may carry the position of that code in its text.
 void Runtime::reportError(lua_State* L, const std::exception& exception) {
-    getEngine(L).reportError(exception);
+    core::Engine& engine = getEngine(L);
+    if (dynamic_cast<const core::AppError*>(&exception) != nullptr) {
+        engine.reportError(exception);
+        return;
+    }
+
+    engine.reportError(ErrorReader::read(exception.what()));
 }
 
 void Runtime::runChunk(lua_State* L, std::string_view source, const std::string& chunkName) {
     const int status = luaL_loadbufferx(L, source.data(), source.size(), chunkName.c_str(), "t");
     if (status != LUA_OK) {
-        Error error = readError(L, -1);
+        core::AppError error = readError(L, -1);
         lua_pop(L, 1);
         if (status == LUA_ERRSYNTAX) {
-            error.setCode(Error::Code::Syntax);
+            error.setCode(core::AppError::Code::Syntax);
         }
         throw error;
     }
@@ -99,12 +107,12 @@ std::string Runtime::describeValue(lua_State* L, int index) {
 }
 
 // The protected calls and the failure handler of Varn's tasks build their frames here, so every stack of an error reads the same.
-Error::Frame Runtime::makeFrame(const Level& level) {
+core::AppError::Frame Runtime::makeFrame(const Level& level) {
     return {.source = std::string(level.source), .line = std::max(level.line, 0), .function = describeFunction(level), .kind = getFrameKind(level.what)};
 }
 
-Error::Frame Runtime::makeSkippedFrame(int count) {
-    return {.source = "...", .function = std::to_string(count) + " levels skipped", .kind = Error::Frame::Kind::C};
+core::AppError::Frame Runtime::makeSkippedFrame(int count) {
+    return {.source = "...", .function = std::to_string(count) + " levels skipped", .kind = core::AppError::Frame::Kind::Native};
 }
 
 // Names the function the way Lua tracebacks do, from the calling code when it has a name, and from its kind or definition otherwise.
@@ -124,12 +132,12 @@ std::string Runtime::describeFunction(const Level& level) {
     return "?";
 }
 
-Error::Frame::Kind Runtime::getFrameKind(std::string_view what) noexcept {
+core::AppError::Frame::Kind Runtime::getFrameKind(std::string_view what) noexcept {
     if (what == "C") {
-        return Error::Frame::Kind::C;
+        return core::AppError::Frame::Kind::Native;
     }
 
-    return what == "main" ? Error::Frame::Kind::Main : Error::Frame::Kind::Lua;
+    return what == "main" ? core::AppError::Frame::Kind::Main : core::AppError::Frame::Kind::Script;
 }
 
 // Finds the outermost level of the stack with a binary search, since reaching a level walks every level above it.
@@ -154,8 +162,8 @@ int Runtime::findLastLevel(lua_State* L) {
     return high - 1;
 }
 
-Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
-    std::vector<Error::Frame> frames;
+core::AppError Runtime::captureError(lua_State* L, const std::string& text, int level) {
+    std::vector<core::AppError::Frame> frames;
     lua_Debug info{};
     const int last = findLastLevel(L);
     const bool elide = last - level > kInnerLevels + kOuterLevels;
@@ -183,7 +191,7 @@ Error Runtime::captureError(lua_State* L, const std::string& text, int level) {
         frames.push_back(makeFrame({.source = info.short_src, .line = info.currentline, .what = info.what, .nameWhat = info.namewhat, .name = info.name != nullptr ? info.name : "", .lineDefined = info.linedefined}));
     }
 
-    return Error(text, std::move(frames));
+    return ErrorReader::read(text, std::move(frames));
 }
 
 // An error that a kept call raised again keeps the stack of where it first rose, and the tasks of Varn forget the failure they would have taken for it.
@@ -203,9 +211,9 @@ int Runtime::handleMessage(lua_State* L) {
 }
 
 void Runtime::pushCaptured(lua_State* L) {
-    Error error = captureError(L, describeValue(L, 1), 1);
+    core::AppError error = captureError(L, describeValue(L, 1), 1);
     if (isSyntaxError(L, 1)) {
-        error.setCode(Error::Code::Syntax);
+        error.setCode(core::AppError::Code::Syntax);
     }
 
     pushError(L, std::move(error));
@@ -279,7 +287,7 @@ bool Runtime::takeKept(lua_State* L, int index) {
 }
 
 // The metatable comes first, so the error is never built inside a userdata that could miss its finalizer.
-void Runtime::pushError(lua_State* L, Error error) {
+void Runtime::pushError(lua_State* L, core::AppError error) {
     if (Userdata::newMetatable(L, kErrorType)) {
         lua_pushcfunction(L, &collectError);
         lua_setfield(L, -2, "__gc");
@@ -287,31 +295,31 @@ void Runtime::pushError(lua_State* L, Error error) {
         lua_setfield(L, -2, "__tostring");
     }
 
-    void* memory = lua_newuserdatauv(L, sizeof(Error), 0);
-    new (memory) Error(std::move(error));
+    void* memory = lua_newuserdatauv(L, sizeof(core::AppError), 0);
+    new (memory) core::AppError(std::move(error));
     lua_insert(L, -2);
     lua_setmetatable(L, -2);
 }
 
 // Only the collector calls it, and dropping the metatable keeps an error that another finalizer brings back away from the destroyed object.
 int Runtime::collectError(lua_State* L) {
-    static_cast<Error*>(lua_touserdata(L, 1))->~Error();
+    static_cast<core::AppError*>(lua_touserdata(L, 1))->~AppError();
     lua_pushnil(L);
     lua_setmetatable(L, 1);
     return 0;
 }
 
 int Runtime::errorToString(lua_State* L) {
-    lua_pushstring(L, static_cast<const Error*>(luaL_checkudata(L, 1, kErrorType))->what());
+    lua_pushstring(L, static_cast<const core::AppError*>(luaL_checkudata(L, 1, kErrorType))->what());
     return 1;
 }
 
-Error Runtime::readError(lua_State* L, int index) {
-    if (const auto* error = static_cast<const Error*>(luaL_testudata(L, index, kErrorType))) {
+core::AppError Runtime::readError(lua_State* L, int index) {
+    if (const auto* error = static_cast<const core::AppError*>(luaL_testudata(L, index, kErrorType))) {
         return *error;
     }
 
-    return Error(describeValue(L, index));
+    return ErrorReader::read(describeValue(L, index));
 }
 
 void Runtime::protectedCall(lua_State* L, int arguments, int results) {
@@ -323,10 +331,10 @@ void Runtime::protectedCall(lua_State* L, int arguments, int results) {
     lua_remove(L, function);
 
     if (status != LUA_OK) {
-        Error error = readError(L, -1);
+        core::AppError error = readError(L, -1);
         lua_pop(L, 1);
         if (status == LUA_ERRMEM) {
-            error.setCode(Error::Code::Memory);
+            error.setCode(core::AppError::Code::Memory);
         }
         throw error;
     }

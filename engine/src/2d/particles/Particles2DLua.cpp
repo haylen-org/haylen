@@ -17,9 +17,9 @@
 #include "haylen/2d/particles/System.hpp"
 #include "haylen/2d/particles/Trail.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Type.hpp"
@@ -84,17 +84,25 @@ template <> struct ParticleEnum<particles2d::EmitterConfig::Light::Fade> {
     static constexpr const auto& kNames = particles2d::EmitterConfig::kFadeNames;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <typename Enum>
-    requires requires { ParticleEnum<Enum>::kNames; }
+    requires requires { lua::ParticleEnum<Enum>::kNames; }
 struct EnumNames<Enum> {
     static std::optional<Enum> fromName(std::string_view name) {
-        return particles2d::EmitterConfig::fromName(ParticleEnum<Enum>::kNames, name);
+        return particles2d::EmitterConfig::fromName(lua::ParticleEnum<Enum>::kNames, name);
     }
 
     static std::string_view name(Enum value) {
-        return particles2d::EmitterConfig::nameOf(ParticleEnum<Enum>::kNames, value);
+        return particles2d::EmitterConfig::nameOf(lua::ParticleEnum<Enum>::kNames, value);
     }
 };
+
+} // namespace haylen::core
+
+namespace haylen::lua {
 
 // Counts accept one integer or a `{min, max}` pair, and push as a pair.
 template <> struct Converter<particles2d::EmitterConfig::CountRange> {

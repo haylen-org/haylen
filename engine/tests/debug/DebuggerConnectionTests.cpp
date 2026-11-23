@@ -19,8 +19,8 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Json.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -196,7 +196,7 @@ TEST_F(DebuggerConnectionTest, HaltsThroughTheDevelopmentServerAcrossRestartsAnd
     const auto run = [&fixture] {
         try {
             lua::Runtime::runChunk(fixture.lua(), "result = require('mod').run()", "=test");
-        } catch (const lua::Error& error) {
+        } catch (const core::AppError& error) {
             ADD_FAILURE() << error.what();
         }
     };

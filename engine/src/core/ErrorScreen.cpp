@@ -22,7 +22,7 @@
 
 namespace haylen::core {
 
-ErrorScreen::ErrorScreen(Engine& owner, lua::Error failure, bool resumable) : engine(owner), error(std::move(failure)), focused(owner.isRecoverable() ? Action::Back : Action::Restart), canResume(resumable) {
+ErrorScreen::ErrorScreen(Engine& owner, core::AppError failure, bool resumable) : engine(owner), error(std::move(failure)), focused(owner.isRecoverable() ? Action::Back : Action::Restart), canResume(resumable) {
     excerpt = readExcerpt();
     report = buildReport();
 }
@@ -503,12 +503,12 @@ float ErrorScreen::drawStack(graphics2d::Renderer& renderer, text::Font& font, m
 
     float y = origin.y + drawLine(renderer, font, "Stack", origin, heading) + kGap * unit * 0.4F;
     float columnWidth = 0.0F;
-    for (const lua::Error::Frame& frame : error.getFrames()) {
+    for (const core::AppError::Frame& frame : error.getFrames()) {
         columnWidth = std::max(columnWidth, font.measure(frame.getLocation(), location).x);
     }
 
     const float functionX = origin.x + columnWidth + kGap * unit;
-    for (const lua::Error::Frame& frame : error.getFrames()) {
+    for (const core::AppError::Frame& frame : error.getFrames()) {
         renderer.drawText(font, frame.getLocation(), {origin.x, y}, location);
         renderer.drawText(font, frame.function, {functionX, y}, function);
         y += lineHeight;

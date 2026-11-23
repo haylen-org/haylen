@@ -23,6 +23,10 @@ template <> struct Type<physics2d::ScriptedOwner<physics2d::ForceField>> {
     using Storage = physics2d::ScriptedOwner<physics2d::ForceField>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<physics2d::ForceField::Kind> {
     static std::optional<physics2d::ForceField::Kind> fromName(std::string_view name) {
         return physics2d::ForceField::kindFromName(name);
@@ -43,7 +47,7 @@ template <> struct EnumNames<physics2d::ForceField::Falloff> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::physics2d {
 

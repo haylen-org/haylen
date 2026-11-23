@@ -15,6 +15,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/FrameClock.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -27,7 +28,6 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/io/MemoryPackage.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
@@ -584,7 +584,7 @@ TEST_F(EngineTest, ReportsErrorsAndKeepsRendering) {
     // clang-format on
 
     std::string reported;
-    const ScopedConnection connection(fixture.engine().errorRaised.connect([&](const lua::Error& error) { reported = error.what(); }));
+    const ScopedConnection connection(fixture.engine().errorRaised.connect([&](const core::AppError& error) { reported = error.what(); }));
     fixture.frames(1);
     fixture.engine().reportError("first failure");
     fixture.engine().reportError("second failure");
@@ -648,7 +648,7 @@ TEST_F(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
     EXPECT_EQ(report.at("line"), 2);
     EXPECT_NE(report.at("traceback").get<std::string>().find("source/main.lua:2"), std::string::npos);
     ASSERT_FALSE(report.at("frames").empty());
-    EXPECT_EQ(report.at("frames").at(1), (Json{{"source", "source/main.lua"}, {"line", 2}, {"function", "local 'explode'"}, {"kind", "lua"}}));
+    EXPECT_EQ(report.at("frames").at(1), (Json{{"source", "source/main.lua"}, {"line", 2}, {"function", "local 'explode'"}, {"kind", "script"}}));
     EXPECT_EQ(report.at("code"), "runtime");
     EXPECT_EQ(report.at("phase"), "startup");
     EXPECT_EQ(report, fixture.engine().getErrorRecord());
@@ -730,7 +730,7 @@ TEST_F(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     fixture.runLua("require('async').spawn(require('scenes.loader'))");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-    const lua::Error& error = *fixture.engine().getError();
+    const core::AppError& error = *fixture.engine().getError();
     EXPECT_EQ(error.getMessage(), "the island failed to load");
     EXPECT_EQ(error.getFile(), "source/scenes/loader.lua");
     EXPECT_EQ(error.getLine(), 3);
@@ -739,11 +739,11 @@ TEST_F(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     ASSERT_EQ(error.getFrames().size(), 2U);
     EXPECT_EQ(error.getFrames()[0].source, "[C]");
     EXPECT_EQ(error.getFrames()[0].function, "global 'error'");
-    EXPECT_EQ(error.getFrames()[0].kind, lua::Error::Frame::Kind::C);
+    EXPECT_EQ(error.getFrames()[0].kind, core::AppError::Frame::Kind::Native);
     EXPECT_EQ(error.getFrames()[1].source, "source/scenes/loader.lua");
     EXPECT_EQ(error.getFrames()[1].line, 3);
     EXPECT_EQ(error.getFrames()[1].function, "function <source/scenes/loader.lua:1>");
-    EXPECT_EQ(error.getFrames()[1].kind, lua::Error::Frame::Kind::Lua);
+    EXPECT_EQ(error.getFrames()[1].kind, core::AppError::Frame::Kind::Script);
     ASSERT_FALSE(fixture.host().getErrorReports().empty());
     EXPECT_EQ(fixture.host().getErrorReports().back(), fixture.engine().getErrorRecord());
     EXPECT_NE(fixture.lua("require('async').spawn(3)").find("bad argument #1 to 'spawn' (function expected, got number)"), std::string::npos);

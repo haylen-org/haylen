@@ -81,7 +81,7 @@ class ModuleReloadTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::string error() const {
-        const Error* failure = fixture->engine().getError();
+        const core::AppError* failure = fixture->engine().getError();
         return failure != nullptr ? failure->what() : "";
     }
 
@@ -754,7 +754,7 @@ TEST_F(ModuleReloadTest, ShowsTheStackInsideAModuleWhoseFirstLoadFailed) {
     for (const std::string main : {"require('broken')", "require('async').spawn(function() require('broken') end)"}) {
         start({{"source/broken.lua", broken}, {"source/main.lua", "\n" + main}});
         fixture->frames(2);
-        const Error* failure = fixture->engine().getError();
+        const core::AppError* failure = fixture->engine().getError();
         ASSERT_NE(failure, nullptr) << main;
         EXPECT_EQ(failure->getFile(), "source/broken.lua") << main;
         EXPECT_EQ(failure->getLine(), 2) << main;

@@ -12,9 +12,9 @@
 #include "2d/procedural/PlacementLua.hpp"
 #include "haylen/2d/procedural/Voronoi.hpp"
 #include "haylen/2d/tiled/Object.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
@@ -28,6 +28,10 @@ template <> struct Type<procedural2d::Delaunay> {
     using Storage = procedural2d::Delaunay;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<procedural2d::Scatter::Method> {
     static std::optional<procedural2d::Scatter::Method> fromName(std::string_view name) {
         return procedural2d::Scatter::methodFromName(name);
@@ -38,7 +42,7 @@ template <> struct EnumNames<procedural2d::Scatter::Method> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::procedural2d {
 

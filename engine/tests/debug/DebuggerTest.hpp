@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Json.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "support/DebugClient.hpp"
 #include "support/EngineFixture.hpp"
@@ -74,7 +74,7 @@ end
     static std::string run(lua_State* L, const std::string& source) {
         try {
             lua::Runtime::runChunk(L, source, "=test");
-        } catch (const lua::Error& error) {
+        } catch (const core::AppError& error) {
             return error.what();
         }
 

@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "haylen/2d/graphics/Path.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -20,6 +20,10 @@ template <> struct Type<graphics2d::Path> {
     using Storage = std::shared_ptr<graphics2d::Path>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<graphics2d::Path::FillRule> {
     static std::optional<graphics2d::Path::FillRule> fromName(std::string_view name) {
         return graphics2d::Path::fillRuleFromName(name);
@@ -29,7 +33,7 @@ template <> struct EnumNames<graphics2d::Path::FillRule> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::graphics2d {
 

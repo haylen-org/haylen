@@ -12,15 +12,15 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/SpriteBatch.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<graphics2d::SpriteLayout::Field> {
     static std::optional<graphics2d::SpriteLayout::Field> fromName(std::string_view name) {
@@ -32,7 +32,7 @@ template <> struct EnumNames<graphics2d::SpriteLayout::Field> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::graphics2d {
 

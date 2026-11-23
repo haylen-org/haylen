@@ -14,12 +14,12 @@
 #include "haylen/2d/graphics/SpriteData.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/lighting/Occluder.hpp"
-#include "haylen/lua/EnumNames.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/math/Vec2.hpp"
 
 struct lua_State;
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<graphics2d::Shape::Kind> {
     static std::optional<graphics2d::Shape::Kind> fromName(std::string_view name) {
@@ -30,11 +30,8 @@ template <> struct EnumNames<graphics2d::Shape::Kind> {
     }
 };
 
-} // namespace haylen::lua
-
-namespace haylen::core {
 class FloatBuffer;
-}
+} // namespace haylen::core
 
 namespace haylen::text {
 class Font;

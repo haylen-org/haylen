@@ -13,10 +13,10 @@
 #include <thread>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/NativeProperty.hpp"
 #include "haylen/lua/Promise.hpp"
@@ -25,6 +25,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "lua/ErrorReader.hpp"
 #include "lua/Probe.hpp"
 #include "lua/ProbeLua.hpp"
 #include "lua/WeakReference.hpp"
@@ -113,7 +114,7 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
     try {
         Runtime::protectedCall(L, 0, 0);
         FAIL() << "The call should fail.";
-    } catch (const Error& error) {
+    } catch (const core::AppError& error) {
         EXPECT_STREQ(error.what(), "test:1: boom");
         ASSERT_EQ(error.getFrames().size(), 2U);
         EXPECT_EQ(error.getFrames()[1].getLocation(), "test:1");
@@ -122,9 +123,9 @@ TEST(EnvironmentTest, ReportsErrorsWithTheirStack) {
 
     EXPECT_EQ(lua_gettop(L), 0);
 
-    EXPECT_THROW(Runtime::runChunk(L, "local = 1", "=broken"), Error);
-    EXPECT_THROW(Runtime::runChunk(L, "\x1bLua", "=binary"), Error);
-    EXPECT_THROW(Runtime::runChunk(L, "error('at run time')", "=failing"), Error);
+    EXPECT_THROW(Runtime::runChunk(L, "local = 1", "=broken"), core::AppError);
+    EXPECT_THROW(Runtime::runChunk(L, "\x1bLua", "=binary"), core::AppError);
+    EXPECT_THROW(Runtime::runChunk(L, "error('at run time')", "=failing"), core::AppError);
     Runtime::runChunk(L, "ranChunk = 'yes'", "=chunk");
     EXPECT_EQ(fixture.lua("return ranChunk"), "yes");
     EXPECT_EQ(lua_gettop(L), 0);
@@ -365,7 +366,7 @@ TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
-    const Error& error = *fixture.engine().getError();
+    const core::AppError& error = *fixture.engine().getError();
     EXPECT_EQ(error.getFile(), "source/scenes/battle.lua");
     EXPECT_EQ(error.getLine(), 2);
     EXPECT_TRUE(error.getMessage().starts_with("attempt to index")) << error.getMessage();
@@ -376,7 +377,7 @@ TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
     EXPECT_EQ(error.getFrames()[0].function, "upvalue 'strike'");
     EXPECT_EQ(error.getFrames()[1].getLocation(), "source/scenes/battle.lua:5");
     EXPECT_EQ(error.getFrames()[1].function, "function <source/scenes/battle.lua:4>");
-    EXPECT_EQ(error.getFrames()[1].kind, Error::Frame::Kind::Lua);
+    EXPECT_EQ(error.getFrames()[1].kind, core::AppError::Frame::Kind::Script);
 
     EXPECT_EQ(error.getTraceback(), "source/scenes/battle.lua:2  upvalue 'strike'\nsource/scenes/battle.lua:5  function <source/scenes/battle.lua:4>");
     EXPECT_EQ(error.getTraceback().find('\t'), std::string::npos);
@@ -384,7 +385,7 @@ TEST(ErrorTest, CapturesTheStackOfSceneCallbacks) {
     EXPECT_EQ(json.at("line"), 2);
     EXPECT_EQ(json.at("traceback"), error.getTraceback());
     ASSERT_EQ(json.at("frames").size(), 2U);
-    EXPECT_EQ(json.at("frames")[1], (core::Json{{"source", "source/scenes/battle.lua"}, {"line", 5}, {"function", "function <source/scenes/battle.lua:4>"}, {"kind", "lua"}}));
+    EXPECT_EQ(json.at("frames")[1], (core::Json{{"source", "source/scenes/battle.lua"}, {"line", 5}, {"function", "function <source/scenes/battle.lua:4>"}, {"kind", "script"}}));
 }
 
 TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
@@ -393,10 +394,10 @@ TEST(ErrorTest, KeepsTheEndsOfARunawayRecursion) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
-    const Error& error = *fixture.engine().getError();
+    const core::AppError& error = *fixture.engine().getError();
     EXPECT_NE(error.getMessage().find("stack overflow"), std::string::npos) << error.getMessage();
     EXPECT_LE(error.getFrames().size(), 22U);
-    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const Error::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
+    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [](const core::AppError::Frame& frame) { return frame.function.ends_with("levels skipped"); }));
 }
 
 // Failures of tasks reach the engine with the frames of where they were raised, which Varn lists from the innermost call out.
@@ -406,14 +407,14 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
         test::EngineFixture fixture;
         fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(2) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-        const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
+        const std::vector<core::AppError::Frame>& frames = fixture.engine().getError()->getFrames();
         ASSERT_EQ(frames.size(), 5U);
         EXPECT_EQ(frames[0].getLocation(), "[C]");
         EXPECT_EQ(frames[0].function, "global 'error'");
-        EXPECT_EQ(frames[0].kind, Error::Frame::Kind::C);
+        EXPECT_EQ(frames[0].kind, core::AppError::Frame::Kind::Native);
         EXPECT_EQ(frames[1].getLocation(), "test:1");
         EXPECT_EQ(frames[1].function, "upvalue 'dive'");
-        EXPECT_EQ(frames[1].kind, Error::Frame::Kind::Lua);
+        EXPECT_EQ(frames[1].kind, core::AppError::Frame::Kind::Script);
         EXPECT_EQ(frames.back().getLocation(), "test:1");
         EXPECT_EQ(frames.back().function, "function <test:1>");
     }
@@ -423,13 +424,13 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
         test::EngineFixture fixture;
         fixture.runLua("local function dive(depth) if depth == 0 then error('too deep') end dive(depth - 1) end require('async').spawn(function() dive(200) end)");
         ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-        const std::vector<Error::Frame>& frames = fixture.engine().getError()->getFrames();
+        const std::vector<core::AppError::Frame>& frames = fixture.engine().getError()->getFrames();
         ASSERT_EQ(frames.size(), 64U);
         EXPECT_EQ(frames.front().function, "global 'error'");
         EXPECT_EQ(frames[31].function, "upvalue 'dive'");
         EXPECT_EQ(frames[32].getLocation(), "...");
         EXPECT_EQ(frames[32].function, "140 levels skipped");
-        EXPECT_EQ(frames[32].kind, Error::Frame::Kind::C);
+        EXPECT_EQ(frames[32].kind, core::AppError::Frame::Kind::Native);
         EXPECT_EQ(frames[33].function, "upvalue 'dive'");
         EXPECT_EQ(frames.back().function, "function <test:1>");
     }
@@ -438,38 +439,38 @@ TEST(ErrorTest, ReadsTheStackOfTasksFromTheirFrames) {
     fixture.runLua("require('async').spawn(load('error(\"chunk failure\")', '=chunk'))");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
     ASSERT_FALSE(fixture.engine().getError()->getFrames().empty());
-    EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, Error::Frame::Kind::Main);
+    EXPECT_EQ(fixture.engine().getError()->getFrames().back().kind, core::AppError::Frame::Kind::Main);
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().function, "main chunk");
     EXPECT_EQ(fixture.engine().getError()->getFrames().back().getLocation(), "chunk:1");
 }
 
-TEST(ErrorTest, FindsTheScriptPositionOfErrors) {
-    const Error nested("The scene could not start: source/main.lua:12: missing sprite");
+TEST(ErrorReaderTest, FindsTheScriptPositionOfErrors) {
+    const core::AppError nested = ErrorReader::read("The scene could not start: source/main.lua:12: missing sprite");
     EXPECT_EQ(nested.getMessage(), "The scene could not start: source/main.lua:12: missing sprite");
     EXPECT_EQ(nested.getFile(), "source/main.lua");
     EXPECT_EQ(nested.getLine(), 12);
 
-    const Error plain("The app could not be loaded.");
+    const core::AppError plain = ErrorReader::read("The app could not be loaded.");
     EXPECT_EQ(plain.getMessage(), "The app could not be loaded.");
     EXPECT_TRUE(plain.getFile().empty());
     EXPECT_EQ(plain.getLine(), 0);
     EXPECT_TRUE(plain.getTraceback().empty());
 
-    const Error huge("source/main.lua:99999999999: a line number beyond any int");
+    const core::AppError huge = ErrorReader::read("source/main.lua:99999999999: a line number beyond any int");
     EXPECT_TRUE(huge.getFile().empty());
     EXPECT_EQ(huge.getLine(), 0);
 
     // A position further in takes the whole chunk name, and a long message without spaces is read in one pass.
-    const Error later("x.lua:1 then deep/scene.lua.lua:3: failed");
+    const core::AppError later = ErrorReader::read("x.lua:1 then deep/scene.lua.lua:3: failed");
     EXPECT_EQ(later.getFile(), "deep/scene.lua.lua");
     EXPECT_EQ(later.getLine(), 3);
     EXPECT_EQ(later.getMessage(), "x.lua:1 then deep/scene.lua.lua:3: failed");
-    const Error blob(std::string(1000000, 'a') + ".lua:5: end");
+    const core::AppError blob = ErrorReader::read(std::string(1000000, 'a') + ".lua:5: end");
     EXPECT_EQ(blob.getLine(), 5);
     EXPECT_EQ(blob.getMessage(), "end");
 
     // A message without a position points at the innermost script frame, skipping native ones.
-    const Error value("(error object is a table value)", {{.source = "[C]", .function = "global 'error'", .kind = Error::Frame::Kind::C}, {.source = "source/main.lua", .line = 7, .function = "main chunk", .kind = Error::Frame::Kind::Main}});
+    const core::AppError value = ErrorReader::read("(error object is a table value)", {{.source = "[C]", .function = "global 'error'", .kind = core::AppError::Frame::Kind::Native}, {.source = "source/main.lua", .line = 7, .function = "main chunk", .kind = core::AppError::Frame::Kind::Main}});
     EXPECT_EQ(value.getFile(), "source/main.lua");
     EXPECT_EQ(value.getLine(), 7);
     EXPECT_EQ(value.getTraceback(), "[C]                global 'error'\nsource/main.lua:7  main chunk");
@@ -487,7 +488,7 @@ TEST(ErrorTest, NamesTheTypeOfErrorValuesWithoutText) {
         try {
             Runtime::protectedCall(L, 0, 0);
             ADD_FAILURE() << "The call of \"" << function << "\" should fail.";
-        } catch (const Error& error) {
+        } catch (const core::AppError& error) {
             EXPECT_STREQ(error.what(), "(error object is a table value)") << function;
         }
     }
@@ -869,10 +870,10 @@ TEST(ConverterTest, TellsWhichValuesEachConverterReads) {
 // Every value of the enums that cross the Lua boundary has a name that reads back as the same value.
 TEST(ConverterTest, NamesEveryValueOfTheEnumsOfTheEngine) {
     // clang-format off
-    const auto namesEveryValue = []<NamedEnum Enum>(Enum last) {
+    const auto namesEveryValue = []<core::NamedEnum Enum>(Enum last) {
         for (int value = 0; value <= static_cast<int>(last); ++value) {
             const auto original = static_cast<Enum>(value);
-            if (EnumNames<Enum>::name(original).empty() || EnumNames<Enum>::fromName(EnumNames<Enum>::name(original)) != original) {
+            if (core::EnumNames<Enum>::name(original).empty() || core::EnumNames<Enum>::fromName(core::EnumNames<Enum>::name(original)) != original) {
                 return false;
             }
         }

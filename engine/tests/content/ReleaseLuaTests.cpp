@@ -76,7 +76,7 @@ TEST_F(ReleaseLuaTest, ReportsErrorsWithTheModuleTheLineAndTheLocals) {
         {"source/main.lua", "require('scenes.menu').open(nil)"},
         {"source/scenes/menu.lua", "local menu = {}\n\nfunction menu.open(value)\n    return value.title\nend\n\nreturn menu"},
     });
-    const lua::Error* error = engine->getError();
+    const core::AppError* error = engine->getError();
     ASSERT_NE(error, nullptr);
     EXPECT_EQ(error->getFile(), "source/scenes/menu.lua");
     EXPECT_EQ(error->getLine(), 4);

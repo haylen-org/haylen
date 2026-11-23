@@ -442,7 +442,7 @@ Platform events arrive between frames through `Engine::handleEvent`. The mouse a
 
 An exception that app code throws during an update, a draw, the submission or an event goes to `Engine::reportError`. The engine then does these things:
 
-1. It keeps the first error as a `lua::Error` and logs its report as plain text.
+1. It keeps the first error as a `core::AppError` and logs its report as plain text.
 2. It hands the JSON report to the host and to the error handlers of native libraries.
 3. It emits `errorRaised` and queues the event `appError`.
 4. From then on it skips the fixed steps, the updates, scene events and the draw hooks of scenes and plugins, and draws the error screen instead.
@@ -459,7 +459,7 @@ The engine leaves the error screen in three ways:
 
 ### The error screen
 
-Every protected call of the engine runs with the message handler of `lua::Runtime`. The handler reads the stack of the failing coroutine with `lua_getstack` and `lua_getinfo` and turns the error into a `lua::Error`: the message, the script position that Lua put in front of it, and the frames from the innermost call outward. Each frame has its source, line, kind (Lua, C or main chunk) and function name as Lua describes it.
+Every protected call of the engine runs with the message handler of `lua::Runtime`. The handler reads the stack of the failing coroutine with `lua_getstack` and `lua_getinfo` and `lua::ErrorReader` turns the error into a `core::AppError`: the message, the script position that Lua put in front of it, and the frames from the innermost call outward. Each frame has its source, line, kind (script, native or main chunk) and function name as Lua describes it.
 
 - A function reads the way the calling code names it, such as `global 'error'`, `upvalue 'spawn'` or `method 'hit'`, and a main chunk reads `main chunk`.
 - A Lua function without a name, such as a callback that native code calls, reads `function <file:line>`, with the line where it is defined. A native function without a name reads `?`.

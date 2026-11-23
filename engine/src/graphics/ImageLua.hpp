@@ -6,11 +6,11 @@
 #include <optional>
 #include <string_view>
 
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Gradient.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/ImageFilters.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Type.hpp"
 
 struct lua_State;
@@ -26,6 +26,10 @@ template <> struct Type<graphics::Image> {
     using Storage = std::shared_ptr<graphics::Image>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<graphics::Gradient::Kind> {
     static std::optional<graphics::Gradient::Kind> fromName(std::string_view name) {
         return graphics::Gradient::kindFromName(name);
@@ -35,7 +39,7 @@ template <> struct EnumNames<graphics::Gradient::Kind> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::graphics {
 

@@ -29,6 +29,10 @@ template <> struct Type<physics2d::ScriptedOwner<physics2d::TopDownVehicle>> {
     using Storage = physics2d::ScriptedOwner<physics2d::TopDownVehicle>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<physics2d::Vehicle::Drive> {
     static std::optional<physics2d::Vehicle::Drive> fromName(std::string_view name) {
         return physics2d::Vehicle::driveFromName(name);
@@ -39,7 +43,7 @@ template <> struct EnumNames<physics2d::Vehicle::Drive> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::physics2d {
 

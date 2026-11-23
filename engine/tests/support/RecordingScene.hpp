@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Scene.hpp"
 #include "haylen/core/SceneLoad.hpp"
-#include "haylen/lua/Error.hpp"
 
 namespace haylen::test {
 
@@ -39,7 +39,7 @@ class RecordingScene final : public core::Scene {
         }
 
         if (loading == Load::Failing) {
-            throw lua::Error(name + " cannot load");
+            throw core::AppError(name + " cannot load");
         }
     }
     void enter(core::Engine&, const std::any& params) override {
@@ -99,7 +99,7 @@ class RecordingScene final : public core::Scene {
     void completeLoad() {
         getDeferral().complete();
     }
-    void failLoad(const lua::Error& failure) {
+    void failLoad(const core::AppError& failure) {
         getDeferral().fail(failure);
     }
 

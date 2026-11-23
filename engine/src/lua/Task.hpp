@@ -6,7 +6,7 @@
 #include <memory>
 #include <optional>
 
-#include "haylen/lua/Error.hpp"
+#include "haylen/core/AppError.hpp"
 
 namespace haylen::lua {
 
@@ -14,7 +14,7 @@ namespace haylen::lua {
 class Task final : public std::enable_shared_from_this<Task> {
   public:
     // Receives the error of a task that failed, or nothing once it finished.
-    using Completion = std::function<void(const std::optional<Error>& error)>;
+    using Completion = std::function<void(const std::optional<core::AppError>& error)>;
 
     Task(lua_State* L, Completion onFinish);
     ~Task();
@@ -43,7 +43,7 @@ class Task final : public std::enable_shared_from_this<Task> {
     static int collectHolder(lua_State* L);
 
     void run(lua_State* L, int function, int arguments);
-    void finish(const std::optional<Error>& error);
+    void finish(const std::optional<core::AppError>& error);
     void release() noexcept;
 
     lua_State* main;

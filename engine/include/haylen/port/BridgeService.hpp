@@ -34,7 +34,7 @@ class BridgeService {
     virtual void openScreen(const platform::ScreenRequest& request) = 0;
     virtual void cancelScreen(std::uint64_t id) = 0;
 
-    // Tells the native parts of plugins about a failure that stopped the app, with the JSON report of `lua::Error::toJson`.
+    // Tells the native parts of plugins about a failure that stopped the app, with the JSON report of `core::AppError::toJson`.
     virtual void reportError(const core::Json& report) = 0;
 };
 

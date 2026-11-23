@@ -7,7 +7,7 @@
 #include <string>
 #include <string_view>
 
-#include "haylen/lua/Error.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/lua/Reference.hpp"
 
 namespace haylen::io {
@@ -32,7 +32,7 @@ class ModuleReloader final {
     // A failed module changed nothing and carries its error, and a module that cannot reload in place carries the reason the app restarts instead.
     struct Result {
         Status status = Status::Unchanged;
-        std::optional<Error> error;
+        std::optional<core::AppError> error;
         std::string reason;
     };
 

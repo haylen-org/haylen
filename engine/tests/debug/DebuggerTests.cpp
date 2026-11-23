@@ -10,8 +10,8 @@
 
 #include "debug/Debugger.hpp"
 #include "debug/DebuggerTest.hpp"
+#include "haylen/core/AppError.hpp"
 #include "haylen/core/Json.hpp"
-#include "haylen/lua/Error.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/DebugClient.hpp"

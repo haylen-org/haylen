@@ -126,7 +126,7 @@ void ScriptedScene::load(core::Engine&, core::SceneLoad& context) {
         lua_pushvalue(L, self);
         core::SceneLua::pushLoad(L, context);
         auto deferral = std::make_shared<core::SceneLoad::Deferral>(context.defer());
-        Task::start(L, self + 1, 2, self, [deferral](const std::optional<Error>& error) {
+        Task::start(L, self + 1, 2, self, [deferral](const std::optional<core::AppError>& error) {
             if (error) {
                 deferral->fail(*error);
                 return;
@@ -219,7 +219,7 @@ core::ProcessMode ScriptedScene::readProcessMode(lua_State* L, int index) {
         return core::ProcessMode::Inherit;
     }
 
-    const std::optional<core::ProcessMode> mode = lua_type(L, -1) == LUA_TSTRING ? EnumNames<core::ProcessMode>::fromName(lua_tostring(L, -1)) : std::nullopt;
+    const std::optional<core::ProcessMode> mode = lua_type(L, -1) == LUA_TSTRING ? core::EnumNames<core::ProcessMode>::fromName(lua_tostring(L, -1)) : std::nullopt;
     if (!mode) {
         luaL_error(L, "The \"processMode\" must be \"inherit\", \"pausable\", \"whenPaused\", \"always\" or \"disabled\".");
     }

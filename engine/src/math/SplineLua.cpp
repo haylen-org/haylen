@@ -3,15 +3,15 @@
 #include <optional>
 #include <vector>
 
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/math/Spline.hpp"
 
-namespace haylen::lua {
+namespace haylen::core {
 
 template <> struct EnumNames<math::Spline::Kind> {
     static std::optional<math::Spline::Kind> fromName(std::string_view name) {
@@ -22,7 +22,7 @@ template <> struct EnumNames<math::Spline::Kind> {
     }
 };
 
-} // namespace haylen::lua
+} // namespace haylen::core
 
 namespace haylen::math {
 

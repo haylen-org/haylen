@@ -16,9 +16,9 @@
 #include "core/SignalLua.hpp"
 #include "haylen/2d/graphics/SceneTransition.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/EnumNames.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
-#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
@@ -40,6 +40,10 @@ template <> struct Type<core::SceneLoad> {
     using Storage = std::weak_ptr<core::SceneLoad>;
 };
 
+} // namespace haylen::lua
+
+namespace haylen::core {
+
 template <> struct EnumNames<core::Scene::State> {
     static std::optional<core::Scene::State> fromName(std::string_view name) {
         return core::Scene::stateFromName(name);
@@ -48,10 +52,6 @@ template <> struct EnumNames<core::Scene::State> {
         return core::Scene::stateName(value);
     }
 };
-
-} // namespace haylen::lua
-
-namespace haylen::core {
 
 // A transition with a duration draws a built-in effect named by `effect`, with its direction and color, or a custom effect table, and fades through its color, black by default, without one.
 SceneManager::Transition SceneLua::readTransition(lua_State* L, int index) {
@@ -127,7 +127,7 @@ SceneManager::Options SceneLua::readOptions(lua_State* L, int index) {
         lua::Table::requireType(L, "onError", LUA_TFUNCTION);
         auto handler = std::make_shared<lua::Reference>(L, -1);
         // clang-format off
-        options.onError = [handler](const lua::Error& error) {
+        options.onError = [handler](const core::AppError& error) {
             lua_State* main = handler->getState();
             handler->push(main);
             lua_pushstring(main, error.what());
@@ -359,12 +359,12 @@ int SceneLua::state(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     if (const std::shared_ptr<lua::ScriptedScene> scene = lua::ScriptedScene::find(L, 1)) {
-        lua::Stack::push(L, lua::EnumNames<Scene::State>::name(scene->getState()));
+        lua::Stack::push(L, core::EnumNames<Scene::State>::name(scene->getState()));
         return 1;
     }
 
     if (lua::ScriptedScene::wasScene(L, 1)) {
-        lua::Stack::push(L, lua::EnumNames<Scene::State>::name(Scene::State::Unloaded));
+        lua::Stack::push(L, core::EnumNames<Scene::State>::name(Scene::State::Unloaded));
         return 1;
     }
 
@@ -405,7 +405,7 @@ int SceneLua::spawn(lua_State* L) {
     luaL_checktype(L, 2, LUA_TFUNCTION);
     lua_State* main = lua::Runtime::getMainThread(L);
     // clang-format off
-    lua::Task::start(L, 2, 0, 1, [main](const std::optional<lua::Error>& error) {
+    lua::Task::start(L, 2, 0, 1, [main](const std::optional<core::AppError>& error) {
         if (error) {
             const Engine::PhaseScope scope(lua::Runtime::getEngine(main), Engine::Phase::Lifecycle);
             lua::Runtime::reportError(main, *error);
@@ -432,7 +432,7 @@ int SceneLua::loadPreload(lua_State* L) {
     auto remaining = std::make_shared<std::size_t>(groups.size());
     for (const std::string& group : groups) {
         // clang-format off
-        load.preload(group, [promise, remaining](const std::optional<lua::Error>& failure) {
+        load.preload(group, [promise, remaining](const std::optional<core::AppError>& failure) {
             if (failure) {
                 promise.rejectHandled(failure->what());
                 return;
