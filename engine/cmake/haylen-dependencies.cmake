@@ -102,6 +102,8 @@ if(TARGET uv_a)
   list(APPEND varn_compiled_targets uv_a)
 endif()
 haylen_disable_warnings(${varn_compiled_targets})
+# The containers of the standard library mark the room they leave unused for AddressSanitizer only in code that it instruments, and a container that the code of Varn and of the engine share runs the code of either, so the C++ of Varn builds with AddressSanitizer too.
+haylen_check_dependency_memory(varn-runtime varn-core)
 
 # The headers of Poco ask MSVC to link every Poco library by its file name, which no longer exists once the SDK merges the libraries into one, while CMake links them by their targets anyway.
 if(MSVC AND TARGET Poco::Foundation)
