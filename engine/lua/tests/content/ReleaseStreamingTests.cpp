@@ -22,10 +22,10 @@
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // Plays sounds that stream from a protected release, whose reader decrypts the chunks that a range covers and nothing else.
-class ReleaseStreamingTest : public audio::MixerFixture {
+class ReleaseStreamingTest : public haylen::audio::MixerFixture {
   protected:
     test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
 };
@@ -36,9 +36,9 @@ TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {
     files.emplace("haylen.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("return {}"));
     files.emplace("content/music/long.wav", makePositions(kFrames));
-    release.build(io::MemoryPackage("source", std::move(files)));
+    release.build(haylen::io::MemoryPackage("source", std::move(files)));
     const auto counting = std::make_shared<test::CountingPackage>(release.getFiles());
-    const std::shared_ptr<io::Package> package = release.open(counting);
+    const std::shared_ptr<haylen::io::Package> package = release.open(counting);
     std::uint64_t shardBytes = 0;
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
         shardBytes += entry.path().extension() == ".hpak" ? entry.file_size() : 0;
@@ -46,14 +46,14 @@ TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {
 
     // The sound reads the header of its file, which decrypts the first chunk alone.
     counting->reset();
-    const audio::Sound sound = audio::Sound::stream(package->openAssetReader("music/long.wav"));
+    const haylen::audio::Sound sound = haylen::audio::Sound::stream(package->openAssetReader("music/long.wav"));
     EXPECT_EQ(sound.getFrameCount(), kFrames);
-    EXPECT_LT(counting->getReadBytes(), Chunker::kMaximumSize);
+    EXPECT_LT(counting->getReadBytes(), haylen::content::Chunker::kMaximumSize);
 
     // A voice that starts half a minute in decrypts the chunks of that part of the file, and the thread that mixes never reads.
     counting->watch(std::this_thread::get_id());
     counting->reset();
-    const audio::Mixer::VoiceId voice = mixer.play(sound, {.startAt = 30.0F});
+    const haylen::audio::Mixer::VoiceId voice = mixer.play(sound, {.startAt = 30.0F});
     const std::vector<std::uint64_t> played = listen(voice, kRate / 2 + 4096);
     const auto first = std::ranges::find(played, 30 * kRate);
     ASSERT_NE(first, played.end());
@@ -63,4 +63,4 @@ TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {
     EXPECT_EQ(counting->getWatchedReads(), 0U);
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

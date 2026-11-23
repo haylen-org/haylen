@@ -16,189 +16,189 @@
 #include "support/TestFiles.hpp"
 #include "support/TiledHelper.hpp"
 
-namespace haylen::tiled {
+namespace haylen::lua::tiled {
 
 class MapQueryTest : public ::testing::Test {
   protected:
     // An 8 by 6 map of 16 pixel tiles with a wall down column 5 that leaves row 3 open, and objects in a group moved by 4, 2.
-    [[nodiscard]] static tiled::Map queryMap(tiled::Map::Orientation orientation) {
-        tiled::Map map;
+    [[nodiscard]] static haylen::tiled::Map queryMap(haylen::tiled::Map::Orientation orientation) {
+        haylen::tiled::Map map;
         map.orientation = orientation;
         map.width = 8;
         map.height = 6;
-        map.tileSize = orientation == tiled::Map::Orientation::Isometric ? math::Vec2{32.0F, 16.0F} : math::Vec2{16.0F, 16.0F};
-        map.skew = orientation == tiled::Map::Orientation::Oblique ? math::Vec2{8.0F, 0.0F} : math::Vec2{};
+        map.tileSize = orientation == haylen::tiled::Map::Orientation::Isometric ? haylen::math::Vec2{32.0F, 16.0F} : haylen::math::Vec2{16.0F, 16.0F};
+        map.skew = orientation == haylen::tiled::Map::Orientation::Oblique ? haylen::math::Vec2{8.0F, 0.0F} : haylen::math::Vec2{};
 
-        tiled::Layer walls{.name = "walls", .kind = tiled::Layer::Kind::Tile, .width = 8, .height = 6};
+        haylen::tiled::Layer walls{.name = "walls", .kind = haylen::tiled::Layer::Kind::Tile, .width = 8, .height = 6};
         walls.gids.assign(48, 0);
 
         for (int row = 0; row < 6; ++row) {
             walls.gids[static_cast<std::size_t>(row * 8 + 5)] = row == 3 ? 0U : (row == 4 ? 2U : 1U);
         }
 
-        tiled::Layer rocks{.name = "rocks", .kind = tiled::Layer::Kind::Object};
+        haylen::tiled::Layer rocks{.name = "rocks", .kind = haylen::tiled::Layer::Kind::Object};
         rocks.objects = {
-            {.id = 1, .name = "crate", .type = "block", .position = {20.0F, 20.0F}, .size = {10.0F, 10.0F}}, {.id = 2, .name = "pond", .position = {40.0F, 20.0F}, .size = {20.0F, 10.0F}, .shape = tiled::Object::Shape::Ellipse}, {.id = 3, .name = "wedge", .position = {70.0F, 20.0F}, .shape = tiled::Object::Shape::Polygon, .points = {{0.0F, 0.0F}, {10.0F, 5.0F}, {0.0F, 10.0F}}}, {.id = 4, .name = "fence", .position = {90.0F, 10.0F}, .shape = tiled::Object::Shape::Polyline, .points = {{0.0F, 0.0F}, {0.0F, 30.0F}}}, {.id = 5, .name = "tree", .position = {100.0F, 40.0F}, .size = {16.0F, 32.0F}, .shape = tiled::Object::Shape::Tile, .gid = 1}, {.id = 6, .name = "spawn", .position = {5.0F, 5.0F}, .shape = tiled::Object::Shape::Point}, {.id = 7, .name = "log", .position = {120.0F, 20.0F}, .size = {30.0F, 10.0F}, .shape = tiled::Object::Shape::Capsule},
+            {.id = 1, .name = "crate", .type = "block", .position = {20.0F, 20.0F}, .size = {10.0F, 10.0F}}, {.id = 2, .name = "pond", .position = {40.0F, 20.0F}, .size = {20.0F, 10.0F}, .shape = haylen::tiled::Object::Shape::Ellipse}, {.id = 3, .name = "wedge", .position = {70.0F, 20.0F}, .shape = haylen::tiled::Object::Shape::Polygon, .points = {{0.0F, 0.0F}, {10.0F, 5.0F}, {0.0F, 10.0F}}}, {.id = 4, .name = "fence", .position = {90.0F, 10.0F}, .shape = haylen::tiled::Object::Shape::Polyline, .points = {{0.0F, 0.0F}, {0.0F, 30.0F}}}, {.id = 5, .name = "tree", .position = {100.0F, 40.0F}, .size = {16.0F, 32.0F}, .shape = haylen::tiled::Object::Shape::Tile, .gid = 1}, {.id = 6, .name = "spawn", .position = {5.0F, 5.0F}, .shape = haylen::tiled::Object::Shape::Point}, {.id = 7, .name = "log", .position = {120.0F, 20.0F}, .size = {30.0F, 10.0F}, .shape = haylen::tiled::Object::Shape::Capsule},
         };
-        tiled::Layer group{.name = "things", .kind = tiled::Layer::Kind::Group, .offset = {4.0F, 2.0F}};
+        haylen::tiled::Layer group{.name = "things", .kind = haylen::tiled::Layer::Kind::Group, .offset = {4.0F, 2.0F}};
         group.layers.push_back(rocks);
         map.layers = {walls, group};
-        map.tilesets = {{.firstGid = 1, .tileset = std::make_shared<tiled::Tileset>(tiled::Tileset{.image = "tiles.png", .tileSize = {16.0F, 16.0F}, .columns = 2, .tileCount = 2})}};
+        map.tilesets = {{.firstGid = 1, .tileset = std::make_shared<haylen::tiled::Tileset>(haylen::tiled::Tileset{.image = "tiles.png", .tileSize = {16.0F, 16.0F}, .columns = 2, .tileCount = 2})}};
         return map;
     }
 };
 
 TEST_F(MapQueryTest, CastsRaysOverTileLayers) {
-    const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
-    const tiled::MapQuery query(map);
+    const haylen::tiled::Map map = queryMap(haylen::tiled::Map::Orientation::Orthogonal);
+    const haylen::tiled::MapQuery query(map);
 
-    const std::optional<tiled::MapQuery::TileHit> wall = query.castTiles("walls", math::Ray::between({8.0F, 8.0F}, {200.0F, 8.0F}));
+    const std::optional<haylen::tiled::MapQuery::TileHit> wall = query.castTiles("walls", haylen::math::Ray::between({8.0F, 8.0F}, {200.0F, 8.0F}));
     ASSERT_TRUE(wall.has_value());
     EXPECT_EQ(wall->column, 5);
     EXPECT_EQ(wall->row, 0);
     EXPECT_EQ(wall->gid, 1U);
     EXPECT_NEAR(wall->point.x, 80.0F, 1e-3F);
     EXPECT_NEAR(wall->distance, 72.0F, 1e-3F);
-    EXPECT_EQ(wall->normal, (math::Vec2{-1.0F, 0.0F}));
+    EXPECT_EQ(wall->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
 
     // Row 3 is open, and a filter can let chosen tiles through.
-    EXPECT_FALSE(query.castTiles("walls", math::Ray::between({8.0F, 56.0F}, {200.0F, 56.0F})).has_value());
-    EXPECT_FALSE(query.castTiles("walls", math::Ray::between({8.0F, 72.0F}, {200.0F, 72.0F}), [](std::uint32_t gid) { return gid != 2; }).has_value());
-    const std::optional<tiled::MapQuery::TileHit> fromBelow = query.castTiles("walls", math::Ray::between({88.0F, 150.0F}, {88.0F, 0.0F}));
+    EXPECT_FALSE(query.castTiles("walls", haylen::math::Ray::between({8.0F, 56.0F}, {200.0F, 56.0F})).has_value());
+    EXPECT_FALSE(query.castTiles("walls", haylen::math::Ray::between({8.0F, 72.0F}, {200.0F, 72.0F}), [](std::uint32_t gid) { return gid != 2; }).has_value());
+    const std::optional<haylen::tiled::MapQuery::TileHit> fromBelow = query.castTiles("walls", haylen::math::Ray::between({88.0F, 150.0F}, {88.0F, 0.0F}));
     ASSERT_TRUE(fromBelow.has_value());
     EXPECT_EQ(fromBelow->row, 5);
-    EXPECT_EQ(fromBelow->normal, (math::Vec2{0.0F, 1.0F}));
+    EXPECT_EQ(fromBelow->normal, (haylen::math::Vec2{0.0F, 1.0F}));
 
-    EXPECT_THROW((void)query.castTiles("rocks", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
-    EXPECT_THROW((void)query.castTiles("missing", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
-    const tiled::Map staggered = queryMap(tiled::Map::Orientation::Staggered);
-    EXPECT_THROW((void)tiled::MapQuery(staggered).castTiles("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
+    EXPECT_THROW((void)query.castTiles("rocks", haylen::math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
+    EXPECT_THROW((void)query.castTiles("missing", haylen::math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
+    const haylen::tiled::Map staggered = queryMap(haylen::tiled::Map::Orientation::Staggered);
+    EXPECT_THROW((void)haylen::tiled::MapQuery(staggered).castTiles("walls", haylen::math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
 }
 
 TEST_F(MapQueryTest, CastsTileRaysOnlyOverTheCellsOfTheLayer) {
-    const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
-    const tiled::MapQuery query(map);
+    const haylen::tiled::Map map = queryMap(haylen::tiled::Map::Orientation::Orthogonal);
+    const haylen::tiled::MapQuery query(map);
 
     // Rays of any length walk at most across the layer, so far ends and infinite rays cost no more than short rays.
-    EXPECT_FALSE(query.castTiles("walls", math::Ray::between({8.0F, 56.0F}, {1.0e12F, 56.0F})).has_value());
-    EXPECT_FALSE(query.castTiles("walls", math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}).has_value());
-    const std::optional<tiled::MapQuery::TileHit> endless = query.castTiles("walls", math::Ray{{8.0F, 8.0F}, {1.0F, 0.0F}});
+    EXPECT_FALSE(query.castTiles("walls", haylen::math::Ray::between({8.0F, 56.0F}, {1.0e12F, 56.0F})).has_value());
+    EXPECT_FALSE(query.castTiles("walls", haylen::math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}).has_value());
+    const std::optional<haylen::tiled::MapQuery::TileHit> endless = query.castTiles("walls", haylen::math::Ray{{8.0F, 8.0F}, {1.0F, 0.0F}});
     ASSERT_TRUE(endless.has_value());
     EXPECT_EQ(endless->column, 5);
     EXPECT_NEAR(endless->distance, 72.0F, 1e-3F);
 
     // Rays from outside enter the layer through its sides, from the left and from the right.
-    const std::optional<tiled::MapQuery::TileHit> fromLeft = query.castTiles("walls", math::Ray::between({-1000.0F, 8.0F}, {200.0F, 8.0F}));
+    const std::optional<haylen::tiled::MapQuery::TileHit> fromLeft = query.castTiles("walls", haylen::math::Ray::between({-1000.0F, 8.0F}, {200.0F, 8.0F}));
     ASSERT_TRUE(fromLeft.has_value());
     EXPECT_EQ(fromLeft->column, 5);
     EXPECT_NEAR(fromLeft->distance, 1080.0F, 1e-2F);
-    EXPECT_EQ(fromLeft->normal, (math::Vec2{-1.0F, 0.0F}));
-    const std::optional<tiled::MapQuery::TileHit> fromRight = query.castTiles("walls", math::Ray::between({1000.0F, 72.0F}, {-1000.0F, 72.0F}));
+    EXPECT_EQ(fromLeft->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
+    const std::optional<haylen::tiled::MapQuery::TileHit> fromRight = query.castTiles("walls", haylen::math::Ray::between({1000.0F, 72.0F}, {-1000.0F, 72.0F}));
     ASSERT_TRUE(fromRight.has_value());
     EXPECT_EQ(fromRight->column, 5);
     EXPECT_EQ(fromRight->gid, 2U);
     EXPECT_NEAR(fromRight->point.x, 96.0F, 1e-3F);
-    EXPECT_EQ(fromRight->normal, (math::Vec2{1.0F, 0.0F}));
-    EXPECT_FALSE(query.castTiles("walls", math::Ray::between({-1000.0F, -8.0F}, {1000.0F, -8.0F})).has_value());
+    EXPECT_EQ(fromRight->normal, (haylen::math::Vec2{1.0F, 0.0F}));
+    EXPECT_FALSE(query.castTiles("walls", haylen::math::Ray::between({-1000.0F, -8.0F}, {1000.0F, -8.0F})).has_value());
 
     // An infinite layer spans its chunks, which may start left of the origin.
-    tiled::Map endlessMap = map;
-    tiled::Layer& walls = endlessMap.layers.front();
+    haylen::tiled::Map endlessMap = map;
+    haylen::tiled::Layer& walls = endlessMap.layers.front();
     walls.chunks = {{.x = -4, .y = 0, .width = 2, .height = 1, .gids = {0, 1}}, {.x = 2, .y = 0, .width = 2, .height = 1, .gids = {1, 0}}};
     walls.infinite = true;
-    const std::optional<tiled::MapQuery::TileHit> chunk = tiled::MapQuery(endlessMap).castTiles("walls", math::Ray::between({-1000.0F, 8.0F}, {1000.0F, 8.0F}));
+    const std::optional<haylen::tiled::MapQuery::TileHit> chunk = haylen::tiled::MapQuery(endlessMap).castTiles("walls", haylen::math::Ray::between({-1000.0F, 8.0F}, {1000.0F, 8.0F}));
     ASSERT_TRUE(chunk.has_value());
     EXPECT_EQ(chunk->column, -3);
     EXPECT_NEAR(chunk->point.x, -48.0F, 1e-3F);
 }
 
 TEST_F(MapQueryTest, CastsRaysOverIsometricAndObliqueTiles) {
-    for (const tiled::Map::Orientation orientation : {tiled::Map::Orientation::Isometric, tiled::Map::Orientation::Oblique}) {
-        const tiled::Map map = queryMap(orientation);
-        const tiled::MapQuery query(map);
+    for (const haylen::tiled::Map::Orientation orientation : {haylen::tiled::Map::Orientation::Isometric, haylen::tiled::Map::Orientation::Oblique}) {
+        const haylen::tiled::Map map = queryMap(orientation);
+        const haylen::tiled::MapQuery query(map);
 
         // A ray from the middle of cell 1, 0 toward the middle of cell 7, 0 stops in the wall at cell 5, 0.
-        const math::Vec2 start = map.cellToWorld(1, 0) + map.objectToWorld({8.0F, 8.0F}) - map.objectToWorld({});
-        const math::Vec2 end = map.cellToWorld(7, 0) + map.objectToWorld({8.0F, 8.0F}) - map.objectToWorld({});
-        const std::optional<tiled::MapQuery::TileHit> hit = query.castTiles("walls", math::Ray::between(start, end));
+        const haylen::math::Vec2 start = map.cellToWorld(1, 0) + map.objectToWorld({8.0F, 8.0F}) - map.objectToWorld({});
+        const haylen::math::Vec2 end = map.cellToWorld(7, 0) + map.objectToWorld({8.0F, 8.0F}) - map.objectToWorld({});
+        const std::optional<haylen::tiled::MapQuery::TileHit> hit = query.castTiles("walls", haylen::math::Ray::between(start, end));
         ASSERT_TRUE(hit.has_value());
         EXPECT_EQ(hit->column, 5);
         EXPECT_EQ(hit->row, 0);
         EXPECT_NEAR(hit->normal.getLength(), 1.0F, 1e-4F);
-        EXPECT_LT(math::Vec2::dot(hit->normal, end - start), 0.0F);
-        EXPECT_NEAR(hit->distance, math::Vec2::distance(start, hit->point), 1e-3F);
+        EXPECT_LT(haylen::math::Vec2::dot(hit->normal, end - start), 0.0F);
+        EXPECT_NEAR(hit->distance, haylen::math::Vec2::distance(start, hit->point), 1e-3F);
     }
 }
 
 TEST_F(MapQueryTest, OutlinesObjectsAndCastsRaysAgainstThem) {
-    const tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
-    const tiled::MapQuery query(map);
-    const std::vector<tiled::Object>& objects = test::TiledHelper::layer(map, "rocks").objects;
-    const math::Vec2 offset{4.0F, 2.0F};
+    const haylen::tiled::Map map = queryMap(haylen::tiled::Map::Orientation::Orthogonal);
+    const haylen::tiled::MapQuery query(map);
+    const std::vector<haylen::tiled::Object>& objects = test::TiledHelper::layer(map, "rocks").objects;
+    const haylen::math::Vec2 offset{4.0F, 2.0F};
 
-    std::vector<math::Vec2> outline;
+    std::vector<haylen::math::Vec2> outline;
     query.getOutline(objects[0], offset, outline);
-    EXPECT_EQ(outline, (std::vector<math::Vec2>{{24.0F, 22.0F}, {34.0F, 22.0F}, {34.0F, 32.0F}, {24.0F, 32.0F}}));
+    EXPECT_EQ(outline, (std::vector<haylen::math::Vec2>{{24.0F, 22.0F}, {34.0F, 22.0F}, {34.0F, 32.0F}, {24.0F, 32.0F}}));
     query.getOutline(objects[4], offset, outline);
-    EXPECT_EQ(outline.front(), (math::Vec2{104.0F, 10.0F}));
+    EXPECT_EQ(outline.front(), (haylen::math::Vec2{104.0F, 10.0F}));
     query.getOutline(objects[1], offset, outline);
     EXPECT_EQ(outline.size(), 16U);
 
-    for (const math::Vec2 point : outline) {
-        const math::Vec2 local = point - math::Vec2{54.0F, 27.0F};
+    for (const haylen::math::Vec2 point : outline) {
+        const haylen::math::Vec2 local = point - haylen::math::Vec2{54.0F, 27.0F};
         EXPECT_NEAR(local.x * local.x / 100.0F + local.y * local.y / 25.0F, 1.0F, 1e-3F);
     }
 
     query.getOutline(objects[6], offset, outline);
     EXPECT_EQ(outline.size(), 18U);
-    EXPECT_NEAR(std::fabs(math::Geometry::signedArea(outline)), 20.0F * 10.0F + std::numbers::pi_v<float> * 25.0F, 3.0F);
+    EXPECT_NEAR(std::fabs(haylen::math::Geometry::signedArea(outline)), 20.0F * 10.0F + std::numbers::pi_v<float> * 25.0F, 3.0F);
     query.getOutline(objects[5], offset, outline);
     EXPECT_TRUE(outline.empty());
 
-    std::vector<std::vector<math::Vec2>> outlines;
+    std::vector<std::vector<haylen::math::Vec2>> outlines;
     query.getOutlines("rocks", outlines);
     EXPECT_EQ(outlines.size(), 5U);
     query.getOutlines("", outlines);
     EXPECT_EQ(outlines.size(), 5U);
 
     // The ray crosses the objects from left to right, and a polyline blocks it from either side.
-    const std::optional<tiled::MapQuery::ObjectHit> crate = query.castObjects("rocks", math::Ray::between({0.0F, 27.0F}, {200.0F, 27.0F}));
+    const std::optional<haylen::tiled::MapQuery::ObjectHit> crate = query.castObjects("rocks", haylen::math::Ray::between({0.0F, 27.0F}, {200.0F, 27.0F}));
     ASSERT_TRUE(crate.has_value());
     EXPECT_EQ(crate->object->name, "crate");
     EXPECT_NEAR(crate->point.x, 24.0F, 1e-3F);
-    EXPECT_EQ(crate->normal, (math::Vec2{-1.0F, 0.0F}));
-    const std::optional<tiled::MapQuery::ObjectHit> fenceFromLeft = query.castObjects("", math::Ray::between({85.0F, 27.0F}, {200.0F, 27.0F}));
+    EXPECT_EQ(crate->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
+    const std::optional<haylen::tiled::MapQuery::ObjectHit> fenceFromLeft = query.castObjects("", haylen::math::Ray::between({85.0F, 27.0F}, {200.0F, 27.0F}));
     ASSERT_TRUE(fenceFromLeft.has_value());
     EXPECT_EQ(fenceFromLeft->object->name, "fence");
-    const std::optional<tiled::MapQuery::ObjectHit> fenceFromRight = query.castObjects("", math::Ray::between({100.0F, 40.0F}, {60.0F, 40.0F}));
+    const std::optional<haylen::tiled::MapQuery::ObjectHit> fenceFromRight = query.castObjects("", haylen::math::Ray::between({100.0F, 40.0F}, {60.0F, 40.0F}));
     ASSERT_TRUE(fenceFromRight.has_value());
     EXPECT_EQ(fenceFromRight->object->name, "fence");
-    const std::optional<tiled::MapQuery::ObjectHit> fromInside = query.castObjects("", math::Ray::between({150.0F, 27.0F}, {88.0F, 27.0F}));
+    const std::optional<haylen::tiled::MapQuery::ObjectHit> fromInside = query.castObjects("", haylen::math::Ray::between({150.0F, 27.0F}, {88.0F, 27.0F}));
     ASSERT_TRUE(fromInside.has_value());
     EXPECT_EQ(fromInside->distance, 0.0F);
-    EXPECT_FALSE(query.castObjects("rocks", math::Ray::between({0.0F, 100.0F}, {200.0F, 100.0F})).has_value());
-    EXPECT_THROW((void)query.castObjects("walls", math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
+    EXPECT_FALSE(query.castObjects("rocks", haylen::math::Ray::between({0.0F, 100.0F}, {200.0F, 100.0F})).has_value());
+    EXPECT_THROW((void)query.castObjects("walls", haylen::math::Ray::between({}, {1.0F, 0.0F})), std::invalid_argument);
 }
 
 TEST_F(MapQueryTest, OutlinesTileObjectsWhereTheirImagesDraw) {
     // The tree tileset aligns its objects by their bottom center, so the tree at 100, 40 covers 92 to 108 across.
-    tiled::Map map = queryMap(tiled::Map::Orientation::Orthogonal);
+    haylen::tiled::Map map = queryMap(haylen::tiled::Map::Orientation::Orthogonal);
     map.tilesets.front().tileset->objectAlignment = "bottom";
-    const tiled::Object& tree = test::TiledHelper::layer(map, "rocks").objects[4];
-    std::vector<math::Vec2> outline;
-    tiled::MapQuery(map).getOutline(tree, {}, outline);
-    EXPECT_EQ(outline, (std::vector<math::Vec2>{{92.0F, 8.0F}, {108.0F, 8.0F}, {108.0F, 40.0F}, {92.0F, 40.0F}}));
+    const haylen::tiled::Object& tree = test::TiledHelper::layer(map, "rocks").objects[4];
+    std::vector<haylen::math::Vec2> outline;
+    haylen::tiled::MapQuery(map).getOutline(tree, {}, outline);
+    EXPECT_EQ(outline, (std::vector<haylen::math::Vec2>{{92.0F, 8.0F}, {108.0F, 8.0F}, {108.0F, 40.0F}, {92.0F, 40.0F}}));
 
     // On isometric maps the image stands upright on the world position of the object, centered by the unspecified alignment.
-    const tiled::Map isometric = queryMap(tiled::Map::Orientation::Isometric);
-    const math::Vec2 anchor = isometric.objectToWorld(tree.position);
-    tiled::MapQuery(isometric).getOutline(test::TiledHelper::layer(isometric, "rocks").objects[4], {}, outline);
-    EXPECT_EQ(outline.front(), anchor - math::Vec2(8.0F, 32.0F));
-    EXPECT_EQ(outline[2], anchor + math::Vec2(8.0F, 0.0F));
+    const haylen::tiled::Map isometric = queryMap(haylen::tiled::Map::Orientation::Isometric);
+    const haylen::math::Vec2 anchor = isometric.objectToWorld(tree.position);
+    haylen::tiled::MapQuery(isometric).getOutline(test::TiledHelper::layer(isometric, "rocks").objects[4], {}, outline);
+    EXPECT_EQ(outline.front(), anchor - haylen::math::Vec2(8.0F, 32.0F));
+    EXPECT_EQ(outline[2], anchor + haylen::math::Vec2(8.0F, 0.0F));
 
-    tiled::Object lost = tree;
+    haylen::tiled::Object lost = tree;
     lost.gid = 9;
-    EXPECT_THROW(tiled::MapQuery(map).getOutline(lost, {}, outline), std::invalid_argument);
+    EXPECT_THROW(haylen::tiled::MapQuery(map).getOutline(lost, {}, outline), std::invalid_argument);
 }
 
 TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
@@ -233,4 +233,4 @@ TEST(MapQueryLuaTest, CastsRaysOverMapsFromLua) {
     EXPECT_EQ(fixture.lua("local hit = map:raycastTiles('walls', 8, 8, 200, 8, function(gid) map:setTile('walls', 6, 0, 2) return gid == 2 end) return tostring(hit) .. ' ' .. map:tile('walls', 6, 0)"), "nil 2");
 }
 
-} // namespace haylen::tiled
+} // namespace haylen::lua::tiled

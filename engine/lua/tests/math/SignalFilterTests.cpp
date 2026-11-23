@@ -16,16 +16,16 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::math {
+namespace haylen::lua::math {
 
 // The first update passes as it is, a step moves by the share its cutoff gives the time, and two half steps move as far as one whole step.
 TEST(SignalFilterTest, LowPassMovesTowardTheValuesAtAnyFrameRate) {
-    LowPassFilter filter(1.0F, 1);
+    haylen::math::LowPassFilter filter(1.0F, 1);
     EXPECT_FLOAT_EQ(filter.update(1.0F / 60.0F, 0.0F), 0.0F);
     const float step = filter.update(1.0F / 60.0F, 10.0F);
     EXPECT_NEAR(step, 10.0F * (1.0F - std::exp(-2.0F * 3.14159265F / 60.0F)), 0.0001F);
 
-    LowPassFilter halves(1.0F, 1);
+    haylen::math::LowPassFilter halves(1.0F, 1);
     (void)halves.update(0.0F, 0.0F);
     (void)halves.update(1.0F / 120.0F, 10.0F);
     EXPECT_NEAR(halves.update(1.0F / 120.0F, 10.0F), step, 0.0001F);
@@ -33,11 +33,11 @@ TEST(SignalFilterTest, LowPassMovesTowardTheValuesAtAnyFrameRate) {
     filter.reset();
     EXPECT_FLOAT_EQ(filter.update(1.0F, 4.0F), 4.0F);
     EXPECT_THROW(filter.setCutoff(0.0F), std::invalid_argument);
-    EXPECT_THROW(LowPassFilter(1.0F, 5), std::invalid_argument);
+    EXPECT_THROW(haylen::math::LowPassFilter(1.0F, 5), std::invalid_argument);
 }
 
 TEST(SignalFilterTest, MovingAverageAveragesTheUpdatesOfItsWindow) {
-    MovingAverage average(3, 1);
+    haylen::math::MovingAverage average(3, 1);
     std::vector<float> results;
     for (const float value : {1.0F, 2.0F, 3.0F, 4.0F, 8.0F}) {
         results.push_back(average.update(value));
@@ -45,18 +45,18 @@ TEST(SignalFilterTest, MovingAverageAveragesTheUpdatesOfItsWindow) {
 
     EXPECT_EQ(results, (std::vector<float>{1.0F, 1.5F, 2.0F, 3.0F, 5.0F}));
 
-    MovingAverage positions(2, 2);
+    haylen::math::MovingAverage positions(2, 2);
     std::array<float, 2> first{0.0F, 10.0F};
     positions.update(first);
     std::array<float, 2> second{4.0F, 20.0F};
     positions.update(second);
     EXPECT_EQ(second, (std::array<float, 2>{2.0F, 15.0F}));
-    EXPECT_THROW(MovingAverage(0, 1), std::invalid_argument);
+    EXPECT_THROW(haylen::math::MovingAverage(0, 1), std::invalid_argument);
 }
 
 // A median keeps steps sharp and drops a single spike, which an average would smear.
 TEST(SignalFilterTest, MedianDropsSingleSpikesAndKeepsSteps) {
-    MedianFilter filter(3, 1);
+    haylen::math::MedianFilter filter(3, 1);
     std::vector<float> results;
     for (const float value : {1.0F, 1.0F, 90.0F, 1.0F, 5.0F, 5.0F, 5.0F}) {
         results.push_back(filter.update(value));
@@ -64,12 +64,12 @@ TEST(SignalFilterTest, MedianDropsSingleSpikesAndKeepsSteps) {
 
     EXPECT_EQ(results, (std::vector<float>{1.0F, 1.0F, 1.0F, 1.0F, 5.0F, 5.0F, 5.0F}));
     std::array<float, 4> even{4.0F, 1.0F, 3.0F, 2.0F};
-    EXPECT_FLOAT_EQ(MedianFilter::median(even), 2.5F);
+    EXPECT_FLOAT_EQ(haylen::math::MedianFilter::median(even), 2.5F);
 }
 
 // Every value that fits the spread of its window passes exactly, and only the spike takes the median.
 TEST(SignalFilterTest, HampelReplacesOnlyOutliers) {
-    HampelFilter filter(5, 3.0F, 1);
+    haylen::math::HampelFilter filter(5, 3.0F, 1);
     for (const float value : {10.0F, 10.2F, 9.9F, 10.1F}) {
         EXPECT_FLOAT_EQ(filter.update(value), value);
         EXPECT_FALSE(filter.isOutlier());
@@ -79,13 +79,13 @@ TEST(SignalFilterTest, HampelReplacesOnlyOutliers) {
     EXPECT_TRUE(filter.isOutlier());
     EXPECT_FLOAT_EQ(filter.update(10.05F), 10.05F);
     EXPECT_FALSE(filter.isOutlier());
-    EXPECT_THROW(HampelFilter(5, 0.0F, 1), std::invalid_argument);
+    EXPECT_THROW(haylen::math::HampelFilter(5, 0.0F, 1), std::invalid_argument);
 }
 
 // Noisy measurements of a steady value give estimates that stay much closer to it than the measurements, and the filter grows surer of them.
 TEST(SignalFilterTest, KalmanEstimatesASteadyValueFromNoisyMeasurements) {
-    KalmanFilter filter(0.001F, 4.0F, 1);
-    Random random(7);
+    haylen::math::KalmanFilter filter(0.001F, 4.0F, 1);
+    haylen::math::Random random(7);
     float measuredError = 0.0F;
     float estimatedError = 0.0F;
     float uncertainty = 0.0F;
@@ -105,18 +105,18 @@ TEST(SignalFilterTest, KalmanEstimatesASteadyValueFromNoisyMeasurements) {
 
     EXPECT_LT(estimatedError, measuredError * 0.25F);
     EXPECT_LT(filter.getUncertainty(), uncertainty);
-    EXPECT_THROW(KalmanFilter(0.0F, 1.0F, 1), std::invalid_argument);
+    EXPECT_THROW(haylen::math::KalmanFilter(0.0F, 1.0F, 1), std::invalid_argument);
 }
 
 // A value that is not finite would stay in the running sum, the state or the estimate for good, so it is refused before it changes anything.
 TEST(SignalFilterTest, RefusesValuesThatAreNotFinite) {
     const float notANumber = std::numeric_limits<float>::quiet_NaN();
     const float infinity = std::numeric_limits<float>::infinity();
-    MovingAverage average(2, 1);
-    MedianFilter median(3, 1);
-    HampelFilter hampel(3, 3.0F, 1);
-    KalmanFilter kalman(0.01F, 1.0F, 1);
-    LowPassFilter lowPass(4.0F, 1);
+    haylen::math::MovingAverage average(2, 1);
+    haylen::math::MedianFilter median(3, 1);
+    haylen::math::HampelFilter hampel(3, 3.0F, 1);
+    haylen::math::KalmanFilter kalman(0.01F, 1.0F, 1);
+    haylen::math::LowPassFilter lowPass(4.0F, 1);
     EXPECT_EQ(average.update(1.0F), 1.0F);
 
     EXPECT_THROW((void)average.update(notANumber), std::invalid_argument);
@@ -132,11 +132,11 @@ TEST(SignalFilterTest, RefusesValuesThatAreNotFinite) {
 
 // The filters keep their windows from the start, so smoothing every frame never allocates.
 TEST(SignalFilterTest, UpdatesWithoutAllocating) {
-    MovingAverage average(32, 2);
-    MedianFilter median(15, 2);
-    HampelFilter hampel(15, 3.0F, 2);
-    KalmanFilter kalman(0.01F, 1.0F, 2);
-    LowPassFilter lowPass(4.0F, 2);
+    haylen::math::MovingAverage average(32, 2);
+    haylen::math::MedianFilter median(15, 2);
+    haylen::math::HampelFilter hampel(15, 3.0F, 2);
+    haylen::math::KalmanFilter kalman(0.01F, 1.0F, 2);
+    haylen::math::LowPassFilter lowPass(4.0F, 2);
     const test::AllocationTracker tracker;
 
     for (int step = 0; step < 100; ++step) {
@@ -166,4 +166,4 @@ TEST(SignalFilterLuaTest, SmoothsNumbersAndVectorsFromLua) {
     EXPECT_NE(fixture.lua("average:update(0 / 0, 1)").find("The values of a filter must be finite numbers."), std::string::npos);
 }
 
-} // namespace haylen::math
+} // namespace haylen::lua::math

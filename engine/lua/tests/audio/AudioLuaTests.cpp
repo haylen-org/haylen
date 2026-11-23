@@ -10,9 +10,9 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::audio {
+namespace haylen::lua::audio {
 
-class AudioLuaTest : public MixerFixture {};
+class AudioLuaTest : public haylen::audio::MixerFixture {};
 
 TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
     const std::vector<std::uint8_t> hit = test::TestFiles::wav(kRate, 1, makeSignal(4800, 1, 0.5F));
@@ -102,4 +102,4 @@ TEST_F(AudioLuaTest, MakesSoundsFromBytes) {
     EXPECT_NE(fixture.lua("audio.newSound(wav, {loop = true})").find("Unknown option \"loop\""), std::string::npos);
 }
 
-} // namespace haylen::audio
+} // namespace haylen::lua::audio

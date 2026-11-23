@@ -32,12 +32,12 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::storage {
+namespace haylen::lua::storage {
 
 TEST(UserStorageTest, WritesReadsListsAndRemoves) {
     test::TemporaryDirectory directory;
     int persisted = 0;
-    UserStorage storage(directory.getPath() / "saves", [&] { ++persisted; });
+    haylen::storage::UserStorage storage(directory.getPath() / "saves", [&] { ++persisted; });
 
     storage.writeText("slots/one.json", "{\"day\": 3}");
     storage.write("raw.bin", std::vector<std::uint8_t>{1, 2, 3});
@@ -59,7 +59,7 @@ TEST(UserStorageTest, WritesReadsListsAndRemoves) {
     EXPECT_EQ(persisted, 1);
     EXPECT_EQ(storage.getRoot(), directory.getPath() / "saves");
 
-    UserStorage desktop(directory.getPath() / "desktop");
+    haylen::storage::UserStorage desktop(directory.getPath() / "desktop");
     desktop.flush();
     EXPECT_EQ(persisted, 1);
 }
@@ -68,7 +68,7 @@ TEST(UserStorageTest, RefusesEveryCallWhileThePlatformKeepsTheUserData) {
     const test::TemporaryDirectory directory;
     const std::string refusal = "Another tab of this site uses its user data, so this page keeps none.";
     int persisted = 0;
-    UserStorage storage(directory.getPath() / "saves", [&] { ++persisted; }, refusal);
+    haylen::storage::UserStorage storage(directory.getPath() / "saves", [&] { ++persisted; }, refusal);
     EXPECT_FALSE(storage.isAvailable());
 
     std::vector<std::string> failures;
@@ -96,18 +96,18 @@ TEST(UserStorageTest, RefusesEveryCallWhileThePlatformKeepsTheUserData) {
 TEST(UserStorageTest, RemovesStaleTemporaryFilesWhenItOpens) {
     const test::TemporaryDirectory directory;
     {
-        UserStorage storage(directory.getPath());
-        storage.writeText("saves/kept.json", "kept", UserStorage::Durability::Durable);
+        haylen::storage::UserStorage storage(directory.getPath());
+        storage.writeText("saves/kept.json", "kept", haylen::storage::UserStorage::Durability::Durable);
     }
     test::TestFiles::write(directory.getPath() / "saves" / "kept.json.7.tmp", "interrupted");
-    const UserStorage reopened(directory.getPath());
+    const haylen::storage::UserStorage reopened(directory.getPath());
     EXPECT_FALSE(std::filesystem::exists(directory.getPath() / "saves" / "kept.json.7.tmp"));
     EXPECT_EQ(reopened.readText("saves/kept.json"), "kept");
 }
 
 TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     storage.writeText("save.json", "good");
 
     // A folder where the temporary file of the second write goes makes that write fail before anything replaces the file, and the cleanup that cannot remove the folder keeps the original error.
@@ -125,7 +125,7 @@ TEST(UserStorageTest, FailedWriteKeepsThePreviousFile) {
 
 TEST(UserStorageTest, FailedWritesLeaveNoTemporaryFileAndNameTheRelativePath) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     storage.writeText("slot/inside.txt", "kept");
     storage.writeText("notes.txt", "kept");
 
@@ -148,7 +148,7 @@ TEST(UserStorageTest, FailedWritesLeaveNoTemporaryFileAndNameTheRelativePath) {
 #if !defined(_WIN32)
 TEST(UserStorageTest, RefusesToListAFolderPartly) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     storage.writeText("saves/slot1.json", "{}");
     storage.writeText("saves/locked/slot2.json", "{}");
     const std::filesystem::path locked = directory.getPath() / "saves" / "locked";
@@ -177,34 +177,34 @@ TEST(UserStorageTest, RefusesToListAFolderPartly) {
 
 TEST(SaveSlotsTest, WritesReadsListsAndRemovesSlots) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     std::int64_t now = 100;
-    SaveSlots saves(storage, "saves", [&now] { return now; });
+    haylen::storage::SaveSlots saves(storage, "saves", [&now] { return now; });
 
     saves.write("slot-1", {{"day", 3}, {"wood", 12}}, {{"day", 3}});
     now = 250;
     saves.write("auto_save", {{"day", 5}});
     now = 250;
-    saves.write("slot-2", core::Json::array({1, 2}));
+    saves.write("slot-2", haylen::core::Json::array({1, 2}));
     storage.writeText("saves/readme.txt", "not a save");
     storage.writeText("saves/bad name.json", "{}");
 
-    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 3}, {"wood", 12}}));
-    EXPECT_EQ(saves.read("slot-2"), core::Json::array({1, 2}));
+    EXPECT_EQ(saves.read("slot-1"), (haylen::core::Json{{"day", 3}, {"wood", 12}}));
+    EXPECT_EQ(saves.read("slot-2"), haylen::core::Json::array({1, 2}));
     EXPECT_EQ(saves.read("empty"), std::nullopt);
-    const std::optional<SaveSlots::Info> first = saves.getInfo("slot-1");
+    const std::optional<haylen::storage::SaveSlots::Info> first = saves.getInfo("slot-1");
     ASSERT_TRUE(first.has_value());
     EXPECT_EQ(first->savedAt, 100);
-    EXPECT_EQ(first->summary, (core::Json{{"day", 3}}));
+    EXPECT_EQ(first->summary, (haylen::core::Json{{"day", 3}}));
     EXPECT_EQ(saves.getInfo("empty"), std::nullopt);
     EXPECT_TRUE(saves.exists("auto_save"));
 
-    const std::vector<SaveSlots::Info> listed = saves.list();
+    const std::vector<haylen::storage::SaveSlots::Info> listed = saves.list();
     ASSERT_EQ(listed.size(), 3U);
     EXPECT_EQ(listed[0].slot, "auto_save");
     EXPECT_EQ(listed[1].slot, "slot-2");
     EXPECT_EQ(listed[2].slot, "slot-1");
-    EXPECT_EQ(listed[0].summary, core::Json::object());
+    EXPECT_EQ(listed[0].summary, haylen::core::Json::object());
 
     EXPECT_TRUE(saves.remove("slot-2"));
     EXPECT_FALSE(saves.remove("slot-2"));
@@ -214,14 +214,14 @@ TEST(SaveSlotsTest, WritesReadsListsAndRemovesSlots) {
 
 TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    SaveSlots saves(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::SaveSlots saves(storage);
 
     for (const std::string& name : {std::string(""), std::string("../escape"), std::string("a b"), std::string(65, 'x')}) {
-        EXPECT_THROW(saves.write(name, core::Json::object()), std::invalid_argument) << name;
+        EXPECT_THROW(saves.write(name, haylen::core::Json::object()), std::invalid_argument) << name;
     }
 
-    EXPECT_THROW(saves.write("slot", core::Json::object(), core::Json::array()), std::invalid_argument);
+    EXPECT_THROW(saves.write("slot", haylen::core::Json::object(), haylen::core::Json::array()), std::invalid_argument);
 
     storage.writeText("saves/broken.json", "{");
     storage.writeText("saves/partial.json", R"({"data": 1})");
@@ -233,17 +233,17 @@ TEST(SaveSlotsTest, RejectsBadNamesAndDamagedFiles) {
     EXPECT_THROW((void)saves.read("summed"), std::runtime_error);
 
     saves.write("real", {{"ok", true}});
-    const std::optional<SaveSlots::Info> real = saves.getInfo("real");
+    const std::optional<haylen::storage::SaveSlots::Info> real = saves.getInfo("real");
     ASSERT_TRUE(real.has_value());
     EXPECT_GT(real->savedAt, 1'700'000'000);
 }
 
 TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    SaveSlots saves(storage);
-    saves.write("slot-1", {{"items", core::Json::array({"axe"})}});
-    const std::optional<SaveSlots::Info> written = saves.getInfo("slot-1");
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::SaveSlots saves(storage);
+    saves.write("slot-1", {{"items", haylen::core::Json::array({"axe"})}});
+    const std::optional<haylen::storage::SaveSlots::Info> written = saves.getInfo("slot-1");
     ASSERT_TRUE(written.has_value());
     EXPECT_EQ(written->version, 1);
     EXPECT_EQ(written->revision, 1U);
@@ -252,25 +252,25 @@ TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
     saves.setVersion(3);
     std::vector<int> ran;
     // clang-format off
-    saves.addMigration(2, [&ran](core::Json data) {
+    saves.addMigration(2, [&ran](haylen::core::Json data) {
         ran.push_back(2);
         data["stamina"] = 100;
         return data;
     });
-    saves.addMigration(1, [&ran](core::Json data) {
+    saves.addMigration(1, [&ran](haylen::core::Json data) {
         ran.push_back(1);
         data["inventory"] = data.at("items");
         data.erase("items");
         return data;
     });
     // clang-format on
-    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"inventory", core::Json::array({"axe"})}, {"stamina", 100}}));
+    EXPECT_EQ(saves.read("slot-1"), (haylen::core::Json{{"inventory", haylen::core::Json::array({"axe"})}, {"stamina", 100}}));
     EXPECT_EQ(ran, (std::vector<int>{1, 2}));
-    const std::optional<SaveSlots::Info> unchanged = saves.getInfo("slot-1");
+    const std::optional<haylen::storage::SaveSlots::Info> unchanged = saves.getInfo("slot-1");
     ASSERT_TRUE(unchanged.has_value());
     EXPECT_EQ(unchanged->version, 1);
     saves.write("slot-2", {{"stamina", 5}});
-    const std::optional<SaveSlots::Info> migrated = saves.getInfo("slot-2");
+    const std::optional<haylen::storage::SaveSlots::Info> migrated = saves.getInfo("slot-2");
     ASSERT_TRUE(migrated.has_value());
     EXPECT_EQ(migrated->version, 3);
 
@@ -294,16 +294,16 @@ TEST(SaveSlotsTest, MigratesOldSavesOnRead) {
 
     EXPECT_EQ(newer, "The save slot \"slot-2\" has version 3, which is newer than the version 2 this app reads.");
     EXPECT_THROW(saves.setVersion(0), std::invalid_argument);
-    EXPECT_THROW(saves.addMigration(0, [](core::Json data) { return data; }), std::invalid_argument);
+    EXPECT_THROW(saves.addMigration(0, [](haylen::core::Json data) { return data; }), std::invalid_argument);
 }
 
 TEST(SaveSlotsTest, FallsBackToTheBackupWhenDamaged) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    SaveSlots saves(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::SaveSlots saves(storage);
     saves.write("slot-1", {{"day", 1}});
     saves.write("slot-1", {{"day", 2}});
-    const std::optional<SaveSlots::Info> sound = saves.getInfo("slot-1");
+    const std::optional<haylen::storage::SaveSlots::Info> sound = saves.getInfo("slot-1");
     ASSERT_TRUE(sound.has_value());
     EXPECT_EQ(sound->revision, 2U);
     EXPECT_FALSE(sound->recovered);
@@ -312,8 +312,8 @@ TEST(SaveSlotsTest, FallsBackToTheBackupWhenDamaged) {
     std::string text = storage.readText("saves/slot-1.json");
     text.replace(text.find("\"day\":2"), 7, "\"day\":9");
     storage.writeText("saves/slot-1.json", text);
-    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 1}}));
-    const std::optional<SaveSlots::Info> recovered = saves.getInfo("slot-1");
+    EXPECT_EQ(saves.read("slot-1"), (haylen::core::Json{{"day", 1}}));
+    const std::optional<haylen::storage::SaveSlots::Info> recovered = saves.getInfo("slot-1");
     ASSERT_TRUE(recovered.has_value());
     EXPECT_TRUE(recovered->recovered);
     EXPECT_EQ(recovered->revision, 1U);
@@ -321,11 +321,11 @@ TEST(SaveSlotsTest, FallsBackToTheBackupWhenDamaged) {
 
     // A write over a damaged slot keeps the sound backup, and a slot without a sound copy fails.
     saves.write("slot-1", {{"day", 3}});
-    const std::optional<SaveSlots::Info> rewritten = saves.getInfo("slot-1");
+    const std::optional<haylen::storage::SaveSlots::Info> rewritten = saves.getInfo("slot-1");
     ASSERT_TRUE(rewritten.has_value());
     EXPECT_EQ(rewritten->revision, 1U);
     storage.writeText("saves/slot-1.json", "{");
-    EXPECT_EQ(saves.read("slot-1"), (core::Json{{"day", 1}}));
+    EXPECT_EQ(saves.read("slot-1"), (haylen::core::Json{{"day", 1}}));
     storage.writeText("saves/slot-1.backup.json", "{");
     EXPECT_THROW((void)saves.read("slot-1"), std::runtime_error);
     EXPECT_TRUE(saves.remove("slot-1"));
@@ -335,11 +335,11 @@ TEST(SaveSlotsTest, FallsBackToTheBackupWhenDamaged) {
 TEST(SaveSlotsTest, ImportsOnlyNewerRevisionsUnlessAskedToReplace) {
     const test::TemporaryDirectory phoneFolder;
     const test::TemporaryDirectory tabletFolder;
-    UserStorage phoneStorage(phoneFolder.getPath());
-    UserStorage tabletStorage(tabletFolder.getPath());
+    haylen::storage::UserStorage phoneStorage(phoneFolder.getPath());
+    haylen::storage::UserStorage tabletStorage(tabletFolder.getPath());
     std::int64_t now = 100;
-    SaveSlots phone(phoneStorage, "saves", [&now] { return now; });
-    SaveSlots tablet(tabletStorage, "saves", [&now] { return now; });
+    haylen::storage::SaveSlots phone(phoneStorage, "saves", [&now] { return now; });
+    haylen::storage::SaveSlots tablet(tabletStorage, "saves", [&now] { return now; });
 
     phone.write("slot", {{"day", 1}});
     tablet.write("slot", {{"day", 4}});
@@ -348,26 +348,26 @@ TEST(SaveSlotsTest, ImportsOnlyNewerRevisionsUnlessAskedToReplace) {
     const std::optional<std::string> newer = tablet.exportSlot("slot");
     ASSERT_TRUE(older.has_value());
     ASSERT_TRUE(newer.has_value());
-    EXPECT_FALSE(tablet.importSlot("slot", *older, SaveSlots::ImportPolicy::KeepNewer));
-    EXPECT_EQ(tablet.read("slot"), (core::Json{{"day", 5}}));
-    EXPECT_TRUE(phone.importSlot("slot", *newer, SaveSlots::ImportPolicy::KeepNewer));
-    EXPECT_EQ(phone.read("slot"), (core::Json{{"day", 5}}));
-    EXPECT_TRUE(tablet.importSlot("slot", *older, SaveSlots::ImportPolicy::Replace));
-    const std::optional<SaveSlots::Info> imported = tablet.getInfo("slot");
+    EXPECT_FALSE(tablet.importSlot("slot", *older, haylen::storage::SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_EQ(tablet.read("slot"), (haylen::core::Json{{"day", 5}}));
+    EXPECT_TRUE(phone.importSlot("slot", *newer, haylen::storage::SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_EQ(phone.read("slot"), (haylen::core::Json{{"day", 5}}));
+    EXPECT_TRUE(tablet.importSlot("slot", *older, haylen::storage::SaveSlots::ImportPolicy::Replace));
+    const std::optional<haylen::storage::SaveSlots::Info> imported = tablet.getInfo("slot");
     ASSERT_TRUE(imported.has_value());
     EXPECT_EQ(imported->revision, 1U);
-    EXPECT_TRUE(phone.importSlot("fresh", *older, SaveSlots::ImportPolicy::KeepNewer));
+    EXPECT_TRUE(phone.importSlot("fresh", *older, haylen::storage::SaveSlots::ImportPolicy::KeepNewer));
     EXPECT_FALSE(phone.exportSlot("none").has_value());
-    EXPECT_THROW((void)phone.importSlot("slot", "{}", SaveSlots::ImportPolicy::Replace), std::invalid_argument);
-    EXPECT_EQ(SaveSlots::importPolicyFromName("keepNewer"), SaveSlots::ImportPolicy::KeepNewer);
-    EXPECT_EQ(SaveSlots::importPolicyName(SaveSlots::ImportPolicy::Replace), "replace");
+    EXPECT_THROW((void)phone.importSlot("slot", "{}", haylen::storage::SaveSlots::ImportPolicy::Replace), std::invalid_argument);
+    EXPECT_EQ(haylen::storage::SaveSlots::importPolicyFromName("keepNewer"), haylen::storage::SaveSlots::ImportPolicy::KeepNewer);
+    EXPECT_EQ(haylen::storage::SaveSlots::importPolicyName(haylen::storage::SaveSlots::ImportPolicy::Replace), "replace");
 }
 
 // The checksum of a slot finds damage, not intent, so anyone can sign bytes that hold any field.
 class SaveSlotsForgeryTest : public ::testing::Test {
   protected:
     // Returns the bytes of a slot whose checksum holds, computed like the checksum that a write stores.
-    [[nodiscard]] static std::string sign(core::Json saved) {
+    [[nodiscard]] static std::string sign(haylen::core::Json saved) {
         std::uint64_t hash = 14695981039346656037ULL;
         for (const char character : saved.dump()) {
             hash = (hash ^ static_cast<unsigned char>(character)) * 1099511628211ULL;
@@ -380,18 +380,18 @@ class SaveSlotsForgeryTest : public ::testing::Test {
 
 TEST_F(SaveSlotsForgeryTest, RefusesRevisionsAndVersionsThatNoWriteStores) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    SaveSlots saves(storage);
-    const core::Json sound{{"data", 1}, {"summary", core::Json::object()}, {"savedAt", 5}, {"version", 1}, {"revision", 1}};
-    EXPECT_TRUE(saves.importSlot("sound", sign(sound), SaveSlots::ImportPolicy::Replace));
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::SaveSlots saves(storage);
+    const haylen::core::Json sound{{"data", 1}, {"summary", haylen::core::Json::object()}, {"savedAt", 5}, {"version", 1}, {"revision", 1}};
+    EXPECT_TRUE(saves.importSlot("sound", sign(sound), haylen::storage::SaveSlots::ImportPolicy::Replace));
 
-    core::Json negative = sound;
+    haylen::core::Json negative = sound;
     negative["revision"] = -1;
-    core::Json huge = sound;
+    haylen::core::Json huge = sound;
     huge["version"] = std::int64_t{1} << 40;
-    for (const core::Json& forged : {negative, huge}) {
+    for (const haylen::core::Json& forged : {negative, huge}) {
         try {
-            (void)saves.importSlot("slot", sign(forged), SaveSlots::ImportPolicy::Replace);
+            (void)saves.importSlot("slot", sign(forged), haylen::storage::SaveSlots::ImportPolicy::Replace);
             ADD_FAILURE() << "A slot of " << forged.dump() << " must be refused.";
         } catch (const std::invalid_argument& error) {
             EXPECT_STREQ(error.what(), "The imported save slot \"slot\" is damaged.");
@@ -402,8 +402,8 @@ TEST_F(SaveSlotsForgeryTest, RefusesRevisionsAndVersionsThatNoWriteStores) {
 // Each write reads the revision that the write before it stored, so writes of one slot on two threads lose none.
 TEST(SaveSlotsTest, CountsEveryWriteOfOneSlotFromTwoThreads) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    SaveSlots saves(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::SaveSlots saves(storage);
     constexpr int kWrites = 25;
     std::string failure;
     // clang-format off
@@ -423,7 +423,7 @@ TEST(SaveSlotsTest, CountsEveryWriteOfOneSlotFromTwoThreads) {
 
     other.join();
     EXPECT_EQ(failure, "");
-    const std::optional<SaveSlots::Info> shared = saves.getInfo("shared");
+    const std::optional<haylen::storage::SaveSlots::Info> shared = saves.getInfo("shared");
     ASSERT_TRUE(shared.has_value());
     EXPECT_EQ(shared->revision, static_cast<std::uint64_t>(kWrites * 2));
 }
@@ -431,8 +431,8 @@ TEST(SaveSlotsTest, CountsEveryWriteOfOneSlotFromTwoThreads) {
 // A slot that is there but cannot be read fails, instead of reading as a slot that was never saved.
 TEST(SaveSlotsTest, FailsForSlotsThatCannotBeRead) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    SaveSlots saves(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::SaveSlots saves(storage);
     saves.write("locked", {{"day", 1}});
 
     // A file without read permission fails to read, except on platforms or for users that read it anyway.
@@ -446,16 +446,16 @@ TEST(SaveSlotsTest, FailsForSlotsThatCannotBeRead) {
 
     EXPECT_THROW((void)saves.read("locked"), std::runtime_error);
     std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
-    EXPECT_EQ(saves.read("locked"), (core::Json{{"day", 1}}));
+    EXPECT_EQ(saves.read("locked"), (haylen::core::Json{{"day", 1}}));
 }
 
 TEST(PreferencesTest, StoresDottedKeysAndPersists) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    Preferences preferences(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::Preferences preferences(storage);
     preferences.load();
     EXPECT_FALSE(preferences.isDirty());
-    EXPECT_EQ(preferences.getValues(), core::Json::object());
+    EXPECT_EQ(preferences.getValues(), haylen::core::Json::object());
 
     preferences.set("audio.volume.music", 0.5);
     preferences.set("audio.volume.sfx", 0.8);
@@ -481,26 +481,26 @@ TEST(PreferencesTest, StoresDottedKeysAndPersists) {
     preferences.save();
     EXPECT_FALSE(preferences.isDirty());
 
-    Preferences reloaded(storage);
+    haylen::storage::Preferences reloaded(storage);
     reloaded.load();
-    EXPECT_EQ(reloaded.getValues(), (core::Json{{"audio", {{"volume", {{"music", 0.5}}}}}, {"language", "pt-BR"}}));
+    EXPECT_EQ(reloaded.getValues(), (haylen::core::Json{{"audio", {{"volume", {{"music", 0.5}}}}}, {"language", "pt-BR"}}));
     reloaded.clear();
     EXPECT_TRUE(reloaded.isDirty());
-    EXPECT_EQ(reloaded.getValues(), core::Json::object());
+    EXPECT_EQ(reloaded.getValues(), haylen::core::Json::object());
 
     storage.writeText("preferences.json", "[1, 2]");
     EXPECT_THROW(reloaded.load(), std::runtime_error);
-    EXPECT_EQ(reloaded.getValues(), core::Json::object());
+    EXPECT_EQ(reloaded.getValues(), haylen::core::Json::object());
 }
 
 TEST(PreferencesTest, RefusesValuesThatJsonCannotHold) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    Preferences preferences(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::Preferences preferences(storage);
     EXPECT_THROW(preferences.set("name", std::string("\xFF")), std::invalid_argument);
     EXPECT_THROW(preferences.set("\xFF", 1), std::invalid_argument);
-    EXPECT_THROW(preferences.set("list", core::Json::array({1.0, std::numeric_limits<double>::infinity()})), std::invalid_argument);
-    EXPECT_THROW(preferences.set("group", core::Json{{"\xFF", 1}}), std::invalid_argument);
+    EXPECT_THROW(preferences.set("list", haylen::core::Json::array({1.0, std::numeric_limits<double>::infinity()})), std::invalid_argument);
+    EXPECT_THROW(preferences.set("group", haylen::core::Json{{"\xFF", 1}}), std::invalid_argument);
     EXPECT_FALSE(preferences.isDirty());
 
     preferences.set("volume", 0.5);
@@ -510,9 +510,9 @@ TEST(PreferencesTest, RefusesValuesThatJsonCannotHold) {
 
 TEST(PreferencesTest, KeepsUnsavedChangesWhenTheFileCannotBeRead) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     storage.writeText("preferences.json", "{}");
-    Preferences preferences(storage);
+    haylen::storage::Preferences preferences(storage);
     preferences.set("volume", 0.5);
 
     // A file without read permission fails to read, except on platforms or for users that read it anyway.
@@ -532,22 +532,22 @@ TEST(PreferencesTest, KeepsUnsavedChangesWhenTheFileCannotBeRead) {
 
 TEST(ResumeStateTest, ReachesOnlyTheLaunchAfterTheBackground) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
-    ResumeState state(storage);
+    haylen::storage::UserStorage storage(directory.getPath());
+    haylen::storage::ResumeState state(storage);
     state.load();
     EXPECT_FALSE(state.getRestored());
 
-    state.set(core::Json{{"screen", "map"}, {"day", 4}});
+    state.set(haylen::core::Json{{"screen", "map"}, {"day", 4}});
     state.save();
     ASSERT_TRUE(storage.exists("resume-state.json"));
     state.discard();
     EXPECT_FALSE(storage.exists("resume-state.json"));
 
     state.save();
-    ResumeState next(storage);
+    haylen::storage::ResumeState next(storage);
     next.load();
     ASSERT_TRUE(next.getRestored());
-    EXPECT_EQ(next.getRestored()->value, (core::Json{{"screen", "map"}, {"day", 4}}));
+    EXPECT_EQ(next.getRestored()->value, (haylen::core::Json{{"screen", "map"}, {"day", 4}}));
     EXPECT_GE(next.getRestored()->age, 0.0);
     EXPECT_LT(next.getRestored()->age, 60.0);
     EXPECT_FALSE(storage.exists("resume-state.json"));
@@ -632,7 +632,7 @@ TEST(StorageLuaTest, SavesSlotsPreferencesAndEngineState) {
 
     // Suspending writes pending changes, so they survive a load from disk.
     fixture.runLua("preferences.set('game.difficulty', 'easy')");
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     EXPECT_EQ(fixture.lua("preferences.set('game.difficulty', 'lost') preferences.load() return preferences.get('game.difficulty')"), "easy");
     EXPECT_EQ(fixture.lua("return tostring(preferences.remove('game.difficulty')) .. tostring(preferences.has('game.difficulty'))"), "truefalse");
     EXPECT_EQ(fixture.lua("preferences.set('game.speed', 3) preferences.set('game.speed', nil) return tostring(preferences.has('game.speed')) .. ' ' .. preferences.get('game.speed', 5)"), "false 5");
@@ -682,7 +682,7 @@ TEST(StorageLuaTest, RefusesTheUserDataThatThePlatformKeepsFromTheApp) {
     }
 
     fixture.runLua("preferences.set('volume', 0.5)");
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_FALSE(std::filesystem::exists(folder));
@@ -691,7 +691,7 @@ TEST(StorageLuaTest, RefusesTheUserDataThatThePlatformKeepsFromTheApp) {
 TEST(StorageLuaTest, SavesWhatTheListenersOfTheBackgroundChange) {
     test::LuaFixture fixture;
     fixture.runLua("local preferences = require('haylen.preferences') require('haylen.events').on('appBackground', function() preferences.set('session.screen', 'map') end)");
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     ASSERT_TRUE(fixture.engine().getStorage().exists("preferences.json"));
     EXPECT_NE(fixture.engine().getStorage().readText("preferences.json").find("\"screen\": \"map\""), std::string::npos);
 }
@@ -702,9 +702,9 @@ TEST(StorageLuaTest, KeepsTheResumeStateForALaunchAfterTheBackground) {
     EXPECT_EQ(fixture.lua("return select('#', storage.resumeState())"), "0");
 
     // The state reaches the disk in the background and leaves it when the app comes back.
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     EXPECT_NE(fixture.engine().getStorage().readText("resume-state.json").find("\"shop\""), std::string::npos);
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     EXPECT_FALSE(fixture.engine().getStorage().exists("resume-state.json"));
 
     // A file the system left when it ended the app reaches the next launch, which consumes it.
@@ -885,15 +885,15 @@ TEST(StorageLuaTest, ReportsTheRevisionThatAnAsynchronousWriteStored) {
 TEST(StorageLuaTest, FinishesQueuedOperationsWhenTheAppStops) {
     test::LuaFixture fixture;
     fixture.runLua("local storage = require('haylen.storage') for index = 1, 50 do storage.writeSlotAsync('slot-' .. index, {index = index}) end");
-    plugins::StoragePlugin& plugin = fixture.engine().getPlugin<plugins::StoragePlugin>();
+    haylen::plugins::StoragePlugin& plugin = fixture.engine().getPlugin<haylen::plugins::StoragePlugin>();
     plugin.stop(fixture.engine());
     EXPECT_EQ(plugin.getSaveSlots().list().size(), 50U);
-    EXPECT_EQ(plugin.getSaveSlots().read("slot-50"), (core::Json{{"index", 50}}));
+    EXPECT_EQ(plugin.getSaveSlots().read("slot-50"), (haylen::core::Json{{"index", 50}}));
 }
 
 TEST(StoragePluginTest, KeepsRunningOperationsAfterOneFails) {
     test::LuaFixture fixture;
-    plugins::StoragePlugin& plugin = fixture.engine().getPlugin<plugins::StoragePlugin>();
+    haylen::plugins::StoragePlugin& plugin = fixture.engine().getPlugin<haylen::plugins::StoragePlugin>();
     std::atomic<bool> ran = false;
     plugin.queueOperation([] { throw std::runtime_error("The operation failed on purpose."); });
     plugin.queueOperation([&ran] { ran = true; });
@@ -911,18 +911,18 @@ TEST(StoragePluginTest, StartsWithDefaultPreferencesWhenTheFileIsDamaged) {
     std::vector<std::string> warnings;
     std::mutex logMutex;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level level, std::string_view line) {
+    const std::uint64_t listener = haylen::core::Log::addListener([&](haylen::core::Log::Level level, std::string_view line) {
         const std::scoped_lock lock(logMutex);
-        if (level == core::Log::Level::Warning) {
+        if (level == haylen::core::Log::Level::Warning) {
             warnings.emplace_back(line);
         }
     });
     // clang-format on
     fixture.restart();
-    core::Log::removeListener(listener);
+    haylen::core::Log::removeListener(listener);
 
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_EQ(fixture.engine().getPlugin<plugins::StoragePlugin>().getPreferences().getValues(), core::Json::object());
+    EXPECT_EQ(fixture.engine().getPlugin<haylen::plugins::StoragePlugin>().getPreferences().getValues(), haylen::core::Json::object());
     EXPECT_TRUE(std::ranges::any_of(warnings, [](const std::string& line) { return line.find("The preferences file \"preferences.json\" is damaged. The app starts with default preferences, and the next save replaces the file.") != std::string::npos; }));
     fixture.runLua("local preferences = require('haylen.preferences') preferences.set('volume', 0.5) preferences.save()");
     EXPECT_EQ(fixture.engine().getStorage().readText("preferences.json"), "{\n  \"volume\": 0.5\n}");
@@ -935,24 +935,24 @@ TEST(StoragePluginTest, LogsPreferencesThatCannotBeSaved) {
     std::vector<std::string> errors;
     std::mutex logMutex;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level level, std::string_view line) {
+    const std::uint64_t listener = haylen::core::Log::addListener([&](haylen::core::Log::Level level, std::string_view line) {
         const std::scoped_lock lock(logMutex);
-        if (level == core::Log::Level::Error) {
+        if (level == haylen::core::Log::Level::Error) {
             errors.emplace_back(line);
         }
     });
     // clang-format on
     fixture.runLua("require('haylen.preferences').set('volume', 0.5)");
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
-    core::Log::removeListener(listener);
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
+    haylen::core::Log::removeListener(listener);
 
     EXPECT_TRUE(std::ranges::any_of(errors, [](const std::string& line) { return line.find("The preferences could not be saved: The storage file \"preferences.json\" could not be written.") != std::string::npos; }));
-    EXPECT_TRUE(fixture.engine().getPlugin<plugins::StoragePlugin>().getPreferences().isDirty());
+    EXPECT_TRUE(fixture.engine().getPlugin<haylen::plugins::StoragePlugin>().getPreferences().isDirty());
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST(StoragePluginTest, RequiresAStartedEngine) {
-    plugins::StoragePlugin plugin;
+    haylen::plugins::StoragePlugin plugin;
     EXPECT_THROW((void)plugin.getSaveSlots(), std::logic_error);
     EXPECT_THROW((void)plugin.getPreferences(), std::logic_error);
     EXPECT_THROW(plugin.queueOperation([] {}), std::logic_error);
@@ -960,7 +960,7 @@ TEST(StoragePluginTest, RequiresAStartedEngine) {
 
 TEST(UserStorageTest, ReadsAndWritesOfTheSameFileOnTwoThreadsNeverMix) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     const std::string first(1U << 20U, 'a');
     const std::string second(1U << 20U, 'b');
     std::string failure;
@@ -989,7 +989,7 @@ TEST(UserStorageTest, ReadsAndWritesOfTheSameFileOnTwoThreadsNeverMix) {
 // Windows refuses to replace a file that another program holds open, as a virus scanner does for a moment after a file changes, so a write waits for the program to let go.
 TEST(UserStorageTest, ReplacesAFileThatAnotherProgramHoldsForAMoment) {
     const test::TemporaryDirectory directory;
-    UserStorage storage(directory.getPath());
+    haylen::storage::UserStorage storage(directory.getPath());
     storage.writeText("save.json", "{}");
     std::atomic<bool> holding = false;
     std::atomic<bool> held = false;
@@ -1016,4 +1016,4 @@ TEST(UserStorageTest, ReplacesAFileThatAnotherProgramHoldsForAMoment) {
     EXPECT_EQ(storage.readText("save.json"), R"({"level": 2})");
 }
 
-} // namespace haylen::storage
+} // namespace haylen::lua::storage

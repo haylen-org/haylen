@@ -18,17 +18,17 @@
 #include "haylen/plugins/Plugin.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class AppPluginTest : public ::testing::Test {
   protected:
     // A plugin of an app, which counts the updates it saw.
-    class CounterPlugin final : public plugins::Plugin {
+    class CounterPlugin final : public haylen::plugins::Plugin {
       public:
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "counter";
         }
-        void update(core::Engine&, float) override {
+        void update(haylen::core::Engine&, float) override {
             ++updates;
         }
 
@@ -41,7 +41,7 @@ class AppPluginTest : public ::testing::Test {
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "game.counter";
         }
-        void install(core::Engine&, lua_State* L) override {
+        void install(haylen::core::Engine&, lua_State* L) override {
             lua::Binding::preload(L, "game.counter", &open);
         }
 
@@ -66,7 +66,7 @@ class AppPluginTest : public ::testing::Test {
         [[nodiscard]] std::string_view getName() const noexcept override {
             return name;
         }
-        void install(core::Engine&, lua_State*) override {
+        void install(haylen::core::Engine&, lua_State*) override {
             order.push_back(name);
         }
 
@@ -76,17 +76,17 @@ class AppPluginTest : public ::testing::Test {
     };
 
     // Adds the plugin and its module before the Lua of the app runs, the way a C++ app keeps a Lua application. The script plugin runs already, so the module installs at once.
-    class PluginApplication final : public core::Application {
+    class PluginApplication final : public haylen::core::Application {
       public:
-        void addPlugins(core::Engine& engine) override {
+        void addPlugins(haylen::core::Engine& engine) override {
             application.addPlugins(engine);
         }
-        void start(core::Engine& engine) override {
+        void start(haylen::core::Engine& engine) override {
             engine.addPlugin(std::make_unique<CounterPlugin>());
             engine.getPlugin<lua::ScriptPlugin>().addModule(std::make_unique<CounterModule>());
             application.start(engine);
         }
-        void stop(core::Engine& engine) override {
+        void stop(haylen::core::Engine& engine) override {
             application.stop(engine);
         }
 
@@ -118,4 +118,4 @@ TEST_F(AppPluginTest, InstallsModulesInOrderAndAModuleAddedAfterTheStartAtOnce) 
     EXPECT_EQ(fixture.lua("return require('game.counter').updates()"), "2");
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

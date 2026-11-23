@@ -22,17 +22,17 @@
 #include "haylen/port/AudioOutput.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::audio {
+namespace haylen::lua::audio {
 
 // Plays through an audio output that refuses the audio until a test lets it through, the way a browser without `AudioWorklet` or an iOS audio session that another app holds refuses it, and that a test can keep waiting the way an audio service that hangs does. Its playback never reads the mix, waits for the person while the test locks it and stops working when the test fails it.
-class AudioOutputTest : public MixerFixture {
+class AudioOutputTest : public haylen::audio::MixerFixture {
   protected:
     static constexpr float kFrameSeconds = 1.0F / 60.0F;
     static constexpr std::chrono::seconds kAnswerTimeout{30};
 
-    class TestPlayback final : public port::AudioOutput::Playback {
+    class TestPlayback final : public haylen::port::AudioOutput::Playback {
       public:
-        explicit TestPlayback(const port::AudioOutput::Request& request) noexcept : format{.sampleRate = request.sampleRate, .channels = request.channels, .periodFrames = 256, .periods = 2} {}
+        explicit TestPlayback(const haylen::port::AudioOutput::Request& request) noexcept : format{.sampleRate = request.sampleRate, .channels = request.channels, .periodFrames = 256, .periods = 2} {}
 
         ~TestPlayback() override {
             ++closedDevices;
@@ -41,7 +41,7 @@ class AudioOutputTest : public MixerFixture {
         TestPlayback(const TestPlayback&) = delete;
         TestPlayback& operator=(const TestPlayback&) = delete;
 
-        [[nodiscard]] port::AudioOutput::Format getFormat() const noexcept override {
+        [[nodiscard]] haylen::port::AudioOutput::Format getFormat() const noexcept override {
             return format;
         }
 
@@ -57,10 +57,10 @@ class AudioOutputTest : public MixerFixture {
         }
 
       private:
-        port::AudioOutput::Format format;
+        haylen::port::AudioOutput::Format format;
     };
 
-    class TestOutput final : public port::AudioOutput {
+    class TestOutput final : public haylen::port::AudioOutput {
       public:
         [[nodiscard]] std::unique_ptr<Playback> open(const Request& request, Stream&) override {
             std::unique_lock lock(gateMutex);
@@ -85,7 +85,7 @@ class AudioOutputTest : public MixerFixture {
         answering = true;
         closedDevices = 0;
         // clang-format off
-        listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) {
+        listener = haylen::core::Log::addListener([this](haylen::core::Log::Level level, std::string_view line) {
             const std::scoped_lock lock(linesMutex);
             lines.emplace_back(level, std::string(line));
         });
@@ -94,7 +94,7 @@ class AudioOutputTest : public MixerFixture {
 
     void TearDown() override {
         answer();
-        core::Log::removeListener(listener);
+        haylen::core::Log::removeListener(listener);
     }
 
     // Keeps every opening waiting until `answer`, the way an audio service that hangs keeps the system from answering.
@@ -112,14 +112,14 @@ class AudioOutputTest : public MixerFixture {
     }
 
     // Updates the mixer frame by frame over the seconds, as the engine does.
-    static void play(Mixer& target, float seconds) {
+    static void play(haylen::audio::Mixer& target, float seconds) {
         for (float elapsed = 0.0F; elapsed + kFrameSeconds / 2.0F < seconds; elapsed += kFrameSeconds) {
             target.update(kFrameSeconds);
         }
     }
 
     // Waits for the thread that opens the device, updating the mixer without letting time pass, as the frames of an app that the system keeps waiting do.
-    static bool settle(Mixer& target) {
+    static bool settle(haylen::audio::Mixer& target) {
         // clang-format off
         return waitFor([&target] {
             target.update(0.0F);
@@ -141,7 +141,7 @@ class AudioOutputTest : public MixerFixture {
         return true;
     }
 
-    [[nodiscard]] std::vector<std::string> getLines(core::Log::Level level) {
+    [[nodiscard]] std::vector<std::string> getLines(haylen::core::Log::Level level) {
         const std::scoped_lock lock(linesMutex);
         std::vector<std::string> found;
         for (const auto& [lineLevel, line] : lines) {
@@ -154,7 +154,7 @@ class AudioOutputTest : public MixerFixture {
     }
 
     [[nodiscard]] std::vector<std::string> getWarnings() {
-        return getLines(core::Log::Level::Warning);
+        return getLines(haylen::core::Log::Level::Warning);
     }
 
     static inline std::atomic<bool> accepting = false;
@@ -165,15 +165,15 @@ class AudioOutputTest : public MixerFixture {
     static inline std::condition_variable gate;
     static inline std::atomic<int> closedDevices = 0;
 
-    std::shared_ptr<port::AudioOutput> testOutput = std::make_shared<TestOutput>();
+    std::shared_ptr<haylen::port::AudioOutput> testOutput = std::make_shared<TestOutput>();
 
     std::mutex linesMutex;
-    std::vector<std::pair<core::Log::Level, std::string>> lines;
+    std::vector<std::pair<haylen::core::Log::Level, std::string>> lines;
     std::uint64_t listener = 0;
 };
 
 TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
-    Mixer refused({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
+    haylen::audio::Mixer refused({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     EXPECT_TRUE(refused.hasDevice());
     ASSERT_TRUE(settle(refused));
     EXPECT_FALSE(refused.isOutputAvailable());
@@ -183,7 +183,7 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
     EXPECT_THROW(refused.render(samples), std::logic_error);
 
     // Voices move on in real time and end without anyone hearing them.
-    const Mixer::VoiceId shot = refused.play(makeTone(toFrames(0.25F)));
+    const haylen::audio::Mixer::VoiceId shot = refused.play(makeTone(toFrames(0.25F)));
     play(refused, 0.2F);
     EXPECT_TRUE(refused.isActive(shot));
     EXPECT_NEAR(refused.getCursor(shot), 0.2F, 0.01F);
@@ -193,7 +193,7 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
 
     // Music crossfades, and the track it replaces goes once its fade is over.
     refused.playMusic(makeTone(toFrames(2.0F)), {.fade = 0.0F});
-    const Mixer::VoiceId night = refused.playMusic(makeTone(toFrames(2.0F), 0.25F), {.fade = 0.5F});
+    const haylen::audio::Mixer::VoiceId night = refused.playMusic(makeTone(toFrames(2.0F), 0.25F), {.fade = 0.5F});
     play(refused, 0.3F);
     EXPECT_EQ(refused.getVoiceCount(), 2U);
     play(refused, 0.3F);
@@ -219,18 +219,18 @@ TEST_F(AudioOutputTest, KeepsTimeWithoutSoundWhileTheSystemRefusesTheOutput) {
 
 TEST_F(AudioOutputTest, FallsSilentWhenTheOutputFailsAfterItOpened) {
     accepting = true;
-    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
+    haylen::audio::Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     ASSERT_TRUE(settle(output));
     output.update(kFrameSeconds);
-    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_EQ(output.getOutputState(), haylen::audio::Mixer::OutputState::Running);
     EXPECT_TRUE(getWarnings().empty());
 
     // The platform learns later that it cannot play the output, and the app keeps time without sound, with the reason in its log once.
     failing = true;
-    const Mixer::VoiceId shot = output.play(makeTone(toFrames(1.0F)));
+    const haylen::audio::Mixer::VoiceId shot = output.play(makeTone(toFrames(1.0F)));
     output.update(kFrameSeconds);
     failing = false;
-    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Unavailable);
+    EXPECT_EQ(output.getOutputState(), haylen::audio::Mixer::OutputState::Unavailable);
     EXPECT_FALSE(output.isOutputAvailable());
     ASSERT_EQ(getWarnings().size(), 1U);
     EXPECT_NE(getWarnings().front().find("The test refused the context after the output opened."), std::string::npos);
@@ -244,17 +244,17 @@ TEST_F(AudioOutputTest, FallsSilentWhenTheOutputFailsAfterItOpened) {
 TEST_F(AudioOutputTest, ReportsTheStateAndTheLatencyOfTheOutput) {
     accepting = true;
     locked = true;
-    Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
+    haylen::audio::Mixer output({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     ASSERT_TRUE(settle(output));
-    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Locked);
+    EXPECT_EQ(output.getOutputState(), haylen::audio::Mixer::OutputState::Locked);
     EXPECT_NEAR(output.getOutputLatency(), 512.0F / static_cast<float>(kRate), 1e-6F);
     locked = false;
-    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_EQ(output.getOutputState(), haylen::audio::Mixer::OutputState::Running);
     output.suspend();
-    EXPECT_EQ(output.getOutputState(), Mixer::OutputState::Suspended);
+    EXPECT_EQ(output.getOutputState(), haylen::audio::Mixer::OutputState::Suspended);
     output.resume();
-    EXPECT_EQ(Mixer::outputStateName(output.getOutputState()), "running");
-    EXPECT_EQ(mixer.getOutputState(), Mixer::OutputState::Unavailable);
+    EXPECT_EQ(haylen::audio::Mixer::outputStateName(output.getOutputState()), "running");
+    EXPECT_EQ(mixer.getOutputState(), haylen::audio::Mixer::OutputState::Unavailable);
     EXPECT_EQ(mixer.getOutputLatency(), 0.0F);
 }
 
@@ -263,29 +263,29 @@ TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Night Radio", "identifier": "com.haylen.radio", "audio": {"iosSession": "playback"}})"}}, nullptr, {.audioOutput = testOutput});
     EXPECT_TRUE(fixture.host().isBackgroundAudio());
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
-    Mixer& radio = fixture.engine().getAudio();
+    haylen::audio::Mixer& radio = fixture.engine().getAudio();
 
     // In the background the output runs only while a voice plays, so the system may suspend an app whose sound ended, and a voice that starts there brings the output back.
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     fixture.frames(1);
-    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Suspended);
+    EXPECT_EQ(radio.getOutputState(), haylen::audio::Mixer::OutputState::Suspended);
     radio.play(makeTone(toFrames(5.0F)));
     fixture.frames(1);
-    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_EQ(radio.getOutputState(), haylen::audio::Mixer::OutputState::Running);
 
     // The app turns it off and on again while it runs, and the output follows at once.
     fixture.runLua("audio = require('haylen.audio')");
     EXPECT_EQ(fixture.lua("return audio.background()"), "true");
     fixture.runLua("audio.setBackground(false)");
-    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Suspended);
+    EXPECT_EQ(radio.getOutputState(), haylen::audio::Mixer::OutputState::Suspended);
     EXPECT_FALSE(fixture.host().isBackgroundAudio());
     fixture.runLua("audio.setBackground(true)");
     fixture.frames(1);
-    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_EQ(radio.getOutputState(), haylen::audio::Mixer::OutputState::Running);
     EXPECT_TRUE(fixture.host().isBackgroundAudio());
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     fixture.frames(1);
-    EXPECT_EQ(radio.getOutputState(), Mixer::OutputState::Running);
+    EXPECT_EQ(radio.getOutputState(), haylen::audio::Mixer::OutputState::Running);
 
     // An app that does not declare it to the system stops its output in the background whatever plays.
     const std::string_view game = R"({"name": "Tiny Island", "identifier": "com.haylen.tinyisland"})";
@@ -294,11 +294,11 @@ TEST_F(AudioOutputTest, PlaysInTheBackgroundOnlyForAnAppThatDeclaresIt) {
     fixture.restart();
     EXPECT_FALSE(fixture.host().isBackgroundAudio());
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return !fixture.engine().getAudio().isOutputOpening(); }));
-    Mixer& island = fixture.engine().getAudio();
+    haylen::audio::Mixer& island = fixture.engine().getAudio();
     island.play(makeTone(toFrames(5.0F)));
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     fixture.frames(1);
-    EXPECT_EQ(island.getOutputState(), Mixer::OutputState::Suspended);
+    EXPECT_EQ(island.getOutputState(), haylen::audio::Mixer::OutputState::Suspended);
     EXPECT_NE(fixture.lua("require('haylen.audio').setBackground(true)").find(R"(The app plays in the background only when it declares that to the system, with the mode "audio" of "UIBackgroundModes" in its "Info.plist" on Apple platforms and a service of the type "mediaPlayback" in its manifest on Android, which a plugin that plays in the background brings.)"), std::string::npos);
 }
 
@@ -316,8 +316,8 @@ TEST_F(AudioOutputTest, PublishesTheUnlockOfTheOutput) {
 }
 
 TEST_F(AudioOutputTest, OpensTheOutputOnceTheSystemOffersIt) {
-    Mixer recovering({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
-    const Mixer::VoiceId voice = recovering.play(makeTone(toFrames(0.25F)));
+    haylen::audio::Mixer recovering({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
+    const haylen::audio::Mixer::VoiceId voice = recovering.play(makeTone(toFrames(0.25F)));
     ASSERT_TRUE(settle(recovering));
     play(recovering, 0.1F);
 
@@ -348,17 +348,17 @@ TEST_F(AudioOutputTest, KeepsPlayingWhileTheOutputDoesNotAnswer) {
     accepting = true;
     hang();
     const auto before = std::chrono::steady_clock::now();
-    Mixer waiting({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
+    haylen::audio::Mixer waiting({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
     EXPECT_LT(std::chrono::steady_clock::now() - before, std::chrono::seconds(1));
     EXPECT_TRUE(waiting.isOutputOpening());
     EXPECT_FALSE(waiting.isOutputAvailable());
 
     // The frames go on, and the voices move on without sound while the system keeps the opening waiting.
-    const Mixer::VoiceId voice = waiting.play(makeTone(toFrames(8.0F)));
-    play(waiting, Device::kAnswerSeconds - 0.5F);
+    const haylen::audio::Mixer::VoiceId voice = waiting.play(makeTone(toFrames(8.0F)));
+    play(waiting, haylen::audio::Device::kAnswerSeconds - 0.5F);
     EXPECT_TRUE(getWarnings().empty());
     play(waiting, 1.0F);
-    EXPECT_NEAR(waiting.getCursor(voice), Device::kAnswerSeconds + 0.5F, 0.02F);
+    EXPECT_NEAR(waiting.getCursor(voice), haylen::audio::Device::kAnswerSeconds + 0.5F, 0.02F);
     ASSERT_EQ(getWarnings().size(), 1U);
     EXPECT_NE(getWarnings().front().find("does not answer"), std::string::npos);
 
@@ -373,7 +373,7 @@ TEST_F(AudioOutputTest, KeepsPlayingWhileTheOutputDoesNotAnswer) {
     answer();
     ASSERT_TRUE(settle(waiting));
     EXPECT_TRUE(waiting.isOutputAvailable());
-    EXPECT_EQ(getLines(core::Log::Level::Info).size(), 1U);
+    EXPECT_EQ(getLines(haylen::core::Log::Level::Info).size(), 1U);
     EXPECT_EQ(getWarnings().size(), 1U);
 }
 
@@ -381,7 +381,7 @@ TEST_F(AudioOutputTest, ClosesAnOpeningThatOutlivesItsMixer) {
     accepting = true;
     hang();
     {
-        Mixer gone({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
+        haylen::audio::Mixer gone({.device = true, .sampleRate = kRate, .channels = 2, .output = testOutput}, jobs);
         EXPECT_TRUE(gone.isOutputOpening());
     }
 
@@ -412,7 +412,7 @@ TEST_F(AudioOutputTest, OpensTheOutputAgainWhenTheSystemResetsItsServices) {
     test::LuaFixture fixture({}, nullptr, {.audioOutput = testOutput});
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
     const int closed = closedDevices;
-    fixture.engine().handleEvent({.type = platform::Event::Type::AudioServicesReset});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::AudioServicesReset});
     EXPECT_EQ(closedDevices, closed + 1);
     EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
 
@@ -421,4 +421,4 @@ TEST_F(AudioOutputTest, OpensTheOutputAgainWhenTheSystemResetsItsServices) {
     EXPECT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return require('haylen.audio').outputAvailable()") == "true"; }));
 }
 
-} // namespace haylen::audio
+} // namespace haylen::lua::audio

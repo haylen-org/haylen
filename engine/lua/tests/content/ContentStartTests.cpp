@@ -9,7 +9,7 @@
 #include "support/ContentAppFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // An app whose `haylen.json` names content that the engine reads before the app starts: a folder of languages and the group manifest of its delivery rules, which a release may not hold on the device yet, as on a web page.
 class ContentStartTest : public test::ContentAppFixture {
@@ -21,7 +21,7 @@ class ContentStartTest : public test::ContentAppFixture {
         game.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
         game.emplace("content/locale/pt-BR.json", test::TestFiles::bytes(R"({"menu": {"play": "Jogar"}})"));
         game.emplace("content/groups.json", test::TestFiles::bytes(R"({"groups": {"forest": ["levels/"]}})"));
-        release.build(io::MemoryPackage("source", game));
+        release.build(haylen::io::MemoryPackage("source", game));
         publish(game);
     }
 
@@ -55,7 +55,7 @@ TEST_F(ContentStartTest, ShowsWhyTheLanguagesCannotDownloadAndTriesAgain) {
     setPacksStatus(503);
     run(ship());
 
-    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == haylen::content::ContentManager::Status::Failed; }));
     EXPECT_FALSE(hasStarted());
     EXPECT_TRUE(engine->getContent().isHoldingStart()) << "The update screen shows the failure and offers to try again.";
 
@@ -75,4 +75,4 @@ TEST_F(ContentStartTest, ExpandsTheGroupsOfItsRulesOnceTheGroupManifestDownloads
     EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json")) << "The group delivers the level on demand, so the start never downloaded it.";
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

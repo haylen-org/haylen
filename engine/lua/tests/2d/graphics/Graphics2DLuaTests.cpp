@@ -13,7 +13,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 class Graphics2DLuaTest : public ::testing::Test {
   protected:
@@ -468,10 +468,10 @@ TEST_F(Graphics2DLuaTest, KeepsGpuPoolsSteadyAcrossFrames) {
 
     // Both measures fall at the same point between two transitions, after every transition kind ran once.
     fixture.frames(90);
-    std::vector<graphics::Device::Pool> warm;
+    std::vector<haylen::graphics::Device::Pool> warm;
     fixture.engine().getGraphics().readPools(warm);
     fixture.frames(240);
-    std::vector<graphics::Device::Pool> later;
+    std::vector<haylen::graphics::Device::Pool> later;
     fixture.engine().getGraphics().readPools(later);
     ASSERT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_EQ(warm.size(), later.size());
@@ -768,4 +768,4 @@ TEST_F(Graphics2DLuaTest, DrawsEveryKindOfDrawWithoutAllocating) {
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().sprites, 0U);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

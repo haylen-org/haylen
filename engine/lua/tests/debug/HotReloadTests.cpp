@@ -39,23 +39,23 @@
 #include "support/TestApplication.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class HotReloadPluginTest : public PackageEditTest {
   protected:
     // Scans run on the I/O pool, so a watched engine runs frames until what a scan found reached it.
     class WatchedEngine final {
       public:
-        explicit WatchedEngine(const std::filesystem::path& folder, std::unique_ptr<core::Application> application = std::make_unique<test::TestApplication>(nullptr)) : host(folder.parent_path() / "data") {
+        explicit WatchedEngine(const std::filesystem::path& folder, std::unique_ptr<haylen::core::Application> application = std::make_unique<test::TestApplication>(nullptr)) : host(folder.parent_path() / "data") {
             host.enableDevelopment(folder);
-            const std::shared_ptr<io::Package> package = io::Package::openDirectory(folder);
-            core::AppConfig config = core::AppConfig::fromPackage(*package);
+            const std::shared_ptr<haylen::io::Package> package = haylen::io::Package::openDirectory(folder);
+            haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package);
             application->configure(config);
-            engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
+            engine = std::make_unique<haylen::core::Engine>(host, package, std::move(config), std::move(application));
             engine->start();
         }
 
-        [[nodiscard]] core::Engine& get() noexcept {
+        [[nodiscard]] haylen::core::Engine& get() noexcept {
             return *engine;
         }
 
@@ -70,8 +70,8 @@ class HotReloadPluginTest : public PackageEditTest {
         }
 
       private:
-        platform::HeadlessHost host;
-        std::unique_ptr<core::Engine> engine;
+        haylen::platform::HeadlessHost host;
+        std::unique_ptr<haylen::core::Engine> engine;
     };
 };
 
@@ -82,12 +82,12 @@ TEST_F(HotReloadPluginTest, ReloadsFontsAndSoundsInPlace) {
     fixture.package().setFile("content/sounds/beep.wav", test::TestFiles::wav(22050, 1, std::vector<float>(2205, 0.5F)));
     fixture.runLua("require('haylen.ui').addFont('title', 'fonts/title.ttf') beep = require('haylen.assets').load('sounds/beep.wav')");
     fixture.frames(1);
-    core::Engine& engine = fixture.engine();
-    const std::shared_ptr<text::Font> font = engine.getAssets().font("fonts/title.ttf");
-    const math::Vec2 before = font->measure("Hello", {.size = 32.0F});
-    const int uiFontSize = engine.getPlugin<plugins::UiPlugin>().getBackend().getFont("title")->Sources[0]->FontDataSize;
-    core::Json report;
-    const core::Connection connection = engine.getPlugin<plugins::HotReloadPlugin>().reloaded.connect([&report](const plugins::HotReloadPlugin::Report& value) { report = value.toJson(); });
+    haylen::core::Engine& engine = fixture.engine();
+    const std::shared_ptr<haylen::text::Font> font = engine.getAssets().font("fonts/title.ttf");
+    const haylen::math::Vec2 before = font->measure("Hello", {.size = 32.0F});
+    const int uiFontSize = engine.getPlugin<haylen::plugins::UiPlugin>().getBackend().getFont("title")->Sources[0]->FontDataSize;
+    haylen::core::Json report;
+    const haylen::core::Connection connection = engine.getPlugin<haylen::plugins::HotReloadPlugin>().reloaded.connect([&report](const haylen::plugins::HotReloadPlugin::Report& value) { report = value.toJson(); });
 
     fixture.package().setFile("content/fonts/title.ttf", test::FontCollection::read("crimson-text-regular.ttf"));
     fixture.package().setFile("content/sounds/beep.wav", test::TestFiles::wav(22050, 1, std::vector<float>(22050, 0.5F)));
@@ -97,14 +97,14 @@ TEST_F(HotReloadPluginTest, ReloadsFontsAndSoundsInPlace) {
 
     EXPECT_FALSE(engine.isRestartRequested());
     ASSERT_TRUE(report.contains("files"));
-    for (const core::Json& file : report.at("files")) {
+    for (const haylen::core::Json& file : report.at("files")) {
         EXPECT_EQ(file.at("change"), "inPlace") << file.dump();
     }
 
     EXPECT_EQ(font->getRevision(), 1U);
     EXPECT_EQ(engine.getAssets().font("fonts/title.ttf"), font);
     EXPECT_NE(font->measure("Hello", {.size = 32.0F}).x, before.x);
-    EXPECT_NE(engine.getPlugin<plugins::UiPlugin>().getBackend().getFont("title")->Sources[0]->FontDataSize, uiFontSize);
+    EXPECT_NE(engine.getPlugin<haylen::plugins::UiPlugin>().getBackend().getFont("title")->Sources[0]->FontDataSize, uiFontSize);
     EXPECT_EQ(fixture.lua("return string.format('%.1f', beep.duration)"), "1.0");
 }
 
@@ -117,7 +117,7 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     std::vector<std::string> log;
     std::mutex logMutex;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level, std::string_view line) {
+    const std::uint64_t listener = haylen::core::Log::addListener([&](haylen::core::Log::Level, std::string_view line) {
         const std::scoped_lock lock(logMutex);
         log.emplace_back(line);
     });
@@ -128,9 +128,9 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     // clang-format on
 
     WatchedEngine watched(directory.getPath() / "hot");
-    core::Engine& engine = watched.get();
-    EXPECT_TRUE(engine.getPlugin<plugins::HotReloadPlugin>().isActive());
-    const graphics::Texture tile = engine.getAssets().texture("tile.png");
+    haylen::core::Engine& engine = watched.get();
+    EXPECT_TRUE(engine.getPlugin<haylen::plugins::HotReloadPlugin>().isActive());
+    const haylen::graphics::Texture tile = engine.getAssets().texture("tile.png");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(6, 6, 0xFFFFFFFFU)));
     touch(directory.getPath() / "hot/content/tile.png", 5);
     EXPECT_TRUE(watched.runUntil([&] { return tile.getWidth() == 6; }));
@@ -152,7 +152,7 @@ TEST_F(HotReloadPluginTest, RestartsForScriptsAndReloadsAssets) {
     directory.write("hot/source/main.lua", "-- edited");
     touch(directory.getPath() / "hot/source/main.lua", 5);
     EXPECT_TRUE(watched.runUntil([&] { return engine.isRestartRequested(); }));
-    core::Log::removeListener(listener);
+    haylen::core::Log::removeListener(listener);
 }
 
 TEST_F(HotReloadPluginTest, ReloadsTheLuaOfAPluginInPlace) {
@@ -188,7 +188,7 @@ TEST_F(HotReloadPluginTest, IgnoresTheFilesOfEditors) {
     directory.write("hot/source/main.lua", "");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
     WatchedEngine watched(directory.getPath() / "hot");
-    const graphics::Texture tile = watched.get().getAssets().texture("tile.png");
+    const haylen::graphics::Texture tile = watched.get().getAssets().texture("tile.png");
 
     // The tile that reloads shows that a scan saw the files the editor wrote before it.
     directory.write("hot/source/.main.lua.swp", "swap");
@@ -206,11 +206,11 @@ TEST_F(HotReloadPluginTest, ScansWhileTheAppIsHalted) {
     directory.write("hot/source/main.lua", "");
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(2, 2, 0xFFFFFFFFU)));
     WatchedEngine watched(directory.getPath() / "hot");
-    core::Engine& engine = watched.get();
-    const graphics::Texture tile = engine.getAssets().texture("tile.png");
+    haylen::core::Engine& engine = watched.get();
+    const haylen::graphics::Texture tile = engine.getAssets().texture("tile.png");
 
     // The editor takes the focus, which halts an app that pauses on focus loss, and the files it saves still reach the app.
-    engine.handleEvent({.type = platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
     ASSERT_TRUE(engine.isHalted());
     directory.write("hot/content/tile.png", toText(test::TestFiles::pngImage(4, 4, 0xFFFFFFFFU)));
     touch(directory.getPath() / "hot/content/tile.png", 5);
@@ -219,7 +219,7 @@ TEST_F(HotReloadPluginTest, ScansWhileTheAppIsHalted) {
 
 TEST_F(HotReloadPluginTest, StaysIdleForShippedApps) {
     test::LuaFixture fixture;
-    EXPECT_FALSE(fixture.engine().getPlugin<plugins::HotReloadPlugin>().isActive());
+    EXPECT_FALSE(fixture.engine().getPlugin<haylen::plugins::HotReloadPlugin>().isActive());
     EXPECT_EQ(fixture.host().getDevelopmentSession(), nullptr);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
     fixture.engine().requestRestart();
@@ -228,7 +228,7 @@ TEST_F(HotReloadPluginTest, StaysIdleForShippedApps) {
 
 TEST_F(HotReloadPluginTest, KeepsChangesThatArriveDuringARestart) {
     test::LuaFixture fixture({}, nullptr, {.development = true});
-    platform::DevelopmentSession& session = fixture.developmentSession();
+    haylen::platform::DevelopmentSession& session = fixture.developmentSession();
 
     // The session belongs to the host, so a change queued while the engine is replaced reaches the next engine.
     fixture.engine().requestRestart();
@@ -247,16 +247,16 @@ TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenHaylenJsonChanges) {
     directory.write("broken/source/main.lua", "");
 
     // The runtime plays an app whose configuration fails with defaults and an application that shows the reason, and the app still restarts once the file is fixed.
-    platform::HeadlessHost host(directory.getPath() / "data");
+    haylen::platform::HeadlessHost host(directory.getPath() / "data");
     host.enableDevelopment(directory.getPath() / "broken");
     // clang-format off
-    core::Engine engine(host, io::Package::openDirectory(directory.getPath() / "broken"), core::AppConfig{}, std::make_unique<test::TestApplication>([](core::Engine&) {
+    haylen::core::Engine engine(host, haylen::io::Package::openDirectory(directory.getPath() / "broken"), haylen::core::AppConfig{}, std::make_unique<test::TestApplication>([](haylen::core::Engine&) {
         throw std::runtime_error("The app could not be loaded. Unknown key \"widht\".");
     }));
     // clang-format on
     engine.start();
     ASSERT_NE(engine.getError(), nullptr);
-    EXPECT_TRUE(engine.getPlugin<plugins::HotReloadPlugin>().isActive());
+    EXPECT_TRUE(engine.getPlugin<haylen::plugins::HotReloadPlugin>().isActive());
 
     directory.write("broken/haylen.json", R"({"name": "Broken", "window": {"width": 100}})");
     touch(directory.getPath() / "broken/haylen.json", 5);
@@ -269,4 +269,4 @@ TEST_F(HotReloadPluginTest, RestartsFromAFailedAppWhenHaylenJsonChanges) {
     EXPECT_TRUE(engine.isRestartRequested());
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

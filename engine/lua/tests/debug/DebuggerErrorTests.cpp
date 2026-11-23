@@ -6,7 +6,7 @@
 #include "debug/DebuggerTest.hpp"
 #include "haylen/core/Json.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class DebuggerErrorTest : public DebuggerTest {};
 
@@ -28,15 +28,15 @@ TEST_F(DebuggerErrorTest, HaltsWhereAnUncaughtErrorRisesBeforeItsStackUnwinds) {
     client.then([](test::DebugClient& debug) { debug.request("next"); });
     EXPECT_NE(run(fixture.lua(), "require('mod').fail(21)").find("broken 42"), std::string::npos);
 
-    const std::vector<core::Json> stops = client.getEvents("stopped");
+    const std::vector<haylen::core::Json> stops = client.getEvents("stopped");
     ASSERT_EQ(stops.size(), 1U);
     EXPECT_EQ(stops.front().at("reason"), "exception");
     EXPECT_NE(stops.front().at("text").get<std::string>().find("broken 42"), std::string::npos);
-    const core::Json stack = client.getResponse(frames).at("body").at("stackFrames");
+    const haylen::core::Json stack = client.getResponse(frames).at("body").at("stackFrames");
     EXPECT_EQ(stack.at(0).at("name"), "error");
     EXPECT_EQ(stack.at(1).at("name"), "fail");
     EXPECT_EQ(stack.at(1).at("line"), 20);
-    const core::Json variables = client.getResponse(locals).at("body").at("variables");
+    const haylen::core::Json variables = client.getResponse(locals).at("body").at("variables");
     EXPECT_EQ(variables.at(1).at("name"), "doubled");
     EXPECT_EQ(variables.at(1).at("value"), "42");
 }
@@ -55,4 +55,4 @@ TEST_F(DebuggerErrorTest, HaltsOnTheErrorOfATaskOfTheAsyncLibrary) {
     EXPECT_NE(fixture.engine().getError(), nullptr);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

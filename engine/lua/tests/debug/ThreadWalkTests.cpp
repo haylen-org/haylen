@@ -6,7 +6,7 @@
 
 #include "debug/ThreadWalk.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class ThreadWalkTest : public ::testing::Test {
   protected:
@@ -51,4 +51,4 @@ TEST_F(ThreadWalkTest, RestartsTheCollectorWhenTheWalkFails) {
     EXPECT_NE(lua_gc(state.get(), LUA_GCISRUNNING), 0);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

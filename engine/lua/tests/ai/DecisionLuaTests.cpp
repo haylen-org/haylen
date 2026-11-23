@@ -4,7 +4,7 @@
 
 #include "support/LuaFixture.hpp"
 
-namespace haylen::ai {
+namespace haylen::lua::ai {
 
 class DecisionLuaTest : public ::testing::Test {
   protected:
@@ -181,4 +181,4 @@ TEST_F(DecisionLuaTest, SpreadsInfluence) {
     EXPECT_NE(lua("ai.newInfluenceMap({columns = 1, rows = 1, cellSize = math.huge})").find("finite cell size above 0"), std::string::npos);
 }
 
-} // namespace haylen::ai
+} // namespace haylen::lua::ai

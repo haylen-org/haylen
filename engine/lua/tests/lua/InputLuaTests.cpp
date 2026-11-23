@@ -9,20 +9,20 @@
 #include "haylen/platform/Event.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::input {
+namespace haylen::lua::input {
 
 class InputLuaTest : public ::testing::Test {
   protected:
-    [[nodiscard]] static platform::Event makeKeyEvent(platform::Event::Type type, Key key) {
+    [[nodiscard]] static haylen::platform::Event makeKeyEvent(haylen::platform::Event::Type type, haylen::input::Key key) {
         return {.type = type, .key = key, .modifiers = {.shift = true}};
     }
 
-    [[nodiscard]] static platform::Event makeMouseEvent(platform::Event::Type type, math::Vec2 position, MouseButton button = MouseButton::Left) {
+    [[nodiscard]] static haylen::platform::Event makeMouseEvent(haylen::platform::Event::Type type, haylen::math::Vec2 position, haylen::input::MouseButton button = haylen::input::MouseButton::Left) {
         return {.type = type, .mouseButton = button, .position = position};
     }
 
-    [[nodiscard]] static platform::Event makeTouchEvent(platform::Event::Type type, math::Vec2 position) {
-        platform::Event event{.type = type, .touchCount = 1};
+    [[nodiscard]] static haylen::platform::Event makeTouchEvent(haylen::platform::Event::Type type, haylen::math::Vec2 position) {
+        haylen::platform::Event event{.type = type, .touchCount = 1};
         event.touches[0] = {.id = 7, .position = position, .changed = true};
         return event;
     }
@@ -39,9 +39,9 @@ class InputLuaTest : public ::testing::Test {
 };
 
 TEST_F(InputLuaTest, ReadsKeyboardState) {
-    core::Engine& engine = fixture.engine();
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::Space));
-    engine.handleEvent({.type = platform::Event::Type::Character, .character = U'é'});
+    haylen::core::Engine& engine = fixture.engine();
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyDown, haylen::input::Key::Space));
+    engine.handleEvent({.type = haylen::platform::Event::Type::Character, .character = U'é'});
     EXPECT_EQ(lua("return input.keyDown('space') and input.keyPressed('space') and input.anyKeyPressed()"), "true");
     EXPECT_EQ(lua("return input.modifiers().shift and not input.modifiers().control"), "true");
     EXPECT_EQ(lua("return input.text()"), "é");
@@ -49,54 +49,54 @@ TEST_F(InputLuaTest, ReadsKeyboardState) {
 
     fixture.frames(1);
     EXPECT_EQ(lua("return input.keyDown('space') and not input.keyPressed('space')"), "true");
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyUp, Key::Space));
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyUp, haylen::input::Key::Space));
     EXPECT_EQ(lua("return input.keyReleased('space') and not input.keyDown('space')"), "true");
     EXPECT_NE(lua("return input.keyDown('hyperspace')").find("error: "), std::string::npos);
 }
 
 TEST_F(InputLuaTest, ReadsMouseInDesignCoordinates) {
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     fixture.host().resize({960.0F, 540.0F});
     fixture.frames(1);
 
     // The pointer arrives without moving, and moves from there.
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseMove, {60.0F, 30.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseMove, {60.0F, 30.0F}));
     EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "0.0,0.0");
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseMove, {100.0F, 50.0F}));
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 50.0F}, MouseButton::Right));
-    engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {0.0F, -2.0F}});
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseMove, {100.0F, 50.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseDown, {100.0F, 50.0F}, haylen::input::MouseButton::Right));
+    engine.handleEvent({.type = haylen::platform::Event::Type::MouseScroll, .scroll = {0.0F, -2.0F}});
     EXPECT_EQ(lua("local x, y = input.mousePosition() return x .. ',' .. y"), "200.0,100.0");
     EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "80.0,40.0");
     EXPECT_EQ(lua("local x, y = input.mouseScroll() return x .. ',' .. y"), "0.0,-2.0");
     EXPECT_EQ(lua("return input.mouseDown('right') and input.mousePressed('right') and not input.mouseDown()"), "true");
     EXPECT_EQ(lua("return input.mouseInside()"), "true");
 
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 50.0F}, MouseButton::Right));
-    engine.handleEvent({.type = platform::Event::Type::MouseLeave});
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseUp, {100.0F, 50.0F}, haylen::input::MouseButton::Right));
+    engine.handleEvent({.type = haylen::platform::Event::Type::MouseLeave});
     EXPECT_EQ(lua("return input.mouseReleased('right') and not input.mouseInside()"), "true");
 }
 
 TEST_F(InputLuaTest, TracksTouches) {
-    core::Engine& engine = fixture.engine();
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {100.0F, 200.0F}));
+    haylen::core::Engine& engine = fixture.engine();
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {100.0F, 200.0F}));
     EXPECT_EQ(lua("local t = input.touches()[1] return t.id .. ' ' .. t.x .. ' ' .. t.phase"), "7 100.0 began");
     EXPECT_EQ(lua("return input.lastDevice()"), "touch");
 
     fixture.frames(1);
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchMoved, {130.0F, 200.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchMoved, {130.0F, 200.0F}));
     EXPECT_EQ(lua("local t = input.touches()[1] return t.dx .. ' ' .. t.startX .. ' ' .. t.phase .. ' ' .. tostring(t.duration > 0)"), "30.0 100.0 moved true");
 
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, {130.0F, 200.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchEnded, {130.0F, 200.0F}));
     EXPECT_EQ(lua("return input.touches()[1].phase"), "ended");
     fixture.frames(1);
     EXPECT_EQ(lua("return #input.touches()"), "0");
 }
 
 TEST_F(InputLuaTest, ReadsGamepads) {
-    GamepadState pad{.connected = true, .name = "Test Pad"};
-    pad.buttons[static_cast<std::size_t>(GamepadButton::South)] = true;
-    pad.axes[static_cast<std::size_t>(GamepadAxis::LeftX)] = 1.0F;
-    pad.axes[static_cast<std::size_t>(GamepadAxis::RightTrigger)] = 0.05F;
+    haylen::input::GamepadState pad{.connected = true, .name = "Test Pad"};
+    pad.buttons[static_cast<std::size_t>(haylen::input::GamepadButton::South)] = true;
+    pad.axes[static_cast<std::size_t>(haylen::input::GamepadAxis::LeftX)] = 1.0F;
+    pad.axes[static_cast<std::size_t>(haylen::input::GamepadAxis::RightTrigger)] = 0.05F;
     fixture.host().setGamepad(1, pad);
     fixture.frames(1);
 
@@ -131,9 +131,9 @@ TEST_F(InputLuaTest, MapsActionsFromEveryDevice) {
     // clang-format on
     EXPECT_EQ(lua("return table.concat(input.actionNames(), ',')"), "jump,throttle,move");
 
-    core::Engine& engine = fixture.engine();
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::W));
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::Right));
+    haylen::core::Engine& engine = fixture.engine();
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyDown, haylen::input::Key::W));
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyDown, haylen::input::Key::Right));
     fixture.frames(1);
     EXPECT_EQ(lua("return input.value('throttle')"), "1.0");
     EXPECT_EQ(lua("local x, y = input.vector('move') return x .. ',' .. y"), "1.0,0.0");
@@ -146,7 +146,7 @@ TEST_F(InputLuaTest, MapsActionsFromEveryDevice) {
     fixture.frames(1);
     EXPECT_EQ(lua("return input.released('jump')"), "true");
 
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyUp, Key::Right));
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyUp, haylen::input::Key::Right));
     lua("input.setVirtualStick('move', 0, -1)");
     fixture.frames(1);
     EXPECT_EQ(lua("local x, y = input.vector('move') return x .. ',' .. y"), "0.0,-1.0");
@@ -171,14 +171,14 @@ TEST_F(InputLuaTest, DeliversEventsToScenesInDesignCoordinates) {
     lua("events = {} require('haylen.scene').push({event = function(self, e) events[#events + 1] = e end})");
     fixture.frames(1);
 
-    core::Engine& engine = fixture.engine();
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::A));
-    engine.handleEvent({.type = platform::Event::Type::Character, .character = U'a'});
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {10.0F, 20.0F}));
-    engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {1.0F, 0.0F}});
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {5.0F, 5.0F}));
-    engine.handleEvent({.type = platform::Event::Type::FocusLost});
-    engine.handleEvent({.type = platform::Event::Type::MouseMove, .modifiers = {.control = true, .alt = true}, .position = {30.0F, 40.0F}, .delta = {3.0F, -4.0F}});
+    haylen::core::Engine& engine = fixture.engine();
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyDown, haylen::input::Key::A));
+    engine.handleEvent({.type = haylen::platform::Event::Type::Character, .character = U'a'});
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseDown, {10.0F, 20.0F}));
+    engine.handleEvent({.type = haylen::platform::Event::Type::MouseScroll, .scroll = {1.0F, 0.0F}});
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {5.0F, 5.0F}));
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::MouseMove, .modifiers = {.control = true, .alt = true}, .position = {30.0F, 40.0F}, .delta = {3.0F, -4.0F}});
 
     EXPECT_EQ(lua("return events[1].type .. ' ' .. events[1].key .. ' ' .. tostring(events[1]['repeat'])"), "keyDown a false");
     EXPECT_EQ(lua("local m = events[1].modifiers return tostring(m.shift) .. tostring(m.control) .. tostring(m.alt) .. tostring(m.super)"), "truefalsefalsefalse");
@@ -191,11 +191,11 @@ TEST_F(InputLuaTest, DeliversEventsToScenesInDesignCoordinates) {
 }
 
 TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     fixture.host().resize({960.0F, 540.0F});
     fixture.frames(1);
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {100.0F, 200.0F}));
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseMove, {30.0F, 15.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseMove, {30.0F, 15.0F}));
     EXPECT_EQ(lua("local t = input.findTouch(7) return t.x .. ',' .. t.y .. ' ' .. t.phase .. ' ' .. tostring(input.findTouch(8))"), "200.0,400.0 began nil");
     EXPECT_EQ(lua("local x, y = input.mouseFramebufferPosition() return x .. ',' .. y"), "30.0,15.0");
 
@@ -205,8 +205,8 @@ TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
     // A trackpad counts forty points as a step of a wheel, and the scroll speed multiplies both kinds.
     EXPECT_EQ(lua("return input.scrollSpeed()"), "1.0");
     lua("input.setScrollSpeed(0.5)");
-    engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {0.0F, -80.0F}, .preciseScroll = true});
-    engine.handleEvent({.type = platform::Event::Type::MouseScroll, .scroll = {0.0F, 2.0F}});
+    engine.handleEvent({.type = haylen::platform::Event::Type::MouseScroll, .scroll = {0.0F, -80.0F}, .preciseScroll = true});
+    engine.handleEvent({.type = haylen::platform::Event::Type::MouseScroll, .scroll = {0.0F, 2.0F}});
     EXPECT_EQ(lua("local x, y = input.mouseScroll() return x .. ',' .. y .. ' ' .. input.scrollSpeed()"), "0.0,0.0 0.5");
     EXPECT_NE(lua("input.setScrollSpeed(0)").find("The scroll speed must be a positive number."), std::string::npos);
 
@@ -216,65 +216,65 @@ TEST_F(InputLuaTest, ReadsSingleTouchesAndDeviceSettings) {
 }
 
 TEST_F(InputLuaTest, TurnsTheMouseIntoAFingerAndAFingerIntoTheMouse) {
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     EXPECT_EQ(lua("return tostring(input.mouseAsTouch()) .. ' ' .. tostring(input.touchAsMouse())"), "false false");
 
     lua("input.setMouseAsTouch(true)");
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseDown, {100.0F, 200.0F}));
     EXPECT_EQ(lua("local t = input.touches()[1] return #input.touches() .. ' ' .. t.x .. ' ' .. t.phase .. ' ' .. input.lastDevice() .. ' ' .. tostring(input.mouseDown('left'))"), "1 100.0 began touch false");
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseUp, {100.0F, 200.0F}));
     EXPECT_EQ(lua("return input.touches()[1].phase"), "ended");
     fixture.frames(1);
 
     lua("input.setMouseAsTouch(false) input.setTouchAsMouse(true)");
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
     EXPECT_EQ(lua("local x, y = input.mousePosition() return tostring(input.mousePressed('left')) .. ' ' .. x .. ',' .. y .. ' ' .. #input.touches() .. ' ' .. input.lastDevice()"), "true 300.0,150.0 1 touch");
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
     EXPECT_EQ(lua("return tostring(input.mouseReleased('left')) .. ' ' .. tostring(input.mouseInside())"), "true false");
     fixture.frames(1);
 
     // A finger that lands elsewhere takes the mouse there without a jump.
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {800.0F, 500.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {800.0F, 500.0F}));
     EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "0.0,0.0");
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchMoved, {810.0F, 500.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchMoved, {810.0F, 500.0F}));
     EXPECT_EQ(lua("local x, y = input.mouseDelta() return x .. ',' .. y"), "10.0,0.0");
 }
 
 TEST_F(InputLuaTest, KeepsAPressOnTheDeviceItStartedAs) {
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     lua("input.setTouchAsMouse(true)");
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
     fixture.frames(1);
     lua("input.setTouchAsMouse(false)");
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchEnded, {300.0F, 150.0F}));
     EXPECT_EQ(lua("return tostring(input.mouseDown('left')) .. ' ' .. tostring(input.mouseReleased('left'))"), "false true");
     fixture.frames(1);
 
     lua("input.setMouseAsTouch(true)");
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseDown, {100.0F, 200.0F}));
     fixture.frames(1);
     lua("input.setMouseAsTouch(false)");
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseUp, {100.0F, 200.0F}));
     EXPECT_EQ(lua("return input.touches()[1].phase .. ' ' .. tostring(input.mouseReleased('left'))"), "ended false");
     fixture.frames(1);
 
     // A release whose press came before the emulation stays a release of the mouse.
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseDown, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseDown, {100.0F, 200.0F}));
     lua("input.setMouseAsTouch(true)");
-    engine.handleEvent(makeMouseEvent(platform::Event::Type::MouseUp, {100.0F, 200.0F}));
+    engine.handleEvent(makeMouseEvent(haylen::platform::Event::Type::MouseUp, {100.0F, 200.0F}));
     EXPECT_EQ(lua("return tostring(input.mouseDown('left')) .. ' ' .. #input.touches()"), "false 0");
 }
 
 TEST_F(InputLuaTest, ForgetsTheEmulatedPressWhenTheWindowLosesTheFocus) {
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     lua("input.setTouchAsMouse(true)");
-    engine.handleEvent(makeTouchEvent(platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
-    engine.handleEvent({.type = platform::Event::Type::FocusLost});
-    engine.handleEvent({.type = platform::Event::Type::FocusGained});
+    engine.handleEvent(makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {300.0F, 150.0F}));
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
     fixture.frames(1);
 
     // The finger the platform never ended no longer holds the mouse, so the next finger drives it.
-    platform::Event next = makeTouchEvent(platform::Event::Type::TouchBegan, {500.0F, 150.0F});
+    haylen::platform::Event next = makeTouchEvent(haylen::platform::Event::Type::TouchBegan, {500.0F, 150.0F});
     next.touches[0].id = 8;
     engine.handleEvent(next);
     EXPECT_EQ(lua("local x = input.mousePosition() return tostring(input.mousePressed('left')) .. ' ' .. x"), "true 500.0");
@@ -292,18 +292,18 @@ TEST_F(InputLuaTest, EditsATextFieldTheAppDrawsWithTheNativeTextInput) {
     fixture.frames(1);
 
     lua("input.editText({text = 'Ana', x = 100, y = 200, width = 400, height = 60, keyboard = 'email', returnKey = 'done'})");
-    const std::vector<platform::TextInput::Field>& published = fixture.host().getPlatformTextInput().getPublished();
+    const std::vector<haylen::platform::TextInput::Field>& published = fixture.host().getPlatformTextInput().getPublished();
     ASSERT_EQ(published.size(), 1U);
-    EXPECT_EQ(published[0].id, AppTextField::kField);
+    EXPECT_EQ(published[0].id, haylen::input::AppTextField::kField);
     EXPECT_EQ(published[0].text, "Ana");
     EXPECT_EQ(published[0].selectionStart, 3);
-    EXPECT_EQ(published[0].bounds, (math::Rect{50.0F, 100.0F, 200.0F, 30.0F}));
-    EXPECT_EQ(published[0].options.keyboard, platform::TextInput::Keyboard::Email);
+    EXPECT_EQ(published[0].bounds, (haylen::math::Rect{50.0F, 100.0F, 200.0F, 30.0F}));
+    EXPECT_EQ(published[0].options.keyboard, haylen::platform::TextInput::Keyboard::Email);
     EXPECT_EQ(lua("return tostring(input.editingText())"), "true");
 
     // What the user composes reaches the app, and showing it back keeps the native field as it is.
-    platform::Event typed{.type = platform::Event::Type::TextEdited};
-    typed.textEdit = {.field = AppTextField::kField, .revision = published[0].revision, .text = "Ana\xE3\x81\x82", .selectionStart = 4, .selectionEnd = 4, .compositionStart = 3, .compositionEnd = 4};
+    haylen::platform::Event typed{.type = haylen::platform::Event::Type::TextEdited};
+    typed.textEdit = {.field = haylen::input::AppTextField::kField, .revision = published[0].revision, .text = "Ana\xE3\x81\x82", .selectionStart = 4, .selectionEnd = 4, .compositionStart = 3, .compositionEnd = 4};
     fixture.engine().handleEvent(typed);
     EXPECT_EQ(lua("local e = events[1] return e.field .. ' ' .. e.text .. ' ' .. e.selectionStart .. ' ' .. e.compositionStart .. ' ' .. e.compositionEnd"), "4294967296 Ana\xE3\x81\x82 4 3 4");
     lua("input.editText({text = events[1].text, selectionStart = 4, x = 100, y = 200, width = 400, height = 60, keyboard = 'email', returnKey = 'done'})");
@@ -340,8 +340,8 @@ TEST_F(InputLuaTest, DefinesActionsOneByOne) {
     lua("input.defineAction({name = 'jump', type = 'button', bindings = {'key:w'}})");
     EXPECT_EQ(lua("return table.concat(input.actionNames(), ',') .. ' ' .. input.actionDefinition('jump').bindings[1]"), "jump,move key:w");
 
-    core::Engine& engine = fixture.engine();
-    engine.handleEvent(makeKeyEvent(platform::Event::Type::KeyDown, Key::W));
+    haylen::core::Engine& engine = fixture.engine();
+    engine.handleEvent(makeKeyEvent(haylen::platform::Event::Type::KeyDown, haylen::input::Key::W));
     fixture.frames(1);
     EXPECT_EQ(lua("return input.down('jump')"), "true");
 
@@ -373,15 +373,15 @@ TEST(InputStepLuaTest, CountsEveryPressOnceInFixedSteps) {
 
     // Taps at 120 frames a second reach one step of 30 a second each, and a tap in a slow frame that runs several steps reaches only the first. The first frame enters the scene, which holds input back.
     fixture.frames(1, 0.0);
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     for (int tap = 0; tap < 3; ++tap) {
-        engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = Key::F});
-        engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = Key::F});
+        engine.handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::F});
+        engine.handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::F});
         fixture.frames(5, 1.0 / 120.0);
     }
 
     EXPECT_EQ(fixture.lua("return attacks .. ' ' .. held"), "3 3");
-    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = Key::F});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::F});
     fixture.frames(1, 1.0 / 10.0);
     EXPECT_EQ(fixture.lua("return attacks .. ' ' .. held"), "4 6");
     EXPECT_EQ(fixture.lua("return input.consumePress('attack') and not input.consumePress('attack')"), "true");
@@ -397,9 +397,9 @@ TEST_F(InputLuaTest, GivesEachPlayerAnActionMapWithItsOwnDevices) {
         second = input.newActionMap({keyboard = false, gamepad = 2, actions = document})
     )");
     // clang-format on
-    GamepadState pad{.connected = true, .name = "Second Pad"};
-    pad.buttons[static_cast<std::size_t>(GamepadButton::South)] = true;
-    pad.buttons[static_cast<std::size_t>(GamepadButton::West)] = true;
+    haylen::input::GamepadState pad{.connected = true, .name = "Second Pad"};
+    pad.buttons[static_cast<std::size_t>(haylen::input::GamepadButton::South)] = true;
+    pad.buttons[static_cast<std::size_t>(haylen::input::GamepadButton::West)] = true;
     fixture.host().setGamepad(1, pad);
     fixture.frames(1);
 
@@ -430,7 +430,7 @@ TEST_F(InputLuaTest, GivesEachPlayerAnActionMapWithItsOwnDevices) {
 }
 
 TEST_F(InputLuaTest, RumblesGamepadsAndNamesTheirFaceButtons) {
-    GamepadState pad{.connected = true, .name = "Pad", .labels = GamepadLabels::Shapes};
+    haylen::input::GamepadState pad{.connected = true, .name = "Pad", .labels = haylen::input::GamepadLabels::Shapes};
     fixture.host().setGamepad(1, pad);
     fixture.frames(1);
     EXPECT_EQ(lua("return input.gamepadLabels(2) .. ' ' .. input.gamepadLabels(1)"), "shapes unknown");
@@ -445,7 +445,7 @@ TEST_F(InputLuaTest, RumblesGamepadsAndNamesTheirFaceButtons) {
     EXPECT_FLOAT_EQ(rumbles[1].seconds, 0.2F);
 
     // Losing the focus stops every gamepad that rumbled.
-    fixture.engine().handleEvent({.type = platform::Event::Type::FocusLost});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::FocusLost});
     ASSERT_EQ(rumbles.size(), 4U);
     EXPECT_EQ(rumbles[2].index, 1U);
     EXPECT_EQ(rumbles[2].low + rumbles[2].high, 0.0F);
@@ -457,4 +457,4 @@ TEST_F(InputLuaTest, RumblesGamepadsAndNamesTheirFaceButtons) {
     EXPECT_NE(lua("input.rumble(9)").find("gamepad index out of range"), std::string::npos);
 }
 
-} // namespace haylen::input
+} // namespace haylen::lua::input

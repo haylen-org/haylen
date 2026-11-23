@@ -12,7 +12,7 @@
 #include "haylen/io/PackageWatcher.hpp"
 #include "support/TemporaryDirectory.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class PackageWatcherTest : public PackageEditTest {
   protected:
@@ -29,7 +29,7 @@ TEST_F(PackageWatcherTest, ReportsAddedChangedAndRemovedFiles) {
     directory.write("plugins/ads/plugin.json", "{}");
     directory.write("plugins/ads/source/init.lua", "return {}");
     directory.write("plugins/ads/android/build.gradle.kts", "");
-    io::PackageWatcher watcher(directory.getPath());
+    haylen::io::PackageWatcher watcher(directory.getPath());
     EXPECT_TRUE(watcher.scan().empty());
 
     // Only `haylen.json`, `source`, `content` and the manifests and Lua modules of plugins belong to the package, so files next to them and the native parts of plugins never count.
@@ -52,7 +52,7 @@ TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
     directory.write("haylen.json", "{}");
     directory.write("source/main.lua", "");
     directory.write("plugins/ads/plugin.json", "{}");
-    io::PackageWatcher watcher(directory.getPath());
+    haylen::io::PackageWatcher watcher(directory.getPath());
 
     // Editors write swap, backup and lock files next to the file they save, which must never restart the app.
     directory.write("source/.level.lua.swp", "swap");
@@ -69,18 +69,18 @@ TEST_F(PackageWatcherTest, IgnoresHiddenBackupAndNonLuaSourceFiles) {
     directory.write("plugins/ads/source/banner.lua", "return {}");
     EXPECT_EQ(watcher.scan(), (std::vector<std::string>{"content/hero.png", "plugins/ads/source/banner.lua", "source/level.lua"}));
 
-    EXPECT_TRUE(io::PackageWatcher::isWatched("haylen.json"));
-    EXPECT_TRUE(io::PackageWatcher::isWatched("plugins/ads/plugin.json"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/ads/android/build.gradle.kts"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("plugins/README.md"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("native/web/app.js"));
-    EXPECT_FALSE(io::PackageWatcher::isWatched("source/.level.lua.swp"));
+    EXPECT_TRUE(haylen::io::PackageWatcher::isWatched("haylen.json"));
+    EXPECT_TRUE(haylen::io::PackageWatcher::isWatched("plugins/ads/plugin.json"));
+    EXPECT_FALSE(haylen::io::PackageWatcher::isWatched("plugins/ads/android/build.gradle.kts"));
+    EXPECT_FALSE(haylen::io::PackageWatcher::isWatched("plugins/README.md"));
+    EXPECT_FALSE(haylen::io::PackageWatcher::isWatched("native/web/app.js"));
+    EXPECT_FALSE(haylen::io::PackageWatcher::isWatched("source/.level.lua.swp"));
 }
 
 TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
     const test::TemporaryDirectory directory;
     directory.write("content/level.json", "{}");
-    io::PackageWatcher watcher(directory.getPath());
+    haylen::io::PackageWatcher watcher(directory.getPath());
 
     // A file that grows while the scan looks at it is still being written, so the scan leaves it for later, whether it changes or is new. The writer appends to the files, since a file truncated and written again can make the file system flush it when it closes and hold the writer up for longer than the scan waits.
     std::atomic<bool> writing = true;
@@ -110,4 +110,4 @@ TEST_F(PackageWatcherTest, WaitsForFilesToSettle) {
     EXPECT_TRUE(watcher.scan().empty());
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

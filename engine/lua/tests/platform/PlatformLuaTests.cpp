@@ -16,7 +16,7 @@
 #include "support/TestFiles.hpp"
 #include "varn/dataview/DataViewJson.h"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 TEST(PlatformLuaTest, CallsNativeAndLuaHandlersWithPromises) {
     test::LuaFixture fixture;
@@ -238,11 +238,11 @@ TEST(PlatformLuaTest, SendsAndReceivesBytesNextToJson) {
     // The marked strings cross as buffers, while a plain string with the same bytes stays text.
     const auto bytesOf = [](std::string_view text) { return std::vector<std::byte>(reinterpret_cast<const std::byte*>(text.data()), reinterpret_cast<const std::byte*>(text.data()) + text.size()); };
     ASSERT_EQ(fixture.host().getPlatformCalls().size(), 1U);
-    const HeadlessHost::PlatformCall& stored = fixture.host().getPlatformCalls()[0];
-    const core::Json params = core::Json::parse(stored.paramsJson);
+    const haylen::platform::HeadlessHost::PlatformCall& stored = fixture.host().getPlatformCalls()[0];
+    const haylen::core::Json params = haylen::core::Json::parse(stored.paramsJson);
     ASSERT_EQ(stored.buffers.size(), 2U);
-    const std::optional<std::size_t> photo = core::JsonBytes::findReference(params.at("photo"));
-    const std::optional<std::size_t> tag = core::JsonBytes::findReference(params.at("tags").at(0));
+    const std::optional<std::size_t> photo = haylen::core::JsonBytes::findReference(params.at("photo"));
+    const std::optional<std::size_t> tag = haylen::core::JsonBytes::findReference(params.at("tags").at(0));
     ASSERT_TRUE(photo.has_value());
     ASSERT_TRUE(tag.has_value());
     ASSERT_LT(*photo, stored.buffers.size());
@@ -288,14 +288,14 @@ TEST(PlatformLuaTest, SharesDataViewsWithNativeCodeWithoutCopies) {
 
     // Native code reads the bytes of Lua in place and writes into them, and Lua sees the change in its own view.
     ASSERT_EQ(fixture.host().getPlatformCalls().size(), 1U);
-    const HeadlessHost::PlatformCall& shown = fixture.host().getPlatformCalls()[0];
+    const haylen::platform::HeadlessHost::PlatformCall& shown = fixture.host().getPlatformCalls()[0];
     ASSERT_EQ(shown.views.size(), 1U);
-    EXPECT_EQ(core::Json::parse(shown.paramsJson).at("frame").at("size"), 5);
+    EXPECT_EQ(haylen::core::Json::parse(shown.paramsJson).at("frame").at("size"), 5);
     std::memcpy(shown.views[0].data(), "FRAME", 5);
 
     varn::dataview::DataView pixels = varn::dataview::DataView::allocate(4);
     std::memcpy(pixels.data(), "\x01\x02\x03\xFF", 4);
-    fixture.engine().getPlatform().resolve(shown.id, true, core::Json{{"pixels", varn::dataview::DataViewJson::write(pixels)}}.dump());
+    fixture.engine().getPlatform().resolve(shown.id, true, haylen::core::Json{{"pixels", varn::dataview::DataViewJson::write(pixels)}}.dump());
     pixels.reset();
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
     EXPECT_EQ(fixture.lua("return summary"), "true FRAME \x01\x02\x03\xFF true");
@@ -323,7 +323,7 @@ TEST(PlatformLuaTest, ReceivesTheBatchedEventsOfAFrameAsOneList) {
     EXPECT_EQ(fixture.lua("return #lists .. ' ' .. #lists[1] .. ' ' .. lists[1][2].n"), "1 3 2");
 
     for (int index = 1; index <= 100; ++index) {
-        fixture.engine().getPlatform().emit("gps.fix", core::Json{{"n", index}}.dump(), {}, {.batched = true});
+        fixture.engine().getPlatform().emit("gps.fix", haylen::core::Json{{"n", index}}.dump(), {}, {.batched = true});
     }
 
     fixture.frames(1);
@@ -363,7 +363,7 @@ TEST(PlatformLuaTest, HandsPluginModulesTheHandlesOfTheirPlugins) {
     EXPECT_EQ(fixture.lua("return tostring(platform.plugin('sign-in').native)"), "false");
 
     // Calls, sends and events of the handle carry the id of the plugin in front of their names, and a send creates no call.
-    const std::vector<HeadlessHost::PlatformCall>& calls = fixture.host().getPlatformCalls();
+    const std::vector<haylen::platform::HeadlessHost::PlatformCall>& calls = fixture.host().getPlatformCalls();
     ASSERT_EQ(calls.size(), 2U);
     EXPECT_EQ(calls[0].method, "ads-kit.show");
     EXPECT_EQ(calls[0].paramsJson, R"({"format":"banner"})");
@@ -401,11 +401,11 @@ TEST(PlatformLuaTest, CppCallsToLuaHandlersReturnErrorsInsteadOfCrashing) {
     test::LuaFixture fixture;
     fixture.runLua("require('haylen.platform').registerHandler('bad.result', function() return {callback = print} end)");
 
-    Bridge::Result received;
-    fixture.engine().getPlatform().call("bad.result", {}, [&](Bridge::Result result) { received = std::move(result); });
+    haylen::platform::Bridge::Result received;
+    fixture.engine().getPlatform().call("bad.result", {}, [&](haylen::platform::Bridge::Result result) { received = std::move(result); });
     fixture.frames(1);
     EXPECT_FALSE(received.ok);
     EXPECT_NE(received.error.message.find("cannot be converted to JSON"), std::string::npos);
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

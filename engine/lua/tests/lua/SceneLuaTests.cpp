@@ -19,7 +19,7 @@
 #include "support/RecordingScene.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 TEST(SceneLuaTest, ManagesTheStackWithPromisesAndHooks) {
     test::LuaFixture fixture;
@@ -623,18 +623,18 @@ TEST(SceneLuaTest, AKeyHeldAcrossAChangePressesOnce) {
     fixture.frames(2);
 
     // A tap of a few frames opens the menu, which is still held when the change ends and does not close it at once.
-    Engine& engine = fixture.engine();
-    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::P});
+    haylen::core::Engine& engine = fixture.engine();
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::P});
     fixture.frames(3);
-    engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::P});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::P});
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(log, ' ') .. ' ' .. scene.size()"), "open 2");
 
-    engine.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::P});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::P});
     fixture.frames(3);
-    engine.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::P});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::P});
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(log, ' ') .. ' ' .. scene.size()"), "open close 1");
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

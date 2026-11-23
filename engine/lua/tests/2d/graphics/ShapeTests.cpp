@@ -25,24 +25,24 @@
 #include "support/FrameRenderer.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 // Reads the fields of a packed shape at the offsets the vertex layout of the shape program gives them, and opens the canvases that shapes are packed for.
 class ShapeRecordTest : public ::testing::Test {
   protected:
-    template <typename T> [[nodiscard]] static T at(const GpuInstance& packed, std::size_t offset) {
-        const auto bytes = std::bit_cast<std::array<std::uint8_t, sizeof(GpuInstance)>>(packed);
+    template <typename T> [[nodiscard]] static T at(const haylen::graphics2d::GpuInstance& packed, std::size_t offset) {
+        const auto bytes = std::bit_cast<std::array<std::uint8_t, sizeof(haylen::graphics2d::GpuInstance)>>(packed);
         T value{};
         std::memcpy(&value, bytes.data() + offset, sizeof(T));
         return value;
     }
 
-    [[nodiscard]] static float share(const GpuInstance& packed, std::size_t offset) {
+    [[nodiscard]] static float share(const haylen::graphics2d::GpuInstance& packed, std::size_t offset) {
         return static_cast<float>(at<std::uint16_t>(packed, offset)) / 65535.0F;
     }
 
     // Reads a half float of zero or more, which the vertex layout reads as a float.
-    [[nodiscard]] static float half(const GpuInstance& packed, std::size_t offset) {
+    [[nodiscard]] static float half(const haylen::graphics2d::GpuInstance& packed, std::size_t offset) {
         const std::uint16_t bits = at<std::uint16_t>(packed, offset);
         const int exponent = (bits >> 10U) & 0x1F;
         const float mantissa = static_cast<float>(bits & 0x3FFU);
@@ -50,28 +50,28 @@ class ShapeRecordTest : public ::testing::Test {
     }
 
     // Opens a world canvas over a destination of the size, whose view scales canvas units by the zoom.
-    static void openCanvas(RendererState& state, math::Vec2 pixels, math::Vec2 view, float zoom) {
+    static void openCanvas(haylen::graphics2d::RendererState& state, haylen::math::Vec2 pixels, haylen::math::Vec2 view, float zoom) {
         state.pixelRect = {0.0F, 0.0F, pixels.x, pixels.y};
         state.visibleRect = {0.0F, 0.0F, view.x, view.y};
-        state.openCanvas({.kind = Canvas::Kind::World, .viewSize = view, .view = math::Transform2D::scaling({zoom, zoom})});
+        state.openCanvas({.kind = haylen::graphics2d::Canvas::Kind::World, .viewSize = view, .view = haylen::math::Transform2D::scaling({zoom, zoom})});
     }
 };
 
 using ShapeCanvasTest = ShapeRecordTest;
 
 TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
-    const Shape shape{
+    const haylen::graphics2d::Shape shape{
         .bounds = {10.0F, 20.0F, 40.0F, 16.0F},
         .radii = {4.0F, 8.0F, 100.0F, 0.0F},
         .rotation = 0.5F,
-        .startAngle = -math::Math::kHalfPi,
-        .sweep = math::Math::kPi,
-        .color = math::Color::fromHex(0xFF8040C0U),
+        .startAngle = -haylen::math::Math::kHalfPi,
+        .sweep = haylen::math::Math::kPi,
+        .color = haylen::math::Color::fromHex(0xFF8040C0U),
         .borderWidth = 2.0F,
-        .borderColor = math::Color::fromHex(0x10203040U),
+        .borderColor = haylen::math::Color::fromHex(0x10203040U),
         .softness = 3.0F,
     };
-    const GpuInstance packed = GpuInstance::makeShape(shape, 1.5F, false);
+    const haylen::graphics2d::GpuInstance packed = haylen::graphics2d::GpuInstance::makeShape(shape, 1.5F, false);
     EXPECT_FLOAT_EQ(at<float>(packed, 0), 30.0F);
     EXPECT_FLOAT_EQ(at<float>(packed, 4), 28.0F);
     EXPECT_FLOAT_EQ(at<float>(packed, 8), 20.0F);
@@ -93,11 +93,11 @@ TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
     EXPECT_NEAR(share(packed, 46), 0.0F, 0.0001F);
 
     // Half floats keep tiny pixels of zoomed canvases and clamp huge ones.
-    EXPECT_NEAR(half(GpuInstance::makeShape(shape, 0.0003F, false), 22), 0.0003F, 0.000001F);
-    EXPECT_FLOAT_EQ(half(GpuInstance::makeShape(shape, 1.0e9F, false), 22), 65504.0F);
+    EXPECT_NEAR(half(haylen::graphics2d::GpuInstance::makeShape(shape, 0.0003F, false), 22), 0.0003F, 0.000001F);
+    EXPECT_FLOAT_EQ(half(haylen::graphics2d::GpuInstance::makeShape(shape, 1.0e9F, false), 22), 65504.0F);
 
     // A distortion draw lowers the coverage of the fill and of the border alike.
-    GpuInstance faded = packed;
+    haylen::graphics2d::GpuInstance faded = packed;
     faded.fadeShape(0.5F);
     EXPECT_EQ(at<std::uint32_t>(faded, 24) >> 24U, 0x60U);
     EXPECT_EQ(at<std::uint32_t>(faded, 28) >> 24U, 0x20U);
@@ -106,22 +106,22 @@ TEST_F(ShapeRecordTest, PacksTheFieldsTheShapeProgramReads) {
 
 // The last number of the form tells the shape program to measure an ellipse instead of the rounded rectangle and to turn a flipped texture upright, while the radii of an ellipse go unused.
 TEST_F(ShapeRecordTest, PacksTheKindAndTheFlipOfItsTexture) {
-    EXPECT_EQ(at<std::uint16_t>(GpuInstance::makeShape({.kind = Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, false), 38), 1U);
-    EXPECT_EQ(at<std::uint16_t>(GpuInstance::makeShape({.bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, true), 38), 2U);
-    EXPECT_EQ(at<std::uint16_t>(GpuInstance::makeShape({.kind = Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, true), 38), 3U);
-    EXPECT_EQ(Shape::kindFromName("ellipse"), Shape::Kind::Ellipse);
-    EXPECT_EQ(Shape::kindName(Shape::Kind::Rectangle), "rectangle");
-    EXPECT_FALSE(Shape::kindFromName("oval").has_value());
+    EXPECT_EQ(at<std::uint16_t>(haylen::graphics2d::GpuInstance::makeShape({.kind = haylen::graphics2d::Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, false), 38), 1U);
+    EXPECT_EQ(at<std::uint16_t>(haylen::graphics2d::GpuInstance::makeShape({.bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, true), 38), 2U);
+    EXPECT_EQ(at<std::uint16_t>(haylen::graphics2d::GpuInstance::makeShape({.kind = haylen::graphics2d::Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 20.0F}}, 1.0F, true), 38), 3U);
+    EXPECT_EQ(haylen::graphics2d::Shape::kindFromName("ellipse"), haylen::graphics2d::Shape::Kind::Ellipse);
+    EXPECT_EQ(haylen::graphics2d::Shape::kindName(haylen::graphics2d::Shape::Kind::Rectangle), "rectangle");
+    EXPECT_FALSE(haylen::graphics2d::Shape::kindFromName("oval").has_value());
 }
 
 // The fade of an edge spans one pixel of the destination, so the quad of a shape reaches one pixel past its edge, plus half its softness, whatever the zoom of the canvas and the density of the screen.
 TEST_F(ShapeCanvasTest, ReachesOnePixelPastTheEdgeAtEveryScale) {
     test::LuaFixture fixture;
-    RendererState state{fixture.engine().getGraphics(), fixture.engine().getJobs()};
+    haylen::graphics2d::RendererState state{fixture.engine().getGraphics(), fixture.engine().getJobs()};
     state.white = fixture.engine().getGraphics().getWhiteTexture();
     struct Case {
-        math::Vec2 pixels;
-        math::Vec2 view;
+        haylen::math::Vec2 pixels;
+        haylen::math::Vec2 view;
         float zoom = 1.0F;
     };
 
@@ -136,28 +136,28 @@ TEST_F(ShapeCanvasTest, ReachesOnePixelPastTheEdgeAtEveryScale) {
         state.closeCanvas();
     }
 
-    EXPECT_EQ(state.items.back().program, Program::Shape);
+    EXPECT_EQ(state.items.back().program, haylen::graphics2d::Program::Shape);
     state.resetFrame();
 }
 
 // A polygon fills its triangles half a pixel inside its outline and fades out over a fringe that ends half a pixel outside it, so its edge spans one pixel at every scale and in either winding.
 TEST(PolygonMeshTest, FadesTheEdgeOverOnePixelAtEveryScale) {
-    const std::vector<math::Vec2> square{{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}, {0.0F, 10.0F}};
-    const std::vector<math::Vec2> reversed{square.rbegin(), square.rend()};
-    const std::uint32_t color = math::Color::fromHex(0xFF336699U).toRgba8();
+    const std::vector<haylen::math::Vec2> square{{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}, {0.0F, 10.0F}};
+    const std::vector<haylen::math::Vec2> reversed{square.rbegin(), square.rend()};
+    const std::uint32_t color = haylen::math::Color::fromHex(0xFF336699U).toRgba8();
     const std::array<std::uint32_t, 1> four{4};
-    PolygonMesh mesh;
-    for (const std::vector<math::Vec2>* outline : {&square, &reversed}) {
+    haylen::graphics2d::PolygonMesh mesh;
+    for (const std::vector<haylen::math::Vec2>* outline : {&square, &reversed}) {
         for (const float pixel : {0.25F, 1.0F, 3.0F}) {
             mesh.build(*outline, four, color, pixel);
-            const std::vector<GpuVertex>& vertices = mesh.getVertices();
+            const std::vector<haylen::graphics2d::GpuVertex>& vertices = mesh.getVertices();
             ASSERT_EQ(vertices.size(), 8U);
             EXPECT_EQ(mesh.getIndices().size(), 6U + 4U * 6U);
 
             for (std::size_t corner = 0; corner < 4; ++corner) {
-                const GpuVertex& inner = vertices[corner * 2];
-                const GpuVertex& outer = vertices[corner * 2 + 1];
-                const math::Vec2 point = (*outline)[corner];
+                const haylen::graphics2d::GpuVertex& inner = vertices[corner * 2];
+                const haylen::graphics2d::GpuVertex& outer = vertices[corner * 2 + 1];
+                const haylen::math::Vec2 point = (*outline)[corner];
                 EXPECT_EQ(inner.color, color);
                 EXPECT_EQ(outer.color, color & 0x00FFFFFFU);
                 EXPECT_NEAR(std::fabs(inner.position[0] - point.x), pixel * 0.5F, 0.0001F);
@@ -169,7 +169,7 @@ TEST(PolygonMeshTest, FadesTheEdgeOverOnePixelAtEveryScale) {
     }
 
     // The corner of a spike moves its fringe no further than the miter limit allows.
-    const std::vector<math::Vec2> spike{{0.0F, 0.0F}, {100.0F, 1.0F}, {0.0F, 2.0F}};
+    const std::vector<haylen::math::Vec2> spike{{0.0F, 0.0F}, {100.0F, 1.0F}, {0.0F, 2.0F}};
     const std::array<std::uint32_t, 1> three{3};
     mesh.build(spike, three, color, 1.0F);
     EXPECT_LE(std::hypot(mesh.getVertices()[3].position[0] - 100.0F, mesh.getVertices()[3].position[1] - 1.0F), 1.0001F);
@@ -177,24 +177,24 @@ TEST(PolygonMeshTest, FadesTheEdgeOverOnePixelAtEveryScale) {
 
 // A hole fades its edge into the hole, away from the fill, and two pieces that share an edge fill up to it without a fringe, so they join without a seam while their outer edges fade.
 TEST(PolygonMeshTest, FadesHolesAndJoinsPiecesWithoutASeam) {
-    const std::vector<math::Vec2> holed{{0.0F, 0.0F}, {30.0F, 0.0F}, {30.0F, 30.0F}, {0.0F, 30.0F}, {10.0F, 10.0F}, {10.0F, 20.0F}, {20.0F, 20.0F}, {20.0F, 10.0F}};
+    const std::vector<haylen::math::Vec2> holed{{0.0F, 0.0F}, {30.0F, 0.0F}, {30.0F, 30.0F}, {0.0F, 30.0F}, {10.0F, 10.0F}, {10.0F, 20.0F}, {20.0F, 20.0F}, {20.0F, 10.0F}};
     const std::array<std::uint32_t, 2> counts{4, 4};
-    const std::uint32_t color = math::Color::white().toRgba8();
-    PolygonMesh mesh;
+    const std::uint32_t color = haylen::math::Color::white().toRgba8();
+    haylen::graphics2d::PolygonMesh mesh;
     mesh.build(holed, counts, color, 2.0F);
-    const std::vector<GpuVertex>& vertices = mesh.getVertices();
+    const std::vector<haylen::graphics2d::GpuVertex>& vertices = mesh.getVertices();
     ASSERT_EQ(vertices.size(), 16U);
     EXPECT_EQ(mesh.getIndices().size(), 8U * 3U + 8U * 6U);
 
     for (std::size_t corner = 4; corner < 8; ++corner) {
-        const math::Vec2 inner{vertices[corner * 2].position[0], vertices[corner * 2].position[1]};
-        const math::Vec2 outer{vertices[corner * 2 + 1].position[0], vertices[corner * 2 + 1].position[1]};
+        const haylen::math::Vec2 inner{vertices[corner * 2].position[0], vertices[corner * 2].position[1]};
+        const haylen::math::Vec2 outer{vertices[corner * 2 + 1].position[0], vertices[corner * 2 + 1].position[1]};
         EXPECT_TRUE(outer.x > 10.0F && outer.x < 20.0F && outer.y > 10.0F && outer.y < 20.0F) << corner;
         EXPECT_FALSE(inner.x > 10.0F && inner.x < 20.0F && inner.y > 10.0F && inner.y < 20.0F) << corner;
     }
 
     // The pieces meet along x = 10, where neither fades, and their corners on it slide along it instead of moving off it.
-    const std::vector<math::Vec2> pieces{{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}, {0.0F, 10.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {20.0F, 10.0F}, {10.0F, 10.0F}};
+    const std::vector<haylen::math::Vec2> pieces{{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}, {0.0F, 10.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {20.0F, 10.0F}, {10.0F, 10.0F}};
     mesh.build(pieces, counts, color, 2.0F);
     EXPECT_EQ(mesh.getIndices().size(), 4U * 3U + 6U * 6U);
 
@@ -225,14 +225,14 @@ TEST(PolygonDrawTest, DrawsShapesWithHolesFromLuaWithoutAllocating) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().drawCalls, 1U);
     EXPECT_EQ(fixture.lua("local m = require('haylen.math') return #m.triangulate(m.polygon.subtract({{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {{30, 30}, {30, 70}, {70, 70}, {70, 30}}))"), "24");
 
-    const std::vector<std::vector<math::Vec2>> shape{{{0.0F, 0.0F}, {50.0F, 0.0F}, {50.0F, 50.0F}, {0.0F, 50.0F}}, {{10.0F, 10.0F}, {10.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, 10.0F}}};
-    const std::vector<math::Vec2> points{{0.0F, 0.0F}, {50.0F, 0.0F}, {50.0F, 50.0F}, {0.0F, 50.0F}, {10.0F, 10.0F}, {10.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, 10.0F}};
+    const std::vector<std::vector<haylen::math::Vec2>> shape{{{0.0F, 0.0F}, {50.0F, 0.0F}, {50.0F, 50.0F}, {0.0F, 50.0F}}, {{10.0F, 10.0F}, {10.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, 10.0F}}};
+    const std::vector<haylen::math::Vec2> points{{0.0F, 0.0F}, {50.0F, 0.0F}, {50.0F, 50.0F}, {0.0F, 50.0F}, {10.0F, 10.0F}, {10.0F, 40.0F}, {40.0F, 40.0F}, {40.0F, 10.0F}};
     const std::array<std::uint32_t, 2> counts{4, 4};
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&shape, &points, &counts](core::Engine& engine) {
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&shape, &points, &counts](haylen::core::Engine& engine) {
         engine.getRenderer2D().beginScreen();
-        engine.getRenderer2D().drawPolygon(shape, math::Color::white());
-        engine.getRenderer2D().drawPolygon(points, counts, math::Color::white());
+        engine.getRenderer2D().drawPolygon(shape, haylen::math::Color::white());
+        engine.getRenderer2D().drawPolygon(points, counts, haylen::math::Color::white());
     }));
     // clang-format on
     fixture.frames(3);
@@ -243,25 +243,25 @@ TEST(PolygonDrawTest, DrawsShapesWithHolesFromLuaWithoutAllocating) {
 
     // The outlines of a shape in flat storage count every point it has.
     const std::array<std::uint32_t, 2> missing{4, 3};
-    EXPECT_THROW(fixture.engine().getRenderer2D().drawPolygon(points, missing, math::Color::white()), std::invalid_argument);
+    EXPECT_THROW(fixture.engine().getRenderer2D().drawPolygon(points, missing, haylen::math::Color::white()), std::invalid_argument);
 }
 
 // Circles, rings, arcs and shapes draw as one quad each of the shape program, which merge into one call and upload no vertices, while sprites count only the sprites.
 TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
     test::LuaFixture fixture;
     // clang-format off
-    const Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
+    const haylen::graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginScreen();
-        renderer.drawCircle({50.0F, 50.0F}, 400.0F, math::Color::white());
-        renderer.drawCircle({50.0F, 50.0F}, 2.0F, math::Color::white());
-        renderer.drawRing({50.0F, 50.0F}, 20.0F, 4.0F, math::Color::white());
-        renderer.drawArc({50.0F, 50.0F}, 20.0F, 4.0F, 0.0F, 1.0F, math::Color::white());
-        renderer.drawShape({.bounds = {0.0F, 0.0F, 120.0F, 40.0F}, .radii = {8.0F, 8.0F, 0.0F, 0.0F}, .rotation = 0.3F, .borderWidth = 2.0F, .borderColor = math::Color::black(), .softness = 4.0F});
-        renderer.drawEllipse({50.0F, 50.0F}, {30.0F, 10.0F}, math::Color::white());
-        renderer.drawEllipse({50.0F, 50.0F}, {30.0F, 0.0F}, math::Color::white());
-        renderer.drawCircle({50.0F, 50.0F}, 0.0F, math::Color::white());
-        renderer.drawRing({50.0F, 50.0F}, 20.0F, 0.0F, math::Color::white());
+        renderer.drawCircle({50.0F, 50.0F}, 400.0F, haylen::math::Color::white());
+        renderer.drawCircle({50.0F, 50.0F}, 2.0F, haylen::math::Color::white());
+        renderer.drawRing({50.0F, 50.0F}, 20.0F, 4.0F, haylen::math::Color::white());
+        renderer.drawArc({50.0F, 50.0F}, 20.0F, 4.0F, 0.0F, 1.0F, haylen::math::Color::white());
+        renderer.drawShape({.bounds = {0.0F, 0.0F, 120.0F, 40.0F}, .radii = {8.0F, 8.0F, 0.0F, 0.0F}, .rotation = 0.3F, .borderWidth = 2.0F, .borderColor = haylen::math::Color::black(), .softness = 4.0F});
+        renderer.drawEllipse({50.0F, 50.0F}, {30.0F, 10.0F}, haylen::math::Color::white());
+        renderer.drawEllipse({50.0F, 50.0F}, {30.0F, 0.0F}, haylen::math::Color::white());
+        renderer.drawCircle({50.0F, 50.0F}, 0.0F, haylen::math::Color::white());
+        renderer.drawRing({50.0F, 50.0F}, 20.0F, 0.0F, haylen::math::Color::white());
         renderer.drawShape({.bounds = {0.0F, 0.0F, 0.0F, 40.0F}});
     });
     // clang-format on
@@ -271,13 +271,13 @@ TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
     EXPECT_EQ(stats.drawCalls, 1U);
 
     // Points draw as one shape quad each, one color for all or one for each, in the call of the other shapes.
-    const std::vector<math::Vec2> stars{{10.0F, 10.0F}, {20.0F, 30.0F}, {40.0F, 5.0F}};
-    const std::vector<math::Color> tones{math::Color::white(), math::Color::black(), math::Color::white()};
+    const std::vector<haylen::math::Vec2> stars{{10.0F, 10.0F}, {20.0F, 30.0F}, {40.0F, 5.0F}};
+    const std::vector<haylen::math::Color> tones{haylen::math::Color::white(), haylen::math::Color::black(), haylen::math::Color::white()};
     // clang-format off
-    const Renderer::Stats dotted = test::FrameRenderer::renderOnce(fixture, [&stars, &tones](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
+    const haylen::graphics2d::Renderer::Stats dotted = test::FrameRenderer::renderOnce(fixture, [&stars, &tones](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginScreen();
-        renderer.drawCircle({50.0F, 50.0F}, 20.0F, math::Color::white());
+        renderer.drawCircle({50.0F, 50.0F}, 20.0F, haylen::math::Color::white());
         renderer.drawPoints(stars, 2.0F, tones);
         renderer.drawPoints(stars, 1.0F, std::span(tones).first(1));
         renderer.drawPoints(stars, 0.0F, tones);
@@ -287,19 +287,19 @@ TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
     EXPECT_EQ(dotted.drawCalls, 1U);
 
     // A shape with a texture of its own draws in a call of that texture, after the shapes of the white texture.
-    const graphics::Texture portrait = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    const haylen::graphics::Texture portrait = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4, haylen::math::Color::white()));
     // clang-format off
-    const Renderer::Stats textured = test::FrameRenderer::renderOnce(fixture, [&portrait](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
+    const haylen::graphics2d::Renderer::Stats textured = test::FrameRenderer::renderOnce(fixture, [&portrait](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginScreen();
-        renderer.drawCircle({50.0F, 50.0F}, 20.0F, math::Color::white());
-        renderer.drawShape({.kind = Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 40.0F}, .texture = portrait}, {.layer = 1});
+        renderer.drawCircle({50.0F, 50.0F}, 20.0F, haylen::math::Color::white());
+        renderer.drawShape({.kind = haylen::graphics2d::Shape::Kind::Ellipse, .bounds = {0.0F, 0.0F, 40.0F, 40.0F}, .texture = portrait}, {.layer = 1});
     });
     // clang-format on
     EXPECT_EQ(textured.instances, 2U);
     EXPECT_EQ(textured.drawCalls, 2U);
 
-    Renderer& renderer = fixture.engine().getRenderer2D();
+    haylen::graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginScreen();
     EXPECT_THROW(renderer.drawShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .radii = {-1.0F, 0.0F, 0.0F, 0.0F}}), std::invalid_argument);
     EXPECT_THROW(renderer.drawShape({.bounds = {0.0F, 0.0F, 10.0F, 10.0F}, .borderWidth = -1.0F}), std::invalid_argument);
@@ -308,4 +308,4 @@ TEST(ShapeDrawTest, DrawsEveryCurveAsOneQuadOfOneCall) {
     fixture.frames(1);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

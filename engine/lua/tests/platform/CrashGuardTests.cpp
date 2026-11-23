@@ -25,7 +25,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class CrashGuardTest : public ::testing::Test {
   protected:
@@ -33,11 +33,11 @@ class CrashGuardTest : public ::testing::Test {
     static constexpr int kForwardedWithoutTheCrash = 4;
 
     void TearDown() override {
-        CrashGuard::setReport({});
+        haylen::platform::CrashGuard::setReport({});
     }
 
-    [[nodiscard]] static core::Json readReport(const std::filesystem::path& file) {
-        return core::Json::parse(test::TestFiles::readText(file));
+    [[nodiscard]] static haylen::core::Json readReport(const std::filesystem::path& file) {
+        return haylen::core::Json::parse(test::TestFiles::readText(file));
     }
 
 #if defined(_WIN32)
@@ -48,7 +48,7 @@ class CrashGuardTest : public ::testing::Test {
     // Hands an access violation to the filter of the process, as a crash does.
     static void crashThroughTheFilter() {
         SetUnhandledExceptionFilter(&exitFromThePreviousFilter);
-        CrashGuard::install();
+        haylen::platform::CrashGuard::install();
         EXCEPTION_RECORD record{.ExceptionCode = EXCEPTION_ACCESS_VIOLATION};
         CONTEXT context{};
         EXCEPTION_POINTERS pointers{.ExceptionRecord = &record, .ContextRecord = &context};
@@ -105,20 +105,20 @@ class CrashGuardTest : public ::testing::Test {
 
 TEST_F(CrashGuardTest, WritesTheReasonAndTheLastPublishedContext) {
     const std::filesystem::path report = directory.getPath() / "crash-report.json";
-    CrashGuard::writeReport("segmentationFault");
+    haylen::platform::CrashGuard::writeReport("segmentationFault");
     EXPECT_FALSE(std::filesystem::exists(report)) << "Nothing is written before the guard knows its file.";
 
-    CrashGuard::setReport(report);
-    CrashGuard::setContext(R"({"breadcrumbs":[{"message":"Opened the shop."}]})");
-    CrashGuard::setContext(R"({"breadcrumbs":[{"message":"Bought a sword."}]})");
-    CrashGuard::writeReport("segmentationFault");
-    const core::Json written = readReport(report);
+    haylen::platform::CrashGuard::setReport(report);
+    haylen::platform::CrashGuard::setContext(R"({"breadcrumbs":[{"message":"Opened the shop."}]})");
+    haylen::platform::CrashGuard::setContext(R"({"breadcrumbs":[{"message":"Bought a sword."}]})");
+    haylen::platform::CrashGuard::writeReport("segmentationFault");
+    const haylen::core::Json written = readReport(report);
     EXPECT_EQ(written.at("reason"), "segmentationFault");
     EXPECT_EQ(written.at("context").at("breadcrumbs").at(0).at("message"), "Bought a sword.");
 
-    CrashGuard::setContext(std::string(CrashGuard::kContextSize + 1, ' '));
-    CrashGuard::writeReport("abort");
-    EXPECT_EQ(readReport(report), (core::Json{{"reason", "abort"}, {"context", core::Json::object()}}));
+    haylen::platform::CrashGuard::setContext(std::string(haylen::platform::CrashGuard::kContextSize + 1, ' '));
+    haylen::platform::CrashGuard::writeReport("abort");
+    EXPECT_EQ(readReport(report), (haylen::core::Json{{"reason", "abort"}, {"context", haylen::core::Json::object()}}));
 }
 
 #if defined(_WIN32)
@@ -133,8 +133,8 @@ TEST_F(CrashGuardTest, HandsAFaultWithItsInformationToTheHandlerThatWasThereBefo
     // clang-format off
     EXPECT_EXIT({
         installPreviousHandler(&exitWithTheFaultAddress);
-        CrashGuard::install();
-        CrashGuard::setReport(report);
+        haylen::platform::CrashGuard::install();
+        haylen::platform::CrashGuard::setReport(report);
         touchAPageWithoutAccess();
     }, testing::ExitedWithCode(kForwarded), "");
     // clang-format on
@@ -148,8 +148,8 @@ TEST_F(CrashGuardTest, WritesTheReportWhenAHandlerInstalledLaterHandsTheCrashOn)
     const std::filesystem::path report = directory.getPath() / "crash-report.json";
     // clang-format off
     EXPECT_EXIT({
-        CrashGuard::install();
-        CrashGuard::setReport(report);
+        haylen::platform::CrashGuard::install();
+        haylen::platform::CrashGuard::setReport(report);
         struct sigaction action{};
         action.sa_sigaction = &reportLaterAndExit;
         action.sa_flags = SA_SIGINFO;
@@ -168,8 +168,8 @@ TEST_F(CrashGuardTest, ReportsAStackOverflow) {
     // clang-format off
     EXPECT_EXIT({
         installPreviousHandler(&exitAfterTheCrash);
-        CrashGuard::install();
-        CrashGuard::setReport(report);
+        haylen::platform::CrashGuard::install();
+        haylen::platform::CrashGuard::setReport(report);
         overflowTheStack(0);
     }, testing::ExitedWithCode(kForwarded), "");
     // clang-format on
@@ -180,7 +180,7 @@ TEST_F(CrashGuardTest, ReportsAStackOverflow) {
 
 TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) {
     test::LuaFixture fixture;
-    storage::UserStorage& files = fixture.engine().getStorage();
+    haylen::storage::UserStorage& files = fixture.engine().getStorage();
     EXPECT_EQ(fixture.host().getCrashReport(), files.getRoot() / "crash-report.json");
     EXPECT_EQ(fixture.lua("return tostring(require('haylen.debug').lastCrash())"), "nil");
 
@@ -194,7 +194,7 @@ TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) 
     // clang-format on
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return heard[1]"), "Opened the shop. 12");
-    const core::Json context = core::Json::parse(fixture.host().getCrashContext());
+    const haylen::core::Json context = haylen::core::Json::parse(fixture.host().getCrashContext());
     ASSERT_FALSE(context.at("breadcrumbs").empty());
     EXPECT_EQ(context.at("breadcrumbs").back().at("message"), "Opened the shop.");
     EXPECT_EQ(context.at("app").at("identifier"), fixture.engine().getConfig().identifier);
@@ -204,7 +204,7 @@ TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) 
     fixture.runLua("for index = 1, 150 do debugging.addBreadcrumb('Step ' .. index) end");
     EXPECT_EQ(fixture.lua("local kept = debugging.breadcrumbs() return #kept .. ' ' .. kept[1].message .. ' ' .. kept[#kept].message"), "100 Step 51 Step 150");
     fixture.frames(1);
-    EXPECT_EQ(core::Json::parse(fixture.host().getCrashContext()).at("breadcrumbs").size(), 30U);
+    EXPECT_EQ(haylen::core::Json::parse(fixture.host().getCrashContext()).at("breadcrumbs").size(), 30U);
 
     files.writeText("crash-report.json", R"({"reason":"segmentationFault","context":{"breadcrumbs":[{"message":"Bought a sword."}]}})");
     fixture.restart();
@@ -214,4 +214,4 @@ TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) 
     EXPECT_EQ(fixture.lua("return tostring(require('haylen.debug').lastCrash())"), "nil");
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

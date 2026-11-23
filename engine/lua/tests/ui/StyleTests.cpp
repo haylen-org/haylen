@@ -22,19 +22,19 @@
 #include "support/LuaUiFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class StyleTest : public ::testing::Test, public test::LuaUiFixture {
   protected:
     StyleTest() : LuaUiFixture({{"content/ui/frame.png", test::TestFiles::toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))}, {"content/ui/dot.png", test::TestFiles::toText(test::TestFiles::pngImage(8, 8, 0xFFFFFFFFU))}}) {}
 
-    [[nodiscard]] math::Color getThemeColor(Theme::Color role) {
+    [[nodiscard]] haylen::math::Color getThemeColor(haylen::ui::Theme::Color role) {
         return getUi().getTheme().getColor(role);
     }
 
     // Tells whether a vertex the GUIs drew in the last frame has the color.
-    [[nodiscard]] bool drawsColor(math::Color color) {
-        const ImU32 packed = ImGuiConverter::toImU32(color);
+    [[nodiscard]] bool drawsColor(haylen::math::Color color) {
+        const ImU32 packed = haylen::ui::ImGuiConverter::toImU32(color);
         const ImVector<ImDrawVert>& vertices = getGuiDrawList(getUi()).VtxBuffer;
         return std::any_of(vertices.begin(), vertices.end(), [packed](const ImDrawVert& vertex) { return vertex.col == packed; });
     }
@@ -42,10 +42,10 @@ class StyleTest : public ::testing::Test, public test::LuaUiFixture {
     // Runs a frame and tells whether the renderer drew a quad of the texture.
     [[nodiscard]] bool drawsTexture(std::string_view path) {
         bool found = false;
-        graphics2d::Renderer& renderer = getEngine().getRenderer2D();
+        haylen::graphics2d::Renderer& renderer = getEngine().getRenderer2D();
         // clang-format off
-        const std::uint64_t overlay = renderer.addCanvasOverlay([&found, path](graphics2d::Renderer& drawing) {
-            drawing.visitDrawn([&found, path](const graphics2d::Renderer::Drawn& drawn) {
+        const std::uint64_t overlay = renderer.addCanvasOverlay([&found, path](haylen::graphics2d::Renderer& drawing) {
+            drawing.visitDrawn([&found, path](const haylen::graphics2d::Renderer::Drawn& drawn) {
                 found = found || drawn.label == path;
             });
         });
@@ -66,7 +66,7 @@ TEST_F(StyleTest, OverridesTheThemeForANodeAndTheNodesInsideIt) {
         ]}
     ]})");
     // clang-format on
-    EXPECT_EQ(getBounds(*gui, "plain").height, getUi().getTheme().getMetric(Theme::Metric::ControlHeight));
+    EXPECT_EQ(getBounds(*gui, "plain").height, getUi().getTheme().getMetric(haylen::ui::Theme::Metric::ControlHeight));
     EXPECT_EQ(getBounds(*gui, "inside").height, 100.0F);
     EXPECT_GT(getBounds(*gui, "inside").width, getBounds(*gui, "plain").width);
     EXPECT_EQ(getBounds(*gui, "deeper").height, 40.0F);
@@ -82,23 +82,23 @@ TEST_F(StyleTest, OverridesTheThemeForANodeAndTheNodesInsideIt) {
 
 // A role a style names for a color comes from the theme of its node or from the layers outside the style, never from the same style.
 TEST_F(StyleTest, ResolvesTheThemeColorsAStyleNames) {
-    Context& context = getUi().getContext();
-    const Style outer = Style::fromJson(core::Json::parse(R"({"colors": {"accent": "#FF00FF00"}})"), "row.style");
-    const Style inner = Style::fromJson(core::Json::parse(R"({"colors": {"panel": "accent", "success": "#FFFF0000", "border": "success"}})"), "row.style");
+    haylen::ui::Context& context = getUi().getContext();
+    const haylen::ui::Style outer = haylen::ui::Style::fromJson(haylen::core::Json::parse(R"({"colors": {"accent": "#FF00FF00"}})"), "row.style");
+    const haylen::ui::Style inner = haylen::ui::Style::fromJson(haylen::core::Json::parse(R"({"colors": {"panel": "accent", "success": "#FFFF0000", "border": "success"}})"), "row.style");
     context.pushStyle("", &inner, false);
-    EXPECT_EQ(context.getColor(Theme::Color::Panel), getThemeColor(Theme::Color::Accent));
-    EXPECT_EQ(context.getColor(Theme::Color::Border), getThemeColor(Theme::Color::Success));
-    EXPECT_EQ(context.getColor(Theme::Color::Success), math::Color::fromHex(0xFF0000FFU));
+    EXPECT_EQ(context.getColor(haylen::ui::Theme::Color::Panel), getThemeColor(haylen::ui::Theme::Color::Accent));
+    EXPECT_EQ(context.getColor(haylen::ui::Theme::Color::Border), getThemeColor(haylen::ui::Theme::Color::Success));
+    EXPECT_EQ(context.getColor(haylen::ui::Theme::Color::Success), haylen::math::Color::fromHex(0xFF0000FFU));
     context.popStyle();
 
     context.pushStyle("", &outer, false);
     context.pushStyle("", &inner, false);
-    EXPECT_EQ(context.getColor(Theme::Color::Panel), math::Color::fromHex(0x00FF00FFU));
+    EXPECT_EQ(context.getColor(haylen::ui::Theme::Color::Panel), haylen::math::Color::fromHex(0x00FF00FFU));
     context.popStyle();
-    const Theme* light = getUi().findTheme("light");
+    const haylen::ui::Theme* light = getUi().findTheme("light");
     ASSERT_NE(light, nullptr);
     context.pushStyle("light", &inner, false);
-    EXPECT_EQ(context.getColor(Theme::Color::Panel), light->getColor(Theme::Color::Accent));
+    EXPECT_EQ(context.getColor(haylen::ui::Theme::Color::Panel), light->getColor(haylen::ui::Theme::Color::Accent));
     context.popStyle();
     context.popStyle();
 }
@@ -107,21 +107,21 @@ TEST_F(StyleTest, ResolvesTheThemeColorsAStyleNames) {
 TEST_F(StyleTest, FollowsTheActiveThemeInTheColorsAStyleNames) {
     getFixture().runLua("ui = require('haylen.ui') gui = ui.mount(ui.row{id = 'styled', style = {colors = {text = 'accent'}}, ui.icon{image = 'ui/dot.png', color = 'text'}}, {placement = 'screen'})");
     frames(1);
-    ASSERT_TRUE(getFixture().frameUntil([&] { return drawsColor(getThemeColor(Theme::Color::Accent)); }));
-    const math::Color dark = getThemeColor(Theme::Color::Accent);
+    ASSERT_TRUE(getFixture().frameUntil([&] { return drawsColor(getThemeColor(haylen::ui::Theme::Color::Accent)); }));
+    const haylen::math::Color dark = getThemeColor(haylen::ui::Theme::Color::Accent);
     getFixture().runLua("ui.setTheme('light')");
     frames(2);
-    EXPECT_NE(getThemeColor(Theme::Color::Accent), dark);
-    EXPECT_TRUE(drawsColor(getThemeColor(Theme::Color::Accent)));
+    EXPECT_NE(getThemeColor(haylen::ui::Theme::Color::Accent), dark);
+    EXPECT_TRUE(drawsColor(getThemeColor(haylen::ui::Theme::Color::Accent)));
     EXPECT_FALSE(drawsColor(dark));
     EXPECT_NE(getFixture().lua("gui:set('styled', {style = {colors = {text = 'ink'}}})").find(R"(must name a theme color such as "accent" or "textMuted".)"), std::string::npos);
 }
 
 TEST_F(StyleTest, DrawsASubtreeWithAnotherRegisteredTheme) {
-    getUi().addTheme(getEngine(), core::Json::parse(R"({"name": "roomy", "metrics": {"controlHeight": 90}})"), "light");
+    getUi().addTheme(getEngine(), haylen::core::Json::parse(R"({"name": "roomy", "metrics": {"controlHeight": 90}})"), "light");
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "dark", "text": "Dark"}, {"kind": "panel", "theme": "roomy", "children": [{"kind": "button", "id": "roomy", "text": "Roomy"}]}]})");
     EXPECT_EQ(getBounds(*gui, "roomy").height, 90.0F);
-    EXPECT_EQ(getBounds(*gui, "dark").height, getUi().getTheme().getMetric(Theme::Metric::ControlHeight));
+    EXPECT_EQ(getBounds(*gui, "dark").height, getUi().getTheme().getMetric(haylen::ui::Theme::Metric::ControlHeight));
 
     // A theme that is not registered stops the app when the node draws.
     gui->set("dark", {{"theme", "missing"}});
@@ -161,7 +161,7 @@ TEST_F(StyleTest, ReportsTheProblemsOfAStyle) {
     // clang-format on
     for (const auto& [node, message] : cases) {
         try {
-            (void)getUi().createGui(core::Json::parse(node));
+            (void)getUi().createGui(haylen::core::Json::parse(node));
             ADD_FAILURE() << node;
         } catch (const std::invalid_argument& error) {
             EXPECT_EQ(std::string(error.what()), message);
@@ -171,12 +171,12 @@ TEST_F(StyleTest, ReportsTheProblemsOfAStyle) {
 
 TEST_F(StyleTest, ShowsTheCursorOfTheNodeUnderThePointer) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "link", "text": "Open the map", "cursor": "pointingHand"}, {"kind": "label", "id": "plain", "text": "Plain"}]})");
-    pointer(platform::Event::Type::MouseMove, getBounds(*gui, "link").getCenter());
+    pointer(haylen::platform::Event::Type::MouseMove, getBounds(*gui, "link").getCenter());
     frames(2);
-    EXPECT_EQ(getFixture().host().getCursor(), platform::Window::Cursor::PointingHand);
-    pointer(platform::Event::Type::MouseMove, getBounds(*gui, "plain").getCenter());
+    EXPECT_EQ(getFixture().host().getCursor(), haylen::platform::Window::Cursor::PointingHand);
+    pointer(haylen::platform::Event::Type::MouseMove, getBounds(*gui, "plain").getCenter());
     frames(2);
-    EXPECT_EQ(getFixture().host().getCursor(), platform::Window::Cursor::Default);
+    EXPECT_EQ(getFixture().host().getCursor(), haylen::platform::Window::Cursor::Default);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

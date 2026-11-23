@@ -24,12 +24,12 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class DebugDrawingTest : public ::testing::Test {
   protected:
-    [[nodiscard]] plugins::DebugPlugin& getPlugin() {
-        return fixture.engine().getPlugin<plugins::DebugPlugin>();
+    [[nodiscard]] haylen::plugins::DebugPlugin& getPlugin() {
+        return fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     }
 
     [[nodiscard]] std::vector<std::string> readDrawingNames() {
@@ -38,18 +38,18 @@ class DebugDrawingTest : public ::testing::Test {
         return names;
     }
 
-    void press(input::Key key) {
-        platform::Event event;
-        event.type = platform::Event::Type::KeyDown;
+    void press(haylen::input::Key key) {
+        haylen::platform::Event event;
+        event.type = haylen::platform::Event::Type::KeyDown;
         event.key = key;
         fixture.engine().handleEvent(event);
     }
 
     // Draws a texture in a world canvas and another in a screen canvas every frame, and returns the number of quads the last frame drew.
-    std::size_t drawFrame(const graphics::Texture& texture) {
+    std::size_t drawFrame(const haylen::graphics::Texture& texture) {
         // clang-format off
-        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([texture](core::Engine& engine) {
-            graphics2d::Camera camera;
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([texture](haylen::core::Engine& engine) {
+            haylen::graphics2d::Camera camera;
             engine.getRenderer2D().beginWorld(camera);
             engine.getRenderer2D().draw({.texture = texture, .position = {10.0F, 10.0F}});
             engine.getRenderer2D().beginScreen();
@@ -69,10 +69,10 @@ class DebugDrawingTest : public ::testing::Test {
 };
 
 TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
-    plugins::DebugPlugin& plugin = getPlugin();
-    std::vector<graphics2d::Renderer::CanvasKind> kinds;
-    core::Connection drawer = plugin.addDrawer("marks", [&kinds](graphics2d::Renderer& renderer) { kinds.push_back(renderer.getCanvasKind()); });
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    haylen::plugins::DebugPlugin& plugin = getPlugin();
+    std::vector<haylen::graphics2d::Renderer::CanvasKind> kinds;
+    haylen::core::Connection drawer = plugin.addDrawer("marks", [&kinds](haylen::graphics2d::Renderer& renderer) { kinds.push_back(renderer.getCanvasKind()); });
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4, haylen::math::Color::white()));
 
     (void)drawFrame(texture);
     EXPECT_TRUE(kinds.empty());
@@ -80,16 +80,16 @@ TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
 
     plugin.setDrawing("marks", true);
     (void)drawFrame(texture);
-    EXPECT_EQ(std::set(kinds.begin(), kinds.end()), (std::set{graphics2d::Renderer::CanvasKind::World, graphics2d::Renderer::CanvasKind::Screen}));
+    EXPECT_EQ(std::set(kinds.begin(), kinds.end()), (std::set{haylen::graphics2d::Renderer::CanvasKind::World, haylen::graphics2d::Renderer::CanvasKind::Screen}));
     EXPECT_EQ(plugin.getDrawings(), (std::vector<std::string>{"marks"}));
 
     // The key turns every drawing off while any is on, and then every drawing the engine and the app know.
-    press(input::Key::F4);
+    press(haylen::input::Key::F4);
     EXPECT_TRUE(plugin.getDrawings().empty());
-    press(input::Key::F4);
+    press(haylen::input::Key::F4);
     EXPECT_EQ(plugin.getDrawings(), readDrawingNames());
     plugin.setDrawKey(std::nullopt);
-    press(input::Key::F4);
+    press(haylen::input::Key::F4);
     EXPECT_EQ(plugin.getDrawings().size(), 3U);
 
     kinds.clear();
@@ -101,7 +101,7 @@ TEST_F(DebugDrawingTest, RunsTheDrawersOfTheDrawingsThatAreOnInEveryCanvas) {
 
 // The bounds outline every textured quad and name each sprite after the path of the texture the assets loaded it from.
 TEST_F(DebugDrawingTest, OutlinesSpritesWithTheNamesOfTheirTextures) {
-    const graphics::Texture texture = fixture.engine().getAssets().texture("units/hero.png");
+    const haylen::graphics::Texture texture = fixture.engine().getAssets().texture("units/hero.png");
     const std::size_t plain = drawFrame(texture);
     EXPECT_EQ(plain, 2U);
 
@@ -243,8 +243,8 @@ TEST_F(DebugDrawingTest, SwitchesDrawingsFromLua) {
 
 TEST(DebugDrawingConfigTest, StartsWithTheDrawingsOfTheHaylenJson) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Drawings", "identifier": "com.haylen.drawings", "debug": {"drawings": ["physics", "bounds"]}})"}});
-    EXPECT_EQ(fixture.engine().getPlugin<plugins::DebugPlugin>().getDrawings(), (std::vector<std::string>{"bounds", "physics"}));
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"drawings": [""]}})")), std::invalid_argument);
+    EXPECT_EQ(fixture.engine().getPlugin<haylen::plugins::DebugPlugin>().getDrawings(), (std::vector<std::string>{"bounds", "physics"}));
+    EXPECT_THROW((void)haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"debug": {"drawings": [""]}})")), std::invalid_argument);
 }
 
 // The overlay names every scene of the stack after its class, or after its own name, or calls it a scene.
@@ -252,13 +252,13 @@ TEST(DebugDrawingConfigTest, NamesScriptedScenesAfterTheirClass) {
     test::LuaFixture fixture;
     fixture.runLua("local haylen = require('haylen') local scene = require('haylen.scene') local Menu = haylen.class('Menu') scene.push(Menu()) scene.push({name = 'pause'}) scene.push({})");
     fixture.frames(1);
-    const core::SceneManager& scenes = fixture.engine().getScenes();
+    const haylen::core::SceneManager& scenes = fixture.engine().getScenes();
     ASSERT_EQ(scenes.size(), 3U);
     EXPECT_EQ(scenes.at(0).getName(), "Menu");
     EXPECT_EQ(scenes.at(1).getName(), "pause");
     EXPECT_EQ(scenes.at(2).getName(), "Scene");
-    EXPECT_EQ(core::Scene::stateName(scenes.at(2).getState()), "active");
-    EXPECT_EQ(core::Scene::stateFromName("covered"), core::Scene::State::Covered);
+    EXPECT_EQ(haylen::core::Scene::stateName(scenes.at(2).getState()), "active");
+    EXPECT_EQ(haylen::core::Scene::stateFromName("covered"), haylen::core::Scene::State::Covered);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

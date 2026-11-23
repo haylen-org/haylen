@@ -17,7 +17,7 @@
 #include "support/LuaUiFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // A UI whose interactions play through buses of their own, so each bus counts the voices of one interaction. The sounds load before the test goes on, since the library of the UI finds them in the cache of the assets.
 class ThemeSoundTest : public ::testing::Test, public test::LuaUiFixture {
@@ -53,9 +53,9 @@ class ThemeSoundTest : public ::testing::Test, public test::LuaUiFixture {
     }
 
     [[nodiscard]] std::size_t playing(std::string_view bus) {
-        std::vector<audio::Mixer::BusStats> buses;
+        std::vector<haylen::audio::Mixer::BusStats> buses;
         getEngine().getAudio().readBusStats(buses);
-        for (const audio::Mixer::BusStats& stats : buses) {
+        for (const haylen::audio::Mixer::BusStats& stats : buses) {
             if (stats.name == bus) {
                 return stats.playing;
             }
@@ -115,15 +115,15 @@ TEST_F(ThemeSoundTest, PlaysTheFocusSoundOnlyWhenThePlayerMovesTheFocus) {
     EXPECT_EQ(playing("focus"), 0U);
 
     // The first press only shows where the focus is, and the next one moves it.
-    key(input::Key::Down);
+    key(haylen::input::Key::Down);
     frames(2);
     EXPECT_EQ(playing("focus"), 0U);
-    key(input::Key::Down);
+    key(haylen::input::Key::Down);
     frames(2);
     ASSERT_TRUE(isFocused(*gui, "b"));
     EXPECT_EQ(playing("focus"), 1U);
     settle();
-    key(input::Key::Tab);
+    key(haylen::input::Key::Tab);
     frames(2);
     ASSERT_TRUE(isFocused(*gui, "c"));
     EXPECT_EQ(playing("focus"), 1U);
@@ -131,7 +131,7 @@ TEST_F(ThemeSoundTest, PlaysTheFocusSoundOnlyWhenThePlayerMovesTheFocus) {
 
     // A pointer and a script move the focus without its sound.
     click(*gui, "a");
-    gui->command(getUi().getContext(), "b", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "b", "focus", haylen::core::Json::object());
     frames(2);
     EXPECT_EQ(playing("focus"), 0U);
 }
@@ -280,4 +280,4 @@ TEST_F(ThemeSoundTest, ReadsTheSoundsOfThemesAndRejectsBrokenOnes) {
     EXPECT_EQ(getFixture().lua("return ui.themeSound('press').sound .. ' ' .. tostring(ui.themeSound('toggle'))"), "ui/short.wav nil");
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

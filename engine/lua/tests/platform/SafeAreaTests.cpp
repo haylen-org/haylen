@@ -10,7 +10,7 @@
 #include "platform/NativeViews.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class SafeAreaTest : public ::testing::Test {
   protected:
@@ -18,7 +18,7 @@ class SafeAreaTest : public ::testing::Test {
         return R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": ")" + std::string(scaling) + R"("}})";
     }
 
-    static void expectSameRect(const math::Rect& actual, const math::Rect& expected) {
+    static void expectSameRect(const haylen::math::Rect& actual, const haylen::math::Rect& expected) {
         EXPECT_NEAR(actual.x, expected.x, 0.01F);
         EXPECT_NEAR(actual.y, expected.y, 0.01F);
         EXPECT_NEAR(actual.width, expected.width, 0.01F);
@@ -30,7 +30,7 @@ TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
     // A window without a cutout, rounded corners or bars of the system over it has no device insets, so every scaling keeps its whole visible area safe, letterboxed or not.
     for (const std::string_view scaling : {"fit", "fill", "stretch", "expand", "pixelPerfect"}) {
         test::LuaFixture fixture({{"haylen.json", app(scaling)}});
-        for (const math::Vec2 size : {math::Vec2{1920.0F, 1080.0F}, math::Vec2{2400.0F, 1080.0F}, math::Vec2{1080.0F, 1920.0F}}) {
+        for (const haylen::math::Vec2 size : {haylen::math::Vec2{1920.0F, 1080.0F}, haylen::math::Vec2{2400.0F, 1080.0F}, haylen::math::Vec2{1080.0F, 1920.0F}}) {
             fixture.host().resize(size);
             fixture.frames(1);
             expectSameRect(fixture.engine().getViewport().getSafeRect(), fixture.engine().getViewport().getVisibleRect());
@@ -76,4 +76,4 @@ TEST_F(SafeAreaTest, ReportsTheCutoutsOfTheScreenInDesignUnits) {
     expectSameRect(fixture.engine().getCutouts()[0], {1920.0F * 11.0F / 852.0F, 1080.0F * 133.5F / 393.0F, 1920.0F * 37.0F / 852.0F, 1080.0F * 126.0F / 393.0F});
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

@@ -9,9 +9,9 @@
 #include "haylen/core/Engine.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::audio {
+namespace haylen::lua::audio {
 
-class MixerLuaTest : public MixerFixture {
+class MixerLuaTest : public haylen::audio::MixerFixture {
   protected:
     // An engine whose Lua state holds audio, the hit sound and a one-second loop.
     [[nodiscard]] static std::unique_ptr<test::LuaFixture> makeEngine() {
@@ -53,12 +53,12 @@ TEST_F(MixerLuaTest, PausesEveryVoiceAndReportsInterruptions) {
     EXPECT_EQ(fixture->lua("return tostring(audio.paused(mine)) .. ' ' .. tostring(audio.paused(other))"), "true false");
 
     fixture->runLua("heard = {} for _, name in ipairs({'audioInterrupted', 'audioResumed', 'audioRouteChanged'}) do events.on(name, function() heard[#heard + 1] = name end) end");
-    Mixer& engineMixer = fixture->engine().getAudio();
-    engineMixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionBegan);
+    haylen::audio::Mixer& engineMixer = fixture->engine().getAudio();
+    engineMixer.reportDeviceEvent(haylen::audio::Mixer::DeviceEvent::InterruptionBegan);
     fixture->frames(1);
     EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "true audioInterrupted");
-    engineMixer.reportDeviceEvent(Mixer::DeviceEvent::InterruptionEnded);
-    engineMixer.reportDeviceEvent(Mixer::DeviceEvent::RouteChanged);
+    engineMixer.reportDeviceEvent(haylen::audio::Mixer::DeviceEvent::InterruptionEnded);
+    engineMixer.reportDeviceEvent(haylen::audio::Mixer::DeviceEvent::RouteChanged);
     fixture->frames(1);
     EXPECT_EQ(fixture->lua("return tostring(audio.interrupted()) .. ' ' .. table.concat(heard, ',')"), "false audioInterrupted,audioResumed,audioRouteChanged");
 }
@@ -162,4 +162,4 @@ TEST(MixerOutputLuaTest, GuardsTheMasterBusWithALimiterUnlessHaylenJsonTurnsItOf
     EXPECT_EQ(plain.lua("return #require('haylen.audio').busEffects('master')"), "0");
 }
 
-} // namespace haylen::audio
+} // namespace haylen::lua::audio

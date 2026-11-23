@@ -17,7 +17,7 @@
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 class ReleaseInspectorTest : public ::testing::Test {
   protected:
@@ -37,15 +37,15 @@ class ReleaseInspectorTest : public ::testing::Test {
         return files;
     }
 
-    [[nodiscard]] ReleaseInspector makeInspector() const {
+    [[nodiscard]] haylen::content::ReleaseInspector makeInspector() const {
         return {release.getKeys(), {release.getSigningKey().getVerifyingKey()}};
     }
 
-    static void expectCode(Error::Code code, const std::function<void()>& action) {
+    static void expectCode(haylen::content::Error::Code code, const std::function<void()>& action) {
         try {
             action();
             ADD_FAILURE() << "The action must fail.";
-        } catch (const Error& error) {
+        } catch (const haylen::content::Error& error) {
             EXPECT_EQ(error.getCode(), code) << error.what();
         }
     }
@@ -55,10 +55,10 @@ class ReleaseInspectorTest : public ::testing::Test {
 
 TEST_F(ReleaseInspectorTest, ShowsTheFilesChunksAndShardsOfARelease) {
     const Files files = makeFiles();
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
 
-    EXPECT_EQ(report.app.envelope.domain, Manifest::Domain::App);
+    EXPECT_EQ(report.app.envelope.domain, haylen::content::Manifest::Domain::App);
     EXPECT_EQ(report.app.envelope.profile, test::ReleaseFixture::kProfile);
     ASSERT_EQ(report.app.files.size(), 2U);
     EXPECT_EQ(report.app.files.front().path, "haylen.json");
@@ -66,9 +66,9 @@ TEST_F(ReleaseInspectorTest, ShowsTheFilesChunksAndShardsOfARelease) {
 
     // The copy of the large file stores nothing, which the totals show as the saving of deduplication.
     const std::uint64_t large = files.at("content/world/terrain.bin").size();
-    EXPECT_EQ(ReleaseInspector::getFileBytes(report.content) - ReleaseInspector::getChunkBytes(report.content), large);
-    EXPECT_LT(ReleaseInspector::getStoredBytes(report.content), 2 * large);
-    const ReleaseInspector::File& terrain = report.content.files.back();
+    EXPECT_EQ(haylen::content::ReleaseInspector::getFileBytes(report.content) - haylen::content::ReleaseInspector::getChunkBytes(report.content), large);
+    EXPECT_LT(haylen::content::ReleaseInspector::getStoredBytes(report.content), 2 * large);
+    const haylen::content::ReleaseInspector::File& terrain = report.content.files.back();
     EXPECT_EQ(terrain.path, "content/world/terrain.bin");
     ASSERT_GT(terrain.chunks.size(), 1U);
     EXPECT_EQ(terrain.chunks.back().offset + terrain.chunks.back().plainSize, large);
@@ -76,16 +76,16 @@ TEST_F(ReleaseInspectorTest, ShowsTheFilesChunksAndShardsOfARelease) {
 
 TEST_F(ReleaseInspectorTest, ComparesTwoReleases) {
     Files files = makeFiles();
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseInspector::Report before = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseInspector::Report before = makeInspector().inspect(release.getFolder());
 
     files["content/data/config.json"] = test::TestFiles::bytes(R"({"level": 4})");
     files.erase("content/data/removed.json");
     files["content/data/added.json"] = test::TestFiles::bytes(R"({"added": true})");
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseInspector::Report after = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseInspector::Report after = makeInspector().inspect(release.getFolder());
 
-    const ReleaseInspector::Difference content = ReleaseInspector::compare(before.content, after.content);
+    const haylen::content::ReleaseInspector::Difference content = haylen::content::ReleaseInspector::compare(before.content, after.content);
     EXPECT_EQ(content.newChunks, 2U);
     EXPECT_EQ(content.removedChunks, 2U);
     EXPECT_EQ(content.addedFiles, std::vector<std::string>{"content/data/added.json"});
@@ -94,7 +94,7 @@ TEST_F(ReleaseInspectorTest, ComparesTwoReleases) {
     ASSERT_EQ(content.newShards.size(), 1U);
     EXPECT_LT(content.downloadBytes, 1024U) << "An app downloads only the records of the new chunks.";
 
-    const ReleaseInspector::Difference app = ReleaseInspector::compare(before.app, after.app);
+    const haylen::content::ReleaseInspector::Difference app = haylen::content::ReleaseInspector::compare(before.app, after.app);
     EXPECT_EQ(app.newChunks, 0U);
     EXPECT_TRUE(app.newShards.empty());
 }
@@ -102,37 +102,37 @@ TEST_F(ReleaseInspectorTest, ComparesTwoReleases) {
 // A file whose delivery changes downloads at another time, which the comparison names even when the file kept its chunks.
 TEST_F(ReleaseInspectorTest, NamesTheFilesWhoseDeliveryChanged) {
     Files files = makeFiles();
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseInspector::Report before = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseInspector::Report before = makeInspector().inspect(release.getFolder());
 
     files["haylen.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "world/**", "mode": "onDemand"}]}})");
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseInspector::Report after = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseInspector::Report after = makeInspector().inspect(release.getFolder());
 
-    const ReleaseInspector::Difference content = ReleaseInspector::compare(before.content, after.content);
+    const haylen::content::ReleaseInspector::Difference content = haylen::content::ReleaseInspector::compare(before.content, after.content);
     EXPECT_TRUE(content.changedFiles.empty());
     ASSERT_EQ(content.redeliveredFiles.size(), 2U);
     EXPECT_EQ(content.redeliveredFiles.front().path, "content/world/copy.bin");
-    EXPECT_EQ(content.redeliveredFiles.front().before, Delivery::Required);
-    EXPECT_EQ(content.redeliveredFiles.front().after, Delivery::OnDemand);
+    EXPECT_EQ(content.redeliveredFiles.front().before, haylen::content::Delivery::Required);
+    EXPECT_EQ(content.redeliveredFiles.front().after, haylen::content::Delivery::OnDemand);
 }
 
 TEST_F(ReleaseInspectorTest, DeliversTheFilesOfAPreloadGroupThatARuleNames) {
     Files files = makeFiles();
     files["haylen.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"groups": "groups.json", "delivery": [{"group": "world", "mode": "onDemand"}]}})");
     files["content/groups.json"] = test::TestFiles::bytes(R"({"groups": {"world": ["world/"]}})");
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
 
-    for (const ReleaseInspector::File& file : report.content.files) {
-        EXPECT_EQ(file.delivery, file.path.starts_with("content/world/") ? Delivery::OnDemand : Delivery::Required) << file.path;
+    for (const haylen::content::ReleaseInspector::File& file : report.content.files) {
+        EXPECT_EQ(file.delivery, file.path.starts_with("content/world/") ? haylen::content::Delivery::OnDemand : haylen::content::Delivery::Required) << file.path;
     }
 }
 
 TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
-    release.build(io::MemoryPackage("source", makeFiles()));
-    const ReleaseInspector inspector = makeInspector();
-    const ReleaseInspector::Verification verification = inspector.verify(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", makeFiles()));
+    const haylen::content::ReleaseInspector inspector = makeInspector();
+    const haylen::content::ReleaseInspector::Verification verification = inspector.verify(release.getFolder());
     EXPECT_EQ(verification.files, 6U);
     EXPECT_EQ(verification.shards, 2U);
 
@@ -142,19 +142,19 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
     EXPECT_THROW((void)inspector.verify(release.getFolder()), std::runtime_error);
     ASSERT_TRUE(std::filesystem::remove(stray));
 
-    const std::vector<ShardReference> shards = inspector.inspect(release.getFolder()).content.envelope.shards;
+    const std::vector<haylen::content::ShardReference> shards = inspector.inspect(release.getFolder()).content.envelope.shards;
     ASSERT_FALSE(shards.empty());
-    const ShardReference shard = shards.front();
+    const haylen::content::ShardReference shard = shards.front();
     test::TestFiles::damage(release.getFolder() / shard.getFileName(), shard.fileSize / 2);
-    expectCode(Error::Code::CorruptHeader, [&] { (void)inspector.verify(release.getFolder()); });
+    expectCode(haylen::content::Error::Code::CorruptHeader, [&] { (void)inspector.verify(release.getFolder()); });
 
     ASSERT_TRUE(std::filesystem::remove(release.getFolder() / shard.getFileName()));
-    expectCode(Error::Code::MissingShard, [&] { (void)inspector.verify(release.getFolder()); });
+    expectCode(haylen::content::Error::Code::MissingShard, [&] { (void)inspector.verify(release.getFolder()); });
 
     // Each manifest must be the one of its domain.
-    std::filesystem::copy_file(release.getFolder() / ReleasePackage::kAppManifestFile, release.getFolder() / ReleasePackage::kContentManifestFile, std::filesystem::copy_options::overwrite_existing);
-    expectCode(Error::Code::CorruptManifest, [&] { (void)inspector.inspect(release.getFolder()); });
-    ASSERT_TRUE(std::filesystem::remove(release.getFolder() / ReleasePackage::kAppManifestFile));
+    std::filesystem::copy_file(release.getFolder() / haylen::content::ReleasePackage::kAppManifestFile, release.getFolder() / haylen::content::ReleasePackage::kContentManifestFile, std::filesystem::copy_options::overwrite_existing);
+    expectCode(haylen::content::Error::Code::CorruptManifest, [&] { (void)inspector.inspect(release.getFolder()); });
+    ASSERT_TRUE(std::filesystem::remove(release.getFolder() / haylen::content::ReleasePackage::kAppManifestFile));
 
     try {
         (void)inspector.inspect(release.getFolder());
@@ -169,12 +169,12 @@ TEST_F(ReleaseInspectorTest, CountsAShardThatBothDomainsNameOnce) {
     const std::string config = R"({"name": "Release Test", "identifier": "com.haylen.tests"})";
     const std::vector<std::uint8_t> module = lua::content::LuaCompiler().compile("loaded = true", "source/main.lua");
     release.build({{"haylen.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
-    const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
+    const haylen::content::ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
     ASSERT_EQ(report.app.envelope.shards, report.content.envelope.shards);
 
-    const ReleaseInspector::Verification verification = makeInspector().verify(release.getFolder());
+    const haylen::content::ReleaseInspector::Verification verification = makeInspector().verify(release.getFolder());
     EXPECT_EQ(verification.shards, 1U);
     EXPECT_EQ(verification.files, 4U);
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

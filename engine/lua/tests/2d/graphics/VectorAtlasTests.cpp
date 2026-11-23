@@ -11,43 +11,43 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 class VectorAtlasTest : public ::testing::Test {
   protected:
     static constexpr const char* kSquare = R"(<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="#FF8000"/></svg>)";
 
-    [[nodiscard]] static graphics::VectorImage square() {
-        return graphics::VectorImage::parse(test::TestFiles::bytes(kSquare));
+    [[nodiscard]] static haylen::graphics::VectorImage square() {
+        return haylen::graphics::VectorImage::parse(test::TestFiles::bytes(kSquare));
     }
 
     test::LuaFixture fixture;
 };
 
 TEST_F(VectorAtlasTest, RoundsScalesUpToQuarterOctaveSteps) {
-    EXPECT_EQ(VectorAtlas::stepOf(1.0F), 0);
-    EXPECT_EQ(VectorAtlas::stepOf(1.1F), 1);
-    EXPECT_EQ(VectorAtlas::stepOf(2.0F), 4);
-    EXPECT_EQ(VectorAtlas::stepOf(0.5F), -4);
-    EXPECT_FLOAT_EQ(VectorAtlas::scaleOf(4), 2.0F);
-    EXPECT_GE(VectorAtlas::scaleOf(VectorAtlas::stepOf(1.37F)), 1.37F);
+    EXPECT_EQ(haylen::graphics2d::VectorAtlas::stepOf(1.0F), 0);
+    EXPECT_EQ(haylen::graphics2d::VectorAtlas::stepOf(1.1F), 1);
+    EXPECT_EQ(haylen::graphics2d::VectorAtlas::stepOf(2.0F), 4);
+    EXPECT_EQ(haylen::graphics2d::VectorAtlas::stepOf(0.5F), -4);
+    EXPECT_FLOAT_EQ(haylen::graphics2d::VectorAtlas::scaleOf(4), 2.0F);
+    EXPECT_GE(haylen::graphics2d::VectorAtlas::scaleOf(haylen::graphics2d::VectorAtlas::stepOf(1.37F)), 1.37F);
 }
 
 // The first raster of an image is there at once, a new scale draws the nearest raster until its own arrives from the task pool, and rasters of every image share a page.
 TEST_F(VectorAtlasTest, MakesTheFirstRasterAtOnceAndTheOthersInTheBackground) {
-    VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
-    const graphics::VectorImage image = square();
-    const VectorAtlas::Raster first = atlas.find(image, 1.0F, 1);
+    haylen::graphics2d::VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    const haylen::graphics::VectorImage image = square();
+    const haylen::graphics2d::VectorAtlas::Raster first = atlas.find(image, 1.0F, 1);
     ASSERT_TRUE(first.texture.isValid());
-    EXPECT_EQ(first.source.getSize(), math::Vec2(10.0F, 10.0F));
+    EXPECT_EQ(first.source.getSize(), haylen::math::Vec2(10.0F, 10.0F));
     EXPECT_EQ(atlas.find(image, 1.0F, 1).source, first.source);
 
-    const VectorAtlas::Raster waiting = atlas.find(image, 2.0F, 2);
+    const haylen::graphics2d::VectorAtlas::Raster waiting = atlas.find(image, 2.0F, 2);
     EXPECT_EQ(waiting.source, first.source);
     ASSERT_TRUE(fixture.frameUntil([&] { return atlas.find(image, 2.0F, 3).source.width == 20.0F; }));
     EXPECT_EQ(atlas.find(image, 2.0F, 4).texture, first.texture);
 
-    const VectorAtlas::Raster other = atlas.find(square(), 1.0F, 5);
+    const haylen::graphics2d::VectorAtlas::Raster other = atlas.find(square(), 1.0F, 5);
     EXPECT_EQ(other.texture, first.texture);
     EXPECT_NE(other.source, first.source);
     EXPECT_EQ(atlas.getPageCount(), 1U);
@@ -55,38 +55,38 @@ TEST_F(VectorAtlasTest, MakesTheFirstRasterAtOnceAndTheOthersInTheBackground) {
 
 // Once the atlas holds as many pages as it may, the page that drew longest ago starts over with a new texture, while the pages drawn in the frame stay.
 TEST_F(VectorAtlasTest, StartsTheLeastRecentPageOverWhenFull) {
-    VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
-    const float large = static_cast<float>(VectorAtlas::kPageSize) * 0.06F;
-    std::vector<graphics::VectorImage> images;
-    std::vector<VectorAtlas::Raster> rasters;
-    for (std::size_t index = 0; index < VectorAtlas::kMaxPages; ++index) {
+    haylen::graphics2d::VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    const float large = static_cast<float>(haylen::graphics2d::VectorAtlas::kPageSize) * 0.06F;
+    std::vector<haylen::graphics::VectorImage> images;
+    std::vector<haylen::graphics2d::VectorAtlas::Raster> rasters;
+    for (std::size_t index = 0; index < haylen::graphics2d::VectorAtlas::kMaxPages; ++index) {
         images.push_back(square());
         rasters.push_back(atlas.find(images.back(), large, index + 1));
     }
 
-    EXPECT_EQ(atlas.getPageCount(), VectorAtlas::kMaxPages);
+    EXPECT_EQ(atlas.getPageCount(), haylen::graphics2d::VectorAtlas::kMaxPages);
 
     images.push_back(square());
-    const VectorAtlas::Raster newest = atlas.find(images.back(), large, VectorAtlas::kMaxPages + 1);
-    EXPECT_EQ(atlas.getPageCount(), VectorAtlas::kMaxPages);
+    const haylen::graphics2d::VectorAtlas::Raster newest = atlas.find(images.back(), large, haylen::graphics2d::VectorAtlas::kMaxPages + 1);
+    EXPECT_EQ(atlas.getPageCount(), haylen::graphics2d::VectorAtlas::kMaxPages);
     EXPECT_NE(newest.texture, rasters.front().texture);
-    EXPECT_EQ(atlas.find(images[1], large, VectorAtlas::kMaxPages + 1).texture, rasters[1].texture);
+    EXPECT_EQ(atlas.find(images[1], large, haylen::graphics2d::VectorAtlas::kMaxPages + 1).texture, rasters[1].texture);
 
     // The image whose page started over makes its raster again.
-    EXPECT_NE(atlas.find(images.front(), large, VectorAtlas::kMaxPages + 2).texture, rasters.front().texture);
+    EXPECT_NE(atlas.find(images.front(), large, haylen::graphics2d::VectorAtlas::kMaxPages + 2).texture, rasters.front().texture);
 }
 
 // A raster that arrives from the task pool after its image left the atlas and came back with the same step keeps the place it already has, so the pages that start over later forget each raster once.
 TEST_F(VectorAtlasTest, KeepsOnePlaceForARasterThatCameBackWhileItWasMade) {
-    VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
-    const float large = static_cast<float>(VectorAtlas::kPageSize) * 0.06F;
+    haylen::graphics2d::VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    const float large = static_cast<float>(haylen::graphics2d::VectorAtlas::kPageSize) * 0.06F;
     const float larger = large * 1.5F;
-    const graphics::VectorImage image = square();
-    std::vector<graphics::VectorImage> others;
+    const haylen::graphics::VectorImage image = square();
+    std::vector<haylen::graphics::VectorImage> others;
     std::uint64_t frame = 1;
     // clang-format off
     const auto fillPages = [&] {
-        for (std::size_t index = 0; index < VectorAtlas::kMaxPages; ++index) {
+        for (std::size_t index = 0; index < haylen::graphics2d::VectorAtlas::kMaxPages; ++index) {
             others.push_back(square());
             (void)atlas.find(others.back(), large, ++frame);
         }
@@ -96,7 +96,7 @@ TEST_F(VectorAtlasTest, KeepsOnePlaceForARasterThatCameBackWhileItWasMade) {
     (void)atlas.find(image, large, frame);
     (void)atlas.find(image, larger, frame);
     fillPages();
-    EXPECT_EQ(atlas.find(image, larger, ++frame).source.width, std::ceil(10.0F * VectorAtlas::scaleOf(VectorAtlas::stepOf(larger))));
+    EXPECT_EQ(atlas.find(image, larger, ++frame).source.width, std::ceil(10.0F * haylen::graphics2d::VectorAtlas::scaleOf(haylen::graphics2d::VectorAtlas::stepOf(larger))));
     ASSERT_TRUE(fixture.frameUntil([&atlas] { return atlas.getPendingCount() == 0; }));
 
     fillPages();
@@ -106,14 +106,14 @@ TEST_F(VectorAtlasTest, KeepsOnePlaceForARasterThatCameBackWhileItWasMade) {
 
 // An image drawn far larger than the largest page draws the largest raster that fits in one, so no page outgrows the bound, whatever the device holds.
 TEST_F(VectorAtlasTest, BoundsThePagesOfImagesDrawnHuge) {
-    VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
-    ASSERT_GT(fixture.engine().getGraphics().getMaxTextureSize(), VectorAtlas::kMaxPageSize);
-    const graphics::VectorImage image = square();
-    const VectorAtlas::Raster huge = atlas.find(image, 4000.0F, 1);
-    EXPECT_LE(huge.texture.getSize().x, static_cast<float>(VectorAtlas::kMaxPageSize));
-    EXPECT_LE(huge.texture.getSize().y, static_cast<float>(VectorAtlas::kMaxPageSize));
-    EXPECT_LE(huge.source.width, static_cast<float>(VectorAtlas::kMaxPageSize - 2));
-    EXPECT_GT(huge.source.width, static_cast<float>(VectorAtlas::kMaxPageSize) / 2.0F);
+    haylen::graphics2d::VectorAtlas atlas(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    ASSERT_GT(fixture.engine().getGraphics().getMaxTextureSize(), haylen::graphics2d::VectorAtlas::kMaxPageSize);
+    const haylen::graphics::VectorImage image = square();
+    const haylen::graphics2d::VectorAtlas::Raster huge = atlas.find(image, 4000.0F, 1);
+    EXPECT_LE(huge.texture.getSize().x, static_cast<float>(haylen::graphics2d::VectorAtlas::kMaxPageSize));
+    EXPECT_LE(huge.texture.getSize().y, static_cast<float>(haylen::graphics2d::VectorAtlas::kMaxPageSize));
+    EXPECT_LE(huge.source.width, static_cast<float>(haylen::graphics2d::VectorAtlas::kMaxPageSize - 2));
+    EXPECT_GT(huge.source.width, static_cast<float>(haylen::graphics2d::VectorAtlas::kMaxPageSize) / 2.0F);
     EXPECT_EQ(atlas.find(image, 400000.0F, 2).source, huge.source);
     EXPECT_EQ(atlas.getPendingCount(), 0U);
 }
@@ -139,4 +139,4 @@ TEST_F(VectorAtlasTest, DrawsVectorImagesFromLua) {
     EXPECT_NE(fixture.lua("graphics2d.beginScreen() graphics2d.drawVector(icon, 0, 0, {source = {0, 0, 4, 4}})").find("Unknown option \"source\""), std::string::npos);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

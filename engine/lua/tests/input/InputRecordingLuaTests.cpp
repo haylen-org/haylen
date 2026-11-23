@@ -7,7 +7,7 @@
 
 #include "support/LuaFixture.hpp"
 
-namespace haylen::input {
+namespace haylen::lua::input {
 
 class InputRecordingLuaTest : public ::testing::Test {
   protected:
@@ -89,4 +89,4 @@ TEST_F(InputRecordingLuaTest, RecordsAndReplaysPlayersIntoACommandBuffer) {
     EXPECT_NE(load(other, R"({"name": "Test App", "identifier": "com.haylen.tests", "fixedRate": 60})").find("The recording was made at 30"), std::string::npos);
 }
 
-} // namespace haylen::input
+} // namespace haylen::lua::input

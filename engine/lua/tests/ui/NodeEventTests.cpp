@@ -15,15 +15,15 @@
 #include "haylen/ui/Gui.hpp"
 #include "support/LuaUiFixture.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class NodeEventTest : public ::testing::Test, public test::LuaUiFixture {
   protected:
-    using Notice = Component::Notice;
+    using Notice = haylen::ui::Component::Notice;
 
     // Mounts a GUI whose listed nodes report the given events from the moment it mounts.
-    std::shared_ptr<Gui> mountListening(const std::string& json, const std::vector<std::pair<std::string, std::vector<Notice>>>& listening) {
-        std::shared_ptr<Gui> gui = getUi().createGui(core::Json::parse(json), Placement::Screen);
+    std::shared_ptr<haylen::ui::Gui> mountListening(const std::string& json, const std::vector<std::pair<std::string, std::vector<Notice>>>& listening) {
+        std::shared_ptr<haylen::ui::Gui> gui = getUi().createGui(haylen::core::Json::parse(json), haylen::ui::Placement::Screen);
         for (const auto& [id, notices] : listening) {
             for (const Notice notice : notices) {
                 gui->listen(id, notice, true);
@@ -41,15 +41,15 @@ class NodeEventTest : public ::testing::Test, public test::LuaUiFixture {
     }
 
     // The interface reads the pointer in whole units, so a reported position is the design point of the whole unit under it.
-    [[nodiscard]] math::Vec2 toDesign(math::Vec2 point) {
-        return math::Vec2{std::floor(point.x), std::floor(point.y)} + getEngine().getViewport().getVisibleRect().getMin();
+    [[nodiscard]] haylen::math::Vec2 toDesign(haylen::math::Vec2 point) {
+        return haylen::math::Vec2{std::floor(point.x), std::floor(point.y)} + getEngine().getViewport().getVisibleRect().getMin();
     }
 
-    void scroll(math::Vec2 point, math::Vec2 steps) {
-        pointer(platform::Event::Type::MouseMove, point);
+    void scroll(haylen::math::Vec2 point, haylen::math::Vec2 steps) {
+        pointer(haylen::platform::Event::Type::MouseMove, point);
         frames();
-        platform::Event event;
-        event.type = platform::Event::Type::MouseScroll;
+        haylen::platform::Event event;
+        event.type = haylen::platform::Event::Type::MouseScroll;
         event.scroll = steps;
         getEngine().handleEvent(event);
         frames(2);
@@ -74,7 +74,7 @@ TEST_F(NodeEventTest, ReportsWhenNodesJoinShowHideAndLeave) {
 
     // A node that leaves reports it before the change returns, and the nodes that arrive report joining once the GUI draws.
     clearEvents();
-    gui->replaceChildren("box", core::Json::parse(R"([{"kind": "card", "id": "fresh"}])"));
+    gui->replaceChildren("box", haylen::core::Json::parse(R"([{"kind": "card", "id": "fresh"}])"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"card:unmount"}));
     gui->listen("fresh", Notice::Mount, true);
     gui->listen("fresh", Notice::Unmount, true);
@@ -83,10 +83,10 @@ TEST_F(NodeEventTest, ReportsWhenNodesJoinShowHideAndLeave) {
 
     // A node that leaves before its GUI drew never joined, so it reports neither.
     clearEvents();
-    gui->replaceChildren("box", core::Json::parse(R"([{"kind": "card", "id": "brief"}])"));
+    gui->replaceChildren("box", haylen::core::Json::parse(R"([{"kind": "card", "id": "brief"}])"));
     gui->listen("brief", Notice::Mount, true);
     gui->listen("brief", Notice::Unmount, true);
-    gui->replaceChildren("box", core::Json::parse(R"([{"kind": "card", "id": "last"}])"));
+    gui->replaceChildren("box", haylen::core::Json::parse(R"([{"kind": "card", "id": "last"}])"));
     gui->listen("last", Notice::Unmount, true);
     frames(2);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"fresh:unmount"}));
@@ -106,46 +106,46 @@ TEST_F(NodeEventTest, ReportsWhenNodesJoinShowHideAndLeave) {
 // A finger that lifts takes the pointer with it, so the button it tapped clicks once and stops being hovered.
 TEST_F(NodeEventTest, EndsTheHoverWhenAFingerLifts) {
     auto gui = mountListening(R"({"kind": "column", "children": [{"kind": "button", "id": "tapped", "text": "Tap"}]})", {{"tapped", {Notice::Hover}}});
-    const math::Vec2 center = getBounds(*gui, "tapped").getCenter();
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    const haylen::math::Vec2 center = getBounds(*gui, "tapped").getCenter();
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
-    touch(platform::Event::Type::TouchEnded, 1, center);
+    touch(haylen::platform::Event::Type::TouchEnded, 1, center);
     frames(3);
     EXPECT_EQ(countEvents("tapped:click"), 1);
-    EXPECT_EQ(findLastEvent("hover").value, (core::Json{{"hovered", false}}));
+    EXPECT_EQ(findLastEvent("hover").value, (haylen::core::Json{{"hovered", false}}));
 }
 
 // A finger that travels past the slop is a swipe and a finger that shares the screen is part of a pinch, so neither clicks the button it pressed, even when it lifts over the button, while a finger that stays taps it.
 TEST_F(NodeEventTest, NeverClicksAButtonAFingerSwipedOrPinched) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "wide", "text": "Wide", "width": 600, "height": 200}]})");
-    const math::Vec2 center = getBounds(*gui, "wide").getCenter();
+    const haylen::math::Vec2 center = getBounds(*gui, "wide").getCenter();
 
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
 
     for (int step = 1; step <= 4; ++step) {
-        touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        touch(haylen::platform::Event::Type::TouchMoved, 1, center + haylen::math::Vec2{20.0F * static_cast<float>(step), 0.0F});
         frames();
     }
 
-    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{80.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, 1, center + haylen::math::Vec2{80.0F, 0.0F});
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 0);
 
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
-    touch(platform::Event::Type::TouchBegan, 2, center + math::Vec2{200.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchBegan, 2, center + haylen::math::Vec2{200.0F, 0.0F});
     frames(2);
-    touch(platform::Event::Type::TouchEnded, 2, center + math::Vec2{200.0F, 0.0F});
-    touch(platform::Event::Type::TouchEnded, 1, center);
+    touch(haylen::platform::Event::Type::TouchEnded, 2, center + haylen::math::Vec2{200.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, 1, center);
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 0);
 
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
-    touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{4.0F, 3.0F});
+    touch(haylen::platform::Event::Type::TouchMoved, 1, center + haylen::math::Vec2{4.0F, 3.0F});
     frames();
-    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{4.0F, 3.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, 1, center + haylen::math::Vec2{4.0F, 3.0F});
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 1);
 }
@@ -153,24 +153,24 @@ TEST_F(NodeEventTest, NeverClicksAButtonAFingerSwipedOrPinched) {
 // A finger that travels past the slop in the frame it lifts is a flick, and a finger that the system cancels never lifted, so neither clicks the button under it.
 TEST_F(NodeEventTest, NeverClicksAButtonAFingerFlickedOrTheSystemCancelled) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "wide", "text": "Wide", "width": 600, "height": 200}]})");
-    const math::Vec2 center = getBounds(*gui, "wide").getCenter();
+    const haylen::math::Vec2 center = getBounds(*gui, "wide").getCenter();
 
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
-    touch(platform::Event::Type::TouchMoved, 1, center + math::Vec2{80.0F, 0.0F});
-    touch(platform::Event::Type::TouchEnded, 1, center + math::Vec2{80.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchMoved, 1, center + haylen::math::Vec2{80.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, 1, center + haylen::math::Vec2{80.0F, 0.0F});
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 0);
 
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
-    touch(platform::Event::Type::TouchCancelled, 1, center);
+    touch(haylen::platform::Event::Type::TouchCancelled, 1, center);
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 0);
 
-    touch(platform::Event::Type::TouchBegan, 1, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 1, center);
     frames(2);
-    touch(platform::Event::Type::TouchEnded, 1, center);
+    touch(haylen::platform::Event::Type::TouchEnded, 1, center);
     frames(3);
     EXPECT_EQ(countEvents("wide:click"), 1);
 }
@@ -203,16 +203,16 @@ TEST_F(NodeEventTest, KeepsTheFingerOfAButtonInAnImmediatePopup) {
     // clang-format on
     frames(3);
 
-    const math::Vec2 press{80.0F, 110.0F};
-    touch(platform::Event::Type::TouchBegan, 1, press);
+    const haylen::math::Vec2 press{80.0F, 110.0F};
+    touch(haylen::platform::Event::Type::TouchBegan, 1, press);
     frames(2);
 
     for (int step = 1; step <= 4; ++step) {
-        touch(platform::Event::Type::TouchMoved, 1, press + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        touch(haylen::platform::Event::Type::TouchMoved, 1, press + haylen::math::Vec2{20.0F * static_cast<float>(step), 0.0F});
         frames();
     }
 
-    touch(platform::Event::Type::TouchEnded, 1, press + math::Vec2{80.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, 1, press + haylen::math::Vec2{80.0F, 0.0F});
     frames(3);
     EXPECT_EQ(getFixture().lua("return clicks"), "1");
 }
@@ -220,16 +220,16 @@ TEST_F(NodeEventTest, KeepsTheFingerOfAButtonInAnImmediatePopup) {
 // A control that follows the finger keeps it however far it travels.
 TEST_F(NodeEventTest, KeepsTheFingerThatDragsASlider) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "slider", "id": "volume", "value": 0, "width": 600}]})");
-    const math::Rect track = getBounds(*gui, "volume");
-    touch(platform::Event::Type::TouchBegan, 1, {track.x + 4.0F, track.getCenter().y});
+    const haylen::math::Rect track = getBounds(*gui, "volume");
+    touch(haylen::platform::Event::Type::TouchBegan, 1, {track.x + 4.0F, track.getCenter().y});
     frames(2);
 
     for (int step = 1; step <= 6; ++step) {
-        touch(platform::Event::Type::TouchMoved, 1, {track.x + 4.0F + 50.0F * static_cast<float>(step), track.getCenter().y});
+        touch(haylen::platform::Event::Type::TouchMoved, 1, {track.x + 4.0F + 50.0F * static_cast<float>(step), track.getCenter().y});
         frames();
     }
 
-    touch(platform::Event::Type::TouchEnded, 1, {track.x + 304.0F, track.getCenter().y});
+    touch(haylen::platform::Event::Type::TouchEnded, 1, {track.x + 304.0F, track.getCenter().y});
     frames(2);
     EXPECT_GT(findLastEvent("change").value["value"].get<double>(), 0.4);
 }
@@ -237,39 +237,39 @@ TEST_F(NodeEventTest, KeepsTheFingerThatDragsASlider) {
 TEST_F(NodeEventTest, ReportsThePointerOverANode) {
     const std::vector<Notice> pointing{Notice::Hover, Notice::Press, Notice::Drag, Notice::Release, Notice::Scroll};
     auto gui = mountListening(R"({"kind": "column", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200, "children": [{"kind": "button", "id": "inner", "text": "Inner"}]}, {"kind": "label", "id": "away", "text": "Away"}]})", {{"card", pointing}, {"inner", {Notice::Press}}});
-    const math::Rect card = getBounds(*gui, "card");
-    const math::Vec2 inside = getBounds(*gui, "inner").getCenter();
-    const math::Vec2 outside = getBounds(*gui, "away").getCenter();
+    const haylen::math::Rect card = getBounds(*gui, "card");
+    const haylen::math::Vec2 inside = getBounds(*gui, "inner").getCenter();
+    const haylen::math::Vec2 outside = getBounds(*gui, "away").getCenter();
 
-    pointer(platform::Event::Type::MouseMove, inside);
+    pointer(haylen::platform::Event::Type::MouseMove, inside);
     frames(2);
-    EXPECT_EQ(findLastEvent("hover").value, (core::Json{{"hovered", true}}));
+    EXPECT_EQ(findLastEvent("hover").value, (haylen::core::Json{{"hovered", true}}));
 
     // Every listening node under the pointer reports the press.
     clearEvents();
-    pointer(platform::Event::Type::MouseDown, inside);
+    pointer(haylen::platform::Event::Type::MouseDown, inside);
     frames(2);
     EXPECT_EQ(countEvents("card:press"), 1);
     EXPECT_EQ(countEvents("inner:press"), 1);
-    EXPECT_EQ(findLastEvent("press").value, (core::Json{{"x", toDesign(inside).x}, {"y", toDesign(inside).y}, {"button", "left"}}));
+    EXPECT_EQ(findLastEvent("press").value, (haylen::core::Json{{"x", toDesign(inside).x}, {"y", toDesign(inside).y}, {"button", "left"}}));
 
     // The press follows the pointer out of the node until it lets go.
-    pointer(platform::Event::Type::MouseMove, inside + math::Vec2{30.0F, 0.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, inside + haylen::math::Vec2{30.0F, 0.0F});
     frames(2);
-    EXPECT_EQ(findLastEvent("drag").value, (core::Json{{"x", toDesign(inside).x + 30.0F}, {"y", toDesign(inside).y}, {"deltaX", 30.0F}, {"deltaY", 0.0F}, {"button", "left"}}));
-    pointer(platform::Event::Type::MouseMove, outside);
+    EXPECT_EQ(findLastEvent("drag").value, (haylen::core::Json{{"x", toDesign(inside).x + 30.0F}, {"y", toDesign(inside).y}, {"deltaX", 30.0F}, {"deltaY", 0.0F}, {"button", "left"}}));
+    pointer(haylen::platform::Event::Type::MouseMove, outside);
     frames(2);
-    EXPECT_EQ(findLastEvent("hover").value, (core::Json{{"hovered", false}}));
-    pointer(platform::Event::Type::MouseUp, outside);
+    EXPECT_EQ(findLastEvent("hover").value, (haylen::core::Json{{"hovered", false}}));
+    pointer(haylen::platform::Event::Type::MouseUp, outside);
     frames(2);
-    EXPECT_EQ(findLastEvent("release").value, (core::Json{{"x", toDesign(outside).x}, {"y", toDesign(outside).y}, {"button", "left"}, {"inside", false}}));
+    EXPECT_EQ(findLastEvent("release").value, (haylen::core::Json{{"x", toDesign(outside).x}, {"y", toDesign(outside).y}, {"button", "left"}, {"inside", false}}));
 
     clearEvents();
-    pointer(platform::Event::Type::MouseMove, card.getCenter());
+    pointer(haylen::platform::Event::Type::MouseMove, card.getCenter());
     frames();
-    pointer(platform::Event::Type::MouseDown, card.getCenter(), input::MouseButton::Right);
+    pointer(haylen::platform::Event::Type::MouseDown, card.getCenter(), haylen::input::MouseButton::Right);
     frames(2);
-    pointer(platform::Event::Type::MouseUp, card.getCenter(), input::MouseButton::Right);
+    pointer(haylen::platform::Event::Type::MouseUp, card.getCenter(), haylen::input::MouseButton::Right);
     frames(2);
     EXPECT_EQ(findLastEvent("press").value.at("button"), "right");
     EXPECT_EQ(findLastEvent("release").value.at("inside"), true);
@@ -277,7 +277,7 @@ TEST_F(NodeEventTest, ReportsThePointerOverANode) {
 
     // Two steps of the wheel scroll by two lines of the theme.
     scroll(card.getCenter(), {0.0F, -2.0F});
-    EXPECT_EQ(findLastEvent("scroll").value, (core::Json{{"deltaX", 0.0F}, {"deltaY", -128.0F}}));
+    EXPECT_EQ(findLastEvent("scroll").value, (haylen::core::Json{{"deltaX", 0.0F}, {"deltaY", -128.0F}}));
 
     // A disabled node and the nodes inside it report nothing of the pointer, and the button inside only loses the focus.
     clearEvents();
@@ -290,17 +290,17 @@ TEST_F(NodeEventTest, ReportsThePointerOverANode) {
 
 TEST_F(NodeEventTest, LetsGoOfThePointerWhenANodeStopsDrawing) {
     auto gui = mountListening(R"({"kind": "column", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200}]})", {{"card", {Notice::Hover, Notice::Press, Notice::Release, Notice::Hide}}});
-    const math::Vec2 center = getBounds(*gui, "card").getCenter();
-    pointer(platform::Event::Type::MouseMove, center);
+    const haylen::math::Vec2 center = getBounds(*gui, "card").getCenter();
+    pointer(haylen::platform::Event::Type::MouseMove, center);
     frames();
-    pointer(platform::Event::Type::MouseDown, center);
+    pointer(haylen::platform::Event::Type::MouseDown, center);
     frames(2);
     clearEvents();
     gui->set("card", {{"visible", false}});
     frames(2);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"card:hover", "card:release", "card:hide"}));
     EXPECT_EQ(findLastEvent("release").value.at("inside"), false);
-    pointer(platform::Event::Type::MouseUp, center);
+    pointer(haylen::platform::Event::Type::MouseUp, center);
     frames(2);
     EXPECT_EQ(countEvents("card:release"), 1);
 }
@@ -313,11 +313,11 @@ TEST_F(NodeEventTest, KeepsThePressesOfTouchButtonsToThemselves) {
 }
 
 TEST_F(NodeEventTest, NamesTheEventsEveryKindReports) {
-    for (std::size_t index = 0; index < Component::kNoticeNames.size(); ++index) {
-        EXPECT_EQ(Component::noticeFromName(Component::kNoticeNames[index]), static_cast<Notice>(index));
+    for (std::size_t index = 0; index < haylen::ui::Component::kNoticeNames.size(); ++index) {
+        EXPECT_EQ(haylen::ui::Component::noticeFromName(haylen::ui::Component::kNoticeNames[index]), static_cast<Notice>(index));
     }
 
-    EXPECT_FALSE(Component::noticeFromName("click").has_value());
+    EXPECT_FALSE(haylen::ui::Component::noticeFromName("click").has_value());
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

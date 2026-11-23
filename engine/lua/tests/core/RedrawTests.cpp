@@ -16,12 +16,12 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 class RedrawTest : public ::testing::Test {
   protected:
     // Animates while the test says so, like a plugin whose picture moves by itself.
-    class AnimatingPlugin final : public plugins::Plugin {
+    class AnimatingPlugin final : public haylen::plugins::Plugin {
       public:
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "animating";
@@ -33,7 +33,7 @@ class RedrawTest : public ::testing::Test {
         bool animating = false;
     };
 
-    static constexpr std::uint64_t kSettle = Engine::kSettleFrames;
+    static constexpr std::uint64_t kSettle = haylen::core::Engine::kSettleFrames;
     static constexpr std::string_view kOnChange = R"({"name": "Test App", "identifier": "com.haylen.tests", "window": {"redraw": "onChange"}})";
 
     // A fixture of an app that redraws on change, which drew its first complete frames and the settle after them.
@@ -59,14 +59,14 @@ class RedrawTest : public ::testing::Test {
 TEST_F(RedrawTest, DrawsEveryFrameByDefault) {
     test::LuaFixture fixture;
     fixture.frames(10);
-    EXPECT_EQ(fixture.engine().getRedraw(), platform::Window::Redraw::Always);
+    EXPECT_EQ(fixture.engine().getRedraw(), haylen::platform::Window::Redraw::Always);
     EXPECT_EQ(drawn(fixture, 30), 30U);
 }
 
 // A frame that draws nothing allocates nothing either, in the renderer, the text, the UI or the engine.
 TEST_F(RedrawTest, IdleAppThatRedrawsOnChangeDrawsAndAllocatesNothing) {
     const std::unique_ptr<test::LuaFixture> fixture = makeIdle({{"source/main.lua", "local ui = require('haylen.ui') gui = ui.mount(ui.column{ui.label{text = 'Hello'}, ui.button{text = 'Press'}})"}});
-    EXPECT_EQ(fixture->engine().getRedraw(), platform::Window::Redraw::OnChange);
+    EXPECT_EQ(fixture->engine().getRedraw(), haylen::platform::Window::Redraw::OnChange);
     EXPECT_TRUE(fixture->engine().isFrameComplete());
 
     const test::AllocationTracker tracker;
@@ -78,7 +78,7 @@ TEST_F(RedrawTest, IdleAppThatRedrawsOnChangeDrawsAndAllocatesNothing) {
 // The frame that a change needs draws, and the settle of the frames after it draws too, so state that follows a frame behind shows.
 TEST_F(RedrawTest, EventOfThePlatformDrawsTheFrameAndItsSettle) {
     const std::unique_ptr<test::LuaFixture> fixture = makeIdle();
-    fixture->engine().handleEvent({.type = platform::Event::Type::MouseMove, .position = {10.0F, 10.0F}});
+    fixture->engine().handleEvent({.type = haylen::platform::Event::Type::MouseMove, .position = {10.0F, 10.0F}});
     EXPECT_EQ(drawn(*fixture, 10), 1U + kSettle);
 }
 
@@ -126,7 +126,7 @@ TEST_F(RedrawTest, WorkOfTheEventLoopDrawsItsFrames) {
     const std::uint64_t before = committed(*fixture);
     fixture->runLua("done = false async = require('async') async.spawn(function() async.sleep(50):await() done = true end)");
     ASSERT_TRUE(fixture->frameUntil([&fixture] { return fixture->lua("return done") == "true"; }));
-    fixture->frames(Engine::kSettleFrames);
+    fixture->frames(haylen::core::Engine::kSettleFrames);
     EXPECT_EQ(committed(*fixture) - before, 1U + kSettle);
     EXPECT_EQ(drawn(*fixture, 20), 0U);
 }
@@ -150,7 +150,7 @@ TEST_F(RedrawTest, ResizeDrawsTheNewSize) {
 
 TEST_F(RedrawTest, ListenerOfTheEventBusDrawsTheNextFrame) {
     const std::unique_ptr<test::LuaFixture> fixture = makeIdle();
-    const Connection listener = fixture->engine().getEvents().on("changed", [](EventBus::Event&) {});
+    const haylen::core::Connection listener = fixture->engine().getEvents().on("changed", [](haylen::core::EventBus::Event&) {});
     fixture->engine().getEvents().emit("changed");
     EXPECT_EQ(drawn(*fixture, 10), 1U + kSettle);
 
@@ -200,4 +200,4 @@ TEST_F(RedrawTest, RefusesAnUnknownRedraw) {
     EXPECT_NE(fixture->lua("require('haylen.window').setRedraw('sometimes')").find("error:"), std::string::npos);
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

@@ -16,7 +16,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::animation2d {
+namespace haylen::lua::animation2d {
 
 class StateGraphTest : public ::testing::Test {
   protected:
@@ -40,19 +40,19 @@ class StateGraphTest : public ::testing::Test {
     })json";
 
     // An animator with every animation of the graph, the slash once and the others looping.
-    [[nodiscard]] static std::shared_ptr<Animator> makeAnimator(const graphics::Texture& texture) {
-        auto animator = std::make_shared<Animator>();
+    [[nodiscard]] static std::shared_ptr<haylen::animation2d::Animator> makeAnimator(const haylen::graphics::Texture& texture) {
+        auto animator = std::make_shared<haylen::animation2d::Animator>();
         for (const char* name : {"idleDown", "idleUp", "idleLeft", "idleRight", "runDown", "runUp", "runLeft", "runRight", "fall"}) {
-            animator->add(name, Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .framesPerSecond = 10.0F}));
+            animator->add(name, haylen::animation2d::Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .framesPerSecond = 10.0F}));
         }
 
-        animator->add("slash", Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .framesPerSecond = 10.0F, .loop = Animation::Loop::Once}));
+        animator->add("slash", haylen::animation2d::Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}, .framesPerSecond = 10.0F, .loop = haylen::animation2d::Animation::Loop::Once}));
         return animator;
     }
 
     [[nodiscard]] static std::string error(const char* description) {
         try {
-            (void)StateGraph::parse(core::Json::parse(description));
+            (void)haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(description));
         } catch (const std::invalid_argument& failure) {
             return failure.what();
         }
@@ -63,10 +63,10 @@ class StateGraphTest : public ::testing::Test {
 
 TEST_F(StateGraphTest, MovesBetweenStatesByConditionsTriggersAndExitTimes) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    const auto graph = std::make_shared<StateGraph>(StateGraph::parse(core::Json::parse(kGraph)));
-    const std::shared_ptr<Animator> animator = makeAnimator(texture);
-    StateGraphPlayer player(graph, animator);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    const auto graph = std::make_shared<haylen::animation2d::StateGraph>(haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(kGraph)));
+    const std::shared_ptr<haylen::animation2d::Animator> animator = makeAnimator(texture);
+    haylen::animation2d::StateGraphPlayer player(graph, animator);
     std::vector<std::string> changes;
     player.stateChanged.connect([&changes](std::string_view from, std::string_view to) { changes.push_back(std::string(from) + ">" + std::string(to)); });
     EXPECT_EQ(player.getState(), "idle");
@@ -104,10 +104,10 @@ TEST_F(StateGraphTest, MovesBetweenStatesByConditionsTriggersAndExitTimes) {
 
 TEST_F(StateGraphTest, PicksDirectionsWithHysteresisAndKeepsTheTime) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    const auto graph = std::make_shared<StateGraph>(StateGraph::parse(core::Json::parse(kGraph)));
-    const std::shared_ptr<Animator> animator = makeAnimator(texture);
-    StateGraphPlayer player(graph, animator);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    const auto graph = std::make_shared<haylen::animation2d::StateGraph>(haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(kGraph)));
+    const std::shared_ptr<haylen::animation2d::Animator> animator = makeAnimator(texture);
+    haylen::animation2d::StateGraphPlayer player(graph, animator);
 
     player.setVector("facing", {1.0F, 0.0F});
     player.update(0.0F);
@@ -130,28 +130,28 @@ TEST_F(StateGraphTest, PicksDirectionsWithHysteresisAndKeepsTheTime) {
     player.update(0.0F);
     EXPECT_EQ(animator->getCurrent(), "runDown");
 
-    const StateGraph eight = StateGraph::parse(core::Json::parse(R"({"parameters": {"aim": [0, 0]}, "states": {"walk": {"by": "aim", "directions": {"right": "e", "downRight": "se", "down": "s", "downLeft": "sw", "left": "w", "upLeft": "nw", "up": "n", "upRight": "ne"}}}})"));
+    const haylen::animation2d::StateGraph eight = haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(R"({"parameters": {"aim": [0, 0]}, "states": {"walk": {"by": "aim", "directions": {"right": "e", "downRight": "se", "down": "s", "downLeft": "sw", "left": "w", "upLeft": "nw", "up": "n", "upRight": "ne"}}}})"));
     std::vector<float> values{-1.0F, -1.0F};
-    EXPECT_EQ(eight.pickDirection(eight.getStates()[0], values, 0), static_cast<std::size_t>(StateGraph::Direction::UpLeft));
+    EXPECT_EQ(eight.pickDirection(eight.getStates()[0], values, 0), static_cast<std::size_t>(haylen::animation2d::StateGraph::Direction::UpLeft));
 }
 
 TEST_F(StateGraphTest, DrivesASpriteOfAnAnimatedBatch) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    const auto batch = std::make_shared<AnimatedBatch>(texture);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    const auto batch = std::make_shared<haylen::animation2d::AnimatedBatch>(texture);
     for (const char* name : {"idle", "walk"}) {
-        batch->addAnimation(name, Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}}));
+        batch->addAnimation(name, haylen::animation2d::Animation::fromGrid(texture, {.frameSize = {16.0F, 16.0F}}));
     }
 
     (void)batch->add({}, "idle");
     (void)batch->add({}, "idle");
-    const auto graph = std::make_shared<StateGraph>(StateGraph::parse(core::Json::parse(R"({"parameters": {"moving": false}, "states": {"idle": {"animation": "idle"}, "walk": {"animation": "walk"}}, "transitions": [{"from": "idle", "to": "walk", "when": "moving"}]})")));
-    StateGraphPlayer player(graph, StateGraphPlayer::BatchSprite{.batch = batch, .index = 1});
+    const auto graph = std::make_shared<haylen::animation2d::StateGraph>(haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(R"({"parameters": {"moving": false}, "states": {"idle": {"animation": "idle"}, "walk": {"animation": "walk"}}, "transitions": [{"from": "idle", "to": "walk", "when": "moving"}]})")));
+    haylen::animation2d::StateGraphPlayer player(graph, haylen::animation2d::StateGraphPlayer::BatchSprite{.batch = batch, .index = 1});
     player.setBoolean("moving", true);
     player.update(0.0F);
     EXPECT_EQ(batch->getAnimation(1), "walk");
     EXPECT_EQ(batch->getAnimation(0), "idle");
-    EXPECT_THROW(StateGraphPlayer(std::make_shared<StateGraph>(StateGraph::parse(core::Json::parse(kGraph))), StateGraphPlayer::BatchSprite{.batch = batch, .index = 0}), std::invalid_argument);
+    EXPECT_THROW(haylen::animation2d::StateGraphPlayer(std::make_shared<haylen::animation2d::StateGraph>(haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(kGraph))), haylen::animation2d::StateGraphPlayer::BatchSprite{.batch = batch, .index = 0}), std::invalid_argument);
 }
 
 TEST_F(StateGraphTest, ExplainsBadDescriptions) {
@@ -192,4 +192,4 @@ TEST_F(StateGraphTest, PlaysGraphsFromLua) {
     EXPECT_EQ(fixture.lua("local animation2d = require('haylen.animation2d') local ok, message = pcall(animation2d.newStateGraph, {states = {a = {animation = 'a'}}, transitions = {{to = 'b'}}}) return message:match('The transition.*')"), "The transition 1 goes to the unknown state \"b\".");
 }
 
-} // namespace haylen::animation2d
+} // namespace haylen::lua::animation2d

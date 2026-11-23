@@ -20,22 +20,22 @@
 #include "platform/NativeViews.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class AppCoverTest : public ::testing::Test {
   protected:
     // Records every app state event of the engine by name.
-    static void recordStates(core::Engine& engine, std::vector<std::string>& log) {
-        for (const std::string_view name : {core::LifecycleEvent::kAppActive, core::LifecycleEvent::kAppInactive, core::LifecycleEvent::kAppBackground}) {
-            engine.getEvents().on(name, [&log, name](core::EventBus::Event&) { log.emplace_back(name); });
+    static void recordStates(haylen::core::Engine& engine, std::vector<std::string>& log) {
+        for (const std::string_view name : {haylen::core::LifecycleEvent::kAppActive, haylen::core::LifecycleEvent::kAppInactive, haylen::core::LifecycleEvent::kAppBackground}) {
+            engine.getEvents().on(name, [&log, name](haylen::core::EventBus::Event&) { log.emplace_back(name); });
         }
     }
 };
 
 TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::NativeViews& views = fixture.host().getNativeViews();
     std::vector<std::string> log;
     recordStates(engine, log);
     int ticks = 0;
@@ -46,7 +46,7 @@ TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     views.coverApp();
     fixture.frames(3, 0.06);
     EXPECT_TRUE(engine.isAppCovered());
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Inactive);
     EXPECT_TRUE(engine.isHalted());
     EXPECT_TRUE(engine.getAudio().isOutputMuted());
     EXPECT_EQ(ticks, 0);
@@ -59,7 +59,7 @@ TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     views.uncoverApp();
     fixture.frames(1, 10.0);
     EXPECT_FALSE(engine.isAppCovered());
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
     EXPECT_FALSE(engine.isHalted());
     EXPECT_FALSE(engine.getAudio().isOutputMuted());
     EXPECT_EQ(ticks, 0);
@@ -84,8 +84,8 @@ TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
 
 TEST_F(AppCoverTest, DrawsTheCoveredFrameOnce) {
     test::LuaFixture fixture({{"source/main.lua", "renders = 0 require('haylen.scene').push({render = function() renders = renders + 1 end})"}});
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::NativeViews& views = fixture.host().getNativeViews();
     const auto rendered = [&fixture] { return std::stoi(fixture.lua("return renders")); };
     fixture.frames(2);
     int before = rendered();
@@ -96,12 +96,12 @@ TEST_F(AppCoverTest, DrawsTheCoveredFrameOnce) {
     EXPECT_EQ(rendered() - before, 1);
 
     // A window of another size and a surface that the background may have dropped need the frame once more.
-    engine.handleEvent({.type = Event::Type::Resized});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resized});
     fixture.frames(3);
     EXPECT_EQ(rendered() - before, 2);
-    engine.handleEvent({.type = Event::Type::Suspended});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Suspended});
     fixture.frames(2);
-    engine.handleEvent({.type = Event::Type::Resumed});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resumed});
     fixture.frames(3);
     EXPECT_EQ(rendered() - before, 3);
 
@@ -114,41 +114,41 @@ TEST_F(AppCoverTest, DrawsTheCoveredFrameOnce) {
 
 TEST_F(AppCoverTest, KeepsTheAppCoveredThroughTheBackground) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::NativeViews& views = fixture.host().getNativeViews();
     std::vector<std::string> log;
     recordStates(engine, log);
 
     // A covered app that comes back from the background, or gets the focus back, stays inactive until the cover ends.
     views.coverApp();
     fixture.frames(1);
-    engine.handleEvent({.type = Event::Type::Suspended});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Suspended});
     EXPECT_TRUE(engine.isHalted());
-    engine.handleEvent({.type = Event::Type::Resumed});
-    engine.handleEvent({.type = Event::Type::FocusLost});
-    engine.handleEvent({.type = Event::Type::FocusGained});
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resumed});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Inactive);
     views.uncoverApp();
     fixture.frames(1);
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
 
     // A cover that ends in the background leaves the app there until the platform brings it back.
     views.coverApp();
     fixture.frames(1);
-    engine.handleEvent({.type = Event::Type::Suspended});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Suspended});
     views.uncoverApp();
     fixture.frames(1);
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Background);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Background);
     EXPECT_FALSE(engine.isAppCovered());
-    engine.handleEvent({.type = Event::Type::Resumed});
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resumed});
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
     EXPECT_FALSE(engine.getAudio().isOutputMuted());
     EXPECT_EQ(log, (std::vector<std::string>{"appInactive", "appBackground", "appInactive", "appActive", "appInactive", "appBackground", "appActive"}));
 }
 
 TEST_F(AppCoverTest, CoversAnAppThatRestartsUnderNativeUi) {
     test::LuaFixture fixture({{"source/main.lua", "haylen = require('haylen') events = require('haylen.events') states = {} events.on('appInactive', function() states[#states + 1] = haylen.appCovered() end)"}});
-    NativeViews& views = fixture.host().getNativeViews();
+    haylen::platform::NativeViews& views = fixture.host().getNativeViews();
     views.coverApp();
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat({tostring(haylen.appCovered()), haylen.appState(), tostring(haylen.halted()), tostring(states[1])}, ' ')"), "true inactive true true");
@@ -164,4 +164,4 @@ TEST_F(AppCoverTest, CoversAnAppThatRestartsUnderNativeUi) {
     EXPECT_EQ(fixture.lua("return tostring(haylen.appCovered()) .. ' ' .. haylen.appState()"), "false active");
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

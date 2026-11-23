@@ -13,14 +13,14 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class WindowEngineTest : public ::testing::Test {
   protected:
     // The passes of the last frame that reached the swapchain, with the alpha they cleared to and the channels their pipelines wrote.
-    [[nodiscard]] static std::vector<gpu::NullDevice::PassRecord> getSwapchainPasses(test::LuaFixture& fixture) {
-        std::vector<gpu::NullDevice::PassRecord> passes;
-        for (const gpu::NullDevice::PassRecord& pass : fixture.host().getGpu().getLastFrame().passes) {
+    [[nodiscard]] static std::vector<haylen::gpu::NullDevice::PassRecord> getSwapchainPasses(test::LuaFixture& fixture) {
+        std::vector<haylen::gpu::NullDevice::PassRecord> passes;
+        for (const haylen::gpu::NullDevice::PassRecord& pass : fixture.host().getGpu().getLastFrame().passes) {
             if (pass.swapchain) {
                 passes.push_back(pass);
             }
@@ -29,9 +29,9 @@ class WindowEngineTest : public ::testing::Test {
         return passes;
     }
 
-    [[nodiscard]] static std::vector<gpu::Device::ColorMask> getMasks(const std::vector<gpu::NullDevice::PassRecord>& passes) {
-        std::vector<gpu::Device::ColorMask> masks;
-        for (const gpu::NullDevice::PassRecord& pass : passes) {
+    [[nodiscard]] static std::vector<haylen::gpu::Device::ColorMask> getMasks(const std::vector<haylen::gpu::NullDevice::PassRecord>& passes) {
+        std::vector<haylen::gpu::Device::ColorMask> masks;
+        for (const haylen::gpu::NullDevice::PassRecord& pass : passes) {
             masks.insert(masks.end(), pass.masks.begin(), pass.masks.end());
         }
 
@@ -41,20 +41,20 @@ class WindowEngineTest : public ::testing::Test {
 
 TEST_F(WindowEngineTest, AppliesTheWindowOptionsOfHaylenJson) {
     test::LuaFixture fixture({{"haylen.json", R"({"window": {"decorated": false, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "resizable": false}})"}});
-    const HeadlessHost& host = fixture.host();
+    const haylen::platform::HeadlessHost& host = fixture.host();
     EXPECT_FALSE(host.isDecorated());
     EXPECT_TRUE(host.isAlwaysOnTop());
     EXPECT_FALSE(host.isShownInTaskbar());
     EXPECT_FALSE(host.isFocusable());
     EXPECT_FALSE(host.isResizable());
-    EXPECT_EQ(host.getMousePassthrough(), Window::Passthrough::Whole);
+    EXPECT_EQ(host.getMousePassthrough(), haylen::platform::Window::Passthrough::Whole);
     EXPECT_TRUE(host.getPassthroughRegions().empty());
 }
 
 TEST_F(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
     test::LuaFixture fixture;
-    HeadlessHost& host = fixture.host();
-    Window& window = host;
+    haylen::platform::HeadlessHost& host = fixture.host();
+    haylen::platform::Window& window = host;
     window.setMouseLocked(true, {});
     window.setKeepScreenOn(true, {});
     window.enterFullscreen({}, {});
@@ -68,20 +68,20 @@ TEST_F(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
 
 TEST_F(WindowEngineTest, OpensAnOrdinaryWindowByDefault) {
     test::LuaFixture fixture;
-    const HeadlessHost& host = fixture.host();
+    const haylen::platform::HeadlessHost& host = fixture.host();
     EXPECT_TRUE(host.isDecorated());
     EXPECT_FALSE(host.isAlwaysOnTop());
     EXPECT_TRUE(host.isShownInTaskbar());
     EXPECT_TRUE(host.isFocusable());
-    EXPECT_EQ(host.getMousePassthrough(), Window::Passthrough::Off);
+    EXPECT_EQ(host.getMousePassthrough(), haylen::platform::Window::Passthrough::Off);
 }
 
 // The engine paints the color behind the status bar on a canvas of its own, only while the status bar shows over the visible area.
 TEST_F(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
     test::LuaFixture fixture({{"haylen.json", R"({"window": {"statusBar": "light", "statusBarColor": "#102030"}})"}});
-    HeadlessHost& host = fixture.host();
-    EXPECT_EQ(host.getStatusBar(), Window::StatusBar::Light);
-    EXPECT_EQ(fixture.engine().getStatusBarColor(), math::Color::fromHex(0x102030FFU));
+    haylen::platform::HeadlessHost& host = fixture.host();
+    EXPECT_EQ(host.getStatusBar(), haylen::platform::Window::StatusBar::Light);
+    EXPECT_EQ(fixture.engine().getStatusBarColor(), haylen::math::Color::fromHex(0x102030FFU));
     fixture.frames(1);
     const std::size_t canvases = fixture.engine().getRenderer2D().getStats().canvases;
 
@@ -89,11 +89,11 @@ TEST_F(WindowEngineTest, ShowsTheStatusBarAndPaintsItsColor) {
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases + 1);
 
-    host.setStatusBar(Window::StatusBar::Hidden);
+    host.setStatusBar(haylen::platform::Window::StatusBar::Hidden);
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases);
 
-    host.setStatusBar(Window::StatusBar::Dark);
+    host.setStatusBar(haylen::platform::Window::StatusBar::Dark);
     fixture.engine().setStatusBarColor(std::nullopt);
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().canvases, canvases);
@@ -130,14 +130,14 @@ TEST_F(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
                             "graphics2d.beginScreen() graphics2d.drawRect({0, 0, 50, 50}, '#40FFFFFF', {blend = 'additive'}) graphics2d.drawText(nil, 'Gold', 10, 10) end})"},
     });
     fixture.frames(2);
-    std::vector<gpu::NullDevice::PassRecord> passes = getSwapchainPasses(fixture);
+    std::vector<haylen::gpu::NullDevice::PassRecord> passes = getSwapchainPasses(fixture);
     ASSERT_FALSE(passes.empty());
     EXPECT_EQ(passes.front().clear.a, 0.0F);
-    std::vector<gpu::Device::ColorMask> masks = getMasks(passes);
+    std::vector<haylen::gpu::Device::ColorMask> masks = getMasks(passes);
     ASSERT_FALSE(masks.empty());
 
-    for (const gpu::Device::ColorMask mask : masks) {
-        EXPECT_EQ(mask, gpu::Device::ColorMask::All);
+    for (const haylen::gpu::Device::ColorMask mask : masks) {
+        EXPECT_EQ(mask, haylen::gpu::Device::ColorMask::All);
     }
 
     fixture.host().setTransparent(false);
@@ -148,8 +148,8 @@ TEST_F(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     masks = getMasks(passes);
     ASSERT_GE(masks.size(), 3U);
 
-    for (const gpu::Device::ColorMask mask : masks) {
-        EXPECT_EQ(mask, gpu::Device::ColorMask::Rgb);
+    for (const haylen::gpu::Device::ColorMask mask : masks) {
+        EXPECT_EQ(mask, haylen::gpu::Device::ColorMask::Rgb);
     }
 }
 
@@ -160,12 +160,12 @@ TEST_F(WindowEngineTest, PublishesMoves) {
 
     // Platforms report every step of a move, and the app hears each new position once.
     fixture.host().setFrame({120.0F, 80.0F, 1920.0F, 1080.0F});
-    fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
-    fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::WindowMoved});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::WindowMoved});
     fixture.host().setFrame({120.0F, 80.0F, 640.0F, 480.0F});
-    fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::WindowMoved});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "moved 120.0 80.0");
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

@@ -13,7 +13,7 @@
 #include "haylen/platform/Window.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 TEST(WindowLuaTest, ChangesTheDesktopOptions) {
     test::LuaFixture fixture;
@@ -38,8 +38,8 @@ TEST(WindowLuaTest, ShowsTheStatusBarWithItsContentAndColor) {
     EXPECT_EQ(fixture.lua("return window.statusBar() .. ' ' .. tostring(window.statusBarColor())"), "hidden nil");
 
     fixture.runLua("window.setStatusBar('dark') window.setStatusBarColor('#FFFFFF')");
-    EXPECT_EQ(fixture.host().getStatusBar(), Window::StatusBar::Dark);
-    EXPECT_EQ(fixture.engine().getStatusBarColor(), math::Color::white());
+    EXPECT_EQ(fixture.host().getStatusBar(), haylen::platform::Window::StatusBar::Dark);
+    EXPECT_EQ(fixture.engine().getStatusBarColor(), haylen::math::Color::white());
     EXPECT_EQ(fixture.lua("return window.statusBar() .. ' ' .. window.statusBarColor().r"), "dark 1.0");
 
     fixture.runLua("window.setStatusBarColor(nil)");
@@ -85,7 +85,7 @@ TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
     EXPECT_TRUE(fixture.host().isFullscreen());
     EXPECT_TRUE(fixture.host().isMouseLocked());
 
-    fixture.host().setWindowAnswer({.state = SystemAnswer::State::Denied, .message = "The browser refused fullscreen."});
+    fixture.host().setWindowAnswer({.state = haylen::platform::SystemAnswer::State::Denied, .message = "The browser refused fullscreen."});
     fixture.runLua("remember(window.setFullscreen(false)) window.setMouseLocked(false)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
     fixture.frames(2);
@@ -106,23 +106,23 @@ TEST(WindowLuaTest, LetsExternalDisplaysConnectAsHaylenJsonAsks) {
 
     test::LuaFixture mirrored;
     EXPECT_FALSE(mirrored.host().hasExternalDisplays());
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"externalDisplays": "yes"}})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"window": {"externalDisplays": "yes"}})")), std::invalid_argument);
 }
 
 // The system gestures start as haylen.json asks, a script changes them later, and a restarted app starts again with the value of haylen.json.
 TEST(WindowLuaTest, AppliesTheSystemGesturesTheAppAsksFor) {
     test::LuaFixture fixture({{"haylen.json", R"({"window": {"systemGestures": "autoHideIndicator"}})"}});
     fixture.runLua("window = require('haylen.window')");
-    EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
+    EXPECT_EQ(fixture.host().getSystemGestures(), haylen::platform::Window::SystemGestures::AutoHideIndicator);
     EXPECT_EQ(fixture.lua("return window.systemGestures()"), "autoHideIndicator");
 
     fixture.runLua("window.setSystemGestures('system')");
-    EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::System);
+    EXPECT_EQ(fixture.host().getSystemGestures(), haylen::platform::Window::SystemGestures::System);
     EXPECT_EQ(fixture.lua("return window.systemGestures()"), "system");
     EXPECT_NE(fixture.lua("window.setSystemGestures('hidden')").find("error: "), std::string::npos);
 
     fixture.restart();
-    EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
+    EXPECT_EQ(fixture.host().getSystemGestures(), haylen::platform::Window::SystemGestures::AutoHideIndicator);
 }
 
 // The app plays at the frame rate of haylen.json from the start, a script lowers it for a calm screen or brings back every refresh, and a restarted app starts again with the value of haylen.json.
@@ -149,11 +149,11 @@ TEST(WindowLuaTest, CapsThePixelDensityOfTheFramebuffer) {
     fixture.restart();
     fixture.runLua("window = require('haylen.window')");
     EXPECT_EQ(fixture.lua("local width, height = window.framebufferSize() return width .. ' ' .. height .. ' ' .. window.dpiScale() .. ' ' .. window.maxPixelDensity()"), "1600.0 720.0 2.0 2.0");
-    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize(), (gpu::Surface::Size{.width = 1600, .height = 720, .windowWidth = 2400, .windowHeight = 1080}));
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize(), (haylen::gpu::Surface::Size{.width = 1600, .height = 720, .windowWidth = 2400, .windowHeight = 1080}));
 
     fixture.runLua("window.setMaxPixelDensity(1.5)");
     EXPECT_EQ(fixture.lua("local width, height = window.framebufferSize() return width / window.dpiScale() .. ' ' .. height / window.dpiScale()"), "800.0 360.0");
-    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize(), (gpu::Surface::Size{.width = 1200, .height = 540, .windowWidth = 2400, .windowHeight = 1080}));
+    EXPECT_EQ(fixture.host().getGpu().getSurfaceSize(), (haylen::gpu::Surface::Size{.width = 1200, .height = 540, .windowWidth = 2400, .windowHeight = 1080}));
 
     // A cap at or above the density of the screen, or none, draws every pixel of the window.
     fixture.runLua("window.setMaxPixelDensity(4)");
@@ -172,7 +172,7 @@ TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::LuaFixture fixture;
     fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");
     fixture.restart();
-    EXPECT_EQ(fixture.host().getCursor(), Window::Cursor::Default);
+    EXPECT_EQ(fixture.host().getCursor(), haylen::platform::Window::Cursor::Default);
     EXPECT_TRUE(fixture.host().isCursorVisible());
     EXPECT_FALSE(fixture.host().isMouseLocked());
     EXPECT_FALSE(fixture.host().isKeyboardVisible());
@@ -201,19 +201,19 @@ TEST(WindowLuaTest, MovesAndPlacesTheWindow) {
     EXPECT_EQ(fixture.lua("return tostring(window.frame())"), "Rect(0.0, 0.0, 1920.0, 1080.0)");
 
     fixture.runLua("window.setFrame(40, 60, 800, 200)");
-    EXPECT_EQ(fixture.host().getFrame(), (math::Rect{40.0F, 60.0F, 800.0F, 200.0F}));
+    EXPECT_EQ(fixture.host().getFrame(), (haylen::math::Rect{40.0F, 60.0F, 800.0F, 200.0F}));
     EXPECT_NE(fixture.lua("window.setFrame(0, 0, 0, 200)").find("positive width"), std::string::npos);
     EXPECT_NE(fixture.lua("window.setFrame(0, 0, 800, -1)").find("positive height"), std::string::npos);
 
     // The headless desktop leaves a taskbar of 40 points at the bottom of its display.
     fixture.runLua("window.place({anchor = 'bottom', offset = {0, -8}})");
-    EXPECT_EQ(fixture.host().getFrame(), (math::Rect{560.0F, 832.0F, 800.0F, 200.0F}));
+    EXPECT_EQ(fixture.host().getFrame(), (haylen::math::Rect{560.0F, 832.0F, 800.0F, 200.0F}));
     fixture.runLua("window.place({anchor = 'bottom', area = 'full', fill = 'width'})");
-    EXPECT_EQ(fixture.host().getFrame(), (math::Rect{0.0F, 880.0F, 1920.0F, 200.0F}));
+    EXPECT_EQ(fixture.host().getFrame(), (haylen::math::Rect{0.0F, 880.0F, 1920.0F, 200.0F}));
     fixture.runLua("window.place({x = 10, y = 20})");
-    EXPECT_EQ(fixture.host().getFrame(), (math::Rect{10.0F, 20.0F, 1920.0F, 200.0F}));
+    EXPECT_EQ(fixture.host().getFrame(), (haylen::math::Rect{10.0F, 20.0F, 1920.0F, 200.0F}));
     fixture.runLua("window.place('center')");
-    EXPECT_EQ(fixture.host().getFrame(), (math::Rect{0.0F, 420.0F, 1920.0F, 200.0F}));
+    EXPECT_EQ(fixture.host().getFrame(), (haylen::math::Rect{0.0F, 420.0F, 1920.0F, 200.0F}));
     EXPECT_NE(fixture.lua("window.place({anchor = 'middle'})").find("A window position has the unknown \"anchor\" \"middle\"."), std::string::npos);
 }
 
@@ -225,14 +225,14 @@ TEST(WindowLuaTest, LetsClicksThroughOutsideTheRegions) {
     EXPECT_EQ(fixture.lua("return window.mousePassthrough()"), "off");
 
     fixture.runLua("window.setMousePassthrough(true)");
-    EXPECT_EQ(fixture.host().getMousePassthrough(), Window::Passthrough::Whole);
+    EXPECT_EQ(fixture.host().getMousePassthrough(), haylen::platform::Window::Passthrough::Whole);
     EXPECT_EQ(fixture.lua("return window.mousePassthrough()"), "whole");
 
     // Regions in design units follow the viewport, which shows the 1920 by 1080 design at half size here.
     fixture.runLua("window.setMousePassthrough({{x = 100, y = 200, width = 300, height = 100}, {{0, 0}, {400, 0}, {0, 400}}, require('haylen.math').rect(1000, 0, 20, 40)})");
-    EXPECT_EQ(fixture.host().getMousePassthrough(), Window::Passthrough::Regions);
+    EXPECT_EQ(fixture.host().getMousePassthrough(), haylen::platform::Window::Passthrough::Regions);
     EXPECT_EQ(fixture.lua("return window.mousePassthrough()"), "regions");
-    const std::vector<math::Polygon::Outline> expected{
+    const std::vector<haylen::math::Polygon::Outline> expected{
         {{50.0F, 100.0F}, {200.0F, 100.0F}, {200.0F, 150.0F}, {50.0F, 150.0F}},
         {{0.0F, 0.0F}, {200.0F, 0.0F}, {0.0F, 200.0F}},
         {{500.0F, 0.0F}, {510.0F, 0.0F}, {510.0F, 20.0F}, {500.0F, 20.0F}},
@@ -240,12 +240,12 @@ TEST(WindowLuaTest, LetsClicksThroughOutsideTheRegions) {
     EXPECT_EQ(fixture.host().getPassthroughRegions(), expected);
 
     fixture.runLua("window.setMousePassthrough({{8, 16, 32, 64}}, 'pixels')");
-    EXPECT_EQ(fixture.host().getPassthroughRegions(), (std::vector<math::Polygon::Outline>{{{8.0F, 16.0F}, {40.0F, 16.0F}, {40.0F, 80.0F}, {8.0F, 80.0F}}}));
+    EXPECT_EQ(fixture.host().getPassthroughRegions(), (std::vector<haylen::math::Polygon::Outline>{{{8.0F, 16.0F}, {40.0F, 16.0F}, {40.0F, 80.0F}, {8.0F, 80.0F}}}));
     fixture.runLua("window.setMousePassthrough({})");
-    EXPECT_EQ(fixture.host().getMousePassthrough(), Window::Passthrough::Regions);
+    EXPECT_EQ(fixture.host().getMousePassthrough(), haylen::platform::Window::Passthrough::Regions);
     EXPECT_TRUE(fixture.host().getPassthroughRegions().empty());
     fixture.runLua("window.setMousePassthrough(false)");
-    EXPECT_EQ(fixture.host().getMousePassthrough(), Window::Passthrough::Off);
+    EXPECT_EQ(fixture.host().getMousePassthrough(), haylen::platform::Window::Passthrough::Off);
 
     EXPECT_NE(fixture.lua("window.setMousePassthrough('everywhere')").find("boolean or table of regions expected"), std::string::npos);
     EXPECT_NE(fixture.lua("window.setMousePassthrough({{{0, 0}, {1, 1}}})").find("at least three points"), std::string::npos);
@@ -261,10 +261,10 @@ TEST(WindowLuaTest, StartsDragsAndHearsTheDesktop) {
     // Scenes hear the moves of the window and the changes of the displays among their events.
     fixture.runLua("heard = {} require('haylen.scene').push({event = function(self, event) heard[#heard + 1] = event.type end})");
     fixture.frames(1);
-    fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
-    fixture.engine().handleEvent({.type = Event::Type::DisplaysChanged});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::WindowMoved});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::DisplaysChanged});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "windowMoved displaysChanged");
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

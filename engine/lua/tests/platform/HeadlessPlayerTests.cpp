@@ -9,7 +9,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class HeadlessPlayerTest : public ::testing::Test {
   protected:
@@ -20,7 +20,7 @@ class HeadlessPlayerTest : public ::testing::Test {
     // Plays the app with the source of its main module and the launch arguments, and returns the exit status of the player.
     int play(const std::string& main, long long frames = 60, std::vector<std::string> arguments = {}) {
         app.write("source/main.lua", main);
-        return HeadlessPlayer::run({.package = app.getPath(), .frames = frames, .dataDirectory = data.getPath(), .arguments = std::move(arguments)});
+        return haylen::platform::HeadlessPlayer::run({.package = app.getPath(), .frames = frames, .dataDirectory = data.getPath(), .arguments = std::move(arguments)});
     }
 
     test::TemporaryDirectory app;
@@ -188,4 +188,4 @@ TEST_F(HeadlessPlayerTest, LaunchesAnAppWithoutNativeAccess) {
     // clang-format on
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

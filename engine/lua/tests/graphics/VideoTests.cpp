@@ -17,7 +17,7 @@
 #include "support/FakeVideoDecoder.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::graphics {
+namespace haylen::lua::graphics {
 
 class VideoTest : public ::testing::Test {
   protected:
@@ -29,7 +29,7 @@ class VideoTest : public ::testing::Test {
     // Opens every video with the fake decoder of the settings, and the file `videos/broken.mp4` with an error.
     void useDecoder(test::FakeVideoDecoder::Settings settings) {
         // clang-format off
-        fixture.host().setVideoOpener([settings, log = log](std::shared_ptr<io::PackageReader> file, std::string_view path) -> std::unique_ptr<platform::VideoDecoder> {
+        fixture.host().setVideoOpener([settings, log = log](std::shared_ptr<haylen::io::PackageReader> file, std::string_view path) -> std::unique_ptr<haylen::platform::VideoDecoder> {
             if (path == "videos/broken.mp4") {
                 throw std::runtime_error("The file is no video this platform decodes.");
             }
@@ -149,7 +149,7 @@ TEST_F(VideoTest, HoldsWithThePauseOfTheGameByItsProcessMode) {
 }
 
 TEST_F(VideoTest, PlaysItsSoundThroughABusOfTheMixer) {
-    audio::Mixer& mixer = fixture.engine().getAudio();
+    haylen::audio::Mixer& mixer = fixture.engine().getAudio();
     const std::size_t before = mixer.getVoiceCount();
     loadIntro("{bus = 'music', volume = 0.5}");
     EXPECT_EQ(mixer.getVoiceCount(), before);
@@ -166,7 +166,7 @@ TEST_F(VideoTest, PlaysItsSoundThroughABusOfTheMixer) {
     fixture.runLua("intro:release()");
     fixture.frames(1);
     EXPECT_EQ(mixer.getVoiceCount(), before);
-    EXPECT_EQ(fixture.engine().getPlugin<plugins::VideoPlugin>().getVideoCount(), 0U);
+    EXPECT_EQ(fixture.engine().getPlugin<haylen::plugins::VideoPlugin>().getVideoCount(), 0U);
 
     // A released video never plays again, and a bus that does not exist is refused when the video loads.
     EXPECT_NE(fixture.lua("intro:play()").find("The video was released, so it no longer plays."), std::string::npos);
@@ -238,10 +238,10 @@ TEST_F(VideoTest, SeeksWhileItLoadsAndStopsOnceClosed) {
     fixture.runLua("intro = video.load('videos/intro.mp4') intro.time = -1");
     EXPECT_EQ(fixture.lua("return intro.time"), "0.0");
 
-    plugins::VideoPlugin& plugin = fixture.engine().getPlugin<plugins::VideoPlugin>();
-    const std::shared_ptr<Video> closed = plugin.create(fixture.engine(), "videos/intro.mp4", {});
+    haylen::plugins::VideoPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::VideoPlugin>();
+    const std::shared_ptr<haylen::graphics::Video> closed = plugin.create(fixture.engine(), "videos/intro.mp4", {});
     int readies = 0;
-    const core::Connection connection = closed->ready.connect([&readies] { ++readies; });
+    const haylen::core::Connection connection = closed->ready.connect([&readies] { ++readies; });
     closed->close();
     ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return intro.state") == "ready"; }));
     fixture.frames(5);
@@ -267,7 +267,7 @@ TEST_F(VideoTest, ResolvesAnAsynchronousLoadOnceReadyAndEndsWithItsOwner) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([this] { return fixture.lua("return #events") == "2"; }));
     EXPECT_EQ(fixture.lua("table.sort(events) return table.concat(events, ', ')"), "nil The file is no video this platform decodes., ready 4");
-    plugins::VideoPlugin& plugin = fixture.engine().getPlugin<plugins::VideoPlugin>();
+    haylen::plugins::VideoPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::VideoPlugin>();
     EXPECT_EQ(plugin.getVideoCount(), 2U);
     fixture.runLua("owner = nil collectgarbage() collectgarbage()");
     fixture.frames(2);
@@ -317,4 +317,4 @@ TEST_F(VideoTest, FollowsADecoderWithAClockOfItsOwn) {
     EXPECT_EQ(log->readingThreads, std::set{std::this_thread::get_id()});
 }
 
-} // namespace haylen::graphics
+} // namespace haylen::lua::graphics

@@ -4,7 +4,7 @@
 
 #include "support/LuaFixture.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 TEST(CollectionsLuaTest, PoolsRecycleObjects) {
     test::LuaFixture fixture;
@@ -97,4 +97,4 @@ TEST(CollectionsLuaTest, RingBuffersKeepTheNewestValues) {
     EXPECT_NE(fixture.lua("collections.newRingBuffer(0)").find("capacity of at least one"), std::string::npos);
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

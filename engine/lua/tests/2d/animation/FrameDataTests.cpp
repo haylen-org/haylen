@@ -17,7 +17,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::animation2d {
+namespace haylen::lua::animation2d {
 
 class FrameDataTest : public ::testing::Test {
   protected:
@@ -39,13 +39,13 @@ class FrameDataTest : public ::testing::Test {
         }
     })";
 
-    [[nodiscard]] static SpriteAtlas parseAtlas(test::LuaFixture& fixture) {
-        return SpriteAtlas::parse(nlohmann::ordered_json::parse(kAtlas), fixture.engine().getGraphics().createTexture(graphics::Image(128, 32)));
+    [[nodiscard]] static haylen::animation2d::SpriteAtlas parseAtlas(test::LuaFixture& fixture) {
+        return haylen::animation2d::SpriteAtlas::parse(nlohmann::ordered_json::parse(kAtlas), fixture.engine().getGraphics().createTexture(haylen::graphics::Image(128, 32)));
     }
 
     // An animation of four frames of a tenth of a second, or of one, two, three and four ticks.
-    [[nodiscard]] static Animation makeStrip(const graphics::Texture& texture, Animation::Loop loop, bool ticks) {
-        Animation animation{.texture = texture, .loop = loop};
+    [[nodiscard]] static haylen::animation2d::Animation makeStrip(const haylen::graphics::Texture& texture, haylen::animation2d::Animation::Loop loop, bool ticks) {
+        haylen::animation2d::Animation animation{.texture = texture, .loop = loop};
         for (std::uint32_t index = 0; index < 4; ++index) {
             animation.frames.push_back({.source = {static_cast<float>(index) * 16.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.1F, .ticks = ticks ? index + 1 : 0, .events = {"enter" + std::to_string(index)}});
         }
@@ -56,18 +56,18 @@ class FrameDataTest : public ::testing::Test {
 
 TEST_F(FrameDataTest, ReadsBoxesPointsPivotsAndEventsFromAtlases) {
     test::LuaFixture fixture;
-    const SpriteAtlas atlas = parseAtlas(fixture);
+    const haylen::animation2d::SpriteAtlas atlas = parseAtlas(fixture);
 
     EXPECT_EQ(atlas.getFrame("punch 0").findBox("hit"), nullptr);
     ASSERT_NE(atlas.getFrame("punch 1").findBox("hit"), nullptr);
-    EXPECT_EQ(atlas.getFrame("punch 1").findBox("hit")->area, (math::Rect{20.0F, 8.0F, 10.0F, 6.0F}));
+    EXPECT_EQ(atlas.getFrame("punch 1").findBox("hit")->area, (haylen::math::Rect{20.0F, 8.0F, 10.0F, 6.0F}));
     EXPECT_NE(atlas.getFrame("punch 2").findBox("hit"), nullptr);
     EXPECT_EQ(atlas.getFrame("punch 3").findBox("hit"), nullptr);
-    EXPECT_EQ(atlas.getFrame("punch 2").pivot, math::Vec2(16.0F, 30.0F));
+    EXPECT_EQ(atlas.getFrame("punch 2").pivot, haylen::math::Vec2(16.0F, 30.0F));
     EXPECT_FALSE(atlas.getFrame("punch 0").pivot.has_value());
     const auto* hand = atlas.getFrame("punch 3").findPoint("hand");
     ASSERT_NE(hand, nullptr);
-    EXPECT_EQ(hand->position, math::Vec2(20.0F, 14.0F));
+    EXPECT_EQ(hand->position, haylen::math::Vec2(20.0F, 14.0F));
     EXPECT_EQ(atlas.getFrame("punch 1").events, (std::vector<std::string>{"swing", "whoosh"}));
     EXPECT_FALSE(atlas.hasSlice("hit"));
 
@@ -79,10 +79,10 @@ TEST_F(FrameDataTest, ReadsBoxesPointsPivotsAndEventsFromAtlases) {
 // A frame that reaches past the image of the atlas would draw pixels the image does not hold, so the atlas refuses it.
 TEST_F(FrameDataTest, RefusesFramesOutsideTheImageOfTheAtlas) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 32));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 32));
     // clang-format off
     const auto parse = [&](const char* frame) {
-        return SpriteAtlas::parse(nlohmann::ordered_json::parse(std::string(R"({"frames": {"grip": {"frame": )") + frame + "}}}"), texture);
+        return haylen::animation2d::SpriteAtlas::parse(nlohmann::ordered_json::parse(std::string(R"({"frames": {"grip": {"frame": )") + frame + "}}}"), texture);
     };
     // clang-format on
     EXPECT_NO_THROW((void)parse(R"({"x": 32, "y": 0, "w": 32, "h": 32})"));
@@ -101,10 +101,10 @@ TEST_F(FrameDataTest, RefusesFramesOutsideTheImageOfTheAtlas) {
 
 TEST_F(FrameDataTest, RunsTheEventsOfEveryFrameItPassesInOrder) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    Animator animator;
-    animator.add("loop", makeStrip(texture, Animation::Loop::Loop, false));
-    animator.add("bounce", makeStrip(texture, Animation::Loop::PingPong, false));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::Animator animator;
+    animator.add("loop", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop, false));
+    animator.add("bounce", makeStrip(texture, haylen::animation2d::Animation::Loop::PingPong, false));
     std::vector<std::string> heard;
     animator.onEvent = [&heard](std::string_view animation, std::string_view event, std::size_t frame) { heard.push_back(std::string(animation) + ":" + std::string(event) + ":" + std::to_string(frame)); };
 
@@ -141,10 +141,10 @@ TEST_F(FrameDataTest, RunsTheEventsOfEveryFrameItPassesInOrder) {
 
 TEST_F(FrameDataTest, StepsTickAnimationsExactly) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    Animator animator;
-    animator.add("combo", makeStrip(texture, Animation::Loop::Loop, true));
-    animator.add("idle", makeStrip(texture, Animation::Loop::Loop, false));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::Animator animator;
+    animator.add("combo", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop, true));
+    animator.add("idle", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop, false));
     animator.play("combo");
 
     // The frames last 1, 2, 3 and 4 ticks, so a pass takes 10 steps and every frame starts on its own step.
@@ -176,25 +176,25 @@ TEST_F(FrameDataTest, StepsTickAnimationsExactly) {
     animator.play("idle");
     EXPECT_THROW(animator.step(1), std::logic_error);
 
-    Animation mixed = makeStrip(texture, Animation::Loop::Loop, true);
+    haylen::animation2d::Animation mixed = makeStrip(texture, haylen::animation2d::Animation::Loop::Loop, true);
     mixed.frames[2].ticks = 0;
     EXPECT_THROW(animator.add("mixed", mixed), std::invalid_argument);
 }
 
 TEST_F(FrameDataTest, PlacesBoxesAndPointsWithTheSprite) {
     test::LuaFixture fixture;
-    const SpriteAtlas atlas = parseAtlas(fixture);
-    Animator animator;
+    const haylen::animation2d::SpriteAtlas atlas = parseAtlas(fixture);
+    haylen::animation2d::Animator animator;
     animator.add("punch", atlas.getAnimation("punch"));
     animator.play("punch");
     animator.update(0.15F);
     ASSERT_EQ(animator.getFrame(), 1U);
 
     // The trimmed frame keeps its pivot on the feet, and a flip mirrors it inside the quad.
-    graphics2d::Sprite sprite{.position = {100.0F, 200.0F}};
+    haylen::graphics2d::Sprite sprite{.position = {100.0F, 200.0F}};
     animator.apply(sprite);
-    EXPECT_EQ(sprite.pivot, math::Vec2(8.0F / 24.0F, 30.0F / 32.0F));
-    const std::optional<math::Rect> box = animator.getBox("hit", sprite);
+    EXPECT_EQ(sprite.pivot, haylen::math::Vec2(8.0F / 24.0F, 30.0F / 32.0F));
+    const std::optional<haylen::math::Rect> box = animator.getBox("hit", sprite);
     ASSERT_TRUE(box.has_value());
     EXPECT_FLOAT_EQ(box->x, 104.0F);
     EXPECT_FLOAT_EQ(box->y, 178.0F);
@@ -202,7 +202,7 @@ TEST_F(FrameDataTest, PlacesBoxesAndPointsWithTheSprite) {
 
     sprite.flip.horizontal = true;
     animator.apply(sprite);
-    const std::optional<math::Rect> mirrored = animator.getBox("hit", sprite);
+    const std::optional<haylen::math::Rect> mirrored = animator.getBox("hit", sprite);
     ASSERT_TRUE(mirrored.has_value());
     EXPECT_FLOAT_EQ(mirrored->x, 86.0F);
     EXPECT_FLOAT_EQ(mirrored->getRight(), 96.0F);
@@ -212,7 +212,7 @@ TEST_F(FrameDataTest, PlacesBoxesAndPointsWithTheSprite) {
     animator.apply(sprite);
     sprite.rotation = std::numbers::pi_v<float> * 0.5F;
     sprite.scale = {2.0F, 2.0F};
-    const std::optional<math::Vec2> hand = animator.getPoint("hand", sprite);
+    const std::optional<haylen::math::Vec2> hand = animator.getPoint("hand", sprite);
     ASSERT_TRUE(hand.has_value());
     EXPECT_NEAR(hand->x, 100.0F + 32.0F, 1.0e-3F);
     EXPECT_NEAR(hand->y, 200.0F + 8.0F, 1.0e-3F);
@@ -257,4 +257,4 @@ TEST_F(FrameDataTest, ExposesFrameDataToLua) {
     EXPECT_EQ(fixture.lua("local atlas = assets.load('fighter.json', 'atlas') local frame = atlas:frame('punch 1') return frame.boxes[1].name .. ' ' .. frame.events[2] .. ' ' .. frame.pivot.y"), "hit whoosh 30.0");
 }
 
-} // namespace haylen::animation2d
+} // namespace haylen::lua::animation2d

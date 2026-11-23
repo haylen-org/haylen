@@ -19,7 +19,7 @@
 #include "haylen/ui/Theme.hpp"
 #include "support/LuaUiFixture.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class ImageLibraryTest : public ::testing::Test, public test::LuaUiFixture {
   protected:
@@ -28,12 +28,12 @@ class ImageLibraryTest : public ::testing::Test, public test::LuaUiFixture {
 
     ImageLibraryTest() : LuaUiFixture({{"content/icons/badge.svg", std::string(kBadge)}, {"content/icons/square.svg", std::string(kSquare)}, {"content/icons/broken.svg", "not a picture"}}) {}
 
-    [[nodiscard]] Context& getContext() {
+    [[nodiscard]] haylen::ui::Context& getContext() {
         return getUi().getContext();
     }
 
     // The pixels a picture drawn over a size in UI units covers on the screen.
-    [[nodiscard]] math::Vec2 toPixels(math::Vec2 size) {
+    [[nodiscard]] haylen::math::Vec2 toPixels(haylen::math::Vec2 size) {
         return size * getUi().getBackend().getDensity();
     }
 
@@ -44,10 +44,10 @@ class ImageLibraryTest : public ::testing::Test, public test::LuaUiFixture {
     }
 
     // Returns the box the vertices of a color the GUIs drew in the last frame cover, in UI units.
-    [[nodiscard]] math::Rect findColorBox(ImU32 color) {
+    [[nodiscard]] haylen::math::Rect findColorBox(ImU32 color) {
         const ImVector<ImDrawVert>& vertices = getGuiDrawList(getUi()).VtxBuffer;
-        math::Vec2 minimum{1e9F, 1e9F};
-        math::Vec2 maximum{-1e9F, -1e9F};
+        haylen::math::Vec2 minimum{1e9F, 1e9F};
+        haylen::math::Vec2 maximum{-1e9F, -1e9F};
         for (const ImDrawVert& vertex : vertices) {
             if (vertex.col == color) {
                 minimum = {std::min(minimum.x, vertex.pos.x), std::min(minimum.y, vertex.pos.y)};
@@ -55,11 +55,11 @@ class ImageLibraryTest : public ::testing::Test, public test::LuaUiFixture {
             }
         }
 
-        return math::Rect::fromMinMax(minimum, maximum);
+        return haylen::math::Rect::fromMinMax(minimum, maximum);
     }
 
     // Returns the color of the first picture the GUIs drew from the texture in the last frame, or zero when none drew.
-    [[nodiscard]] ImU32 findTextureColor(const graphics::Texture& texture) {
+    [[nodiscard]] ImU32 findTextureColor(const haylen::graphics::Texture& texture) {
         getUi().getBackend().makeCurrent();
         const ImTextureID id = getContext().getTextureReference(texture).GetTexID();
         const ImDrawList& list = getGuiDrawList(getUi());
@@ -81,9 +81,9 @@ class ImageLibraryTest : public ::testing::Test, public test::LuaUiFixture {
 TEST_F(ImageLibraryTest, ShowsSvgDocumentsAtTheSizeTheyGiveThemselves) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "image", "id": "badge", "image": "icons/badge.svg", "scale": 2}, {"kind": "imageButton", "id": "button", "image": "icons/badge.svg"}]})");
     ASSERT_TRUE(getFixture().frameUntil([&] { return getBounds(*gui, "badge").width > 0.0F; }));
-    EXPECT_EQ(getBounds(*gui, "badge").getSize(), math::Vec2(48.0F, 24.0F));
-    EXPECT_EQ(getBounds(*gui, "button").getSize(), math::Vec2(24.0F, 12.0F));
-    EXPECT_EQ(getContext().getImageSize("icons/badge.svg"), math::Vec2(24.0F, 12.0F));
+    EXPECT_EQ(getBounds(*gui, "badge").getSize(), haylen::math::Vec2(48.0F, 24.0F));
+    EXPECT_EQ(getBounds(*gui, "button").getSize(), haylen::math::Vec2(24.0F, 12.0F));
+    EXPECT_EQ(getContext().getImageSize("icons/badge.svg"), haylen::math::Vec2(24.0F, 12.0F));
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
@@ -97,19 +97,19 @@ TEST_F(ImageLibraryTest, CompletesTheFrameOnceEveryPictureItShowsArrived) {
 }
 
 TEST_F(ImageLibraryTest, RastersSvgDocumentsForThePixelsTheyCover) {
-    const auto raster = [&](math::Vec2 size) { return getContext().getImage("icons/badge.svg", size); };
+    const auto raster = [&](haylen::math::Vec2 size) { return getContext().getImage("icons/badge.svg", size); };
     ASSERT_TRUE(getFixture().frameUntil([&] { return raster({96.0F, 48.0F}).isValid(); }));
 
     // A raster covers the pixels of the draw and is at most a quarter of an octave larger.
-    const math::Vec2 pixels = toPixels({96.0F, 48.0F});
-    const math::Vec2 size = raster({96.0F, 48.0F}).getSize();
+    const haylen::math::Vec2 pixels = toPixels({96.0F, 48.0F});
+    const haylen::math::Vec2 size = raster({96.0F, 48.0F}).getSize();
     EXPECT_GE(size.x, std::floor(pixels.x));
     EXPECT_LE(size.x, std::ceil(pixels.x * std::exp2(0.25F)) + 1.0F);
     EXPECT_NEAR(size.x / size.y, 2.0F, 0.1F);
-    EXPECT_EQ(raster({96.0F, 48.0F}).getOptions().filter, graphics::Texture::Filter::Linear);
+    EXPECT_EQ(raster({96.0F, 48.0F}).getOptions().filter, haylen::graphics::Texture::Filter::Linear);
 
     // A larger draw rasters again, and the raster it has stands in until the new one arrives.
-    const graphics::Texture small = raster({96.0F, 48.0F});
+    const haylen::graphics::Texture small = raster({96.0F, 48.0F});
     EXPECT_EQ(raster({960.0F, 480.0F}), small);
     ASSERT_TRUE(getFixture().frameUntil([&] { return raster({960.0F, 480.0F}) != small; }));
     EXPECT_GE(raster({960.0F, 480.0F}).getSize().x, std::floor(toPixels({960.0F, 480.0F}).x));
@@ -121,7 +121,7 @@ TEST_F(ImageLibraryTest, RastersPicturesForTheScaleOfTheirTransforms) {
     // clang-format off
     const auto scaled = [&] {
         getContext().pushReshape({.scale = {3.0F, 3.0F}}, {});
-        const graphics::Texture texture = getContext().getImage("icons/badge.svg", {96.0F, 48.0F});
+        const haylen::graphics::Texture texture = getContext().getImage("icons/badge.svg", {96.0F, 48.0F});
         getContext().popReshape();
         return texture;
     };
@@ -161,7 +161,7 @@ TEST_F(ImageLibraryTest, RoundsTheCornersOfImages) {
 TEST_F(ImageLibraryTest, TintsTheIconOfAButtonWithItsIconColor) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "help", "text": "Help", "icon": "icons/badge.svg"}]})");
     ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImage("icons/badge.svg", {24.0F, 24.0F}).isValid(); }));
-    const ImU32 danger = ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Danger));
+    const ImU32 danger = haylen::ui::ImGuiConverter::toImU32(getUi().getTheme().getColor(haylen::ui::Theme::Color::Danger));
     frames(2);
     EXPECT_FALSE(drawsColor(danger));
 
@@ -173,15 +173,15 @@ TEST_F(ImageLibraryTest, TintsTheIconOfAButtonWithItsIconColor) {
 
 TEST_F(ImageLibraryTest, TintsTheIconOfAButtonLikeItsTextUnlessItsIconColorIsFalse) {
     getFixture().runLua("ui = require('haylen.ui') gui = ui.mount(ui.button{id = 'tool', text = 'Tool', icon = 'icons/badge.svg', variant = 'toolbar'}, {placement = 'screen'})");
-    const float iconSize = getUi().getTheme().getMetric(Theme::Metric::IconSize);
+    const float iconSize = getUi().getTheme().getMetric(haylen::ui::Theme::Metric::IconSize);
     ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImage("icons/badge.svg", {iconSize, iconSize}).isValid(); }));
     frames(2);
-    const graphics::Texture icon = getContext().getImage("icons/badge.svg", {iconSize, iconSize});
-    EXPECT_EQ(findTextureColor(icon), ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Text)));
+    const haylen::graphics::Texture icon = getContext().getImage("icons/badge.svg", {iconSize, iconSize});
+    EXPECT_EQ(findTextureColor(icon), haylen::ui::ImGuiConverter::toImU32(getUi().getTheme().getColor(haylen::ui::Theme::Color::Text)));
 
     getFixture().runLua("gui:set('tool', {iconColor = false})");
     frames(2);
-    EXPECT_EQ(findTextureColor(icon), ImGuiConverter::toImU32(math::Color::white()));
+    EXPECT_EQ(findTextureColor(icon), haylen::ui::ImGuiConverter::toImU32(haylen::math::Color::white()));
     EXPECT_NE(getFixture().lua("gui:set('tool', {iconColor = true})").find(R"(The property "iconColor" of a "button" must name a theme color such as "accent" or "textMuted", or be "false".)"), std::string::npos);
 }
 
@@ -196,12 +196,12 @@ TEST_F(ImageLibraryTest, TintsThePicturesOfItemsLikeTheirText) {
         }, {placement = 'screen'})
     )");
     // clang-format on
-    const float iconSize = getUi().getTheme().getMetric(Theme::Metric::IconSize);
+    const float iconSize = getUi().getTheme().getMetric(haylen::ui::Theme::Metric::IconSize);
     const auto badge = [&] { return getContext().getImage("icons/badge.svg", {iconSize, iconSize}); };
     const auto square = [&] { return getContext().getImage("icons/square.svg", {iconSize, iconSize}); };
     ASSERT_TRUE(getFixture().frameUntil([&] { return badge().isValid() && square().isValid(); }));
     frames(2);
-    const auto text = [&] { return ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Text)); };
+    const auto text = [&] { return haylen::ui::ImGuiConverter::toImU32(getUi().getTheme().getColor(haylen::ui::Theme::Color::Text)); };
     EXPECT_EQ(findTextureColor(badge()), text());
     EXPECT_EQ(findTextureColor(square()), text());
 
@@ -213,8 +213,8 @@ TEST_F(ImageLibraryTest, TintsThePicturesOfItemsLikeTheirText) {
     getFixture().runLua("gui:set('list', {items = {{id = 'one', text = 'One', image = 'icons/badge.svg', iconColor = 'danger'}}})");
     getFixture().runLua("gui:set('tree', {items = {{id = 'two', text = 'Two', image = 'icons/square.svg', iconColor = false}}})");
     frames(2);
-    EXPECT_EQ(findTextureColor(badge()), ImGuiConverter::toImU32(getUi().getTheme().getColor(Theme::Color::Danger)));
-    EXPECT_EQ(findTextureColor(square()), ImGuiConverter::toImU32(math::Color::white()));
+    EXPECT_EQ(findTextureColor(badge()), haylen::ui::ImGuiConverter::toImU32(getUi().getTheme().getColor(haylen::ui::Theme::Color::Danger)));
+    EXPECT_EQ(findTextureColor(square()), haylen::ui::ImGuiConverter::toImU32(haylen::math::Color::white()));
 
     EXPECT_NE(getFixture().lua("gui:set('list', {items = {{id = 'one', iconColor = 'crimson'}}})").find(R"(The property "items.iconColor" of a "list" must name a theme color such as "accent" or "textMuted", or be "false".)"), std::string::npos);
     EXPECT_EQ(getEngine().getError(), nullptr);
@@ -229,33 +229,33 @@ TEST_F(ImageLibraryTest, PlacesTheIconOfAButtonAboveItsLabelOrWithTheContentAtTh
     // clang-format on
     ASSERT_TRUE(getFixture().frameUntil([&] { return getContext().getImage("icons/badge.svg", {36.0F, 36.0F}).isValid(); }));
     frames(2);
-    const Theme& theme = getUi().getTheme();
-    const float iconSize = theme.getMetric(Theme::Metric::IconSize);
+    const haylen::ui::Theme& theme = getUi().getTheme();
+    const float iconSize = theme.getMetric(haylen::ui::Theme::Metric::IconSize);
 
     // The icon stands above the label, in the middle of a button taller than a control.
-    const math::Rect tab = getBounds(*gui, "tab");
-    const math::Rect tabIcon = findColorBox(ImGuiConverter::toImU32(theme.getColor(Theme::Color::Danger)));
-    EXPECT_GT(tab.height, theme.getMetric(Theme::Metric::ControlHeight));
+    const haylen::math::Rect tab = getBounds(*gui, "tab");
+    const haylen::math::Rect tabIcon = findColorBox(haylen::ui::ImGuiConverter::toImU32(theme.getColor(haylen::ui::Theme::Color::Danger)));
+    EXPECT_GT(tab.height, theme.getMetric(haylen::ui::Theme::Metric::ControlHeight));
     EXPECT_NEAR(tabIcon.getCenter().x, tab.getCenter().x, 1.0F);
     EXPECT_LT(tabIcon.y, tab.getCenter().y - iconSize * 0.5F);
     EXPECT_NEAR(tabIcon.width, iconSize, 1.0F);
 
     // The content of the search bar starts after the padding of the control.
-    const math::Rect search = getBounds(*gui, "search");
-    const math::Rect searchIcon = findColorBox(ImGuiConverter::toImU32(theme.getColor(Theme::Color::Success)));
-    EXPECT_NEAR(searchIcon.x, search.x + theme.getMetric(Theme::Metric::ControlPaddingX), 1.0F);
+    const haylen::math::Rect search = getBounds(*gui, "search");
+    const haylen::math::Rect searchIcon = findColorBox(haylen::ui::ImGuiConverter::toImU32(theme.getColor(haylen::ui::Theme::Color::Success)));
+    EXPECT_NEAR(searchIcon.x, search.x + theme.getMetric(haylen::ui::Theme::Metric::ControlPaddingX), 1.0F);
     EXPECT_NEAR(searchIcon.getCenter().y, search.getCenter().y, 1.0F);
 
     gui->set("search", {{"justify", "end"}});
     frames(2);
-    EXPECT_GT(findColorBox(ImGuiConverter::toImU32(theme.getColor(Theme::Color::Success))).x, search.getCenter().x);
+    EXPECT_GT(findColorBox(haylen::ui::ImGuiConverter::toImU32(theme.getColor(haylen::ui::Theme::Color::Success))).x, search.getCenter().x);
     EXPECT_THROW(gui->set("tab", {{"iconPlacement", "bottom"}}), std::invalid_argument);
     EXPECT_THROW(gui->set("tab", {{"justify", "spaceBetween"}}), std::invalid_argument);
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
 TEST_F(ImageLibraryTest, PaintsThemeSurfacesWithSvgDocuments) {
-    getUi().setTheme(getUi().addTheme(getEngine(), core::Json::parse(R"({"name": "vector", "surfaces": {"panel": {"image": "icons/square.svg", "slice": 20, "scale": 2, "padding": 8}}})"), "dark"));
+    getUi().setTheme(getUi().addTheme(getEngine(), haylen::core::Json::parse(R"({"name": "vector", "surfaces": {"panel": {"image": "icons/square.svg", "slice": 20, "scale": 2, "padding": 8}}})"), "dark"));
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "panel", "id": "box", "width": 400, "height": 300, "children": [{"kind": "label", "id": "inside", "text": "Inside"}]}]})");
 
     // The raster covers the pixels of the borders at their scale, and the frame draws with it.
@@ -271,7 +271,7 @@ TEST_F(ImageLibraryTest, PaintsThemeSurfacesWithSvgDocuments) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 
     // Borders that do not fit inside the document stop the app once it loaded.
-    getUi().setTheme(getUi().addTheme(getEngine(), core::Json::parse(R"({"name": "wide", "surfaces": {"panel": {"image": "icons/square.svg", "slice": 60}}})"), "dark"));
+    getUi().setTheme(getUi().addTheme(getEngine(), haylen::core::Json::parse(R"({"name": "wide", "surfaces": {"panel": {"image": "icons/square.svg", "slice": 60}}})"), "dark"));
     ASSERT_TRUE(getFixture().frameUntil([&] { return getEngine().getError() != nullptr; }));
     EXPECT_NE(std::string_view(getEngine().getError()->what()).find("The borders of a nine-slice must fit inside its source rectangle"), std::string::npos);
 }
@@ -283,8 +283,8 @@ TEST_F(ImageLibraryTest, ReportsSvgDocumentsThatFailToLoad) {
 }
 
 TEST_F(ImageLibraryTest, ReleasesTheRastersNoFrameDrewOnceTheyPassTheBudget) {
-    ImageLibrary library(getEngine().getAssets(), getEngine().getGraphics(), getEngine().getJobs(), 64U * 1024U);
-    const auto raster = [&](float scale) { return library.getTexture("icons/square.svg", graphics::Texture::Filter::Linear, scale); };
+    haylen::ui::ImageLibrary library(getEngine().getAssets(), getEngine().getGraphics(), getEngine().getJobs(), 64U * 1024U);
+    const auto raster = [&](float scale) { return library.getTexture("icons/square.svg", haylen::graphics::Texture::Filter::Linear, scale); };
     ASSERT_TRUE(getFixture().frameUntil([&] { return raster(1.0F).isValid(); }));
     const std::size_t first = library.getRasterBytes();
     EXPECT_EQ(first, std::size_t{100} * 100U * 4U);
@@ -341,15 +341,15 @@ TEST_F(ImageLibraryTest, ShowsTexturesRenderTargetsAndImagesMadeAtRunTime) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "image", "id": "map", "image": "@minimap"}, {"kind": "icon", "id": "swatch", "image": "@swatch"}, {"kind": "image", "id": "stamp", "image": "@stamp"}, {"kind": "image", "id": "badge", "image": "@badge", "scale": 2}]})");
     ASSERT_TRUE(getFixture().frameUntil([&] { return getBounds(*gui, "badge").width > 0.0F; }));
     EXPECT_EQ(getFixture().engine().getError(), nullptr);
-    EXPECT_EQ(getBounds(*gui, "map").getSize(), math::Vec2(64.0F, 32.0F));
-    EXPECT_EQ(getBounds(*gui, "stamp").getSize(), math::Vec2(10.0F, 6.0F));
-    EXPECT_EQ(getBounds(*gui, "badge").getSize(), math::Vec2(48.0F, 24.0F));
+    EXPECT_EQ(getBounds(*gui, "map").getSize(), haylen::math::Vec2(64.0F, 32.0F));
+    EXPECT_EQ(getBounds(*gui, "stamp").getSize(), haylen::math::Vec2(10.0F, 6.0F));
+    EXPECT_EQ(getBounds(*gui, "badge").getSize(), haylen::math::Vec2(48.0F, 24.0F));
     EXPECT_TRUE(drawsColor(IM_COL32(255, 255, 255, 255)));
 
-    ImageLibrary& library = getUi().getImages();
-    EXPECT_EQ(library.getTexture("@swatch", graphics::Texture::Filter::Linear, 1.0F).getSize(), math::Vec2(8.0F, 8.0F));
+    haylen::ui::ImageLibrary& library = getUi().getImages();
+    EXPECT_EQ(library.getTexture("@swatch", haylen::graphics::Texture::Filter::Linear, 1.0F).getSize(), haylen::math::Vec2(8.0F, 8.0F));
     library.remove("@swatch");
-    EXPECT_THROW((void)library.getTexture("@swatch", graphics::Texture::Filter::Linear, 1.0F), std::runtime_error);
+    EXPECT_THROW((void)library.getTexture("@swatch", haylen::graphics::Texture::Filter::Linear, 1.0F), std::runtime_error);
     EXPECT_NE(getFixture().lua("ui.setImage('minimap', minimap)").find("A UI image made at run time has a name that starts with \"@\", such as \"@minimap\", not \"minimap\"."), std::string::npos);
     EXPECT_NE(getFixture().lua("ui.setImage('@x', 5)").find("haylen.Texture expected"), std::string::npos);
     getFixture().runLua("ui.removeImage('@stamp')");
@@ -358,4 +358,4 @@ TEST_F(ImageLibraryTest, ShowsTexturesRenderTargetsAndImagesMadeAtRunTime) {
     EXPECT_NE(std::string(getFixture().engine().getError()->what()).find("The UI image \"@stamp\" could not be loaded. No image of that name was set with \"ui.setImage\"."), std::string::npos);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

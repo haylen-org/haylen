@@ -13,17 +13,17 @@
 #include "haylen/conversation/Expression.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::conversation {
+namespace haylen::lua::conversation {
 
 class ConversationTest : public ::testing::Test {
   protected:
-    [[nodiscard]] static std::shared_ptr<const Conversation> read(const char* text) {
-        return std::make_shared<const Conversation>(Conversation::parse(core::Json::parse(text)));
+    [[nodiscard]] static std::shared_ptr<const haylen::conversation::Conversation> read(const char* text) {
+        return std::make_shared<const haylen::conversation::Conversation>(haylen::conversation::Conversation::parse(haylen::core::Json::parse(text)));
     }
 
     // Returns the line that the conversation shows, and throws when it shows none, so a test never reads a line that is not there.
-    [[nodiscard]] static const ConversationState::Line& lineOf(const ConversationState& state) {
-        const std::optional<ConversationState::Line>& line = state.getLine();
+    [[nodiscard]] static const haylen::conversation::ConversationState::Line& lineOf(const haylen::conversation::ConversationState& state) {
+        const std::optional<haylen::conversation::ConversationState::Line>& line = state.getLine();
         if (!line) {
             throw std::runtime_error("The conversation shows no line.");
         }
@@ -33,7 +33,7 @@ class ConversationTest : public ::testing::Test {
 
     [[nodiscard]] static std::string refusal(const char* text) {
         try {
-            (void)Conversation::parse(core::Json::parse(text));
+            (void)haylen::conversation::Conversation::parse(haylen::core::Json::parse(text));
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
@@ -70,7 +70,7 @@ class ConversationTest : public ::testing::Test {
 
 TEST(ExpressionTest, EvaluatesWithTheTruthOfLua) {
     // clang-format off
-    const auto lookup = [](std::string_view name) -> core::Json {
+    const auto lookup = [](std::string_view name) -> haylen::core::Json {
         if (name == "gold") {
             return 30;
         }
@@ -79,23 +79,23 @@ TEST(ExpressionTest, EvaluatesWithTheTruthOfLua) {
             return 2;
         }
 
-        return name == "title" ? core::Json("Sir") : core::Json();
+        return name == "title" ? haylen::core::Json("Sir") : haylen::core::Json();
     };
     // clang-format on
-    EXPECT_EQ(Expression::parse("gold - 10 * 2").evaluate(lookup), 10);
-    EXPECT_EQ(Expression::parse("(gold - 10) / 4").evaluate(lookup), 5.0);
-    EXPECT_EQ(Expression::parse("-gold + 1").evaluate(lookup), -29);
-    EXPECT_TRUE(Expression::parse("gold >= 30 and visits.greeting == 2").test(lookup));
-    EXPECT_TRUE(Expression::parse("missing == nil and not missing").test(lookup));
-    EXPECT_TRUE(Expression::parse("title == 'Sir' or order").test(lookup));
-    EXPECT_FALSE(Expression::parse("title ~= \"Sir\"").test(lookup));
-    EXPECT_TRUE(Expression::parse("0").test(lookup)) << "Zero is true, as in Lua.";
-    EXPECT_EQ(Expression::parse("missing or 5").evaluate(lookup), 5);
+    EXPECT_EQ(haylen::conversation::Expression::parse("gold - 10 * 2").evaluate(lookup), 10);
+    EXPECT_EQ(haylen::conversation::Expression::parse("(gold - 10) / 4").evaluate(lookup), 5.0);
+    EXPECT_EQ(haylen::conversation::Expression::parse("-gold + 1").evaluate(lookup), -29);
+    EXPECT_TRUE(haylen::conversation::Expression::parse("gold >= 30 and visits.greeting == 2").test(lookup));
+    EXPECT_TRUE(haylen::conversation::Expression::parse("missing == nil and not missing").test(lookup));
+    EXPECT_TRUE(haylen::conversation::Expression::parse("title == 'Sir' or order").test(lookup));
+    EXPECT_FALSE(haylen::conversation::Expression::parse("title ~= \"Sir\"").test(lookup));
+    EXPECT_TRUE(haylen::conversation::Expression::parse("0").test(lookup)) << "Zero is true, as in Lua.";
+    EXPECT_EQ(haylen::conversation::Expression::parse("missing or 5").evaluate(lookup), 5);
 
     // clang-format off
     const auto refusal = [](const char* text) {
         try {
-            (void)Expression::parse(text);
+            (void)haylen::conversation::Expression::parse(text);
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
@@ -107,22 +107,22 @@ TEST(ExpressionTest, EvaluatesWithTheTruthOfLua) {
     EXPECT_EQ(refusal("(gold"), "The expression \"(gold\" misses a closing parenthesis at character 6.");
     EXPECT_EQ(refusal("gold 5"), "The expression \"gold 5\" has text after its end.");
     EXPECT_EQ(refusal("'open"), "The expression \"'open\" has a string that is not closed at character 1.");
-    EXPECT_THROW((void)Expression::parse("title + 1").evaluate(lookup), std::invalid_argument);
+    EXPECT_THROW((void)haylen::conversation::Expression::parse("title + 1").evaluate(lookup), std::invalid_argument);
 }
 
 // Integers keep every digit and wrap around past 64 bits, and longer whole numbers are floats, as in Lua.
 TEST(ExpressionTest, ReadsAndComputesIntegersAsLuaDoes) {
-    const Expression::Lookup lookup = [](std::string_view) { return core::Json(); };
-    EXPECT_EQ(Expression::parse("9007199254740993").evaluate(lookup), 9007199254740993);
-    EXPECT_EQ(Expression::parse("9223372036854775807 + 1").evaluate(lookup), std::numeric_limits<std::int64_t>::min());
-    EXPECT_EQ(Expression::parse("-(0 - 9223372036854775807 - 1)").evaluate(lookup), std::numeric_limits<std::int64_t>::min());
-    EXPECT_EQ(Expression::parse("4294967296 * 4294967296").evaluate(lookup), 0);
-    EXPECT_EQ(Expression::parse("99999999999999999999").evaluate(lookup), 1e20);
+    const haylen::conversation::Expression::Lookup lookup = [](std::string_view) { return haylen::core::Json(); };
+    EXPECT_EQ(haylen::conversation::Expression::parse("9007199254740993").evaluate(lookup), 9007199254740993);
+    EXPECT_EQ(haylen::conversation::Expression::parse("9223372036854775807 + 1").evaluate(lookup), std::numeric_limits<std::int64_t>::min());
+    EXPECT_EQ(haylen::conversation::Expression::parse("-(0 - 9223372036854775807 - 1)").evaluate(lookup), std::numeric_limits<std::int64_t>::min());
+    EXPECT_EQ(haylen::conversation::Expression::parse("4294967296 * 4294967296").evaluate(lookup), 0);
+    EXPECT_EQ(haylen::conversation::Expression::parse("99999999999999999999").evaluate(lookup), 1e20);
 }
 
 // Reading and evaluating keep their place in lists instead of recursing, so an expression of any depth stays within the smallest native stack, the one of a Windows thread.
 TEST(ExpressionTest, ReadsAndEvaluatesExpressionsOfAnyDepth) {
-    const Expression::Lookup lookup = [](std::string_view) { return core::Json(); };
+    const haylen::conversation::Expression::Lookup lookup = [](std::string_view) { return haylen::core::Json(); };
     constexpr int kLevels = 100000;
     std::string negations;
     std::string minuses;
@@ -133,26 +133,26 @@ TEST(ExpressionTest, ReadsAndEvaluatesExpressionsOfAnyDepth) {
         chain += " + 1";
     }
 
-    EXPECT_EQ(Expression::parse(std::string(kLevels, '(') + "1" + std::string(kLevels, ')')).evaluate(lookup), 1);
-    EXPECT_EQ(Expression::parse(negations + "nil").evaluate(lookup), false);
-    EXPECT_EQ(Expression::parse(minuses + "1").evaluate(lookup), 1);
-    EXPECT_EQ(Expression::parse(chain).evaluate(lookup), kLevels + 1);
+    EXPECT_EQ(haylen::conversation::Expression::parse(std::string(kLevels, '(') + "1" + std::string(kLevels, ')')).evaluate(lookup), 1);
+    EXPECT_EQ(haylen::conversation::Expression::parse(negations + "nil").evaluate(lookup), false);
+    EXPECT_EQ(haylen::conversation::Expression::parse(minuses + "1").evaluate(lookup), 1);
+    EXPECT_EQ(haylen::conversation::Expression::parse(chain).evaluate(lookup), kLevels + 1);
 }
 
 // Operators bind as in Lua, a comparison takes no second comparison beside it and `not` begins only a whole condition.
 TEST(ExpressionTest, BindsOperatorsAsLuaDoes) {
-    const Expression::Lookup lookup = [](std::string_view) { return core::Json(); };
-    EXPECT_EQ(Expression::parse("not 1 == 2").evaluate(lookup), true);
-    EXPECT_EQ(Expression::parse("not nil and false").evaluate(lookup), false);
-    EXPECT_EQ(Expression::parse("2 - 3 - 4 * -2 / 4").evaluate(lookup), 1.0);
-    EXPECT_EQ(Expression::parse("1 < 2 and 2 < 3 or false").evaluate(lookup), true);
-    EXPECT_EQ(Expression::parse("1 < (2 < 3 and 4)").evaluate(lookup), true);
-    EXPECT_EQ(Expression::parse("false and 1 + 'a' or 5").evaluate(lookup), 5);
+    const haylen::conversation::Expression::Lookup lookup = [](std::string_view) { return haylen::core::Json(); };
+    EXPECT_EQ(haylen::conversation::Expression::parse("not 1 == 2").evaluate(lookup), true);
+    EXPECT_EQ(haylen::conversation::Expression::parse("not nil and false").evaluate(lookup), false);
+    EXPECT_EQ(haylen::conversation::Expression::parse("2 - 3 - 4 * -2 / 4").evaluate(lookup), 1.0);
+    EXPECT_EQ(haylen::conversation::Expression::parse("1 < 2 and 2 < 3 or false").evaluate(lookup), true);
+    EXPECT_EQ(haylen::conversation::Expression::parse("1 < (2 < 3 and 4)").evaluate(lookup), true);
+    EXPECT_EQ(haylen::conversation::Expression::parse("false and 1 + 'a' or 5").evaluate(lookup), 5);
 
     // clang-format off
     const auto refusal = [](std::string_view text) -> std::string {
         try {
-            (void)Expression::parse(text);
+            (void)haylen::conversation::Expression::parse(text);
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
@@ -180,7 +180,7 @@ TEST_F(ConversationTest, NamesTheNodeAndTheFieldOfAMistake) {
 }
 
 TEST_F(ConversationTest, WalksLinesConditionsChoicesAndCommands) {
-    ConversationState state(read(kSmith), core::Json{{"gold", 15}}, 7);
+    haylen::conversation::ConversationState state(read(kSmith), haylen::core::Json{{"gold", 15}}, 7);
     state.start("greeting");
     ASSERT_TRUE(state.getLine());
     EXPECT_EQ(lineOf(state).text, "smith.hello");
@@ -194,7 +194,7 @@ TEST_F(ConversationTest, WalksLinesConditionsChoicesAndCommands) {
     EXPECT_EQ(lineOf(state).text, "smith.hello");
     EXPECT_EQ(state.getVariables().at("metSmith"), true);
     state.deliverCommands();
-    const core::Connection listening = state.commanded.connect([&heard](std::string_view name, const core::Json& arguments) { heard.push_back(std::string(name) + " " + arguments.dump()); });
+    const haylen::core::Connection listening = state.commanded.connect([&heard](std::string_view name, const haylen::core::Json& arguments) { heard.push_back(std::string(name) + " " + arguments.dump()); });
     state.deliverCommands();
     EXPECT_EQ(heard, std::vector<std::string>{R"(wave {"hand":"left"})"}) << "Commands wait for the first listener.";
     EXPECT_THROW(state.advance(), std::logic_error);
@@ -224,10 +224,10 @@ TEST_F(ConversationTest, WalksLinesConditionsChoicesAndCommands) {
 }
 
 TEST_F(ConversationTest, PicksTheSameVariantsForTheSameSeedAndStopsLoops) {
-    const std::shared_ptr<const Conversation> rumors = read(R"({"nodes": {"a": {"steps": [{"text": ["one", "two", "three", "four"]}], "next": "a"}}})");
+    const std::shared_ptr<const haylen::conversation::Conversation> rumors = read(R"({"nodes": {"a": {"steps": [{"text": ["one", "two", "three", "four"]}], "next": "a"}}})");
     // clang-format off
     const auto walk = [&rumors](std::uint64_t seed) {
-        ConversationState state(rumors, core::Json(), seed);
+        haylen::conversation::ConversationState state(rumors, haylen::core::Json(), seed);
         state.start("a");
         std::string picked;
         for (int index = 0; index < 12; ++index) {
@@ -241,13 +241,13 @@ TEST_F(ConversationTest, PicksTheSameVariantsForTheSameSeedAndStopsLoops) {
     EXPECT_EQ(walk(3), walk(3));
     EXPECT_NE(walk(3), walk(4));
 
-    ConversationState loop(read(R"({"nodes": {"a": {"steps": [{"jump": "b"}]}, "b": {"steps": [{"jump": "a"}]}}})"), core::Json(), 1);
+    haylen::conversation::ConversationState loop(read(R"({"nodes": {"a": {"steps": [{"jump": "b"}]}, "b": {"steps": [{"jump": "a"}]}}})"), haylen::core::Json(), 1);
     EXPECT_THROW(loop.start("a"), std::logic_error);
     EXPECT_THROW(loop.start("nowhere"), std::invalid_argument);
 }
 
 TEST_F(ConversationTest, StartsAgainWithoutTheChoicesAndTheLineOfTheNodeItLeft) {
-    ConversationState state(read(R"({"nodes": {"ask": {"steps": [{"text": "question"}], "choices": [{"text": "yes"}, {"text": "no"}, {"text": "maybe"}]}, "pick": {"choices": [{"text": "only", "next": "ask"}]}}})"), core::Json(), 1);
+    haylen::conversation::ConversationState state(read(R"({"nodes": {"ask": {"steps": [{"text": "question"}], "choices": [{"text": "yes"}, {"text": "no"}, {"text": "maybe"}]}, "pick": {"choices": [{"text": "only", "next": "ask"}]}}})"), haylen::core::Json(), 1);
     state.start("ask");
     state.advance();
     ASSERT_EQ(state.getChoices().size(), 3U);
@@ -264,11 +264,11 @@ TEST_F(ConversationTest, StartsAgainWithoutTheChoicesAndTheLineOfTheNodeItLeft) 
 
 // A listener may advance the state, and the commands of the steps it runs reach the app after the ones that waited before them.
 TEST_F(ConversationTest, DeliversCommandsInOrderWhenAListenerAdvances) {
-    ConversationState state(read(R"({"nodes": {"a": {"steps": [{"command": "first"}, {"command": "second"}, {"text": "x"}, {"command": "third"}, {"text": "y"}]}}})"), core::Json(), 1);
+    haylen::conversation::ConversationState state(read(R"({"nodes": {"a": {"steps": [{"command": "first"}, {"command": "second"}, {"text": "x"}, {"command": "third"}, {"text": "y"}]}}})"), haylen::core::Json(), 1);
     state.start("a");
     std::vector<std::string> heard;
     // clang-format off
-    const core::Connection listening = state.commanded.connect([&heard, &state](std::string_view name, const core::Json&) {
+    const haylen::core::Connection listening = state.commanded.connect([&heard, &state](std::string_view name, const haylen::core::Json&) {
         heard.emplace_back(name);
 
         if (name == "first") {
@@ -284,14 +284,14 @@ TEST_F(ConversationTest, DeliversCommandsInOrderWhenAListenerAdvances) {
 }
 
 TEST_F(ConversationTest, SavesAndRestoresWhereItStood) {
-    const std::shared_ptr<const Conversation> smith = read(kSmith);
-    ConversationState state(smith, core::Json(), 11);
+    const std::shared_ptr<const haylen::conversation::Conversation> smith = read(kSmith);
+    haylen::conversation::ConversationState state(smith, haylen::core::Json(), 11);
     state.start("greeting");
     state.advance();
     state.choose(1);
-    const core::Json saved = state.save();
+    const haylen::core::Json saved = state.save();
 
-    const std::shared_ptr<ConversationState> restored = ConversationState::restore(smith, core::Json::parse(saved.dump()));
+    const std::shared_ptr<haylen::conversation::ConversationState> restored = haylen::conversation::ConversationState::restore(smith, haylen::core::Json::parse(saved.dump()));
     EXPECT_EQ(restored->save(), saved);
     EXPECT_EQ(lineOf(*restored).text, lineOf(state).text);
     state.advance();
@@ -299,9 +299,9 @@ TEST_F(ConversationTest, SavesAndRestoresWhereItStood) {
     EXPECT_EQ(restored->getChoices().size(), state.getChoices().size());
     EXPECT_EQ(restored->getVisits("greeting"), 2);
 
-    core::Json broken = saved;
+    haylen::core::Json broken = saved;
     broken["node"] = "forge";
-    EXPECT_THROW((void)ConversationState::restore(smith, broken), std::invalid_argument);
+    EXPECT_THROW((void)haylen::conversation::ConversationState::restore(smith, broken), std::invalid_argument);
 }
 
 TEST(ConversationLuaTest, LoadsAssetsLocalizesLinesAndEndsListenersWithTheirOwner) {
@@ -379,4 +379,4 @@ TEST(ConversationLuaTest, FillsThePlaceholdersOfTextsThatAreNotKeys) {
     EXPECT_EQ(fixture.lua("state:advance() return state.choices[1].text"), "Buy sword 1.");
 }
 
-} // namespace haylen::conversation
+} // namespace haylen::lua::conversation

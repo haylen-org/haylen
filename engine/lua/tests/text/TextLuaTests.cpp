@@ -18,7 +18,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::text {
+namespace haylen::lua::text {
 
 class TextLuaTest : public ::testing::Test {
   protected:
@@ -72,16 +72,16 @@ TEST_F(TextLuaTest, BalancesWrappedLines) {
 
 // Rich text drawn twice in one frame with options that lay it out apart keeps a layout for each.
 TEST_F(TextLuaTest, KeepsADrawnLayoutForEachWayOfLayingItOut) {
-    plugins::TextPlugin& plugin = fixture.engine().getPlugin<plugins::TextPlugin>();
-    const text::RichTextOptions prose{.family = plugin.getRegistry()->getDefaultFamily(), .maxWidth = 200.0F};
-    text::RichTextOptions balanced = prose;
-    balanced.balance = text::Balance::AllLines;
-    text::RichTextOptions joined = prose;
+    haylen::plugins::TextPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::TextPlugin>();
+    const haylen::text::RichTextOptions prose{.family = plugin.getRegistry()->getDefaultFamily(), .maxWidth = 200.0F};
+    haylen::text::RichTextOptions balanced = prose;
+    balanced.balance = haylen::text::Balance::AllLines;
+    haylen::text::RichTextOptions joined = prose;
     joined.ligatures = false;
-    text::RichTextOptions code = prose;
+    haylen::text::RichTextOptions code = prose;
     code.code = true;
 
-    const text::RichText* first = &plugin.getDrawnText("office of the ffi", prose, {}, 0.0);
+    const haylen::text::RichText* first = &plugin.getDrawnText("office of the ffi", prose, {}, 0.0);
     EXPECT_NE(&plugin.getDrawnText("office of the ffi", balanced, {}, 0.0), first);
     EXPECT_NE(&plugin.getDrawnText("office of the ffi", joined, {}, 0.0), first);
     EXPECT_NE(&plugin.getDrawnText("office of the ffi", code, {}, 0.0), first);
@@ -262,13 +262,13 @@ TEST_F(TextLuaTest, KeepsTheImagesOfRichTextThatFramesKeepDrawing) {
     std::vector<std::string> log;
     // clang-format off
     const auto record = [&log](std::string kind) {
-        return [&log, kind](core::EventBus::Event& event) {
+        return [&log, kind](haylen::core::EventBus::Event& event) {
             log.push_back(kind + " " + event.getData().at("path").get<std::string>());
         };
     };
     // clang-format on
-    const core::Connection loaded = fixture.engine().getEvents().on(core::LifecycleEvent::kAssetLoaded, record("loaded"));
-    const core::Connection unloaded = fixture.engine().getEvents().on(core::LifecycleEvent::kAssetUnloaded, record("unloaded"));
+    const haylen::core::Connection loaded = fixture.engine().getEvents().on(haylen::core::LifecycleEvent::kAssetLoaded, record("loaded"));
+    const haylen::core::Connection unloaded = fixture.engine().getEvents().on(haylen::core::LifecycleEvent::kAssetUnloaded, record("unloaded"));
 
     fixture.runLua("drawn = true require('haylen.scene').push({render = function() graphics2d.beginScreen() if drawn then graphics2d.drawRichText('Coins [img=images/coin.png]', 0, 0, {tint = '#FF8080'}) end end})");
     fixture.frames(5);
@@ -357,8 +357,8 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
 
 TEST(TextPluginTest, RequiresAStartedEngine) {
     test::LuaFixture fixture;
-    plugins::TextPlugin plugin(fixture.host());
+    haylen::plugins::TextPlugin plugin(fixture.host());
     EXPECT_THROW((void)plugin.getRegistry(), std::logic_error);
 }
 
-} // namespace haylen::text
+} // namespace haylen::lua::text

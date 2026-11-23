@@ -13,7 +13,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 TEST(CoreLuaTest, ExposesEngineInformationAndClock) {
     test::LuaFixture fixture;
@@ -151,28 +151,28 @@ TEST(CoreLuaTest, ReportsTheFixedStepClock) {
 
 TEST(CoreLuaTest, WritesLogsAtTheCurrentLevel) {
     test::LuaFixture fixture;
-    std::vector<std::pair<core::Log::Level, std::string>> lines;
-    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level level, std::string_view line) { lines.emplace_back(level, std::string(line)); });
+    std::vector<std::pair<haylen::core::Log::Level, std::string>> lines;
+    const std::uint64_t listener = haylen::core::Log::addListener([&lines](haylen::core::Log::Level level, std::string_view line) { lines.emplace_back(level, std::string(line)); });
     fixture.runLua("log = require('haylen.log')");
     EXPECT_EQ(fixture.lua("return log.level()"), "info");
 
     fixture.runLua("log.debug('hidden', 1) log.info('shown', true) log.warning('careful') log.error({})");
-    core::Log::write(core::Log::Level::Debug, "hidden from C++");
+    haylen::core::Log::write(haylen::core::Log::Level::Debug, "hidden from C++");
     fixture.runLua("require('log').debug('hidden from Varn')");
     fixture.runLua("log.setLevel('debug') log.debug('visible')");
-    EXPECT_EQ(core::Log::getLevel(), core::Log::Level::Debug);
+    EXPECT_EQ(haylen::core::Log::getLevel(), haylen::core::Log::Level::Debug);
     EXPECT_EQ(fixture.lua("return log.level()"), "debug");
     fixture.runLua("log.setLevel('error') log.warning('dropped')");
     EXPECT_EQ(fixture.lua("return log.level()"), "error");
 
-    core::Log::removeListener(listener);
-    core::Log::setLevel(core::Log::Level::Info);
+    haylen::core::Log::removeListener(listener);
+    haylen::core::Log::setLevel(haylen::core::Log::Level::Info);
     ASSERT_EQ(lines.size(), 4U);
-    EXPECT_EQ(lines[0].first, core::Log::Level::Info);
+    EXPECT_EQ(lines[0].first, haylen::core::Log::Level::Info);
     EXPECT_NE(lines[0].second.find("shown\ttrue"), std::string::npos);
-    EXPECT_EQ(lines[1].first, core::Log::Level::Warning);
-    EXPECT_EQ(lines[2].first, core::Log::Level::Error);
-    EXPECT_EQ(lines[3].first, core::Log::Level::Debug);
+    EXPECT_EQ(lines[1].first, haylen::core::Log::Level::Warning);
+    EXPECT_EQ(lines[2].first, haylen::core::Log::Level::Error);
+    EXPECT_EQ(lines[3].first, haylen::core::Log::Level::Debug);
     EXPECT_NE(lines[3].second.find("visible"), std::string::npos);
     EXPECT_NE(fixture.lua("log.setLevel('loud')").find("bad argument #1 to 'setLevel' (unknown value 'loud')"), std::string::npos);
 }
@@ -213,7 +213,7 @@ TEST(CoreLuaTest, ControlsTheWindow) {
     fixture.runLua("window.setTitle('Tiny Island') window.setFullscreen(true) window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");
     EXPECT_EQ(fixture.host().getTitle(), "Tiny Island");
     EXPECT_EQ(fixture.lua("return window.fullscreen()"), "true");
-    EXPECT_EQ(fixture.host().getCursor(), platform::Window::Cursor::PointingHand);
+    EXPECT_EQ(fixture.host().getCursor(), haylen::platform::Window::Cursor::PointingHand);
     EXPECT_FALSE(fixture.host().isCursorVisible());
     EXPECT_TRUE(fixture.host().isMouseLocked());
     EXPECT_TRUE(fixture.host().isKeyboardVisible());
@@ -231,7 +231,7 @@ TEST(CoreLuaTest, ReadsAndLocksTheOrientation) {
     EXPECT_EQ(fixture.lua("return window.orientation()"), "landscape");
 
     fixture.runLua("window.lockOrientation('portrait')");
-    EXPECT_EQ(fixture.host().getOrientationLock(), platform::Orientation::Portrait);
+    EXPECT_EQ(fixture.host().getOrientationLock(), haylen::platform::Orientation::Portrait);
     fixture.host().resize({1080.0F, 1920.0F});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return window.orientation() .. ' ' .. table.concat(heard, ',')"), "portrait portrait");
@@ -242,10 +242,10 @@ TEST(CoreLuaTest, HearsTheKeyboardAndTheNetwork) {
     test::LuaFixture fixture;
     fixture.runLua("haylen = require('haylen') events = require('haylen.events') heard = {} for _, name in ipairs({'keyboardShown', 'keyboardHidden', 'networkOffline', 'networkOnline'}) do events.on(name, function(info) heard[#heard + 1] = name .. (info and (' ' .. info.y .. ' ' .. info.height) or '') .. ' ' .. haylen.networkState() end) end");
     EXPECT_EQ(fixture.lua("return haylen.networkState()"), "unknown");
-    fixture.engine().handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 700.0F, 1920.0F, 380.0F}});
-    fixture.engine().handleEvent({.type = platform::Event::Type::NetworkChanged, .online = false});
-    fixture.engine().handleEvent({.type = platform::Event::Type::KeyboardChanged});
-    fixture.engine().handleEvent({.type = platform::Event::Type::NetworkChanged, .online = true});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 700.0F, 1920.0F, 380.0F}});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = false});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = true});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "keyboardShown 700.0 380.0 unknown, networkOffline offline, keyboardHidden offline, networkOnline online");
 }
@@ -296,7 +296,7 @@ TEST(CoreLuaTest, RunsLuaScenesThroughTheSceneManager) {
     EXPECT_EQ(fixture.lua("return scene.size() .. tostring(scene.top() == menu)"), "1true");
     fixture.runLua("calls = {} scene.push(overlay)");
     fixture.frames(1);
-    platform::Event key{.type = platform::Event::Type::KeyDown, .key = input::Key::Space};
+    haylen::platform::Event key{.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Space};
     fixture.engine().handleEvent(key);
     EXPECT_EQ(fixture.lua("return table.concat(calls, ',')"), "menu.pause,overlay.enter,menu.render,overlay.render,menu.ui");
 
@@ -544,4 +544,4 @@ TEST(SignalLuaTest, ConnectsEmitsAndDisconnects) {
     // clang-format on
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

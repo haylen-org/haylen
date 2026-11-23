@@ -26,17 +26,17 @@
 #include "ui/ScrollArbiter.hpp"
 #include "ui/TextSession.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // Drives text fields as a native field of the platform would, through the recording text input of the headless host.
 class TextInputTest : public ::testing::Test {
   protected:
-    using TextInput = platform::TextInput;
+    using TextInput = haylen::platform::TextInput;
 
     TextInputTest() {
         getInput().setNative(true);
         // clang-format off
-        connection = getUi().events.connect([this](Gui&, const Event& event) {
+        connection = getUi().events.connect([this](haylen::ui::Gui&, const haylen::ui::Event& event) {
             if (event.name != "focus" && event.name != "blur") {
                 events.push_back(event.id + ":" + event.name + " " + event.value.dump());
             }
@@ -44,13 +44,13 @@ class TextInputTest : public ::testing::Test {
         // clang-format on
     }
 
-    core::Engine& getEngine() {
+    haylen::core::Engine& getEngine() {
         return fixture.engine();
     }
-    plugins::UiPlugin& getUi() {
-        return getEngine().getPlugin<plugins::UiPlugin>();
+    haylen::plugins::UiPlugin& getUi() {
+        return getEngine().getPlugin<haylen::plugins::UiPlugin>();
     }
-    platform::HeadlessTextInput& getInput() {
+    haylen::platform::HeadlessTextInput& getInput() {
         return fixture.host().getPlatformTextInput();
     }
     // The last event that a field reported, which throws before any field reported one.
@@ -72,56 +72,56 @@ class TextInputTest : public ::testing::Test {
         return published.back();
     }
 
-    void touch(platform::Event::Type type, math::Vec2 point) {
-        platform::Event event;
+    void touch(haylen::platform::Event::Type type, haylen::math::Vec2 point) {
+        haylen::platform::Event event;
         event.type = type;
         event.touchCount = 1;
         event.touches[0] = {.id = 1, .position = getEngine().getViewport().toFramebuffer(point + getEngine().getViewport().getVisibleRect().getMin()), .changed = true};
         getEngine().handleEvent(event);
     }
 
-    std::shared_ptr<Gui> mount(const std::string& json) {
-        auto gui = getUi().createGui(core::Json::parse(json), Placement::Screen);
+    std::shared_ptr<haylen::ui::Gui> mount(const std::string& json) {
+        auto gui = getUi().createGui(haylen::core::Json::parse(json), haylen::ui::Placement::Screen);
         getUi().mount(gui);
         fixture.frames(1);
         return gui;
     }
 
-    void focus(Gui& gui, const std::string& id) {
-        gui.command(getUi().getContext(), id, "focus", core::Json::object());
+    void focus(haylen::ui::Gui& gui, const std::string& id) {
+        gui.command(getUi().getContext(), id, "focus", haylen::core::Json::object());
         fixture.frames(2);
     }
 
-    void send(platform::Event event) {
+    void send(haylen::platform::Event event) {
         getEngine().handleEvent(event);
         fixture.frames(2);
     }
 
     void edit(std::string text, int selectionStart, int selectionEnd, int compositionStart = -1, int compositionEnd = -1) {
         const TextInput::Field& field = getPublished();
-        send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = field.id, .revision = field.revision, .text = std::move(text), .selectionStart = selectionStart, .selectionEnd = selectionEnd, .compositionStart = compositionStart, .compositionEnd = compositionEnd}});
+        send({.type = haylen::platform::Event::Type::TextEdited, .textEdit = {.field = field.id, .revision = field.revision, .text = std::move(text), .selectionStart = selectionStart, .selectionEnd = selectionEnd, .compositionStart = compositionStart, .compositionEnd = compositionEnd}});
     }
 
     void act(TextInput::Action action) {
-        send({.type = platform::Event::Type::TextAction, .textEdit = {.field = getPublished().id}, .textAction = action});
+        send({.type = haylen::platform::Event::Type::TextAction, .textEdit = {.field = getPublished().id}, .textAction = action});
     }
 
     // Presses a key the way a physical keyboard does, with the character it types in the same frame as the key.
-    void press(input::Key key, char32_t character, input::KeyModifiers modifiers = {}) {
-        getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = key, .modifiers = modifiers});
+    void press(haylen::input::Key key, char32_t character, haylen::input::KeyModifiers modifiers = {}) {
+        getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = key, .modifiers = modifiers});
 
         if (character != 0) {
-            getEngine().handleEvent({.type = platform::Event::Type::Character, .modifiers = modifiers, .character = character});
+            getEngine().handleEvent({.type = haylen::platform::Event::Type::Character, .modifiers = modifiers, .character = character});
         }
 
         fixture.frames(1);
-        getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = key, .modifiers = modifiers});
+        getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = key, .modifiers = modifiers});
         fixture.frames(1);
     }
 
     test::LuaFixture fixture;
     std::vector<std::string> events;
-    core::Connection connection;
+    haylen::core::Connection connection;
 };
 
 TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
@@ -142,7 +142,7 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     EXPECT_EQ(visible[1].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Multiline}));
     EXPECT_EQ(visible[2].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Password, .capitalization = TextInput::Capitalization::None, .autocorrect = false}));
     EXPECT_EQ(visible[3].options.keyboard, TextInput::Keyboard::Text) << "Numeric keypads have no minus sign.";
-    EXPECT_FLOAT_EQ(getInput().getTapSlop(), ScrollArbiter::kDragSlop) << "A press taps a field within the slop of a drag, in framebuffer pixels.";
+    EXPECT_FLOAT_EQ(getInput().getTapSlop(), haylen::ui::ScrollArbiter::kDragSlop) << "A press taps a field within the slop of a drag, in framebuffer pixels.";
     EXPECT_TRUE(getInput().getPublished().empty());
 
     focus(*gui, "email");
@@ -168,19 +168,19 @@ TEST_F(TextInputTest, OpensTheNativeFieldOnceThePressOfAcceptEnds) {
     mount(R"({"kind": "column", "children": [{"kind": "button", "id": "go", "text": "Go", "autofocus": true}, {"kind": "textField", "id": "name"}]})");
     // The first key shows the focus, and the next one moves it to the field.
     for (int press = 0; press < 2; ++press) {
-        send({.type = platform::Event::Type::KeyDown, .key = input::Key::Down});
-        send({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
+        send({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Down});
+        send({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::Down});
     }
 
     ASSERT_EQ(fixture.lua("return require('haylen.ui').focused().id"), "name");
     ASSERT_FALSE(getInput().isEditing());
 
-    send({.type = platform::Event::Type::KeyDown, .key = input::Key::Enter});
+    send({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Enter});
     fixture.frames(30);
     ASSERT_NE(getUi().getContext().getBackend().getTextSession().getActiveField(), 0U) << "The press opens the field.";
     EXPECT_FALSE(getInput().isEditing());
     EXPECT_TRUE(getInput().getPublished().empty());
-    send({.type = platform::Event::Type::KeyUp, .key = input::Key::Enter});
+    send({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::Enter});
     ASSERT_TRUE(getInput().isEditing());
     ASSERT_FALSE(getInput().getVisibleFields().empty());
     EXPECT_EQ(getPublished().id, getInput().getVisibleFields().front().id);
@@ -188,13 +188,13 @@ TEST_F(TextInputTest, OpensTheNativeFieldOnceThePressOfAcceptEnds) {
 
 TEST_F(TextInputTest, TakesTheKeyboardFromTheFieldOfTheAppAndGivesItBack) {
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
-    input::AppTextField& appField = getEngine().getAppTextField();
+    haylen::input::AppTextField& appField = getEngine().getAppTextField();
     appField.edit({.text = "abc", .selectionStart = 3, .selectionEnd = 3, .bounds = {10.0F, 10.0F, 200.0F, 40.0F}});
-    EXPECT_EQ(getPublished().id, input::AppTextField::kField);
+    EXPECT_EQ(getPublished().id, haylen::input::AppTextField::kField);
 
     // The field of the UI takes the keyboard, and what the app gives meanwhile waits.
     focus(*gui, "name");
-    EXPECT_NE(getPublished().id, input::AppTextField::kField);
+    EXPECT_NE(getPublished().id, haylen::input::AppTextField::kField);
     EXPECT_FALSE(appField.isEditing());
     const std::size_t published = getInput().getPublished().size();
     appField.edit({.text = "abcd", .selectionStart = 4, .selectionEnd = 4, .bounds = {10.0F, 10.0F, 200.0F, 40.0F}});
@@ -206,7 +206,7 @@ TEST_F(TextInputTest, TakesTheKeyboardFromTheFieldOfTheAppAndGivesItBack) {
     ImGui::ClearActiveID();
     fixture.frames(1);
     EXPECT_TRUE(getInput().isEditing());
-    EXPECT_EQ(getPublished().id, input::AppTextField::kField);
+    EXPECT_EQ(getPublished().id, haylen::input::AppTextField::kField);
     EXPECT_EQ(getPublished().text, "abcd");
     EXPECT_TRUE(appField.isEditing());
 
@@ -262,8 +262,8 @@ TEST_F(TextInputTest, AppliesEditsOfTheCurrentRevisionOnly) {
     EXPECT_EQ(getPublished().selectionStart, 5) << "Selections count code points.";
 
     // An edit against an older revision or another field answers a text the field no longer shows.
-    send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = id, .revision = revision - 1, .text = "stale"}});
-    send({.type = platform::Event::Type::TextEdited, .textEdit = {.field = id + 1, .revision = revision, .text = "other"}});
+    send({.type = haylen::platform::Event::Type::TextEdited, .textEdit = {.field = id, .revision = revision - 1, .text = "stale"}});
+    send({.type = haylen::platform::Event::Type::TextEdited, .textEdit = {.field = id + 1, .revision = revision, .text = "other"}});
     EXPECT_EQ(events.size(), 1U);
 
     edit("Ana é", 0, 3);
@@ -278,7 +278,7 @@ TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
     focus(*gui, "name");
     const std::size_t published = getInput().getPublished().size();
     const ImGuiID field = static_cast<ImGuiID>(getPublished().id);
-    const TextSession& session = getUi().getBackend().getTextSession();
+    const haylen::ui::TextSession& session = getUi().getBackend().getTextSession();
 
     edit("かな", 2, 2, 0, 2);
     EXPECT_EQ(session.getComposition(field), (std::pair{0, 2}));
@@ -301,11 +301,11 @@ TEST_F(TextInputTest, LeavesTheTextInputOfThePlatformOffInPlay) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "jump", "text": "Jump"}, {"kind": "textField", "id": "name"}]})");
 
     for (int repeat = 0; repeat < 30; ++repeat) {
-        getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A, .repeat = repeat > 0});
+        getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::A, .repeat = repeat > 0});
         fixture.frames(1);
     }
 
-    getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::A});
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::A});
     fixture.frames(1);
     EXPECT_FALSE(getInput().isEditing());
     EXPECT_TRUE(getInput().getPublished().empty());
@@ -317,9 +317,9 @@ TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
     focus(*gui, "name");
     events.clear();
 
-    send({.type = platform::Event::Type::Character, .character = U'x'});
-    send({.type = platform::Event::Type::KeyDown, .key = input::Key::Backspace});
-    send({.type = platform::Event::Type::KeyUp, .key = input::Key::Backspace});
+    send({.type = haylen::platform::Event::Type::Character, .character = U'x'});
+    send({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Backspace});
+    send({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::Backspace});
     EXPECT_TRUE(events.empty());
     EXPECT_EQ(getPublished().text, "abc");
 }
@@ -330,9 +330,9 @@ TEST_F(TextInputTest, TypesEachKeystrokeOnceNextToItsKeys) {
     focus(*gui, "name");
     events.clear();
 
-    press(input::Key::O, U'o');
+    press(haylen::input::Key::O, U'o');
     edit("o", 1, 1);
-    press(input::Key::I, U'i');
+    press(haylen::input::Key::I, U'i');
     edit("oi", 2, 2);
     EXPECT_EQ(events, (std::vector<std::string>{R"(name:change {"value":"o"})", R"(name:change {"value":"oi"})"}));
     EXPECT_EQ(getPublished().text, "oi");
@@ -344,7 +344,7 @@ TEST_F(TextInputTest, KeepsTypingAfterSuggestionsAndCompositions) {
     focus(*gui, "name");
     const std::uint64_t revision = getPublished().revision;
     const ImGuiID field = static_cast<ImGuiID>(getPublished().id);
-    const TextSession& session = getUi().getBackend().getTextSession();
+    const haylen::ui::TextSession& session = getUi().getBackend().getTextSession();
     // clang-format off
     const auto expectText = [&](const std::string& text) {
         fixture.frames(1);
@@ -387,19 +387,19 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
 
     focus(*gui, "name");
     events.clear();
-    press(input::Key::A, U'a');
-    press(input::Key::Space, U' ');
+    press(haylen::input::Key::A, U'a');
+    press(haylen::input::Key::Space, U' ');
     press(input::Key::B, U'b');
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(getLastEvent(), R"(name:change {"value":"a b"})");
-    press(input::Key::Enter, U'\r');
+    press(haylen::input::Key::Enter, U'\r');
     EXPECT_EQ(getLastEvent(), R"(name:submit {"value":"a b"})");
 
     focus(*gui, "notes");
     events.clear();
-    press(input::Key::A, U'a');
-    press(input::Key::Enter, U'\r');
-    press(input::Key::B, U'b');
+    press(haylen::input::Key::A, U'a');
+    press(haylen::input::Key::Enter, U'\r');
+    press(haylen::input::Key::B, U'b');
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(getLastEvent(), R"(notes:change {"value":"a\nb"})");
 }
@@ -409,16 +409,16 @@ TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheSystem) {
     getInput().setNative(false);
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Copy me"})");
     focus(*gui, "name");
-    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
-    const input::KeyModifiers shortcut = ImGui::GetIO().ConfigMacOSXBehaviors ? input::KeyModifiers{.super = true} : input::KeyModifiers{.control = true};
+    fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend().makeCurrent();
+    const haylen::input::KeyModifiers shortcut = ImGui::GetIO().ConfigMacOSXBehaviors ? haylen::input::KeyModifiers{.super = true} : haylen::input::KeyModifiers{.control = true};
 
-    press(input::Key::A, 0, shortcut);
-    press(input::Key::C, 0, shortcut);
+    press(haylen::input::Key::A, 0, shortcut);
+    press(haylen::input::Key::C, 0, shortcut);
     EXPECT_EQ(fixture.host().getClipboard(), "Copy me");
 
-    fixture.host().setClipboard("Pasted", [](platform::SystemAnswer) {});
+    fixture.host().setClipboard("Pasted", [](haylen::platform::SystemAnswer) {});
     events.clear();
-    press(input::Key::V, 0, shortcut);
+    press(haylen::input::Key::V, 0, shortcut);
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(getLastEvent(), R"(name:change {"value":"Pasted"})");
 }
@@ -428,22 +428,22 @@ TEST_F(TextInputTest, CutsUndoesRedoesAndMovesByWordsThroughTheShortcuts) {
     getInput().setNative(false);
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Red fox"})");
     focus(*gui, "name");
-    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend().makeCurrent();
     const bool mac = ImGui::GetIO().ConfigMacOSXBehaviors;
-    const input::KeyModifiers shortcut = mac ? input::KeyModifiers{.super = true} : input::KeyModifiers{.control = true};
-    const input::KeyModifiers word = mac ? input::KeyModifiers{.alt = true} : input::KeyModifiers{.control = true};
+    const haylen::input::KeyModifiers shortcut = mac ? haylen::input::KeyModifiers{.super = true} : haylen::input::KeyModifiers{.control = true};
+    const haylen::input::KeyModifiers word = mac ? haylen::input::KeyModifiers{.alt = true} : haylen::input::KeyModifiers{.control = true};
 
-    press(input::Key::End, 0);
-    press(input::Key::Left, 0, word);
+    press(haylen::input::Key::End, 0);
+    press(haylen::input::Key::Left, 0, word);
     EXPECT_EQ(getPublished().selectionStart, 4);
-    press(input::Key::End, 0, {.shift = true});
-    press(input::Key::X, 0, shortcut);
+    press(haylen::input::Key::End, 0, {.shift = true});
+    press(haylen::input::Key::X, 0, shortcut);
     EXPECT_EQ(fixture.host().getClipboard(), "fox");
     EXPECT_EQ(getPublished().text, "Red ");
 
-    press(input::Key::Z, 0, shortcut);
+    press(haylen::input::Key::Z, 0, shortcut);
     EXPECT_EQ(getPublished().text, "Red fox");
-    press(input::Key::Z, 0, {.shift = true, .control = shortcut.control, .super = shortcut.super});
+    press(haylen::input::Key::Z, 0, {.shift = true, .control = shortcut.control, .super = shortcut.super});
     EXPECT_EQ(getPublished().text, "Red ");
 }
 
@@ -452,10 +452,10 @@ TEST_F(TextInputTest, SelectsFromTheCaretAfterTyping) {
     getInput().setNative(false);
     auto gui = mount(R"({"kind": "textField", "id": "name"})");
     focus(*gui, "name");
-    press(input::Key::A, U'a');
-    press(input::Key::B, U'b');
-    press(input::Key::C, U'c');
-    press(input::Key::Left, 0, {.shift = true});
+    press(haylen::input::Key::A, U'a');
+    press(haylen::input::Key::B, U'b');
+    press(haylen::input::Key::C, U'c');
+    press(haylen::input::Key::Left, 0, {.shift = true});
     EXPECT_EQ(getPublished().text, "abc");
     EXPECT_EQ(getPublished().selectionStart, 2);
     EXPECT_EQ(getPublished().selectionEnd, 3);
@@ -503,17 +503,17 @@ TEST_F(TextInputTest, TurnsActionsIntoSubmitNextCancelAndDismiss) {
 
 TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
-    const math::Rect resting = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const haylen::math::Rect resting = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
     focus(*gui, "name");
 
-    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
-    const math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const haylen::math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
     EXPECT_LE(lifted.getBottom(), 540.0F);
     EXPECT_GE(lifted.getBottom(), 500.0F);
     EXPECT_EQ(getPublished().bounds, lifted) << "The platform follows the field.";
 
-    send({.type = platform::Event::Type::KeyboardChanged});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
     EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "name").getBounds(), resting);
 }
@@ -522,10 +522,10 @@ TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
 TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
     focus(*gui, "name");
-    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.4F, 1920.0F, 539.6F}});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.4F, 1920.0F, 539.6F}});
     fixture.frames(60);
 
-    const math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const haylen::math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
     EXPECT_LE(lifted.getBottom(), 540.4F);
 
     for (int frame = 0; frame < 30; ++frame) {
@@ -538,16 +538,16 @@ TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
 TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "row", "children": [{"kind": "textField", "id": "draft", "grow": 1}, {"kind": "button", "id": "send", "text": "Send"}]}]})");
     focus(*gui, "draft");
-    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
 
-    const math::Vec2 button = test::LuaUiFixture::getComponent(*gui, "send").getBounds().getCenter();
-    touch(platform::Event::Type::TouchBegan, button);
+    const haylen::math::Vec2 button = test::LuaUiFixture::getComponent(*gui, "send").getBounds().getCenter();
+    touch(haylen::platform::Event::Type::TouchBegan, button);
     fixture.frames(2);
-    send({.type = platform::Event::Type::KeyboardChanged});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged});
     fixture.frames(20);
     EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "send").getBounds().getCenter(), button);
-    touch(platform::Event::Type::TouchEnded, button);
+    touch(haylen::platform::Event::Type::TouchEnded, button);
     fixture.frames(3);
     EXPECT_NE(std::ranges::find(events, std::string("send:click {}")), events.end());
 }
@@ -555,28 +555,28 @@ TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
 // The part of an area that the keyboard covers joins the end of its content while the keyboard shows, so a finger scrolls what lies under the keyboard above it, and the content goes back once the keyboard hides.
 TEST_F(TextInputTest, ScrollsWhatTheKeyboardCoversAboveIt) {
     auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 1000, "children": [{"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "spacer", "height": 700}, {"kind": "button", "id": "last", "text": "Last"}]}]})");
-    const math::Rect resting = test::LuaUiFixture::getComponent(*gui, "last").getBounds();
+    const haylen::math::Rect resting = test::LuaUiFixture::getComponent(*gui, "last").getBounds();
     ASSERT_GT(resting.getBottom(), 540.0F);
     focus(*gui, "name");
-    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(30);
 
-    const math::Vec2 start{300.0F, 400.0F};
-    touch(platform::Event::Type::TouchBegan, start);
+    const haylen::math::Vec2 start{300.0F, 400.0F};
+    touch(haylen::platform::Event::Type::TouchBegan, start);
     fixture.frames(1);
     for (int step = 1; step <= 30; ++step) {
-        touch(platform::Event::Type::TouchMoved, start - math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
+        touch(haylen::platform::Event::Type::TouchMoved, start - haylen::math::Vec2{0.0F, 20.0F * static_cast<float>(step)});
         fixture.frames(1);
     }
 
-    touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 600.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, start - haylen::math::Vec2{0.0F, 600.0F});
     fixture.frames(120);
-    const math::Rect scrolled = test::LuaUiFixture::getComponent(*gui, "last").getBounds();
+    const haylen::math::Rect scrolled = test::LuaUiFixture::getComponent(*gui, "last").getBounds();
     EXPECT_LE(scrolled.getBottom(), 540.5F) << "The last button stays under the keyboard.";
     EXPECT_GE(scrolled.getBottom(), 539.5F) << "The content scrolls past the room that the keyboard covers.";
     EXPECT_TRUE(getInput().isEditing());
 
-    send({.type = platform::Event::Type::KeyboardChanged});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged});
     fixture.frames(120);
     EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "last").getBounds(), resting);
 }
@@ -584,13 +584,13 @@ TEST_F(TextInputTest, ScrollsWhatTheKeyboardCoversAboveIt) {
 // A finger edits a field once it taps it, with the caret where it lifted, and a finger that only presses the field edits nothing yet.
 TEST_F(TextInputTest, StartsEditingAFieldWhenAFingerTapsIt) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
-    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
-    const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
-    touch(platform::Event::Type::TouchBegan, start);
+    const haylen::math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const haylen::math::Vec2 start{field.x + 30.0F, field.getCenter().y};
+    touch(haylen::platform::Event::Type::TouchBegan, start);
     fixture.frames(3);
     EXPECT_FALSE(getInput().isEditing());
 
-    touch(platform::Event::Type::TouchEnded, start);
+    touch(haylen::platform::Event::Type::TouchEnded, start);
     fixture.frames(3);
     ASSERT_TRUE(getInput().isEditing());
     EXPECT_EQ(getPublished().selectionStart, getPublished().selectionEnd);
@@ -619,17 +619,17 @@ TEST_F(TextInputTest, DrawsAFieldWithASelectionWithoutAllocating) {
 // A finger that swipes along a field that is not editing is no tap, so the field stays as it was.
 TEST_F(TextInputTest, EditsNothingWhenAFingerSwipesAcrossAField) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "Ada Lovelace", "width": 900}]})");
-    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
-    const math::Vec2 start{field.x + 30.0F, field.getCenter().y};
-    touch(platform::Event::Type::TouchBegan, start);
+    const haylen::math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const haylen::math::Vec2 start{field.x + 30.0F, field.getCenter().y};
+    touch(haylen::platform::Event::Type::TouchBegan, start);
     fixture.frames(2);
 
     for (int step = 1; step <= 5; ++step) {
-        touch(platform::Event::Type::TouchMoved, start + math::Vec2{20.0F * static_cast<float>(step), 0.0F});
+        touch(haylen::platform::Event::Type::TouchMoved, start + haylen::math::Vec2{20.0F * static_cast<float>(step), 0.0F});
         fixture.frames(1);
     }
 
-    touch(platform::Event::Type::TouchEnded, start + math::Vec2{100.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, start + haylen::math::Vec2{100.0F, 0.0F});
     fixture.frames(3);
     EXPECT_FALSE(getInput().isEditing());
 }
@@ -640,17 +640,17 @@ TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
     focus(*gui, "name");
     fixture.frames(2);
     ASSERT_TRUE(getInput().isEditing());
-    const math::Vec2 field = test::LuaUiFixture::getComponent(*gui, "name").getBounds().getCenter();
+    const haylen::math::Vec2 field = test::LuaUiFixture::getComponent(*gui, "name").getBounds().getCenter();
     const float top = test::LuaUiFixture::getComponent(*gui, "content").getBounds().y;
-    touch(platform::Event::Type::TouchBegan, field);
+    touch(haylen::platform::Event::Type::TouchBegan, field);
     fixture.frames(2);
 
     for (int step = 1; step <= 10; ++step) {
-        touch(platform::Event::Type::TouchMoved, field - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
+        touch(haylen::platform::Event::Type::TouchMoved, field - haylen::math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
         fixture.frames(1);
     }
 
-    touch(platform::Event::Type::TouchEnded, field - math::Vec2{0.0F, 80.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, field - haylen::math::Vec2{0.0F, 80.0F});
     fixture.frames(2);
     EXPECT_LT(test::LuaUiFixture::getComponent(*gui, "content").getBounds().y, top - 40.0F);
     EXPECT_TRUE(getInput().isEditing());
@@ -663,19 +663,19 @@ TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField)
     edit("Ada", 3, 3);
     ASSERT_TRUE(getInput().isEditing());
     events.clear();
-    const math::Vec2 start = test::LuaUiFixture::getComponent(*gui, "save").getBounds().getCenter();
+    const haylen::math::Vec2 start = test::LuaUiFixture::getComponent(*gui, "save").getBounds().getCenter();
     const float top = test::LuaUiFixture::getComponent(*gui, "content").getBounds().y;
-    touch(platform::Event::Type::TouchBegan, start);
+    touch(haylen::platform::Event::Type::TouchBegan, start);
     fixture.frames(2);
     EXPECT_TRUE(getInput().isEditing()) << "A press outside the field decides nothing yet.";
 
     for (int step = 1; step <= 10; ++step) {
-        touch(platform::Event::Type::TouchMoved, start - math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
+        touch(haylen::platform::Event::Type::TouchMoved, start - haylen::math::Vec2{0.0F, 8.0F * static_cast<float>(step)});
         fixture.frames(1);
         ASSERT_TRUE(getInput().isEditing()) << "The field stops editing at step " << step << " of the drag.";
     }
 
-    touch(platform::Event::Type::TouchEnded, start - math::Vec2{0.0F, 80.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, start - haylen::math::Vec2{0.0F, 80.0F});
     fixture.frames(3);
     EXPECT_LT(test::LuaUiFixture::getComponent(*gui, "content").getBounds().y, top - 40.0F);
     ASSERT_TRUE(getInput().isEditing());
@@ -688,15 +688,15 @@ TEST_F(TextInputTest, KeepsEditingWhileAFingerScrollsTheFormFromOutsideTheField)
 TEST_F(TextInputTest, EndsEditingWhenAFingerThatPressedOutsideTheFieldLiftsWithinTheSlop) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "button", "id": "save", "text": "Save"}]})");
     focus(*gui, "name");
-    const math::Vec2 button = test::LuaUiFixture::getComponent(*gui, "save").getBounds().getCenter();
-    const math::Vec2 lift = button + math::Vec2{ScrollArbiter::kDragSlop * 0.5F, 0.0F};
-    touch(platform::Event::Type::TouchBegan, button);
+    const haylen::math::Vec2 button = test::LuaUiFixture::getComponent(*gui, "save").getBounds().getCenter();
+    const haylen::math::Vec2 lift = button + haylen::math::Vec2{haylen::ui::ScrollArbiter::kDragSlop * 0.5F, 0.0F};
+    touch(haylen::platform::Event::Type::TouchBegan, button);
     fixture.frames(3);
     EXPECT_TRUE(getInput().isEditing()) << "The field edits while the finger is down.";
 
-    touch(platform::Event::Type::TouchMoved, lift);
+    touch(haylen::platform::Event::Type::TouchMoved, lift);
     fixture.frames(1);
-    touch(platform::Event::Type::TouchEnded, lift);
+    touch(haylen::platform::Event::Type::TouchEnded, lift);
     fixture.frames(3);
     EXPECT_FALSE(getInput().isEditing());
     EXPECT_NE(std::ranges::find(events, std::string("save:click {}")), events.end());
@@ -710,10 +710,10 @@ TEST_F(TextInputTest, KeepsTheNativeInputWhenAFingerTapsAnotherField) {
     focus(*gui, "name");
     ASSERT_TRUE(getInput().isEditing());
 
-    const math::Vec2 crew = test::LuaUiFixture::getComponent(*gui, "crew").getBounds().getCenter();
-    touch(platform::Event::Type::TouchBegan, crew);
+    const haylen::math::Vec2 crew = test::LuaUiFixture::getComponent(*gui, "crew").getBounds().getCenter();
+    touch(haylen::platform::Event::Type::TouchBegan, crew);
     fixture.frames(1);
-    touch(platform::Event::Type::TouchEnded, crew);
+    touch(haylen::platform::Event::Type::TouchEnded, crew);
     for (int frame = 0; frame < 6; ++frame) {
         fixture.frames(1);
         EXPECT_TRUE(getInput().isEditing()) << "The native input ends in frame " << frame << " after the tap.";
@@ -728,7 +728,7 @@ TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Name"}, {"kind": "textField", "id": "name", "align": "stretch"}]})");
     focus(*gui, "name");
     edit("Ada", 3, 3);
-    const math::Rect wide = getPublished().bounds;
+    const haylen::math::Rect wide = getPublished().bounds;
 
     // The field edits in every frame of the turn, so the keyboard never closes.
     fixture.host().resize({1080.0F, 1920.0F});
@@ -747,18 +747,18 @@ TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
 // A screen that builds its content again, as an app that rebuilds it on every change does, keeps the field being edited, with its text, its focus and the keyboard, and so does a field with an id whose siblings come and go.
 TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
     auto gui = mount(R"({"kind": "scroll", "height": 600, "children": [{"kind": "column", "id": "content", "children": [{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": ""}]}]})");
-    const std::vector<std::unique_ptr<Component>>& children = test::LuaUiFixture::getComponent(*gui, "content").getChildren();
+    const std::vector<std::unique_ptr<haylen::ui::Component>>& children = test::LuaUiFixture::getComponent(*gui, "content").getChildren();
     ASSERT_EQ(children.size(), 2U);
-    const math::Vec2 center = children[1]->getBounds().getCenter();
-    touch(platform::Event::Type::TouchBegan, center);
+    const haylen::math::Vec2 center = children[1]->getBounds().getCenter();
+    touch(haylen::platform::Event::Type::TouchBegan, center);
     fixture.frames(2);
-    touch(platform::Event::Type::TouchEnded, center);
+    touch(haylen::platform::Event::Type::TouchEnded, center);
     fixture.frames(3);
     ASSERT_TRUE(getInput().isEditing());
     edit("lamp", 4, 4);
 
     const std::uint64_t field = getPublished().id;
-    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": "lamp"}])"));
+    gui->replaceChildren("content", haylen::core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": "lamp"}])"));
 
     for (int frame = 0; frame < 3; ++frame) {
         fixture.frames(1);
@@ -770,13 +770,13 @@ TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
     EXPECT_EQ(getPublished().text, "lamps");
 
     // A field with an id keeps editing while a notice comes in above it.
-    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
+    gui->replaceChildren("content", haylen::core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
     fixture.frames(1);
-    gui->command(getUi().getContext(), "filter", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "filter", "focus", haylen::core::Json::object());
     fixture.frames(2);
     ASSERT_TRUE(getInput().isEditing());
     const std::uint64_t named = getPublished().id;
-    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Saved."}, {"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
+    gui->replaceChildren("content", haylen::core::Json::parse(R"([{"kind": "label", "text": "Saved."}, {"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
     fixture.frames(2);
     EXPECT_TRUE(getInput().isEditing());
     EXPECT_EQ(getPublished().id, named);
@@ -789,11 +789,11 @@ TEST_F(TextInputTest, PublishesAPressOnTheFieldBeingEdited) {
     edit("abc", 3, 3);
     const std::uint64_t revision = getPublished().revision;
 
-    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
-    const math::Vec2 end{field.getRight() - 20.0F, field.getCenter().y};
-    touch(platform::Event::Type::TouchBegan, end);
+    const haylen::math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const haylen::math::Vec2 end{field.getRight() - 20.0F, field.getCenter().y};
+    touch(haylen::platform::Event::Type::TouchBegan, end);
     fixture.frames(1);
-    touch(platform::Event::Type::TouchEnded, end);
+    touch(haylen::platform::Event::Type::TouchEnded, end);
     fixture.frames(2);
     EXPECT_GT(getPublished().revision, revision);
     EXPECT_EQ(getPublished().selectionStart, 3);
@@ -804,9 +804,9 @@ TEST_F(TextInputTest, PublishesAPressOnTheFieldBeingEdited) {
 TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
     auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name"}]})");
     focus(*gui, "name");
-    const math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
-    const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
-    const auto caret = std::ranges::find_if(shapes, [&field](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU) && field.contains(shape.bounds.getCenter()); });
+    const haylen::math::Rect field = test::LuaUiFixture::getComponent(*gui, "name").getBounds();
+    const std::span<const haylen::graphics2d::Shape> shapes = getUi().getBackend().getShapes();
+    const auto caret = std::ranges::find_if(shapes, [&field](const haylen::graphics2d::Shape& shape) { return shape.color == haylen::math::Color::fromHex(0xFF0000FFU) && field.contains(shape.bounds.getCenter()); });
     EXPECT_NE(caret, shapes.end());
 }
 
@@ -814,34 +814,34 @@ TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
 TEST_F(TextInputTest, KeepsTheCaretOfAnEmptyFieldClearOfItsPlaceholder) {
     auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name", "placeholder": "Island name"}]})");
     focus(*gui, "name");
-    const Backend& backend = getUi().getBackend();
-    const std::span<const graphics2d::Shape> shapes = backend.getShapes();
-    const auto caret = std::ranges::find_if(shapes, [](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU); });
-    const std::span<const Backend::Text> texts = backend.getTexts();
-    const auto placeholder = std::ranges::find_if(texts, [&backend](const Backend::Text& text) { return backend.getContent(text) == "Island name"; });
+    const haylen::ui::Backend& backend = getUi().getBackend();
+    const std::span<const haylen::graphics2d::Shape> shapes = backend.getShapes();
+    const auto caret = std::ranges::find_if(shapes, [](const haylen::graphics2d::Shape& shape) { return shape.color == haylen::math::Color::fromHex(0xFF0000FFU); });
+    const std::span<const haylen::ui::Backend::Text> texts = backend.getTexts();
+    const auto placeholder = std::ranges::find_if(texts, [&backend](const haylen::ui::Backend::Text& text) { return backend.getContent(text) == "Island name"; });
     ASSERT_NE(caret, shapes.end());
     ASSERT_NE(placeholder, texts.end());
-    EXPECT_FLOAT_EQ(placeholder->origin.x - caret->bounds.getRight(), getUi().getTheme().getMetric(Theme::Metric::CaretWidth));
+    EXPECT_FLOAT_EQ(placeholder->origin.x - caret->bounds.getRight(), getUi().getTheme().getMetric(haylen::ui::Theme::Metric::CaretWidth));
 }
 
 // An anchored bar moves up with every other GUI, so its field rises above the keyboard and the lift settles there instead of growing every frame.
 TEST_F(TextInputTest, LiftsAnchoredFieldsWithTheRestOfTheInterface) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "row", "anchor": "stretchBottom", "height": 80, "children": [{"kind": "textField", "id": "message", "grow": 1}]}]})");
-    const math::Rect resting = test::LuaUiFixture::getComponent(*gui, "message").getBounds();
+    const haylen::math::Rect resting = test::LuaUiFixture::getComponent(*gui, "message").getBounds();
     focus(*gui, "message");
 
-    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.0F, 1920.0F, 540.0F}});
     fixture.frames(60);
-    const math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "message").getBounds();
+    const haylen::math::Rect lifted = test::LuaUiFixture::getComponent(*gui, "message").getBounds();
     const float offset = getUi().getBackend().getKeyboardOffset();
     EXPECT_LE(lifted.getBottom(), 540.0F);
     EXPECT_GE(lifted.getBottom(), 500.0F);
     fixture.frames(60);
     EXPECT_EQ(getUi().getBackend().getKeyboardOffset(), offset);
 
-    send({.type = platform::Event::Type::KeyboardChanged});
+    send({.type = haylen::platform::Event::Type::KeyboardChanged});
     fixture.frames(60);
     EXPECT_EQ(test::LuaUiFixture::getComponent(*gui, "message").getBounds(), resting);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

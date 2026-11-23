@@ -14,16 +14,16 @@
 #include "support/LuaUiFixture.hpp"
 #include "support/RecordingEffect.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // A menu scene with a GUI of its own, which tests cover with another scene through transitions.
 class SceneGuiTest : public ::testing::Test, public test::LuaUiFixture {
   protected:
     SceneGuiTest() {
-        menu = std::make_shared<test::DrawingScene>([](core::Engine&) {});
+        menu = std::make_shared<test::DrawingScene>([](haylen::core::Engine&) {});
         getEngine().getScenes().push(menu);
         frames();
-        gui = getUi().createGui(core::Json::parse(R"({"kind": "column", "padding": 40, "children": [{"kind": "button", "id": "play", "text": "Play"}]})"), Placement::Screen);
+        gui = getUi().createGui(haylen::core::Json::parse(R"({"kind": "column", "padding": 40, "children": [{"kind": "button", "id": "play", "text": "Play"}]})"), haylen::ui::Placement::Screen);
         getUi().mount(gui, 0, menu);
         frames(2);
     }
@@ -41,11 +41,11 @@ class SceneGuiTest : public ::testing::Test, public test::LuaUiFixture {
 
     void push(float switchProgress, float exitProgress) {
         effect = std::make_shared<test::RecordingEffect>(switchProgress, exitProgress);
-        getEngine().getScenes().push(std::make_shared<test::DrawingScene>([](core::Engine&) {}), {.transition = {.duration = 1.0F, .effect = effect}});
+        getEngine().getScenes().push(std::make_shared<test::DrawingScene>([](haylen::core::Engine&) {}), {.transition = {.duration = 1.0F, .effect = effect}});
     }
 
     std::shared_ptr<test::DrawingScene> menu;
-    std::shared_ptr<Gui> gui;
+    std::shared_ptr<haylen::ui::Gui> gui;
     std::shared_ptr<test::RecordingEffect> effect;
 };
 
@@ -73,7 +73,7 @@ TEST_F(SceneGuiTest, LeavesWithItsSceneThroughAnEffectThatShowsBothScenes) {
 
 // The controls that a leaving GUI draws after a carousel stay out of navigation like the rest of the GUI.
 TEST_F(SceneGuiTest, KeepsEveryControlOfALeavingGuiOutOfNavigation) {
-    const std::shared_ptr<Gui> pages = getUi().createGui(core::Json::parse(R"({"kind": "column", "children": [{"kind": "carousel", "height": 100, "children": [{"kind": "label", "text": "Page"}]}, {"kind": "playArea", "id": "game", "height": 200}]})"), Placement::Screen);
+    const std::shared_ptr<haylen::ui::Gui> pages = getUi().createGui(haylen::core::Json::parse(R"({"kind": "column", "children": [{"kind": "carousel", "height": 100, "children": [{"kind": "label", "text": "Page"}]}, {"kind": "playArea", "id": "game", "height": 200}]})"), haylen::ui::Placement::Screen);
     getUi().mount(pages, 0, menu);
     frames(2);
     push(0.0F, 1.0F);
@@ -104,7 +104,7 @@ TEST_F(SceneGuiTest, HidesTheGuiOfACoveredSceneUntilItShowsAgain) {
 
 // A scene under a transparent scene keeps rendering, so its GUI keeps showing and taking clicks, such as the buttons that pop the panel on top.
 TEST_F(SceneGuiTest, KeepsTheGuiOfASceneUnderATransparentSceneClickable) {
-    class Panel final : public core::Scene {
+    class Panel final : public haylen::core::Scene {
       public:
         [[nodiscard]] bool isTransparent() const override {
             return true;
@@ -119,12 +119,12 @@ TEST_F(SceneGuiTest, KeepsTheGuiOfASceneUnderATransparentSceneClickable) {
 }
 
 TEST_F(SceneGuiTest, GivesTheFocusBackOnceItsSceneShowsAgain) {
-    gui->command(getUi().getContext(), "play", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "play", "focus", haylen::core::Json::object());
     frames(2);
     ASSERT_TRUE(isFocused(*gui, "play"));
-    getEngine().getScenes().push(std::make_shared<test::DrawingScene>([](core::Engine&) {}));
+    getEngine().getScenes().push(std::make_shared<test::DrawingScene>([](haylen::core::Engine&) {}));
     frames(3);
-    EXPECT_EQ(getUi().getFocus().getOwner(), FocusNavigator::Owner::None);
+    EXPECT_EQ(getUi().getFocus().getOwner(), haylen::ui::FocusNavigator::Owner::None);
     getEngine().getScenes().pop();
     frames(3);
     EXPECT_TRUE(isFocused(*gui, "play"));
@@ -137,11 +137,11 @@ TEST_F(SceneGuiTest, GivesTheFocusBackOnceItsSceneShowsAgain) {
     EXPECT_TRUE(isFocused(*gui, "play"));
 
     // A focus that moved elsewhere while the GUI was away stays there.
-    auto other = getUi().createGui(core::Json::parse(R"({"kind": "button", "id": "other", "text": "Other"})"), Placement::Screen);
+    auto other = getUi().createGui(haylen::core::Json::parse(R"({"kind": "button", "id": "other", "text": "Other"})"), haylen::ui::Placement::Screen);
     getUi().mount(other);
-    getEngine().getScenes().push(std::make_shared<test::DrawingScene>([](core::Engine&) {}));
+    getEngine().getScenes().push(std::make_shared<test::DrawingScene>([](haylen::core::Engine&) {}));
     frames(3);
-    other->command(getUi().getContext(), "other", "focus", core::Json::object());
+    other->command(getUi().getContext(), "other", "focus", haylen::core::Json::object());
     frames(2);
     getEngine().getScenes().pop();
     frames(3);
@@ -150,7 +150,7 @@ TEST_F(SceneGuiTest, GivesTheFocusBackOnceItsSceneShowsAgain) {
 
 // A GUI of no scene stays on the screen above a transition, out of the images of the scenes, and takes input again once the transition ends.
 TEST_F(SceneGuiTest, DrawsAGuiWithoutASceneOnTheScreenAboveATransition) {
-    auto hud = getUi().createGui(core::Json::parse(R"({"kind": "button", "id": "coins", "text": "Coins 12"})"), Placement::Screen);
+    auto hud = getUi().createGui(haylen::core::Json::parse(R"({"kind": "button", "id": "coins", "text": "Coins 12"})"), haylen::ui::Placement::Screen);
     getUi().mount(hud);
     push(0.0F, 1.0F);
     frames(10);
@@ -160,7 +160,7 @@ TEST_F(SceneGuiTest, DrawsAGuiWithoutASceneOnTheScreenAboveATransition) {
 
     // The effect of the test draws nothing, so whatever the swapchain draws is the GUI above it.
     int screenDraws = 0;
-    for (const gpu::NullDevice::PassRecord& pass : getFixture().host().getGpu().getLastFrame().passes) {
+    for (const haylen::gpu::NullDevice::PassRecord& pass : getFixture().host().getGpu().getLastFrame().passes) {
         if (pass.swapchain) {
             screenDraws += pass.draws;
         }
@@ -189,11 +189,11 @@ TEST_F(SceneGuiTest, CompletesTheFrameAfterTheOneThatLaidOutANewGui) {
 // Frames that render nothing, such as those of an app in the background, leave the answer of the last frame that rendered, so a splash screen never ends over a frame that nobody saw drawn complete.
 TEST_F(SceneGuiTest, KeepsTheFrameIncompleteWhileTheAppRendersNothing) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "title", "text": "Island"}]})");
-    getEngine().handleEvent({.type = platform::Event::Type::Suspended});
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     frames(3);
     EXPECT_FALSE(getEngine().isFrameComplete());
 
-    getEngine().handleEvent({.type = platform::Event::Type::Resumed});
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     frames(1);
     EXPECT_TRUE(getEngine().isFrameComplete());
 }
@@ -217,4 +217,4 @@ TEST_F(SceneGuiTest, BindsAGuiToTheSceneThatOwnsItInLua) {
     EXPECT_FALSE(hasDrawn("##haylen-guis"));
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

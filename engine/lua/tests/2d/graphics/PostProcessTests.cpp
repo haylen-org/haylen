@@ -6,7 +6,7 @@
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 class PostProcessTest : public ::testing::Test {
   protected:
@@ -21,11 +21,11 @@ class PostProcessTest : public ::testing::Test {
 };
 
 TEST_F(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
-    PostProcess post;
+    haylen::graphics2d::PostProcess post;
     EXPECT_EQ(apply(post.getColorVisionMatrix(), {0.25F, 0.5F, 0.75F}), (std::array<float, 3>{0.25F, 0.5F, 0.75F}));
 
     // Without green cones, red and green look alike, and a gray stays gray.
-    post.colorVision = PostProcess::ColorVision::Deuteranopia;
+    post.colorVision = haylen::graphics2d::PostProcess::ColorVision::Deuteranopia;
     const std::array<float, 3> red = apply(post.getColorVisionMatrix(), {1.0F, 0.0F, 0.0F});
     const std::array<float, 3> green = apply(post.getColorVisionMatrix(), {0.0F, 1.0F, 0.0F});
     EXPECT_NEAR(red[0] / red[1], green[0] / green[1], 0.15F);
@@ -40,7 +40,7 @@ TEST_F(PostProcessTest, SimulatesAndCorrectsDeficienciesOfColorVision) {
     const std::array<float, 3> correctedGreen = apply(post.getColorVisionMatrix(), {0.0F, 1.0F, 0.0F});
     EXPECT_GT(correctedRed[2] - correctedGreen[2], 0.5F);
 
-    for (const PostProcess::ColorVision vision : {PostProcess::ColorVision::Protanopia, PostProcess::ColorVision::Tritanopia}) {
+    for (const haylen::graphics2d::PostProcess::ColorVision vision : {haylen::graphics2d::PostProcess::ColorVision::Protanopia, haylen::graphics2d::PostProcess::ColorVision::Tritanopia}) {
         post.colorVision = vision;
         for (const float channel : apply(post.getColorVisionMatrix(), {0.5F, 0.5F, 0.5F})) {
             EXPECT_NEAR(channel, 0.5F, 0.001F);
@@ -60,4 +60,4 @@ TEST_F(PostProcessTest, ReadsTheColorVisionOptionsFromLua) {
     EXPECT_NE(fixture.lua("graphics2d.beginWorld(camera, {postProcess = {colorVision = 'gray'}})").find("The color vision \"gray\" is unknown. It is \"normal\", \"protanopia\", \"deuteranopia\" or \"tritanopia\"."), std::string::npos);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

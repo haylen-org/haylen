@@ -18,26 +18,26 @@
 #include "support/LuaFixture.hpp"
 #include "support/LuaUiFixture.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class UiTransformTest : public ::testing::Test {
   protected:
     // What the GUIs drew in the last frame: the box around every vertex and shape and the strongest value of two color channels.
     struct Drawn {
-        math::Rect box;
+        haylen::math::Rect box;
         std::uint32_t alpha = 0;
         std::uint32_t green = 0;
     };
 
-    [[nodiscard]] static Drawn getDrawn(plugins::UiPlugin& plugin) {
+    [[nodiscard]] static Drawn getDrawn(haylen::plugins::UiPlugin& plugin) {
         const ImDrawData& data = test::LuaUiFixture::getDrawData(plugin);
-        math::Vec2 lowest{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
-        math::Vec2 highest{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
+        haylen::math::Vec2 lowest{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
+        haylen::math::Vec2 highest{std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest()};
         Drawn drawn;
         // clang-format off
-        const auto add = [&](math::Vec2 low, math::Vec2 high, std::uint32_t color) {
-            lowest = math::Vec2::min(lowest, low);
-            highest = math::Vec2::max(highest, high);
+        const auto add = [&](haylen::math::Vec2 low, haylen::math::Vec2 high, std::uint32_t color) {
+            lowest = haylen::math::Vec2::min(lowest, low);
+            highest = haylen::math::Vec2::max(highest, high);
             drawn.alpha = std::max(drawn.alpha, (color >> IM_COL32_A_SHIFT) & 0xFFU);
             drawn.green = std::max(drawn.green, (color >> IM_COL32_G_SHIFT) & 0xFFU);
         };
@@ -48,40 +48,40 @@ class UiTransformTest : public ::testing::Test {
             }
         }
 
-        for (const graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
-            for (const math::Color color : {shape.color, shape.borderColor}) {
+        for (const haylen::graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
+            for (const haylen::math::Color color : {shape.color, shape.borderColor}) {
                 add(shape.bounds.getMin(), shape.bounds.getMax(), color.toRgba8());
             }
         }
 
-        drawn.box = math::Rect::fromMinMax(lowest, highest);
+        drawn.box = haylen::math::Rect::fromMinMax(lowest, highest);
         return drawn;
     }
 
     // Returns where a scale around a center moves a rectangle.
-    [[nodiscard]] static math::Rect scaleAround(const math::Rect& rect, math::Vec2 center, float scale) {
-        return math::Rect::fromMinMax(center + (rect.getMin() - center) * scale, center + (rect.getMax() - center) * scale);
+    [[nodiscard]] static haylen::math::Rect scaleAround(const haylen::math::Rect& rect, haylen::math::Vec2 center, float scale) {
+        return haylen::math::Rect::fromMinMax(center + (rect.getMin() - center) * scale, center + (rect.getMax() - center) * scale);
     }
 };
 
 // The offset moves the node where input finds it, while scale, opacity and tint reshape only what it drew.
 TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
     test::LuaFixture fixture;
-    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
-    const std::shared_ptr<Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
+    haylen::plugins::UiPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::UiPlugin>();
+    const std::shared_ptr<haylen::ui::Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, haylen::ui::Placement::Screen);
     plugin.mount(gui, 0);
     fixture.frames(2);
-    const math::Rect plain = test::LuaUiFixture::getComponent(*gui, "title").getBounds();
+    const haylen::math::Rect plain = test::LuaUiFixture::getComponent(*gui, "title").getBounds();
     const Drawn before = getDrawn(plugin);
     EXPECT_EQ(before.alpha, 255U);
 
-    Transform& shape = *test::LuaUiFixture::getComponent(*gui, "title").getTransform();
+    haylen::ui::Transform& shape = *test::LuaUiFixture::getComponent(*gui, "title").getTransform();
     shape.offset = {30.0F, 10.0F};
     shape.scale = {2.0F, 2.0F};
     shape.opacity = 0.5F;
     shape.tint = {1.0F, 0.0F, 0.0F, 1.0F};
     fixture.frames(1);
-    const math::Rect moved = test::LuaUiFixture::getComponent(*gui, "title").getBounds();
+    const haylen::math::Rect moved = test::LuaUiFixture::getComponent(*gui, "title").getBounds();
     EXPECT_FLOAT_EQ(moved.x, plain.x + 30.0F);
     EXPECT_FLOAT_EQ(moved.y, plain.y + 10.0F);
 
@@ -96,8 +96,8 @@ TEST_F(UiTransformTest, MovesScalesFadesAndTintsANode) {
 // A node fades, tints and scales what the scroll areas inside it draw in their own windows like the rest of what it draws.
 TEST_F(UiTransformTest, ReshapesWhatTheScrollAreasInsideTheNodeDraw) {
     test::LuaFixture fixture({{"content/icons/square.svg", R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#3366FF"/></svg>)"}});
-    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
-    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "column", "id": "panel", "children": [{"kind": "scroll", "height": 200, "children": [{"kind": "image", "id": "icon", "image": "icons/square.svg", "width": 64, "height": 64}]}]})"), Placement::Screen);
+    haylen::plugins::UiPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::UiPlugin>();
+    const std::shared_ptr<haylen::ui::Gui> gui = plugin.createGui(haylen::core::Json::parse(R"({"kind": "column", "id": "panel", "children": [{"kind": "scroll", "height": 200, "children": [{"kind": "image", "id": "icon", "image": "icons/square.svg", "width": 64, "height": 64}]}]})"), haylen::ui::Placement::Screen);
     plugin.mount(gui, 0);
     fixture.frames(1);
     ASSERT_TRUE(fixture.frameUntil([&] { return getDrawn(plugin).alpha == 255U; }));
@@ -110,19 +110,19 @@ TEST_F(UiTransformTest, ReshapesWhatTheScrollAreasInsideTheNodeDraw) {
 // A node scales the clips that the nodes inside it draw with once, both in its own window and in the windows of the scroll areas inside it, which it reshapes whole.
 TEST_F(UiTransformTest, ScalesTheClipsOfTheNodesInsideItOnce) {
     test::LuaFixture fixture;
-    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
+    haylen::plugins::UiPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::UiPlugin>();
     // clang-format off
-    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "column", "id": "panel", "children": [
+    const std::shared_ptr<haylen::ui::Gui> gui = plugin.createGui(haylen::core::Json::parse(R"({"kind": "column", "id": "panel", "children": [
         {"kind": "card", "id": "outside", "width": 100, "height": 40, "children": [{"kind": "label", "text": "Outside"}]},
         {"kind": "scroll", "height": 300, "children": [{"kind": "card", "id": "inside", "width": 100, "height": 40, "children": [{"kind": "label", "text": "Inside"}]}]}
-    ]})"), Placement::Screen);
+    ]})"), haylen::ui::Placement::Screen);
     // clang-format on
     plugin.mount(gui, 0);
     fixture.frames(2);
 
-    const math::Rect panel = gui->find("panel")->getBounds();
-    const math::Rect outside = gui->find("outside")->getBounds();
-    const math::Rect inside = gui->find("inside")->getBounds();
+    const haylen::math::Rect panel = gui->find("panel")->getBounds();
+    const haylen::math::Rect outside = gui->find("outside")->getBounds();
+    const haylen::math::Rect inside = gui->find("inside")->getBounds();
     plugin.getBackend().makeCurrent();
     ASSERT_TRUE(test::LuaUiFixture::hasClip(outside));
     ASSERT_TRUE(test::LuaUiFixture::hasClip(inside));
@@ -137,8 +137,8 @@ TEST_F(UiTransformTest, ScalesTheClipsOfTheNodesInsideItOnce) {
 // A negative scale mirrors the node, and its corners and borders keep the size of the magnitude of the scale.
 TEST_F(UiTransformTest, MirrorsANodeWithANegativeScale) {
     test::LuaFixture fixture;
-    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
-    const std::shared_ptr<Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, Placement::Screen);
+    haylen::plugins::UiPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::UiPlugin>();
+    const std::shared_ptr<haylen::ui::Gui> gui = plugin.createGui({{"kind", "button"}, {"id", "title"}, {"text", "Hello there"}}, haylen::ui::Placement::Screen);
     plugin.mount(gui, 0);
     fixture.frames(2);
     const Drawn before = getDrawn(plugin);
@@ -147,7 +147,7 @@ TEST_F(UiTransformTest, MirrorsANodeWithANegativeScale) {
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_FALSE(plugin.getBackend().getShapes().empty());
-    for (const graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
+    for (const haylen::graphics2d::Shape& shape : plugin.getBackend().getShapes()) {
         EXPECT_TRUE(std::ranges::all_of(shape.radii, [](float radius) { return radius >= 0.0F; }));
     }
 
@@ -203,4 +203,4 @@ TEST_F(UiTransformTest, RefusesValuesThatAreNotFinite) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

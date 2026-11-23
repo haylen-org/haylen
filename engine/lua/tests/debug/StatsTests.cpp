@@ -39,19 +39,19 @@
 #include "support/LuaFixture.hpp"
 #include "support/RecordingScene.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class ObjectCounterTest : public ::testing::Test {
   protected:
     // Reads a counter the way the statistics do, as zero before its first object.
-    [[nodiscard]] static ObjectCounter::Snapshot counted(std::string_view name) {
-        return ObjectCounter::find(name).value_or(ObjectCounter::Snapshot{});
+    [[nodiscard]] static haylen::debug::ObjectCounter::Snapshot counted(std::string_view name) {
+        return haylen::debug::ObjectCounter::find(name).value_or(haylen::debug::ObjectCounter::Snapshot{});
     }
 
-    [[nodiscard]] static graphics::Device::Pool pool(graphics::Device& device, std::string_view name) {
-        std::vector<graphics::Device::Pool> pools;
+    [[nodiscard]] static haylen::graphics::Device::Pool pool(haylen::graphics::Device& device, std::string_view name) {
+        std::vector<haylen::graphics::Device::Pool> pools;
         device.readPools(pools);
-        for (const graphics::Device::Pool& found : pools) {
+        for (const haylen::graphics::Device::Pool& found : pools) {
             if (found.name == name) {
                 return found;
             }
@@ -62,12 +62,12 @@ class ObjectCounterTest : public ::testing::Test {
 };
 
 TEST_F(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
-    ObjectCounter counter("StatsTests.Thing", ObjectCounter::Kind::Native);
+    haylen::debug::ObjectCounter counter("StatsTests.Thing", haylen::debug::ObjectCounter::Kind::Native);
     {
-        TrackedObject first(counter);
+        haylen::debug::TrackedObject first(counter);
         first.setBytes(100);
-        const TrackedObject copy(first);
-        TrackedObject assigned(counter);
+        const haylen::debug::TrackedObject copy(first);
+        haylen::debug::TrackedObject assigned(counter);
         assigned = first;
         EXPECT_EQ(counted("StatsTests.Thing").alive, 3U);
         EXPECT_EQ(counted("StatsTests.Thing").bytes, 100);
@@ -75,47 +75,47 @@ TEST_F(ObjectCounterTest, CountsTrackedObjectsAndTheirMemory) {
         EXPECT_EQ(counted("StatsTests.Thing").bytes, 40);
     }
 
-    const ObjectCounter::Snapshot after = counted("StatsTests.Thing");
+    const haylen::debug::ObjectCounter::Snapshot after = counted("StatsTests.Thing");
     EXPECT_EQ(after.created, 3U);
     EXPECT_EQ(after.destroyed, 3U);
     EXPECT_EQ(after.alive, 0U);
     EXPECT_EQ(after.bytes, 0);
 
     {
-        TrackedCount held(counter);
+        haylen::debug::TrackedCount held(counter);
         held.set(10);
         held.set(4);
-        const TrackedCount copy(held);
+        const haylen::debug::TrackedCount copy(held);
         EXPECT_EQ(counted("StatsTests.Thing").alive, 8U);
     }
 
     EXPECT_EQ(counted("StatsTests.Thing").created, 17U);
     EXPECT_EQ(counted("StatsTests.Thing").alive, 0U);
-    EXPECT_FALSE(ObjectCounter::find("StatsTests.Missing").has_value());
+    EXPECT_FALSE(haylen::debug::ObjectCounter::find("StatsTests.Missing").has_value());
 
     std::vector<std::string> seen;
     // clang-format off
-    ObjectCounter::setObserver([&seen](std::string_view name, bool created, std::size_t count) {
+    haylen::debug::ObjectCounter::setObserver([&seen](std::string_view name, bool created, std::size_t count) {
         if (name == "StatsTests.Thing") {
             seen.push_back((created ? "+" : "-") + std::to_string(count));
         }
     });
     // clang-format on
-    EXPECT_TRUE(ObjectCounter::isObserved());
-    { const TrackedObject observed(counter); }
-    ObjectCounter::setObserver({});
-    EXPECT_FALSE(ObjectCounter::isObserved());
-    { const TrackedObject unobserved(counter); }
+    EXPECT_TRUE(haylen::debug::ObjectCounter::isObserved());
+    { const haylen::debug::TrackedObject observed(counter); }
+    haylen::debug::ObjectCounter::setObserver({});
+    EXPECT_FALSE(haylen::debug::ObjectCounter::isObserved());
+    { const haylen::debug::TrackedObject unobserved(counter); }
     EXPECT_EQ(seen, (std::vector<std::string>{"+1", "-1"}));
 }
 
 TEST_F(ObjectCounterTest, CountsLuaUserdataUntilTheyAreCollected) {
     test::LuaFixture fixture;
-    const ObjectCounter::Snapshot before = counted("haylen.Signal");
+    const haylen::debug::ObjectCounter::Snapshot before = counted("haylen.Signal");
     fixture.runLua("signals = {} for index = 1, 5 do signals[index] = require('haylen.signal').new() end");
     EXPECT_EQ(counted("haylen.Signal").created, before.created + 5);
     EXPECT_EQ(counted("haylen.Signal").alive, before.alive + 5);
-    EXPECT_EQ(counted("haylen.Signal").kind, ObjectCounter::Kind::Userdata);
+    EXPECT_EQ(counted("haylen.Signal").kind, haylen::debug::ObjectCounter::Kind::Userdata);
 
     fixture.runLua("signals = nil collectgarbage() collectgarbage()");
     EXPECT_EQ(counted("haylen.Signal").destroyed, before.destroyed + 5);
@@ -124,14 +124,14 @@ TEST_F(ObjectCounterTest, CountsLuaUserdataUntilTheyAreCollected) {
 
 TEST_F(ObjectCounterTest, CountsEngineResources) {
     test::LuaFixture fixture;
-    graphics::Device& device = fixture.engine().getGraphics();
-    const ObjectCounter::Snapshot textures = counted("Texture");
-    const ObjectCounter::Snapshot targets = counted("RenderTarget");
-    const graphics::Device::Pool images = pool(device, "images");
-    EXPECT_EQ(images.size, gpu::NullDevice::kImagePoolSize);
+    haylen::graphics::Device& device = fixture.engine().getGraphics();
+    const haylen::debug::ObjectCounter::Snapshot textures = counted("Texture");
+    const haylen::debug::ObjectCounter::Snapshot targets = counted("RenderTarget");
+    const haylen::graphics::Device::Pool images = pool(device, "images");
+    EXPECT_EQ(images.size, haylen::gpu::NullDevice::kImagePoolSize);
     {
-        const graphics::Texture texture = device.createTexture(graphics::Image(8, 4, math::Color::white()));
-        const graphics::RenderTarget target = device.createRenderTarget(16, 16);
+        const haylen::graphics::Texture texture = device.createTexture(haylen::graphics::Image(8, 4, haylen::math::Color::white()));
+        const haylen::graphics::RenderTarget target = device.createRenderTarget(16, 16);
         EXPECT_EQ(counted("Texture").alive, textures.alive + 1);
         EXPECT_EQ(counted("Texture").bytes, textures.bytes + 8 * 4 * 4);
         EXPECT_EQ(counted("RenderTarget").alive, targets.alive + 1);
@@ -147,8 +147,8 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
     // Bodies and contacts follow the world, and particles follow their emitter.
     const std::uint64_t bodies = counted("PhysicsBody").alive;
     {
-        physics2d::World world;
-        physics2d::Body body = world.createBody();
+        haylen::physics2d::World world;
+        haylen::physics2d::Body body = world.createBody();
         world.createBody();
         EXPECT_EQ(counted("PhysicsBody").alive, bodies + 2);
         body.destroy();
@@ -161,7 +161,7 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
     const std::uint64_t particles = counted("Particle").alive;
     const std::uint64_t emitters = counted("ParticleEmitter").alive;
     {
-        particles2d::Emitter emitter({.texture = device.getWhiteTexture(), .rate = 0.0F, .maxParticles = 32});
+        haylen::particles2d::Emitter emitter({.texture = device.getWhiteTexture(), .rate = 0.0F, .maxParticles = 32});
         emitter.burst(12);
         EXPECT_EQ(counted("Particle").alive, particles + 12);
         EXPECT_EQ(counted("ParticleEmitter").alive, emitters + 1);
@@ -183,11 +183,11 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
 
 TEST(StatsTest, CapturesFramesCountersAndMemory) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     fixture.runLua("require('haylen.tween').to({x = 0}, 5, {x = 1}) require('haylen.timer').after(5, function() end) require('haylen.scene').push({})");
     fixture.frames(6);
 
-    const Stats stats = plugin.captureStats(fixture.engine());
+    const haylen::debug::Stats stats = plugin.captureStats(fixture.engine());
     EXPECT_EQ(stats.counts.scenes, 1U);
     EXPECT_EQ(stats.counts.tweens, 1U);
     EXPECT_EQ(stats.counts.timers, 1U);
@@ -206,16 +206,16 @@ TEST(StatsTest, CapturesFramesCountersAndMemory) {
 // Static batches report the bytes of their instance buffers, and the renderer the bytes of the buffers it streams batches through.
 TEST(StatsTest, ReportsTheGpuMemoryOfBatches) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     const std::int64_t before = plugin.captureStats(fixture.engine()).memory.batches;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4));
-    std::vector<graphics2d::SpriteInstance> sprites(1000);
-    graphics2d::StaticSpriteBatch batch = fixture.engine().getRenderer2D().createStaticBatch(texture, sprites);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4));
+    std::vector<haylen::graphics2d::SpriteInstance> sprites(1000);
+    haylen::graphics2d::StaticSpriteBatch batch = fixture.engine().getRenderer2D().createStaticBatch(texture, sprites);
     fixture.runLua("local g = require('haylen.graphics2d') require('haylen.scene').push({render = function() g.beginScreen() g.drawRect({0, 0, 10, 10}, '#FFFFFFFF') end})");
     fixture.frames(2);
 
-    const Stats stats = plugin.captureStats(fixture.engine());
-    EXPECT_EQ(stats.memory.batches - before, static_cast<std::int64_t>(1000 * sizeof(graphics2d::GpuInstance)));
+    const haylen::debug::Stats stats = plugin.captureStats(fixture.engine());
+    EXPECT_EQ(stats.memory.batches - before, static_cast<std::int64_t>(1000 * sizeof(haylen::graphics2d::GpuInstance)));
     EXPECT_GT(stats.memory.buffers, 0);
     EXPECT_EQ(fixture.lua("local memory = require('haylen.debug').stats().memory return tostring(memory.batches > 0 and memory.buffers > 0)"), "true");
 
@@ -227,13 +227,13 @@ TEST(StatsTest, ReportsTheGpuMemoryOfBatches) {
 // Reads the monitors of the plugin and the history of a monitor into fresh vectors, the way a test compares them.
 class MonitorReader final {
   public:
-    [[nodiscard]] static std::vector<std::shared_ptr<Monitor>> list(const plugins::DebugPlugin& plugin) {
-        std::vector<std::shared_ptr<Monitor>> registered;
+    [[nodiscard]] static std::vector<std::shared_ptr<haylen::debug::Monitor>> list(const haylen::plugins::DebugPlugin& plugin) {
+        std::vector<std::shared_ptr<haylen::debug::Monitor>> registered;
         plugin.readMonitors(registered);
         return registered;
     }
 
-    [[nodiscard]] static std::vector<float> history(const Monitor& monitor) {
+    [[nodiscard]] static std::vector<float> history(const haylen::debug::Monitor& monitor) {
         std::vector<float> values;
         monitor.readHistory(values);
         return values;
@@ -242,7 +242,7 @@ class MonitorReader final {
 
 TEST(StatsTest, SamplesMonitorsEveryFrame) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     int calls = 0;
     plugin.addMonitor("enemies", [&calls] { return ++calls * 2.0; });
     fixture.frames(3);
@@ -279,9 +279,9 @@ TEST(StatsTest, SamplesMonitorsEveryFrame) {
 
 TEST(StatsTest, MonitorConnectionsRemoveAndHoldMonitors) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     int calls = 0;
-    core::Connection connection = plugin.addMonitor("enemies", [&calls] { return ++calls; });
+    haylen::core::Connection connection = plugin.addMonitor("enemies", [&calls] { return ++calls; });
     fixture.frames(1);
     connection.setBlocked(true);
     fixture.frames(2);
@@ -291,7 +291,7 @@ TEST(StatsTest, MonitorConnectionsRemoveAndHoldMonitors) {
     EXPECT_EQ(MonitorReader::history(*MonitorReader::list(plugin)[0]), (std::vector<float>{1.0F, 2.0F}));
 
     // A replaced monitor ends its connection, so disconnecting it leaves the replacement alone.
-    core::Connection replacement = plugin.addMonitor("enemies", [] { return 5.0; });
+    haylen::core::Connection replacement = plugin.addMonitor("enemies", [] { return 5.0; });
     EXPECT_FALSE(connection.isConnected());
     connection.disconnect();
     ASSERT_EQ(MonitorReader::list(plugin).size(), 1U);
@@ -372,45 +372,45 @@ TEST(StatsTest, PublishesObjectEventsWhenAsked) {
     EXPECT_EQ(fixture.lua("return tostring(debugging.objectEvents()) .. ' ' .. #seen"), "true 0");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("debugging.setObjectEvents(false) return table.concat(seen, ', ')"), "created 1, destroyed 1");
-    EXPECT_FALSE(ObjectCounter::isObserved());
+    EXPECT_FALSE(haylen::debug::ObjectCounter::isObserved());
 }
 
 TEST(StatsTest, StartsWithTheModeOfHaylenJson) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Stats", "debug": {"stats": "compact", "objectEvents": true}})"}});
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Compact);
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Compact);
     EXPECT_TRUE(plugin.hasObjectEvents());
     EXPECT_EQ(fixture.engine().getConfig().toJson()["debug"]["stats"], "compact");
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"stats": "loud"}})")), std::invalid_argument);
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"graphs": true}})")), std::invalid_argument);
-    EXPECT_EQ(StatsDisplay::modeName(StatsDisplay::Mode::Full), "full");
-    EXPECT_EQ(StatsDisplay::modeFromName("off"), StatsDisplay::Mode::Off);
-    EXPECT_EQ(plugin.getStatsDisplay().getItems(), StatsDisplay::getDefaultItems());
+    EXPECT_THROW((void)haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"debug": {"stats": "loud"}})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"debug": {"graphs": true}})")), std::invalid_argument);
+    EXPECT_EQ(haylen::debug::StatsDisplay::modeName(haylen::debug::StatsDisplay::Mode::Full), "full");
+    EXPECT_EQ(haylen::debug::StatsDisplay::modeFromName("off"), haylen::debug::StatsDisplay::Mode::Off);
+    EXPECT_EQ(plugin.getStatsDisplay().getItems(), haylen::debug::StatsDisplay::getDefaultItems());
 }
 
 // The items of the compact display come from the list of the app, which also writes back.
 TEST(StatsTest, StartsWithTheItemsOfHaylenJson) {
     test::LuaFixture picked({{"haylen.json", R"({"name": "Stats", "debug": {"statsItems": ["physics", "frameRate"]}})"}});
-    StatsDisplay& display = picked.engine().getPlugin<plugins::DebugPlugin>().getStatsDisplay();
-    EXPECT_EQ(display.getItems(), (std::vector{StatsDisplay::Item::FrameRate, StatsDisplay::Item::Physics}));
-    EXPECT_EQ(picked.engine().getConfig().toJson()["debug"]["statsItems"], core::Json::parse(R"(["physics", "frameRate"])"));
-    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"statsItems": ["fps"]}})")), std::invalid_argument);
-    EXPECT_EQ(StatsDisplay::itemFromName("particles"), StatsDisplay::Item::Particles);
-    EXPECT_EQ(StatsDisplay::itemName(StatsDisplay::Item::DrawCalls), "drawCalls");
+    haylen::debug::StatsDisplay& display = picked.engine().getPlugin<haylen::plugins::DebugPlugin>().getStatsDisplay();
+    EXPECT_EQ(display.getItems(), (std::vector{haylen::debug::StatsDisplay::Item::FrameRate, haylen::debug::StatsDisplay::Item::Physics}));
+    EXPECT_EQ(picked.engine().getConfig().toJson()["debug"]["statsItems"], haylen::core::Json::parse(R"(["physics", "frameRate"])"));
+    EXPECT_THROW((void)haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"debug": {"statsItems": ["fps"]}})")), std::invalid_argument);
+    EXPECT_EQ(haylen::debug::StatsDisplay::itemFromName("particles"), haylen::debug::StatsDisplay::Item::Particles);
+    EXPECT_EQ(haylen::debug::StatsDisplay::itemName(haylen::debug::StatsDisplay::Item::DrawCalls), "drawCalls");
 }
 
 // The compact display draws a line for each item it shows, so the player picks how much it covers, and nothing at all without items.
 TEST(StatsTest, DrawsALineForEveryItemItShows) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
-    StatsDisplay& display = plugin.getStatsDisplay();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
+    haylen::debug::StatsDisplay& display = plugin.getStatsDisplay();
     fixture.frames(2);
     const std::size_t quiet = fixture.engine().getRenderer2D().getStats().instances;
-    plugin.setStatsMode(StatsDisplay::Mode::Compact);
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Compact);
     fixture.frames(2);
     const std::size_t standard = fixture.engine().getRenderer2D().getStats().instances;
 
-    for (const auto& [name, item] : StatsDisplay::kItemNames) {
+    for (const auto& [name, item] : haylen::debug::StatsDisplay::kItemNames) {
         display.setShowing(item, true);
     }
 
@@ -430,11 +430,11 @@ TEST(StatsTest, DrawsALineForEveryItemItShows) {
 // The compact display draws with the renderer on top of everything, and the full overlay draws the window with every section open.
 TEST(StatsTest, DrawsTheCompactDisplayAndTheOverlay) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     fixture.frames(2);
     const std::size_t quiet = fixture.engine().getRenderer2D().getStats().instances;
 
-    plugin.setStatsMode(StatsDisplay::Mode::Compact);
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Compact);
     fixture.frames(2);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, quiet);
 
@@ -449,17 +449,17 @@ TEST(StatsTest, DrawsTheCompactDisplayAndTheOverlay) {
         require('haylen.debug').addMonitor('frames', function() return 1 end)
     )");
     // clang-format on
-    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Full);
     fixture.frames(3);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().vertices, 0U);
 
     // The compact display draws above the error screen too.
     fixture.engine().reportError("broken on purpose");
-    plugin.setStatsMode(StatsDisplay::Mode::Off);
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Off);
     fixture.frames(2);
     const std::size_t failed = fixture.engine().getRenderer2D().getStats().instances;
-    plugin.setStatsMode(StatsDisplay::Mode::Compact);
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Compact);
     fixture.frames(2);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, failed);
 }
@@ -467,7 +467,7 @@ TEST(StatsTest, DrawsTheCompactDisplayAndTheOverlay) {
 // The compact display keeps its lines while the numbers stay, and the monitors and drawings walk copies they keep, so those frames allocate no more than frames without them.
 TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     // clang-format off
     const auto measure = [&fixture] {
         fixture.frames(5, 1.0 / 240.0);
@@ -478,11 +478,11 @@ TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
     // clang-format on
     const std::size_t quiet = measure();
 
-    const core::Connection monitor = plugin.addMonitor("frames", [] { return std::optional(1.0); });
-    const core::Connection drawer = plugin.addDrawer("marks", [](graphics2d::Renderer& renderer) { renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white()); });
+    const haylen::core::Connection monitor = plugin.addMonitor("frames", [] { return std::optional(1.0); });
+    const haylen::core::Connection drawer = plugin.addDrawer("marks", [](haylen::graphics2d::Renderer& renderer) { renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, haylen::math::Color::white()); });
     plugin.setDrawing("marks", true);
-    plugin.setStatsMode(StatsDisplay::Mode::Compact);
-    for (const auto& [name, item] : StatsDisplay::kItemNames) {
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Compact);
+    for (const auto& [name, item] : haylen::debug::StatsDisplay::kItemNames) {
         plugin.getStatsDisplay().setShowing(item, true);
     }
 
@@ -494,20 +494,20 @@ TEST(StatsTest, DrawsTheCompactDisplayWithoutAllocating) {
 TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     std::vector<std::string> entries;
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("first", entries));
     fixture.runLua("require('haylen.events').on('tick', function() end) require('haylen.signal').new('named')");
 
-    for (const core::Log::Level level : {core::Log::Level::Debug, core::Log::Level::Info, core::Log::Level::Warning, core::Log::Level::Error}) {
-        core::Log::write(level, "A line of the overlay log.");
+    for (const haylen::core::Log::Level level : {haylen::core::Log::Level::Debug, haylen::core::Log::Level::Info, haylen::core::Log::Level::Warning, haylen::core::Log::Level::Error}) {
+        haylen::core::Log::write(level, "A line of the overlay log.");
     }
 
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(1024, 1024, math::Color::white()));
-    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(1024, 1024, haylen::math::Color::white()));
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Full);
     fixture.frames(2);
 
     // The closed sections open as a click on their headers would open them.
-    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend().makeCurrent();
     ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
     ASSERT_NE(window, nullptr);
     window->StateStorage.SetInt(window->GetID("Content"), 1);
@@ -515,17 +515,17 @@ TEST(StatsTest, DrawsEverySectionOfTheOverlay) {
     window->StateStorage.SetInt(window->GetID("Signals and events"), 1);
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Full);
 }
 
 // The statistics window reads what it shows into storage it keeps, so frames that show the same rows with every section open allocate no more than frames without the window. The plots of the frames and the monitors draw one more point each frame until their histories are full, so the frames that repeat come after that.
 TEST(StatsTest, DrawsTheOverlayWithoutAllocating) {
     std::vector<std::string> entries;
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     // clang-format off
     const auto measure = [&fixture] {
-        fixture.frames(static_cast<int>(std::max(Profiler::kHistoryFrames, Monitor::kHistoryValues)), 1.0 / 240.0);
+        fixture.frames(static_cast<int>(std::max(haylen::debug::Profiler::kHistoryFrames, haylen::debug::Monitor::kHistoryValues)), 1.0 / 240.0);
         const test::AllocationTracker tracker;
         fixture.frames(10, 1.0 / 240.0);
         return tracker.getTotal();
@@ -533,18 +533,18 @@ TEST(StatsTest, DrawsTheOverlayWithoutAllocating) {
     // clang-format on
     fixture.engine().getScenes().push(std::make_shared<test::RecordingScene>("first", entries));
     fixture.runLua("require('haylen.events').on('tick', function() end) named = require('haylen.signal').new('a signal whose name is longer than a short string')");
-    const core::Connection monitor = plugin.addMonitor("a monitor whose name is longer than a short string", [] { return std::optional(1.0); });
-    const core::Connection drawer = plugin.addDrawer("a drawing whose name is longer than a short string", [](graphics2d::Renderer&) {});
-    for (const core::Log::Level level : {core::Log::Level::Debug, core::Log::Level::Info, core::Log::Level::Warning, core::Log::Level::Error}) {
-        core::Log::write(level, "A line of the overlay log that is longer than a short string.");
+    const haylen::core::Connection monitor = plugin.addMonitor("a monitor whose name is longer than a short string", [] { return std::optional(1.0); });
+    const haylen::core::Connection drawer = plugin.addDrawer("a drawing whose name is longer than a short string", [](haylen::graphics2d::Renderer&) {});
+    for (const haylen::core::Log::Level level : {haylen::core::Log::Level::Debug, haylen::core::Log::Level::Info, haylen::core::Log::Level::Warning, haylen::core::Log::Level::Error}) {
+        haylen::core::Log::write(level, "A line of the overlay log that is longer than a short string.");
     }
 
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(1024, 1024, math::Color::white()));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(1024, 1024, haylen::math::Color::white()));
     const std::size_t quiet = measure();
 
-    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Full);
     fixture.frames(2);
-    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend().makeCurrent();
     ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
     ASSERT_NE(window, nullptr);
     window->StateStorage.SetInt(window->GetID("Content"), 1);
@@ -553,23 +553,23 @@ TEST(StatsTest, DrawsTheOverlayWithoutAllocating) {
 
     EXPECT_EQ(measure(), quiet);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Full);
 }
 
 // The checkboxes of the drawings take their ids inside their section, so a drawing named like another item of the window, such as the section "Scenes", never shares its id, which ImGui reports as an error under the pointer.
 TEST(StatsTest, GivesTheDrawingsOfTheOverlayIdsOfTheirOwn) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
-    const core::Connection drawer = plugin.addDrawer("Scenes", [](graphics2d::Renderer&) {});
-    plugin.setStatsMode(StatsDisplay::Mode::Full);
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
+    const haylen::core::Connection drawer = plugin.addDrawer("Scenes", [](haylen::graphics2d::Renderer&) {});
+    plugin.setStatsMode(haylen::debug::StatsDisplay::Mode::Full);
     fixture.frames(2);
 
-    ui::Backend& backend = fixture.engine().getPlugin<plugins::UiPlugin>().getBackend();
+    haylen::ui::Backend& backend = fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend();
     std::size_t conflicts = 0;
     // clang-format off
     const auto hover = [&](float x, float y) {
-        platform::Event event;
-        event.type = platform::Event::Type::MouseMove;
+        haylen::platform::Event event;
+        event.type = haylen::platform::Event::Type::MouseMove;
         event.position = fixture.engine().getViewport().toFramebuffer(backend.toDesign({x, y}));
         fixture.engine().handleEvent(event);
         fixture.frames(1);
@@ -619,14 +619,14 @@ TEST(StatsTest, GivesTheDrawingsOfTheOverlayIdsOfTheirOwn) {
 TEST(StatsTest, DrawsTheDebugWindowsInTheirOwnColorsWhateverTheTheme) {
     test::LuaFixture fixture;
     fixture.runLua("require('haylen.ui').setTheme('light')");
-    fixture.engine().getPlugin<plugins::DebugPlugin>().setStatsMode(StatsDisplay::Mode::Full);
+    fixture.engine().getPlugin<haylen::plugins::DebugPlugin>().setStatsMode(haylen::debug::StatsDisplay::Mode::Full);
     fixture.frames(2);
 
-    fixture.engine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend().makeCurrent();
     const ImGuiWindow* window = ImGui::FindWindowByName("Statistics");
     ASSERT_NE(window, nullptr);
     const ImU32 theme = ImGui::GetColorU32(ImGuiCol_WindowBg);
-    const ImU32 own = ImGui::ColorConvertFloat4ToU32(DebugWindow::kBackgroundColor);
+    const ImU32 own = ImGui::ColorConvertFloat4ToU32(haylen::debug::DebugWindow::kBackgroundColor);
     // clang-format off
     const auto drawn = [window](ImU32 color) {
         return std::ranges::any_of(window->DrawList->VtxBuffer, [color](const ImDrawVert& vertex) { return vertex.col == color; });
@@ -638,4 +638,4 @@ TEST(StatsTest, DrawsTheDebugWindowsInTheirOwnColorsWhateverTheTheme) {
     EXPECT_FALSE(drawn(theme));
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

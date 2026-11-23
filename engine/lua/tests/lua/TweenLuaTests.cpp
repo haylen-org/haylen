@@ -9,7 +9,7 @@
 #include "haylen/core/TweenManager.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 TEST(TweenLuaTest, TweensEveryKindOfValue) {
     test::LuaFixture fixture;
@@ -573,4 +573,4 @@ TEST(LuaThreadTest, CallbacksRegisteredInCoroutinesRunAfterTheCoroutineEnds) {
     EXPECT_EQ(fixture.lua("collectgarbage() return table.concat(fired, ',')"), "timer,tween");
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

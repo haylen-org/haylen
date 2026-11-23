@@ -14,7 +14,7 @@
 #include "support/DebugClient.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // Drives the debugger with the requests of the protocol, as an editor does, over a headless engine whose code runs through the protected calls of the engine, as its callbacks do.
 class DebuggerTest : public ::testing::Test {
@@ -74,14 +74,14 @@ end
     static std::string run(lua_State* L, const std::string& source) {
         try {
             lua::Runtime::runChunk(L, source, "=test");
-        } catch (const core::AppError& error) {
+        } catch (const haylen::core::AppError& error) {
             return error.what();
         }
 
         return {};
     }
 
-    static core::Json breakpoints(std::vector<core::Json> list) {
+    static haylen::core::Json breakpoints(std::vector<haylen::core::Json> list) {
         return {{"source", {{"path", "source/mod.lua"}}}, {"breakpoints", std::move(list)}};
     }
 
@@ -89,4 +89,4 @@ end
     test::DebugClient client{fixture.host()};
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

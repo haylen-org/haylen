@@ -32,14 +32,14 @@
 #include "support/TestApplication.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 class ErrorScreenTest : public ::testing::Test {
   protected:
     // Passes a package through but fails to read one of its files, like a package whose storage went away after the app started.
-    class UnreadablePackage final : public io::Package {
+    class UnreadablePackage final : public haylen::io::Package {
       public:
-        UnreadablePackage(std::shared_ptr<const io::Package> innerPackage, std::string path) : inner(std::move(innerPackage)), unreadable(std::move(path)) {}
+        UnreadablePackage(std::shared_ptr<const haylen::io::Package> innerPackage, std::string path) : inner(std::move(innerPackage)), unreadable(std::move(path)) {}
 
         [[nodiscard]] std::string_view getName() const noexcept override {
             return inner->getName();
@@ -50,7 +50,7 @@ class ErrorScreenTest : public ::testing::Test {
         [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
             return inner->getFileSize(path);
         }
-        [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
+        [[nodiscard]] std::unique_ptr<haylen::io::PackageReader> openReader(std::string_view path) const override {
             if (path == unreadable) {
                 throw std::runtime_error("The storage of the package is gone.");
             }
@@ -62,7 +62,7 @@ class ErrorScreenTest : public ::testing::Test {
         }
 
       private:
-        std::shared_ptr<const io::Package> inner;
+        std::shared_ptr<const haylen::io::Package> inner;
         std::string unreadable;
     };
 
@@ -73,16 +73,16 @@ class ErrorScreenTest : public ::testing::Test {
         return test::LuaFixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", "require('haylen.scene').push({update = require('scenes.battle')})"}});
     }
 
-    static void press(test::LuaFixture& fixture, input::Key key) {
-        platform::Event event;
-        event.type = platform::Event::Type::KeyDown;
+    static void press(test::LuaFixture& fixture, haylen::input::Key key) {
+        haylen::platform::Event event;
+        event.type = haylen::platform::Event::Type::KeyDown;
         event.key = key;
         fixture.engine().handleEvent(event);
     }
 
     // Presses a button of a gamepad, which counts as pressed in the frame it goes down, so each press is one frame down and one frame up.
-    static void tap(test::LuaFixture& fixture, input::GamepadButton button) {
-        input::GamepadState state{.connected = true, .name = "Remote"};
+    static void tap(test::LuaFixture& fixture, haylen::input::GamepadButton button) {
+        haylen::input::GamepadState state{.connected = true, .name = "Remote"};
         state.buttons[static_cast<std::size_t>(button)] = true;
         fixture.host().setGamepad(0, state);
         fixture.frames(1);
@@ -91,13 +91,13 @@ class ErrorScreenTest : public ::testing::Test {
     }
 
     // An error raised at a line of a file of the package, split as the runtime of the code that raised it splits it.
-    static AppError raiseAt(const std::string& file, int line, const std::string& message) {
+    static haylen::core::AppError raiseAt(const std::string& file, int line, const std::string& message) {
         return {file + ":" + std::to_string(line) + ": " + message, {.message = message, .file = file, .line = line}};
     }
 
     // Sends a mouse or touch event at a point in design units, which the platform reports in framebuffer pixels.
-    static void point(test::LuaFixture& fixture, ErrorScreen& screen, platform::Event::Type type, math::Vec2 design, input::MouseButton button = input::MouseButton::Left) {
-        platform::Event event;
+    static void point(test::LuaFixture& fixture, haylen::core::ErrorScreen& screen, haylen::platform::Event::Type type, haylen::math::Vec2 design, haylen::input::MouseButton button = haylen::input::MouseButton::Left) {
+        haylen::platform::Event event;
         event.type = type;
         event.mouseButton = button;
         event.position = fixture.engine().getViewport().toFramebuffer(design);
@@ -110,8 +110,8 @@ class ErrorScreenTest : public ::testing::Test {
 TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     test::LuaFixture fixture = startFailingApp();
 
-    const ErrorScreen middle(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
-    const std::vector<ErrorScreen::SourceLine>& lines = middle.getExcerpt();
+    const haylen::core::ErrorScreen middle(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
+    const std::vector<haylen::core::ErrorScreen::SourceLine>& lines = middle.getExcerpt();
     ASSERT_EQ(lines.size(), 6U);
     EXPECT_EQ(lines.front().number, 3);
     EXPECT_EQ(lines.back().number, 8);
@@ -119,17 +119,17 @@ TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
     EXPECT_EQ(lines[3].text, "    local damage = strike(nil)");
     EXPECT_EQ(lines[1].text, "");
 
-    const ErrorScreen first(fixture.engine(), raiseAt("source/scenes/battle.lua", 1, "boom"), true);
+    const haylen::core::ErrorScreen first(fixture.engine(), raiseAt("source/scenes/battle.lua", 1, "boom"), true);
     ASSERT_EQ(first.getExcerpt().size(), 4U);
     EXPECT_EQ(first.getExcerpt().front().text, "local function strike(enemy)");
 
-    EXPECT_TRUE(ErrorScreen(fixture.engine(), raiseAt("source/scenes/battle.lua", 40, "past the end"), true).getExcerpt().empty());
-    EXPECT_TRUE(ErrorScreen(fixture.engine(), raiseAt("source/scenes/missing.lua", 3, "boom"), true).getExcerpt().empty());
-    EXPECT_TRUE(ErrorScreen(fixture.engine(), core::AppError("The app could not be loaded."), true).getExcerpt().empty());
+    EXPECT_TRUE(haylen::core::ErrorScreen(fixture.engine(), raiseAt("source/scenes/battle.lua", 40, "past the end"), true).getExcerpt().empty());
+    EXPECT_TRUE(haylen::core::ErrorScreen(fixture.engine(), raiseAt("source/scenes/missing.lua", 3, "boom"), true).getExcerpt().empty());
+    EXPECT_TRUE(haylen::core::ErrorScreen(fixture.engine(), haylen::core::AppError("The app could not be loaded."), true).getExcerpt().empty());
 
     // Lines that end with a carriage return show without it.
     fixture.package().setFile("source/scenes/windows.lua", test::TestFiles::bytes("local damage = 1\r\nerror('boom')\r\n"));
-    const ErrorScreen windows(fixture.engine(), raiseAt("source/scenes/windows.lua", 2, "boom"), true);
+    const haylen::core::ErrorScreen windows(fixture.engine(), raiseAt("source/scenes/windows.lua", 2, "boom"), true);
     ASSERT_EQ(windows.getExcerpt().size(), 2U);
     EXPECT_EQ(windows.getExcerpt()[0].text, "local damage = 1");
     EXPECT_EQ(windows.getExcerpt()[1].text, "error('boom')");
@@ -137,13 +137,13 @@ TEST_F(ErrorScreenTest, ShowsTheLinesAroundTheErrorLineOfAPackageFile) {
 
 TEST_F(ErrorScreenTest, ShowsNoExcerptOfAFileThatCannotBeRead) {
     test::TemporaryDirectory directory;
-    platform::HeadlessHost host(directory.getPath());
-    auto files = std::make_shared<io::MemoryPackage>("app", std::map<std::string, std::vector<std::uint8_t>>{{"source/broken.lua", test::TestFiles::bytes("error('boom')\n")}});
-    Engine engine(host, std::make_shared<UnreadablePackage>(files, "source/broken.lua"), AppConfig{}, std::make_unique<test::TestApplication>(nullptr));
+    haylen::platform::HeadlessHost host(directory.getPath());
+    auto files = std::make_shared<haylen::io::MemoryPackage>("app", std::map<std::string, std::vector<std::uint8_t>>{{"source/broken.lua", test::TestFiles::bytes("error('boom')\n")}});
+    haylen::core::Engine engine(host, std::make_shared<UnreadablePackage>(files, "source/broken.lua"), haylen::core::AppConfig{}, std::make_unique<test::TestApplication>(nullptr));
     std::vector<std::string> lines;
-    const std::uint64_t listener = Log::addListener([&lines](Log::Level, std::string_view line) { lines.emplace_back(line); });
-    const ErrorScreen screen(engine, raiseAt("source/broken.lua", 1, "boom"), true);
-    Log::removeListener(listener);
+    const std::uint64_t listener = haylen::core::Log::addListener([&lines](haylen::core::Log::Level, std::string_view line) { lines.emplace_back(line); });
+    const haylen::core::ErrorScreen screen(engine, raiseAt("source/broken.lua", 1, "boom"), true);
+    haylen::core::Log::removeListener(listener);
 
     // The screen explains an error that already happened, so a file it cannot read only costs it the excerpt.
     EXPECT_TRUE(screen.getExcerpt().empty());
@@ -154,15 +154,15 @@ TEST_F(ErrorScreenTest, ShowsNoExcerptOfAFileThatCannotBeRead) {
 
 TEST_F(ErrorScreenTest, ReportsTheWholeErrorAsPlainText) {
     std::vector<std::string> logged;
-    const std::uint64_t listener = Log::addListener([&logged](Log::Level, std::string_view line) { logged.emplace_back(line); });
+    const std::uint64_t listener = haylen::core::Log::addListener([&logged](haylen::core::Log::Level, std::string_view line) { logged.emplace_back(line); });
     test::LuaFixture fixture = startFailingApp();
     fixture.frames(1);
-    Log::removeListener(listener);
+    haylen::core::Log::removeListener(listener);
 
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    const ErrorScreen screen(fixture.engine(), *fixture.engine().getError(), true);
+    const haylen::core::ErrorScreen screen(fixture.engine(), *fixture.engine().getError(), true);
     const std::string& report = screen.getReport();
-    EXPECT_TRUE(report.starts_with("The app stopped with an error\nTest App 1.0.0 · headless · Haylen " + std::string(Version::kString) + "\n\nattempt to index")) << report;
+    EXPECT_TRUE(report.starts_with("The app stopped with an error\nTest App 1.0.0 · headless · Haylen " + std::string(haylen::core::Version::kString) + "\n\nattempt to index")) << report;
     EXPECT_NE(report.find("\nFile \"source/scenes/battle.lua\", line 2\n"), std::string::npos) << report;
     EXPECT_NE(report.find("\n> 2      return enemy.health\n"), std::string::npos) << report;
     EXPECT_NE(report.find("\n  5  return function()\n"), std::string::npos) << report;
@@ -177,30 +177,30 @@ TEST_F(ErrorScreenTest, CopiesTheReportAndRestartsTheAppFromTheKeyboard) {
     test::LuaFixture fixture = startFailingApp();
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    const std::string report = ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
+    const std::string report = haylen::core::ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
 
-    press(fixture, input::Key::C);
+    press(fixture, haylen::input::Key::C);
     EXPECT_EQ(fixture.host().getClipboard(), report);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
-    press(fixture, input::Key::R);
+    press(fixture, haylen::input::Key::R);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
 TEST_F(ErrorScreenTest, TellsWhetherTheClipboardTookTheReportOnceItAnswers) {
     test::LuaFixture fixture({{"source/main.lua", ""}});
-    auto screen = std::make_unique<ErrorScreen>(fixture.engine(), raiseAt("source/main.lua", 1, "attempt to call a nil value"), true);
+    auto screen = std::make_unique<haylen::core::ErrorScreen>(fixture.engine(), raiseAt("source/main.lua", 1, "attempt to call a nil value"), true);
 
     // The clipboard answers at the next frame, and a browser may refuse the copy.
     screen->copyReport();
-    EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Idle);
+    EXPECT_EQ(screen->getCopyState(), haylen::core::ErrorScreen::CopyState::Idle);
     fixture.frames(1);
-    EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Copied);
+    EXPECT_EQ(screen->getCopyState(), haylen::core::ErrorScreen::CopyState::Copied);
 
-    fixture.host().setClipboardAnswer({.state = platform::SystemAnswer::State::Denied, .message = "The browser refused the copy."});
+    fixture.host().setClipboardAnswer({.state = haylen::platform::SystemAnswer::State::Denied, .message = "The browser refused the copy."});
     screen->copyReport();
     fixture.frames(1);
-    EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Refused);
+    EXPECT_EQ(screen->getCopyState(), haylen::core::ErrorScreen::CopyState::Refused);
 
     // An answer that comes after the screen is gone, as after going back to the app, touches nothing.
     screen->copyReport();
@@ -212,16 +212,16 @@ TEST_F(ErrorScreenTest, CopiesAndRestartsWithAGamepadOrATvRemote) {
     test::LuaFixture fixture = startFailingApp();
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
-    const std::string report = ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
+    const std::string report = haylen::core::ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport();
 
     // The focus starts on Restart, and the directional pad moves it to Copy, which the south button presses.
-    tap(fixture, input::GamepadButton::DpadLeft);
-    tap(fixture, input::GamepadButton::South);
+    tap(fixture, haylen::input::GamepadButton::DpadLeft);
+    tap(fixture, haylen::input::GamepadButton::South);
     EXPECT_EQ(fixture.host().getClipboard(), report);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
-    tap(fixture, input::GamepadButton::DpadRight);
-    tap(fixture, input::GamepadButton::South);
+    tap(fixture, haylen::input::GamepadButton::DpadRight);
+    tap(fixture, haylen::input::GamepadButton::South);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
@@ -231,38 +231,38 @@ TEST_F(ErrorScreenTest, FollowsTheArrowKeysAndEnterOfATvRemote) {
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
     // A keyboard with a pointer leaves the focus alone, since it shows no focus there.
-    press(fixture, input::Key::Left);
-    press(fixture, input::Key::Enter);
+    press(fixture, haylen::input::Key::Left);
+    press(fixture, haylen::input::Key::Enter);
     EXPECT_TRUE(fixture.host().getClipboard().empty());
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
     // A TV has no pointer, and its remote sends arrow keys and Enter.
     fixture.host().setPointerDevice(false);
-    press(fixture, input::Key::Left);
-    press(fixture, input::Key::Enter);
+    press(fixture, haylen::input::Key::Left);
+    press(fixture, haylen::input::Key::Enter);
     EXPECT_FALSE(fixture.host().getClipboard().empty());
     EXPECT_FALSE(fixture.engine().isRestartRequested());
-    press(fixture, input::Key::Right);
-    press(fixture, input::Key::Enter);
+    press(fixture, haylen::input::Key::Right);
+    press(fixture, haylen::input::Key::Enter);
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
 TEST_F(ErrorScreenTest, CopiesAndRestartsWithAClickOrATap) {
     test::LuaFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
-    ErrorScreen screen(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "attempt to call a nil value"), true);
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](Engine&) { screen.render(); }));
+    haylen::core::ErrorScreen screen(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "attempt to call a nil value"), true);
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](haylen::core::Engine&) { screen.render(); }));
     fixture.frames(2);
 
     // Only the left button clicks, and the action runs as the button goes down.
-    point(fixture, screen, platform::Event::Type::MouseDown, screen.getCopyButton().getCenter(), input::MouseButton::Right);
+    point(fixture, screen, haylen::platform::Event::Type::MouseDown, screen.getCopyButton().getCenter(), haylen::input::MouseButton::Right);
     EXPECT_TRUE(fixture.host().getClipboard().empty());
-    point(fixture, screen, platform::Event::Type::MouseDown, screen.getCopyButton().getCenter());
-    point(fixture, screen, platform::Event::Type::MouseUp, screen.getCopyButton().getCenter());
+    point(fixture, screen, haylen::platform::Event::Type::MouseDown, screen.getCopyButton().getCenter());
+    point(fixture, screen, haylen::platform::Event::Type::MouseUp, screen.getCopyButton().getCenter());
     EXPECT_EQ(fixture.host().getClipboard(), screen.getReport());
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
-    point(fixture, screen, platform::Event::Type::TouchBegan, screen.getRestartButton().getCenter());
-    point(fixture, screen, platform::Event::Type::TouchEnded, screen.getRestartButton().getCenter());
+    point(fixture, screen, haylen::platform::Event::Type::TouchBegan, screen.getRestartButton().getCenter());
+    point(fixture, screen, haylen::platform::Event::Type::TouchEnded, screen.getRestartButton().getCenter());
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
@@ -290,7 +290,7 @@ TEST_F(ErrorScreenTest, GoesBackToARecoverableAppAfterItsListenersRan) {
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "error broken scene 1");
 
     // The listeners of appRecovered run before the app updates again, so the failing scene never runs once more.
-    press(fixture, input::Key::Escape);
+    press(fixture, haylen::input::Key::Escape);
     EXPECT_NE(fixture.engine().getError(), nullptr);
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
@@ -300,14 +300,14 @@ TEST_F(ErrorScreenTest, GoesBackToARecoverableAppAfterItsListenersRan) {
 
 TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
     test::LuaFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
-    ErrorScreen plain(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
+    haylen::core::ErrorScreen plain(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
     fixture.engine().setRecoverable(true);
-    ErrorScreen recoverable(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
-    EXPECT_EQ(plain.getFocusedAction(), ErrorScreen::Action::Restart);
-    EXPECT_EQ(recoverable.getFocusedAction(), ErrorScreen::Action::Back);
+    haylen::core::ErrorScreen recoverable(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
+    EXPECT_EQ(plain.getFocusedAction(), haylen::core::ErrorScreen::Action::Restart);
+    EXPECT_EQ(recoverable.getFocusedAction(), haylen::core::ErrorScreen::Action::Back);
 
     // clang-format off
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](Engine&) {
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](haylen::core::Engine&) {
         plain.render();
         recoverable.render();
     }));
@@ -317,7 +317,7 @@ TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
     EXPECT_GT(recoverable.getBackButton().getSize().x, 0.0F);
 
     // Recovery waits for an error that stops the app, and a press that goes back to an app without one changes nothing.
-    point(fixture, recoverable, platform::Event::Type::MouseDown, recoverable.getBackButton().getCenter());
+    point(fixture, recoverable, haylen::platform::Event::Type::MouseDown, recoverable.getBackButton().getCenter());
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     fixture.engine().setRecoverable(false);
@@ -326,12 +326,12 @@ TEST_F(ErrorScreenTest, OffersToGoBackOnlyInARecoverableApp) {
 
 TEST_F(ErrorScreenTest, ClosesAnAppThatAnotherAppLaunched) {
     test::LuaFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
-    ErrorScreen plain(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
+    haylen::core::ErrorScreen plain(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
     fixture.host().setLaunched(true);
-    ErrorScreen launched(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
+    haylen::core::ErrorScreen launched(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "boom"), true);
 
     // clang-format off
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](Engine&) {
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](haylen::core::Engine&) {
         plain.render();
         launched.render();
     }));
@@ -347,7 +347,7 @@ TEST_F(ErrorScreenTest, ClosesAnAppThatAnotherAppLaunched) {
 
     fixture.host().setLaunched(true);
     fixture.frames(1);
-    point(fixture, launched, platform::Event::Type::MouseDown, launched.getCloseButton().getCenter());
+    point(fixture, launched, haylen::platform::Event::Type::MouseDown, launched.getCloseButton().getCenter());
     EXPECT_FALSE(fixture.engine().isRunning());
 }
 
@@ -357,12 +357,12 @@ TEST_F(ErrorScreenTest, GoesBackWithTheButtonsOfAGamepad) {
     ASSERT_NE(fixture.engine().getError(), nullptr);
 
     // The scene fails again once the app runs on, which shows the screen again.
-    tap(fixture, input::GamepadButton::East);
+    tap(fixture, haylen::input::GamepadButton::East);
     EXPECT_NE(fixture.engine().getError(), nullptr);
     EXPECT_EQ(fixture.host().getErrorReports().size(), 2U);
 
     // The focus of a recoverable app starts on going back, which the south button presses.
-    tap(fixture, input::GamepadButton::South);
+    tap(fixture, haylen::input::GamepadButton::South);
     EXPECT_NE(fixture.engine().getError(), nullptr);
     EXPECT_EQ(fixture.host().getErrorReports().size(), 3U);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
@@ -371,14 +371,14 @@ TEST_F(ErrorScreenTest, GoesBackWithTheButtonsOfAGamepad) {
 TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
     test::LuaFixture fixture({{"source/scenes/battle.lua", std::string(kBattle)}, {"source/main.lua", ""}});
     fixture.host().resize({480.0F, 320.0F});
-    ErrorScreen screen(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "attempt to call a nil value"), true);
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](Engine&) { screen.render(); }));
+    haylen::core::ErrorScreen screen(fixture.engine(), raiseAt("source/scenes/battle.lua", 6, "attempt to call a nil value"), true);
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&screen](haylen::core::Engine&) { screen.render(); }));
     fixture.frames(2);
     ASSERT_GT(screen.getMaxScroll(), 0.0F);
-    const math::Vec2 content = fixture.engine().getViewport().getSafeRect().getCenter();
+    const haylen::math::Vec2 content = fixture.engine().getViewport().getSafeRect().getCenter();
 
-    platform::Event wheel;
-    wheel.type = platform::Event::Type::MouseScroll;
+    haylen::platform::Event wheel;
+    wheel.type = haylen::platform::Event::Type::MouseScroll;
     wheel.scroll = {0.0F, -1.0F};
     screen.handleEvent(wheel);
     const float step = screen.getScroll();
@@ -397,42 +397,42 @@ TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
     wheel.preciseScroll = false;
 
     // A drag moves the content with the pointer and stops at its end, and a press on a button starts no drag.
-    point(fixture, screen, platform::Event::Type::MouseDown, content);
-    point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10.0F});
+    point(fixture, screen, haylen::platform::Event::Type::MouseDown, content);
+    point(fixture, screen, haylen::platform::Event::Type::MouseMove, content - haylen::math::Vec2{0.0F, 10.0F});
     EXPECT_NEAR(screen.getScroll(), 10.0F, 0.01F);
-    point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10000.0F});
+    point(fixture, screen, haylen::platform::Event::Type::MouseMove, content - haylen::math::Vec2{0.0F, 10000.0F});
     EXPECT_EQ(screen.getScroll(), screen.getMaxScroll());
-    point(fixture, screen, platform::Event::Type::MouseUp, content);
-    point(fixture, screen, platform::Event::Type::MouseMove, content);
+    point(fixture, screen, haylen::platform::Event::Type::MouseUp, content);
+    point(fixture, screen, haylen::platform::Event::Type::MouseMove, content);
     EXPECT_EQ(screen.getScroll(), screen.getMaxScroll());
 
     // The first finger drags, and a second finger that lands on a button meanwhile presses nothing.
-    point(fixture, screen, platform::Event::Type::TouchBegan, content);
-    platform::Event second;
-    second.type = platform::Event::Type::TouchBegan;
+    point(fixture, screen, haylen::platform::Event::Type::TouchBegan, content);
+    haylen::platform::Event second;
+    second.type = haylen::platform::Event::Type::TouchBegan;
     second.touchCount = 2;
     second.touches[0] = {.id = 1, .position = fixture.engine().getViewport().toFramebuffer(content)};
     second.touches[1] = {.id = 2, .position = fixture.engine().getViewport().toFramebuffer(screen.getRestartButton().getCenter()), .changed = true};
     screen.handleEvent(second);
-    second.type = platform::Event::Type::TouchEnded;
+    second.type = haylen::platform::Event::Type::TouchEnded;
     screen.handleEvent(second);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
-    point(fixture, screen, platform::Event::Type::TouchMoved, content + math::Vec2{0.0F, 10000.0F});
+    point(fixture, screen, haylen::platform::Event::Type::TouchMoved, content + haylen::math::Vec2{0.0F, 10000.0F});
     EXPECT_EQ(screen.getScroll(), 0.0F);
-    point(fixture, screen, platform::Event::Type::TouchEnded, content);
-    point(fixture, screen, platform::Event::Type::MouseDown, screen.getCopyButton().getCenter());
-    point(fixture, screen, platform::Event::Type::MouseMove, content - math::Vec2{0.0F, 10000.0F});
+    point(fixture, screen, haylen::platform::Event::Type::TouchEnded, content);
+    point(fixture, screen, haylen::platform::Event::Type::MouseDown, screen.getCopyButton().getCenter());
+    point(fixture, screen, haylen::platform::Event::Type::MouseMove, content - haylen::math::Vec2{0.0F, 10000.0F});
     EXPECT_EQ(screen.getScroll(), 0.0F);
 
     // The arrow keys move a line, and Home and End jump to the ends.
-    for (const auto& [key, expected] : std::vector<std::pair<input::Key, float>>{{input::Key::Down, step}, {input::Key::End, screen.getMaxScroll()}, {input::Key::Up, screen.getMaxScroll() - step}, {input::Key::Home, 0.0F}}) {
-        screen.handleEvent({.type = platform::Event::Type::KeyDown, .key = key});
+    for (const auto& [key, expected] : std::vector<std::pair<haylen::input::Key, float>>{{haylen::input::Key::Down, step}, {haylen::input::Key::End, screen.getMaxScroll()}, {haylen::input::Key::Up, screen.getMaxScroll() - step}, {haylen::input::Key::Home, 0.0F}}) {
+        screen.handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = key});
         EXPECT_NEAR(screen.getScroll(), expected, 0.01F);
     }
 
     // The directional pad of a gamepad moves a line too, while other keys and events leave the screen alone.
-    for (const auto& [button, expected] : std::vector<std::pair<input::GamepadButton, float>>{{input::GamepadButton::DpadDown, step}, {input::GamepadButton::DpadUp, 0.0F}}) {
-        input::GamepadState state{.connected = true};
+    for (const auto& [button, expected] : std::vector<std::pair<haylen::input::GamepadButton, float>>{{haylen::input::GamepadButton::DpadDown, step}, {haylen::input::GamepadButton::DpadUp, 0.0F}}) {
+        haylen::input::GamepadState state{.connected = true};
         state.buttons[static_cast<std::size_t>(button)] = true;
         fixture.host().setGamepad(0, state);
         fixture.frames(1);
@@ -442,8 +442,8 @@ TEST_F(ErrorScreenTest, ScrollsContentTallerThanTheScreen) {
         EXPECT_NEAR(screen.getScroll(), expected, 0.01F);
     }
 
-    screen.handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
-    screen.handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
+    screen.handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::A});
+    screen.handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::Down});
     EXPECT_EQ(screen.getScroll(), 0.0F);
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 }
@@ -457,36 +457,36 @@ TEST_F(ErrorScreenTest, DrawsAndScrollsInTheHeadlessEngine) {
     // A small window makes the content taller than the screen, and every way of scrolling it keeps drawing.
     fixture.host().resize({480.0F, 320.0F});
 
-    for (const input::Key key : {input::Key::Down, input::Key::PageDown, input::Key::End, input::Key::Up, input::Key::PageUp, input::Key::Home}) {
+    for (const haylen::input::Key key : {haylen::input::Key::Down, haylen::input::Key::PageDown, haylen::input::Key::End, haylen::input::Key::Up, haylen::input::Key::PageUp, haylen::input::Key::Home}) {
         press(fixture, key);
         fixture.frames(1);
     }
 
-    platform::Event wheel;
-    wheel.type = platform::Event::Type::MouseScroll;
+    haylen::platform::Event wheel;
+    wheel.type = haylen::platform::Event::Type::MouseScroll;
     wheel.scroll = {0.0F, -3.0F};
     fixture.engine().handleEvent(wheel);
 
-    platform::Event mouse;
-    mouse.type = platform::Event::Type::MouseDown;
+    haylen::platform::Event mouse;
+    mouse.type = haylen::platform::Event::Type::MouseDown;
     mouse.position = {240.0F, 120.0F};
     fixture.engine().handleEvent(mouse);
-    mouse.type = platform::Event::Type::MouseMove;
+    mouse.type = haylen::platform::Event::Type::MouseMove;
     mouse.position = {240.0F, 40.0F};
     fixture.engine().handleEvent(mouse);
-    mouse.type = platform::Event::Type::MouseUp;
+    mouse.type = haylen::platform::Event::Type::MouseUp;
     fixture.engine().handleEvent(mouse);
     fixture.frames(1);
 
-    platform::Event touch;
-    touch.type = platform::Event::Type::TouchBegan;
+    haylen::platform::Event touch;
+    touch.type = haylen::platform::Event::Type::TouchBegan;
     touch.touchCount = 1;
     touch.touches[0] = {.id = 1, .position = {240.0F, 100.0F}, .changed = true};
     fixture.engine().handleEvent(touch);
-    touch.type = platform::Event::Type::TouchMoved;
+    touch.type = haylen::platform::Event::Type::TouchMoved;
     touch.touches[0].position = {240.0F, 20.0F};
     fixture.engine().handleEvent(touch);
-    touch.type = platform::Event::Type::TouchEnded;
+    touch.type = haylen::platform::Event::Type::TouchEnded;
     fixture.engine().handleEvent(touch);
     fixture.frames(2);
 
@@ -519,4 +519,4 @@ TEST_F(ErrorScreenTest, TellsWhichErrorsAFixCanResume) {
 
 // clang-format on
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

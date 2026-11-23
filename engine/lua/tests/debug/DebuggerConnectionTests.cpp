@@ -24,7 +24,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class DebuggerConnectionTest : public ::testing::Test {
   protected:
@@ -46,10 +46,10 @@ class DebuggerConnectionTest : public ::testing::Test {
         }
 
         // The messages of the debugger that reached the server, of the type `response` or `event`, with the command or the event of the name.
-        [[nodiscard]] std::vector<core::Json> find(const std::string& type, const std::string& name) {
+        [[nodiscard]] std::vector<haylen::core::Json> find(const std::string& type, const std::string& name) {
             const std::scoped_lock lock(mutex);
-            std::vector<core::Json> found;
-            for (const core::Json& message : debugMessages) {
+            std::vector<haylen::core::Json> found;
+            for (const haylen::core::Json& message : debugMessages) {
                 if (message.value("type", "") == type && message.value(type == "event" ? "event" : "command", "") == name) {
                     found.push_back(message);
                 }
@@ -62,9 +62,9 @@ class DebuggerConnectionTest : public ::testing::Test {
         [[nodiscard]] bool hasReloaded(const std::string& path) {
             const std::scoped_lock lock(mutex);
             // clang-format off
-            return std::ranges::any_of(reports, [&path](const core::Json& report) {
-                const core::Json modules = report.value("modules", core::Json::array());
-                return std::find(modules.begin(), modules.end(), core::Json(path)) != modules.end();
+            return std::ranges::any_of(reports, [&path](const haylen::core::Json& report) {
+                const haylen::core::Json modules = report.value("modules", haylen::core::Json::array());
+                return std::find(modules.begin(), modules.end(), haylen::core::Json(path)) != modules.end();
             });
             // clang-format on
         }
@@ -95,7 +95,7 @@ class DebuggerConnectionTest : public ::testing::Test {
                             break;
                         }
 
-                        server.receive(socket, core::Json::parse(std::string_view(frame.begin(), frame.size())));
+                        server.receive(socket, haylen::core::Json::parse(std::string_view(frame.begin(), frame.size())));
                     }
                 } catch (const Poco::TimeoutException&) {
                     // A connection that stays silent past its timeout ends, and the test checks what arrived before it.
@@ -124,21 +124,21 @@ class DebuggerConnectionTest : public ::testing::Test {
             DebuggingServer& server;
         };
 
-        static void sendText(Poco::Net::WebSocket& socket, const core::Json& message) {
+        static void sendText(Poco::Net::WebSocket& socket, const haylen::core::Json& message) {
             const std::string text = message.dump();
             socket.sendFrame(text.data(), static_cast<int>(text.size()), Poco::Net::WebSocket::FRAME_TEXT);
         }
 
-        void sendRequest(Poco::Net::WebSocket& socket, const std::string& command, core::Json arguments = core::Json::object()) {
+        void sendRequest(Poco::Net::WebSocket& socket, const std::string& command, haylen::core::Json arguments = haylen::core::Json::object()) {
             sendText(socket, {{"type", "debug"}, {"message", {{"seq", ++sequence}, {"type", "request"}, {"command", command}, {"arguments", std::move(arguments)}}}});
         }
 
         void sendBatch(Poco::Net::WebSocket& socket, const std::string& path, const std::string& content) {
-            sendText(socket, {{"type", "files"}, {"session", "run"}, {"revision", ++revision}, {"files", {{{"path", path}, {"size", content.size()}}}}, {"removed", core::Json::array()}});
+            sendText(socket, {{"type", "files"}, {"session", "run"}, {"revision", ++revision}, {"files", {{{"path", path}, {"size", content.size()}}}}, {"removed", haylen::core::Json::array()}});
             socket.sendFrame(content.data(), static_cast<int>(content.size()), Poco::Net::WebSocket::FRAME_BINARY);
         }
 
-        void receive(Poco::Net::WebSocket& socket, const core::Json& message) {
+        void receive(Poco::Net::WebSocket& socket, const haylen::core::Json& message) {
             const std::scoped_lock lock(mutex);
             const std::string type = message.value("type", "");
             if (type == "hello") {
@@ -158,7 +158,7 @@ class DebuggerConnectionTest : public ::testing::Test {
                 return;
             }
 
-            const core::Json& debug = message.at("message");
+            const haylen::core::Json& debug = message.at("message");
             debugMessages.push_back(debug);
 
             if (debug.value("event", "") == "stopped") {
@@ -179,8 +179,8 @@ class DebuggerConnectionTest : public ::testing::Test {
         Poco::Net::ServerSocket listener;
         Poco::Net::HTTPServer server;
         std::mutex mutex;
-        std::vector<core::Json> debugMessages;
-        std::vector<core::Json> reports;
+        std::vector<haylen::core::Json> debugMessages;
+        std::vector<haylen::core::Json> reports;
         Poco::Net::WebSocket* connected = nullptr;
         int sequence = 0;
         int revision = 0;
@@ -196,7 +196,7 @@ TEST_F(DebuggerConnectionTest, HaltsThroughTheDevelopmentServerAcrossRestartsAnd
     const auto run = [&fixture] {
         try {
             lua::Runtime::runChunk(fixture.lua(), "result = require('mod').run()", "=test");
-        } catch (const core::AppError& error) {
+        } catch (const haylen::core::AppError& error) {
             ADD_FAILURE() << error.what();
         }
     };
@@ -204,7 +204,7 @@ TEST_F(DebuggerConnectionTest, HaltsThroughTheDevelopmentServerAcrossRestartsAnd
 
     run();
     ASSERT_EQ(server.find("event", "stopped").size(), 1U);
-    const core::Json frame = server.find("response", "stackTrace").front().at("body").at("stackFrames").at(0);
+    const haylen::core::Json frame = server.find("response", "stackTrace").front().at("body").at("stackFrames").at(0);
     EXPECT_EQ(frame.at("source").at("path"), "source/mod.lua");
     EXPECT_EQ(frame.at("line"), 3);
     EXPECT_EQ(fixture.lua("return result"), "7");
@@ -222,4 +222,4 @@ TEST_F(DebuggerConnectionTest, HaltsThroughTheDevelopmentServerAcrossRestartsAnd
     EXPECT_EQ(fixture.lua("return result"), "8");
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

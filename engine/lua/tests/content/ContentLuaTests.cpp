@@ -5,7 +5,7 @@
 
 #include "support/LuaFixture.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // The Lua module of content in development, where the folder of the app plays and the files that `haylen.json` delivers later stay off the device until something brings them, as in a release.
 class ContentLuaTest : public ::testing::Test {
@@ -96,4 +96,4 @@ TEST_F(ContentLuaTest, ExplainsWhatDevelopmentCannotDo) {
     EXPECT_EQ(fixture.lua("content.addPackFolder('/no/such/folder') return 'The folder holds every pack.'"), "The folder holds every pack.");
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

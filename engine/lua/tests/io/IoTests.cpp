@@ -24,52 +24,52 @@
 #include "support/TestFiles.hpp"
 #include "support/ZipArchives.hpp"
 
-namespace haylen::io {
+namespace haylen::lua::io {
 
 TEST(PathTest, NormalizesRelativePaths) {
-    EXPECT_EQ(Path::normalize("a/./b//c"), "a/b/c");
-    EXPECT_EQ(Path::normalize("a\\b\\..\\c"), "a/c");
-    EXPECT_EQ(Path::normalize(""), "");
-    EXPECT_THROW((void)Path::normalize("/etc/passwd"), std::invalid_argument);
-    EXPECT_THROW((void)Path::normalize("C:/windows"), std::invalid_argument);
-    EXPECT_THROW((void)Path::normalize("../secret"), std::invalid_argument);
-    EXPECT_THROW((void)Path::normalize("a/../../b"), std::invalid_argument);
+    EXPECT_EQ(haylen::io::Path::normalize("a/./b//c"), "a/b/c");
+    EXPECT_EQ(haylen::io::Path::normalize("a\\b\\..\\c"), "a/c");
+    EXPECT_EQ(haylen::io::Path::normalize(""), "");
+    EXPECT_THROW((void)haylen::io::Path::normalize("/etc/passwd"), std::invalid_argument);
+    EXPECT_THROW((void)haylen::io::Path::normalize("C:/windows"), std::invalid_argument);
+    EXPECT_THROW((void)haylen::io::Path::normalize("../secret"), std::invalid_argument);
+    EXPECT_THROW((void)haylen::io::Path::normalize("a/../../b"), std::invalid_argument);
 }
 
 TEST(PathTest, BuildsAssetPathsAndParts) {
-    EXPECT_EQ(Path::asset("maps/island.tmj"), "content/maps/island.tmj");
-    EXPECT_THROW((void)Path::asset(""), std::invalid_argument);
-    EXPECT_EQ(Path::extension("maps/island.tmj"), ".tmj");
-    EXPECT_EQ(Path::extension("folder.v2/readme"), "");
-    EXPECT_EQ(Path::extension("readme"), "");
-    EXPECT_EQ(Path::directory("maps/tiles/a.png"), "maps/tiles");
-    EXPECT_EQ(Path::directory("a.png"), "");
-    EXPECT_EQ(Path::join("maps", "../tilesets/t.tsj"), "tilesets/t.tsj");
-    EXPECT_EQ(Path::join("", "a/b"), "a/b");
-    EXPECT_EQ(Path::plugin("cloud-analytics", Path::kPluginManifestFile), "plugins/cloud-analytics/plugin.json");
-    EXPECT_EQ(Path::plugin("ads", "source/init.lua"), "plugins/ads/source/init.lua");
-    EXPECT_TRUE(Path::isInside("maps/a.tmj", "maps"));
-    EXPECT_TRUE(Path::isInside("maps/a.tmj", ""));
-    EXPECT_FALSE(Path::isInside("mapsx/a.tmj", "maps"));
-    EXPECT_FALSE(Path::isInside("maps", "maps"));
+    EXPECT_EQ(haylen::io::Path::asset("maps/island.tmj"), "content/maps/island.tmj");
+    EXPECT_THROW((void)haylen::io::Path::asset(""), std::invalid_argument);
+    EXPECT_EQ(haylen::io::Path::extension("maps/island.tmj"), ".tmj");
+    EXPECT_EQ(haylen::io::Path::extension("folder.v2/readme"), "");
+    EXPECT_EQ(haylen::io::Path::extension("readme"), "");
+    EXPECT_EQ(haylen::io::Path::directory("maps/tiles/a.png"), "maps/tiles");
+    EXPECT_EQ(haylen::io::Path::directory("a.png"), "");
+    EXPECT_EQ(haylen::io::Path::join("maps", "../tilesets/t.tsj"), "tilesets/t.tsj");
+    EXPECT_EQ(haylen::io::Path::join("", "a/b"), "a/b");
+    EXPECT_EQ(haylen::io::Path::plugin("cloud-analytics", haylen::io::Path::kPluginManifestFile), "plugins/cloud-analytics/plugin.json");
+    EXPECT_EQ(haylen::io::Path::plugin("ads", "source/init.lua"), "plugins/ads/source/init.lua");
+    EXPECT_TRUE(haylen::io::Path::isInside("maps/a.tmj", "maps"));
+    EXPECT_TRUE(haylen::io::Path::isInside("maps/a.tmj", ""));
+    EXPECT_FALSE(haylen::io::Path::isInside("mapsx/a.tmj", "maps"));
+    EXPECT_FALSE(haylen::io::Path::isInside("maps", "maps"));
 }
 
 TEST(PathTest, MatchesPatternsOfFoldersAndNames) {
-    EXPECT_TRUE(Path::matches("world/asia/**", "world/asia/maps/tokyo.tmj"));
-    EXPECT_TRUE(Path::matches("world/**/tokyo.tmj", "world/tokyo.tmj"));
-    EXPECT_TRUE(Path::matches("**/*.ogg", "music/theme.ogg"));
-    EXPECT_TRUE(Path::matches("**/a*", "x/ab/a1"));
-    EXPECT_TRUE(Path::matches("levels/level-?.json", "levels/level-3.json"));
-    EXPECT_FALSE(Path::matches("levels/*.json", "levels/forest/one.json"));
-    EXPECT_FALSE(Path::matches("levels/?", "levels//"));
-    EXPECT_FALSE(Path::matches("world/asia/**", "world/asian/a.png"));
-    EXPECT_TRUE(Path::matches("*", "readme"));
-    EXPECT_FALSE(Path::matches("*", "a/b"));
+    EXPECT_TRUE(haylen::io::Path::matches("world/asia/**", "world/asia/maps/tokyo.tmj"));
+    EXPECT_TRUE(haylen::io::Path::matches("world/**/tokyo.tmj", "world/tokyo.tmj"));
+    EXPECT_TRUE(haylen::io::Path::matches("**/*.ogg", "music/theme.ogg"));
+    EXPECT_TRUE(haylen::io::Path::matches("**/a*", "x/ab/a1"));
+    EXPECT_TRUE(haylen::io::Path::matches("levels/level-?.json", "levels/level-3.json"));
+    EXPECT_FALSE(haylen::io::Path::matches("levels/*.json", "levels/forest/one.json"));
+    EXPECT_FALSE(haylen::io::Path::matches("levels/?", "levels//"));
+    EXPECT_FALSE(haylen::io::Path::matches("world/asia/**", "world/asian/a.png"));
+    EXPECT_TRUE(haylen::io::Path::matches("*", "readme"));
+    EXPECT_FALSE(haylen::io::Path::matches("*", "a/b"));
 }
 
 class PackageTest : public ::testing::TestWithParam<std::string> {
   protected:
-    std::unique_ptr<Package> makePackage() {
+    std::unique_ptr<haylen::io::Package> makePackage() {
         const std::map<std::string, std::string> files = {
             {"haylen.json", R"({"plugins": {"ads": {"parameters": {"testMode": true}}}})"}, {"source/main.lua", "print('hi')"}, {"content/maps/island.tmj", "{\"width\": 2}"}, {"content/audio/hit.ogg", "OggS"}, {"plugins/ads/plugin.json", R"({"id": "ads", "version": "1.0.0", "implementations": {"ios": "lua"}})"}, {"plugins/ads/source/init.lua", "return {}"},
         };
@@ -79,17 +79,17 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
                 directory.write(path, content);
             }
 
-            return Package::open(directory.getPath());
+            return haylen::io::Package::open(directory.getPath());
         }
 
         if (GetParam() == "zip-file") {
             const std::vector<std::uint8_t> archive = makeZip(files);
             directory.write("app.zip", std::string(archive.begin(), archive.end()));
-            return Package::open(directory.getPath() / "app.zip");
+            return haylen::io::Package::open(directory.getPath() / "app.zip");
         }
 
         if (GetParam() == "zip-memory") {
-            return Package::openZip(makeZip(files), "memory.zip");
+            return haylen::io::Package::openZip(makeZip(files), "memory.zip");
         }
 
         std::map<std::string, std::vector<std::uint8_t>> contents;
@@ -97,7 +97,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
             contents.emplace(path, test::TestFiles::bytes(content));
         }
 
-        return std::make_unique<MemoryPackage>("memory", std::move(contents));
+        return std::make_unique<haylen::io::MemoryPackage>("memory", std::move(contents));
     }
 
     // Returns the bytes of a zip archive with the files, built by libzip in the temporary directory.
@@ -131,7 +131,7 @@ class PackageTest : public ::testing::TestWithParam<std::string> {
 };
 
 TEST_P(PackageTest, ReadsFilesAndAssets) {
-    const std::unique_ptr<Package> package = makePackage();
+    const std::unique_ptr<haylen::io::Package> package = makePackage();
     EXPECT_FALSE(package->getName().empty());
     EXPECT_TRUE(package->exists("source/main.lua"));
     EXPECT_TRUE(package->exists("./source/main.lua"));
@@ -145,7 +145,7 @@ TEST_P(PackageTest, ReadsFilesAndAssets) {
 }
 
 TEST_P(PackageTest, ReadsFilesInRanges) {
-    const std::unique_ptr<Package> package = makePackage();
+    const std::unique_ptr<haylen::io::Package> package = makePackage();
     EXPECT_EQ(package->getFileSize("source/main.lua"), 11U);
     EXPECT_EQ(package->getAssetSize("maps/island.tmj"), 12U);
     EXPECT_THROW((void)package->getFileSize("source/missing.lua"), std::runtime_error);
@@ -155,7 +155,7 @@ TEST_P(PackageTest, ReadsFilesInRanges) {
     EXPECT_EQ(package->readAssetRange("maps/island.tmj", 2, 5), test::TestFiles::bytes("width"));
 
     // A reader moves back and forth through its file.
-    const std::unique_ptr<PackageReader> reader = package->openReader("content/maps/island.tmj");
+    const std::unique_ptr<haylen::io::PackageReader> reader = package->openReader("content/maps/island.tmj");
     EXPECT_EQ(reader->getSize(), 12U);
     std::vector<std::uint8_t> bytes(3);
     reader->readExactly(9, bytes);
@@ -173,15 +173,15 @@ TEST_P(PackageTest, ReadsFilesInRanges) {
 }
 
 TEST_P(PackageTest, CarriesThePluginsOfTheApp) {
-    const std::unique_ptr<Package> package = makePackage();
-    EXPECT_EQ(core::AppConfig::fromPackage(*package).plugins.at("ads").parameters.at("testMode"), true);
-    EXPECT_EQ(package->list(Path::kPluginsDirectory), (std::vector<std::string>{"plugins/ads/plugin.json", "plugins/ads/source/init.lua"}));
-    EXPECT_EQ(package->readText(Path::plugin("ads", "source/init.lua")), "return {}");
+    const std::unique_ptr<haylen::io::Package> package = makePackage();
+    EXPECT_EQ(haylen::core::AppConfig::fromPackage(*package).plugins.at("ads").parameters.at("testMode"), true);
+    EXPECT_EQ(package->list(haylen::io::Path::kPluginsDirectory), (std::vector<std::string>{"plugins/ads/plugin.json", "plugins/ads/source/init.lua"}));
+    EXPECT_EQ(package->readText(haylen::io::Path::plugin("ads", "source/init.lua")), "return {}");
     EXPECT_EQ(package->listAssets("").size(), 2U) << "The files of plugins are no assets.";
 }
 
 TEST_P(PackageTest, ListsFilesRecursively) {
-    const std::unique_ptr<Package> package = makePackage();
+    const std::unique_ptr<haylen::io::Package> package = makePackage();
     EXPECT_EQ(package->list("content"), (std::vector<std::string>{"content/audio/hit.ogg", "content/maps/island.tmj"}));
     EXPECT_EQ(package->listAssets(""), (std::vector<std::string>{"audio/hit.ogg", "maps/island.tmj"}));
     EXPECT_EQ(package->listAssets("maps"), (std::vector<std::string>{"maps/island.tmj"}));
@@ -193,7 +193,7 @@ TEST_P(PackageTest, ListsFilesRecursively) {
 }
 
 TEST_P(PackageTest, NamesItsFolderOnlyWhenItReadsAFolder) {
-    const std::unique_ptr<Package> package = makePackage();
+    const std::unique_ptr<haylen::io::Package> package = makePackage();
     if (GetParam() == "directory") {
         EXPECT_EQ(package->getDirectory(), std::filesystem::canonical(directory.getPath()));
         return;
@@ -211,13 +211,13 @@ INSTANTIATE_TEST_SUITE_P(Sources, PackageTest, ::testing::Values("directory", "z
 
 TEST(PackageOpenTest, RejectsMissingAndInvalidPackages) {
     test::TemporaryDirectory directory;
-    EXPECT_THROW((void)Package::openDirectory(directory.getPath() / "missing"), std::runtime_error);
-    EXPECT_THROW((void)Package::open(directory.getPath() / "missing.zip"), std::runtime_error);
-    EXPECT_THROW((void)Package::openZip(test::TestFiles::bytes("not a zip"), "broken.zip"), std::runtime_error);
+    EXPECT_THROW((void)haylen::io::Package::openDirectory(directory.getPath() / "missing"), std::runtime_error);
+    EXPECT_THROW((void)haylen::io::Package::open(directory.getPath() / "missing.zip"), std::runtime_error);
+    EXPECT_THROW((void)haylen::io::Package::openZip(test::TestFiles::bytes("not a zip"), "broken.zip"), std::runtime_error);
 
     directory.write("broken.zip", "not a zip");
     try {
-        (void)Package::open(directory.getPath() / "broken.zip");
+        (void)haylen::io::Package::open(directory.getPath() / "broken.zip");
         ADD_FAILURE() << "A file that is no zip archive must be rejected.";
     } catch (const std::runtime_error& error) {
         EXPECT_TRUE(std::string(error.what()).starts_with("The package archive \"broken.zip\" is not a valid zip file, and the zip reader reported \"")) << error.what();
@@ -233,7 +233,7 @@ TEST(PackageOpenTest, RefusesZipEntriesWhoseNamesAreNotNormalized) {
         test::ZipArchives::write(file, {{.name = "source/main.lua", .bytes = test::TestFiles::bytes("{}")}, {.name = name, .bytes = test::TestFiles::bytes("{}")}});
 
         try {
-            (void)Package::open(file);
+            (void)haylen::io::Package::open(file);
             ADD_FAILURE() << "The entry \"" << name << "\" must be refused.";
         } catch (const std::runtime_error& failure) {
             EXPECT_EQ(std::string(failure.what()), "The package archive \"app.zip\" holds the entry \"" + name + "\", whose name is not a relative path with forward slashes, such as \"content/images/hero.png\". Make the archive with \"haylen app zip\".");
@@ -253,7 +253,7 @@ TEST(PackageOpenTest, ReportsDamagedZipEntries) {
     const std::size_t nameLength = std::size_t{bytes[26]} | std::size_t{bytes[27]} << 8;
     const std::size_t extraLength = std::size_t{bytes[28]} | std::size_t{bytes[29]} << 8;
     bytes[30 + nameLength + extraLength] = 0xFF;
-    const std::unique_ptr<Package> package = Package::openZip(std::move(bytes), "broken.zip");
+    const std::unique_ptr<haylen::io::Package> package = haylen::io::Package::openZip(std::move(bytes), "broken.zip");
 
     // Reading from the start and skipping forward to a later offset both stop at the damage instead of returning bytes the entry does not hold.
     const std::string message = "The package file \"broken.zip/content/level.txt\" could not be read.";
@@ -270,8 +270,8 @@ TEST(PackageOpenTest, ReportsDamagedZipEntries) {
 TEST(PackageOpenTest, ReportsAFolderFileThatShrinksWhileItIsRead) {
     test::TemporaryDirectory directory;
     directory.write("content/level.bin", std::string(1000, 'a'));
-    const std::unique_ptr<Package> package = Package::open(directory.getPath());
-    const std::unique_ptr<PackageReader> reader = package->openReader("content/level.bin");
+    const std::unique_ptr<haylen::io::Package> package = haylen::io::Package::open(directory.getPath());
+    const std::unique_ptr<haylen::io::PackageReader> reader = package->openReader("content/level.bin");
 
     // A reader keeps the size its file had when it opened, so a file that loses bytes fails the read instead of handing out less.
     std::filesystem::resize_file(directory.getPath() / "content" / "level.bin", 10);
@@ -289,10 +289,10 @@ TEST(PackageOpenTest, OpensZipFilesWithoutReadingThemWhole) {
     const std::vector<std::uint8_t> large = test::TestFiles::randomBytes(8 * 1024 * 1024, 1);
     test::ZipArchives::write(directory.getPath() / "app.zip", {{.name = "content/large.bin", .bytes = large}, {.name = "content/small.json", .bytes = test::TestFiles::bytes("{}")}});
 
-    std::unique_ptr<Package> package;
+    std::unique_ptr<haylen::io::Package> package;
     {
         const test::AllocationTracker tracker;
-        package = Package::open(directory.getPath() / "app.zip");
+        package = haylen::io::Package::open(directory.getPath() / "app.zip");
         EXPECT_EQ(package->readAssetText("small.json"), "{}");
         EXPECT_LT(tracker.getLargest(), std::size_t{1} << 20) << "Opening an archive and reading a small entry never holds the whole archive.";
     }
@@ -311,8 +311,8 @@ TEST(PackageOpenTest, KeepsAZipReaderSafeWhenItsArchiveShrinks) {
     const std::vector<std::uint8_t> large = test::TestFiles::randomBytes(4 * 1024 * 1024, 2);
     test::ZipArchives::write(file, {{.name = "content/large.bin", .bytes = large}});
 
-    const std::unique_ptr<Package> package = Package::open(file);
-    std::unique_ptr<PackageReader> reader = package->openReader("content/large.bin");
+    const std::unique_ptr<haylen::io::Package> package = haylen::io::Package::open(file);
+    std::unique_ptr<haylen::io::PackageReader> reader = package->openReader("content/large.bin");
     std::vector<std::uint8_t> bytes(1000);
     reader->readExactly(2 * 1024 * 1024, bytes);
 
@@ -340,7 +340,7 @@ TEST(PackageOpenTest, RefusesToListAFolderPartly) {
         GTEST_SKIP() << "The user reads folders without permission.";
     }
 
-    const std::unique_ptr<Package> package = Package::open(directory.getPath());
+    const std::unique_ptr<haylen::io::Package> package = haylen::io::Package::open(directory.getPath());
     std::string message;
     try {
         (void)package->listAssets("");
@@ -364,7 +364,7 @@ TEST(PackageOpenTest, ReportsAFolderFileItCannotOpen) {
         GTEST_SKIP() << "The user reads files without permission.";
     }
 
-    const std::unique_ptr<Package> package = Package::open(directory.getPath());
+    const std::unique_ptr<haylen::io::Package> package = haylen::io::Package::open(directory.getPath());
     std::string message;
     try {
         (void)package->readAsset("secret.json");
@@ -378,9 +378,9 @@ TEST(PackageOpenTest, ReportsAFolderFileItCannotOpen) {
 #endif
 
 TEST(CompositePackageTest, ShowsLaterLayersOverEarlierOnes) {
-    const auto base = std::make_shared<MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"content/a.txt", test::TestFiles::bytes("base a")}, {"content/b.txt", test::TestFiles::bytes("base b")}});
-    const auto patch = std::make_shared<MemoryPackage>("patch", std::map<std::string, std::vector<std::uint8_t>>{{"content/b.txt", test::TestFiles::bytes("patched b")}, {"content/c.txt", test::TestFiles::bytes("patch c")}});
-    const CompositePackage package("app", {base, patch});
+    const auto base = std::make_shared<haylen::io::MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"content/a.txt", test::TestFiles::bytes("base a")}, {"content/b.txt", test::TestFiles::bytes("base b")}});
+    const auto patch = std::make_shared<haylen::io::MemoryPackage>("patch", std::map<std::string, std::vector<std::uint8_t>>{{"content/b.txt", test::TestFiles::bytes("patched b")}, {"content/c.txt", test::TestFiles::bytes("patch c")}});
+    const haylen::io::CompositePackage package("app", {base, patch});
 
     EXPECT_EQ(package.getName(), "app");
     EXPECT_EQ(package.readAssetText("a.txt"), "base a");
@@ -403,10 +403,10 @@ TEST(PackageLuaTest, ReadsAssetsInRanges) {
 }
 
 TEST(MemoryPackageTest, ReplacesAndRemovesFiles) {
-    MemoryPackage package("editor");
+    haylen::io::MemoryPackage package("editor");
     package.setFile("main.lua", test::TestFiles::bytes("a"));
     EXPECT_EQ(package.readText("main.lua"), "a");
-    const std::unique_ptr<PackageReader> reader = package.openReader("main.lua");
+    const std::unique_ptr<haylen::io::PackageReader> reader = package.openReader("main.lua");
     package.setFile("./main.lua", test::TestFiles::bytes("b"));
     EXPECT_EQ(package.readText("main.lua"), "b");
     std::vector<std::uint8_t> opened(1);
@@ -418,9 +418,9 @@ TEST(MemoryPackageTest, ReplacesAndRemovesFiles) {
 }
 
 TEST(OverlayPackageTest, ReadsReplacedFilesOverTheBaseAndHidesRemovedOnes) {
-    const auto base = std::make_shared<MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"source/a.lua", test::TestFiles::bytes("a")}, {"source/b.lua", test::TestFiles::bytes("b")}, {"content/c.json", test::TestFiles::bytes("{}")}});
-    EXPECT_THROW((void)OverlayPackage(nullptr), std::invalid_argument);
-    OverlayPackage overlay(base);
+    const auto base = std::make_shared<haylen::io::MemoryPackage>("base", std::map<std::string, std::vector<std::uint8_t>>{{"source/a.lua", test::TestFiles::bytes("a")}, {"source/b.lua", test::TestFiles::bytes("b")}, {"content/c.json", test::TestFiles::bytes("{}")}});
+    EXPECT_THROW((void)haylen::io::OverlayPackage(nullptr), std::invalid_argument);
+    haylen::io::OverlayPackage overlay(base);
     overlay.setFile("source/a.lua", test::TestFiles::bytes("edited"));
     EXPECT_TRUE(overlay.removeFile("source/b.lua"));
     EXPECT_FALSE(overlay.removeFile("source/missing.lua"));
@@ -442,7 +442,7 @@ TEST(OverlayPackageTest, ReadsReplacedFilesOverTheBaseAndHidesRemovedOnes) {
     // An overlay names the folder of the package it covers, when that package reads a folder.
     EXPECT_FALSE(overlay.getDirectory().has_value());
     const test::TemporaryDirectory folder;
-    EXPECT_EQ(OverlayPackage(Package::openDirectory(folder.getPath())).getDirectory(), std::filesystem::canonical(folder.getPath()));
+    EXPECT_EQ(haylen::io::OverlayPackage(haylen::io::Package::openDirectory(folder.getPath())).getDirectory(), std::filesystem::canonical(folder.getPath()));
 
     overlay.setFile("source/b.lua", test::TestFiles::bytes("back"));
     EXPECT_EQ(overlay.readText("source/b.lua"), "back");
@@ -450,4 +450,4 @@ TEST(OverlayPackageTest, ReadsReplacedFilesOverTheBaseAndHidesRemovedOnes) {
     EXPECT_THROW((void)overlay.exists("/etc/passwd"), std::invalid_argument);
 }
 
-} // namespace haylen::io
+} // namespace haylen::lua::io

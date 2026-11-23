@@ -16,7 +16,7 @@
 #include "support/ActionBindings.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::input {
+namespace haylen::lua::input {
 
 // A buffer with the buttons of a fighter: defend, the four directions, jump and attack, where directions last one step and the other presses ten.
 class CommandBufferTest : public ::testing::Test {
@@ -31,7 +31,7 @@ class CommandBufferTest : public ::testing::Test {
         Attack,
     };
 
-    [[nodiscard]] static CommandBuffer::Options makeOptions(std::initializer_list<CommandBuffer::Command> commands) {
+    [[nodiscard]] static haylen::input::CommandBuffer::Options makeOptions(std::initializer_list<haylen::input::CommandBuffer::Command> commands) {
         return {
             .buttons = {"defend", "up", "down", "left", "right", "jump", "attack"},
             .lifetimes = {10U, 1U, 1U, 1U, 1U, 10U, 10U},
@@ -50,21 +50,21 @@ class CommandBufferTest : public ::testing::Test {
     }
 
     // Presses the buttons for one step, lets go for the next one and leaves the steps after that empty.
-    static void tap(CommandBuffer& buffer, std::initializer_list<Button> buttons, int idleSteps = 0) {
+    static void tap(haylen::input::CommandBuffer& buffer, std::initializer_list<Button> buttons, int idleSteps = 0) {
         buffer.update(mask(buttons));
         for (int step = 0; step <= idleSteps; ++step) {
             buffer.update(0);
         }
     }
 
-    [[nodiscard]] static std::string kept(const CommandBuffer& buffer) {
+    [[nodiscard]] static std::string kept(const haylen::input::CommandBuffer& buffer) {
         const std::optional<std::size_t> command = buffer.peek();
         return command ? buffer.getCommandName(*command) : std::string("none");
     }
 };
 
 TEST_F(CommandBufferTest, RunsOnADoubleTapWithinItsTicks) {
-    CommandBuffer buffer(makeOptions({{.name = "run", .steps = {CommandBuffer::kForward, CommandBuffer::kForward}, .maxTicks = 9U, .priority = 1, .lifetime = 10U}}));
+    haylen::input::CommandBuffer buffer(makeOptions({{.name = "run", .steps = {haylen::input::CommandBuffer::kForward, haylen::input::CommandBuffer::kForward}, .maxTicks = 9U, .priority = 1, .lifetime = 10U}}));
     tap(buffer, {Right}, 7);
     buffer.update(mask({Right}));
     EXPECT_EQ(kept(buffer), "run");
@@ -82,7 +82,7 @@ TEST_F(CommandBufferTest, RunsOnADoubleTapWithinItsTicks) {
 }
 
 TEST_F(CommandBufferTest, KeepsTheHighestPriorityOfAStepUntilALaterPress) {
-    CommandBuffer buffer(makeOptions({{.name = "jumpAttack", .steps = {Jump, Attack}, .maxTicks = 0U, .priority = 2, .lifetime = 10U}}));
+    haylen::input::CommandBuffer buffer(makeOptions({{.name = "jumpAttack", .steps = {Jump, Attack}, .maxTicks = 0U, .priority = 2, .lifetime = 10U}}));
     buffer.update(mask({Jump, Attack}));
     EXPECT_EQ(kept(buffer), "jumpAttack");
     buffer.update(mask({Jump, Attack, Defend}));
@@ -98,7 +98,7 @@ TEST_F(CommandBufferTest, KeepsTheHighestPriorityOfAStepUntilALaterPress) {
 }
 
 TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
-    CommandBuffer buffer(makeOptions({{.name = "upSpecial", .steps = {Defend, Up, Attack}, .priority = 4}}));
+    haylen::input::CommandBuffer buffer(makeOptions({{.name = "upSpecial", .steps = {Defend, Up, Attack}, .priority = 4}}));
     buffer.update(mask({Attack}));
     for (int step = 0; step < 9; ++step) {
         buffer.update(0);
@@ -141,10 +141,10 @@ TEST_F(CommandBufferTest, ExpiresByLifetimeExceptWhileFrozen) {
 }
 
 TEST_F(CommandBufferTest, ClearsTheHistoryUnlessTheCommandKeepsIt) {
-    CommandBuffer clearing(makeOptions({{.name = "run", .steps = {CommandBuffer::kForward, CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U}}));
-    CommandBuffer keeping(makeOptions({{.name = "run", .steps = {CommandBuffer::kForward, CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U, .clearsHistory = false}}));
+    haylen::input::CommandBuffer clearing(makeOptions({{.name = "run", .steps = {haylen::input::CommandBuffer::kForward, haylen::input::CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U}}));
+    haylen::input::CommandBuffer keeping(makeOptions({{.name = "run", .steps = {haylen::input::CommandBuffer::kForward, haylen::input::CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U, .clearsHistory = false}}));
 
-    for (CommandBuffer* buffer : {&clearing, &keeping}) {
+    for (haylen::input::CommandBuffer* buffer : {&clearing, &keeping}) {
         tap(*buffer, {Right});
         tap(*buffer, {Right});
         buffer->update(mask({Right}));
@@ -155,7 +155,7 @@ TEST_F(CommandBufferTest, ClearsTheHistoryUnlessTheCommandKeepsIt) {
 }
 
 TEST_F(CommandBufferTest, FollowsTheFacingAndSettlesHeldButtons) {
-    CommandBuffer buffer(makeOptions({{.name = "run", .steps = {CommandBuffer::kForward, CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U}}));
+    haylen::input::CommandBuffer buffer(makeOptions({{.name = "run", .steps = {haylen::input::CommandBuffer::kForward, haylen::input::CommandBuffer::kForward}, .maxTicks = 9U, .lifetime = 10U}}));
     buffer.setFacing(-1);
     EXPECT_EQ(buffer.getFacing(), -1);
     tap(buffer, {Right});
@@ -175,11 +175,11 @@ TEST_F(CommandBufferTest, FollowsTheFacingAndSettlesHeldButtons) {
 }
 
 TEST_F(CommandBufferTest, ReadsTheStepsOfAnActionMap) {
-    ActionMap map;
-    map.define({.name = "attack", .type = ActionMap::Action::Type::Button, .bindings = {test::ActionBindings::parse("virtual:attack")}});
-    CommandBuffer buffer(makeOptions({}));
-    Input input;
-    VirtualInput virtualInput;
+    haylen::input::ActionMap map;
+    map.define({.name = "attack", .type = haylen::input::ActionMap::Action::Type::Button, .bindings = {test::ActionBindings::parse("virtual:attack")}});
+    haylen::input::CommandBuffer buffer(makeOptions({}));
+    haylen::input::Input input;
+    haylen::input::VirtualInput virtualInput;
 
     // A tap that starts and ends between two steps still types a press.
     virtualInput.setButton("attack", true);
@@ -196,9 +196,9 @@ TEST_F(CommandBufferTest, ReadsTheStepsOfAnActionMap) {
 
 TEST_F(CommandBufferTest, RejectsInvalidOptions) {
     // clang-format off
-    const auto message = [](CommandBuffer::Options options) {
+    const auto message = [](haylen::input::CommandBuffer::Options options) {
         try {
-            CommandBuffer buffer(std::move(options));
+            haylen::input::CommandBuffer buffer(std::move(options));
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
@@ -211,24 +211,24 @@ TEST_F(CommandBufferTest, RejectsInvalidOptions) {
     EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {0U}}), "A command lasts at least one step.");
     EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .commands = {{.name = "b"}}}), "A command needs a name and at least one step.");
     EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .commands = {{.name = "b", .steps = {3}}}}), "The command \"b\" names a button that the buffer does not have.");
-    EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .commands = {{.name = "b", .steps = {CommandBuffer::kForward}}}}), "The command \"b\" names a direction, which needs the directions of the buffer.");
+    EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .commands = {{.name = "b", .steps = {haylen::input::CommandBuffer::kForward}}}}), "The command \"b\" names a direction, which needs the directions of the buffer.");
     EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .commands = {{.name = "a", .steps = {0}}}}), "The command name \"a\" is used by more than one command.");
     EXPECT_EQ(message({.buttons = {"a"}, .lifetimes = {1U}, .directions = std::array<std::size_t, 2>{0, 4}}), "The directions of a command buffer must name two of its buttons.");
 }
 
 TEST_F(CommandBufferTest, RejectsAMaskWithAButtonItDoesNotHave) {
-    CommandBuffer buffer({.buttons = {"punch", "kick", "jump"}, .lifetimes = {10U, 10U, 10U}});
+    haylen::input::CommandBuffer buffer({.buttons = {"punch", "kick", "jump"}, .lifetimes = {10U, 10U, 10U}});
     EXPECT_THROW(buffer.update(1U << 3), std::invalid_argument);
     EXPECT_THROW(buffer.settle(1U << 31), std::invalid_argument);
     EXPECT_FALSE(buffer.peek().has_value());
     EXPECT_EQ(buffer.getTick(), 0U);
 
-    CommandBuffer::Options every{.lifetimes = std::vector<std::optional<std::uint32_t>>(CommandBuffer::kMaxButtons, 10U)};
-    for (std::size_t button = 0; button < CommandBuffer::kMaxButtons; ++button) {
+    haylen::input::CommandBuffer::Options every{.lifetimes = std::vector<std::optional<std::uint32_t>>(haylen::input::CommandBuffer::kMaxButtons, 10U)};
+    for (std::size_t button = 0; button < haylen::input::CommandBuffer::kMaxButtons; ++button) {
         every.buttons.push_back("button" + std::to_string(button));
     }
 
-    CommandBuffer wide(std::move(every));
+    haylen::input::CommandBuffer wide(std::move(every));
     wide.update(1U << 31);
     EXPECT_EQ(wide.peek(), 31U);
 }
@@ -279,4 +279,4 @@ TEST(CommandBufferLuaTest, NamesTheOptionThatIsNotATable) {
     EXPECT_NE(fixture.lua("require('haylen.input').newCommandBuffer({buttons = {'a'}, commands = 'none'})").find("The option \"commands\" of \"newCommandBuffer\" is invalid: table expected, got string."), std::string::npos);
 }
 
-} // namespace haylen::input
+} // namespace haylen::lua::input

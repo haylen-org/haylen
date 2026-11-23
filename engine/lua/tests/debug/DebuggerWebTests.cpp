@@ -5,7 +5,7 @@
 #include "debug/DebuggerTest.hpp"
 #include "haylen/core/Json.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class DebuggerWebTest : public DebuggerTest {};
 
@@ -17,7 +17,7 @@ TEST_F(DebuggerWebTest, KeepsOnlyTheLogPointsOnAPageThatCannotHalt) {
     const int set = client.request("setBreakpoints", breakpoints({{{"line", 14}}, {{"line", 16}, {"logMessage", "sum {sum}"}}}));
     const int pause = client.request("pause");
     client.getDebugger().update(fixture.lua());
-    const core::Json results = client.getResponse(set).at("body").at("breakpoints");
+    const haylen::core::Json results = client.getResponse(set).at("body").at("breakpoints");
     EXPECT_EQ(results.at(0).at("verified"), false);
     EXPECT_NE(results.at(0).at("message").get<std::string>().find("cannot halt"), std::string::npos);
     EXPECT_EQ(results.at(1).at("verified"), true);
@@ -29,4 +29,4 @@ TEST_F(DebuggerWebTest, KeepsOnlyTheLogPointsOnAPageThatCannotHalt) {
     EXPECT_EQ(client.getEvents("output").back().at("output"), "sum 21\n");
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

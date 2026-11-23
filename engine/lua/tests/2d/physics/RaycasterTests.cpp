@@ -19,43 +19,43 @@
 #include "support/LuaFixture.hpp"
 #include "support/Physics2DHelper.hpp"
 
-namespace haylen::physics2d {
+namespace haylen::lua::physics2d {
 
 class RaycasterTest : public ::testing::Test {
   protected:
     // Builds three thin posts along x at 100, 200 and 300 and two mirrors at x = -400 and x = 400, with the given categories and groups.
     struct Range {
-        physics2d::World world{{.gravity = {}}};
-        std::vector<physics2d::Shape> posts;
-        physics2d::Shape leftMirror;
-        physics2d::Shape rightMirror;
+        haylen::physics2d::World world{{.gravity = {}}};
+        std::vector<haylen::physics2d::Shape> posts;
+        haylen::physics2d::Shape leftMirror;
+        haylen::physics2d::Shape rightMirror;
 
         Range() {
             for (int index = 0; index < 3; ++index) {
-                physics2d::Body post = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F * static_cast<float>(index + 1), 0.0F}});
+                haylen::physics2d::Body post = world.createBody({.type = haylen::physics2d::Body::Type::Static, .position = {100.0F * static_cast<float>(index + 1), 0.0F}});
                 posts.push_back(post.addBox({10.0F, 100.0F}, {.filter = {.category = index == 1 ? 2U : 1U, .group = index == 2 ? -3 : 0}}));
             }
 
-            leftMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {-400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
-            rightMirror = world.createBody({.type = physics2d::Body::Type::Static, .position = {400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
+            leftMirror = world.createBody({.type = haylen::physics2d::Body::Type::Static, .position = {-400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
+            rightMirror = world.createBody({.type = haylen::physics2d::Body::Type::Static, .position = {400.0F, 0.0F}}).addBox({10.0F, 1000.0F}, {.filter = {.category = 4}});
         }
     };
 };
 
 TEST_F(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
     Range range;
-    const physics2d::Raycaster caster(range.world);
+    const haylen::physics2d::Raycaster caster(range.world);
 
-    const std::optional<physics2d::RaycastHit> closest = caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F});
+    const std::optional<haylen::physics2d::RaycastHit> closest = caster.castRay({0.0F, 0.0F}, {1000.0F, 0.0F});
     ASSERT_TRUE(closest.has_value());
     EXPECT_EQ(closest->shape, range.posts[0]);
     EXPECT_NEAR(closest->point.x, 95.0F, 0.1F);
     EXPECT_NEAR(closest->normal.x, -1.0F, 1e-4F);
     EXPECT_NEAR(closest->fraction, 0.095F, 1e-4F);
     EXPECT_NEAR(closest->distance, 95.0F, 0.1F);
-    EXPECT_EQ(closest->shape.getBody().getPosition(), (math::Vec2{100.0F, 0.0F}));
+    EXPECT_EQ(closest->shape.getBody().getPosition(), (haylen::math::Vec2{100.0F, 0.0F}));
 
-    std::vector<physics2d::RaycastHit> hits;
+    std::vector<haylen::physics2d::RaycastHit> hits;
     caster.castRayAll({0.0F, 0.0F}, {1000.0F, 0.0F}, {}, 0, hits);
     ASSERT_EQ(hits.size(), 4U);
     EXPECT_EQ(hits[1].shape, range.posts[1]);
@@ -73,13 +73,13 @@ TEST_F(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
     EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = 3}})).shape, range.rightMirror);
     EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({150.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 2, .group = -3}})).shape, range.posts[1]);
     EXPECT_EQ(caster.castRay({250.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.category = 0, .mask = 0, .group = -3}}), std::nullopt);
-    physics2d::Shape ownPost = range.posts[2];
+    haylen::physics2d::Shape ownPost = range.posts[2];
     ownPost.setFilter({.category = 1, .group = 3});
     EXPECT_EQ(test::Physics2DHelper::requireHit(caster.castRay({250.0F, 0.0F}, {1000.0F, 0.0F}, {.collision = {.mask = 4, .group = 3}})).shape, range.posts[2]);
 
     std::vector<float> offered;
     // clang-format off
-    const physics2d::Raycaster::Filter picky{.accept = [&offered](const physics2d::RaycastHit& hit) {
+    const haylen::physics2d::Raycaster::Filter picky{.accept = [&offered](const haylen::physics2d::RaycastHit& hit) {
         offered.push_back(hit.point.x);
         return hit.shape.getFilter().category == 4;
     }};
@@ -97,9 +97,9 @@ TEST_F(RaycasterTest, FindsTheClosestHitEveryHitAndFilteredHits) {
 
 TEST_F(RaycasterTest, SweepsShapesUntilTheyTouch) {
     Range range;
-    const physics2d::Raycaster caster(range.world);
+    const haylen::physics2d::Raycaster caster(range.world);
 
-    const std::optional<physics2d::RaycastHit> circle = caster.castCircle({0.0F, 0.0F}, 10.0F, {500.0F, 0.0F});
+    const std::optional<haylen::physics2d::RaycastHit> circle = caster.castCircle({0.0F, 0.0F}, 10.0F, {500.0F, 0.0F});
     ASSERT_TRUE(circle.has_value());
     EXPECT_EQ(circle->shape, range.posts[0]);
     EXPECT_NEAR(circle->distance, 85.0F, 0.5F);
@@ -108,12 +108,12 @@ TEST_F(RaycasterTest, SweepsShapesUntilTheyTouch) {
     EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castBox({0.0F, 0.0F}, {40.0F, 20.0F}, 0.0F, {500.0F, 0.0F})).distance, 75.0F, 0.5F);
     EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castBox({0.0F, 0.0F}, {40.0F, 20.0F}, std::numbers::pi_v<float> * 0.5F, {500.0F, 0.0F})).distance, 85.0F, 0.5F);
     EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castCapsule({-20.0F, 0.0F}, {20.0F, 0.0F}, 5.0F, {500.0F, 0.0F})).distance, 70.0F, 0.5F);
-    const std::vector<math::Vec2> wedge{{0.0F, -10.0F}, {30.0F, 0.0F}, {0.0F, 10.0F}};
+    const std::vector<haylen::math::Vec2> wedge{{0.0F, -10.0F}, {30.0F, 0.0F}, {0.0F, 10.0F}};
     EXPECT_NEAR(test::Physics2DHelper::requireHit(caster.castPolygon(wedge, {500.0F, 0.0F})).distance, 65.0F, 0.5F);
 
     // Shapes that pass over or start inside behave as expected.
     EXPECT_FALSE(caster.castCircle({0.0F, 200.0F}, 10.0F, {300.0F, 0.0F}).has_value());
-    const std::optional<physics2d::RaycastHit> inside = caster.castCircle({100.0F, 0.0F}, 2.0F, {10.0F, 0.0F});
+    const std::optional<haylen::physics2d::RaycastHit> inside = caster.castCircle({100.0F, 0.0F}, 2.0F, {10.0F, 0.0F});
     ASSERT_TRUE(inside.has_value());
     EXPECT_EQ(inside->fraction, 0.0F);
     EXPECT_TRUE(inside->normal.isZero());
@@ -122,28 +122,28 @@ TEST_F(RaycasterTest, SweepsShapesUntilTheyTouch) {
     EXPECT_THROW((void)caster.castCircle({}, -1.0F, {1.0F, 0.0F}), std::invalid_argument);
     EXPECT_THROW((void)caster.castBox({}, {0.0F, 1.0F}, 0.0F, {1.0F, 0.0F}), std::invalid_argument);
     EXPECT_THROW((void)caster.castCapsule({}, {1.0F, 0.0F}, 0.0F, {1.0F, 0.0F}), std::invalid_argument);
-    EXPECT_THROW((void)caster.castPolygon(std::vector<math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}}, {1.0F, 0.0F}), std::invalid_argument);
+    EXPECT_THROW((void)caster.castPolygon(std::vector<haylen::math::Vec2>{{0.0F, 0.0F}, {1.0F, 0.0F}}, {1.0F, 0.0F}), std::invalid_argument);
 }
 
 TEST_F(RaycasterTest, BouncesPiercesAndFansRays) {
     Range range;
-    const physics2d::Raycaster caster(range.world);
-    const physics2d::Raycaster::Filter mirrors{.collision = {.mask = 4}};
+    const haylen::physics2d::Raycaster caster(range.world);
+    const haylen::physics2d::Raycaster::Filter mirrors{.collision = {.mask = 4}};
 
     // A laser between the mirrors bounces until it runs out of bounces or of length.
-    std::vector<physics2d::RaycastHit> hits;
-    const math::Ray last = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 5000.0F}, 3, mirrors, hits);
+    std::vector<haylen::physics2d::RaycastHit> hits;
+    const haylen::math::Ray last = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 5000.0F}, 3, mirrors, hits);
     ASSERT_EQ(hits.size(), 4U);
     EXPECT_EQ(hits[0].shape, range.rightMirror);
     EXPECT_EQ(hits[1].shape, range.leftMirror);
     EXPECT_NEAR(hits[1].distance, 790.0F, 0.5F);
     EXPECT_NEAR(last.getEnd().x, -395.0F, 0.5F);
-    const math::Ray open = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 1000.0F}, 5, mirrors, hits);
+    const haylen::math::Ray open = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 1000.0F}, 5, mirrors, hits);
     EXPECT_EQ(hits.size(), 1U);
     EXPECT_NEAR(open.getEnd().x, -210.0F, 0.5F);
     EXPECT_THROW((void)caster.bounce({{0.0F, 0.0F}, {1.0F, 0.0F}}, 1, mirrors, hits), std::invalid_argument);
 
-    std::vector<std::optional<physics2d::RaycastHit>> fan;
+    std::vector<std::optional<haylen::physics2d::RaycastHit>> fan;
     caster.fan({0.0F, 0.0F}, 0.0F, std::numbers::pi_v<float>, 5, 1000.0F, mirrors, fan);
     ASSERT_EQ(fan.size(), 5U);
     EXPECT_FALSE(fan[0].has_value());
@@ -155,8 +155,8 @@ TEST_F(RaycasterTest, BouncesPiercesAndFansRays) {
 TEST_F(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     test::LuaFixture fixture;
     Range range;
-    const physics2d::Raycaster caster(range.world);
-    physics2d::RayBatch batch;
+    const haylen::physics2d::Raycaster caster(range.world);
+    haylen::physics2d::RayBatch batch;
     batch.resize(500);
     EXPECT_EQ(batch.size(), 500U);
 
@@ -168,8 +168,8 @@ TEST_F(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     caster.castBatch(batch, {}, &fixture.engine().getJobs());
     std::size_t hits = 0;
     for (std::size_t index = 0; index < batch.size(); ++index) {
-        const math::Segment& ray = batch.getRay(index);
-        const std::optional<physics2d::RaycastHit> expected = caster.castRay(ray.start, ray.end);
+        const haylen::math::Segment& ray = batch.getRay(index);
+        const std::optional<haylen::physics2d::RaycastHit> expected = caster.castRay(ray.start, ray.end);
         ASSERT_EQ(batch.getHit(index).has_value(), expected.has_value());
 
         if (expected) {
@@ -189,21 +189,21 @@ TEST_F(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
 
 TEST_F(RaycasterTest, DrawsRaysHitsAndNormalsForDebugging) {
     test::LuaFixture fixture;
-    physics2d::RayDebugDraw rays;
+    haylen::physics2d::RayDebugDraw rays;
 
     // The first ray of a frame drops the rays of earlier frames that were never drawn.
     rays.add(1, {0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
     rays.add(1, {0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
     rays.add(2, {0.0F, 0.0F}, {100.0F, 0.0F}, std::nullopt);
-    rays.add(2, {0.0F, 10.0F}, {100.0F, 10.0F}, physics2d::RayDebugDraw::Hit{.point = {50.0F, 10.0F}, .normal = {-1.0F, 0.0F}});
+    rays.add(2, {0.0F, 10.0F}, {100.0F, 10.0F}, haylen::physics2d::RayDebugDraw::Hit{.point = {50.0F, 10.0F}, .normal = {-1.0F, 0.0F}});
     EXPECT_EQ(rays.size(), 2U);
 
-    std::optional<physics2d::RayDebugDraw::Hit> mark;
+    std::optional<haylen::physics2d::RayDebugDraw::Hit> mark;
     // clang-format off
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&rays, &mark](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&rays, &mark](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
         rays.draw(engine.getRenderer2D(), {.layer = 10});
-        physics2d::RayDebugDraw::drawRay(engine.getRenderer2D(), {0.0F, 20.0F}, {100.0F, 20.0F}, mark);
+        haylen::physics2d::RayDebugDraw::drawRay(engine.getRenderer2D(), {0.0F, 20.0F}, {100.0F, 20.0F}, mark);
     }));
     // clang-format on
 
@@ -213,7 +213,7 @@ TEST_F(RaycasterTest, DrawsRaysHitsAndNormalsForDebugging) {
     EXPECT_EQ(rays.size(), 0U);
     fixture.frames(1);
     const auto missOnly = fixture.engine().getRenderer2D().getStats().instances;
-    mark = physics2d::RayDebugDraw::Hit{.point = {60.0F, 20.0F}, .normal = {-1.0F, 0.0F}};
+    mark = haylen::physics2d::RayDebugDraw::Hit{.point = {60.0F, 20.0F}, .normal = {-1.0F, 0.0F}};
     fixture.frames(1);
     EXPECT_GT(withCollected, missOnly);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, missOnly);
@@ -305,7 +305,7 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
     // clang-format on
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    const graphics2d::Renderer::Stats& stats = fixture.engine().getRenderer2D().getStats();
+    const haylen::graphics2d::Renderer::Stats& stats = fixture.engine().getRenderer2D().getStats();
     EXPECT_GT(stats.instances, stats.sprites);
 
     EXPECT_EQ(fixture.lua("camera.position = {200, 0} local picked = world:pick(camera, cx, cy) return #picked .. ' ' .. picked[1].body.data.name"), "1 post2");
@@ -313,4 +313,4 @@ TEST(WorldRaycastLuaTest, CastsRaysAndShapesFromLua) {
     EXPECT_NE(fixture.lua("world:pick(camera, cx, cy, {group = 1})").find("Unknown option \"group\""), std::string::npos);
 }
 
-} // namespace haylen::physics2d
+} // namespace haylen::lua::physics2d

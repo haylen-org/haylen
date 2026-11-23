@@ -30,7 +30,7 @@
 #include "support/LuaFixture.hpp"
 #include "ui/Typography.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class ComponentTest : public ::testing::Test, public test::LuaComponentFixture {};
 
@@ -87,11 +87,11 @@ TEST_F(ComponentTest, DrawsEveryKind) {
 TEST_F(ComponentTest, WrapsTextTheSameWayAtItsMeasuredWidth) {
     frames();
     const std::string text = "Thrusts push enemies away. Special charges ahead, and every word must stay on its measured line.";
-    for (const Theme::Font font : {Theme::Font::Body, Theme::Font::Caption, Theme::Font::Heading}) {
+    for (const haylen::ui::Theme::Font font : {haylen::ui::Theme::Font::Body, haylen::ui::Theme::Font::Caption, haylen::ui::Theme::Font::Heading}) {
         for (float width = 120.0F; width < 900.0F; width += 7.0F) {
-            const math::Vec2 measured = Typography::measureParagraph(getUi().getContext(), font, text, width);
-            ui::Context& context = getUi().getContext();
-            EXPECT_EQ(Typography::layout(context, font, text, Typography::getStyle(context, font, measured.x))->lines.size(), Typography::layout(context, font, text, Typography::getStyle(context, font, width))->lines.size()) << width;
+            const haylen::math::Vec2 measured = haylen::ui::Typography::measureParagraph(getUi().getContext(), font, text, width);
+            haylen::ui::Context& context = getUi().getContext();
+            EXPECT_EQ(haylen::ui::Typography::layout(context, font, text, haylen::ui::Typography::getStyle(context, font, measured.x))->lines.size(), haylen::ui::Typography::layout(context, font, text, haylen::ui::Typography::getStyle(context, font, width))->lines.size()) << width;
         }
     }
 }
@@ -109,18 +109,18 @@ TEST_F(ComponentTest, ReportsButtonsAndChoices) {
 
     click(*gui, "play");
     click(*gui, "music");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"checked", true}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"checked", true}}));
     click(*gui, "sound");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"checked", false}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"checked", false}}));
 
-    const math::Rect level = getBounds(*gui, "level");
+    const haylen::math::Rect level = getBounds(*gui, "level");
     click({level.x + 20.0F, level.y + level.height * 0.75F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", "hard"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", "hard"}}));
     click({level.x + 20.0F, level.y + level.height * 0.75F});
 
-    const math::Rect tag = getBounds(*gui, "tag");
+    const haylen::math::Rect tag = getBounds(*gui, "tag");
     click({tag.x + 10.0F, tag.getCenter().y});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"selected", true}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"selected", true}}));
     click({tag.getRight() - 6.0F, tag.getCenter().y});
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click", "music:change", "sound:change", "level:change", "tag:change", "tag:remove"}));
 }
@@ -136,46 +136,46 @@ TEST_F(ComponentTest, DragsSlidersAndTypesText) {
     ]})");
     // clang-format on
 
-    const math::Rect volume = getBounds(*gui, "volume");
-    pointer(platform::Event::Type::MouseMove, {volume.x + 20.0F, volume.getCenter().y});
+    const haylen::math::Rect volume = getBounds(*gui, "volume");
+    pointer(haylen::platform::Event::Type::MouseMove, {volume.x + 20.0F, volume.getCenter().y});
     frames();
-    pointer(platform::Event::Type::MouseDown, {volume.x + 20.0F, volume.getCenter().y});
+    pointer(haylen::platform::Event::Type::MouseDown, {volume.x + 20.0F, volume.getCenter().y});
     frames();
-    pointer(platform::Event::Type::MouseMove, {volume.x + volume.width * 0.75F, volume.getCenter().y});
+    pointer(haylen::platform::Event::Type::MouseMove, {volume.x + volume.width * 0.75F, volume.getCenter().y});
     frames();
-    pointer(platform::Event::Type::MouseUp, {volume.x + volume.width * 0.75F, volume.getCenter().y});
+    pointer(haylen::platform::Event::Type::MouseUp, {volume.x + volume.width * 0.75F, volume.getCenter().y});
     frames(2);
     ASSERT_FALSE(events.empty());
     const double dragged = getLastEvent().value.at("value").get<double>();
     EXPECT_GT(dragged, 0.6);
     EXPECT_LT(dragged, 0.9);
 
-    const math::Rect stepped = getBounds(*gui, "stepped");
+    const haylen::math::Rect stepped = getBounds(*gui, "stepped");
     click({stepped.x + stepped.width * 0.6F, stepped.getCenter().y});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", 5.0}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", 5.0}}));
 
     click(*gui, "name");
     events.clear();
     type(U"abcdef");
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     frames();
     EXPECT_EQ(getLastEvent().name, "submit");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", "abcd"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", "abcd"}}));
 
-    const math::Rect count = getBounds(*gui, "count");
+    const haylen::math::Rect count = getBounds(*gui, "count");
     click({count.getRight() - count.height * 0.5F, count.getCenter().y});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", 3.0}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", 3.0}}));
     click({count.x + count.height * 0.5F, count.getCenter().y});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", 1.0}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", 1.0}}));
 
-    gui->command(getUi().getContext(), "search", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "search", "focus", haylen::core::Json::object());
     frames(2);
     type(U"oak");
-    const math::Rect search = getBounds(*gui, "search");
+    const haylen::math::Rect search = getBounds(*gui, "search");
     click({search.getRight() - search.height * 0.3F, search.getCenter().y});
     EXPECT_EQ(getLastEvent().id, "search");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", ""}}));
-    EXPECT_THROW(gui->command(getUi().getContext(), "count", "shake", core::Json::object()), std::invalid_argument);
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", ""}}));
+    EXPECT_THROW(gui->command(getUi().getContext(), "count", "shake", haylen::core::Json::object()), std::invalid_argument);
 }
 
 TEST_F(ComponentTest, SelectsInContainersAndCollections) {
@@ -188,44 +188,44 @@ TEST_F(ComponentTest, SelectsInContainersAndCollections) {
         {"kind": "splitter", "id": "split", "height": 60, "children": [{"kind": "spacer"}, {"kind": "spacer"}]}
     ]})");
     // clang-format on
-    const float row = getUi().getTheme().getMetric(Theme::Metric::ListRowHeight);
+    const float row = getUi().getTheme().getMetric(haylen::ui::Theme::Metric::ListRowHeight);
 
-    const math::Rect tabs = getBounds(*gui, "tabs");
+    const haylen::math::Rect tabs = getBounds(*gui, "tabs");
     getUi().getBackend().makeCurrent();
-    const float tab = Typography::measure(getUi().getContext(), Theme::Font::Button, "Same").x + getUi().getTheme().getMetric(Theme::Metric::TabPaddingX) * 2.0F;
+    const float tab = haylen::ui::Typography::measure(getUi().getContext(), haylen::ui::Theme::Font::Button, "Same").x + getUi().getTheme().getMetric(haylen::ui::Theme::Metric::TabPaddingX) * 2.0F;
     click({tabs.x + tab * 1.5F, tabs.y + 10.0F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "two"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"item", "two"}}));
 
-    const math::Rect list = getBounds(*gui, "list");
+    const haylen::math::Rect list = getBounds(*gui, "list");
     click({list.getCenter().x, list.y + row * 1.5F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "b"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"item", "b"}}));
 
-    math::Rect tree = getBounds(*gui, "tree");
-    click({tree.x + getUi().getTheme().getMetric(Theme::Metric::IconSize) * 0.5F, tree.y + row * 0.5F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "root"}, {"expanded", true}}));
+    haylen::math::Rect tree = getBounds(*gui, "tree");
+    click({tree.x + getUi().getTheme().getMetric(haylen::ui::Theme::Metric::IconSize) * 0.5F, tree.y + row * 0.5F});
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"item", "root"}, {"expanded", true}}));
     tree = getBounds(*gui, "tree");
     click({tree.getCenter().x, tree.y + row * 1.5F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "leaf"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"item", "leaf"}}));
 
-    const math::Rect table = getBounds(*gui, "table");
+    const haylen::math::Rect table = getBounds(*gui, "table");
     click({table.getCenter().x, table.y + row * 0.75F + row * 1.5F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "r2"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"item", "r2"}}));
 
-    const math::Rect split = getBounds(*gui, "split");
-    pointer(platform::Event::Type::MouseMove, split.getCenter());
+    const haylen::math::Rect split = getBounds(*gui, "split");
+    pointer(haylen::platform::Event::Type::MouseMove, split.getCenter());
     frames();
-    pointer(platform::Event::Type::MouseDown, split.getCenter());
+    pointer(haylen::platform::Event::Type::MouseDown, split.getCenter());
     frames();
-    pointer(platform::Event::Type::MouseMove, {split.x + split.width * 0.25F, split.getCenter().y});
+    pointer(haylen::platform::Event::Type::MouseMove, {split.x + split.width * 0.25F, split.getCenter().y});
     frames();
-    pointer(platform::Event::Type::MouseUp, {split.x + split.width * 0.25F, split.getCenter().y});
+    pointer(haylen::platform::Event::Type::MouseUp, {split.x + split.width * 0.25F, split.getCenter().y});
     frames(2);
     EXPECT_EQ(getLastEvent().name, "resize");
     EXPECT_LT(getLastEvent().value.at("ratio").get<double>(), 0.4);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"tabs:select", "list:select", "tree:toggle", "tree:select", "table:select", "split:resize"}));
 
     for (const double width : {std::numeric_limits<double>::infinity(), std::numeric_limits<double>::quiet_NaN(), 1e300}) {
-        core::Json columns = core::Json::array();
+        haylen::core::Json columns = haylen::core::Json::array();
         columns.push_back({{"width", width}});
         EXPECT_THROW(gui->set("table", {{"columns", columns}}), std::invalid_argument) << width;
     }
@@ -240,23 +240,23 @@ TEST_F(ComponentTest, RunsDialogsAndPopups) {
     ]})");
     // clang-format on
     frames(2);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     frames(2);
     ASSERT_FALSE(events.empty());
     EXPECT_EQ(getLastEvent().id, "quit");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"button", "yes"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"button", "yes"}}));
 
-    const float padding = getUi().getTheme().getMetric(Theme::Metric::MenuPadding);
-    const float item = getUi().getTheme().getMetric(Theme::Metric::ListRowHeight) * 0.75F;
-    const math::Rect size = getBounds(*gui, "size");
+    const float padding = getUi().getTheme().getMetric(haylen::ui::Theme::Metric::MenuPadding);
+    const float item = getUi().getTheme().getMetric(haylen::ui::Theme::Metric::ListRowHeight) * 0.75F;
+    const haylen::math::Rect size = getBounds(*gui, "size");
     click(size.getCenter());
     click({size.x + padding + 20.0F, size.getBottom() + 4.0F + padding + item * 0.5F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", "small"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", "small"}}));
 
-    const math::Rect menu = getBounds(*gui, "menu");
+    const haylen::math::Rect menu = getBounds(*gui, "menu");
     click(menu.getCenter());
     click({menu.x + padding + 20.0F, menu.getBottom() + 4.0F + padding + item * 0.5F});
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"item", "save"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"item", "save"}}));
 }
 
 // A menu whose node stops drawing closes, so it no longer keeps the pointer and cancel from the rest of the UI.
@@ -301,11 +301,11 @@ TEST_F(ComponentTest, ScrollsTheContentOfDialogsTallerThanTheScreen) {
 
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "dialog", "id": "rules", "title": "Rules", "buttons": [{"id": "ok", "text": "OK"}], "children": [)" + buttons + "]}]}");
     frames(2);
-    const math::Rect dialog = getBounds(*gui, "rules");
+    const haylen::math::Rect dialog = getBounds(*gui, "rules");
     EXPECT_LE(dialog.getBottom(), 1080.0F);
     EXPECT_GT(getBounds(*gui, "b29").getBottom(), dialog.getBottom());
 
-    gui->command(getUi().getContext(), "b29", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "b29", "focus", haylen::core::Json::object());
     frames(3);
     EXPECT_LE(getBounds(*gui, "b29").getBottom(), dialog.getBottom());
 }
@@ -318,14 +318,14 @@ TEST_F(ComponentTest, LetsThePointerThroughAnEmptyScroll) {
 }
 
 TEST_F(ComponentTest, ScrollsAScrollToAnOffsetOrANodeOnCommand) {
-    core::Json lines = core::Json::array();
+    haylen::core::Json lines = haylen::core::Json::array();
     for (int index = 1; index <= 100; ++index) {
         lines.push_back({{"kind", "label"}, {"id", "line-" + std::to_string(index)}, {"text", "Line " + std::to_string(index)}});
     }
 
-    const core::Json tree = {{"kind", "scroll"}, {"id", "log"}, {"children", {{{"kind", "column"}, {"gap", 0}, {"children", lines}}}}};
+    const haylen::core::Json tree = {{"kind", "scroll"}, {"id", "log"}, {"children", {{{"kind", "column"}, {"gap", 0}, {"children", lines}}}}};
     auto gui = mount(tree.dump());
-    Context& context = getUi().getContext();
+    haylen::ui::Context& context = getUi().getContext();
     const auto distance = [&](const std::string& id) { return getBounds(*gui, id).y - getBounds(*gui, "log").y; };
 
     const float offset = distance("line-11");
@@ -351,7 +351,7 @@ TEST_F(ComponentTest, ScrollsAScrollToAnOffsetOrANodeOnCommand) {
     frames(2);
     EXPECT_NEAR(distance("line-1"), 0.0F, 1.0F);
 
-    EXPECT_THROW(gui->command(context, "log", "scrollTo", core::Json::object()), std::invalid_argument);
+    EXPECT_THROW(gui->command(context, "log", "scrollTo", haylen::core::Json::object()), std::invalid_argument);
     EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"node", "line-1"}, {"offset", 0}}), std::invalid_argument);
     EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"node", "line-999"}}), std::invalid_argument);
     EXPECT_THROW(gui->command(context, "log", "scrollTo", {{"offset", 10}, {"speed", 2}}), std::invalid_argument);
@@ -376,22 +376,22 @@ TEST_F(ComponentTest, CommitsTypedNumbersInsideTheRange) {
     // clang-format off
     const auto retype = [this, &gui](std::u32string_view text) {
         click(*gui, "count");
-        key(input::Key::End);
-        key(input::Key::Backspace);
-        key(input::Key::Backspace);
+        key(haylen::input::Key::End);
+        key(haylen::input::Key::Backspace);
+        key(haylen::input::Key::Backspace);
         type(text);
     };
     // clang-format on
     retype(U"50");
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     retype(U"5");
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     retype(U"nan");
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     frames(3);
     ASSERT_EQ(getEventNames(), (std::vector<std::string>{"count:change", "count:change"}));
-    EXPECT_EQ(events[0].value, (core::Json{{"value", 50.0}}));
-    EXPECT_EQ(events[1].value, (core::Json{{"value", 10.0}}));
+    EXPECT_EQ(events[0].value, (haylen::core::Json{{"value", 50.0}}));
+    EXPECT_EQ(events[1].value, (haylen::core::Json{{"value", 10.0}}));
 }
 
 TEST_F(ComponentTest, MeasuresGridsWithTheGapsBetweenTheirColumns) {
@@ -432,9 +432,9 @@ TEST_F(ComponentTest, MeasuresSplitterChildrenAtTheirShares) {
     ]})");
     // clang-format on
     frames();
-    Context& context = getUi().getContext();
-    const float line = std::floor(Typography::getLineHeight(context, Theme::Font::Body));
-    EXPECT_GE(getBounds(*gui, "split").height, Typography::measureParagraph(context, Theme::Font::Body, text, getBounds(*gui, "left").width).y);
+    haylen::ui::Context& context = getUi().getContext();
+    const float line = std::floor(haylen::ui::Typography::getLineHeight(context, haylen::ui::Theme::Font::Body));
+    EXPECT_GE(getBounds(*gui, "split").height, haylen::ui::Typography::measureParagraph(context, haylen::ui::Theme::Font::Body, text, getBounds(*gui, "left").width).y);
     EXPECT_GE(getBounds(*gui, "top").height, line);
     EXPECT_GE(getBounds(*gui, "bottom").height, line);
 }
@@ -443,8 +443,8 @@ TEST_F(ComponentTest, MeasuresSplitterChildrenAtTheirShares) {
 TEST_F(ComponentTest, ShowsEveryDigitOfAHugeNumber) {
     mount(R"({"kind": "column", "children": [{"kind": "numberField", "id": "big", "value": 1e80, "max": 1e81, "width": 900}]})");
     frames();
-    const Backend& backend = getUi().getBackend();
-    const auto found = std::ranges::find_if(backend.getTexts(), [&backend](const Backend::Text& text) { return backend.getContent(text).starts_with("1000"); });
+    const haylen::ui::Backend& backend = getUi().getBackend();
+    const auto found = std::ranges::find_if(backend.getTexts(), [&backend](const haylen::ui::Backend::Text& text) { return backend.getContent(text).starts_with("1000"); });
     ASSERT_NE(found, backend.getTexts().end());
     EXPECT_EQ(std::stod(std::string(backend.getContent(*found))), 1e80);
 }
@@ -453,21 +453,21 @@ TEST_F(ComponentTest, ShowsEveryDigitOfAHugeNumber) {
 TEST_F(ComponentTest, WrapsTheLinesOfATextArea) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": "The tide rose over the harbor wall and the boats drifted toward the lighthouse at dusk."}]})");
     frames();
-    const math::Rect field = getBounds(*gui, "notes");
-    Backend& backend = getUi().getBackend();
+    const haylen::math::Rect field = getBounds(*gui, "notes");
+    haylen::ui::Backend& backend = getUi().getBackend();
     bool drawn = false;
-    for (const Backend::Text& text : backend.getTexts()) {
+    for (const haylen::ui::Backend::Text& text : backend.getTexts()) {
         const std::string_view content = backend.getContent(text);
         if (!content.starts_with("The tide")) {
             continue;
         }
 
         drawn = true;
-        const std::shared_ptr<const text::Layout> laid = text.family->layout(content, text.style);
+        const std::shared_ptr<const haylen::text::Layout> laid = text.family->layout(content, text.style);
         EXPECT_GT(laid->lines.size(), 2U);
 
-        for (const text::Layout::Line& line : laid->lines) {
-            const math::Rect box = line.box.translated(text.origin);
+        for (const haylen::text::Layout::Line& line : laid->lines) {
+            const haylen::math::Rect box = line.box.translated(text.origin);
             EXPECT_GE(box.x, field.x);
             EXPECT_LE(box.getRight(), field.getRight());
         }
@@ -499,14 +499,14 @@ TEST_F(ComponentTest, StacksTheActionsOfANarrowSettingsForm) {
     ]}]})");
     // clang-format on
     frames();
-    const math::Rect form = getBounds(*gui, "form");
-    const math::Rect save = getBounds(*gui, "save");
-    const math::Rect cancel = getBounds(*gui, "cancel");
-    const math::Rect defaults = getBounds(*gui, "defaults");
+    const haylen::math::Rect form = getBounds(*gui, "form");
+    const haylen::math::Rect save = getBounds(*gui, "save");
+    const haylen::math::Rect cancel = getBounds(*gui, "cancel");
+    const haylen::math::Rect defaults = getBounds(*gui, "defaults");
     EXPECT_LT(save.getBottom(), cancel.y);
     EXPECT_LT(cancel.getBottom(), defaults.y);
 
-    for (const math::Rect& action : {save, cancel, defaults}) {
+    for (const haylen::math::Rect& action : {save, cancel, defaults}) {
         EXPECT_EQ(action.x, save.x);
         EXPECT_EQ(action.width, save.width);
         EXPECT_GE(action.x, form.x);
@@ -536,11 +536,11 @@ TEST_F(ComponentTest, DrawsOnlyTheRowsOfAScrolledListInView) {
 TEST_F(ComponentTest, DrawsAFlatStickWithARaisedKnob) {
     mount(R"({"kind": "column", "children": [{"kind": "touchStick", "id": "stick", "action": "move", "radius": 100}]})");
     frames();
-    const Theme& theme = getUi().getTheme();
+    const haylen::ui::Theme& theme = getUi().getTheme();
     int rims = 0;
     int rings = 0;
-    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
-        rims += shape.borderColor == theme.getColor(Theme::Color::Accent) && shape.bounds.width == 90.0F ? 1 : 0;
+    for (const haylen::graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        rims += shape.borderColor == theme.getColor(haylen::ui::Theme::Color::Accent) && shape.bounds.width == 90.0F ? 1 : 0;
         rings += shape.borderWidth > 0.0F && shape.bounds.width == 110.0F ? 1 : 0;
     }
 
@@ -555,25 +555,25 @@ TEST_F(ComponentTest, TouchControlsIgnoreFingersWhileDisabled) {
         {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120}
     ]})");
     // clang-format on
-    const math::Rect stick = getBounds(*gui, "stick");
-    const math::Rect attack = getBounds(*gui, "attack");
-    input::VirtualInput& controls = getEngine().getVirtualInput();
-    touch(platform::Event::Type::TouchBegan, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
-    touch(platform::Event::Type::TouchBegan, 2, attack.getCenter());
+    const haylen::math::Rect stick = getBounds(*gui, "stick");
+    const haylen::math::Rect attack = getBounds(*gui, "attack");
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
+    touch(haylen::platform::Event::Type::TouchBegan, 1, stick.getCenter() + haylen::math::Vec2{50.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchBegan, 2, attack.getCenter());
     frames(2);
     ASSERT_TRUE(controls.isButtonDown("attack"));
 
     gui->set("stick", {{"enabled", false}});
     gui->set("attack", {{"enabled", false}});
     frames(2);
-    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_EQ(controls.getStick("move"), haylen::math::Vec2());
     EXPECT_FALSE(controls.isButtonDown("attack"));
 
     // Enabled again under the same fingers, the controls wait for new presses.
     gui->set("stick", {{"enabled", true}});
     gui->set("attack", {{"enabled", true}});
     frames(2);
-    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_EQ(controls.getStick("move"), haylen::math::Vec2());
     EXPECT_FALSE(controls.isButtonDown("attack"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release"}));
 }
@@ -596,20 +596,20 @@ TEST_F(ComponentTest, HoldsTouchControlsWithoutAllocating) {
         {"kind": "touchButton", "id": "attack", "action": "attackTheNearestEnemy", "size": 120}
     ]})");
     // clang-format on
-    const math::Rect stick = getBounds(*gui, "stick");
-    const math::Rect attack = getBounds(*gui, "attack");
-    touch(platform::Event::Type::TouchBegan, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
-    touch(platform::Event::Type::TouchBegan, 2, attack.getCenter());
+    const haylen::math::Rect stick = getBounds(*gui, "stick");
+    const haylen::math::Rect attack = getBounds(*gui, "attack");
+    touch(haylen::platform::Event::Type::TouchBegan, 1, stick.getCenter() + haylen::math::Vec2{50.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchBegan, 2, attack.getCenter());
     EXPECT_EQ(measure(), empty);
 
-    input::VirtualInput& controls = getEngine().getVirtualInput();
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
     EXPECT_TRUE(controls.isButtonDown("attackTheNearestEnemy"));
     EXPECT_GT(controls.getStick("moveTheCharacterAround").x, 0.0F);
-    touch(platform::Event::Type::TouchEnded, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
-    touch(platform::Event::Type::TouchEnded, 2, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchEnded, 1, stick.getCenter() + haylen::math::Vec2{50.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchEnded, 2, attack.getCenter());
     frames(2);
     EXPECT_FALSE(controls.isButtonDown("attackTheNearestEnemy"));
-    EXPECT_EQ(controls.getStick("moveTheCharacterAround"), math::Vec2());
+    EXPECT_EQ(controls.getStick("moveTheCharacterAround"), haylen::math::Vec2());
 }
 
 TEST_F(ComponentTest, SlideInButtonsTakeAFingerThatMovesOntoThem) {
@@ -620,26 +620,26 @@ TEST_F(ComponentTest, SlideInButtonsTakeAFingerThatMovesOntoThem) {
         {"kind": "touchButton", "id": "defend", "action": "defend", "size": 120}
     ]})");
     // clang-format on
-    const math::Rect jump = getBounds(*gui, "jump");
-    const math::Rect attack = getBounds(*gui, "attack");
-    const math::Rect defend = getBounds(*gui, "defend");
-    input::VirtualInput& controls = getEngine().getVirtualInput();
+    const haylen::math::Rect jump = getBounds(*gui, "jump");
+    const haylen::math::Rect attack = getBounds(*gui, "attack");
+    const haylen::math::Rect defend = getBounds(*gui, "defend");
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
 
     // A thumb that lands on one button and slides onto the next presses the second and lets go of the first.
-    touch(platform::Event::Type::TouchBegan, 1, jump.getCenter());
+    touch(haylen::platform::Event::Type::TouchBegan, 1, jump.getCenter());
     frames(2);
     EXPECT_TRUE(controls.isButtonDown("jump"));
-    touch(platform::Event::Type::TouchMoved, 1, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchMoved, 1, attack.getCenter());
     frames(2);
     EXPECT_FALSE(controls.isButtonDown("jump"));
     EXPECT_TRUE(controls.isButtonDown("attack"));
 
     // A button without sliding fingers waits for a finger that lands on it.
-    touch(platform::Event::Type::TouchMoved, 1, defend.getCenter());
+    touch(haylen::platform::Event::Type::TouchMoved, 1, defend.getCenter());
     frames(2);
     EXPECT_FALSE(controls.isButtonDown("attack"));
     EXPECT_FALSE(controls.isButtonDown("defend"));
-    touch(platform::Event::Type::TouchEnded, 1, defend.getCenter());
+    touch(haylen::platform::Event::Type::TouchEnded, 1, defend.getCenter());
     frames(2);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"jump:press", "jump:release", "attack:press", "attack:release"}));
 }
@@ -651,31 +651,31 @@ TEST_F(ComponentTest, DrivesVirtualControlsWithSeveralFingers) {
         {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120}
     ]})");
     // clang-format on
-    const math::Rect stick = getBounds(*gui, "stick");
-    const math::Rect attack = getBounds(*gui, "attack");
-    input::VirtualInput& controls = getEngine().getVirtualInput();
+    const haylen::math::Rect stick = getBounds(*gui, "stick");
+    const haylen::math::Rect attack = getBounds(*gui, "attack");
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
 
-    touch(platform::Event::Type::TouchBegan, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
-    touch(platform::Event::Type::TouchBegan, 2, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchBegan, 1, stick.getCenter() + haylen::math::Vec2{50.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchBegan, 2, attack.getCenter());
     frames(2);
     EXPECT_NEAR(controls.getStick("move").x, 0.5F, 0.01F);
     EXPECT_TRUE(controls.isButtonDown("attack"));
     EXPECT_TRUE(getUi().isUsingPointer());
 
-    touch(platform::Event::Type::TouchMoved, 1, stick.getCenter() + math::Vec2{0.0F, -300.0F});
+    touch(haylen::platform::Event::Type::TouchMoved, 1, stick.getCenter() + haylen::math::Vec2{0.0F, -300.0F});
     frames(2);
     EXPECT_NEAR(controls.getStick("move").y, -1.0F, 0.01F);
 
-    touch(platform::Event::Type::TouchEnded, 1, stick.getCenter());
-    touch(platform::Event::Type::TouchEnded, 2, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchEnded, 1, stick.getCenter());
+    touch(haylen::platform::Event::Type::TouchEnded, 2, attack.getCenter());
     frames(2);
-    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_EQ(controls.getStick("move"), haylen::math::Vec2());
     EXPECT_FALSE(controls.isButtonDown("attack"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release"}));
 
     // A control that stops drawing lets go of what it held.
     click(attack.getCenter());
-    touch(platform::Event::Type::TouchBegan, 3, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchBegan, 3, attack.getCenter());
     frames(2);
     EXPECT_TRUE(controls.isButtonDown("attack"));
     gui->set("attack", {{"visible", false}});
@@ -691,22 +691,22 @@ TEST_F(ComponentTest, PlacesTheRingOfAStickByItsMode) {
         {"kind": "touchStick", "id": "following", "action": "look", "mode": "following", "radius": 50, "deadZone": 0, "width": 400, "height": 400}
     ]})");
     // clang-format on
-    input::VirtualInput& controls = getEngine().getVirtualInput();
-    const math::Vec2 start{100.0F, 200.0F};
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
+    const haylen::math::Vec2 start{100.0F, 200.0F};
 
     // Three fingers land at the same spot of each area and move by the same amount, so each mode shows in the vector it reports.
     for (const auto& [finger, id] : {std::pair{1U, "fixed"}, std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
-        touch(platform::Event::Type::TouchBegan, finger, getBounds(*gui, id).getMin() + start);
+        touch(haylen::platform::Event::Type::TouchBegan, finger, getBounds(*gui, id).getMin() + start);
     }
 
     frames(2);
     EXPECT_NEAR(controls.getStick("walk").x, -1.0F, 0.01F);
-    EXPECT_EQ(controls.getStick("aim"), math::Vec2());
-    EXPECT_EQ(controls.getStick("look"), math::Vec2());
+    EXPECT_EQ(controls.getStick("aim"), haylen::math::Vec2());
+    EXPECT_EQ(controls.getStick("look"), haylen::math::Vec2());
 
     // A finger far past the ring pulls a following ring after it, so moving back reads from the new center.
     for (const auto& [finger, id] : {std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
-        touch(platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + math::Vec2{150.0F, 0.0F});
+        touch(haylen::platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + haylen::math::Vec2{150.0F, 0.0F});
     }
 
     frames(2);
@@ -714,7 +714,7 @@ TEST_F(ComponentTest, PlacesTheRingOfAStickByItsMode) {
     EXPECT_NEAR(controls.getStick("look").x, 1.0F, 0.01F);
 
     for (const auto& [finger, id] : {std::pair{2U, "floating"}, std::pair{3U, "following"}}) {
-        touch(platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + math::Vec2{100.0F, 0.0F});
+        touch(haylen::platform::Event::Type::TouchMoved, finger, getBounds(*gui, id).getMin() + start + haylen::math::Vec2{100.0F, 0.0F});
     }
 
     frames(2);
@@ -722,9 +722,9 @@ TEST_F(ComponentTest, PlacesTheRingOfAStickByItsMode) {
     EXPECT_NEAR(controls.getStick("look").x, 0.0F, 0.01F);
 
     // A following ring stays inside the area of its stick.
-    touch(platform::Event::Type::TouchMoved, 3, getBounds(*gui, "following").getMin() + math::Vec2{900.0F, 200.0F});
+    touch(haylen::platform::Event::Type::TouchMoved, 3, getBounds(*gui, "following").getMin() + haylen::math::Vec2{900.0F, 200.0F});
     frames(2);
-    touch(platform::Event::Type::TouchMoved, 3, getBounds(*gui, "following").getMin() + math::Vec2{400.0F, 200.0F});
+    touch(haylen::platform::Event::Type::TouchMoved, 3, getBounds(*gui, "following").getMin() + haylen::math::Vec2{400.0F, 200.0F});
     frames(2);
     EXPECT_NEAR(controls.getStick("look").x, 0.0F, 0.01F);
     EXPECT_THROW(gui->set("fixed", {{"mode", "drifting"}}), std::invalid_argument);
@@ -737,18 +737,18 @@ TEST_F(ComponentTest, TouchControlsLetGoWhenTheyStopDrawing) {
         {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120}
     ]})");
     // clang-format on
-    const math::Rect stick = getBounds(*gui, "stick");
-    const math::Rect attack = getBounds(*gui, "attack");
-    input::VirtualInput& controls = getEngine().getVirtualInput();
+    const haylen::math::Rect stick = getBounds(*gui, "stick");
+    const haylen::math::Rect attack = getBounds(*gui, "attack");
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
 
-    touch(platform::Event::Type::TouchBegan, 1, stick.getCenter() + math::Vec2{50.0F, 0.0F});
-    touch(platform::Event::Type::TouchBegan, 2, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchBegan, 1, stick.getCenter() + haylen::math::Vec2{50.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchBegan, 2, attack.getCenter());
     frames(2);
     ASSERT_TRUE(controls.isButtonDown("attack"));
     gui->set("stick", {{"visible", false}});
     gui->set("attack", {{"visible", false}});
     frames(2);
-    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_EQ(controls.getStick("move"), haylen::math::Vec2());
     EXPECT_FALSE(controls.isButtonDown("attack"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"attack:press", "attack:release"}));
 
@@ -756,14 +756,14 @@ TEST_F(ComponentTest, TouchControlsLetGoWhenTheyStopDrawing) {
     gui->set("stick", {{"visible", true}});
     gui->set("attack", {{"visible", true}});
     frames(2);
-    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_EQ(controls.getStick("move"), haylen::math::Vec2());
     EXPECT_FALSE(controls.isButtonDown("attack"));
-    touch(platform::Event::Type::TouchEnded, 1, stick.getCenter());
-    touch(platform::Event::Type::TouchEnded, 2, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchEnded, 1, stick.getCenter());
+    touch(haylen::platform::Event::Type::TouchEnded, 2, attack.getCenter());
     frames(2);
     EXPECT_EQ(getEventNames().size(), 2U);
 
-    touch(platform::Event::Type::TouchBegan, 3, attack.getCenter());
+    touch(haylen::platform::Event::Type::TouchBegan, 3, attack.getCenter());
     frames(2);
     gui->setVisible(false);
     frames(2);
@@ -778,43 +778,43 @@ TEST_F(ComponentTest, TouchControlsLetGoWhenTheUiStops) {
         {"kind": "touchButton", "id": "attack", "action": "attack", "size": 120}
     ]})");
     // clang-format on
-    input::VirtualInput& controls = getEngine().getVirtualInput();
-    touch(platform::Event::Type::TouchBegan, 1, getBounds(*gui, "stick").getCenter() + math::Vec2{50.0F, 0.0F});
-    touch(platform::Event::Type::TouchBegan, 2, getBounds(*gui, "attack").getCenter());
+    haylen::input::VirtualInput& controls = getEngine().getVirtualInput();
+    touch(haylen::platform::Event::Type::TouchBegan, 1, getBounds(*gui, "stick").getCenter() + haylen::math::Vec2{50.0F, 0.0F});
+    touch(haylen::platform::Event::Type::TouchBegan, 2, getBounds(*gui, "attack").getCenter());
     frames(2);
     ASSERT_TRUE(controls.isButtonDown("attack"));
 
     getUi().stop(getEngine());
     EXPECT_FALSE(controls.isButtonDown("attack"));
-    EXPECT_EQ(controls.getStick("move"), math::Vec2());
+    EXPECT_EQ(controls.getStick("move"), haylen::math::Vec2());
 }
 
 TEST_F(ComponentTest, KeepsMouseClicksOnTheInterfaceFromActions) {
-    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "attack", "type": "button", "bindings": ["mouse:left", "virtual:attack"]}]})"));
+    getEngine().getActions().load(haylen::core::Json::parse(R"({"actions": [{"name": "attack", "type": "button", "bindings": ["mouse:left", "virtual:attack"]}]})"));
     auto gui = mount(R"({"kind": "stack", "children": [{"kind": "button", "id": "pause", "text": "Pause", "align": "start"}]})");
-    const math::Vec2 button = getBounds(*gui, "pause").getCenter();
+    const haylen::math::Vec2 button = getBounds(*gui, "pause").getCenter();
 
-    pointer(platform::Event::Type::MouseMove, button);
+    pointer(haylen::platform::Event::Type::MouseMove, button);
     frames(2);
-    pointer(platform::Event::Type::MouseDown, button);
+    pointer(haylen::platform::Event::Type::MouseDown, button);
     frames();
     EXPECT_TRUE(getEngine().getInput().isPointerCaptured());
     EXPECT_FALSE(getEngine().getActions().isDown("attack"));
-    pointer(platform::Event::Type::MouseUp, button);
+    pointer(haylen::platform::Event::Type::MouseUp, button);
     frames(2);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"pause:click"}));
 
-    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {1500.0F, 900.0F});
     frames(2);
-    pointer(platform::Event::Type::MouseDown, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseDown, {1500.0F, 900.0F});
     frames();
     EXPECT_FALSE(getEngine().getInput().isPointerCaptured());
     EXPECT_TRUE(getEngine().getActions().isDown("attack"));
-    pointer(platform::Event::Type::MouseUp, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseUp, {1500.0F, 900.0F});
     frames();
 
     // Virtual buttons keep driving actions while the interface owns the pointer.
-    pointer(platform::Event::Type::MouseMove, button);
+    pointer(haylen::platform::Event::Type::MouseMove, button);
     frames(2);
     getEngine().getVirtualInput().setButton("attack", true);
     frames();
@@ -823,28 +823,28 @@ TEST_F(ComponentTest, KeepsMouseClicksOnTheInterfaceFromActions) {
 }
 
 TEST_F(ComponentTest, KeepsAMousePressWithTheSideThatTookItUntilItIsReleased) {
-    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "attack", "type": "button", "bindings": ["mouse:left"]}]})"));
+    getEngine().getActions().load(haylen::core::Json::parse(R"({"actions": [{"name": "attack", "type": "button", "bindings": ["mouse:left"]}]})"));
     auto gui = mount(R"({"kind": "stack", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200, "align": "start"}]})");
-    const math::Vec2 card = getBounds(*gui, "card").getCenter();
+    const haylen::math::Vec2 card = getBounds(*gui, "card").getCenter();
 
     // A drag that starts in the game keeps its action down while it crosses the interface.
-    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {1500.0F, 900.0F});
     frames(2);
-    pointer(platform::Event::Type::MouseDown, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseDown, {1500.0F, 900.0F});
     frames();
     ASSERT_TRUE(getEngine().getActions().isDown("attack"));
-    pointer(platform::Event::Type::MouseMove, card);
+    pointer(haylen::platform::Event::Type::MouseMove, card);
     frames(2);
     EXPECT_TRUE(getEngine().getInput().isPointerCaptured());
     EXPECT_TRUE(getEngine().getActions().isDown("attack"));
     EXPECT_FALSE(getEngine().getActions().isPressed("attack"));
-    pointer(platform::Event::Type::MouseUp, card);
+    pointer(haylen::platform::Event::Type::MouseUp, card);
     frames(2);
 
     // A press on the interface stays with it when the pointer leaves.
-    pointer(platform::Event::Type::MouseDown, card);
+    pointer(haylen::platform::Event::Type::MouseDown, card);
     frames();
-    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {1500.0F, 900.0F});
     frames(2);
     EXPECT_FALSE(getEngine().getInput().isPointerCaptured());
     EXPECT_FALSE(getEngine().getActions().isDown("attack"));
@@ -853,31 +853,31 @@ TEST_F(ComponentTest, KeepsAMousePressWithTheSideThatTookItUntilItIsReleased) {
 // The list of a combo opens on the side of its anchor with room above the on-screen keyboard, so none of its items lies under the keyboard.
 TEST_F(ComponentTest, OpensTheListOfAComboAboveTheKeyboard) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 400}, {"kind": "combo", "id": "size", "width": 300, "items": [{"id": "small", "text": "Small"}, {"id": "medium", "text": "Medium"}, {"id": "large", "text": "Large"}]}]})");
-    const math::Rect anchor = getBounds(*gui, "size");
+    const haylen::math::Rect anchor = getBounds(*gui, "size");
     const float top = anchor.getBottom() + 40.0F;
-    getEngine().handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, top, 1920.0F, 1080.0F - top}});
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, top, 1920.0F, 1080.0F - top}});
     frames(2);
     click(anchor.getCenter());
     frames(2);
 
-    const Backend& backend = getUi().getBackend();
-    const auto drawn = std::ranges::find_if(backend.getTexts(), [&backend](const Backend::Text& text) { return backend.getContent(text) == "Large"; });
+    const haylen::ui::Backend& backend = getUi().getBackend();
+    const auto drawn = std::ranges::find_if(backend.getTexts(), [&backend](const haylen::ui::Backend::Text& text) { return backend.getContent(text) == "Large"; });
     ASSERT_NE(drawn, backend.getTexts().end()) << "The list of the combo does not open.";
     EXPECT_LT(drawn->origin.y, anchor.y) << "The list opens below its anchor, under the keyboard.";
 }
 
 // Presses the interface answers itself never reach the actions bound to the same keys and buttons, even while they stay held after the interface lets go, and they reach the actions again once it answers nothing.
 TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
-    getEngine().getActions().load(core::Json::parse(R"({"actions": [{"name": "back", "type": "button", "bindings": ["key:escape", "button:east"]}, {"name": "jump", "type": "button", "bindings": ["key:space", "key:j"]}]})"));
+    getEngine().getActions().load(haylen::core::Json::parse(R"({"actions": [{"name": "back", "type": "button", "bindings": ["key:escape", "button:east"]}, {"name": "jump", "type": "button", "bindings": ["key:space", "key:j"]}]})"));
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
         {"kind": "combo", "id": "size", "width": 300, "items": [{"id": "small", "text": "Small"}, {"id": "large", "text": "Large"}]},
         {"kind": "textField", "id": "name"},
         {"kind": "button", "id": "play", "text": "Play"}
     ]})");
-    const auto reaches = [this](input::Key code, std::string_view action) {
-        platform::Event event;
-        event.type = platform::Event::Type::KeyDown;
+    const auto reaches = [this](haylen::input::Key code, std::string_view action) {
+        haylen::platform::Event event;
+        event.type = haylen::platform::Event::Type::KeyDown;
         event.key = code;
         getEngine().handleEvent(event);
         bool reached = false;
@@ -886,13 +886,13 @@ TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
             reached = reached || getEngine().getActions().isDown(action);
         }
 
-        event.type = platform::Event::Type::KeyUp;
+        event.type = haylen::platform::Event::Type::KeyUp;
         getEngine().handleEvent(event);
         frames();
         return reached;
     };
-    const auto reachesButton = [this](input::GamepadButton pressed, std::string_view action) {
-        input::GamepadState state{.connected = true};
+    const auto reachesButton = [this](haylen::input::GamepadButton pressed, std::string_view action) {
+        haylen::input::GamepadState state{.connected = true};
         state.buttons[static_cast<std::size_t>(pressed)] = true;
         getLuaFixture().host().setGamepad(0, state);
         bool reached = false;
@@ -901,7 +901,7 @@ TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
             reached = reached || getEngine().getActions().isDown(action);
         }
 
-        getLuaFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+        getLuaFixture().host().setGamepad(0, haylen::input::GamepadState{.connected = true});
         frames();
         return reached;
     };
@@ -910,43 +910,43 @@ TEST_F(ComponentTest, KeepsPressesTheInterfaceAnswersFromActions) {
     // The combo keeps the focus once its list closes, so cancel still belongs to the interface until nothing has the focus.
     click(getBounds(*gui, "size").getCenter());
     ASSERT_TRUE(getUi().isCapturingBack());
-    EXPECT_FALSE(reaches(input::Key::Escape, "back"));
+    EXPECT_FALSE(reaches(haylen::input::Key::Escape, "back"));
     EXPECT_FALSE(getUi().isCapturingBack());
-    EXPECT_FALSE(reaches(input::Key::Escape, "back"));
+    EXPECT_FALSE(reaches(haylen::input::Key::Escape, "back"));
     getLuaFixture().runLua("require('haylen.ui').clearFocus()");
     frames();
-    EXPECT_TRUE(reaches(input::Key::Escape, "back"));
+    EXPECT_TRUE(reaches(haylen::input::Key::Escape, "back"));
 
     click(getBounds(*gui, "size").getCenter());
     ASSERT_TRUE(getUi().isCapturingBack());
-    EXPECT_FALSE(reachesButton(input::GamepadButton::East, "back"));
+    EXPECT_FALSE(reachesButton(haylen::input::GamepadButton::East, "back"));
     EXPECT_FALSE(getUi().isCapturingBack());
     getLuaFixture().runLua("require('haylen.ui').clearFocus()");
     frames();
-    EXPECT_TRUE(reachesButton(input::GamepadButton::East, "back"));
+    EXPECT_TRUE(reachesButton(haylen::input::GamepadButton::East, "back"));
 
     // The keys of a text field being edited stay with it, the escape that ends the editing included.
     click(getBounds(*gui, "name").getCenter());
-    EXPECT_FALSE(reaches(input::Key::J, "jump"));
-    EXPECT_FALSE(reaches(input::Key::Escape, "back"));
+    EXPECT_FALSE(reaches(haylen::input::Key::J, "jump"));
+    EXPECT_FALSE(reaches(haylen::input::Key::Escape, "back"));
 
     // Accept presses the focused control, and jumps again once nothing has the focus.
-    gui->command(getUi().getContext(), "play", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "play", "focus", haylen::core::Json::object());
     frames(2);
     events.clear();
-    EXPECT_FALSE(reaches(input::Key::Space, "jump"));
+    EXPECT_FALSE(reaches(haylen::input::Key::Space, "jump"));
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"play:click"}));
     getLuaFixture().runLua("require('haylen.ui').clearFocus()");
     frames();
-    EXPECT_TRUE(reaches(input::Key::Space, "jump"));
+    EXPECT_TRUE(reaches(haylen::input::Key::Space, "jump"));
 
     // A pointer held on empty space edits nothing, so the keys still play the game.
-    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
-    pointer(platform::Event::Type::MouseDown, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseDown, {1500.0F, 900.0F});
     frames(2);
-    EXPECT_TRUE(reaches(input::Key::Escape, "back"));
-    EXPECT_TRUE(reaches(input::Key::Space, "jump"));
-    pointer(platform::Event::Type::MouseUp, {1500.0F, 900.0F});
+    EXPECT_TRUE(reaches(haylen::input::Key::Escape, "back"));
+    EXPECT_TRUE(reaches(haylen::input::Key::Space, "jump"));
+    pointer(haylen::platform::Event::Type::MouseUp, {1500.0F, 900.0F});
     frames();
 }
 
@@ -957,19 +957,19 @@ TEST_F(ComponentTest, FocusesChipsAndRadioGroups) {
         {"kind": "radioGroup", "id": "level", "items": [{"id": "easy", "text": "Easy", "enabled": false}, {"id": "hard", "text": "Hard"}]}
     ]})");
     // clang-format on
-    gui->command(getUi().getContext(), "tag", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "tag", "focus", haylen::core::Json::object());
     frames(2);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     frames();
     EXPECT_EQ(getLastEvent().id, "tag");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"selected", true}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"selected", true}}));
 
-    gui->command(getUi().getContext(), "level", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "level", "focus", haylen::core::Json::object());
     frames(2);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     frames();
     EXPECT_EQ(getLastEvent().id, "level");
-    EXPECT_EQ(getLastEvent().value, (core::Json{{"value", "hard"}}));
+    EXPECT_EQ(getLastEvent().value, (haylen::core::Json{{"value", "hard"}}));
 }
 
 TEST_F(ComponentTest, ActivatesAScriptedFocusWithTheFirstPress) {
@@ -982,37 +982,37 @@ TEST_F(ComponentTest, ActivatesAScriptedFocusWithTheFirstPress) {
         return getUi().getFocus().isRingVisible();
     };
     // clang-format on
-    const math::Vec2 empty{1500.0F, 900.0F};
+    const haylen::math::Vec2 empty{1500.0F, 900.0F};
 
     // A mouse player gets a scripted focus without the ring, and the first Enter both shows the ring and presses the button.
-    pointer(platform::Event::Type::MouseMove, empty);
+    pointer(haylen::platform::Event::Type::MouseMove, empty);
     frames();
-    gui->command(getUi().getContext(), "first", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "first", "focus", haylen::core::Json::object());
     frames(2);
     ASSERT_FALSE(ringVisible());
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     EXPECT_TRUE(ringVisible());
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"first:click"}));
 
     // A click on empty space hides the ring again, and Space works the same way.
     click(empty);
-    gui->command(getUi().getContext(), "second", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "second", "focus", haylen::core::Json::object());
     frames(2);
     ASSERT_FALSE(ringVisible());
-    key(input::Key::Space);
+    key(haylen::input::Key::Space);
     EXPECT_TRUE(ringVisible());
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"first:click", "second:click"}));
 
     // So does the south button of a gamepad.
     click(empty);
-    gui->command(getUi().getContext(), "first", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "first", "focus", haylen::core::Json::object());
     frames(2);
     ASSERT_FALSE(ringVisible());
-    input::GamepadState pressed{.connected = true};
-    pressed.buttons[static_cast<std::size_t>(input::GamepadButton::South)] = true;
+    haylen::input::GamepadState pressed{.connected = true};
+    pressed.buttons[static_cast<std::size_t>(haylen::input::GamepadButton::South)] = true;
     getLuaFixture().host().setGamepad(0, pressed);
     frames();
-    getLuaFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+    getLuaFixture().host().setGamepad(0, haylen::input::GamepadState{.connected = true});
     frames();
     EXPECT_TRUE(ringVisible());
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"first:click", "second:click", "first:click"}));
@@ -1020,28 +1020,28 @@ TEST_F(ComponentTest, ActivatesAScriptedFocusWithTheFirstPress) {
 
 TEST_F(ComponentTest, ShowsTheFocusRingOfAScriptedFocusOnlyForGamepadPlayers) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "button", "id": "play", "text": "Play"}]})");
-    const math::Rect play = getBounds(*gui, "play");
+    const haylen::math::Rect play = getBounds(*gui, "play");
 
     // A mouse player gets the focus without the ring, which would otherwise frame the button on start.
-    pointer(platform::Event::Type::MouseMove, play.getCenter());
+    pointer(haylen::platform::Event::Type::MouseMove, play.getCenter());
     frames();
-    gui->command(getUi().getContext(), "play", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "play", "focus", haylen::core::Json::object());
     frames(2);
     getUi().getBackend().makeCurrent();
     EXPECT_NE(ImGui::GetCurrentContext()->NavId, 0U);
     EXPECT_FALSE(getUi().getFocus().isRingVisible());
 
-    input::GamepadState start;
+    haylen::input::GamepadState start;
     start.connected = true;
-    start.buttons[static_cast<std::size_t>(input::GamepadButton::Start)] = true;
+    start.buttons[static_cast<std::size_t>(haylen::input::GamepadButton::Start)] = true;
     getLuaFixture().host().setGamepad(0, start);
     frames();
-    getLuaFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+    getLuaFixture().host().setGamepad(0, haylen::input::GamepadState{.connected = true});
     frames();
-    ASSERT_EQ(getEngine().getInput().getLastDevice(), input::InputDevice::Gamepad);
+    ASSERT_EQ(getEngine().getInput().getLastDevice(), haylen::input::InputDevice::Gamepad);
     EXPECT_FALSE(getUi().getFocus().isRingVisible());
 
-    gui->command(getUi().getContext(), "play", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "play", "focus", haylen::core::Json::object());
     frames(2);
     EXPECT_TRUE(getUi().getFocus().isRingVisible());
 }
@@ -1092,7 +1092,7 @@ TEST_F(ComponentTest, KeepsASliderValueOffItsStepUntilThePlayerMovesIt) {
     EXPECT_TRUE(events.empty());
 
     // A value the player moves lands on the step.
-    const math::Rect volume = getBounds(*gui, "volume");
+    const haylen::math::Rect volume = getBounds(*gui, "volume");
     click({volume.x + volume.width * 0.8F, volume.getCenter().y});
     ASSERT_EQ(getEventNames(), (std::vector<std::string>{"volume:change"}));
     const double value = getLastEvent().value.at("value").get<double>();
@@ -1102,7 +1102,7 @@ TEST_F(ComponentTest, KeepsASliderValueOffItsStepUntilThePlayerMovesIt) {
 // A slider without a step keeps the digits that its decimals show, however small its range.
 TEST_F(ComponentTest, DragsASliderOverASmallRangeToEveryDigit) {
     auto gui = mount(R"({"kind": "slider", "id": "volume", "width": 400, "min": 0, "max": 0.001, "decimals": 6})");
-    const math::Rect volume = getBounds(*gui, "volume");
+    const haylen::math::Rect volume = getBounds(*gui, "volume");
     click({volume.x + volume.width * 0.37F, volume.getCenter().y});
     ASSERT_EQ(getEventNames(), (std::vector<std::string>{"volume:change"}));
     const double value = getLastEvent().value.at("value").get<double>();
@@ -1119,18 +1119,18 @@ TEST_F(ComponentTest, StepsSlidersWithTheKeyboardAndBoundsTheirEnds) {
         {"kind": "slider", "id": "depth", "width": 400, "min": -1000, "max": 0, "value": -1000, "showValue": true, "decimals": 0}
     ]})");
     // clang-format on
-    gui->command(getUi().getContext(), "volume", "focus", core::Json::object());
+    gui->command(getUi().getContext(), "volume", "focus", haylen::core::Json::object());
     frames(2);
-    key(input::Key::Right);
-    key(input::Key::Right);
+    key(haylen::input::Key::Right);
+    key(haylen::input::Key::Right);
     ASSERT_FALSE(events.empty());
     const double value = getLastEvent().value.at("value").get<double>();
     EXPECT_NEAR(value / 0.05, std::round(value / 0.05), 1e-9);
 
     events.clear();
     getUi().getBackend().makeCurrent();
-    const float label = Typography::measure(getUi().getContext(), Theme::Font::Body, "-1000").x + getUi().getTheme().getMetric(Theme::Metric::ItemSpacing);
-    const math::Rect depth = getBounds(*gui, "depth");
+    const float label = haylen::ui::Typography::measure(getUi().getContext(), haylen::ui::Theme::Font::Body, "-1000").x + getUi().getTheme().getMetric(haylen::ui::Theme::Metric::ItemSpacing);
+    const haylen::math::Rect depth = getBounds(*gui, "depth");
     click({depth.getRight() - label * 0.5F, depth.getCenter().y});
     EXPECT_TRUE(events.empty());
 
@@ -1157,7 +1157,7 @@ TEST_F(ComponentTest, MeasuresGrowingChildrenOfRowsAtTheirShare) {
     ]}]})");
     // clang-format on
     frames();
-    const float line = Typography::getLineHeight(getUi().getContext(), Theme::Font::Body);
+    const float line = haylen::ui::Typography::getLineHeight(getUi().getContext(), haylen::ui::Theme::Font::Body);
     EXPECT_GE(getBounds(*gui, "long").height, line * 3.0F);
     EXPECT_GE(getBounds(*gui, "below").y, getBounds(*gui, "long").getBottom());
     EXPECT_GE(getBounds(*gui, "nested").height, line * 2.0F);
@@ -1185,7 +1185,7 @@ TEST_F(ComponentTest, GrowsChildrenIntoTheRoomTheirParentLeaves) {
     getUi().unmount(*gui);
     gui = mount(R"({"kind": "column", "children": [{"kind": "card", "id": "card", "children": [{"kind": "label", "id": "first", "grow": 1, "text": "One"}, {"kind": "label", "id": "second", "grow": 3, "text": "Two\nlines"}]}]})");
     frames();
-    const float line = Typography::getLineHeight(getUi().getContext(), Theme::Font::Body);
+    const float line = haylen::ui::Typography::getLineHeight(getUi().getContext(), haylen::ui::Theme::Font::Body);
     EXPECT_GE(getBounds(*gui, "first").height, line);
     EXPECT_GE(getBounds(*gui, "second").height, line * 2.0F);
     EXPECT_LE(getBounds(*gui, "second").getBottom(), getBounds(*gui, "card").getBottom());
@@ -1201,10 +1201,10 @@ TEST_F(ComponentTest, AcceptsEmptyObjectsAsEmptyLists) {
     ]})");
     // clang-format on
     EXPECT_EQ(getEngine().getError(), nullptr);
-    EXPECT_THROW(gui->set("list", core::Json::parse(R"({"items": {"id": "a"}})")), std::invalid_argument);
+    EXPECT_THROW(gui->set("list", haylen::core::Json::parse(R"({"items": {"id": "a"}})")), std::invalid_argument);
 
     try {
-        gui->set("list", core::Json::parse(R"({"items": [{"id": "a"}, {"id": "a"}]})"));
+        gui->set("list", haylen::core::Json::parse(R"({"items": [{"id": "a"}, {"id": "a"}]})"));
         FAIL() << "A repeated item id was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "The property \"items\" of a \"list\" uses the item id \"a\" more than once.");
@@ -1213,10 +1213,10 @@ TEST_F(ComponentTest, AcceptsEmptyObjectsAsEmptyLists) {
 
 TEST_F(ComponentTest, LetsThePointerThroughEmptySpace) {
     auto gui = mount(R"({"kind": "stack", "children": [{"kind": "card", "id": "card", "width": 300, "height": 200, "align": "start"}]})");
-    pointer(platform::Event::Type::MouseMove, getBounds(*gui, "card").getCenter());
+    pointer(haylen::platform::Event::Type::MouseMove, getBounds(*gui, "card").getCenter());
     frames(2);
     EXPECT_TRUE(getUi().isUsingPointer());
-    pointer(platform::Event::Type::MouseMove, {1500.0F, 900.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {1500.0F, 900.0F});
     frames(2);
     EXPECT_FALSE(getUi().isUsingPointer());
     EXPECT_FALSE(getUi().isUsingKeyboard());
@@ -1226,4 +1226,4 @@ TEST_F(ComponentTest, LetsThePointerThroughEmptySpace) {
     EXPECT_FALSE(getUi().isMounted(*gui));
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

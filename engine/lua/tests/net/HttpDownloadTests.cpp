@@ -9,7 +9,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
-namespace haylen::net {
+namespace haylen::lua::net {
 
 // A download of the `http` module writes its body to a file as it arrives, so an app that fetches a file far larger than its memory holds never gathers it on the frame thread, and one that fails leaves no partial file.
 class HttpDownloadTest : public ::testing::Test {
@@ -91,4 +91,4 @@ TEST_F(HttpDownloadTest, LeavesNoPartialFileWhenItsTaskEnds) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-} // namespace haylen::net
+} // namespace haylen::lua::net

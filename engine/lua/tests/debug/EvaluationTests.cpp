@@ -8,7 +8,7 @@
 
 #include "debug/Evaluation.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // Runs evaluations on a Lua state of its own, with the globals as their environment.
 class EvaluationTest : public ::testing::Test {
@@ -74,4 +74,4 @@ TEST_F(EvaluationTest, ReturnsMoreValuesThanTheStackOfTheCallerHeld) {
     lua_settop(L, 0);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

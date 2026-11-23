@@ -18,7 +18,7 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class VideoStreamTest : public ::testing::Test {
   protected:
@@ -45,10 +45,10 @@ class VideoStreamTest : public ::testing::Test {
 
 TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     test::LuaFixture fixture;
-    graphics::Device& device = fixture.engine().getGraphics();
-    VideoStream stream(VideoStream::Format::Bgra8, 2, 1);
-    const graphics::Texture texture = stream.getTexture(device);
-    EXPECT_EQ(texture.getSize(), math::Vec2(2.0F, 1.0F));
+    haylen::graphics::Device& device = fixture.engine().getGraphics();
+    haylen::platform::VideoStream stream(haylen::platform::VideoStream::Format::Bgra8, 2, 1);
+    const haylen::graphics::Texture texture = stream.getTexture(device);
+    EXPECT_EQ(texture.getSize(), haylen::math::Vec2(2.0F, 1.0F));
     EXPECT_EQ(stream.getWidth(), 2);
     EXPECT_FALSE(stream.update(device)) << "No frame arrived yet.";
 
@@ -63,7 +63,7 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     // clang-format on
     producer.join();
     std::vector<double> heard;
-    core::Connection connection = stream.frameReceived.connect([&heard](double timestamp) { heard.push_back(timestamp); });
+    haylen::core::Connection connection = stream.frameReceived.connect([&heard](double timestamp) { heard.push_back(timestamp); });
     EXPECT_TRUE(stream.update(device));
     EXPECT_FALSE(stream.update(device));
     EXPECT_EQ(stream.getFrameCount(), 1U);
@@ -74,7 +74,7 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     const std::vector<std::byte> larger = makeFrame(3, 2, 9);
     stream.push(larger.data(), 3, 2, getStride(3), 4.0);
     EXPECT_TRUE(stream.update(device));
-    EXPECT_EQ(texture.getSize(), math::Vec2(3.0F, 2.0F));
+    EXPECT_EQ(texture.getSize(), haylen::math::Vec2(3.0F, 2.0F));
     EXPECT_EQ(stream.getWidth(), 3);
     EXPECT_EQ(stream.getHeight(), 2);
     EXPECT_EQ(stream.getTimestamp(), 4.0);
@@ -82,24 +82,24 @@ TEST_F(VideoStreamTest, UploadsOnlyTheNewestFrameAndResizesInPlace) {
     // An engine that stops lets go of the texture and the listeners, and the next one starts from the newest frame.
     stream.detach();
     EXPECT_EQ(stream.frameReceived.size(), 0U);
-    const graphics::Texture again = stream.getTexture(device);
+    const haylen::graphics::Texture again = stream.getTexture(device);
     EXPECT_NE(again, texture);
-    EXPECT_EQ(again.getSize(), math::Vec2(3.0F, 2.0F));
+    EXPECT_EQ(again.getSize(), haylen::math::Vec2(3.0F, 2.0F));
     ASSERT_NE(again.getResource(), nullptr);
     ASSERT_FALSE(again.getResource()->staged.empty());
     EXPECT_EQ(again.getResource()->staged.front(), 11U);
 
     EXPECT_THROW(stream.push(larger.data(), 0, 2, getStride(3), 0.0), std::invalid_argument);
     EXPECT_THROW(stream.push(larger.data(), 3, 2, 8, 0.0), std::invalid_argument);
-    EXPECT_THROW(VideoStream(VideoStream::Format::Rgba8, -1, 0), std::invalid_argument);
+    EXPECT_THROW(haylen::platform::VideoStream(haylen::platform::VideoStream::Format::Rgba8, -1, 0), std::invalid_argument);
 }
 
 TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
     test::LuaFixture fixture;
-    const std::shared_ptr<VideoStream> stream = PluginStreams::openVideo("stream-tests", "camera", VideoStream::Format::Rgba8, 0, 0);
-    fixture.engine().getPlugin<plugins::PlatformPlugin>().watch(stream);
-    const graphics::Texture texture = stream->getTexture(fixture.engine().getGraphics());
-    EXPECT_EQ(texture.getSize(), math::Vec2(1.0F, 1.0F)) << "A stream without a size shows one transparent pixel.";
+    const std::shared_ptr<haylen::platform::VideoStream> stream = haylen::platform::PluginStreams::openVideo("stream-tests", "camera", haylen::platform::VideoStream::Format::Rgba8, 0, 0);
+    fixture.engine().getPlugin<haylen::plugins::PlatformPlugin>().watch(stream);
+    const haylen::graphics::Texture texture = stream->getTexture(fixture.engine().getGraphics());
+    EXPECT_EQ(texture.getSize(), haylen::math::Vec2(1.0F, 1.0F)) << "A stream without a size shows one transparent pixel.";
     fixture.frames(1);
 
     // clang-format off
@@ -114,7 +114,7 @@ TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
     EXPECT_EQ(stream->getFrameCount(), 0U);
     fixture.frames(1);
     EXPECT_EQ(stream->getFrameCount(), 1U);
-    EXPECT_EQ(texture.getSize(), math::Vec2(2.0F, 2.0F));
+    EXPECT_EQ(texture.getSize(), haylen::math::Vec2(2.0F, 2.0F));
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, 16U);
 
@@ -124,7 +124,7 @@ TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
 
 TEST_F(VideoStreamTest, KeepsWatchedStreamsCurrentWithoutAllocating) {
     test::LuaFixture fixture;
-    fixture.engine().getPlugin<plugins::PlatformPlugin>().watch(PluginStreams::openVideo("stream-tests", "allocations", VideoStream::Format::Rgba8, 0, 0));
+    fixture.engine().getPlugin<haylen::plugins::PlatformPlugin>().watch(haylen::platform::PluginStreams::openVideo("stream-tests", "allocations", haylen::platform::VideoStream::Format::Rgba8, 0, 0));
     fixture.frames(3);
     const test::AllocationTracker tracker;
     fixture.frames(5);
@@ -132,21 +132,21 @@ TEST_F(VideoStreamTest, KeepsWatchedStreamsCurrentWithoutAllocating) {
 }
 
 TEST(PluginStreamsTest, OpensEachStreamOnceByPluginAndName) {
-    const std::shared_ptr<VideoStream> video = PluginStreams::openVideo("stream-tests", "registry", VideoStream::Format::Rgba8, 4, 4);
-    EXPECT_EQ(PluginStreams::openVideo("stream-tests", "registry", VideoStream::Format::Rgba8, 8, 8), video);
-    EXPECT_EQ(PluginStreams::findVideo("stream-tests", "registry"), video);
+    const std::shared_ptr<haylen::platform::VideoStream> video = haylen::platform::PluginStreams::openVideo("stream-tests", "registry", haylen::platform::VideoStream::Format::Rgba8, 4, 4);
+    EXPECT_EQ(haylen::platform::PluginStreams::openVideo("stream-tests", "registry", haylen::platform::VideoStream::Format::Rgba8, 8, 8), video);
+    EXPECT_EQ(haylen::platform::PluginStreams::findVideo("stream-tests", "registry"), video);
     EXPECT_EQ(video->getWidth(), 4);
-    EXPECT_EQ(PluginStreams::findVideo("stream-tests", "elsewhere"), nullptr);
-    EXPECT_THROW((void)PluginStreams::openVideo("stream-tests", "registry", VideoStream::Format::Bgra8, 4, 4), std::invalid_argument);
-    EXPECT_THROW((void)PluginStreams::openVideo("", "registry", VideoStream::Format::Rgba8, 4, 4), std::invalid_argument);
+    EXPECT_EQ(haylen::platform::PluginStreams::findVideo("stream-tests", "elsewhere"), nullptr);
+    EXPECT_THROW((void)haylen::platform::PluginStreams::openVideo("stream-tests", "registry", haylen::platform::VideoStream::Format::Bgra8, 4, 4), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::PluginStreams::openVideo("", "registry", haylen::platform::VideoStream::Format::Rgba8, 4, 4), std::invalid_argument);
 
-    const std::shared_ptr<AudioStream> audio = PluginStreams::openAudio("stream-tests", "registry", 16000, 1, AudioStream::Format::Int16, 1600);
-    EXPECT_EQ(PluginStreams::openAudio("stream-tests", "registry", 16000, 1, AudioStream::Format::Int16, 3200), audio);
-    EXPECT_EQ(PluginStreams::findAudio("stream-tests", "registry"), audio);
+    const std::shared_ptr<haylen::platform::AudioStream> audio = haylen::platform::PluginStreams::openAudio("stream-tests", "registry", 16000, 1, haylen::platform::AudioStream::Format::Int16, 1600);
+    EXPECT_EQ(haylen::platform::PluginStreams::openAudio("stream-tests", "registry", 16000, 1, haylen::platform::AudioStream::Format::Int16, 3200), audio);
+    EXPECT_EQ(haylen::platform::PluginStreams::findAudio("stream-tests", "registry"), audio);
     EXPECT_EQ(audio->getCapacity(), 1600U);
-    EXPECT_THROW((void)PluginStreams::openAudio("stream-tests", "registry", 16000, 2, AudioStream::Format::Int16, 1600), std::invalid_argument);
-    EXPECT_THROW((void)PluginStreams::openAudio("stream-tests", "", 16000, 1, AudioStream::Format::Int16, 1600), std::invalid_argument);
-    EXPECT_THROW((void)PluginStreams::openAudio("stream-tests", "silent", 16000, 1, AudioStream::Format::Int16, 0), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::PluginStreams::openAudio("stream-tests", "registry", 16000, 2, haylen::platform::AudioStream::Format::Int16, 1600), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::PluginStreams::openAudio("stream-tests", "", 16000, 1, haylen::platform::AudioStream::Format::Int16, 1600), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::PluginStreams::openAudio("stream-tests", "silent", 16000, 1, haylen::platform::AudioStream::Format::Int16, 0), std::invalid_argument);
 }
 
 TEST(StreamsLuaTest, HandsPluginModulesTheStreamsOfTheirNativeParts) {
@@ -154,8 +154,8 @@ TEST(StreamsLuaTest, HandsPluginModulesTheStreamsOfTheirNativeParts) {
     fixture.runLua("platform = require('haylen.platform') collections = require('haylen.collections') audio = require('haylen.audio') cam = platform.plugin('cam-kit')");
     EXPECT_EQ(fixture.lua("return tostring(cam:videoStream('preview')) .. ' ' .. tostring(cam:audioStream('mic'))"), "nil nil");
 
-    const std::shared_ptr<VideoStream> video = PluginStreams::openVideo("cam-kit", "preview", VideoStream::Format::Rgba8, 2, 1);
-    const std::shared_ptr<AudioStream> mic = PluginStreams::openAudio("cam-kit", "mic", 16000, 2, AudioStream::Format::Float32, 1600);
+    const std::shared_ptr<haylen::platform::VideoStream> video = haylen::platform::PluginStreams::openVideo("cam-kit", "preview", haylen::platform::VideoStream::Format::Rgba8, 2, 1);
+    const std::shared_ptr<haylen::platform::AudioStream> mic = haylen::platform::PluginStreams::openAudio("cam-kit", "mic", 16000, 2, haylen::platform::AudioStream::Format::Float32, 1600);
     // clang-format off
     fixture.runLua(R"(
         preview = cam:videoStream('preview')
@@ -190,4 +190,4 @@ TEST(StreamsLuaTest, HandsPluginModulesTheStreamsOfTheirNativeParts) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

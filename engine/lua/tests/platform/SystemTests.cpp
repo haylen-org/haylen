@@ -17,104 +17,104 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class SystemTest : public ::testing::Test {
   protected:
     // Records the theme and battery events of the engine with their data.
-    static void recordChanges(core::Engine& engine, std::vector<std::string>& log) {
-        for (const std::string_view name : {core::LifecycleEvent::kSystemThemeChanged, core::LifecycleEvent::kBatteryChanged}) {
-            engine.getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
+    static void recordChanges(haylen::core::Engine& engine, std::vector<std::string>& log) {
+        for (const std::string_view name : {haylen::core::LifecycleEvent::kSystemThemeChanged, haylen::core::LifecycleEvent::kBatteryChanged}) {
+            engine.getEvents().on(name, [&log, name](haylen::core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
         }
     }
 
     // An iPad that tells everything about itself.
-    [[nodiscard]] static SystemInfo makeTablet() {
-        return {.os = SystemInfo::Os::IpadOs, .osVersion = "17.5", .deviceModel = "iPad14,1", .manufacturer = "Apple", .deviceKind = SystemInfo::DeviceKind::Tablet, .cpuName = "Apple M2", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm, .bits = 32, .memoryBytes = 8589934592, .gpuName = "Reported by the platform"};
+    [[nodiscard]] static haylen::platform::SystemInfo makeTablet() {
+        return {.os = haylen::platform::SystemInfo::Os::IpadOs, .osVersion = "17.5", .deviceModel = "iPad14,1", .manufacturer = "Apple", .deviceKind = haylen::platform::SystemInfo::DeviceKind::Tablet, .cpuName = "Apple M2", .cpuCores = 8, .architecture = haylen::platform::SystemInfo::Architecture::Arm, .bits = 32, .memoryBytes = 8589934592, .gpuName = "Reported by the platform"};
     }
 };
 
 TEST_F(SystemTest, ReportsThePlatformWithTheGpuOfTheGraphicsDevice) {
     test::LuaFixture fixture;
-    const SystemInfo& info = fixture.engine().getSystem().getInfo();
+    const haylen::platform::SystemInfo& info = fixture.engine().getSystem().getInfo();
 #if defined(__APPLE__)
-    EXPECT_EQ(info.os, SystemInfo::Os::MacOs);
+    EXPECT_EQ(info.os, haylen::platform::SystemInfo::Os::MacOs);
 #elif defined(_WIN32)
-    EXPECT_EQ(info.os, SystemInfo::Os::Windows);
+    EXPECT_EQ(info.os, haylen::platform::SystemInfo::Os::Windows);
 #else
-    EXPECT_EQ(info.os, SystemInfo::Os::Linux);
+    EXPECT_EQ(info.os, haylen::platform::SystemInfo::Os::Linux);
 #endif
-    EXPECT_EQ(info.deviceKind, SystemInfo::DeviceKind::Desktop);
+    EXPECT_EQ(info.deviceKind, haylen::platform::SystemInfo::DeviceKind::Desktop);
     EXPECT_EQ(info.cpuCores, static_cast<int>(std::thread::hardware_concurrency()));
 
     // The dummy backend of the headless host names no adapter, and the GPU is always the one of the graphics device.
     EXPECT_EQ(fixture.engine().getGraphics().getAdapterName(), "");
     fixture.host().setSystemInfo(makeTablet());
     fixture.restart();
-    const SystemInfo& tablet = fixture.engine().getSystem().getInfo();
+    const haylen::platform::SystemInfo& tablet = fixture.engine().getSystem().getInfo();
     EXPECT_EQ(tablet.deviceModel, "iPad14,1");
     EXPECT_EQ(tablet.gpuName, "");
 }
 
 TEST_F(SystemTest, WritesOnlyWhatThePlatformReportsAsJson) {
     // The architecture and the width of pointers are those of the build that runs, which every platform reports without asking the system.
-    const std::string_view architecture = SystemInfo::architectureName(SystemInfo::processArchitecture());
+    const std::string_view architecture = haylen::platform::SystemInfo::architectureName(haylen::platform::SystemInfo::processArchitecture());
     const int bits = static_cast<int>(sizeof(void*) * 8);
-    EXPECT_EQ(SystemInfo{}.toJson(), (core::Json{{"os", "macOs"}, {"deviceKind", "desktop"}, {"architecture", architecture}, {"bits", bits}}));
+    EXPECT_EQ(haylen::platform::SystemInfo{}.toJson(), (haylen::core::Json{{"os", "macOs"}, {"deviceKind", "desktop"}, {"architecture", architecture}, {"bits", bits}}));
 
-    SystemInfo tablet = makeTablet();
-    EXPECT_EQ(tablet.toJson(), (core::Json{{"os", "ipadOs"}, {"osVersion", "17.5"}, {"deviceModel", "iPad14,1"}, {"manufacturer", "Apple"}, {"deviceKind", "tablet"}, {"cpuName", "Apple M2"}, {"cpuCores", 8}, {"architecture", "arm"}, {"bits", 32}, {"memoryBytes", 8589934592}, {"gpuName", "Reported by the platform"}}));
-    EXPECT_EQ(SystemInfo::osName(SystemInfo::Os::TvOs), "tvOs");
-    EXPECT_EQ(SystemInfo::deviceKindName(SystemInfo::DeviceKind::Tv), "tv");
-    EXPECT_EQ(SystemInfo::architectureName(SystemInfo::Architecture::X64), "x64");
+    haylen::platform::SystemInfo tablet = makeTablet();
+    EXPECT_EQ(tablet.toJson(), (haylen::core::Json{{"os", "ipadOs"}, {"osVersion", "17.5"}, {"deviceModel", "iPad14,1"}, {"manufacturer", "Apple"}, {"deviceKind", "tablet"}, {"cpuName", "Apple M2"}, {"cpuCores", 8}, {"architecture", "arm"}, {"bits", 32}, {"memoryBytes", 8589934592}, {"gpuName", "Reported by the platform"}}));
+    EXPECT_EQ(haylen::platform::SystemInfo::osName(haylen::platform::SystemInfo::Os::TvOs), "tvOs");
+    EXPECT_EQ(haylen::platform::SystemInfo::deviceKindName(haylen::platform::SystemInfo::DeviceKind::Tv), "tv");
+    EXPECT_EQ(haylen::platform::SystemInfo::architectureName(haylen::platform::SystemInfo::Architecture::X64), "x64");
 
-    EXPECT_EQ(Battery{}.toJson(), (core::Json{{"charging", false}, {"state", "unknown"}}));
-    EXPECT_EQ((Battery{.level = 0.6F, .charging = true, .state = Battery::State::Charging}.toJson()), (core::Json{{"level", 0.6}, {"charging", true}, {"state", "charging"}}));
-    EXPECT_EQ(Battery::stateName(Battery::State::None), "none");
+    EXPECT_EQ(haylen::platform::Battery{}.toJson(), (haylen::core::Json{{"charging", false}, {"state", "unknown"}}));
+    EXPECT_EQ((haylen::platform::Battery{.level = 0.6F, .charging = true, .state = haylen::platform::Battery::State::Charging}.toJson()), (haylen::core::Json{{"level", 0.6}, {"charging", true}, {"state", "charging"}}));
+    EXPECT_EQ(haylen::platform::Battery::stateName(haylen::platform::Battery::State::None), "none");
 }
 
 TEST_F(SystemTest, PublishesEveryChangeOfThemeAndBatteryOnce) {
     test::LuaFixture fixture;
     std::vector<std::string> log;
     recordChanges(fixture.engine(), log);
-    System& system = fixture.engine().getSystem();
-    EXPECT_EQ(system.getTheme(), Theme::Light);
-    EXPECT_EQ(system.getBattery(), Battery{});
+    haylen::platform::System& system = fixture.engine().getSystem();
+    EXPECT_EQ(system.getTheme(), haylen::platform::Theme::Light);
+    EXPECT_EQ(system.getBattery(), haylen::platform::Battery{});
 
     // Platform services report from their own threads, and the engine hears the last report at its next frame.
     // clang-format off
     std::thread([&fixture] {
-        fixture.host().setTheme(Theme::Dark);
-        fixture.host().setBattery({.level = 0.8F, .state = Battery::State::Discharging});
-        fixture.host().setBattery({.level = 0.75F, .state = Battery::State::Discharging});
+        fixture.host().setTheme(haylen::platform::Theme::Dark);
+        fixture.host().setBattery({.level = 0.8F, .state = haylen::platform::Battery::State::Discharging});
+        fixture.host().setBattery({.level = 0.75F, .state = haylen::platform::Battery::State::Discharging});
     }).join();
     // clang-format on
-    EXPECT_EQ(system.getTheme(), Theme::Light);
+    EXPECT_EQ(system.getTheme(), haylen::platform::Theme::Light);
     fixture.frames(1);
-    fixture.host().setTheme(Theme::Dark);
+    fixture.host().setTheme(haylen::platform::Theme::Dark);
     fixture.frames(1);
     EXPECT_EQ(log, (std::vector<std::string>{R"(systemThemeChanged {"theme":"dark"})", R"(batteryChanged {"charging":false,"level":0.75,"state":"discharging"})"}));
-    EXPECT_EQ(system.getTheme(), Theme::Dark);
+    EXPECT_EQ(system.getTheme(), haylen::platform::Theme::Dark);
     EXPECT_EQ(system.getBattery().level, 0.75F);
 
     // A new app starts with what the platform reported last, without an event.
-    fixture.host().setBattery({.charging = true, .state = Battery::State::Charging});
+    fixture.host().setBattery({.charging = true, .state = haylen::platform::Battery::State::Charging});
     fixture.restart();
     std::vector<std::string> restarted;
     recordChanges(fixture.engine(), restarted);
     fixture.frames(1);
     EXPECT_TRUE(restarted.empty());
-    EXPECT_EQ(fixture.engine().getSystem().getBattery(), (Battery{.charging = true, .state = Battery::State::Charging}));
+    EXPECT_EQ(fixture.engine().getSystem().getBattery(), (haylen::platform::Battery{.charging = true, .state = haylen::platform::Battery::State::Charging}));
 }
 
 TEST_F(SystemTest, PublishesEveryChangeOfPowerSavingAndTimeZoneOnce) {
     test::LuaFixture fixture;
     std::vector<std::string> log;
-    for (const std::string_view name : {core::LifecycleEvent::kPowerSavingChanged, core::LifecycleEvent::kTimeZoneChanged}) {
-        fixture.engine().getEvents().on(name, [&log, name](core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
+    for (const std::string_view name : {haylen::core::LifecycleEvent::kPowerSavingChanged, haylen::core::LifecycleEvent::kTimeZoneChanged}) {
+        fixture.engine().getEvents().on(name, [&log, name](haylen::core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
     }
 
-    System& system = fixture.engine().getSystem();
+    haylen::platform::System& system = fixture.engine().getSystem();
     EXPECT_EQ(system.getPowerSaving(), std::nullopt);
     EXPECT_EQ(system.getTimeZone(), "");
 
@@ -135,13 +135,13 @@ TEST_F(SystemTest, PublishesEveryChangeOfPowerSavingAndTimeZoneOnce) {
 }
 
 TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
-    SystemState state;
+    haylen::platform::SystemState state;
     std::vector<std::thread> reporters;
     for (int index = 0; index < 4; ++index) {
         // clang-format off
         reporters.emplace_back([&state, index] {
             for (int step = 0; step < 100; ++step) {
-                state.setTheme(step % 2 == 0 ? Theme::Dark : Theme::Light);
+                state.setTheme(step % 2 == 0 ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
                 state.setBattery({.level = static_cast<float>(index) / 4.0F});
             }
         });
@@ -152,22 +152,22 @@ TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
         reporter.join();
     }
 
-    EXPECT_EQ(state.getTheme(), Theme::Light);
+    EXPECT_EQ(state.getTheme(), haylen::platform::Theme::Light);
     EXPECT_TRUE(state.getBattery().level.has_value());
 }
 
 TEST_F(SystemTest, WritesAndReadsTheClipboardWithAnswersOnALaterFrame) {
     test::LuaFixture fixture;
-    System& system = fixture.engine().getSystem();
+    haylen::platform::System& system = fixture.engine().getSystem();
     std::vector<std::string> answers;
-    system.setClipboard("Island seed: 184467", [&answers](SystemAnswer answer) { answers.emplace_back(SystemAnswer::stateName(answer.state)); });
-    system.readClipboard([&answers](SystemAnswer answer, std::string text) { answers.push_back(std::string(SystemAnswer::stateName(answer.state)) + " " + text); });
+    system.setClipboard("Island seed: 184467", [&answers](haylen::platform::SystemAnswer answer) { answers.emplace_back(haylen::platform::SystemAnswer::stateName(answer.state)); });
+    system.readClipboard([&answers](haylen::platform::SystemAnswer answer, std::string text) { answers.push_back(std::string(haylen::platform::SystemAnswer::stateName(answer.state)) + " " + text); });
     EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
 
     // A refused write leaves the clipboard as it was, the way a browser refuses a page without a recent input of the person, and a refused read brings no text.
-    fixture.host().setClipboardAnswer({.state = SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
-    system.setClipboard("Refused", [&answers](SystemAnswer answer) { answers.emplace_back(SystemAnswer::stateName(answer.state)); });
-    system.readClipboard([&answers](SystemAnswer answer, std::string text) { answers.push_back(std::string(SystemAnswer::stateName(answer.state)) + " " + text); });
+    fixture.host().setClipboardAnswer({.state = haylen::platform::SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
+    system.setClipboard("Refused", [&answers](haylen::platform::SystemAnswer answer) { answers.emplace_back(haylen::platform::SystemAnswer::stateName(answer.state)); });
+    system.readClipboard([&answers](haylen::platform::SystemAnswer answer, std::string text) { answers.push_back(std::string(haylen::platform::SystemAnswer::stateName(answer.state)) + " " + text); });
     EXPECT_TRUE(answers.empty());
 
     fixture.frames(1);
@@ -176,18 +176,18 @@ TEST_F(SystemTest, WritesAndReadsTheClipboardWithAnswersOnALaterFrame) {
 }
 
 TEST_F(SystemTest, ReadsTheAnswersOfNativeCode) {
-    const SystemAnswer answer = SystemAnswer::fromJson(core::Json::parse(R"json({"state": "unsupported", "message": "The page needs a feature.", "missing": [{"kind": "permissionsPolicy", "name": "clipboard-read", "file": "", "snippet": "Permissions-Policy: clipboard-read=(self)"}, 3]})json"));
-    EXPECT_EQ(answer.state, SystemAnswer::State::Unsupported);
+    const haylen::platform::SystemAnswer answer = haylen::platform::SystemAnswer::fromJson(haylen::core::Json::parse(R"json({"state": "unsupported", "message": "The page needs a feature.", "missing": [{"kind": "permissionsPolicy", "name": "clipboard-read", "file": "", "snippet": "Permissions-Policy: clipboard-read=(self)"}, 3]})json"));
+    EXPECT_EQ(answer.state, haylen::platform::SystemAnswer::State::Unsupported);
     EXPECT_EQ(answer.message, "The page needs a feature.");
     ASSERT_EQ(answer.missing.size(), 1U);
     EXPECT_EQ(answer.missing.front().name, "clipboard-read");
     EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), "Permissions-Policy: clipboard-read=(self)");
-    EXPECT_EQ(SystemAnswer::fromJson(core::Json::parse(R"({"state": "denied"})")).state, SystemAnswer::State::Denied);
+    EXPECT_EQ(haylen::platform::SystemAnswer::fromJson(haylen::core::Json::parse(R"({"state": "denied"})")).state, haylen::platform::SystemAnswer::State::Denied);
 
-    EXPECT_EQ(SystemAnswer::fromJson(core::Json::parse(R"({"state": 5})")).state, SystemAnswer::State::Unsupported);
-    EXPECT_EQ(SystemAnswer::fromJson(core::Json::parse(R"({"state": "unknown"})")).state, SystemAnswer::State::Unsupported);
-    EXPECT_EQ(SystemAnswer::fromJson(core::Json::array()).state, SystemAnswer::State::Unsupported);
-    EXPECT_FALSE(SystemAnswer::fromJson(core::Json::array()).message.empty());
+    EXPECT_EQ(haylen::platform::SystemAnswer::fromJson(haylen::core::Json::parse(R"({"state": 5})")).state, haylen::platform::SystemAnswer::State::Unsupported);
+    EXPECT_EQ(haylen::platform::SystemAnswer::fromJson(haylen::core::Json::parse(R"({"state": "unknown"})")).state, haylen::platform::SystemAnswer::State::Unsupported);
+    EXPECT_EQ(haylen::platform::SystemAnswer::fromJson(haylen::core::Json::array()).state, haylen::platform::SystemAnswer::State::Unsupported);
+    EXPECT_FALSE(haylen::platform::SystemAnswer::fromJson(haylen::core::Json::array()).message.empty());
 }
 
 // Platforms report their tags as they write them, and the engine keeps the canonical form of each once, leaves out what is no tag and publishes only a list that changed.
@@ -195,11 +195,11 @@ TEST_F(SystemTest, PublishesTheLanguagesOfTheSystemInTheirCanonicalForm) {
     test::LuaFixture fixture;
     fixture.host().setLanguages(std::vector<std::string>{"pt_BR", "en-us"});
     fixture.restart();
-    System& system = fixture.engine().getSystem();
+    haylen::platform::System& system = fixture.engine().getSystem();
     EXPECT_EQ(system.getLanguages(), (std::vector<std::string>{"pt-BR", "en-US"}));
 
     std::vector<std::string> log;
-    fixture.engine().getEvents().on(core::LifecycleEvent::kSystemLanguagesChanged, [&log](core::EventBus::Event& event) { log.push_back(event.getData().dump()); });
+    fixture.engine().getEvents().on(haylen::core::LifecycleEvent::kSystemLanguagesChanged, [&log](haylen::core::EventBus::Event& event) { log.push_back(event.getData().dump()); });
     fixture.host().setLanguages(std::vector<std::string>{"es-419", "not a tag", "ES-419", "en-US-u-mu-celsius"});
     fixture.frames(1);
     fixture.host().setLanguages(std::vector<std::string>{"es_419", "en_US"});
@@ -221,7 +221,7 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("return system.theme()"), "light");
     EXPECT_EQ(fixture.lua("local battery = system.battery() return tostring(battery.level) .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "nil false unknown");
 
-    fixture.host().setSystemInfo({.os = SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .architecture = SystemInfo::Architecture::Arm64, .memoryBytes = 12884901888});
+    fixture.host().setSystemInfo({.os = haylen::platform::SystemInfo::Os::Android, .osVersion = "16", .deviceModel = "Phone 9", .manufacturer = "Maker", .deviceKind = haylen::platform::SystemInfo::DeviceKind::Phone, .cpuName = "Chip G4", .cpuCores = 8, .architecture = haylen::platform::SystemInfo::Architecture::Arm64, .memoryBytes = 12884901888});
     fixture.restart();
     // clang-format off
     fixture.runLua(R"(
@@ -237,8 +237,8 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     // clang-format on
     EXPECT_EQ(fixture.lua("return summary"), "android|16|Phone 9|Maker|phone|Chip G4|8|arm64|64|12884901888");
 
-    fixture.host().setTheme(Theme::Dark);
-    fixture.host().setBattery({.level = 0.5F, .charging = true, .state = Battery::State::Charging});
+    fixture.host().setTheme(haylen::platform::Theme::Dark);
+    fixture.host().setBattery({.level = 0.5F, .charging = true, .state = haylen::platform::Battery::State::Charging});
     fixture.host().setLanguages(std::vector<std::string>{"pt-BR", "en"});
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "dark, charging 0.5, pt-BR,en");
@@ -272,7 +272,7 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     // clang-format on
     fixture.runLua("remember(system.setClipboard('Island seed: 184467')) remember(system.clipboard())");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
-    fixture.host().setClipboardAnswer({.state = SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
+    fixture.host().setClipboardAnswer({.state = haylen::platform::SystemAnswer::State::Denied, .message = "The person has not allowed the app to read the clipboard."});
     fixture.runLua("remember(system.setClipboard('Refused')) remember(system.clipboard()) system.setClipboard('Unheard')");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
     EXPECT_EQ(fixture.lua("return answers[1] .. ' | ' .. answers[2]"), "nil | Island seed: 184467");
@@ -284,4 +284,4 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     EXPECT_NE(fixture.lua("system.setClipboard()").find("string expected"), std::string::npos);
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

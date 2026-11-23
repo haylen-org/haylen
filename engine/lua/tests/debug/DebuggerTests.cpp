@@ -17,11 +17,11 @@
 #include "support/DebugClient.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
     client.connect(fixture.lua());
-    const core::Json capabilities = client.getResponse(1).at("body");
+    const haylen::core::Json capabilities = client.getResponse(1).at("body");
     EXPECT_TRUE(capabilities.at("supportsConditionalBreakpoints").get<bool>());
     EXPECT_EQ(capabilities.at("exceptionBreakpointFilters").at(0).at("filter"), "uncaught");
     EXPECT_EQ(client.getEvents("initialized").size(), 1U);
@@ -43,7 +43,7 @@ TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
         evaluation = debug.request("evaluate", {{"expression", "sum * 2, a"}, {"frameId", 1}});
     });
     client.then([&](test::DebugClient& debug) {
-        for (const core::Json& variable : debug.getResponse(locals).at("body").at("variables")) {
+        for (const haylen::core::Json& variable : debug.getResponse(locals).at("body").at("variables")) {
             if (variable.at("name") == "info") {
                 info = debug.request("variables", {{"variablesReference", variable.at("variablesReference")}});
             }
@@ -55,12 +55,12 @@ TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
     EXPECT_EQ(fixture.lua("return result"), "50");
     EXPECT_FALSE(client.hasSteps());
 
-    const std::vector<core::Json> stops = client.getEvents("stopped");
+    const std::vector<haylen::core::Json> stops = client.getEvents("stopped");
     ASSERT_EQ(stops.size(), 1U);
     EXPECT_EQ(stops.front().at("reason"), "breakpoint");
-    EXPECT_EQ(stops.front().at("hitBreakpointIds"), core::Json::array({client.getResponse(set).at("body").at("breakpoints").at(0).at("id")}));
+    EXPECT_EQ(stops.front().at("hitBreakpointIds"), haylen::core::Json::array({client.getResponse(set).at("body").at("breakpoints").at(0).at("id")}));
 
-    const core::Json stack = client.getResponse(frames).at("body").at("stackFrames");
+    const haylen::core::Json stack = client.getResponse(frames).at("body").at("stackFrames");
     EXPECT_EQ(stack.at(0).at("name"), "add");
     EXPECT_EQ(stack.at(0).at("line"), 5);
     EXPECT_EQ(stack.at(0).at("source").at("path"), "source/mod.lua");
@@ -68,7 +68,7 @@ TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
     EXPECT_EQ(stack.at(1).at("line"), 8);
 
     std::map<std::string, std::string> values;
-    for (const core::Json& variable : client.getResponse(locals).at("body").at("variables")) {
+    for (const haylen::core::Json& variable : client.getResponse(locals).at("body").at("variables")) {
         values[variable.at("name").get<std::string>()] = variable.at("value").get<std::string>();
     }
 
@@ -76,7 +76,7 @@ TEST_F(DebuggerTest, HaltsAtABreakpointWithTheStackScopesAndValues) {
     EXPECT_EQ(values.at("b"), "3");
     EXPECT_EQ(values.at("sum"), "5");
     EXPECT_TRUE(values.at("info").starts_with("table: "));
-    const core::Json fields = client.getResponse(info).at("body").at("variables");
+    const haylen::core::Json fields = client.getResponse(info).at("body").at("variables");
     EXPECT_EQ(fields.at(0).at("name"), "name");
     EXPECT_EQ(fields.at(0).at("value"), "\"point\"");
     EXPECT_EQ(fields.at(1).at("name"), "values");
@@ -110,7 +110,7 @@ TEST_F(DebuggerTest, ConditionsCountsAndLogPointsDecideWhetherALineHalts) {
     client.getDebugger().update(fixture.lua());
     EXPECT_EQ(run(fixture.lua(), "result = require('mod').loop()"), "");
     EXPECT_EQ(client.getEvents("stopped").size(), 4U);
-    const std::vector<core::Json> outputs = client.getEvents("output");
+    const std::vector<haylen::core::Json> outputs = client.getEvents("output");
     ASSERT_EQ(outputs.size(), 6U);
     EXPECT_EQ(outputs.front().at("output"), "i is 1, sum 0\n");
     EXPECT_EQ(outputs.back().at("output"), "i is 6, sum 15\n");
@@ -119,7 +119,7 @@ TEST_F(DebuggerTest, ConditionsCountsAndLogPointsDecideWhetherALineHalts) {
     // A hit count that is no count never takes effect, and a condition that fails halts with its error.
     const int invalid = client.request("setBreakpoints", breakpoints({{{"line", 14}, {"hitCondition", "often"}}, {{"line", 16}, {"condition", "nothing + 1"}}}));
     client.getDebugger().update(fixture.lua());
-    const core::Json results = client.getResponse(invalid).at("body").at("breakpoints");
+    const haylen::core::Json results = client.getResponse(invalid).at("body").at("breakpoints");
     EXPECT_EQ(results.at(0).at("verified"), false);
     EXPECT_EQ(results.at(1).at("verified"), true);
     client.then([](test::DebugClient& debug) { debug.request("continue"); });
@@ -150,7 +150,7 @@ TEST_F(DebuggerTest, InspectsValuesWithoutRunningMetamethodsAndBoundsEvaluations
     EXPECT_EQ(run(fixture.lua(), "require('mod').inspect()"), "");
     EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(5));
 
-    const core::Json shown = client.getResponse(locals).at("body").at("variables").at(0);
+    const haylen::core::Json shown = client.getResponse(locals).at("body").at("variables").at(0);
     EXPECT_EQ(shown.at("name"), "probe");
     EXPECT_TRUE(shown.at("value").get<std::string>().starts_with("Probe: "));
     EXPECT_EQ(client.getResponse(probe).at("body").at("variables").at(0).at("name"), "(metatable)");
@@ -159,7 +159,7 @@ TEST_F(DebuggerTest, InspectsValuesWithoutRunningMetamethodsAndBoundsEvaluations
 
     // A bound object lists the properties of its type, which the getters of the engine read.
     std::map<std::string, std::string> properties;
-    for (const core::Json& variable : client.getResponse(camera).at("body").at("variables")) {
+    for (const haylen::core::Json& variable : client.getResponse(camera).at("body").at("variables")) {
         properties[variable.at("name").get<std::string>()] = variable.at("value").get<std::string>();
     }
 
@@ -247,7 +247,7 @@ TEST_F(DebuggerTest, RefusesABreakpointBeyondTheLastLineASourceReaches) {
     const int set = client.request("setBreakpoints", breakpoints({{{"line", 1048577}}, {{"line", 3}}}));
     client.getDebugger().update(fixture.lua());
 
-    const core::Json results = client.getResponse(set).at("body").at("breakpoints");
+    const haylen::core::Json results = client.getResponse(set).at("body").at("breakpoints");
     EXPECT_EQ(results.at(0).at("verified"), false);
     EXPECT_EQ(results.at(0).at("message"), "The line of a breakpoint is a whole number from 1 to 1048576.");
     EXPECT_EQ(results.at(1).at("verified"), true);
@@ -259,16 +259,16 @@ TEST_F(DebuggerTest, KeepsTheLastBreakpointOfALineAndSaysSoForTheFirst) {
     const int set = client.request("setBreakpoints", breakpoints({{{"line", 14}}, {{"line", 14}, {"logMessage", "sum {sum}"}}}));
     client.getDebugger().update(fixture.lua());
 
-    const core::Json results = client.getResponse(set).at("body").at("breakpoints");
+    const haylen::core::Json results = client.getResponse(set).at("body").at("breakpoints");
     EXPECT_EQ(results.at(0).at("verified"), false);
     EXPECT_EQ(results.at(0).at("message"), "A later breakpoint of the same request takes this line.");
     EXPECT_EQ(results.at(1).at("verified"), true);
 
     EXPECT_EQ(run(fixture.lua(), "require('mod').loop()"), "");
     EXPECT_TRUE(client.getEvents("stopped").empty());
-    const std::vector<core::Json> outputs = client.getEvents("output");
-    const auto logged = std::ranges::count_if(outputs, [](const core::Json& output) { return output.at("output").get<std::string>().starts_with("sum "); });
+    const std::vector<haylen::core::Json> outputs = client.getEvents("output");
+    const auto logged = std::ranges::count_if(outputs, [](const haylen::core::Json& output) { return output.at("output").get<std::string>().starts_with("sum "); });
     EXPECT_EQ(logged, 6);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

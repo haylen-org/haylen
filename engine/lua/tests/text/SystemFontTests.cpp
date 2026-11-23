@@ -23,7 +23,7 @@
 #include "text/FontFile.hpp"
 #include "text/GlyphTables.hpp"
 
-namespace haylen::text {
+namespace haylen::lua::text {
 
 // An engine on a host whose only font of the system draws Japanese from the test font.
 class SystemFontTest : public ::testing::Test {
@@ -32,12 +32,12 @@ class SystemFontTest : public ::testing::Test {
         fixture.host().addSystemFont(U"日本語", std::string(HAYLEN_TEST_FONTS) + "/mplus-1p-regular.ttf");
     }
 
-    [[nodiscard]] SystemFonts& systemFonts() {
-        return *fixture.engine().getPlugin<plugins::TextPlugin>().getSystemFonts();
+    [[nodiscard]] haylen::text::SystemFonts& systemFonts() {
+        return *fixture.engine().getPlugin<haylen::plugins::TextPlugin>().getSystemFonts();
     }
 
-    [[nodiscard]] std::shared_ptr<FontFamily> defaultFamily() {
-        return fixture.engine().getPlugin<plugins::TextPlugin>().getRegistry()->getDefaultFamily();
+    [[nodiscard]] std::shared_ptr<haylen::text::FontFamily> defaultFamily() {
+        return fixture.engine().getPlugin<haylen::plugins::TextPlugin>().getRegistry()->getDefaultFamily();
     }
 
     // Runs frames until every lookup of the fonts of the system answered.
@@ -51,9 +51,9 @@ class SystemFontTest : public ::testing::Test {
 
 // The family draws the missing glyph of its face while the font of the system loads off the frame thread, and lays the text out again with it once it arrives, having read its file once for the whole word.
 TEST_F(SystemFontTest, DrawsWhatNoFontOfTheFamilyHoldsWithTheFontOfTheSystem) {
-    const std::shared_ptr<FontFamily> family = defaultFamily();
-    const Style style{.size = 32.0F};
-    const std::shared_ptr<const Layout> waiting = family->layout("日本語", style);
+    const std::shared_ptr<haylen::text::FontFamily> family = defaultFamily();
+    const haylen::text::Style style{.size = 32.0F};
+    const std::shared_ptr<const haylen::text::Layout> waiting = family->layout("日本語", style);
     EXPECT_TRUE(waiting->waitingForFonts);
     EXPECT_EQ(waiting->looks[waiting->glyphs[0].look].font, fixture.engine().getDefaultFont().get());
 
@@ -62,19 +62,19 @@ TEST_F(SystemFontTest, DrawsWhatNoFontOfTheFamilyHoldsWithTheFontOfTheSystem) {
     EXPECT_EQ(fixture.host().getSystemFontReads(), 1);
     EXPECT_EQ(fixture.host().getSystemFontLookups(), 3);
 
-    const std::shared_ptr<const Layout> drawn = family->layout("日本語", style);
+    const std::shared_ptr<const haylen::text::Layout> drawn = family->layout("日本語", style);
     EXPECT_FALSE(drawn->waitingForFonts);
     ASSERT_EQ(drawn->glyphs.size(), 3U);
 
-    for (const Layout::Glyph& glyph : drawn->glyphs) {
+    for (const haylen::text::Layout::Glyph& glyph : drawn->glyphs) {
         EXPECT_EQ(drawn->looks[glyph.look].font, systemFonts().getFaces()[0].font.get());
     }
 }
 
 // A character that no font of the system draws is looked up once, and its text keeps the missing glyph of the face without waiting again.
 TEST_F(SystemFontTest, LooksEveryCharacterUpOnce) {
-    const std::shared_ptr<FontFamily> family = defaultFamily();
-    const Style style{.size = 32.0F};
+    const std::shared_ptr<haylen::text::FontFamily> family = defaultFamily();
+    const haylen::text::Style style{.size = 32.0F};
     EXPECT_TRUE(family->layout("한", style)->waitingForFonts);
     settle();
     EXPECT_FALSE(family->layout("한한", style)->waitingForFonts);
@@ -85,16 +85,16 @@ TEST_F(SystemFontTest, LooksEveryCharacterUpOnce) {
 
 // A family without the fonts of the system never asks for them, and rich text lays itself out again once the font arrives.
 TEST_F(SystemFontTest, LaysRichTextOutAgainAndLeavesFamiliesWithoutSystemFonts) {
-    FontFamily alone(FontFamily::Faces{.regular = fixture.engine().getDefaultFont()});
+    haylen::text::FontFamily alone(haylen::text::FontFamily::Faces{.regular = fixture.engine().getDefaultFont()});
     EXPECT_FALSE(alone.layout("日", {.size = 32.0F})->waitingForFonts);
     fixture.frames(3);
     EXPECT_EQ(fixture.host().getSystemFontLookups(), 0);
 
-    RichText rich("[b]日本[/b]", {.family = defaultFamily(), .size = 32.0F}, fixture.engine().getPlugin<plugins::TextPlugin>().getRegistry());
+    haylen::text::RichText rich("[b]日本[/b]", {.family = defaultFamily(), .size = 32.0F}, fixture.engine().getPlugin<haylen::plugins::TextPlugin>().getRegistry());
     EXPECT_TRUE(rich.getLayout().waitingForFonts);
     settle();
     rich.update(0.0F);
-    const Layout& laid = rich.getLayout();
+    const haylen::text::Layout& laid = rich.getLayout();
     EXPECT_FALSE(laid.waitingForFonts);
     EXPECT_EQ(laid.looks[laid.glyphs[0].look].font, systemFonts().getFaces()[0].font.get());
 }
@@ -103,37 +103,37 @@ TEST_F(SystemFontTest, LaysRichTextOutAgainAndLeavesFamiliesWithoutSystemFonts) 
 TEST_F(SystemFontTest, ReadsTheFaceOfACollection) {
     const std::vector<std::vector<std::uint8_t>> faces{test::FontCollection::read("crimson-text-regular.ttf"), test::FontCollection::read("mplus-1p-regular.ttf")};
     const std::vector<std::uint8_t> collection = test::FontCollection::build(faces);
-    graphics::Device& device = fixture.engine().getGraphics();
-    EXPECT_FALSE(TrueTypeFont(device, collection).hasGlyph(U'日'));
-    EXPECT_TRUE(TrueTypeFont(device, collection, {.face = 1}).hasGlyph(U'日'));
-    EXPECT_THROW(TrueTypeFont(device, collection, {.face = 2}), std::runtime_error);
-    EXPECT_THROW(TrueTypeFont(device, collection, {.face = -1}), std::invalid_argument);
+    haylen::graphics::Device& device = fixture.engine().getGraphics();
+    EXPECT_FALSE(haylen::text::TrueTypeFont(device, collection).hasGlyph(U'日'));
+    EXPECT_TRUE(haylen::text::TrueTypeFont(device, collection, {.face = 1}).hasGlyph(U'日'));
+    EXPECT_THROW(haylen::text::TrueTypeFont(device, collection, {.face = 2}), std::runtime_error);
+    EXPECT_THROW(haylen::text::TrueTypeFont(device, collection, {.face = -1}), std::invalid_argument);
 
     const std::vector<std::uint8_t> cut(collection.begin(), collection.begin() + 18);
-    EXPECT_THROW(TrueTypeFont(device, cut, {.face = 1}), std::runtime_error);
+    EXPECT_THROW(haylen::text::TrueTypeFont(device, cut, {.face = 1}), std::runtime_error);
 }
 
 // The engine draws a face through its color layers, or through its outlines unless bitmaps hold its real glyphs, which HarfBuzz reads from the tables of the face, in a collection too.
 TEST(GlyphTablesTest, DrawsColorLayersAndOutlinesWithoutBitmaps) {
-    EXPECT_TRUE(GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x636D6170U, 0x676C7966U}));
-    EXPECT_TRUE(GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x43464620U, 0x636D6170U}));
-    EXPECT_TRUE(GlyphTables::isDrawable(std::array<std::uint32_t, 3>{0x43424454U, 0x434F4C52U, 0x676C7966U}));
-    EXPECT_FALSE(GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x43424454U, 0x676C7966U}));
-    EXPECT_FALSE(GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x676C7966U, 0x73626978U}));
-    EXPECT_FALSE(GlyphTables::isDrawable(std::array<std::uint32_t, 1>{0x636D6170U}));
+    EXPECT_TRUE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x636D6170U, 0x676C7966U}));
+    EXPECT_TRUE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x43464620U, 0x636D6170U}));
+    EXPECT_TRUE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 3>{0x43424454U, 0x434F4C52U, 0x676C7966U}));
+    EXPECT_FALSE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x43424454U, 0x676C7966U}));
+    EXPECT_FALSE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x676C7966U, 0x73626978U}));
+    EXPECT_FALSE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 1>{0x636D6170U}));
 
     const std::vector<std::uint8_t> letters = test::FontCollection::read("crimson-text-regular.ttf");
     const std::vector<std::uint8_t> bitmaps = test::FontCollection::addTable(letters, 0x43424454U);
     const std::vector<std::vector<std::uint8_t>> faces{letters, bitmaps};
     const std::vector<std::uint8_t> collection = test::FontCollection::build(faces);
-    EXPECT_EQ(FontFile::countFaces(collection), 2U);
-    const std::optional<FontFile> first = FontFile::read(std::span<const std::uint8_t>(collection), 0);
-    const std::optional<FontFile> second = FontFile::read(std::span<const std::uint8_t>(collection), 1);
+    EXPECT_EQ(haylen::text::FontFile::countFaces(collection), 2U);
+    const std::optional<haylen::text::FontFile> first = haylen::text::FontFile::read(std::span<const std::uint8_t>(collection), 0);
+    const std::optional<haylen::text::FontFile> second = haylen::text::FontFile::read(std::span<const std::uint8_t>(collection), 1);
     ASSERT_TRUE(first);
     ASSERT_TRUE(second);
     EXPECT_TRUE(first->isDrawable());
     EXPECT_FALSE(second->isDrawable());
-    EXPECT_FALSE(FontFile::read(std::span<const std::uint8_t>(collection), 2).has_value());
+    EXPECT_FALSE(haylen::text::FontFile::read(std::span<const std::uint8_t>(collection), 2).has_value());
 }
 
 // A face whose glyphs are bitmaps, or that lacks the character the platform named it for, is refused and never read again.
@@ -145,7 +145,7 @@ TEST_F(SystemFontTest, RefusesFacesTheEngineCannotDrawAndReadsThemOnce) {
     fixture.host().addSystemFont(U"한글", folder / "bitmaps.ttf");
     fixture.host().addSystemFont(U"ก", std::string(HAYLEN_TEST_FONTS) + "/crimson-text-regular.ttf");
 
-    const std::shared_ptr<FontFamily> family = defaultFamily();
+    const std::shared_ptr<haylen::text::FontFamily> family = defaultFamily();
     EXPECT_TRUE(family->layout("한ก", {.size = 32.0F})->waitingForFonts);
     settle();
     EXPECT_TRUE(family->layout("글", {.size = 32.0F})->waitingForFonts);
@@ -177,4 +177,4 @@ TEST_F(SystemFontTest, ReachesTheFontsOfTheSystemFromLua) {
     EXPECT_NE(fixture.lua("graphics.newFontFamily({regular = graphics2d.defaultFont(), systemFonts = 'yes'})").find("systemFonts"), std::string::npos);
 }
 
-} // namespace haylen::text
+} // namespace haylen::lua::text

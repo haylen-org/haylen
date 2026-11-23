@@ -24,11 +24,11 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 TEST(ProfilerTest, AddsUpScopesPerFrame) {
     double now = 0.0;
-    Profiler profiler(4, [&now] { return now; });
+    haylen::debug::Profiler profiler(4, [&now] { return now; });
 
     profiler.beginFrame(0.0);
     now = 0.001;
@@ -38,7 +38,7 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
     now = 0.004;
     profiler.endScope();
     {
-        const ProfileScope scope(profiler, "physics");
+        const haylen::debug::ProfileScope scope(profiler, "physics");
         now = 0.006;
     }
 
@@ -50,7 +50,7 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
     now = 0.016;
     profiler.endFrame();
 
-    const std::span<const ProfileSample> samples = profiler.getLastFrame();
+    const std::span<const haylen::debug::ProfileSample> samples = profiler.getLastFrame();
     ASSERT_EQ(samples.size(), 3U);
     EXPECT_EQ(samples[0].name, "update");
     EXPECT_NEAR(samples[0].milliseconds, 6.0, 1e-9);
@@ -66,12 +66,12 @@ TEST(ProfilerTest, AddsUpScopesPerFrame) {
 
 // Frames of the same scopes reuse the samples of the frames before them, so a scope whose name is longer than the text a string keeps in place allocates nothing, as on the web, where that text is shortest.
 TEST(ProfilerTest, MeasuresFramesOfTheSameScopesWithoutAllocating) {
-    Profiler profiler;
+    haylen::debug::Profiler profiler;
     // clang-format off
     const auto frame = [&profiler] {
         profiler.beginFrame(0.016);
-        const ProfileScope outer(profiler, "a scope whose name outgrows the text of a short string");
-        const ProfileScope inner(profiler, "another scope inside it with a long name");
+        const haylen::debug::ProfileScope outer(profiler, "a scope whose name outgrows the text of a short string");
+        const haylen::debug::ProfileScope inner(profiler, "another scope inside it with a long name");
     };
     // clang-format on
     frame();
@@ -91,10 +91,10 @@ TEST(ProfilerTest, MeasuresFramesOfTheSameScopesWithoutAllocating) {
 }
 
 TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
-    Profiler profiler;
+    haylen::debug::Profiler profiler;
     profiler.beginFrame(0.0);
     {
-        const ProfileScope outer(profiler, "outer");
+        const haylen::debug::ProfileScope outer(profiler, "outer");
         profiler.beginScope("left open");
     }
 
@@ -102,7 +102,7 @@ TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
 
     // A scope that something else already closed ends quietly.
     {
-        const ProfileScope closed(profiler, "closed early");
+        const haylen::debug::ProfileScope closed(profiler, "closed early");
         profiler.endScope();
     }
 
@@ -113,7 +113,7 @@ TEST(ProfilerTest, ScopesCloseWhatTheyContain) {
 
 TEST(ProfilerTest, KeepsARingOfFrameTimes) {
     double now = 0.0;
-    Profiler profiler(4, [&now] { return now; });
+    haylen::debug::Profiler profiler(4, [&now] { return now; });
     EXPECT_EQ(profiler.getAverageFrameMilliseconds(), 0.0);
     std::vector<float> history;
     profiler.readFrameHistory(history);
@@ -142,13 +142,13 @@ TEST(ProfilerTest, KeepsARingOfFrameTimes) {
 
     EXPECT_THROW(profiler.endScope(), std::logic_error);
     EXPECT_THROW(profiler.endFrame(), std::logic_error);
-    EXPECT_THROW(Profiler(0), std::invalid_argument);
+    EXPECT_THROW(haylen::debug::Profiler(0), std::invalid_argument);
 }
 
 // The frame rate counts the intervals at which the display showed the frames, which hold the wait for the display and the frames it missed that the work of a frame leaves out, and reading it allocates nothing.
 TEST(ProfilerTest, MeasuresTheFrameRateFromTheFramesTheDisplayShowed) {
     double now = 0.0;
-    Profiler profiler(8, [&now] { return now; });
+    haylen::debug::Profiler profiler(8, [&now] { return now; });
     profiler.beginFrame(0.0);
     EXPECT_EQ(profiler.getFramesPerSecond(), 0.0);
 
@@ -171,7 +171,7 @@ TEST(ProfilerTest, MeasuresTheFrameRateFromTheFramesTheDisplayShowed) {
 
 // A script closes only the scopes it opened, so closing one too many leaves the scope of the engine around it open.
 TEST(ProfilerTest, KeepsTheScopesOfTheEngineFromScripts) {
-    Profiler profiler;
+    haylen::debug::Profiler profiler;
     profiler.beginFrame(0.0);
     profiler.beginScope("update");
     profiler.beginScriptScope("enemies");
@@ -183,17 +183,17 @@ TEST(ProfilerTest, KeepsTheScopesOfTheEngineFromScripts) {
 }
 
 TEST(LogTest, FansLinesOutToListeners) {
-    std::vector<std::pair<core::Log::Level, std::string>> lines;
-    const std::uint64_t id = core::Log::addListener([&lines](core::Log::Level level, std::string_view line) { lines.emplace_back(level, std::string(line)); });
-    core::Log::warning("storm at {}", "night");
-    core::Log::write(core::Log::Level::Error, "fire went out");
-    core::Log::removeListener(id);
-    core::Log::info("unheard");
+    std::vector<std::pair<haylen::core::Log::Level, std::string>> lines;
+    const std::uint64_t id = haylen::core::Log::addListener([&lines](haylen::core::Log::Level level, std::string_view line) { lines.emplace_back(level, std::string(line)); });
+    haylen::core::Log::warning("storm at {}", "night");
+    haylen::core::Log::write(haylen::core::Log::Level::Error, "fire went out");
+    haylen::core::Log::removeListener(id);
+    haylen::core::Log::info("unheard");
 
     ASSERT_EQ(lines.size(), 2U);
-    EXPECT_EQ(lines[0].first, core::Log::Level::Warning);
+    EXPECT_EQ(lines[0].first, haylen::core::Log::Level::Warning);
     EXPECT_NE(lines[0].second.find("storm at night"), std::string::npos);
-    EXPECT_EQ(lines[1].first, core::Log::Level::Error);
+    EXPECT_EQ(lines[1].first, haylen::core::Log::Level::Error);
     EXPECT_NE(lines[1].second.find("fire went out"), std::string::npos);
 }
 
@@ -203,7 +203,7 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
     bool entered = false;
     bool released = false;
     // clang-format off
-    const std::uint64_t id = core::Log::addListener([&](core::Log::Level, std::string_view) {
+    const std::uint64_t id = haylen::core::Log::addListener([&](haylen::core::Log::Level, std::string_view) {
         std::unique_lock lock(mutex);
         entered = true;
         changed.notify_all();
@@ -212,7 +212,7 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
         }
     });
     // clang-format on
-    std::thread writer([] { core::Log::warning("a line from another thread"); });
+    std::thread writer([] { haylen::core::Log::warning("a line from another thread"); });
     {
         std::unique_lock lock(mutex);
         EXPECT_TRUE(changed.wait_for(lock, std::chrono::seconds(10), [&] { return entered; })) << "The listener never received the line.";
@@ -222,7 +222,7 @@ TEST(LogTest, RemovingAListenerWaitsForTheLineItIsWriting) {
     std::atomic<bool> removed = false;
     // clang-format off
     std::thread remover([&] {
-        core::Log::removeListener(id);
+        haylen::core::Log::removeListener(id);
         removed = true;
     });
     // clang-format on
@@ -263,8 +263,8 @@ TEST(LogTest, KeepsWorkingWhileAnotherThreadExits) {
         }).detach();
 
         for (;;) {
-            core::Log::removeListener(core::Log::addListener([](core::Log::Level, std::string_view) {}));
-            const ObjectCounter counter("Probe", ObjectCounter::Kind::Native);
+            haylen::core::Log::removeListener(haylen::core::Log::addListener([](haylen::core::Log::Level, std::string_view) {}));
+            const haylen::debug::ObjectCounter counter("Probe", haylen::debug::ObjectCounter::Kind::Native);
             ++iterations;
         }
     }, testing::ExitedWithCode(0), "");
@@ -273,49 +273,49 @@ TEST(LogTest, KeepsWorkingWhileAnotherThreadExits) {
 
 TEST(DebugPluginTest, CyclesTheStatisticsAndKeepsRecentLines) {
     test::LuaFixture fixture;
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
-    core::Log::warning("wolves nearby");
-    std::vector<LogLine> recent;
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
+    haylen::core::Log::warning("wolves nearby");
+    std::vector<haylen::debug::LogLine> recent;
     plugin.readRecentLog(recent);
     ASSERT_FALSE(recent.empty());
-    EXPECT_EQ(recent.back().level, core::Log::Level::Warning);
+    EXPECT_EQ(recent.back().level, haylen::core::Log::Level::Warning);
     EXPECT_NE(recent.back().text.find("wolves nearby"), std::string::npos);
 
     // clang-format off
-    const auto press = [&](input::Key key) {
-        platform::Event event;
-        event.type = platform::Event::Type::KeyDown;
+    const auto press = [&](haylen::input::Key key) {
+        haylen::platform::Event event;
+        event.type = haylen::platform::Event::Type::KeyDown;
         event.key = key;
         fixture.engine().handleEvent(event);
     };
     // clang-format on
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Off);
-    press(input::Key::F3);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Compact);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Off);
+    press(haylen::input::Key::F3);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Compact);
     fixture.frames(3);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().instances, 0U);
-    press(input::Key::F3);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
+    press(haylen::input::Key::F3);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Full);
     fixture.frames(3);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().vertices, 0U);
 
-    plugin.setToggleKey(input::Key::F4);
-    press(input::Key::F3);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Full);
-    press(input::Key::F4);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Off);
+    plugin.setToggleKey(haylen::input::Key::F4);
+    press(haylen::input::Key::F3);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Full);
+    press(haylen::input::Key::F4);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Off);
     plugin.setToggleKey(std::nullopt);
-    press(input::Key::F4);
-    EXPECT_EQ(plugin.getStatsMode(), StatsDisplay::Mode::Off);
+    press(haylen::input::Key::F4);
+    EXPECT_EQ(plugin.getStatsMode(), haylen::debug::StatsDisplay::Mode::Off);
     EXPECT_EQ(plugin.getToggleKey(), std::nullopt);
 
-    for (std::size_t line = 0; line < plugins::DebugPlugin::kLogLines + 20; ++line) {
-        core::Log::info("line {}", line);
+    for (std::size_t line = 0; line < haylen::plugins::DebugPlugin::kLogLines + 20; ++line) {
+        haylen::core::Log::info("line {}", line);
     }
 
     plugin.readRecentLog(recent);
-    EXPECT_EQ(recent.size(), plugins::DebugPlugin::kLogLines);
+    EXPECT_EQ(recent.size(), haylen::plugins::DebugPlugin::kLogLines);
 }
 
 TEST(DebugPluginTest, ProfilesFromLua) {
@@ -355,8 +355,8 @@ TEST(DebugPluginTest, ProfilesFromLua) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("A profiler scope was closed without being opened."), std::string::npos);
-    const std::span<const ProfileSample> scopes = fixture.engine().getProfiler().getLastFrame();
-    EXPECT_NE(std::ranges::find(scopes, std::string_view("update"), &ProfileSample::name), scopes.end());
+    const std::span<const haylen::debug::ProfileSample> scopes = fixture.engine().getProfiler().getLastFrame();
+    EXPECT_NE(std::ranges::find(scopes, std::string_view("update"), &haylen::debug::ProfileSample::name), scopes.end());
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

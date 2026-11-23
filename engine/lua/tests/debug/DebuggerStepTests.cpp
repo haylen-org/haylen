@@ -7,7 +7,7 @@
 #include "debug/DebuggerTest.hpp"
 #include "haylen/core/Json.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class DebuggerStepTest : public DebuggerTest {};
 
@@ -37,7 +37,7 @@ TEST_F(DebuggerStepTest, StepsInOutAndOverTheCallsOfAFunction) {
     }
 
     EXPECT_EQ(lines, (std::vector<int>{8, 3, 4, 9}));
-    const std::vector<core::Json> stops = client.getEvents("stopped");
+    const std::vector<haylen::core::Json> stops = client.getEvents("stopped");
     ASSERT_EQ(stops.size(), 4U);
     EXPECT_EQ(stops.at(1).at("reason"), "step");
 }
@@ -63,7 +63,7 @@ TEST_F(DebuggerStepTest, StepsOverTheAwaitOfATaskIntoTheFrameWhereItGoesOn) {
 
     std::vector<int> lines;
     for (const int request : traces) {
-        const core::Json frame = client.getResponse(request).at("body").at("stackFrames").at(0);
+        const haylen::core::Json frame = client.getResponse(request).at("body").at("stackFrames").at(0);
         EXPECT_EQ(frame.at("source").at("path"), "source/task.lua");
         lines.push_back(frame.at("line").get<int>());
     }
@@ -115,4 +115,4 @@ TEST_F(DebuggerStepTest, StepsInAtTheYieldOfACoroutineThatTheAppThenDrops) {
     EXPECT_EQ(client.getEvents("stopped").size(), 1U);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

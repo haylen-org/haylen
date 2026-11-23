@@ -7,12 +7,12 @@
 #include "haylen/ai/StateMachine.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::ai {
+namespace haylen::lua::ai {
 
 class StateMachineTest : public ::testing::Test {
   protected:
     // Records every callback of a state under its name.
-    [[nodiscard]] static StateMachine::Callbacks makeRecorder(std::vector<std::string>& log, const std::string& name) {
+    [[nodiscard]] static haylen::ai::StateMachine::Callbacks makeRecorder(std::vector<std::string>& log, const std::string& name) {
         // clang-format off
         return {
             .enter = [&log, name] { log.push_back("enter " + name); },
@@ -25,7 +25,7 @@ class StateMachineTest : public ::testing::Test {
 
 TEST_F(StateMachineTest, EntersUpdatesAndLeavesStates) {
     std::vector<std::string> log;
-    ai::StateMachine machine;
+    haylen::ai::StateMachine machine;
     machine.add("idle", makeRecorder(log, "idle"));
     machine.add("walk", makeRecorder(log, "walk"));
     machine.add("quiet", {});
@@ -55,7 +55,7 @@ TEST_F(StateMachineTest, EntersUpdatesAndLeavesStates) {
 
 TEST_F(StateMachineTest, QueuesChangesRequestedDuringTransitions) {
     std::vector<std::string> log;
-    ai::StateMachine machine;
+    haylen::ai::StateMachine machine;
     // clang-format off
     machine.add("a", {
         .enter = [&] {
@@ -77,7 +77,7 @@ TEST_F(StateMachineTest, QueuesChangesRequestedDuringTransitions) {
 }
 
 TEST_F(StateMachineTest, RejectsBadStatesAndRecoversFromFailures) {
-    ai::StateMachine machine;
+    haylen::ai::StateMachine machine;
     machine.add("safe", {});
     bool fail = true;
     // clang-format off
@@ -189,4 +189,4 @@ TEST(AiLuaTest, ReadsTheCallbacksOfStatesFromTheirTable) {
     EXPECT_EQ(fixture.lua("states.gone = nil machine:change('gone') return table.concat(log, ', ') .. ' ' .. machine.current"), "second gone");
 }
 
-} // namespace haylen::ai
+} // namespace haylen::lua::ai

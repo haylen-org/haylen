@@ -12,7 +12,7 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class CollectionLuaTest : public ::testing::Test {
   protected:
@@ -27,10 +27,10 @@ class CollectionLuaTest : public ::testing::Test {
     void clickRow(int row, float x = 100.0F) {
         const std::string top = fixture.lua("return gui:bounds('list').y");
         const std::string left = fixture.lua("return gui:bounds('list').x");
-        const math::Vec2 origin = getEngine().getViewport().getVisibleRect().getMin();
-        const math::Vec2 point = math::Vec2{std::stof(left) + x, std::stof(top) + 60.0F * static_cast<float>(row) - 30.0F} - origin;
-        for (const platform::Event::Type type : {platform::Event::Type::MouseMove, platform::Event::Type::MouseDown, platform::Event::Type::MouseUp}) {
-            platform::Event event;
+        const haylen::math::Vec2 origin = getEngine().getViewport().getVisibleRect().getMin();
+        const haylen::math::Vec2 point = haylen::math::Vec2{std::stof(left) + x, std::stof(top) + 60.0F * static_cast<float>(row) - 30.0F} - origin;
+        for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::MouseMove, haylen::platform::Event::Type::MouseDown, haylen::platform::Event::Type::MouseUp}) {
+            haylen::platform::Event event;
             event.type = type;
             event.position = getEngine().getViewport().toFramebuffer(point + origin);
             getEngine().handleEvent(event);
@@ -45,27 +45,27 @@ class CollectionLuaTest : public ::testing::Test {
         const float top = std::stof(fixture.lua("return gui:bounds('list').y"));
         const float left = std::stof(fixture.lua("return gui:bounds('list').x"));
         // clang-format off
-        const auto send = [&](platform::Event::Type type, float row) {
-            platform::Event event;
+        const auto send = [&](haylen::platform::Event::Type type, float row) {
+            haylen::platform::Event event;
             event.type = type;
-            event.position = getEngine().getViewport().toFramebuffer(math::Vec2{left + 100.0F, top + 60.0F * row - 30.0F});
+            event.position = getEngine().getViewport().toFramebuffer(haylen::math::Vec2{left + 100.0F, top + 60.0F * row - 30.0F});
             getEngine().handleEvent(event);
             fixture.frames(1);
         };
         // clang-format on
-        send(platform::Event::Type::MouseMove, static_cast<float>(from));
-        send(platform::Event::Type::MouseDown, static_cast<float>(from));
+        send(haylen::platform::Event::Type::MouseMove, static_cast<float>(from));
+        send(haylen::platform::Event::Type::MouseDown, static_cast<float>(from));
 
         for (int step = 1; step <= 8; ++step) {
-            send(platform::Event::Type::MouseMove, static_cast<float>(from) + static_cast<float>(to - from) * static_cast<float>(step) / 8.0F);
+            send(haylen::platform::Event::Type::MouseMove, static_cast<float>(from) + static_cast<float>(to - from) * static_cast<float>(step) / 8.0F);
         }
 
-        send(platform::Event::Type::MouseUp, static_cast<float>(to));
+        send(haylen::platform::Event::Type::MouseUp, static_cast<float>(to));
     }
 
-    void key(input::Key code) {
-        for (const platform::Event::Type type : {platform::Event::Type::KeyDown, platform::Event::Type::KeyUp}) {
-            platform::Event event;
+    void key(haylen::input::Key code) {
+        for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::KeyDown, haylen::platform::Event::Type::KeyUp}) {
+            haylen::platform::Event event;
             event.type = type;
             event.key = code;
             getEngine().handleEvent(event);
@@ -73,7 +73,7 @@ class CollectionLuaTest : public ::testing::Test {
         }
     }
 
-    core::Engine& getEngine() {
+    haylen::core::Engine& getEngine() {
         return fixture.engine();
     }
 
@@ -441,7 +441,7 @@ TEST_F(CollectionLuaTest, OpensTheContextMenuOfAPartAndTellsWhereACellDrew) {
     fixture.frames(3);
     fixture.runLua("list:cellOf(2):command('menu', 'open')");
     fixture.frames(2);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return picked"), "menu share r2");
 
@@ -464,13 +464,13 @@ TEST_F(CollectionLuaTest, ReportsTheMovesOfAReorderableCollection) {
     // The keyboard presses an item, picks it up with a second press and drops it on another item.
     fixture.runLua("list:focus(1)");
     fixture.frames(2);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     EXPECT_EQ(fixture.lua("return picked"), "i1");
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     EXPECT_EQ(fixture.lua("return lifted"), "i1 1");
-    key(input::Key::Down);
-    key(input::Key::Down);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Down);
+    key(haylen::input::Key::Down);
+    key(haylen::input::Key::Enter);
     EXPECT_EQ(fixture.lua("return moved .. ', ' .. items[3].id"), "i1 1 3, i1");
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
@@ -556,4 +556,4 @@ TEST_F(CollectionLuaTest, StopsTheAppOnAPageOfTheWrongLength) {
     EXPECT_NE(waitForError().find("The page loader of the collection \"pages\" returned 1 items for a page of 10."), std::string::npos);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

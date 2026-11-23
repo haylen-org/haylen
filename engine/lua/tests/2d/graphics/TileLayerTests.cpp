@@ -17,7 +17,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 class TileLayerTest : public ::testing::Test {
   protected:
@@ -28,9 +28,9 @@ class TileLayerTest : public ::testing::Test {
         return {bytes.begin(), bytes.end()};
     }
 
-    [[nodiscard]] TileLayer makeLayer(int chunkSize) {
-        assets::Manager& assets = fixture.engine().getAssets();
-        TileLayer layer({assets.texture("tiles.png"), assets.texture("props.png")}, {.cellSize = {16.0F, 16.0F}, .chunkSize = chunkSize});
+    [[nodiscard]] haylen::graphics2d::TileLayer makeLayer(int chunkSize) {
+        haylen::assets::Manager& assets = fixture.engine().getAssets();
+        haylen::graphics2d::TileLayer layer({assets.texture("tiles.png"), assets.texture("props.png")}, {.cellSize = {16.0F, 16.0F}, .chunkSize = chunkSize});
         layer.defineFrame(1, {.texture = 0, .source = {0.0F, 0.0F, 16.0F, 16.0F}});
         layer.defineFrame(2, {.texture = 0, .source = {16.0F, 0.0F, 16.0F, 16.0F}});
         layer.defineFrame(3, {.texture = 1, .source = {0.0F, 0.0F, 32.0F, 32.0F}, .offset = {0.0F, -16.0F}});
@@ -41,7 +41,7 @@ class TileLayerTest : public ::testing::Test {
 };
 
 TEST_F(TileLayerTest, KeepsSparseChunksAndBakesOnlyChangedOnes) {
-    TileLayer layer = makeLayer(4);
+    haylen::graphics2d::TileLayer layer = makeLayer(4);
     layer.setCell(0, 0, 1);
     layer.setCell(-1, -1, 2);
     layer.setCell(-5, 9, 3);
@@ -59,12 +59,12 @@ TEST_F(TileLayerTest, KeepsSparseChunksAndBakesOnlyChangedOnes) {
     layer.setCell(-5, 9, 0);
     EXPECT_EQ(layer.getChunkCount(), 3U);
 
-    Camera camera;
-    camera.anchor = Camera::Anchor::TopLeft;
+    haylen::graphics2d::Camera camera;
+    camera.anchor = haylen::graphics2d::Camera::Anchor::TopLeft;
     camera.position = {-64.0F, -64.0F};
     // clang-format off
-    const auto draw = [&](math::Vec2 offset) {
-        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+    const auto draw = [&](haylen::math::Vec2 offset) {
+        return test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
             engine.getRenderer2D().beginWorld(camera);
             layer.draw(engine.getRenderer2D(), {}, offset);
         });
@@ -72,7 +72,7 @@ TEST_F(TileLayerTest, KeepsSparseChunksAndBakesOnlyChangedOnes) {
     // clang-format on
 
     // The chunks bake on their first draw into one batch for each texture they use.
-    const Renderer::Stats stats = draw({});
+    const haylen::graphics2d::Renderer::Stats stats = draw({});
     EXPECT_EQ(stats.sprites, 7U);
     EXPECT_EQ(layer.getBatchCount(), 4U);
 
@@ -90,18 +90,18 @@ TEST_F(TileLayerTest, KeepsSparseChunksAndBakesOnlyChangedOnes) {
 }
 
 TEST_F(TileLayerTest, DrawsOnlyTheChunksInViewWithoutAllocating) {
-    TileLayer layer = makeLayer(16);
+    haylen::graphics2d::TileLayer layer = makeLayer(16);
     std::vector<float> ids(256UL * 256UL, 1.0F);
     layer.setCells(0, 0, 256, ids);
     EXPECT_EQ(layer.getChunkCount(), 256U);
 
-    Camera camera;
-    camera.anchor = Camera::Anchor::TopLeft;
+    haylen::graphics2d::Camera camera;
+    camera.anchor = haylen::graphics2d::Camera::Anchor::TopLeft;
     std::size_t inside = 0;
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
         engine.getRenderer2D().beginWorld(camera);
-        const math::Rect view = engine.getRenderer2D().getCanvasBounds();
+        const haylen::math::Rect view = engine.getRenderer2D().getCanvasBounds();
         inside = 0;
         for (int row = 0; row < 16; ++row) {
             for (int column = 0; column < 16; ++column) {
@@ -124,28 +124,28 @@ TEST_F(TileLayerTest, DrawsOnlyTheChunksInViewWithoutAllocating) {
 }
 
 TEST_F(TileLayerTest, DrawsFramesAtTheirSizeOrTheSizeOfTheirSource) {
-    TileLayer layer = makeLayer(4);
+    haylen::graphics2d::TileLayer layer = makeLayer(4);
     layer.defineFrame(4, {.source = {0.0F, 0.0F, 16.0F, 16.0F}, .size = {40.0F, 24.0F}});
     layer.setCell(0, 0, 1);
     layer.setCell(1, 0, 4);
-    Camera camera;
-    camera.anchor = Camera::Anchor::TopLeft;
-    std::vector<math::Vec2> sizes;
+    haylen::graphics2d::Camera camera;
+    camera.anchor = haylen::graphics2d::Camera::Anchor::TopLeft;
+    std::vector<haylen::math::Vec2> sizes;
     // clang-format off
-    test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+    test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
         engine.getRenderer2D().beginWorld(camera);
         layer.draw(engine.getRenderer2D());
         sizes.clear();
-        engine.getRenderer2D().visitDrawn([&sizes](const Renderer::Drawn& drawn) { sizes.push_back(drawn.corners[2] - drawn.corners[0]); });
+        engine.getRenderer2D().visitDrawn([&sizes](const haylen::graphics2d::Renderer::Drawn& drawn) { sizes.push_back(drawn.corners[2] - drawn.corners[0]); });
     });
     // clang-format on
     // The chunk bakes into one batch, which reaches from the 16 unit tile of the first cell to the end of the 40 by 24 unit frame of the second.
     ASSERT_EQ(sizes.size(), 1U);
-    EXPECT_EQ(sizes[0], math::Vec2(56.0F, 24.0F));
+    EXPECT_EQ(sizes[0], haylen::math::Vec2(56.0F, 24.0F));
 }
 
 TEST_F(TileLayerTest, KeepsTheCellsAtTheEndsOfTheIntegerRangeAndTheIdsOfARectangleInRange) {
-    TileLayer layer = makeLayer(3);
+    haylen::graphics2d::TileLayer layer = makeLayer(3);
     const int lowest = std::numeric_limits<int>::min();
     const int highest = std::numeric_limits<int>::max();
     layer.setCell(lowest, lowest, 1);
@@ -174,14 +174,14 @@ TEST_F(TileLayerTest, KeepsTheCellsAtTheEndsOfTheIntegerRangeAndTheIdsOfARectang
 }
 
 TEST_F(TileLayerTest, RejectsBrokenFramesAndOptions) {
-    assets::Manager& assets = fixture.engine().getAssets();
-    EXPECT_THROW(TileLayer({}, {}), std::invalid_argument);
-    EXPECT_THROW(TileLayer({assets.texture("tiles.png")}, {.chunkSize = 0}), std::invalid_argument);
-    EXPECT_THROW(TileLayer({assets.texture("tiles.png")}, {.cellSize = {0.0F, 16.0F}}), std::invalid_argument);
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
+    EXPECT_THROW(haylen::graphics2d::TileLayer({}, {}), std::invalid_argument);
+    EXPECT_THROW(haylen::graphics2d::TileLayer({assets.texture("tiles.png")}, {.chunkSize = 0}), std::invalid_argument);
+    EXPECT_THROW(haylen::graphics2d::TileLayer({assets.texture("tiles.png")}, {.cellSize = {0.0F, 16.0F}}), std::invalid_argument);
 
-    TileLayer layer = makeLayer(8);
+    haylen::graphics2d::TileLayer layer = makeLayer(8);
     EXPECT_THROW(layer.defineFrame(0, {}), std::invalid_argument);
-    EXPECT_THROW(layer.defineFrame(TileLayer::kMaxFrame + 1, {}), std::invalid_argument);
+    EXPECT_THROW(layer.defineFrame(haylen::graphics2d::TileLayer::kMaxFrame + 1, {}), std::invalid_argument);
     EXPECT_THROW(layer.defineFrame(4, {.texture = 2}), std::invalid_argument);
     EXPECT_THROW(layer.setCell(0, 0, 9), std::invalid_argument);
     const std::vector<float> ids{1.0F, 1.0F, 1.0F};
@@ -223,4 +223,4 @@ TEST_F(TileLayerTest, BuildsLayersFromLua) {
     EXPECT_NE(fixture.lua("graphics2d.newTileLayer(assets.texture('tiles.png'), {size = 4})").find("Unknown option \"size\"."), std::string::npos);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

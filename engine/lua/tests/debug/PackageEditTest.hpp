@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 // Edits package files the way an editor does while a test watches them.
 class PackageEditTest : public ::testing::Test {
@@ -23,4 +23,4 @@ class PackageEditTest : public ::testing::Test {
     }
 };
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

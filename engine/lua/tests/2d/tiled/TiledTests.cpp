@@ -32,7 +32,7 @@
 #include "support/TestFiles.hpp"
 #include "support/TiledHelper.hpp"
 
-namespace haylen::tiled {
+namespace haylen::lua::tiled {
 
 // Builds the test maps with their tilesets and templates, and the package that holds them.
 class TiledTest : public ::testing::Test {
@@ -96,9 +96,9 @@ class TiledTest : public ::testing::Test {
     }
 
     // A 4 by 3 orthogonal map exercising every layer type, both tileset kinds, templates and all tile data encodings.
-    [[nodiscard]] static core::Json orthogonalMap() {
+    [[nodiscard]] static haylen::core::Json orthogonalMap() {
         const std::vector<std::uint32_t> ground{1, 2, 1, 2, 3, 3, 3, 3, 5, 0, 5, 5};
-        return core::Json::parse(R"({
+        return haylen::core::Json::parse(R"({
         "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 4, "height": 3,
         "tilewidth": 16, "tileheight": 16, "infinite": false, "class": "level", "backgroundcolor": "#FF102030",
         "parallaxoriginx": 0, "parallaxoriginy": 0,
@@ -128,14 +128,14 @@ class TiledTest : public ::testing::Test {
         ],
         "layers": [
             {"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "compression": "zlib", "data": ")" +
-                                 encodeTiles(ground, "zlib") + R"("},
+                                         encodeTiles(ground, "zlib") + R"("},
             {"id": 2, "name": "decor", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "compression": "gzip", "data": ")" +
-                                 encodeTiles({0, 0, 0, 0, 0, 2147483652, 0, 0, 0, 0, 0, 4}, "gzip") + R"(",
+                                         encodeTiles({0, 0, 0, 0, 0, 2147483652, 0, 0, 0, 0, 0, 4}, "gzip") + R"(",
              "properties": [{"name": "collision", "type": "bool", "value": false}]},
             {"id": 3, "name": "packed", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "compression": "zstd", "data": ")" +
-                                 encodeTiles(std::vector<std::uint32_t>(12, 0), "zstd") + R"("},
+                                         encodeTiles(std::vector<std::uint32_t>(12, 0), "zstd") + R"("},
             {"id": 4, "name": "raw", "type": "tilelayer", "width": 4, "height": 3, "encoding": "base64", "data": ")" +
-                                 encodeTiles(std::vector<std::uint32_t>(12, 0), "") + R"("},
+                                         encodeTiles(std::vector<std::uint32_t>(12, 0), "") + R"("},
             {"id": 5, "name": "things", "type": "objectgroup", "draworder": "topdown", "color": "#FFA0C040", "class": "entities", "objects": [
                 {"id": 1, "name": "spawn", "type": "player", "x": 10, "y": 20, "point": true, "properties": [{"name": "hp", "type": "int", "value": 3}]},
                 {"id": 2, "name": "zone", "type": "collision", "x": 0, "y": 0, "width": 8, "height": 8, "rotation": 90, "properties": [{"name": "sensor", "type": "bool", "value": true}]},
@@ -155,8 +155,8 @@ class TiledTest : public ::testing::Test {
     })");
     }
 
-    [[nodiscard]] static core::Json terrainTileset() {
-        return core::Json::parse(R"({
+    [[nodiscard]] static haylen::core::Json terrainTileset() {
+        return haylen::core::Json::parse(R"({
         "type": "tileset", "name": "terrain", "tilewidth": 16, "tileheight": 16, "tilecount": 8, "columns": 4,
         "image": "../images/terrain.png", "imagewidth": 64, "imageheight": 32, "margin": 0, "spacing": 0,
         "tileoffset": {"x": 0, "y": 0}, "properties": [{"name": "theme", "type": "string", "value": "grass"}],
@@ -174,21 +174,21 @@ class TiledTest : public ::testing::Test {
     })");
     }
 
-    [[nodiscard]] static core::Json rockTemplate() {
-        return core::Json::parse(R"({"type": "template", "tileset": {"firstgid": 1, "source": "../tiles/terrain.tsj"},
+    [[nodiscard]] static haylen::core::Json rockTemplate() {
+        return haylen::core::Json::parse(R"({"type": "template", "tileset": {"firstgid": 1, "source": "../tiles/terrain.tsj"},
         "object": {"name": "rock", "type": "rock", "width": 16, "height": 16, "gid": 5, "properties": [{"name": "size", "type": "int", "value": 1}, {"name": "hard", "type": "bool", "value": true}]}})");
     }
 
     // The test map as an infinite map whose ground layer is stored in two chunks, one of them left of the origin.
-    [[nodiscard]] static core::Json infiniteMap() {
-        core::Json map = orthogonalMap();
+    [[nodiscard]] static haylen::core::Json infiniteMap() {
+        haylen::core::Json map = orthogonalMap();
         map["infinite"] = true;
-        map["layers"] = core::Json::parse(R"([{"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 2, "startx": -2, "starty": 0,
+        map["layers"] = haylen::core::Json::parse(R"([{"id": 1, "name": "ground", "type": "tilelayer", "width": 4, "height": 2, "startx": -2, "starty": 0,
         "chunks": [{"x": -2, "y": 0, "width": 2, "height": 2, "data": [1, 2, 3, 4]}, {"x": 0, "y": 0, "width": 2, "height": 2, "data": [5, 6, 7, 8]}]}])");
         return map;
     }
 
-    [[nodiscard]] static tiled::Map::JsonReader reader() {
+    [[nodiscard]] static haylen::tiled::Map::JsonReader reader() {
         // clang-format off
         return [](const std::string& path) {
             if (path == "maps/tiles/terrain.tsj") {
@@ -205,16 +205,16 @@ class TiledTest : public ::testing::Test {
     }
 
     // A rule map that shades every ground tile of the island with the terrain tileset of the island, matching with the special tiles of automapping, whose image is an image of the editor that the package lacks.
-    [[nodiscard]] static core::Json automapRules() {
-        return core::Json::parse(R"({"type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 1, "height": 1, "tilewidth": 16, "tileheight": 16,
+    [[nodiscard]] static haylen::core::Json automapRules() {
+        return haylen::core::Json::parse(R"({"type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 1, "height": 1, "tilewidth": 16, "tileheight": 16,
             "tilesets": [{"firstgid": 1, "source": "tiles/terrain.tsj"}, {"firstgid": 101, "name": "automap", "tilewidth": 16, "tileheight": 16, "tilecount": 1, "columns": 1, "image": ":/automap-tiles.png", "imagewidth": 16, "imageheight": 16,
                 "tiles": [{"id": 0, "properties": [{"name": "MatchType", "type": "string", "value": "NonEmpty"}]}]}],
             "layers": [{"id": 1, "type": "tilelayer", "name": "input_ground", "width": 1, "height": 1, "data": [101]}, {"id": 2, "type": "tilelayer", "name": "output_shade", "width": 1, "height": 1, "data": [3]}]})");
     }
 
     // The classes of the project of the island: the class of the map, the spawn of its properties and the reward each spawn holds, of which the map writes only what differs.
-    [[nodiscard]] static core::Json gameProject() {
-        return core::Json::parse(R"({"propertyTypes": [
+    [[nodiscard]] static haylen::core::Json gameProject() {
+        return haylen::core::Json::parse(R"({"propertyTypes": [
             {"id": 1, "name": "level", "type": "class", "useAs": ["map"], "members": [{"name": "difficulty", "type": "int", "value": 1}, {"name": "title", "type": "string", "value": "Untitled"}]},
             {"id": 2, "name": "Spawn", "type": "class", "useAs": ["property"], "members": [{"name": "count", "type": "int", "value": 1}, {"name": "kind", "type": "string", "value": "slime"}, {"name": "reward", "type": "class", "propertyType": "Reward", "value": {}}]},
             {"id": 3, "name": "Reward", "type": "class", "useAs": ["property"], "members": [{"name": "coins", "type": "int", "value": 5}, {"name": "gem", "type": "bool", "value": false}]},
@@ -236,8 +236,8 @@ class TiledTest : public ::testing::Test {
     }
 
     // The test map skewed into an oblique map, with Tiled 1.12 blend modes, a capsule and a faded tree.
-    [[nodiscard]] static core::Json obliqueMap() {
-        core::Json map = orthogonalMap();
+    [[nodiscard]] static haylen::core::Json obliqueMap() {
+        haylen::core::Json map = orthogonalMap();
         map["orientation"] = "oblique";
         map["skewx"] = 8;
         map["skewy"] = 4;
@@ -246,7 +246,7 @@ class TiledTest : public ::testing::Test {
         map["layers"][4]["mode"] = "screen";
         map["layers"][5]["visible"] = false;
         map["layers"][4]["objects"][6]["opacity"] = 0.25;
-        map["layers"][4]["objects"].push_back(core::Json::parse(R"({"id": 10, "name": "log", "type": "collision", "x": 100, "y": 0, "width": 40, "height": 10, "capsule": true})"));
+        map["layers"][4]["objects"].push_back(haylen::core::Json::parse(R"({"id": 10, "name": "log", "type": "collision", "x": 100, "y": 0, "width": 40, "height": 10, "capsule": true})"));
         return map;
     }
 };
@@ -256,20 +256,20 @@ using MapRendererTest = TiledTest;
 using TiledLuaTest = TiledTest;
 
 TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
-    const tiled::Map map = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
+    const haylen::tiled::Map map = haylen::tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
 
     EXPECT_EQ(map.path, "maps/island.tmj");
     EXPECT_EQ(map.type, "level");
-    EXPECT_EQ(map.orientation, tiled::Map::Orientation::Orthogonal);
-    EXPECT_EQ(map.getPixelBounds(), (math::Rect{0.0F, 0.0F, 64.0F, 48.0F}));
-    EXPECT_EQ(map.backgroundColor, math::Color::parse("#FF102030"));
+    EXPECT_EQ(map.orientation, haylen::tiled::Map::Orientation::Orthogonal);
+    EXPECT_EQ(map.getPixelBounds(), (haylen::math::Rect{0.0F, 0.0F, 64.0F, 48.0F}));
+    EXPECT_EQ(map.backgroundColor, haylen::math::Color::parse("#FF102030"));
     EXPECT_EQ(map.properties.getString("title", ""), "Island");
     EXPECT_EQ(map.properties.getNumber("level", 0.0), 3.0);
     EXPECT_TRUE(map.properties.getBool("safe", false));
     EXPECT_EQ(test::TiledHelper::property(map.properties, "music").value, "audio/theme.ogg");
     EXPECT_EQ(test::TiledHelper::property(map.properties, "spawn").propertyType, "Spawn");
     EXPECT_EQ(test::TiledHelper::property(map.properties, "spawn").value.at("kind"), "goblin");
-    const core::Json& loot = test::TiledHelper::property(map.properties, "loot").value;
+    const haylen::core::Json& loot = test::TiledHelper::property(map.properties, "loot").value;
     EXPECT_EQ(test::TiledHelper::property(map.properties, "loot").type, "list");
     EXPECT_EQ(loot[2].at("value"), "audio/coin.ogg");
     EXPECT_EQ(loot[3].at("value")[1].at("value"), "maps/gem.png");
@@ -278,10 +278,10 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(map.properties.getNumber("missing", 4.0), 4.0);
 
     ASSERT_EQ(map.tilesets.size(), 2U);
-    const tiled::Tileset& terrain = *map.tilesets[0].tileset;
+    const haylen::tiled::Tileset& terrain = *map.tilesets[0].tileset;
     EXPECT_EQ(terrain.path, "maps/tiles/terrain.tsj");
     EXPECT_EQ(terrain.image, "maps/images/terrain.png");
-    EXPECT_EQ(terrain.getSource(5), (math::Rect{16.0F, 16.0F, 16.0F, 16.0F}));
+    EXPECT_EQ(terrain.getSource(5), (haylen::math::Rect{16.0F, 16.0F, 16.0F, 16.0F}));
     EXPECT_EQ(test::TiledHelper::tile(terrain, 1).type, "water");
     EXPECT_TRUE(test::TiledHelper::tile(terrain, 1).properties.getBool("deep", false));
     EXPECT_EQ(test::TiledHelper::tile(terrain, 2).animation.size(), 2U);
@@ -293,16 +293,16 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(terrain.properties.getString("theme", ""), "grass");
     EXPECT_EQ(terrain.findTile(7), nullptr);
 
-    const tiled::Tileset& props = *map.tilesets[1].tileset;
+    const haylen::tiled::Tileset& props = *map.tilesets[1].tileset;
     EXPECT_EQ(test::TiledHelper::tile(props, 0).image, "maps/props/tree.png");
-    EXPECT_EQ(props.getSource(0), (math::Rect{0.0F, 0.0F, 16.0F, 32.0F}));
+    EXPECT_EQ(props.getSource(0), (haylen::math::Rect{0.0F, 0.0F, 16.0F, 32.0F}));
     EXPECT_EQ(test::TiledHelper::tileset(map, 101).firstGid, 100U);
     EXPECT_EQ(test::TiledHelper::tileset(map, 8).firstGid, 1U);
     EXPECT_EQ(map.findTileset(99), nullptr);
     EXPECT_EQ(map.findTileset(102), nullptr);
     EXPECT_EQ(map.findTileset(0), nullptr);
 
-    const tiled::Layer& ground = test::TiledHelper::layer(map, "ground");
+    const haylen::tiled::Layer& ground = test::TiledHelper::layer(map, "ground");
     EXPECT_EQ(ground.getGid(1, 0), 2U);
     EXPECT_EQ(ground.getGid(3, 2), 5U);
     EXPECT_EQ(ground.getGid(9, 9), 0U);
@@ -311,39 +311,39 @@ TEST_F(MapTest, ParsesMapsTilesetsLayersAndTemplates) {
     EXPECT_EQ(map.findLayer("missing"), nullptr);
     EXPECT_EQ(test::TiledHelper::layer(map, "group").opacity, 0.5F);
 
-    const tiled::Layer& things = test::TiledHelper::layer(map, "things");
+    const haylen::tiled::Layer& things = test::TiledHelper::layer(map, "things");
     ASSERT_EQ(things.objects.size(), 9U);
-    EXPECT_EQ(things.objects[0].shape, tiled::Object::Shape::Point);
-    EXPECT_NEAR(things.objects[1].rotation, math::Math::kPi / 2.0F, 0.0001F);
-    EXPECT_EQ(things.objects[2].shape, tiled::Object::Shape::Ellipse);
+    EXPECT_EQ(things.objects[0].shape, haylen::tiled::Object::Shape::Point);
+    EXPECT_NEAR(things.objects[1].rotation, haylen::math::Math::kPi / 2.0F, 0.0001F);
+    EXPECT_EQ(things.objects[2].shape, haylen::tiled::Object::Shape::Ellipse);
     EXPECT_EQ(things.objects[3].points.size(), 3U);
-    EXPECT_EQ(things.objects[4].shape, tiled::Object::Shape::Polyline);
+    EXPECT_EQ(things.objects[4].shape, haylen::tiled::Object::Shape::Polyline);
     EXPECT_EQ(things.objects[5].text.horizontalAlign, "center");
-    EXPECT_EQ(things.objects[5].text.color, math::Color::fromHex(0x00FF00FFU));
-    EXPECT_EQ(things.objects[6].shape, tiled::Object::Shape::Tile);
+    EXPECT_EQ(things.objects[5].text.color, haylen::math::Color::fromHex(0x00FF00FFU));
+    EXPECT_EQ(things.objects[6].shape, haylen::tiled::Object::Shape::Tile);
 
-    const tiled::Object& rock = things.objects[7];
+    const haylen::tiled::Object& rock = things.objects[7];
     EXPECT_EQ(rock.name, "rock");
     EXPECT_EQ(rock.gid, 5U);
     EXPECT_EQ(rock.templatePath, "maps/templates/rock.tj");
-    EXPECT_EQ(rock.position, math::Vec2(40.0F, 48.0F));
+    EXPECT_EQ(rock.position, haylen::math::Vec2(40.0F, 48.0F));
     EXPECT_EQ(things.objects[8].name, "big rock");
     EXPECT_EQ(things.objects[8].properties.getNumber("size", 0.0), 3.0);
     EXPECT_TRUE(things.objects[8].properties.getBool("hard", false));
 
-    const tiled::Layer& sky = test::TiledHelper::layer(map, "sky");
-    EXPECT_EQ(sky.kind, tiled::Layer::Kind::Image);
-    EXPECT_EQ(sky.transparentColor, math::Color::fromHex(0xFF00FFFFU));
-    EXPECT_EQ(sky.parallax, math::Vec2(0.5F, 0.5F));
+    const haylen::tiled::Layer& sky = test::TiledHelper::layer(map, "sky");
+    EXPECT_EQ(sky.kind, haylen::tiled::Layer::Kind::Image);
+    EXPECT_EQ(sky.transparentColor, haylen::math::Color::fromHex(0xFF00FFFFU));
+    EXPECT_EQ(sky.parallax, haylen::math::Vec2(0.5F, 0.5F));
 
-    const std::vector<tiled::Map::Image> images = map.getImages();
+    const std::vector<haylen::tiled::Map::Image> images = map.getImages();
     ASSERT_EQ(images.size(), 4U);
     EXPECT_EQ(images.back().path, "maps/backgrounds/sky.png");
 }
 
 TEST_F(MapTest, RejectsBrokenData) {
-    const auto parse = [](core::Json document) { return tiled::Map::parse(document, "maps/broken.tmj", reader()); };
-    core::Json map = orthogonalMap();
+    const auto parse = [](haylen::core::Json document) { return haylen::tiled::Map::parse(document, "maps/broken.tmj", reader()); };
+    haylen::core::Json map = orthogonalMap();
     map["orientation"] = "diagonal";
     EXPECT_THROW((void)parse(map), std::invalid_argument);
 
@@ -376,7 +376,7 @@ TEST_F(MapTest, RejectsBrokenData) {
     }
 
     map = orthogonalMap();
-    map["layers"][0]["data"] = core::Json::array({1, 2});
+    map["layers"][0]["data"] = haylen::core::Json::array({1, 2});
     EXPECT_THROW((void)parse(map), std::invalid_argument);
 
     map = orthogonalMap();
@@ -393,11 +393,11 @@ TEST_F(MapTest, RejectsBrokenData) {
 
     map = orthogonalMap();
     map["layers"][2].erase("id");
-    EXPECT_THROW((void)parse(map), core::Json::out_of_range) << "Layer caches tell layers apart by their ids.";
+    EXPECT_THROW((void)parse(map), haylen::core::Json::out_of_range) << "Layer caches tell layers apart by their ids.";
 
     // Sizes are checked before any cell is read, so a layer whose cell count overflows cannot pass with empty data.
     // clang-format off
-    const auto failure = [&parse](const core::Json& document) {
+    const auto failure = [&parse](const haylen::core::Json& document) {
         try {
             (void)parse(document);
         } catch (const std::invalid_argument& error) {
@@ -410,7 +410,7 @@ TEST_F(MapTest, RejectsBrokenData) {
     map = orthogonalMap();
     map["layers"][3]["width"] = 65536;
     map["layers"][3]["height"] = 65536;
-    map["layers"][3]["data"] = core::Json::array();
+    map["layers"][3]["data"] = haylen::core::Json::array();
     EXPECT_EQ(failure(map), "The Tiled tile layer \"raw\" has more cells than a layer can hold.");
     map["layers"][3]["width"] = -4;
     map["layers"][3]["height"] = -3;
@@ -436,7 +436,7 @@ TEST_F(MapTest, RejectsBrokenData) {
     map["height"] = -1;
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" has a negative size.");
     map = orthogonalMap();
-    map["tilesets"][1]["wangsets"] = core::Json::parse(R"([{"name": "cliff", "type": "corner", "colors": [{"name": "rock"}], "wangtiles": [{"tileid": 1, "wangid": [0, 1, 0, -1, 0, 1, 0, 1]}]}])");
+    map["tilesets"][1]["wangsets"] = haylen::core::Json::parse(R"([{"name": "cliff", "type": "corner", "colors": [{"name": "rock"}], "wangtiles": [{"tileid": 1, "wangid": [0, 1, 0, -1, 0, 1, 0, 1]}]}])");
     EXPECT_EQ(failure(map), "The Wang set \"cliff\" gives the tile 1 the color -1, which is not a whole number from 0 to 255.");
     map["tilesets"][1]["wangsets"][0]["wangtiles"][0]["wangid"][3] = 300;
     EXPECT_EQ(failure(map), "The Wang set \"cliff\" gives the tile 1 the color 300, which is not a whole number from 0 to 255.");
@@ -446,51 +446,51 @@ TEST_F(MapTest, RejectsBrokenData) {
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" needs a positive tile size.");
 
     // Group layers and lists of properties nest only so deep, so a hostile file never runs out of stack in the code that walks them.
-    core::Json group{{"id", 100}, {"name", "deepest"}, {"type", "group"}};
-    for (int level = 1; level < tiled::Map::kMaxNesting; ++level) {
-        group = core::Json{{"id", 100 + level}, {"name", "level"}, {"type", "group"}, {"layers", core::Json::array({group})}};
+    haylen::core::Json group{{"id", 100}, {"name", "deepest"}, {"type", "group"}};
+    for (int level = 1; level < haylen::tiled::Map::kMaxNesting; ++level) {
+        group = haylen::core::Json{{"id", 100 + level}, {"name", "level"}, {"type", "group"}, {"layers", haylen::core::Json::array({group})}};
     }
 
     map = orthogonalMap();
     map["layers"].push_back(group);
     EXPECT_EQ(failure(map), "no error");
-    map["layers"].back() = core::Json{{"id", 200}, {"name", "outer"}, {"type", "group"}, {"layers", core::Json::array({group})}};
+    map["layers"].back() = haylen::core::Json{{"id", 200}, {"name", "outer"}, {"type", "group"}, {"layers", haylen::core::Json::array({group})}};
     EXPECT_EQ(failure(map), "The Tiled map \"maps/broken.tmj\" nests its group layers deeper than 64 levels.");
 
-    core::Json items = core::Json::array();
-    for (int level = 1; level < tiled::Map::kMaxNesting; ++level) {
-        items = core::Json::array({core::Json{{"type", "list"}, {"value", items}}});
+    haylen::core::Json items = haylen::core::Json::array();
+    for (int level = 1; level < haylen::tiled::Map::kMaxNesting; ++level) {
+        items = haylen::core::Json::array({haylen::core::Json{{"type", "list"}, {"value", items}}});
     }
 
     map = orthogonalMap();
-    map["properties"].push_back(core::Json{{"name", "nested"}, {"type", "list"}, {"value", items}});
+    map["properties"].push_back(haylen::core::Json{{"name", "nested"}, {"type", "list"}, {"value", items}});
     EXPECT_EQ(failure(map), "no error");
-    map["properties"].back()["value"] = core::Json::array({core::Json{{"type", "list"}, {"value", items}}});
+    map["properties"].back()["value"] = haylen::core::Json::array({haylen::core::Json{{"type", "list"}, {"value", items}}});
     EXPECT_EQ(failure(map), "The list properties of a Tiled map nest deeper than 64 levels.");
 
     // Every layer may hold the most cells a layer holds, but the map refuses more cells in all before it decompresses them.
-    const std::string zeros = encodeTiles(std::vector<std::uint32_t>(static_cast<std::size_t>(tiled::Map::kMaxCells), 0), "zstd");
+    const std::string zeros = encodeTiles(std::vector<std::uint32_t>(static_cast<std::size_t>(haylen::tiled::Map::kMaxCells), 0), "zstd");
     map = orthogonalMap();
     for (int index = 0; index < 4; ++index) {
-        map["layers"].push_back(core::Json{{"id", 300 + index}, {"name", "large"}, {"type", "tilelayer"}, {"width", 4096}, {"height", 4096}, {"encoding", "base64"}, {"compression", "zstd"}, {"data", zeros}});
+        map["layers"].push_back(haylen::core::Json{{"id", 300 + index}, {"name", "large"}, {"type", "tilelayer"}, {"width", 4096}, {"height", 4096}, {"encoding", "base64"}, {"compression", "zstd"}, {"data", zeros}});
     }
 
     EXPECT_EQ(failure(map), "The tile layers of the Tiled map \"maps/broken.tmj\" hold more than the 67108864 cells that a map holds in all.");
 
-    tiled::Layer layer{.width = 2, .height = 2, .gids = std::vector<std::uint32_t>(4, 0)};
+    haylen::tiled::Layer layer{.width = 2, .height = 2, .gids = std::vector<std::uint32_t>(4, 0)};
     EXPECT_THROW(layer.setGid(2, 0, 1), std::out_of_range);
-    tiled::Layer chunked{.chunks = {{.x = 0, .y = 0, .width = 1, .height = 1, .gids = {0}}}, .infinite = true};
+    haylen::tiled::Layer chunked{.chunks = {{.x = 0, .y = 0, .width = 1, .height = 1, .gids = {0}}}, .infinite = true};
     chunked.setGid(0, 0, 3);
     EXPECT_EQ(chunked.getGid(0, 0), 3U);
     EXPECT_THROW(chunked.setGid(5, 5, 1), std::out_of_range);
-    EXPECT_THROW((void)tiled::Tileset{}.getSource(0), std::out_of_range);
+    EXPECT_THROW((void)haylen::tiled::Tileset{}.getSource(0), std::out_of_range);
 }
 
 TEST_F(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
     // Tiled keeps the ids of the tiles removed from a collection unused, so the rock keeps the id 3 in a collection of two tiles.
-    core::Json document = orthogonalMap();
+    haylen::core::Json document = orthogonalMap();
     document["tilesets"][1]["tiles"][1]["id"] = 3;
-    tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    haylen::tiled::MapRenderer map(haylen::tiled::Map::parse(document, "maps/island.tmj", reader()));
 
     EXPECT_EQ(test::TiledHelper::tileset(map.getMap(), 103).firstGid, 100U);
     EXPECT_EQ(map.getMap().findTileset(101), nullptr);
@@ -501,32 +501,32 @@ TEST_F(MapTest, FindsTheTilesOfImageCollectionsPastTheirTileCount) {
 }
 
 TEST_F(MapTest, ConvertsCellsForEveryOrientation) {
-    tiled::Map map;
+    haylen::tiled::Map map;
     map.width = 10;
     map.height = 10;
     map.tileSize = {64.0F, 32.0F};
 
-    map.orientation = tiled::Map::Orientation::Orthogonal;
-    EXPECT_EQ(map.cellToWorld(2, 3), math::Vec2(128.0F, 96.0F));
+    map.orientation = haylen::tiled::Map::Orientation::Orthogonal;
+    EXPECT_EQ(map.cellToWorld(2, 3), haylen::math::Vec2(128.0F, 96.0F));
     EXPECT_EQ(map.worldToCell({130.0F, 100.0F}), (std::array<int, 2>{2, 3}));
-    EXPECT_EQ(map.objectToWorld({5.0F, 6.0F}), math::Vec2(5.0F, 6.0F));
+    EXPECT_EQ(map.objectToWorld({5.0F, 6.0F}), haylen::math::Vec2(5.0F, 6.0F));
 
-    map.orientation = tiled::Map::Orientation::Isometric;
-    EXPECT_EQ(map.cellToWorld(0, 0), math::Vec2(320.0F, 0.0F));
-    EXPECT_EQ(map.cellToWorld(1, 0), math::Vec2(352.0F, 16.0F));
-    EXPECT_EQ(map.worldToCell(map.cellToWorld(3, 4) + math::Vec2{0.0F, 16.0F}), (std::array<int, 2>{3, 4}));
-    EXPECT_EQ(map.objectToWorld({32.0F, 0.0F}), math::Vec2(352.0F, 16.0F));
-    EXPECT_EQ(map.getPixelBounds(), (math::Rect{0.0F, 0.0F, 640.0F, 320.0F}));
+    map.orientation = haylen::tiled::Map::Orientation::Isometric;
+    EXPECT_EQ(map.cellToWorld(0, 0), haylen::math::Vec2(320.0F, 0.0F));
+    EXPECT_EQ(map.cellToWorld(1, 0), haylen::math::Vec2(352.0F, 16.0F));
+    EXPECT_EQ(map.worldToCell(map.cellToWorld(3, 4) + haylen::math::Vec2{0.0F, 16.0F}), (std::array<int, 2>{3, 4}));
+    EXPECT_EQ(map.objectToWorld({32.0F, 0.0F}), haylen::math::Vec2(352.0F, 16.0F));
+    EXPECT_EQ(map.getPixelBounds(), (haylen::math::Rect{0.0F, 0.0F, 640.0F, 320.0F}));
 
     for (const bool staggerX : {false, true}) {
         for (const bool even : {false, true}) {
-            for (const tiled::Map::Orientation orientation : {tiled::Map::Orientation::Staggered, tiled::Map::Orientation::Hexagonal}) {
+            for (const haylen::tiled::Map::Orientation orientation : {haylen::tiled::Map::Orientation::Staggered, haylen::tiled::Map::Orientation::Hexagonal}) {
                 map.orientation = orientation;
                 map.staggerX = staggerX;
                 map.staggerEven = even;
                 map.hexSideLength = 16;
                 for (const auto& [column, row] : std::vector<std::pair<int, int>>{{0, 0}, {3, 4}, {4, 3}, {-1, 2}}) {
-                    const math::Vec2 center = map.cellToWorld(column, row) + map.tileSize * 0.5F;
+                    const haylen::math::Vec2 center = map.cellToWorld(column, row) + map.tileSize * 0.5F;
                     EXPECT_EQ(map.worldToCell(center), (std::array<int, 2>{column, row})) << column << "," << row;
                 }
 
@@ -535,95 +535,95 @@ TEST_F(MapTest, ConvertsCellsForEveryOrientation) {
         }
     }
 
-    EXPECT_EQ(tiled::Map::orientationName(tiled::Map::Orientation::Hexagonal), "hexagonal");
-    EXPECT_EQ(tiled::Map::renderOrderName(tiled::Map::RenderOrder::RightDown), "right-down");
-    EXPECT_EQ(tiled::Map::renderOrderName(tiled::Map::RenderOrder::RightUp), "right-up");
-    EXPECT_EQ(tiled::Map::renderOrderName(tiled::Map::RenderOrder::LeftDown), "left-down");
-    EXPECT_EQ(tiled::Map::renderOrderName(tiled::Map::RenderOrder::LeftUp), "left-up");
-    EXPECT_EQ(tiled::Layer::kindName(tiled::Layer::Kind::Group), "group");
-    EXPECT_EQ(tiled::Object::shapeName(tiled::Object::Shape::Polyline), "polyline");
+    EXPECT_EQ(haylen::tiled::Map::orientationName(haylen::tiled::Map::Orientation::Hexagonal), "hexagonal");
+    EXPECT_EQ(haylen::tiled::Map::renderOrderName(haylen::tiled::Map::RenderOrder::RightDown), "right-down");
+    EXPECT_EQ(haylen::tiled::Map::renderOrderName(haylen::tiled::Map::RenderOrder::RightUp), "right-up");
+    EXPECT_EQ(haylen::tiled::Map::renderOrderName(haylen::tiled::Map::RenderOrder::LeftDown), "left-down");
+    EXPECT_EQ(haylen::tiled::Map::renderOrderName(haylen::tiled::Map::RenderOrder::LeftUp), "left-up");
+    EXPECT_EQ(haylen::tiled::Layer::kindName(haylen::tiled::Layer::Kind::Group), "group");
+    EXPECT_EQ(haylen::tiled::Object::shapeName(haylen::tiled::Object::Shape::Polyline), "polyline");
 }
 
 TEST_F(MapTest, ReadsObliqueMapsBlendModesAndCapsules) {
-    tiled::Map map = tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader());
-    EXPECT_EQ(map.orientation, tiled::Map::Orientation::Oblique);
-    EXPECT_EQ(tiled::Map::orientationName(map.orientation), "oblique");
-    EXPECT_EQ(map.skew, math::Vec2(8.0F, 4.0F));
-    EXPECT_EQ(test::TiledHelper::layer(map, "ground").blend, graphics::BlendMode::Type::Multiply);
-    EXPECT_EQ(test::TiledHelper::layer(map, "decor").blend, graphics::BlendMode::Type::Additive);
-    EXPECT_EQ(test::TiledHelper::layer(map, "things").blend, graphics::BlendMode::Type::Screen);
-    EXPECT_EQ(test::TiledHelper::layer(map, "inner").blend, graphics::BlendMode::Type::Alpha);
+    haylen::tiled::Map map = haylen::tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader());
+    EXPECT_EQ(map.orientation, haylen::tiled::Map::Orientation::Oblique);
+    EXPECT_EQ(haylen::tiled::Map::orientationName(map.orientation), "oblique");
+    EXPECT_EQ(map.skew, haylen::math::Vec2(8.0F, 4.0F));
+    EXPECT_EQ(test::TiledHelper::layer(map, "ground").blend, haylen::graphics::BlendMode::Type::Multiply);
+    EXPECT_EQ(test::TiledHelper::layer(map, "decor").blend, haylen::graphics::BlendMode::Type::Additive);
+    EXPECT_EQ(test::TiledHelper::layer(map, "things").blend, haylen::graphics::BlendMode::Type::Screen);
+    EXPECT_EQ(test::TiledHelper::layer(map, "inner").blend, haylen::graphics::BlendMode::Type::Alpha);
 
-    const std::vector<tiled::Object>& objects = test::TiledHelper::layer(map, "things").objects;
+    const std::vector<haylen::tiled::Object>& objects = test::TiledHelper::layer(map, "things").objects;
     EXPECT_EQ(objects[6].opacity, 0.25F);
     EXPECT_EQ(objects[0].opacity, 1.0F);
-    EXPECT_EQ(objects[9].shape, tiled::Object::Shape::Capsule);
-    EXPECT_EQ(tiled::Object::shapeName(tiled::Object::Shape::Capsule), "capsule");
+    EXPECT_EQ(objects[9].shape, haylen::tiled::Object::Shape::Capsule);
+    EXPECT_EQ(haylen::tiled::Object::shapeName(haylen::tiled::Object::Shape::Capsule), "capsule");
 
     // Rows slide right by the horizontal skew and columns slide down by the vertical skew.
-    EXPECT_EQ(map.cellToWorld(2, 3), math::Vec2(56.0F, 56.0F));
-    EXPECT_EQ(map.objectToWorld({16.0F, 32.0F}), math::Vec2(32.0F, 36.0F));
+    EXPECT_EQ(map.cellToWorld(2, 3), haylen::math::Vec2(56.0F, 56.0F));
+    EXPECT_EQ(map.objectToWorld({16.0F, 32.0F}), haylen::math::Vec2(32.0F, 36.0F));
     EXPECT_EQ(map.worldToCell(map.objectToWorld({40.0F, 56.0F})), (std::array<int, 2>{2, 3}));
     EXPECT_EQ(map.worldToCell(map.objectToWorld({-4.0F, 2.0F})), (std::array<int, 2>{-1, 0}));
-    EXPECT_EQ(map.getPixelBounds(), (math::Rect{0.0F, 0.0F, 88.0F, 64.0F}));
+    EXPECT_EQ(map.getPixelBounds(), (haylen::math::Rect{0.0F, 0.0F, 88.0F, 64.0F}));
     map.skew = {-8.0F, 4.0F};
-    EXPECT_EQ(map.getPixelBounds(), (math::Rect{-24.0F, 0.0F, 88.0F, 64.0F}));
-    EXPECT_EQ(map.worldToCell(map.cellToWorld(3, 1) + math::Vec2{1.0F, 1.0F}), (std::array<int, 2>{3, 1}));
+    EXPECT_EQ(map.getPixelBounds(), (haylen::math::Rect{-24.0F, 0.0F, 88.0F, 64.0F}));
+    EXPECT_EQ(map.worldToCell(map.cellToWorld(3, 1) + haylen::math::Vec2{1.0F, 1.0F}), (std::array<int, 2>{3, 1}));
 
-    core::Json folded = obliqueMap();
+    haylen::core::Json folded = obliqueMap();
     folded["skewx"] = 16;
     folded["skewy"] = 16;
-    EXPECT_THROW((void)tiled::Map::parse(folded, "maps/folded.tmj", reader()), std::invalid_argument);
+    EXPECT_THROW((void)haylen::tiled::Map::parse(folded, "maps/folded.tmj", reader()), std::invalid_argument);
 
     // The modes that mix with what lies below read as they are, and a mode Tiled does not offer stops the map.
-    core::Json blended = orthogonalMap();
-    for (const auto& [mode, type] : {std::pair{"overlay", graphics::BlendMode::Type::Overlay}, std::pair{"color-dodge", graphics::BlendMode::Type::ColorDodge}, std::pair{"soft-light", graphics::BlendMode::Type::SoftLight}, std::pair{"exclusion", graphics::BlendMode::Type::Exclusion}}) {
+    haylen::core::Json blended = orthogonalMap();
+    for (const auto& [mode, type] : {std::pair{"overlay", haylen::graphics::BlendMode::Type::Overlay}, std::pair{"color-dodge", haylen::graphics::BlendMode::Type::ColorDodge}, std::pair{"soft-light", haylen::graphics::BlendMode::Type::SoftLight}, std::pair{"exclusion", haylen::graphics::BlendMode::Type::Exclusion}}) {
         blended["layers"][6]["layers"][0]["mode"] = mode;
-        EXPECT_EQ(test::TiledHelper::layer(tiled::Map::parse(blended, "maps/blended.tmj", reader()), "inner").blend, type) << mode;
+        EXPECT_EQ(test::TiledHelper::layer(haylen::tiled::Map::parse(blended, "maps/blended.tmj", reader()), "inner").blend, type) << mode;
     }
 
     blended["layers"][6]["layers"][0]["mode"] = "glow";
 
     try {
-        (void)tiled::Map::parse(blended, "maps/blended.tmj", reader());
+        (void)haylen::tiled::Map::parse(blended, "maps/blended.tmj", reader());
         FAIL() << "The glow blend mode was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), "The Tiled layer \"inner\" uses the blend mode \"glow\", which Tiled does not offer. Layers can use \"normal\", \"add\", \"multiply\", \"screen\", \"overlay\", \"darken\", \"lighten\", \"color-dodge\", \"color-burn\", \"hard-light\", \"soft-light\", \"difference\" or \"exclusion\".");
     }
 
     // Tiled draws the layers of a group with their own modes, so a group mode would silently change nothing.
-    core::Json blendedGroup = orthogonalMap();
+    haylen::core::Json blendedGroup = orthogonalMap();
     blendedGroup["layers"][6]["mode"] = "add";
 
     try {
-        (void)tiled::Map::parse(blendedGroup, "maps/group.tmj", reader());
+        (void)haylen::tiled::Map::parse(blendedGroup, "maps/group.tmj", reader());
         FAIL() << "The group blend mode was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), "The Tiled group layer \"group\" uses the blend mode \"add\", which Tiled does not apply to the layers inside it. Set the blend mode on those layers.");
     }
 
     blendedGroup["layers"][6]["mode"] = "normal";
-    EXPECT_EQ(test::TiledHelper::layer(tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()), "group").blend, graphics::BlendMode::Type::Alpha);
+    EXPECT_EQ(test::TiledHelper::layer(haylen::tiled::Map::parse(blendedGroup, "maps/group.tmj", reader()), "group").blend, haylen::graphics::BlendMode::Type::Alpha);
 }
 
 TEST_F(MapTest, ReadsInfiniteMapsAndWorlds) {
-    const tiled::Map infinite = tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader());
+    const haylen::tiled::Map infinite = haylen::tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader());
     EXPECT_TRUE(infinite.infinite);
     EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(-1, 1), 4U);
     EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(1, 0), 6U);
     EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(5, 5), 0U);
 
     const std::vector<std::string> files{"maps/world/level_0_0.tmj", "maps/world/level_1_0.tmj", "maps/world/notes.txt", "maps/other/level_9_9.tmj"};
-    const tiled::World world = tiled::World::parse(core::Json::parse(packageFiles().at("content/maps/world/level.world")), "maps/world/level.world", files);
+    const haylen::tiled::World world = haylen::tiled::World::parse(haylen::core::Json::parse(packageFiles().at("content/maps/world/level.world")), "maps/world/level.world", files);
     ASSERT_EQ(world.maps.size(), 3U);
     EXPECT_EQ(world.maps[0].path, "maps/island.tmj");
-    EXPECT_EQ(world.maps[0].bounds, (math::Rect{-64.0F, 0.0F, 64.0F, 48.0F}));
+    EXPECT_EQ(world.maps[0].bounds, (haylen::math::Rect{-64.0F, 0.0F, 64.0F, 48.0F}));
     EXPECT_EQ(world.maps[2].path, "maps/world/level_1_0.tmj");
-    EXPECT_EQ(world.maps[2].bounds, (math::Rect{64.0F, 0.0F, 64.0F, 48.0F}));
+    EXPECT_EQ(world.maps[2].bounds, (haylen::math::Rect{64.0F, 0.0F, 64.0F, 48.0F}));
 
-    const core::Json named = core::Json::parse(R"({"patterns": [{"regexp": "level_(\\w+)_(\\d+)\\.tmj"}]})");
+    const haylen::core::Json named = haylen::core::Json::parse(R"({"patterns": [{"regexp": "level_(\\w+)_(\\d+)\\.tmj"}]})");
     try {
-        (void)tiled::World::parse(named, "maps/world/level.world", {"maps/world/level_east_0.tmj"});
+        (void)haylen::tiled::World::parse(named, "maps/world/level.world", {"maps/world/level_east_0.tmj"});
         FAIL() << "A capture that is not a number was accepted.";
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), R"(The pattern "level_(\w+)_(\d+)\.tmj" of a Tiled world captures "east", which is not a number.)");
@@ -632,17 +632,17 @@ TEST_F(MapTest, ReadsInfiniteMapsAndWorlds) {
 
 TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     test::LuaFixture fixture(packageFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
-    const auto data = std::static_pointer_cast<tiled::Map>(assets.load("tiled", "maps/island.tmj"));
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
+    const auto data = std::static_pointer_cast<haylen::tiled::Map>(assets.load("tiled", "maps/island.tmj"));
     EXPECT_EQ(data->tilesets[0].tileset->texture, assets.texture("maps/images/terrain.png"));
     EXPECT_TRUE(test::TiledHelper::layer(*data, "sky").texture.isValid());
     EXPECT_NE(test::TiledHelper::layer(*data, "sky").texture, assets.texture("maps/backgrounds/sky.png")) << "Keyed images stay private.";
 
-    tiled::MapRenderer map(*data, fixture.engine().getDefaultFont());
+    haylen::tiled::MapRenderer map(*data, fixture.engine().getDefaultFont());
     // clang-format off
-    const auto render = [&](const tiled::MapRenderer::View& view) {
-        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-            engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    const auto render = [&](const haylen::tiled::MapRenderer::View& view) {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+            engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
             map.draw(engine.getRenderer2D(), view);
         }));
         fixture.frames(1);
@@ -651,8 +651,8 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     // clang-format on
 
     // Eleven ground tiles, two decor tiles, one nested tile, three tile objects, eight sky copies, and two glyphs of text with the lines under and through them.
-    const tiled::MapRenderer::View view{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
-    const graphics2d::Renderer::Stats all = render(view);
+    const haylen::tiled::MapRenderer::View view{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
+    const haylen::graphics2d::Renderer::Stats all = render(view);
     EXPECT_EQ(all.sprites, 29U);
 
     map.setLayerVisible("ground", false);
@@ -664,12 +664,12 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
     EXPECT_EQ(map.getTile("ground", 0, 1), 1U);
     map.setTile("ground", 0, 1, 0);
     map.update(0.15F);
-    const graphics2d::Renderer::Stats culled = render({.center = {1000.0F, 1000.0F}, .visible = {900.0F, 900.0F, 10.0F, 10.0F}});
+    const haylen::graphics2d::Renderer::Stats culled = render({.center = {1000.0F, 1000.0F}, .visible = {900.0F, 900.0F, 10.0F, 10.0F}});
     EXPECT_LT(culled.sprites, all.sprites);
 
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
         map.drawLayer(engine.getRenderer2D(), "inner", {});
         map.drawLayer(engine.getRenderer2D(), "things", {});
     }));
@@ -687,11 +687,11 @@ TEST_F(MapRendererTest, LoadsDrawsAndAnimatesMaps) {
 
 TEST_F(MapRendererTest, DrawsTheSameMapAgainWithoutAllocating) {
     test::LuaFixture fixture(packageFiles());
-    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
-    const tiled::MapRenderer::View view{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
+    haylen::tiled::MapRenderer map(*std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+    const haylen::tiled::MapRenderer::View view{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
         map.draw(engine.getRenderer2D(), view);
     }));
     // clang-format on
@@ -706,19 +706,19 @@ TEST_F(MapRendererTest, DrawsTheSameMapAgainWithoutAllocating) {
 
 TEST_F(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
     // The ground is 40 cells wide, which makes two regions across, with one tile on the left and none on the right.
-    core::Json document = orthogonalMap();
+    haylen::core::Json document = orthogonalMap();
     document["width"] = 40;
     std::vector<std::uint32_t> ground(120, 0);
     ground[0] = 5;
-    document["layers"] = core::Json::array({{{"id", 1}, {"name", "ground"}, {"type", "tilelayer"}, {"width", 40}, {"height", 3}, {"data", ground}}});
+    document["layers"] = haylen::core::Json::array({{{"id", 1}, {"name", "ground"}, {"type", "tilelayer"}, {"width", 40}, {"height", 3}, {"data", ground}}});
     std::map<std::string, std::string> files = packageFiles();
     files["content/maps/island.tmj"] = document.dump();
     test::LuaFixture fixture(files);
-    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")));
+    haylen::tiled::MapRenderer map(*std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")));
     // clang-format off
-    const auto sprites = [&](const tiled::MapRenderer::View& view, bool ysort) {
-        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-            engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    const auto sprites = [&](const haylen::tiled::MapRenderer::View& view, bool ysort) {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+            engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
             map.drawLayer(engine.getRenderer2D(), "ground", view, {.ysort = ysort});
         }));
         fixture.frames(1);
@@ -728,7 +728,7 @@ TEST_F(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
     // clang-format on
 
     // A tile in an empty region makes a region that culling finds, and emptying it again removes the region, in both kinds of cache.
-    const tiled::MapRenderer::View right{.center = {570.0F, 24.0F}, .visible = {520.0F, 0.0F, 100.0F, 48.0F}};
+    const haylen::tiled::MapRenderer::View right{.center = {570.0F, 24.0F}, .visible = {520.0F, 0.0F, 100.0F, 48.0F}};
     for (const bool ysort : {false, true}) {
         EXPECT_EQ(sprites({}, ysort), 1U);
         map.setTile("ground", 35, 2, 5);
@@ -745,11 +745,11 @@ TEST_F(MapRendererTest, BakesTheRegionsOfChangedCellsAgain) {
 
 TEST_F(MapRendererTest, PlacesMapsAtAWorldOffset) {
     test::LuaFixture fixture(packageFiles());
-    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+    haylen::tiled::MapRenderer map(*std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
     // clang-format off
-    const auto render = [&](const tiled::MapRenderer::View& view, math::Vec2 offset) {
-        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-            engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    const auto render = [&](const haylen::tiled::MapRenderer::View& view, haylen::math::Vec2 offset) {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+            engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
             map.draw(engine.getRenderer2D(), view, {.offset = offset});
         }));
         fixture.frames(1);
@@ -758,8 +758,8 @@ TEST_F(MapRendererTest, PlacesMapsAtAWorldOffset) {
     // clang-format on
 
     // A map moved by an offset draws the same way when the view moves with it, parallax included, and its tiles leave the view it left.
-    const tiled::MapRenderer::View home{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
-    const tiled::MapRenderer::View away{.center = {1032.0F, 24.0F}, .visible = {1000.0F, 0.0F, 64.0F, 48.0F}};
+    const haylen::tiled::MapRenderer::View home{.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}};
+    const haylen::tiled::MapRenderer::View away{.center = {1032.0F, 24.0F}, .visible = {1000.0F, 0.0F, 64.0F, 48.0F}};
     const std::size_t all = render(home, {});
     EXPECT_EQ(all, 29U);
     EXPECT_EQ(render(away, {1000.0F, 0.0F}), all);
@@ -768,14 +768,14 @@ TEST_F(MapRendererTest, PlacesMapsAtAWorldOffset) {
 
 TEST_F(MapRendererTest, SortsRowsAndObjectsByTheYTheyStandOn) {
     test::LuaFixture fixture(packageFiles());
-    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
-    const graphics::Texture unit = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    haylen::tiled::MapRenderer map(*std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+    const haylen::graphics::Texture unit = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4, haylen::math::Color::white()));
 
     // clang-format off
-    const auto switches = [&](graphics2d::Renderer::SortMode mode, bool ysort, float standing) {
-        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&, mode, ysort, standing](core::Engine& engine) {
-            graphics2d::Renderer& renderer = engine.getRenderer2D();
-            renderer.beginWorld(graphics2d::Camera{}, {.sort = mode});
+    const auto switches = [&](haylen::graphics2d::Renderer::SortMode mode, bool ysort, float standing) {
+        fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&, mode, ysort, standing](haylen::core::Engine& engine) {
+            haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(haylen::graphics2d::Camera{}, {.sort = mode});
             map.drawLayer(renderer, "ground", {}, {.ysort = ysort});
             renderer.draw({.texture = unit, .position = {8.0F, standing}, .order = {.depth = standing}});
         }));
@@ -785,16 +785,16 @@ TEST_F(MapRendererTest, SortsRowsAndObjectsByTheYTheyStandOn) {
     // clang-format on
 
     // The ground rows stand on 16, 32 and 48, so a unit between two rows splits the terrain draws, and one below the map comes last.
-    EXPECT_EQ(switches(graphics2d::Renderer::SortMode::Depth, true, 24.0F), 3U);
-    EXPECT_EQ(switches(graphics2d::Renderer::SortMode::Depth, true, 100.0F), 2U);
-    EXPECT_EQ(switches(graphics2d::Renderer::SortMode::Depth, false, 24.0F), 2U);
-    EXPECT_EQ(switches(graphics2d::Renderer::SortMode::Y, true, 40.0F), 3U);
-    EXPECT_EQ(switches(graphics2d::Renderer::SortMode::Y, true, 100.0F), 2U);
+    EXPECT_EQ(switches(haylen::graphics2d::Renderer::SortMode::Depth, true, 24.0F), 3U);
+    EXPECT_EQ(switches(haylen::graphics2d::Renderer::SortMode::Depth, true, 100.0F), 2U);
+    EXPECT_EQ(switches(haylen::graphics2d::Renderer::SortMode::Depth, false, 24.0F), 2U);
+    EXPECT_EQ(switches(haylen::graphics2d::Renderer::SortMode::Y, true, 40.0F), 3U);
+    EXPECT_EQ(switches(haylen::graphics2d::Renderer::SortMode::Y, true, 100.0F), 2U);
 
     // Tile objects and text stand on their bottom edge.
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{}, {.sort = graphics2d::Renderer::SortMode::Y});
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{}, {.sort = haylen::graphics2d::Renderer::SortMode::Y});
         map.draw(engine.getRenderer2D(), {.center = {32.0F, 24.0F}, .visible = {0.0F, 0.0F, 64.0F, 48.0F}}, {.ysort = true});
     }));
     // clang-format on
@@ -807,11 +807,11 @@ TEST_F(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
     std::map<std::string, std::string> files = packageFiles();
     files["content/maps/island.tmj"] = obliqueMap().dump();
     test::LuaFixture fixture(files);
-    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+    haylen::tiled::MapRenderer map(*std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
 
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
         map.draw(engine.getRenderer2D(), {});
     }));
     // clang-format on
@@ -823,8 +823,8 @@ TEST_F(MapRendererTest, DrawsObliqueMapsWithLayerBlendModes) {
 
 TEST_F(MapRendererTest, DrawsALayerThatMixesWithWhatLiesBelowAsAGroup) {
     std::map<std::string, std::string> files = packageFiles();
-    core::Json oblique = obliqueMap();
-    for (core::Json& layer : oblique["layers"]) {
+    haylen::core::Json oblique = obliqueMap();
+    for (haylen::core::Json& layer : oblique["layers"]) {
         if (layer.value("name", std::string{}) == "decor") {
             layer["mode"] = "overlay";
         }
@@ -832,23 +832,23 @@ TEST_F(MapRendererTest, DrawsALayerThatMixesWithWhatLiesBelowAsAGroup) {
 
     files["content/maps/island.tmj"] = oblique.dump();
     test::LuaFixture fixture(files);
-    tiled::MapRenderer map(*std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
+    haylen::tiled::MapRenderer map(*std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj")), fixture.engine().getDefaultFont());
 
     // clang-format off
-    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
         map.draw(engine.getRenderer2D(), {});
     }));
     // clang-format on
     fixture.frames(1);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
-    const graphics2d::Renderer::Stats stats = fixture.engine().getRenderer2D().getStats();
+    const haylen::graphics2d::Renderer::Stats stats = fixture.engine().getRenderer2D().getStats();
     EXPECT_EQ(stats.sprites, 21U);
 
     // The decor renders into a group, the map draws offscreen up to it, copies what it drew below, goes on and reaches the screen.
     EXPECT_EQ(stats.passes, 5U);
-    const core::Json written = tiled::MapWriter::write(map.getMap(), "maps/island.tmj");
-    for (const core::Json& layer : written["layers"]) {
+    const haylen::core::Json written = haylen::tiled::MapWriter::write(map.getMap(), "maps/island.tmj");
+    for (const haylen::core::Json& layer : written["layers"]) {
         if (layer.value("name", std::string{}) == "decor") {
             EXPECT_EQ(layer.value("mode", std::string{}), "overlay");
         }
@@ -857,13 +857,13 @@ TEST_F(MapRendererTest, DrawsALayerThatMixesWithWhatLiesBelowAsAGroup) {
 
 TEST_F(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
     test::LuaFixture fixture(packageFiles());
-    const auto data = std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj"));
+    const auto data = std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj"));
 
-    tiled::MapRenderer textless(*data);
+    haylen::tiled::MapRenderer textless(*data);
     std::string error;
     // clang-format off
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
-        engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&](haylen::core::Engine& engine) {
+        engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{});
 
         try {
             textless.drawLayer(engine.getRenderer2D(), "things", {});
@@ -885,30 +885,30 @@ TEST_F(MapRendererTest, RejectsDrawingWhatItCannotPlace) {
 
 TEST_F(MapRendererTest, BuildsCollisionBodies) {
     test::LuaFixture fixture(packageFiles());
-    const auto data = std::static_pointer_cast<tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj"));
-    tiled::MapRenderer map(*data);
-    physics2d::World world({.gravity = {}});
+    const auto data = std::static_pointer_cast<haylen::tiled::Map>(fixture.engine().getAssets().load("tiled", "maps/island.tmj"));
+    haylen::tiled::MapRenderer map(*data);
+    haylen::physics2d::World world({.gravity = {}});
 
     // Each tile layer that collides keeps a body, empty or not, and the object layer adds one more.
-    const std::vector<physics2d::Body> bodies = map.buildCollision(world);
+    const std::vector<haylen::physics2d::Body> bodies = map.buildCollision(world);
     ASSERT_EQ(bodies.size(), 5U);
     EXPECT_TRUE(bodies[1].getShapes().empty());
 
     // Solid cells that touch merge into one chain loop, which gives two single cells on the first row and a single cell and a pair on the last row.
-    const std::vector<physics2d::Shape::Outline> outlines = bodies[0].getOutlines();
+    const std::vector<haylen::physics2d::Shape::Outline> outlines = bodies[0].getOutlines();
     ASSERT_EQ(outlines.size(), 4U);
 
-    for (const physics2d::Shape::Outline& outline : outlines) {
+    for (const haylen::physics2d::Shape::Outline& outline : outlines) {
         EXPECT_TRUE(outline.closed);
         EXPECT_EQ(outline.points.size(), 4U);
-        EXPECT_GT(math::Geometry::signedArea(outline.points), 0.0F);
+        EXPECT_GT(haylen::math::Geometry::signedArea(outline.points), 0.0F);
     }
 
     EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({24.0F, -10.0F}, {24.0F, 30.0F})).point.y, 0.0F, 0.01F);
     EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({70.0F, 40.0F}, {30.0F, 40.0F})).point.x, 64.0F, 0.01F);
     EXPECT_FALSE(world.raycast({20.0F, 40.0F}, {28.0F, 40.0F}).has_value());
 
-    const std::vector<physics2d::Shape> zone = world.queryPoint({-4.0F, 4.0F});
+    const std::vector<haylen::physics2d::Shape> zone = world.queryPoint({-4.0F, 4.0F});
     ASSERT_EQ(zone.size(), 1U);
     EXPECT_TRUE(zone.front().isSensor());
     EXPECT_GE(bodies[3].getShapes().size(), 5U);
@@ -916,14 +916,14 @@ TEST_F(MapRendererTest, BuildsCollisionBodies) {
 
 TEST_F(MapRendererTest, TracesTileCollisionAgainAfterSetTile) {
     // A tileset of a slope and a one-way ledge joins the terrain tiles.
-    core::Json document = orthogonalMap();
-    document["tilesets"].push_back(core::Json::parse(R"({"firstgid": 200, "name": "shapes", "tilewidth": 16, "tileheight": 16, "tilecount": 2, "columns": 0, "tiles": [
+    haylen::core::Json document = orthogonalMap();
+    document["tilesets"].push_back(haylen::core::Json::parse(R"({"firstgid": 200, "name": "shapes", "tilewidth": 16, "tileheight": 16, "tilecount": 2, "columns": 0, "tiles": [
         {"id": 0, "image": "props/rock.png", "imagewidth": 16, "imageheight": 16, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "polygon": [{"x": 0, "y": 16}, {"x": 16, "y": 0}, {"x": 16, "y": 16}]}]}},
         {"id": 1, "image": "props/rock.png", "imagewidth": 16, "imageheight": 16, "objectgroup": {"objects": [{"id": 1, "x": 0, "y": 0, "width": 16, "height": 4, "properties": [{"name": "oneWay", "type": "bool", "value": true}]}]}}
     ]})"));
-    tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
-    physics2d::World world({.gravity = {}});
-    const physics2d::Body ground = map.buildCollision(world).front();
+    haylen::tiled::MapRenderer map(haylen::tiled::Map::parse(document, "maps/island.tmj", reader()));
+    haylen::physics2d::World world({.gravity = {}});
+    const haylen::physics2d::Body ground = map.buildCollision(world).front();
     ASSERT_EQ(ground.getOutlines().size(), 4U);
 
     // Filling the gap of the last row joins its cells into one loop, and clearing a cell of the first row takes its loop away.
@@ -938,12 +938,12 @@ TEST_F(MapRendererTest, TracesTileCollisionAgainAfterSetTile) {
     EXPECT_EQ(ground.getOutlines().size(), 2U);
     EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({31.0F, 2.0F}, {31.0F, 40.0F})).point.y, 17.0F, 0.01F);
     map.setTile("ground", 0, 0, 201);
-    const std::vector<physics2d::Shape> ledge = world.queryPoint({8.0F, 2.0F});
+    const std::vector<haylen::physics2d::Shape> ledge = world.queryPoint({8.0F, 2.0F});
     ASSERT_EQ(ledge.size(), 1U);
-    EXPECT_NEAR(ledge.front().getOneWay().value_or(math::Vec2{}).y, -1.0F, 1e-4F);
+    EXPECT_NEAR(ledge.front().getOneWay().value_or(haylen::math::Vec2{}).y, -1.0F, 1e-4F);
 
     // Once the world is gone the map still changes its tiles.
-    std::optional<physics2d::World> gone(std::in_place);
+    std::optional<haylen::physics2d::World> gone(std::in_place);
     (void)map.buildCollision(*gone);
     gone.reset();
     map.setTile("ground", 0, 0, 0);
@@ -951,8 +951,8 @@ TEST_F(MapRendererTest, TracesTileCollisionAgainAfterSetTile) {
 }
 
 TEST_F(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
-    tiled::MapRenderer map(tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader()));
-    physics2d::World world({.gravity = {}});
+    haylen::tiled::MapRenderer map(haylen::tiled::Map::parse(obliqueMap(), "maps/oblique.tmj", reader()));
+    haylen::physics2d::World world({.gravity = {}});
     ASSERT_EQ(map.buildCollision(world).size(), 5U);
 
     // The solid tile in the second column of the first row hangs from the skewed corner of the cell below it.
@@ -964,10 +964,10 @@ TEST_F(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
     EXPECT_FALSE(world.queryPoint(map.getMap().objectToWorld({101.0F, 5.0F})).empty());
     EXPECT_TRUE(world.queryPoint(map.getMap().objectToWorld({100.5F, 0.5F})).empty());
 
-    core::Json upright = orthogonalMap();
-    upright["layers"][4]["objects"] = core::Json::parse(R"([{"id": 1, "type": "collision", "x": 100, "y": 0, "width": 10, "height": 40, "capsule": true}, {"id": 2, "type": "collision", "x": 200, "y": 0, "width": 12, "height": 12, "capsule": true}])");
-    tiled::MapRenderer straight(tiled::Map::parse(upright, "maps/upright.tmj", reader()));
-    physics2d::World other({.gravity = {}});
+    haylen::core::Json upright = orthogonalMap();
+    upright["layers"][4]["objects"] = haylen::core::Json::parse(R"([{"id": 1, "type": "collision", "x": 100, "y": 0, "width": 10, "height": 40, "capsule": true}, {"id": 2, "type": "collision", "x": 200, "y": 0, "width": 12, "height": 12, "capsule": true}])");
+    haylen::tiled::MapRenderer straight(haylen::tiled::Map::parse(upright, "maps/upright.tmj", reader()));
+    haylen::physics2d::World other({.gravity = {}});
     (void)straight.buildCollision(other);
     EXPECT_FALSE(other.queryPoint({105.0F, 1.0F}).empty());
     EXPECT_FALSE(other.queryPoint({105.0F, 39.0F}).empty());
@@ -978,16 +978,16 @@ TEST_F(MapRendererTest, BuildsObliqueAndCapsuleCollision) {
 
 TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFilters) {
     // The tree tileset aligns its objects by their bottom center, so the tree at 16, 48 covers 8 to 24 across and 16 to 48 down.
-    core::Json document = orthogonalMap();
-    document["layers"][4]["objects"] = core::Json::parse(R"([{"id": 1, "type": "collision", "x": 16, "y": 48, "width": 16, "height": 32, "gid": 100}])");
-    document["layers"][4]["properties"] = core::Json::parse(R"([{"name": "category", "type": "int", "value": 4}, {"name": "mask", "type": "int", "value": 6}])");
-    tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
-    physics2d::World world({.gravity = {}});
-    const std::vector<physics2d::Body> bodies = map.buildCollision(world);
+    haylen::core::Json document = orthogonalMap();
+    document["layers"][4]["objects"] = haylen::core::Json::parse(R"([{"id": 1, "type": "collision", "x": 16, "y": 48, "width": 16, "height": 32, "gid": 100}])");
+    document["layers"][4]["properties"] = haylen::core::Json::parse(R"([{"name": "category", "type": "int", "value": 4}, {"name": "mask", "type": "int", "value": 6}])");
+    haylen::tiled::MapRenderer map(haylen::tiled::Map::parse(document, "maps/island.tmj", reader()));
+    haylen::physics2d::World world({.gravity = {}});
+    const std::vector<haylen::physics2d::Body> bodies = map.buildCollision(world);
     ASSERT_EQ(bodies.size(), 5U);
 
-    const physics2d::CollisionFilter probe{.category = 2};
-    const std::vector<physics2d::Shape> tree = world.queryPoint({10.0F, 24.0F}, probe);
+    const haylen::physics2d::CollisionFilter probe{.category = 2};
+    const std::vector<haylen::physics2d::Shape> tree = world.queryPoint({10.0F, 24.0F}, probe);
     ASSERT_EQ(tree.size(), 1U);
     EXPECT_EQ(tree.front().getFilter().category, 4U);
     EXPECT_EQ(tree.front().getFilter().mask, 6U);
@@ -996,8 +996,8 @@ TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFil
 
     // Collision bits are integers of at least 0, which a negative mask is not.
     document["layers"][4]["properties"][1]["value"] = -1;
-    tiled::MapRenderer negative(tiled::Map::parse(document, "maps/island.tmj", reader()));
-    physics2d::World other({.gravity = {}});
+    haylen::tiled::MapRenderer negative(haylen::tiled::Map::parse(document, "maps/island.tmj", reader()));
+    haylen::physics2d::World other({.gravity = {}});
     try {
         (void)negative.buildCollision(other);
         FAIL() << "The negative mask was accepted.";
@@ -1008,7 +1008,7 @@ TEST_F(MapRendererTest, PlacesTileObjectCollisionLikeTheirImagesAndReadsLayerFil
 
 TEST_F(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
     // Tiles painted at 32 pixels draw on a grid of 16, so their offset of 8 pixels moves them by 4 and their collision shapes shrink with them, as Tiled draws them.
-    const core::Json document = core::Json::parse(R"({
+    const haylen::core::Json document = haylen::core::Json::parse(R"({
         "type": "map", "orientation": "orthogonal", "renderorder": "right-down", "width": 3, "height": 2, "tilewidth": 16, "tileheight": 16, "infinite": false,
         "tilesets": [{"firstgid": 1, "name": "painted", "tilewidth": 32, "tileheight": 32, "tilecount": 2, "columns": 2, "image": "images/painted.png", "imagewidth": 64, "imageheight": 32,
             "tilerendersize": "grid", "tileoffset": {"x": 8, "y": 0}, "tiles": [
@@ -1017,9 +1017,9 @@ TEST_F(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
             ]}],
         "layers": [{"id": 1, "name": "ground", "type": "tilelayer", "width": 3, "height": 2, "data": [1, 1, 0, 0, 0, 2]}]
     })");
-    tiled::MapRenderer map(tiled::Map::parse(document, "maps/painted.tmj", reader()));
-    physics2d::World world({.gravity = {}});
-    const physics2d::Body ground = map.buildCollision(world).front();
+    haylen::tiled::MapRenderer map(haylen::tiled::Map::parse(document, "maps/painted.tmj", reader()));
+    haylen::physics2d::World world({.gravity = {}});
+    const haylen::physics2d::Body ground = map.buildCollision(world).front();
 
     // The two full tiles of the first row fill their cells and merge into one loop, and the half tile covers the lower half of its cell.
     EXPECT_EQ(ground.getOutlines().size(), 2U);
@@ -1030,38 +1030,38 @@ TEST_F(MapRendererTest, ScalesTheOffsetsAndCollisionShapesOfGridSizedTiles) {
 }
 
 TEST_F(MapRendererTest, SpawnsObjectsThroughFactories) {
-    core::Json document = orthogonalMap();
-    document["layers"][6]["layers"].push_back(core::Json::parse(R"({"id": 9, "name": "camp", "type": "objectgroup", "offsetx": 10, "offsety": 20, "objects": [{"id": 20, "type": "player", "x": 1, "y": 2}]})"));
-    const tiled::MapRenderer map(tiled::Map::parse(document, "maps/island.tmj", reader()));
+    haylen::core::Json document = orthogonalMap();
+    document["layers"][6]["layers"].push_back(haylen::core::Json::parse(R"({"id": 9, "name": "camp", "type": "objectgroup", "offsetx": 10, "offsety": 20, "objects": [{"id": 20, "type": "player", "x": 1, "y": 2}]})"));
+    const haylen::tiled::MapRenderer map(haylen::tiled::Map::parse(document, "maps/island.tmj", reader()));
 
-    std::vector<std::pair<std::string, math::Vec2>> spawned;
-    tiled::ObjectFactories factories;
-    factories.add("player", [&spawned](const tiled::Object& object, math::Vec2 position) { spawned.emplace_back("player " + object.name, position); });
-    factories.add("rock", [&spawned](const tiled::Object& object, math::Vec2 position) { spawned.emplace_back("rock " + object.name, position); });
+    std::vector<std::pair<std::string, haylen::math::Vec2>> spawned;
+    haylen::tiled::ObjectFactories factories;
+    factories.add("player", [&spawned](const haylen::tiled::Object& object, haylen::math::Vec2 position) { spawned.emplace_back("player " + object.name, position); });
+    factories.add("rock", [&spawned](const haylen::tiled::Object& object, haylen::math::Vec2 position) { spawned.emplace_back("rock " + object.name, position); });
     EXPECT_TRUE(factories.has("rock"));
-    EXPECT_THROW(factories.add("rock", [](const tiled::Object&, math::Vec2) {}), std::invalid_argument);
-    EXPECT_THROW(factories.add("", [](const tiled::Object&, math::Vec2) {}), std::invalid_argument);
+    EXPECT_THROW(factories.add("rock", [](const haylen::tiled::Object&, haylen::math::Vec2) {}), std::invalid_argument);
+    EXPECT_THROW(factories.add("", [](const haylen::tiled::Object&, haylen::math::Vec2) {}), std::invalid_argument);
 
     // The nested layer adds its own offset to the one of its group.
     EXPECT_EQ(factories.spawn(map), 4U);
     ASSERT_EQ(spawned.size(), 4U);
-    EXPECT_EQ(spawned[0], std::make_pair(std::string("player spawn"), math::Vec2(10.0F, 20.0F)));
-    EXPECT_EQ(spawned[1], std::make_pair(std::string("rock rock"), math::Vec2(40.0F, 48.0F)));
-    EXPECT_EQ(spawned[2], std::make_pair(std::string("rock big rock"), math::Vec2(44.0F, 48.0F)));
-    EXPECT_EQ(spawned[3], std::make_pair(std::string("player "), math::Vec2(15.0F, 24.0F)));
+    EXPECT_EQ(spawned[0], std::make_pair(std::string("player spawn"), haylen::math::Vec2(10.0F, 20.0F)));
+    EXPECT_EQ(spawned[1], std::make_pair(std::string("rock rock"), haylen::math::Vec2(40.0F, 48.0F)));
+    EXPECT_EQ(spawned[2], std::make_pair(std::string("rock big rock"), haylen::math::Vec2(44.0F, 48.0F)));
+    EXPECT_EQ(spawned[3], std::make_pair(std::string("player "), haylen::math::Vec2(15.0F, 24.0F)));
 
     spawned.clear();
     factories.remove("rock");
     EXPECT_FALSE(factories.has("rock"));
     EXPECT_EQ(factories.spawn(map, "camp"), 1U);
-    EXPECT_EQ(spawned.front().second, math::Vec2(15.0F, 24.0F));
+    EXPECT_EQ(spawned.front().second, haylen::math::Vec2(15.0F, 24.0F));
     EXPECT_THROW((void)factories.spawn(map, "ground"), std::invalid_argument);
     EXPECT_THROW((void)factories.spawn(map, "missing"), std::invalid_argument);
 
     // A factory may remove itself while it runs, which leaves the later objects of its class alone.
     spawned.clear();
     // clang-format off
-    factories.add("rock", [&spawned, &factories](const tiled::Object& object, math::Vec2 position) {
+    factories.add("rock", [&spawned, &factories](const haylen::tiled::Object& object, haylen::math::Vec2 position) {
         factories.remove("rock");
         spawned.emplace_back("once " + object.name, position);
     });
@@ -1072,10 +1072,10 @@ TEST_F(MapRendererTest, SpawnsObjectsThroughFactories) {
 }
 
 TEST_F(TiledLuaTest, HandsDeeplyNestedGroupsToLua) {
-    core::Json document = orthogonalMap();
-    core::Json group = core::Json::parse(R"({"id": 100, "name": "deepest", "type": "group", "layers": []})");
+    haylen::core::Json document = orthogonalMap();
+    haylen::core::Json group = haylen::core::Json::parse(R"({"id": 100, "name": "deepest", "type": "group", "layers": []})");
     for (int level = 1; level <= 60; ++level) {
-        group = core::Json{{"id", 100 + level}, {"name", "level"}, {"type", "group"}, {"layers", core::Json::array({group})}};
+        group = haylen::core::Json{{"id", 100 + level}, {"name", "level"}, {"type", "group"}, {"layers", haylen::core::Json::array({group})}};
     }
 
     document["layers"].push_back(group);
@@ -1223,14 +1223,14 @@ TEST_F(TiledLuaTest, ExposesMapTilesetLayerAndPropertyDetails) {
 }
 
 TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
-    const tiled::Map original = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
-    const core::Json written = tiled::MapWriter::write(original, "maps/copies/island.tmj");
+    const haylen::tiled::Map original = haylen::tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
+    const haylen::core::Json written = haylen::tiled::MapWriter::write(original, "maps/copies/island.tmj");
     EXPECT_EQ(written.at("tilesets")[0].at("image"), "../images/terrain.png");
     EXPECT_FALSE(written.at("tilesets")[0].contains("source"));
 
     // The copy embeds its tilesets and resolves its templates, so reading it back reads no other file.
     // clang-format off
-    const tiled::Map copy = tiled::Map::parse(written, "maps/copies/island.tmj", [](const std::string& path) -> core::Json {
+    const haylen::tiled::Map copy = haylen::tiled::Map::parse(written, "maps/copies/island.tmj", [](const std::string& path) -> haylen::core::Json {
         throw std::runtime_error("The file \"" + path + "\" was read unexpectedly.");
     });
     // clang-format on
@@ -1244,8 +1244,8 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
     ASSERT_EQ(copy.tilesets.size(), original.tilesets.size());
 
     for (std::size_t index = 0; index < copy.tilesets.size(); ++index) {
-        const tiled::Tileset& from = *original.tilesets[index].tileset;
-        const tiled::Tileset& to = *copy.tilesets[index].tileset;
+        const haylen::tiled::Tileset& from = *original.tilesets[index].tileset;
+        const haylen::tiled::Tileset& to = *copy.tilesets[index].tileset;
         EXPECT_EQ(copy.tilesets[index].firstGid, original.tilesets[index].firstGid);
         EXPECT_EQ(to.image, from.image);
         EXPECT_EQ(to.tileCount, from.tileCount);
@@ -1263,10 +1263,10 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
 
     EXPECT_EQ(test::TiledHelper::layer(copy, "group").opacity, 0.5F);
     EXPECT_EQ(test::TiledHelper::layer(copy, "sky").image, "maps/backgrounds/sky.png");
-    EXPECT_EQ(test::TiledHelper::layer(copy, "sky").parallax, math::Vec2(0.5F, 0.5F));
+    EXPECT_EQ(test::TiledHelper::layer(copy, "sky").parallax, haylen::math::Vec2(0.5F, 0.5F));
 
-    const tiled::Layer& things = test::TiledHelper::layer(copy, "things");
-    const tiled::Layer& before = test::TiledHelper::layer(original, "things");
+    const haylen::tiled::Layer& things = test::TiledHelper::layer(copy, "things");
+    const haylen::tiled::Layer& before = test::TiledHelper::layer(original, "things");
     ASSERT_EQ(things.objects.size(), before.objects.size());
 
     for (std::size_t index = 0; index < things.objects.size(); ++index) {
@@ -1281,17 +1281,17 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
 
     // The color of an object layer, the grid and the turns of a tileset and the decorations of text read back too.
     EXPECT_EQ(things.color, before.color);
-    EXPECT_EQ(copy.tilesets[0].tileset->grid.size, math::Vec2(32.0F, 16.0F));
+    EXPECT_EQ(copy.tilesets[0].tileset->grid.size, haylen::math::Vec2(32.0F, 16.0F));
     EXPECT_TRUE(copy.tilesets[0].tileset->grid.isometric);
     EXPECT_TRUE(copy.tilesets[0].tileset->transformations.preferUntransformed);
     EXPECT_FALSE(copy.tilesets[0].tileset->transformations.flipVertical);
     EXPECT_EQ(copy.tilesets[1].tileset->grid.size, copy.tilesets[1].tileset->tileSize);
-    const auto sign = std::ranges::find(things.objects, std::string("sign"), &tiled::Object::name);
+    const auto sign = std::ranges::find(things.objects, std::string("sign"), &haylen::tiled::Object::name);
     ASSERT_NE(sign, things.objects.end());
     EXPECT_TRUE(sign->text.underline && sign->text.strikeout);
     EXPECT_FALSE(sign->text.kerning);
 
-    const tiled::Map infinite = tiled::Map::parse(tiled::MapWriter::write(tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader()), "maps/infinite.tmj"), "maps/infinite.tmj", reader());
+    const haylen::tiled::Map infinite = haylen::tiled::Map::parse(haylen::tiled::MapWriter::write(haylen::tiled::Map::parse(infiniteMap(), "maps/infinite.tmj", reader()), "maps/infinite.tmj"), "maps/infinite.tmj", reader());
     EXPECT_TRUE(infinite.infinite);
     EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(-1, 1), 4U);
     EXPECT_EQ(test::TiledHelper::layer(infinite, "ground").getGid(1, 0), 6U);
@@ -1299,25 +1299,25 @@ TEST_F(MapTest, WritesMapsThatReadBackUnchanged) {
 
 // A project fills in the members the map leaves at their defaults, in the properties of its class and in class values, nested classes and the class items of lists alike, and keeps what the map sets.
 TEST_F(MapTest, FillsInTheClassMembersOfItsProject) {
-    tiled::Map map = tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
-    map.applyPropertyTypes(tiled::PropertyTypes::parse(gameProject()));
+    haylen::tiled::Map map = haylen::tiled::Map::parse(orthogonalMap(), "maps/island.tmj", reader());
+    map.applyPropertyTypes(haylen::tiled::PropertyTypes::parse(gameProject()));
     EXPECT_EQ(map.properties.getNumber("difficulty", 0.0), 1.0);
     EXPECT_EQ(map.properties.getString("title", ""), "Island");
-    const core::Json& spawn = test::TiledHelper::property(map.properties, "spawn").value;
+    const haylen::core::Json& spawn = test::TiledHelper::property(map.properties, "spawn").value;
     EXPECT_EQ(spawn.at("count"), 2);
     EXPECT_EQ(spawn.at("kind"), "goblin");
     EXPECT_EQ(spawn.at("reward").at("coins"), 5);
     EXPECT_EQ(spawn.at("reward").at("gem"), false);
-    const core::Json& bat = test::TiledHelper::property(map.properties, "loot").value[4].at("value");
+    const haylen::core::Json& bat = test::TiledHelper::property(map.properties, "loot").value[4].at("value");
     EXPECT_EQ(bat.at("kind"), "bat");
     EXPECT_EQ(bat.at("count"), 1);
 
-    const tiled::PropertyTypes types = tiled::PropertyTypes::parse(gameProject());
+    const haylen::tiled::PropertyTypes types = haylen::tiled::PropertyTypes::parse(gameProject());
     EXPECT_EQ(types.getClasses().size(), 3U);
     EXPECT_EQ(types.findClass("Kind"), nullptr);
-    const tiled::PropertyTypes looping = tiled::PropertyTypes::parse(core::Json::parse(R"({"propertyTypes": [{"name": "Node", "type": "class", "members": [{"name": "next", "type": "class", "propertyType": "Node", "value": {}}]}]})"));
-    EXPECT_THROW((void)looping.complete(tiled::Properties({{.name = "head", .type = "class", .propertyType = "Node", .value = core::Json::object()}}), ""), std::invalid_argument);
-    EXPECT_THROW((void)tiled::PropertyTypes::parse(core::Json::parse(R"({"propertyTypes": [{"type": "class", "members": []}]})")), std::invalid_argument);
+    const haylen::tiled::PropertyTypes looping = haylen::tiled::PropertyTypes::parse(haylen::core::Json::parse(R"({"propertyTypes": [{"name": "Node", "type": "class", "members": [{"name": "next", "type": "class", "propertyType": "Node", "value": {}}]}]})"));
+    EXPECT_THROW((void)looping.complete(haylen::tiled::Properties({{.name = "head", .type = "class", .propertyType = "Node", .value = haylen::core::Json::object()}}), ""), std::invalid_argument);
+    EXPECT_THROW((void)haylen::tiled::PropertyTypes::parse(haylen::core::Json::parse(R"({"propertyTypes": [{"type": "class", "members": []}]})")), std::invalid_argument);
 }
 
 TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
@@ -1407,4 +1407,4 @@ TEST_F(TiledLuaTest, BuildsMapsAtRunTime) {
     EXPECT_NE(fixture.lua("map:removeLayer('things')").find("The map has no layer named \"things\" at its top level."), std::string::npos);
 }
 
-} // namespace haylen::tiled
+} // namespace haylen::lua::tiled

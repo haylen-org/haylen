@@ -20,7 +20,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // The release scenarios that a shipped app goes through: a small offline game, a game of many shards and an update of code and content between two builds of a store.
 class ReleaseAcceptanceTest : public ::testing::Test {
@@ -48,7 +48,7 @@ class ReleaseAcceptanceTest : public ::testing::Test {
         return std::search(file.begin(), file.end(), part.begin(), part.end()) != file.end();
     }
 
-    [[nodiscard]] ReleaseInspector makeInspector() const {
+    [[nodiscard]] haylen::content::ReleaseInspector makeInspector() const {
         return {release.getKeys(), {release.getSigningKey().getVerifyingKey()}};
     }
 
@@ -57,13 +57,13 @@ class ReleaseAcceptanceTest : public ::testing::Test {
 
 TEST_F(ReleaseAcceptanceTest, ShipsASmallGameWithoutAnyReadableFile) {
     const Files game = makeGame();
-    release.build(io::MemoryPackage("source", game));
+    release.build(haylen::io::MemoryPackage("source", game));
 
     // The release is the two manifests and one shard of each domain, and no file of it holds a path, a line of code or a byte of an asset.
     const auto shipped = test::ReleaseFiles::read(release.getFolder());
     ASSERT_EQ(shipped.size(), 4U);
-    EXPECT_TRUE(shipped.contains(std::string(ReleasePackage::kAppManifestFile)));
-    EXPECT_TRUE(shipped.contains(std::string(ReleasePackage::kContentManifestFile)));
+    EXPECT_TRUE(shipped.contains(std::string(haylen::content::ReleasePackage::kAppManifestFile)));
+    EXPECT_TRUE(shipped.contains(std::string(haylen::content::ReleasePackage::kContentManifestFile)));
 
     for (const auto& [name, bytes] : shipped) {
         for (const auto& [path, content] : game) {
@@ -86,22 +86,22 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
     }
 
     const std::uint64_t target = 4 * kMegabyte;
-    release.build(io::MemoryPackage("source", game), target);
-    const ReleaseInspector::Report base = makeInspector().inspect(release.getFolder());
+    release.build(haylen::io::MemoryPackage("source", game), target);
+    const haylen::content::ReleaseInspector::Report base = makeInspector().inspect(release.getFolder());
     ASSERT_GE(base.content.envelope.shards.size(), 6U);
     const auto before = test::ReleaseFiles::read(release.getFolder());
 
     game["content/world/region5.bin"][kMegabyte] ^= 1;
-    release.build(io::MemoryPackage("source", game), target);
-    const ReleaseInspector::Report update = makeInspector().inspect(release.getFolder());
-    const ReleaseInspector::Difference difference = ReleaseInspector::compare(base.content, update.content);
+    release.build(haylen::io::MemoryPackage("source", game), target);
+    const haylen::content::ReleaseInspector::Report update = makeInspector().inspect(release.getFolder());
+    const haylen::content::ReleaseInspector::Difference difference = haylen::content::ReleaseInspector::compare(base.content, update.content);
     EXPECT_EQ(difference.newShards.size(), 1U);
     EXPECT_LE(difference.downloadBytes, 4 * kMegabyte) << "An update downloads the chunks around the change, never the game.";
     EXPECT_EQ(difference.changedFiles, std::vector<std::string>{"content/world/region5.bin"});
 
     // Every shard of the base stays byte for byte in the update.
     const auto after = test::ReleaseFiles::read(release.getFolder());
-    for (const ShardReference& shard : base.content.envelope.shards) {
+    for (const haylen::content::ShardReference& shard : base.content.envelope.shards) {
         ASSERT_TRUE(after.contains(shard.getFileName()));
         EXPECT_EQ(after.at(shard.getFileName()), before.at(shard.getFileName()));
     }
@@ -111,13 +111,13 @@ TEST_F(ReleaseAcceptanceTest, SplitsALargeGameIntoShardsAndPatchesOnlyWhatChange
 
 TEST_F(ReleaseAcceptanceTest, UpdatesCodeAndContentWithNewShardsOnly) {
     Files game = makeGame();
-    release.build(io::MemoryPackage("source", game));
+    release.build(haylen::io::MemoryPackage("source", game));
     const auto before = test::ReleaseFiles::read(release.getFolder());
 
     // The next build of the store changes one Lua module and one asset, so it adds one shard to each domain and two new manifests, and every earlier file stays as it was.
     game["source/scenes/island.lua"] = test::TestFiles::bytes("return {title = 'The changed island of the release test'}");
     game["content/data/enemies.json"] = test::TestFiles::bytes(R"({"enemies": ["the ghost of the release test"]})");
-    release.build(io::MemoryPackage("source", game));
+    release.build(haylen::io::MemoryPackage("source", game));
     const auto after = test::ReleaseFiles::read(release.getFolder());
 
     std::set<std::string> added;
@@ -131,9 +131,9 @@ TEST_F(ReleaseAcceptanceTest, UpdatesCodeAndContentWithNewShardsOnly) {
     }
 
     EXPECT_EQ(added.size(), 2U) << "Each domain adds one shard.";
-    EXPECT_EQ(release.getStatistics(Manifest::Domain::App).newChunks, 1U);
-    EXPECT_EQ(release.getStatistics(Manifest::Domain::Content).newChunks, 1U);
+    EXPECT_EQ(release.getStatistics(haylen::content::Manifest::Domain::App).newChunks, 1U);
+    EXPECT_EQ(release.getStatistics(haylen::content::Manifest::Domain::Content).newChunks, 1U);
     EXPECT_TRUE(release.open()->isLuaBytecode("source/scenes/island.lua"));
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

@@ -47,12 +47,12 @@
 #include "support/TestApplication.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 class EngineTest : public ::testing::Test {
   protected:
     // Fails in one hook of every frame, like a plugin with a bug in its bookkeeping.
-    class FailingFramePlugin final : public plugins::Plugin {
+    class FailingFramePlugin final : public haylen::plugins::Plugin {
       public:
         enum class Hook {
             Event,
@@ -65,13 +65,13 @@ class EngineTest : public ::testing::Test {
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "failing";
         }
-        void event(Engine&, const platform::Event&) override {
+        void event(haylen::core::Engine&, const haylen::platform::Event&) override {
             fail(Hook::Event, "event failed");
         }
-        void renderOverlay(Engine&) override {
+        void renderOverlay(haylen::core::Engine&) override {
             fail(Hook::Overlay, "overlay failed");
         }
-        void endFrame(Engine&) override {
+        void endFrame(haylen::core::Engine&) override {
             fail(Hook::EndFrame, "end of frame failed");
         }
 
@@ -86,17 +86,17 @@ class EngineTest : public ::testing::Test {
     };
 
     // Fails to start, and counts the stops it receives, which a plugin that never started must not get.
-    class FailingStartPlugin final : public plugins::Plugin {
+    class FailingStartPlugin final : public haylen::plugins::Plugin {
       public:
         explicit FailingStartPlugin(int& stopCount) : stops(stopCount) {}
 
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "failingStart";
         }
-        void start(Engine&) override {
+        void start(haylen::core::Engine&) override {
             throw std::runtime_error("start failed");
         }
-        void stop(Engine&) override {
+        void stop(haylen::core::Engine&) override {
             ++stops;
         }
 
@@ -104,36 +104,36 @@ class EngineTest : public ::testing::Test {
         int& stops;
     };
 
-    class CountingPlugin final : public plugins::Plugin {
+    class CountingPlugin final : public haylen::plugins::Plugin {
       public:
         [[nodiscard]] std::string_view getName() const noexcept override {
             return "counting";
         }
-        void start(Engine&) override {
+        void start(haylen::core::Engine&) override {
             ++started;
         }
-        void stop(Engine&) override {
+        void stop(haylen::core::Engine&) override {
             ++stopped;
         }
-        void event(Engine&, const platform::Event&) override {
+        void event(haylen::core::Engine&, const haylen::platform::Event&) override {
             ++events;
         }
-        void beginFrame(Engine&, float) override {
+        void beginFrame(haylen::core::Engine&, float) override {
             ++frames;
         }
-        void fixedUpdate(Engine&, float) override {
+        void fixedUpdate(haylen::core::Engine&, float) override {
             ++fixedSteps;
         }
-        void update(Engine&, float) override {
+        void update(haylen::core::Engine&, float) override {
             ++updates;
         }
-        void render(Engine&) override {
+        void render(haylen::core::Engine&) override {
             ++renders;
         }
-        void renderUi(Engine&, const SceneView& view) override {
+        void renderUi(haylen::core::Engine&, const haylen::core::SceneView& view) override {
             uiRenders += view.current ? 1 : 0;
         }
-        void endFrame(Engine&) override {
+        void endFrame(haylen::core::Engine&) override {
             ++endedFrames;
         }
 
@@ -150,7 +150,7 @@ class EngineTest : public ::testing::Test {
 };
 
 TEST_F(EngineTest, FindsPluginsByTypeAndName) {
-    plugins::PluginRegistry registry;
+    haylen::plugins::PluginRegistry registry;
     CountingPlugin& plugin = registry.add(std::make_unique<CountingPlugin>());
     EXPECT_EQ(&registry.get<CountingPlugin>(), &plugin);
     EXPECT_EQ(registry.find("counting"), &plugin);
@@ -175,7 +175,7 @@ TEST_F(EngineTest, DrivesPluginsScenesAndTimers) {
     CountingPlugin* plugin = nullptr;
 
     // clang-format off
-    test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([&](Engine& engine) {
+    test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([&](haylen::core::Engine& engine) {
         plugin = &engine.addPlugin(std::make_unique<CountingPlugin>());
         engine.getScenes().push(scene);
     }));
@@ -202,13 +202,13 @@ TEST_F(EngineTest, DrivesPluginsScenesAndTimers) {
     EXPECT_EQ(fixture.engine().getClock().getFrameIndex(), 6U);
     EXPECT_GT(fixture.engine().getRenderer2D().getStats().passes, 0U);
 
-    platform::Event event;
-    event.type = platform::Event::Type::KeyDown;
-    event.key = input::Key::A;
+    haylen::platform::Event event;
+    event.type = haylen::platform::Event::Type::KeyDown;
+    event.key = haylen::input::Key::A;
     fixture.engine().handleEvent(event);
     EXPECT_EQ(plugin->events, 1);
     EXPECT_EQ(log.back(), "main:event");
-    EXPECT_TRUE(fixture.engine().getInput().isKeyDown(input::Key::A));
+    EXPECT_TRUE(fixture.engine().getInput().isKeyDown(haylen::input::Key::A));
 }
 
 // The frame loop reuses its storage, so only the scripts allocate, through the allocator of Lua.
@@ -232,7 +232,7 @@ TEST_F(EngineTest, SteadyFramesAllocateNothing) {
 TEST_F(EngineTest, AnnouncesPluginsAddedWhileRunning) {
     test::LuaFixture fixture;
     std::vector<std::string> started;
-    fixture.engine().getEvents().on(LifecycleEvent::kPluginStarted, [&](EventBus::Event& event) { started.push_back(event.getData().at("name").get<std::string>()); });
+    fixture.engine().getEvents().on(haylen::core::LifecycleEvent::kPluginStarted, [&](haylen::core::EventBus::Event& event) { started.push_back(event.getData().at("name").get<std::string>()); });
     const CountingPlugin& plugin = fixture.engine().addPlugin(std::make_unique<CountingPlugin>());
     EXPECT_EQ(plugin.started, 1);
     EXPECT_EQ(started, std::vector<std::string>{"counting"});
@@ -249,103 +249,103 @@ TEST_F(EngineTest, KeepsShowingTheErrorOfAPluginThatFailedToStart) {
 
 TEST_F(EngineTest, TracksAppStatesFromPlatformEvents) {
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     std::vector<std::string> log;
-    const ScopedConnection states(engine.appStateChanged.connect([&](Engine::AppState state) { log.push_back("state " + std::to_string(static_cast<int>(state))); }));
-    const ScopedConnection resized(engine.resized.connect([&] { log.emplace_back("resized"); }));
-    const ScopedConnection quit(engine.quitRequested.connect([&] { log.emplace_back("quit"); }));
+    const haylen::core::ScopedConnection states(engine.appStateChanged.connect([&](haylen::core::Engine::AppState state) { log.push_back("state " + std::to_string(static_cast<int>(state))); }));
+    const haylen::core::ScopedConnection resized(engine.resized.connect([&] { log.emplace_back("resized"); }));
+    const haylen::core::ScopedConnection quit(engine.quitRequested.connect([&] { log.emplace_back("quit"); }));
 
-    for (const std::string_view name : {LifecycleEvent::kAppActive, LifecycleEvent::kAppInactive, LifecycleEvent::kAppBackground, LifecycleEvent::kWindowResized, LifecycleEvent::kWindowFocusLost, LifecycleEvent::kWindowFocusGained, LifecycleEvent::kAppQuitRequested}) {
-        engine.getEvents().on(name, [&log, name](EventBus::Event& event) { log.push_back(std::string(name) + (event.getData().is_null() ? "" : " " + event.getData().dump())); });
+    for (const std::string_view name : {haylen::core::LifecycleEvent::kAppActive, haylen::core::LifecycleEvent::kAppInactive, haylen::core::LifecycleEvent::kAppBackground, haylen::core::LifecycleEvent::kWindowResized, haylen::core::LifecycleEvent::kWindowFocusLost, haylen::core::LifecycleEvent::kWindowFocusGained, haylen::core::LifecycleEvent::kAppQuitRequested}) {
+        engine.getEvents().on(name, [&log, name](haylen::core::EventBus::Event& event) { log.push_back(std::string(name) + (event.getData().is_null() ? "" : " " + event.getData().dump())); });
     }
 
-    engine.getInput().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A}, engine.getViewport());
+    engine.getInput().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::A}, engine.getViewport());
     engine.getVirtualInput().setButton("jump", true);
     const int persisted = fixture.host().getPersistCount();
 
-    for (const platform::Event::Type type : {platform::Event::Type::FocusLost, platform::Event::Type::FocusGained, platform::Event::Type::Suspended, platform::Event::Type::FocusGained, platform::Event::Type::Resumed, platform::Event::Type::Resized, platform::Event::Type::QuitRequested}) {
+    for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::FocusLost, haylen::platform::Event::Type::FocusGained, haylen::platform::Event::Type::Suspended, haylen::platform::Event::Type::FocusGained, haylen::platform::Event::Type::Resumed, haylen::platform::Event::Type::Resized, haylen::platform::Event::Type::QuitRequested}) {
         engine.handleEvent({.type = type});
     }
 
     EXPECT_EQ(log, (std::vector<std::string>{"windowFocusLost", "state 1", "appInactive", "windowFocusGained", "state 0", "appActive", "state 2", "appBackground", "windowFocusGained", "state 0", "appActive", "resized", R"(windowResized {"height":1080.0,"width":1920.0})", "quit", "appQuitRequested"}));
-    EXPECT_FALSE(engine.getInput().isKeyDown(input::Key::A));
+    EXPECT_FALSE(engine.getInput().isKeyDown(haylen::input::Key::A));
     EXPECT_FALSE(engine.getVirtualInput().isButtonDown("jump"));
     EXPECT_EQ(fixture.host().getPersistCount(), persisted + 1) << "Going to the background makes the files of the app durable.";
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
 }
 
 TEST_F(EngineTest, TreatsInterruptionsAsInactiveTime) {
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
-    std::vector<Engine::AppState> states;
-    const ScopedConnection connection(engine.appStateChanged.connect([&](Engine::AppState state) { states.push_back(state); }));
+    haylen::core::Engine& engine = fixture.engine();
+    std::vector<haylen::core::Engine::AppState> states;
+    const haylen::core::ScopedConnection connection(engine.appStateChanged.connect([&](haylen::core::Engine::AppState state) { states.push_back(state); }));
 
     // A phone call keeps the app inactive even when its window gets the focus back, and going away and back keeps the interruption until it ends.
-    for (const platform::Event::Type type : {platform::Event::Type::InterruptionBegan, platform::Event::Type::FocusLost, platform::Event::Type::FocusGained, platform::Event::Type::Suspended, platform::Event::Type::Resumed}) {
+    for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::InterruptionBegan, haylen::platform::Event::Type::FocusLost, haylen::platform::Event::Type::FocusGained, haylen::platform::Event::Type::Suspended, haylen::platform::Event::Type::Resumed}) {
         engine.handleEvent({.type = type});
     }
 
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Inactive);
-    engine.handleEvent({.type = platform::Event::Type::InterruptionEnded});
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
-    EXPECT_EQ(states, (std::vector{Engine::AppState::Inactive, Engine::AppState::Background, Engine::AppState::Inactive, Engine::AppState::Active}));
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Inactive);
+    engine.handleEvent({.type = haylen::platform::Event::Type::InterruptionEnded});
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
+    EXPECT_EQ(states, (std::vector{haylen::core::Engine::AppState::Inactive, haylen::core::Engine::AppState::Background, haylen::core::Engine::AppState::Inactive, haylen::core::Engine::AppState::Active}));
 
     // An interruption that ends while the window has no focus leaves the app inactive until the focus returns.
-    engine.handleEvent({.type = platform::Event::Type::FocusLost});
-    engine.handleEvent({.type = platform::Event::Type::InterruptionBegan});
-    engine.handleEvent({.type = platform::Event::Type::InterruptionEnded});
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Inactive);
-    engine.handleEvent({.type = platform::Event::Type::FocusGained});
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::InterruptionBegan});
+    engine.handleEvent({.type = haylen::platform::Event::Type::InterruptionEnded});
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Inactive);
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
 }
 
 TEST_F(EngineTest, ComesBackInactiveWhileTheWindowLacksTheFocus) {
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
 
     // A dialog took the focus of the window before the app went to the background and still has it when the app comes back.
-    for (const platform::Event::Type type : {platform::Event::Type::FocusLost, platform::Event::Type::Suspended, platform::Event::Type::Resumed}) {
+    for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::FocusLost, haylen::platform::Event::Type::Suspended, haylen::platform::Event::Type::Resumed}) {
         engine.handleEvent({.type = type});
     }
 
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Inactive);
-    engine.handleEvent({.type = platform::Event::Type::FocusGained});
-    EXPECT_EQ(engine.getAppState(), Engine::AppState::Active);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Inactive);
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
 }
 
 TEST_F(EngineTest, PublishesTheKeyboardAndTheNetwork) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "design": {"width": 960, "height": 540, "scaling": "fit"}})"}});
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     std::vector<std::string> log;
-    for (const std::string_view name : {LifecycleEvent::kKeyboardShown, LifecycleEvent::kKeyboardHidden, LifecycleEvent::kNetworkOnline, LifecycleEvent::kNetworkOffline}) {
-        engine.getEvents().on(name, [&log, name](EventBus::Event& event) { log.push_back(std::string(name) + (event.getData().is_null() ? "" : " " + event.getData().dump())); });
+    for (const std::string_view name : {haylen::core::LifecycleEvent::kKeyboardShown, haylen::core::LifecycleEvent::kKeyboardHidden, haylen::core::LifecycleEvent::kNetworkOnline, haylen::core::LifecycleEvent::kNetworkOffline}) {
+        engine.getEvents().on(name, [&log, name](haylen::core::EventBus::Event& event) { log.push_back(std::string(name) + (event.getData().is_null() ? "" : " " + event.getData().dump())); });
     }
 
     // The keyboard frame reaches the app in design units, and only changes are published.
     fixture.frames(1);
-    engine.handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 1080.0F, 0.0F, 0.0F}});
-    engine.handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 600.0F, 1920.0F, 480.0F}});
-    engine.handleEvent({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 600.0F, 1920.0F, 480.0F}});
-    engine.handleEvent({.type = platform::Event::Type::KeyboardChanged});
-    engine.handleEvent({.type = platform::Event::Type::KeyboardChanged});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 1080.0F, 0.0F, 0.0F}});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 600.0F, 1920.0F, 480.0F}});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 600.0F, 1920.0F, 480.0F}});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged});
+    engine.handleEvent({.type = haylen::platform::Event::Type::KeyboardChanged});
 
     // The network is unknown until the platform reports it, and the first report publishes the state the app starts in.
-    EXPECT_EQ(engine.getNetworkState(), Engine::NetworkState::Unknown);
+    EXPECT_EQ(engine.getNetworkState(), haylen::core::Engine::NetworkState::Unknown);
 
     for (const bool online : {true, true, false, false, true}) {
-        engine.handleEvent({.type = platform::Event::Type::NetworkChanged, .online = online});
+        engine.handleEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = online});
     }
 
-    EXPECT_EQ(engine.getNetworkState(), Engine::NetworkState::Online);
+    EXPECT_EQ(engine.getNetworkState(), haylen::core::Engine::NetworkState::Online);
     EXPECT_EQ(log, (std::vector<std::string>{R"(keyboardShown {"height":240.0,"width":960.0,"x":0.0,"y":300.0})", "keyboardHidden", "networkOnline", "networkOffline", "networkOnline"}));
 }
 
 TEST_F(EngineTest, PublishesWindowAndGamepadChanges) {
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     std::vector<std::string> log;
-    for (const std::string_view name : {LifecycleEvent::kWindowFullscreenChanged, LifecycleEvent::kWindowOrientationChanged, LifecycleEvent::kWindowSafeAreaChanged, LifecycleEvent::kGamepadConnected, LifecycleEvent::kGamepadDisconnected}) {
-        engine.getEvents().on(name, [&log, name](EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
+    for (const std::string_view name : {haylen::core::LifecycleEvent::kWindowFullscreenChanged, haylen::core::LifecycleEvent::kWindowOrientationChanged, haylen::core::LifecycleEvent::kWindowSafeAreaChanged, haylen::core::LifecycleEvent::kGamepadConnected, haylen::core::LifecycleEvent::kGamepadDisconnected}) {
+        engine.getEvents().on(name, [&log, name](haylen::core::EventBus::Event& event) { log.push_back(std::string(name) + " " + event.getData().dump()); });
     }
 
     fixture.host().setGamepad(1, {.connected = true, .name = "Pad"});
@@ -353,7 +353,7 @@ TEST_F(EngineTest, PublishesWindowAndGamepadChanges) {
     EXPECT_EQ(log, (std::vector<std::string>{R"(gamepadConnected {"gamepad":2,"name":"Pad"})"}));
 
     log.clear();
-    fixture.host().setFullscreen(true, [](const platform::SystemAnswer&) {});
+    fixture.host().setFullscreen(true, [](const haylen::platform::SystemAnswer&) {});
     fixture.host().setSafeAreaInsets({.top = 108.0F});
     fixture.host().setGamepad(1, {});
     fixture.frames(2);
@@ -371,13 +371,13 @@ TEST_F(EngineTest, PublishesWindowAndGamepadChanges) {
 // A window without area, such as a canvas that its page hides, draws nothing, lays nothing out and hands no size to the GPU device or to ImGui, while the app runs on, and draws at the right size once it has an area again.
 TEST_F(EngineTest, DrawsNothingWhileTheWindowHasNoArea) {
     test::LuaFixture fixture({{"source/main.lua", "count = 0 sizes = {} require('haylen.events').on('windowResized', function(event) sizes[#sizes + 1] = string.format('%dx%d', event.width, event.height) end) require('haylen.ui').mount(require('haylen.ui').column{require('haylen.ui').button{text = 'Play'}}) require('haylen.scene').push({update = function() count = count + 1 end})"}});
-    Engine& engine = fixture.engine();
-    const ImGuiContext& imgui = *engine.getPlugin<plugins::UiPlugin>().getBackend().getImGuiContext();
-    platform::Event resized;
-    resized.type = platform::Event::Type::Resized;
+    haylen::core::Engine& engine = fixture.engine();
+    const ImGuiContext& imgui = *engine.getPlugin<haylen::plugins::UiPlugin>().getBackend().getImGuiContext();
+    haylen::platform::Event resized;
+    resized.type = haylen::platform::Event::Type::Resized;
     fixture.frames(2);
     const int drawnFrames = imgui.FrameCount;
-    const math::Rect mapped = engine.getViewport().getPixelRect();
+    const haylen::math::Rect mapped = engine.getViewport().getPixelRect();
     const std::string before = fixture.lua("return count");
 
     fixture.host().resize({0.0F, 0.0F});
@@ -395,16 +395,16 @@ TEST_F(EngineTest, DrawsNothingWhileTheWindowHasNoArea) {
     fixture.frames(1);
     EXPECT_TRUE(engine.isDrawing());
     EXPECT_EQ(imgui.FrameCount, drawnFrames + 1);
-    EXPECT_EQ(engine.getViewport().getPixelRect().getSize(), (math::Vec2{1280.0F, 720.0F}));
+    EXPECT_EQ(engine.getViewport().getPixelRect().getSize(), (haylen::math::Vec2{1280.0F, 720.0F}));
     EXPECT_EQ(fixture.host().getGpu().getSurfaceSize().width, 1280);
     EXPECT_EQ(fixture.lua("return table.concat(sizes, ',')"), "1280x720");
 }
 
 TEST_F(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
-    platform::Event began;
-    began.type = platform::Event::Type::TouchBegan;
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Event began;
+    began.type = haylen::platform::Event::Type::TouchBegan;
     began.touchCount = 1;
     began.touches[0] = {.id = 1, .position = {400.0F, 300.0F}, .changed = true};
     engine.handleEvent(began);
@@ -412,7 +412,7 @@ TEST_F(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
 
     fixture.host().resize({1080.0F, 1920.0F});
     fixture.frames(1);
-    const math::Vec2 expected = engine.getViewport().toDesign({400.0F, 300.0F});
+    const haylen::math::Vec2 expected = engine.getViewport().toDesign({400.0F, 300.0F});
     ASSERT_EQ(engine.getInput().getTouches().size(), 1U);
     EXPECT_NEAR(engine.getInput().getTouches()[0].position.x, expected.x, 1e-3F);
     EXPECT_NEAR(engine.getInput().getTouches()[0].position.y, expected.y, 1e-3F);
@@ -421,17 +421,17 @@ TEST_F(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
 // An app of any orientation turns its design with the screen, so a phone turned on its side keeps the size of the design units and lays out wide.
 TEST_F(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "any", "design": {"width": 440, "height": 956, "scaling": "expand"}})"}});
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     fixture.host().resize({1320.0F, 2868.0F});
     fixture.frames(1);
-    EXPECT_EQ(engine.getViewport().getDesignSize(), math::Vec2(440.0F, 956.0F));
-    const math::Vec2 portrait = engine.getViewport().getPixelsPerUnit();
+    EXPECT_EQ(engine.getViewport().getDesignSize(), haylen::math::Vec2(440.0F, 956.0F));
+    const haylen::math::Vec2 portrait = engine.getViewport().getPixelsPerUnit();
 
     fixture.host().resize({2868.0F, 1320.0F});
     fixture.frames(1);
-    EXPECT_EQ(engine.getViewport().getDesignSize(), math::Vec2(956.0F, 440.0F));
+    EXPECT_EQ(engine.getViewport().getDesignSize(), haylen::math::Vec2(956.0F, 440.0F));
     EXPECT_EQ(engine.getViewport().getPixelsPerUnit(), portrait);
-    EXPECT_EQ(engine.getViewport().getVisibleRect(), math::Rect(0.0F, 0.0F, 956.0F, 440.0F));
+    EXPECT_EQ(engine.getViewport().getVisibleRect(), haylen::math::Rect(0.0F, 0.0F, 956.0F, 440.0F));
     EXPECT_EQ(fixture.lua("local width, height = require('haylen.viewport').designSize() return width .. ' ' .. height"), "956.0 440.0");
 }
 
@@ -439,18 +439,18 @@ TEST_F(EngineTest, KeepsTheDesignOfAnAppOfOneOrientation) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "landscape", "design": {"width": 1920, "height": 1080}})"}});
     fixture.host().resize({1080.0F, 1920.0F});
     fixture.frames(1);
-    EXPECT_EQ(fixture.engine().getViewport().getDesignSize(), math::Vec2(1920.0F, 1080.0F));
+    EXPECT_EQ(fixture.engine().getViewport().getDesignSize(), haylen::math::Vec2(1920.0F, 1080.0F));
 }
 
 TEST_F(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
     test::LuaFixture fixture({{"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     EXPECT_TRUE(engine.getLifecycle().pauseOnBackground);
     EXPECT_TRUE(engine.getLifecycle().pauseOnFocusLoss);
     int ticks = 0;
     engine.getTimers().every(0.05F, [&] { ++ticks; });
 
-    engine.handleEvent({.type = platform::Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
     EXPECT_TRUE(engine.isHalted());
     EXPECT_TRUE(engine.getAudio().isOutputMuted());
     EXPECT_FALSE(engine.getAudio().isBusMuted("master")) << "What the app saves of its mute stays its own choice.";
@@ -459,14 +459,14 @@ TEST_F(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
     EXPECT_EQ(ticks, 0);
 
     // Coming back does not jump the clock by the time the app was away.
-    engine.handleEvent({.type = platform::Event::Type::FocusGained});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
     EXPECT_FALSE(engine.getAudio().isOutputMuted());
     fixture.frames(1, 10.0);
     EXPECT_EQ(ticks, 0);
     fixture.frames(1, 0.06);
     EXPECT_EQ(ticks, 1);
 
-    engine.handleEvent({.type = platform::Event::Type::Suspended});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Suspended});
     EXPECT_TRUE(engine.isHalted());
     const std::uint64_t passes = engine.getRenderer2D().getStats().passes;
     fixture.frames(3);
@@ -476,7 +476,7 @@ TEST_F(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
     fixture.frames(1, 0.06);
     fixture.frames(1, 0.06);
     EXPECT_EQ(ticks, 2);
-    engine.handleEvent({.type = platform::Event::Type::Resumed});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resumed});
     EXPECT_FALSE(engine.isHalted());
 }
 
@@ -485,7 +485,7 @@ TEST_F(EngineTest, MakesSavedDataDurableInTheBackgroundEvenWhenAListenerFails) {
     test::LuaFixture fixture;
     fixture.runLua("require('haylen.events').on('appBackground', function() require('haylen.preferences').set('progress', 3) error('the save broke') end)");
     const int persisted = fixture.host().getPersistCount();
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     EXPECT_EQ(fixture.host().getPersistCount(), persisted + 2);
     EXPECT_NE(fixture.engine().getStorage().readText("preferences.json").find("\"progress\": 3"), std::string::npos);
     ASSERT_NE(fixture.engine().getError(), nullptr);
@@ -495,10 +495,10 @@ TEST_F(EngineTest, MakesSavedDataDurableInTheBackgroundEvenWhenAListenerFails) {
 TEST_F(EngineTest, PausesTheGame) {
     std::vector<std::string> log;
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
-    const ScopedConnection paused(engine.pausedChanged.connect([&](bool value) { log.push_back(value ? "paused" : "resumed"); }));
-    engine.getEvents().on(LifecycleEvent::kPaused, [&](EventBus::Event&) { log.emplace_back("event paused"); });
-    engine.getEvents().on(LifecycleEvent::kUnpaused, [&](EventBus::Event&) { log.emplace_back("event unpaused"); });
+    haylen::core::Engine& engine = fixture.engine();
+    const haylen::core::ScopedConnection paused(engine.pausedChanged.connect([&](bool value) { log.push_back(value ? "paused" : "resumed"); }));
+    engine.getEvents().on(haylen::core::LifecycleEvent::kPaused, [&](haylen::core::EventBus::Event&) { log.emplace_back("event paused"); });
+    engine.getEvents().on(haylen::core::LifecycleEvent::kUnpaused, [&](haylen::core::EventBus::Event&) { log.emplace_back("event unpaused"); });
     auto game = std::make_shared<test::RecordingScene>("game", log);
     engine.getScenes().push(game);
     fixture.frames(1);
@@ -520,13 +520,13 @@ TEST_F(EngineTest, PausesTheGame) {
 
 TEST_F(EngineTest, ReportsLowMemoryToTheApp) {
     test::LuaFixture fixture({{"content/kept.json", "{}"}, {"content/dropped.json", "[]"}});
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     const std::shared_ptr<void> kept = assets.load("json", "kept.json");
     (void)assets.load("json", "dropped.json");
     EXPECT_EQ(assets.getCachedCount(), 1U);
 
-    std::vector<platform::Event::MemoryLevel> warnings;
-    const ScopedConnection lowMemory(fixture.engine().lowMemory.connect([&](platform::Event::MemoryLevel level) { warnings.push_back(level); }));
+    std::vector<haylen::platform::Event::MemoryLevel> warnings;
+    const haylen::core::ScopedConnection lowMemory(fixture.engine().lowMemory.connect([&](haylen::platform::Event::MemoryLevel level) { warnings.push_back(level); }));
     // clang-format off
     fixture.runLua(R"(
         levels = {}
@@ -536,20 +536,20 @@ TEST_F(EngineTest, ReportsLowMemoryToTheApp) {
     // clang-format on
 
     fixture.frames(1);
-    fixture.engine().handleEvent({.type = platform::Event::Type::LowMemory, .memoryLevel = platform::Event::MemoryLevel::Warning});
-    fixture.engine().handleEvent({.type = platform::Event::Type::LowMemory, .memoryLevel = platform::Event::MemoryLevel::Critical});
-    EXPECT_EQ(warnings, (std::vector<platform::Event::MemoryLevel>{platform::Event::MemoryLevel::Warning, platform::Event::MemoryLevel::Critical}));
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::LowMemory, .memoryLevel = haylen::platform::Event::MemoryLevel::Warning});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::LowMemory, .memoryLevel = haylen::platform::Event::MemoryLevel::Critical});
+    EXPECT_EQ(warnings, (std::vector<haylen::platform::Event::MemoryLevel>{haylen::platform::Event::MemoryLevel::Warning, haylen::platform::Event::MemoryLevel::Critical}));
     EXPECT_EQ(fixture.lua("return table.concat(levels, ', ')"), "app warning, scene warning, app critical, scene critical");
     EXPECT_EQ(assets.releaseUnused(), 0U) << "The warning already pruned the entries of released assets.";
 }
 
 TEST_F(EngineTest, PublishesTheLinksThatOpenTheApp) {
     // The link that launched the process waits until the main script of the app listens.
-    platform::LinkRelay::receive("island://open?map=harbor");
+    haylen::platform::LinkRelay::receive("island://open?map=harbor");
     test::LuaFixture fixture({{"source/main.lua", "links = {} require('haylen.events').on('linkOpened', function(link) links[#links + 1] = link.url end)"}});
     fixture.frames(1);
-    platform::LinkRelay::receive("island://open?map=cave");
-    platform::LinkRelay::receive("island://open?map=peak");
+    haylen::platform::LinkRelay::receive("island://open?map=cave");
+    haylen::platform::LinkRelay::receive("island://open?map=peak");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(links, ', ')"), "island://open?map=harbor, island://open?map=cave, island://open?map=peak");
 }
@@ -561,11 +561,11 @@ TEST_F(EngineTest, EndsALaunchedAppForTheLinksOfTheAppThatLaunchedIt) {
     fixture.frames(1);
     EXPECT_TRUE(fixture.engine().isRunning());
 
-    platform::LinkRelay::receive("island://open?map=cave");
+    haylen::platform::LinkRelay::receive("island://open?map=cave");
     fixture.frames(1);
     EXPECT_FALSE(fixture.engine().isRunning());
     EXPECT_EQ(fixture.lua("return links"), "0");
-    EXPECT_EQ(platform::LinkRelay::take(), std::vector<std::string>{"island://open?map=cave"});
+    EXPECT_EQ(haylen::platform::LinkRelay::take(), std::vector<std::string>{"island://open?map=cave"});
 }
 
 // No frame is complete before the engine rendered one, so a splash screen never ends over a window that holds nothing yet.
@@ -580,13 +580,13 @@ TEST_F(EngineTest, ReportsErrorsAndKeepsRendering) {
     std::vector<std::string> log;
     auto scene = std::make_shared<test::RecordingScene>("main", log);
     // clang-format off
-    test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([&](Engine& engine) {
+    test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([&](haylen::core::Engine& engine) {
         engine.getScenes().push(scene);
     }));
     // clang-format on
 
     std::string reported;
-    const ScopedConnection connection(fixture.engine().errorRaised.connect([&](const core::AppError& error) { reported = error.what(); }));
+    const haylen::core::ScopedConnection connection(fixture.engine().errorRaised.connect([&](const haylen::core::AppError& error) { reported = error.what(); }));
     fixture.frames(1);
     fixture.engine().reportError("first failure");
     fixture.engine().reportError("second failure");
@@ -644,13 +644,13 @@ TEST_F(EngineTest, RestartsInsteadOfResumingAfterAJobFailed) {
 TEST_F(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
     test::LuaFixture fixture({{"source/main.lua", "local function explode()\n    error('the island sank')\nend\nexplode()"}});
     ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
-    const Json& report = fixture.host().getErrorReports().front();
+    const haylen::core::Json& report = fixture.host().getErrorReports().front();
     EXPECT_EQ(report.at("message"), "the island sank");
     EXPECT_EQ(report.at("file"), "source/main.lua");
     EXPECT_EQ(report.at("line"), 2);
     EXPECT_NE(report.at("traceback").get<std::string>().find("source/main.lua:2"), std::string::npos);
     ASSERT_FALSE(report.at("frames").empty());
-    EXPECT_EQ(report.at("frames").at(1), (Json{{"source", "source/main.lua"}, {"line", 2}, {"function", "local 'explode'"}, {"kind", "script"}}));
+    EXPECT_EQ(report.at("frames").at(1), (haylen::core::Json{{"source", "source/main.lua"}, {"line", 2}, {"function", "local 'explode'"}, {"kind", "script"}}));
     EXPECT_EQ(report.at("code"), "runtime");
     EXPECT_EQ(report.at("phase"), "startup");
     EXPECT_EQ(report, fixture.engine().getErrorRecord());
@@ -662,7 +662,7 @@ TEST_F(EngineTest, HandsTheErrorThatStoppedTheAppToTheHost) {
 
 TEST_F(EngineTest, TurnsStartupFailuresIntoErrors) {
     {
-        test::LuaFixture failing({}, std::make_unique<test::TestApplication>([](Engine&) { throw std::runtime_error("cannot start"); }));
+        test::LuaFixture failing({}, std::make_unique<test::TestApplication>([](haylen::core::Engine&) { throw std::runtime_error("cannot start"); }));
         ASSERT_NE(failing.engine().getError(), nullptr);
         EXPECT_STREQ(failing.engine().getError()->what(), "cannot start");
     }
@@ -682,8 +682,8 @@ TEST_F(EngineTest, ReportsFailuresFromAsynchronousCallbacksAndRendering) {
 
 TEST_F(EngineTest, ReportsFailuresOfPluginsInEveryHookOfAFrame) {
     for (const auto& [hook, message] : std::vector<std::pair<FailingFramePlugin::Hook, std::string_view>>{{FailingFramePlugin::Hook::Event, "event failed"}, {FailingFramePlugin::Hook::Overlay, "overlay failed"}, {FailingFramePlugin::Hook::EndFrame, "end of frame failed"}}) {
-        test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([failing = hook](Engine& engine) { engine.addPlugin(std::make_unique<FailingFramePlugin>(failing)); }));
-        fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
+        test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([failing = hook](haylen::core::Engine& engine) { engine.addPlugin(std::make_unique<FailingFramePlugin>(failing)); }));
+        fixture.engine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::A});
         fixture.frames(1);
         ASSERT_NE(fixture.engine().getError(), nullptr) << message;
         EXPECT_EQ(std::string_view(fixture.engine().getError()->what()), message);
@@ -692,9 +692,9 @@ TEST_F(EngineTest, ReportsFailuresOfPluginsInEveryHookOfAFrame) {
 
 TEST_F(EngineTest, StartsPluginsAddedBeforeItStartsOnce) {
     test::TemporaryDirectory directory;
-    platform::HeadlessHost host(directory.getPath());
-    std::optional<Engine::Phase> startPhase;
-    Engine engine(host, std::make_shared<io::MemoryPackage>("app"), AppConfig{}, std::make_unique<test::TestApplication>([&startPhase](Engine& running) { startPhase = running.getPhase(); }));
+    haylen::platform::HeadlessHost host(directory.getPath());
+    std::optional<haylen::core::Engine::Phase> startPhase;
+    haylen::core::Engine engine(host, std::make_shared<haylen::io::MemoryPackage>("app"), haylen::core::AppConfig{}, std::make_unique<test::TestApplication>([&startPhase](haylen::core::Engine& running) { startPhase = running.getPhase(); }));
     const CountingPlugin& plugin = engine.addPlugin(std::make_unique<CountingPlugin>());
     EXPECT_EQ(plugin.started, 0);
 
@@ -702,8 +702,8 @@ TEST_F(EngineTest, StartsPluginsAddedBeforeItStartsOnce) {
     engine.start();
     engine.start();
     EXPECT_EQ(plugin.started, 1);
-    EXPECT_EQ(startPhase, Engine::Phase::Lifecycle);
-    EXPECT_EQ(engine.getPhase(), Engine::Phase::Frame);
+    EXPECT_EQ(startPhase, haylen::core::Engine::Phase::Lifecycle);
+    EXPECT_EQ(engine.getPhase(), haylen::core::Engine::Phase::Frame);
     engine.stop();
     EXPECT_EQ(plugin.stopped, 1);
 }
@@ -715,12 +715,12 @@ TEST_F(EngineTest, ReportsFailuresOfListenersWhenNativeUiCoversTheApp) {
     fixture.frames(1);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "the cover broke");
-    EXPECT_EQ(fixture.engine().getAppState(), Engine::AppState::Inactive);
+    EXPECT_EQ(fixture.engine().getAppState(), haylen::core::Engine::AppState::Inactive);
 }
 
 TEST_F(EngineTest, StopsOnlyThePluginsThatStarted) {
     int stops = 0;
-    test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([&stops](Engine& engine) { engine.addPlugin(std::make_unique<FailingStartPlugin>(stops)); }));
+    test::LuaFixture fixture({}, std::make_unique<test::TestApplication>([&stops](haylen::core::Engine& engine) { engine.addPlugin(std::make_unique<FailingStartPlugin>(stops)); }));
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_STREQ(fixture.engine().getError()->what(), "start failed");
     fixture.engine().stop();
@@ -732,7 +732,7 @@ TEST_F(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     fixture.runLua("require('async').spawn(require('scenes.loader'))");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; }));
-    const core::AppError& error = *fixture.engine().getError();
+    const haylen::core::AppError& error = *fixture.engine().getError();
     EXPECT_EQ(error.getMessage(), "the island failed to load");
     EXPECT_EQ(error.getFile(), "source/scenes/loader.lua");
     EXPECT_EQ(error.getLine(), 3);
@@ -741,11 +741,11 @@ TEST_F(EngineTest, ShowsErrorsOfAsyncTasksWithTheirStack) {
     ASSERT_EQ(error.getFrames().size(), 2U);
     EXPECT_EQ(error.getFrames()[0].source, "[C]");
     EXPECT_EQ(error.getFrames()[0].function, "global 'error'");
-    EXPECT_EQ(error.getFrames()[0].kind, core::AppError::Frame::Kind::Native);
+    EXPECT_EQ(error.getFrames()[0].kind, haylen::core::AppError::Frame::Kind::Native);
     EXPECT_EQ(error.getFrames()[1].source, "source/scenes/loader.lua");
     EXPECT_EQ(error.getFrames()[1].line, 3);
     EXPECT_EQ(error.getFrames()[1].function, "function <source/scenes/loader.lua:1>");
-    EXPECT_EQ(error.getFrames()[1].kind, core::AppError::Frame::Kind::Script);
+    EXPECT_EQ(error.getFrames()[1].kind, haylen::core::AppError::Frame::Kind::Script);
     ASSERT_FALSE(fixture.host().getErrorReports().empty());
     EXPECT_EQ(fixture.host().getErrorReports().back(), fixture.engine().getErrorRecord());
     EXPECT_NE(fixture.lua("require('async').spawn(3)").find("bad argument #1 to 'spawn' (function expected, got number)"), std::string::npos);
@@ -772,7 +772,7 @@ TEST_F(EngineTest, BoundsThePollOfTheEventLoopByTheFrameTime) {
     const auto started = std::chrono::steady_clock::now();
     fixture.frames(1);
     EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(1));
-    const Engine::EventLoopPoll& polled = fixture.engine().getEventLoopPoll();
+    const haylen::core::Engine::EventLoopPoll& polled = fixture.engine().getEventLoopPoll();
     EXPECT_EQ(polled.budget, std::chrono::nanoseconds(4166666));
     EXPECT_TRUE(polled.ran);
     EXPECT_TRUE(polled.pending);
@@ -827,7 +827,7 @@ TEST_F(EngineTest, StopsTheAppWhenARejectionOfNativeCodeIsNotObserved) {
 TEST_F(EngineTest, ReportsRenderSubmissionFailures) {
     test::LuaFixture fixture;
     fixture.host().resize({20000.0F, 20000.0F});
-    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([](Engine& engine) { engine.getRenderer2D().beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color::black()}); }));
+    fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([](haylen::core::Engine& engine) { engine.getRenderer2D().beginWorld(haylen::graphics2d::Camera{}, {.ambientLight = haylen::math::Color::black()}); }));
     fixture.frames(2);
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("Texture dimensions exceed the device limit"), std::string::npos);
@@ -865,7 +865,7 @@ TEST_F(EngineTest, KeepsTheExitStatusOfTheQuit) {
 
 TEST_F(EngineTest, ExposesServicesAndPlatformName) {
     test::LuaFixture fixture;
-    Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     EXPECT_EQ(engine.getPlatformName(), "headless");
     EXPECT_EQ(engine.getConfig().identifier, "com.haylen.tests");
     EXPECT_EQ(&engine.getWindow(), &fixture.host());
@@ -880,9 +880,9 @@ TEST_F(EngineTest, ExposesServicesAndPlatformName) {
 
 TEST_F(EngineTest, ConstructorRejectsMissingParts) {
     test::TemporaryDirectory directory;
-    platform::HeadlessHost host(directory.getPath());
-    EXPECT_THROW(Engine(host, nullptr, AppConfig{}, std::make_unique<lua::Application>()), std::invalid_argument);
-    EXPECT_THROW(Engine(host, std::make_shared<io::MemoryPackage>("empty"), AppConfig{}, nullptr), std::invalid_argument);
+    haylen::platform::HeadlessHost host(directory.getPath());
+    EXPECT_THROW(haylen::core::Engine(host, nullptr, haylen::core::AppConfig{}, std::make_unique<lua::Application>()), std::invalid_argument);
+    EXPECT_THROW(haylen::core::Engine(host, std::make_shared<haylen::io::MemoryPackage>("empty"), haylen::core::AppConfig{}, nullptr), std::invalid_argument);
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

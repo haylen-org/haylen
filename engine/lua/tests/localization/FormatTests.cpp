@@ -14,7 +14,7 @@
 #include "haylen/localization/PluralRules.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::localization {
+namespace haylen::lua::localization {
 
 class PluralRulesTest : public ::testing::Test {
   protected:
@@ -22,8 +22,8 @@ class PluralRulesTest : public ::testing::Test {
     [[nodiscard]] static std::string categories(std::string_view language, const std::vector<double>& counts, bool ordinal = false) {
         std::string names;
         for (const double count : counts) {
-            const PluralRules::Category category = ordinal ? PluralRules::selectOrdinal(language, count) : PluralRules::select(language, count);
-            names += (names.empty() ? "" : " ") + std::string(PluralRules::categoryName(category));
+            const haylen::localization::PluralRules::Category category = ordinal ? haylen::localization::PluralRules::selectOrdinal(language, count) : haylen::localization::PluralRules::select(language, count);
+            names += (names.empty() ? "" : " ") + std::string(haylen::localization::PluralRules::categoryName(category));
         }
 
         return names;
@@ -55,12 +55,12 @@ TEST_F(PluralRulesTest, PicksOrdinalCategories) {
     EXPECT_EQ(categories("fr", {1, 2}, true), "one other");
     EXPECT_EQ(categories("it", {8, 11, 9}, true), "many many other");
     EXPECT_EQ(categories("de", {1}, true), "other");
-    EXPECT_EQ(PluralRules::categoryFromName("few"), PluralRules::Category::Few);
-    EXPECT_FALSE(PluralRules::categoryFromName("several").has_value());
+    EXPECT_EQ(haylen::localization::PluralRules::categoryFromName("few"), haylen::localization::PluralRules::Category::Few);
+    EXPECT_FALSE(haylen::localization::PluralRules::categoryFromName("several").has_value());
 }
 
 TEST(NumberFormatTest, WritesNumbersWithTheMarksOfALanguage) {
-    const auto format = [](std::string_view language, double value, NumberFormat::Options options) { return NumberFormat::format(language, value, options); };
+    const auto format = [](std::string_view language, double value, haylen::localization::NumberFormat::Options options) { return haylen::localization::NumberFormat::format(language, value, options); };
     EXPECT_EQ(format("en", 1234567.5, {}), "1,234,567.5");
     EXPECT_EQ(format("de", 1234567.5, {}), "1.234.567,5");
     EXPECT_EQ(format("fr", 1234567.5, {}), "1 234 567,5");
@@ -71,20 +71,20 @@ TEST(NumberFormatTest, WritesNumbersWithTheMarksOfALanguage) {
     EXPECT_EQ(format("en", 3, {.minimumFractionDigits = 2}), "3.00");
     EXPECT_EQ(format("en", 1234, {.grouping = false}), "1234");
 
-    EXPECT_EQ(format("en", 0.25, {.style = NumberFormat::Style::Percent}), "25%");
-    EXPECT_EQ(format("de", 0.25, {.style = NumberFormat::Style::Percent}), "25 %");
-    EXPECT_EQ(format("tr", 0.25, {.style = NumberFormat::Style::Percent}), "%25");
-    EXPECT_EQ(format("en", 1234.5, {.style = NumberFormat::Style::Currency}), "$1,234.50");
-    EXPECT_EQ(format("de", 1234.5, {.style = NumberFormat::Style::Currency, .currency = "EUR"}), "1.234,50 €");
-    EXPECT_EQ(format("en", 1235.4, {.style = NumberFormat::Style::Currency, .currency = "JPY"}), "¥1,235");
-    EXPECT_EQ(format("en", 10, {.style = NumberFormat::Style::Currency, .currency = "XYZ"}), "XYZ10.00");
+    EXPECT_EQ(format("en", 0.25, {.style = haylen::localization::NumberFormat::Style::Percent}), "25%");
+    EXPECT_EQ(format("de", 0.25, {.style = haylen::localization::NumberFormat::Style::Percent}), "25 %");
+    EXPECT_EQ(format("tr", 0.25, {.style = haylen::localization::NumberFormat::Style::Percent}), "%25");
+    EXPECT_EQ(format("en", 1234.5, {.style = haylen::localization::NumberFormat::Style::Currency}), "$1,234.50");
+    EXPECT_EQ(format("de", 1234.5, {.style = haylen::localization::NumberFormat::Style::Currency, .currency = "EUR"}), "1.234,50 €");
+    EXPECT_EQ(format("en", 1235.4, {.style = haylen::localization::NumberFormat::Style::Currency, .currency = "JPY"}), "¥1,235");
+    EXPECT_EQ(format("en", 10, {.style = haylen::localization::NumberFormat::Style::Currency, .currency = "XYZ"}), "XYZ10.00");
 
-    EXPECT_EQ(format("en", 1234, {.style = NumberFormat::Style::Compact}), "1.2K");
-    EXPECT_EQ(format("en", 12345, {.style = NumberFormat::Style::Compact}), "12K");
-    EXPECT_EQ(format("en", 999950, {.style = NumberFormat::Style::Compact}), "1M");
-    EXPECT_EQ(format("en", 950, {.style = NumberFormat::Style::Compact}), "950");
-    EXPECT_EQ(format("ja", 12345, {.style = NumberFormat::Style::Compact}), "1.2万");
-    EXPECT_EQ(format("de", 2500000, {.style = NumberFormat::Style::Compact}), "2,5 Mio.");
+    EXPECT_EQ(format("en", 1234, {.style = haylen::localization::NumberFormat::Style::Compact}), "1.2K");
+    EXPECT_EQ(format("en", 12345, {.style = haylen::localization::NumberFormat::Style::Compact}), "12K");
+    EXPECT_EQ(format("en", 999950, {.style = haylen::localization::NumberFormat::Style::Compact}), "1M");
+    EXPECT_EQ(format("en", 950, {.style = haylen::localization::NumberFormat::Style::Compact}), "950");
+    EXPECT_EQ(format("ja", 12345, {.style = haylen::localization::NumberFormat::Style::Compact}), "1.2万");
+    EXPECT_EQ(format("de", 2500000, {.style = haylen::localization::NumberFormat::Style::Compact}), "2,5 Mio.");
 
     EXPECT_THROW((void)format("en", std::numeric_limits<double>::infinity(), {}), std::invalid_argument);
     EXPECT_THROW((void)format("en", 1, {.minimumFractionDigits = 3, .maximumFractionDigits = 1}), std::invalid_argument);
@@ -93,36 +93,36 @@ TEST(NumberFormatTest, WritesNumbersWithTheMarksOfALanguage) {
 TEST(DateFormatTest, WritesDatesAndTimesInTheStylesOfALanguage) {
     constexpr std::int64_t kMoment = 1791900300;
     // clang-format off
-    const auto format = [](std::string_view language, DateFormat::Options options) {
+    const auto format = [](std::string_view language, haylen::localization::DateFormat::Options options) {
         options.timeZoneOffset = 0;
-        return DateFormat::format(language, kMoment, options);
+        return haylen::localization::DateFormat::format(language, kMoment, options);
     };
     // clang-format on
-    EXPECT_EQ(format("en", {.date = DateFormat::Style::Short}), "10/13/2026");
+    EXPECT_EQ(format("en", {.date = haylen::localization::DateFormat::Style::Short}), "10/13/2026");
     EXPECT_EQ(format("en", {}), "Oct 13, 2026");
-    EXPECT_EQ(format("en", {.date = DateFormat::Style::Full, .time = true}), "Tuesday, October 13, 2026 2:05 PM");
-    EXPECT_EQ(format("en-GB", {.date = DateFormat::Style::Long, .time = true}), "13 October 2026 14:05");
-    EXPECT_EQ(format("de", {.date = DateFormat::Style::Full}), "Dienstag, 13. Oktober 2026");
-    EXPECT_EQ(format("pt-BR", {.date = DateFormat::Style::Long}), "13 de outubro de 2026");
-    EXPECT_EQ(format("ru", {.date = DateFormat::Style::Long}), "13 октября 2026 г.");
-    EXPECT_EQ(format("ja", {.date = DateFormat::Style::Long}), "2026年10月13日");
+    EXPECT_EQ(format("en", {.date = haylen::localization::DateFormat::Style::Full, .time = true}), "Tuesday, October 13, 2026 2:05 PM");
+    EXPECT_EQ(format("en-GB", {.date = haylen::localization::DateFormat::Style::Long, .time = true}), "13 October 2026 14:05");
+    EXPECT_EQ(format("de", {.date = haylen::localization::DateFormat::Style::Full}), "Dienstag, 13. Oktober 2026");
+    EXPECT_EQ(format("pt-BR", {.date = haylen::localization::DateFormat::Style::Long}), "13 de outubro de 2026");
+    EXPECT_EQ(format("ru", {.date = haylen::localization::DateFormat::Style::Long}), "13 октября 2026 г.");
+    EXPECT_EQ(format("ja", {.date = haylen::localization::DateFormat::Style::Long}), "2026年10月13日");
     EXPECT_EQ(format("ko", {.date = std::nullopt, .time = true}), "오후 2:05");
-    EXPECT_EQ(format("ar", {.date = DateFormat::Style::Long}), "13/10/2026");
+    EXPECT_EQ(format("ar", {.date = haylen::localization::DateFormat::Style::Long}), "13/10/2026");
 
-    const DateFormat::Fields before = DateFormat::toFields(-3600, 0);
+    const haylen::localization::DateFormat::Fields before = haylen::localization::DateFormat::toFields(-3600, 0);
     EXPECT_EQ(std::vector<std::int64_t>({before.year, before.month, before.day, before.hour, before.weekday}), (std::vector<std::int64_t>{1969, 12, 31, 23, 3}));
-    EXPECT_EQ(DateFormat::toFields(kMoment, -300).hour, 9);
-    EXPECT_THROW((void)DateFormat::toFields(0, 2000), std::invalid_argument);
+    EXPECT_EQ(haylen::localization::DateFormat::toFields(kMoment, -300).hour, 9);
+    EXPECT_THROW((void)haylen::localization::DateFormat::toFields(0, 2000), std::invalid_argument);
 }
 
 TEST(ListFormatTest, JoinsItemsInALanguage) {
     const std::vector<std::string> three{"apples", "pears", "plums"};
-    EXPECT_EQ(ListFormat::format("en", three, ListFormat::Type::And), "apples, pears, and plums");
-    EXPECT_EQ(ListFormat::format("en-GB", three, ListFormat::Type::And), "apples, pears and plums");
-    EXPECT_EQ(ListFormat::format("en", std::vector<std::string>{"red", "blue"}, ListFormat::Type::Or), "red or blue");
-    EXPECT_EQ(ListFormat::format("es", three, ListFormat::Type::And), "apples, pears y plums");
-    EXPECT_EQ(ListFormat::format("ja", three, ListFormat::Type::And), "apples、pears、plums");
-    EXPECT_EQ(ListFormat::format("en", std::vector<std::string>{"one"}, ListFormat::Type::And), "one");
+    EXPECT_EQ(haylen::localization::ListFormat::format("en", three, haylen::localization::ListFormat::Type::And), "apples, pears, and plums");
+    EXPECT_EQ(haylen::localization::ListFormat::format("en-GB", three, haylen::localization::ListFormat::Type::And), "apples, pears and plums");
+    EXPECT_EQ(haylen::localization::ListFormat::format("en", std::vector<std::string>{"red", "blue"}, haylen::localization::ListFormat::Type::Or), "red or blue");
+    EXPECT_EQ(haylen::localization::ListFormat::format("es", three, haylen::localization::ListFormat::Type::And), "apples, pears y plums");
+    EXPECT_EQ(haylen::localization::ListFormat::format("ja", three, haylen::localization::ListFormat::Type::And), "apples、pears、plums");
+    EXPECT_EQ(haylen::localization::ListFormat::format("en", std::vector<std::string>{"one"}, haylen::localization::ListFormat::Type::And), "one");
 }
 
 TEST(LocalizationFormatLuaTest, FormatsAndPicksPluralFormsFromLua) {
@@ -166,4 +166,4 @@ TEST(LocalizationFormatLuaTest, ReadsTheLanguageOptionInAnyFormOfItsTag) {
     EXPECT_NE(fixture.lua("localization.formatList({'a'}, {language = 'not a tag'})").find("The language tag \"not a tag\" is not valid."), std::string::npos);
 }
 
-} // namespace haylen::localization
+} // namespace haylen::lua::localization

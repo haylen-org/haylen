@@ -8,7 +8,7 @@
 #include "haylen/platform/Event.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 TEST(SignalLuaTest, ConnectsWithPriorityOnceOwnersAndDeferral) {
     test::LuaFixture fixture;
@@ -129,14 +129,14 @@ TEST(EventsLuaTest, ReceivesEngineLifecycleEvents) {
     fixture.frames(1);
     fixture.runLua("haylen.setPaused(true) haylen.setPaused(false) scene.pop()");
     fixture.frames(1);
-    fixture.engine().handleEvent({.type = platform::Event::Type::FocusLost});
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resized});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::FocusLost});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resized});
     EXPECT_EQ(fixture.lua("return table.concat(log, ', ')"), "sceneEntered menu, sceneEnterTransitionFinished menu, paused, unpaused, sceneExited menu, appInactive, appBackground, windowResized 1920.0");
     EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted()) .. ' ' .. tostring(haylen.paused())"), "background true false");
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     EXPECT_EQ(fixture.lua("return haylen.appState() .. ' ' .. tostring(haylen.halted())"), "inactive false");
-    fixture.engine().handleEvent({.type = platform::Event::Type::FocusGained});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::FocusGained});
     EXPECT_EQ(fixture.lua("return haylen.appState()"), "active");
 }
 
@@ -351,7 +351,7 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     // clang-format on
     EXPECT_EQ(fixture.lua("return startCoins .. ' ' .. tostring(sameTable)"), "0 true");
     fixture.frames(3);
-    fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::A});
     EXPECT_EQ(fixture.lua("local data = require('state.player-data') return data.coins .. ' ' .. table.concat(data.log, ',')"), "3 start,keyDown");
 
     fixture.runLua("haylen = require('haylen') music = haylen.autoload('soundtrack', 'state.menu-music')");
@@ -376,9 +376,9 @@ TEST(AutoloadTest, HearsNoEventsWhileTheErrorScreenShows) {
         {"haylen.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lua": {"autoloads": ["listener"]}})"},
         {"source/listener.lua", "heard = {} return {event = function(self, event) heard[#heard + 1] = event.type end}"},
     });
-    fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::A});
     fixture.engine().reportError("The level broke.");
-    fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::B});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::B});
     EXPECT_EQ(fixture.lua("return #heard"), "1");
 }
 
@@ -429,4 +429,4 @@ TEST(ClassLuaTest, BuildsClassesWithInheritanceAndMixins) {
     EXPECT_NE(fixture.lua("require('haylen').class('A'):include(3)").find("table expected"), std::string::npos);
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

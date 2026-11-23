@@ -12,9 +12,9 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::net {
+namespace haylen::lua::net {
 
-class NetLuaTest : public WebSocketFixture {};
+class NetLuaTest : public haylen::net::WebSocketFixture {};
 
 TEST_F(NetLuaTest, TalksThroughWebSocketsFromLua) {
     const EchoServer server;
@@ -66,7 +66,7 @@ TEST_F(NetLuaTest, ModuleReloadsEndTheListenersOfTheirTopLevel) {
 
     fixture.package().setFile("source/listener.lua", test::TestFiles::bytes("-- Edited.\n" + listener));
     const std::vector<std::string> paths{"source/listener.lua"};
-    platform::DevelopmentSession* session = fixture.host().getDevelopmentSession();
+    haylen::platform::DevelopmentSession* session = fixture.host().getDevelopmentSession();
     ASSERT_NE(session, nullptr);
     session->addChanges(paths);
     fixture.frames(1);
@@ -167,4 +167,4 @@ TEST_F(NetLuaTest, KeepsListenersAwayFromEndedAndOversizedConnections) {
     EXPECT_EQ(fixture.engine().getError(), nullptr) << fixture.engine().getError()->what();
 }
 
-} // namespace haylen::net
+} // namespace haylen::lua::net

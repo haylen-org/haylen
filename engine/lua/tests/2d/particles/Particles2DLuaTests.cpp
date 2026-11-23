@@ -9,7 +9,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::particles2d {
+namespace haylen::lua::particles2d {
 
 TEST(Particles2DLuaTest, CreatesAndConfiguresEmittersFromLua) {
     test::LuaFixture fixture;
@@ -205,9 +205,9 @@ TEST(Particles2DLuaTest, CreatesSystemsTrailsAndImageShapes) {
     EXPECT_NE(fixture.lua("assets.load('images/dot.png', 'imageShape', {source = {0, 0, 2}})").find("The source of an image shape needs four numbers: x, y, width and height."), std::string::npos);
 
     // Options that C++ leaves out are the same as no options.
-    assets::Manager& manager = fixture.engine().getAssets();
-    EXPECT_EQ(manager.load("imageShape", "images/dot.png", core::Json()), manager.load("imageShape", "images/dot.png"));
-    EXPECT_EQ(manager.load("particles", "effects/spark.particles", core::Json()), manager.load("particles", "effects/spark.particles"));
+    haylen::assets::Manager& manager = fixture.engine().getAssets();
+    EXPECT_EQ(manager.load("imageShape", "images/dot.png", haylen::core::Json()), manager.load("imageShape", "images/dot.png"));
+    EXPECT_EQ(manager.load("particles", "effects/spark.particles", haylen::core::Json()), manager.load("particles", "effects/spark.particles"));
 }
 
 TEST(Particles2DLuaTest, LoadsEffectFilesForLua) {
@@ -243,4 +243,4 @@ TEST(Particles2DLuaTest, LoadsEffectFilesForLua) {
     EXPECT_EQ(fixture.lua("return config.gravity.y .. ' ' .. config.shapeSize.x .. ' ' .. config.colors[2]:toHex() .. ' ' .. config.tangentialAcceleration[2] .. ' ' .. config.endSize[1]"), "200.0 6.0 #00FF4000 5.0 0.0");
 }
 
-} // namespace haylen::particles2d
+} // namespace haylen::lua::particles2d

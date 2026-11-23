@@ -20,26 +20,26 @@
 #include "platform/NativeViews.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 TEST(NativeViewsTest, KeepsTheLargestReservationOfEveryEdge) {
-    NativeViews views;
-    EXPECT_EQ(views.getReservedInsets(), math::Insets{});
+    haylen::platform::NativeViews views;
+    EXPECT_EQ(views.getReservedInsets(), haylen::math::Insets{});
     views.reserveInsets("banner", {.bottom = 100.0F});
     views.reserveInsets("toolbar", {.left = 30.0F, .top = 20.0F, .bottom = 60.0F});
     views.reserveInsets("rail", {.right = -40.0F});
-    EXPECT_EQ(views.getReservedInsets(), (math::Insets{.left = 30.0F, .top = 20.0F, .bottom = 100.0F}));
+    EXPECT_EQ(views.getReservedInsets(), (haylen::math::Insets{.left = 30.0F, .top = 20.0F, .bottom = 100.0F}));
 
     // A view reserves again under its key, and releasing it frees its edges.
     views.reserveInsets("banner", {.bottom = 50.0F});
     EXPECT_EQ(views.getReservedInsets().bottom, 60.0F);
     views.releaseInsets("toolbar");
     views.releaseInsets("missing");
-    EXPECT_EQ(views.getReservedInsets(), (math::Insets{.bottom = 50.0F}));
+    EXPECT_EQ(views.getReservedInsets(), (haylen::math::Insets{.bottom = 50.0F}));
 }
 
 TEST(NativeViewsTest, CountsNestedCovers) {
-    NativeViews views;
+    haylen::platform::NativeViews views;
     EXPECT_FALSE(views.isAppCovered());
     views.coverApp();
     views.coverApp();
@@ -56,10 +56,10 @@ TEST(NativeViewsTest, CountsNestedCovers) {
 
 TEST(ReservedInsetsTest, WidensTheSafeAreaAndPublishesEveryChange) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    NativeViews& views = fixture.host().getNativeViews();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::NativeViews& views = fixture.host().getNativeViews();
     std::vector<std::string> log;
-    engine.getEvents().on(core::LifecycleEvent::kWindowSafeAreaChanged, [&log](core::EventBus::Event& event) { log.push_back(event.getData().dump()); });
+    engine.getEvents().on(haylen::core::LifecycleEvent::kWindowSafeAreaChanged, [&log](haylen::core::EventBus::Event& event) { log.push_back(event.getData().dump()); });
     fixture.host().setSafeAreaInsets({.top = 40.0F});
     fixture.frames(1);
     log.clear();
@@ -67,10 +67,10 @@ TEST(ReservedInsetsTest, WidensTheSafeAreaAndPublishesEveryChange) {
     // Each edge takes the device inset or the largest reservation, whichever is larger.
     views.reserveInsets("banner", {.bottom = 100.0F});
     views.reserveInsets("toolbar", {.top = 20.0F, .bottom = 150.0F});
-    EXPECT_EQ(engine.getReservedInsets(), math::Insets{}) << "The engine takes the reservations at the start of a frame.";
+    EXPECT_EQ(engine.getReservedInsets(), haylen::math::Insets{}) << "The engine takes the reservations at the start of a frame.";
     fixture.frames(1);
-    EXPECT_EQ(engine.getReservedInsets(), (math::Insets{.top = 20.0F, .bottom = 150.0F}));
-    EXPECT_EQ(engine.getViewport().getSafeRect(), (math::Rect{0.0F, 40.0F, 1920.0F, 890.0F}));
+    EXPECT_EQ(engine.getReservedInsets(), (haylen::math::Insets{.top = 20.0F, .bottom = 150.0F}));
+    EXPECT_EQ(engine.getViewport().getSafeRect(), (haylen::math::Rect{0.0F, 40.0F, 1920.0F, 890.0F}));
     EXPECT_EQ(log, (std::vector<std::string>{R"({"height":890.0,"width":1920.0,"x":0.0,"y":40.0})"}));
 
     // Releasing a view gives its edge back, and a reservation inside the device inset changes nothing.
@@ -84,9 +84,9 @@ TEST(ReservedInsetsTest, WidensTheSafeAreaAndPublishesEveryChange) {
 
     // A simulated safe area grows by the reservations too.
     views.reserveInsets("banner", {.bottom = 100.0F});
-    engine.setSafeAreaSimulation(SafeAreaSimulation::fromJson(core::Json::array({0, 0, 10, 0})));
+    engine.setSafeAreaSimulation(haylen::platform::SafeAreaSimulation::fromJson(haylen::core::Json::array({0, 0, 10, 0})));
     fixture.frames(1);
-    EXPECT_EQ(engine.getViewport().getSafeRect(), (math::Rect{0.0F, 30.0F, 1920.0F, 950.0F}));
+    EXPECT_EQ(engine.getViewport().getSafeRect(), (haylen::math::Rect{0.0F, 30.0F, 1920.0F, 950.0F}));
 }
 
 TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
@@ -99,7 +99,7 @@ TEST(ReservedInsetsTest, ReadsTheReservationsFromLuaInDesignUnits) {
 
 TEST(NativeViewsTest, TakesReservationsAndCoversFromOtherThreads) {
     test::LuaFixture fixture;
-    NativeViews& views = fixture.host().getNativeViews();
+    haylen::platform::NativeViews& views = fixture.host().getNativeViews();
     std::atomic<bool> done = false;
     // clang-format off
     std::jthread native([&views, &done] {
@@ -117,8 +117,8 @@ TEST(NativeViewsTest, TakesReservationsAndCoversFromOtherThreads) {
     native.join();
     fixture.frames(1);
     EXPECT_FALSE(fixture.engine().isAppCovered());
-    EXPECT_EQ(fixture.engine().getReservedInsets(), math::Insets{});
-    EXPECT_EQ(fixture.engine().getViewport().getSafeRect(), (math::Rect{0.0F, 0.0F, 1920.0F, 1080.0F}));
+    EXPECT_EQ(fixture.engine().getReservedInsets(), haylen::math::Insets{});
+    EXPECT_EQ(fixture.engine().getViewport().getSafeRect(), (haylen::math::Rect{0.0F, 0.0F, 1920.0F, 1080.0F}));
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

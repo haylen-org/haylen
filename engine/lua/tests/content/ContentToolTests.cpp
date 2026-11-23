@@ -15,7 +15,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 class ContentToolTest : public ::testing::Test {
   protected:
@@ -29,7 +29,7 @@ class ContentToolTest : public ::testing::Test {
     int run(std::vector<std::string> arguments) {
         output.str("");
         errors.str("");
-        return ContentTool(output, errors).run(arguments);
+        return haylen::content::ContentTool(output, errors).run(arguments);
     }
 
     [[nodiscard]] std::string getPath(const std::string& name) const {
@@ -42,11 +42,11 @@ class ContentToolTest : public ::testing::Test {
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(getPath("keys"))) {
             if (entry.path().extension() == ".key") {
                 const std::vector<std::uint8_t> bytes = test::TestFiles::read(entry.path());
-                if (bytes.size() < Digest::kSize) {
+                if (bytes.size() < haylen::content::Digest::kSize) {
                     throw std::runtime_error("The key file \"" + entry.path().string() + "\" is shorter than a key.");
                 }
 
-                secrets.push_back(Digest(std::span(bytes).first<Digest::kSize>()).toHex());
+                secrets.push_back(haylen::content::Digest(std::span(bytes).first<haylen::content::Digest::kSize>()).toHex());
             }
         }
 
@@ -179,4 +179,4 @@ TEST_F(ContentToolTest, BuildsShardsOfTheSizeThatItsTargetNames) {
     EXPECT_EQ(errors.str(), "Error: The option \"--shard-target\" takes a size above zero bytes.\n");
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 // One way app code fails: the module `fault` of a recoverable app that raises from one kind of code, the message the error screen shows first and the line of the module it points at.
 struct FailingCode {
@@ -12,4 +12,4 @@ struct FailingCode {
     int line = 0;
 };
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

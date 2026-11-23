@@ -12,13 +12,13 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::assets {
+namespace haylen::lua::assets {
 
 class AssetsLuaTest : public ::testing::Test {
   protected:
     [[nodiscard]] static std::map<std::string, std::string> getAssetFiles() {
         const std::vector<std::uint8_t> image = test::TestFiles::pngImage(8, 4, 0xFFFFFFFFU);
-        const std::span<const std::uint8_t> font = core::EmbeddedFiles::getDefaultFont();
+        const std::span<const std::uint8_t> font = haylen::core::EmbeddedFiles::getDefaultFont();
         return {
             {"content/images/hero.png", std::string(image.begin(), image.end())}, {"content/images/tree.png", std::string(image.begin(), image.end())}, {"content/fonts/ui.ttf", std::string(font.begin(), font.end())}, {"content/data/level.json", R"({"trees": [1, 2, 3]})"}, {"content/data/notes.txt", "notes"}, {"content/preload.json", R"({"groups": {"world": ["images/"], "broken": ["images/missing.png"]}})"},
         };
@@ -179,10 +179,10 @@ TEST_F(AssetsLuaTest, SetsTheUploadBudgetAndCountsWaitingUploads) {
     EXPECT_EQ(lua("return assets.uploadBudget()"), "0.008");
 
     // An app in the background keeps its decoded assets waiting for the frame thread until it comes back.
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     lua("pending = assets.loadAsync('images/hero.png')");
     ASSERT_TRUE(waitFor("assets.uploadCount() == 1"));
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     ASSERT_TRUE(waitFor("assets.uploadCount() == 0 and assets.pendingCount() == 0"));
 }
 
@@ -192,4 +192,4 @@ TEST_F(AssetsLuaTest, ReportsFailingProgressCallbacks) {
     EXPECT_NE(std::string_view(fixture.engine().getError()->what()).find("progress failed"), std::string::npos);
 }
 
-} // namespace haylen::assets
+} // namespace haylen::lua::assets

@@ -4,7 +4,7 @@
 
 #include "support/LuaFixture.hpp"
 
-namespace haylen::math {
+namespace haylen::lua::math {
 
 class GeometryLuaTest : public ::testing::Test {
   protected:
@@ -144,4 +144,4 @@ TEST_F(GeometryLuaTest, WorleyWarpAndVaryingPoisson) {
     EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 10, 10}, minimumDistance = 5, maximumDistance = 1, distance = function() return 5 end})").find("maximum distance"), std::string::npos);
 }
 
-} // namespace haylen::math
+} // namespace haylen::lua::math

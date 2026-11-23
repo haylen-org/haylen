@@ -17,7 +17,7 @@
 #include "haylen/math/Raycast.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::spatial2d {
+namespace haylen::lua::spatial2d {
 
 using Ids = std::vector<std::uint64_t>;
 
@@ -26,14 +26,14 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
   protected:
     // Answers every query by testing every entry, which the structures must match exactly.
     struct Reference {
-        std::vector<std::pair<std::uint64_t, math::Rect>> entries;
+        std::vector<std::pair<std::uint64_t, haylen::math::Rect>> entries;
 
-        void set(std::uint64_t id, const math::Rect& bounds) {
+        void set(std::uint64_t id, const haylen::math::Rect& bounds) {
             std::erase_if(entries, [id](const auto& entry) { return entry.first == id; });
             entries.emplace_back(id, bounds);
         }
 
-        [[nodiscard]] Ids query(const math::Rect& area) const {
+        [[nodiscard]] Ids query(const haylen::math::Rect& area) const {
             Ids ids;
             for (const auto& [id, bounds] : entries) {
                 if (bounds.getLeft() <= area.getRight() && area.getLeft() <= bounds.getRight() && bounds.getTop() <= area.getBottom() && area.getTop() <= bounds.getBottom()) {
@@ -45,10 +45,10 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             return ids;
         }
 
-        [[nodiscard]] Ids queryCircle(math::Vec2 center, float radius) const {
+        [[nodiscard]] Ids queryCircle(haylen::math::Vec2 center, float radius) const {
             Ids ids;
             for (const auto& [id, bounds] : entries) {
-                if (math::Vec2::distanceSquared(bounds.clamp(center), center) <= radius * radius) {
+                if (haylen::math::Vec2::distanceSquared(bounds.clamp(center), center) <= radius * radius) {
                     ids.push_back(id);
                 }
             }
@@ -57,10 +57,10 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             return ids;
         }
 
-        [[nodiscard]] std::vector<spatial2d::RayHit> raycast(const math::Ray& ray, std::size_t limit) const {
-            std::vector<spatial2d::RayHit> hits;
+        [[nodiscard]] std::vector<haylen::spatial2d::RayHit> raycast(const haylen::math::Ray& ray, std::size_t limit) const {
+            std::vector<haylen::spatial2d::RayHit> hits;
             for (const auto& [id, bounds] : entries) {
-                if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, bounds)) {
+                if (const std::optional<haylen::math::RayHit> hit = haylen::math::Raycast::rect(ray, bounds)) {
                     hits.push_back({.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
                 }
             }
@@ -74,10 +74,10 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             return hits;
         }
 
-        [[nodiscard]] std::vector<spatial2d::Neighbor> nearest(math::Vec2 point, std::size_t count, float maxDistance) const {
-            std::vector<spatial2d::Neighbor> neighbors;
+        [[nodiscard]] std::vector<haylen::spatial2d::Neighbor> nearest(haylen::math::Vec2 point, std::size_t count, float maxDistance) const {
+            std::vector<haylen::spatial2d::Neighbor> neighbors;
             for (const auto& [id, bounds] : entries) {
-                const float distance = std::sqrt(math::Vec2::distanceSquared(bounds.clamp(point), point));
+                const float distance = std::sqrt(haylen::math::Vec2::distanceSquared(bounds.clamp(point), point));
                 if (distance <= maxDistance) {
                     neighbors.push_back({.id = id, .distance = distance});
                 }
@@ -95,31 +95,31 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
 
     [[nodiscard]] static Structure makeStructure();
 
-    [[nodiscard]] static math::Rect randomBounds(math::Random& random) {
+    [[nodiscard]] static haylen::math::Rect randomBounds(haylen::math::Random& random) {
         // Some entries fall outside the quadtree area and some have no size, which every structure must handle.
         return {random.range(-500.0F, 500.0F), random.range(-500.0F, 500.0F), random.chance(0.2F) ? 0.0F : random.range(0.0F, 40.0F), random.chance(0.2F) ? 0.0F : random.range(0.0F, 40.0F)};
     }
 
-    static void expectSameAnswers(const Structure& structure, const Reference& reference, math::Random& random) {
+    static void expectSameAnswers(const Structure& structure, const Reference& reference, haylen::math::Random& random) {
         Ids ids;
-        std::vector<spatial2d::RayHit> hits;
-        std::vector<spatial2d::Neighbor> neighbors;
+        std::vector<haylen::spatial2d::RayHit> hits;
+        std::vector<haylen::spatial2d::Neighbor> neighbors;
         for (int probe = 0; probe < 40; ++probe) {
-            const math::Rect area = randomBounds(random).expanded(random.range(0.0F, 60.0F));
+            const haylen::math::Rect area = randomBounds(random).expanded(random.range(0.0F, 60.0F));
             structure.query(area, ids);
             EXPECT_EQ(ids, reference.query(area));
 
-            const math::Vec2 point{random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)};
+            const haylen::math::Vec2 point{random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)};
             const float radius = random.range(0.0F, 120.0F);
             structure.queryCircle(point, radius, ids);
             EXPECT_EQ(ids, reference.queryCircle(point, radius));
             structure.queryPoint(point, ids);
             EXPECT_EQ(ids, reference.query({point.x, point.y, 0.0F, 0.0F}));
 
-            const math::Ray ray = math::Ray::between(point, {random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)});
+            const haylen::math::Ray ray = haylen::math::Ray::between(point, {random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)});
             const std::size_t limit = static_cast<std::size_t>(random.range(0, 3));
             structure.raycast(ray, limit, hits);
-            const std::vector<spatial2d::RayHit> expectedHits = reference.raycast(ray, limit);
+            const std::vector<haylen::spatial2d::RayHit> expectedHits = reference.raycast(ray, limit);
             ASSERT_EQ(hits.size(), expectedHits.size());
 
             for (std::size_t index = 0; index < hits.size(); ++index) {
@@ -132,7 +132,7 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             const std::size_t count = probe % 10 == 0 ? reference.entries.size() : static_cast<std::size_t>(random.range(1, 6));
             const float maxDistance = random.chance(0.5F) ? std::numeric_limits<float>::infinity() : random.range(0.0F, 200.0F);
             structure.nearest(point, count, maxDistance, neighbors);
-            const std::vector<spatial2d::Neighbor> expectedNeighbors = reference.nearest(point, count, maxDistance);
+            const std::vector<haylen::spatial2d::Neighbor> expectedNeighbors = reference.nearest(point, count, maxDistance);
             ASSERT_EQ(neighbors.size(), expectedNeighbors.size());
 
             for (std::size_t index = 0; index < neighbors.size(); ++index) {
@@ -141,33 +141,33 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             }
         }
 
-        const math::Rect everything{-1000.0F, -1000.0F, 2000.0F, 2000.0F};
+        const haylen::math::Rect everything{-1000.0F, -1000.0F, 2000.0F, 2000.0F};
         structure.query(everything, ids);
         EXPECT_EQ(ids, reference.query(everything));
     }
 };
 
-template <> spatial2d::HashGrid SpatialStructureTest<spatial2d::HashGrid>::makeStructure() {
-    return spatial2d::HashGrid(24.0F);
+template <> haylen::spatial2d::HashGrid SpatialStructureTest<haylen::spatial2d::HashGrid>::makeStructure() {
+    return haylen::spatial2d::HashGrid(24.0F);
 }
 
-template <> spatial2d::QuadTree SpatialStructureTest<spatial2d::QuadTree>::makeStructure() {
-    return spatial2d::QuadTree({-400.0F, -400.0F, 800.0F, 800.0F}, {.maxEntries = 4, .maxDepth = 6});
+template <> haylen::spatial2d::QuadTree SpatialStructureTest<haylen::spatial2d::QuadTree>::makeStructure() {
+    return haylen::spatial2d::QuadTree({-400.0F, -400.0F, 800.0F, 800.0F}, {.maxEntries = 4, .maxDepth = 6});
 }
 
-template <> spatial2d::AabbTree SpatialStructureTest<spatial2d::AabbTree>::makeStructure() {
-    return spatial2d::AabbTree(3.0F);
+template <> haylen::spatial2d::AabbTree SpatialStructureTest<haylen::spatial2d::AabbTree>::makeStructure() {
+    return haylen::spatial2d::AabbTree(3.0F);
 }
 
-using SpatialStructures = ::testing::Types<spatial2d::HashGrid, spatial2d::QuadTree, spatial2d::AabbTree>;
+using SpatialStructures = ::testing::Types<haylen::spatial2d::HashGrid, haylen::spatial2d::QuadTree, haylen::spatial2d::AabbTree>;
 TYPED_TEST_SUITE(SpatialStructureTest, SpatialStructures);
 
 TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
     TypeParam structure = TestFixture::makeStructure();
     typename TestFixture::Reference reference;
-    math::Random random(42);
+    haylen::math::Random random(42);
     for (std::uint64_t id = 1; id <= 300; ++id) {
-        const math::Rect bounds = TestFixture::randomBounds(random);
+        const haylen::math::Rect bounds = TestFixture::randomBounds(random);
         structure.set(id, bounds);
         reference.set(id, bounds);
     }
@@ -177,7 +177,7 @@ TYPED_TEST(SpatialStructureTest, AnswersLikeTestingEveryEntry) {
 
     // Small moves stay in place, large moves travel, and removals leave the rest intact.
     for (std::uint64_t id = 1; id <= 300; id += 3) {
-        const math::Rect bounds = id % 2 == 0 ? reference.entries[id - 1].second.translated({random.range(-2.0F, 2.0F), random.range(-2.0F, 2.0F)}) : TestFixture::randomBounds(random);
+        const haylen::math::Rect bounds = id % 2 == 0 ? reference.entries[id - 1].second.translated({random.range(-2.0F, 2.0F), random.range(-2.0F, 2.0F)}) : TestFixture::randomBounds(random);
         structure.set(id, bounds);
         reference.set(id, bounds);
     }
@@ -204,7 +204,7 @@ TYPED_TEST(SpatialStructureTest, CountsTouchingBoundsAndRejectsInvalidInput) {
     TypeParam structure = TestFixture::makeStructure();
     structure.set(7, {10.0F, 10.0F, 0.0F, 0.0F});
     structure.set(8, {30.0F, 0.0F, 10.0F, 10.0F});
-    EXPECT_EQ(structure.getBounds(8), (math::Rect{30.0F, 0.0F, 10.0F, 10.0F}));
+    EXPECT_EQ(structure.getBounds(8), (haylen::math::Rect{30.0F, 0.0F, 10.0F, 10.0F}));
     EXPECT_FALSE(structure.getBounds(9).has_value());
 
     Ids ids;
@@ -217,17 +217,17 @@ TYPED_TEST(SpatialStructureTest, CountsTouchingBoundsAndRejectsInvalidInput) {
     structure.queryCircle({25.0F, 5.0F}, 4.9F, ids);
     EXPECT_TRUE(ids.empty());
 
-    std::vector<spatial2d::RayHit> hits;
-    structure.raycast(math::Ray::between({0.0F, 5.0F}, {100.0F, 5.0F}), 0, hits);
+    std::vector<haylen::spatial2d::RayHit> hits;
+    structure.raycast(haylen::math::Ray::between({0.0F, 5.0F}, {100.0F, 5.0F}), 0, hits);
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_EQ(hits[0].id, 8U);
-    EXPECT_EQ(hits[0].normal, (math::Vec2{-1.0F, 0.0F}));
+    EXPECT_EQ(hits[0].normal, (haylen::math::Vec2{-1.0F, 0.0F}));
     EXPECT_FLOAT_EQ(hits[0].distance, 30.0F);
 
     EXPECT_THROW(structure.set(1, {0.0F, 0.0F, -1.0F, 1.0F}), std::invalid_argument);
     EXPECT_THROW(structure.set(1, {std::nanf(""), 0.0F, 1.0F, 1.0F}), std::invalid_argument);
     EXPECT_THROW(structure.queryCircle({0.0F, 0.0F}, -1.0F, ids), std::invalid_argument);
-    std::vector<spatial2d::Neighbor> neighbors;
+    std::vector<haylen::spatial2d::Neighbor> neighbors;
     EXPECT_THROW(structure.nearest({0.0F, 0.0F}, 1, -1.0F, neighbors), std::invalid_argument);
     EXPECT_THROW(structure.nearest({std::nanf(""), 0.0F}, 1, 10.0F, neighbors), std::invalid_argument);
     EXPECT_THROW(structure.nearest({0.0F, std::numeric_limits<float>::infinity()}, 1, 10.0F, neighbors), std::invalid_argument);
@@ -235,7 +235,7 @@ TYPED_TEST(SpatialStructureTest, CountsTouchingBoundsAndRejectsInvalidInput) {
 }
 
 TEST(HashGridTest, SparseEntriesKeepQueriesProportionalToTheEntries) {
-    spatial2d::HashGrid hash(1.0F);
+    haylen::spatial2d::HashGrid hash(1.0F);
     hash.set(1, {0.0F, 0.0F, 1.0F, 1.0F});
     hash.set(2, {1e8F, 1e8F, 1.0F, 1.0F});
 
@@ -250,7 +250,7 @@ TEST(HashGridTest, SparseEntriesKeepQueriesProportionalToTheEntries) {
     hash.queryPoint({1e30F, 0.0F}, ids);
     EXPECT_TRUE(ids.empty());
 
-    std::vector<spatial2d::Neighbor> neighbors;
+    std::vector<haylen::spatial2d::Neighbor> neighbors;
     hash.nearest({5e8F, 5e8F}, 1, std::numeric_limits<float>::infinity(), neighbors);
     ASSERT_EQ(neighbors.size(), 1U);
     EXPECT_EQ(neighbors[0].id, 2U);
@@ -260,19 +260,19 @@ TEST(HashGridTest, SparseEntriesKeepQueriesProportionalToTheEntries) {
     EXPECT_EQ(neighbors.size(), 2U);
 
     // Rays across the empty cells between the entries test the entries instead of walking the cells.
-    std::vector<spatial2d::RayHit> hits;
-    hash.raycast(math::Ray::between({-10.0F, 0.5F}, {2e8F, 0.5F}), 0, hits);
+    std::vector<haylen::spatial2d::RayHit> hits;
+    hash.raycast(haylen::math::Ray::between({-10.0F, 0.5F}, {2e8F, 0.5F}), 0, hits);
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_EQ(hits[0].id, 1U);
     EXPECT_FLOAT_EQ(hits[0].distance, 10.0F);
-    hash.raycast(math::Ray{{-10.0F, -10.0F}, math::Vec2{1.0F, 1.0F}.getNormalized()}, 0, hits);
+    hash.raycast(haylen::math::Ray{{-10.0F, -10.0F}, haylen::math::Vec2{1.0F, 1.0F}.getNormalized()}, 0, hits);
     ASSERT_EQ(hits.size(), 2U);
     EXPECT_EQ(hits[0].id, 1U);
     EXPECT_EQ(hits[1].id, 2U);
 }
 
 TEST(HashGridTest, RejectsEntriesTooLargeOrTooFarForTheCells) {
-    spatial2d::HashGrid hash(1.0F);
+    haylen::spatial2d::HashGrid hash(1.0F);
     EXPECT_THROW(hash.set(1, {0.0F, 0.0F, 1e6F, 1e6F}), std::invalid_argument);
     EXPECT_THROW(hash.set(1, {1e12F, 0.0F, 1.0F, 1.0F}), std::invalid_argument);
     EXPECT_THROW(hash.set(1, {3e38F, 0.0F, 3e38F, 1.0F}), std::invalid_argument);
@@ -283,24 +283,24 @@ TEST(HashGridTest, RejectsEntriesTooLargeOrTooFarForTheCells) {
 }
 
 TEST(HashGridTest, CastsEndlessRaysAndRejectsInvalidCellSizes) {
-    EXPECT_THROW(spatial2d::HashGrid(0.0F), std::invalid_argument);
-    EXPECT_THROW(spatial2d::HashGrid{std::numeric_limits<float>::infinity()}, std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::HashGrid(0.0F), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::HashGrid{std::numeric_limits<float>::infinity()}, std::invalid_argument);
 
     // Rays only travel across the cells that ever held entries, so a ray without an end still stops.
-    spatial2d::HashGrid hash(4.0F);
+    haylen::spatial2d::HashGrid hash(4.0F);
     hash.set(1, {0.0F, 0.0F, 2.0F, 2.0F});
-    std::vector<spatial2d::RayHit> hits;
-    hash.raycast(math::Ray{{-10.0F, 1.0F}, {1.0F, 0.0F}}, 0, hits);
+    std::vector<haylen::spatial2d::RayHit> hits;
+    hash.raycast(haylen::math::Ray{{-10.0F, 1.0F}, {1.0F, 0.0F}}, 0, hits);
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_FLOAT_EQ(hits[0].distance, 10.0F);
-    hash.raycast(math::Ray{{-10.0F, 100.0F}, {1.0F, 0.0F}}, 0, hits);
+    hash.raycast(haylen::math::Ray{{-10.0F, 100.0F}, {1.0F, 0.0F}}, 0, hits);
     EXPECT_TRUE(hits.empty());
     EXPECT_EQ(hash.getCellSize(), 4.0F);
 }
 
 TEST(QuadTreeTest, SplitsFullQuadrantsAndMergesEmptyOnes) {
-    spatial2d::QuadTree tree({0.0F, 0.0F, 100.0F, 100.0F}, {.maxEntries = 2, .maxDepth = 3});
-    EXPECT_EQ(tree.getArea(), (math::Rect{0.0F, 0.0F, 100.0F, 100.0F}));
+    haylen::spatial2d::QuadTree tree({0.0F, 0.0F, 100.0F, 100.0F}, {.maxEntries = 2, .maxDepth = 3});
+    EXPECT_EQ(tree.getArea(), (haylen::math::Rect{0.0F, 0.0F, 100.0F, 100.0F}));
     EXPECT_EQ(tree.getNodeCount(), 1U);
     tree.set(1, {10.0F, 10.0F, 1.0F, 1.0F});
     tree.set(2, {12.0F, 12.0F, 1.0F, 1.0F});
@@ -321,12 +321,12 @@ TEST(QuadTreeTest, SplitsFullQuadrantsAndMergesEmptyOnes) {
     tree.queryPoint({500.0F, 500.0F}, ids);
     EXPECT_EQ(ids, (Ids{6}));
 
-    EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 0.0F, 10.0F}), std::invalid_argument);
-    EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxEntries = 0}), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::QuadTree({0.0F, 0.0F, 0.0F, 10.0F}), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxEntries = 0}), std::invalid_argument);
 }
 
 TEST(QuadTreeTest, StopsSplittingCoincidentEntriesAtTheDepthLimit) {
-    spatial2d::QuadTree tree({0.0F, 0.0F, 100.0F, 100.0F}, {.maxEntries = 1, .maxDepth = spatial2d::QuadTree::kMaxDepth});
+    haylen::spatial2d::QuadTree tree({0.0F, 0.0F, 100.0F, 100.0F}, {.maxEntries = 1, .maxDepth = haylen::spatial2d::QuadTree::kMaxDepth});
     for (std::uint64_t id = 1; id <= 3; ++id) {
         tree.set(id, {10.0F, 10.0F, 0.0F, 0.0F});
     }
@@ -337,12 +337,12 @@ TEST(QuadTreeTest, StopsSplittingCoincidentEntriesAtTheDepthLimit) {
     EXPECT_EQ(ids, (Ids{1, 2, 3}));
 
     // Deeper limits are refused, since entries at one spot would split down to them.
-    EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxDepth = 17}), std::invalid_argument);
-    EXPECT_THROW(spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxDepth = 1000000}), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxDepth = 17}), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::QuadTree({0.0F, 0.0F, 10.0F, 10.0F}, {.maxDepth = 1000000}), std::invalid_argument);
 }
 
 TEST(AabbTreeTest, StaysBalancedAndSkipsSmallMoves) {
-    spatial2d::AabbTree tree(5.0F);
+    haylen::spatial2d::AabbTree tree(5.0F);
     EXPECT_EQ(tree.getMargin(), 5.0F);
     EXPECT_EQ(tree.getHeight(), 0);
 
@@ -354,7 +354,7 @@ TEST(AabbTreeTest, StaysBalancedAndSkipsSmallMoves) {
     EXPECT_LE(tree.getHeight(), 20);
 
     tree.set(3, {32.0F, 2.0F, 5.0F, 5.0F});
-    EXPECT_EQ(tree.getBounds(3), (math::Rect{32.0F, 2.0F, 5.0F, 5.0F}));
+    EXPECT_EQ(tree.getBounds(3), (haylen::math::Rect{32.0F, 2.0F, 5.0F, 5.0F}));
     Ids ids;
     tree.queryPoint({36.0F, 6.0F}, ids);
     EXPECT_EQ(ids, (Ids{3}));
@@ -364,30 +364,30 @@ TEST(AabbTreeTest, StaysBalancedAndSkipsSmallMoves) {
     }
 
     EXPECT_LE(tree.getHeight(), 20);
-    EXPECT_THROW(spatial2d::AabbTree(-1.0F), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::AabbTree(-1.0F), std::invalid_argument);
 }
 
 TEST(KdTreeTest, FindsNearestPointsLikeTestingEveryEntry) {
-    spatial2d::KdTree tree;
-    math::Random random(7);
-    std::vector<std::pair<std::uint64_t, math::Vec2>> points;
+    haylen::spatial2d::KdTree tree;
+    haylen::math::Random random(7);
+    std::vector<std::pair<std::uint64_t, haylen::math::Vec2>> points;
     for (std::uint64_t id = 1; id <= 500; ++id) {
-        points.emplace_back(id, math::Vec2{random.range(-100.0F, 100.0F), random.range(-100.0F, 100.0F)});
+        points.emplace_back(id, haylen::math::Vec2{random.range(-100.0F, 100.0F), random.range(-100.0F, 100.0F)});
         tree.set(id, points.back().second);
     }
 
-    std::vector<spatial2d::Neighbor> neighbors;
+    std::vector<haylen::spatial2d::Neighbor> neighbors;
     EXPECT_FALSE(tree.isBuilt());
     EXPECT_THROW(tree.nearest({0.0F, 0.0F}, 1, 10.0F, neighbors), std::logic_error);
     tree.build();
     EXPECT_TRUE(tree.isBuilt());
 
     for (int probe = 0; probe < 50; ++probe) {
-        const math::Vec2 point{random.range(-120.0F, 120.0F), random.range(-120.0F, 120.0F)};
+        const haylen::math::Vec2 point{random.range(-120.0F, 120.0F), random.range(-120.0F, 120.0F)};
         tree.nearest(point, 5, std::numeric_limits<float>::infinity(), neighbors);
-        std::vector<spatial2d::Neighbor> expected;
+        std::vector<haylen::spatial2d::Neighbor> expected;
         for (const auto& [id, position] : points) {
-            expected.push_back({.id = id, .distance = math::Vec2::distance(point, position)});
+            expected.push_back({.id = id, .distance = haylen::math::Vec2::distance(point, position)});
         }
 
         std::ranges::sort(expected, [](const auto& lhs, const auto& rhs) { return lhs < rhs; });
@@ -402,7 +402,7 @@ TEST(KdTreeTest, FindsNearestPointsLikeTestingEveryEntry) {
         tree.queryCircle(point, 20.0F, ids);
         Ids inside;
         for (const auto& [id, position] : points) {
-            if (math::Vec2::distance(point, position) <= 20.0F) {
+            if (haylen::math::Vec2::distance(point, position) <= 20.0F) {
                 inside.push_back(id);
             }
         }
@@ -413,21 +413,21 @@ TEST(KdTreeTest, FindsNearestPointsLikeTestingEveryEntry) {
 }
 
 TEST(KdTreeTest, TreatsEntriesWithRadiusAsCircles) {
-    spatial2d::KdTree tree;
+    haylen::spatial2d::KdTree tree;
     tree.set(1, {50.0F, 0.0F}, 10.0F);
     tree.set(2, {100.0F, 0.0F}, 5.0F);
     tree.set(3, {0.0F, 80.0F});
     tree.build();
-    EXPECT_EQ(tree.getPoint(1), (math::Vec2{50.0F, 0.0F}));
+    EXPECT_EQ(tree.getPoint(1), (haylen::math::Vec2{50.0F, 0.0F}));
     EXPECT_EQ(tree.size(), 3U);
 
-    std::vector<spatial2d::RayHit> hits;
-    tree.raycast(math::Ray::between({0.0F, 0.0F}, {200.0F, 0.0F}), 0, hits);
+    std::vector<haylen::spatial2d::RayHit> hits;
+    tree.raycast(haylen::math::Ray::between({0.0F, 0.0F}, {200.0F, 0.0F}), 0, hits);
     ASSERT_EQ(hits.size(), 2U);
     EXPECT_EQ(hits[0].id, 1U);
     EXPECT_FLOAT_EQ(hits[0].distance, 40.0F);
     EXPECT_FLOAT_EQ(hits[1].distance, 95.0F);
-    tree.raycast(math::Ray{{0.0F, 0.0F}, {1.0F, 0.0F}}, 1, hits);
+    tree.raycast(haylen::math::Ray{{0.0F, 0.0F}, {1.0F, 0.0F}}, 1, hits);
     EXPECT_EQ(hits.size(), 1U);
 
     Ids ids;
@@ -436,7 +436,7 @@ TEST(KdTreeTest, TreatsEntriesWithRadiusAsCircles) {
     tree.query({0.0F, 75.0F, 5.0F, 10.0F}, ids);
     EXPECT_EQ(ids, (Ids{3}));
 
-    std::vector<spatial2d::Neighbor> neighbors;
+    std::vector<haylen::spatial2d::Neighbor> neighbors;
     tree.nearest({70.0F, 0.0F}, 1, 100.0F, neighbors);
     EXPECT_EQ(neighbors.front().id, 1U);
     EXPECT_FLOAT_EQ(neighbors.front().distance, 10.0F);
@@ -452,22 +452,22 @@ TEST(KdTreeTest, TreatsEntriesWithRadiusAsCircles) {
 }
 
 TEST(ScreenPickerTest, MapsScreenPointsThroughTheCameraViewport) {
-    graphics2d::Camera camera;
+    haylen::graphics2d::Camera camera;
     camera.position = {1000.0F, 500.0F};
-    camera.viewport = math::Rect{400.0F, 0.0F, 400.0F, 600.0F};
+    camera.viewport = haylen::math::Rect{400.0F, 0.0F, 400.0F, 600.0F};
     camera.setZoom({2.0F, 2.0F});
-    const spatial2d::ScreenPicker picker(camera, {0.0F, 0.0F, 800.0F, 600.0F});
+    const haylen::spatial2d::ScreenPicker picker(camera, {0.0F, 0.0F, 800.0F, 600.0F});
 
     EXPECT_NEAR(picker.toWorld({600.0F, 300.0F}).x, 1000.0F, 1e-3F);
     EXPECT_NEAR(picker.toWorld({700.0F, 300.0F}).x, 1050.0F, 1e-3F);
     EXPECT_NEAR(picker.toWorld({700.0F, 300.0F}).y, 500.0F, 1e-3F);
 
-    const math::Ray aim = picker.toRay({700.0F, 300.0F});
+    const haylen::math::Ray aim = picker.toRay({700.0F, 300.0F});
     EXPECT_NEAR(aim.origin.x, 1000.0F, 1e-3F);
     EXPECT_NEAR(aim.direction.x, 1.0F, 1e-5F);
     EXPECT_NEAR(aim.length, 50.0F, 1e-3F);
 
-    spatial2d::HashGrid grid(32.0F);
+    haylen::spatial2d::HashGrid grid(32.0F);
     grid.set(7, {1045.0F, 495.0F, 10.0F, 10.0F});
     std::vector<std::uint64_t> ids;
     picker.pick(grid, {700.0F, 300.0F}, ids);
@@ -593,4 +593,4 @@ TEST(Spatial2DLuaTest, NearestNeverOffersValuesThatAcceptRemoved) {
     EXPECT_EQ(fixture.lua("local offered = 0 local found = hash:nearest(0, 0, 500, function() offered = offered + 1 hash:clear() return false end) return tostring(found) .. ' ' .. offered .. ' ' .. hash.size"), "nil 1 0");
 }
 
-} // namespace haylen::spatial2d
+} // namespace haylen::lua::spatial2d

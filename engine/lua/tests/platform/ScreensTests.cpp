@@ -23,7 +23,7 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 // The screen that shows belongs to the process, so every test ends the one it left open.
 class ScreensTest : public ::testing::Test {
@@ -38,11 +38,11 @@ class ScreensTest : public ::testing::Test {
     };
 
     void TearDown() override {
-        if (const std::optional<ScreenRelay::Screen> showing = ScreenRelay::getShowing()) {
-            ScreenRelay::finish(showing->id, false, "null");
+        if (const std::optional<haylen::platform::ScreenRelay::Screen> showing = haylen::platform::ScreenRelay::getShowing()) {
+            haylen::platform::ScreenRelay::finish(showing->id, false, "null");
         }
 
-        static_cast<void>(ScreenRelay::take());
+        static_cast<void>(haylen::platform::ScreenRelay::take());
     }
 
     // An app with the plugin shop, whose Lua module opens its paywall and keeps what the screen answered and what the listener of screenRestored heard.
@@ -70,10 +70,10 @@ class ScreensTest : public ::testing::Test {
 
 TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
-    std::optional<Bridge::Result> answer;
-    const std::uint64_t id = screens.open("shop", "paywall", {.json = {{"offer", "gold"}}}, {.state = {{"level", 3}}}, [&answer](Bridge::Result result) { answer = std::move(result); });
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Screens& screens = engine.getScreens();
+    std::optional<haylen::platform::Bridge::Result> answer;
+    const std::uint64_t id = screens.open("shop", "paywall", {.json = {{"offer", "gold"}}}, {.state = {{"level", 3}}}, [&answer](haylen::platform::Bridge::Result result) { answer = std::move(result); });
     EXPECT_TRUE(screens.isShowing());
     EXPECT_EQ(screens.getPendingCount(), 1U);
 
@@ -82,11 +82,11 @@ TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
     EXPECT_FALSE(engine.isAppCovered());
     fixture.frames(1);
     EXPECT_TRUE(engine.isAppCovered());
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Inactive);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Inactive);
     EXPECT_TRUE(engine.isHalted());
     EXPECT_TRUE(engine.getAudio().isOutputMuted());
     ASSERT_EQ(fixture.host().getScreenRequests().size(), 1U);
-    const ScreenRequest& request = fixture.host().getScreenRequests()[0];
+    const haylen::platform::ScreenRequest& request = fixture.host().getScreenRequests()[0];
     EXPECT_EQ(request.id, id);
     EXPECT_EQ(request.plugin, "shop");
     EXPECT_EQ(request.screen, "paywall");
@@ -97,24 +97,24 @@ TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
     // The end of the screen uncovers the app and answers the call in the same frame, and a second end changes nothing.
     fixture.frames(2);
     EXPECT_FALSE(answer);
-    ScreenRelay::finish(id, true, R"({"bought": true, "receipt": {"$bytes": 0}})", {{std::byte{7}}});
-    ScreenRelay::finish(id, false, R"("again")");
+    haylen::platform::ScreenRelay::finish(id, true, R"({"bought": true, "receipt": {"$bytes": 0}})", {{std::byte{7}}});
+    haylen::platform::ScreenRelay::finish(id, false, R"("again")");
     fixture.frames(1);
     ASSERT_TRUE(answer);
     EXPECT_TRUE(answer->ok);
     EXPECT_EQ(answer->value.json.dump(), R"({"bought":true,"receipt":{"$bytes":0}})");
     EXPECT_EQ(answer->value.buffers, (std::vector<std::vector<std::byte>>{{std::byte{7}}}));
     EXPECT_FALSE(engine.isAppCovered());
-    EXPECT_EQ(engine.getAppState(), core::Engine::AppState::Active);
+    EXPECT_EQ(engine.getAppState(), haylen::core::Engine::AppState::Active);
     EXPECT_FALSE(engine.getAudio().isOutputMuted());
     EXPECT_FALSE(screens.isShowing());
     EXPECT_EQ(screens.getPendingCount(), 0U);
 
     // Failures of the platform reach the call with their code.
     answer.reset();
-    const std::uint64_t closed = screens.open("shop", "paywall", {}, {}, [&answer](Bridge::Result result) { answer = std::move(result); });
+    const std::uint64_t closed = screens.open("shop", "paywall", {}, {}, [&answer](haylen::platform::Bridge::Result result) { answer = std::move(result); });
     fixture.frames(1);
-    ScreenRelay::finish(closed, false, R"({"message": "The user closed the paywall.", "code": "cancelled"})");
+    haylen::platform::ScreenRelay::finish(closed, false, R"({"message": "The user closed the paywall.", "code": "cancelled"})");
     fixture.frames(1);
     ASSERT_TRUE(answer);
     EXPECT_EQ(answer->error.message, "The user closed the paywall.");
@@ -124,7 +124,7 @@ TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
     const std::uint64_t unheard = screens.open("shop", "paywall", {}, {}, nullptr);
     screens.open("shop", "offer", {}, {}, nullptr);
     fixture.frames(1);
-    ScreenRelay::finish(unheard, true, "null");
+    haylen::platform::ScreenRelay::finish(unheard, true, "null");
     fixture.frames(1);
     EXPECT_FALSE(screens.isShowing());
     EXPECT_EQ(screens.getPendingCount(), 0U);
@@ -132,34 +132,34 @@ TEST_F(ScreensTest, OpensTheScreenOnceTheCoverHoldsAndAnswersWithItsResult) {
 
 TEST_F(ScreensTest, DrawsNothingUnderAnOpaqueScreen) {
     test::LuaFixture fixture({{"source/main.lua", "renders = 0 require('haylen.scene').push({render = function() renders = renders + 1 end})"}});
-    Screens& screens = fixture.engine().getScreens();
+    haylen::platform::Screens& screens = fixture.engine().getScreens();
     const auto rendered = [&fixture] { return std::stoi(fixture.lua("return renders")); };
     fixture.frames(5);
     int before = rendered();
     EXPECT_GT(before, 0);
 
     // A halted app draws its covered frame once under a screen that lets it show through, and nothing under an opaque one.
-    const std::uint64_t translucent = screens.open("shop", "offer", {}, {.opaque = false}, [](const Bridge::Result&) {});
+    const std::uint64_t translucent = screens.open("shop", "offer", {}, {.opaque = false}, [](const haylen::platform::Bridge::Result&) {});
     fixture.frames(3);
     EXPECT_TRUE(fixture.engine().isHalted());
     EXPECT_EQ(rendered() - before, 1);
-    ScreenRelay::finish(translucent, true, "null");
+    haylen::platform::ScreenRelay::finish(translucent, true, "null");
     fixture.frames(1);
 
     before = rendered();
-    const std::uint64_t opaque = screens.open("shop", "paywall", {}, {}, [](const Bridge::Result&) {});
+    const std::uint64_t opaque = screens.open("shop", "paywall", {}, {}, [](const haylen::platform::Bridge::Result&) {});
     fixture.frames(3);
     EXPECT_EQ(rendered() - before, 0);
-    ScreenRelay::finish(opaque, true, "null");
+    haylen::platform::ScreenRelay::finish(opaque, true, "null");
     fixture.frames(1);
     EXPECT_EQ(rendered() - before, 1);
 }
 
 TEST_F(ScreensTest, OpensOneScreenAtATime) {
     test::LuaFixture fixture;
-    Screens& screens = fixture.engine().getScreens();
+    haylen::platform::Screens& screens = fixture.engine().getScreens();
     std::vector<std::string> codes;
-    const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+    const auto record = [&codes](const haylen::platform::Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
 
     // A second screen fails while the first shows, whichever app opened it, and never reaches the platform.
     const std::uint64_t first = screens.open("shop", "paywall", {}, {}, record);
@@ -170,7 +170,7 @@ TEST_F(ScreensTest, OpensOneScreenAtATime) {
     fixture.frames(1);
     EXPECT_EQ(codes, (std::vector<std::string>{"busy", "busy"}));
     EXPECT_EQ(fixture.host().getScreenRequests().size(), 1U);
-    ScreenRelay::finish(first, true, "null");
+    haylen::platform::ScreenRelay::finish(first, true, "null");
     fixture.frames(1);
     EXPECT_EQ(codes, (std::vector<std::string>{"busy", "busy", "ok"}));
     EXPECT_FALSE(screens.isShowing());
@@ -185,14 +185,14 @@ TEST_F(ScreensTest, OpensOneScreenAtATime) {
 
 TEST_F(ScreensTest, WaitsUntilTheInactiveAppIsActiveAndThenOpens) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
-    const std::vector<ScreenRequest>& requests = fixture.host().getScreenRequests();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Screens& screens = engine.getScreens();
+    const std::vector<haylen::platform::ScreenRequest>& requests = fixture.host().getScreenRequests();
     std::vector<std::string> codes;
-    const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+    const auto record = [&codes](const haylen::platform::Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
 
     // The screen waits while the window has no focus, without covering the app, and a second screen fails with busy meanwhile.
-    engine.handleEvent({.type = Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
     const std::uint64_t id = screens.open("shop", "paywall", {.json = {{"offer", "gold"}}}, {.state = {{"level", 3}}}, record);
     screens.open("shop", "offer", {}, {}, record);
     fixture.frames(3);
@@ -203,7 +203,7 @@ TEST_F(ScreensTest, WaitsUntilTheInactiveAppIsActiveAndThenOpens) {
     EXPECT_EQ(screens.getPendingCount(), 1U);
 
     // Once the app is active the screen covers it, and the platform receives the screen in the frame after, when the cover holds.
-    engine.handleEvent({.type = Event::Type::FocusGained});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
     fixture.frames(1);
     EXPECT_TRUE(screens.isShowing());
     EXPECT_TRUE(requests.empty());
@@ -213,7 +213,7 @@ TEST_F(ScreensTest, WaitsUntilTheInactiveAppIsActiveAndThenOpens) {
     EXPECT_EQ(requests[0].id, id);
     EXPECT_EQ(requests[0].params.json.dump(), R"({"offer":"gold"})");
     EXPECT_EQ(requests[0].state.dump(), R"({"level":3})");
-    ScreenRelay::finish(id, true, "null");
+    haylen::platform::ScreenRelay::finish(id, true, "null");
     fixture.frames(1);
     EXPECT_EQ(codes, (std::vector<std::string>{"busy", "ok"}));
 
@@ -227,7 +227,7 @@ TEST_F(ScreensTest, WaitsUntilTheInactiveAppIsActiveAndThenOpens) {
     fixture.frames(2);
     ASSERT_EQ(requests.size(), 2U);
     EXPECT_EQ(requests[1].id, held);
-    ScreenRelay::finish(held, true, "null");
+    haylen::platform::ScreenRelay::finish(held, true, "null");
     fixture.frames(1);
     EXPECT_EQ(codes, (std::vector<std::string>{"busy", "ok", "ok"}));
     EXPECT_FALSE(engine.isAppCovered());
@@ -235,13 +235,13 @@ TEST_F(ScreensTest, WaitsUntilTheInactiveAppIsActiveAndThenOpens) {
 
 TEST_F(ScreensTest, GivesUpAScreenThatWaitsBeforeItReachesThePlatform) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Screens& screens = engine.getScreens();
     std::vector<std::string> codes;
-    const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+    const auto record = [&codes](const haylen::platform::Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
 
     // The timeout counts while the screen waits, and a cancel ends a waiting screen at once.
-    engine.handleEvent({.type = Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
     screens.open("shop", "paywall", {}, {.timeout = std::chrono::milliseconds(20)}, record);
     ASSERT_TRUE(fixture.frameUntil([&codes] { return !codes.empty(); }));
     const std::uint64_t cancelled = screens.open("shop", "paywall", {}, {}, record);
@@ -249,7 +249,7 @@ TEST_F(ScreensTest, GivesUpAScreenThatWaitsBeforeItReachesThePlatform) {
     EXPECT_FALSE(screens.cancel(cancelled));
 
     // Neither screen opens once the app is active, and nothing covered the app.
-    engine.handleEvent({.type = Event::Type::FocusGained});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
     fixture.frames(3);
     EXPECT_EQ(codes, (std::vector<std::string>{"timeout", "cancelled"}));
     EXPECT_TRUE(fixture.host().getScreenRequests().empty());
@@ -261,24 +261,24 @@ TEST_F(ScreensTest, GivesUpAScreenThatWaitsBeforeItReachesThePlatform) {
 
 TEST_F(ScreensTest, FailsInTheBackground) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
-    std::vector<Bridge::Result> answers;
-    const auto record = [&answers](Bridge::Result result) { answers.push_back(std::move(result)); };
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Screens& screens = engine.getScreens();
+    std::vector<haylen::platform::Bridge::Result> answers;
+    const auto record = [&answers](haylen::platform::Bridge::Result result) { answers.push_back(std::move(result)); };
 
     // A screen fails at once in the background, and a screen that waits fails once the app goes there.
-    engine.handleEvent({.type = Event::Type::Suspended});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Suspended});
     screens.open("shop", "paywall", {}, {}, record);
     fixture.frames(1);
-    engine.handleEvent({.type = Event::Type::Resumed});
-    engine.handleEvent({.type = Event::Type::FocusLost});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resumed});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusLost});
     screens.open("shop", "offer", {}, {}, record);
     fixture.frames(1);
     EXPECT_EQ(answers.size(), 1U);
-    engine.handleEvent({.type = Event::Type::Suspended});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Suspended});
     fixture.frames(1);
-    engine.handleEvent({.type = Event::Type::Resumed});
-    engine.handleEvent({.type = Event::Type::FocusGained});
+    engine.handleEvent({.type = haylen::platform::Event::Type::Resumed});
+    engine.handleEvent({.type = haylen::platform::Event::Type::FocusGained});
     fixture.frames(2);
 
     ASSERT_EQ(answers.size(), 2U);
@@ -293,10 +293,10 @@ TEST_F(ScreensTest, FailsInTheBackground) {
 
 TEST_F(ScreensTest, KeepsTheAppCoveredUntilACancelledScreenIsGone) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Screens& screens = engine.getScreens();
     std::vector<std::string> codes;
-    const auto record = [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
+    const auto record = [&codes](const haylen::platform::Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); };
 
     // The call fails at once, while the platform dismisses the screen and the cover lasts until it reports the screen gone.
     const std::uint64_t id = screens.open("shop", "paywall", {}, {}, record);
@@ -308,8 +308,8 @@ TEST_F(ScreensTest, KeepsTheAppCoveredUntilACancelledScreenIsGone) {
     EXPECT_EQ(codes, (std::vector<std::string>{"cancelled"}));
     EXPECT_TRUE(engine.isAppCovered());
     std::vector<std::string> restored;
-    engine.getPlatform().on("shop.screenRestored", [&restored](const Bridge::Payload& payload) { restored.push_back(payload.json.dump()); });
-    ScreenRelay::finish(id, false, R"({"message": "Dismissed.", "code": "cancelled"})");
+    engine.getPlatform().on("shop.screenRestored", [&restored](const haylen::platform::Bridge::Payload& payload) { restored.push_back(payload.json.dump()); });
+    haylen::platform::ScreenRelay::finish(id, false, R"({"message": "Dismissed.", "code": "cancelled"})");
     fixture.frames(1);
     EXPECT_FALSE(engine.isAppCovered());
     EXPECT_TRUE(restored.empty()) << "The app gave the screen up, so its end reaches nobody.";
@@ -326,15 +326,15 @@ TEST_F(ScreensTest, KeepsTheAppCoveredUntilACancelledScreenIsGone) {
 
 TEST_F(ScreensTest, GivesUpAScreenWhoseTimeoutPassed) {
     test::LuaFixture fixture;
-    Screens& screens = fixture.engine().getScreens();
-    std::optional<Bridge::Result> answer;
-    const std::uint64_t id = screens.open("shop", "paywall", {}, {.timeout = std::chrono::milliseconds(20)}, [&answer](Bridge::Result result) { answer = std::move(result); });
+    haylen::platform::Screens& screens = fixture.engine().getScreens();
+    std::optional<haylen::platform::Bridge::Result> answer;
+    const std::uint64_t id = screens.open("shop", "paywall", {}, {.timeout = std::chrono::milliseconds(20)}, [&answer](haylen::platform::Bridge::Result result) { answer = std::move(result); });
     ASSERT_TRUE(fixture.frameUntil([&answer] { return answer.has_value(); }));
     EXPECT_EQ(answer->error.code, "timeout");
     EXPECT_EQ(answer->error.message, "The screen \"paywall\" of \"shop\" timed out.");
     EXPECT_EQ(fixture.host().getCancelledScreens(), (std::vector<std::uint64_t>{id}));
     EXPECT_TRUE(screens.isShowing());
-    ScreenRelay::finish(id, false, R"({"message": "Dismissed.", "code": "cancelled"})");
+    haylen::platform::ScreenRelay::finish(id, false, R"({"message": "Dismissed.", "code": "cancelled"})");
     fixture.frames(1);
     EXPECT_FALSE(screens.isShowing());
 }
@@ -355,7 +355,7 @@ TEST_F(ScreensTest, HandsTheEndToTheNextAppWithTheStateAfterARestart) {
     EXPECT_EQ(fixture.lua("return failure.code"), "busy");
 
     // The end waits for the first listener of screenRestored, however late it connects, with the state the earlier app gave.
-    ScreenRelay::finish(id, true, R"({"bought": true, "receipt": {"$bytes": 0}})", {{std::byte{'o'}, std::byte{'k'}}});
+    haylen::platform::ScreenRelay::finish(id, true, R"({"bought": true, "receipt": {"$bytes": 0}})", {{std::byte{'o'}, std::byte{'k'}}});
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return tostring(haylen.appCovered()) .. ' ' .. tostring(platform.screenShowing())"), "false false");
     fixture.runLua("restored = {} shop:on('screenRestored', function(ending) restored[#restored + 1] = ending end)");
@@ -363,8 +363,8 @@ TEST_F(ScreensTest, HandsTheEndToTheNextAppWithTheStateAfterARestart) {
     EXPECT_EQ(fixture.lua("local ending = restored[1] return table.concat({#restored, ending.screen, tostring(ending.result.bought), ending.result.receipt, ending.state.level, ending.state.deck[2], tostring(ending.error)}, ' ')"), "1 paywall true ok 3 b nil");
 
     // A screen that the platform kept across the end of the process ends the same way, with its failure as the error.
-    ScreenRelay::restore("shop", "paywall", R"({"level": 4})", false, R"({"message": "The user closed the paywall.", "code": "cancelled"})");
-    ScreenRelay::restore("shop", "", "null", true, "null");
+    haylen::platform::ScreenRelay::restore("shop", "paywall", R"({"level": 4})", false, R"({"message": "The user closed the paywall.", "code": "cancelled"})");
+    haylen::platform::ScreenRelay::restore("shop", "", "null", true, "null");
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("local ending = restored[2] return table.concat({#restored, ending.screen, ending.state.level, ending.error.code, ending.error.message, tostring(ending.result)}, ' ')"), "2 paywall 4 cancelled The user closed the paywall. nil");
     EXPECT_EQ(fixture.engine().getError(), nullptr);
@@ -376,14 +376,14 @@ TEST_F(ScreensTest, OpensScreensFromLuaWithOptions) {
     EXPECT_EQ(fixture.lua("return tostring(platform.screenShowing()) .. ' ' .. tostring(first.done) .. ' ' .. tostring(first.id > 0)"), "true false true");
     fixture.frames(1);
     ASSERT_EQ(fixture.host().getScreenRequests().size(), 1U);
-    const ScreenRequest& request = fixture.host().getScreenRequests()[0];
+    const haylen::platform::ScreenRequest& request = fixture.host().getScreenRequests()[0];
     EXPECT_EQ(request.params.json.dump(), R"({"image":{"$bytes":0},"offer":"gold"})");
     EXPECT_EQ(request.params.buffers, (std::vector<std::vector<std::byte>>{{std::byte{1}, std::byte{2}}}));
     EXPECT_EQ(request.state.dump(), R"({"level":3})");
     EXPECT_FALSE(request.opaque);
 
     // The result settles the call, whose await returns it, with the bytes of the platform as a string.
-    ScreenRelay::finish(request.id, true, R"({"bought": true, "receipt": {"$bytes": 0}})", {{std::byte{'o'}, std::byte{'k'}}});
+    haylen::platform::ScreenRelay::finish(request.id, true, R"({"bought": true, "receipt": {"$bytes": 0}})", {{std::byte{'o'}, std::byte{'k'}}});
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return answer ~= nil") == "true"; }));
     EXPECT_EQ(fixture.lua("return table.concat({tostring(first.done), tostring(answer.bought), answer.receipt, tostring(failure)}, ' ')"), "true true ok nil");
 
@@ -403,15 +403,15 @@ TEST_F(ScreensTest, OpensScreensFromLuaWithOptions) {
 
 TEST_F(ScreensTest, OpensTheScreensThatNativeLibrariesRegister) {
     test::LuaFixture fixture;
-    Screens& screens = fixture.engine().getScreens();
-    const HaylenNativeApi& api = NativeApi::get();
+    haylen::platform::Screens& screens = fixture.engine().getScreens();
+    const HaylenNativeApi& api = haylen::platform::NativeApi::get();
     LibraryScreens library;
     api.registerScreen("", "paywall", &LibraryScreens::open, nullptr, &library);
     api.registerScreen("shop", "paywall", &LibraryScreens::open, nullptr, &library);
 
     // The library opens the screen before the platform is asked, and a screen without a cancel function keeps showing until the library ends it.
-    std::optional<Bridge::Result> answer;
-    const std::uint64_t id = screens.open("shop", "paywall", {.json = {{"offer", "gold"}}}, {}, [&answer](Bridge::Result result) { answer = std::move(result); });
+    std::optional<haylen::platform::Bridge::Result> answer;
+    const std::uint64_t id = screens.open("shop", "paywall", {.json = {{"offer", "gold"}}}, {}, [&answer](haylen::platform::Bridge::Result result) { answer = std::move(result); });
     fixture.frames(1);
     EXPECT_EQ(library.opened, (std::vector<std::string>{R"({"offer":"gold"})"}));
     EXPECT_TRUE(fixture.host().getScreenRequests().empty());
@@ -430,7 +430,7 @@ TEST_F(ScreensTest, OpensTheScreensThatNativeLibrariesRegister) {
     fixture.frames(1);
     EXPECT_EQ(library.opened.size(), 1U);
     ASSERT_EQ(fixture.host().getScreenRequests().size(), 1U);
-    ScreenRelay::finish(platformScreen, true, "null");
+    haylen::platform::ScreenRelay::finish(platformScreen, true, "null");
 
     // Covers of libraries nest, an uncover without a cover changes nothing, and a window reaches no null target.
     api.uncoverApp();
@@ -452,16 +452,16 @@ TEST_F(ScreensTest, RestartsTheAppFromLua) {
 
 TEST_F(ScreensTest, TakesTheEndsOfScreensFromOtherThreads) {
     test::LuaFixture fixture;
-    Screens& screens = fixture.engine().getScreens();
+    haylen::platform::Screens& screens = fixture.engine().getScreens();
     int answers = 0;
     for (int round = 0; round < 20; ++round) {
-        const std::uint64_t id = screens.open("shop", "paywall", {}, {}, [&answers](const Bridge::Result& result) { answers += result.ok ? 1 : 0; });
+        const std::uint64_t id = screens.open("shop", "paywall", {}, {}, [&answers](const haylen::platform::Bridge::Result& result) { answers += result.ok ? 1 : 0; });
         fixture.frames(1);
         std::atomic<bool> done = false;
         // clang-format off
         std::jthread native([id, &done] {
-            ScreenRelay::finish(id, true, R"({"round": true})");
-            ScreenRelay::restore("shop", "paywall", "null", true, "null");
+            haylen::platform::ScreenRelay::finish(id, true, R"({"round": true})");
+            haylen::platform::ScreenRelay::restore("shop", "paywall", "null", true, "null");
             done.store(true);
         });
         // clang-format on
@@ -477,16 +477,16 @@ TEST_F(ScreensTest, TakesTheEndsOfScreensFromOtherThreads) {
 
 TEST_F(ScreensTest, DropsTheEndThatArrivedBeforeTheAppGaveTheScreenUp) {
     test::LuaFixture fixture;
-    core::Engine& engine = fixture.engine();
-    Screens& screens = engine.getScreens();
+    haylen::core::Engine& engine = fixture.engine();
+    haylen::platform::Screens& screens = engine.getScreens();
     std::vector<std::string> codes;
     std::vector<std::string> restored;
-    engine.getPlatform().on("shop.screenRestored", [&restored](const Bridge::Payload& payload) { restored.push_back(payload.json.dump()); });
+    engine.getPlatform().on("shop.screenRestored", [&restored](const haylen::platform::Bridge::Payload& payload) { restored.push_back(payload.json.dump()); });
 
     // The platform ends the screen between two frames, and a timer of the app gives the screen up in the next frame, before the pump takes the end.
-    const std::uint64_t id = screens.open("shop", "paywall", {}, {}, [&codes](const Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); });
+    const std::uint64_t id = screens.open("shop", "paywall", {}, {}, [&codes](const haylen::platform::Bridge::Result& result) { codes.push_back(result.ok ? "ok" : result.error.code.get<std::string>()); });
     fixture.frames(1);
-    ScreenRelay::finish(id, true, R"({"bought": true})");
+    haylen::platform::ScreenRelay::finish(id, true, R"({"bought": true})");
     EXPECT_TRUE(screens.cancel(id));
     fixture.frames(2);
     EXPECT_EQ(codes, (std::vector<std::string>{"cancelled"}));
@@ -494,4 +494,4 @@ TEST_F(ScreensTest, DropsTheEndThatArrivedBeforeTheAppGaveTheScreenUp) {
     EXPECT_FALSE(engine.isAppCovered());
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

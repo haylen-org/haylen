@@ -23,12 +23,12 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::assets {
+namespace haylen::lua::assets {
 
 class AssetsManagerTest : public ::testing::Test {
   protected:
     [[nodiscard]] static std::string getFontFile() {
-        const std::span<const std::uint8_t> data = core::EmbeddedFiles::getDefaultFont();
+        const std::span<const std::uint8_t> data = haylen::core::EmbeddedFiles::getDefaultFont();
         return {data.begin(), data.end()};
     }
 
@@ -43,15 +43,15 @@ class AssetsManagerTest : public ::testing::Test {
 
 TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
 
-    const graphics::Texture red = assets.texture("images/red.png");
-    const graphics::Texture smooth = assets.texture("images/red.png", {.filter = graphics::Texture::Filter::Linear});
-    const std::shared_ptr<text::Font> font = assets.font("fonts/ui.ttf");
-    EXPECT_EQ(red.getSize(), math::Vec2(4.0F, 4.0F));
+    const haylen::graphics::Texture red = assets.texture("images/red.png");
+    const haylen::graphics::Texture smooth = assets.texture("images/red.png", {.filter = haylen::graphics::Texture::Filter::Linear});
+    const std::shared_ptr<haylen::text::Font> font = assets.font("fonts/ui.ttf");
+    EXPECT_EQ(red.getSize(), haylen::math::Vec2(4.0F, 4.0F));
     EXPECT_EQ(assets.texture("images/red.png"), red);
     EXPECT_NE(smooth, red);
-    EXPECT_EQ(smooth.getOptions().filter, graphics::Texture::Filter::Linear);
+    EXPECT_EQ(smooth.getOptions().filter, haylen::graphics::Texture::Filter::Linear);
     EXPECT_EQ(assets.font("fonts/ui.ttf"), font);
     EXPECT_EQ(assets.getCachedCount(), 3U);
 
@@ -63,13 +63,13 @@ TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
     EXPECT_EQ(assets.list("images").size(), 3U);
 
     EXPECT_THROW((void)assets.texture("images/missing.png"), std::runtime_error);
-    EXPECT_THROW((void)assets.json("data/broken.json"), core::Json::exception);
+    EXPECT_THROW((void)assets.json("data/broken.json"), haylen::core::Json::exception);
     EXPECT_THROW((void)assets.load("model", "images/red.png"), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "blurry"}}), std::invalid_argument);
     EXPECT_THROW((void)assets.getTypeForPath("images/readme.txt"), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "linear"}, {"anisotropy", 4}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"mipmaps", "yes"}}), std::invalid_argument);
-    EXPECT_TRUE(assets.texture("images/red.png", {.filter = graphics::Texture::Filter::Linear, .mipmaps = true}).getOptions().hasMipmaps());
+    EXPECT_TRUE(assets.texture("images/red.png", {.filter = haylen::graphics::Texture::Filter::Linear, .mipmaps = true}).getOptions().hasMipmaps());
     EXPECT_THROW((void)assets.load("json", "data/config.json", {{"strict", true}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("json", "data/config.json", 3), std::invalid_argument);
 }
@@ -77,32 +77,32 @@ TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
 // The manager learns when the last holder of an asset lets go, so a preloaded asset stays loaded until every group that holds it unloads.
 TEST_F(AssetsManagerTest, PublishesLoadedUnloadedAndReloadedEvents) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
-    core::EventBus& events = fixture.engine().getEvents();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
+    haylen::core::EventBus& events = fixture.engine().getEvents();
     std::vector<std::string> log;
     // clang-format off
     const auto record = [&log](std::string kind) {
-        return [&log, kind](core::EventBus::Event& event) {
+        return [&log, kind](haylen::core::EventBus::Event& event) {
             log.push_back(kind + " " + event.getData().at("type").get<std::string>() + " " + event.getData().at("path").get<std::string>());
         };
     };
     // clang-format on
-    const core::Connection loaded = events.on(core::LifecycleEvent::kAssetLoaded, record("loaded"));
-    const core::Connection unloaded = events.on(core::LifecycleEvent::kAssetUnloaded, record("unloaded"));
-    const core::Connection reloaded = events.on(core::LifecycleEvent::kAssetReloaded, record("reloaded"));
+    const haylen::core::Connection loaded = events.on(haylen::core::LifecycleEvent::kAssetLoaded, record("loaded"));
+    const haylen::core::Connection unloaded = events.on(haylen::core::LifecycleEvent::kAssetUnloaded, record("unloaded"));
+    const haylen::core::Connection reloaded = events.on(haylen::core::LifecycleEvent::kAssetReloaded, record("reloaded"));
 
     {
-        const graphics::Texture red = assets.texture("./images/red.png");
-        const graphics::Texture again = assets.texture("images/red.png");
+        const haylen::graphics::Texture red = assets.texture("./images/red.png");
+        const haylen::graphics::Texture again = assets.texture("images/red.png");
         EXPECT_TRUE(log.empty()) << "Asset events wait for the end of the frame.";
         fixture.frames(1);
         EXPECT_EQ(log, (std::vector<std::string>{"loaded texture images/red.png"}));
 
         fixture.package().setFile("content/images/red.png", test::TestFiles::pngImage(8, 8, 0x00FF00FFU));
-        EXPECT_EQ(assets.reload("images/red.png"), (assets::Manager::Reload{.inPlace = 1}));
+        EXPECT_EQ(assets.reload("images/red.png"), (haylen::assets::Manager::Reload{.inPlace = 1}));
         fixture.frames(1);
         EXPECT_EQ(log.back(), "reloaded texture images/red.png");
-        EXPECT_EQ(red.getSize(), math::Vec2(8.0F, 8.0F));
+        EXPECT_EQ(red.getSize(), haylen::math::Vec2(8.0F, 8.0F));
     }
     fixture.frames(1);
     EXPECT_EQ(log.back(), "unloaded texture images/red.png");
@@ -141,22 +141,22 @@ TEST_F(AssetsManagerTest, PublishesLoadedUnloadedAndReloadedEvents) {
 
 TEST_F(AssetsManagerTest, EqualOptionsShareOneCachedAsset) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
 
-    const graphics::Texture preloaded(std::static_pointer_cast<graphics::TextureResource>(assets.load("texture", "images/red.png")));
+    const haylen::graphics::Texture preloaded(std::static_pointer_cast<haylen::graphics::TextureResource>(assets.load("texture", "images/red.png")));
     EXPECT_EQ(assets.texture("images/red.png"), preloaded);
-    EXPECT_EQ(assets.texture("images/red.png", {.filter = graphics::Texture::Filter::Nearest, .wrap = graphics::Texture::Wrap::Clamp}), preloaded);
-    EXPECT_EQ(graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(assets.load("texture", "./images/red.png", {{"wrap", "clamp"}}))), preloaded);
-    const std::shared_ptr<text::Font> font = assets.font("fonts/ui.ttf");
-    EXPECT_EQ(std::static_pointer_cast<text::Font>(assets.load("font", "fonts/ui.ttf", core::Json::object())), font);
+    EXPECT_EQ(assets.texture("images/red.png", {.filter = haylen::graphics::Texture::Filter::Nearest, .wrap = haylen::graphics::Texture::Wrap::Clamp}), preloaded);
+    EXPECT_EQ(haylen::graphics::Texture(std::static_pointer_cast<haylen::graphics::TextureResource>(assets.load("texture", "./images/red.png", {{"wrap", "clamp"}}))), preloaded);
+    const std::shared_ptr<haylen::text::Font> font = assets.font("fonts/ui.ttf");
+    EXPECT_EQ(std::static_pointer_cast<haylen::text::Font>(assets.load("font", "fonts/ui.ttf", haylen::core::Json::object())), font);
     EXPECT_EQ(assets.getCachedCount(), 2U);
 }
 
 TEST_F(AssetsManagerTest, ReleasesUnusedEntries) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     {
-        const graphics::Texture temporary = assets.texture("images/blue.png");
+        const haylen::graphics::Texture temporary = assets.texture("images/blue.png");
         EXPECT_TRUE(temporary.isValid());
     }
     EXPECT_GE(assets.releaseUnused(), 1U);
@@ -165,22 +165,22 @@ TEST_F(AssetsManagerTest, ReleasesUnusedEntries) {
 
 TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
 
-    graphics::Texture first;
-    graphics::Texture second;
+    haylen::graphics::Texture first;
+    haylen::graphics::Texture second;
     std::string error;
     int callbacks = 0;
     // clang-format off
-    assets.textureAsync("images/red.png", [&](graphics::Texture texture, std::string) {
+    assets.textureAsync("images/red.png", [&](haylen::graphics::Texture texture, std::string) {
         first = texture;
         ++callbacks;
     });
-    assets.textureAsync("images/red.png", [&](graphics::Texture texture, std::string) {
+    assets.textureAsync("images/red.png", [&](haylen::graphics::Texture texture, std::string) {
         second = texture;
         ++callbacks;
     });
-    assets.textureAsync("images/missing.png", [&](graphics::Texture, std::string message) {
+    assets.textureAsync("images/missing.png", [&](haylen::graphics::Texture, std::string message) {
         error = message;
         ++callbacks;
     });
@@ -193,7 +193,7 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     EXPECT_NE(error.find("missing.png"), std::string::npos);
 
     bool cached = false;
-    assets.textureAsync("images/red.png", [&](graphics::Texture texture, std::string) { cached = texture == first; });
+    assets.textureAsync("images/red.png", [&](haylen::graphics::Texture texture, std::string) { cached = texture == first; });
     EXPECT_FALSE(cached);
     ASSERT_TRUE(fixture.frameUntil([&] { return cached; }));
 
@@ -204,12 +204,12 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
 
 TEST_F(AssetsManagerTest, SharesOneAssetBetweenBackgroundAndDirectLoads) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
 
     // A direct load while the same asset decodes in the background caches it first, and the background load hands out that one.
-    graphics::Texture background;
-    assets.textureAsync("images/red.png", [&background](graphics::Texture texture, std::string) { background = texture; });
-    const graphics::Texture direct = assets.texture("images/red.png");
+    haylen::graphics::Texture background;
+    assets.textureAsync("images/red.png", [&background](haylen::graphics::Texture texture, std::string) { background = texture; });
+    const haylen::graphics::Texture direct = assets.texture("images/red.png");
     ASSERT_TRUE(fixture.frameUntil([&] { return background.isValid(); }));
     EXPECT_EQ(background, direct);
     EXPECT_EQ(assets.texture("images/red.png"), direct);
@@ -218,7 +218,7 @@ TEST_F(AssetsManagerTest, SharesOneAssetBetweenBackgroundAndDirectLoads) {
 
 TEST_F(AssetsManagerTest, SpreadsUploadsOverFramesWithinTheBudget) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     EXPECT_DOUBLE_EQ(assets.getUploadBudget(), 0.004);
     EXPECT_THROW(assets.setUploadBudget(-1.0), std::invalid_argument);
 
@@ -242,20 +242,20 @@ TEST_F(AssetsManagerTest, SpreadsUploadsOverFramesWithinTheBudget) {
 
     // An app in the background creates no GPU resources, and the uploads wait until it comes back.
     assets.setUploadBudget(1.0);
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     bool uploaded = false;
-    assets.textureAsync("images/red.png", [&uploaded](graphics::Texture texture, std::string) { uploaded = texture.isValid(); }, {.filter = graphics::Texture::Filter::Linear});
+    assets.textureAsync("images/red.png", [&uploaded](haylen::graphics::Texture texture, std::string) { uploaded = texture.isValid(); }, {.filter = haylen::graphics::Texture::Filter::Linear});
     ASSERT_TRUE(fixture.frameUntil([&] { return assets.getUploadCount() == 1; }));
     fixture.frames(3);
     EXPECT_FALSE(uploaded);
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     fixture.frames(1);
     EXPECT_TRUE(uploaded);
 }
 
 TEST_F(AssetsManagerTest, PreloadsAndUnloadsGroups) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     assets.defineGroups(assets.json("preload.json"));
     EXPECT_EQ(assets.getGroups(), (std::vector<std::string>{"broken", "empty", "menu"}));
 
@@ -311,15 +311,15 @@ TEST_F(AssetsManagerTest, PreloadsAndUnloadsGroups) {
 // The download of the assets that are not on the device takes the first half of the progress, which the listeners and the query report alike.
 TEST_F(AssetsManagerTest, ReportsOneProgressForAGroupWhoseAssetsDownloadFirst) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     assets.defineGroups(assets.json("preload.json"));
-    Manager::GroupProgress downloading;
+    haylen::assets::Manager::GroupProgress downloading;
     std::function<void(std::string)> downloaded;
     bool delivered = false;
     // clang-format off
     assets.setAvailability({
         .isLocal = [&delivered](std::string_view path) { return delivered || path != "data/config.json"; },
-        .acquire = [&downloading, &downloaded](std::vector<std::string>, Manager::GroupProgress progress, std::function<void(std::string)> done) {
+        .acquire = [&downloading, &downloaded](std::vector<std::string>, haylen::assets::Manager::GroupProgress progress, std::function<void(std::string)> done) {
             downloading = std::move(progress);
             downloaded = std::move(done);
         },
@@ -345,14 +345,14 @@ TEST_F(AssetsManagerTest, ReportsOneProgressForAGroupWhoseAssetsDownloadFirst) {
 
 TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
 
     // An entry without an asset type and an entry with invalid options fail the preload before the group gains a listener or starts to load.
-    const std::vector<assets::GroupManifest::Entry> untyped{{.path = "images/readme.txt"}};
-    const std::vector<assets::GroupManifest::Entry> misconfigured{{.path = "images/blue.png"}, {.path = "images/red.png", .options = {{"filter", "blurry"}}}};
+    const std::vector<haylen::assets::GroupManifest::Entry> untyped{{.path = "images/readme.txt"}};
+    const std::vector<haylen::assets::GroupManifest::Entry> misconfigured{{.path = "images/blue.png"}, {.path = "images/red.png", .options = {{"filter", "blurry"}}}};
     int staleProgress = 0;
     int staleCompletions = 0;
-    for (const std::vector<assets::GroupManifest::Entry>* broken : {&untyped, &misconfigured}) {
+    for (const std::vector<haylen::assets::GroupManifest::Entry>* broken : {&untyped, &misconfigured}) {
         assets.defineGroup("menu", *broken);
         EXPECT_THROW(assets.preload("menu", [&](float) { ++staleProgress; }, [&](std::vector<std::string>) { ++staleCompletions; }), std::invalid_argument);
         EXPECT_FALSE(assets.isGroupLoaded("menu"));
@@ -373,7 +373,7 @@ TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
 
 TEST_F(AssetsManagerTest, UnloadingDuringALoadDropsItsResults) {
     test::LuaFixture fixture(getAssetFiles());
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     assets.defineGroup("menu", {{.path = "images/red.png"}});
 
     // A preload that still waits completes with the failure that its group unloaded first.
@@ -400,7 +400,7 @@ TEST_F(AssetsManagerTest, UnloadingDuringALoadDropsItsResults) {
     EXPECT_EQ(assets.getPendingCount(), 0U);
 
     bool reloaded = false;
-    assets.textureAsync("images/red.png", [&](graphics::Texture texture, std::string) { reloaded = texture.isValid(); });
+    assets.textureAsync("images/red.png", [&](haylen::graphics::Texture texture, std::string) { reloaded = texture.isValid(); });
     ASSERT_TRUE(fixture.frameUntil([&] { return reloaded; }));
     EXPECT_FALSE(completed);
     EXPECT_FALSE(assets.isGroupLoaded("menu"));
@@ -408,24 +408,24 @@ TEST_F(AssetsManagerTest, UnloadingDuringALoadDropsItsResults) {
 
 TEST_F(AssetsManagerTest, ReloadsFilesWhosePathsHoldAnyCharacter) {
     test::LuaFixture fixture({{"content/data/a|b.json", R"({"level": 1})"}});
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
 
     const std::shared_ptr<void> held = assets.load("json", "data/a|b.json");
     fixture.package().setFile("content/data/a|b.json", test::TestFiles::bytes(R"({"level": 2})"));
-    EXPECT_EQ(assets.reload("data/a|b.json"), (assets::Manager::Reload{.inPlace = 1}));
+    EXPECT_EQ(assets.reload("data/a|b.json"), (haylen::assets::Manager::Reload{.inPlace = 1}));
     EXPECT_EQ(assets.json("data/a|b.json").at("level"), 2);
 }
 
 TEST_F(AssetsManagerTest, RegistersCustomTypes) {
     test::LuaFixture fixture({{"content/levels/one.level", "3"}, {"content/levels/one.fragile", "3"}});
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     // clang-format off
     assets.registerType({
         .name = "level",
         .extensions = {".LEVEL"},
-        .normalize = [](const core::Json& options) { return options; },
-        .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> { return std::make_shared<int>(std::stoi(std::string(request.bytes.begin(), request.bytes.end()))); },
-        .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
+        .normalize = [](const haylen::core::Json& options) { return options; },
+        .decode = [](haylen::assets::Manager::Request& request) -> std::shared_ptr<void> { return std::make_shared<int>(std::stoi(std::string(request.bytes.begin(), request.bytes.end()))); },
+        .finalize = [](std::shared_ptr<void> decoded, const haylen::assets::Manager::Request&) { return decoded; },
     });
     // clang-format on
 
@@ -439,9 +439,9 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
     assets.registerType({
         .name = "fragile",
         .extensions = {".fragile"},
-        .normalize = [](const core::Json& options) { return options; },
-        .decode = [](assets::Manager::Request&) -> std::shared_ptr<void> { return std::make_shared<int>(0); },
-        .finalize = [](std::shared_ptr<void>, const assets::Manager::Request&) -> std::shared_ptr<void> { throw std::runtime_error("The fragile asset could not be built."); },
+        .normalize = [](const haylen::core::Json& options) { return options; },
+        .decode = [](haylen::assets::Manager::Request&) -> std::shared_ptr<void> { return std::make_shared<int>(0); },
+        .finalize = [](std::shared_ptr<void>, const haylen::assets::Manager::Request&) -> std::shared_ptr<void> { throw std::runtime_error("The fragile asset could not be built."); },
     });
     // clang-format on
     std::string failure;
@@ -460,29 +460,29 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
 // Assets that name the same file load it once through the cache before they are finalized, however many of them load at the same time.
 TEST_F(AssetsManagerTest, LoadsTheDependenciesOfAnAssetOnceThroughTheCache) {
     test::LuaFixture fixture({{"content/tiles/grass.tile", "7"}, {"content/maps/one.map", "tiles/grass.tile"}, {"content/maps/two.map", "tiles/grass.tile"}, {"content/maps/three.map", "tiles/grass.tile"}, {"content/maps/lost.map", "tiles/missing.tile"}});
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     auto decodedTiles = std::make_shared<std::atomic<int>>(0);
     // clang-format off
     assets.registerType({
         .name = "tile",
         .extensions = {".tile"},
-        .normalize = [](const core::Json& options) { return options; },
-        .decode = [decodedTiles](assets::Manager::Request& request) -> std::shared_ptr<void> {
+        .normalize = [](const haylen::core::Json& options) { return options; },
+        .decode = [decodedTiles](haylen::assets::Manager::Request& request) -> std::shared_ptr<void> {
             ++*decodedTiles;
             return std::make_shared<int>(std::stoi(std::string(request.bytes.begin(), request.bytes.end())));
         },
-        .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
+        .finalize = [](std::shared_ptr<void> decoded, const haylen::assets::Manager::Request&) { return decoded; },
     });
     assets.registerType({
         .name = "map",
         .extensions = {".map"},
-        .normalize = [](const core::Json& options) { return options; },
-        .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> { return std::make_shared<std::string>(request.bytes.begin(), request.bytes.end()); },
-        .finalize = [&assets](std::shared_ptr<void> decoded, const assets::Manager::Request&) -> std::shared_ptr<void> {
+        .normalize = [](const haylen::core::Json& options) { return options; },
+        .decode = [](haylen::assets::Manager::Request& request) -> std::shared_ptr<void> { return std::make_shared<std::string>(request.bytes.begin(), request.bytes.end()); },
+        .finalize = [&assets](std::shared_ptr<void> decoded, const haylen::assets::Manager::Request&) -> std::shared_ptr<void> {
             return assets.load("tile", *std::static_pointer_cast<std::string>(decoded));
         },
-        .dependencies = [](const std::shared_ptr<void>& decoded, const assets::Manager::Request&) {
-            return std::vector<assets::Manager::Dependency>{{.type = "tile", .path = *std::static_pointer_cast<std::string>(decoded), .options = core::Json::object()}};
+        .dependencies = [](const std::shared_ptr<void>& decoded, const haylen::assets::Manager::Request&) {
+            return std::vector<haylen::assets::Manager::Dependency>{{.type = "tile", .path = *std::static_pointer_cast<std::string>(decoded), .options = haylen::core::Json::object()}};
         },
     });
     // clang-format on
@@ -507,4 +507,4 @@ TEST_F(AssetsManagerTest, LoadsTheDependenciesOfAnAssetOnceThroughTheCache) {
     EXPECT_EQ(decodedTiles->load(), 1);
 }
 
-} // namespace haylen::assets
+} // namespace haylen::lua::assets

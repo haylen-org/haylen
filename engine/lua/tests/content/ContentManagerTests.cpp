@@ -29,7 +29,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 class ContentManagerTest : public test::ContentAppFixture {};
 
@@ -57,15 +57,15 @@ TEST_F(ContentManagerTest, ShowsWhyTheRequiredContentCannotDownloadAndTriesAgain
     setPacksStatus(503);
     run(shipWithoutContent());
 
-    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == haylen::content::ContentManager::Status::Failed; }));
     EXPECT_FALSE(hasStarted());
     ASSERT_TRUE(engine->getContent().getError());
     EXPECT_TRUE(engine->getContent().getError()->isRetryable());
 
     // The update screen offers to try again, which the keyboard, a gamepad and a TV remote press with the focus on its first button.
     setPacksStatus(0);
-    engine->handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::Enter});
-    EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Downloading);
+    engine->handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Enter});
+    EXPECT_EQ(engine->getContent().getStatus(), haylen::content::ContentManager::Status::Downloading);
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
 }
 
@@ -74,14 +74,14 @@ TEST_F(ContentManagerTest, RefusesToDownloadTheRequiredContentWithoutRoomForIt) 
     storeRoom = 1024;
     run(shipWithoutContent());
 
-    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
-    const std::optional<Error>& error = engine->getContent().getError();
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == haylen::content::ContentManager::Status::Failed; }));
+    const std::optional<haylen::content::Error>& error = engine->getContent().getError();
     ASSERT_TRUE(error);
-    EXPECT_EQ(error->getCode(), Error::Code::InsufficientStorage) << error->what();
+    EXPECT_EQ(error->getCode(), haylen::content::Error::Code::InsufficientStorage) << error->what();
     ASSERT_TRUE(error->getDetails().requiredBytes);
 
-    const UpdateScreen screen(*engine);
-    const std::string expected = "The device needs " + UpdateScreen::formatBytes(*error->getDetails().requiredBytes) + " of free room";
+    const haylen::content::UpdateScreen screen(*engine);
+    const std::string expected = "The device needs " + haylen::content::UpdateScreen::formatBytes(*error->getDetails().requiredBytes) + " of free room";
     EXPECT_NE(screen.getStatus().find(expected), std::string::npos) << screen.getStatus();
 }
 
@@ -92,7 +92,7 @@ TEST_F(ContentManagerTest, TellsThatAnAppWithoutItsStoreHasNoUpdates) {
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
 
     try {
-        engine->getContent().check([](std::optional<ContentManager::Update>, std::optional<Error>) { ADD_FAILURE() << "A check that cannot start never answers."; });
+        engine->getContent().check([](std::optional<haylen::content::ContentManager::Update>, std::optional<haylen::content::Error>) { ADD_FAILURE() << "A check that cannot start never answers."; });
         FAIL() << "A check without the store raises.";
     } catch (const std::runtime_error& error) {
         EXPECT_STREQ(error.what(), "The content store of the app could not be opened on this device, so it has no updates. The log of the app tells why.");
@@ -120,13 +120,13 @@ TEST_F(ContentManagerTest, LoadsAnAssetOnDemandOnlyAsynchronously) {
     // clang-format on
     ASSERT_TRUE(frameUntil([&loaded, &failure] { return loaded || !failure.empty(); })) << failure;
     ASSERT_TRUE(loaded) << failure;
-    EXPECT_EQ((*std::static_pointer_cast<core::Json>(loaded))["trees"], 12);
+    EXPECT_EQ((*std::static_pointer_cast<haylen::core::Json>(loaded))["trees"], 12);
     EXPECT_TRUE(engine->getContent().isLocal("levels/forest.json"));
     EXPECT_EQ(engine->getAssets().json("levels/forest.json")["trees"], 12);
 
     // The statistics count the reads of the content and the downloads that brought the level and the music it prefetches.
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatistics().pendingDownloads == 0; }));
-    const ContentManager::Statistics statistics = engine->getContent().getStatistics();
+    const haylen::content::ContentManager::Statistics statistics = engine->getContent().getStatistics();
     EXPECT_GE(statistics.openShards, 1U);
     EXPECT_GE(statistics.decodedChunks, 2U);
     EXPECT_GT(statistics.decodedBytes, 0U);
@@ -140,7 +140,7 @@ TEST_F(ContentManagerTest, LoadsAnAssetOnDemandOnlyAsynchronously) {
 TEST_F(ContentManagerTest, PreloadsAGroupWhoseAssetsDownload) {
     run(ship());
     engine->frame(1.0 / 60.0);
-    engine->getAssets().defineGroups(core::Json::parse(R"({"groups": {"forest": ["levels/", "data/config.json"]}})"));
+    engine->getAssets().defineGroups(haylen::core::Json::parse(R"({"groups": {"forest": ["levels/", "data/config.json"]}})"));
 
     std::vector<float> fractions;
     std::optional<std::vector<std::string>> errors;
@@ -164,12 +164,12 @@ TEST_F(ContentManagerTest, DownloadsPrefetchedContentInTheBackground) {
 TEST_F(ContentManagerTest, TriesTheRequiredContentAgainWhenTheNetworkComesBack) {
     setPacksStatus(503);
     run(shipWithoutContent());
-    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == haylen::content::ContentManager::Status::Failed; }));
 
     setPacksStatus(0);
-    engine->handleEvent({.type = platform::Event::Type::NetworkChanged, .online = false});
-    engine->handleEvent({.type = platform::Event::Type::NetworkChanged, .online = true});
-    EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Downloading);
+    engine->handleEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = false});
+    engine->handleEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = true});
+    EXPECT_EQ(engine->getContent().getStatus(), haylen::content::ContentManager::Status::Downloading);
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
 }
 
@@ -178,19 +178,19 @@ TEST_F(ContentManagerTest, StopsPrefetchingInTheBackgroundAndGoesOnOnceActive) {
     run(ship());
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatistics().pendingDownloads == 1; }));
 
-    engine->handleEvent({.type = platform::Event::Type::Suspended});
+    engine->handleEvent({.type = haylen::platform::Event::Type::Suspended});
     EXPECT_EQ(engine->getContent().getStatistics().pendingDownloads, 0U) << "The background downloads stop with the app.";
     EXPECT_FALSE(engine->getContent().isLocal("music/theme.ogg"));
 
     server.setStalls(false);
-    engine->handleEvent({.type = platform::Event::Type::Resumed});
+    engine->handleEvent({.type = haylen::platform::Event::Type::Resumed});
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().isLocal("music/theme.ogg"); }));
 }
 
 TEST_F(ContentManagerTest, CountsTheShardsAndChunksThatTheDeviceHoldsAndLacks) {
     server.setStalls(true);
     run(ship());
-    ContentManager::Statistics statistics;
+    haylen::content::ContentManager::Statistics statistics;
     // clang-format off
     ASSERT_TRUE(frameUntil([this, &statistics] {
         statistics = engine->getContent().getStatistics();
@@ -220,10 +220,10 @@ TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackgrou
     ASSERT_TRUE(frameUntil([this] { return hasStarted() && engine->getContent().isLocal("music/theme.ogg") && engine->getContent().getStatistics().pendingDownloads == 0; }));
     ASSERT_TRUE(engine->getContent().isLocal("data/config.json"));
 
-    engine->handleEvent({.type = platform::Event::Type::Suspended});
+    engine->handleEvent({.type = haylen::platform::Event::Type::Suspended});
     std::filesystem::remove_all(storeFolder.getPath() / "segments");
     server.clearExchanges();
-    engine->handleEvent({.type = platform::Event::Type::Resumed});
+    engine->handleEvent({.type = haylen::platform::Event::Type::Resumed});
     // clang-format off
     ASSERT_TRUE(frameUntil([this] {
         return !server.getExchanges().empty() && engine->getContent().getStatistics().pendingDownloads == 0 && engine->getContent().isLocal("data/config.json");
@@ -231,7 +231,7 @@ TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackgrou
     // clang-format on
     EXPECT_TRUE(std::filesystem::is_directory(storeFolder.getPath() / "segments")) << "The content that came back is in the folder of the store again.";
     EXPECT_EQ(engine->getAssets().json("data/config.json")["level"], 1);
-    EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Idle);
+    EXPECT_EQ(engine->getContent().getStatus(), haylen::content::ContentManager::Status::Idle);
 }
 
 TEST_F(ContentManagerTest, RefusesToBringAnAssetWithoutRoomForIt) {
@@ -260,8 +260,8 @@ TEST_F(ContentManagerTest, LogsAPrefetchThatFailsWhileNothingAwaitsItAndKeepsThe
 
     std::vector<std::string> lines;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level level, std::string_view line) {
-        if (level == core::Log::Level::Warning && line.find("ahead of time") != std::string_view::npos) {
+    const std::uint64_t listener = haylen::core::Log::addListener([&lines](haylen::core::Log::Level level, std::string_view line) {
+        if (level == haylen::core::Log::Level::Warning && line.find("ahead of time") != std::string_view::npos) {
             lines.emplace_back(line);
         }
     });
@@ -274,7 +274,7 @@ TEST_F(ContentManagerTest, LogsAPrefetchThatFailsWhileNothingAwaitsItAndKeepsThe
         engine->frame(1.0 / 60.0);
     }
 
-    core::Log::removeListener(listener);
+    haylen::core::Log::removeListener(listener);
     ASSERT_TRUE(logged);
     ASSERT_EQ(lines.size(), 1U);
     EXPECT_NE(lines.front().find("The asset \"levels/forest.json\" did not reach the device ahead of time: "), std::string::npos) << lines.front();
@@ -314,8 +314,8 @@ TEST_F(ContentManagerTest, RejectsAPrefetchWithTheFailureThatDescribesIt) {
     EXPECT_EQ(field("code"), "unexpectedHttpStatus");
     EXPECT_EQ(field("status"), "503");
     EXPECT_EQ(field("retryable"), "true");
-    EXPECT_EQ(field("pack").size(), Digest::kSize * 2);
-    EXPECT_EQ(field("record").size(), Digest::kSize * 2);
+    EXPECT_EQ(field("pack").size(), haylen::content::Digest::kSize * 2);
+    EXPECT_EQ(field("record").size(), haylen::content::Digest::kSize * 2);
     EXPECT_EQ(field("error"), field("message"));
     lua_pop(L, 1);
 }
@@ -328,15 +328,15 @@ TEST_F(ContentManagerTest, UpdatesFromTheChannelAndAppliesTheUpdateOnRestart) {
     engine->frame(1.0 / 60.0);
 
     std::optional<std::string> ready;
-    const core::ScopedConnection listener(engine->getEvents().on(core::LifecycleEvent::kContentUpdateReady, [&ready](core::EventBus::Event& event) { ready = event.getData().dump(); }));
-    std::optional<std::optional<Error>> downloaded;
-    engine->getContent().download({}, [&downloaded](std::optional<Error> error) { downloaded = std::move(error); });
+    const haylen::core::ScopedConnection listener(engine->getEvents().on(haylen::core::LifecycleEvent::kContentUpdateReady, [&ready](haylen::core::EventBus::Event& event) { ready = event.getData().dump(); }));
+    std::optional<std::optional<haylen::content::Error>> downloaded;
+    engine->getContent().download({}, [&downloaded](std::optional<haylen::content::Error> error) { downloaded = std::move(error); });
     ASSERT_TRUE(frameUntil([&downloaded] { return downloaded.has_value(); }));
     ASSERT_FALSE(*downloaded) << (*downloaded)->what();
     engine->frame(1.0 / 60.0);
 
     EXPECT_TRUE(ready);
-    EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Ready);
+    EXPECT_EQ(engine->getContent().getStatus(), haylen::content::ContentManager::Status::Ready);
     EXPECT_EQ(engine->getAssets().text("data/config.json"), R"({"level": 1})");
     engine->getContent().apply();
     EXPECT_TRUE(engine->isRestartRequested());
@@ -353,8 +353,8 @@ TEST_F(ContentManagerTest, PlaysTheContentItShipsWhenADownloadedUpdateCannotCome
     publish(update);
     run(ship());
     engine->frame(1.0 / 60.0);
-    std::optional<std::optional<Error>> downloaded;
-    engine->getContent().download({}, [&downloaded](std::optional<Error> error) { downloaded = std::move(error); });
+    std::optional<std::optional<haylen::content::Error>> downloaded;
+    engine->getContent().download({}, [&downloaded](std::optional<haylen::content::Error> error) { downloaded = std::move(error); });
     ASSERT_TRUE(frameUntil([&downloaded] { return downloaded.has_value(); }));
     engine.reset();
 
@@ -372,8 +372,8 @@ TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasD
     publish(update);
     run(ship());
     engine->frame(1.0 / 60.0);
-    std::optional<std::optional<Error>> downloaded;
-    engine->getContent().download({}, [&downloaded](std::optional<Error> error) { downloaded = std::move(error); });
+    std::optional<std::optional<haylen::content::Error>> downloaded;
+    engine->getContent().download({}, [&downloaded](std::optional<haylen::content::Error> error) { downloaded = std::move(error); });
     ASSERT_TRUE(frameUntil([&downloaded] { return downloaded.has_value(); }));
     engine.reset();
 
@@ -391,30 +391,30 @@ TEST_F(ContentManagerTest, TellsTheAppThatItPlaysEarlierContentWhenTheUpdateWasD
 
 TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomethingBringsThem) {
     test::TemporaryDirectory data;
-    platform::HeadlessHost host(data.getPath());
+    haylen::platform::HeadlessHost host(data.getPath());
     std::map<std::string, std::vector<std::uint8_t>> files;
     files.emplace("haylen.json", test::TestFiles::bytes(R"({"content": {"delivery": [{"match": "levels/**", "mode": "onDemand"}]}})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("started = true"));
     files.emplace("content/levels/forest.json", test::TestFiles::bytes(R"({"trees": 12})"));
     files.emplace("content/data/config.json", test::TestFiles::bytes(R"({"level": 1})"));
-    auto package = std::make_shared<io::MemoryPackage>("development", std::move(files));
-    core::AppConfig config = core::AppConfig::fromPackage(*package);
+    auto package = std::make_shared<haylen::io::MemoryPackage>("development", std::move(files));
+    haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
     application->configure(config);
-    core::Engine engine(host, package, std::move(config), std::move(application));
+    haylen::core::Engine engine(host, package, std::move(config), std::move(application));
     engine.start();
     engine.frame(1.0 / 60.0);
 
-    ContentManager& content = engine.getContent();
+    haylen::content::ContentManager& content = engine.getContent();
     EXPECT_FALSE(content.isProtected());
     EXPECT_EQ(content.getGeneration(), 0U);
     EXPECT_TRUE(content.isLocal("data/config.json"));
     EXPECT_FALSE(content.isLocal("levels/forest.json"));
     EXPECT_THROW((void)engine.getAssets().json("levels/forest.json"), std::runtime_error);
-    EXPECT_THROW(content.check([](std::optional<ContentManager::Update>, std::optional<Error>) {}), std::logic_error);
+    EXPECT_THROW(content.check([](std::optional<haylen::content::ContentManager::Update>, std::optional<haylen::content::Error>) {}), std::logic_error);
 
     bool brought = false;
-    content.acquire({"levels/forest.json"}, {}, [&brought](std::optional<Error> error) { brought = !error; });
+    content.acquire({"levels/forest.json"}, {}, [&brought](std::optional<haylen::content::Error> error) { brought = !error; });
     engine.frame(1.0 / 60.0);
     EXPECT_TRUE(brought);
     EXPECT_EQ(engine.getAssets().json("levels/forest.json")["trees"], 12);
@@ -423,16 +423,16 @@ TEST(ContentDevelopmentTest, KeepsTheFilesThatDownloadOffTheDeviceUntilSomething
 // Development plays the folder of the app with the delivery of a release, so languages that a rule delivers later hold the start until they are brought.
 TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater) {
     test::TemporaryDirectory data;
-    platform::HeadlessHost host(data.getPath());
+    haylen::platform::HeadlessHost host(data.getPath());
     std::map<std::string, std::vector<std::uint8_t>> files;
     files.emplace("haylen.json", test::TestFiles::bytes(R"({"localization": {"folder": "locale"}, "content": {"delivery": [{"match": "locale/**", "mode": "onDemand"}]}})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("greeting = require('haylen.localization').text('menu.play')"));
     files.emplace("content/locale/en.json", test::TestFiles::bytes(R"({"menu": {"play": "Play"}})"));
-    auto package = std::make_shared<io::MemoryPackage>("development", std::move(files));
-    core::AppConfig config = core::AppConfig::fromPackage(*package);
+    auto package = std::make_shared<haylen::io::MemoryPackage>("development", std::move(files));
+    haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
     application->configure(config);
-    core::Engine engine(host, package, std::move(config), std::move(application));
+    haylen::core::Engine engine(host, package, std::move(config), std::move(application));
     engine.start();
 
     EXPECT_TRUE(engine.isStartHeld());
@@ -444,4 +444,4 @@ TEST(ContentDevelopmentTest, HoldsTheStartForTheLanguagesThatARuleDeliversLater)
     lua_pop(L, 1);
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

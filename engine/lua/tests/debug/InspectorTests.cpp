@@ -13,7 +13,7 @@
 #include "haylen/plugins/DebugPlugin.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class InspectorTest : public ::testing::Test {
   protected:
@@ -61,16 +61,16 @@ TEST_F(InspectorTest, ListsTheRootsTablesAndThePropertiesOfBoundObjects) {
 // A description reaches the editor as JSON, so it keeps whole characters of a long text and replaces the bytes of a string that are not UTF-8.
 TEST_F(InspectorTest, DescribesEveryTextAsWholeCharacters) {
     fixture.runLua("debugging.watch('texts', {long = string.rep('\\u{E9}', 100), broken = 'a\\xFFb', ['\\xFE'] = 1})");
-    const std::vector<std::string> path = Inspector::splitPath("watched.texts");
-    Inspector::Listing listing;
+    const std::vector<std::string> path = haylen::debug::Inspector::splitPath("watched.texts");
+    haylen::debug::Inspector::Listing listing;
     lua::debug::ScriptInspector(fixture.engine().getPlugin<lua::ScriptPlugin>().getState()).list(path, listing);
-    const std::vector<Inspector::Entry>& entries = listing.entries;
+    const std::vector<haylen::debug::Inspector::Entry>& entries = listing.entries;
     ASSERT_EQ(entries.size(), 3U);
 
-    for (const Inspector::Entry& entry : entries) {
-        EXPECT_TRUE(core::Utf8::isValid(entry.key)) << entry.key;
-        EXPECT_TRUE(core::Utf8::isValid(entry.value)) << entry.value;
-        EXPECT_NO_THROW((void)core::Json({{"key", entry.key}, {"value", entry.value}}).dump());
+    for (const haylen::debug::Inspector::Entry& entry : entries) {
+        EXPECT_TRUE(haylen::core::Utf8::isValid(entry.key)) << entry.key;
+        EXPECT_TRUE(haylen::core::Utf8::isValid(entry.value)) << entry.value;
+        EXPECT_NO_THROW((void)haylen::core::Json({{"key", entry.key}, {"value", entry.value}}).dump());
     }
 }
 
@@ -92,20 +92,20 @@ TEST_F(InspectorTest, HoldsWatchedValuesWeaklyAndStaysOffOutsideDevelopment) {
     fixture.runLua("debugging.unwatch('camera')");
     EXPECT_EQ(fixture.lua("return describe('watched')"), "player:table:Hero, 5 values:open");
     EXPECT_NE(fixture.lua("debugging.setInspectorVisible(true)").find("The inspector is off outside development runs."), std::string::npos);
-    EXPECT_FALSE(fixture.engine().getPlugin<plugins::DebugPlugin>().isInspectorVisible());
+    EXPECT_FALSE(fixture.engine().getPlugin<haylen::plugins::DebugPlugin>().isInspectorVisible());
 }
 
 TEST(InspectorLuaTest, ShowsTheWindowInDevelopmentWithItsKey) {
     test::LuaFixture fixture({}, nullptr, {.development = true});
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     fixture.runLua("player = {speed = 1} require('haylen.debug').watch('player', player) require('haylen.debug').setInspectorVisible(true)");
     fixture.frames(3);
     EXPECT_TRUE(plugin.isInspectorVisible());
     EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('inspector false') return output"), "The inspector is hidden.");
 
-    platform::Event key;
-    key.type = platform::Event::Type::KeyDown;
-    key.key = input::Key::F2;
+    haylen::platform::Event key;
+    key.type = haylen::platform::Event::Type::KeyDown;
+    key.key = haylen::input::Key::F2;
     fixture.engine().handleEvent(key);
     EXPECT_TRUE(plugin.isInspectorVisible());
     fixture.runLua("require('haylen.debug').setInspectorKey('f6')");
@@ -114,4 +114,4 @@ TEST(InspectorLuaTest, ShowsTheWindowInDevelopmentWithItsKey) {
     EXPECT_EQ(fixture.lua("return require('haylen.debug').inspectorKey()"), "f6");
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

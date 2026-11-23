@@ -18,7 +18,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // How a release splits for the stores that deliver it: what ships with the app, what stays for the server and the packs of named content, such as the expansions that a store installs on their own, and how little of it changes between two builds.
 class ReleaseStagerTest : public ::testing::Test {
@@ -37,10 +37,10 @@ class ReleaseStagerTest : public ::testing::Test {
         files.emplace("content/music/theme.ogg", test::TestFiles::randomBytes(400 * 1024, 3));
     }
 
-    [[nodiscard]] ReleaseStager::Layout stage(const std::filesystem::path& folder, ReleaseStager::Content content = ReleaseStager::Content::Required) const {
-        const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
-        const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(kApp));
-        return ReleaseStager(inspector, config.content).stage(release.getFolder(), folder / "shipped", folder / "deferred", folder / "packs", content);
+    [[nodiscard]] haylen::content::ReleaseStager::Layout stage(const std::filesystem::path& folder, haylen::content::ReleaseStager::Content content = haylen::content::ReleaseStager::Content::Required) const {
+        const haylen::content::ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
+        const haylen::core::AppConfig config = haylen::core::AppConfig::fromJson(haylen::core::Json::parse(kApp));
+        return haylen::content::ReleaseStager(inspector, config.content).stage(release.getFolder(), folder / "shipped", folder / "deferred", folder / "packs", content);
     }
 
     test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
@@ -49,8 +49,8 @@ class ReleaseStagerTest : public ::testing::Test {
 };
 
 TEST_F(ReleaseStagerTest, ShipsTheRequiredContentAndGivesEachPackItsOwnShards) {
-    release.build(io::MemoryPackage("source", files));
-    const ReleaseStager::Layout layout = stage(work.getPath());
+    release.build(haylen::io::MemoryPackage("source", files));
+    const haylen::content::ReleaseStager::Layout layout = stage(work.getPath());
 
     ASSERT_EQ(layout.packs.size(), 1U);
     ASSERT_EQ(layout.packs.at("forest").size(), 1U);
@@ -62,25 +62,25 @@ TEST_F(ReleaseStagerTest, ShipsTheRequiredContentAndGivesEachPackItsOwnShards) {
 
     // An app without a server ships the later deliveries too, while a pack always goes to its store.
     test::TemporaryDirectory everything;
-    const ReleaseStager::Layout all = stage(everything.getPath(), ReleaseStager::Content::All);
+    const haylen::content::ReleaseStager::Layout all = stage(everything.getPath(), haylen::content::ReleaseStager::Content::All);
     EXPECT_TRUE(all.deferred.empty());
     EXPECT_EQ(all.shipped.size(), layout.shipped.size() + 1);
     EXPECT_EQ(all.packs.at("forest"), layout.packs.at("forest"));
 
     test::TemporaryDirectory web;
-    const ReleaseStager::Layout page = stage(web.getPath(), ReleaseStager::Content::None);
+    const haylen::content::ReleaseStager::Layout page = stage(web.getPath(), haylen::content::ReleaseStager::Content::None);
     EXPECT_EQ(page.shipped.size(), layout.shipped.size() - 1) << "A web page downloads the manifests and the app domain alone.";
 }
 
 TEST_F(ReleaseStagerTest, ChangesOnlyTheShardsOfWhatAnUpdateChanged) {
-    release.build(io::MemoryPackage("source", files));
+    release.build(haylen::io::MemoryPackage("source", files));
     const std::filesystem::path before = work.getPath() / "before";
     (void)stage(before);
 
     // A new build of a store changes one Lua module and one small asset, and its depots keep every other file byte for byte.
     files["source/scenes/menu.lua"] = test::TestFiles::bytes("return {title = 'new menu'}");
     files["content/data/config.json"] = test::TestFiles::bytes(R"({"level": 2})");
-    release.build(io::MemoryPackage("source", files));
+    release.build(haylen::io::MemoryPackage("source", files));
     const std::filesystem::path after = work.getPath() / "after";
     (void)stage(after);
 
@@ -107,4 +107,4 @@ TEST_F(ReleaseStagerTest, ChangesOnlyTheShardsOfWhatAnUpdateChanged) {
     EXPECT_LE(added.size(), 2U) << "Only the new shards of each domain are new.";
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

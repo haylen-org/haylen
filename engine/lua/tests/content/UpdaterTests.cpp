@@ -45,7 +45,7 @@
 #include "support/TestFiles.hpp"
 #include "varn/runtime/Scheduler.h"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // The update of the content of an app from the channel of a publication tree that a local server serves, as an installed app goes through it: checks, downloads that stop and resume, the switch to the new content at the next start, and the fallbacks when a download or the content on the device is damaged.
 class UpdaterTest : public ::testing::Test {
@@ -56,27 +56,27 @@ class UpdaterTest : public ::testing::Test {
 
     // An installed app: its release with the local store of its downloads and the parts that update it.
     struct Client {
-        Client(UpdaterTest& test, std::unique_ptr<StoreFiles> storeFiles, std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr, std::shared_ptr<const io::Package> releaseFiles = nullptr) : jobs(test.jobSystems.emplace_back([](const std::string& error) { ADD_FAILURE() << error; })), transport(jobs.getScheduler()) {
-            const VerifyingKey trusted = test.release.getSigningKey().getVerifyingKey();
-            auto recordStore = std::make_shared<LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
-            package = std::make_shared<ReleasePackage>(releaseFiles ? std::move(releaseFiles) : test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
-            downloader = std::make_unique<Downloader>(jobs, transport, package->getStore());
-            settings.updates = core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()};
-            updater = std::make_unique<Updater>(package, jobs, transport, *downloader, settings);
+        Client(UpdaterTest& test, std::unique_ptr<haylen::content::StoreFiles> storeFiles, std::shared_ptr<const haylen::content::KeyRing> keys = nullptr, std::shared_ptr<const haylen::content::KeyProvider> provider = nullptr, std::shared_ptr<const haylen::io::Package> releaseFiles = nullptr) : jobs(test.jobSystems.emplace_back([](const std::string& error) { ADD_FAILURE() << error; })), transport(jobs.getScheduler()) {
+            const haylen::content::VerifyingKey trusted = test.release.getSigningKey().getVerifyingKey();
+            auto recordStore = std::make_shared<haylen::content::LocalStore>(std::move(storeFiles), test.release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
+            package = std::make_shared<haylen::content::ReleasePackage>(releaseFiles ? std::move(releaseFiles) : test.release.getFiles(), keys ? std::move(keys) : test.release.getKeys(), std::span(&trusted, 1), test.release.getCompatibility(), std::move(recordStore), std::move(provider));
+            downloader = std::make_unique<haylen::content::Downloader>(jobs, transport, package->getStore());
+            settings.updates = haylen::core::AppConfig::Content::Updates{.baseUrl = test.server.getUrl()};
+            updater = std::make_unique<haylen::content::Updater>(package, jobs, transport, *downloader, settings);
         }
 
-        core::AppConfig::Content settings;
-        std::shared_ptr<ReleasePackage> package;
-        core::JobSystem& jobs;
-        HttpTransport transport;
-        std::unique_ptr<Downloader> downloader;
-        std::unique_ptr<Updater> updater;
+        haylen::core::AppConfig::Content settings;
+        std::shared_ptr<haylen::content::ReleasePackage> package;
+        haylen::core::JobSystem& jobs;
+        haylen::content::HttpTransport transport;
+        std::unique_ptr<haylen::content::Downloader> downloader;
+        std::unique_ptr<haylen::content::Updater> updater;
     };
 
     // The files of a release whose shard files go away once the release opened, as a pack folder that the system removes between the check that a file exists and its opening.
-    class VanishingShards final : public io::Package {
+    class VanishingShards final : public haylen::io::Package {
       public:
-        explicit VanishingShards(std::shared_ptr<const io::Package> innerPackage) : inner(std::move(innerPackage)) {}
+        explicit VanishingShards(std::shared_ptr<const haylen::io::Package> innerPackage) : inner(std::move(innerPackage)) {}
 
         [[nodiscard]] std::string_view getName() const noexcept override {
             return inner->getName();
@@ -87,8 +87,8 @@ class UpdaterTest : public ::testing::Test {
         [[nodiscard]] std::uint64_t getFileSize(std::string_view path) const override {
             return inner->getFileSize(path);
         }
-        [[nodiscard]] std::unique_ptr<io::PackageReader> openReader(std::string_view path) const override {
-            if (path.ends_with(ShardReference::kExtension)) {
+        [[nodiscard]] std::unique_ptr<haylen::io::PackageReader> openReader(std::string_view path) const override {
+            if (path.ends_with(haylen::content::ShardReference::kExtension)) {
                 throw std::runtime_error("The package file \"" + std::string(path) + "\" could not be opened.");
             }
 
@@ -99,12 +99,12 @@ class UpdaterTest : public ::testing::Test {
         }
 
       private:
-        std::shared_ptr<const io::Package> inner;
+        std::shared_ptr<const haylen::io::Package> inner;
     };
 
     UpdaterTest() {
         game = makeGame();
-        release.build(io::MemoryPackage("source", game));
+        release.build(haylen::io::MemoryPackage("source", game));
     }
 
     [[nodiscard]] static Files makeGame() {
@@ -117,13 +117,13 @@ class UpdaterTest : public ::testing::Test {
         return files;
     }
 
-    ChannelPublisher::Publication publish(const Files& files, std::uint64_t appBuild = test::ReleaseFixture::kAppBuild) const {
+    haylen::content::ChannelPublisher::Publication publish(const Files& files, std::uint64_t appBuild = test::ReleaseFixture::kAppBuild) const {
         return publish(files, release.getKeys(), release.getContentKeyId(), appBuild);
     }
 
-    ChannelPublisher::Publication publish(const Files& files, std::shared_ptr<const KeyRing> keys, const Digest& keyId, std::uint64_t appBuild = test::ReleaseFixture::kAppBuild) const {
-        const ChannelPublisher publisher(std::move(keys), keyId, release.getSharedSigningKey());
-        return publisher.publish(io::MemoryPackage("source", files), tree.getPath(), {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = appBuild, .channel = "stable", .release = release.getFolder()});
+    haylen::content::ChannelPublisher::Publication publish(const Files& files, std::shared_ptr<const haylen::content::KeyRing> keys, const haylen::content::Digest& keyId, std::uint64_t appBuild = test::ReleaseFixture::kAppBuild) const {
+        const haylen::content::ChannelPublisher publisher(std::move(keys), keyId, release.getSharedSigningKey());
+        return publisher.publish(haylen::io::MemoryPackage("source", files), tree.getPath(), {.profile = std::string(test::ReleaseFixture::kProfile), .appBuild = appBuild, .channel = "stable", .release = release.getFolder()});
     }
 
     [[nodiscard]] Files makeUpdate(int level) const {
@@ -141,7 +141,7 @@ class UpdaterTest : public ::testing::Test {
                 return false;
             }
 
-            for (core::JobSystem& jobs : jobSystems) {
+            for (haylen::core::JobSystem& jobs : jobSystems) {
                 jobs.getScheduler().poll();
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -150,13 +150,13 @@ class UpdaterTest : public ::testing::Test {
         return true;
     }
 
-    [[nodiscard]] std::unique_ptr<Client> connect(std::shared_ptr<const KeyRing> keys = nullptr, std::shared_ptr<const KeyProvider> provider = nullptr) {
-        return std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()), std::move(keys), std::move(provider));
+    [[nodiscard]] std::unique_ptr<Client> connect(std::shared_ptr<const haylen::content::KeyRing> keys = nullptr, std::shared_ptr<const haylen::content::KeyProvider> provider = nullptr) {
+        return std::make_unique<Client>(*this, std::make_unique<haylen::content::FolderStoreFiles>(store.getPath()), std::move(keys), std::move(provider));
     }
 
-    std::pair<std::optional<UpdateOffer>, std::optional<Error>> check(Client& client) {
-        std::optional<std::pair<std::optional<UpdateOffer>, std::optional<Error>>> result;
-        client.updater->check([&result](std::optional<UpdateOffer> offer, std::optional<Error> error) { result.emplace(std::move(offer), std::move(error)); });
+    std::pair<std::optional<haylen::content::UpdateOffer>, std::optional<haylen::content::Error>> check(Client& client) {
+        std::optional<std::pair<std::optional<haylen::content::UpdateOffer>, std::optional<haylen::content::Error>>> result;
+        client.updater->check([&result](std::optional<haylen::content::UpdateOffer> offer, std::optional<haylen::content::Error> error) { result.emplace(std::move(offer), std::move(error)); });
         if (!pumpUntil([&result] { return result.has_value(); })) {
             throw std::runtime_error("The check for an update never answered.");
         }
@@ -164,10 +164,10 @@ class UpdaterTest : public ::testing::Test {
         return std::move(*result);
     }
 
-    Updater::Collection collect(Client& client) {
-        std::optional<Updater::Collection> collection;
+    haylen::content::Updater::Collection collect(Client& client) {
+        std::optional<haylen::content::Updater::Collection> collection;
         // clang-format off
-        client.updater->collect([&collection](Updater::Collection collected, std::optional<Error> error) {
+        client.updater->collect([&collection](haylen::content::Updater::Collection collected, std::optional<haylen::content::Error> error) {
             EXPECT_FALSE(error);
             collection = collected;
         });
@@ -179,7 +179,7 @@ class UpdaterTest : public ::testing::Test {
         return *collection;
     }
 
-    UpdateOffer requireOffer(Client& client) {
+    haylen::content::UpdateOffer requireOffer(Client& client) {
         auto [offer, error] = check(client);
         if (error) {
             throw std::runtime_error(std::string("The check for an update failed. ") + error->what());
@@ -192,9 +192,9 @@ class UpdaterTest : public ::testing::Test {
         return std::move(*offer);
     }
 
-    std::optional<Error> install(Client& client, const UpdateOffer& offer) {
-        std::optional<std::optional<Error>> result;
-        client.updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
+    std::optional<haylen::content::Error> install(Client& client, const haylen::content::UpdateOffer& offer) {
+        std::optional<std::optional<haylen::content::Error>> result;
+        client.updater->install(offer, {}, [&result](std::optional<haylen::content::Error> error) { result.emplace(std::move(error)); });
         if (!pumpUntil([&result] { return result.has_value(); }, std::chrono::seconds(20))) {
             throw std::runtime_error("The install of the update never ended.");
         }
@@ -230,19 +230,19 @@ class UpdaterTest : public ::testing::Test {
     }
 
     // Reads the record that a staged file holds, or nothing while the store has not written a whole start of it.
-    [[nodiscard]] static std::optional<PartialRecord> readStaged(const std::filesystem::path& file) {
+    [[nodiscard]] static std::optional<haylen::content::PartialRecord> readStaged(const std::filesystem::path& file) {
         try {
-            return PartialRecord::parse(test::TestFiles::read(file));
-        } catch (const Error&) {
+            return haylen::content::PartialRecord::parse(test::TestFiles::read(file));
+        } catch (const haylen::content::Error&) {
             return std::nullopt;
         }
     }
 
-    static void writeStaged(const std::filesystem::path& file, const PartialRecord& partial) {
+    static void writeStaged(const std::filesystem::path& file, const haylen::content::PartialRecord& partial) {
         test::TestFiles::write(file, partial.write());
     }
 
-    [[nodiscard]] static std::string readText(const io::Package& package, std::string_view path) {
+    [[nodiscard]] static std::string readText(const haylen::io::Package& package, std::string_view path) {
         const std::vector<std::uint8_t> bytes = package.read(path);
         return {bytes.begin(), bytes.end()};
     }
@@ -254,14 +254,14 @@ class UpdaterTest : public ::testing::Test {
     test::ContentServer server{tree.getPath()};
 
     // The job systems of the clients outlive the clients, as the one of an engine outlives the services that post through it, so a job that a client left running when it went away still finds the job system it posts through.
-    std::list<core::JobSystem> jobSystems;
+    std::list<haylen::core::JobSystem> jobSystems;
 };
 
 TEST_F(UpdaterTest, InstallsAnUpdateThatPlaysFromTheNextStart) {
     publish(makeUpdate(2));
     {
         const std::unique_ptr<Client> client = connect();
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
         EXPECT_EQ(offer.generation, 1U);
         server.clearExchanges();
         ASSERT_FALSE(install(*client, offer));
@@ -288,7 +288,7 @@ TEST_F(UpdaterTest, InstallsFromAServerThatAnswersRangesWithWholeShards) {
     server.setIgnoresRanges(true);
     {
         const std::unique_ptr<Client> client = connect();
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
         server.clearExchanges();
         ASSERT_FALSE(install(*client, offer));
 
@@ -312,9 +312,9 @@ TEST_F(UpdaterTest, InstallsFromAServerThatAnswersRangesWithWholeShards) {
 
 // An online game hands out the key of an update from its service, so the app plays the content it has until the service gives the key, and the update installs once it does.
 TEST_F(UpdaterTest, AsksTheKeyProviderForTheKeyOfAnUpdate) {
-    const KeyProvider::Key rotatedKey = test::ReleaseFixture::makeKey(2);
-    auto rotated = std::make_shared<KeyRing>(*release.getKeys());
-    const Digest rotatedId = rotated->add(rotatedKey);
+    const haylen::content::KeyProvider::Key rotatedKey = test::ReleaseFixture::makeKey(2);
+    auto rotated = std::make_shared<haylen::content::KeyRing>(*release.getKeys());
+    const haylen::content::Digest rotatedId = rotated->add(rotatedKey);
     publish(makeUpdate(2), rotated, rotatedId);
     {
         const auto service = std::make_shared<test::ServiceKeyProvider>();
@@ -322,13 +322,13 @@ TEST_F(UpdaterTest, AsksTheKeyProviderForTheKeyOfAnUpdate) {
         auto [refused, error] = check(*client);
         EXPECT_FALSE(refused);
         ASSERT_TRUE(error);
-        EXPECT_EQ(error->getCode(), Error::Code::KeyUnavailable) << error->what();
+        EXPECT_EQ(error->getCode(), haylen::content::Error::Code::KeyUnavailable) << error->what();
         EXPECT_EQ(error->getDetails().keyId, rotatedId.toHex());
         EXPECT_EQ(service->getRequests(), 1);
         EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
 
         service->allow(rotatedKey);
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
         EXPECT_EQ(service->getRequests(), 2);
         ASSERT_FALSE(install(*client, offer));
     }
@@ -356,7 +356,7 @@ TEST_F(UpdaterTest, KeepsTheContentWhenTheDownloadOfTheManifestStops) {
     EXPECT_TRUE(client->package->getStore()->getState().pending.isZero());
     EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
 
-    const UpdateOffer again = requireOffer(*client);
+    const haylen::content::UpdateOffer again = requireOffer(*client);
     ASSERT_FALSE(install(*client, again));
 }
 
@@ -366,7 +366,7 @@ TEST_F(UpdaterTest, LeavesTheStoreAsItWasWhenTheAppStopsWhileItChecks) {
     {
         std::unique_ptr<Client> client = connect();
         server.setStalls(true);
-        client->updater->check([](std::optional<UpdateOffer>, std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
+        client->updater->check([](std::optional<haylen::content::UpdateOffer>, std::optional<haylen::content::Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
         ASSERT_TRUE(pumpUntil([this] { return server.getAnswering() > 0; }));
         client.reset();
         server.setStalls(false);
@@ -386,7 +386,7 @@ TEST_F(UpdaterTest, KeepsTheContentWhenThePowerFailsAsTheUpdateBecomesActive) {
         auto files = std::make_unique<test::CrashingStoreFiles>(store.getPath());
         test::CrashingStoreFiles& crashing = *files;
         const auto client = std::make_unique<Client>(*this, std::move(files));
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
 
         // The install writes the state twice: once to mark the update pending and once to make it active.
         crashing.crashOnWrite("state-", 1);
@@ -397,7 +397,7 @@ TEST_F(UpdaterTest, KeepsTheContentWhenThePowerFailsAsTheUpdateBecomesActive) {
         const std::unique_ptr<Client> client = connect();
         EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
         EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
         EXPECT_EQ(offer.downloadBytes, 0U) << "The records that reached the disk before the loss of power stay.";
         server.clearExchanges();
         ASSERT_FALSE(install(*client, offer));
@@ -415,7 +415,7 @@ TEST_F(UpdaterTest, NeverWritesAgainTheManifestThatTheStateNames) {
         auto files = std::make_unique<test::CrashingStoreFiles>(store.getPath());
         test::CrashingStoreFiles& crashing = *files;
         const auto client = std::make_unique<Client>(*this, std::move(files));
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
 
         crashing.crashOnWrite("manifests/", 1);
         ASSERT_FALSE(install(*client, offer));
@@ -431,39 +431,39 @@ TEST_F(UpdaterTest, NeverWritesAgainTheManifestThatTheStateNames) {
 TEST_F(UpdaterTest, ReadsInTheRecordsOfADownloadThatALoadWaitsFor) {
     publish(makeUpdate(2));
 
-    for (const Downloader::Use use : {Downloader::Use::Keep, Downloader::Use::Read}) {
+    for (const haylen::content::Downloader::Use use : {haylen::content::Downloader::Use::Keep, haylen::content::Downloader::Use::Read}) {
         const test::TemporaryDirectory folder;
         auto files = std::make_unique<test::BrowserStoreFiles>(folder.getPath());
         test::BrowserStoreFiles& browser = *files;
         browser.dropAppended();
         const auto client = std::make_unique<Client>(*this, std::move(files));
-        const UpdateOffer offer = requireOffer(*client);
-        std::optional<std::optional<Error>> fetched;
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
+        std::optional<std::optional<haylen::content::Error>> fetched;
         // clang-format off
-        client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
+        client->downloader->fetch(offer.content->shards, offer.missing, [&client](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); }, {
             .onProgress = {},
-            .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
-        }, Downloader::Priority::Foreground, use);
+            .onComplete = [&fetched](std::optional<haylen::content::Error> error) { fetched.emplace(std::move(error)); },
+        }, haylen::content::Downloader::Priority::Foreground, use);
         // clang-format on
         ASSERT_TRUE(pumpUntil([&fetched] { return fetched.has_value(); }));
         ASSERT_FALSE(*fetched);
 
-        const bool reads = use == Downloader::Use::Read;
+        const bool reads = use == haylen::content::Downloader::Use::Read;
         EXPECT_EQ(browser.getLoadedCount(), reads ? offer.missing.size() : 0U);
         std::vector<std::uint8_t> scratch;
         std::vector<std::uint8_t> plain;
-        for (const Catalog::Chunk& chunk : offer.missing) {
+        for (const haylen::content::Catalog::Chunk& chunk : offer.missing) {
             if (reads) {
                 EXPECT_NO_THROW(offer.content->shards->readChunk(chunk, scratch, plain));
             } else {
-                EXPECT_THROW(offer.content->shards->readChunk(chunk, scratch, plain), Error);
+                EXPECT_THROW(offer.content->shards->readChunk(chunk, scratch, plain), haylen::content::Error);
             }
         }
 
         // Keeping content that the store holds already reads nothing in and downloads nothing.
-        std::optional<std::optional<Error>> kept;
+        std::optional<std::optional<haylen::content::Error>> kept;
         server.clearExchanges();
-        client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&kept](std::optional<Error> error) { kept.emplace(std::move(error)); }});
+        client->downloader->fetch(offer.content->shards, offer.missing, [&client](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&kept](std::optional<haylen::content::Error> error) { kept.emplace(std::move(error)); }});
         ASSERT_TRUE(pumpUntil([&kept] { return kept.has_value(); }));
         EXPECT_EQ(server.getSentBytes(), 0U);
         EXPECT_EQ(browser.getLoadedCount(), reads ? offer.missing.size() : 0U);
@@ -476,15 +476,15 @@ TEST_F(UpdaterTest, HoldsTransfersWhileTheStoreFallsBehind) {
     auto files = std::make_unique<test::BrowserStoreFiles>(store.getPath());
     test::BrowserStoreFiles& browser = *files;
     const auto client = std::make_unique<Client>(*this, std::move(files));
-    const UpdateOffer offer = requireOffer(*client);
-    browser.setUnwrittenBytes(Downloader::kMaximumHeldBytes + 1);
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
+    browser.setUnwrittenBytes(haylen::content::Downloader::kMaximumHeldBytes + 1);
     server.clearExchanges();
 
-    std::optional<std::optional<Error>> fetched;
+    std::optional<std::optional<haylen::content::Error>> fetched;
     // clang-format off
-    client->downloader->fetch(offer.content->shards, offer.missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
+    client->downloader->fetch(offer.content->shards, offer.missing, [&client](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); }, {
         .onProgress = {},
-        .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
+        .onComplete = [&fetched](std::optional<haylen::content::Error> error) { fetched.emplace(std::move(error)); },
     });
     (void)pumpUntil([&client] {
         client->downloader->update();
@@ -507,7 +507,7 @@ TEST_F(UpdaterTest, HoldsTransfersWhileTheStoreFallsBehind) {
 TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();
-    const UpdateOffer offer = requireOffer(*client);
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
 
     EXPECT_LT(offer.downloadBytes, 200U * 1024U) << "The unchanged music and image come from the shards that ship with the app.";
     EXPECT_GT(offer.reusedBytes, 3U * kMegabyte) << "The offer reuses the bytes of the unchanged music and image.";
@@ -522,10 +522,10 @@ TEST_F(UpdaterTest, DownloadsOnlyWhatChanged) {
 TEST_F(UpdaterTest, LetsGoOfTheDownloadOfAnInstallWhenItGoesAway) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();
-    const UpdateOffer offer = requireOffer(*client);
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
 
     server.setStalls(true);
-    client->updater->install(offer, {}, [](std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
+    client->updater->install(offer, {}, [](std::optional<haylen::content::Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
     ASSERT_TRUE(pumpUntil([this] { return server.getAnswering() > 0; }));
     client->updater.reset();
     server.setStalls(false);
@@ -535,18 +535,18 @@ TEST_F(UpdaterTest, LetsGoOfTheDownloadOfAnInstallWhenItGoesAway) {
 // A shard file of the release that cannot be read while the updater measures an offer ends the check with an error instead of leaving it waiting forever.
 TEST_F(UpdaterTest, AnswersACheckWhoseReleaseFilesCannotBeRead) {
     publish(makeUpdate(2));
-    const auto client = std::make_unique<Client>(*this, std::make_unique<FolderStoreFiles>(store.getPath()), nullptr, nullptr, std::make_shared<VanishingShards>(release.getFiles()));
+    const auto client = std::make_unique<Client>(*this, std::make_unique<haylen::content::FolderStoreFiles>(store.getPath()), nullptr, nullptr, std::make_shared<VanishingShards>(release.getFiles()));
 
     auto [offer, error] = check(*client);
     EXPECT_FALSE(offer);
     ASSERT_TRUE(error);
-    EXPECT_EQ(error->getCode(), Error::Code::CacheCorrupt);
+    EXPECT_EQ(error->getCode(), haylen::content::Error::Code::CacheCorrupt);
     EXPECT_NE(std::string(error->what()).find("could not be opened"), std::string::npos) << error->what();
 }
 
 TEST_F(UpdaterTest, RefusesAChannelThatGoesBack) {
     publish(makeUpdate(2));
-    const std::filesystem::path channel = tree.getPath() / PublicationLayout::getChannelPath("stable");
+    const std::filesystem::path channel = tree.getPath() / haylen::content::PublicationLayout::getChannelPath("stable");
     const std::filesystem::path older = store.getPath().parent_path() / (store.getPath().filename().string() + "-channel");
     std::filesystem::copy_file(channel, older);
     publish(makeUpdate(3));
@@ -559,7 +559,7 @@ TEST_F(UpdaterTest, RefusesAChannelThatGoesBack) {
     auto [offer, error] = check(*client);
     EXPECT_FALSE(offer);
     ASSERT_TRUE(error);
-    EXPECT_EQ(error->getCode(), Error::Code::ManifestRollbackRejected);
+    EXPECT_EQ(error->getCode(), haylen::content::Error::Code::ManifestRollbackRejected);
 }
 
 TEST_F(UpdaterTest, RefusesContentForLaterBuildsOfTheApp) {
@@ -569,22 +569,22 @@ TEST_F(UpdaterTest, RefusesContentForLaterBuildsOfTheApp) {
     auto [offer, error] = check(*client);
     EXPECT_FALSE(offer);
     ASSERT_TRUE(error);
-    EXPECT_EQ(error->getCode(), Error::Code::ManifestIncompatible);
-    EXPECT_EQ(error->getDetails().manifestId.size(), Digest::kSize * 2) << "The failure names the manifest it refused.";
+    EXPECT_EQ(error->getCode(), haylen::content::Error::Code::ManifestIncompatible);
+    EXPECT_EQ(error->getDetails().manifestId.size(), haylen::content::Digest::kSize * 2) << "The failure names the manifest it refused.";
     EXPECT_EQ(error->getDetails().platform, test::ReleaseFixture::kProfile);
 }
 
 TEST_F(UpdaterTest, KeepsTheContentWhenTheDeviceLacksRoom) {
     publish(makeUpdate(2));
     const auto client = std::make_unique<Client>(*this, std::make_unique<test::LimitedStoreFiles>(store.getPath(), 10 * kMegabyte));
-    const std::optional<Error> error = install(*client, requireOffer(*client));
+    const std::optional<haylen::content::Error> error = install(*client, requireOffer(*client));
 
     ASSERT_TRUE(error);
-    EXPECT_EQ(error->getCode(), Error::Code::InsufficientStorage);
+    EXPECT_EQ(error->getCode(), haylen::content::Error::Code::InsufficientStorage);
     EXPECT_TRUE(error->isRetryable());
     EXPECT_GT(error->getDetails().requiredBytes, error->getDetails().availableBytes);
     EXPECT_EQ(error->getDetails().availableBytes, 10 * kMegabyte);
-    EXPECT_EQ(error->getDetails().manifestId.size(), Digest::kSize * 2) << "The failure names the manifest of the install.";
+    EXPECT_EQ(error->getDetails().manifestId.size(), haylen::content::Digest::kSize * 2) << "The failure names the manifest of the install.";
     EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
 }
 
@@ -594,11 +594,11 @@ TEST_F(UpdaterTest, KeepsTheContentWhenTheBrowserRunsOutOfQuota) {
     update["content/maps/world.bin"] = test::TestFiles::randomBytes(3 * kMegabyte, 22);
     publish(update);
     const auto client = std::make_unique<Client>(*this, std::make_unique<test::QuotaStoreFiles>(store.getPath(), kMegabyte));
-    const std::optional<Error> error = install(*client, requireOffer(*client));
+    const std::optional<haylen::content::Error> error = install(*client, requireOffer(*client));
 
     ASSERT_TRUE(error);
-    EXPECT_EQ(error->getCode(), Error::Code::QuotaExceeded);
-    EXPECT_EQ(Error::getCodeName(error->getCode()), "quotaExceeded");
+    EXPECT_EQ(error->getCode(), haylen::content::Error::Code::QuotaExceeded);
+    EXPECT_EQ(haylen::content::Error::getCodeName(error->getCode()), "quotaExceeded");
     EXPECT_TRUE(error->isRetryable());
     EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
 }
@@ -617,7 +617,7 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
     server.dropAfter(1500 * 1024, 1);
     {
         const std::unique_ptr<Client> client = connect();
-        const std::optional<Error> error = install(*client, requireOffer(*client));
+        const std::optional<haylen::content::Error> error = install(*client, requireOffer(*client));
         ASSERT_TRUE(error);
         EXPECT_TRUE(error->isRetryable()) << static_cast<int>(error->getCode()) << " " << error->what();
         EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
@@ -630,7 +630,7 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
     const std::unique_ptr<Client> client = connect();
     EXPECT_EQ(collect(*client).removedRecords, 0U);
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
-    const UpdateOffer offer = requireOffer(*client);
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
     EXPECT_LT(offer.downloadBytes, whole);
     ASSERT_FALSE(install(*client, offer));
     EXPECT_GE(client->downloader->getStatistics().resumedRecords, 1U);
@@ -646,14 +646,14 @@ TEST_F(UpdaterTest, DownloadsARecordWholeWhenItsStagedBytesAreDamaged) {
     update["content/maps/world.bin"] = test::TestFiles::randomBytes(6 * kMegabyte, 21);
     publish(update);
     const std::filesystem::path staged = stageStoppedRecord();
-    std::optional<PartialRecord> partial = readStaged(staged);
+    std::optional<haylen::content::PartialRecord> partial = readStaged(staged);
     ASSERT_TRUE(partial);
     partial->bytes[partial->bytes.size() / 2] ^= 1U;
     writeStaged(staged, *partial);
 
     {
         const std::unique_ptr<Client> client = connect();
-        const std::optional<Error> error = install(*client, requireOffer(*client));
+        const std::optional<haylen::content::Error> error = install(*client, requireOffer(*client));
         EXPECT_FALSE(error) << error->what();
         EXPECT_GE(client->downloader->getStatistics().resumedRecords, 1U);
     }
@@ -667,7 +667,7 @@ TEST_F(UpdaterTest, DiscardsAStagedStartThatDoesNotMatchItsRecord) {
     update["content/maps/world.bin"] = test::TestFiles::randomBytes(6 * kMegabyte, 21);
     publish(update);
     const std::filesystem::path staged = stageStoppedRecord();
-    std::optional<PartialRecord> partial = readStaged(staged);
+    std::optional<haylen::content::PartialRecord> partial = readStaged(staged);
     ASSERT_TRUE(partial);
     const std::vector<std::uint8_t> beyond = test::TestFiles::randomBytes(static_cast<std::size_t>(partial->recordSize) - partial->bytes.size() + 1000, 22);
     partial->bytes.insert(partial->bytes.end(), beyond.begin(), beyond.end());
@@ -676,7 +676,7 @@ TEST_F(UpdaterTest, DiscardsAStagedStartThatDoesNotMatchItsRecord) {
 
     {
         const std::unique_ptr<Client> client = connect();
-        const std::optional<Error> error = install(*client, requireOffer(*client));
+        const std::optional<haylen::content::Error> error = install(*client, requireOffer(*client));
         EXPECT_FALSE(error) << error->what();
         EXPECT_EQ(client->downloader->getStatistics().resumedRecords, 0U);
         EXPECT_TRUE(pumpUntil([&staged] { return !std::filesystem::exists(staged); }));
@@ -695,13 +695,13 @@ TEST_F(UpdaterTest, ReportsADownloadThatStoppedOnceTheRecordsThatArrivedAreOnThe
         auto files = std::make_unique<test::GatedStoreFiles>(store.getPath());
         test::GatedStoreFiles& gate = *files;
         const auto client = std::make_unique<Client>(*this, std::move(files));
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
         whole = offer.downloadBytes;
 
         gate.close();
         server.dropAfter(1500 * 1024, 1);
-        std::optional<std::optional<Error>> result;
-        client->updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
+        std::optional<std::optional<haylen::content::Error>> result;
+        client->updater->install(offer, {}, [&result](std::optional<haylen::content::Error> error) { result.emplace(std::move(error)); });
         // clang-format off
         ASSERT_TRUE(pumpUntil([this, &gate] {
             const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
@@ -723,12 +723,12 @@ TEST_F(UpdaterTest, ReportsADownloadThatStoppedOnceTheRecordsThatArrivedAreOnThe
 
 TEST_F(UpdaterTest, FallsBackToThePreviousContentWhenTheActiveOneIsDamaged) {
     publish(makeUpdate(2));
-    Digest second;
+    haylen::content::Digest second;
     {
         const std::unique_ptr<Client> client = connect();
         ASSERT_FALSE(install(*client, requireOffer(*client)));
         publish(makeUpdate(3));
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
         second = offer.content->manifest->getId();
         ASSERT_FALSE(install(*client, offer));
     }
@@ -736,7 +736,7 @@ TEST_F(UpdaterTest, FallsBackToThePreviousContentWhenTheActiveOneIsDamaged) {
 
     const std::unique_ptr<Client> client = connect();
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
-    const std::optional<ReleasePackage::Recovery> recovery = client->package->takeRecovery();
+    const std::optional<haylen::content::ReleasePackage::Recovery> recovery = client->package->takeRecovery();
     ASSERT_TRUE(recovery);
     EXPECT_EQ(recovery->failed, second);
     EXPECT_FALSE(client->package->takeRecovery()) << "A fallback is reported once.";
@@ -770,12 +770,12 @@ TEST_F(UpdaterTest, ReplacesARecordThatTheDeviceDamaged) {
 
     // The record that lost its end leaves the store when the store opens, so the content needs it again.
     const std::unique_ptr<Client> client = connect();
-    const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
-    EXPECT_THROW((void)client->package->read("content/maps/level.tmj"), Error);
-    std::optional<std::optional<Error>> fetched;
-    const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
+    const std::shared_ptr<const haylen::content::ReleasePackage::Content> content = client->package->getContent();
+    EXPECT_THROW((void)client->package->read("content/maps/level.tmj"), haylen::content::Error);
+    std::optional<std::optional<haylen::content::Error>> fetched;
+    const std::vector<haylen::content::Catalog::Chunk> missing = haylen::content::Downloader::findMissing(*content->shards, haylen::content::Updater::getChunks(*content->catalog, haylen::content::Delivery::Required, {}));
     EXPECT_FALSE(missing.empty());
-    client->downloader->fetch(content->shards, missing, [client = client.get()](const ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); }});
+    client->downloader->fetch(content->shards, missing, [client = client.get()](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); }, {.onComplete = [&fetched](std::optional<haylen::content::Error> error) { fetched.emplace(std::move(error)); }});
     ASSERT_TRUE(pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);
     EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
@@ -795,27 +795,27 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
     try {
         (void)client->package->read("content/maps/level.tmj");
         ADD_FAILURE() << "A record that the store did not read in is not readable.";
-    } catch (const Error& error) {
+    } catch (const haylen::content::Error& error) {
         // The failure names the file that the app read, the pack and the record it needed.
         EXPECT_EQ(error.getDetails().path, "content/maps/level.tmj");
-        EXPECT_EQ(error.getDetails().packId.size(), Digest::kSize * 2);
-        EXPECT_EQ(error.getDetails().storedId.size(), Digest::kSize * 2);
-        EXPECT_EQ(error.getDetails().contentId.size(), Digest::kSize * 2);
+        EXPECT_EQ(error.getDetails().packId.size(), haylen::content::Digest::kSize * 2);
+        EXPECT_EQ(error.getDetails().storedId.size(), haylen::content::Digest::kSize * 2);
+        EXPECT_EQ(error.getDetails().contentId.size(), haylen::content::Digest::kSize * 2);
     }
 
-    const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
-    const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
+    const std::shared_ptr<const haylen::content::ReleasePackage::Content> content = client->package->getContent();
+    const std::vector<haylen::content::Catalog::Chunk> missing = haylen::content::Downloader::findMissing(*content->shards, haylen::content::Updater::getChunks(*content->catalog, haylen::content::Delivery::Required, {}));
     ASSERT_FALSE(missing.empty());
-    EXPECT_EQ(Downloader::measure(missing, *client->package->getStore()), 0U) << "Reading records in downloads nothing.";
+    EXPECT_EQ(haylen::content::Downloader::measure(missing, *client->package->getStore()), 0U) << "Reading records in downloads nothing.";
     server.clearExchanges();
 
-    std::optional<std::optional<Error>> fetched;
+    std::optional<std::optional<haylen::content::Error>> fetched;
     std::uint64_t total = 0;
     // clang-format off
-    client->downloader->fetch(content->shards, missing, [&client](const ShardReference& pack) { return client->updater->locate(pack); }, {
-        .onProgress = [&total](const Downloader::Progress& progress) { total = std::max(total, progress.totalBytes); },
-        .onComplete = [&fetched](std::optional<Error> error) { fetched.emplace(std::move(error)); },
-    }, Downloader::Priority::Foreground, Downloader::Use::Read);
+    client->downloader->fetch(content->shards, missing, [&client](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); }, {
+        .onProgress = [&total](const haylen::content::Downloader::Progress& progress) { total = std::max(total, progress.totalBytes); },
+        .onComplete = [&fetched](std::optional<haylen::content::Error> error) { fetched.emplace(std::move(error)); },
+    }, haylen::content::Downloader::Priority::Foreground, haylen::content::Downloader::Use::Read);
     // clang-format on
     ASSERT_TRUE(pumpUntil([&fetched] { return fetched.has_value(); }));
     ASSERT_FALSE(*fetched);
@@ -833,22 +833,22 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
 
     publish(update);
     const std::unique_ptr<Client> client = connect();
-    const UpdateOffer offer = requireOffer(*client);
-    const auto locate = [&client](const ShardReference& pack) { return client->updater->locate(pack); };
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
+    const auto locate = [&client](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); };
     std::vector<std::string> finished;
     // clang-format off
     const auto chunksOf = [&offer](std::string_view path) {
-        const Catalog& catalog = *offer.content->catalog;
-        const Catalog::File file = test::CatalogFiles::find(catalog, path);
-        std::vector<Catalog::Chunk> chunks;
+        const haylen::content::Catalog& catalog = *offer.content->catalog;
+        const haylen::content::Catalog::File file = test::CatalogFiles::find(catalog, path);
+        std::vector<haylen::content::Catalog::Chunk> chunks;
         for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
             chunks.push_back(catalog.getChunk(catalog.getPart(part).chunk));
         }
 
         return chunks;
     };
-    const auto fetch = [&](std::string_view path, Downloader::Priority priority) {
-        client->downloader->fetch(offer.content->shards, chunksOf(path), locate, {.onComplete = [&finished, name = std::string(path)](std::optional<Error> error) {
+    const auto fetch = [&](std::string_view path, haylen::content::Downloader::Priority priority) {
+        client->downloader->fetch(offer.content->shards, chunksOf(path), locate, {.onComplete = [&finished, name = std::string(path)](std::optional<haylen::content::Error> error) {
             EXPECT_FALSE(error) << error->what();
             finished.push_back(name);
         }}, priority);
@@ -858,10 +858,10 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
     server.setDelay(150);
 
     // The first background request reads the header and the index of the shard before its range starts, so the requests after it plan ranges of their own.
-    fetch("content/extra/a.bin", Downloader::Priority::Background);
+    fetch("content/extra/a.bin", haylen::content::Downloader::Priority::Background);
     ASSERT_TRUE(pumpUntil([&client] { return client->downloader->getStatistics().requests >= 3; }));
-    fetch("content/extra/b.bin", Downloader::Priority::Background);
-    fetch("content/extra/c.bin", Downloader::Priority::Foreground);
+    fetch("content/extra/b.bin", haylen::content::Downloader::Priority::Background);
+    fetch("content/extra/c.bin", haylen::content::Downloader::Priority::Foreground);
     ASSERT_TRUE(pumpUntil([&finished] { return finished.size() == 3; }));
 
     EXPECT_EQ(finished.back(), "content/extra/b.bin") << "The second background request starts only once the first ends.";
@@ -871,37 +871,37 @@ TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
 TEST_F(UpdaterTest, SharesOneDownloadAmongRequestsAndKeepsItForTheOnesThatStay) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();
-    const UpdateOffer offer = requireOffer(*client);
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
     server.clearExchanges();
 
-    std::optional<std::optional<Error>> first;
-    std::optional<std::optional<Error>> second;
-    const auto locate = [&client](const ShardReference& pack) { return client->updater->locate(pack); };
-    const std::uint64_t cancelled = client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<Error> error) { first.emplace(std::move(error)); }});
-    client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&second](std::optional<Error> error) { second.emplace(std::move(error)); }});
+    std::optional<std::optional<haylen::content::Error>> first;
+    std::optional<std::optional<haylen::content::Error>> second;
+    const auto locate = [&client](const haylen::content::ShardReference& pack) { return client->updater->locate(pack); };
+    const std::uint64_t cancelled = client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<haylen::content::Error> error) { first.emplace(std::move(error)); }});
+    client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&second](std::optional<haylen::content::Error> error) { second.emplace(std::move(error)); }});
     client->downloader->cancel(cancelled);
     ASSERT_TRUE(pumpUntil([&first, &second] { return first.has_value() && second.has_value(); }));
 
     ASSERT_TRUE(*first);
-    EXPECT_EQ((*first)->getCode(), Error::Code::NetworkCancelled);
+    EXPECT_EQ((*first)->getCode(), haylen::content::Error::Code::NetworkCancelled);
     EXPECT_FALSE(*second);
     EXPECT_LE(server.getSentBytes(), offer.downloadBytes + 64 * 1024) << "Both requests share every download.";
 }
 
 // A record whose bytes fail their checks fails its request and stops being wanted, so a request after the server serves it right downloads it again.
 TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
-    const ChannelPublisher::Publication publication = publish(makeUpdate(2));
+    const haylen::content::ChannelPublisher::Publication publication = publish(makeUpdate(2));
 
     // Every new pack serves records with a damaged byte in every block, while its header and its index stay whole.
     std::map<std::string, std::string> originals;
-    for (const ShardReference& reference : publication.newPacks) {
-        const std::string pack = PublicationLayout::getPackPath(reference);
+    for (const haylen::content::ShardReference& reference : publication.newPacks) {
+        const std::string pack = haylen::content::PublicationLayout::getPackPath(reference);
         std::string bytes = test::TestFiles::readText(tree.getPath() / pack);
         originals.emplace(pack, bytes);
-        std::array<std::uint8_t, ShardHeader::kSize> header{};
+        std::array<std::uint8_t, haylen::content::ShardHeader::kSize> header{};
         std::copy_n(bytes.begin(), header.size(), reinterpret_cast<char*>(header.data()));
-        const std::uint64_t indexOffset = ShardHeader::parse(header, bytes.size()).indexOffset;
-        for (std::uint64_t offset = ShardHeader::kSize + 64; offset < indexOffset; offset += 1024) {
+        const std::uint64_t indexOffset = haylen::content::ShardHeader::parse(header, bytes.size()).indexOffset;
+        for (std::uint64_t offset = haylen::content::ShardHeader::kSize + 64; offset < indexOffset; offset += 1024) {
             bytes[offset] = static_cast<char>(~bytes[offset]);
         }
 
@@ -910,10 +910,10 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
     }
 
     const std::unique_ptr<Client> client = connect();
-    const UpdateOffer offer = requireOffer(*client);
-    const auto locate = [&client](const ShardReference& reference) { return client->updater->locate(reference); };
-    std::optional<std::optional<Error>> first;
-    client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<Error> error) { first.emplace(std::move(error)); }});
+    const haylen::content::UpdateOffer offer = requireOffer(*client);
+    const auto locate = [&client](const haylen::content::ShardReference& reference) { return client->updater->locate(reference); };
+    std::optional<std::optional<haylen::content::Error>> first;
+    client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<haylen::content::Error> error) { first.emplace(std::move(error)); }});
     ASSERT_TRUE(pumpUntil([&first] { return first.has_value(); }));
     ASSERT_TRUE(*first);
 
@@ -923,10 +923,10 @@ TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
         server.touch(pack);
     }
 
-    std::optional<Error> failure;
+    std::optional<haylen::content::Error> failure;
     for (int attempt = 0; attempt < 3; ++attempt) {
-        std::optional<std::optional<Error>> retried;
-        client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&retried](std::optional<Error> error) { retried.emplace(std::move(error)); }});
+        std::optional<std::optional<haylen::content::Error>> retried;
+        client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&retried](std::optional<haylen::content::Error> error) { retried.emplace(std::move(error)); }});
         ASSERT_TRUE(pumpUntil([&retried] { return retried.has_value(); }));
         failure = *retried;
         if (!failure) {
@@ -948,7 +948,7 @@ TEST_F(UpdaterTest, CollectsWhatNoRetainedContentUses) {
         ASSERT_FALSE(install(*client, requireOffer(*client)));
     }
 
-    const LocalStore::Statistics before = client->package->getStore()->getStatistics();
+    const haylen::content::LocalStore::Statistics before = client->package->getStore()->getStatistics();
 
     EXPECT_GT(collect(*client).removedRecords, 0U);
     EXPECT_LT(client->package->getStore()->getStatistics().records, before.records);
@@ -970,15 +970,15 @@ TEST_F(UpdaterTest, KeepsTheRecordsOfAnInstallThatStartsWhileACollectionRuns) {
         auto files = std::make_unique<test::GatedManifestStoreFiles>(store.getPath());
         test::GatedManifestStoreFiles& gate = *files;
         const auto client = std::make_unique<Client>(*this, std::move(files));
-        const UpdateOffer offer = requireOffer(*client);
+        const haylen::content::UpdateOffer offer = requireOffer(*client);
 
         // The collection waits for the device while it reads the manifests of the state, and the install starts meanwhile.
         gate.close();
-        std::optional<std::optional<Error>> collected;
-        client->updater->collect([&collected](Updater::Collection, std::optional<Error> error) { collected.emplace(std::move(error)); });
+        std::optional<std::optional<haylen::content::Error>> collected;
+        client->updater->collect([&collected](haylen::content::Updater::Collection, std::optional<haylen::content::Error> error) { collected.emplace(std::move(error)); });
         ASSERT_TRUE(pumpUntil([&gate] { return gate.isHolding(); }));
-        std::optional<std::optional<Error>> installed;
-        client->updater->install(offer, {}, [&installed](std::optional<Error> error) { installed.emplace(std::move(error)); });
+        std::optional<std::optional<haylen::content::Error>> installed;
+        client->updater->install(offer, {}, [&installed](std::optional<haylen::content::Error> error) { installed.emplace(std::move(error)); });
         // The install may end or wait for the device behind the collection, so this wait gives it time without requiring either.
         (void)pumpUntil([&installed] { return installed.has_value(); }, std::chrono::seconds(2));
 
@@ -994,4 +994,4 @@ TEST_F(UpdaterTest, KeepsTheRecordsOfAnInstallThatStartsWhileACollectionRuns) {
     EXPECT_EQ(restarted->package->read("content/maps/level.tmj"), makeUpdate(3).at("content/maps/level.tmj"));
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

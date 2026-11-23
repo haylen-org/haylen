@@ -5,7 +5,7 @@
 
 #include "support/LuaFixture.hpp"
 
-namespace haylen::procedural2d {
+namespace haylen::lua::procedural2d {
 
 class Procedural2DLuaTest : public ::testing::Test {
   protected:
@@ -227,4 +227,4 @@ TEST_F(Procedural2DLuaTest, AutotilesByNeighborsAndWangSets) {
     EXPECT_NE(lua("procedural.autotileWang(colors, {kind = 'diagonal', tiles = {}})").find("\"corner\", \"edge\" or \"mixed\""), std::string::npos);
 }
 
-} // namespace haylen::procedural2d
+} // namespace haylen::lua::procedural2d

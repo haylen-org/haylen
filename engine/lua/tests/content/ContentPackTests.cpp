@@ -24,7 +24,7 @@
 #include "support/StorePackSource.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // An app without a server whose expansion is a pack that a store installs next to the app, or leaves out for a player who does not own it.
 class ContentPackTest : public test::ContentAppFixture {
@@ -34,10 +34,10 @@ class ContentPackTest : public test::ContentAppFixture {
         const std::string app = R"({"name": "Packs", "identifier": "com.haylen.tests", "content": {"delivery": [{"match": "expansion/**", "pack": "expansion"}]}})";
         game["haylen.json"] = test::TestFiles::bytes(app);
         game.emplace("content/expansion/island.json", test::TestFiles::bytes(R"({"palms": 7})"));
-        release.build(io::MemoryPackage("source", game));
-        const ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
-        const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(app));
-        (void)ReleaseStager(inspector, config.content).stage(release.getFolder(), shipped.getPath() / "app", std::nullopt, shipped.getPath() / "packs", ReleaseStager::Content::All);
+        release.build(haylen::io::MemoryPackage("source", game));
+        const haylen::content::ReleaseInspector inspector(release.getKeys(), {release.getSigningKey().getVerifyingKey()});
+        const haylen::core::AppConfig config = haylen::core::AppConfig::fromJson(haylen::core::Json::parse(app));
+        (void)haylen::content::ReleaseStager(inspector, config.content).stage(release.getFolder(), shipped.getPath() / "app", std::nullopt, shipped.getPath() / "packs", haylen::content::ReleaseStager::Content::All);
     }
 
     // Loads an asset of the expansion and returns the error of the load, empty once the asset loaded.
@@ -58,8 +58,8 @@ TEST_F(ContentPackTest, AsksItsSourcesForAPackThatAnAssetNeeds) {
     const auto other = std::make_shared<test::StorePackSource>();
     const auto store = std::make_shared<test::StorePackSource>();
     store->install("expansion", shipped.getPath() / "packs" / "expansion");
-    const core::Connection first = engine->getContent().addPackSource(other);
-    const core::Connection second = engine->getContent().addPackSource(store);
+    const haylen::core::Connection first = engine->getContent().addPackSource(other);
+    const haylen::core::Connection second = engine->getContent().addPackSource(store);
 
     // The load never names the store: the source that delivers nothing passes the pack on to the next one, which installs it.
     EXPECT_EQ(loadIsland(), "");
@@ -74,12 +74,12 @@ TEST_F(ContentPackTest, FailsALoadWhoseSourceFailsOrGoesAway) {
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
     const auto broken = std::make_shared<test::StorePackSource>();
     broken->fail("The store is offline.");
-    core::Connection connection = engine->getContent().addPackSource(broken);
+    haylen::core::Connection connection = engine->getContent().addPackSource(broken);
     EXPECT_EQ(loadIsland(), "The store is offline.");
     connection.disconnect();
     const auto misplaced = std::make_shared<test::StorePackSource>();
     misplaced->install("expansion", shipped.getPath() / "missing");
-    core::Connection elsewhere = engine->getContent().addPackSource(misplaced);
+    haylen::core::Connection elsewhere = engine->getContent().addPackSource(misplaced);
     EXPECT_NE(loadIsland().find("which is no folder"), std::string::npos);
     elsewhere.disconnect();
 
@@ -87,7 +87,7 @@ TEST_F(ContentPackTest, FailsALoadWhoseSourceFailsOrGoesAway) {
     const auto slow = std::make_shared<test::StorePackSource>();
     slow->install("expansion", shipped.getPath() / "packs" / "expansion");
     slow->hold();
-    core::Connection waiting = engine->getContent().addPackSource(slow);
+    haylen::core::Connection waiting = engine->getContent().addPackSource(slow);
     std::optional<std::string> failure;
     engine->getAssets().loadAsync("json", "expansion/island.json", [&failure](const std::shared_ptr<void>&, std::string error) { failure = std::move(error); });
     ASSERT_TRUE(frameUntil([&slow] { return slow->getRequests() == 1; }));
@@ -170,11 +170,11 @@ TEST_F(ContentPackTest, StartsWithoutAPackThatIsNotInstalledAndReadsOneThatArriv
     EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
 
     // The store installs the pack into the folder of packs next to the app, which the runtime reads with the release.
-    auto files = std::make_shared<io::CompositePackage>("app", std::vector<std::shared_ptr<const io::Package>>{io::Package::openDirectory(shipped.getPath() / "app"), io::Package::openDirectory(shipped.getPath() / "packs" / "expansion")});
+    auto files = std::make_shared<haylen::io::CompositePackage>("app", std::vector<std::shared_ptr<const haylen::io::Package>>{haylen::io::Package::openDirectory(shipped.getPath() / "app"), haylen::io::Package::openDirectory(shipped.getPath() / "packs" / "expansion")});
     run(files);
     ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
     EXPECT_TRUE(engine->getContent().isLocal("expansion/island.json"));
     EXPECT_EQ(engine->getAssets().json("expansion/island.json")["palms"], 7);
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

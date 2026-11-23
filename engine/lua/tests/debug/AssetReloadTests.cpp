@@ -11,25 +11,25 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class AssetReloadTest : public PackageEditTest {};
 
 TEST_F(AssetReloadTest, UpdatesTexturesInPlaceAndDropsOtherAssets) {
     test::LuaFixture fixture({{"content/hero.png", toText(test::TestFiles::pngImage(4, 4, 0xFF0000FFU))}, {"content/data.json", R"({"level": 1})"}});
-    assets::Manager& assets = fixture.engine().getAssets();
-    const graphics::Texture hero = assets.texture("hero.png");
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
+    const haylen::graphics::Texture hero = assets.texture("hero.png");
     EXPECT_EQ(assets.json("data.json").at("level"), 1);
     EXPECT_EQ(hero.getWidth(), 4);
 
     fixture.package().setFile("content/hero.png", test::TestFiles::pngImage(8, 2, 0x00FF00FFU));
     fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
-    EXPECT_EQ(assets.reload("hero.png"), (assets::Manager::Reload{.inPlace = 1}));
+    EXPECT_EQ(assets.reload("hero.png"), (haylen::assets::Manager::Reload{.inPlace = 1}));
     EXPECT_EQ(hero.getWidth(), 8);
     EXPECT_EQ(hero.getHeight(), 2);
-    EXPECT_EQ(assets.reload("data.json"), assets::Manager::Reload{});
+    EXPECT_EQ(assets.reload("data.json"), haylen::assets::Manager::Reload{});
     EXPECT_EQ(assets.json("data.json").at("level"), 2);
-    EXPECT_EQ(assets.reload("missing.png"), assets::Manager::Reload{});
+    EXPECT_EQ(assets.reload("missing.png"), haylen::assets::Manager::Reload{});
 
     fixture.package().setFile("content/hero.png", test::TestFiles::bytes("broken"));
     EXPECT_THROW((void)assets.reload("hero.png"), std::runtime_error);
@@ -46,13 +46,13 @@ TEST_F(AssetReloadTest, UpdatesJsonInPlaceAndAnnouncesStaleAssets) {
         icon = require('haylen.assets').vectorImage('icon.svg')
     )");
     // clang-format on
-    assets::Manager& assets = fixture.engine().getAssets();
+    haylen::assets::Manager& assets = fixture.engine().getAssets();
     const std::shared_ptr<void> held = assets.load("json", "data.json");
 
     fixture.package().setFile("content/data.json", test::TestFiles::bytes(R"({"level": 2})"));
     fixture.package().setFile("content/icon.svg", test::TestFiles::bytes(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 12"><path d="M0 0h48v12z"/></svg>)"));
-    EXPECT_EQ(assets.reload("data.json"), (assets::Manager::Reload{.inPlace = 1}));
-    EXPECT_EQ(assets.reload("icon.svg"), (assets::Manager::Reload{.stale = 1}));
+    EXPECT_EQ(assets.reload("data.json"), (haylen::assets::Manager::Reload{.inPlace = 1}));
+    EXPECT_EQ(assets.reload("icon.svg"), (haylen::assets::Manager::Reload{.stale = 1}));
     EXPECT_EQ(assets.json("data.json").at("level"), 2);
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "reloaded json data.json, changed vectorImage icon.svg");
@@ -93,4 +93,4 @@ TEST_F(AssetReloadTest, RebuildsCatalogsAndThemesFromChangedFiles) {
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

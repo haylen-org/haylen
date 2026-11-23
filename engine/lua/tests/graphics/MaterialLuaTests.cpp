@@ -8,7 +8,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/MaterialShaders.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 // Uniforms that Lua sets every frame, lists of numbers among them, and the draws that take the material allocate nothing once their storage has grown.
 TEST(MaterialLuaTest, SetsUniformsEveryFrameWithoutAllocating) {
@@ -75,4 +75,4 @@ TEST(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
     EXPECT_NE(fixture.lua("assets.shader('shaders/missing.shader')").find("error: "), std::string::npos);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

@@ -27,7 +27,7 @@
 #include "support/ReleaseFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 // Every parser of the content formats meets random bytes and damaged copies of valid files, and must reject them with a content error, never with a crash, an overread or another exception. The fuzzer of the content formats drives the same parsers without a limit.
 class HostileInputTest : public ::testing::Test {
@@ -44,7 +44,7 @@ class HostileInputTest : public ::testing::Test {
 
         const std::vector<std::uint8_t> plain = test::TestFiles::bytes("chunk");
         std::vector<std::uint8_t> ciphertext;
-        const ChunkRecord::Header header = RecordSealer::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext).serialize();
+        const haylen::content::ChunkRecord::Header header = haylen::content::RecordSealer::seal(*release.getContentKey(), plain, haylen::content::ChunkRecord::identifyContent(plain), ciphertext).serialize();
         seeds.push_back(withParser(0, {header.begin(), header.end()}));
 
         for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
@@ -53,21 +53,21 @@ class HostileInputTest : public ::testing::Test {
             }
         }
 
-        seeds.push_back(withParser(2, ShardIndex({{.storedId = Digest::of(plain), .recordOffset = 160, .encodedSize = 5, .plainSize = 5}, {.storedId = Digest::of(header), .recordOffset = 300, .encodedSize = 5, .plainSize = 5}}).serialize()));
+        seeds.push_back(withParser(2, haylen::content::ShardIndex({{.storedId = haylen::content::Digest::of(plain), .recordOffset = 160, .encodedSize = 5, .plainSize = 5}, {.storedId = haylen::content::Digest::of(header), .recordOffset = 300, .encodedSize = 5, .plainSize = 5}}).serialize()));
 
-        CatalogWriter catalog;
-        catalog.addChunk({.storedId = Digest::of(plain), .contentId = Digest::of(header), .plainSize = 5, .encodedSize = 5, .shard = 3});
-        catalog.addFile("content/a.txt", Delivery::Prefetch, std::vector{Digest::of(plain), Digest::of(plain)});
-        catalog.addFile("content/b/c.txt", Delivery::Required, {});
+        haylen::content::CatalogWriter catalog;
+        catalog.addChunk({.storedId = haylen::content::Digest::of(plain), .contentId = haylen::content::Digest::of(header), .plainSize = 5, .encodedSize = 5, .shard = 3});
+        catalog.addFile("content/a.txt", haylen::content::Delivery::Prefetch, std::vector{haylen::content::Digest::of(plain), haylen::content::Digest::of(plain)});
+        catalog.addFile("content/b/c.txt", haylen::content::Delivery::Required, {});
         seeds.push_back(withParser(3, catalog.write()));
 
-        seeds.push_back(withParser(4, test::TestFiles::read(release.getFolder() / ReleasePackage::kContentManifestFile)));
-        const ChannelDescriptor descriptor{.application = Manifest::identifyApplication("com.haylen.tests"), .channel = "stable", .generation = 2};
-        seeds.push_back(withParser(5, ChannelWriter::write(descriptor, release.getSigningKey())));
-        seeds.push_back(withParser(6, StoreState{.application = descriptor.application, .channel = "stable", .acceptedGeneration = 2}.write()));
-        const StoreEntry::Bytes entry = StoreEntry{.storedId = Digest::of(plain), .segment = 1, .offset = 16, .size = 200}.write();
+        seeds.push_back(withParser(4, test::TestFiles::read(release.getFolder() / haylen::content::ReleasePackage::kContentManifestFile)));
+        const haylen::content::ChannelDescriptor descriptor{.application = haylen::content::Manifest::identifyApplication("com.haylen.tests"), .channel = "stable", .generation = 2};
+        seeds.push_back(withParser(5, haylen::content::ChannelWriter::write(descriptor, release.getSigningKey())));
+        seeds.push_back(withParser(6, haylen::content::StoreState{.application = descriptor.application, .channel = "stable", .acceptedGeneration = 2}.write()));
+        const haylen::content::StoreEntry::Bytes entry = haylen::content::StoreEntry{.storedId = haylen::content::Digest::of(plain), .segment = 1, .offset = 16, .size = 200}.write();
         seeds.push_back(withParser(7, {entry.begin(), entry.end()}));
-        seeds.push_back(withParser(8, PartialRecord{.shardId = Digest::of(plain), .recordOffset = 160, .recordSize = 300, .validator = "\"v\"", .bytes = plain}.write()));
+        seeds.push_back(withParser(8, haylen::content::PartialRecord{.shardId = haylen::content::Digest::of(plain), .recordOffset = 160, .recordSize = 300, .validator = "\"v\"", .bytes = plain}.write()));
         return seeds;
     }
 
@@ -111,27 +111,27 @@ TEST_F(HostileInputTest, ParsersRejectDamagedFiles) {
 
 TEST(BinaryReaderTest, NeverMovesPastItsBytes) {
     const std::vector<std::uint8_t> bytes = {2, 0, 'a', 'b', 0};
-    BinaryReader reader(bytes, Error::Code::CorruptIndex, "test structure");
+    haylen::content::BinaryReader reader(bytes, haylen::content::Error::Code::CorruptIndex, "test structure");
     try {
         reader.skip(bytes.size() + 1);
         FAIL() << "A skip past the end must fail.";
-    } catch (const Error& error) {
-        EXPECT_EQ(error.getCode(), Error::Code::CorruptIndex);
+    } catch (const haylen::content::Error& error) {
+        EXPECT_EQ(error.getCode(), haylen::content::Error::Code::CorruptIndex);
         EXPECT_EQ(std::string(error.what()), "The test structure ends before its fields do.");
     }
 
     EXPECT_EQ(reader.getPosition(), 0U);
     EXPECT_EQ(reader.readString(2), "ab");
-    EXPECT_THROW(reader.requireEnd(), Error);
+    EXPECT_THROW(reader.requireEnd(), haylen::content::Error);
     reader.skipZeros(1);
     reader.requireEnd();
 }
 
 TEST(BinaryWriterTest, RefusesStringsLongerThanTheirLengthField) {
-    BinaryWriter writer;
+    haylen::content::BinaryWriter writer;
     EXPECT_THROW(writer.writeString(std::string(65536, 'a')), std::length_error);
     writer.writeString(std::string(65535, 'a'));
     EXPECT_EQ(writer.getBytes().size(), 65537U);
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

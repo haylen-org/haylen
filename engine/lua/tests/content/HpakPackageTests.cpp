@@ -39,7 +39,7 @@
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 class HpakPackageTest : public ::testing::Test {
   protected:
@@ -60,18 +60,18 @@ class HpakPackageTest : public ::testing::Test {
     }
 
     void build(const std::map<std::string, std::vector<std::uint8_t>>& files) {
-        release.build(io::MemoryPackage("source", files));
+        release.build(haylen::io::MemoryPackage("source", files));
     }
 
-    [[nodiscard]] std::shared_ptr<io::Package> open() const {
+    [[nodiscard]] std::shared_ptr<haylen::io::Package> open() const {
         return release.open();
     }
 
-    static void expectCode(Error::Code code, const std::function<void()>& action) {
+    static void expectCode(haylen::content::Error::Code code, const std::function<void()>& action) {
         try {
             action();
             ADD_FAILURE() << "The action must fail.";
-        } catch (const Error& error) {
+        } catch (const haylen::content::Error& error) {
             EXPECT_EQ(error.getCode(), code) << error.what();
         }
     }
@@ -94,7 +94,7 @@ class HpakPackageTest : public ::testing::Test {
 TEST_F(HpakPackageTest, ServesTheFilesOfTheApp) {
     const auto files = makeFiles();
     build(files);
-    const std::shared_ptr<io::Package> package = open();
+    const std::shared_ptr<haylen::io::Package> package = open();
 
     // The Lua modules of the app and its plugins ship as bytecode, and every other file as it is.
     std::vector<std::string> paths;
@@ -122,7 +122,7 @@ TEST_F(HpakPackageTest, ServesTheFilesOfTheApp) {
     EXPECT_FALSE(package->exists("content/missing.png"));
     EXPECT_THROW((void)package->read("content/missing.png"), std::runtime_error);
     EXPECT_THROW((void)package->read("../outside"), std::invalid_argument);
-    EXPECT_EQ(core::AppConfig::fromPackage(*package).name, "Release Test");
+    EXPECT_EQ(haylen::core::AppConfig::fromPackage(*package).name, "Release Test");
 
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator(release.getFolder())) {
         const std::string name = entry.path().filename().string();
@@ -133,10 +133,10 @@ TEST_F(HpakPackageTest, ServesTheFilesOfTheApp) {
 TEST_F(HpakPackageTest, ReadsRangesAcrossChunks) {
     const auto files = makeFiles();
     build(files);
-    const std::shared_ptr<io::Package> package = open();
+    const std::shared_ptr<haylen::io::Package> package = open();
     const std::vector<std::uint8_t>& terrain = files.at("content/world/terrain.bin");
 
-    for (const std::uint64_t offset : {std::uint64_t{0}, std::uint64_t{1}, std::uint64_t{Chunker::kMinimumSize - 3}, std::uint64_t{3 * kMegabyte + 12345}, std::uint64_t{terrain.size() - 10}}) {
+    for (const std::uint64_t offset : {std::uint64_t{0}, std::uint64_t{1}, std::uint64_t{haylen::content::Chunker::kMinimumSize - 3}, std::uint64_t{3 * kMegabyte + 12345}, std::uint64_t{terrain.size() - 10}}) {
         const std::vector<std::uint8_t> range = package->readAssetRange("world/terrain.bin", offset, 2 * kMegabyte);
         const std::size_t expected = static_cast<std::size_t>(std::min<std::uint64_t>(2 * kMegabyte, terrain.size() - offset));
         ASSERT_EQ(range.size(), expected);
@@ -146,7 +146,7 @@ TEST_F(HpakPackageTest, ReadsRangesAcrossChunks) {
     EXPECT_TRUE(package->readAssetRange("world/terrain.bin", terrain.size(), 10).empty());
 
     // Reading the file in pieces that never line up with its chunks gives back every byte.
-    const std::unique_ptr<io::PackageReader> reader = package->openReader("content/world/terrain.bin");
+    const std::unique_ptr<haylen::io::PackageReader> reader = package->openReader("content/world/terrain.bin");
     std::vector<std::uint8_t> streamed(terrain.size());
     for (std::size_t offset = 0; offset < streamed.size(); offset += 777777) {
         reader->readExactly(offset, std::span(streamed).subspan(offset, std::min<std::size_t>(777777, streamed.size() - offset)));
@@ -160,7 +160,7 @@ TEST_F(HpakPackageTest, ReadsRangesAcrossChunks) {
 TEST_F(HpakPackageTest, ReadsOnlyTheChunksOfARange) {
     build(makeFiles());
     const auto files = std::make_shared<test::CountingPackage>(release.getFiles());
-    const std::shared_ptr<io::Package> package = release.open(files);
+    const std::shared_ptr<haylen::io::Package> package = release.open(files);
     std::uint64_t shardBytes = 0;
     for (const std::string& shard : listShards()) {
         shardBytes += std::filesystem::file_size(release.getFolder() / shard);
@@ -176,37 +176,37 @@ TEST_F(HpakPackageTest, ReadsOnlyTheChunksOfARange) {
     {
         const test::AllocationTracker tracker;
         range = package->readAssetRange("world/terrain.bin", 5 * kMegabyte, 100);
-        EXPECT_LT(tracker.getLargest(), Chunker::kMaximumSize + 4096) << "No allocation holds more than one chunk.";
+        EXPECT_LT(tracker.getLargest(), haylen::content::Chunker::kMaximumSize + 4096) << "No allocation holds more than one chunk.";
     }
     EXPECT_EQ(range.size(), 100U);
-    EXPECT_LE(files->getReadBytes(), Chunker::kMaximumSize + ChunkRecord::kHeaderSize + ShardHeader::kSize + 64 * 1024);
-    EXPECT_LE(files->getLargestRead(), Chunker::kMaximumSize + ChunkRecord::kHeaderSize);
+    EXPECT_LE(files->getReadBytes(), haylen::content::Chunker::kMaximumSize + haylen::content::ChunkRecord::kHeaderSize + haylen::content::ShardHeader::kSize + 64 * 1024);
+    EXPECT_LE(files->getLargestRead(), haylen::content::Chunker::kMaximumSize + haylen::content::ChunkRecord::kHeaderSize);
     EXPECT_GT(shardBytes, 9 * kMegabyte);
 }
 
 TEST_F(HpakPackageTest, MountsHundredsOfGigabytesInBoundedMemory) {
     // One zero chunk of the largest size repeats to form a file of 300 GiB, so the package describes far more than any device holds.
     test::TemporaryDirectory folder;
-    const std::vector<std::uint8_t> zeros(Chunker::kMaximumSize);
+    const std::vector<std::uint8_t> zeros(haylen::content::Chunker::kMaximumSize);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = RecordSealer::seal(*release.getContentKey(), zeros, ChunkRecord::identifyContent(zeros), ciphertext);
-    ShardWriter writer(folder.getPath(), release.getContentKey());
+    const haylen::content::ChunkRecord record = haylen::content::RecordSealer::seal(*release.getContentKey(), zeros, haylen::content::ChunkRecord::identifyContent(zeros), ciphertext);
+    haylen::content::ShardWriter writer(folder.getPath(), release.getContentKey());
     writer.add(record, ciphertext);
-    const ShardReference reference = writer.finish();
+    const haylen::content::ShardReference reference = writer.finish();
 
     const std::uint64_t size = std::uint64_t{300} << 30;
-    CatalogWriter catalogWriter;
+    haylen::content::CatalogWriter catalogWriter;
     catalogWriter.addChunk({.storedId = record.storedId, .contentId = record.contentId, .plainSize = record.plainSize, .encodedSize = record.encodedSize, .codec = record.codec, .profile = record.profile});
-    catalogWriter.addFile("content/world.bin", Delivery::Required, std::vector<Digest>(static_cast<std::size_t>(size / Chunker::kMaximumSize), record.storedId));
+    catalogWriter.addFile("content/world.bin", haylen::content::Delivery::Required, std::vector<haylen::content::Digest>(static_cast<std::size_t>(size / haylen::content::Chunker::kMaximumSize), record.storedId));
     std::vector<std::uint8_t> catalogBytes = catalogWriter.write();
 
-    const std::shared_ptr<const io::Package> files = io::Package::openDirectory(folder.getPath());
-    std::unique_ptr<HpakPackage> package;
+    const std::shared_ptr<const haylen::io::Package> files = haylen::io::Package::openDirectory(folder.getPath());
+    std::unique_ptr<haylen::content::HpakPackage> package;
     std::size_t mountedBytes = 0;
     {
         const test::AllocationTracker tracker;
         // clang-format off
-        package = std::make_unique<HpakPackage>("huge", std::make_shared<const Catalog>(Catalog::parse(std::move(catalogBytes), 1)), std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), [files](const ShardReference& shard) {
+        package = std::make_unique<haylen::content::HpakPackage>("huge", std::make_shared<const haylen::content::Catalog>(haylen::content::Catalog::parse(std::move(catalogBytes), 1)), std::make_shared<const haylen::content::ShardSet>(std::vector{reference}, release.getKeys(), [files](const haylen::content::ShardReference& shard) {
             return files->openReader(shard.getFileName());
         }));
         // clang-format on
@@ -219,7 +219,7 @@ TEST_F(HpakPackageTest, MountsHundredsOfGigabytesInBoundedMemory) {
         const test::AllocationTracker tracker;
         const std::vector<std::uint8_t> range = package->readRange("content/world.bin", (std::uint64_t{250} << 30) + 12345, 100);
         EXPECT_EQ(range, std::vector<std::uint8_t>(100));
-        EXPECT_LT(tracker.getTotal(), 3 * Chunker::kMaximumSize) << "A read decrypts one chunk, whatever the size of its file.";
+        EXPECT_LT(tracker.getTotal(), 3 * haylen::content::Chunker::kMaximumSize) << "A read decrypts one chunk, whatever the size of its file.";
     }
     try {
         (void)package->read("content/world.bin");
@@ -233,7 +233,7 @@ TEST_F(HpakPackageTest, MountsHundredsOfGigabytesInBoundedMemory) {
         const test::AllocationTracker tracker;
 
         try {
-            (void)package->readRange("content/world.bin", size - io::Package::kMaxReadSize - 1, std::numeric_limits<std::size_t>::max());
+            (void)package->readRange("content/world.bin", size - haylen::io::Package::kMaxReadSize - 1, std::numeric_limits<std::size_t>::max());
             ADD_FAILURE() << "A range read longer than the limit must fail.";
         } catch (const std::runtime_error& error) {
             EXPECT_NE(std::string(error.what()).find("Read it in smaller ranges instead."), std::string::npos);
@@ -248,30 +248,30 @@ TEST_F(HpakPackageTest, RefusesChunksOfAnotherSizeThanTheCatalogNames) {
     test::TemporaryDirectory folder;
     const std::vector<std::uint8_t> plain = test::TestFiles::randomBytes(1000, 3);
     std::vector<std::uint8_t> ciphertext;
-    const ChunkRecord record = RecordSealer::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
-    ShardWriter writer(folder.getPath(), release.getContentKey());
+    const haylen::content::ChunkRecord record = haylen::content::RecordSealer::seal(*release.getContentKey(), plain, haylen::content::ChunkRecord::identifyContent(plain), ciphertext);
+    haylen::content::ShardWriter writer(folder.getPath(), release.getContentKey());
     writer.add(record, ciphertext);
-    const ShardReference reference = writer.finish();
+    const haylen::content::ShardReference reference = writer.finish();
 
-    CatalogWriter catalogWriter;
+    haylen::content::CatalogWriter catalogWriter;
     catalogWriter.addChunk({.storedId = record.storedId, .contentId = record.contentId, .plainSize = 2 * record.plainSize, .encodedSize = 2 * record.encodedSize, .codec = record.codec, .profile = record.profile});
-    catalogWriter.addFile("content/data.bin", Delivery::Required, std::vector<Digest>{record.storedId});
-    const std::shared_ptr<const io::Package> files = io::Package::openDirectory(folder.getPath());
+    catalogWriter.addFile("content/data.bin", haylen::content::Delivery::Required, std::vector<haylen::content::Digest>{record.storedId});
+    const std::shared_ptr<const haylen::io::Package> files = haylen::io::Package::openDirectory(folder.getPath());
     // clang-format off
-    const HpakPackage package("forged", std::make_shared<const Catalog>(Catalog::parse(catalogWriter.write(), 1)), std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), [files](const ShardReference& shard) {
+    const haylen::content::HpakPackage package("forged", std::make_shared<const haylen::content::Catalog>(haylen::content::Catalog::parse(catalogWriter.write(), 1)), std::make_shared<const haylen::content::ShardSet>(std::vector{reference}, release.getKeys(), [files](const haylen::content::ShardReference& shard) {
         return files->openReader(shard.getFileName());
     }));
     // clang-format on
 
     EXPECT_EQ(package.getFileSize("content/data.bin"), 2 * plain.size());
-    expectCode(Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", plain.size() + 500, 100); });
-    expectCode(Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", 0, 100); });
+    expectCode(haylen::content::Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", plain.size() + 500, 100); });
+    expectCode(haylen::content::Error::Code::CorruptChunk, [&] { (void)package.readRange("content/data.bin", 0, 100); });
 }
 
 TEST_F(HpakPackageTest, NamesAMissingFileByItsPathInThePackage) {
     // clang-format off
-    const HpakPackage package("app.hmanifest", std::make_shared<const Catalog>(Catalog::parse(CatalogWriter().write(), 0)), std::make_shared<const ShardSet>(std::vector<ShardReference>{}, release.getKeys(), [](const ShardReference&) {
-        return std::unique_ptr<io::PackageReader>();
+    const haylen::content::HpakPackage package("app.hmanifest", std::make_shared<const haylen::content::Catalog>(haylen::content::Catalog::parse(haylen::content::CatalogWriter().write(), 0)), std::make_shared<const haylen::content::ShardSet>(std::vector<haylen::content::ShardReference>{}, release.getKeys(), [](const haylen::content::ShardReference&) {
+        return std::unique_ptr<haylen::io::PackageReader>();
     }));
     // clang-format on
     const std::string message = "The package file \"app.hmanifest/content/missing.png\" was not found.";
@@ -289,37 +289,37 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
     test::TemporaryDirectory folder;
     const std::vector<std::uint8_t> first = test::TestFiles::randomBytes(5000, 7);
     const std::vector<std::uint8_t> second = test::TestFiles::randomBytes(3000, 8);
-    CatalogWriter catalogWriter;
-    std::vector<Digest> parts;
+    haylen::content::CatalogWriter catalogWriter;
+    std::vector<haylen::content::Digest> parts;
     std::vector<std::vector<std::uint8_t>> records;
     for (const std::vector<std::uint8_t>& plain : {first, second}) {
         std::vector<std::uint8_t> ciphertext;
-        const ChunkRecord record = RecordSealer::seal(*release.getContentKey(), plain, ChunkRecord::identifyContent(plain), ciphertext);
+        const haylen::content::ChunkRecord record = haylen::content::RecordSealer::seal(*release.getContentKey(), plain, haylen::content::ChunkRecord::identifyContent(plain), ciphertext);
         catalogWriter.addChunk({.storedId = record.storedId, .contentId = record.contentId, .plainSize = record.plainSize, .encodedSize = record.encodedSize, .codec = record.codec, .profile = record.profile});
         parts.push_back(record.storedId);
-        const ChunkRecord::Header header = record.serialize();
+        const haylen::content::ChunkRecord::Header header = record.serialize();
         records.emplace_back(header.begin(), header.end()).insert(records.back().end(), ciphertext.begin(), ciphertext.end());
     }
 
-    catalogWriter.addFile("content/level.bin", Delivery::OnDemand, parts);
-    const auto catalog = std::make_shared<const Catalog>(Catalog::parse(catalogWriter.write(), 1));
-    const ShardReference reference{.shardId = Digest::of(test::TestFiles::bytes("remote shard")), .fileSize = 1000};
-    const auto store = std::make_shared<LocalStore>(std::make_unique<FolderStoreFiles>(folder.getPath() / "store"), Digest(), 1);
-    const auto missing = [](const ShardReference&) { return std::unique_ptr<io::PackageReader>(); };
-    const HpakPackage package("store", catalog, std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), missing, store));
-    const HpakPackage bundled("bundled", catalog, std::make_shared<const ShardSet>(std::vector{reference}, release.getKeys(), missing));
+    catalogWriter.addFile("content/level.bin", haylen::content::Delivery::OnDemand, parts);
+    const auto catalog = std::make_shared<const haylen::content::Catalog>(haylen::content::Catalog::parse(catalogWriter.write(), 1));
+    const haylen::content::ShardReference reference{.shardId = haylen::content::Digest::of(test::TestFiles::bytes("remote shard")), .fileSize = 1000};
+    const auto store = std::make_shared<haylen::content::LocalStore>(std::make_unique<haylen::content::FolderStoreFiles>(folder.getPath() / "store"), haylen::content::Digest(), 1);
+    const auto missing = [](const haylen::content::ShardReference&) { return std::unique_ptr<haylen::io::PackageReader>(); };
+    const haylen::content::HpakPackage package("store", catalog, std::make_shared<const haylen::content::ShardSet>(std::vector{reference}, release.getKeys(), missing, store));
+    const haylen::content::HpakPackage bundled("bundled", catalog, std::make_shared<const haylen::content::ShardSet>(std::vector{reference}, release.getKeys(), missing));
 
-    const auto expectCode = [](Error::Code code, const std::function<void()>& action) {
+    const auto expectCode = [](haylen::content::Error::Code code, const std::function<void()>& action) {
         try {
             action();
             FAIL() << "The read must fail.";
-        } catch (const Error& error) {
+        } catch (const haylen::content::Error& error) {
             EXPECT_EQ(error.getCode(), code) << error.what();
         }
     };
-    expectCode(Error::Code::MissingShard, [&] { (void)bundled.read("content/level.bin"); });
+    expectCode(haylen::content::Error::Code::MissingShard, [&] { (void)bundled.read("content/level.bin"); });
     store->addRecord(release.getContentKey()->getId(), records[0]);
-    expectCode(Error::Code::MissingChunk, [&] { (void)package.read("content/level.bin"); });
+    expectCode(haylen::content::Error::Code::MissingChunk, [&] { (void)package.read("content/level.bin"); });
 
     store->addRecord(release.getContentKey()->getId(), records[1]);
     std::vector<std::uint8_t> whole = first;
@@ -333,7 +333,7 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
         test::TestFiles::damage(segment.path(), segment.file_size() - 10);
     }
 
-    expectCode(Error::Code::CacheCorrupt, [&] { (void)package.readRange("content/level.bin", 5000, 10); });
+    expectCode(haylen::content::Error::Code::CacheCorrupt, [&] { (void)package.readRange("content/level.bin", 5000, 10); });
     EXPECT_FALSE(store->contains(parts[1]));
     EXPECT_TRUE(store->contains(parts[0]));
 }
@@ -341,9 +341,9 @@ TEST_F(HpakPackageTest, ReadsTheChunksOfAShardItLacksFromTheLocalStore) {
 TEST_F(HpakPackageTest, ReadsFromManyThreadsAtOnce) {
     const auto files = makeFiles();
     build(files);
-    const std::shared_ptr<io::Package> package = open();
+    const std::shared_ptr<haylen::io::Package> package = open();
     const std::vector<std::uint8_t>& terrain = files.at("content/world/terrain.bin");
-    const std::unique_ptr<io::PackageReader> shared = package->openReader("content/world/terrain.bin");
+    const std::unique_ptr<haylen::io::PackageReader> shared = package->openReader("content/world/terrain.bin");
 
     std::vector<std::thread> threads;
     std::vector<int> matches(8, 0);
@@ -375,15 +375,15 @@ TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
     files.emplace("haylen.json", test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests"})"));
     files.emplace("source/main.lua", test::TestFiles::bytes("return {}"));
     std::vector<std::string> parts;
-    for (std::uint32_t part = 0; part < ShardSet::kMaxOpenShards + 8; ++part) {
+    for (std::uint32_t part = 0; part < haylen::content::ShardSet::kMaxOpenShards + 8; ++part) {
         parts.push_back("parts/part_" + std::to_string(100 + part) + ".bin");
         files.emplace("content/" + parts.back(), test::TestFiles::randomBytes(40 * 1024, part + 1));
     }
 
-    release.build(io::MemoryPackage("source", files), 64 * 1024);
+    release.build(haylen::io::MemoryPackage("source", files), 64 * 1024);
     ASSERT_GE(listShards().size(), parts.size());
     const auto counting = std::make_shared<test::CountingPackage>(release.getFiles());
-    const std::shared_ptr<io::Package> package = release.open(counting);
+    const std::shared_ptr<haylen::io::Package> package = release.open(counting);
 
     std::vector<std::thread> threads;
     std::vector<std::size_t> matches(4, 0);
@@ -403,8 +403,8 @@ TEST_F(HpakPackageTest, KeepsABoundedNumberOfShardsOpen) {
     }
 
     EXPECT_EQ(matches, std::vector<std::size_t>(4, 2 * parts.size()));
-    EXPECT_LE(counting->getOpenReaders(), ShardSet::kMaxOpenShards + 1);
-    EXPECT_LE(counting->getMostOpenReaders(), ShardSet::kMaxOpenShards + 1 + matches.size());
+    EXPECT_LE(counting->getOpenReaders(), haylen::content::ShardSet::kMaxOpenShards + 1);
+    EXPECT_LE(counting->getMostOpenReaders(), haylen::content::ShardSet::kMaxOpenShards + 1 + matches.size());
 }
 
 TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
@@ -416,9 +416,9 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
     const std::string largest = *std::ranges::max_element(shards, {}, [this](const std::string& shard) { return std::filesystem::file_size(release.getFolder() / shard); });
     test::TestFiles::damage(release.getFolder() / largest, std::filesystem::file_size(release.getFolder() / largest) / 2);
     {
-        const std::shared_ptr<io::Package> damaged = open();
+        const std::shared_ptr<haylen::io::Package> damaged = open();
         EXPECT_EQ(damaged->readAssetText("data/config.json"), R"({"level": 3})");
-        expectCode(Error::Code::ChunkAuthenticationFailed, [&] { (void)damaged->readAsset("world/terrain.bin"); });
+        expectCode(haylen::content::Error::Code::ChunkAuthenticationFailed, [&] { (void)damaged->readAsset("world/terrain.bin"); });
     }
 
     // A missing shard keeps the package listing its files and fails the reads of them. The damaged package closed its shards first, since Windows deletes no file that is open.
@@ -426,25 +426,25 @@ TEST_F(HpakPackageTest, ReportsMissingAndDamagedContent) {
         ASSERT_TRUE(std::filesystem::remove(release.getFolder() / shard));
     }
 
-    const std::shared_ptr<io::Package> missing = open();
+    const std::shared_ptr<haylen::io::Package> missing = open();
     EXPECT_TRUE(missing->exists("source/main.lua"));
-    expectCode(Error::Code::MissingShard, [&] { (void)missing->read("source/main.lua"); });
+    expectCode(haylen::content::Error::Code::MissingShard, [&] { (void)missing->read("source/main.lua"); });
 }
 
 TEST_F(HpakPackageTest, RejectsReleasesThatAreNotForThisApp) {
     build(makeFiles());
     test::TestFiles::damage(release.getFolder() / "app.hmanifest", 100);
-    expectCode(Error::Code::ManifestSignatureInvalid, [&] { (void)open(); });
+    expectCode(haylen::content::Error::Code::ManifestSignatureInvalid, [&] { (void)open(); });
     test::TestFiles::damage(release.getFolder() / "app.hmanifest", 100);
     (void)open();
 
-    content::Compatibility newer = release.getCompatibility();
+    haylen::content::Compatibility newer = release.getCompatibility();
     newer.appBuild = test::ReleaseFixture::kAppBuild + 1;
-    const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
-    expectCode(Error::Code::ManifestIncompatible, [&] { (void)ReleasePackage::open(release.getFiles(), release.getKeys(), std::span(&trusted, 1), newer); });
+    const haylen::content::VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
+    expectCode(haylen::content::Error::Code::ManifestIncompatible, [&] { (void)haylen::content::ReleasePackage::open(release.getFiles(), release.getKeys(), std::span(&trusted, 1), newer); });
 
     std::filesystem::copy_file(release.getFolder() / "app.hmanifest", release.getFolder() / "content.hmanifest", std::filesystem::copy_options::overwrite_existing);
-    expectCode(Error::Code::CorruptManifest, [&] { (void)open(); });
+    expectCode(haylen::content::Error::Code::CorruptManifest, [&] { (void)open(); });
 }
 
 TEST_F(HpakPackageTest, AppliesUpdatesOverTheBase) {
@@ -457,10 +457,10 @@ TEST_F(HpakPackageTest, AppliesUpdatesOverTheBase) {
     build(files);
     const std::vector<std::string> updated = listShards();
     EXPECT_EQ(updated.size(), base.size() + 1) << "The update adds one patch shard next to the base shards.";
-    EXPECT_EQ(release.getStatistics(Manifest::Domain::App).newChunks, 0U);
-    EXPECT_EQ(release.getStatistics(Manifest::Domain::Content).newChunks, 2U);
+    EXPECT_EQ(release.getStatistics(haylen::content::Manifest::Domain::App).newChunks, 0U);
+    EXPECT_EQ(release.getStatistics(haylen::content::Manifest::Domain::Content).newChunks, 2U);
 
-    const std::shared_ptr<io::Package> package = open();
+    const std::shared_ptr<haylen::io::Package> package = open();
     EXPECT_EQ(package->readAssetText("data/config.json"), R"({"level": 4})");
     EXPECT_EQ(package->readAssetText("data/new.json"), R"({"new": true})");
     EXPECT_EQ(package->readAsset("world/terrain.bin"), files.at("content/world/terrain.bin"));
@@ -468,13 +468,13 @@ TEST_F(HpakPackageTest, AppliesUpdatesOverTheBase) {
 
 TEST_F(HpakPackageTest, RunsAnAppFromItsRelease) {
     build(makeFiles());
-    const std::shared_ptr<io::Package> package = open();
+    const std::shared_ptr<haylen::io::Package> package = open();
     test::TemporaryDirectory data;
-    platform::HeadlessHost host(data.getPath());
-    core::AppConfig config = core::AppConfig::fromPackage(*package);
+    haylen::platform::HeadlessHost host(data.getPath());
+    haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package);
     auto application = std::make_unique<lua::Application>();
     application->configure(config);
-    core::Engine engine(host, package, std::move(config), std::move(application));
+    haylen::core::Engine engine(host, package, std::move(config), std::move(application));
     engine.start();
     engine.frame(1.0 / 60.0);
 
@@ -484,4 +484,4 @@ TEST_F(HpakPackageTest, RunsAnAppFromItsRelease) {
     lua_pop(L, 1);
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

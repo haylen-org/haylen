@@ -15,27 +15,27 @@
 #include "support/FrameRenderer.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 TEST(ScreenEffectsTest, CameraFlashFadesOverWorldCanvases) {
-    Camera camera;
+    haylen::graphics2d::Camera camera;
     EXPECT_EQ(camera.getFlash().a, 0.0F);
-    camera.flash(math::Color{1.0F, 1.0F, 1.0F, 0.8F}, 0.5F);
+    camera.flash(haylen::math::Color{1.0F, 1.0F, 1.0F, 0.8F}, 0.5F);
     EXPECT_FLOAT_EQ(camera.getFlash().a, 0.8F);
     camera.update(0.25F);
     EXPECT_FLOAT_EQ(camera.getFlash().a, 0.2F);
     camera.update(0.5F);
-    EXPECT_EQ(camera.getFlash(), math::Color::transparent());
+    EXPECT_EQ(camera.getFlash(), haylen::math::Color::transparent());
 
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
-    camera.flash(math::Color::white(), 1.0F);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4, haylen::math::Color::white()));
+    camera.flash(haylen::math::Color::white(), 1.0F);
     // clang-format off
-    const Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
+    const haylen::graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(camera);
         renderer.draw({.texture = texture});
-        renderer.beginWorld(Camera{});
+        renderer.beginWorld(haylen::graphics2d::Camera{});
         renderer.draw({.texture = texture});
     });
     // clang-format on
@@ -44,30 +44,30 @@ TEST(ScreenEffectsTest, CameraFlashFadesOverWorldCanvases) {
 
 TEST(ScreenEffectsTest, DistortionDrawsGoIntoTheMapOfCompositedCanvases) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
-    const DrawOrder bending{.distortion = 0.5F};
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4, haylen::math::Color::white()));
+    const haylen::graphics2d::DrawOrder bending{.distortion = 0.5F};
 
     // A plain canvas has no distortion map and skips the draws, and a composited one renders them in a pass of their own.
     // clang-format off
-    const Renderer::Stats plain = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
-        renderer.beginWorld(Camera{});
+    const haylen::graphics2d::Renderer::Stats plain = test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(haylen::graphics2d::Camera{});
         renderer.draw({.texture = texture, .order = bending});
-        renderer.drawCircle({}, 20.0F, math::Color::white(), bending);
+        renderer.drawCircle({}, 20.0F, haylen::math::Color::white(), bending);
     });
     std::size_t visible = 0;
-    const Renderer::Stats bent = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
-        renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.distortion = 32.0F}});
+    const haylen::graphics2d::Renderer::Stats bent = test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.distortion = 32.0F}});
         renderer.draw({.texture = texture});
         renderer.draw({.texture = texture, .order = bending});
-        renderer.drawBatch(texture, std::vector<SpriteInstance>(3, SpriteInstance{.size = {8.0F, 8.0F}}), bending);
-        renderer.drawCircle({}, 20.0F, math::Color::white(), bending);
-        renderer.visitDrawn([&](const Renderer::Drawn&) { ++visible; });
+        renderer.drawBatch(texture, std::vector<haylen::graphics2d::SpriteInstance>(3, haylen::graphics2d::SpriteInstance{.size = {8.0F, 8.0F}}), bending);
+        renderer.drawCircle({}, 20.0F, haylen::math::Color::white(), bending);
+        renderer.visitDrawn([&](const haylen::graphics2d::Renderer::Drawn&) { ++visible; });
     });
-    const Renderer::Stats flat = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
-        renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.distortion = 32.0F}});
+    const haylen::graphics2d::Renderer::Stats flat = test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.distortion = 32.0F}});
         renderer.draw({.texture = texture});
     });
     // clang-format on
@@ -80,18 +80,18 @@ TEST(ScreenEffectsTest, DistortionDrawsGoIntoTheMapOfCompositedCanvases) {
     EXPECT_GT(bent.passes, flat.passes + 3U);
     // clang-format off
     const auto bend = [&](float distance) {
-        return test::FrameRenderer::renderOnce(fixture, [&, distance](core::Engine& engine) {
-            Renderer& renderer = engine.getRenderer2D();
-            renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.distortion = distance}});
+        return test::FrameRenderer::renderOnce(fixture, [&, distance](haylen::core::Engine& engine) {
+            haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.distortion = distance}});
             renderer.draw({.texture = texture, .order = bending});
         }).passes;
     };
     // clang-format on
     EXPECT_GT(bend(64.0F), bend(4.0F));
 
-    Renderer& renderer = fixture.engine().getRenderer2D();
-    renderer.beginWorld(Camera{}, {.ambientLight = math::Color::white()});
-    const StaticSpriteBatch baked = renderer.createStaticBatch(texture, std::vector<SpriteInstance>(1, SpriteInstance{.size = {4.0F, 4.0F}}));
+    haylen::graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
+    renderer.beginWorld(haylen::graphics2d::Camera{}, {.ambientLight = haylen::math::Color::white()});
+    const haylen::graphics2d::StaticSpriteBatch baked = renderer.createStaticBatch(texture, std::vector<haylen::graphics2d::SpriteInstance>(1, haylen::graphics2d::SpriteInstance{.size = {4.0F, 4.0F}}));
     EXPECT_THROW(renderer.drawStatic(baked, bending), std::invalid_argument);
     EXPECT_THROW(renderer.drawText(*fixture.engine().getDefaultFont(), "Bent", {}, {}, bending), std::invalid_argument);
     fixture.frames(1);
@@ -99,20 +99,20 @@ TEST(ScreenEffectsTest, DistortionDrawsGoIntoTheMapOfCompositedCanvases) {
 
 TEST(ScreenEffectsTest, BloomAndBlurAddPassesAtHalfTheSize) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(4, 4, haylen::math::Color::white()));
     // clang-format off
-    const auto render = [&](const PostProcess& post) {
-        return test::FrameRenderer::renderOnce(fixture, [&, post](core::Engine& engine) {
-            Renderer& renderer = engine.getRenderer2D();
-            renderer.beginWorld(Camera{}, {.postProcess = post});
+    const auto render = [&](const haylen::graphics2d::PostProcess& post) {
+        return test::FrameRenderer::renderOnce(fixture, [&, post](haylen::core::Engine& engine) {
+            haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = post});
             renderer.draw({.texture = texture});
         });
     };
     // clang-format on
-    const Renderer::Stats plain = render({});
-    const Renderer::Stats lens = render({.chromaticAberration = 4.0F, .pixelate = 6.0F});
-    const Renderer::Stats bloom = render({.bloomStrength = 0.8F, .bloomRadius = 4.0F});
-    const Renderer::Stats both = render({.blur = 4.0F, .bloomStrength = 0.8F, .bloomRadius = 4.0F});
+    const haylen::graphics2d::Renderer::Stats plain = render({});
+    const haylen::graphics2d::Renderer::Stats lens = render({.chromaticAberration = 4.0F, .pixelate = 6.0F});
+    const haylen::graphics2d::Renderer::Stats bloom = render({.bloomStrength = 0.8F, .bloomRadius = 4.0F});
+    const haylen::graphics2d::Renderer::Stats both = render({.blur = 4.0F, .bloomStrength = 0.8F, .bloomRadius = 4.0F});
 
     // The lens effects live in the composite, and a narrow bloom or blur shrinks once and blurs twice after the first stage.
     EXPECT_EQ(lens.passes, plain.passes);
@@ -127,38 +127,38 @@ TEST(ScreenEffectsTest, BloomAndBlurAddPassesAtHalfTheSize) {
     EXPECT_EQ(render({.bloomStrength = 0.8F, .bloomRadius = 64.0F / halfTexelsPerUnit}).passes, plain.passes + 4U + 2U * 4U);
 
     // A lookup texture is as wide as its height squared.
-    const graphics::Texture lut = fixture.engine().getGraphics().createTexture(graphics::Image(16, 4, math::Color::white()));
-    const graphics::Texture wrong = fixture.engine().getGraphics().createTexture(graphics::Image(16, 16, math::Color::white()));
+    const haylen::graphics::Texture lut = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(16, 4, haylen::math::Color::white()));
+    const haylen::graphics::Texture wrong = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(16, 16, haylen::math::Color::white()));
     EXPECT_EQ(render({.colorLut = lut, .colorLutStrength = 0.5F}).passes, plain.passes);
-    Renderer& renderer = fixture.engine().getRenderer2D();
-    EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.colorLut = wrong}}), std::invalid_argument);
-    EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.colorLut = lut, .colorLutStrength = 2.0F}}), std::invalid_argument);
-    EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.bloomRadius = 0.0F}}), std::invalid_argument);
-    EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.blur = -1.0F}}), std::invalid_argument);
-    EXPECT_THROW(renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.grain = 1.5F}}), std::invalid_argument);
+    haylen::graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
+    EXPECT_THROW(renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.colorLut = wrong}}), std::invalid_argument);
+    EXPECT_THROW(renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.colorLut = lut, .colorLutStrength = 2.0F}}), std::invalid_argument);
+    EXPECT_THROW(renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.bloomRadius = 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.blur = -1.0F}}), std::invalid_argument);
+    EXPECT_THROW(renderer.beginWorld(haylen::graphics2d::Camera{}, {.postProcess = haylen::graphics2d::PostProcess{.grain = 1.5F}}), std::invalid_argument);
 }
 
 TEST(ScreenEffectsTest, SpriteEffectsDrawInOneCallPerTexture) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(16, 16, math::Color::white()));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(16, 16, haylen::math::Color::white()));
     // clang-format off
-    const Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
-        Renderer& renderer = engine.getRenderer2D();
-        renderer.beginWorld(Camera{});
+    const haylen::graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(haylen::graphics2d::Camera{});
 
         for (int index = 0; index < 4; ++index) {
             renderer.draw({.texture = texture, .position = {static_cast<float>(index) * 20.0F, 0.0F}, .effect = {.dissolve = 0.25F * static_cast<float>(index), .outlineWidth = 2.0F, .glowSize = static_cast<float>(index) * 3.0F}});
         }
 
         renderer.draw({.texture = texture});
-        renderer.beginWorld(Camera{}, {.ambientLight = math::Color::black()});
-        renderer.draw({.texture = texture, .effect = {.glowSize = 8.0F, .glowColor = math::Color{1.0F, 0.8F, 0.2F, 1.0F}}});
+        renderer.beginWorld(haylen::graphics2d::Camera{}, {.ambientLight = haylen::math::Color::black()});
+        renderer.draw({.texture = texture, .effect = {.glowSize = 8.0F, .glowColor = haylen::math::Color{1.0F, 0.8F, 0.2F, 1.0F}}});
     });
     // clang-format on
     EXPECT_EQ(stats.sprites, 6U);
     EXPECT_EQ(stats.instances, 11U);
 
-    Renderer& renderer = fixture.engine().getRenderer2D();
+    haylen::graphics2d::Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginScreen();
     EXPECT_THROW(renderer.draw({.texture = texture, .effect = {.dissolve = 2.0F}}), std::invalid_argument);
     EXPECT_THROW(renderer.draw({.texture = texture, .effect = {.outlineWidth = 65.0F}}), std::invalid_argument);
@@ -194,4 +194,4 @@ TEST(ScreenEffectsTest, LuaReachesFlashDistortionPostProcessingAndSpriteEffects)
     EXPECT_NE(fixture.lua("hero.effect = {melt = 1}").find("Unknown option \"melt\""), std::string::npos);
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

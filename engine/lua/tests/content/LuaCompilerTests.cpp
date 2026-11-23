@@ -10,7 +10,7 @@
 #include "content/LuaBytecodeAbi.hpp"
 #include "content/LuaCompiler.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 class LuaCompilerTest : public ::testing::Test {
   protected:
@@ -63,4 +63,4 @@ TEST(LuaBytecodeAbiTest, NamesTheFormatOfTheChunksOfThisBuild) {
     EXPECT_EQ(lua::content::LuaBytecodeAbi::get(), "lua-" + std::to_string(LUA_VERSION_NUM / 100) + "." + std::to_string(LUA_VERSION_NUM % 100) + "-f0-i4-x4-l8-n8-le");
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

@@ -23,7 +23,7 @@
 #include "support/TestFiles.hpp"
 #include "support/VectorExpectations.hpp"
 
-namespace haylen::animation2d {
+namespace haylen::lua::animation2d {
 
 class SkeletonTest : public ::testing::Test {
   protected:
@@ -70,12 +70,12 @@ class SkeletonTest : public ::testing::Test {
         }
     })";
 
-    [[nodiscard]] static std::shared_ptr<SkeletonData> makeData(test::LuaFixture& fixture, const char* document = kSkeleton) {
-        auto atlas = std::make_shared<SpriteAtlas>(SpriteAtlas::parse(nlohmann::ordered_json::parse(kAtlas), fixture.engine().getGraphics().createTexture(graphics::Image(64, 96))));
-        return std::make_shared<SkeletonData>(SkeletonData::parse(core::Json::parse(document), atlas));
+    [[nodiscard]] static std::shared_ptr<haylen::animation2d::SkeletonData> makeData(test::LuaFixture& fixture, const char* document = kSkeleton) {
+        auto atlas = std::make_shared<haylen::animation2d::SpriteAtlas>(haylen::animation2d::SpriteAtlas::parse(nlohmann::ordered_json::parse(kAtlas), fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 96))));
+        return std::make_shared<haylen::animation2d::SkeletonData>(haylen::animation2d::SkeletonData::parse(haylen::core::Json::parse(document), atlas));
     }
 
-    [[nodiscard]] static std::size_t findBone(const Skeleton& skeleton, std::string_view name) {
+    [[nodiscard]] static std::size_t findBone(const haylen::animation2d::Skeleton& skeleton, std::string_view name) {
         const std::optional<std::size_t> bone = skeleton.findBone(name);
         if (!bone) {
             throw std::runtime_error("The skeleton has no bone \"" + std::string(name) + "\".");
@@ -89,7 +89,7 @@ using SkeletonLuaTest = SkeletonTest;
 
 TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
     test::LuaFixture fixture;
-    Skeleton skeleton(makeData(fixture));
+    haylen::animation2d::Skeleton skeleton(makeData(fixture));
     skeleton.position = {200.0F, 300.0F};
     skeleton.pose();
 
@@ -97,13 +97,13 @@ TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
     const std::size_t lower = findBone(skeleton, "lower");
     test::VectorExpectations::expectNear(skeleton.getBoneWorld(findBone(skeleton, "upper")).getTranslation(), {210.0F, 248.0F});
     test::VectorExpectations::expectNear(skeleton.getBoneWorld(lower).getTranslation(), {210.0F, 278.0F});
-    const std::optional<math::Vec2> tip = skeleton.getPoint("tip");
+    const std::optional<haylen::math::Vec2> tip = skeleton.getPoint("tip");
     ASSERT_TRUE(tip.has_value());
     test::VectorExpectations::expectNear(*tip, {210.0F, 308.0F});
 
     // Halfway through the wave the arm turned back by 45 degrees, and the event fires once per pass.
     std::vector<std::string> heard;
-    skeleton.eventFired.connect([&heard](const Skeleton::Event& event) { heard.push_back(std::string(event.name) + ":" + std::string(event.text) + ":" + std::to_string(event.track)); });
+    skeleton.eventFired.connect([&heard](const haylen::animation2d::Skeleton::Event& event) { heard.push_back(std::string(event.name) + ":" + std::string(event.text) + ":" + std::to_string(event.track)); });
     skeleton.play("wave", {.track = 0, .loop = true});
     skeleton.update(0.5F);
     EXPECT_NEAR(skeleton.getBonePose(findBone(skeleton, "upper")).rotation, std::numbers::pi_v<float> * 0.25F, 1.0e-4F);
@@ -121,14 +121,14 @@ TEST_F(SkeletonTest, ComposesBoneTransformsAndPlaysTracks) {
 
 TEST_F(SkeletonTest, FiresEventsSafelyWhenListenersUpdateAndLongStepsPass) {
     test::LuaFixture fixture;
-    Skeleton skeleton(makeData(fixture));
+    haylen::animation2d::Skeleton skeleton(makeData(fixture));
     skeleton.play("wave", {.track = 0, .loop = true});
 
     // A listener that updates the skeleton again hears its own events without losing the ones still waiting.
     std::vector<float> heard;
     bool nested = false;
     // clang-format off
-    skeleton.eventFired.connect([&](const Skeleton::Event& event) {
+    skeleton.eventFired.connect([&](const haylen::animation2d::Skeleton::Event& event) {
         heard.push_back(event.number);
 
         if (!nested) {
@@ -146,13 +146,13 @@ TEST_F(SkeletonTest, FiresEventsSafelyWhenListenersUpdateAndLongStepsPass) {
     EXPECT_GE(heard.size(), 1U);
     EXPECT_LE(heard.size(), 3U);
 
-    EXPECT_THROW(skeleton.play("wave", {.track = Skeleton::kMaxTracks}), std::out_of_range);
-    EXPECT_THROW(skeleton.setTrackWeight(Skeleton::kMaxTracks, 0.5F), std::out_of_range);
+    EXPECT_THROW(skeleton.play("wave", {.track = haylen::animation2d::Skeleton::kMaxTracks}), std::out_of_range);
+    EXPECT_THROW(skeleton.setTrackWeight(haylen::animation2d::Skeleton::kMaxTracks, 0.5F), std::out_of_range);
 }
 
 TEST_F(SkeletonTest, CrossfadesBetweenAnimations) {
     test::LuaFixture fixture;
-    Skeleton skeleton(makeData(fixture));
+    haylen::animation2d::Skeleton skeleton(makeData(fixture));
     skeleton.play("wave", {.track = 0, .loop = false});
     skeleton.update(1.0F);
     const std::size_t upper = findBone(skeleton, "upper");
@@ -168,19 +168,19 @@ TEST_F(SkeletonTest, CrossfadesBetweenAnimations) {
 
 TEST_F(SkeletonTest, ReachesTargetsWithTwoBones) {
     test::LuaFixture fixture;
-    Skeleton skeleton(makeData(fixture));
+    haylen::animation2d::Skeleton skeleton(makeData(fixture));
     skeleton.setIkMix("reach", 1.0F);
     skeleton.setIkTarget("reach", {40.0F, -52.0F});
     skeleton.pose();
 
     // The shoulder sits at (10, -52) and the arm is 60 long, so a target 30 away bends the elbow while the end of the forearm lands on it.
     const std::size_t lower = findBone(skeleton, "lower");
-    const math::Vec2 end = skeleton.getBoneWorld(lower).apply({30.0F, 0.0F});
+    const haylen::math::Vec2 end = skeleton.getBoneWorld(lower).apply({30.0F, 0.0F});
     test::VectorExpectations::expectNear(end, {40.0F, -52.0F});
     const float bentUp = skeleton.getBoneWorld(lower).getTranslation().y;
 
     skeleton.setIkTarget("reach", {40.0F, -52.0F});
-    Skeleton other(makeData(fixture, R"({"atlas": "a", "bones": [{"name": "root"}, {"name": "body", "parent": "root", "y": -32}, {"name": "upper", "parent": "body", "x": 10, "y": -20, "rotation": 90, "length": 30}, {"name": "lower", "parent": "upper", "x": 30, "length": 30}, {"name": "aim", "parent": "root"}], "ik": [{"name": "reach", "bones": ["upper", "lower"], "target": "aim", "bendPositive": false}]})"));
+    haylen::animation2d::Skeleton other(makeData(fixture, R"({"atlas": "a", "bones": [{"name": "root"}, {"name": "body", "parent": "root", "y": -32}, {"name": "upper", "parent": "body", "x": 10, "y": -20, "rotation": 90, "length": 30}, {"name": "lower", "parent": "upper", "x": 30, "length": 30}, {"name": "aim", "parent": "root"}], "ik": [{"name": "reach", "bones": ["upper", "lower"], "target": "aim", "bendPositive": false}]})"));
     other.setIkTarget("reach", {40.0F, -52.0F});
     other.pose();
     test::VectorExpectations::expectNear(other.getBoneWorld(findBone(other, "lower")).apply({30.0F, 0.0F}), {40.0F, -52.0F});
@@ -194,11 +194,11 @@ TEST_F(SkeletonTest, ReachesTargetsWithTwoBones) {
 
 TEST_F(SkeletonTest, SwapsSkinsAttachmentsAndDeformsMeshes) {
     test::LuaFixture fixture;
-    Skeleton skeleton(makeData(fixture));
-    const math::Rect before = skeleton.getBounds();
+    haylen::animation2d::Skeleton skeleton(makeData(fixture));
+    const haylen::math::Rect before = skeleton.getBounds();
     skeleton.play("flap", {.track = 0, .loop = false});
     skeleton.update(1.0F);
-    const math::Rect after = skeleton.getBounds();
+    const haylen::math::Rect after = skeleton.getBounds();
 
     // The cape grows to the right by its deform, and the fist went away at half time.
     EXPECT_GE(after.getRight(), before.getRight());
@@ -212,7 +212,7 @@ TEST_F(SkeletonTest, SwapsSkinsAttachmentsAndDeformsMeshes) {
 
     // The body, the cape and the fist draw as one mesh of 4, 4 and 4 vertices.
     // clang-format off
-    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&skeleton](core::Engine& engine) {
+    const haylen::graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&skeleton](haylen::core::Engine& engine) {
         engine.getRenderer2D().beginScreen();
         skeleton.pose();
         skeleton.draw(engine.getRenderer2D());
@@ -225,9 +225,9 @@ TEST_F(SkeletonTest, SwapsSkinsAttachmentsAndDeformsMeshes) {
 
 TEST_F(SkeletonTest, DrivesTracksFromStateGraphs) {
     test::LuaFixture fixture;
-    auto skeleton = std::make_shared<Skeleton>(makeData(fixture));
-    const auto graph = std::make_shared<StateGraph>(StateGraph::parse(core::Json::parse(R"({"parameters": {"lifting": false}, "initial": "wave", "states": {"wave": {"animation": "wave"}, "lift": {"animation": "lift"}}, "transitions": [{"from": "wave", "to": "lift", "when": "lifting", "fade": 0.25}]})")));
-    StateGraphPlayer player(graph, StateGraphPlayer::SkeletonTrack{.skeleton = skeleton, .track = 1});
+    auto skeleton = std::make_shared<haylen::animation2d::Skeleton>(makeData(fixture));
+    const auto graph = std::make_shared<haylen::animation2d::StateGraph>(haylen::animation2d::StateGraph::parse(haylen::core::Json::parse(R"({"parameters": {"lifting": false}, "initial": "wave", "states": {"wave": {"animation": "wave"}, "lift": {"animation": "lift"}}, "transitions": [{"from": "wave", "to": "lift", "when": "lifting", "fade": 0.25}]})")));
+    haylen::animation2d::StateGraphPlayer player(graph, haylen::animation2d::StateGraphPlayer::SkeletonTrack{.skeleton = skeleton, .track = 1});
     EXPECT_EQ(skeleton->getTrackAnimation(1), "wave");
     player.setBoolean("lifting", true);
     player.update(0.0F);
@@ -288,4 +288,4 @@ TEST_F(SkeletonLuaTest, LoadsPlaysAndDrawsSkeletonsFromLua) {
     EXPECT_EQ(fixture.lua("local ok, message = pcall(hero.on, hero, 'step', function() end) return message:match('Unknown.*')"), "Unknown skeleton event \"step\". Skeletons report \"event\".");
 }
 
-} // namespace haylen::animation2d
+} // namespace haylen::lua::animation2d

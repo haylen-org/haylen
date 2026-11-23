@@ -21,16 +21,16 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 class UiLuaTest : public ::testing::Test {
   protected:
-    core::Engine& getEngine() {
+    haylen::core::Engine& getEngine() {
         return fixture.engine();
     }
 
-    void pointer(platform::Event::Type type, math::Vec2 point) {
-        platform::Event event;
+    void pointer(haylen::platform::Event::Type type, haylen::math::Vec2 point) {
+        haylen::platform::Event event;
         event.type = type;
         event.position = getEngine().getViewport().toFramebuffer(point + getEngine().getViewport().getVisibleRect().getMin());
         getEngine().handleEvent(event);
@@ -41,18 +41,18 @@ class UiLuaTest : public ::testing::Test {
         const std::string center = fixture.lua("local b = " + gui + ":bounds('" + id + "') return b.x + b.width / 2 .. ',' .. b.y + b.height / 2");
         const std::size_t comma = center.find(',');
         ASSERT_NE(comma, std::string::npos) << center;
-        const math::Vec2 point = math::Vec2{std::stof(center.substr(0, comma)), std::stof(center.substr(comma + 1))} - getEngine().getViewport().getVisibleRect().getMin();
-        pointer(platform::Event::Type::MouseMove, point);
+        const haylen::math::Vec2 point = haylen::math::Vec2{std::stof(center.substr(0, comma)), std::stof(center.substr(comma + 1))} - getEngine().getViewport().getVisibleRect().getMin();
+        pointer(haylen::platform::Event::Type::MouseMove, point);
         fixture.frames(1);
-        pointer(platform::Event::Type::MouseDown, point);
+        pointer(haylen::platform::Event::Type::MouseDown, point);
         fixture.frames(1);
-        pointer(platform::Event::Type::MouseUp, point);
+        pointer(haylen::platform::Event::Type::MouseUp, point);
         fixture.frames(2);
     }
 
-    void key(input::Key code) {
-        for (const platform::Event::Type type : {platform::Event::Type::KeyDown, platform::Event::Type::KeyUp}) {
-            platform::Event event;
+    void key(haylen::input::Key code) {
+        for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::KeyDown, haylen::platform::Event::Type::KeyUp}) {
+            haylen::platform::Event event;
             event.type = type;
             event.key = code;
             getEngine().handleEvent(event);
@@ -145,16 +145,16 @@ TEST_F(UiLuaTest, PublishesMountsAndEndsWhatGuisOwn) {
     EXPECT_NE(ticks, "0");
 
     // GUIs mounted from C++ reach C++ listeners with their pointer and Lua listeners with a table without a GUI.
-    plugins::UiPlugin& plugin = getEngine().getPlugin<plugins::UiPlugin>();
-    std::shared_ptr<Gui> received;
+    haylen::plugins::UiPlugin& plugin = getEngine().getPlugin<haylen::plugins::UiPlugin>();
+    std::shared_ptr<haylen::ui::Gui> received;
     // clang-format off
-    const core::ScopedConnection listener(getEngine().getEvents().on(core::LifecycleEvent::kGuiMounted, [&](core::EventBus::Event& event) {
-        const std::shared_ptr<Gui>* payload = event.get<std::shared_ptr<Gui>>();
+    const haylen::core::ScopedConnection listener(getEngine().getEvents().on(haylen::core::LifecycleEvent::kGuiMounted, [&](haylen::core::EventBus::Event& event) {
+        const std::shared_ptr<haylen::ui::Gui>* payload = event.get<std::shared_ptr<haylen::ui::Gui>>();
         ASSERT_NE(payload, nullptr);
         received = *payload;
     }));
     // clang-format on
-    const std::shared_ptr<Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "label", "text": "native"})"));
+    const std::shared_ptr<haylen::ui::Gui> gui = plugin.createGui(haylen::core::Json::parse(R"({"kind": "label", "text": "native"})"));
     plugin.mount(gui, 3);
     EXPECT_EQ(received, gui);
     EXPECT_EQ(fixture.lua("return tostring(mounted)"), "nil");
@@ -221,8 +221,8 @@ TEST_F(UiLuaTest, HandsEventValuesAndListenersToLua) {
     // clang-format on
     fixture.frames(2);
     // The dialog focuses its last button without showing the ring, and the first Enter shows the ring and presses it.
-    for (const platform::Event::Type type : {platform::Event::Type::KeyDown, platform::Event::Type::KeyUp}) {
-        getEngine().handleEvent({.type = type, .key = input::Key::Enter});
+    for (const haylen::platform::Event::Type type : {haylen::platform::Event::Type::KeyDown, haylen::platform::Event::Type::KeyUp}) {
+        getEngine().handleEvent({.type = type, .key = haylen::input::Key::Enter});
         fixture.frames(1);
     }
 
@@ -318,7 +318,7 @@ TEST_F(UiLuaTest, PassesTheKeyboardOptionsOfTextComponents) {
     )");
     // clang-format on
     fixture.frames(1);
-    using TextInput = platform::TextInput;
+    using TextInput = haylen::platform::TextInput;
     const std::vector<TextInput::Field>& fields = fixture.host().getPlatformTextInput().getVisibleFields();
     ASSERT_EQ(fields.size(), 3U);
     EXPECT_EQ(fields[0].options, (TextInput::Options{.keyboard = TextInput::Keyboard::Email, .returnKey = TextInput::ReturnKey::Next, .capitalization = TextInput::Capitalization::Words, .autocorrect = false, .maxLength = 40}));
@@ -706,7 +706,7 @@ TEST_F(UiLuaTest, ShowsTheToolWindowsOfDearImGui) {
     fixture.runLua("imgui = require('haylen.imgui') require('haylen.scene').push({renderUi = function() imgui.showDemoWindow() imgui.showMetricsWindow() end})");
     fixture.frames(2);
     ASSERT_EQ(getEngine().getError(), nullptr) << getEngine().getError()->what();
-    getEngine().getPlugin<plugins::UiPlugin>().getBackend().makeCurrent();
+    getEngine().getPlugin<haylen::plugins::UiPlugin>().getBackend().makeCurrent();
     EXPECT_NE(ImGui::FindWindowByName("Dear ImGui Demo"), nullptr);
     EXPECT_NE(ImGui::FindWindowByName("Dear ImGui Metrics/Debugger"), nullptr);
 }
@@ -726,10 +726,10 @@ TEST_F(UiLuaTest, NavigatesTheFocusAndHearsCancel) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("local focus = ui.focused() return tostring(focus.gui == screen) .. ' ' .. focus.id .. ' ' .. tostring(ui.focusRingVisible())"), "true play false");
 
-    key(input::Key::Down);
-    key(input::Key::Down);
-    key(input::Key::Up);
-    key(input::Key::Escape);
+    key(haylen::input::Key::Down);
+    key(haylen::input::Key::Down);
+    key(haylen::input::Key::Up);
+    key(haylen::input::Key::Escape);
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return ui.focused().id .. ' ' .. tostring(ui.focusRingVisible())"), "quit true");
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "focus play, blur play, focus quit, cancel screen");
@@ -756,15 +756,15 @@ TEST_F(UiLuaTest, TheKeyThatOpensAMenuDoesNotCancelIt) {
     fixture.frames(2);
 
     // Escape opens the menu, and the same press still held once the menu shows is no cancel.
-    platform::Event event{.type = platform::Event::Type::KeyDown, .key = input::Key::Escape};
+    haylen::platform::Event event{.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Escape};
     getEngine().handleEvent(event);
     fixture.frames(4);
-    event.type = platform::Event::Type::KeyUp;
+    event.type = haylen::platform::Event::Type::KeyUp;
     getEngine().handleEvent(event);
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ') .. ' ' .. scene.size()"), "pause 2");
 
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ') .. ' ' .. scene.size()"), "pause cancel 1");
 }
@@ -782,13 +782,13 @@ TEST_F(UiLuaTest, ReportsThePressesTheInterfaceCaptures) {
     click("screen", "size");
 
     // The escape that closes the list stays with the interface, while the raw keyboard still reports it.
-    platform::Event event;
-    event.type = platform::Event::Type::KeyDown;
-    event.key = input::Key::Escape;
+    haylen::platform::Event event;
+    event.type = haylen::platform::Event::Type::KeyDown;
+    event.key = haylen::input::Key::Escape;
     getEngine().handleEvent(event);
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(input.keyCaptured('escape')) .. ' ' .. tostring(input.keyDown('escape')) .. ' ' .. tostring(input.down('back')) .. ' ' .. tostring(input.gamepadButtonCaptured('east'))"), "true true false false");
-    event.type = platform::Event::Type::KeyUp;
+    event.type = haylen::platform::Event::Type::KeyUp;
     getEngine().handleEvent(event);
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(input.keyCaptured('escape'))"), "false");
@@ -807,13 +807,13 @@ TEST_F(UiLuaTest, ReportsWhereFloatingNodesDraw) {
     EXPECT_EQ(fixture.lua("local b = screen:bounds('map') return b.x .. ' ' .. b.y .. ' ' .. b.width"), "300.0 200.0 400.0");
 
     // The window moves with its title bar, and its bounds follow.
-    pointer(platform::Event::Type::MouseMove, {320.0F, 220.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {320.0F, 220.0F});
     fixture.frames(1);
-    pointer(platform::Event::Type::MouseDown, {320.0F, 220.0F});
+    pointer(haylen::platform::Event::Type::MouseDown, {320.0F, 220.0F});
     fixture.frames(1);
-    pointer(platform::Event::Type::MouseMove, {420.0F, 270.0F});
+    pointer(haylen::platform::Event::Type::MouseMove, {420.0F, 270.0F});
     fixture.frames(1);
-    pointer(platform::Event::Type::MouseUp, {420.0F, 270.0F});
+    pointer(haylen::platform::Event::Type::MouseUp, {420.0F, 270.0F});
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("local b = screen:bounds('map') return b.x .. ' ' .. b.y"), "400.0 250.0");
 
@@ -854,8 +854,8 @@ TEST_F(UiLuaTest, ChangesTheScalingAndTheDesignSizeWhileRunning) {
         function describe(rect) return rect.x .. ' ' .. rect.y .. ' ' .. rect.width .. ' ' .. rect.height end
     )");
     // clang-format on
-    platform::Event move;
-    move.type = platform::Event::Type::MouseMove;
+    haylen::platform::Event move;
+    move.type = haylen::platform::Event::Type::MouseMove;
     move.position = {0.0F, 0.0F};
     getEngine().handleEvent(move);
     fixture.frames(1);
@@ -958,18 +958,18 @@ TEST_F(UiLuaTest, BuildsTheComponentsForGamesAndApps) {
     EXPECT_EQ(getEngine().getError(), nullptr);
     EXPECT_EQ(fixture.lua("local names = {} for _, kind in ipairs(ui.kinds()) do names[kind] = true end return tostring(names.slotGrid and names.keyCapture and names.contextMenu and names.window and names.carousel)"), "true");
 
-    key(input::Key::Right);
-    key(input::Key::Right);
-    key(input::Key::Down);
-    key(input::Key::Right);
-    key(input::Key::Right);
+    key(haylen::input::Key::Right);
+    key(haylen::input::Key::Right);
+    key(haylen::input::Key::Down);
+    key(haylen::input::Key::Right);
+    key(haylen::input::Key::Right);
     fixture.runLua("screen:command('menu', 'open')");
     fixture.frames(2);
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "players change 2.0, view change a, view change b, menu select copy");
     EXPECT_NE(fixture.lua("screen:set('players', {step = 0})").find("The property \"step\" of a \"stepper\" must be greater than zero."), std::string::npos);
     EXPECT_NE(fixture.lua("screen:command('bag', 'open')").find("The component kind \"slotGrid\" does not answer the command \"open\"."), std::string::npos);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

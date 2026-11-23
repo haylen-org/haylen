@@ -18,7 +18,7 @@
 #include "haylen/platform/native/NativeApi.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 class NativeLuaTest : public ::testing::Test {
   protected:
@@ -196,7 +196,7 @@ TEST_F(NativeLuaTest, ReportsFailuresOfFfiCallbacksOutsideAnyCall) {
         const Visitor visitor = castVisitor(fixture, "function() error('failed outside any call') end");
         visitor(1, "one");
         ASSERT_NE(fixture.engine().getError(), nullptr);
-        const core::AppError& error = *fixture.engine().getError();
+        const haylen::core::AppError& error = *fixture.engine().getError();
         EXPECT_NE(std::string(error.what()).find("failed outside any call"), std::string::npos);
         ASSERT_EQ(error.getFrames().size(), 2U);
         EXPECT_EQ(error.getFrames()[0].function, "global 'error'");
@@ -218,7 +218,7 @@ TEST_F(NativeLuaTest, ReportsFailuresOfFfiCallbacksOutsideAnyCall) {
 }
 
 TEST_F(NativeLuaTest, ReachesTheSymbolsOfLinkedLibrariesThroughFfiC) {
-    NativeLibraries::registerLinked("native_statics", {{"native_statics_triple", reinterpret_cast<void*>(&triple)}});
+    haylen::platform::NativeLibraries::registerLinked("native_statics", {{"native_statics_triple", reinterpret_cast<void*>(&triple)}});
     test::LuaFixture fixture;
     prepare(fixture);
 
@@ -310,13 +310,13 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
 TEST_F(NativeLuaTest, RefusesEventsAndHandlersWithoutNames) {
     std::vector<std::string> lines;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&lines](core::Log::Level, std::string_view line) { lines.emplace_back(line); });
+    const std::uint64_t listener = haylen::core::Log::addListener([&lines](haylen::core::Log::Level, std::string_view line) { lines.emplace_back(line); });
     // clang-format on
-    const HaylenNativeApi& api = NativeApi::get();
+    const HaylenNativeApi& api = haylen::platform::NativeApi::get();
     api.emit(nullptr, "{}", nullptr, 0, 0);
     api.emit("", "{}", nullptr, 0, 0);
     api.registerHandler(nullptr, [](void*, std::uint64_t, const char*, const char*, const HaylenNativeBuffer*, std::size_t) {}, nullptr, nullptr);
-    core::Log::removeListener(listener);
+    haylen::core::Log::removeListener(listener);
     ASSERT_EQ(lines.size(), 3U);
     EXPECT_NE(lines[0].find("The native library call \"emit\" failed: An event needs a name."), std::string::npos);
     EXPECT_NE(lines[2].find("A native library registered a handler without a method name."), std::string::npos);
@@ -400,7 +400,7 @@ TEST_F(NativeLuaTest, OpensTheScreensOfLibrariesAndCoversTheApp) {
 
     // The window of the app exists once the runtime set it, and covers of the library nest like every cover.
     EXPECT_EQ(fixture.lua("return lib.native_test_window()"), "-1");
-    NativeApi::setWindow({.handle = reinterpret_cast<void*>(std::uintptr_t{42}), .display = nullptr});
+    haylen::platform::NativeApi::setWindow({.handle = reinterpret_cast<void*>(std::uintptr_t{42}), .display = nullptr});
     EXPECT_EQ(fixture.lua("return lib.native_test_window()"), "42");
     fixture.runLua("lib.native_test_cover(1) lib.native_test_cover(1) lib.native_test_cover(0)");
     fixture.frames(1);
@@ -420,7 +420,7 @@ TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
         fixture.runLua("require('haylen').reportError('the first app failed')");
         ASSERT_NE(fixture.engine().getError(), nullptr);
         EXPECT_EQ(fixture.lua("return lib.native_test_error_count() - before"), "1") << "A handler that registered twice hears an error once.";
-        EXPECT_EQ(core::Json::parse(fixture.lua("return ffi.string(lib.native_test_last_error())")), fixture.engine().getErrorRecord());
+        EXPECT_EQ(haylen::core::Json::parse(fixture.lua("return ffi.string(lib.native_test_last_error())")), fixture.engine().getErrorRecord());
     }
 
     // The handler belongs to the process, so it hears the errors of the next app without registering again.
@@ -429,7 +429,7 @@ TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
     restarted.runLua(declarations);
     restarted.runLua("require('haylen').reportError('the next app failed')");
     EXPECT_EQ(restarted.lua("return lib.native_test_error_count() - before"), "1");
-    EXPECT_EQ(core::Json::parse(restarted.lua("return ffi.string(lib.native_test_last_error())")).at("message"), "the next app failed");
+    EXPECT_EQ(haylen::core::Json::parse(restarted.lua("return ffi.string(lib.native_test_last_error())")).at("message"), "the next app failed");
 }
 
 TEST_F(NativeLuaTest, ExplainsWhyALibraryDidNotLoad) {
@@ -442,4 +442,4 @@ TEST_F(NativeLuaTest, ExplainsWhyALibraryDidNotLoad) {
     EXPECT_EQ(fixture.lua("return ffi.istype('NativeTestPoint', ffi.new('NativeTestPoint')) and native.load('native-test', {global = true}) ~= nil"), "true");
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

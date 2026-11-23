@@ -11,21 +11,21 @@
 #include "support/FrameRenderer.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::graphics2d {
+namespace haylen::lua::graphics2d {
 
 // Builds the fringes of meshes one pixel to the unit.
 class MeshFringeTest : public ::testing::Test {
   protected:
-    [[nodiscard]] static GpuVertex vertex(float x, float y) {
+    [[nodiscard]] static haylen::graphics2d::GpuVertex vertex(float x, float y) {
         return {{x, y}, {0.0F, 0.0F}, 0xFFFFFFFFU};
     }
 
-    MeshFringe fringe;
+    haylen::graphics2d::MeshFringe fringe;
 };
 
 // The outline of a mesh moves half a pixel in and a fringe fades from it to nothing half a pixel out, while an edge that two triangles share, even through vertices of their own at the same place, keeps no fringe.
 TEST_F(MeshFringeTest, FadesTheOutlineOverOnePixel) {
-    const std::array<GpuVertex, 4> square{vertex(0.0F, 0.0F), vertex(10.0F, 0.0F), vertex(10.0F, 10.0F), vertex(0.0F, 10.0F)};
+    const std::array<haylen::graphics2d::GpuVertex, 4> square{vertex(0.0F, 0.0F), vertex(10.0F, 0.0F), vertex(10.0F, 10.0F), vertex(0.0F, 10.0F)};
     const std::array<std::uint32_t, 6> triangles{0, 1, 2, 0, 2, 3};
     fringe.build(square, triangles, 1.0F);
     ASSERT_EQ(fringe.getVertices().size(), 4U + 4U * 2U);
@@ -34,13 +34,13 @@ TEST_F(MeshFringeTest, FadesTheOutlineOverOnePixel) {
     EXPECT_FLOAT_EQ(fringe.getVertices()[2].position[1], 9.5F);
 
     for (std::size_t index = 4; index < fringe.getVertices().size(); ++index) {
-        const GpuVertex& outer = fringe.getVertices()[index];
+        const haylen::graphics2d::GpuVertex& outer = fringe.getVertices()[index];
         EXPECT_EQ(outer.color >> 24U, 0U);
         EXPECT_TRUE(outer.position[0] == -0.5F || outer.position[0] == 10.5F) << index;
         EXPECT_TRUE(outer.position[1] == -0.5F || outer.position[1] == 10.5F) << index;
     }
 
-    const std::array<GpuVertex, 6> apart{vertex(0.0F, 0.0F), vertex(10.0F, 0.0F), vertex(10.0F, 10.0F), vertex(0.0F, 0.0F), vertex(10.0F, 10.0F), vertex(0.0F, 10.0F)};
+    const std::array<haylen::graphics2d::GpuVertex, 6> apart{vertex(0.0F, 0.0F), vertex(10.0F, 0.0F), vertex(10.0F, 10.0F), vertex(0.0F, 0.0F), vertex(10.0F, 10.0F), vertex(0.0F, 10.0F)};
     const std::array<std::uint32_t, 6> separate{0, 1, 2, 3, 4, 5};
     fringe.build(apart, separate, 1.0F);
     EXPECT_EQ(fringe.getVertices().size(), 6U + 4U * 2U);
@@ -49,13 +49,13 @@ TEST_F(MeshFringeTest, FadesTheOutlineOverOnePixel) {
 // A mesh drawn by the renderer fades its outline unless the draw keeps its edges hard, and drawing it again allocates nothing.
 TEST_F(MeshFringeTest, DrawsMeshesWithFadedOutlines) {
     test::LuaFixture fixture;
-    const std::vector<MeshVertex> quad{{.position = {0.0F, 0.0F}}, {.position = {10.0F, 0.0F}}, {.position = {10.0F, 10.0F}}, {.position = {0.0F, 10.0F}}};
+    const std::vector<haylen::graphics2d::MeshVertex> quad{{.position = {0.0F, 0.0F}}, {.position = {10.0F, 0.0F}}, {.position = {10.0F, 10.0F}}, {.position = {0.0F, 10.0F}}};
     const std::vector<std::uint32_t> triangles{0, 1, 2, 0, 2, 3};
     // clang-format off
     const auto render = [&](bool fadeEdges) {
-        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
-            Renderer& renderer = engine.getRenderer2D();
-            renderer.beginWorld(Camera{});
+        return test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
+            haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(haylen::graphics2d::Camera{});
             renderer.drawMesh({}, quad, triangles, {}, fadeEdges);
         }).vertices;
     };
@@ -81,4 +81,4 @@ TEST_F(MeshFringeTest, DrawsMeshesWithFadedOutlines) {
     EXPECT_EQ(fixture.lua("return graphics2d.stats().vertices"), "20");
 }
 
-} // namespace haylen::graphics2d
+} // namespace haylen::lua::graphics2d

@@ -20,7 +20,7 @@
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
-namespace haylen::content {
+namespace haylen::lua::content {
 
 class ReleaseLuaTest : public ::testing::Test {
   protected:
@@ -29,9 +29,9 @@ class ReleaseLuaTest : public ::testing::Test {
         release.build(files);
         package = release.open();
         auto application = std::make_unique<lua::Application>();
-        core::AppConfig config = core::AppConfig::fromPackage(*package, application->getSections());
+        haylen::core::AppConfig config = haylen::core::AppConfig::fromPackage(*package, application->getSections());
         application->configure(config);
-        engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
+        engine = std::make_unique<haylen::core::Engine>(host, package, std::move(config), std::move(application));
         engine->start();
         engine->frame(1.0 / 60.0);
     }
@@ -46,9 +46,9 @@ class ReleaseLuaTest : public ::testing::Test {
 
     test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
     test::TemporaryDirectory data;
-    platform::HeadlessHost host{data.getPath()};
-    std::shared_ptr<io::Package> package;
-    std::unique_ptr<core::Engine> engine;
+    haylen::platform::HeadlessHost host{data.getPath()};
+    std::shared_ptr<haylen::io::Package> package;
+    std::unique_ptr<haylen::core::Engine> engine;
 };
 
 TEST_F(ReleaseLuaTest, RunsModulesPluginsAndAutoloadsFromBytecode) {
@@ -77,12 +77,12 @@ TEST_F(ReleaseLuaTest, ReportsErrorsWithTheModuleTheLineAndTheLocals) {
         {"source/main.lua", "require('scenes.menu').open(nil)"},
         {"source/scenes/menu.lua", "local menu = {}\n\nfunction menu.open(value)\n    return value.title\nend\n\nreturn menu"},
     });
-    const core::AppError* error = engine->getError();
+    const haylen::core::AppError* error = engine->getError();
     ASSERT_NE(error, nullptr);
     EXPECT_EQ(error->getFile(), "source/scenes/menu.lua");
     EXPECT_EQ(error->getLine(), 4);
     EXPECT_NE(error->getMessage().find("(local 'value')"), std::string::npos) << error->getMessage();
-    EXPECT_TRUE(core::ErrorScreen(*engine, *error, true).getExcerpt().empty()) << "A release keeps no source text to show.";
+    EXPECT_TRUE(haylen::core::ErrorScreen(*engine, *error, true).getExcerpt().empty()) << "A release keeps no source text to show.";
 }
 
 TEST_F(ReleaseLuaTest, LoadsBytecodeOnlyFromAnAuthenticatedRelease) {
@@ -96,15 +96,15 @@ TEST_F(ReleaseLuaTest, LoadsBytecodeOnlyFromAnAuthenticatedRelease) {
 
 TEST_F(ReleaseLuaTest, RefusesBytecodeOfAnotherLuaAbi) {
     release.build({{"haylen.json", R"({"name": "Release Lua", "identifier": "com.haylen.tests"})"}, {"source/main.lua", "loaded = true"}});
-    Compatibility other = release.getCompatibility();
+    haylen::content::Compatibility other = release.getCompatibility();
     other.luaAbi = "lua-5.4-f0-i4-x4-l8-n8-le";
-    const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
+    const haylen::content::VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
     try {
-        (void)ReleasePackage::open(release.getFiles(), release.getKeys(), std::span(&trusted, 1), other);
+        (void)haylen::content::ReleasePackage::open(release.getFiles(), release.getKeys(), std::span(&trusted, 1), other);
         FAIL() << "A release of another Lua ABI must not open.";
-    } catch (const Error& error) {
-        EXPECT_EQ(error.getCode(), Error::Code::LuaBytecodeIncompatible) << error.what();
+    } catch (const haylen::content::Error& error) {
+        EXPECT_EQ(error.getCode(), haylen::content::Error::Code::LuaBytecodeIncompatible) << error.what();
     }
 }
 
-} // namespace haylen::content
+} // namespace haylen::lua::content

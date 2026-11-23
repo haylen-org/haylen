@@ -13,31 +13,31 @@
 #include "platform/ConsoleRelay.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class ConsoleTest : public ::testing::Test {
   protected:
     void SetUp() override {
         // clang-format off
-        gold = console.addCommand({.name = "gold", .help = "Adds gold.", .parameters = {{.kind = Console::Kind::Integer}, {.kind = Console::Kind::String, .optional = true}}, .handler = [this](const core::Json& arguments) {
+        gold = console.addCommand({.name = "gold", .help = "Adds gold.", .parameters = {{.kind = haylen::debug::Console::Kind::Integer}, {.kind = haylen::debug::Console::Kind::String, .optional = true}}, .handler = [this](const haylen::core::Json& arguments) {
             received = arguments;
             return std::format("Gold {}", arguments[0].get<std::int64_t>());
         }});
         // clang-format on
     }
 
-    Console console;
-    core::Connection gold;
-    core::Json received;
+    haylen::debug::Console console;
+    haylen::core::Connection gold;
+    haylen::core::Json received;
 };
 
 TEST_F(ConsoleTest, RunsCommandsWithCheckedArguments) {
-    const Console::Result added = console.run("  gold 50 \"the shop\"  ");
+    const haylen::debug::Console::Result added = console.run("  gold 50 \"the shop\"  ");
     EXPECT_TRUE(added.ok);
     EXPECT_EQ(added.output, "Gold 50");
-    EXPECT_EQ(received, (core::Json{50, "the shop"}));
+    EXPECT_EQ(received, (haylen::core::Json{50, "the shop"}));
     EXPECT_TRUE(console.run("gold -3").ok);
-    EXPECT_EQ(received, core::Json{-3});
+    EXPECT_EQ(received, haylen::core::Json{-3});
 
     EXPECT_EQ(console.run("gold fifty").output, "The command \"gold\" needs an integer as its first argument, not \"fifty\". Type it as \"gold <integer> [word]\".");
     EXPECT_EQ(console.run("gold").output, "The command \"gold\" needs an integer as its first argument. Type it as \"gold <integer> [word]\".");
@@ -48,7 +48,7 @@ TEST_F(ConsoleTest, RunsCommandsWithCheckedArguments) {
 
     std::vector<std::string> said;
     // clang-format off
-    const core::Connection say = console.addCommand({.name = "say", .help = "Says a text.", .parameters = {{.kind = Console::Kind::Number}, {.kind = Console::Kind::Text}}, .handler = [&said](const core::Json& arguments) {
+    const haylen::core::Connection say = console.addCommand({.name = "say", .help = "Says a text.", .parameters = {{.kind = haylen::debug::Console::Kind::Number}, {.kind = haylen::debug::Console::Kind::Text}}, .handler = [&said](const haylen::core::Json& arguments) {
         said.push_back(std::format("{} {}", arguments[0].get<double>(), arguments[1].get<std::string>()));
         return std::string();
     }});
@@ -58,17 +58,17 @@ TEST_F(ConsoleTest, RunsCommandsWithCheckedArguments) {
     EXPECT_EQ(console.run("say inf words").output, "The command \"say\" needs a number as its first argument, not \"inf\". Type it as \"say <number> <text>\".");
 
     EXPECT_THROW((void)console.addCommand({.name = "two words", .help = {}, .parameters = {}, .handler = {}}), std::invalid_argument);
-    EXPECT_THROW((void)console.addCommand({.name = "late", .help = {}, .parameters = {{.kind = Console::Kind::Integer, .optional = true}, {.kind = Console::Kind::Integer}}, .handler = {}}), std::invalid_argument);
-    EXPECT_THROW((void)console.addCommand({.name = "early", .help = {}, .parameters = {{.kind = Console::Kind::Text}, {.kind = Console::Kind::Integer}}, .handler = {}}), std::invalid_argument);
+    EXPECT_THROW((void)console.addCommand({.name = "late", .help = {}, .parameters = {{.kind = haylen::debug::Console::Kind::Integer, .optional = true}, {.kind = haylen::debug::Console::Kind::Integer}}, .handler = {}}), std::invalid_argument);
+    EXPECT_THROW((void)console.addCommand({.name = "early", .help = {}, .parameters = {{.kind = haylen::debug::Console::Kind::Text}, {.kind = haylen::debug::Console::Kind::Integer}}, .handler = {}}), std::invalid_argument);
 }
 
 TEST_F(ConsoleTest, FailsWithTheErrorOfAHandlerAndRemovesCommandsWithTheirConnection) {
     // clang-format off
-    core::Connection broken = console.addCommand({.name = "broken", .help = "Fails.", .parameters = {}, .handler = [](const core::Json&) -> std::string {
+    haylen::core::Connection broken = console.addCommand({.name = "broken", .help = "Fails.", .parameters = {}, .handler = [](const haylen::core::Json&) -> std::string {
         throw std::runtime_error("The shop is closed.");
     }});
     // clang-format on
-    const Console::Result failed = console.run("broken");
+    const haylen::debug::Console::Result failed = console.run("broken");
     EXPECT_FALSE(failed.ok);
     EXPECT_EQ(failed.output, "The shop is closed.");
 
@@ -113,17 +113,17 @@ TEST(ConsoleLuaTest, RunsTheCommandsOfLuaUntilTheirOwnerEnds) {
 TEST(ConsoleLuaTest, RunsLinesFromOutsideOnlyInDevelopmentOrWhenTheAppTurnsItOn) {
     {
         test::LuaFixture fixture;
-        plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+        haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
         EXPECT_FALSE(plugin.isConsoleEnabled());
         EXPECT_FALSE(plugin.getConsole().hasCommand("lua"));
 
         std::string answer;
-        core::Json commands;
-        platform::ConsoleRelay::submit("help", [&answer](const Console::Result& result) { answer = result.output; });
-        platform::ConsoleRelay::requestCommands([&commands](const core::Json& list) { commands = list; });
+        haylen::core::Json commands;
+        haylen::platform::ConsoleRelay::submit("help", [&answer](const haylen::debug::Console::Result& result) { answer = result.output; });
+        haylen::platform::ConsoleRelay::requestCommands([&commands](const haylen::core::Json& list) { commands = list; });
         fixture.frames(1);
         EXPECT_EQ(answer, "The console is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on.");
-        EXPECT_EQ(commands, core::Json::array());
+        EXPECT_EQ(commands, haylen::core::Json::array());
         EXPECT_EQ(fixture.lua("local ok, output = require('haylen.debug').runCommand('timeScale 0.5') return output"), "The time scale is 0.5.");
         EXPECT_DOUBLE_EQ(fixture.engine().getClock().getTimeScale(), 0.5);
     }
@@ -131,23 +131,23 @@ TEST(ConsoleLuaTest, RunsLinesFromOutsideOnlyInDevelopmentOrWhenTheAppTurnsItOn)
     {
         test::LuaFixture fixture({{"haylen.json", R"({"name": "Console", "identifier": "com.haylen.console", "debug": {"console": true}})"}});
         std::string answer;
-        core::Json commands;
-        platform::ConsoleRelay::submit("pause true", [&answer](const Console::Result& result) { answer = result.output; });
-        platform::ConsoleRelay::requestCommands([&commands](const core::Json& list) { commands = list; });
+        haylen::core::Json commands;
+        haylen::platform::ConsoleRelay::submit("pause true", [&answer](const haylen::debug::Console::Result& result) { answer = result.output; });
+        haylen::platform::ConsoleRelay::requestCommands([&commands](const haylen::core::Json& list) { commands = list; });
         fixture.frames(1);
         EXPECT_EQ(answer, "The app is paused.");
         EXPECT_TRUE(fixture.engine().isPaused());
 
-        const auto draw = std::ranges::find(commands, "draw", [](const core::Json& command) { return command.at("name").get<std::string>(); });
+        const auto draw = std::ranges::find(commands, "draw", [](const haylen::core::Json& command) { return command.at("name").get<std::string>(); });
         ASSERT_NE(draw, commands.end());
         EXPECT_EQ(draw->at("usage"), "draw [word] [boolean]");
-        EXPECT_EQ(draw->at("arguments"), (core::Json{"string?", "boolean?"}));
+        EXPECT_EQ(draw->at("arguments"), (haylen::core::Json{"string?", "boolean?"}));
     }
 }
 
 TEST(ConsoleLuaTest, CyclesTheStatisticsAndSwitchesEveryDrawingWithoutArguments) {
     test::LuaFixture fixture({}, nullptr, {.development = true});
-    plugins::DebugPlugin& plugin = fixture.engine().getPlugin<plugins::DebugPlugin>();
+    haylen::plugins::DebugPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::DebugPlugin>();
     fixture.runLua("player = {speed = 220} debugging = require('haylen.debug')");
     EXPECT_EQ(fixture.lua("local ok, output = debugging.runCommand('lua player.speed * 2') return output"), "440");
     EXPECT_EQ(fixture.lua("debugging.runCommand('lua player.speed = 300') return player.speed"), "300");
@@ -169,4 +169,4 @@ TEST(ConsoleLuaTest, NamesTheArgumentsThatAreNotAList) {
     EXPECT_NE(fixture.lua("require('haylen.debug').addCommand('gold', function() end, {args = 1})").find("The option \"args\" of \"addCommand\" is invalid: table expected, got number."), std::string::npos);
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

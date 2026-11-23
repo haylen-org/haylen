@@ -14,13 +14,13 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::debug {
+namespace haylen::lua::debug {
 
 class TraceRecorderTest : public ::testing::Test {
   protected:
-    [[nodiscard]] static std::vector<core::Json> spansOf(const core::Json& trace) {
-        std::vector<core::Json> spans;
-        for (const core::Json& event : trace.at("traceEvents")) {
+    [[nodiscard]] static std::vector<haylen::core::Json> spansOf(const haylen::core::Json& trace) {
+        std::vector<haylen::core::Json> spans;
+        for (const haylen::core::Json& event : trace.at("traceEvents")) {
             if (event.at("ph") == "X") {
                 spans.push_back(event);
             }
@@ -29,8 +29,8 @@ class TraceRecorderTest : public ::testing::Test {
         return spans;
     }
 
-    [[nodiscard]] static std::string laneName(const core::Json& trace, int lane) {
-        for (const core::Json& event : trace.at("traceEvents")) {
+    [[nodiscard]] static std::string laneName(const haylen::core::Json& trace, int lane) {
+        for (const haylen::core::Json& event : trace.at("traceEvents")) {
             if (event.at("ph") == "M" && event.at("name") == "thread_name" && event.at("tid") == lane) {
                 return event.at("args").at("name");
             }
@@ -42,8 +42,8 @@ class TraceRecorderTest : public ::testing::Test {
 
 TEST_F(TraceRecorderTest, WritesNestedScopesWithALanePerThread) {
     double now = 10.0;
-    Profiler profiler(8, [&now] { return now; });
-    auto trace = std::make_shared<TraceRecorder>();
+    haylen::debug::Profiler profiler(8, [&now] { return now; });
+    auto trace = std::make_shared<haylen::debug::TraceRecorder>();
     trace->nameThread("frame");
     profiler.setTraceRecorder(trace);
 
@@ -60,13 +60,13 @@ TEST_F(TraceRecorderTest, WritesNestedScopesWithALanePerThread) {
     profiler.beginFrame(0.0);
     profiler.endFrame();
 
-    std::thread worker([&trace] { trace->record("job", TraceRecorder::now(), TraceRecorder::now() + 0.0005); });
+    std::thread worker([&trace] { trace->record("job", haylen::debug::TraceRecorder::now(), haylen::debug::TraceRecorder::now() + 0.0005); });
     worker.join();
-    trace->recordGpu("gpuFrame", TraceRecorder::now(), 0.004);
+    trace->recordGpu("gpuFrame", haylen::debug::TraceRecorder::now(), 0.004);
 
-    const core::Json parsed = core::Json::parse(trace->toJson());
+    const haylen::core::Json parsed = haylen::core::Json::parse(trace->toJson());
     EXPECT_EQ(parsed.at("displayTimeUnit"), "ms");
-    const std::vector<core::Json> spans = spansOf(parsed);
+    const std::vector<haylen::core::Json> spans = spansOf(parsed);
     ASSERT_EQ(spans.size(), 5U);
     EXPECT_EQ(spans[0].at("name"), "physics");
     EXPECT_EQ(spans[1].at("name"), "update");
@@ -87,26 +87,26 @@ TEST_F(TraceRecorderTest, WritesNestedScopesWithALanePerThread) {
 
 // The name of a scope comes from the app and may hold any bytes, which the trace replaces so it stays JSON.
 TEST_F(TraceRecorderTest, WritesNamesThatAreNotUtf8) {
-    TraceRecorder trace(4);
+    haylen::debug::TraceRecorder trace(4);
     trace.record("a\xFF"
                  "b",
                  0.0, 1.0);
 
-    const core::Json parsed = core::Json::parse(trace.toJson());
+    const haylen::core::Json parsed = haylen::core::Json::parse(trace.toJson());
     ASSERT_FALSE(spansOf(parsed).empty());
     EXPECT_EQ(spansOf(parsed).front().at("name"), "a\xEF\xBF\xBD"
                                                   "b");
 }
 
 TEST_F(TraceRecorderTest, DropsSpansBeyondItsCapacity) {
-    TraceRecorder trace(3);
+    haylen::debug::TraceRecorder trace(3);
     for (int index = 0; index < 5; ++index) {
         trace.record("say \"hi\"", 0.0, 1.0);
     }
 
     EXPECT_EQ(trace.size(), 3U);
     EXPECT_EQ(trace.getDropped(), 2U);
-    const core::Json parsed = core::Json::parse(trace.toJson());
+    const haylen::core::Json parsed = haylen::core::Json::parse(trace.toJson());
     EXPECT_EQ(parsed.at("otherData").at("dropped"), 2);
     ASSERT_FALSE(spansOf(parsed).empty());
     EXPECT_EQ(spansOf(parsed).front().at("name"), "say \"hi\"");
@@ -141,10 +141,10 @@ TEST(TraceLuaTest, TracesFramesAndJobsIntoAFileOffTheFrameThread) {
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return tostring(written ~= nil)") == "true"; }));
     EXPECT_EQ(fixture.lua("return written.path .. ' ' .. tostring(written.spans > 0) .. ' ' .. written.dropped"), "traces/frames.json true 0");
 
-    const core::Json trace = core::Json::parse(fixture.lua("return require('haylen.storage').readText('traces/frames.json')"));
+    const haylen::core::Json trace = haylen::core::Json::parse(fixture.lua("return require('haylen.storage').readText('traces/frames.json')"));
     std::set<std::string> names;
     int frames = 0;
-    for (const core::Json& event : trace.at("traceEvents")) {
+    for (const haylen::core::Json& event : trace.at("traceEvents")) {
         if (event.at("ph") == "X") {
             names.insert(event.at("name").get<std::string>());
             frames += event.at("name") == "frame" ? 1 : 0;
@@ -175,9 +175,9 @@ TEST(TraceLuaTest, NamesTheReadDecodeAndCreationOfEachAssetLoad) {
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return tostring(written ~= nil)") == "true"; }));
 
-    const core::Json trace = core::Json::parse(fixture.lua("return require('haylen.storage').readText('traces/loads.json')"));
+    const haylen::core::Json trace = haylen::core::Json::parse(fixture.lua("return require('haylen.storage').readText('traces/loads.json')"));
     std::map<std::string, int> lanes;
-    for (const core::Json& event : trace.at("traceEvents")) {
+    for (const haylen::core::Json& event : trace.at("traceEvents")) {
         if (event.at("ph") == "X") {
             lanes.emplace(event.at("name").get<std::string>(), event.at("tid").get<int>());
         }
@@ -191,16 +191,16 @@ TEST(TraceLuaTest, NamesTheReadDecodeAndCreationOfEachAssetLoad) {
 }
 
 TEST_F(TraceRecorderTest, RecordsSpansIntoTheRecorderOfTheThreadAlone) {
-    EXPECT_EQ(TraceRecorder::getThreadRecorder(), nullptr);
-    TraceRecorder trace;
-    TraceRecorder::setThreadRecorder(&trace);
-    { const TraceSpan span("read", "content/a.png"); }
-    TraceRecorder::setThreadRecorder(nullptr);
-    { const TraceSpan span("read", "content/b.png"); }
+    EXPECT_EQ(haylen::debug::TraceRecorder::getThreadRecorder(), nullptr);
+    haylen::debug::TraceRecorder trace;
+    haylen::debug::TraceRecorder::setThreadRecorder(&trace);
+    { const haylen::debug::TraceSpan span("read", "content/a.png"); }
+    haylen::debug::TraceRecorder::setThreadRecorder(nullptr);
+    { const haylen::debug::TraceSpan span("read", "content/b.png"); }
 
-    const std::vector<core::Json> spans = spansOf(core::Json::parse(trace.toJson()));
+    const std::vector<haylen::core::Json> spans = spansOf(haylen::core::Json::parse(trace.toJson()));
     ASSERT_EQ(spans.size(), 1U);
     EXPECT_EQ(spans.front().at("name"), "read content/a.png");
 }
 
-} // namespace haylen::debug
+} // namespace haylen::lua::debug

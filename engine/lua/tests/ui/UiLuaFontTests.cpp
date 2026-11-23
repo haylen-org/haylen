@@ -13,7 +13,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // Runs the Lua UI on packages that hold fonts of the test data, which the families of the roles of a theme draw with.
 class UiLuaFontTest : public ::testing::Test {
@@ -57,7 +57,7 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     EXPECT_NE(fixture.lua("ui.addTheme({name = 'odd', fonts = {body = {bold = 'yes'}}})").find("The theme font \"body\" must set \"bold\" to \"true\" or \"false\"."), std::string::npos);
 
     // A font that is neither registered nor the default has no family.
-    plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
+    haylen::plugins::UiPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::UiPlugin>();
     EXPECT_NE(plugin.getFontFamily(fixture.engine(), "story"), nullptr);
     EXPECT_EQ(plugin.getFontFamily(fixture.engine(), "missing"), nullptr);
 }
@@ -134,9 +134,9 @@ TEST_F(UiLuaFontTest, SizesFontRolesByTheirEmSquare) {
     EXPECT_EQ(fixture.lua("return ui.themeFont('caption').size"), "24.0");
 
     // The windows of ImGui draw the body at its size too, which ImGui measures from ascent to descent.
-    ui::Backend& backend = fixture.engine().getPlugin<plugins::UiPlugin>().getBackend();
+    haylen::ui::Backend& backend = fixture.engine().getPlugin<haylen::plugins::UiPlugin>().getBackend();
     backend.makeCurrent();
     EXPECT_NEAR(ImGui::GetStyle().FontSizeBase, 24.0F * 2400.0F / 2048.0F, 0.01F);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

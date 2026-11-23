@@ -24,7 +24,7 @@
 #include "support/TestFiles.hpp"
 #include "support/VectorExpectations.hpp"
 
-namespace haylen::nodes2d {
+namespace haylen::lua::nodes2d {
 
 class NodeTreeTest : public ::testing::Test {
   protected:
@@ -38,13 +38,13 @@ using NodeSerializerTest = NodeTreeTest;
 using Nodes2DLuaTest = NodeTreeTest;
 
 TEST_F(NodeTreeTest, ComposesNestedTransformsLikeTheirProduct) {
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node tank = tree->add({.name = "tank", .position = {100.0F, 50.0F}, .rotation = 0.5F, .scale = {2.0F, 1.5F}});
-    Node turret = tank.add({.name = "turret", .position = {10.0F, -4.0F}, .rotation = -0.25F, .scale = {0.5F, 0.5F}});
-    const Node barrel = turret.add({.name = "barrel", .position = {8.0F, 0.0F}, .rotation = 0.1F});
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node tank = tree->add({.name = "tank", .position = {100.0F, 50.0F}, .rotation = 0.5F, .scale = {2.0F, 1.5F}});
+    haylen::nodes2d::Node turret = tank.add({.name = "turret", .position = {10.0F, -4.0F}, .rotation = -0.25F, .scale = {0.5F, 0.5F}});
+    const haylen::nodes2d::Node barrel = turret.add({.name = "barrel", .position = {8.0F, 0.0F}, .rotation = 0.1F});
     tree->update(0.0F);
 
-    const math::Transform2D expected = math::Transform2D::compose({100.0F, 50.0F}, 0.5F, {2.0F, 1.5F}) * math::Transform2D::compose({10.0F, -4.0F}, -0.25F, {0.5F, 0.5F}) * math::Transform2D::compose({8.0F, 0.0F}, 0.1F, {1.0F, 1.0F});
+    const haylen::math::Transform2D expected = haylen::math::Transform2D::compose({100.0F, 50.0F}, 0.5F, {2.0F, 1.5F}) * haylen::math::Transform2D::compose({10.0F, -4.0F}, -0.25F, {0.5F, 0.5F}) * haylen::math::Transform2D::compose({8.0F, 0.0F}, 0.1F, {1.0F, 1.0F});
     test::VectorExpectations::expectNear(barrel.toWorld({3.0F, 2.0F}), expected.apply({3.0F, 2.0F}));
     test::VectorExpectations::expectNear(barrel.toLocal(expected.apply({3.0F, 2.0F})), {3.0F, 2.0F});
     EXPECT_EQ(barrel.getPath(), "tank/turret/barrel");
@@ -57,12 +57,12 @@ TEST_F(NodeTreeTest, ComposesNestedTransformsLikeTheirProduct) {
     tank.setRotation(0.0F);
     tank.setScale({1.0F, 1.0F});
     tree->update(0.0F);
-    const math::Transform2D moved = math::Transform2D::compose({10.0F, -4.0F}, -0.25F, {0.5F, 0.5F}) * math::Transform2D::compose({8.0F, 0.0F}, 0.1F, {1.0F, 1.0F});
+    const haylen::math::Transform2D moved = haylen::math::Transform2D::compose({10.0F, -4.0F}, -0.25F, {0.5F, 0.5F}) * haylen::math::Transform2D::compose({8.0F, 0.0F}, 0.1F, {1.0F, 1.0F});
     test::VectorExpectations::expectNear(barrel.toWorld({}), moved.apply({}));
     test::VectorExpectations::expectNear(turret.getPosition(), {10.0F, -4.0F});
 
     // A node moved under another parent keeps its local transform.
-    const Node other = tree->add({.name = "other", .position = {500.0F, 0.0F}});
+    const haylen::nodes2d::Node other = tree->add({.name = "other", .position = {500.0F, 0.0F}});
     turret.setParent(other);
     tree->update(0.0F);
     test::VectorExpectations::expectNear(turret.toWorld({}), {510.0F, -4.0F});
@@ -72,11 +72,11 @@ TEST_F(NodeTreeTest, ComposesNestedTransformsLikeTheirProduct) {
 }
 
 TEST_F(NodeTreeTest, InheritsColorsVisibilityAndLayers) {
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node root = tree->add({.color = {1.0F, 0.5F, 1.0F, 0.5F}, .layer = 2});
-    const Node child = root.add({.color = {0.5F, 1.0F, 1.0F, 1.0F}, .layer = 3});
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node root = tree->add({.color = {1.0F, 0.5F, 1.0F, 0.5F}, .layer = 2});
+    const haylen::nodes2d::Node child = root.add({.color = {0.5F, 1.0F, 1.0F, 1.0F}, .layer = 3});
     tree->update(0.0F);
-    EXPECT_EQ(child.getWorldColor(), (math::Color{0.5F, 0.5F, 1.0F, 0.5F}));
+    EXPECT_EQ(child.getWorldColor(), (haylen::math::Color{0.5F, 0.5F, 1.0F, 0.5F}));
     EXPECT_EQ(child.getWorldLayer(), 5);
     EXPECT_TRUE(child.isWorldVisible());
 
@@ -87,15 +87,15 @@ TEST_F(NodeTreeTest, InheritsColorsVisibilityAndLayers) {
 }
 
 TEST_F(NodeTreeTest, InvalidatesHandlesOfDestroyedNodesAndOfGoneTrees) {
-    std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node parent = tree->add({.name = "parent"});
-    const Node child = parent.add({.name = "child"});
-    const Node grandchild = child.add({.name = "grandchild"});
+    std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node parent = tree->add({.name = "parent"});
+    const haylen::nodes2d::Node child = parent.add({.name = "child"});
+    const haylen::nodes2d::Node grandchild = child.add({.name = "grandchild"});
 
     std::vector<std::string> gone;
-    tree->destroyed.connect([&gone](const Node& node) { gone.push_back(node.getName()); });
+    tree->destroyed.connect([&gone](const haylen::nodes2d::Node& node) { gone.push_back(node.getName()); });
     bool watched = false;
-    (void)tree->onDestroyed(child, [&watched, &child](const Node& node) { watched = node == child; });
+    (void)tree->onDestroyed(child, [&watched, &child](const haylen::nodes2d::Node& node) { watched = node == child; });
     parent.destroy();
 
     EXPECT_EQ(gone, (std::vector<std::string>{"grandchild", "child", "parent"}));
@@ -106,7 +106,7 @@ TEST_F(NodeTreeTest, InvalidatesHandlesOfDestroyedNodesAndOfGoneTrees) {
     EXPECT_THROW((void)child.getName(), std::logic_error);
 
     // A new node takes the slot of a destroyed one with a new generation, so old handles stay invalid.
-    const Node reused = tree->add({.name = "reused"});
+    const haylen::nodes2d::Node reused = tree->add({.name = "reused"});
     EXPECT_TRUE(reused.isValid());
     EXPECT_FALSE(grandchild.isValid());
     EXPECT_NE(reused.getKey(), grandchild.getKey());
@@ -123,15 +123,15 @@ TEST_F(NodeTreeTest, InvalidatesHandlesOfDestroyedNodesAndOfGoneTrees) {
 }
 
 TEST_F(NodeTreeTest, DestroysChainsDeeperThanTheStackHolds) {
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node root = tree->add({.name = "root"});
-    Node last = root;
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node root = tree->add({.name = "root"});
+    haylen::nodes2d::Node last = root;
     for (int level = 0; level < 300000; ++level) {
         last = last.add({});
     }
 
     std::size_t gone = 0;
-    tree->destroyed.connect([&gone](const Node&) { ++gone; });
+    tree->destroyed.connect([&gone](const haylen::nodes2d::Node&) { ++gone; });
     root.destroy();
 
     EXPECT_EQ(gone, 300001U);
@@ -140,12 +140,12 @@ TEST_F(NodeTreeTest, DestroysChainsDeeperThanTheStackHolds) {
 }
 
 TEST_F(NodeTreeTest, KeepsANodeThatTakesTheSlotOfANodeThatAListenerDestroyed) {
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node parent = tree->add({.name = "parent"});
-    const Node child = parent.add({.name = "child"});
-    Node fresh;
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node parent = tree->add({.name = "parent"});
+    const haylen::nodes2d::Node child = parent.add({.name = "child"});
+    haylen::nodes2d::Node fresh;
     // clang-format off
-    (void)tree->onDestroyed(child, [&parent, &fresh, &tree](const Node&) {
+    (void)tree->onDestroyed(child, [&parent, &fresh, &tree](const haylen::nodes2d::Node&) {
         parent.destroy();
         fresh = tree->add({.name = "fresh"});
     });
@@ -160,10 +160,10 @@ TEST_F(NodeTreeTest, KeepsANodeThatTakesTheSlotOfANodeThatAListenerDestroyed) {
 
 TEST_F(NodeTreeTest, MovesManyNodesFromBuffersAndUpdatesLargeTreesInParallel) {
     test::LuaFixture fixture;
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    std::vector<Node> nodes;
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    std::vector<haylen::nodes2d::Node> nodes;
     for (int index = 0; index < 6000; ++index) {
-        const Node root = tree->add({.position = {static_cast<float>(index), 0.0F}});
+        const haylen::nodes2d::Node root = tree->add({.position = {static_cast<float>(index), 0.0F}});
         nodes.push_back(root.add({.position = {0.0F, 1.0F}}));
     }
 
@@ -187,25 +187,25 @@ TEST_F(NodeTreeTest, MovesManyNodesFromBuffersAndUpdatesLargeTreesInParallel) {
 
 TEST_F(NodeTreeTest, DrawsVisibleNodesAndCullsTheOthers) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(16, 16, math::Color::white()));
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node row = tree->add({});
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(16, 16, haylen::math::Color::white()));
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node row = tree->add({});
     for (int index = 0; index < 10; ++index) {
-        row.add({.position = {static_cast<float>(index) * 400.0F, 0.0F}, .content = {.value = graphics2d::Sprite{.texture = texture}}});
+        row.add({.position = {static_cast<float>(index) * 400.0F, 0.0F}, .content = {.value = haylen::graphics2d::Sprite{.texture = texture}}});
     }
 
-    Node hidden = tree->add({.visible = false});
-    hidden.add({.content = {.value = graphics2d::Sprite{.texture = texture}}});
+    haylen::nodes2d::Node hidden = tree->add({.visible = false});
+    hidden.add({.content = {.value = haylen::graphics2d::Sprite{.texture = texture}}});
 
-    graphics2d::Camera camera;
-    camera.anchor = graphics2d::Camera::Anchor::TopLeft;
+    haylen::graphics2d::Camera camera;
+    camera.anchor = haylen::graphics2d::Camera::Anchor::TopLeft;
     std::size_t inside = 0;
     // clang-format off
-    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+    const haylen::graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](haylen::core::Engine& engine) {
         engine.getRenderer2D().beginWorld(camera);
-        const math::Rect view = engine.getRenderer2D().getCanvasBounds();
+        const haylen::math::Rect view = engine.getRenderer2D().getCanvasBounds();
         for (int index = 0; index < 10; ++index) {
-            inside += view.intersects(math::Rect::fromCenter({static_cast<float>(index) * 400.0F, 0.0F}, {16.0F, 16.0F})) ? 1U : 0U;
+            inside += view.intersects(haylen::math::Rect::fromCenter({static_cast<float>(index) * 400.0F, 0.0F}, {16.0F, 16.0F})) ? 1U : 0U;
         }
 
         tree->draw(engine.getRenderer2D());
@@ -221,14 +221,14 @@ TEST_F(NodeTreeTest, DrawsVisibleNodesAndCullsTheOthers) {
 }
 
 TEST_F(NodeTreeTest, FollowsBodiesBetweenSteps) {
-    physics2d::World world({.gravity = {0.0F, 0.0F}, .interpolate = true});
-    physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Kinematic, .position = {0.0F, 0.0F}, .velocity = {600.0F, 0.0F}});
+    haylen::physics2d::World world({.gravity = {0.0F, 0.0F}, .interpolate = true});
+    haylen::physics2d::Body body = world.createBody({.type = haylen::physics2d::Body::Type::Kinematic, .position = {0.0F, 0.0F}, .velocity = {600.0F, 0.0F}});
     world.step(0.1F);
     world.step(0.1F);
 
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    const Node parent = tree->add({.position = {100.0F, 0.0F}});
-    Node follower = parent.add({});
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    const haylen::nodes2d::Node parent = tree->add({.position = {100.0F, 0.0F}});
+    haylen::nodes2d::Node follower = parent.add({});
     follower.follow(body);
     tree->update(0.0F, 0.5F);
 
@@ -244,30 +244,30 @@ TEST_F(NodeTreeTest, FollowsBodiesBetweenSteps) {
 }
 
 TEST_F(NodeTreeTest, RejectsContentItCannotDraw) {
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
     try {
-        (void)tree->add({.content = {.value = graphics2d::Sprite{}}});
+        (void)tree->add({.content = {.value = haylen::graphics2d::Sprite{}}});
         FAIL();
     } catch (const std::invalid_argument& error) {
         EXPECT_STREQ(error.what(), "A sprite node needs a texture.");
     }
 
-    EXPECT_THROW((void)tree->add({.content = {.value = NodeContent::Text{.content = "Hello"}}}), std::invalid_argument);
-    EXPECT_THROW((void)tree->add({.content = {.value = std::shared_ptr<particles2d::Emitter>()}}), std::invalid_argument);
+    EXPECT_THROW((void)tree->add({.content = {.value = haylen::nodes2d::NodeContent::Text{.content = "Hello"}}}), std::invalid_argument);
+    EXPECT_THROW((void)tree->add({.content = {.value = std::shared_ptr<haylen::particles2d::Emitter>()}}), std::invalid_argument);
     EXPECT_EQ(tree->size(), 0U);
 }
 
 TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
     test::LuaFixture fixture({{"content/units/tank.png", png(32, 16)}});
-    core::Engine& engine = fixture.engine();
+    haylen::core::Engine& engine = fixture.engine();
     // clang-format off
-    const NodeSerializer::Assets assets{
-        .texture = [&engine](const std::string& path, graphics::Texture::Options options) { return engine.getAssets().texture(path, options); },
+    const haylen::nodes2d::NodeSerializer::Assets assets{
+        .texture = [&engine](const std::string& path, haylen::graphics::Texture::Options options) { return engine.getAssets().texture(path, options); },
         .font = [&engine](const std::string& path) { return path.empty() ? engine.getDefaultFont() : engine.getAssets().font(path); },
         .particles = {},
     };
     // clang-format on
-    const Prefab prefab = Prefab::parse(core::Json::parse(R"({
+    const haylen::nodes2d::Prefab prefab = haylen::nodes2d::Prefab::parse(haylen::core::Json::parse(R"({
         "name": "tank", "x": 10, "color": "#FF808080",
         "sprite": {"texture": "units/tank.png", "filter": "linear", "source": [0, 0, 16, 16], "pivotY": 1},
         "children": [
@@ -276,35 +276,35 @@ TEST_F(NodeSerializerTest, InstantiatesPrefabsAndSavesSubtrees) {
         ]
     })"));
 
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    const Node tank = prefab.instantiate(*tree, {}, core::Json::parse(R"({"x": 300, "y": 40, "name": "first"})"), assets);
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    const haylen::nodes2d::Node tank = prefab.instantiate(*tree, {}, haylen::core::Json::parse(R"({"x": 300, "y": 40, "name": "first"})"), assets);
     EXPECT_EQ(tank.getName(), "first");
     test::VectorExpectations::expectNear(tank.getPosition(), {300.0F, 40.0F});
-    EXPECT_EQ(tank.getSprite().texture.getOptions().filter, graphics::Texture::Filter::Linear);
-    EXPECT_EQ(tank.getSprite().source, (math::Rect{0.0F, 0.0F, 16.0F, 16.0F}));
+    EXPECT_EQ(tank.getSprite().texture.getOptions().filter, haylen::graphics::Texture::Filter::Linear);
+    EXPECT_EQ(tank.getSprite().source, (haylen::math::Rect{0.0F, 0.0F, 16.0F, 16.0F}));
     EXPECT_EQ(tree->find("first/label").getContent().value.index(), 2U);
     EXPECT_FLOAT_EQ(tree->find("first/turret").getRotation(), 0.5F);
 
-    const core::Json saved = NodeSerializer::save(tank, engine.getDefaultFont());
+    const haylen::core::Json saved = haylen::nodes2d::NodeSerializer::save(tank, engine.getDefaultFont());
     EXPECT_EQ(saved["sprite"]["texture"], "units/tank.png");
     EXPECT_FALSE(saved["children"][0]["text"].contains("font"));
     EXPECT_EQ(saved["children"][0]["text"]["minScale"], 0.5);
     EXPECT_EQ(saved["children"][0]["text"]["wrap"], false);
     EXPECT_EQ(saved["children"][0]["text"]["lineHeight"], "uniform");
     EXPECT_FALSE(saved.contains("visible"));
-    const Node copy = NodeSerializer::load(*tree, {}, saved, assets);
-    EXPECT_EQ(NodeSerializer::save(copy, engine.getDefaultFont()), saved);
+    const haylen::nodes2d::Node copy = haylen::nodes2d::NodeSerializer::load(*tree, {}, saved, assets);
+    EXPECT_EQ(haylen::nodes2d::NodeSerializer::save(copy, engine.getDefaultFont()), saved);
 
-    const graphics::Texture made = engine.getGraphics().createTexture(graphics::Image(4, 4));
-    const Node custom = tree->add({.name = "custom", .content = {.value = graphics2d::Sprite{.texture = made}}});
-    EXPECT_THROW((void)NodeSerializer::save(custom, engine.getDefaultFont()), std::invalid_argument);
+    const haylen::graphics::Texture made = engine.getGraphics().createTexture(haylen::graphics::Image(4, 4));
+    const haylen::nodes2d::Node custom = tree->add({.name = "custom", .content = {.value = haylen::graphics2d::Sprite{.texture = made}}});
+    EXPECT_THROW((void)haylen::nodes2d::NodeSerializer::save(custom, engine.getDefaultFont()), std::invalid_argument);
 }
 
 TEST_F(NodeSerializerTest, NamesTheNodeAndTheKeyOfBadDescriptions) {
     // clang-format off
     const auto message = [](const char* text) {
         try {
-            NodeSerializer::validate(core::Json::parse(text));
+            haylen::nodes2d::NodeSerializer::validate(haylen::core::Json::parse(text));
         } catch (const std::invalid_argument& error) {
             return std::string(error.what());
         }
@@ -325,25 +325,25 @@ TEST_F(NodeSerializerTest, NamesTheNodeAndTheKeyOfBadDescriptions) {
     EXPECT_EQ(message(R"({"name": "tank", "text": {"text": "Tank", "lineHeight": "tall"}})"), "The key \"lineHeight\" of the text of the node \"tank\" must be \"natural\" or \"uniform\".");
 
     // A description nests only as deep as a Lua table of descriptions, so a hostile prefab never runs out of stack.
-    core::Json deepest = core::Json{{"name", "n"}};
+    haylen::core::Json deepest = haylen::core::Json{{"name", "n"}};
     std::string path = "n";
-    for (int level = 1; level < NodeSerializer::kMaxDepth; ++level) {
-        deepest = core::Json{{"name", "n"}, {"children", core::Json::array({deepest})}};
+    for (int level = 1; level < haylen::nodes2d::NodeSerializer::kMaxDepth; ++level) {
+        deepest = haylen::core::Json{{"name", "n"}, {"children", haylen::core::Json::array({deepest})}};
         path += "/n";
     }
 
-    EXPECT_NO_THROW(NodeSerializer::validate(deepest));
-    const core::Json deeper{{"name", "n"}, {"children", core::Json::array({deepest})}};
+    EXPECT_NO_THROW(haylen::nodes2d::NodeSerializer::validate(deepest));
+    const haylen::core::Json deeper{{"name", "n"}, {"children", haylen::core::Json::array({deepest})}};
     EXPECT_EQ(message(deeper.dump().c_str()), "The description of the node \"" + path + "/n\" nests deeper than 64 levels.");
 
-    const std::shared_ptr<NodeTree> tree = NodeTree::create();
-    Node node = tree->add({.name = "n"});
-    for (int level = 0; level < NodeSerializer::kMaxDepth; ++level) {
+    const std::shared_ptr<haylen::nodes2d::NodeTree> tree = haylen::nodes2d::NodeTree::create();
+    haylen::nodes2d::Node node = tree->add({.name = "n"});
+    for (int level = 0; level < haylen::nodes2d::NodeSerializer::kMaxDepth; ++level) {
         node = node.add({.name = "n"});
     }
 
     try {
-        (void)NodeSerializer::save(tree->getRoots().front(), nullptr);
+        (void)haylen::nodes2d::NodeSerializer::save(tree->getRoots().front(), nullptr);
         FAIL() << "A tree deeper than a description was saved.";
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), "The description of the node \"" + path + "/n\" nests deeper than 64 levels.");
@@ -413,4 +413,4 @@ TEST_F(Nodes2DLuaTest, TweensNodesNatively) {
     EXPECT_EQ(fixture.lua("return string.format('%.1f %.1f', node.x, node.color.r)"), "100.0 0.0");
 }
 
-} // namespace haylen::nodes2d
+} // namespace haylen::lua::nodes2d

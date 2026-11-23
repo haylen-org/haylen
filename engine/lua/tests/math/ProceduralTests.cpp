@@ -17,82 +17,82 @@
 #include "haylen/math/Random.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::math {
+namespace haylen::lua::math {
 
 TEST(EasingTest, EveryCurveStartsAtZeroAndEndsAtOne) {
-    for (int index = 0; index <= static_cast<int>(Easing::Type::BounceInOut); ++index) {
-        const auto curve = static_cast<Easing::Type>(index);
-        EXPECT_NEAR(Easing::apply(curve, 0.0F), 0.0F, 1e-4F) << index;
-        EXPECT_NEAR(Easing::apply(curve, 1.0F), 1.0F, 1e-4F) << index;
-        EXPECT_NEAR(Easing::apply(curve, -1.0F), 0.0F, 1e-4F) << index;
-        EXPECT_NEAR(Easing::apply(curve, 2.0F), 1.0F, 1e-4F) << index;
+    for (int index = 0; index <= static_cast<int>(haylen::math::Easing::Type::BounceInOut); ++index) {
+        const auto curve = static_cast<haylen::math::Easing::Type>(index);
+        EXPECT_NEAR(haylen::math::Easing::apply(curve, 0.0F), 0.0F, 1e-4F) << index;
+        EXPECT_NEAR(haylen::math::Easing::apply(curve, 1.0F), 1.0F, 1e-4F) << index;
+        EXPECT_NEAR(haylen::math::Easing::apply(curve, -1.0F), 0.0F, 1e-4F) << index;
+        EXPECT_NEAR(haylen::math::Easing::apply(curve, 2.0F), 1.0F, 1e-4F) << index;
     }
 }
 
 TEST(EasingTest, CurvesHaveTheirCharacteristicShape) {
-    EXPECT_FLOAT_EQ(Easing::apply(Easing::Type::Linear, 0.3F), 0.3F);
-    EXPECT_LT(Easing::apply(Easing::Type::QuadIn, 0.5F), 0.5F);
-    EXPECT_GT(Easing::apply(Easing::Type::QuadOut, 0.5F), 0.5F);
-    EXPECT_NEAR(Easing::apply(Easing::Type::CubicInOut, 0.5F), 0.5F, 1e-5F);
-    EXPECT_LT(Easing::apply(Easing::Type::BackIn, 0.2F), 0.0F);
-    EXPECT_GT(Easing::apply(Easing::Type::BackOut, 0.8F), 1.0F);
-    EXPECT_GT(Easing::apply(Easing::Type::ElasticOut, 0.1F), 1.0F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::apply(haylen::math::Easing::Type::Linear, 0.3F), 0.3F);
+    EXPECT_LT(haylen::math::Easing::apply(haylen::math::Easing::Type::QuadIn, 0.5F), 0.5F);
+    EXPECT_GT(haylen::math::Easing::apply(haylen::math::Easing::Type::QuadOut, 0.5F), 0.5F);
+    EXPECT_NEAR(haylen::math::Easing::apply(haylen::math::Easing::Type::CubicInOut, 0.5F), 0.5F, 1e-5F);
+    EXPECT_LT(haylen::math::Easing::apply(haylen::math::Easing::Type::BackIn, 0.2F), 0.0F);
+    EXPECT_GT(haylen::math::Easing::apply(haylen::math::Easing::Type::BackOut, 0.8F), 1.0F);
+    EXPECT_GT(haylen::math::Easing::apply(haylen::math::Easing::Type::ElasticOut, 0.1F), 1.0F);
 
     for (const float t : {0.1F, 0.3F, 0.5F, 0.7F, 0.95F}) {
-        EXPECT_GE(Easing::apply(Easing::Type::BounceOut, t), 0.0F);
-        EXPECT_LE(Easing::apply(Easing::Type::BounceOut, t), 1.0F);
+        EXPECT_GE(haylen::math::Easing::apply(haylen::math::Easing::Type::BounceOut, t), 0.0F);
+        EXPECT_LE(haylen::math::Easing::apply(haylen::math::Easing::Type::BounceOut, t), 1.0F);
     }
 }
 
 TEST(EasingTest, BouncesLandOnTheEndValue) {
     for (const float landing : {1.0F, 2.0F, 2.5F}) {
-        EXPECT_NEAR(Easing::apply(Easing::Type::BounceOut, landing / 2.75F), 1.0F, 1e-5F) << landing;
+        EXPECT_NEAR(haylen::math::Easing::apply(haylen::math::Easing::Type::BounceOut, landing / 2.75F), 1.0F, 1e-5F) << landing;
     }
 
-    EXPECT_NEAR(Easing::apply(Easing::Type::BounceOut, 2.25F / 2.75F), 0.9375F, 1e-5F);
+    EXPECT_NEAR(haylen::math::Easing::apply(haylen::math::Easing::Type::BounceOut, 2.25F / 2.75F), 0.9375F, 1e-5F);
 }
 
 TEST(EasingTest, ParametersOnlyShapeTheBackAndElasticCurves) {
-    EXPECT_FLOAT_EQ(Easing::apply(Easing::Type::QuadIn, 0.5F, 3.0F, 0.5F), Easing::apply(Easing::Type::QuadIn, 0.5F));
-    EXPECT_LT(Easing::apply(Easing::Type::BackIn, 0.2F, 3.0F, 0.0F), Easing::apply(Easing::Type::BackIn, 0.2F));
+    EXPECT_FLOAT_EQ(haylen::math::Easing::apply(haylen::math::Easing::Type::QuadIn, 0.5F, 3.0F, 0.5F), haylen::math::Easing::apply(haylen::math::Easing::Type::QuadIn, 0.5F));
+    EXPECT_LT(haylen::math::Easing::apply(haylen::math::Easing::Type::BackIn, 0.2F, 3.0F, 0.0F), haylen::math::Easing::apply(haylen::math::Easing::Type::BackIn, 0.2F));
 }
 
 TEST(EasingTest, StepsJumpWhereTheirPositionSays) {
-    EXPECT_FLOAT_EQ(Easing::steps(0.5F, 4, Easing::StepPosition::End), 0.5F);
-    EXPECT_FLOAT_EQ(Easing::steps(0.0F, 4, Easing::StepPosition::Start), 0.25F);
-    EXPECT_FLOAT_EQ(Easing::steps(0.0F, 4, Easing::StepPosition::Both), 0.2F);
-    EXPECT_FLOAT_EQ(Easing::steps(0.5F, 4, Easing::StepPosition::Both), 0.6F);
-    EXPECT_FLOAT_EQ(Easing::steps(0.5F, 4, Easing::StepPosition::None), 2.0F / 3.0F);
-    EXPECT_FLOAT_EQ(Easing::steps(1.0F, 4, Easing::StepPosition::None), 1.0F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::steps(0.5F, 4, haylen::math::Easing::StepPosition::End), 0.5F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::steps(0.0F, 4, haylen::math::Easing::StepPosition::Start), 0.25F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::steps(0.0F, 4, haylen::math::Easing::StepPosition::Both), 0.2F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::steps(0.5F, 4, haylen::math::Easing::StepPosition::Both), 0.6F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::steps(0.5F, 4, haylen::math::Easing::StepPosition::None), 2.0F / 3.0F);
+    EXPECT_FLOAT_EQ(haylen::math::Easing::steps(1.0F, 4, haylen::math::Easing::StepPosition::None), 1.0F);
 }
 
 // The x of this curve starts flat, which stops the Newton steps at once, and bisection still finds where the curve reaches the time.
 TEST(EasingTest, SolvesBezierCurvesThatStartFlat) {
-    EXPECT_NEAR(Easing::cubicBezier(1e-4F, 0.0F, 0.0F, 0.0F, 0.0F), 1e-4F, 1e-6F);
+    EXPECT_NEAR(haylen::math::Easing::cubicBezier(1e-4F, 0.0F, 0.0F, 0.0F, 0.0F), 1e-4F, 1e-6F);
 }
 
 TEST(EasingTest, ResolvesNames) {
-    EXPECT_EQ(Easing::parse("linear"), Easing::Type::Linear);
-    EXPECT_EQ(Easing::parse("elasticInOut"), Easing::Type::ElasticInOut);
-    EXPECT_FALSE(Easing::parse("unknown").has_value());
-    EXPECT_EQ(Easing::parseStepPosition("both"), Easing::StepPosition::Both);
-    EXPECT_FALSE(Easing::parseStepPosition("middle").has_value());
+    EXPECT_EQ(haylen::math::Easing::parse("linear"), haylen::math::Easing::Type::Linear);
+    EXPECT_EQ(haylen::math::Easing::parse("elasticInOut"), haylen::math::Easing::Type::ElasticInOut);
+    EXPECT_FALSE(haylen::math::Easing::parse("unknown").has_value());
+    EXPECT_EQ(haylen::math::Easing::parseStepPosition("both"), haylen::math::Easing::StepPosition::Both);
+    EXPECT_FALSE(haylen::math::Easing::parseStepPosition("middle").has_value());
 }
 
 TEST(RandomTest, IsDeterministicPerSeed) {
-    Random first(42);
-    Random second(42);
+    haylen::math::Random first(42);
+    haylen::math::Random second(42);
     for (int index = 0; index < 100; ++index) {
         EXPECT_EQ(first.nextU64(), second.nextU64());
     }
 
     second.reseed(7);
-    Random third(7);
+    haylen::math::Random third(7);
     EXPECT_EQ(second.nextU32(), third.nextU32());
 }
 
 TEST(RandomTest, RangesStayInBounds) {
-    Random random(1);
+    haylen::math::Random random(1);
     for (int index = 0; index < 1000; ++index) {
         const float value = random.nextFloat();
         EXPECT_GE(value, 0.0F);
@@ -114,7 +114,7 @@ TEST(RandomTest, RangesStayInBounds) {
 }
 
 TEST(RandomTest, WeightedIndexFollowsWeights) {
-    Random random(3);
+    haylen::math::Random random(3);
     const std::array<float, 3> weights{0.0F, 1.0F, 0.0F};
     for (int index = 0; index < 50; ++index) {
         EXPECT_EQ(random.weightedIndex(weights), 1U);
@@ -127,7 +127,7 @@ TEST(RandomTest, WeightedIndexFollowsWeights) {
 }
 
 TEST(RandomTest, ShufflePreservesElements) {
-    Random random(9);
+    haylen::math::Random random(9);
     std::array<int, 8> values{1, 2, 3, 4, 5, 6, 7, 8};
     random.shuffle(std::span<int>(values));
     std::sort(values.begin(), values.end());
@@ -135,8 +135,8 @@ TEST(RandomTest, ShufflePreservesElements) {
 }
 
 TEST(NoiseTest, IsDeterministicAndBounded) {
-    const Noise2D noise(12);
-    const Noise2D same(12);
+    const haylen::math::Noise2D noise(12);
+    const haylen::math::Noise2D same(12);
     for (float x = -5.0F; x < 5.0F; x += 0.37F) {
         for (float y = -5.0F; y < 5.0F; y += 0.41F) {
             EXPECT_EQ(noise.simplex(x, y), same.simplex(x, y));
@@ -148,12 +148,12 @@ TEST(NoiseTest, IsDeterministicAndBounded) {
     }
 
     EXPECT_EQ(noise.fractal(1.0F, 1.0F, 0), 0.0F);
-    EXPECT_NE(Noise2D(1).simplex(0.3F, 0.7F), Noise2D(2).simplex(0.3F, 0.7F));
+    EXPECT_NE(haylen::math::Noise2D(1).simplex(0.3F, 0.7F), haylen::math::Noise2D(2).simplex(0.3F, 0.7F));
 }
 
 // The lattice of the noise repeats every 256 units, so a coordinate far beyond the range of an integer still lands on its cell, and one that is not a number gives no number.
 TEST(NoiseTest, SamplesCoordinatesOfAnySize) {
-    const Noise2D noise(12);
+    const haylen::math::Noise2D noise(12);
     EXPECT_EQ(noise.perlin(1e10F, 0.5F), noise.perlin(0.0F, 0.5F));
     EXPECT_EQ(noise.perlin(-1e10F, 0.5F), noise.perlin(0.0F, 0.5F));
     EXPECT_TRUE(std::isnan(noise.perlin(std::numeric_limits<float>::quiet_NaN(), 0.5F)));
@@ -162,107 +162,107 @@ TEST(NoiseTest, SamplesCoordinatesOfAnySize) {
 }
 
 TEST(EasingTest, StepsOfAProgressThatIsNotANumberAreNotANumber) {
-    EXPECT_TRUE(std::isnan(Easing::steps(std::numeric_limits<float>::quiet_NaN(), 4, Easing::StepPosition::End)));
-    EXPECT_EQ(Easing::steps(1.0F, std::numeric_limits<int>::max(), Easing::StepPosition::Both), 1.0F);
+    EXPECT_TRUE(std::isnan(haylen::math::Easing::steps(std::numeric_limits<float>::quiet_NaN(), 4, haylen::math::Easing::StepPosition::End)));
+    EXPECT_EQ(haylen::math::Easing::steps(1.0F, std::numeric_limits<int>::max(), haylen::math::Easing::StepPosition::Both), 1.0F);
 }
 
 TEST(GeometryTest, CirclesAndSegments) {
-    const Circle circle{Vec2{}, 5.0F};
-    EXPECT_TRUE(circle.contains(Vec2(3.0F, 4.0F)));
-    EXPECT_FALSE(circle.contains(Vec2(4.0F, 4.0F)));
-    EXPECT_EQ(circle.getBounds(), (Rect{-5.0F, -5.0F, 10.0F, 10.0F}));
-    EXPECT_TRUE(Geometry::intersects(circle, Circle{Vec2(9.0F, 0.0F), 4.0F}));
-    EXPECT_FALSE(Geometry::intersects(circle, Circle{Vec2(10.0F, 0.0F), 4.0F}));
-    EXPECT_TRUE(Geometry::intersects(circle, Rect{4.0F, -1.0F, 2.0F, 2.0F}));
-    EXPECT_FALSE(Geometry::intersects(circle, Rect{6.0F, 6.0F, 2.0F, 2.0F}));
+    const haylen::math::Circle circle{haylen::math::Vec2{}, 5.0F};
+    EXPECT_TRUE(circle.contains(haylen::math::Vec2(3.0F, 4.0F)));
+    EXPECT_FALSE(circle.contains(haylen::math::Vec2(4.0F, 4.0F)));
+    EXPECT_EQ(circle.getBounds(), (haylen::math::Rect{-5.0F, -5.0F, 10.0F, 10.0F}));
+    EXPECT_TRUE(haylen::math::Geometry::intersects(circle, haylen::math::Circle{haylen::math::Vec2(9.0F, 0.0F), 4.0F}));
+    EXPECT_FALSE(haylen::math::Geometry::intersects(circle, haylen::math::Circle{haylen::math::Vec2(10.0F, 0.0F), 4.0F}));
+    EXPECT_TRUE(haylen::math::Geometry::intersects(circle, haylen::math::Rect{4.0F, -1.0F, 2.0F, 2.0F}));
+    EXPECT_FALSE(haylen::math::Geometry::intersects(circle, haylen::math::Rect{6.0F, 6.0F, 2.0F, 2.0F}));
 
-    const Segment horizontal{Vec2(-1.0F, 0.0F), Vec2(1.0F, 0.0F)};
-    const Segment vertical{Vec2(0.0F, -1.0F), Vec2(0.0F, 1.0F)};
-    EXPECT_EQ(Geometry::intersection(horizontal, vertical), Vec2{});
-    EXPECT_FALSE(Geometry::intersection(horizontal, Segment{Vec2(-1.0F, 1.0F), Vec2(1.0F, 1.0F)}).has_value());
-    EXPECT_FALSE(Geometry::intersection(horizontal, Segment{Vec2(2.0F, -1.0F), Vec2(2.0F, 1.0F)}).has_value());
-    EXPECT_EQ(Geometry::closestPoint(horizontal, Vec2(5.0F, 3.0F)), Vec2(1.0F, 0.0F));
-    EXPECT_EQ(Geometry::closestPoint(Segment{Vec2(1.0F, 1.0F), Vec2(1.0F, 1.0F)}, Vec2{}), Vec2(1.0F, 1.0F));
-    EXPECT_FLOAT_EQ(Geometry::distanceToSegment(horizontal, Vec2(0.0F, 2.0F)), 2.0F);
+    const haylen::math::Segment horizontal{haylen::math::Vec2(-1.0F, 0.0F), haylen::math::Vec2(1.0F, 0.0F)};
+    const haylen::math::Segment vertical{haylen::math::Vec2(0.0F, -1.0F), haylen::math::Vec2(0.0F, 1.0F)};
+    EXPECT_EQ(haylen::math::Geometry::intersection(horizontal, vertical), haylen::math::Vec2{});
+    EXPECT_FALSE(haylen::math::Geometry::intersection(horizontal, haylen::math::Segment{haylen::math::Vec2(-1.0F, 1.0F), haylen::math::Vec2(1.0F, 1.0F)}).has_value());
+    EXPECT_FALSE(haylen::math::Geometry::intersection(horizontal, haylen::math::Segment{haylen::math::Vec2(2.0F, -1.0F), haylen::math::Vec2(2.0F, 1.0F)}).has_value());
+    EXPECT_EQ(haylen::math::Geometry::closestPoint(horizontal, haylen::math::Vec2(5.0F, 3.0F)), haylen::math::Vec2(1.0F, 0.0F));
+    EXPECT_EQ(haylen::math::Geometry::closestPoint(haylen::math::Segment{haylen::math::Vec2(1.0F, 1.0F), haylen::math::Vec2(1.0F, 1.0F)}, haylen::math::Vec2{}), haylen::math::Vec2(1.0F, 1.0F));
+    EXPECT_FLOAT_EQ(haylen::math::Geometry::distanceToSegment(horizontal, haylen::math::Vec2(0.0F, 2.0F)), 2.0F);
 }
 
 TEST(GeometryTest, Polygons) {
-    const std::array<Vec2, 4> square{Vec2(0.0F, 0.0F), Vec2(10.0F, 0.0F), Vec2(10.0F, 10.0F), Vec2(0.0F, 10.0F)};
-    EXPECT_TRUE(Geometry::contains(square, Vec2(5.0F, 5.0F)));
-    EXPECT_FALSE(Geometry::contains(square, Vec2(15.0F, 5.0F)));
-    EXPECT_FLOAT_EQ(Geometry::signedArea(square), 100.0F);
-    EXPECT_EQ(Geometry::centroid(square), Vec2(5.0F, 5.0F));
-    EXPECT_TRUE(Geometry::isConvex(square));
-    EXPECT_EQ(Geometry::bounds(square), (Rect{0.0F, 0.0F, 10.0F, 10.0F}));
-    EXPECT_EQ(Geometry::bounds(std::span<const Vec2>{}), Rect{});
+    const std::array<haylen::math::Vec2, 4> square{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(10.0F, 0.0F), haylen::math::Vec2(10.0F, 10.0F), haylen::math::Vec2(0.0F, 10.0F)};
+    EXPECT_TRUE(haylen::math::Geometry::contains(square, haylen::math::Vec2(5.0F, 5.0F)));
+    EXPECT_FALSE(haylen::math::Geometry::contains(square, haylen::math::Vec2(15.0F, 5.0F)));
+    EXPECT_FLOAT_EQ(haylen::math::Geometry::signedArea(square), 100.0F);
+    EXPECT_EQ(haylen::math::Geometry::centroid(square), haylen::math::Vec2(5.0F, 5.0F));
+    EXPECT_TRUE(haylen::math::Geometry::isConvex(square));
+    EXPECT_EQ(haylen::math::Geometry::bounds(square), (haylen::math::Rect{0.0F, 0.0F, 10.0F, 10.0F}));
+    EXPECT_EQ(haylen::math::Geometry::bounds(std::span<const haylen::math::Vec2>{}), haylen::math::Rect{});
 
-    const std::array<Vec2, 5> arrow{Vec2(0.0F, 0.0F), Vec2(10.0F, 0.0F), Vec2(5.0F, 3.0F), Vec2(10.0F, 10.0F), Vec2(0.0F, 10.0F)};
-    EXPECT_FALSE(Geometry::isConvex(arrow));
-    EXPECT_FALSE(Geometry::isConvex(std::span<const Vec2>(square.data(), 2)));
+    const std::array<haylen::math::Vec2, 5> arrow{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(10.0F, 0.0F), haylen::math::Vec2(5.0F, 3.0F), haylen::math::Vec2(10.0F, 10.0F), haylen::math::Vec2(0.0F, 10.0F)};
+    EXPECT_FALSE(haylen::math::Geometry::isConvex(arrow));
+    EXPECT_FALSE(haylen::math::Geometry::isConvex(std::span<const haylen::math::Vec2>(square.data(), 2)));
 
-    const std::array<Vec2, 3> line{Vec2(0.0F, 0.0F), Vec2(1.0F, 1.0F), Vec2(2.0F, 2.0F)};
-    EXPECT_EQ(Geometry::centroid(line), Vec2(1.0F, 1.0F));
-    EXPECT_EQ(Geometry::centroid(std::span<const Vec2>{}), Vec2{});
+    const std::array<haylen::math::Vec2, 3> line{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(1.0F, 1.0F), haylen::math::Vec2(2.0F, 2.0F)};
+    EXPECT_EQ(haylen::math::Geometry::centroid(line), haylen::math::Vec2(1.0F, 1.0F));
+    EXPECT_EQ(haylen::math::Geometry::centroid(std::span<const haylen::math::Vec2>{}), haylen::math::Vec2{});
 }
 
 TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
-    std::vector<Vec2> hexagon;
-    std::vector<Vec2> pentagram;
+    std::vector<haylen::math::Vec2> hexagon;
+    std::vector<haylen::math::Vec2> pentagram;
 
     for (int index = 0; index < 6; ++index) {
-        hexagon.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index) / 6.0F, 10.0F));
+        hexagon.push_back(haylen::math::Vec2::fromAngle(haylen::math::Math::kTau * static_cast<float>(index) / 6.0F, 10.0F));
     }
 
     for (int index = 0; index < 5; ++index) {
-        pentagram.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index * 2) / 5.0F, 10.0F));
+        pentagram.push_back(haylen::math::Vec2::fromAngle(haylen::math::Math::kTau * static_cast<float>(index * 2) / 5.0F, 10.0F));
     }
 
-    EXPECT_TRUE(Geometry::isConvex(hexagon));
-    EXPECT_FALSE(Geometry::isConvex(pentagram));
+    EXPECT_TRUE(haylen::math::Geometry::isConvex(hexagon));
+    EXPECT_FALSE(haylen::math::Geometry::isConvex(pentagram));
     std::reverse(hexagon.begin(), hexagon.end());
     std::reverse(pentagram.begin(), pentagram.end());
-    EXPECT_TRUE(Geometry::isConvex(hexagon));
-    EXPECT_FALSE(Geometry::isConvex(pentagram));
+    EXPECT_TRUE(haylen::math::Geometry::isConvex(hexagon));
+    EXPECT_FALSE(haylen::math::Geometry::isConvex(pentagram));
 }
 
 TEST(GeometryTest, ConvexHullDropsInteriorPoints) {
-    const std::array<Vec2, 6> points{Vec2(0.0F, 0.0F), Vec2(4.0F, 0.0F), Vec2(4.0F, 4.0F), Vec2(0.0F, 4.0F), Vec2(2.0F, 2.0F), Vec2(4.0F, 0.0F)};
-    const std::vector<Vec2> hull = Geometry::convexHull(points);
+    const std::array<haylen::math::Vec2, 6> points{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(4.0F, 0.0F), haylen::math::Vec2(4.0F, 4.0F), haylen::math::Vec2(0.0F, 4.0F), haylen::math::Vec2(2.0F, 2.0F), haylen::math::Vec2(4.0F, 0.0F)};
+    const std::vector<haylen::math::Vec2> hull = haylen::math::Geometry::convexHull(points);
     EXPECT_EQ(hull.size(), 4U);
-    EXPECT_GT(Geometry::signedArea(hull), 0.0F);
-    EXPECT_EQ(Geometry::convexHull(std::span<const Vec2>(points.data(), 2)).size(), 2U);
+    EXPECT_GT(haylen::math::Geometry::signedArea(hull), 0.0F);
+    EXPECT_EQ(haylen::math::Geometry::convexHull(std::span<const haylen::math::Vec2>(points.data(), 2)).size(), 2U);
 
     // A point with a NaN coordinate is left out instead of breaking the sort.
-    const std::array<Vec2, 5> withNaN{Vec2(0.0F, 0.0F), Vec2(4.0F, 0.0F), Vec2(std::numeric_limits<float>::quiet_NaN(), 2.0F), Vec2(4.0F, 4.0F), Vec2(0.0F, 4.0F)};
-    EXPECT_EQ(Geometry::convexHull(withNaN).size(), 4U);
+    const std::array<haylen::math::Vec2, 5> withNaN{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(4.0F, 0.0F), haylen::math::Vec2(std::numeric_limits<float>::quiet_NaN(), 2.0F), haylen::math::Vec2(4.0F, 4.0F), haylen::math::Vec2(0.0F, 4.0F)};
+    EXPECT_EQ(haylen::math::Geometry::convexHull(withNaN).size(), 4U);
 }
 
 TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
-    std::vector<Vec2> arrow{Vec2(0.0F, 0.0F), Vec2(10.0F, 0.0F), Vec2(5.0F, 3.0F), Vec2(10.0F, 10.0F), Vec2(0.0F, 10.0F)};
-    const auto triangles = Geometry::triangulate(arrow);
+    std::vector<haylen::math::Vec2> arrow{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(10.0F, 0.0F), haylen::math::Vec2(5.0F, 3.0F), haylen::math::Vec2(10.0F, 10.0F), haylen::math::Vec2(0.0F, 10.0F)};
+    const auto triangles = haylen::math::Geometry::triangulate(arrow);
     ASSERT_EQ(triangles.size(), 9U);
 
     float area = 0.0F;
     for (std::size_t index = 0; index < triangles.size(); index += 3) {
-        const std::array<Vec2, 3> triangle{arrow[triangles[index]], arrow[triangles[index + 1]], arrow[triangles[index + 2]]};
-        EXPECT_GT(Geometry::signedArea(triangle), 0.0F);
-        area += Geometry::signedArea(triangle);
+        const std::array<haylen::math::Vec2, 3> triangle{arrow[triangles[index]], arrow[triangles[index + 1]], arrow[triangles[index + 2]]};
+        EXPECT_GT(haylen::math::Geometry::signedArea(triangle), 0.0F);
+        area += haylen::math::Geometry::signedArea(triangle);
     }
 
-    EXPECT_NEAR(area, Geometry::signedArea(arrow), 1e-3F);
+    EXPECT_NEAR(area, haylen::math::Geometry::signedArea(arrow), 1e-3F);
 
     std::reverse(arrow.begin(), arrow.end());
-    EXPECT_EQ(Geometry::triangulate(arrow).size(), 9U);
-    EXPECT_TRUE(Geometry::triangulate(std::span<const Vec2>(arrow.data(), 2)).empty());
+    EXPECT_EQ(haylen::math::Geometry::triangulate(arrow).size(), 9U);
+    EXPECT_TRUE(haylen::math::Geometry::triangulate(std::span<const haylen::math::Vec2>(arrow.data(), 2)).empty());
 }
 
 TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {
-    Random random(5);
+    haylen::math::Random random(5);
     const float infinity = std::numeric_limits<float>::infinity();
 
-    for (const Rect area : {Rect{-infinity, 0.0F, 100.0F, 100.0F}, Rect{0.0F, 0.0F, 100.0F, std::numeric_limits<float>::quiet_NaN()}}) {
+    for (const haylen::math::Rect area : {haylen::math::Rect{-infinity, 0.0F, 100.0F, 100.0F}, haylen::math::Rect{0.0F, 0.0F, 100.0F, std::numeric_limits<float>::quiet_NaN()}}) {
         try {
-            (void)PoissonDisk::sample({.area = area, .minimumDistance = 10.0F}, random);
+            (void)haylen::math::PoissonDisk::sample({.area = area, .minimumDistance = 10.0F}, random);
             ADD_FAILURE() << "An area without finite edges must be refused.";
         } catch (const std::invalid_argument& error) {
             EXPECT_STREQ(error.what(), "Poisson sampling needs an area whose edges are finite.");
@@ -271,13 +271,13 @@ TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {
 }
 
 TEST(PoissonDiskTest, KeepsMinimumDistanceAndPredicate) {
-    Random random(5);
-    const PoissonDisk::Options options{
-        .area = Rect{0.0F, 0.0F, 500.0F, 300.0F},
+    haylen::math::Random random(5);
+    const haylen::math::PoissonDisk::Options options{
+        .area = haylen::math::Rect{0.0F, 0.0F, 500.0F, 300.0F},
         .minimumDistance = 40.0F,
-        .accept = [](Vec2 point) { return point.x < 400.0F; },
+        .accept = [](haylen::math::Vec2 point) { return point.x < 400.0F; },
     };
-    const std::vector<Vec2> points = PoissonDisk::sample(options, random);
+    const std::vector<haylen::math::Vec2> points = haylen::math::PoissonDisk::sample(options, random);
 
     ASSERT_GT(points.size(), 20U);
 
@@ -286,40 +286,40 @@ TEST(PoissonDiskTest, KeepsMinimumDistanceAndPredicate) {
         EXPECT_TRUE(options.area.contains(points[first]));
 
         for (std::size_t second = first + 1; second < points.size(); ++second) {
-            EXPECT_GE(Vec2::distance(points[first], points[second]), 40.0F - 1e-3F);
+            EXPECT_GE(haylen::math::Vec2::distance(points[first], points[second]), 40.0F - 1e-3F);
         }
     }
 }
 
 TEST(PoissonDiskTest, RejectsDegenerateInput) {
-    Random random(5);
-    EXPECT_TRUE(PoissonDisk::sample(PoissonDisk::Options{.area = Rect{}}, random).empty());
-    EXPECT_TRUE(PoissonDisk::sample(PoissonDisk::Options{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .minimumDistance = 0.0F}, random).empty());
+    haylen::math::Random random(5);
+    EXPECT_TRUE(haylen::math::PoissonDisk::sample(haylen::math::PoissonDisk::Options{.area = haylen::math::Rect{}}, random).empty());
+    EXPECT_TRUE(haylen::math::PoissonDisk::sample(haylen::math::PoissonDisk::Options{.area = haylen::math::Rect{0.0F, 0.0F, 10.0F, 10.0F}, .minimumDistance = 0.0F}, random).empty());
 
-    const PoissonDisk::Options nothingAccepted{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .accept = [](Vec2) { return false; }};
-    EXPECT_TRUE(PoissonDisk::sample(nothingAccepted, random).empty());
-    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = Rect{0.0F, 0.0F, 2000.0F, 2000.0F}, .minimumDistance = 0.01F}, random), std::invalid_argument);
+    const haylen::math::PoissonDisk::Options nothingAccepted{.area = haylen::math::Rect{0.0F, 0.0F, 10.0F, 10.0F}, .accept = [](haylen::math::Vec2) { return false; }};
+    EXPECT_TRUE(haylen::math::PoissonDisk::sample(nothingAccepted, random).empty());
+    EXPECT_THROW((void)haylen::math::PoissonDisk::sample(haylen::math::PoissonDisk::Options{.area = haylen::math::Rect{0.0F, 0.0F, 2000.0F, 2000.0F}, .minimumDistance = 0.01F}, random), std::invalid_argument);
 }
 
 TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
-    Random random(5);
-    const Rect area{0.0F, 0.0F, 100.0F, 100.0F};
+    haylen::math::Random random(5);
+    const haylen::math::Rect area{0.0F, 0.0F, 100.0F, 100.0F};
 
     // The largest distances reach far beyond any `int` number of cells, and the search stays within the grid.
     for (const float maximum : {1e30F, std::numeric_limits<float>::max()}) {
-        const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](Vec2) { return 10.0F; }}, random);
+        const std::vector<haylen::math::Vec2> points = haylen::math::PoissonDisk::sample(haylen::math::PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](haylen::math::Vec2) { return 10.0F; }}, random);
         ASSERT_GT(points.size(), 10U);
 
         for (std::size_t first = 0; first < points.size(); ++first) {
             for (std::size_t second = first + 1; second < points.size(); ++second) {
-                EXPECT_GE(Vec2::distance(points[first], points[second]), 10.0F - 1e-3F);
+                EXPECT_GE(haylen::math::Vec2::distance(points[first], points[second]), 10.0F - 1e-3F);
             }
         }
     }
 
     const float infinity = std::numeric_limits<float>::infinity();
-    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = infinity, .distance = [](Vec2) { return 10.0F; }}, random), std::invalid_argument);
-    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 20.0F, .distance = [](Vec2) { return std::numeric_limits<float>::quiet_NaN(); }}, random), std::invalid_argument);
+    EXPECT_THROW((void)haylen::math::PoissonDisk::sample(haylen::math::PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = infinity, .distance = [](haylen::math::Vec2) { return 10.0F; }}, random), std::invalid_argument);
+    EXPECT_THROW((void)haylen::math::PoissonDisk::sample(haylen::math::PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 20.0F, .distance = [](haylen::math::Vec2) { return std::numeric_limits<float>::quiet_NaN(); }}, random), std::invalid_argument);
 }
 
 TEST(MathArgumentsLuaTest, HandleNaNAndRejectInvalidRangesAndWeights) {
@@ -334,4 +334,4 @@ TEST(MathArgumentsLuaTest, HandleNaNAndRejectInvalidRangesAndWeights) {
     EXPECT_NE(fixture.lua("return m.polygon.decompose({{0, 0}, {4, 0}, {4, 4}}, -1)").find("bad argument #2 to 'decompose' (expected a non-negative integer)"), std::string::npos);
 }
 
-} // namespace haylen::math
+} // namespace haylen::lua::math

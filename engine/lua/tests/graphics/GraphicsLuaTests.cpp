@@ -10,7 +10,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::graphics {
+namespace haylen::lua::graphics {
 
 TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     const std::vector<std::uint8_t> image = test::TestFiles::pngImage(16, 8, 0xFFFFFFFFU);
@@ -153,4 +153,4 @@ TEST(GraphicsLuaTest, ReadsTargetsCapturesTheScreenAndEncodesPngFiles) {
     EXPECT_NE(fixture.lua("graphics.readTarget(5)").find("haylen.RenderTarget expected"), std::string::npos);
 }
 
-} // namespace haylen::graphics
+} // namespace haylen::lua::graphics

@@ -29,7 +29,7 @@
 #include "support/LuaFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 // A development server that pushes a line of the console, a request for the commands and then one batch to every app that says hello, with a module, an asset and a path outside the package, restarts the app once it reports the batch, as the developer asks with R, and keeps the messages the app sends.
 class PushingServer final {
@@ -48,7 +48,7 @@ class PushingServer final {
         return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + "/haylen/development?token=test";
     }
 
-    [[nodiscard]] std::vector<core::Json> getMessages() {
+    [[nodiscard]] std::vector<haylen::core::Json> getMessages() {
         const std::scoped_lock lock(mutex);
         return messages;
     }
@@ -71,7 +71,7 @@ class PushingServer final {
                         return;
                     }
 
-                    const core::Json message = core::Json::parse(std::string_view(frame.begin(), frame.size()));
+                    const haylen::core::Json message = haylen::core::Json::parse(std::string_view(frame.begin(), frame.size()));
                     server.record(message);
 
                     if (message.at("type") == "hello") {
@@ -98,12 +98,12 @@ class PushingServer final {
             }
 
             const std::vector<std::pair<std::string, std::string>> files{{"source/counter.lua", "return {value = 'pushed'}"}, {"content/data.json", R"({"level": 9})"}, {"../secret.lua", "return 'stolen'"}};
-            core::Json listed = core::Json::array();
+            haylen::core::Json listed = haylen::core::Json::array();
             for (const auto& [path, content] : files) {
                 listed.push_back({{"path", path}, {"size", content.size()}});
             }
 
-            const std::string message = core::Json{{"type", "files"}, {"session", "run"}, {"revision", 1}, {"files", listed}, {"removed", core::Json::array()}}.dump();
+            const std::string message = haylen::core::Json{{"type", "files"}, {"session", "run"}, {"revision", 1}, {"files", listed}, {"removed", haylen::core::Json::array()}}.dump();
             socket.sendFrame(message.data(), static_cast<int>(message.size()), Poco::Net::WebSocket::FRAME_TEXT);
 
             for (const auto& [path, content] : files) {
@@ -126,7 +126,7 @@ class PushingServer final {
         PushingServer& server;
     };
 
-    void record(core::Json message) {
+    void record(haylen::core::Json message) {
         const std::scoped_lock lock(mutex);
         messages.push_back(std::move(message));
     }
@@ -134,7 +134,7 @@ class PushingServer final {
     Poco::Net::ServerSocket listener;
     Poco::Net::HTTPServer server;
     std::mutex mutex;
-    std::vector<core::Json> messages;
+    std::vector<haylen::core::Json> messages;
 };
 
 TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePackage) {
@@ -142,7 +142,7 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     std::vector<std::string> lines;
     std::mutex linesMutex;
     // clang-format off
-    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level, std::string_view line) {
+    const std::uint64_t listener = haylen::core::Log::addListener([&](haylen::core::Log::Level, std::string_view line) {
         const std::scoped_lock lock(linesMutex);
         lines.emplace_back(line);
     });
@@ -154,27 +154,27 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     EXPECT_FALSE(fixture.engine().isRestartRequested());
 
     // The report of the batch goes back to the server with the revision it answers.
-    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const core::Json& message) { return message.at("type") == "report"; }); }));
-    const std::vector<core::Json> messages = server.getMessages();
+    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const haylen::core::Json& message) { return message.at("type") == "report"; }); }));
+    const std::vector<haylen::core::Json> messages = server.getMessages();
     EXPECT_EQ(messages.front().at("type"), "hello");
     EXPECT_EQ(messages.front().at("session"), "");
-    const auto report = std::ranges::find_if(messages, [](const core::Json& message) { return message.at("type") == "report"; });
+    const auto report = std::ranges::find_if(messages, [](const haylen::core::Json& message) { return message.at("type") == "report"; });
     ASSERT_NE(report, messages.end());
     EXPECT_EQ(report->at("revision"), 1);
-    EXPECT_EQ(report->at("modules"), core::Json::array({"source/counter.lua"}));
+    EXPECT_EQ(report->at("modules"), haylen::core::Json::array({"source/counter.lua"}));
 
     // A console result that holds bytes that are not UTF-8, such as a Lua string of raw bytes, reaches the server as valid JSON with each wrong byte replaced.
-    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; }); }));
-    const std::vector<core::Json> results = server.getMessages();
-    const auto bytes = std::ranges::find_if(results, [](const core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; });
+    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const haylen::core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; }); }));
+    const std::vector<haylen::core::Json> results = server.getMessages();
+    const auto bytes = std::ranges::find_if(results, [](const haylen::core::Json& message) { return message.at("type") == "consoleResult" && message.at("id") == 2; });
     ASSERT_NE(bytes, results.end());
     EXPECT_TRUE(bytes->at("ok").get<bool>());
     EXPECT_NE(bytes->at("output").get<std::string>().find("\xEF\xBF\xBD"), std::string::npos);
 
     // The restart that the server asks for restarts the app, which tells the server why.
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().isRestartRequested(); }));
-    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const core::Json& message) { return message.at("type") == "report" && message.value("restarted", false); }); }));
-    core::Log::removeListener(listener);
+    ASSERT_TRUE(fixture.frameUntil([&] { return std::ranges::any_of(server.getMessages(), [](const haylen::core::Json& message) { return message.at("type") == "report" && message.value("restarted", false); }); }));
+    haylen::core::Log::removeListener(listener);
     const std::scoped_lock lock(linesMutex);
     EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("The development server sent the path \"../secret.lua\", which is not a file of the package, so it was refused.") != std::string::npos; }));
     EXPECT_EQ(std::ranges::count_if(lines, [](const std::string& line) { return line.find("The development server sent a message that this engine does not know.") != std::string::npos; }), 4);
@@ -216,21 +216,21 @@ TEST(DevelopmentConnectionTest, PlaysALaunchedAppInDevelopmentWithTheServerItNam
     // clang-format on
 
     const test::TemporaryDirectory data;
-    EXPECT_EQ(HeadlessPlayer::run({.package = launcher.getPath(), .frames = 600, .dataDirectory = data.getPath()}), 7);
-    const std::vector<core::Json> messages = server.getMessages();
-    EXPECT_TRUE(std::ranges::any_of(messages, [](const core::Json& message) { return message.at("type") == "hello"; }));
+    EXPECT_EQ(haylen::platform::HeadlessPlayer::run({.package = launcher.getPath(), .frames = 600, .dataDirectory = data.getPath()}), 7);
+    const std::vector<haylen::core::Json> messages = server.getMessages();
+    EXPECT_TRUE(std::ranges::any_of(messages, [](const haylen::core::Json& message) { return message.at("type") == "hello"; }));
 }
 
 // A line of the console that the server sends just before the session ends, such as the session of a launched app that quits in the frame the line arrives, never answers into the connection that is gone.
 TEST(DevelopmentConnectionTest, WithdrawsTheConsoleLinesOfASessionThatEnds) {
     PushingServer server;
     const test::TemporaryDirectory directory;
-    HeadlessHost host(directory.getPath());
-    (void)ConsoleRelay::take();
-    (void)ConsoleRelay::takeCommandRequests();
+    haylen::platform::HeadlessHost host(directory.getPath());
+    (void)haylen::platform::ConsoleRelay::take();
+    (void)haylen::platform::ConsoleRelay::takeCommandRequests();
 
     // The batch of files follows the messages of the console, so its changes tell that they arrived.
-    auto session = std::make_unique<DevelopmentSession>(host, std::nullopt, server.getUrl());
+    auto session = std::make_unique<haylen::platform::DevelopmentSession>(host, std::nullopt, server.getUrl());
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
     bool arrived = false;
     while (!arrived && std::chrono::steady_clock::now() < deadline) {
@@ -242,8 +242,8 @@ TEST(DevelopmentConnectionTest, WithdrawsTheConsoleLinesOfASessionThatEnds) {
     ASSERT_TRUE(arrived);
 
     session.reset();
-    EXPECT_TRUE(ConsoleRelay::take().empty());
-    EXPECT_TRUE(ConsoleRelay::takeCommandRequests().empty());
+    EXPECT_TRUE(haylen::platform::ConsoleRelay::take().empty());
+    EXPECT_TRUE(haylen::platform::ConsoleRelay::takeCommandRequests().empty());
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

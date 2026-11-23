@@ -10,7 +10,7 @@
 #include "haylen/core/MessagePack.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 class MessagePackTest : public ::testing::Test {
   protected:
@@ -25,7 +25,7 @@ class MessagePackTest : public ::testing::Test {
 
     [[nodiscard]] static std::string refusal(const std::vector<std::byte>& bytes) {
         try {
-            (void)MessagePack::decode(bytes);
+            (void)haylen::core::MessagePack::decode(bytes);
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
@@ -35,15 +35,15 @@ class MessagePackTest : public ::testing::Test {
 };
 
 TEST_F(MessagePackTest, RoundTripsEveryKindOfValue) {
-    const Json value = {{"o", 30}, {"negative", -5}, {"small", -33}, {"wide", 4294967296LL}, {"float", 1.5}, {"text", "héllo"}, {"list", {1, nullptr, true, false}}, {"nested", {{"a", {{"b", Json::array()}}}}}, {"raw", Json::binary({0, 255, 7})}};
-    const std::vector<std::byte> encoded = MessagePack::encode(value);
-    EXPECT_EQ(MessagePack::decode(encoded), value);
+    const haylen::core::Json value = {{"o", 30}, {"negative", -5}, {"small", -33}, {"wide", 4294967296LL}, {"float", 1.5}, {"text", "héllo"}, {"list", {1, nullptr, true, false}}, {"nested", {{"a", {{"b", haylen::core::Json::array()}}}}}, {"raw", haylen::core::Json::binary({0, 255, 7})}};
+    const std::vector<std::byte> encoded = haylen::core::MessagePack::encode(value);
+    EXPECT_EQ(haylen::core::MessagePack::decode(encoded), value);
 
     // Known encodings: a positive and a negative fixed integer, a fixed map with a fixed string key and an unsigned 16-bit integer.
-    EXPECT_EQ(MessagePack::decode(bytesOf({0x07})), 7);
-    EXPECT_EQ(MessagePack::decode(bytesOf({0xFF})), -1);
-    EXPECT_EQ(MessagePack::decode(bytesOf({0x81, 0xA1, 'o', 0xCD, 0x01, 0x00})), (Json{{"o", 256}}));
-    EXPECT_EQ(MessagePack::encode(Json(7)), bytesOf({0x07}));
+    EXPECT_EQ(haylen::core::MessagePack::decode(bytesOf({0x07})), 7);
+    EXPECT_EQ(haylen::core::MessagePack::decode(bytesOf({0xFF})), -1);
+    EXPECT_EQ(haylen::core::MessagePack::decode(bytesOf({0x81, 0xA1, 'o', 0xCD, 0x01, 0x00})), (haylen::core::Json{{"o", 256}}));
+    EXPECT_EQ(haylen::core::MessagePack::encode(haylen::core::Json(7)), bytesOf({0x07}));
 }
 
 TEST_F(MessagePackTest, RefusesBrokenAndHostileMessages) {
@@ -61,21 +61,21 @@ TEST_F(MessagePackTest, RefusesBrokenAndHostileMessages) {
     deep.push_back(std::byte{0x00});
     EXPECT_EQ(refusal(deep), "The bytes are not valid MessagePack: it nests deeper than 128 levels.");
 
-    Json nested = Json::array();
+    haylen::core::Json nested = haylen::core::Json::array();
     for (int level = 0; level < 200; ++level) {
-        nested = Json::array({nested});
+        nested = haylen::core::Json::array({nested});
     }
 
-    EXPECT_THROW((void)MessagePack::encode(nested), std::invalid_argument);
+    EXPECT_THROW((void)haylen::core::MessagePack::encode(nested), std::invalid_argument);
 
     // Both ways count only containers as levels, so 128 nested arrays round-trip and a 129th one fails both ways, even when it is empty.
-    Json deepest = Json::array({0});
+    haylen::core::Json deepest = haylen::core::Json::array({0});
     for (int level = 1; level < 128; ++level) {
-        deepest = Json::array({deepest});
+        deepest = haylen::core::Json::array({deepest});
     }
 
-    EXPECT_EQ(MessagePack::decode(MessagePack::encode(deepest)), deepest);
-    EXPECT_THROW((void)MessagePack::encode(Json::array({deepest})), std::invalid_argument);
+    EXPECT_EQ(haylen::core::MessagePack::decode(haylen::core::MessagePack::encode(deepest)), deepest);
+    EXPECT_THROW((void)haylen::core::MessagePack::encode(haylen::core::Json::array({deepest})), std::invalid_argument);
 
     std::vector<std::byte> empty(128, std::byte{0x91});
     empty.push_back(std::byte{0x90});
@@ -109,4 +109,4 @@ TEST(MessagePackLuaTest, EncodesAndDecodesOnTheFrameThreadAndOffIt) {
     EXPECT_NE(fixture.lua("net.encodeMessagePack(print)").find("cannot be converted to JSON"), std::string::npos);
 }
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

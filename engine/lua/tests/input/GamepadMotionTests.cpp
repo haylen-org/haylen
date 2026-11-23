@@ -16,16 +16,16 @@
 #include "haylen/platform/Event.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::input {
+namespace haylen::lua::input {
 
 // Drives the motion sensors of gamepads through the headless host, which records the sensors that run and takes gamepads with the readings that tests give them.
 class GamepadMotionTest : public ::testing::Test {
   protected:
     static constexpr float kGravity = 9.80665F;
 
-    [[nodiscard]] static GamepadMotion::Sensors makeSensors(std::initializer_list<MotionSensor> list) {
-        GamepadMotion::Sensors sensors;
-        for (const MotionSensor sensor : list) {
+    [[nodiscard]] static haylen::input::GamepadMotion::Sensors makeSensors(std::initializer_list<haylen::input::MotionSensor> list) {
+        haylen::input::GamepadMotion::Sensors sensors;
+        for (const haylen::input::MotionSensor sensor : list) {
             sensors.set(static_cast<std::size_t>(sensor));
         }
 
@@ -33,12 +33,12 @@ class GamepadMotionTest : public ::testing::Test {
     }
 
     // A connected gamepad whose accelerometer reads it lying still, leaning from flat by the angles in degrees, the far side down by `pitch` and then the right side down by `roll`.
-    [[nodiscard]] static GamepadState makeLeaning(float roll, float pitch) {
+    [[nodiscard]] static haylen::input::GamepadState makeLeaning(float roll, float pitch) {
         const float right = roll * std::numbers::pi_v<float> / 180.0F;
         const float far = pitch * std::numbers::pi_v<float> / 180.0F;
-        GamepadState gamepad;
+        haylen::input::GamepadState gamepad;
         gamepad.connected = true;
-        gamepad.motionSensors = makeSensors({MotionSensor::Accelerometer});
+        gamepad.motionSensors = makeSensors({haylen::input::MotionSensor::Accelerometer});
         gamepad.motion.sensors = gamepad.motionSensors;
         gamepad.motion.acceleration = {-std::sin(right) * std::cos(far) * kGravity, -std::sin(far) * kGravity, std::cos(right) * std::cos(far) * kGravity};
         return gamepad;
@@ -50,17 +50,17 @@ TEST_F(GamepadMotionTest, RunWhatEveryRequestWantsAndStopWithTheLast) {
     fixture.frames(1);
     EXPECT_TRUE(fixture.host().getGamepadMotion().none());
 
-    GamepadMotion& motion = fixture.engine().getGamepadMotion();
-    const std::uint64_t tilt = motion.start(makeSensors({MotionSensor::Accelerometer}));
-    const std::uint64_t aim = motion.start(makeSensors({MotionSensor::Gyroscope}));
+    haylen::input::GamepadMotion& motion = fixture.engine().getGamepadMotion();
+    const std::uint64_t tilt = motion.start(makeSensors({haylen::input::MotionSensor::Accelerometer}));
+    const std::uint64_t aim = motion.start(makeSensors({haylen::input::MotionSensor::Gyroscope}));
     EXPECT_TRUE(motion.isRunning(tilt));
     fixture.frames(1);
-    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({MotionSensor::Accelerometer, MotionSensor::Gyroscope}));
+    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({haylen::input::MotionSensor::Accelerometer, haylen::input::MotionSensor::Gyroscope}));
 
     motion.stop(aim);
     fixture.frames(1);
     EXPECT_FALSE(motion.isRunning(aim));
-    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({MotionSensor::Accelerometer}));
+    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({haylen::input::MotionSensor::Accelerometer}));
 
     motion.stop(tilt);
     fixture.frames(1);
@@ -70,22 +70,22 @@ TEST_F(GamepadMotionTest, RunWhatEveryRequestWantsAndStopWithTheLast) {
 
 TEST_F(GamepadMotionTest, StopInTheBackgroundAndRunAgainInFront) {
     test::LuaFixture fixture;
-    fixture.engine().getGamepadMotion().start(makeSensors({MotionSensor::Accelerometer}));
+    fixture.engine().getGamepadMotion().start(makeSensors({haylen::input::MotionSensor::Accelerometer}));
     fixture.frames(1);
-    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({MotionSensor::Accelerometer}));
+    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({haylen::input::MotionSensor::Accelerometer}));
 
-    fixture.engine().handleEvent({.type = platform::Event::Type::Suspended});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     fixture.frames(1);
     EXPECT_TRUE(fixture.host().getGamepadMotion().none());
 
-    fixture.engine().handleEvent({.type = platform::Event::Type::Resumed});
+    fixture.engine().handleEvent({.type = haylen::platform::Event::Type::Resumed});
     fixture.frames(1);
-    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({MotionSensor::Accelerometer}));
+    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({haylen::input::MotionSensor::Accelerometer}));
 }
 
 TEST_F(GamepadMotionTest, StopWhatRunsWhenTheAppEnds) {
     test::LuaFixture fixture;
-    fixture.engine().getGamepadMotion().start(makeSensors({MotionSensor::Gyroscope}));
+    fixture.engine().getGamepadMotion().start(makeSensors({haylen::input::MotionSensor::Gyroscope}));
     fixture.frames(1);
     EXPECT_TRUE(fixture.host().getGamepadMotion().any());
 
@@ -94,62 +94,62 @@ TEST_F(GamepadMotionTest, StopWhatRunsWhenTheAppEnds) {
 }
 
 TEST_F(GamepadMotionTest, MeasureTheTiltOfAGamepadAndClearItsTouchpadsWhenItGoes) {
-    Input input;
-    EXPECT_EQ(input.getGamepadTilt(0), math::Vec2{});
+    haylen::input::Input input;
+    EXPECT_EQ(input.getGamepadTilt(0), haylen::math::Vec2{});
 
     // The right side down rolls a ball to the right, and the far side down rolls it up the screen.
-    GamepadState gamepad = makeLeaning(30.0F, 0.0F);
+    haylen::input::GamepadState gamepad = makeLeaning(30.0F, 0.0F);
     gamepad.touchpad[0] = {.down = true, .position = {0.25F, 0.75F}, .pressure = 0.5F};
-    input.updateGamepads(std::array<GamepadState, 1>{gamepad});
+    input.updateGamepads(std::array<haylen::input::GamepadState, 1>{gamepad});
     EXPECT_NEAR(input.getGamepadTilt(0).x, 0.5F, 1.0e-5F);
     EXPECT_NEAR(input.getGamepadTilt(0).y, 0.0F, 1.0e-5F);
     EXPECT_TRUE(input.getGamepad(0).touchpad[0].down);
-    EXPECT_EQ(input.getGamepadTilt(Input::kMaxGamepads), math::Vec2{});
+    EXPECT_EQ(input.getGamepadTilt(haylen::input::Input::kMaxGamepads), haylen::math::Vec2{});
 
-    input.updateGamepads(std::array<GamepadState, 1>{makeLeaning(0.0F, 30.0F)});
+    input.updateGamepads(std::array<haylen::input::GamepadState, 1>{makeLeaning(0.0F, 30.0F)});
     EXPECT_NEAR(input.getGamepadTilt(0).y, -0.5F, 1.0e-5F);
 
     input.updateGamepads({});
     EXPECT_FALSE(input.getGamepad(0).touchpad[0].down);
-    EXPECT_EQ(input.getGamepadTilt(0), math::Vec2{});
+    EXPECT_EQ(input.getGamepadTilt(0), haylen::math::Vec2{});
 }
 
 TEST_F(GamepadMotionTest, ReadTheTiltAsBindingsOfTheActionMap) {
     for (const char* text : {"tilt:x+", "tilt:y-", "stick:tilt"}) {
-        const std::optional<ActionMap::Binding> binding = ActionMap::Binding::parse(text);
+        const std::optional<haylen::input::ActionMap::Binding> binding = haylen::input::ActionMap::Binding::parse(text);
         ASSERT_TRUE(binding.has_value()) << text;
         EXPECT_EQ(binding->toString(), text);
     }
 
     for (const char* text : {"tilt:z+", "tilt:x", "tilt:xy+", "stick:middle"}) {
-        EXPECT_FALSE(ActionMap::Binding::parse(text).has_value()) << text;
+        EXPECT_FALSE(haylen::input::ActionMap::Binding::parse(text).has_value()) << text;
     }
 
-    ActionMap map;
-    map.load(core::Json::parse(R"({"actions": [
+    haylen::input::ActionMap map;
+    map.load(haylen::core::Json::parse(R"({"actions": [
         {"name": "steer", "type": "axis", "positive": ["tilt:x+"], "negative": ["tilt:x-"]},
         {"name": "roll", "type": "vector", "bindings": ["stick:tilt"]},
         {"name": "dive", "type": "button", "bindings": ["tilt:y+"]}
     ]})"));
-    Input input;
-    const VirtualInput virtualInput;
-    input.updateGamepads(std::array<GamepadState, 2>{makeLeaning(-30.0F, 0.0F), makeLeaning(10.0F, 0.0F)});
+    haylen::input::Input input;
+    const haylen::input::VirtualInput virtualInput;
+    input.updateGamepads(std::array<haylen::input::GamepadState, 2>{makeLeaning(-30.0F, 0.0F), makeLeaning(10.0F, 0.0F)});
     map.update(input, virtualInput, false);
     EXPECT_NEAR(map.getValue("steer"), -0.5F, 1.0e-5F);
     EXPECT_NEAR(map.getVector("roll").x, -0.5F, 1.0e-5F);
     EXPECT_FALSE(map.isDown("dive"));
 
-    input.updateGamepads(std::array<GamepadState, 1>{makeLeaning(0.0F, -60.0F)});
+    input.updateGamepads(std::array<haylen::input::GamepadState, 1>{makeLeaning(0.0F, -60.0F)});
     map.update(input, virtualInput, false);
     EXPECT_TRUE(map.isDown("dive"));
 
     // A map of one gamepad reads that gamepad alone, and a map of none reads no tilt.
-    input.updateGamepads(std::array<GamepadState, 2>{makeLeaning(-30.0F, 0.0F), makeLeaning(10.0F, 0.0F)});
-    map.setDevices({.gamepads = ActionMap::Devices::Gamepads::One, .gamepad = 1});
+    input.updateGamepads(std::array<haylen::input::GamepadState, 2>{makeLeaning(-30.0F, 0.0F), makeLeaning(10.0F, 0.0F)});
+    map.setDevices({.gamepads = haylen::input::ActionMap::Devices::Gamepads::One, .gamepad = 1});
     map.update(input, virtualInput, false);
     EXPECT_NEAR(map.getValue("steer"), std::sin(10.0F * std::numbers::pi_v<float> / 180.0F), 1.0e-5F);
 
-    map.setDevices({.gamepads = ActionMap::Devices::Gamepads::None});
+    map.setDevices({.gamepads = haylen::input::ActionMap::Devices::Gamepads::None});
     map.update(input, virtualInput, false);
     EXPECT_FLOAT_EQ(map.getValue("steer"), 0.0F);
 }
@@ -159,7 +159,7 @@ TEST_F(GamepadMotionTest, StartFromLuaAndStopWithTheOwner) {
     fixture.runLua("input = require('haylen.input') owner = {} request = input.startGamepadMotion({sensors = {'accelerometer', 'gyroscope'}, owner = owner})");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(request.running) .. ' ' .. table.concat(request.sensors, ',')"), "true accelerometer,gyroscope");
-    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({MotionSensor::Accelerometer, MotionSensor::Gyroscope}));
+    EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({haylen::input::MotionSensor::Accelerometer, haylen::input::MotionSensor::Gyroscope}));
 
     fixture.runLua("owner = nil collectgarbage() collectgarbage()");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getGamepadMotion().none(); }));
@@ -180,9 +180,9 @@ TEST_F(GamepadMotionTest, StartFromLuaAndStopWithTheOwner) {
 
 TEST_F(GamepadMotionTest, ReadTheMotionAndTouchpadsOfGamepadsFromLua) {
     test::LuaFixture fixture;
-    GamepadState gamepad = makeLeaning(30.0F, 0.0F);
-    gamepad.motionSensors.set(static_cast<std::size_t>(MotionSensor::Gyroscope));
-    gamepad.motion.sensors.set(static_cast<std::size_t>(MotionSensor::Gyroscope));
+    haylen::input::GamepadState gamepad = makeLeaning(30.0F, 0.0F);
+    gamepad.motionSensors.set(static_cast<std::size_t>(haylen::input::MotionSensor::Gyroscope));
+    gamepad.motion.sensors.set(static_cast<std::size_t>(haylen::input::MotionSensor::Gyroscope));
     gamepad.motion.rotationRate = {1.0F, 2.0F, 3.0F};
     gamepad.touchpad[1] = {.down = true, .touchpad = 0, .position = {0.25F, 0.5F}, .pressure = 0.75F};
     fixture.host().setGamepad(1, gamepad);
@@ -201,4 +201,4 @@ TEST_F(GamepadMotionTest, ReadTheMotionAndTouchpadsOfGamepadsFromLua) {
     EXPECT_EQ(fixture.lua("return #input.gamepadTouches(2)"), "0");
 }
 
-} // namespace haylen::input
+} // namespace haylen::lua::input

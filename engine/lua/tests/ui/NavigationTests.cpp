@@ -20,7 +20,7 @@
 #include "support/LuaUiFixture.hpp"
 #include "support/RecordingScreen.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // The frame of an app: a bar of 80 units on top with a button, and the middle under it, split into a list and a detail, where the screens lay out, with a picture in the package that a screen shows, which arrives some frames after the screen first draws.
 class NavigationTest : public ::testing::Test, public test::LuaUiFixture {
@@ -37,11 +37,11 @@ class NavigationTest : public ::testing::Test, public test::LuaUiFixture {
         return std::make_shared<test::RecordingScreen>(getUi(), name, log, R"({"kind": "column", "children": [{"kind": "image", "id": "picture", "image": "icons/square.svg", "width": 64, "height": 64}]})");
     }
 
-    [[nodiscard]] Navigation& getNavigation() {
+    [[nodiscard]] haylen::ui::Navigation& getNavigation() {
         return getUi().getNavigation();
     }
 
-    [[nodiscard]] Region getArea(const std::string& node) const {
+    [[nodiscard]] haylen::ui::Region getArea(const std::string& node) const {
         return {.gui = frame, .node = node};
     }
 
@@ -57,28 +57,28 @@ class NavigationTest : public ::testing::Test, public test::LuaUiFixture {
     // Makes the window as narrow as a phone in portrait, with one UI unit for each point of the screen.
     void usePhone() {
         getFixture().host().resize({480.0F, 1000.0F});
-        getUi().setScaling({.mode = Scaling::Mode::Physical, .factor = 1.0F});
+        getUi().setScaling({.mode = haylen::ui::Scaling::Mode::Physical, .factor = 1.0F});
         frames(3);
     }
 
     // Press and drag the pointer at points in UI units.
-    void clickUi(math::Vec2 point) {
+    void clickUi(haylen::math::Vec2 point) {
         click(point * getUi().getBackend().getScale());
     }
-    void dragUi(math::Vec2 from, math::Vec2 to) {
+    void dragUi(haylen::math::Vec2 from, haylen::math::Vec2 to) {
         drag(from * getUi().getBackend().getScale(), to * getUi().getBackend().getScale(), 8);
     }
 
-    std::shared_ptr<Gui> frame;
+    std::shared_ptr<haylen::ui::Gui> frame;
     std::vector<std::string> log;
 };
 
 TEST_F(NavigationTest, ShowsTheRootScreenInTheAreaOfItsStack) {
     const auto home = make("home");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
     frames(2);
 
-    EXPECT_EQ(home->getState(), Screen::State::Shown);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_FLOAT_EQ(getBounds(*home->getGui(), "open").x, getBounds(*frame, "list").x);
     EXPECT_FLOAT_EQ(getBounds(*home->getGui(), "open").y, getBounds(*frame, "list").y);
     EXPECT_EQ(log, (std::vector<std::string>{"home:build", "home:appear", "home:appeared"}));
@@ -92,10 +92,10 @@ TEST_F(NavigationTest, ShowsTheRootScreenInTheAreaOfItsStack) {
 TEST_F(NavigationTest, SlidesOnlyTheScreensOfTheStackWhileTheFrameStays) {
     const auto home = make("home");
     const auto profile = make("profile");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
     frames(2);
-    const math::Rect bar = getBounds(*frame, "home");
-    const math::Rect list = getBounds(*frame, "list");
+    const haylen::math::Rect bar = getBounds(*frame, "home");
+    const haylen::math::Rect list = getBounds(*frame, "list");
 
     stack->push(profile);
     frames(8);
@@ -103,14 +103,14 @@ TEST_F(NavigationTest, SlidesOnlyTheScreensOfTheStackWhileTheFrameStays) {
     EXPECT_EQ(getBounds(*frame, "home"), bar);
     EXPECT_GT(getBounds(*profile->getGui(), "open").x, list.x);
     EXPECT_LT(getBounds(*home->getGui(), "open").x, list.x);
-    EXPECT_EQ(profile->getState(), Screen::State::Appearing);
-    EXPECT_EQ(home->getState(), Screen::State::Disappearing);
+    EXPECT_EQ(profile->getState(), haylen::ui::Screen::State::Appearing);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Disappearing);
 
     settle();
     EXPECT_FALSE(stack->isTransitioning());
     EXPECT_FLOAT_EQ(getBounds(*profile->getGui(), "open").x, list.x);
-    EXPECT_EQ(home->getState(), Screen::State::Hidden);
-    EXPECT_EQ(profile->getState(), Screen::State::Shown);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Hidden);
+    EXPECT_EQ(profile->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_TRUE(hasEntry("home:disappeared"));
     EXPECT_TRUE(hasEntry("profile:appeared"));
 }
@@ -118,7 +118,7 @@ TEST_F(NavigationTest, SlidesOnlyTheScreensOfTheStackWhileTheFrameStays) {
 // The screens of a change take no input until it ends, while the frame keeps its input.
 TEST_F(NavigationTest, TakesNoInputInTheScreensOfAChangeThatPlays) {
     const auto home = make("home");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
     frames(2);
     stack->push(make("profile"));
     frames(4);
@@ -135,18 +135,18 @@ TEST_F(NavigationTest, TakesNoInputInTheScreensOfAChangeThatPlays) {
 TEST_F(NavigationTest, PopsTheTopScreenAndShowsTheScreenUnderItAgain) {
     const auto home = make("home");
     const auto profile = make("profile");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
     stack->push(profile);
     settle();
-    const std::shared_ptr<Gui> profileGui = profile->getGui();
+    const std::shared_ptr<haylen::ui::Gui> profileGui = profile->getGui();
 
     stack->pop();
     settle();
     EXPECT_EQ(stack->size(), 1U);
-    EXPECT_EQ(profile->getState(), Screen::State::Removed);
+    EXPECT_EQ(profile->getState(), haylen::ui::Screen::State::Removed);
     EXPECT_FALSE(getUi().isMounted(*profileGui));
     EXPECT_TRUE(hasEntry("profile:remove"));
-    EXPECT_EQ(home->getState(), Screen::State::Shown);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_EQ(home->builds, 1);
     EXPECT_EQ(profile->getStack(), nullptr);
 }
@@ -156,25 +156,25 @@ TEST_F(NavigationTest, BuildsOnlyTheTopScreenOfADeepLink) {
     const auto home = make("home");
     const auto artist = make("artist");
     const auto album = make("album");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"));
-    stack->setScreens({home, artist, album}, {.effect = NavigationTransition::Effect::None});
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"));
+    stack->setScreens({home, artist, album}, {.effect = haylen::ui::NavigationTransition::Effect::None});
     frames(2);
 
-    EXPECT_EQ(album->getState(), Screen::State::Shown);
+    EXPECT_EQ(album->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_EQ(home->builds, 0);
     EXPECT_EQ(artist->builds, 0);
 
     stack->pop();
     settle();
     EXPECT_EQ(artist->builds, 1);
-    EXPECT_EQ(artist->getState(), Screen::State::Shown);
+    EXPECT_EQ(artist->getState(), haylen::ui::Screen::State::Shown);
 }
 
 // A screen moves in only once its GUI laid out with every picture it shows, so no picture pops in while it slides.
 TEST_F(NavigationTest, HoldsATransitionUntilThePicturesOfTheScreenThatComesArrived) {
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     frames(2);
-    const math::Rect list = getBounds(*frame, "list");
+    const haylen::math::Rect list = getBounds(*frame, "list");
     const auto gallery = makePicture("gallery");
     stack->push(gallery);
     frames(2);
@@ -191,7 +191,7 @@ TEST_F(NavigationTest, HoldsATransitionUntilThePicturesOfTheScreenThatComesArriv
 TEST_F(NavigationTest, HoldsAPresentationUntilThePicturesOfItsScreenArrived) {
     frames(2);
     const auto sheet = makePicture("sheet");
-    const std::shared_ptr<Presentation> shown = getNavigation().present(sheet, {.style = Presentation::Style::FullScreen});
+    const std::shared_ptr<haylen::ui::Presentation> shown = getNavigation().present(sheet, {.style = haylen::ui::Presentation::Style::FullScreen});
     frames(2);
     const float bottom = getUi().getBackend().getLiftedDisplayRect().getBottom();
     EXPECT_GE(getBounds(*sheet->getGui(), "picture").y, bottom);
@@ -200,17 +200,17 @@ TEST_F(NavigationTest, HoldsAPresentationUntilThePicturesOfItsScreenArrived) {
     EXPECT_TRUE(getUi().getContext().getImage("icons/square.svg", {64.0F, 64.0F}).isValid());
     settle();
     EXPECT_FALSE(shown->isDismissed());
-    EXPECT_EQ(sheet->getState(), Screen::State::Shown);
+    EXPECT_EQ(sheet->getState(), haylen::ui::Screen::State::Shown);
 }
 
 // A screen whose GUI never lays out, such as one whose area does not draw, still moves in once the change waited as long as it waits.
 TEST_F(NavigationTest, StartsATransitionThatWaitedAsLongAsItWaits) {
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     frames(2);
-    frame->set("list", core::Json::parse(R"({"visible": false})"));
+    frame->set("list", haylen::core::Json::parse(R"({"visible": false})"));
     frames(2);
     stack->push(make("profile"));
-    frames(static_cast<int>(Navigation::kReadyWait * 60.0F) - 6);
+    frames(static_cast<int>(haylen::ui::Navigation::kReadyWait * 60.0F) - 6);
     ASSERT_TRUE(stack->isTransitioning());
     EXPECT_FALSE(hasEntry("profile:appeared"));
 
@@ -222,8 +222,8 @@ TEST_F(NavigationTest, StartsATransitionThatWaitedAsLongAsItWaits) {
 
 TEST_F(NavigationTest, RefusesAScreenThatAnotherStackHolds) {
     const auto home = make("home");
-    const std::shared_ptr<NavigationStack> first = getNavigation().createStack(getArea("list"), home);
-    const std::shared_ptr<NavigationStack> second = getNavigation().createStack(getArea("detail"));
+    const std::shared_ptr<haylen::ui::NavigationStack> first = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> second = getNavigation().createStack(getArea("detail"));
     EXPECT_THROW(second->push(home), std::invalid_argument);
     EXPECT_THROW(first->push(home), std::invalid_argument);
     EXPECT_THROW(static_cast<void>(getNavigation().createStack({.gui = frame, .node = "sidebar"})), std::invalid_argument);
@@ -235,7 +235,7 @@ TEST_F(NavigationTest, KeepsTheStackOfEveryTab) {
     const auto search = make("search");
     const auto album = make("album");
     // clang-format off
-    const std::shared_ptr<NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
+    const std::shared_ptr<haylen::ui::NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
         {.id = "home", .root = [home] { return home; }},
         {.id = "search", .root = [search] { return search; }},
     }, "home");
@@ -246,15 +246,15 @@ TEST_F(NavigationTest, KeepsTheStackOfEveryTab) {
 
     tabs->select("search");
     frames(2);
-    EXPECT_EQ(album->getState(), Screen::State::Hidden);
-    EXPECT_EQ(search->getState(), Screen::State::Shown);
+    EXPECT_EQ(album->getState(), haylen::ui::Screen::State::Hidden);
+    EXPECT_EQ(search->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_EQ(tabs->getStack("home")->size(), 2U);
 
     tabs->select("home");
     frames(2);
-    EXPECT_EQ(album->getState(), Screen::State::Shown);
+    EXPECT_EQ(album->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_EQ(album->builds, 1);
-    EXPECT_EQ(search->getState(), Screen::State::Hidden);
+    EXPECT_EQ(search->getState(), haylen::ui::Screen::State::Hidden);
 
     tabs->select("home");
     settle();
@@ -266,28 +266,28 @@ TEST_F(NavigationTest, KeepsTheStackOfEveryTab) {
 TEST_F(NavigationTest, KeepsTheTabThatShowsWhenTheRootOfAnotherFails) {
     const auto home = make("home");
     // clang-format off
-    const std::shared_ptr<NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
+    const std::shared_ptr<haylen::ui::NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
         {.id = "home", .root = [home] { return home; }},
-        {.id = "search", .root = [] { return std::shared_ptr<Screen>(); }},
+        {.id = "search", .root = [] { return std::shared_ptr<haylen::ui::Screen>(); }},
     }, "home");
     // clang-format on
     settle();
 
     EXPECT_THROW(tabs->select("search"), std::invalid_argument);
     EXPECT_EQ(tabs->getSelected(), "home");
-    EXPECT_EQ(home->getState(), Screen::State::Shown);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Shown);
     EXPECT_EQ(tabs->findStack("search"), nullptr);
 
     tabs->select("home");
     frames(2);
-    EXPECT_EQ(home->getState(), Screen::State::Shown);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Shown);
 }
 
 // A split whose placeholder fails closes the stacks it opened, so its root leaves.
 TEST_F(NavigationTest, ClosesTheStacksOfASplitWhosePlaceholderFails) {
     const auto inbox = make("inbox");
-    EXPECT_THROW(static_cast<void>(getNavigation().createSplit(getArea("list"), getArea("detail"), inbox, [] { return std::shared_ptr<Screen>(); }, false)), std::invalid_argument);
-    EXPECT_EQ(inbox->getState(), Screen::State::Removed);
+    EXPECT_THROW(static_cast<void>(getNavigation().createSplit(getArea("list"), getArea("detail"), inbox, [] { return std::shared_ptr<haylen::ui::Screen>(); }, false)), std::invalid_argument);
+    EXPECT_EQ(inbox->getState(), haylen::ui::Screen::State::Removed);
 }
 
 // Collapsed, the detail goes on top of the list as one stack, and it moves back to the detail area with its GUI once the split expands.
@@ -295,20 +295,20 @@ TEST_F(NavigationTest, MovesTheDetailOntoTheListWhenTheSplitCollapses) {
     const auto inbox = make("inbox");
     const auto chat = make("chat");
     const auto empty = make("empty");
-    const std::shared_ptr<NavigationSplit> split = getNavigation().createSplit(getArea("list"), getArea("detail"), inbox, [empty] { return empty; }, false);
+    const std::shared_ptr<haylen::ui::NavigationSplit> split = getNavigation().createSplit(getArea("list"), getArea("detail"), inbox, [empty] { return empty; }, false);
     frames(2);
-    EXPECT_EQ(empty->getState(), Screen::State::Shown);
+    EXPECT_EQ(empty->getState(), haylen::ui::Screen::State::Shown);
 
     split->showDetail(chat);
     frames(2);
-    EXPECT_EQ(empty->getState(), Screen::State::Removed);
+    EXPECT_EQ(empty->getState(), haylen::ui::Screen::State::Removed);
     EXPECT_FLOAT_EQ(getBounds(*chat->getGui(), "open").x, getBounds(*frame, "detail").x);
-    EXPECT_EQ(inbox->getState(), Screen::State::Shown);
+    EXPECT_EQ(inbox->getState(), haylen::ui::Screen::State::Shown);
 
     split->setCollapsed(true);
     frames(2);
     EXPECT_EQ(split->getPrimary()->getTop(), chat);
-    EXPECT_EQ(inbox->getState(), Screen::State::Hidden);
+    EXPECT_EQ(inbox->getState(), haylen::ui::Screen::State::Hidden);
     EXPECT_FLOAT_EQ(getBounds(*chat->getGui(), "open").x, getBounds(*frame, "list").x);
     EXPECT_TRUE(split->hasDetail());
 
@@ -316,22 +316,22 @@ TEST_F(NavigationTest, MovesTheDetailOntoTheListWhenTheSplitCollapses) {
     frames(2);
     EXPECT_EQ(split->getDetail()->getTop(), chat);
     EXPECT_EQ(chat->builds, 1);
-    EXPECT_EQ(inbox->getState(), Screen::State::Shown);
+    EXPECT_EQ(inbox->getState(), haylen::ui::Screen::State::Shown);
 
     split->setCollapsed(true);
     split->clearDetail();
     settle();
     EXPECT_FALSE(split->hasDetail());
-    EXPECT_EQ(chat->getState(), Screen::State::Removed);
-    EXPECT_EQ(inbox->getState(), Screen::State::Shown);
+    EXPECT_EQ(chat->getState(), haylen::ui::Screen::State::Removed);
+    EXPECT_EQ(inbox->getState(), haylen::ui::Screen::State::Shown);
 }
 
 // A presentation draws above everything, and the GUIs under it take no input until it leaves.
 TEST_F(NavigationTest, PresentsAScreenThatTakesTheInputOfTheGuisUnderIt) {
     const auto compose = make("compose");
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(compose, {.style = Presentation::Style::FullScreen});
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(compose, {.style = haylen::ui::Presentation::Style::FullScreen});
     settle();
-    ASSERT_EQ(compose->getState(), Screen::State::Shown);
+    ASSERT_EQ(compose->getState(), haylen::ui::Screen::State::Shown);
 
     clearEvents();
     click(getBounds(*frame, "home").getCenter());
@@ -342,7 +342,7 @@ TEST_F(NavigationTest, PresentsAScreenThatTakesTheInputOfTheGuisUnderIt) {
 
     sheet->dismiss();
     settle();
-    EXPECT_EQ(compose->getState(), Screen::State::Removed);
+    EXPECT_EQ(compose->getState(), haylen::ui::Screen::State::Removed);
     EXPECT_TRUE(getNavigation().getPresentations().empty());
     clearEvents();
     click(*frame, "home");
@@ -354,25 +354,25 @@ TEST_F(NavigationTest, GoesBackThroughTheStacksTheTabsAndThePresentations) {
     const auto home = make("home");
     const auto search = make("search");
     // clang-format off
-    const std::shared_ptr<NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
+    const std::shared_ptr<haylen::ui::NavigationTabs> tabs = getNavigation().createTabs(getArea("list"), {
         {.id = "home", .root = [home] { return home; }},
         {.id = "search", .root = [search] { return search; }},
     }, "search");
     // clang-format on
     tabs->getCurrent()->push(make("artist"));
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(make("compose"), {});
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(make("compose"), {});
     settle();
     EXPECT_TRUE(getUi().isCapturingBack());
 
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_TRUE(sheet->isDismissed());
 
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_EQ(tabs->getCurrent()->size(), 1U);
 
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_EQ(tabs->getSelected(), "home");
     EXPECT_FALSE(getUi().isCapturingBack());
@@ -380,7 +380,7 @@ TEST_F(NavigationTest, GoesBackThroughTheStacksTheTabsAndThePresentations) {
 
 TEST_F(NavigationTest, KeepsAScreenWhoseBackHookTakesTheBack) {
     const auto draft = make("draft");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     stack->push(draft);
     settle();
     draft->keeping = true;
@@ -401,13 +401,13 @@ TEST_F(NavigationTest, FinishesAChangeWhoseHandlerChangesTheStack) {
     const auto home = make("home");
     const auto artist = make("artist");
     const auto album = make("album");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
     stack->push(artist);
     settle();
 
     bool pushed = false;
     // clang-format off
-    const core::Connection connection = stack->changed.connect([&](NavigationStack& changed) {
+    const haylen::core::Connection connection = stack->changed.connect([&](haylen::ui::NavigationStack& changed) {
         if (!std::exchange(pushed, true)) {
             changed.push(album);
         }
@@ -417,9 +417,9 @@ TEST_F(NavigationTest, FinishesAChangeWhoseHandlerChangesTheStack) {
     settle();
 
     EXPECT_EQ(stack->getTop(), album);
-    EXPECT_EQ(album->getState(), Screen::State::Shown);
-    EXPECT_EQ(home->getState(), Screen::State::Removed);
-    EXPECT_EQ(artist->getState(), Screen::State::Removed);
+    EXPECT_EQ(album->getState(), haylen::ui::Screen::State::Shown);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Removed);
+    EXPECT_EQ(artist->getState(), haylen::ui::Screen::State::Removed);
     EXPECT_TRUE(hasEntry("artist:disappeared"));
 }
 
@@ -444,56 +444,56 @@ TEST_F(NavigationTest, TellsAChangeWhoseHookHidesTheStack) {
 TEST_F(NavigationTest, ShowsAStackInAScreenWithThatScreen) {
     const std::string hosting = R"({"kind": "column", "children": [{"kind": "column", "id": "inner", "grow": 1}]})";
     const auto messages = std::make_shared<test::RecordingScreen>(getUi(), "messages", log, hosting);
-    const std::shared_ptr<NavigationStack> outer = getNavigation().createStack(getArea("list"), messages);
+    const std::shared_ptr<haylen::ui::NavigationStack> outer = getNavigation().createStack(getArea("list"), messages);
     frames(2);
     const auto chat = make("chat");
-    const std::shared_ptr<NavigationStack> inner = getNavigation().createStack({.gui = messages->getGui(), .node = "inner"}, chat);
+    const std::shared_ptr<haylen::ui::NavigationStack> inner = getNavigation().createStack({.gui = messages->getGui(), .node = "inner"}, chat);
     frames(2);
-    EXPECT_EQ(chat->getState(), Screen::State::Shown);
+    EXPECT_EQ(chat->getState(), haylen::ui::Screen::State::Shown);
 
     outer->push(make("profile"));
     settle();
-    EXPECT_EQ(chat->getState(), Screen::State::Hidden);
+    EXPECT_EQ(chat->getState(), haylen::ui::Screen::State::Hidden);
 
     outer->pop();
     settle();
-    EXPECT_EQ(chat->getState(), Screen::State::Shown);
+    EXPECT_EQ(chat->getState(), haylen::ui::Screen::State::Shown);
 
     outer->replace(make("settings"));
     settle();
     EXPECT_TRUE(inner->isClosed());
-    EXPECT_EQ(chat->getState(), Screen::State::Removed);
+    EXPECT_EQ(chat->getState(), haylen::ui::Screen::State::Removed);
 }
 
 TEST_F(NavigationTest, ClosesTheStacksOfAGuiThatUnmounts) {
     const auto home = make("home");
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), home);
     frames(2);
     getUi().unmount(*frame);
     EXPECT_TRUE(stack->isClosed());
-    EXPECT_EQ(home->getState(), Screen::State::Removed);
+    EXPECT_EQ(home->getState(), haylen::ui::Screen::State::Removed);
 }
 
 // A sheet on a compact screen rests at its detent, moves to another one when the person drags its grabber, and leaves when dragged below its lowest one, once its screen agreed.
 TEST_F(NavigationTest, DragsASheetBetweenItsDetentsAndAwayBelowTheLowest) {
     usePhone();
     const auto queue = make("queue");
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(queue, {.detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}});
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(queue, {.detents = {{.kind = haylen::ui::Presentation::Detent::Kind::Medium}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}}});
     settle();
-    const math::Rect display = getUi().getBackend().getLiftedDisplayRect();
-    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    const haylen::math::Rect display = getUi().getBackend().getLiftedDisplayRect();
+    const haylen::math::Rect safe = getUi().getBackend().getLiftedSafeRect();
     const float medium = display.getBottom() - display.height * 0.5F;
-    const float large = safe.y + Presentation::kSheetTop;
-    EXPECT_NEAR(getBounds(*queue->getGui(), "open").y, medium + Presentation::kGrabberBand, 1.0F);
+    const float large = safe.y + haylen::ui::Presentation::kSheetTop;
+    EXPECT_NEAR(getBounds(*queue->getGui(), "open").y, medium + haylen::ui::Presentation::kGrabberBand, 1.0F);
 
-    const math::Vec2 grabber{display.getCenter().x, medium + Presentation::kGrabberBand * 0.5F};
+    const haylen::math::Vec2 grabber{display.getCenter().x, medium + haylen::ui::Presentation::kGrabberBand * 0.5F};
     dragUi(grabber, {grabber.x, safe.y + 40.0F});
     settle();
     EXPECT_EQ(sheet->getDetent(), 1U);
-    EXPECT_NEAR(getBounds(*queue->getGui(), "open").y, large + Presentation::kGrabberBand, 1.0F);
+    EXPECT_NEAR(getBounds(*queue->getGui(), "open").y, large + haylen::ui::Presentation::kGrabberBand, 1.0F);
 
     // A tap on the grabber goes to the next detent, and from the highest one back to the lowest.
-    clickUi({grabber.x, large + Presentation::kGrabberBand * 0.5F});
+    clickUi({grabber.x, large + haylen::ui::Presentation::kGrabberBand * 0.5F});
     settle();
     EXPECT_EQ(sheet->getDetent(), 0U);
 
@@ -501,7 +501,7 @@ TEST_F(NavigationTest, DragsASheetBetweenItsDetentsAndAwayBelowTheLowest) {
     settle();
     EXPECT_TRUE(hasEntry("queue:back"));
     EXPECT_TRUE(sheet->isDismissed());
-    EXPECT_EQ(queue->getState(), Screen::State::Removed);
+    EXPECT_EQ(queue->getState(), haylen::ui::Screen::State::Removed);
 }
 
 // A screen that keeps its place, such as one with unsaved work, refuses every dismissal by the person, and its sheet glides back to its detent.
@@ -509,11 +509,11 @@ TEST_F(NavigationTest, SpringsBackASheetWhoseScreenKeepsItsPlace) {
     usePhone();
     const auto draft = make("draft");
     draft->keeping = true;
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(draft, {.grabber = true});
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(draft, {.grabber = true});
     settle();
-    const math::Rect display = getUi().getBackend().getLiftedDisplayRect();
+    const haylen::math::Rect display = getUi().getBackend().getLiftedDisplayRect();
     const float rest = getBounds(*draft->getGui(), "open").y;
-    const math::Vec2 grabber{display.getCenter().x, rest - Presentation::kGrabberBand * 0.5F};
+    const haylen::math::Vec2 grabber{display.getCenter().x, rest - haylen::ui::Presentation::kGrabberBand * 0.5F};
 
     dragUi(grabber, {grabber.x, display.getBottom() - 4.0F});
     settle();
@@ -521,7 +521,7 @@ TEST_F(NavigationTest, SpringsBackASheetWhoseScreenKeepsItsPlace) {
     EXPECT_NEAR(getBounds(*draft->getGui(), "open").y, rest, 1.0F);
 
     clickUi({display.getCenter().x, display.y + 4.0F});
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_FALSE(sheet->isDismissed());
     EXPECT_EQ(std::ranges::count(log, std::string("draft:back")), 3);
@@ -529,17 +529,17 @@ TEST_F(NavigationTest, SpringsBackASheetWhoseScreenKeepsItsPlace) {
 
 // A presented flow hands its result to whoever presented it, and a dismissal by the person leaves no result.
 TEST_F(NavigationTest, ReturnsTheResultOfAPresentedFlow) {
-    const std::shared_ptr<Presentation> picker = getNavigation().present(make("picker"), {});
-    core::Json heard;
-    static_cast<void>(picker->dismissed.connect([&heard](Presentation& left) { heard = left.getResult(); }));
+    const std::shared_ptr<haylen::ui::Presentation> picker = getNavigation().present(make("picker"), {});
+    haylen::core::Json heard;
+    static_cast<void>(picker->dismissed.connect([&heard](haylen::ui::Presentation& left) { heard = left.getResult(); }));
     settle();
-    picker->dismiss(core::Json{{"color", "teal"}});
+    picker->dismiss(haylen::core::Json{{"color", "teal"}});
     settle();
-    EXPECT_EQ(heard, (core::Json{{"color", "teal"}}));
+    EXPECT_EQ(heard, (haylen::core::Json{{"color", "teal"}}));
 
-    const std::shared_ptr<Presentation> other = getNavigation().present(make("other"), {});
+    const std::shared_ptr<haylen::ui::Presentation> other = getNavigation().present(make("other"), {});
     settle();
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_TRUE(other->isDismissed());
     EXPECT_TRUE(other->getResult().is_null());
@@ -547,51 +547,51 @@ TEST_F(NavigationTest, ReturnsTheResultOfAPresentedFlow) {
 
 // An alert leaves with the action the person chose, the back chooses its cancel action, and an alert without one stays until one of its actions closes it.
 TEST_F(NavigationTest, PresentsAlertsWhoseChosenActionIsTheResult) {
-    const Navigation::Alert discard{.title = "Discard the draft?", .actions = {{.id = "keep", .text = "Keep", .role = Navigation::Alert::Role::Cancel}, {.id = "discard", .text = "Discard", .role = Navigation::Alert::Role::Destructive}}};
-    const std::shared_ptr<Presentation> chosen = getNavigation().presentAlert(discard);
+    const haylen::ui::Navigation::Alert discard{.title = "Discard the draft?", .actions = {{.id = "keep", .text = "Keep", .role = haylen::ui::Navigation::Alert::Role::Cancel}, {.id = "discard", .text = "Discard", .role = haylen::ui::Navigation::Alert::Role::Destructive}}};
+    const std::shared_ptr<haylen::ui::Presentation> chosen = getNavigation().presentAlert(discard);
     settle();
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     settle();
     EXPECT_EQ(chosen->getResult(), "discard");
 
-    const std::shared_ptr<Presentation> cancelled = getNavigation().presentAlert(discard);
+    const std::shared_ptr<haylen::ui::Presentation> cancelled = getNavigation().presentAlert(discard);
     settle();
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_EQ(cancelled->getResult(), "keep");
 
-    const std::shared_ptr<Presentation> required = getNavigation().presentAlert({.title = "Update required", .actions = {{.id = "update", .text = "Update"}}});
+    const std::shared_ptr<haylen::ui::Presentation> required = getNavigation().presentAlert({.title = "Update required", .actions = {{.id = "update", .text = "Update"}}});
     settle();
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     settle();
     EXPECT_FALSE(required->isDismissed());
-    key(input::Key::Enter);
+    key(haylen::input::Key::Enter);
     settle();
     EXPECT_EQ(required->getResult(), "update");
 
     EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.title = "Empty"})), std::invalid_argument);
     EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.actions = {{.id = "a"}, {.id = "a"}}})), std::invalid_argument);
-    EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.actions = {{.id = "a", .role = Navigation::Alert::Role::Cancel}, {.id = "b", .role = Navigation::Alert::Role::Cancel}}})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().presentAlert({.actions = {{.id = "a", .role = haylen::ui::Navigation::Alert::Role::Cancel}, {.id = "b", .role = haylen::ui::Navigation::Alert::Role::Cancel}}})), std::invalid_argument);
 }
 
 // An action sheet points at its control from under it on a wide screen, rises from the bottom of a compact one, and a tap outside it chooses its cancel action.
 TEST_F(NavigationTest, ShowsAnActionSheetNextToItsAnchorOrFromTheBottom) {
-    const Navigation::Alert sharing{.style = Navigation::Alert::Style::ActionSheet, .title = "Share", .actions = {{.id = "copy", .text = "Copy link"}, {.id = "cancel", .text = "Cancel", .role = Navigation::Alert::Role::Cancel}}, .anchor = getArea("home")};
-    const std::shared_ptr<Presentation> wide = getNavigation().presentAlert(sharing);
+    const haylen::ui::Navigation::Alert sharing{.style = haylen::ui::Navigation::Alert::Style::ActionSheet, .title = "Share", .actions = {{.id = "copy", .text = "Copy link"}, {.id = "cancel", .text = "Cancel", .role = haylen::ui::Navigation::Alert::Role::Cancel}}, .anchor = getArea("home")};
+    const std::shared_ptr<haylen::ui::Presentation> wide = getNavigation().presentAlert(sharing);
     settle();
-    const math::Rect anchor = getBounds(*frame, "home");
-    const math::Rect copy = getBounds(*wide->getScreen()->getGui(), "copy");
-    EXPECT_EQ(wide->getStyle(), Presentation::Style::Popover);
-    EXPECT_GT(copy.y, anchor.getBottom() + Presentation::kArrowSize);
+    const haylen::math::Rect anchor = getBounds(*frame, "home");
+    const haylen::math::Rect copy = getBounds(*wide->getScreen()->getGui(), "copy");
+    EXPECT_EQ(wide->getStyle(), haylen::ui::Presentation::Style::Popover);
+    EXPECT_GT(copy.y, anchor.getBottom() + haylen::ui::Presentation::kArrowSize);
     EXPECT_LT(copy.y, anchor.getBottom() + 300.0F);
     clickUi(copy.getCenter());
     settle();
     EXPECT_EQ(wide->getResult(), "copy");
 
     usePhone();
-    const std::shared_ptr<Presentation> compact = getNavigation().presentAlert(sharing);
+    const std::shared_ptr<haylen::ui::Presentation> compact = getNavigation().presentAlert(sharing);
     settle();
-    const math::Rect display = getUi().getBackend().getLiftedDisplayRect();
+    const haylen::math::Rect display = getUi().getBackend().getLiftedDisplayRect();
     EXPECT_GT(getBounds(*compact->getScreen()->getGui(), "copy").y, display.getCenter().y);
     clickUi({display.getCenter().x, display.y + 8.0F});
     settle();
@@ -601,11 +601,11 @@ TEST_F(NavigationTest, ShowsAnActionSheetNextToItsAnchorOrFromTheBottom) {
 // A popover floats under the control it points at with its arrow at the middle of the control, and becomes a sheet across the width of a compact screen.
 TEST_F(NavigationTest, PointsAPopoverAtItsAnchorAndMakesItASheetOnACompactScreen) {
     const auto info = make("info");
-    const std::shared_ptr<Presentation> popover = getNavigation().present(info, {.style = Presentation::Style::Popover, .width = 400.0F, .anchor = getArea("home")});
+    const std::shared_ptr<haylen::ui::Presentation> popover = getNavigation().present(info, {.style = haylen::ui::Presentation::Style::Popover, .width = 400.0F, .anchor = getArea("home")});
     settle();
-    const math::Rect anchor = getBounds(*frame, "home");
-    const math::Rect content = getBounds(*info->getGui(), "open");
-    EXPECT_FLOAT_EQ(content.y, anchor.getBottom() + Presentation::kArrowSize);
+    const haylen::math::Rect anchor = getBounds(*frame, "home");
+    const haylen::math::Rect content = getBounds(*info->getGui(), "open");
+    EXPECT_FLOAT_EQ(content.y, anchor.getBottom() + haylen::ui::Presentation::kArrowSize);
     EXPECT_FLOAT_EQ(content.width, 400.0F);
     EXPECT_LE(content.x, anchor.getCenter().x);
     popover->dismiss();
@@ -613,33 +613,33 @@ TEST_F(NavigationTest, PointsAPopoverAtItsAnchorAndMakesItASheetOnACompactScreen
 
     usePhone();
     const auto adapted = make("adapted");
-    static_cast<void>(getNavigation().present(adapted, {.style = Presentation::Style::Popover, .anchor = getArea("home")}));
+    static_cast<void>(getNavigation().present(adapted, {.style = haylen::ui::Presentation::Style::Popover, .anchor = getArea("home")}));
     settle();
-    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    const haylen::math::Rect safe = getUi().getBackend().getLiftedSafeRect();
     EXPECT_FLOAT_EQ(getBounds(*adapted->getGui(), "open").x, safe.x);
     EXPECT_FLOAT_EQ(getBounds(*adapted->getGui(), "open").width, safe.width);
-    EXPECT_THROW(static_cast<void>(getNavigation().present(make("lost"), {.style = Presentation::Style::Popover})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().present(make("lost"), {.style = haylen::ui::Presentation::Style::Popover})), std::invalid_argument);
 }
 
 // A drawer slides in from the start edge, the right one in a right to left interface, and a drag toward that edge takes it away.
 TEST_F(NavigationTest, SlidesADrawerFromTheStartEdgeAndOutByADrag) {
     const std::string tree = R"({"kind": "column", "children": [{"kind": "button", "id": "open", "text": "Inbox"}]})";
     const auto menu = std::make_shared<test::RecordingScreen>(getUi(), "menu", log, tree);
-    const std::shared_ptr<Presentation> drawer = getNavigation().present(menu, {.style = Presentation::Style::Drawer, .width = 500.0F});
+    const std::shared_ptr<haylen::ui::Presentation> drawer = getNavigation().present(menu, {.style = haylen::ui::Presentation::Style::Drawer, .width = 500.0F});
     frames(8);
-    const math::Rect safe = getUi().getBackend().getLiftedSafeRect();
+    const haylen::math::Rect safe = getUi().getBackend().getLiftedSafeRect();
     EXPECT_LT(getBounds(*menu->getGui(), "open").x, safe.x);
     settle();
     EXPECT_FLOAT_EQ(getBounds(*menu->getGui(), "open").x, safe.x);
 
-    const math::Vec2 inside{safe.x + 250.0F, safe.getCenter().y};
+    const haylen::math::Vec2 inside{safe.x + 250.0F, safe.getCenter().y};
     dragUi(inside, {inside.x - 300.0F, inside.y});
     settle();
     EXPECT_TRUE(drawer->isDismissed());
 
-    getUi().setDirection(text::Direction::RightToLeft);
+    getUi().setDirection(haylen::text::Direction::RightToLeft);
     const auto mirrored = std::make_shared<test::RecordingScreen>(getUi(), "mirrored", log, tree);
-    const std::shared_ptr<Presentation> start = getNavigation().present(mirrored, {.style = Presentation::Style::Drawer, .width = 500.0F});
+    const std::shared_ptr<haylen::ui::Presentation> start = getNavigation().present(mirrored, {.style = haylen::ui::Presentation::Style::Drawer, .width = 500.0F});
     settle();
     EXPECT_FLOAT_EQ(getBounds(*mirrored->getGui(), "open").getRight(), safe.getRight());
     clickUi({safe.x + 8.0F, safe.getCenter().y});
@@ -652,7 +652,7 @@ TEST_F(NavigationTest, FadesADrawerInPlaceWhileMotionIsReduced) {
     getFixture().host().setAccessibilitySettings({.reducedMotion = true});
     frames(2);
     const auto menu = make("menu");
-    static_cast<void>(getNavigation().present(menu, {.style = Presentation::Style::Drawer}));
+    static_cast<void>(getNavigation().present(menu, {.style = haylen::ui::Presentation::Style::Drawer}));
     frames(4);
     EXPECT_FLOAT_EQ(getBounds(*menu->getGui(), "open").x, getUi().getBackend().getLiftedSafeRect().x);
 }
@@ -661,7 +661,7 @@ TEST_F(NavigationTest, FadesADrawerInPlaceWhileMotionIsReduced) {
 TEST_F(NavigationTest, LeavesTheAppItsInputUnderASheetThatIsNotModal) {
     usePhone();
     const auto queue = make("queue");
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(queue, {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Height, .height = 200.0F}, {.kind = Presentation::Detent::Kind::Large}}});
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(queue, {.modal = false, .detents = {{.kind = haylen::ui::Presentation::Detent::Kind::Height, .height = 200.0F}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}}});
     settle();
     clearEvents();
     clickUi(getBounds(*frame, "home").getCenter());
@@ -679,14 +679,14 @@ TEST_F(NavigationTest, LeavesTheAppItsInputUnderASheetThatIsNotModal) {
     EXPECT_FALSE(getNavigation().canGoBack());
     EXPECT_FALSE(getNavigation().goBack());
     EXPECT_FALSE(sheet->isDismissed());
-    EXPECT_THROW(static_cast<void>(getNavigation().present(make("card"), {.style = Presentation::Style::Dialog, .modal = false})), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(getNavigation().present(make("card"), {.style = haylen::ui::Presentation::Style::Dialog, .modal = false})), std::invalid_argument);
 }
 
 // A form sheet that is not modal shows as a card without detents on a wide screen, so the system back goes past it to the app under it.
 TEST_F(NavigationTest, GoesBackPastACardThatIsNotModal) {
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     stack->push(make("profile"));
-    const std::shared_ptr<Presentation> card = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}, .detent = 1});
+    const std::shared_ptr<haylen::ui::Presentation> card = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = haylen::ui::Presentation::Detent::Kind::Medium}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}}, .detent = 1});
     settle();
 
     EXPECT_TRUE(getNavigation().goBack());
@@ -698,43 +698,43 @@ TEST_F(NavigationTest, GoesBackPastACardThatIsNotModal) {
 
 // The GUIs behind a modal sheet shrink as it nears the top of a compact screen, and stay whole behind a sheet on a wide screen or one that is not modal.
 TEST_F(NavigationTest, ShrinksTheGuisBehindASheetNearTheTopOfACompactScreen) {
-    const Presentation::Frame phone{.display = {0.0F, 0.0F, 800.0F, 1600.0F}, .safe = {0.0F, 60.0F, 800.0F, 1500.0F}, .radius = 16.0F};
-    const Presentation::Frame tablet{.display = {0.0F, 0.0F, 2000.0F, 1500.0F}, .safe = {0.0F, 40.0F, 2000.0F, 1440.0F}, .radius = 16.0F};
-    const std::vector<Presentation::Detent> detents{{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}};
-    const std::shared_ptr<Presentation> half = getNavigation().present(make("half"), {.detents = detents});
-    const std::shared_ptr<Presentation> full = getNavigation().present(make("full"), {.detents = detents, .detent = 1});
-    const std::shared_ptr<Presentation> beside = getNavigation().present(make("beside"), {.modal = false, .detents = detents, .detent = 1});
+    const haylen::ui::Presentation::Frame phone{.display = {0.0F, 0.0F, 800.0F, 1600.0F}, .safe = {0.0F, 60.0F, 800.0F, 1500.0F}, .radius = 16.0F};
+    const haylen::ui::Presentation::Frame tablet{.display = {0.0F, 0.0F, 2000.0F, 1500.0F}, .safe = {0.0F, 40.0F, 2000.0F, 1440.0F}, .radius = 16.0F};
+    const std::vector<haylen::ui::Presentation::Detent> detents{{.kind = haylen::ui::Presentation::Detent::Kind::Medium}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}};
+    const std::shared_ptr<haylen::ui::Presentation> half = getNavigation().present(make("half"), {.detents = detents});
+    const std::shared_ptr<haylen::ui::Presentation> full = getNavigation().present(make("full"), {.detents = detents, .detent = 1});
+    const std::shared_ptr<haylen::ui::Presentation> beside = getNavigation().present(make("beside"), {.modal = false, .detents = detents, .detent = 1});
     EXPECT_FLOAT_EQ(half->getLayout(phone).behindScale, 1.0F);
-    EXPECT_FLOAT_EQ(full->getLayout(phone).behindScale, Presentation::kBehindScale);
+    EXPECT_FLOAT_EQ(full->getLayout(phone).behindScale, haylen::ui::Presentation::kBehindScale);
     EXPECT_FLOAT_EQ(full->getLayout(tablet).behindScale, 1.0F);
     EXPECT_FLOAT_EQ(beside->getLayout(phone).behindScale, 1.0F);
-    EXPECT_FLOAT_EQ(full->getLayout(phone).surface.y, phone.safe.y + Presentation::kSheetTop);
-    EXPECT_FLOAT_EQ(full->getLayout(tablet).surface.width, Presentation::kSheetWidth);
+    EXPECT_FLOAT_EQ(full->getLayout(phone).surface.y, phone.safe.y + haylen::ui::Presentation::kSheetTop);
+    EXPECT_FLOAT_EQ(full->getLayout(tablet).surface.width, haylen::ui::Presentation::kSheetWidth);
 }
 
 // A screen narrower than a form sheet in points is compact whatever the scale of its UI, such as a phone that lays out a wide design, and the sheets and popovers fill its width.
 TEST_F(NavigationTest, MakesAScreenCompactByItsWidthInPoints) {
-    const Presentation::Frame phone{.display = {0.0F, 0.0F, 1920.0F, 4000.0F}, .safe = {0.0F, 0.0F, 1920.0F, 4000.0F}, .pointsPerUnit = 0.2F, .radius = 16.0F};
-    const Presentation::Frame tablet{.display = {0.0F, 0.0F, 1920.0F, 1300.0F}, .safe = {0.0F, 0.0F, 1920.0F, 1300.0F}, .pointsPerUnit = 0.6F, .radius = 16.0F};
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(make("sheet"), {});
-    const std::shared_ptr<Presentation> popover = getNavigation().present(make("popover"), {.style = Presentation::Style::Popover, .anchor = getArea("home")});
+    const haylen::ui::Presentation::Frame phone{.display = {0.0F, 0.0F, 1920.0F, 4000.0F}, .safe = {0.0F, 0.0F, 1920.0F, 4000.0F}, .pointsPerUnit = 0.2F, .radius = 16.0F};
+    const haylen::ui::Presentation::Frame tablet{.display = {0.0F, 0.0F, 1920.0F, 1300.0F}, .safe = {0.0F, 0.0F, 1920.0F, 1300.0F}, .pointsPerUnit = 0.6F, .radius = 16.0F};
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(make("sheet"), {});
+    const std::shared_ptr<haylen::ui::Presentation> popover = getNavigation().present(make("popover"), {.style = haylen::ui::Presentation::Style::Popover, .anchor = getArea("home")});
     EXPECT_TRUE(sheet->getLayout(phone).compact);
     EXPECT_FLOAT_EQ(sheet->getLayout(phone).surface.width, phone.display.width);
     EXPECT_FALSE(popover->getLayout(phone).arrow.has_value());
     EXPECT_FALSE(sheet->getLayout(tablet).compact);
-    EXPECT_FLOAT_EQ(sheet->getLayout(tablet).surface.width, Presentation::kSheetWidth);
+    EXPECT_FLOAT_EQ(sheet->getLayout(tablet).surface.width, haylen::ui::Presentation::kSheetWidth);
 }
 
 // A form sheet on a wide screen rests at no detent, so it shows no grabber and a new detent leaves it where it is, and it is as tall as its screen when every detent fits its screen.
 TEST_F(NavigationTest, FloatsACardWithoutDetentsThatFitsItsScreen) {
-    const Presentation::Frame tablet{.display = {0.0F, 0.0F, 2000.0F, 1500.0F}, .safe = {0.0F, 40.0F, 2000.0F, 1440.0F}, .radius = 16.0F, .contentHeight = 300.0F};
-    const std::vector<Presentation::Detent> detents{{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}};
+    const haylen::ui::Presentation::Frame tablet{.display = {0.0F, 0.0F, 2000.0F, 1500.0F}, .safe = {0.0F, 40.0F, 2000.0F, 1440.0F}, .radius = 16.0F, .contentHeight = 300.0F};
+    const std::vector<haylen::ui::Presentation::Detent> detents{{.kind = haylen::ui::Presentation::Detent::Kind::Medium}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}};
     const auto queue = make("queue");
-    const std::shared_ptr<Presentation> card = getNavigation().present(queue, {.detents = detents});
-    const std::shared_ptr<Presentation> picker = getNavigation().present(make("picker"), {.detents = {{.kind = Presentation::Detent::Kind::Fit}}});
+    const std::shared_ptr<haylen::ui::Presentation> card = getNavigation().present(queue, {.detents = detents});
+    const std::shared_ptr<haylen::ui::Presentation> picker = getNavigation().present(make("picker"), {.detents = {{.kind = haylen::ui::Presentation::Detent::Kind::Fit}}});
     EXPECT_TRUE(card->getLayout(tablet).grabber.isEmpty());
     EXPECT_FLOAT_EQ(card->getLayout(tablet).area.y, card->getLayout(tablet).surface.y);
-    EXPECT_FLOAT_EQ(card->getLayout(tablet).surface.height, Presentation::kSheetHeight);
+    EXPECT_FLOAT_EQ(card->getLayout(tablet).surface.height, haylen::ui::Presentation::kSheetHeight);
     EXPECT_FLOAT_EQ(picker->getLayout(tablet).surface.height, 300.0F);
 
     picker->dismiss();
@@ -756,14 +756,14 @@ TEST_F(NavigationTest, ShowsStillScreensWithoutAllocating) {
     };
     // clang-format on
     const std::size_t frameAlone = measure();
-    const std::shared_ptr<NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
+    const std::shared_ptr<haylen::ui::NavigationStack> stack = getNavigation().createStack(getArea("list"), make("home"));
     stack->push(make("profile"));
     settle();
     EXPECT_EQ(measure(), frameAlone);
 
-    const std::shared_ptr<Presentation> queue = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = Presentation::Detent::Kind::Medium}, {.kind = Presentation::Detent::Kind::Large}}});
-    const std::shared_ptr<Presentation> sheet = getNavigation().present(make("compose"), {.detents = {{.kind = Presentation::Detent::Kind::Fit}, {.kind = Presentation::Detent::Kind::Large}}, .detent = 1});
-    const std::shared_ptr<Presentation> popover = getNavigation().present(make("info"), {.style = Presentation::Style::Popover, .anchor = getArea("home")});
+    const std::shared_ptr<haylen::ui::Presentation> queue = getNavigation().present(make("queue"), {.modal = false, .detents = {{.kind = haylen::ui::Presentation::Detent::Kind::Medium}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}}});
+    const std::shared_ptr<haylen::ui::Presentation> sheet = getNavigation().present(make("compose"), {.detents = {{.kind = haylen::ui::Presentation::Detent::Kind::Fit}, {.kind = haylen::ui::Presentation::Detent::Kind::Large}}, .detent = 1});
+    const std::shared_ptr<haylen::ui::Presentation> popover = getNavigation().present(make("info"), {.style = haylen::ui::Presentation::Style::Popover, .anchor = getArea("home")});
     settle();
     EXPECT_EQ(measure(), frameAlone);
 }
@@ -938,7 +938,7 @@ TEST_F(NavigationTest, PresentsSheetsAlertsAndTheirResultsFromLua) {
     frames(30);
     EXPECT_EQ(getFixture().lua("return tostring(moved)"), "1");
 
-    key(input::Key::Escape);
+    key(haylen::input::Key::Escape);
     frames(30);
     EXPECT_EQ(getFixture().lua("return tostring(answer)"), "keep");
     getFixture().runLua("sheet:dismiss({result = {color = 'teal'}, transition = {effect = 'fade', duration = 0.1}})");
@@ -984,4 +984,4 @@ TEST_F(NavigationTest, NamesTheActionOfAnAlertThatIsNotATable) {
     EXPECT_NE(getFixture().lua("require('haylen.ui').presentAlert({title = 'Delete?', actions = {1}})").find("The item 1 of \"actions\" of \"presentAlert\" is invalid: table expected, got number."), std::string::npos);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

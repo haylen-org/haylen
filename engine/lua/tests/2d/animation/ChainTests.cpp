@@ -8,24 +8,24 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::animation2d {
+namespace haylen::lua::animation2d {
 
 class ChainTest : public ::testing::Test {
   protected:
     // Expects every segment to keep its length.
-    static void expectLengths(const Chain& chain) {
+    static void expectLengths(const haylen::animation2d::Chain& chain) {
         for (std::size_t index = 0; index < chain.getLengths().size(); ++index) {
-            EXPECT_NEAR(math::Vec2::distance(chain.getPoints()[index], chain.getPoints()[index + 1]), chain.getLengths()[index], 1e-3F) << "Segment " << index;
+            EXPECT_NEAR(haylen::math::Vec2::distance(chain.getPoints()[index], chain.getPoints()[index + 1]), chain.getLengths()[index], 1e-3F) << "Segment " << index;
         }
     }
 
     // Returns the largest bend between two segments in a row.
-    static float largestBend(const Chain& chain) {
+    static float largestBend(const haylen::animation2d::Chain& chain) {
         float largest = 0.0F;
         for (std::size_t index = 2; index < chain.size(); ++index) {
-            const math::Vec2 previous = chain.getPoints()[index - 1] - chain.getPoints()[index - 2];
-            const math::Vec2 next = chain.getPoints()[index] - chain.getPoints()[index - 1];
-            largest = std::max(largest, std::abs(std::atan2(math::Vec2::cross(previous, next), math::Vec2::dot(previous, next))));
+            const haylen::math::Vec2 previous = chain.getPoints()[index - 1] - chain.getPoints()[index - 2];
+            const haylen::math::Vec2 next = chain.getPoints()[index] - chain.getPoints()[index - 1];
+            largest = std::max(largest, std::abs(std::atan2(haylen::math::Vec2::cross(previous, next), haylen::math::Vec2::dot(previous, next))));
         }
 
         return largest;
@@ -33,18 +33,18 @@ class ChainTest : public ::testing::Test {
 };
 
 TEST_F(ChainTest, ReachesATargetInReachAndKeepsItsRootAndLengths) {
-    Chain arm({.root = {10.0F, 20.0F}, .lengths = {50.0F, 40.0F, 30.0F}});
+    haylen::animation2d::Chain arm({.root = {10.0F, 20.0F}, .lengths = {50.0F, 40.0F, 30.0F}});
     EXPECT_FLOAT_EQ(arm.getTotalLength(), 120.0F);
     EXPECT_NEAR(arm.getEnd().x, 130.0F, 1e-3F);
 
     EXPECT_TRUE(arm.reach({70.0F, 90.0F}, {.tolerance = 0.01F}));
-    EXPECT_NEAR(math::Vec2::distance(arm.getEnd(), {70.0F, 90.0F}), 0.0F, 0.01F);
-    EXPECT_EQ(arm.getRoot(), (math::Vec2{10.0F, 20.0F}));
+    EXPECT_NEAR(haylen::math::Vec2::distance(arm.getEnd(), {70.0F, 90.0F}), 0.0F, 0.01F);
+    EXPECT_EQ(arm.getRoot(), (haylen::math::Vec2{10.0F, 20.0F}));
     expectLengths(arm);
 }
 
 TEST_F(ChainTest, StretchesStraightTowardATargetOutOfReach) {
-    Chain arm({.lengths = {30.0F, 30.0F}});
+    haylen::animation2d::Chain arm({.lengths = {30.0F, 30.0F}});
     EXPECT_FALSE(arm.reach({0.0F, 200.0F}, {}));
     EXPECT_NEAR(arm.getPoints()[1].y, 30.0F, 1e-4F);
     EXPECT_NEAR(arm.getEnd().x, 0.0F, 1e-4F);
@@ -54,12 +54,12 @@ TEST_F(ChainTest, StretchesStraightTowardATargetOutOfReach) {
 
 TEST_F(ChainTest, BendsItsJointsTowardThePole) {
     // The leg starts straight, so the pole alone decides the side of the knee, and it changes sides when the pole does.
-    Chain leg({.lengths = {50.0F, 50.0F}});
-    EXPECT_TRUE(leg.reach({60.0F, 0.0F}, {.pole = math::Vec2{30.0F, -100.0F}}));
+    haylen::animation2d::Chain leg({.lengths = {50.0F, 50.0F}});
+    EXPECT_TRUE(leg.reach({60.0F, 0.0F}, {.pole = haylen::math::Vec2{30.0F, -100.0F}}));
     EXPECT_LT(leg.getPoints()[1].y, -20.0F);
     expectLengths(leg);
 
-    EXPECT_TRUE(leg.reach({60.0F, 0.0F}, {.pole = math::Vec2{30.0F, 100.0F}}));
+    EXPECT_TRUE(leg.reach({60.0F, 0.0F}, {.pole = haylen::math::Vec2{30.0F, 100.0F}}));
     EXPECT_GT(leg.getPoints()[1].y, 20.0F);
 
     // Without a pole the knee stays on the side it bends to.
@@ -68,7 +68,7 @@ TEST_F(ChainTest, BendsItsJointsTowardThePole) {
 }
 
 TEST_F(ChainTest, FollowsAHeadWithinTheBendLimit) {
-    Chain body({.root = {0.0F, 0.0F}, .lengths = std::vector<float>(12, 10.0F), .angle = math::Math::kPi, .maxBend = 0.4F});
+    haylen::animation2d::Chain body({.root = {0.0F, 0.0F}, .lengths = std::vector<float>(12, 10.0F), .angle = haylen::math::Math::kPi, .maxBend = 0.4F});
     for (int step = 0; step < 240; ++step) {
         const float turn = static_cast<float>(step) * 0.08F;
         body.follow({std::cos(turn) * 60.0F, std::sin(turn) * 60.0F});
@@ -80,22 +80,22 @@ TEST_F(ChainTest, FollowsAHeadWithinTheBendLimit) {
 
     // A point pushed aside keeps its place until the next follow pulls the lengths back from the head.
     body.setPoint(5, {0.0F, 999.0F});
-    EXPECT_EQ(body.getPoints()[5], (math::Vec2{0.0F, 999.0F}));
+    EXPECT_EQ(body.getPoints()[5], (haylen::math::Vec2{0.0F, 999.0F}));
     body.follow(body.getRoot());
     expectLengths(body);
     EXPECT_THROW(body.setPoint(13, {}), std::out_of_range);
 
     body.setRoot({500.0F, 0.0F});
-    EXPECT_NEAR(math::Vec2::distance(body.getRoot(), {500.0F, 0.0F}), 0.0F, 1e-4F);
+    EXPECT_NEAR(haylen::math::Vec2::distance(body.getRoot(), {500.0F, 0.0F}), 0.0F, 1e-4F);
     expectLengths(body);
 }
 
 TEST_F(ChainTest, ReachingAndFollowingNeverAllocate) {
-    Chain tail({.lengths = std::vector<float>(30, 8.0F), .maxBend = 0.5F});
+    haylen::animation2d::Chain tail({.lengths = std::vector<float>(30, 8.0F), .maxBend = 0.5F});
     const test::AllocationTracker tracker;
 
     for (int step = 0; step < 100; ++step) {
-        (void)tail.reach({100.0F, static_cast<float>(step)}, {.pole = math::Vec2{0.0F, -50.0F}});
+        (void)tail.reach({100.0F, static_cast<float>(step)}, {.pole = haylen::math::Vec2{0.0F, -50.0F}});
         tail.follow({static_cast<float>(step), 0.0F});
     }
 
@@ -103,9 +103,9 @@ TEST_F(ChainTest, ReachingAndFollowingNeverAllocate) {
 }
 
 TEST_F(ChainTest, RefusesChainsWithoutSegmentsOrWithEmptyOnes) {
-    EXPECT_THROW(Chain({}), std::invalid_argument);
-    EXPECT_THROW(Chain({.lengths = {10.0F, 0.0F}}), std::invalid_argument);
-    EXPECT_THROW(Chain({.lengths = {NAN}}), std::invalid_argument);
+    EXPECT_THROW(haylen::animation2d::Chain({}), std::invalid_argument);
+    EXPECT_THROW(haylen::animation2d::Chain({.lengths = {10.0F, 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(haylen::animation2d::Chain({.lengths = {NAN}}), std::invalid_argument);
 }
 
 TEST_F(ChainTest, BendsLegsAndBodiesFromLua) {
@@ -140,4 +140,4 @@ TEST_F(ChainTest, BendsLegsAndBodiesFromLua) {
     EXPECT_EQ(fixture.lua("local animation2d = require('haylen.animation2d') local collections = require('haylen.collections') local chain = animation2d.newChain({lengths = {1, 1}}) local ok, message = pcall(chain.writePoints, chain, collections.newFloatBuffer(6), 2) return message:match('The buffer.*')"), "The buffer holds 6 values, and the 3 points of the chain need 6 from value 2 on.");
 }
 
-} // namespace haylen::animation2d
+} // namespace haylen::lua::animation2d

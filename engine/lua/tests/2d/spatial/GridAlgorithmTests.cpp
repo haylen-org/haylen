@@ -20,15 +20,15 @@
 #include "haylen/math/Random.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::spatial2d {
+namespace haylen::lua::spatial2d {
 
-using Cells = std::vector<spatial2d::Cell>;
+using Cells = std::vector<haylen::spatial2d::Cell>;
 
 TEST(GridRayTest, WalksCrossedCellsInOrder) {
     Cells visited;
-    std::vector<math::Vec2> normals;
+    std::vector<haylen::math::Vec2> normals;
     // clang-format off
-    spatial2d::GridRay::traverse(math::Ray::between({5.0F, 5.0F}, {35.0F, 17.0F}), {10.0F, 10.0F}, [&](spatial2d::Cell cell, float, math::Vec2 normal) {
+    haylen::spatial2d::GridRay::traverse(haylen::math::Ray::between({5.0F, 5.0F}, {35.0F, 17.0F}), {10.0F, 10.0F}, [&](haylen::spatial2d::Cell cell, float, haylen::math::Vec2 normal) {
         visited.push_back(cell);
         normals.push_back(normal);
         return true;
@@ -36,35 +36,35 @@ TEST(GridRayTest, WalksCrossedCellsInOrder) {
     // clang-format on
     EXPECT_EQ(visited, (Cells{{0, 0}, {1, 0}, {1, 1}, {2, 1}, {3, 1}}));
     EXPECT_TRUE(normals[0].isZero());
-    EXPECT_EQ(normals[1], (math::Vec2{-1.0F, 0.0F}));
-    EXPECT_EQ(normals[2], (math::Vec2{0.0F, -1.0F}));
+    EXPECT_EQ(normals[1], (haylen::math::Vec2{-1.0F, 0.0F}));
+    EXPECT_EQ(normals[2], (haylen::math::Vec2{0.0F, -1.0F}));
 
-    const auto blocked = [](spatial2d::Cell cell) { return cell.x == 2; };
-    const std::optional<spatial2d::GridRay::Hit> hit = spatial2d::GridRay::cast(math::Ray::between({5.0F, 5.0F}, {35.0F, 5.0F}), {10.0F, 10.0F}, blocked);
+    const auto blocked = [](haylen::spatial2d::Cell cell) { return cell.x == 2; };
+    const std::optional<haylen::spatial2d::GridRay::Hit> hit = haylen::spatial2d::GridRay::cast(haylen::math::Ray::between({5.0F, 5.0F}, {35.0F, 5.0F}), {10.0F, 10.0F}, blocked);
     ASSERT_TRUE(hit.has_value());
-    EXPECT_EQ(hit->cell, (spatial2d::Cell{2, 0}));
+    EXPECT_EQ(hit->cell, (haylen::spatial2d::Cell{2, 0}));
     EXPECT_FLOAT_EQ(hit->distance, 15.0F);
-    EXPECT_EQ(hit->point, (math::Vec2{20.0F, 5.0F}));
-    EXPECT_EQ(hit->normal, (math::Vec2{-1.0F, 0.0F}));
-    EXPECT_FALSE(spatial2d::GridRay::cast(math::Ray::between({5.0F, 5.0F}, {15.0F, 5.0F}), {10.0F, 10.0F}, blocked).has_value());
+    EXPECT_EQ(hit->point, (haylen::math::Vec2{20.0F, 5.0F}));
+    EXPECT_EQ(hit->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
+    EXPECT_FALSE(haylen::spatial2d::GridRay::cast(haylen::math::Ray::between({5.0F, 5.0F}, {15.0F, 5.0F}), {10.0F, 10.0F}, blocked).has_value());
 
-    const std::optional<spatial2d::GridRay::Hit> inside = spatial2d::GridRay::cast(math::Ray::between({25.0F, 5.0F}, {5.0F, 5.0F}), {10.0F, 10.0F}, blocked);
+    const std::optional<haylen::spatial2d::GridRay::Hit> inside = haylen::spatial2d::GridRay::cast(haylen::math::Ray::between({25.0F, 5.0F}, {5.0F, 5.0F}), {10.0F, 10.0F}, blocked);
     ASSERT_TRUE(inside.has_value());
     EXPECT_EQ(inside->distance, 0.0F);
     EXPECT_TRUE(inside->normal.isZero());
 
-    EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray{{0.0F, 0.0F}, {1.0F, 0.0F}}, {10.0F, 10.0F}, blocked), std::invalid_argument);
-    EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray::between({0.0F, 0.0F}, {1.0F, 0.0F}), {0.0F, 10.0F}, blocked), std::invalid_argument);
-    EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray::between({0.0F, 0.0F}, {1e30F, 0.0F}), {10.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)haylen::spatial2d::GridRay::cast(haylen::math::Ray{{0.0F, 0.0F}, {1.0F, 0.0F}}, {10.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)haylen::spatial2d::GridRay::cast(haylen::math::Ray::between({0.0F, 0.0F}, {1.0F, 0.0F}), {0.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)haylen::spatial2d::GridRay::cast(haylen::math::Ray::between({0.0F, 0.0F}, {1e30F, 0.0F}), {10.0F, 10.0F}, blocked), std::invalid_argument);
 }
 
 // The distances to the next cell sides add up in double precision, so a ray across more than 2^24 cells, where a float sum stops growing, still walks to its end.
 TEST(GridRayTest, WalksRaysLongerThanAFloatSumCanCount) {
     std::int64_t visits = 0;
-    spatial2d::Cell last{};
+    haylen::spatial2d::Cell last{};
     float lastDistance = 0.0F;
     // clang-format off
-    spatial2d::GridRay::traverse(math::Ray{{0.5F, 0.5F}, {1.0F, 0.0F}, 16800000.0F}, {1.0F, 1.0F}, [&](spatial2d::Cell cell, float distance, math::Vec2) {
+    haylen::spatial2d::GridRay::traverse(haylen::math::Ray{{0.5F, 0.5F}, {1.0F, 0.0F}, 16800000.0F}, {1.0F, 1.0F}, [&](haylen::spatial2d::Cell cell, float distance, haylen::math::Vec2) {
         ++visits;
         last = cell;
         lastDistance = distance;
@@ -72,72 +72,72 @@ TEST(GridRayTest, WalksRaysLongerThanAFloatSumCanCount) {
     });
     // clang-format on
     EXPECT_EQ(visits, 16800001);
-    EXPECT_EQ(last, (spatial2d::Cell{16800000, 0}));
+    EXPECT_EQ(last, (haylen::spatial2d::Cell{16800000, 0}));
     EXPECT_FLOAT_EQ(lastDistance, 16799999.5F);
 }
 
 TEST(GridRayTest, CastsOverCellGridsFromInsideAndOutside) {
-    spatial2d::CellGrid grid(8, 8);
+    haylen::spatial2d::CellGrid grid(8, 8);
     grid.set({5, 3}, 1);
-    const math::Vec2 cellSize{16.0F, 16.0F};
+    const haylen::math::Vec2 cellSize{16.0F, 16.0F};
 
-    const std::optional<spatial2d::GridRay::Hit> hit = spatial2d::GridRay::cast(math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
+    const std::optional<haylen::spatial2d::GridRay::Hit> hit = haylen::spatial2d::GridRay::cast(haylen::math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
     ASSERT_TRUE(hit.has_value());
-    EXPECT_EQ(hit->cell, (spatial2d::Cell{5, 3}));
+    EXPECT_EQ(hit->cell, (haylen::spatial2d::Cell{5, 3}));
     EXPECT_FLOAT_EQ(hit->distance, 72.0F);
 
     // A ray from outside enters through the side of the grid and keeps its full distance.
-    const std::optional<spatial2d::GridRay::Hit> fromOutside = spatial2d::GridRay::cast(math::Ray{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
+    const std::optional<haylen::spatial2d::GridRay::Hit> fromOutside = haylen::spatial2d::GridRay::cast(haylen::math::Ray{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
     ASSERT_TRUE(fromOutside.has_value());
     EXPECT_FLOAT_EQ(fromOutside->distance, 180.0F);
-    EXPECT_EQ(fromOutside->normal, (math::Vec2{-1.0F, 0.0F}));
+    EXPECT_EQ(fromOutside->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
 
     grid.set({0, 3}, 2);
-    const std::optional<spatial2d::GridRay::Hit> edge = spatial2d::GridRay::cast(math::Ray{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
+    const std::optional<haylen::spatial2d::GridRay::Hit> edge = haylen::spatial2d::GridRay::cast(haylen::math::Ray{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
     ASSERT_TRUE(edge.has_value());
-    EXPECT_EQ(edge->cell, (spatial2d::Cell{0, 3}));
-    EXPECT_EQ(edge->normal, (math::Vec2{-1.0F, 0.0F}));
-    EXPECT_FALSE(spatial2d::GridRay::cast(math::Ray{{-100.0F, 200.0F}, {1.0F, 0.0F}}, cellSize, grid).has_value());
-    EXPECT_FALSE(spatial2d::GridRay::cast(math::Ray{{24.0F, 8.0F}, {0.0F, 1.0F}}, cellSize, grid).has_value());
+    EXPECT_EQ(edge->cell, (haylen::spatial2d::Cell{0, 3}));
+    EXPECT_EQ(edge->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
+    EXPECT_FALSE(haylen::spatial2d::GridRay::cast(haylen::math::Ray{{-100.0F, 200.0F}, {1.0F, 0.0F}}, cellSize, grid).has_value());
+    EXPECT_FALSE(haylen::spatial2d::GridRay::cast(haylen::math::Ray{{24.0F, 8.0F}, {0.0F, 1.0F}}, cellSize, grid).has_value());
 
     // An invalid cell size raises even when the ray misses the grid it would describe.
-    EXPECT_THROW((void)spatial2d::GridRay::cast(math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}, {-16.0F, 16.0F}, grid), std::invalid_argument);
+    EXPECT_THROW((void)haylen::spatial2d::GridRay::cast(haylen::math::Ray{{8.0F, 56.0F}, {1.0F, 0.0F}}, {-16.0F, 16.0F}, grid), std::invalid_argument);
 }
 
 TEST(BresenhamTest, DrawsLinesAndCircles) {
     Cells cells;
-    spatial2d::Bresenham::line({0, 0}, {5, 2}, cells);
+    haylen::spatial2d::Bresenham::line({0, 0}, {5, 2}, cells);
     EXPECT_EQ(cells, (Cells{{0, 0}, {1, 0}, {2, 1}, {3, 1}, {4, 2}, {5, 2}}));
-    spatial2d::Bresenham::line({3, 3}, {3, -1}, cells);
+    haylen::spatial2d::Bresenham::line({3, 3}, {3, -1}, cells);
     EXPECT_EQ(cells.size(), 5U);
-    EXPECT_EQ(cells.back(), (spatial2d::Cell{3, -1}));
-    spatial2d::Bresenham::line({2, 2}, {2, 2}, cells);
+    EXPECT_EQ(cells.back(), (haylen::spatial2d::Cell{3, -1}));
+    haylen::spatial2d::Bresenham::line({2, 2}, {2, 2}, cells);
     EXPECT_EQ(cells, (Cells{{2, 2}}));
 
-    spatial2d::Bresenham::circle({10, 10}, 0, cells);
+    haylen::spatial2d::Bresenham::circle({10, 10}, 0, cells);
     EXPECT_EQ(cells, (Cells{{10, 10}}));
-    spatial2d::Bresenham::circle({0, 0}, 6, cells);
-    EXPECT_EQ(cells.front(), (spatial2d::Cell{-2, -6}));
+    haylen::spatial2d::Bresenham::circle({0, 0}, 6, cells);
+    EXPECT_EQ(cells.front(), (haylen::spatial2d::Cell{-2, -6}));
 
-    for (const spatial2d::Cell cell : cells) {
+    for (const haylen::spatial2d::Cell cell : cells) {
         EXPECT_NEAR(std::hypot(static_cast<float>(cell.x), static_cast<float>(cell.y)), 6.0F, 0.75F);
     }
 
     Cells unique = cells;
     unique.erase(std::ranges::unique(unique).begin(), unique.end());
     EXPECT_EQ(unique.size(), cells.size());
-    EXPECT_THROW(spatial2d::Bresenham::circle({0, 0}, -1, cells), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::Bresenham::circle({0, 0}, -1, cells), std::invalid_argument);
 }
 
 TEST(FieldOfViewTest, SeesOpenRoomsAndHidesCellsBehindWalls) {
-    spatial2d::CellGrid grid(21, 21);
+    haylen::spatial2d::CellGrid grid(21, 21);
     for (int y = 0; y < 21; ++y) {
         grid.set({14, y}, y == 10 ? 0 : 1);
     }
 
     std::vector<std::uint8_t> seen(21 * 21, 0);
     // clang-format off
-    spatial2d::FieldOfView::compute({10, 10}, 6, [&grid](spatial2d::Cell cell) { return grid.isSolid(cell); }, [&](spatial2d::Cell cell) {
+    haylen::spatial2d::FieldOfView::compute({10, 10}, 6, [&grid](haylen::spatial2d::Cell cell) { return grid.isSolid(cell); }, [&](haylen::spatial2d::Cell cell) {
         if (grid.contains(cell)) {
             seen[grid.indexOf(cell)] = 1;
         }
@@ -149,14 +149,14 @@ TEST(FieldOfViewTest, SeesOpenRoomsAndHidesCellsBehindWalls) {
     EXPECT_EQ(seen[grid.indexOf({16, 10})], 1);
     EXPECT_EQ(seen[grid.indexOf({15, 13})], 0);
     EXPECT_EQ(seen[grid.indexOf({4, 4})], 0);
-    EXPECT_THROW(spatial2d::FieldOfView::compute({0, 0}, -1, [](spatial2d::Cell) { return false; }, [](spatial2d::Cell) {}), std::invalid_argument);
+    EXPECT_THROW(haylen::spatial2d::FieldOfView::compute({0, 0}, -1, [](haylen::spatial2d::Cell) { return false; }, [](haylen::spatial2d::Cell) {}), std::invalid_argument);
 }
 
 TEST(FieldOfViewTest, IsSymmetricBetweenOpenCells) {
     constexpr int kSize = 24;
     constexpr int kRadius = 9;
-    spatial2d::CellGrid grid(kSize, kSize);
-    math::Random random(11);
+    haylen::spatial2d::CellGrid grid(kSize, kSize);
+    haylen::math::Random random(11);
     for (int y = 0; y < kSize; ++y) {
         for (int x = 0; x < kSize; ++x) {
             grid.set({x, y}, random.chance(0.3F) ? 1 : 0);
@@ -173,7 +173,7 @@ TEST(FieldOfViewTest, IsSymmetricBetweenOpenCells) {
 
             const std::size_t viewer = grid.indexOf({x, y});
             // clang-format off
-            spatial2d::FieldOfView::compute({x, y}, kRadius, [&grid](spatial2d::Cell cell) { return grid.isSolid(cell); }, [&](spatial2d::Cell cell) {
+            haylen::spatial2d::FieldOfView::compute({x, y}, kRadius, [&grid](haylen::spatial2d::Cell cell) { return grid.isSolid(cell); }, [&](haylen::spatial2d::Cell cell) {
                 if (grid.contains(cell)) {
                     sees[viewer * cells + grid.indexOf(cell)] = 1;
                 }
@@ -198,35 +198,35 @@ TEST(FieldOfViewTest, IsSymmetricBetweenOpenCells) {
 }
 
 TEST(VisibilityPolygonTest, OutlinesWhatAPointSeesAmongWalls) {
-    spatial2d::VisibilityPolygon visibility;
-    const math::Rect room{0.0F, 0.0F, 100.0F, 100.0F};
-    const std::vector<math::Vec2>& open = visibility.compute({50.0F, 50.0F}, {}, room);
+    haylen::spatial2d::VisibilityPolygon visibility;
+    const haylen::math::Rect room{0.0F, 0.0F, 100.0F, 100.0F};
+    const std::vector<haylen::math::Vec2>& open = visibility.compute({50.0F, 50.0F}, {}, room);
     EXPECT_GE(open.size(), 4U);
-    EXPECT_NEAR(std::fabs(math::Geometry::signedArea(open)), 10000.0F, 1.0F);
+    EXPECT_NEAR(std::fabs(haylen::math::Geometry::signedArea(open)), 10000.0F, 1.0F);
 
     // A pillar between the origin and the right wall hides a wedge behind it.
-    const std::vector<math::Segment> pillar{{{70.0F, 40.0F}, {70.0F, 60.0F}}, {{70.0F, 60.0F}, {80.0F, 60.0F}}, {{80.0F, 60.0F}, {80.0F, 40.0F}}, {{80.0F, 40.0F}, {70.0F, 40.0F}}};
-    const std::vector<math::Vec2> shadowed = visibility.compute({50.0F, 50.0F}, pillar, room);
-    EXPECT_TRUE(math::Geometry::contains(shadowed, {60.0F, 50.0F}));
-    EXPECT_TRUE(math::Geometry::contains(shadowed, {90.0F, 10.0F}));
-    EXPECT_FALSE(math::Geometry::contains(shadowed, {95.0F, 50.0F}));
+    const std::vector<haylen::math::Segment> pillar{{{70.0F, 40.0F}, {70.0F, 60.0F}}, {{70.0F, 60.0F}, {80.0F, 60.0F}}, {{80.0F, 60.0F}, {80.0F, 40.0F}}, {{80.0F, 40.0F}, {70.0F, 40.0F}}};
+    const std::vector<haylen::math::Vec2> shadowed = visibility.compute({50.0F, 50.0F}, pillar, room);
+    EXPECT_TRUE(haylen::math::Geometry::contains(shadowed, {60.0F, 50.0F}));
+    EXPECT_TRUE(haylen::math::Geometry::contains(shadowed, {90.0F, 10.0F}));
+    EXPECT_FALSE(haylen::math::Geometry::contains(shadowed, {95.0F, 50.0F}));
 
     for (std::size_t index = 1; index < shadowed.size(); ++index) {
-        EXPECT_LE((shadowed[index - 1] - math::Vec2{50.0F, 50.0F}).getAngle(), (shadowed[index] - math::Vec2{50.0F, 50.0F}).getAngle() + 1e-5F);
+        EXPECT_LE((shadowed[index - 1] - haylen::math::Vec2{50.0F, 50.0F}).getAngle(), (shadowed[index] - haylen::math::Vec2{50.0F, 50.0F}).getAngle() + 1e-5F);
     }
 
     EXPECT_THROW((void)visibility.compute({150.0F, 50.0F}, pillar, room), std::invalid_argument);
 
     // Points that are not finite would leave the angles without an order, so they raise.
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    const std::vector<math::Segment> broken{{{nan, 40.0F}, {70.0F, 60.0F}}};
+    const std::vector<haylen::math::Segment> broken{{{nan, 40.0F}, {70.0F, 60.0F}}};
     EXPECT_THROW((void)visibility.compute({nan, 50.0F}, pillar, room), std::invalid_argument);
     EXPECT_THROW((void)visibility.compute({50.0F, 50.0F}, broken, room), std::invalid_argument);
     EXPECT_THROW((void)visibility.compute({50.0F, 50.0F}, pillar, {0.0F, 0.0F, std::numeric_limits<float>::infinity(), 100.0F}), std::invalid_argument);
 }
 
 TEST(FloodFillTest, FillsConnectedCellsOfTheSameValue) {
-    spatial2d::CellGrid grid(5, 5);
+    haylen::spatial2d::CellGrid grid(5, 5);
     for (int x = 0; x < 5; ++x) {
         grid.set({x, 2}, 1);
     }
@@ -235,10 +235,10 @@ TEST(FloodFillTest, FillsConnectedCellsOfTheSameValue) {
     grid.set({4, 4}, 1);
     grid.set({3, 3}, 1);
 
-    spatial2d::FloodFill fill;
+    haylen::spatial2d::FloodFill fill;
     Cells cells;
     fill.fill(grid, {0, 0}, false, cells);
-    EXPECT_EQ(cells.front(), (spatial2d::Cell{0, 0}));
+    EXPECT_EQ(cells.front(), (haylen::spatial2d::Cell{0, 0}));
     // The water cell at 4,3 is walled in by land on every side, so it stays out of the fill.
     EXPECT_EQ(cells.size(), 18U);
     fill.fill(grid, {0, 2}, false, cells);
@@ -251,35 +251,35 @@ TEST(FloodFillTest, FillsConnectedCellsOfTheSameValue) {
     EXPECT_TRUE(cells.empty());
 
     // clang-format off
-    fill.fill({0, 0}, 3, 3, false, [](spatial2d::Cell cell) { return cell.x + cell.y < 3; }, cells);
+    fill.fill({0, 0}, 3, 3, false, [](haylen::spatial2d::Cell cell) { return cell.x + cell.y < 3; }, cells);
     // clang-format on
     EXPECT_EQ(cells.size(), 6U);
 }
 
 TEST(ConnectedComponentsTest, NumbersIslandsAndRegions) {
-    spatial2d::CellGrid grid(6, 4);
-    for (const spatial2d::Cell land : {spatial2d::Cell{0, 0}, {1, 0}, {1, 1}, {3, 1}, {4, 2}, {5, 3}, {0, 3}}) {
+    haylen::spatial2d::CellGrid grid(6, 4);
+    for (const haylen::spatial2d::Cell land : {haylen::spatial2d::Cell{0, 0}, {1, 0}, {1, 1}, {3, 1}, {4, 2}, {5, 3}, {0, 3}}) {
         grid.set(land, 1);
     }
 
-    spatial2d::CellGrid labels(6, 4);
-    EXPECT_EQ(spatial2d::ConnectedComponents::label(grid, {.background = 0}, labels), 5U);
+    haylen::spatial2d::CellGrid labels(6, 4);
+    EXPECT_EQ(haylen::spatial2d::ConnectedComponents::label(grid, {.background = 0}, labels), 5U);
     EXPECT_EQ((labels[{0, 0}]), 1);
     EXPECT_EQ((labels[{1, 1}]), 1);
     EXPECT_EQ((labels[{3, 1}]), 2);
     EXPECT_EQ((labels[{0, 3}]), 4);
     EXPECT_EQ((labels[{2, 2}]), 0);
-    EXPECT_EQ(spatial2d::ConnectedComponents::label(grid, {.diagonal = true, .background = 0}, labels), 3U);
+    EXPECT_EQ(haylen::spatial2d::ConnectedComponents::label(grid, {.diagonal = true, .background = 0}, labels), 3U);
     EXPECT_EQ((labels[{5, 3}]), (labels[{3, 1}]));
 
     // Without a background every value forms regions, water included.
-    EXPECT_EQ(spatial2d::ConnectedComponents::label(grid, {}, labels), 6U);
-    spatial2d::CellGrid wrong(2, 2);
-    EXPECT_THROW(spatial2d::ConnectedComponents::label(grid, {}, wrong), std::invalid_argument);
+    EXPECT_EQ(haylen::spatial2d::ConnectedComponents::label(grid, {}, labels), 6U);
+    haylen::spatial2d::CellGrid wrong(2, 2);
+    EXPECT_THROW(haylen::spatial2d::ConnectedComponents::label(grid, {}, wrong), std::invalid_argument);
 }
 
 TEST(UnionFindTest, MergesSetsAndTracksTheirSizes) {
-    spatial2d::UnionFind sets(5);
+    haylen::spatial2d::UnionFind sets(5);
     EXPECT_EQ(sets.getSetCount(), 5U);
     EXPECT_TRUE(sets.unite(0, 1));
     EXPECT_TRUE(sets.unite(3, 4));
@@ -342,4 +342,4 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     EXPECT_NE(fixture.lua("spatial2d.newCellGrid(0, 3)").find("positive size"), std::string::npos);
 }
 
-} // namespace haylen::spatial2d
+} // namespace haylen::lua::spatial2d

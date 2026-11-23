@@ -11,50 +11,50 @@
 #include "haylen/platform/FoldSimulation.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::platform {
+namespace haylen::lua::platform {
 
 TEST(FoldTest, SplitsTheWindowAtASeparatingFold) {
-    const math::Vec2 size{2000.0F, 1000.0F};
-    const Fold hinge{.bounds = {980.0F, 0.0F, 40.0F, 1000.0F}, .axis = Fold::Axis::Vertical, .state = Fold::State::Flat, .separating = true, .occluding = true};
-    EXPECT_EQ(hinge.getSegments(size), (std::vector<math::Rect>{{0.0F, 0.0F, 980.0F, 1000.0F}, {1020.0F, 0.0F, 980.0F, 1000.0F}}));
-    EXPECT_EQ(hinge.getPosture(), Fold::Posture::Flat);
+    const haylen::math::Vec2 size{2000.0F, 1000.0F};
+    const haylen::platform::Fold hinge{.bounds = {980.0F, 0.0F, 40.0F, 1000.0F}, .axis = haylen::platform::Fold::Axis::Vertical, .state = haylen::platform::Fold::State::Flat, .separating = true, .occluding = true};
+    EXPECT_EQ(hinge.getSegments(size), (std::vector<haylen::math::Rect>{{0.0F, 0.0F, 980.0F, 1000.0F}, {1020.0F, 0.0F, 980.0F, 1000.0F}}));
+    EXPECT_EQ(hinge.getPosture(), haylen::platform::Fold::Posture::Flat);
 
-    const Fold tabletop{.bounds = {0.0F, 500.0F, 2000.0F, 0.0F}, .axis = Fold::Axis::Horizontal, .state = Fold::State::HalfOpened, .separating = true};
-    EXPECT_EQ(tabletop.getSegments(size), (std::vector<math::Rect>{{0.0F, 0.0F, 2000.0F, 500.0F}, {0.0F, 500.0F, 2000.0F, 500.0F}}));
-    EXPECT_EQ(tabletop.getPosture(), Fold::Posture::Tabletop);
+    const haylen::platform::Fold tabletop{.bounds = {0.0F, 500.0F, 2000.0F, 0.0F}, .axis = haylen::platform::Fold::Axis::Horizontal, .state = haylen::platform::Fold::State::HalfOpened, .separating = true};
+    EXPECT_EQ(tabletop.getSegments(size), (std::vector<haylen::math::Rect>{{0.0F, 0.0F, 2000.0F, 500.0F}, {0.0F, 500.0F, 2000.0F, 500.0F}}));
+    EXPECT_EQ(tabletop.getPosture(), haylen::platform::Fold::Posture::Tabletop);
 
     // A seamless fold opened flat leaves the window whole, and a fold that the window only partly covers keeps its segments inside the window.
-    const Fold flat{.bounds = {1000.0F, 0.0F, 0.0F, 1000.0F}};
-    EXPECT_EQ(flat.getSegments(size), (std::vector<math::Rect>{{0.0F, 0.0F, 2000.0F, 1000.0F}}));
-    const Fold book{.bounds = {1900.0F, 0.0F, 300.0F, 1000.0F}, .state = Fold::State::HalfOpened, .separating = true};
-    EXPECT_EQ(book.getPosture(), Fold::Posture::Book);
-    EXPECT_EQ(book.getSegments(size), (std::vector<math::Rect>{{0.0F, 0.0F, 1900.0F, 1000.0F}, {2000.0F, 0.0F, 0.0F, 1000.0F}}));
+    const haylen::platform::Fold flat{.bounds = {1000.0F, 0.0F, 0.0F, 1000.0F}};
+    EXPECT_EQ(flat.getSegments(size), (std::vector<haylen::math::Rect>{{0.0F, 0.0F, 2000.0F, 1000.0F}}));
+    const haylen::platform::Fold book{.bounds = {1900.0F, 0.0F, 300.0F, 1000.0F}, .state = haylen::platform::Fold::State::HalfOpened, .separating = true};
+    EXPECT_EQ(book.getPosture(), haylen::platform::Fold::Posture::Book);
+    EXPECT_EQ(book.getSegments(size), (std::vector<haylen::math::Rect>{{0.0F, 0.0F, 1900.0F, 1000.0F}, {2000.0F, 0.0F, 0.0F, 1000.0F}}));
 }
 
 TEST(FoldSimulationTest, PlacesTheFoldOfAPresetOrAnObjectInTheMiddleOfTheWindow) {
-    const FoldSimulation book = FoldSimulation::fromJson("book");
-    const Fold folded = book.getFold({2000.0F, 1000.0F}, 2.0F);
-    EXPECT_EQ(folded, (Fold{.bounds = {1000.0F, 0.0F, 0.0F, 1000.0F}, .axis = Fold::Axis::Vertical, .state = Fold::State::HalfOpened, .separating = true, .occluding = false}));
-    EXPECT_EQ(book.toJson(), core::Json("book"));
+    const haylen::platform::FoldSimulation book = haylen::platform::FoldSimulation::fromJson("book");
+    const haylen::platform::Fold folded = book.getFold({2000.0F, 1000.0F}, 2.0F);
+    EXPECT_EQ(folded, (haylen::platform::Fold{.bounds = {1000.0F, 0.0F, 0.0F, 1000.0F}, .axis = haylen::platform::Fold::Axis::Vertical, .state = haylen::platform::Fold::State::HalfOpened, .separating = true, .occluding = false}));
+    EXPECT_EQ(book.toJson(), haylen::core::Json("book"));
 
     // A hinge is window points wide, hides what is under it and separates the window even when it lies flat.
-    const Fold dual = FoldSimulation::fromJson("dualScreen").getFold({2000.0F, 1000.0F}, 2.0F);
-    EXPECT_EQ(dual.bounds, (math::Rect{966.0F, 0.0F, 68.0F, 1000.0F}));
+    const haylen::platform::Fold dual = haylen::platform::FoldSimulation::fromJson("dualScreen").getFold({2000.0F, 1000.0F}, 2.0F);
+    EXPECT_EQ(dual.bounds, (haylen::math::Rect{966.0F, 0.0F, 68.0F, 1000.0F}));
     EXPECT_TRUE(dual.separating);
     EXPECT_TRUE(dual.occluding);
 
-    const FoldSimulation custom = FoldSimulation::fromJson(core::Json::parse(R"({"axis": "horizontal", "state": "flat", "hinge": 10})"));
-    EXPECT_EQ(custom.getFold({800.0F, 600.0F}, 1.0F).bounds, (math::Rect{0.0F, 295.0F, 800.0F, 10.0F}));
-    EXPECT_EQ(FoldSimulation::fromJson(custom.toJson()), custom);
-    EXPECT_FALSE(FoldSimulation::fromJson(core::Json::parse(R"({"state": "flat"})")).getFold({800.0F, 600.0F}, 1.0F).separating);
+    const haylen::platform::FoldSimulation custom = haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"axis": "horizontal", "state": "flat", "hinge": 10})"));
+    EXPECT_EQ(custom.getFold({800.0F, 600.0F}, 1.0F).bounds, (haylen::math::Rect{0.0F, 295.0F, 800.0F, 10.0F}));
+    EXPECT_EQ(haylen::platform::FoldSimulation::fromJson(custom.toJson()), custom);
+    EXPECT_FALSE(haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"state": "flat"})")).getFold({800.0F, 600.0F}, 1.0F).separating);
 
-    EXPECT_THROW((void)FoldSimulation::fromJson("laptop"), std::invalid_argument);
-    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"axis": "diagonal"})")), std::invalid_argument);
-    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"axis": 1})")), std::invalid_argument);
-    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"state": true})")), std::invalid_argument);
-    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"hinge": -1})")), std::invalid_argument);
-    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json::parse(R"({"width": 4})")), std::invalid_argument);
-    EXPECT_THROW((void)FoldSimulation::fromJson(core::Json(3)), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson("laptop"), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"axis": "diagonal"})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"axis": 1})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"state": true})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"hinge": -1})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson(haylen::core::Json::parse(R"({"width": 4})")), std::invalid_argument);
+    EXPECT_THROW((void)haylen::platform::FoldSimulation::fromJson(haylen::core::Json(3)), std::invalid_argument);
 }
 
 TEST(FoldLuaTest, ReportsTheFoldOfTheDeviceInDesignUnits) {
@@ -62,7 +62,7 @@ TEST(FoldLuaTest, ReportsTheFoldOfTheDeviceInDesignUnits) {
     fixture.runLua("window = require('haylen.window')");
     EXPECT_EQ(fixture.lua("return tostring(window.fold()) .. ' ' .. window.posture() .. ' ' .. #window.segments() .. ' ' .. tostring(window.segments()[1])"), "nil flat 1 Rect(0.0, 0.0, 960.0, 540.0)");
 
-    fixture.host().setFold(Fold{.bounds = {960.0F, 0.0F, 0.0F, 1080.0F}, .axis = Fold::Axis::Vertical, .state = Fold::State::HalfOpened, .separating = true});
+    fixture.host().setFold(haylen::platform::Fold{.bounds = {960.0F, 0.0F, 0.0F, 1080.0F}, .axis = haylen::platform::Fold::Axis::Vertical, .state = haylen::platform::Fold::State::HalfOpened, .separating = true});
     EXPECT_EQ(fixture.lua("local fold = window.fold() return tostring(fold.bounds) .. ' ' .. fold.axis .. ' ' .. fold.state .. ' ' .. tostring(fold.separating) .. ' ' .. tostring(fold.occluding)"), "Rect(480.0, 0.0, 0.0, 540.0) vertical halfOpened true false");
     EXPECT_EQ(fixture.lua("local left, right = table.unpack(window.segments()) return window.posture() .. ' ' .. tostring(left) .. ' ' .. tostring(right)"), "book Rect(0.0, 0.0, 480.0, 540.0) Rect(480.0, 0.0, 480.0, 540.0)");
 }
@@ -73,7 +73,7 @@ TEST(FoldLuaTest, PublishesEveryChangeOfTheFoldOnce) {
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return #changes"), "0");
 
-    fixture.host().setFold(Fold{.bounds = {0.0F, 520.0F, 1920.0F, 40.0F}, .axis = Fold::Axis::Horizontal, .state = Fold::State::HalfOpened, .separating = true, .occluding = true});
+    fixture.host().setFold(haylen::platform::Fold{.bounds = {0.0F, 520.0F, 1920.0F, 40.0F}, .axis = haylen::platform::Fold::Axis::Horizontal, .state = haylen::platform::Fold::State::HalfOpened, .separating = true, .occluding = true});
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("local change = changes[1] return #changes .. ' ' .. change.posture .. ' ' .. change.fold.y .. ' ' .. change.fold.height .. ' ' .. change.fold.axis .. ' ' .. tostring(change.fold.occluding) .. ' ' .. #change.segments .. ' ' .. change.segments[2].y"), "1 tabletop 520.0 40.0 horizontal true 2 560.0");
 
@@ -91,7 +91,7 @@ TEST(FoldLuaTest, SimulatesAFoldOverTheOneOfTheDevice) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("local simulation = window.foldSimulation() return simulation.axis .. ' ' .. simulation.hinge .. ' ' .. window.posture() .. ' ' .. tostring(window.segments()[2]) .. ' ' .. changes[1]"), "vertical 20.0 flat Rect(970.0, 0.0, 950.0, 1080.0) flat");
 
-    fixture.host().setFold(Fold{.bounds = {960.0F, 0.0F, 0.0F, 1080.0F}, .state = Fold::State::HalfOpened, .separating = true});
+    fixture.host().setFold(haylen::platform::Fold{.bounds = {960.0F, 0.0F, 0.0F, 1080.0F}, .state = haylen::platform::Fold::State::HalfOpened, .separating = true});
     fixture.runLua("window.setFoldSimulation(nil)");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(window.foldSimulation()) .. ' ' .. window.posture() .. ' ' .. changes[2]"), "nil book book");
@@ -100,13 +100,13 @@ TEST(FoldLuaTest, SimulatesAFoldOverTheOneOfTheDevice) {
 
 TEST(FoldSimulationTest, RejectsAnInvalidFoldInHaylenJson) {
     try {
-        (void)core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"fold": {"axis": "diagonal"}}})"));
+        (void)haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"debug": {"fold": {"axis": "diagonal"}}})"));
         FAIL() << "An invalid fold must fail to load.";
     } catch (const std::invalid_argument& error) {
         EXPECT_EQ(std::string(error.what()), "The \"debug.fold\" in \"haylen.json\" is invalid. The axis of a simulated fold is \"vertical\" or \"horizontal\", not \"diagonal\".");
     }
 
-    EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"debug": {"fold": "book"}})")).toJson()["debug"]["fold"], core::Json("book"));
+    EXPECT_EQ(haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"debug": {"fold": "book"}})")).toJson()["debug"]["fold"], haylen::core::Json("book"));
 }
 
-} // namespace haylen::platform
+} // namespace haylen::lua::platform

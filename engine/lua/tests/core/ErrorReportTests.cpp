@@ -10,7 +10,7 @@
 #include "haylen/core/Json.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::core {
+namespace haylen::lua::core {
 
 // Every kind of code that runs on behalf of the app reports its error the same way: the error screen, the host, which hands it to the web page, and `appError` get the message, the file, the line and a stack through the failing line, and the app runs on after `haylen.recover()`.
 class ErrorReportTest : public ::testing::TestWithParam<FailingCode> {
@@ -38,11 +38,11 @@ TEST_P(ErrorReportTest, ShowsTheErrorWithItsStackAndRecovers) {
     test::LuaFixture fixture({{"source/main.lua", std::string(kMain)}, {"source/fault.lua", std::string(code.module)}, {"content/broken.png", "not an image"}});
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.engine().getError() != nullptr; })) << code.name;
 
-    const core::AppError& error = *fixture.engine().getError();
+    const haylen::core::AppError& error = *fixture.engine().getError();
     EXPECT_TRUE(error.getMessage().starts_with(code.message)) << error.getMessage();
     EXPECT_EQ(error.getFile(), "source/fault.lua");
     EXPECT_EQ(error.getLine(), code.line);
-    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [&](const core::AppError::Frame& frame) { return frame.source == "source/fault.lua" && frame.line == code.line; })) << error.getTraceback();
+    EXPECT_TRUE(std::ranges::any_of(error.getFrames(), [&](const haylen::core::AppError::Frame& frame) { return frame.source == "source/fault.lua" && frame.line == code.line; })) << error.getTraceback();
     ASSERT_EQ(fixture.host().getErrorReports().size(), 1U);
     EXPECT_EQ(fixture.host().getErrorReports().front(), fixture.engine().getErrorRecord());
     fixture.frames(1);
@@ -177,4 +177,4 @@ end)
     [](const ::testing::TestParamInfo<FailingCode>& entry) { return std::string(entry.param.name); });
 // clang-format on
 
-} // namespace haylen::core
+} // namespace haylen::lua::core

@@ -10,16 +10,16 @@
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::net {
+namespace haylen::lua::net {
 
-class NetPluginTest : public WebSocketFixture {};
+class NetPluginTest : public haylen::net::WebSocketFixture {};
 
 TEST_F(NetPluginTest, PumpsSocketsWithoutAllocating) {
     const EchoServer server;
     test::LuaFixture fixture;
-    plugins::NetPlugin& plugin = fixture.engine().getPlugin<plugins::NetPlugin>();
-    const std::shared_ptr<WebSocket> socket = plugin.connectWebSocket(server.getUrl());
-    ASSERT_TRUE(fixture.frameUntil([&] { return socket->getState() == WebSocket::State::Open; }));
+    haylen::plugins::NetPlugin& plugin = fixture.engine().getPlugin<haylen::plugins::NetPlugin>();
+    const std::shared_ptr<haylen::net::WebSocket> socket = plugin.connectWebSocket(server.getUrl());
+    ASSERT_TRUE(fixture.frameUntil([&] { return socket->getState() == haylen::net::WebSocket::State::Open; }));
     plugin.beginFrame(fixture.engine(), 0.0F);
 
     const test::AllocationTracker tracker;
@@ -29,16 +29,16 @@ TEST_F(NetPluginTest, PumpsSocketsWithoutAllocating) {
 
 TEST_F(NetPluginTest, ClosesOpenSocketsWhenTheAppStops) {
     const EchoServer server;
-    std::shared_ptr<WebSocket> socket;
+    std::shared_ptr<haylen::net::WebSocket> socket;
     {
         test::LuaFixture fixture;
-        socket = fixture.engine().getPlugin<plugins::NetPlugin>().connectWebSocket(server.getUrl());
-        EXPECT_EQ(fixture.engine().getPlugin<plugins::NetPlugin>().getOpenSocketCount(), 1U);
-        ASSERT_TRUE(pumpUntil(*socket, [&] { return socket->getState() == WebSocket::State::Open; }));
+        socket = fixture.engine().getPlugin<haylen::plugins::NetPlugin>().connectWebSocket(server.getUrl());
+        EXPECT_EQ(fixture.engine().getPlugin<haylen::plugins::NetPlugin>().getOpenSocketCount(), 1U);
+        ASSERT_TRUE(pumpUntil(*socket, [&] { return socket->getState() == haylen::net::WebSocket::State::Open; }));
         socket->opened.connect([] {});
     }
     EXPECT_TRUE(socket->opened.empty());
-    EXPECT_EQ(socket->getState(), WebSocket::State::Closing);
+    EXPECT_EQ(socket->getState(), haylen::net::WebSocket::State::Closing);
 }
 
 TEST_F(NetPluginTest, PublishesConnectionEvents) {
@@ -71,4 +71,4 @@ TEST_F(NetPluginTest, PublishesConnectionEvents) {
     EXPECT_NE(fixture.lua("require('haylen.net').connectWebSocket('" + server.getUrl() + "', {reconnect = {jitter = 3}})").find("jitter between 0 and 1"), std::string::npos);
 }
 
-} // namespace haylen::net
+} // namespace haylen::lua::net

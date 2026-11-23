@@ -9,7 +9,7 @@
 #include "haylen/math/Rect.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::math {
+namespace haylen::lua::math {
 
 class MathLuaTest : public ::testing::Test {
   protected:
@@ -177,7 +177,7 @@ TEST_F(MathLuaTest, ProvidesScalarHelpers) {
 // Curves push back in the form Lua reads them, and a curve of a C++ function pushes as a value Lua calls like a function.
 TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
     lua_State* L = fixture.lua();
-    for (const auto& [name, curve] : {std::pair{"preset", EasingCurve(Easing::Type::QuadOut)}, std::pair{"back", EasingCurve::back(Easing::Type::BackOut, 3.0F)}, std::pair{"elastic", EasingCurve::elastic(Easing::Type::ElasticIn, 1.5F, 0.4F)}, std::pair{"steps", EasingCurve::steps(4, Easing::StepPosition::Start)}, std::pair{"bezier", EasingCurve::cubicBezier(0.1F, 0.2F, 0.3F, 0.4F)}, std::pair{"points", EasingCurve::points({{0.0F, 0.0F}, {0.5F, 2.0F}, {1.0F, 1.0F}})}, std::pair{"custom", EasingCurve::custom([](float t) { return t * 0.5F; })}}) {
+    for (const auto& [name, curve] : {std::pair{"preset", haylen::math::EasingCurve(haylen::math::Easing::Type::QuadOut)}, std::pair{"back", haylen::math::EasingCurve::back(haylen::math::Easing::Type::BackOut, 3.0F)}, std::pair{"elastic", haylen::math::EasingCurve::elastic(haylen::math::Easing::Type::ElasticIn, 1.5F, 0.4F)}, std::pair{"steps", haylen::math::EasingCurve::steps(4, haylen::math::Easing::StepPosition::Start)}, std::pair{"bezier", haylen::math::EasingCurve::cubicBezier(0.1F, 0.2F, 0.3F, 0.4F)}, std::pair{"points", haylen::math::EasingCurve::points({{0.0F, 0.0F}, {0.5F, 2.0F}, {1.0F, 1.0F}})}, std::pair{"custom", haylen::math::EasingCurve::custom([](float t) { return t * 0.5F; })}}) {
         lua::Stack::push(L, curve);
         lua_setglobal(L, name);
     }
@@ -187,7 +187,7 @@ TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
     EXPECT_EQ(lua("return custom(0.5) .. ' ' .. m.ease(custom, 0.25)"), "0.25 0.125");
     EXPECT_EQ(lua("return m.ease(back, 0.5) == m.ease({curve = 'backOut', overshoot = 3}, 0.5) and m.ease(steps, 0.3) == m.ease({steps = 4, position = 'start'}, 0.3)"), "true");
 
-    lua::Stack::push(L, FloatRange{2.0F, 5.0F});
+    lua::Stack::push(L, haylen::math::FloatRange{2.0F, 5.0F});
     lua_setglobal(L, "range");
     EXPECT_EQ(lua("return range[1] .. ' ' .. range[2]"), "2.0 5.0");
 }
@@ -195,7 +195,7 @@ TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
 // Numbers reach Lua without a negative zero, so a rectangle whose corner the engine computed as -0 prints 0.
 TEST_F(MathLuaTest, PushesNumbersWithoutANegativeZero) {
     lua_State* L = fixture.lua();
-    lua::Stack::push(L, Rect{-0.0F, -0.0F, 1920.0F, 1080.0F});
+    lua::Stack::push(L, haylen::math::Rect{-0.0F, -0.0F, 1920.0F, 1080.0F});
     lua_setglobal(L, "visible");
     lua::Stack::push(L, -0.0);
     lua_setglobal(L, "zero");
@@ -207,7 +207,7 @@ TEST_F(MathLuaTest, RejectsCurvesWhoseValuesDoNotFit) {
     EXPECT_NE(lua("return m.ease({curve = 'elasticOut', period = 0}, 0.5)").find("An elastic curve needs a positive period."), std::string::npos);
     EXPECT_NE(lua("return m.ease({points = {0.5}}, 0.5)").find("A points curve needs at least two points."), std::string::npos);
     EXPECT_NE(lua("return m.ease({points = {{1, 0}, {0, 1}}}, 0.5)").find("The points of a curve must be ordered by x."), std::string::npos);
-    EXPECT_THROW((void)EasingCurve::custom(nullptr), std::invalid_argument);
+    EXPECT_THROW((void)haylen::math::EasingCurve::custom(nullptr), std::invalid_argument);
 
     // Past its last point a points curve holds the value of that point.
     EXPECT_EQ(lua("return m.ease({points = {{0, 0}, {0.5, 1}}}, 0.8)"), "1.0");
@@ -257,4 +257,4 @@ TEST_F(MathLuaTest, SamplesPoissonDisks) {
     EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 10, maximumDistance = 20, distance = function() return 'far' end})").find("A Poisson distance function must return a number, not string."), std::string::npos);
 }
 
-} // namespace haylen::math
+} // namespace haylen::lua::math

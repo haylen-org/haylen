@@ -16,30 +16,30 @@
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
 
-namespace haylen::animation2d {
+namespace haylen::lua::animation2d {
 
 class AnimatedBatchTest : public ::testing::Test {
   protected:
     // Four frames of 16 by 16 in a row, the third trimmed to its right half with a pivot on its bottom middle.
-    [[nodiscard]] static Animation makeStrip(const graphics::Texture& texture, Animation::Loop loop) {
-        Animation animation{.texture = texture, .loop = loop};
+    [[nodiscard]] static haylen::animation2d::Animation makeStrip(const haylen::graphics::Texture& texture, haylen::animation2d::Animation::Loop loop) {
+        haylen::animation2d::Animation animation{.texture = texture, .loop = loop};
         for (int index = 0; index < 4; ++index) {
             animation.frames.push_back({.source = {static_cast<float>(index) * 16.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.1F});
         }
 
         animation.frames[2].source = {40.0F, 0.0F, 8.0F, 16.0F};
         animation.frames[2].offset = {8.0F, 0.0F};
-        animation.frames[2].pivot = math::Vec2{8.0F, 16.0F};
+        animation.frames[2].pivot = haylen::math::Vec2{8.0F, 16.0F};
         return animation;
     }
 };
 
 TEST_F(AnimatedBatchTest, AdvancesEverySpriteAtItsOwnSpeed) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    AnimatedBatch batch(texture);
-    batch.addAnimation("walk", makeStrip(texture, Animation::Loop::Loop));
-    batch.addAnimation("attack", makeStrip(texture, Animation::Loop::Once));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::AnimatedBatch batch(texture);
+    batch.addAnimation("walk", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop));
+    batch.addAnimation("attack", makeStrip(texture, haylen::animation2d::Animation::Loop::Once));
 
     const std::size_t slow = batch.add({.position = {10.0F, 20.0F}}, "walk", 0.5F);
     const std::size_t fast = batch.add({.flip = {.horizontal = true}}, "walk", 2.0F);
@@ -50,12 +50,12 @@ TEST_F(AnimatedBatchTest, AdvancesEverySpriteAtItsOwnSpeed) {
     EXPECT_EQ(batch.getFrame(slow), 0U);
     EXPECT_EQ(batch.getFrame(fast), 2U);
     EXPECT_EQ(batch.getFrame(striking), 1U);
-    EXPECT_EQ(batch.get(slow).position, math::Vec2(10.0F, 20.0F));
+    EXPECT_EQ(batch.get(slow).position, haylen::math::Vec2(10.0F, 20.0F));
 
     // The trimmed frame shows its own source, scaled, with its pivot mirrored by the flip.
-    EXPECT_EQ(batch.get(fast).source, (math::Rect{40.0F, 0.0F, 8.0F, 16.0F}));
-    EXPECT_EQ(batch.get(fast).size, math::Vec2(16.0F, 48.0F));
-    EXPECT_EQ(batch.get(fast).pivot, math::Vec2(1.0F, 1.0F));
+    EXPECT_EQ(batch.get(fast).source, (haylen::math::Rect{40.0F, 0.0F, 8.0F, 16.0F}));
+    EXPECT_EQ(batch.get(fast).size, haylen::math::Vec2(16.0F, 48.0F));
+    EXPECT_EQ(batch.get(fast).pivot, haylen::math::Vec2(1.0F, 1.0F));
 
     // A one-shot animation ends once, in the update that reaches its end.
     std::vector<std::size_t> heard;
@@ -77,23 +77,23 @@ TEST_F(AnimatedBatchTest, AdvancesEverySpriteAtItsOwnSpeed) {
 
 TEST_F(AnimatedBatchTest, ReplacesAnimationsAndHearsEndsWhileListenersUpdate) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    AnimatedBatch batch(texture);
-    batch.addAnimation("walk", makeStrip(texture, Animation::Loop::Loop));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::AnimatedBatch batch(texture);
+    batch.addAnimation("walk", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop));
     const std::size_t walker = batch.add({}, "walk");
     batch.update(0.35F);
     ASSERT_EQ(batch.getFrame(walker), 3U);
 
     // A shorter animation in place of the one a sprite plays shows the frame of its time among the new frames.
-    Animation shorter{.texture = texture, .loop = Animation::Loop::Loop};
+    haylen::animation2d::Animation shorter{.texture = texture, .loop = haylen::animation2d::Animation::Loop::Loop};
     shorter.frames.push_back({.source = {0.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.2F});
     shorter.frames.push_back({.source = {16.0F, 0.0F, 16.0F, 16.0F}, .originalSize = {16.0F, 16.0F}, .duration = 0.2F});
     batch.addAnimation("walk", shorter);
     EXPECT_EQ(batch.getFrame(walker), 1U);
-    EXPECT_EQ(batch.get(walker).source, (math::Rect{16.0F, 0.0F, 16.0F, 16.0F}));
+    EXPECT_EQ(batch.get(walker).source, (haylen::math::Rect{16.0F, 0.0F, 16.0F, 16.0F}));
 
     // A listener that updates the batch again leaves the list the other listeners hear whole.
-    batch.addAnimation("attack", makeStrip(texture, Animation::Loop::Once));
+    batch.addAnimation("attack", makeStrip(texture, haylen::animation2d::Animation::Loop::Once));
     const std::size_t first = batch.add({}, "attack");
     const std::size_t second = batch.add({}, "attack");
     std::vector<std::size_t> heard;
@@ -105,12 +105,12 @@ TEST_F(AnimatedBatchTest, ReplacesAnimationsAndHearsEndsWhileListenersUpdate) {
 
 TEST_F(AnimatedBatchTest, UpdatesLargeBatchesOnTheJobSystemLikeOnOneThread) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    AnimatedBatch serial(texture);
-    AnimatedBatch parallel(texture);
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::AnimatedBatch serial(texture);
+    haylen::animation2d::AnimatedBatch parallel(texture);
 
-    for (AnimatedBatch* batch : {&serial, &parallel}) {
-        batch->addAnimation("walk", makeStrip(texture, Animation::Loop::PingPong));
+    for (haylen::animation2d::AnimatedBatch* batch : {&serial, &parallel}) {
+        batch->addAnimation("walk", makeStrip(texture, haylen::animation2d::Animation::Loop::PingPong));
 
         for (int index = 0; index < 10000; ++index) {
             (void)batch->add({}, "walk", 0.5F + static_cast<float>(index % 7) * 0.25F);
@@ -130,21 +130,21 @@ TEST_F(AnimatedBatchTest, UpdatesLargeBatchesOnTheJobSystemLikeOnOneThread) {
 
 TEST_F(AnimatedBatchTest, DrawsEverySpriteInOneCall) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    AnimatedBatch batch(texture);
-    batch.addAnimation("walk", makeStrip(texture, Animation::Loop::Loop));
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::AnimatedBatch batch(texture);
+    batch.addAnimation("walk", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop));
 
     for (int index = 0; index < 500; ++index) {
         (void)batch.add({.position = {static_cast<float>(index), 0.0F}}, "walk", static_cast<float>(index % 3));
     }
 
     std::vector<float> places{1.0F, 2.0F, 3.0F, 4.0F};
-    batch.writeFields(places, graphics2d::SpriteLayout(std::array{graphics2d::SpriteLayout::Field::X, graphics2d::SpriteLayout::Field::Y}), 10);
-    EXPECT_EQ(batch.get(11).position, math::Vec2(3.0F, 4.0F));
+    batch.writeFields(places, haylen::graphics2d::SpriteLayout(std::array{haylen::graphics2d::SpriteLayout::Field::X, haylen::graphics2d::SpriteLayout::Field::Y}), 10);
+    EXPECT_EQ(batch.get(11).position, haylen::math::Vec2(3.0F, 4.0F));
     batch.update(0.25F);
 
     // clang-format off
-    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&batch](core::Engine& engine) {
+    const haylen::graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&batch](haylen::core::Engine& engine) {
         engine.getRenderer2D().beginScreen();
         batch.draw(engine.getRenderer2D());
     });
@@ -155,13 +155,13 @@ TEST_F(AnimatedBatchTest, DrawsEverySpriteInOneCall) {
 
 TEST_F(AnimatedBatchTest, RefusesAnimationsItCannotPlay) {
     test::LuaFixture fixture;
-    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    const graphics::Texture other = fixture.engine().getGraphics().createTexture(graphics::Image(64, 16));
-    AnimatedBatch batch(texture);
-    batch.addAnimation("walk", makeStrip(texture, Animation::Loop::Loop));
-    EXPECT_THROW(batch.addAnimation("other", makeStrip(other, Animation::Loop::Loop)), std::invalid_argument);
-    Animation ticked = makeStrip(texture, Animation::Loop::Loop);
-    for (SpriteFrame& frame : ticked.frames) {
+    const haylen::graphics::Texture texture = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    const haylen::graphics::Texture other = fixture.engine().getGraphics().createTexture(haylen::graphics::Image(64, 16));
+    haylen::animation2d::AnimatedBatch batch(texture);
+    batch.addAnimation("walk", makeStrip(texture, haylen::animation2d::Animation::Loop::Loop));
+    EXPECT_THROW(batch.addAnimation("other", makeStrip(other, haylen::animation2d::Animation::Loop::Loop)), std::invalid_argument);
+    haylen::animation2d::Animation ticked = makeStrip(texture, haylen::animation2d::Animation::Loop::Loop);
+    for (haylen::animation2d::SpriteFrame& frame : ticked.frames) {
         frame.ticks = 2;
     }
 
@@ -177,7 +177,7 @@ TEST_F(AnimatedBatchTest, RefusesAnimationsItCannotPlay) {
     EXPECT_THROW(batch.step(1), std::logic_error);
     EXPECT_THROW(batch.play(4, "walk"), std::out_of_range);
 
-    AnimatedBatch steps(texture);
+    haylen::animation2d::AnimatedBatch steps(texture);
     steps.addAnimation("ticked", ticked);
     (void)steps.add({}, "ticked");
     steps.step(5);
@@ -213,4 +213,4 @@ TEST(AnimatedBatchLuaTest, PlaysCrowdsFromLua) {
     EXPECT_NE(fixture.lua("crowd:seek(99, 0)").find("sprite index out of range"), std::string::npos);
 }
 
-} // namespace haylen::animation2d
+} // namespace haylen::lua::animation2d

@@ -16,14 +16,14 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/LuaUiFixture.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
 // A test screen: a Back button, the play area and a panel with two controls, over an app that moves with the arrows, WASD, the d-pad and the left stick, jumps with Space and the south button, shoots with the left mouse button and pauses with Escape.
 class PlayAreaTest : public ::testing::Test, public test::LuaUiFixture {
   protected:
     PlayAreaTest() {
         // clang-format off
-        getEngine().getActions().load(core::Json::parse(R"({"actions": [
+        getEngine().getActions().load(haylen::core::Json::parse(R"({"actions": [
             {"name": "move", "type": "vector", "left": ["key:left", "key:a", "button:dpadLeft"], "right": ["key:right", "key:d", "button:dpadRight"], "up": ["key:up", "key:w", "button:dpadUp"], "down": ["key:down", "key:s", "button:dpadDown"], "bindings": ["stick:left"]},
             {"name": "jump", "type": "button", "bindings": ["key:space", "button:south"]},
             {"name": "shoot", "type": "button", "bindings": ["mouse:left"]},
@@ -40,21 +40,21 @@ class PlayAreaTest : public ::testing::Test, public test::LuaUiFixture {
     }
 
     void focus(const std::string& id) {
-        gui->command(getUi().getContext(), id, "focus", core::Json::object());
+        gui->command(getUi().getContext(), id, "focus", haylen::core::Json::object());
         frames(2);
     }
 
-    void hold(input::Key code, int count = 3) {
+    void hold(haylen::input::Key code, int count = 3) {
         press(code, true);
         frames(count);
     }
-    void press(input::Key code, bool down) {
-        platform::Event event;
-        event.type = down ? platform::Event::Type::KeyDown : platform::Event::Type::KeyUp;
+    void press(haylen::input::Key code, bool down) {
+        haylen::platform::Event event;
+        event.type = down ? haylen::platform::Event::Type::KeyDown : haylen::platform::Event::Type::KeyUp;
         event.key = code;
         getEngine().handleEvent(event);
     }
-    void release(input::Key code) {
+    void release(haylen::input::Key code) {
         press(code, false);
         frames();
     }
@@ -65,77 +65,77 @@ class PlayAreaTest : public ::testing::Test, public test::LuaUiFixture {
     [[nodiscard]] bool isDown(const char* action) {
         return getEngine().getActions().isDown(action);
     }
-    [[nodiscard]] FocusNavigator::Owner getOwner() {
+    [[nodiscard]] haylen::ui::FocusNavigator::Owner getOwner() {
         return getUi().getFocus().getOwner();
     }
 
-    std::shared_ptr<Gui> gui;
+    std::shared_ptr<haylen::ui::Gui> gui;
 };
 
 TEST_F(PlayAreaTest, GivesTheKeyboardToTheGameWhileItHasTheFocus) {
     focus("stage");
-    ASSERT_EQ(getOwner(), FocusNavigator::Owner::PlayArea);
+    ASSERT_EQ(getOwner(), haylen::ui::FocusNavigator::Owner::PlayArea);
 
-    hold(input::Key::Right);
+    hold(haylen::input::Key::Right);
     EXPECT_FLOAT_EQ(getMove(), 1.0F);
     EXPECT_TRUE(isFocused(*gui, "stage"));
-    release(input::Key::Right);
+    release(haylen::input::Key::Right);
 
-    hold(input::Key::D);
+    hold(haylen::input::Key::D);
     EXPECT_FLOAT_EQ(getMove(), 1.0F);
-    release(input::Key::D);
+    release(haylen::input::Key::D);
 
     clearEvents();
-    hold(input::Key::Space, 1);
+    hold(haylen::input::Key::Space, 1);
     EXPECT_TRUE(isDown("jump"));
-    release(input::Key::Space);
+    release(haylen::input::Key::Space);
     EXPECT_TRUE(getEventNames().empty());
 
     // Escape stays the way back of the screen, which the game never hears while the play area has the focus.
-    hold(input::Key::Escape, 2);
+    hold(haylen::input::Key::Escape, 2);
     EXPECT_FALSE(isDown("pause"));
-    release(input::Key::Escape);
+    release(haylen::input::Key::Escape);
     EXPECT_EQ(findLastEvent("cancel").id, "screen");
 }
 
 TEST_F(PlayAreaTest, GivesTheKeyboardToTheControlThatHasTheFocus) {
     focus("first");
-    ASSERT_EQ(getOwner(), FocusNavigator::Owner::Control);
+    ASSERT_EQ(getOwner(), haylen::ui::FocusNavigator::Owner::Control);
 
     // The first direction only shows the ring, and the next ones move the focus while the game reads nothing.
-    key(input::Key::Down);
-    hold(input::Key::Down);
+    key(haylen::input::Key::Down);
+    hold(haylen::input::Key::Down);
     EXPECT_FLOAT_EQ(getEngine().getActions().getVector("move").y, 0.0F);
-    release(input::Key::Down);
+    release(haylen::input::Key::Down);
     EXPECT_TRUE(isFocused(*gui, "second"));
 
     clearEvents();
-    hold(input::Key::Space, 1);
+    hold(haylen::input::Key::Space, 1);
     EXPECT_FALSE(isDown("jump"));
-    release(input::Key::Space);
+    release(haylen::input::Key::Space);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"second:click"}));
 }
 
 TEST_F(PlayAreaTest, MovesTheFocusWithTabAndTheFocusAction) {
     focus("stage");
-    key(input::Key::Tab);
+    key(haylen::input::Key::Tab);
     EXPECT_TRUE(isFocused(*gui, "first"));
-    key(input::Key::Tab);
+    key(haylen::input::Key::Tab);
     EXPECT_TRUE(isFocused(*gui, "second"));
 
     // The focus action goes to the play area and back to the control the player left.
-    button(input::GamepadButton::Back);
+    button(haylen::input::GamepadButton::Back);
     EXPECT_TRUE(isFocused(*gui, "stage"));
-    button(input::GamepadButton::Back);
+    button(haylen::input::GamepadButton::Back);
     EXPECT_TRUE(isFocused(*gui, "second"));
 
     // An app remaps it like any navigation action, such as to the pause key that the Play/Pause button of a TV remote sends.
-    const std::optional<input::ActionMap::Binding> pause = input::ActionMap::Binding::parse("key:pause");
+    const std::optional<haylen::input::ActionMap::Binding> pause = haylen::input::ActionMap::Binding::parse("key:pause");
     ASSERT_TRUE(pause.has_value());
     getEngine().getActions().define({.name = "uiFocus", .bindings = {*pause}});
-    key(input::Key::Pause);
+    key(haylen::input::Key::Pause);
     EXPECT_TRUE(isFocused(*gui, "stage"));
-    button(input::GamepadButton::Back);
+    button(haylen::input::GamepadButton::Back);
     EXPECT_TRUE(isFocused(*gui, "stage"));
 }
 
@@ -144,62 +144,62 @@ TEST_F(PlayAreaTest, GivesTheGamepadToTheGameOrToTheControls) {
     stick({1.0F, 0.0F});
     EXPECT_FLOAT_EQ(getMove(), 1.0F);
     stick({});
-    button(input::GamepadButton::DpadLeft);
+    button(haylen::input::GamepadButton::DpadLeft);
     EXPECT_TRUE(isFocused(*gui, "stage"));
 
     // A control with the focus takes the stick, the d-pad and the face buttons from the game.
     focus("first");
     stick({0.0F, 1.0F});
     EXPECT_FLOAT_EQ(getEngine().getActions().getVector("move").y, 0.0F);
-    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, input::GamepadAxis::LeftY));
+    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, haylen::input::GamepadAxis::LeftY));
     stick({});
-    EXPECT_FALSE(getEngine().getActions().isGamepadAxisCaptured(0, input::GamepadAxis::LeftY));
+    EXPECT_FALSE(getEngine().getActions().isGamepadAxisCaptured(0, haylen::input::GamepadAxis::LeftY));
     stick({0.0F, 1.0F});
     stick({});
     EXPECT_TRUE(isFocused(*gui, "second"));
 
     clearEvents();
-    input::GamepadState south{.connected = true};
-    south.buttons[static_cast<std::size_t>(input::GamepadButton::South)] = true;
+    haylen::input::GamepadState south{.connected = true};
+    south.buttons[static_cast<std::size_t>(haylen::input::GamepadButton::South)] = true;
     getFixture().host().setGamepad(0, south);
     frames(2);
     EXPECT_FALSE(isDown("jump"));
-    getFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+    getFixture().host().setGamepad(0, haylen::input::GamepadState{.connected = true});
     frames(2);
     EXPECT_EQ(getEventNames(), (std::vector<std::string>{"second:click"}));
 }
 
 // A direction that the app binds to a whole stick takes both axes of that stick from the game while a control has the focus.
 TEST_F(PlayAreaTest, TakesBothAxesOfAStickThatADirectionIsBoundTo) {
-    const std::optional<input::ActionMap::Binding> rightStick = input::ActionMap::Binding::parse("stick:right");
+    const std::optional<haylen::input::ActionMap::Binding> rightStick = haylen::input::ActionMap::Binding::parse("stick:right");
     ASSERT_TRUE(rightStick.has_value());
     getEngine().getActions().define({.name = "uiDown", .bindings = {*rightStick}});
     focus("first");
-    input::GamepadState pushed{.connected = true};
-    pushed.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = 1.0F;
-    pushed.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = 1.0F;
+    haylen::input::GamepadState pushed{.connected = true};
+    pushed.axes[static_cast<std::size_t>(haylen::input::GamepadAxis::RightX)] = 1.0F;
+    pushed.axes[static_cast<std::size_t>(haylen::input::GamepadAxis::RightY)] = 1.0F;
     getFixture().host().setGamepad(0, pushed);
     frames(2);
-    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, input::GamepadAxis::RightX));
-    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, input::GamepadAxis::RightY));
+    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, haylen::input::GamepadAxis::RightX));
+    EXPECT_TRUE(getEngine().getActions().isGamepadAxisCaptured(0, haylen::input::GamepadAxis::RightY));
 }
 
 TEST_F(PlayAreaTest, TakesTheFocusFromAClickOrATouchThatTheGameAlsoReads) {
     focus("first");
-    const math::Vec2 center = getBounds(*gui, "stage").getCenter();
-    pointer(platform::Event::Type::MouseMove, center);
+    const haylen::math::Vec2 center = getBounds(*gui, "stage").getCenter();
+    pointer(haylen::platform::Event::Type::MouseMove, center);
     frames();
-    pointer(platform::Event::Type::MouseDown, center);
+    pointer(haylen::platform::Event::Type::MouseDown, center);
     frames();
     EXPECT_TRUE(isFocused(*gui, "stage"));
     EXPECT_TRUE(isDown("shoot"));
-    pointer(platform::Event::Type::MouseUp, center);
+    pointer(haylen::platform::Event::Type::MouseUp, center);
     frames();
 
     focus("first");
-    touch(platform::Event::Type::TouchBegan, 7, center);
+    touch(haylen::platform::Event::Type::TouchBegan, 7, center);
     frames(2);
-    touch(platform::Event::Type::TouchEnded, 7, center);
+    touch(haylen::platform::Event::Type::TouchEnded, 7, center);
     frames(2);
     EXPECT_TRUE(isFocused(*gui, "stage"));
 
@@ -210,23 +210,23 @@ TEST_F(PlayAreaTest, TakesTheFocusFromAClickOrATouchThatTheGameAlsoReads) {
 
 TEST_F(PlayAreaTest, KeepsAPressWithTheSideThatTookItUntilItIsReleased) {
     focus("stage");
-    hold(input::Key::Right);
+    hold(haylen::input::Key::Right);
     ASSERT_FLOAT_EQ(getMove(), 1.0F);
 
     // The press that started in the game keeps moving it, and the controls never see it, however long it repeats.
-    key(input::Key::Tab);
+    key(haylen::input::Key::Tab);
     frames(60);
     EXPECT_TRUE(isFocused(*gui, "first"));
     EXPECT_FLOAT_EQ(getMove(), 1.0F);
-    release(input::Key::Right);
+    release(haylen::input::Key::Right);
     EXPECT_FLOAT_EQ(getMove(), 0.0F);
 
     // A press that started on a control stays with the controls once the focus moved to the game.
-    hold(input::Key::Down);
-    button(input::GamepadButton::Back);
+    hold(haylen::input::Key::Down);
+    button(haylen::input::GamepadButton::Back);
     ASSERT_TRUE(isFocused(*gui, "stage"));
     EXPECT_FLOAT_EQ(getEngine().getActions().getVector("move").y, 0.0F);
-    release(input::Key::Down);
+    release(haylen::input::Key::Down);
 }
 
 TEST_F(PlayAreaTest, NavigatesWithATelevisionRemote) {
@@ -235,11 +235,11 @@ TEST_F(PlayAreaTest, NavigatesWithATelevisionRemote) {
     EXPECT_TRUE(getUi().getFocus().isRingVisible());
 
     // The remote moves the game while the play area has the focus, and the focus action takes it to the first control of the screen, which select presses.
-    button(input::GamepadButton::DpadRight);
+    button(haylen::input::GamepadButton::DpadRight);
     EXPECT_TRUE(isFocused(*gui, "stage"));
-    button(input::GamepadButton::Back);
+    button(haylen::input::GamepadButton::Back);
     EXPECT_TRUE(isFocused(*gui, "back"));
-    button(input::GamepadButton::South);
+    button(haylen::input::GamepadButton::South);
     EXPECT_EQ(findLastEvent("click").id, "back");
 }
 
@@ -260,15 +260,15 @@ TEST_F(PlayAreaTest, CoversTheCornersOfARoundedPlayArea) {
     getUi().unmount(*gui);
     auto rounded = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "playArea", "id": "stage", "width": 600, "height": 400, "radius": 16, "cornerColor": "#FF101418"}]})");
     frames();
-    const math::Rect stage = getBounds(*rounded, "stage");
-    const std::optional<math::Color> parsed = math::Color::parse("#FF101418");
+    const haylen::math::Rect stage = getBounds(*rounded, "stage");
+    const std::optional<haylen::math::Color> parsed = haylen::math::Color::parse("#FF101418");
     ASSERT_TRUE(parsed.has_value());
-    const math::Color corner = *parsed;
+    const haylen::math::Color corner = *parsed;
     bool covered = false;
-    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+    for (const haylen::graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
         if (shape.borderColor == corner) {
             covered = true;
-            const math::Rect inner = shape.bounds.inset(math::Insets::uniform(shape.borderWidth));
+            const haylen::math::Rect inner = shape.bounds.inset(haylen::math::Insets::uniform(shape.borderWidth));
             EXPECT_NEAR(inner.x, stage.x, 0.01F);
             EXPECT_NEAR(inner.y, stage.y, 0.01F);
             EXPECT_NEAR(inner.width, stage.width, 0.01F);
@@ -286,11 +286,11 @@ TEST_F(PlayAreaTest, CoversTheCornersWithTheBackgroundOfTheTheme) {
     getUi().unmount(*gui);
     mount(R"({"kind": "column", "padding": 40, "style": {"colors": {"background": "#FFE9DCC0"}}, "children": [{"kind": "playArea", "width": 600, "height": 400, "radius": 16}]})");
     frames();
-    const std::optional<math::Color> parsed = math::Color::parse("#FFE9DCC0");
+    const std::optional<haylen::math::Color> parsed = haylen::math::Color::parse("#FFE9DCC0");
     ASSERT_TRUE(parsed.has_value());
-    const math::Color background = *parsed;
-    const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
-    EXPECT_TRUE(std::ranges::any_of(shapes, [&background](const graphics2d::Shape& shape) { return shape.borderColor == background && shape.borderWidth == 16.0F; }));
+    const haylen::math::Color background = *parsed;
+    const std::span<const haylen::graphics2d::Shape> shapes = getUi().getBackend().getShapes();
+    EXPECT_TRUE(std::ranges::any_of(shapes, [&background](const haylen::graphics2d::Shape& shape) { return shape.borderColor == background && shape.borderWidth == 16.0F; }));
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

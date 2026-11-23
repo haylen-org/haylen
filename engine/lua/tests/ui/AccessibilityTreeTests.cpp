@@ -12,9 +12,9 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::ui {
+namespace haylen::lua::ui {
 
-using Element = platform::AccessibilityElement;
+using Element = haylen::platform::AccessibilityElement;
 
 class AccessibilityTreeTest : public ::testing::Test {
   protected:
@@ -25,7 +25,7 @@ class AccessibilityTreeTest : public ::testing::Test {
 
     // Returns the element of the last tree the platform received whose label is the text.
     [[nodiscard]] const Element* find(std::string_view label) {
-        const std::vector<platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
+        const std::vector<haylen::platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
         if (trees.empty()) {
             return nullptr;
         }
@@ -49,8 +49,8 @@ class AccessibilityTreeTest : public ::testing::Test {
         return *element;
     }
 
-    [[nodiscard]] const platform::HeadlessHost::AccessibilityTree& getLastTree() {
-        const std::vector<platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
+    [[nodiscard]] const haylen::platform::HeadlessHost::AccessibilityTree& getLastTree() {
+        const std::vector<haylen::platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
         if (trees.empty()) {
             throw std::runtime_error("The platform received no accessibility tree.");
         }
@@ -173,7 +173,7 @@ TEST_F(AccessibilityTreeTest, PerformsTheActionsOfScreenReadersAndFollowsTheFocu
     fixture.frames(3);
 
     // A platform thread asks through the relay, and the UI performs the action at its next frame.
-    platform::AccessibilityRelay::perform({.element = get("Play").id, .action = Element::Activate});
+    haylen::platform::AccessibilityRelay::perform({.element = get("Play").id, .action = Element::Activate});
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "play");
     EXPECT_EQ(fixture.lua("return ui.focused().id"), "play");
@@ -181,7 +181,7 @@ TEST_F(AccessibilityTreeTest, PerformsTheActionsOfScreenReadersAndFollowsTheFocu
     EXPECT_EQ(getLastTree().focused, get("Play").id);
 
     fixture.runLua("heard = {}");
-    platform::AccessibilityRelay::perform({.element = get("Volume").id, .action = Element::Increment});
+    haylen::platform::AccessibilityRelay::perform({.element = get("Volume").id, .action = Element::Increment});
     fixture.frames(3);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "0.6");
     EXPECT_EQ(get("Volume").value, "0.60");
@@ -198,7 +198,7 @@ TEST_F(AccessibilityTreeTest, PerformsTheActionsOfScreenReadersAndFollowsTheFocu
     EXPECT_EQ(fixture.lua("return tostring(accessibility.focused() ~= nil)"), "true");
 
     // An action for an element that is gone does nothing.
-    platform::AccessibilityRelay::perform({.element = 12345, .action = Element::Activate});
+    haylen::platform::AccessibilityRelay::perform({.element = 12345, .action = Element::Activate});
     fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.lua("accessibility.perform(1, 'shake')").find("The accessibility action \"shake\" is unknown."), std::string::npos);
@@ -223,12 +223,12 @@ TEST_F(AccessibilityTreeTest, CoversOnlyWhatTheScrollAreaShows) {
     fixture.frames(3);
 
     // The area shows the bottom half of the second row, the third and fourth rows whole, and nothing of the first and the last rows, which lie on its edges.
-    const math::Rect search = get("Search").bounds;
-    const math::Rect first = get("Row 1").bounds;
-    const math::Rect second = get("Row 2").bounds;
-    const math::Rect third = get("Row 3").bounds;
-    const math::Rect fourth = get("Row 4").bounds;
-    const math::Rect last = get("Row 10").bounds;
+    const haylen::math::Rect search = get("Search").bounds;
+    const haylen::math::Rect first = get("Row 1").bounds;
+    const haylen::math::Rect second = get("Row 2").bounds;
+    const haylen::math::Rect third = get("Row 3").bounds;
+    const haylen::math::Rect fourth = get("Row 4").bounds;
+    const haylen::math::Rect last = get("Row 10").bounds;
     EXPECT_FLOAT_EQ(first.height, 0.0F);
     EXPECT_FLOAT_EQ(first.y, second.y);
     EXPECT_GE(first.y, search.getBottom());
@@ -241,7 +241,7 @@ TEST_F(AccessibilityTreeTest, CoversOnlyWhatTheScrollAreaShows) {
     EXPECT_EQ(get("Row 1").actions, Element::Focus | Element::Activate);
 
     // A screen reader that moves to the first row focuses it, and the focus scrolls it into view.
-    platform::AccessibilityRelay::perform({.element = get("Row 1").id, .action = Element::Focus});
+    haylen::platform::AccessibilityRelay::perform({.element = get("Row 1").id, .action = Element::Focus});
     fixture.frames(30);
     EXPECT_EQ(fixture.lua("return ui.focused().id"), "row1");
     EXPECT_FLOAT_EQ(get("Row 1").bounds.height, third.height);
@@ -269,11 +269,11 @@ TEST_F(AccessibilityTreeTest, ReachesThePresentationAndTheMessagesButNotWhatAMod
     ASSERT_NE(find("Sheet grabber"), nullptr);
     EXPECT_EQ(get("Sheet grabber").actions, Element::Activate);
 
-    platform::AccessibilityRelay::perform({.element = get("Sheet grabber").id, .action = Element::Activate});
+    haylen::platform::AccessibilityRelay::perform({.element = get("Sheet grabber").id, .action = Element::Activate});
     fixture.frames(30);
     EXPECT_EQ(fixture.lua("return sheet.detent"), "2");
 
-    platform::AccessibilityRelay::perform({.element = get("Undo").id, .action = Element::Activate});
+    haylen::platform::AccessibilityRelay::perform({.element = get("Undo").id, .action = Element::Activate});
     fixture.frames(30);
     EXPECT_EQ(fixture.lua("return tostring(undone)"), "true");
 
@@ -291,7 +291,7 @@ TEST_F(AccessibilityTreeTest, ReadsTheAnswersOfADialogInTheOrderOfTheRow) {
     // clang-format on
     fixture.frames(3);
 
-    const std::vector<platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
+    const std::vector<haylen::platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
     ASSERT_FALSE(trees.empty());
     std::vector<std::string> answers;
     for (const Element& element : trees.back().elements) {
@@ -319,7 +319,7 @@ TEST_F(AccessibilityTreeTest, ReadsElementsAndAnnouncesFromLua) {
     // clang-format on
 
     fixture.runLua("accessibility.announce('Level 3 is ready.') accessibility.announce('Game over.', {interrupt = true})");
-    const std::vector<platform::HeadlessHost::Announcement>& announcements = fixture.host().getAnnouncements();
+    const std::vector<haylen::platform::HeadlessHost::Announcement>& announcements = fixture.host().getAnnouncements();
     ASSERT_EQ(announcements.size(), 2U);
     EXPECT_EQ(announcements[0].text, "Level 3 is ready.");
     EXPECT_FALSE(announcements[0].interrupt);
@@ -329,4 +329,4 @@ TEST_F(AccessibilityTreeTest, ReadsElementsAndAnnouncesFromLua) {
     EXPECT_NE(fixture.lua("ui.mount(ui.label{text = 'x', accessibilityRole = 'robot'})").find("accessibilityRole"), std::string::npos);
 }
 
-} // namespace haylen::ui
+} // namespace haylen::lua::ui

@@ -10,23 +10,23 @@
 #include "haylen/math/Random.hpp"
 #include "support/LuaFixture.hpp"
 
-namespace haylen::spatial2d {
+namespace haylen::lua::spatial2d {
 
 // A fighter with a body box that the hits of the other team reach, and a punch with a hit box that reaches bodies of the first layer.
 class OverlapWorldTest : public ::testing::Test {
   protected:
-    static constexpr OverlapWorld::Box kBody{.rect = {-18.0F, -78.0F, 36.0F, 78.0F}, .layers = 1, .depth = 12.0F};
-    static constexpr OverlapWorld::Box kHit{.rect = {12.0F, -62.0F, 34.0F, 14.0F}, .kind = 1, .layers = 0, .mask = 1};
+    static constexpr haylen::spatial2d::OverlapWorld::Box kBody{.rect = {-18.0F, -78.0F, 36.0F, 78.0F}, .layers = 1, .depth = 12.0F};
+    static constexpr haylen::spatial2d::OverlapWorld::Box kHit{.rect = {12.0F, -62.0F, 34.0F, 14.0F}, .kind = 1, .layers = 0, .mask = 1};
 
-    [[nodiscard]] static std::vector<OverlapWorld::Contact> contactsOf(const OverlapWorld& world) {
-        std::vector<OverlapWorld::Contact> contacts;
+    [[nodiscard]] static std::vector<haylen::spatial2d::OverlapWorld::Contact> contactsOf(const haylen::spatial2d::OverlapWorld& world) {
+        std::vector<haylen::spatial2d::OverlapWorld::Contact> contacts;
         world.collect(contacts);
         return contacts;
     }
 };
 
 TEST_F(OverlapWorldTest, MirrorsBoxesAndReachesOnlyByMask) {
-    OverlapWorld world({.kinds = {"body", "hit"}});
+    haylen::spatial2d::OverlapWorld world({.kinds = {"body", "hit"}});
     const std::uint32_t standing = world.defineSet(std::vector{kBody});
     const std::uint32_t punching = world.defineSet(std::vector{kBody, kHit});
     const std::uint32_t hero = world.add();
@@ -35,13 +35,13 @@ TEST_F(OverlapWorldTest, MirrorsBoxesAndReachesOnlyByMask) {
     // The hero faces left and punches the rival on its left, whose body never reaches back.
     world.place(hero, {200.0F, 0.0F}, 0.0F, true, punching);
     world.place(rival, {160.0F, 0.0F}, 0.0F, false, standing);
-    const std::vector<OverlapWorld::Contact> contacts = contactsOf(world);
+    const std::vector<haylen::spatial2d::OverlapWorld::Contact> contacts = contactsOf(world);
     ASSERT_EQ(contacts.size(), 1U);
     EXPECT_EQ(contacts[0].source, hero);
     EXPECT_EQ(contacts[0].sourceBox, 2U);
     EXPECT_EQ(contacts[0].target, rival);
     EXPECT_EQ(contacts[0].targetBox, 1U);
-    EXPECT_EQ(contacts[0].overlap, (math::Rect{154.0F, -62.0F, 24.0F, 14.0F}));
+    EXPECT_EQ(contacts[0].overlap, (haylen::math::Rect{154.0F, -62.0F, 24.0F, 14.0F}));
 
     // Facing right, the punch goes the other way and misses.
     world.place(hero, {200.0F, 0.0F}, 0.0F, false, punching);
@@ -49,7 +49,7 @@ TEST_F(OverlapWorldTest, MirrorsBoxesAndReachesOnlyByMask) {
 }
 
 TEST_F(OverlapWorldTest, MeetsWithinTheSumOfTheDepthReaches) {
-    OverlapWorld world({.kinds = {"body", "hit"}});
+    haylen::spatial2d::OverlapWorld world({.kinds = {"body", "hit"}});
     const std::uint32_t standing = world.defineSet(std::vector{kBody});
     const std::uint32_t punching = world.defineSet(std::vector{kBody, kHit});
     const std::uint32_t hero = world.add();
@@ -62,10 +62,10 @@ TEST_F(OverlapWorldTest, MeetsWithinTheSumOfTheDepthReaches) {
 }
 
 TEST_F(OverlapWorldTest, CountsTouchingEdgesOnlyWhenAsked) {
-    const OverlapWorld::Box left{.rect = {0.0F, 0.0F, 10.0F, 10.0F}, .mask = 1};
-    const OverlapWorld::Box right{.rect = {10.0F, 0.0F, 10.0F, 10.0F}};
+    const haylen::spatial2d::OverlapWorld::Box left{.rect = {0.0F, 0.0F, 10.0F, 10.0F}, .mask = 1};
+    const haylen::spatial2d::OverlapWorld::Box right{.rect = {10.0F, 0.0F, 10.0F, 10.0F}};
     for (const bool touching : {true, false}) {
-        OverlapWorld world({.touching = touching});
+        haylen::spatial2d::OverlapWorld world({.touching = touching});
         const std::uint32_t first = world.add();
         const std::uint32_t second = world.add();
         world.place(first, {}, 0.0F, false, world.defineSet(std::vector{left}));
@@ -75,7 +75,7 @@ TEST_F(OverlapWorldTest, CountsTouchingEdgesOnlyWhenAsked) {
 }
 
 TEST_F(OverlapWorldTest, RestsAPairForItsTicksAndKeepsTheOrderOfEntities) {
-    OverlapWorld world({.kinds = {"body", "hit"}});
+    haylen::spatial2d::OverlapWorld world({.kinds = {"body", "hit"}});
     const std::uint32_t punching = world.defineSet(std::vector{kBody, kHit});
     const std::uint32_t first = world.add();
     const std::uint32_t second = world.add();
@@ -97,32 +97,32 @@ TEST_F(OverlapWorldTest, RestsAPairForItsTicksAndKeepsTheOrderOfEntities) {
     const std::uint32_t fourth = world.add();
     EXPECT_EQ(fourth, first);
     world.place(fourth, {0.0F, 0.0F}, 0.0F, false, punching);
-    const std::vector<OverlapWorld::Contact> contacts = contactsOf(world);
+    const std::vector<haylen::spatial2d::OverlapWorld::Contact> contacts = contactsOf(world);
     ASSERT_FALSE(contacts.empty());
     EXPECT_EQ(contacts.front().source, second);
     EXPECT_EQ(contacts.back().source, fourth);
     EXPECT_THROW(world.place(99, {}, 0.0F, false, 1), std::out_of_range);
     EXPECT_THROW(world.place(second, {}, 0.0F, false, 9), std::out_of_range);
-    EXPECT_THROW((void)world.defineSet(std::vector{OverlapWorld::Box{.rect = {0.0F, 0.0F, 0.0F, 4.0F}}}), std::invalid_argument);
-    EXPECT_THROW((void)world.defineSet(std::vector{OverlapWorld::Box{.rect = {0.0F, 0.0F, 4.0F, 4.0F}, .kind = 2}}), std::invalid_argument);
+    EXPECT_THROW((void)world.defineSet(std::vector{haylen::spatial2d::OverlapWorld::Box{.rect = {0.0F, 0.0F, 0.0F, 4.0F}}}), std::invalid_argument);
+    EXPECT_THROW((void)world.defineSet(std::vector{haylen::spatial2d::OverlapWorld::Box{.rect = {0.0F, 0.0F, 4.0F, 4.0F}, .kind = 2}}), std::invalid_argument);
 }
 
 TEST_F(OverlapWorldTest, TheHashGridFindsTheSameContactsAsEveryPair) {
-    OverlapWorld everyPair({.kinds = {"body", "hit"}});
-    OverlapWorld hashed({.kinds = {"body", "hit"}, .cellSize = 128.0F});
+    haylen::spatial2d::OverlapWorld everyPair({.kinds = {"body", "hit"}});
+    haylen::spatial2d::OverlapWorld hashed({.kinds = {"body", "hit"}, .cellSize = 128.0F});
 
-    for (OverlapWorld* world : {&everyPair, &hashed}) {
+    for (haylen::spatial2d::OverlapWorld* world : {&everyPair, &hashed}) {
         const std::uint32_t standing = world->defineSet(std::vector{kBody});
         const std::uint32_t punching = world->defineSet(std::vector{kBody, kHit});
-        math::Random places(5);
+        haylen::math::Random places(5);
         for (int entity = 0; entity < 1000; ++entity) {
             const std::uint32_t id = world->add();
             world->place(id, {places.range(0.0F, 2000.0F), places.range(0.0F, 400.0F)}, places.range(0.0F, 60.0F), places.chance(0.5F), places.chance(0.5F) ? standing : punching);
         }
     }
 
-    const std::vector<OverlapWorld::Contact> expected = contactsOf(everyPair);
-    const std::vector<OverlapWorld::Contact> found = contactsOf(hashed);
+    const std::vector<haylen::spatial2d::OverlapWorld::Contact> expected = contactsOf(everyPair);
+    const std::vector<haylen::spatial2d::OverlapWorld::Contact> found = contactsOf(hashed);
     ASSERT_GT(expected.size(), 10U);
     ASSERT_EQ(found.size(), expected.size());
 
@@ -190,4 +190,4 @@ TEST(OverlapWorldLuaTest, NamesTheBoxOfASetThatIsNotATable) {
     EXPECT_NE(fixture.lua("require('haylen.spatial2d').newOverlapWorld({kinds = {'body'}}):defineSet({1})").find("The item 1 of \"boxes\" of \"defineSet\" is invalid: table expected, got number."), std::string::npos);
 }
 
-} // namespace haylen::spatial2d
+} // namespace haylen::lua::spatial2d
