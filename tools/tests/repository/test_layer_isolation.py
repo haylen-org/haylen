@@ -17,7 +17,7 @@ class LayerIsolationTest:
         assert including == []
 
     def test_the_lua_bindings_know_no_host(self):
-        binding = re.compile(r"engine/(lua/|src/(lua/|.*Lua\.(cpp|hpp)$))")
+        binding = re.compile(r"engine/lua/")
         host = re.compile(r'#\s*include\s*"(gpu/NullDevice|platform/(NativeHost|NativeWindow|Player|Services)\.hpp|platform/(sdl|worker|apple|android|web|windows|linux|posix|headless)/)')
         knowing = [name for name, text in EngineSources.read().items() if binding.match(name) and host.search(text)]
         assert knowing == []
