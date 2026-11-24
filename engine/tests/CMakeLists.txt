@@ -75,7 +75,9 @@ set(HAYLEN_TEST_SOURCES
   input/ActionMapTests.cpp
   input/InputRecordingTests.cpp
   input/PointerEmulationTests.cpp
+  math/MatrixTests.cpp
   math/PolygonTests.cpp
+  math/QuatTests.cpp
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp
   math/Vec3Tests.cpp

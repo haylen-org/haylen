@@ -1,6 +1,6 @@
 # 📖 `haylen.math`
 
-The module `haylen.math` holds the math that games and apps need, and the value types that every other module passes around: `Vec2`, `Vec3`, `Vec4`, `Rect`, `Color` and `Transform2D`. It also has seeded random numbers, noise, easing curves and scalar helpers. For shapes, it tests circles and segments, casts rays, combines and splits polygons and traces outlines with marching squares. It ends with splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, for procedural generation and for any position, area, color or transform that goes to another module. This page has no guide of its own, so it starts with a short tour of the value types. The standard `math` library of Lua stays available for everything else.
+The module `haylen.math` holds the math that games and apps need, and the value types that every other module passes around: `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Rect`, `Color` and `Transform2D`. It also has seeded random numbers, noise, easing curves and scalar helpers. For shapes, it tests circles and segments, casts rays, combines and splits polygons and traces outlines with marching squares. It ends with splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, for procedural generation and for any position, area, color or transform that goes to another module. This page has no guide of its own, so it starts with a short tour of the value types. The standard `math` library of Lua stays available for everything else.
 
 ```lua
 local m = require('haylen.math')
@@ -14,6 +14,7 @@ These value types carry positions, areas, colors and transforms through the whol
 
 - A [`Vec2`](#vec2) is a 2D vector with `x` and `y`. It is a point, such as a position, or a direction with a length, such as a velocity.
 - A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../3d/math.md) explains how they carry points and directions.
+- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface.
 - A [`Rect`](#rect) is a rectangle that is not rotated, with its top left corner at `x`, `y` and a `width` and `height`.
 - A [`Color`](#color) has red, green, blue and alpha components from 0 to 1. Alpha is the opacity, 0 for invisible and 1 for solid.
 - A [`Transform2D`](#transform2d) moves, rotates, scales and skews points, such as the placement of a sprite or the chain from a child to its parent.
@@ -42,10 +43,13 @@ Every function of every engine module accepts plain tables wherever it expects o
 | `Vec2` | A `Vec2`, `{x = 10, y = 20}` or `{10, 20}`. |
 | `Vec3` | A `Vec3`, `{x = 1, y = 2, z = 3}` or `{1, 2, 3}`. |
 | `Vec4` | A `Vec4`, `{x = 1, y = 2, z = 3, w = 4}` or `{1, 2, 3, 4}`. |
+| `Mat3`, `Mat4` | A matrix of the type, or a table of its 9 or 16 numbers by columns. |
+| `Quat` | A `Quat`, `{x = 0, y = 0, z = 0, w = 1}` or `{0, 0, 0, 1}`. |
+| `Plane` | A `Plane`, `{normal = {0, 1, 0}, distance = 2}` or `{{0, 1, 0}, 2}`. |
 | `Rect` | A `Rect`, `{x = 0, y = 0, width = 100, height = 50}` or `{0, 0, 100, 50}`. |
 | `Color` | A `Color`, `'#AARRGGBB'` or `'#RRGGBB'` text where the `#` is optional, `{r = 1, g = 0.5, b = 0, a = 1}` or `{1, 0.5, 0}`. Components go from `0` to `1`, and alpha is `1` when a table leaves it out. |
 
-The functions `m.vec2`, `m.vec3`, `m.vec4`, `m.rect` and `m.color` take the same forms as a single argument, which also copies an existing value. These errors come from wrong values:
+The functions `m.vec2`, `m.vec3`, `m.vec4`, `m.mat3`, `m.mat4`, `m.quat`, `m.rect` and `m.color` take the same forms as a single argument, which also copies an existing value. These errors come from wrong values:
 
 - A table with a missing component or one that is not a number raises `Expected a number in field "y".`, with the name of the field.
 - A value of another type raises an error such as `bad argument #2 to 'drawRect' (Color, color text or table with r, g and b expected, got number)`.
@@ -64,7 +68,7 @@ print(red:lerp({0, 0, 1}, 0.5), red == m.color('FF0000')) -- #FF800080 true
 
 ### Shared values
 
-The values `Vec2`, `Vec3`, `Vec4`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
+The values `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
 
 Reading a member that a value does not have raises `The type "haylen.Vec2" has no member "z".`, and assigning one raises `The type "haylen.Vec2" has no writable property "z".`, with the type name of the value.
 
@@ -863,6 +867,838 @@ local m = require('haylen.math')
 
 local a = m.vec4(1, 2, 3, 4)
 print((a + {1, 1, 1, 1}) * 2, a / 2) -- Vec4(4.0, 6.0, 8.0, 10.0) Vec4(0.5, 1.0, 1.5, 2.0)
+```
+
+## Mat3
+
+A `Mat3` is a 3x3 matrix, such as the rotation and scale of a 3D placement or the matrix that turns its normals. It is stored by columns and multiplies a column vector on its right. Make one with `m.mat3`, or get one from `mat4:linear()`, `mat4:normalMatrix()` or `quat:matrix()`. The [3D math guide](../3d/math.md#matrices) explains how matrices chain.
+
+```lua
+local m = require('haylen.math')
+
+local stretch = m.mat3(2, 0, 0, 0, 1, 0, 0, 0, 1)
+print(stretch * {1, 1, 1}) -- Vec3(2.0, 1.0, 1.0)
+```
+
+### m.mat3()
+
+Returns the identity matrix, which leaves every vector as it is.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3() * {1, 2, 3}) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### m.mat3(...)
+
+Returns the matrix of nine numbers listed by columns, so the first three numbers are the first column.
+
+```lua
+local m = require('haylen.math')
+
+local matrix = m.mat3(1, 2, 3, 4, 5, 6, 7, 8, 10)
+print(matrix:column(1), matrix:row(1)) -- Vec3(1.0, 2.0, 3.0) Vec3(1.0, 4.0, 7.0)
+```
+
+### m.mat3(value)
+
+Returns a new `Mat3` from a `Mat3`, which it copies, or from a table of its nine numbers by columns. A table with another count of values raises `A matrix table lists its 9 numbers by columns, and this one holds <count> values.`
+
+```lua
+local m = require('haylen.math')
+
+local copy = m.mat3({2, 0, 0, 0, 2, 0, 0, 0, 2})
+print(copy:determinant()) -- 8.0
+```
+
+### mat3:get(row, column)
+
+Returns the number at `row` and `column`, both from `1` to `3`. Another index raises `A row or a column of this matrix is a whole number from 1 to 3, not <index>.`
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3(1, 2, 3, 4, 5, 6, 7, 8, 10):get(1, 2)) -- 4.0
+```
+
+### mat3:column(index)
+
+Returns the column at `index`, from `1` to `3`, as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3():column(2)) -- Vec3(0.0, 1.0, 0.0)
+```
+
+### mat3:row(index)
+
+Returns the row at `index`, from `1` to `3`, as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3(1, 2, 3, 4, 5, 6, 7, 8, 10):row(3)) -- Vec3(3.0, 6.0, 10.0)
+```
+
+### mat3:transposed()
+
+Returns the matrix with its rows and columns swapped. The transposed matrix of a rotation is its inverse.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3(1, 2, 3, 4, 5, 6, 7, 8, 10):transposed():row(1)) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### mat3:determinant()
+
+Returns the determinant, the factor by which the matrix scales volumes. It is negative for a matrix that mirrors space and zero for one that squashes it flat.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3(-1, 0, 0, 0, 1, 0, 0, 0, 1):determinant()) -- -1.0
+```
+
+### mat3:isInvertible()
+
+Returns `true` when the matrix has an inverse. A matrix that squashes space onto a plane or a line has none, even when rounding leaves its determinant a little above zero.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat3(1, 2, 3, 2, 4, 6, 0, 0, 1):isInvertible()) -- false
+```
+
+### mat3:inverse()
+
+Returns the matrix that undoes this one. A matrix without an inverse raises `The matrix has no inverse, because it squashes space flat and its determinant is zero.`
+
+```lua
+local m = require('haylen.math')
+
+local matrix = m.mat3(2, 0, 0, 0, 4, 0, 0, 0, 8)
+print(matrix:inverse() * {2, 4, 8}) -- Vec3(1.0, 1.0, 1.0)
+```
+
+### mat3:rotation()
+
+Returns the rotation of a rotation matrix as a `Quat`. The matrix must be a pure rotation, whose columns have a length of `1` and stand at right angles.
+
+```lua
+local m = require('haylen.math')
+
+local turn = m.fromAxisAngle(m.up(), 1)
+print(turn:matrix():rotation():approximately(turn)) -- true
+```
+
+### mat3:approximately(other, epsilon)
+
+Returns `true` when every number is close to the one of `other`, like [`vec3:approximately`](#vec3approximatelyother-epsilon).
+
+```lua
+local m = require('haylen.math')
+
+local matrix = m.mat3(1, 2, 3, 4, 5, 6, 7, 8, 10)
+print((matrix * matrix:inverse()):approximately(m.mat3())) -- true
+```
+
+### mat3:unpack()
+
+Returns the nine numbers by columns.
+
+```lua
+local m = require('haylen.math')
+
+print(select('#', m.mat3():unpack())) -- 9
+```
+
+### Mat3 operators
+
+The operator `a * b` multiplies two matrices, and `a * v` maps a `Vec3` or a table of three numbers. A table of nine numbers counts as a matrix. The operator `a == b` compares every number, and `tostring(a)` lists the columns.
+
+```lua
+local m = require('haylen.math')
+
+local double = m.mat3(2, 0, 0, 0, 2, 0, 0, 0, 2)
+print((double * double) * {1, 1, 1}, double == m.mat3(double)) -- Vec3(4.0, 4.0, 4.0) true
+```
+
+## Mat4
+
+A `Mat4` is a 4x4 matrix, such as the placement of an object in the world, the view of a camera or its projection. It is stored by columns and multiplies a column vector on its right, so the matrices of a draw chain as `projection * view * model`. Make one with `m.mat4`, `m.compose`, `m.lookAt` or a projection function. The [3D math guide](../3d/math.md#matrices) explains when to use which.
+
+```lua
+local m = require('haylen.math')
+
+local model = m.compose({0, 1, -5})
+local view = m.lookAt({0, 2, 5}, {0, 1, -5})
+local projection = m.perspective({fieldOfView = m.radians(60), aspect = 16 / 9})
+local clip = projection * view * model
+print(clip:apply({0, 0, 0})) -- the center of the object on the screen
+```
+
+### m.mat4()
+
+Returns the identity matrix.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat4():apply({1, 2, 3})) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### m.mat4(...)
+
+Returns the matrix of sixteen numbers listed by columns, so the last four numbers are the translation and the fourth number of `w`.
+
+```lua
+local m = require('haylen.math')
+
+local move = m.mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 5, 0, 0, 1)
+print(move:translation()) -- Vec3(5.0, 0.0, 0.0)
+```
+
+### m.mat4(value)
+
+Returns a new `Mat4` from a `Mat4`, which it copies, or from a table of its sixteen numbers by columns, with the error of [`m.mat3(value)`](#mmat3value) for another count.
+
+```lua
+local m = require('haylen.math')
+
+local copy = m.mat4(m.compose({1, 2, 3}))
+print(copy:translation()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### m.compose(translation, rotation, scale)
+
+Returns the matrix that scales by `scale`, then turns by the `Quat` `rotation`, then moves by `translation`. The rotation is none and the scale is `{1, 1, 1}` when left out. A negative scale mirrors.
+
+```lua
+local m = require('haylen.math')
+
+local placement = m.compose({0, 1, 0}, m.fromAxisAngle(m.up(), m.halfPi), {2, 2, 2})
+print(placement:apply({1, 0, 0})) -- close to Vec3(0.0, 1.0, -2.0)
+```
+
+### m.lookAt(eye, target, up)
+
+Returns the view matrix of a camera at `eye` that looks at `target`, with its up axis as close to `up` as it can, `m.up()` by default. The view puts the camera at the origin and the target along negative `z`. The same point for both raises `The eye and the target of a view are the same point, so the view has no direction.`, and an `up` along the view raises the error of [`m.lookRotation`](#mlookrotationdirection-up).
+
+```lua
+local m = require('haylen.math')
+
+local view = m.lookAt({0, 0, 10}, {0, 0, 0})
+print(view:apply({0, 0, 0})) -- Vec3(0.0, 0.0, -10.0)
+```
+
+### m.perspective(options)
+
+Returns a perspective projection, where far things look smaller. The options are all optional:
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `fieldOfView` | `m.pi / 3` | The vertical angle of the view in radians, above `0` and below `m.pi`. |
+| `aspect` | `1` | The width of the view divided by its height. |
+| `nearPlane` | `0.1` | The distance of the near plane, above `0`. |
+| `farPlane` | `math.huge` | The distance of the far plane, beyond the near plane, or `math.huge` for a view without a far end. |
+| `depthRange` | `'zeroToOne'` | The range of depth of the graphics API, `'zeroToOne'` or `'negativeOneToOne'`. |
+| `reversedDepth` | `true` | Whether the near plane gets the far end of the range and the far plane the near end. |
+
+The [3D coordinates guide](../3d/coordinates.md#depth) explains the range and the direction of depth. A field of view out of range raises `The field of view of a perspective must be an angle above 0 and below pi radians.`, an aspect that is not above `0` raises `The aspect of a perspective must be a finite number above 0.`, a near plane that is not above `0` raises `The near plane of a perspective must be at a finite distance above 0.`, and a far plane that is not beyond it raises `The far plane of a perspective must lie beyond its near plane.`
+
+```lua
+local m = require('haylen.math')
+
+local projection = m.perspective({fieldOfView = m.radians(70), aspect = 16 / 9, nearPlane = 0.1})
+print(projection:apply({0, 0, -0.1}).z) -- 1.0, the near plane
+```
+
+### m.asymmetricPerspective(options)
+
+Returns a perspective projection whose edges sit at their own angles, such as the view of one eye of a headset. The options `left`, `right`, `bottom` and `top` are the angles of the edges in radians from the direction of the view, negative to the left and below, `-m.pi / 4` and `m.pi / 4` by default. The other options are those of [`m.perspective`](#mperspectiveoptions) without `fieldOfView` and `aspect`. Angles out of a quarter turn, or a left edge that is not left of the right edge or a bottom edge that is not below the top edge, raise `The angles of an asymmetric perspective must lie within a quarter turn of the direction it looks along, with left below right and bottom below top.`
+
+```lua
+local m = require('haylen.math')
+
+local eye = m.asymmetricPerspective({left = -0.9, right = 0.6, bottom = -0.8, top = 0.8, nearPlane = 0.05})
+print(eye:apply({math.tan(0.6), 0, -1}).x) -- 1.0, the right edge
+```
+
+### m.orthographic(options)
+
+Returns an orthographic projection, where things keep their size at any distance, such as a map or the view of a sun for shadows. The options `left`, `right`, `bottom` and `top` are the edges of the view, `-1` and `1` by default, and `nearPlane` and `farPlane` are the distances of its planes along the view, `0` and `100` by default. The options `depthRange` and `reversedDepth` are those of [`m.perspective`](#mperspectiveoptions). Bounds that are not finite numbers, or edges or planes that meet, raise `The bounds of an orthographic projection must be finite numbers, with left apart from right, bottom apart from top and the near plane apart from the far plane.`
+
+```lua
+local m = require('haylen.math')
+
+local map = m.orthographic({left = 0, right = 100, bottom = 0, top = 50, nearPlane = 1, farPlane = 20})
+print(map:apply({100, 50, -1})) -- Vec3(1.0, 1.0, 1.0)
+```
+
+### m.depthRangeConversion(from, to)
+
+Returns the matrix that turns the clip space of the range of depth `from` into that of `to`, when it multiplies a projection on its left. Both are `'zeroToOne'` or `'negativeOneToOne'`.
+
+```lua
+local m = require('haylen.math')
+
+local direct = m.perspective({nearPlane = 1, farPlane = 10, reversedDepth = false})
+local openGl = m.depthRangeConversion('zeroToOne', 'negativeOneToOne') * direct
+print(openGl:apply({0, 0, -1}).z) -- -1.0
+```
+
+### mat4:get(row, column)
+
+Returns the number at `row` and `column`, both from `1` to `4`, with the error of [`mat3:get`](#mat3getrow-column) for another index.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({5, 0, 0}):get(1, 4)) -- 5.0
+```
+
+### mat4:column(index)
+
+Returns the column at `index`, from `1` to `4`, as a `Vec4`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({5, 6, 7}):column(4)) -- Vec4(5.0, 6.0, 7.0, 1.0)
+```
+
+### mat4:row(index)
+
+Returns the row at `index`, from `1` to `4`, as a `Vec4`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.mat4():row(4)) -- Vec4(0.0, 0.0, 0.0, 1.0)
+```
+
+### mat4:translation()
+
+Returns the translation, the first three numbers of the last column, as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({1, 2, 3}):translation()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### mat4:linear()
+
+Returns the upper left 3x3 part as a `Mat3`, which holds the rotation, the scale and the shear of a placement.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({1, 2, 3}, nil, {2, 2, 2}):linear():determinant()) -- 8.0
+```
+
+### mat4:apply(point)
+
+Returns the point that the matrix maps `point` to, divided by its `w`. For a placement it moves the point. For a projection it gives the normalized device coordinates, from `-1` to `1` across the view and in the range of depth along it.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({0, 0, -5}):apply({1, 0, 0})) -- Vec3(1.0, 0.0, -5.0)
+```
+
+### mat4:applyVector(vector)
+
+Returns the direction that the matrix maps `vector` to. It turns and scales but never translates, so it suits velocities and offsets.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({0, 0, -5}):applyVector({1, 0, 0})) -- Vec3(1.0, 0.0, 0.0)
+```
+
+### mat4:transposed()
+
+Returns the matrix with its rows and columns swapped.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({5, 0, 0}):transposed():row(4)) -- Vec4(5.0, 0.0, 0.0, 1.0)
+```
+
+### mat4:determinant()
+
+Returns the determinant of the matrix.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({0, 0, 0}, nil, {1, 2, 3}):determinant()) -- 6.0
+```
+
+### mat4:isInvertible()
+
+Returns `true` when the matrix has an inverse. An affine matrix has one when its linear part does, like [`mat3:isInvertible`](#mat3isinvertible), and any other matrix when its determinant is not zero.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({0, 0, 0}, nil, {1, 0, 1}):isInvertible()) -- false
+```
+
+### mat4:isAffine()
+
+Returns `true` when the last row is `0, 0, 0, 1`, as in every placement and view. A perspective projection is not affine.
+
+```lua
+local m = require('haylen.math')
+
+print(m.compose({1, 2, 3}):isAffine(), m.perspective():isAffine()) -- true false
+```
+
+### mat4:inverse()
+
+Returns the matrix that undoes this one, with the error of [`mat3:inverse`](#mat3inverse) for a matrix without an inverse. The inverse of `projection * view` turns a point of the screen back into the world.
+
+```lua
+local m = require('haylen.math')
+
+local projection = m.perspective({nearPlane = 0.1, farPlane = 100})
+local point = projection:apply({1, 2, -10})
+print(projection:inverse():apply(point)) -- close to Vec3(1.0, 2.0, -10.0)
+```
+
+### mat4:affineInverse()
+
+Returns the inverse of an affine matrix with fewer operations than `mat4:inverse`. A matrix that is not affine raises `The matrix is not affine, because its last row is not 0, 0, 0 and 1.`, and a singular one the error of `mat4:inverse`.
+
+```lua
+local m = require('haylen.math')
+
+local placement = m.compose({1, 2, 3}, m.fromAxisAngle(m.up(), 0.5))
+print((placement:affineInverse() * placement):approximately(m.mat4())) -- true
+```
+
+### mat4:normalMatrix()
+
+Returns the `Mat3` that maps the normals of a surface that the matrix places, which keeps them at right angles to the surface when the scale is not the same on every axis. A singular linear part raises the error of `mat4:inverse`.
+
+```lua
+local m = require('haylen.math')
+
+local stretched = m.compose({0, 0, 0}, nil, {2, 1, 1})
+print(stretched:normalMatrix() * {1, 0, 0}) -- Vec3(0.5, 0.0, 0.0)
+```
+
+### mat4:decompose()
+
+Returns a table with the `translation` and `scale` as `Vec3` values and the `rotation` as a `Quat`, which `m.compose` puts back together. A mirrored matrix gets a negative scale on `x`. A matrix that is not affine raises `Only an affine matrix, whose last row is 0, 0, 0 and 1, splits into translation, rotation and scale.`, and one that scales an axis to zero raises `The matrix scales an axis to zero or to infinity, so it holds no rotation.`
+
+```lua
+local m = require('haylen.math')
+
+local parts = m.compose({4, 5, 6}, m.fromAxisAngle(m.up(), 0.5), {1, 2, 3}):decompose()
+print(parts.translation, parts.scale, parts.rotation:angle()) -- Vec3(4.0, 5.0, 6.0), then close to Vec3(1.0, 2.0, 3.0) and 0.5
+```
+
+### mat4:obliqueNearPlane(plane, options)
+
+Returns the projection with its near plane replaced by the `Plane` `plane` of the space of the camera, so nothing between the camera and the plane draws, such as what stands behind a mirror or a portal. The plane must face away from the camera, with the camera behind it, and cross the view before its far end. The options `depthRange` and `reversedDepth` are those the projection was built with, `'zeroToOne'` and `true` by default. A plane that faces the camera raises `An oblique near plane must face away from the camera, so the camera must lie behind the plane.`, and one that misses the view raises `An oblique near plane must cross the view before its far end.`
+
+```lua
+local m = require('haylen.math')
+
+local projection = m.perspective({nearPlane = 0.1, farPlane = 100})
+local mirror = m.planeFromPoint({0, 0, -1}, {0, 0, -5})
+local clipped = projection:obliqueNearPlane(mirror)
+print(clipped:apply({0, 0, -5}).z) -- 1.0, the new near plane
+```
+
+### mat4:approximately(other, epsilon)
+
+Returns `true` when every number is close to the one of `other`, like [`vec3:approximately`](#vec3approximatelyother-epsilon).
+
+```lua
+local m = require('haylen.math')
+
+local placement = m.compose({5, 0, 0}, m.fromAxisAngle({1, 1, 0}, 0.4))
+print((placement * placement:inverse()):approximately(m.mat4(), 0.0001)) -- true
+```
+
+### mat4:unpack()
+
+Returns the sixteen numbers by columns.
+
+```lua
+local m = require('haylen.math')
+
+print(select('#', m.mat4():unpack())) -- 16
+```
+
+### Mat4 operators
+
+The operator `a * b` multiplies two matrices, so `b` applies first, and `a * v` maps a `Vec4` or a table of four numbers without dividing by `w`. A table of sixteen numbers counts as a matrix. The operator `a == b` compares every number, and `tostring(a)` lists the columns.
+
+```lua
+local m = require('haylen.math')
+
+local move = m.compose({1, 0, 0})
+print((move * move):translation(), move * m.vec4(0, 0, 0, 1)) -- Vec3(2.0, 0.0, 0.0) Vec4(1.0, 0.0, 0.0, 1.0)
+```
+
+## Quat
+
+A `Quat` is a rotation in 3D, a unit quaternion with the components `x`, `y`, `z` and `w`, where `w` is the real part and the identity is `(0, 0, 0, 1)`. A quaternion and its opposite hold the same rotation. Make one with `m.quat`, `m.fromAxisAngle`, `m.fromEuler`, `m.rotationBetween` or `m.lookRotation`. The [3D math guide](../3d/math.md#rotations) explains when to use rotations, Euler angles and matrices.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y`, `z`, `w` | number | read and write | The four components, which keep a length of `1` for a rotation. |
+
+```lua
+local m = require('haylen.math')
+
+local turn = m.fromAxisAngle(m.up(), m.halfPi)
+print(turn:rotate(m.right())) -- close to Vec3(0.0, 0.0, -1.0)
+```
+
+### m.quat()
+
+Returns the identity rotation, which does not turn.
+
+```lua
+local m = require('haylen.math')
+
+print(m.quat()) -- Quat(0.0, 0.0, 0.0, 1.0)
+```
+
+### m.quat(x, y, z, w)
+
+Returns the quaternion with the four components as they are, which must have a length of `1` to be a rotation. Use `quat:normalized()` on components that come from elsewhere.
+
+```lua
+local m = require('haylen.math')
+
+local saved = m.quat(0, 0.7071, 0, 0.7071):normalized()
+print(saved:angle()) -- close to m.halfPi
+```
+
+### m.quat(value)
+
+Returns a new `Quat` from a `Quat`, which it copies, or a table with `x`, `y`, `z` and `w` or the four values in order.
+
+```lua
+local m = require('haylen.math')
+
+print(m.quat({0, 0, 0, 1}) == m.quat()) -- true
+```
+
+### m.fromAxisAngle(axis, angle)
+
+Returns the rotation by `angle` radians around `axis`, which turns counter-clockwise when the axis points at the viewer. An axis without a direction raises the errors of [`vec3:normalized`](#vec3normalized).
+
+```lua
+local m = require('haylen.math')
+
+local spin = m.fromAxisAngle(m.up(), m.radians(45))
+print(spin:angle()) -- 0.785...
+```
+
+### m.fromEuler(angles, order)
+
+Returns the rotation of the Euler angles `angles`, a `Vec3` of turns in radians around `x`, `y` and `z`. The `order` names the axes from the outer turn to the inner one, `'xyz'`, `'xzy'`, `'yxz'`, `'yzx'`, `'zxy'` or `'zyx'`, `'yxz'` by default. So `'yxz'` turns an object about its own `y` axis first, then about its own `x` axis and last about its own `z` axis, which is the yaw, the pitch and the roll of a camera.
+
+```lua
+local m = require('haylen.math')
+
+local yaw, pitch = m.radians(30), m.radians(-10)
+local camera = m.fromEuler({pitch, yaw, 0})
+print(camera:rotate(m.forward())) -- looks to the left and a little down
+```
+
+### m.rotationBetween(from, to)
+
+Returns the shortest rotation that turns the direction `from` onto the direction `to`. For opposite directions it turns half a turn around an axis at a right angle to `from`. A direction of length zero raises the errors of [`vec3:normalized`](#vec3normalized).
+
+```lua
+local m = require('haylen.math')
+
+local tilt = m.rotationBetween(m.up(), {1, 1, 0})
+print(tilt:rotate(m.up())) -- Vec3(0.70710..., 0.70710..., 0.0)
+```
+
+### m.lookRotation(direction, up)
+
+Returns the rotation that turns `m.forward()` onto `direction` and keeps the up axis as close to `up` as it can, `m.up()` by default, like a camera or a head that looks along `direction`. A direction of length zero raises `A rotation that looks along a direction needs a direction with a finite length above zero.`, and an `up` of length zero or along the direction raises `The up direction needs a finite length above zero and must not run along the direction to look along, or it cannot choose how the view turns around that direction.`
+
+```lua
+local m = require('haylen.math')
+
+local facing = m.lookRotation({1, 0, -1})
+print(facing:rotate(m.forward())) -- Vec3(0.70710..., 0.0, -0.70710...)
+```
+
+### quat:rotate(vector)
+
+Returns `vector` turned by the rotation.
+
+```lua
+local m = require('haylen.math')
+
+print(m.fromAxisAngle(m.right(), m.halfPi):rotate(m.up())) -- close to Vec3(0.0, 0.0, 1.0)
+```
+
+### quat:length()
+
+Returns the length of the quaternion, `1` for a rotation.
+
+```lua
+local m = require('haylen.math')
+
+print(m.quat(0, 0, 0, 2):length()) -- 2.0
+```
+
+### quat:normalized()
+
+Returns the quaternion with a length of `1`, the rotation it stands for. A quaternion of length zero or with a component that is not finite raises `The quaternion holds no rotation, because its length is zero or not a finite number.`
+
+```lua
+local m = require('haylen.math')
+
+print(m.quat(0, 0, 0, 2):normalized()) -- Quat(0.0, 0.0, 0.0, 1.0)
+```
+
+### quat:inverse()
+
+Returns the rotation that undoes this one. A quaternion of length zero raises `The quaternion has no inverse, because its length is zero or not a finite number.`
+
+```lua
+local m = require('haylen.math')
+
+local turn = m.fromAxisAngle(m.up(), 1)
+print((turn * turn:inverse()):approximately(m.quat())) -- true
+```
+
+### quat:angle()
+
+Returns how far the rotation turns, from `0` to `m.pi` radians.
+
+```lua
+local m = require('haylen.math')
+
+print(m.fromAxisAngle(m.up(), 1):angle()) -- 1.0
+```
+
+### quat:axis()
+
+Returns the axis that the rotation turns around by `quat:angle()`, with a length of `1`. A rotation that does not turn raises `The rotation does not turn, so it has no axis.`
+
+```lua
+local m = require('haylen.math')
+
+print(m.fromAxisAngle({0, 2, 0}, 1):axis()) -- Vec3(0.0, 1.0, 0.0)
+```
+
+### quat:toEuler(order)
+
+Returns the Euler angles of the rotation in the `order` of [`m.fromEuler`](#mfromeulerangles-order), `'yxz'` by default, as a `Vec3` of radians. The middle angle stays between `-m.halfPi` and `m.halfPi`. At a quarter turn of the middle angle, where the outer and inner turns spin around the same axis, the inner angle is `0` and the outer angle takes the whole turn.
+
+```lua
+local m = require('haylen.math')
+
+local camera = m.fromEuler({-0.2, 0.5, 0})
+print(camera:toEuler()) -- close to Vec3(-0.2, 0.5, 0.0)
+```
+
+### quat:matrix()
+
+Returns the rotation as a `Mat3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.fromAxisAngle(m.up(), m.halfPi):matrix():column(1)) -- close to Vec3(0.0, 0.0, -1.0)
+```
+
+### quat:swingTwist(axis)
+
+Returns a table with the `twist`, the part of the rotation that turns around `axis`, and the `swing`, the part that turns the axis itself, so `swing * twist` is the rotation. It limits the joints of a skeleton, such as the twist of a forearm around its bone. An axis without a direction raises the errors of [`vec3:normalized`](#vec3normalized).
+
+```lua
+local m = require('haylen.math')
+
+local wrist = m.fromAxisAngle(m.right(), 0.4) * m.fromAxisAngle(m.up(), 1.2)
+local parts = wrist:swingTwist(m.up())
+print(parts.twist:angle(), parts.swing:angle()) -- close to 1.2 and 0.4
+```
+
+### quat:dot(other)
+
+Returns the dot product of the four components, which is `1` or `-1` for the same rotation and nears `0` as the rotations differ by half a turn.
+
+```lua
+local m = require('haylen.math')
+
+print(m.quat():dot(m.quat())) -- 1.0
+```
+
+### quat:angleTo(other)
+
+Returns the angle of the rotation that turns this rotation onto `other`, from `0` to `m.pi` radians.
+
+```lua
+local m = require('haylen.math')
+
+print(m.quat():angleTo(m.fromAxisAngle(m.up(), 0.5))) -- 0.5
+```
+
+### quat:slerp(to, t)
+
+Returns the rotation at `t` of the way toward `to`, along the shorter arc at a constant speed. It returns the rotation itself at `0` and `to`, or its opposite form on the shorter arc, at `1`.
+
+```lua
+local m = require('haylen.math')
+
+local open = m.fromAxisAngle(m.up(), m.halfPi)
+print(m.quat():slerp(open, 0.5):angle()) -- close to m.pi / 4
+```
+
+### quat:nlerp(to, t)
+
+Returns the rotation at `t` of the way toward `to`, along the shorter arc. It is faster than `quat:slerp`, and its speed varies a little along the arc, which suits small steps such as smoothing every frame.
+
+```lua
+local m = require('haylen.math')
+
+local current = m.quat()
+local target = m.fromAxisAngle(m.up(), 1)
+current = current:nlerp(target, 0.1)
+print(current:angle() > 0) -- true
+```
+
+### quat:approximately(other, epsilon)
+
+Returns `true` when the two quaternions hold close rotations, with the tolerance of [`vec3:approximately`](#vec3approximatelyother-epsilon). A quaternion and its opposite compare equal.
+
+```lua
+local m = require('haylen.math')
+
+local turn = m.fromAxisAngle(m.up(), 1)
+print(turn:approximately(m.quat(-turn.x, -turn.y, -turn.z, -turn.w))) -- true
+```
+
+### quat:unpack()
+
+Returns `x`, `y`, `z` and `w` as four numbers.
+
+```lua
+local m = require('haylen.math')
+
+local x, y, z, w = m.quat():unpack()
+print(w) -- 1.0
+```
+
+### Quat operators
+
+The operator `a * b` combines two rotations, so `b` turns first and `a` after it. The operator `a == b` compares the four components, and `tostring(q)` gives `Quat(x, y, z, w)`.
+
+```lua
+local m = require('haylen.math')
+
+local yaw = m.fromAxisAngle(m.up(), m.halfPi)
+local pitch = m.fromAxisAngle(m.right(), 0.3)
+print((yaw * pitch):rotate(m.forward())) -- pitched first, then turned
+```
+
+## Plane
+
+A `Plane` is an infinite flat surface of the points `p` with `normal:dot(p) == distance`. Its `normal` has a length of `1` and points to its front side. Make one with `m.plane`, `m.planeFromPoint` or `m.planeFromPoints`. Functions that take a plane also accept `{normal = {0, 1, 0}, distance = 2}` or `{{0, 1, 0}, 2}`, whose normal they scale to a length of `1`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `normal` | `Vec3` | read and write | The direction the front side faces, with a length of `1`. A normal of another length raises `The normal of a plane must have a length of one. Make the plane with "plane" of "haylen.math", which scales its normal.` |
+| `distance` | number | read and write | How far the plane lies from the origin along its normal. |
+
+```lua
+local m = require('haylen.math')
+
+local water = m.plane(m.up(), 0.5)
+print(water:signedDistance({0, 2, 0})) -- 1.5
+```
+
+### m.plane(normal, distance)
+
+Returns the plane of the points `p` with `normal:dot(p) == distance`, and scales both so the normal has a length of `1`. A normal without a direction raises the errors of [`vec3:normalized`](#vec3normalized).
+
+```lua
+local m = require('haylen.math')
+
+print(m.plane({0, 2, 0}, 4)) -- Plane((0.0, 1.0, 0.0), 2.0)
+```
+
+### m.planeFromPoint(normal, point)
+
+Returns the plane through `point` whose front side faces along `normal`.
+
+```lua
+local m = require('haylen.math')
+
+local wall = m.planeFromPoint({-1, 0, 0}, {10, 0, 0})
+print(wall:signedDistance({0, 0, 0})) -- 10.0
+```
+
+### m.planeFromPoints(a, b, c)
+
+Returns the plane through three points, whose front side sees them run counter-clockwise. Points on one line raise `The three points lie on one line, so they span no plane.`
+
+```lua
+local m = require('haylen.math')
+
+local ground = m.planeFromPoints({0, 1, 0}, {0, 1, 1}, {1, 1, 0})
+print(ground) -- Plane((0.0, 1.0, 0.0), 1.0)
+```
+
+### plane:signedDistance(point)
+
+Returns how far `point` lies in front of the plane, negative behind it.
+
+```lua
+local m = require('haylen.math')
+
+print(m.plane(m.up(), 0):signedDistance({0, -3, 0})) -- -3.0
+```
+
+### plane:closestPoint(point)
+
+Returns the point of the plane closest to `point`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.plane(m.up(), 2):closestPoint({1, 5, 1})) -- Vec3(1.0, 2.0, 1.0)
+```
+
+### plane:coefficients()
+
+Returns the four numbers `a`, `b`, `c` and `d` of the plane `a * x + b * y + c * z + d = 0` as a `Vec4`, as a shader takes a plane.
+
+```lua
+local m = require('haylen.math')
+
+print(m.plane(m.up(), 2):coefficients()) -- Vec4(0.0, 1.0, 0.0, -2.0)
+```
+
+### Plane operators
+
+The operator `a == b` compares the normal and the distance, and `tostring(p)` gives `Plane((x, y, z), distance)`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.plane({0, 2, 0}, 4) == m.plane(m.up(), 2)) -- true
 ```
 
 ## Rect
@@ -3088,11 +3924,34 @@ These messages come from the functions and methods of the module. Messages that 
 
 | Message | Cause |
 | --- | --- |
-| `Expected a number in field "<field>".` | A table given as a `Vec2`, a `Vec3`, a `Vec4`, a `Rect`, a `Color` or a circle misses a number. |
+| `Expected a number in field "<field>".` | A table given as a `Vec2`, a `Vec3`, a `Vec4`, a `Quat`, a `Plane`, a `Rect`, a `Color` or a circle misses a number. |
 | `bad argument #<n> to '<function>' (Vec3 or table with x, y and z expected, got <type>)` | A `Vec3` argument has another type. |
 | `The vector has no direction, because its length is zero.` | A zero vector was normalized. |
 | `The vector has no direction, because one of its components is not a finite number.` | A vector with an infinite component or one that is not a number was normalized. |
 | `A vector projects only onto a vector with a direction, and this one has a zero or infinite length.` | The vector of `vec3:project` or the normal of `vec3:projectOnPlane` has no direction. |
+| `A matrix table lists its <count> numbers by columns, and this one holds <count> values.` | A table given as a `Mat3` or a `Mat4` has another count of values. |
+| `The value <place> of a matrix table must be a number.` | A table given as a matrix holds something else. |
+| `A row or a column of this matrix is a whole number from 1 to <count>, not <index>.` | The index of `get`, `column` or `row` of a matrix is out of range. |
+| `The matrix has no inverse, because it squashes space flat and its determinant is zero.` | A singular matrix was inverted. |
+| `The matrix is not affine, because its last row is not 0, 0, 0 and 1.` | The matrix of `mat4:affineInverse` is not affine. |
+| `Only an affine matrix, whose last row is 0, 0, 0 and 1, splits into translation, rotation and scale.` | The matrix of `mat4:decompose` is not affine. |
+| `The matrix scales an axis to zero or to infinity, so it holds no rotation.` | The matrix of `mat4:decompose` scales an axis to zero. |
+| `The eye and the target of a view are the same point, so the view has no direction.` | The eye and the target of `m.lookAt` are equal. |
+| `The field of view of a perspective must be an angle above 0 and below pi radians.` | The `fieldOfView` of `m.perspective` is out of range. |
+| `The aspect of a perspective must be a finite number above 0.` | The `aspect` of `m.perspective` is not above 0. |
+| `The near plane of <projection> must be at a finite distance above 0.` | The `nearPlane` of a perspective is not above 0. |
+| `The far plane of <projection> must lie beyond its near plane.` | The `farPlane` of a perspective is not beyond its `nearPlane`. |
+| `The angles of an asymmetric perspective must lie within a quarter turn of the direction it looks along, with left below right and bottom below top.` | The angles of `m.asymmetricPerspective` are out of range or out of order. |
+| `The bounds of an orthographic projection must be finite numbers, with left apart from right, bottom apart from top and the near plane apart from the far plane.` | The bounds of `m.orthographic` are not finite or meet. |
+| `An oblique near plane must face away from the camera, so the camera must lie behind the plane.` | The plane of `mat4:obliqueNearPlane` faces the camera. |
+| `An oblique near plane must cross the view before its far end.` | The plane of `mat4:obliqueNearPlane` misses the view. |
+| `The quaternion holds no rotation, because its length is zero or not a finite number.` | A quaternion of length zero was normalized. |
+| `The quaternion has no inverse, because its length is zero or not a finite number.` | A quaternion of length zero was inverted. |
+| `The rotation does not turn, so it has no axis.` | The rotation of `quat:axis` is the identity. |
+| `A rotation that looks along a direction needs a direction with a finite length above zero.` | The direction of `m.lookRotation` or `m.lookAt` has no length. |
+| `The up direction needs a finite length above zero and must not run along the direction to look along, or it cannot choose how the view turns around that direction.` | The `up` of `m.lookRotation` or `m.lookAt` is zero or runs along the view. |
+| `The three points lie on one line, so they span no plane.` | The points of `m.planeFromPoints` lie on one line. |
+| `The normal of a plane must have a length of one. Make the plane with "plane" of "haylen.math", which scales its normal.` | The `normal` of a plane was set to a vector of another length. |
 | `Expected a point in field "<field>".` | A table given as a circle or a segment misses a point. |
 | `bad argument #<n> to '<function>' (Color, color text or table with r, g and b expected, got <type>)` | A color argument has another type. |
 | `bad argument #1 to 'color' (invalid color text, expected #RRGGBB or #AARRGGBB)` | Color text is not valid. |

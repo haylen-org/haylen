@@ -8,6 +8,7 @@
 #include <initializer_list>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <utility>
 
@@ -53,7 +54,11 @@
 #include "haylen/math/EasingCurve.hpp"
 #include "haylen/math/FloatRange.hpp"
 #include "haylen/math/Insets.hpp"
+#include "haylen/math/Mat3.hpp"
+#include "haylen/math/Mat4.hpp"
 #include "haylen/math/Noise2D.hpp"
+#include "haylen/math/Plane.hpp"
+#include "haylen/math/Quat.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Segment.hpp"
@@ -131,6 +136,9 @@ class TypeConverter final {
     static void pushComponent(lua_State* L, int table, const char* name, lua_Integer position);
     [[nodiscard]] static float numberComponent(lua_State* L, int table, const char* name, lua_Integer position, std::optional<float> fallback = std::nullopt);
     [[nodiscard]] static haylen::math::Vec2 pointComponent(lua_State* L, int table, const char* name, lua_Integer position);
+
+    // Reads the numbers of a matrix from a table that lists them by columns.
+    static void readMatrixValues(lua_State* L, int index, std::span<float> values, const char* expected);
 };
 
 template <> struct Type<haylen::math::Vec2> {
@@ -146,6 +154,26 @@ template <> struct Type<haylen::math::Vec3> {
 template <> struct Type<haylen::math::Vec4> {
     static constexpr const char* name = "haylen.Vec4";
     using Storage = haylen::math::Vec4;
+};
+
+template <> struct Type<haylen::math::Mat3> {
+    static constexpr const char* name = "haylen.Mat3";
+    using Storage = haylen::math::Mat3;
+};
+
+template <> struct Type<haylen::math::Mat4> {
+    static constexpr const char* name = "haylen.Mat4";
+    using Storage = haylen::math::Mat4;
+};
+
+template <> struct Type<haylen::math::Quat> {
+    static constexpr const char* name = "haylen.Quat";
+    using Storage = haylen::math::Quat;
+};
+
+template <> struct Type<haylen::math::Plane> {
+    static constexpr const char* name = "haylen.Plane";
+    using Storage = haylen::math::Plane;
 };
 
 template <> struct Type<haylen::math::Rect> {
@@ -288,6 +316,41 @@ template <> struct Converter<haylen::math::Vec4> {
     }
     static haylen::math::Vec4 read(lua_State* L, int index);
     static bool is(lua_State* L, int index);
+};
+
+// Matrices accept a `Mat3` or a table of its nine numbers by columns.
+template <> struct Converter<haylen::math::Mat3> {
+    static void push(lua_State* L, const haylen::math::Mat3& value) {
+        Userdata::emplace<haylen::math::Mat3>(L, value);
+    }
+    static haylen::math::Mat3 read(lua_State* L, int index);
+    static bool is(lua_State* L, int index);
+};
+
+// Matrices accept a `Mat4` or a table of its sixteen numbers by columns.
+template <> struct Converter<haylen::math::Mat4> {
+    static void push(lua_State* L, const haylen::math::Mat4& value) {
+        Userdata::emplace<haylen::math::Mat4>(L, value);
+    }
+    static haylen::math::Mat4 read(lua_State* L, int index);
+    static bool is(lua_State* L, int index);
+};
+
+// Rotations accept a `Quat` or a table with `x`, `y`, `z` and `w` fields or the four values in order, which hold a quaternion of length one.
+template <> struct Converter<haylen::math::Quat> {
+    static void push(lua_State* L, haylen::math::Quat value) {
+        Userdata::emplace<haylen::math::Quat>(L, value);
+    }
+    static haylen::math::Quat read(lua_State* L, int index);
+    static bool is(lua_State* L, int index);
+};
+
+// Planes accept a `Plane` or a table with `normal` and `distance` fields or the two values in order, whose normal the converter scales to a length of one.
+template <> struct Converter<haylen::math::Plane> {
+    static void push(lua_State* L, const haylen::math::Plane& value) {
+        Userdata::emplace<haylen::math::Plane>(L, value);
+    }
+    static haylen::math::Plane read(lua_State* L, int index);
 };
 
 // Rectangles accept a `Rect` or a table with `x`, `y`, `width` and `height` fields or the same four values in order.
@@ -489,6 +552,24 @@ template <> struct EnumNames<haylen::text::LineHeight> {
     }
     static std::string_view name(haylen::text::LineHeight value) {
         return haylen::text::Style::lineHeightName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::math::Mat4::DepthRange> {
+    static std::optional<haylen::math::Mat4::DepthRange> fromName(std::string_view name) {
+        return haylen::math::Mat4::depthRangeFromName(name);
+    }
+    static std::string_view name(haylen::math::Mat4::DepthRange value) {
+        return haylen::math::Mat4::depthRangeName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::math::Quat::EulerOrder> {
+    static std::optional<haylen::math::Quat::EulerOrder> fromName(std::string_view name) {
+        return haylen::math::Quat::eulerOrderFromName(name);
+    }
+    static std::string_view name(haylen::math::Quat::EulerOrder value) {
+        return haylen::math::Quat::eulerOrderName(value);
     }
 };
 

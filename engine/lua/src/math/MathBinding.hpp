@@ -20,7 +20,7 @@
 
 namespace haylen::lua::math {
 
-// Installs `haylen.math` and the `Vec2`, `Vec3`, `Vec4`, `Rect`, `Color`, `Transform2D`, `Random`, `Noise2D`, `Spline`, `Spring`, `ShuffleBag` and `WeightedChoice` classes.
+// Installs `haylen.math` and the `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Rect`, `Color`, `Transform2D`, `Random`, `Noise2D`, `Spline`, `Spring`, `ShuffleBag` and `WeightedChoice` classes.
 class MathBinding final {
   public:
     static void install(lua_State* L);

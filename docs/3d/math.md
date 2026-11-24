@@ -58,6 +58,58 @@ print(moveDirection(m.vec3()), moveDirection(m.vec3(0, 0, -2))) -- nil Vec3(0.0,
 print(pcall(m.vec3().normalized, m.vec3())) -- false ...: The vector has no direction, because its length is zero.
 ```
 
+## Matrices
+
+A matrix moves vectors from one space to another. A `Mat4` holds a whole placement, a turn, a scale and a move, and it also holds what a camera does: the view, which moves the world in front of the camera, and the projection, which squeezes what the camera sees into the box of the screen. Matrices apply from right to left, so `projection * view * model` places a point of a model in the world, then in front of the camera, then on the screen. The functions `m.compose`, `m.lookAt` and `m.perspective` build the three.
+
+```lua
+local m = require('haylen.math')
+
+local model = m.compose({2, 0, -6}, m.fromAxisAngle(m.up(), 0.3))
+local view = m.lookAt({0, 1.7, 0}, {2, 0, -6})
+local projection = m.perspective({fieldOfView = m.radians(60), aspect = 16 / 9})
+local onScreen = (projection * view * model):apply({0, 0, 0})
+print(onScreen.x, onScreen.y) -- the center of the model, from -1 to 1 across the view
+```
+
+A matrix maps a point and a direction differently. The method `apply` moves a point, translation included, while `applyVector` only turns and scales a direction. Normals need the normal matrix of `normalMatrix`, which keeps them at right angles to a surface that a matrix stretches.
+
+An inverse undoes a matrix, which turns a point of the screen back into the world. A matrix that squashes space onto a plane or a line has no inverse, and asking for one raises an error instead of returning numbers that mean nothing. A `Mat3` holds the turn and scale alone, such as the normal matrix or the linear part of a placement.
+
+## Rotations
+
+A `Quat` holds a rotation in four numbers. It combines with another rotation by multiplying, interpolates smoothly with `slerp` and never locks, so it is the form that the engine keeps and passes. Build one from the form that suits the task:
+
+- An axis and an angle, with `m.fromAxisAngle`, such as a wheel that spins around its axle.
+- Euler angles, with `m.fromEuler`, three turns in a named order, such as the yaw, pitch and roll of a camera that a person controls.
+- Two directions, with `m.rotationBetween`, such as a foot that tilts to the slope under it.
+- A direction to look along, with `m.lookRotation`, such as a turret that aims at its target.
+
+Euler angles are easy to read but have poles: when the middle turn reaches a quarter turn, the outer and inner turns spin around the same axis and one angle is lost. Keep the rotation of an object as a `Quat`, and turn it into Euler angles only to show or edit them.
+
+```lua
+local m = require('haylen.math')
+
+local current = m.quat()
+local target = m.lookRotation({1, 0, -1})
+for frame = 1, 10 do
+    current = current:slerp(target, 0.2)
+end
+print(current:angleTo(target) < 0.1) -- true
+```
+
+## Planes
+
+A `Plane` splits space into a front side and a back side, such as the ground, a wall or the surface of water. Its signed distance tells on which side a point lies and how far, and its closest point drops a point onto it. A plane in the space of a camera also clips a projection with `obliqueNearPlane`, which draws only what lies behind a mirror or a portal.
+
+```lua
+local m = require('haylen.math')
+
+local water = m.plane(m.up(), 0.5)
+local swimmer = m.vec3(3, 0.2, -1)
+print(water:signedDistance(swimmer) < 0, water:closestPoint(swimmer)) -- true Vec3(3.0, 0.5, -1.0)
+```
+
 ## Comparing with tolerance
 
 Float numbers round, so two results that should be equal often differ in their last digits. Compare them with `approximately`, which accepts a tolerance relative to the size of the numbers, and keep `==` for values that were copied, not computed.

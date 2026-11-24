@@ -7,4 +7,4 @@ The 3D block holds what builds 3D games and apps, starting with the conventions 
 | Name | Description | Link |
 | --- | --- | --- |
 | Coordinates | The conventions of 3D: right-handed axes with `y` up, meters, radians, matrices by columns, unit quaternions, counter-clockwise front faces, reversed depth and the range of each graphics API, and light in linear space. | [`coordinates.md`](coordinates.md) |
-| Math | Vectors in 3D and how they carry points and directions, with the errors of a vector without a direction. | [`math.md`](math.md) |
+| Math | Vectors in 3D and how they carry points and directions, matrices that place, view and project, rotations and the forms that build them, planes, the errors of what has no direction or no inverse, and comparing with tolerance. | [`math.md`](math.md) |

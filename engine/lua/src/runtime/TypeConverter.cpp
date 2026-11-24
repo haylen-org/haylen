@@ -112,6 +112,87 @@ bool Converter<haylen::math::Vec4>::is(lua_State* L, int index) {
     return Userdata::test<haylen::math::Vec4>(L, index) != nullptr || lua_istable(L, index);
 }
 
+void TypeConverter::readMatrixValues(lua_State* L, int index, std::span<float> values, const char* expected) {
+    if (!lua_istable(L, index)) {
+        luaL_typeerror(L, index, expected);
+    }
+
+    const int table = lua_absindex(L, index);
+    if (lua_rawlen(L, table) != values.size()) {
+        luaL_error(L, "A matrix table lists its %d numbers by columns, and this one holds %d values.", static_cast<int>(values.size()), static_cast<int>(lua_rawlen(L, table)));
+    }
+
+    for (std::size_t place = 0; place < values.size(); ++place) {
+        if (lua_rawgeti(L, table, static_cast<lua_Integer>(place + 1)) != LUA_TNUMBER) {
+            luaL_error(L, "The value %d of a matrix table must be a number.", static_cast<int>(place + 1));
+        }
+
+        values[place] = Converter<float>::fromNumber(L, lua_tonumber(L, -1));
+        lua_pop(L, 1);
+    }
+}
+
+haylen::math::Mat3 Converter<haylen::math::Mat3>::read(lua_State* L, int index) {
+    if (const haylen::math::Mat3* value = Userdata::test<haylen::math::Mat3>(L, index)) {
+        return *value;
+    }
+
+    haylen::math::Mat3 matrix;
+    TypeConverter::readMatrixValues(L, index, matrix.values, "Mat3 or table of 9 numbers");
+    return matrix;
+}
+
+bool Converter<haylen::math::Mat3>::is(lua_State* L, int index) {
+    return Userdata::test<haylen::math::Mat3>(L, index) != nullptr || lua_istable(L, index);
+}
+
+haylen::math::Mat4 Converter<haylen::math::Mat4>::read(lua_State* L, int index) {
+    if (const haylen::math::Mat4* value = Userdata::test<haylen::math::Mat4>(L, index)) {
+        return *value;
+    }
+
+    haylen::math::Mat4 matrix;
+    TypeConverter::readMatrixValues(L, index, matrix.values, "Mat4 or table of 16 numbers");
+    return matrix;
+}
+
+bool Converter<haylen::math::Mat4>::is(lua_State* L, int index) {
+    return Userdata::test<haylen::math::Mat4>(L, index) != nullptr || lua_istable(L, index);
+}
+
+haylen::math::Quat Converter<haylen::math::Quat>::read(lua_State* L, int index) {
+    if (const haylen::math::Quat* value = Userdata::test<haylen::math::Quat>(L, index)) {
+        return *value;
+    }
+
+    if (!lua_istable(L, index)) {
+        luaL_typeerror(L, index, "Quat or table with x, y, z and w");
+    }
+
+    const int table = lua_absindex(L, index);
+    return {TypeConverter::numberComponent(L, table, "x", 1), TypeConverter::numberComponent(L, table, "y", 2), TypeConverter::numberComponent(L, table, "z", 3), TypeConverter::numberComponent(L, table, "w", 4)};
+}
+
+bool Converter<haylen::math::Quat>::is(lua_State* L, int index) {
+    return Userdata::test<haylen::math::Quat>(L, index) != nullptr || lua_istable(L, index);
+}
+
+haylen::math::Plane Converter<haylen::math::Plane>::read(lua_State* L, int index) {
+    if (const haylen::math::Plane* value = Userdata::test<haylen::math::Plane>(L, index)) {
+        return *value;
+    }
+
+    if (!lua_istable(L, index)) {
+        luaL_typeerror(L, index, "Plane or table with normal and distance");
+    }
+
+    const int table = lua_absindex(L, index);
+    TypeConverter::pushComponent(L, table, "normal", 1);
+    const haylen::math::Vec3 normal = Stack::read<haylen::math::Vec3>(L, -1);
+    lua_pop(L, 1);
+    return haylen::math::Plane::fromNormal(normal, TypeConverter::numberComponent(L, table, "distance", 2));
+}
+
 haylen::math::Rect Converter<haylen::math::Rect>::read(lua_State* L, int index) {
     if (const haylen::math::Rect* value = Userdata::test<haylen::math::Rect>(L, index)) {
         return *value;

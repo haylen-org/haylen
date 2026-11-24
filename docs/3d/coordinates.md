@@ -58,9 +58,25 @@ Matrices are stored by columns, and a matrix multiplies a column vector on its r
   clip = projection * view * model * point
 ```
 
+```lua
+local m = require('haylen.math')
+
+local model = m.compose({0, 0, -5})
+local view = m.lookAt({0, 0, 5}, {0, 0, 0})
+local projection = m.perspective({fieldOfView = m.radians(60), aspect = 16 / 9})
+print((projection * view * model):apply({0, 0, 0})) -- the center of the screen, with its depth
+```
+
 ## Rotations
 
 Rotations are unit quaternions with the components `(x, y, z, w)`, where `w` is the real part and the identity is `(0, 0, 0, 1)`. Every function that returns a rotation returns it normalized.
+
+```lua
+local m = require('haylen.math')
+
+local turn = m.fromAxisAngle(m.up(), m.halfPi)
+print(turn, turn:rotate(m.right())) -- Quat(0.0, 0.70710..., 0.0, 0.70710...) close to Vec3(0.0, 0.0, -1.0)
+```
 
 ## Triangles
 
@@ -78,7 +94,14 @@ The front face of a triangle is the side from which its vertices run counter-clo
 
 Depth is reversed where the graphics API allows it: the near plane has depth `1` and the far plane has depth `0`, in a depth buffer of floats. Floats are densest near zero, so reversed depth keeps far surfaces apart as well as near ones, and the far plane can be infinitely far away.
 
-Each graphics API has its own range of depth in clip space. Metal, Direct3D, Vulkan and WebGPU use `0` to `1`, and OpenGL and WebGL2 use `-1` to `1`. The range belongs to the `gpu::Device` of each API, and a projection matrix is built for the range of the device that draws. OpenGL takes the range of `0` to `1` with `glClipControl` where the driver has it, and a projection for `-1` to `1` corrects the range elsewhere. Nothing besides the projection and the device converts depth.
+```lua
+local m = require('haylen.math')
+
+local projection = m.perspective({nearPlane = 0.1})
+print(projection:apply({0, 0, -0.1}).z, projection:apply({0, 0, -1000}).z) -- 1.0 and close to 0
+```
+
+Each graphics API has its own range of depth in clip space. Metal, Direct3D, Vulkan and WebGPU use `0` to `1`, and OpenGL and WebGL2 use `-1` to `1`. The range belongs to the `gpu::Device` of each API, and a projection matrix is built for the range of the device that draws, which the projection functions of `haylen.math` take as `depthRange`. OpenGL takes the range of `0` to `1` with `glClipControl` where the driver has it, and a projection for `-1` to `1` corrects the range elsewhere. Nothing besides the projection and the device converts depth.
 
 Textures and render targets have the same origin on every graphics API, so a texture coordinate and a pixel of a render target point at the same place whatever draws.
 

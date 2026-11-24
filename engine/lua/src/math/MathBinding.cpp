@@ -20,7 +20,10 @@
 #include "haylen/math/Math.hpp"
 #include "haylen/math/PoissonDisk.hpp"
 #include "math/ChoiceBinding.hpp"
+#include "math/Geometry3Binding.hpp"
+#include "math/MatrixBinding.hpp"
 #include "math/PolygonBinding.hpp"
+#include "math/QuatBinding.hpp"
 #include "math/RaycastBinding.hpp"
 #include "math/SignalFilterBinding.hpp"
 #include "math/SplineBinding.hpp"
@@ -632,6 +635,9 @@ void MathBinding::installClasses(lua_State* L) {
     lua::ClassBuilder<haylen::math::EasingCurve>(L).meta("__call", &lua::Binding::native<&curveCall>).install();
 
     VectorBinding::install(L);
+    MatrixBinding::install(L);
+    QuatBinding::install(L);
+    Geometry3Binding::install(L);
     SplineBinding::install(L);
     SpringBinding::install(L);
     SignalFilterBinding::install(L);
@@ -644,6 +650,9 @@ int MathBinding::open(lua_State* L) {
     };
     lua::Binding::newModule(L, functions);
     VectorBinding::addFunctions(L);
+    MatrixBinding::addFunctions(L);
+    QuatBinding::addFunctions(L);
+    Geometry3Binding::addFunctions(L);
     RaycastBinding::addFunctions(L);
     PolygonBinding::addFunctions(L);
     SplineBinding::addFunctions(L);

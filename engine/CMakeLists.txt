@@ -377,11 +377,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/KalmanFilter.cpp
   src/math/LowPassFilter.cpp
   src/math/MarchingSquares.cpp
+  src/math/Mat3.cpp
+  src/math/Mat4.cpp
   src/math/MedianFilter.cpp
   src/math/MovingAverage.cpp
   src/math/Noise2D.cpp
   src/math/PoissonDisk.cpp
   src/math/Polygon.cpp
+  src/math/Quat.cpp
   src/math/Random.cpp
   src/math/Raycast.cpp
   src/math/ShuffleBag.cpp
