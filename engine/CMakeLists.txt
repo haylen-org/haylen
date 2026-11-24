@@ -376,6 +376,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/localization/PluralRules.cpp
   src/math/Box3.cpp
   src/math/Color.cpp
+  src/math/ColorSpace.cpp
   src/math/DualQuat.cpp
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
@@ -393,6 +394,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/MovingAverage.cpp
   src/math/Noise2D.cpp
   src/math/Obb.cpp
+  src/math/Photometry.cpp
   src/math/PoissonDisk.cpp
   src/math/Polygon.cpp
   src/math/Quat.cpp

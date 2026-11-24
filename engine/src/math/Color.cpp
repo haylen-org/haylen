@@ -6,6 +6,10 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+#include <stdexcept>
+
+#include "haylen/math/ColorSpace.hpp"
+#include "haylen/math/Vec3.hpp"
 
 namespace haylen::math {
 
@@ -70,15 +74,38 @@ Color Color::fromHsv(float hue, float saturation, float value, float alpha) noex
     }
 }
 
-// The channels of sRGB turn into linear light before they add up, with the weights of the eye for red, green and blue.
+Color Color::getLinear() const noexcept {
+    return {ColorSpace::decodeSrgb(r), ColorSpace::decodeSrgb(g), ColorSpace::decodeSrgb(b), a};
+}
+
+Color Color::fromLinear(const Color& linear) noexcept {
+    return {ColorSpace::encodeSrgb(linear.r), ColorSpace::encodeSrgb(linear.g), ColorSpace::encodeSrgb(linear.b), linear.a};
+}
+
+// The chromaticity of the light of a black body follows the cubic fits of Kim and others to the Planckian locus, which hold from 1667 to 25000 kelvin.
+Color Color::fromTemperature(float kelvin) {
+    if (!(kelvin >= 1667.0F && kelvin <= 25000.0F)) {
+        throw std::invalid_argument("A color temperature must be from 1667 to 25000 kelvin.");
+    }
+
+    const double t = kelvin;
+    const double x = kelvin <= 4000.0F ? -0.2661239e9 / (t * t * t) - 0.2343589e6 / (t * t) + 0.8776956e3 / t + 0.179910 : -3.0258469e9 / (t * t * t) + 2.1070379e6 / (t * t) + 0.2226347e3 / t + 0.240390;
+    double y = 3.0817580 * x * x * x - 5.87338670 * x * x + 3.75112997 * x - 0.37001483;
+    if (kelvin <= 2222.0F) {
+        y = -1.1063814 * x * x * x - 1.34811020 * x * x + 2.18555832 * x - 0.20219683;
+    } else if (kelvin <= 4000.0F) {
+        y = -0.9549476 * x * x * x - 1.37418593 * x * x + 2.09137015 * x - 0.16748867;
+    }
+
+    const Vec3 xyz{static_cast<float>(x / y), 1.0F, static_cast<float>((1.0 - x - y) / y)};
+    const Color light = ColorSpace::fromXyz(xyz, ColorSpace::Kind::Srgb);
+    const Color inGamut{std::max(light.r, 0.0F), std::max(light.g, 0.0F), std::max(light.b, 0.0F), 1.0F};
+    const float largest = std::max({inGamut.r, inGamut.g, inGamut.b});
+    return fromLinear({inGamut.r / largest, inGamut.g / largest, inGamut.b / largest, 1.0F});
+}
+
 float Color::getLuminance() const noexcept {
-    // clang-format off
-    const auto linear = [](float channel) {
-        const float clamped = std::clamp(channel, 0.0F, 1.0F);
-        return clamped <= 0.04045F ? clamped / 12.92F : std::pow((clamped + 0.055F) / 1.055F, 2.4F);
-    };
-    // clang-format on
-    return 0.2126F * linear(r) + 0.7152F * linear(g) + 0.0722F * linear(b);
+    return ColorSpace::luminance(getLinear(), ColorSpace::Kind::Srgb);
 }
 
 float Color::contrast(const Color& first, const Color& second) noexcept {

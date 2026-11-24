@@ -6,6 +6,7 @@ Graphics draws everything an app shows: the GPU device and its graphics APIs, te
 
 | Name | Description | Link |
 | --- | --- | --- |
+| Color | Encoded colors and linear light, HDR colors brighter than white, the temperature of light in kelvin, the color spaces of screens with sRGB, Display P3 and HDR10, and the physical units of light with the exposure of a camera. | [`color.md`](color.md) |
 | Direct3D | The devices of Direct3D 12 and Direct3D 11 on Windows: what the machine needs, how each one draws a frame, swapchains, transparent windows, shaders, capabilities, debugging, lost devices and limits. | [`direct3d.md`](direct3d.md) |
 | Effects | The effects that run in real time: glass and backdrop blur over what lies behind, glass surfaces of the UI, dithered fades and masks, distortion, sprite effects and post-processing, effects of your own as `.shader` files on a draw, a canvas or a glass, and what they cost. | [`effects.md`](effects.md) |
 | Metal | The device of Metal on macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS: the GPU it draws on, how it draws a frame, drawables and tile memory, shaders compiled ahead, capabilities, debugging, lost devices and limits. | [`metal.md`](metal.md) |

@@ -2825,7 +2825,7 @@ print(tostring(m.rect(1, 2, 3, 4))) -- Rect(1.0, 2.0, 3.0, 4.0)
 
 ## Color
 
-A `Color` has red, green, blue and alpha components from `0` to `1`. The components are straight, not premultiplied: red, green and blue do not already include the alpha. Make a color with `m.color` or one of the functions below.
+A `Color` has red, green, blue and alpha components from `0` to `1`. The components are straight, not premultiplied: red, green and blue do not already include the alpha. Red, green and blue are encoded with the curve of sRGB, the form that color pickers and images use, unless a function says that it takes or returns linear light. Red, green and blue may go above `1` for an HDR color, which is brighter than the white of the screen. Make a color with `m.color` or one of the functions below. The [color guide](../graphics/color.md) explains encoded colors, linear light and HDR.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -2936,6 +2936,28 @@ print(m.fromHsv(1 / 3, 1, 1)) -- #FF00FF00
 print(rainbow())
 ```
 
+### m.fromLinear(color)
+
+Returns a new encoded `Color` from a color of linear light, the inverse of `color:linear`. Alpha stays as it is, and channels above `1` stay above `1`.
+
+```lua
+local m = require('haylen.math')
+
+local mixed = m.color('#FFFF0000'):linear():lerp(m.color('#FF00FF00'):linear(), 0.5)
+print(m.fromLinear(mixed)) -- #FFBCBC00, brighter than the #FF808000 of mixing the encoded colors
+```
+
+### m.fromTemperature(kelvin)
+
+Returns a new `Color` of the light of a hot body at `kelvin`, such as about `1900` for a candle, `2700` for a warm bulb, `6500` for daylight and `10000` for a clear blue sky. The largest channel is `1`, and a channel that falls outside the colors of sRGB is `0`. A temperature outside `1667` to `25000` raises `A color temperature must be from 1667 to 25000 kelvin.`.
+
+```lua
+local m = require('haylen.math')
+
+local lamp = m.fromTemperature(2700)
+print(lamp) -- #FFFFAD59
+```
+
 ### m.contrast(first, second)
 
 Returns the contrast ratio of two colors, from 1 for the same color to 21 for black on white. The contrast rules of accessibility ask for at least 4.5 between text and its background, and 3 for large text and icons.
@@ -3016,9 +3038,20 @@ local favorite = m.fromHsv(0.6, 0.7, 0.9)
 storage.writeJson('settings/theme.json', {accent = favorite:toHex()})
 ```
 
+### color:linear()
+
+Returns a new `Color` with red, green and blue decoded into linear light, where amounts of light add up, so mixing, blurring and lighting give the brightness the eye expects. Alpha stays as it is. The curve continues above `1` and mirrors below `0`, so HDR and wide colors keep their values through `m.fromLinear`.
+
+```lua
+local m = require('haylen.math')
+
+local gray = m.color('#FF808080'):linear()
+print(string.format('%.3f', gray.r)) -- 0.216
+```
+
 ### color:luminance()
 
-Returns the relative luminance of the color in linear light, from 0 for black to 1 for white. It is the measure of brightness that the contrast rules of accessibility read.
+Returns the relative luminance of the color in linear light, from 0 for black to 1 for white, and above 1 for an HDR color. It is the measure of brightness that the contrast rules of accessibility read.
 
 ```lua
 local m = require('haylen.math')
@@ -3060,13 +3093,210 @@ scene.push({
 
 ### Color operators
 
-The operator `a * b` multiplies component by component, which tints one color by another. The operator `a == b` compares all components, and `tostring(color)` gives the same text as `color:toHex`.
+The operator `a * b` multiplies component by component, which tints one color by another. A number on either side of `*` scales red, green and blue and keeps the alpha, which makes a light brighter than white. The operator `a == b` compares all components, and `tostring(color)` gives the same text as `color:toHex`, which clamps every component to `0` and `1`.
 
 ```lua
 local m = require('haylen.math')
 
 print(m.color('#FFFFFFFF') * m.color(0.5, 0.5, 1)) -- #FF8080FF
 print(m.color('#00000000') == m.color(0, 0, 0, 0)) -- true
+
+local glow = m.fromTemperature(3000):linear() * 4
+print(string.format('%.1f', glow.r)) -- 4.0
+```
+
+## Color spaces
+
+The table `m.colorSpace` turns colors of linear light into the signal of a screen and moves them between the primaries of color spaces, the three colors whose mixes make every other color of a space. The [color guide](../graphics/color.md#screens-and-their-color-spaces) explains when each one matters. A space is one of these names:
+
+| Name | Meaning |
+| --- | --- |
+| `'srgb'` | The space of almost every screen and image, with the curve of sRGB. |
+| `'displayP3'` | The wider space of many phones, tablets and Macs, with the primaries of Display P3 and the curve of sRGB. |
+| `'hdr10'` | The space of HDR screens, with the primaries of Rec. 2020 and the perceptual quantizer, which carries light up to 10000 nits. |
+
+Any other name raises the error of a bad argument.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `referenceWhite` | number | `203`, the nits that the white of a color with channels of `1` takes on an HDR screen by default. |
+| `peakNits` | number | `10000`, the brightest light that the signal of `'hdr10'` carries. |
+
+### m.colorSpace.encode(color, space, options)
+
+Returns a new `Color`, the signal of the screen of `space` for `color`, a color of linear light with the primaries of sRGB, the light that a scene draws. The spaces `'srgb'` and `'displayP3'` encode it with the curve of sRGB, and `'hdr10'` places its white at the reference white and encodes it with the perceptual quantizer. Alpha stays as it is. A color outside the gamut of the space has channels below `0` or above `1`, and `'hdr10'` clamps them to its range.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `referenceWhite` | number | `203` | The nits of the white of the scene on an HDR screen, which only `'hdr10'` reads. |
+
+A reference white that is not above `0` and at most `10000` raises `The reference white must be a brightness above 0 and at most 10000 nits.`.
+
+```lua
+local m = require('haylen.math')
+
+local sunlit = m.color(1, 0.9, 0.7):linear() * 3
+local signal = m.colorSpace.encode(sunlit, 'hdr10', {referenceWhite = 250})
+print(string.format('%.2f', signal.r)) -- 0.71
+```
+
+### m.colorSpace.decode(signal, space, options)
+
+Returns a new `Color` of linear light with the primaries of sRGB from the signal of the screen of `space`, undoing `m.colorSpace.encode` with the same options.
+
+```lua
+local m = require('haylen.math')
+
+local back = m.colorSpace.decode(m.colorSpace.encode({0.5, 0.2, 2}, 'hdr10'), 'hdr10')
+print(string.format('%.2f %.2f %.2f', back.r, back.g, back.b)) -- 0.50 0.20 2.00
+```
+
+### m.colorSpace.convert(color, from, to)
+
+Returns a new `Color` of linear light moved from the primaries of the space `from` to those of the space `to`, keeping its alpha. A color that the space `to` cannot show has channels below `0` or above `1`.
+
+```lua
+local m = require('haylen.math')
+
+local red = m.colorSpace.convert({1, 0, 0}, 'displayP3', 'srgb')
+print(red.r > 1, red.g < 0) -- true true, since the red of Display P3 lies outside sRGB
+```
+
+### m.colorSpace.toXyz(color, space)
+
+Returns a `Vec3` with the CIE XYZ coordinates of a color of linear light in `space`, the coordinates that every color space shares. Its `y` is the luminance, and the white of every space has `y` of `1`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.3f', m.colorSpace.toXyz(m.white(), 'srgb').y)) -- 1.000
+```
+
+### m.colorSpace.fromXyz(xyz, space)
+
+Returns a new `Color` of linear light in `space` from CIE XYZ coordinates, given like any `Vec3`, with an alpha of `1`.
+
+```lua
+local m = require('haylen.math')
+
+local xyz = m.colorSpace.toXyz({0.2, 0.4, 0.6}, 'displayP3')
+print(m.colorSpace.fromXyz(xyz, 'hdr10'))
+```
+
+### m.colorSpace.luminance(color, space)
+
+Returns the luminance of a color of linear light in `space`, where its white is `1`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.4f', m.colorSpace.luminance({0, 1, 0}, 'srgb'))) -- 0.7152
+```
+
+### m.colorSpace.encodeSrgb(value)
+
+Returns one channel of linear light encoded with the curve of sRGB. The curve mirrors below `0` and continues above `1`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.4f', m.colorSpace.encodeSrgb(0.5))) -- 0.7354
+```
+
+### m.colorSpace.decodeSrgb(value)
+
+Returns one channel encoded with the curve of sRGB decoded into linear light, the inverse of `m.colorSpace.encodeSrgb`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.4f', m.colorSpace.decodeSrgb(0.5))) -- 0.2140
+```
+
+### m.colorSpace.encodePq(nits)
+
+Returns the signal of the perceptual quantizer of HDR10, from `0` to `1`, for light in nits. Light below `0` or above `10000` takes the nearest end.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.4f', m.colorSpace.encodePq(1000))) -- 0.7518
+```
+
+### m.colorSpace.decodePq(signal)
+
+Returns the light in nits of a signal of the perceptual quantizer, the inverse of `m.colorSpace.encodePq`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.0f', m.colorSpace.decodePq(1))) -- 10000
+```
+
+## Photometry
+
+The table `m.photometry` converts the physical units of light, which keep the brightness of lights and glowing surfaces true to the real world. The [color guide](../graphics/color.md#physical-light) explains each unit.
+
+### m.photometry.pointIntensity(lumens)
+
+Returns the candelas of a point light that gives `lumens` evenly in every direction, such as a bare bulb.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.1f', m.photometry.pointIntensity(800))) -- 63.7
+```
+
+### m.photometry.spotIntensity(lumens, outerAngle)
+
+Returns the candelas of a spot light that gives `lumens` evenly into a cone whose edge lies `outerAngle` radians from its axis. A narrower cone sends the same light into less room, so it is brighter. An angle that is not above `0` and at most pi raises `The cone of a spot light needs an outer angle above 0 and at most pi radians.`.
+
+```lua
+local m = require('haylen.math')
+
+local flashlight = m.photometry.spotIntensity(300, m.radians(15))
+print(string.format('%.0f', flashlight)) -- 1401
+```
+
+### m.photometry.illuminance(candelas, distance)
+
+Returns the lux that a light of `candelas` gives a surface that faces it `distance` meters away. The light falls with the square of the distance. A distance that is not above `0` raises `The distance to a light must be above 0 meters.`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.1f', m.photometry.illuminance(64, 2))) -- 16.0
+```
+
+### m.photometry.ev100FromCamera(aperture, shutterTime, iso)
+
+Returns the exposure value at ISO 100 of a camera with the f-number `aperture`, the shutter open for `shutterTime` seconds and the sensitivity `iso`. A setting that is not above `0` raises a sentence that names it, such as `The shutter time of a camera must be above 0 seconds.`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.2f', m.photometry.ev100FromCamera(16, 1 / 100, 100))) -- 14.64, a sunny day
+```
+
+### m.photometry.ev100FromLuminance(nits)
+
+Returns the exposure value at ISO 100 that shows a scene whose average luminance is `nits` as middle gray, the way the automatic exposure of a camera works. A luminance that is not above `0` raises `The average luminance of a scene must be above 0 nits.`.
+
+```lua
+local m = require('haylen.math')
+
+print(string.format('%.1f', m.photometry.ev100FromLuminance(4000))) -- 15.0
+```
+
+### m.photometry.exposure(ev100)
+
+Returns the factor that turns light in nits into the values that a screen shows, for an exposure value at ISO 100, so the brightest light that the camera keeps reaches `1`. Each step of the exposure value halves the factor. An emissive surface of a given number of nits draws with that number times the factor.
+
+```lua
+local m = require('haylen.math')
+
+local exposure = m.photometry.exposure(m.photometry.ev100FromCamera(16, 1 / 100, 100))
+print(string.format('%.2f', 1500 * exposure)) -- 0.05, so a sign of 1500 nits looks dim in the sun
 ```
 
 ## Transform2D

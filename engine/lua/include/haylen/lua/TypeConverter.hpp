@@ -52,6 +52,7 @@
 #include "haylen/math/Capsule3.hpp"
 #include "haylen/math/Circle.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/ColorSpace.hpp"
 #include "haylen/math/DualQuat.hpp"
 #include "haylen/math/Easing.hpp"
 #include "haylen/math/EasingCurve.hpp"
@@ -630,6 +631,15 @@ template <> struct EnumNames<haylen::math::Quat::EulerOrder> {
     }
     static std::string_view name(haylen::math::Quat::EulerOrder value) {
         return haylen::math::Quat::eulerOrderName(value);
+    }
+};
+
+template <> struct EnumNames<haylen::math::ColorSpace::Kind> {
+    static std::optional<haylen::math::ColorSpace::Kind> fromName(std::string_view name) {
+        return haylen::math::ColorSpace::kindFromName(name);
+    }
+    static std::string_view name(haylen::math::ColorSpace::Kind value) {
+        return haylen::math::ColorSpace::kindName(value);
     }
 };
 

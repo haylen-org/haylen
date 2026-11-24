@@ -8,6 +8,7 @@
 
 namespace haylen::math {
 
+// A color whose red, green and blue are encoded with the curve of sRGB, the form that people pick and that images store, unless a function says it holds linear light. The channels of an HDR color go above 1.
 struct Color {
     // Hue, saturation and value of a color, with the hue in turns like `fromHsv`.
     struct Hsv {
@@ -42,6 +43,10 @@ struct Color {
 
     // Parses `#RRGGBB` and `#AARRGGBB`, the notations used by Tiled, with or without the hash.
     [[nodiscard]] static std::optional<Color> parse(std::string_view text) noexcept;
+    // Returns the encoded form of a color of linear light, the inverse of `getLinear`.
+    [[nodiscard]] static Color fromLinear(const Color& linear) noexcept;
+    // Returns the color of the light of a black body at `kelvin`, from the red of a candle near 1900 to the blue of a clear sky above 10000, with the largest channel at 1 and the channels that fall outside the gamut of sRGB at 0. Throws `std::invalid_argument` for a temperature outside 1667 to 25000 kelvin.
+    [[nodiscard]] static Color fromTemperature(float kelvin);
     // Hue is measured in turns, so 1/3 is green and values outside 0 to 1 wrap around.
     [[nodiscard]] static Color fromHsv(float hue, float saturation, float value, float alpha = 1.0F) noexcept;
 
@@ -55,7 +60,10 @@ struct Color {
 
     [[nodiscard]] Hsv toHsv() const noexcept;
 
-    // The relative luminance of the color in linear light, from 0 for black to 1 for white, which the contrast rules of accessibility read.
+    // Returns the channels in linear light, where amounts of light add up, keeping the alpha.
+    [[nodiscard]] Color getLinear() const noexcept;
+
+    // The relative luminance of the color in linear light, from 0 for black to 1 for white and above 1 for an HDR color, which the contrast rules of accessibility read.
     [[nodiscard]] float getLuminance() const noexcept;
 
     // The ratio of the luminances of two colors, from 1 to 21, which the contrast rules of accessibility ask to be at least 4.5 for text on its background and 3 for large text.
@@ -71,6 +79,11 @@ struct Color {
 
     [[nodiscard]] constexpr Color operator*(const Color& other) const noexcept {
         return {r * other.r, g * other.g, b * other.b, a * other.a};
+    }
+
+    // Scales red, green and blue and keeps the alpha, such as a light color made brighter than white.
+    [[nodiscard]] constexpr Color operator*(float factor) const noexcept {
+        return {r * factor, g * factor, b * factor, a};
     }
 
     [[nodiscard]] constexpr Color withAlpha(float alpha) const noexcept {

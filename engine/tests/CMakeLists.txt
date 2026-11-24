@@ -75,6 +75,7 @@ set(HAYLEN_TEST_SOURCES
   input/ActionMapTests.cpp
   input/InputRecordingTests.cpp
   input/PointerEmulationTests.cpp
+  math/ColorSpaceTests.cpp
   math/Geometry3Tests.cpp
   math/MatrixTests.cpp
   math/PolygonTests.cpp

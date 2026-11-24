@@ -110,6 +110,7 @@ set(HAYLEN_LUA_SOURCES
   src/input/InputRecordingBinding.cpp
   src/localization/LocalizationBinding.cpp
   src/math/ChoiceBinding.cpp
+  src/math/ColorSpaceBinding.cpp
   src/math/Geometry3Binding.cpp
   src/math/MathBinding.cpp
   src/math/MatrixBinding.cpp

@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <string>
 
+#include "haylen/math/ColorSpace.hpp"
+
 namespace haylen::graphics {
 
 // The text holds the counts of cosines in one byte, the largest of the higher cosines in one, the average color in three, and two bytes for each higher cosine with its three channels on a root scale, which keeps the faint ones apart.
@@ -135,13 +137,11 @@ Image ImagePlaceholder::decode(std::string_view code, int width, int height) {
 }
 
 float ImagePlaceholder::toLinear(std::uint8_t channel) noexcept {
-    const float value = static_cast<float>(channel) / 255.0F;
-    return value <= 0.04045F ? value / 12.92F : std::pow((value + 0.055F) / 1.055F, 2.4F);
+    return math::ColorSpace::decodeSrgb(static_cast<float>(channel) / 255.0F);
 }
 
 std::uint8_t ImagePlaceholder::toByte(float linear) noexcept {
-    const float value = std::clamp(linear, 0.0F, 1.0F);
-    const float encoded = value <= 0.0031308F ? value * 12.92F : 1.055F * std::pow(value, 1.0F / 2.4F) - 0.055F;
+    const float encoded = math::ColorSpace::encodeSrgb(std::clamp(linear, 0.0F, 1.0F));
     return static_cast<std::uint8_t>(std::lround(encoded * 255.0F));
 }
 
