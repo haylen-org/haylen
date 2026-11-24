@@ -879,6 +879,8 @@ Andamento: o dono acredita que o paddle parou porque o cursor saiu da janela, e 
 
 Evidência: um app de teste recebeu 1000 movimentos de mouse por segundo na própria fila do AppKit, com o Mac carregado pelos builds (carga média de 10 a 14), por cerca de 2,5 minutos (16,5 mil quadros a cerca de 118 fps). Nenhum movimento esperou 1 s ou mais na fila (o máximo foi 354 ms), e o quadro mais longo foi de 313 ms, uma vez no começo, com os outros abaixo de 202 ms, então a thread do quadro, a fila de eventos e o caminho da entrada nunca pararam por segundos. Com o cursor fora da janela, o SDL 3.4 no Cocoa descarta todo movimento enquanto o cursor real não está sobre a janela, que é o comportamento normal do sistema sem botão pressionado e o sintoma do dono. Falta o commit do teste de regressão `MouseMotionTest`, que manda movimento a 1 kHz pela fila do SDL por 4 s num engine headless e exige o movimento em todo quadro, nenhum evento perdido e nenhuma espera de 250 ms ou mais.
 
+Os quadros longos com a máquina carregada vêm da máquina tirando a CPU da thread do quadro, não de trabalho da engine: em 10 minutos de um app de paddle no player headless (36 mil quadros, com 2000 tabelas Lua de vida curta por quadro e carga média de 7 a 15), o tempo de parede por quadro teve p50 de 16,6 ms, p99 de 21,8 ms e máximo de 325 ms, enquanto o tempo de CPU da thread do quadro teve p50 de 1,1 ms, p99 de 1,6 ms e máximo de 14,8 ms. Cada quadro lento teve centenas de trocas de contexto involuntárias e nenhuma voluntária, então nada esperou disco nem trava, e nenhum coincidiu com o coletor do Lua.
+
 #### Acceptance criteria
 
 - [ ] Pronto quando uma sessão longa de jogo com entrada contínua não tem nenhuma pausa de entrada em nenhum desktop.
