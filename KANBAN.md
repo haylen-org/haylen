@@ -4,7 +4,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 7 / not set · **Next ID:** KB-293
+**Active WIP:** 7 / not set · **Next ID:** KB-294
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -27,6 +27,7 @@
 | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
+| **[KB-293 · Prender o cursor visível dentro da janela](#kb-293)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | — |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -881,6 +882,8 @@ Etapa: Testes.
 O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda (visto pelo dono no macOS, sem passo para reproduzir, com o paddle de um jogo parado): achar a causa com medições do tempo de cada quadro, do caminho dos eventos da janela até o app e do que bloqueia a thread do quadro, conferir no macOS, no Windows e no Linux, corrigir na raiz e cobrir com um teste que falha sem a correção. Pronto quando uma sessão longa de jogo com entrada contínua não tem nenhuma pausa de entrada em nenhum desktop.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Andamento: o dono acredita que o paddle parou porque o cursor saiu da janela, e uma janela só recebe o movimento do mouse enquanto o cursor está sobre ela ou com um botão pressionado, em todo sistema. O stream de entrada confere com evidência se os eventos param com o cursor dentro da janela, com a máquina parada e carregada. Prender o cursor visível na janela é o cartão KB-293.
 
 #### Acceptance criteria
 
@@ -7546,6 +7549,30 @@ A complexidade é uma estimativa provisória.
 
 - [ ] A montagem das instâncias usa as lanes SIMD com o caminho escalar de referência, com teste de paridade e um caso de benchmark.
 - [ ] Um quadro que desenha o mesmo que o anterior não aloca nada na montagem.
+
+#### Attachments
+
+- None
+
+<a name="kb-293"></a>
+### KB-293 — Prender o cursor visível dentro da janela
+
+- **Status:** todo
+- **Type:** feature
+- **Priority:** high
+- **Complexity:** 4
+
+#### Description
+
+Jogos em que o cursor fica visível, como um paddle guiado pelo mouse ou estratégia com rolagem pela borda, prendem o cursor dentro da janela para nunca perder o movimento quando ele chegaria à borda. A janela ganha `window.setMouseConfined(confined)` em Lua e `platform::Window::setMouseConfined` em C++, com a resposta `platform::SystemAnswer` como as outras chamadas que o sistema pode recusar, pelo grab do mouse do SDL no macOS, no Windows e no Linux. Na web o navegador não deixa uma página prender um cursor visível (só travá-lo escondido, que é o `window.setMouseLocked`), e no celular e na TV não há cursor, então a resposta é `unsupported` com o motivo. O cursor solta sozinho quando a janela perde o foco e volta a ficar preso quando ela o recebe, como o sistema faz.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] `window.setMouseConfined(true)` mantém o cursor visível dentro da janela no macOS, no Windows e no Linux, e `false` o solta.
+- [ ] A web, o iOS, o tvOS, o visionOS e o Android respondem `unsupported` com uma frase clara que diz o motivo.
+- [ ] Testes de engine, teste Lua, um teste no projeto de testes e a referência em `docs/lua-api/window.md`.
 
 #### Attachments
 
