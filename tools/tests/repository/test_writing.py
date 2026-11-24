@@ -60,10 +60,10 @@ class WritingTest:
         assert wrong == []
 
     def test_no_file_names_another_engine_or_the_authors_and_tools_of_third_party_art(self):
-        # The project plan records the requests of the owner as they were made, and the bytes of binary files hold the metadata that tools write. The names are kept encoded, so this test names none of them itself.
+        # The bytes of binary files hold the metadata that tools write. The names are kept encoded, so this test names none of them itself.
         words = base64.b64decode(
             "a2VubmV5CnJ1YmJlcmR1Y2sKcmFuZG9tbWluZApvcGVuZ2FtZWFydAphc2Vwcml0ZQp0ZXh0dXJlcGFja2VyCnBpeGVsbWF0b3IKZ2FtZXN5bnRoCnNvdW5kYm9vdGgKZmwgc3R1ZGlvCmxvZ2ljIGV4cHJlc3MKYWRtb2IKZmlyZWJhc2UKYnVubnltYXJrCmdvZG90CnVucmVhbCBlbmdpbmUKY29jb3MyZApkZWZvbGQKZ2FtZW1ha2VyCnBoYXNlcgpwaXhpanMKZ29vZ2xlIHNpZ24KZ29vZ2xlIGlkZW50aXR5CmVwaWMgb25saW5l"
         ).split(b"\n")
         names = re.compile(b"|".join(re.escape(word) for word in words), re.IGNORECASE)
-        found = [name for name in TrackedFiles.names() if name != "PROJECT.md" and names.search((Repository.ROOT / name).read_bytes())]
+        found = [name for name in TrackedFiles.names() if names.search((Repository.ROOT / name).read_bytes())]
         assert found == []

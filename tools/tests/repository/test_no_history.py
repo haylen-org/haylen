@@ -35,7 +35,7 @@ class NoHistoryTest:
         r"\bpass(?:ou|aram) a se chamar\b",
         r"\bdeix(?:ou|aram) de\b",
     )
-    PORTUGUESE_FILES = ("KANBAN.md",)
+    PORTUGUESE_FILES = ("PROJECT.md",)
     # The patches of dependencies hold the text of their projects.
     SKIPPED = ("engine/cmake/patches/",)
 
