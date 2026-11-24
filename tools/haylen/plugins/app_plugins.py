@@ -9,6 +9,7 @@ from haylen.core.configuration import Configuration
 from haylen.core.errors.haylen_error import HaylenError
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.invalid_option import InvalidOption
+from haylen.core.folders import Folders
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
 from haylen.plugins.plugin_lock import PluginLock
@@ -94,10 +95,10 @@ class AppPlugins:
         values = dict(listed.get(manifest.id, {}).get("parameters", {}))
         copy = self.folder / "plugins" / manifest.id
         if reference and copy.exists() and copy.resolve() != source:
-            shutil.rmtree(copy)
+            Folders.remove(copy)
             self.context.terminal.info(f"Deleted the copy `{Repository.shown(copy)}`, since the app now references the plugin.")
         if not reference and source != copy.resolve():
-            shutil.rmtree(copy, ignore_errors=True)
+            Folders.remove(copy)
             shutil.copytree(source, copy, symlinks=True, ignore=AppPlugins.IGNORED)
 
         for name, parameter in manifest.parameters.items():
@@ -126,7 +127,7 @@ class AppPlugins:
         copy = self.folder / "plugins" / identifier
         if identifier not in listed and not copy.exists():
             raise InvalidOption(f'The app `{Repository.shown(self.folder)}` has no plugin "{identifier}". List its plugins with "haylen plugin list".')
-        shutil.rmtree(copy, ignore_errors=True)
+        Folders.remove(copy)
         if copy.parent.is_dir() and not any(copy.parent.iterdir()):
             copy.parent.rmdir()
         if identifier in listed:

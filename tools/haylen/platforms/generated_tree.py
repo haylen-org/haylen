@@ -1,5 +1,4 @@
 import hashlib
-import shutil
 from pathlib import Path
 
 
@@ -52,8 +51,3 @@ class GeneratedTree:
         for relative in sorted(self.written):
             hashed.update(relative.encode() + b"\0" + (self.root / relative).read_bytes())
         return hashed.hexdigest()
-
-    @staticmethod
-    def remove(folder: Path) -> None:
-        if folder.exists() or folder.is_symlink():
-            shutil.rmtree(folder)

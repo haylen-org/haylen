@@ -7,9 +7,9 @@ from types import MappingProxyType
 from haylen.content.protected_release import ProtectedRelease
 from haylen.content.release_package import ReleasePackage
 from haylen.core.errors.invalid_option import InvalidOption
+from haylen.core.folders import Folders
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
-from haylen.platforms.generated_tree import GeneratedTree
 
 
 class SteamDepots:
@@ -70,8 +70,8 @@ class SteamDepots:
             raise InvalidOption(f'The depots {listed} have no ID. Give each one with "<name>=<id>" in the depots of the format "steam", the IDs that Steamworks shows.')
 
         content = output / "content"
-        GeneratedTree.remove(content)
-        GeneratedTree.remove(output / "scripts")
+        Folders.remove(content)
+        Folders.remove(output / "scripts")
         destination = content / depot / product.name if bundle else content / depot
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(product, destination, symlinks=True)

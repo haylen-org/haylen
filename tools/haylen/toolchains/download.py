@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 from haylen.core.errors.missing_toolchain import MissingToolchain
+from haylen.core.folders import Folders
 from haylen.terminal import Terminal
 
 
@@ -49,7 +50,7 @@ class Download:
             shutil.rmtree(partial)
             return
         # A folder without its executable is what an unpack that stopped halfway left.
-        shutil.rmtree(folder, ignore_errors=True)
+        Folders.remove(folder)
         unpacked.replace(folder)
         if root:
             partial.rmdir()

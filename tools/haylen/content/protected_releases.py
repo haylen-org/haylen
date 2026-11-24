@@ -10,10 +10,10 @@ from haylen.content.release_inspection import ReleaseInspection
 from haylen.content.release_package import ReleasePackage
 from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.missing_release import MissingRelease
+from haylen.core.folders import Folders
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.backend_registry import BackendRegistry
-from haylen.platforms.generated_tree import GeneratedTree
 from haylen.platforms.product_folders import ProductFolders
 
 
@@ -53,7 +53,7 @@ class ProtectedReleases:
         root = ProtectedReleases.root(app)
         folder = ProtectedReleases.folder(app, profile)
         staging = root / f"{profile}.new"
-        GeneratedTree.remove(staging)
+        Folders.remove(staging)
         package = source.package.stage(root / f"{profile}.package")
 
         command: list[object] = ["build", package, "--keys", keys, "--profile", profile, "--build", app.build, "--output", staging, "--cache", root.parent / "content-cache"]
@@ -66,13 +66,13 @@ class ProtectedReleases:
             command += ["--shard-target", content.shard_target]
         self.context.terminal.step(f'Building the protected release of `{Repository.shown(app.folder)}` for the profile "{profile}"')
         self.tool.run(command)
-        GeneratedTree.remove(folder)
+        Folders.remove(folder)
         staging.rename(folder)
 
         shipped = root / f"{profile}.shipped"
         packs = root / f"{profile}.packs"
-        GeneratedTree.remove(shipped)
-        GeneratedTree.remove(packs)
+        Folders.remove(shipped)
+        Folders.remove(packs)
         if not source.content_server and not source.packs:
             self.warn_store_size(folder, content)
             return ProtectedRelease(profile, folder, folder, MappingProxyType({}))
@@ -116,10 +116,10 @@ class ProtectedReleases:
     def app_files(self, source: ReleasePackage, release: ProtectedRelease) -> tuple[str, ...]:
         """The names of the files of a release that its app domain needs to start, the manifests and the shards of the code of the app, which the content tool finds in the manifests."""
         boot = ProtectedReleases.root(source.app) / "app-files"
-        GeneratedTree.remove(boot)
+        Folders.remove(boot)
         self.tool.run(["stage", release.folder, "--keys", self.keys(source.app), "--output", boot, "--app-only"])
         names = tuple(sorted(path.name for path in boot.iterdir()))
-        GeneratedTree.remove(boot)
+        Folders.remove(boot)
         return names
 
     def bootstrap_source(self, app: AppManifest, profile: str) -> bytes:
