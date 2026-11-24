@@ -624,6 +624,7 @@ The tests of plugins open their test with `--test <code>` and read its checks, w
 | --- | --- | --- | --- |
 | PLG-008, PLG-009, PLG-019 | The native screen that covers the app and closes, the screen of the plugin that answers the call, a cancel, a restart under the screen and the screen of SwiftUI, and the purchases of the fake store with a cancel and a restore. | The same, with the remote. | The same, but the screen of SwiftUI, which Android lacks. |
 | PLG-024 | The text that the native part of the plugin of the test wrote through the native part of the plugin it depends on. | The same, with the remote. | The same. |
+| PLG-023 | The frames that Swift fills in data views, which a texture of the app reads in place, and the view of the app that Swift sums and marks, whose mark the app reads back from the same memory. | The same. | The same, with Kotlin. |
 | PLG-025 | The prompt of notifications and the tap on a notification while the app shows, from the Home Screen and after the system ended the app. | The test does not run there. | The same with the permission dialog, and the tap on a notification after the app left the recent apps. |
 | PLG-016 | The prompts of the camera and the microphone, the cameras, a photo and the microphone with its level, on a device, since the simulator has no camera. | The test does not run there. | The same, on the emulator and on a device. |
 | PLG-017 | The prompt of the location, the place that the test simulates and the native map. | The same, with the remote. | The same, with test providers of the location. |
