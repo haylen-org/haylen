@@ -4,7 +4,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 4 / not set · **Next ID:** KB-302
+**Active WIP:** 4 / not set · **Next ID:** KB-303
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -284,6 +284,7 @@
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
+| **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-002 · Plugin de exemplo do Tiny Island só com APIs da plataforma](#kb-002)**<br>🟢 low · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
@@ -7752,6 +7753,27 @@ A complexidade é uma estimativa provisória.
 #### Acceptance criteria
 
 - [ ] A mensagem, o local e os botões da tela de erro aparecem na árvore de acessibilidade no Windows e nas outras plataformas, conferido por um teste de engine e um teste de UI.
+
+#### Attachments
+
+- None
+
+<a name="kb-302"></a>
+### KB-302 — A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 2
+
+#### Description
+
+O CMake 4.2 da imagem Ubuntu da CI escreve `cmake_test_discovery_<hash>.json` em `engine/tests/` quando descobre os testes com `gtest_discover_tests`, que trabalha na pasta dos fontes, e deixa o arquivo lá. Num checkout que depois roda o pytest, `test_file_names` falha por causa dele. O CMake 4.4 do macOS não faz isso, e a CI não chega a ver o arquivo. O esperado é que a descoberta trabalhe só na pasta do build, sem escrever nada nos fontes.
+
+#### Acceptance criteria
+
+- [ ] Uma build do Linux com o CMake da imagem da CI não deixa nenhum arquivo novo em `engine/tests/`.
+- [ ] A descoberta dos testes continua achando todos os testes dos dois programas.
 
 #### Attachments
 
