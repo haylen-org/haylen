@@ -257,7 +257,7 @@ Result: `id` and `folder`.
 haylen project inspect [app] [--target] [--config] [--engine-config] [--architecture]
 ```
 
-Shows the resolved project of the app for a target without generating anything: the target, the backend, the SDK slice of every architecture, the oldest system version with where it comes from and why, the plugins in load order with their parameters, the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from, and every merged contribution with its owners. Each part is a group with a table.
+Shows the resolved project of the app for a target without generating anything. It shows the target, the backend and the SDK slice of every architecture, and the oldest system version with where it comes from and why. It lists the plugins in load order with their parameters. It lists the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from, and every merged contribution with its owners. Each part is a group with a table.
 
 ```text
 Haylen Tests for web, Debug, with the backend web
@@ -277,7 +277,7 @@ Contributions  2
   webModule  native-demo  {"path": "web/native-demo.js"}
 ```
 
-Result: `app` (`folder`, `name`, `identifier`, `version`, `build`, `category`, `kind`), `backend`, `identity` and `targets`, one per architecture, each with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion` (`value`, `origin`, `justification`), `plugins`, `contributions` (each with `type`, `fields`, `owners` and `origins`), `settings` (each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`), `nativeLibraries` and `permissions`.
+Result: `app`, `backend`, `identity` and `targets`. The `app` holds `folder`, `name`, `identifier`, `version`, `build`, `category` and `kind`. The `targets` hold one entry per architecture, with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion`, `plugins`, `contributions`, `settings`, `nativeLibraries` and `permissions`. The `minimumSystemVersion` holds `value`, `origin` and `justification`, and each contribution holds `type`, `fields`, `owners` and `origins`. The `settings` hold each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`.
 
 ## Machine and SDKs
 

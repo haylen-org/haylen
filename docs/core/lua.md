@@ -415,7 +415,15 @@ end)
 
 The engine receives these failures through the handler that it sets with `async.onFailure`. The same handler receives the errors of `ffi` callbacks that fail outside any `ffi` call, of the handlers of Varn's servers and of the callbacks of `http.client.stream`, each with its stack as a list of frames. An app that sets a handler of its own takes them over, and they no longer stop the app.
 
-A rejection that the engine reports another way never stops the app like this. Such rejections are a scene change whose load failed, whose error goes to `onError` or the log as [`haylen.scene`](../lua-api/scene.md#errors) describes, a group of `context:preload` that failed the load it belongs to, a job that ended with its owner as [`haylen.jobs`](../lua-api/jobs.md) describes, the content promises of [`haylen.content`](../lua-api/content.md#errors), a permission or a capability that the person or the platform refused, which the log reports once, a GPU capture that failed after it started, which the log reports, and a platform call, a dialog or a screen that was cancelled.
+A rejection that the engine reports another way never stops the app like this. Such rejections are these:
+
+- A scene change whose load failed, whose error goes to `onError` or the log as [`haylen.scene`](../lua-api/scene.md#errors) describes.
+- A group of `context:preload` that failed the load it belongs to.
+- A job that ended with its owner, as [`haylen.jobs`](../lua-api/jobs.md) describes.
+- The content promises of [`haylen.content`](../lua-api/content.md#errors).
+- A permission or a capability that the person or the platform refused, which the log reports once.
+- A GPU capture that failed after it started, which the log reports.
+- A platform call, a dialog or a screen that was cancelled.
 
 ### Long computations
 
@@ -527,7 +535,7 @@ Once the app stops, such as for a restart, the code that stops it runs again, ev
 }
 ```
 
-The budget counts with a hook of Lua on every coroutine, which reads the clock every few hundred instructions. So code in development runs a little slower than in a shipped app, which has no budget and no hook. The budget belongs to the engine, so `debug.sethook` raises an error in development, where the budget and the [debugger](../tools/debugger.md) hold the hooks of Lua. A native function that runs long finishes before the budget can stop it, and [native work](#native-work-and-its-bounds) explains how the engine bounds it. Lua turns the hooks of a thread off while it runs a `__gc` metamethod, so in development `setmetatable` and `debug.setmetatable` wrap the `__gc` function of the metatable they set in a function of the engine that runs it in a coroutine of its own, where the budget stops a finalizer that never ends like any other code. So `getmetatable(object).__gc` returns that function in development. A `__gc` function that the app puts into a metatable after the last `setmetatable` with it, or that native code sets, runs without the budget, so finalizers of an app stay short. While the debugger halts the app, the budget waits, and the code gets its whole time again once the app goes on.
+The budget counts with a hook of Lua on every coroutine, which reads the clock every few hundred instructions. So code in development runs a little slower than in a shipped app, which has no budget and no hook. The budget belongs to the engine, so `debug.sethook` raises an error in development, where the budget and the [debugger](../tools/debugger.md) hold the hooks of Lua. A native function that runs long finishes before the budget can stop it, and [native work](#native-work-and-its-bounds) explains how the engine bounds it. Lua turns the hooks of a thread off while it runs a `__gc` metamethod. So in development, `setmetatable` and `debug.setmetatable` wrap the `__gc` function of the metatable they set in a function of the engine. That function runs the finalizer in a coroutine of its own, where the budget stops a finalizer that never ends like any other code. So `getmetatable(object).__gc` returns that function in development. A `__gc` function that the app puts into a metatable after the last `setmetatable` with it, or that native code sets, runs without the budget, so finalizers of an app stay short. While the debugger halts the app, the budget waits, and the code gets its whole time again once the app goes on.
 
 ### Going on after an error
 
@@ -563,7 +571,14 @@ The player checks `haylen.json`, `source/`, `content/` and the `plugin.json` and
 - **A file under `content/`** reloads the assets read from it without a restart. Textures, shaders, JSON, fonts and sounds change in place, so sprites that already use a texture show the new pixels, text lays out again with the new glyphs and the next voice of a sound plays the new samples. Other asset types leave the cache, so the next load reads the new file, and every live asset that went stale gets the event `assetChanged`, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files.
 - **A removed module** that no code of the app requires leaves the app in place: its names leave `package.loaded`, and what its top level registered without an owner ends with it, so a later `require` of it fails as for a module that never existed. A module that another module, `source/main.lua` or another file of the app that is no module requires, or that the app keeps as an autoload, restarts the app instead.
 - **A Lua file that no module loaded yet** changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.
-- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `haylen.json`, `source/main.lua` or `plugin.json`, a removed module that code of the app requires, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `lua.reload` of `haylen.json` is `"restart"`. A restart works even from an app whose `haylen.json` failed to load, so fixing the file restarts it.
+- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. A restart works even from an app whose `haylen.json` failed to load, so fixing the file restarts it. These changes restart the app:
+  - A changed `haylen.json`, `source/main.lua` or `plugin.json`.
+  - A removed module that code of the app requires.
+  - A module that now returns another kind of value, or another value that is neither a table nor a function, such as a string.
+  - A module whose functions capture two different variables with the same name.
+  - A module that called `hotReload.restartOnChange()`.
+  - A save that touches more than 32 loaded modules.
+  - Every changed module while `lua.reload` of `haylen.json` is `"restart"`.
 - **Other files** never count: hidden files, backup files and files under `source/` that are not Lua. So the swap and backup files that editors write change nothing. A file that is still being written waits for the next check, and a change saved while the app restarts reaches the app that starts.
 
 ### Resume or restart
