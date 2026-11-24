@@ -1,0 +1,117 @@
+package com.haylen.uitests
+
+import android.content.Intent
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Until
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+// The address field of the test "Text fields" types through the keys of the keyboard of the system: each key types once, Backspace deletes, the keyboard stays open when the field is tapped again and comes back after it hid. The keyboard covers the status line of the test on a phone in landscape, so the tests read the text of the field itself.
+class TextInputTests : HaylenUiTestCase() {
+    companion object {
+        const val FIELD = "https://haylen.dev"
+        // The time during which the tests watch that the keyboard stays, after a tap that could close it.
+        const val WATCH = 1_500L
+    }
+
+    override val launchArguments = listOf("--test", "GUI-005")
+
+    // The test focuses its first field, which edits and opens the keyboard over the address field on a phone in landscape, so the back button hides the keyboard before the tests tap the address field, as a person does.
+    @Before
+    fun openTheAddressField() {
+        waitForKeyboard()
+        device.pressBack()
+        assertTrue("The keyboard stays open after the back button.", device.wait(Until.gone(keyboard()), TIMEOUT))
+        startTyping()
+    }
+
+    @Test
+    fun eachKeyTypesOnceAndBackspaceDeletes() {
+        type("oi")
+        expectText("oi")
+        pressKey("Delete")
+        expectText("o")
+        type("la")
+        expectText("ola")
+        saveScreenshot("text-typed")
+    }
+
+    @Test
+    fun theKeyboardStaysOpenWhenTheFieldIsTappedAgain() {
+        type("mar")
+        expectText("mar")
+        waitFor(FIELD).click()
+        watchTheKeyboard("The keyboard closes when the field that edits is tapped again.")
+        type("e")
+        expectText("mare")
+        saveScreenshot("keyboard-stays")
+    }
+
+    @Test
+    fun theKeyboardComesBackAfterItHid() {
+        type("ilha")
+        expectText("ilha")
+
+        // The back button hides the keyboard while the field goes on editing, and a tap on the field shows it again.
+        device.pressBack()
+        assertTrue("The keyboard stays open after the back button.", device.wait(Until.gone(keyboard()), TIMEOUT))
+        startTyping()
+        type("s")
+        expectText("ilhas")
+
+        // The keyboard comes back with the app.
+        goHome()
+        returnToApp()
+        waitForKeyboard()
+        type("e")
+        expectText("ilhase")
+        saveScreenshot("keyboard-back")
+    }
+
+    private fun startTyping() {
+        waitFor(FIELD).click()
+        waitForKeyboard()
+    }
+
+    private fun keyboard() = By.pkg(device.executeShellCommand("settings get secure default_input_method").trim().substringBefore("/"))
+
+    // Taps the key of the keyboard of the system whose content description is the name, such as "o" or "Delete".
+    private fun pressKey(name: String) {
+        waitFor(keyboard().desc(name), "the key \"$name\" of the keyboard").click()
+    }
+
+    // Types the letters with the keys of the keyboard of the system, one tap each.
+    private fun type(text: String) {
+        for (letter in text) {
+            pressKey(letter.toString())
+        }
+    }
+
+    // Fails when the keyboard closes while the test watches it.
+    private fun watchTheKeyboard(message: String) {
+        val deadline = System.currentTimeMillis() + WATCH
+        while (System.currentTimeMillis() < deadline) {
+            assertTrue(message, device.hasObject(keyboard()))
+            Thread.sleep(POLL)
+        }
+    }
+
+    // Brings the app back to the front the way its icon on the launcher does, which resumes its task without a new start.
+    private fun returnToApp() {
+        val context = instrumentation.context
+        val intent = context.packageManager.getLaunchIntentForPackage(identifier) ?: error("The app \"$identifier\" is not installed.")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+        waitForApp()
+    }
+
+    private fun expectText(text: String) {
+        var shown: String? = null
+        val settled = poll {
+            shown = labelOf(element(FIELD))
+            shown == text
+        }
+        assertTrue("The address field shows \"$shown\" instead of \"$text\". ${describeScreen()}", settled)
+    }
+}
