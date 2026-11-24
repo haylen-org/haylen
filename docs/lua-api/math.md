@@ -257,12 +257,16 @@ end
 
 ### vec:normalized()
 
-Returns a vector of length `1` in the same direction. A zero vector stays zero.
+Returns a vector of length `1` in the same direction. A vector of length zero has no direction and raises `The vector has no direction, because its length is zero.`, and one with a component that is not a finite number raises `The vector has no direction, because one of its components is not a finite number.`. When a zero vector is a normal case, such as a stick at rest, check `vec:isZero()` first.
 
 ```lua
 local m = require('haylen.math')
 
 print(m.vec2(0, -8):normalized()) -- Vec2(0.0, -1.0)
+
+local stick = m.vec2(0, 0)
+local heading = not stick:isZero() and stick:normalized() or nil
+print(heading) -- nil
 ```
 
 ### vec:dot(other)
@@ -3421,9 +3425,19 @@ local m = require('haylen.math')
 print(m.transform2d({300, 200}, m.pi / 3):translation()) -- Vec2(300.0, 200.0)
 ```
 
+### transform:isInvertible()
+
+Returns `true` when the transform has an inverse. A transform that squashes the plane onto a line or a point, such as one with a zero scale, has none. The test compares the determinant with the lengths of the axes, so a tiny scale that keeps the shape still has an inverse.
+
+```lua
+local m = require('haylen.math')
+
+print(m.transform2d({0, 0}, 0, {0.001, 0.001}):isInvertible(), m.scaling({0, 1}):isInvertible()) -- true false
+```
+
 ### transform:inverse()
 
-Returns the inverse transform, which maps transformed points back. A transform with a determinant of `0`, such as one with a zero scale, returns a transform with every coefficient `0`.
+Returns the inverse transform, which maps transformed points back. A transform without an inverse, as `transform:isInvertible` tells, raises `The transform has no inverse, because it squashes the plane flat and its determinant is zero.`.
 
 ```lua
 local m = require('haylen.math')
@@ -4473,7 +4487,7 @@ print(arc:point(0.5))
 
 ### spline:tangent(t)
 
-Returns the direction of travel at the parameter `t`, as a `Vec2` of length 1.
+Returns the direction of travel at the parameter `t`, as a `Vec2` of length 1. Where the curve stands still, such as on points that repeat, it has no direction and raises `The spline stands still at this parameter, so it has no direction.`.
 
 ```lua
 local m = require('haylen.math')
@@ -4503,7 +4517,7 @@ scene.push({
 
 ### spline:tangentAtDistance(distance)
 
-Returns the direction of travel at `distance` world units along the curve, as a `Vec2` of length 1, such as to turn a cart along its rail.
+Returns the direction of travel at `distance` world units along the curve, as a `Vec2` of length 1, such as to turn a cart along its rail. It raises the error of `spline:tangent` where the curve stands still.
 
 ```lua
 local m = require('haylen.math')

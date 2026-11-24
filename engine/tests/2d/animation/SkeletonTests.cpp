@@ -145,6 +145,16 @@ TEST_F(SkeletonTest, ReachesTargetsWithTwoBones) {
     test::VectorExpectations::expectNear(skeleton.getBoneWorld(lower).apply({30.0F, 0.0F}), {70.0F, -52.0F});
 }
 
+// A bone whose parent is scaled to nothing has no place inside the parent for the target of a transform constraint, so it keeps its position and the pose goes on.
+TEST_F(SkeletonTest, KeepsTheBonesOfAParentScaledToNothingWhereTheyAre) {
+    test::EngineFixture fixture;
+    Skeleton skeleton(makeData(fixture, R"({"atlas": "a", "bones": [{"name": "root"}, {"name": "hidden", "parent": "root", "scaleX": 0, "scaleY": 0}, {"name": "follower", "parent": "hidden", "x": 5}, {"name": "aim", "parent": "root", "x": 40, "y": 10}], "transform": [{"name": "stick", "target": "aim", "bones": ["follower"], "rotateMix": 0, "translateMix": 1}]})"));
+    skeleton.pose();
+    const std::optional<std::size_t> follower = skeleton.findBone("follower");
+    ASSERT_TRUE(follower.has_value());
+    test::VectorExpectations::expectNear(skeleton.getBoneWorld(*follower).getTranslation(), {0.0F, 0.0F});
+}
+
 TEST_F(SkeletonTest, SwapsSkinsAttachmentsAndDeformsMeshes) {
     test::EngineFixture fixture;
     Skeleton skeleton(makeData(fixture));

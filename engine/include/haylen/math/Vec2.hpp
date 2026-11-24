@@ -1,6 +1,8 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace haylen::math {
 
@@ -64,13 +66,19 @@ struct Vec2 {
         return x == 0.0F && y == 0.0F;
     }
 
-    [[nodiscard]] Vec2 getNormalized() const noexcept {
-        const float magnitude = getLength();
-        if (magnitude <= 1e-6F) {
-            return {};
+    // Returns the vector with a length of one. It scales by the largest component first, so vectors far below or above the range of a squared float keep their direction. Throws `std::invalid_argument` for a zero vector or one with a component that is not finite, which have no direction.
+    [[nodiscard]] Vec2 getNormalized() const {
+        if (!std::isfinite(x) || !std::isfinite(y)) {
+            throw std::invalid_argument("The vector has no direction, because one of its components is not a finite number.");
         }
 
-        return *this / magnitude;
+        const float largest = std::max(std::fabs(x), std::fabs(y));
+        if (largest == 0.0F) {
+            throw std::invalid_argument("The vector has no direction, because its length is zero.");
+        }
+
+        const Vec2 scaled = *this / largest;
+        return scaled / scaled.getLength();
     }
 
     [[nodiscard]] constexpr Vec2 getPerpendicular() const noexcept {

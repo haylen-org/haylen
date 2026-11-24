@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Math.hpp"
@@ -94,9 +95,16 @@ TEST(Transform2DTest, ComposesAndInverts) {
     EXPECT_EQ(Transform2D::identity().apply(Vec2(4.0F, 5.0F)), Vec2(4.0F, 5.0F));
 }
 
-TEST(Transform2DTest, SingularInverseCollapsesToZero) {
+// A transform that squashes the plane has no inverse, and asking for one raises an error instead of a transform of zeros, while a tiny scale that keeps the shape still inverts.
+TEST(Transform2DTest, RefusesTheInverseOfASingularTransform) {
     const Transform2D singular = Transform2D::scaling(Vec2(0.0F, 1.0F));
-    EXPECT_EQ(singular.getInverse().apply(Vec2(3.0F, 4.0F)), Vec2{});
+    EXPECT_FALSE(singular.isInvertible());
+    EXPECT_THROW(static_cast<void>(singular.getInverse()), std::invalid_argument);
+    EXPECT_FALSE((Transform2D{1.0F, 2.0F, 2.0F, 4.0F, 0.0F, 0.0F}).isInvertible());
+
+    const Transform2D tiny = Transform2D::compose({5.0F, 0.0F}, 0.4F, {1e-4F, 1e-4F});
+    ASSERT_TRUE(tiny.isInvertible());
+    EXPECT_NEAR(tiny.getInverse().apply(tiny.apply({3.0F, 4.0F})).y, 4.0F, 1e-2F);
 }
 
 TEST(Transform2DTest, SkewShearsTheVerticalAxis) {

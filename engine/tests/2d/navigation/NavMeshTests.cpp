@@ -231,6 +231,16 @@ TEST_F(NavMeshTest, StepsIntoRoomFromPointsCloserThanTheRadiusToWalls) {
     EXPECT_NEAR(cornered[1].x, 10.0F, 1e-3F);
     EXPECT_NEAR(cornered[1].y, 10.0F, 1e-3F);
 
+    // A start right on the corner of the boundary steps the same way, and an agent without a radius walks from right on the corner of an obstacle.
+    const std::vector<math::Vec2> onCorner = copyPath(mesh.findPath({0.0F, 0.0F}, {100.0F, 100.0F}, 10.0F));
+    ASSERT_GE(onCorner.size(), 3U);
+    EXPECT_NEAR(onCorner[1].x, 10.0F, 1e-3F);
+    EXPECT_NEAR(onCorner[1].y, 10.0F, 1e-3F);
+    const std::vector<math::Vec2> fromObstacle = copyPath(mesh.findPath({140.0F, 130.0F}, {250.0F, 20.0F}, 0.0F));
+    ASSERT_GE(fromObstacle.size(), 2U);
+    EXPECT_EQ(fromObstacle.back(), (math::Vec2{250.0F, 20.0F}));
+    expectInside(mesh, fromObstacle);
+
     // A corridor narrower than the agent leaves no room anywhere in it.
     navigation2d::NavMesh corridor;
     corridor.setBoundary(box(0.0F, 0.0F, 200.0F, 12.0F));

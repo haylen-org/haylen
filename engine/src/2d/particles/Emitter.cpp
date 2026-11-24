@@ -484,8 +484,12 @@ math::Vec2 Emitter::pickShapePoint(std::size_t& pixel) {
         const auto segment = static_cast<std::size_t>(std::min<std::ptrdiff_t>(found - shapeWeights.begin(), static_cast<std::ptrdiff_t>(shapeWeights.size()) - 1));
         const math::Vec2 from = config.shapePoints[segment];
         const math::Vec2 to = config.shapePoints[segment + 1];
-        const math::Vec2 across = (to - from).getNormalized().getPerpendicular();
-        return math::Vec2::lerp(from, to, random.nextFloat()) + across * thickness;
+        const math::Vec2 along = math::Vec2::lerp(from, to, random.nextFloat());
+        if (to == from) {
+            return along;
+        }
+
+        return along + (to - from).getNormalized().getPerpendicular() * thickness;
     }
     case Shape::Image: {
         const ImageShape& image = *config.shapeImage;
@@ -688,7 +692,8 @@ void Emitter::simulate(float deltaSeconds, std::size_t begin, std::size_t end) n
         math::Vec2& point = particles.positions[index];
         math::Vec2& motion = particles.velocities[index];
         math::Vec2 acceleration = gravity;
-        if (particles.radial[index] != 0.0F || particles.tangential[index] != 0.0F) {
+        // A particle right on the center has no way out of it or around it, so neither acceleration moves it there.
+        if ((particles.radial[index] != 0.0F || particles.tangential[index] != 0.0F) && point != center) {
             const math::Vec2 outward = (point - center).getNormalized();
             acceleration += outward * particles.radial[index] + math::Vec2{-outward.y, outward.x} * particles.tangential[index];
         }

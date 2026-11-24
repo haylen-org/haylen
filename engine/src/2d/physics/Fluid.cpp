@@ -323,14 +323,19 @@ class Fluid::Collider final {
         const math::Vec2 core = point ? solid.points[0] : closestOnSegment(position, solid.points[0], solid.points[1]);
         const math::Vec2 offset = position - core;
         const float distance = offset.getLength();
-        const math::Vec2 held = (last - lastCore).getNormalized();
-        if (math::Vec2::dot(offset, held) < 0.0F) {
+        const math::Vec2 lastOffset = last - lastCore;
+        if (math::Vec2::dot(offset, lastOffset) < 0.0F) {
             // The particle passed the core within the step, so it goes back to the side it touched.
-            normal = held;
+            normal = lastOffset.getNormalized();
         } else if (distance >= reach) {
             return false;
+        } else if (distance > 0.0F) {
+            normal = offset / distance;
+        } else if (!lastOffset.isZero()) {
+            normal = lastOffset.getNormalized();
         } else {
-            normal = distance > 0.0F ? offset / distance : held;
+            // A particle that sits right on the core and came from it has no side to leave by, so the pressure of the fluid around it moves it instead.
+            return false;
         }
 
         surface = core + normal * solid.radius;

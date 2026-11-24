@@ -127,8 +127,10 @@ std::optional<RayHit2> Raycast::circle(const Ray2& ray, const Circle& target) no
         return std::nullopt;
     }
 
+    // A circle without a radius is a point, which faces the ray that strikes it.
     const Vec2 point = ray.at(distance);
-    return RayHit2{.point = point, .normal = (point - target.center).getNormalized(), .distance = distance};
+    const Vec2 outward = point - target.center;
+    return RayHit2{.point = point, .normal = outward.isZero() ? -ray.direction : outward.getNormalized(), .distance = distance};
 }
 
 std::optional<RayHit2> Raycast::polygon(const Ray2& ray, std::span<const Vec2> points) noexcept {

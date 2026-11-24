@@ -91,7 +91,7 @@ class NavMesh final {
     static void requirePolygon(std::span<const math::Vec2> polygon);
 
     // Returns the direction of the line from the point that passes the target at the signed offset, positive on its left, turning a right angle when the target is closer than the offset.
-    [[nodiscard]] static math::Vec2 tangentDirection(math::Vec2 from, math::Vec2 to, float offset) noexcept;
+    [[nodiscard]] static math::Vec2 tangentDirection(math::Vec2 from, math::Vec2 to, float offset);
 
     // These add the points where a segment or a second circle crosses the circle of the radius around the center.
     static void addCrossings(const math::Segment2& piece, math::Vec2 center, float radius, std::vector<math::Vec2>& crossings);

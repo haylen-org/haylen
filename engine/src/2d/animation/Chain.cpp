@@ -75,7 +75,7 @@ void Chain::setMaxBend(float value) noexcept {
     maxBend = std::clamp(value, 0.0F, math::Math::kPi);
 }
 
-math::Vec2 Chain::directionOr(math::Vec2 value, math::Vec2 fallback) noexcept {
+math::Vec2 Chain::directionOr(math::Vec2 value, math::Vec2 fallback) {
     if (!value.isZero()) {
         return value.getNormalized();
     }

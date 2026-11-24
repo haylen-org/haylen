@@ -1045,7 +1045,7 @@ print(moth.wanderDistance, moth.wanderRadius, moth.position.x) -- 60.0 60.0 200.
 
 ### agent:seek(target)
 
-Returns the change that turns the velocity toward `target` at full speed.
+Returns the change that turns the velocity toward `target` at full speed. An agent already on the target wants to stop, so the change cancels its velocity.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -1057,7 +1057,7 @@ print(hound.velocity.x > 0) -- true
 
 ### agent:flee(threat)
 
-Returns the change that turns the velocity away from `threat` at full speed.
+Returns the change that turns the velocity away from `threat` at full speed. An agent right on the threat has no way away from it, so the change cancels its velocity.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -1274,7 +1274,7 @@ print(crowd:hasAgent(scout), crowd:hasAgent(99)) -- true false
 
 ### crowd:addObstacle(polygon)
 
-Adds a solid polygon, in either winding, that agents steer around. A list of two points makes a wall that blocks both sides. Fewer points raise `A crowd obstacle needs at least two points.`, and a point that is not finite raises `A crowd obstacle needs finite points.`
+Adds a solid polygon, in either winding, that agents steer around. A list of two points makes a wall that blocks both sides. Fewer points raise `A crowd obstacle needs at least two points.`, and a point that is not finite raises `A crowd obstacle needs finite points.` A polygon that ends on its first point is the same outline without that last point. Any other point equal to the next one leaves an edge without a direction and raises `A crowd obstacle needs every point apart from the next one, so each of its edges has a direction.`
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -1502,5 +1502,6 @@ These messages come from the functions and methods of the module. Messages that 
 | `Agent <id> is not in the crowd.` | A method of a `Crowd` got an unknown id. |
 | `Crowd positions, targets and velocities must be finite.` | A position, target or velocity given to a `Crowd` is not finite. |
 | `A crowd obstacle needs at least two points.` | The polygon of `crowd:addObstacle` has fewer than two points. |
+| `A crowd obstacle needs every point apart from the next one, so each of its edges has a direction.` | The polygon of `crowd:addObstacle` repeats a point right after itself. |
 | `A crowd obstacle needs finite points.` | A point of `crowd:addObstacle` is not finite. |
 | `A crowd step needs a positive and finite time.` | The time of `crowd:step` is not positive and finite. |

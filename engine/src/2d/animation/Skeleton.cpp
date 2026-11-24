@@ -296,9 +296,10 @@ void Skeleton::solveTransform(const SkeletonData::TransformConstraint& constrain
             aimBone(bone, worldAngleOf(constraint.target) + constraint.rotation, constraint.rotateMix);
         }
 
-        if (constraint.translateMix > 0.0F) {
-            const std::optional<std::size_t> parent = data->getBones()[bone].parent;
-            const math::Transform2D parentWorld = parent ? worlds[*parent] : math::Transform2D::compose(position, rotation, scale);
+        // A parent scaled to nothing has no place inside it for the target, so the bone keeps its position until the parent grows again.
+        const std::optional<std::size_t> parent = data->getBones()[bone].parent;
+        const math::Transform2D parentWorld = parent ? worlds[*parent] : math::Transform2D::compose(position, rotation, scale);
+        if (constraint.translateMix > 0.0F && parentWorld.isInvertible()) {
             const math::Vec2 wanted = parentWorld.getInverse().apply(target.apply(constraint.offset));
             bones[bone].position += (wanted - bones[bone].position) * constraint.translateMix;
         }

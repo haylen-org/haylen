@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Rect.hpp"
@@ -31,7 +35,6 @@ TEST(Vec2Test, LengthDirectionAndRotation) {
     EXPECT_FLOAT_EQ(value.getLength(), 5.0F);
     EXPECT_FLOAT_EQ(value.getLengthSquared(), 25.0F);
     EXPECT_FLOAT_EQ(value.getNormalized().getLength(), 1.0F);
-    EXPECT_EQ(Vec2{}.getNormalized(), Vec2{});
     EXPECT_TRUE(Vec2{}.isZero());
     EXPECT_FALSE(value.isZero());
     EXPECT_EQ(value.getPerpendicular(), Vec2(-4.0F, 3.0F));
@@ -43,6 +46,22 @@ TEST(Vec2Test, LengthDirectionAndRotation) {
     EXPECT_NEAR(rotated.y, 1.0F, 1e-6F);
     EXPECT_NEAR(Vec2::fromAngle(Math::kPi, 2.0F).x, -2.0F, 1e-6F);
     EXPECT_NEAR(Vec2(0.0F, 1.0F).getAngle(), Math::kHalfPi, 1e-6F);
+}
+
+// A vector without a direction raises an error instead of a made-up direction, and tiny and huge vectors keep theirs.
+TEST(Vec2Test, NormalizationRefusesVectorsWithoutADirection) {
+    EXPECT_THROW(static_cast<void>(Vec2{}.getNormalized()), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Vec2(std::nanf(""), 1.0F).getNormalized()), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Vec2(std::numeric_limits<float>::infinity(), 0.0F).getNormalized()), std::invalid_argument);
+    EXPECT_EQ(Vec2(1e-30F, 0.0F).getNormalized(), Vec2(1.0F, 0.0F));
+    EXPECT_NEAR(Vec2(3e30F, 4e30F).getNormalized().x, 0.6F, 1e-6F);
+
+    try {
+        static_cast<void>(Vec2{}.getNormalized());
+        FAIL() << "A zero vector has no direction.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The vector has no direction, because its length is zero.");
+    }
 }
 
 TEST(Vec2Test, StaticHelpers) {

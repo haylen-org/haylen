@@ -246,9 +246,9 @@ void Camera::addTrauma(float amount) noexcept {
     shakeDirection = {};
 }
 
-void Camera::shake(float amount, math::Vec2 direction) noexcept {
-    trauma = math::Math::saturate(trauma + amount);
+void Camera::shake(float amount, math::Vec2 direction) {
     shakeDirection = direction.getNormalized();
+    trauma = math::Math::saturate(trauma + amount);
 }
 
 void Camera::flash(math::Color color, float duration) noexcept {

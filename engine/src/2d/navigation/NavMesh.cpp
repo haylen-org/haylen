@@ -271,7 +271,12 @@ std::optional<math::Vec2> NavMesh::findRoom(math::Vec2 point, float agentRadius)
     for (std::size_t index = 0; index < offsets.size(); ++index) {
         const math::Vec2 corner = nearWalls[index].start;
         spots.push_back(math::Geometry2::closestPoint(offsets[index], point));
-        spots.push_back(corner + (point - corner).getNormalized() * agentRadius);
+
+        // A point right on the corner lies the radius away from every spot of the circle around it, and the feet on the moved walls are such spots already.
+        if (point != corner) {
+            spots.push_back(corner + (point - corner).getNormalized() * agentRadius);
+        }
+
         for (std::size_t other = index + 1; other < offsets.size(); ++other) {
             if (const std::optional<math::Vec2> crossing = math::Geometry2::intersection(offsets[index], offsets[other])) {
                 spots.push_back(*crossing);
@@ -462,8 +467,13 @@ void NavMesh::pullString(math::Vec2 start, math::Vec2 goal, float agentRadius) {
     }
 }
 
-math::Vec2 NavMesh::tangentDirection(math::Vec2 from, math::Vec2 to, float offset) noexcept {
+// A turn on the point the line starts from, which an agent without a radius standing on a corner makes, has no line, and its corner lies on that point whatever the direction, so it takes none.
+math::Vec2 NavMesh::tangentDirection(math::Vec2 from, math::Vec2 to, float offset) {
     const math::Vec2 toward = to - from;
+    if (toward.isZero()) {
+        return {};
+    }
+
     const float distance = toward.getLength();
     const float sine = distance > std::fabs(offset) ? offset / distance : std::copysign(1.0F, offset);
     return toward.getNormalized().rotated(-std::asin(sine));

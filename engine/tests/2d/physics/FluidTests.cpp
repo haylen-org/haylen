@@ -86,6 +86,21 @@ TEST_F(FluidTest, SpreadsAndSettlesInsideItsContainer) {
     EXPECT_THROW(Fluid(world, {.friction = -1.0F}), std::invalid_argument);
 }
 
+// A particle that rests right on the center of a round solid has no side to leave by, so the pressure of the fluid moves it instead of the solid, and the step goes on.
+TEST_F(FluidTest, StepsAParticleThatRestsOnTheCenterOfARoundSolid) {
+    World still({.gravity = {0.0F, 0.0F}});
+    Body ball = still.createBody({.type = Body::Type::Static, .position = {0.0F, -50.0F}});
+    ball.addCircle(20.0F);
+    Fluid fluid(still, {.radius = 4.0F, .smoothingRadius = 16.0F, .maxParticles = 4});
+    ASSERT_TRUE(fluid.spawn({0.0F, -50.0F}));
+    for (int step = 0; step < 3; ++step) {
+        still.step(1.0F / 60.0F);
+    }
+
+    ASSERT_EQ(fluid.size(), 1U);
+    EXPECT_TRUE(std::isfinite(fluid.getPositions()[0].x) && std::isfinite(fluid.getPositions()[0].y));
+}
+
 TEST_F(FluidTest, FloatsLightBodiesAndSinksHeavyOnes) {
     // Particles push the bodies they hit, so a crate lighter than the liquid floats on it and a denser one goes to the bottom.
     tank(300.0F, 400.0F);

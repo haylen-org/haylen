@@ -216,8 +216,9 @@ int WorldRaycastBinding::castPolygon(lua_State* L) {
 int WorldRaycastBinding::bounceRay(lua_State* L) {
     const haylen::physics2d::World& world = lua::Userdata::check<haylen::physics2d::World>(L, 1);
     const haylen::math::Vec2 origin{lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)};
-    const haylen::math::Vec2 direction = haylen::math::Vec2{lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)}.getNormalized();
-    luaL_argcheck(L, !direction.isZero(), 4, "the direction must not be zero");
+    const haylen::math::Vec2 aim{lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)};
+    luaL_argcheck(L, !aim.isZero(), 4, "the direction must not be zero");
+    const haylen::math::Vec2 direction = aim.getNormalized();
     const auto length = lua::Stack::read<float>(L, 6);
     const auto bounces = lua::Stack::read<int>(L, 7);
     luaL_argcheck(L, bounces >= 0, 7, "the bounce count must not be negative");

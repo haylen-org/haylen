@@ -45,10 +45,10 @@ class Spline final {
     }
 
     [[nodiscard]] Vec2 getPoint(float t) const noexcept;
-    // Returns the unit direction of travel.
-    [[nodiscard]] Vec2 getTangent(float t) const noexcept;
+    // Returns the unit direction of travel. Throws `std::invalid_argument` where the curve stands still, such as on points that repeat, so it has no direction.
+    [[nodiscard]] Vec2 getTangent(float t) const;
     [[nodiscard]] Vec2 getPointAtDistance(float distance) const noexcept;
-    [[nodiscard]] Vec2 getTangentAtDistance(float distance) const noexcept;
+    [[nodiscard]] Vec2 getTangentAtDistance(float distance) const;
     [[nodiscard]] float getParameterAtDistance(float distance) const noexcept;
 
     // Returns `count` points spread evenly over the parameter, both ends included. Throws `std::invalid_argument` for more than 16777216 points.

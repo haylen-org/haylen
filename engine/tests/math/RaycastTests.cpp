@@ -37,6 +37,12 @@ TEST(RaycastTest, HitsSegmentsRectsAndCirclesWithFacingNormals) {
     EXPECT_FALSE(Raycast::circle(ray, {{-60.0F, 0.0F}, 10.0F}).has_value());
     EXPECT_FALSE(Raycast::circle(ray, {{60.0F, 20.0F}, 10.0F}).has_value());
     EXPECT_FALSE(Raycast::circle(Ray2::between({0.0F, 0.0F}, {30.0F, 0.0F}), {{60.0F, 0.0F}, 10.0F}).has_value());
+
+    // A circle without a radius is a point, which faces the ray that strikes it.
+    const std::optional<RayHit2> dot = Raycast::circle(ray, {{60.0F, 0.0F}, 0.0F});
+    ASSERT_TRUE(dot.has_value());
+    EXPECT_FLOAT_EQ(dot->distance, 60.0F);
+    EXPECT_EQ(dot->normal, (Vec2{-1.0F, 0.0F}));
 }
 
 TEST(RaycastTest, TreatsClosedShapesAsSolid) {

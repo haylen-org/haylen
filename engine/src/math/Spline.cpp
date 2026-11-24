@@ -137,11 +137,16 @@ Vec2 Spline::getPoint(float t) const noexcept {
     return evaluate(segment, scaled - static_cast<float>(segment));
 }
 
-Vec2 Spline::getTangent(float t) const noexcept {
+Vec2 Spline::getTangent(float t) const {
     const float step = 1e-3F / static_cast<float>(segmentCount);
     const float before = closed ? t - step : std::max(0.0F, t - step);
     const float after = closed ? t + step : std::min(1.0F, t + step);
-    return (getPoint(after) - getPoint(before)).getNormalized();
+    const Vec2 travel = getPoint(after) - getPoint(before);
+    if (travel.isZero()) {
+        throw std::invalid_argument("The spline stands still at this parameter, so it has no direction.");
+    }
+
+    return travel.getNormalized();
 }
 
 float Spline::getParameterAtDistance(float distance) const noexcept {
@@ -168,7 +173,7 @@ Vec2 Spline::getPointAtDistance(float distance) const noexcept {
     return getPoint(getParameterAtDistance(distance));
 }
 
-Vec2 Spline::getTangentAtDistance(float distance) const noexcept {
+Vec2 Spline::getTangentAtDistance(float distance) const {
     return getTangent(getParameterAtDistance(distance));
 }
 

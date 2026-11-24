@@ -184,4 +184,38 @@ TEST(SteeringTest, AlignsCoheresAndAvoidsObstacles) {
     EXPECT_NE(agent.avoid(std::vector<math::Circle>{{{50.0F, 0.0F}, 10.0F}}, 100.0F), math::Vec2());
 }
 
+// An agent on its target or on its threat has no direction to steer along, so it wants to stop, while a position that is not a number raises the error of the vector.
+TEST(SteeringTest, StopsWhereNoDirectionLeadsAndRefusesPositionsThatAreNotNumbers) {
+    const navigation2d::SteeringAgent agent{.position = {10.0F, 20.0F}, .velocity = {3.0F, -4.0F}, .maxSpeed = 100.0F, .maxForce = 50.0F};
+    EXPECT_EQ(agent.seek({10.0F, 20.0F}), math::Vec2(-3.0F, 4.0F));
+    EXPECT_EQ(agent.flee({10.0F, 20.0F}), math::Vec2(-3.0F, 4.0F));
+    EXPECT_EQ(agent.seek({110.0F, 20.0F}), math::Vec2(97.0F, 4.0F));
+    EXPECT_THROW(static_cast<void>(agent.seek({std::nanf(""), 0.0F})), std::invalid_argument);
+    EXPECT_EQ(agent.cohesion(std::vector<math::Vec2>{{10.0F, 20.0F}}), math::Vec2(-3.0F, 4.0F));
+}
+
+// Every edge of an obstacle needs a direction, and an agent right at the center of its flock or right on the corner of an obstacle still steps.
+TEST_F(CrowdTest, RefusesObstaclesWithRepeatedPointsAndStepsAgentsWithoutADirection) {
+    navigation2d::Crowd crowd({.separation = 0.0F, .alignment = 0.0F, .cohesion = 1.0F});
+    EXPECT_THROW(crowd.addObstacle(std::vector<math::Vec2>{{0.0F, 0.0F}, {0.0F, 0.0F}, {10.0F, 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(crowd.addObstacle(std::vector<math::Vec2>{{0.0F, 0.0F}, {0.0F, 0.0F}}), std::invalid_argument);
+    crowd.addObstacle(std::vector<math::Vec2>{{100.0F, 0.0F}, {110.0F, 0.0F}, {110.0F, 10.0F}, {100.0F, 0.0F}});
+
+    crowd.addObstacle(std::vector<math::Vec2>{{0.0F, 0.0F}, {40.0F, 0.0F}, {40.0F, 40.0F}, {0.0F, 40.0F}});
+    const navigation2d::Crowd::AgentId cornered = crowd.addAgent({.position = {0.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
+    const navigation2d::Crowd::AgentId first = crowd.addAgent({.position = {-60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
+    const navigation2d::Crowd::AgentId second = crowd.addAgent({.position = {-60.0F, 0.0F}, .radius = 5.0F, .maxSpeed = 40.0F});
+    crowd.setTarget(cornered, {-30.0F, -30.0F});
+    for (int step = 0; step < 30; ++step) {
+        crowd.step(1.0F / 30.0F);
+    }
+
+    for (const navigation2d::Crowd::AgentId id : {cornered, first, second}) {
+        const math::Vec2 position = crowd.getPosition(id);
+        EXPECT_TRUE(std::isfinite(position.x) && std::isfinite(position.y));
+    }
+
+    EXPECT_LT(crowd.getPosition(cornered).x, 0.0F);
+}
+
 } // namespace haylen::navigation2d

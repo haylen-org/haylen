@@ -194,6 +194,14 @@ TEST_F(ParticlesTest, PrewarmsConesAndAcceleratesAroundTheEmitter) {
         EXPECT_NEAR((point - radial.position).getLength(), 11.0F, 1e-3F);
     }
 
+    // A particle right on the center has no way out of it, so the radial acceleration leaves it there instead of failing.
+    Emitter centered({.texture = texture(), .rate = 0.0F, .lifetime = {5.0F, 5.0F}, .speed = {0.0F, 0.0F}, .radialAcceleration = {100.0F, 100.0F}, .tangentialAcceleration = {50.0F, 50.0F}}, 3);
+    centered.burst(2);
+    centered.update(0.1F);
+    for (const math::Vec2 point : centered.getPositions()) {
+        EXPECT_EQ(point, centered.position);
+    }
+
     Emitter swirl({.texture = texture(), .rate = 0.0F, .lifetime = {5.0F, 5.0F}, .speed = {0.0F, 0.0F}, .tangentialAcceleration = {100.0F, 100.0F}, .shape = EmitterConfig::Shape::Ring, .shapeSize = {10.0F, 0.0F}, .localSpace = true}, 4);
     swirl.burst(1);
     const math::Vec2 before = swirl.getPositions().front();
@@ -595,6 +603,13 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
         EXPECT_NEAR(point.x, 0.0F, 1e-4F);
         EXPECT_GE(point.y, 10.0F - 1e-3F);
         EXPECT_LE(point.y, 60.0F + 1e-3F);
+    }
+
+    // A segment of no length has no side, so its particles start on its point.
+    Emitter repeated({.texture = texture(), .rate = 0.0F, .shape = Shape::Polyline, .shapePoints = {{5.0F, 5.0F}, {5.0F, 5.0F}}, .shapeThickness = 8.0F}, 7);
+    repeated.burst(10);
+    for (const math::Vec2 point : repeated.getPositions()) {
+        EXPECT_EQ(point, (math::Vec2{5.0F, 5.0F}));
     }
 
     // The shape angle and the emitter rotation turn the spawn area, and the scale grows it.

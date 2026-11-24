@@ -108,8 +108,19 @@ void Crowd::addObstacle(std::span<const math::Vec2> polygon) {
         throw std::invalid_argument("A crowd obstacle needs finite points.");
     }
 
-    // The solver expects solid outlines with a positive signed area, whose outside lies to the right of every edge.
+    // A polygon written closed, which ends on its first point, is the same outline without that last point.
     std::vector<math::Vec2> points(polygon.begin(), polygon.end());
+    if (points.size() > 3 && points.front() == points.back()) {
+        points.pop_back();
+    }
+
+    for (std::size_t index = 0; index < points.size(); ++index) {
+        if (points[index] == points[(index + 1) % points.size()]) {
+            throw std::invalid_argument("A crowd obstacle needs every point apart from the next one, so each of its edges has a direction.");
+        }
+    }
+
+    // The solver expects solid outlines with a positive signed area, whose outside lies to the right of every edge.
     if (points.size() > 2 && math::Geometry2::signedArea(points) < 0.0F) {
         std::ranges::reverse(points);
     }
@@ -326,7 +337,12 @@ math::Vec2 Crowd::preferredVelocity(std::uint32_t agentIndex, const Scratch& scr
     const auto count = static_cast<float>(scratch.neighbors.size());
     preferred += away * (self.maxSpeed * flocking.separation);
     preferred += (heading / count - self.velocity) * flocking.alignment;
-    preferred += (center / count - self.position).getNormalized() * (self.maxSpeed * flocking.cohesion);
+    // An agent right at the center of its neighbors already is where cohesion pulls it.
+    const math::Vec2 toCenter = center / count - self.position;
+    if (!toCenter.isZero()) {
+        preferred += toCenter.getNormalized() * (self.maxSpeed * flocking.cohesion);
+    }
+
     return preferred.clampedLength(self.maxSpeed);
 }
 
@@ -348,7 +364,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
             continue;
         }
 
-        // An agent already touching the edge or one of its ends backs away from it.
+        // An agent already touching the edge or one of its ends backs away from it. An agent whose center sits right on the end backs away from the outside of the edge, which lies to its right.
         const float distanceSquared1 = relative1.getLengthSquared();
         const float distanceSquared2 = relative2.getLengthSquared();
         const math::Vec2 edge = second->point - first->point;
@@ -357,7 +373,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
 
         if (along < 0.0F && distanceSquared1 <= radiusSquared) {
             if (first->convex) {
-                scratch.lines.push_back({.point = {}, .direction = math::Vec2{-relative1.y, relative1.x}.getNormalized()});
+                scratch.lines.push_back({.point = {}, .direction = relative1.isZero() ? -first->direction : math::Vec2{-relative1.y, relative1.x}.getNormalized()});
             }
 
             continue;
@@ -365,7 +381,7 @@ void Crowd::addWallLines(const Agent& agent, Scratch& scratch) const {
 
         if (along > 1.0F && distanceSquared2 <= radiusSquared) {
             if (second->convex && math::Vec2::cross(relative2, second->direction) >= 0.0F) {
-                scratch.lines.push_back({.point = {}, .direction = math::Vec2{-relative2.y, relative2.x}.getNormalized()});
+                scratch.lines.push_back({.point = {}, .direction = relative2.isZero() ? -first->direction : math::Vec2{-relative2.y, relative2.x}.getNormalized()});
             }
 
             continue;

@@ -221,6 +221,8 @@ TEST_F(Graphics2DLuaTest, ControlsCameras) {
 
     lua("camera.anchor = 'center' camera.viewport = nil camera.maxShakeOffset = 10 camera.maxShakeAngle = 0.1 camera.traumaDecay = 1 camera.shakeFrequency = 30 camera.rotationSmoothing = false camera.ignoreRotation = false camera:addTrauma(0.5)");
     EXPECT_EQ(lua("return camera.trauma .. ' ' .. tostring(camera:shakeOffset().x == 0) .. ' ' .. camera:renderRotation() .. ' ' .. camera.shakeFrequency"), "0.5 true 0.0 30.0");
+    EXPECT_NE(lua("camera:shake(0.5, 0, 0)").find("The vector has no direction, because its length is zero."), std::string::npos);
+    EXPECT_EQ(lua("return camera.trauma"), "0.5");
     lua("camera:update(0.25)");
     EXPECT_EQ(lua("return camera.trauma"), "0.25");
     EXPECT_EQ(lua("camera.pixelSnap = false local offset = camera:shakeOffset() local position = camera:renderPosition() return tostring(offset:length() > 0) .. ' ' .. tostring((position - camera.position - camera.offset - offset):length() < 1e-4) .. ' ' .. tostring(camera:renderRotation() ~= camera.rotation)"), "true true true");

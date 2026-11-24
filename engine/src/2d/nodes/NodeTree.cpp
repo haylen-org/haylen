@@ -176,7 +176,12 @@ void NodeTree::follow(Slot& slot, const physics2d::Body& body, float blend) cons
         slot.position = placed.position;
         slot.rotation = placed.rotation;
     } else {
+        // A parent scaled to nothing, such as one hidden by a scale of zero, has no place inside it for the body, so the node keeps its own until the parent grows again.
         const math::Transform2D& parent = slots[static_cast<std::size_t>(slot.parent)].world;
+        if (!parent.isInvertible()) {
+            return;
+        }
+
         slot.position = parent.getInverse().apply(placed.position);
         slot.rotation = placed.rotation - placementOf(parent).rotation;
     }

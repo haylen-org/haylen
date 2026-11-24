@@ -420,7 +420,7 @@ Returns the `x` and `y` in the world of a point of the node, through the world t
 
 ### node:toLocal(x, y)
 
-Returns the `x` and `y` in the node of a point of the world, through the world transform of the last update.
+Returns the `x` and `y` in the node of a point of the world, through the world transform of the last update. A node whose world transform squashes the plane flat, such as one with a scale of zero, has no inside, and the call raises `The transform has no inverse, because it squashes the plane flat and its determinant is zero.`.
 
 ### node:worldTransform()
 

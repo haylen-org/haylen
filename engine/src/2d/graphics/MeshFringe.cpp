@@ -93,7 +93,14 @@ void MeshFringe::placeCorners(float half) {
             ++end;
         }
 
-        const math::Vec2 offset = end - start == 2 ? PolygonMesh::getOffset(corners[start].normal, corners[start + 1].normal, half, half, half * kMiterLimit) : sum.getNormalized() * half;
+        // Normals that cancel each other leave a corner with no way out, so its fringe stays on it.
+        math::Vec2 offset;
+        if (end - start == 2) {
+            offset = PolygonMesh::getOffset(corners[start].normal, corners[start + 1].normal, half, half, half * kMiterLimit);
+        } else if (!sum.isZero()) {
+            offset = sum.getNormalized() * half;
+        }
+
         corners[kept++] = {.key = corners[start].key, .offset = offset};
         start = end;
     }

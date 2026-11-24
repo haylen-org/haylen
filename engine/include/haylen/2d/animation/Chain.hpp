@@ -71,7 +71,7 @@ class Chain final {
     void setMaxBend(float value) noexcept;
 
   private:
-    [[nodiscard]] static math::Vec2 directionOr(math::Vec2 value, math::Vec2 fallback) noexcept;
+    [[nodiscard]] static math::Vec2 directionOr(math::Vec2 value, math::Vec2 fallback);
     [[nodiscard]] math::Vec2 limitBend(math::Vec2 direction, math::Vec2 previous) const noexcept;
     void pullToward(math::Vec2 target);
     void pushFromRoot(math::Vec2 root);

@@ -717,7 +717,7 @@ timer.every(2, function() camera:addTrauma(0.6) end)
 
 ### camera:shake(amount, dx, dy)
 
-Adds trauma that shakes the view only back and forth along the direction `dx`, `dy`, without turning it, until the trauma settles, such as a recoil along the line of a shot.
+Adds trauma that shakes the view only back and forth along the direction `dx`, `dy`, without turning it, until the trauma settles, such as a recoil along the line of a shot. A direction of zero length raises `The vector has no direction, because its length is zero.`, and `camera:addTrauma` shakes in every direction.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

@@ -43,7 +43,10 @@ struct Transform2D {
     [[nodiscard]] constexpr Vec2 getTranslation() const noexcept {
         return {tx, ty};
     }
-    [[nodiscard]] Transform2D getInverse() const noexcept;
+    // Whether the transform keeps area, so it has an inverse. A transform that squashes the plane onto a line or a point, such as a scale of zero, has none.
+    [[nodiscard]] bool isInvertible() const noexcept;
+    // Throws `std::invalid_argument` for a transform without an inverse, as `isInvertible` tells.
+    [[nodiscard]] Transform2D getInverse() const;
 };
 
 } // namespace haylen::math

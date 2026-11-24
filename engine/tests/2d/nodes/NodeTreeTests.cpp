@@ -239,6 +239,25 @@ TEST_F(NodeTreeTest, FollowsBodiesBetweenSteps) {
     test::VectorExpectations::expectNear(follower.toWorld({}), {90.0F, 0.0F});
 }
 
+// A parent scaled to nothing has no inside, so a follower keeps its place in it until the parent grows again, and a point of the world has no place in it either.
+TEST_F(NodeTreeTest, KeepsFollowersInPlaceUnderAParentScaledToNothing) {
+    haylen::physics2d::World world({.gravity = {0.0F, 0.0F}});
+    haylen::physics2d::Body body = world.createBody({.type = haylen::physics2d::Body::Type::Kinematic, .position = {50.0F, 0.0F}});
+
+    const std::shared_ptr<NodeTree> tree = NodeTree::create();
+    Node parent = tree->add({.position = {100.0F, 0.0F}, .scale = {0.0F, 0.0F}});
+    Node follower = parent.add({.position = {3.0F, 4.0F}});
+    follower.follow(body);
+    tree->update(0.0F);
+    test::VectorExpectations::expectNear(follower.getPosition(), {3.0F, 4.0F});
+    EXPECT_THROW(static_cast<void>(follower.toLocal({1.0F, 1.0F})), std::invalid_argument);
+
+    parent.setScale({1.0F, 1.0F});
+    tree->update(0.0F);
+    tree->update(0.0F);
+    test::VectorExpectations::expectNear(follower.getPosition(), {-50.0F, 0.0F});
+}
+
 TEST_F(NodeTreeTest, RejectsContentItCannotDraw) {
     const std::shared_ptr<NodeTree> tree = NodeTree::create();
     try {

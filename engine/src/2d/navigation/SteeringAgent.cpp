@@ -9,12 +9,22 @@
 
 namespace haylen::navigation2d {
 
-math::Vec2 SteeringAgent::seek(math::Vec2 target) const noexcept {
-    return (target - position).getNormalized() * maxSpeed - velocity;
+math::Vec2 SteeringAgent::seek(math::Vec2 target) const {
+    const math::Vec2 offset = target - position;
+    if (offset.isZero()) {
+        return -velocity;
+    }
+
+    return offset.getNormalized() * maxSpeed - velocity;
 }
 
-math::Vec2 SteeringAgent::flee(math::Vec2 threat) const noexcept {
-    return (position - threat).getNormalized() * maxSpeed - velocity;
+math::Vec2 SteeringAgent::flee(math::Vec2 threat) const {
+    const math::Vec2 away = position - threat;
+    if (away.isZero()) {
+        return -velocity;
+    }
+
+    return away.getNormalized() * maxSpeed - velocity;
 }
 
 math::Vec2 SteeringAgent::arrive(math::Vec2 target, float slowingRadius) const noexcept {
@@ -41,7 +51,7 @@ math::Vec2 SteeringAgent::separation(std::span<const math::Vec2> neighbors, floa
     return force;
 }
 
-math::Vec2 SteeringAgent::alignment(std::span<const math::Vec2> neighborVelocities) const noexcept {
+math::Vec2 SteeringAgent::alignment(std::span<const math::Vec2> neighborVelocities) const {
     math::Vec2 heading;
     for (const math::Vec2 neighbor : neighborVelocities) {
         heading += neighbor;
@@ -54,7 +64,7 @@ math::Vec2 SteeringAgent::alignment(std::span<const math::Vec2> neighborVelociti
     return heading.getNormalized() * maxSpeed - velocity;
 }
 
-math::Vec2 SteeringAgent::cohesion(std::span<const math::Vec2> neighborPositions) const noexcept {
+math::Vec2 SteeringAgent::cohesion(std::span<const math::Vec2> neighborPositions) const {
     if (neighborPositions.empty()) {
         return {};
     }
@@ -67,11 +77,12 @@ math::Vec2 SteeringAgent::cohesion(std::span<const math::Vec2> neighborPositions
     return seek(center / static_cast<float>(neighborPositions.size()));
 }
 
-math::Vec2 SteeringAgent::avoid(std::span<const math::Circle> obstacles, float lookAhead) const noexcept {
-    const math::Vec2 heading = velocity.getNormalized();
-    if (heading.isZero() || lookAhead <= 0.0F) {
+math::Vec2 SteeringAgent::avoid(std::span<const math::Circle> obstacles, float lookAhead) const {
+    if (velocity.isZero() || lookAhead <= 0.0F) {
         return {};
     }
+
+    const math::Vec2 heading = velocity.getNormalized();
 
     // The closest circle the path ahead enters is the threat, and the push points from its center across the heading.
     const math::Ray2 ahead{position, heading, lookAhead};

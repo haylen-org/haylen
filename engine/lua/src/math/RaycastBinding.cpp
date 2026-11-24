@@ -106,8 +106,9 @@ int RaycastBinding::raycastSegmentsAll(lua_State* L) {
 // Bounces a ray off segments with `bounceRay(origin, direction, length, bounces, segments)` and returns the bounce hits and the point where the path ends. Hit distances and fractions measure the whole path up to each bounce.
 int RaycastBinding::bounceRay(lua_State* L) {
     const haylen::math::Vec2 origin = lua::Stack::read<haylen::math::Vec2>(L, 1);
-    const haylen::math::Vec2 direction = lua::Stack::read<haylen::math::Vec2>(L, 2).getNormalized();
-    luaL_argcheck(L, !direction.isZero(), 2, "the direction must not be zero");
+    const haylen::math::Vec2 aim = lua::Stack::read<haylen::math::Vec2>(L, 2);
+    luaL_argcheck(L, !aim.isZero(), 2, "the direction must not be zero");
+    const haylen::math::Vec2 direction = aim.getNormalized();
     const auto length = lua::Stack::read<float>(L, 3);
     const auto bounces = lua::Stack::read<int>(L, 4);
     luaL_argcheck(L, bounces >= 0, 4, "the bounce count must not be negative");

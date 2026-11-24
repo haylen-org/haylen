@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "support/LuaFixture.hpp"
 
 namespace haylen::lua::math {
@@ -21,6 +23,15 @@ TEST(ColorLuaTest, ConvertsToHsvAndBlendsAroundTheHueCircle) {
     // A gray takes the hue of the other color, so only the saturation changes, whichever end it is.
     EXPECT_EQ(fixture.lua("return tostring(m.color(1, 1, 1):lerpHsv({1, 0, 0}, 0.5))"), "#FFFF8080");
     EXPECT_EQ(fixture.lua("return tostring(m.color(1, 0, 0):lerpHsv({1, 1, 1}, 0.5))"), "#FFFF8080");
+}
+
+TEST(Transform2DLuaTest, RaisesAPlainErrorForAnInverseThatDoesNotExist) {
+    test::LuaFixture fixture;
+    fixture.runLua("m = require('haylen.math')");
+    EXPECT_EQ(fixture.lua("return tostring(m.scaling({0, 1}):isInvertible()) .. ' ' .. tostring(m.scaling({2, 2}):isInvertible())"), "false true");
+    EXPECT_NE(fixture.lua("return m.scaling({0, 1}):inverse()").find("The transform has no inverse, because it squashes the plane flat and its determinant is zero."), std::string::npos);
+    EXPECT_NE(fixture.lua("return m.vec2(0, 0):normalized()").find("The vector has no direction, because its length is zero."), std::string::npos);
+    EXPECT_EQ(fixture.lua("return tostring(m.vec2(1e-20, 0):normalized())"), "Vec2(1.0, 0.0)");
 }
 
 } // namespace haylen::lua::math

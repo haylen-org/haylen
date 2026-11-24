@@ -14,8 +14,10 @@ struct SteeringAgent {
     float maxSpeed = 120.0F;
     float maxForce = 600.0F;
 
-    [[nodiscard]] math::Vec2 seek(math::Vec2 target) const noexcept;
-    [[nodiscard]] math::Vec2 flee(math::Vec2 threat) const noexcept;
+    // Heads for the target at full speed. An agent already on the target wants to stop. Throws `std::invalid_argument` for a position or a target that is not finite.
+    [[nodiscard]] math::Vec2 seek(math::Vec2 target) const;
+    // Heads away from the threat at full speed. An agent right on the threat has no way away from it and wants to stop. Throws `std::invalid_argument` for a position or a threat that is not finite.
+    [[nodiscard]] math::Vec2 flee(math::Vec2 threat) const;
 
     // Seeks the target and slows down linearly inside the slowing radius, stopping on it.
     [[nodiscard]] math::Vec2 arrive(math::Vec2 target, float slowingRadius) const noexcept;
@@ -24,13 +26,13 @@ struct SteeringAgent {
     [[nodiscard]] math::Vec2 separation(std::span<const math::Vec2> neighbors, float radius) const noexcept;
 
     // Turns toward the average velocity of the neighbors at full speed, which keeps a flock heading the same way.
-    [[nodiscard]] math::Vec2 alignment(std::span<const math::Vec2> neighborVelocities) const noexcept;
+    [[nodiscard]] math::Vec2 alignment(std::span<const math::Vec2> neighborVelocities) const;
 
     // Seeks the center of the neighbors, which keeps a flock together.
-    [[nodiscard]] math::Vec2 cohesion(std::span<const math::Vec2> neighborPositions) const noexcept;
+    [[nodiscard]] math::Vec2 cohesion(std::span<const math::Vec2> neighborPositions) const;
 
     // Swerves around the closest circle that the path ahead of the agent enters within the look-ahead distance, sideways and harder the closer it is, the obstacle avoidance of Reynolds. Circles should include the radius of the agent.
-    [[nodiscard]] math::Vec2 avoid(std::span<const math::Circle> obstacles, float lookAhead) const noexcept;
+    [[nodiscard]] math::Vec2 avoid(std::span<const math::Circle> obstacles, float lookAhead) const;
 
     // Changes the velocity by the wanted amount at up to `maxForce` per second, caps the speed at `maxSpeed` and moves the agent.
     void apply(math::Vec2 force, float deltaSeconds) noexcept;

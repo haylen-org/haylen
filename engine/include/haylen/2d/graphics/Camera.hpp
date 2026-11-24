@@ -114,8 +114,8 @@ class Camera final {
 
     void addTrauma(float amount) noexcept;
 
-    // Adds trauma that shakes the view only back and forth along the direction until it settles.
-    void shake(float amount, math::Vec2 direction) noexcept;
+    // Adds trauma that shakes the view only back and forth along the direction until it settles. Throws `std::invalid_argument` for a direction of zero length or with a component that is not finite.
+    void shake(float amount, math::Vec2 direction);
 
     [[nodiscard]] float getTrauma() const noexcept {
         return trauma;
