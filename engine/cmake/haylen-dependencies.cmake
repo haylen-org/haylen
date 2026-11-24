@@ -162,10 +162,8 @@ if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
   endif()
   haylen_disable_warnings(SDL3-static)
 
-  # SDL compiles every source with a precompiled header of its own, and a compiler cache refuses every compile of MSVC that uses or makes one, so SDL builds without it there and each of its sources comes from the cache.
-  if(MSVC)
-    set_property(TARGET SDL3-static PROPERTY DISABLE_PRECOMPILE_HEADERS ON)
-  endif()
+  # SDL compiles every source with a precompiled header of its own, which holds its build configuration. A compiler cache refuses every compile of MSVC that uses or makes one, and with GCC it finds an object by a hash that leaves the configuration in the header out, so an object built with other options of SDL would come back. So SDL builds without it, and the hash of each of its sources covers every header and option.
+  set_property(TARGET SDL3-static PROPERTY DISABLE_PRECOMPILE_HEADERS ON)
 
   # SDL links its frameworks through the framework feature of `LINK_LIBRARY`, whose name CMake drops from the link line while it keeps the flag when another library links the same framework with a plain flag first, such as Foundation through Varn, so SDL links them with plain flags as the other libraries do.
   if(APPLE)
