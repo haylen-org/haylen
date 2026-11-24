@@ -26,6 +26,7 @@ This file is binding for every change. It describes the project as it is and the
 
 ## Working rules
 
+- When something turns out impossible, limited by a platform or blocked, the work stops at that point and the owner decides: nobody changes the direction of the work on their own. The owner receives the problem in simple words with every possible solution, each with how the leading engines handle it, because Haylen aims to surpass all of them in architecture, 2D, 3D, ease of use and performance.
 - Every request of the owner goes into the checklist of `PROJECT.md` before the work starts, so nothing is lost, and an item is checked only when it is implemented, tested where possible and documented.
 - The engine comes first. Its base, the core, the Lua bindings, rendering, text, the UI, input, audio, assets and content packaging, and the platform hosts, is finished, tested and verified on every platform before work on samples goes on, and samples come second. A sample never hides a flaw of the engine: the flaw is fixed in the engine first.
 - Commit and push to `main` after each finished block of work, once the build, the tests and the format check pass. A block that is committed builds and passes its tests on its own, so separate unrelated changes into separate commits and verify a commit from a clean checkout when the working tree holds other work.
