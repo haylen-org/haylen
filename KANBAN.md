@@ -583,7 +583,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** o executor do macOS e do Mac Catalyst roda no job `apple-mac-ui` da próxima execução completa da CI (`611cf76a5`, `b6e0d0902`). O executor do Windows (`11d1ef4c4`) roda pela UI Automation numa máquina da Azure: uma rodada de 4 passou 20 de 20, mas rodadas seguintes falharam 1 ou 2 testes, com cliques num campo que não recebem o foco em 10 s e teclas que vão para o campo que tinha o foco antes. A causa ainda não está achada.
+- **Progress:** o executor do macOS e do Mac Catalyst roda no job `apple-mac-ui` da próxima execução completa da CI (`611cf76a5`, `b6e0d0902`). O executor do Windows (`11d1ef4c4`) roda pela UI Automation numa máquina da Azure: uma rodada de 4 passou 20 de 20, mas rodadas seguintes falharam 1 ou 2 testes, com cliques num campo que não recebem o foco em 10 s e teclas que vão para o campo que tinha o foco antes. A causa ainda não está achada. Uma sessão nova com Windows 11 na Azure registra, só na máquina, os eventos de foco, clique e teclado do SDL e do ImGui e a janela em primeiro plano a cada clique, com capturas só da janela do app. O clique que só ativa a janela já está descartado, e o foco atrasado do KB-299 sozinho não explica as falhas.
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
