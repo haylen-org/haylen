@@ -66,8 +66,14 @@ class AppPluginTest : public ::testing::Test {
         [[nodiscard]] std::string_view getName() const noexcept override {
             return name;
         }
-        void install(haylen::core::Engine&, lua_State*) override {
-            order.push_back(name);
+        // Records its name, and whether the last module of the engine was already installed when it installed.
+        void install(haylen::core::Engine&, lua_State* L) override {
+            lua_getglobal(L, "package");
+            lua_getfield(L, -1, "preload");
+            lua_getfield(L, -1, "haylen.native");
+            const bool afterTheEngine = !lua_isnil(L, -1);
+            lua_pop(L, 3);
+            order.push_back(afterTheEngine ? name : name + " before the engine");
         }
 
       private:
