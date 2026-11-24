@@ -346,7 +346,7 @@ class Device {
         std::span<const std::byte> data{};
         Usage usage = Usage::Immutable;
         bool index = false;
-        std::string_view label;
+        std::string_view label{};
     };
 
     // The pixels of a texture come with the image, one span per mip level from the largest, each holding every layer of its level, and the other kinds start without pixels. The layers count the slices of a volume, the layers of an array and the six faces of a cube.
@@ -360,7 +360,7 @@ class Device {
         PixelFormat format = PixelFormat::Rgba8;
         ImageKind kind = ImageKind::Texture;
         std::span<const std::span<const std::byte>> levels{};
-        std::string_view label;
+        std::string_view label{};
     };
 
     struct SamplerDesc {
@@ -420,13 +420,13 @@ class Device {
         Stage stage = Stage::Fragment;
         int texture = 0;
         int sampler = 0;
-        std::string_view glslName;
+        std::string_view glslName{};
     };
 
     // A vertex input of a program, which HLSL reads through the semantic `TEXCOORD` with the location as its index and OpenGL by its name.
     struct Attribute {
         int location = 0;
-        std::string_view name;
+        std::string_view name{};
     };
 
     struct ProgramDesc {
@@ -437,7 +437,7 @@ class Device {
         std::span<const TextureBinding> textures{};
         std::span<const SamplerBinding> samplers{};
         std::span<const TexturePair> pairs{};
-        std::string_view label;
+        std::string_view label{};
     };
 
     struct VertexBufferLayout {
@@ -479,7 +479,7 @@ class Device {
 
     // The depth and stencil tests of a pipeline, which draw into the depth stencil attachment of the format, or into none when it has no format.
     struct DepthStencil {
-        std::optional<PixelFormat> format;
+        std::optional<PixelFormat> format{};
         CompareFunction depthCompare = CompareFunction::Always;
         bool depthWrite = false;
         bool stencilEnabled = false;
@@ -493,24 +493,24 @@ class Device {
 
     // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its targets name, and the others draw into the attachments their formats and sample count describe. A device without `independentBlend` applies the blend and the write mask of the first color target to all of them.
     struct PipelineDesc {
-        Program program;
+        Program program{};
         std::span<const VertexBufferLayout> buffers{};
         std::span<const VertexAttribute> attributes{};
         Primitive primitive = Primitive::Triangles;
         IndexType indexType = IndexType::None;
-        std::span<const ColorTarget> colors;
+        std::span<const ColorTarget> colors{};
         DepthStencil depthStencil{};
         CullMode cullMode = CullMode::None;
         FrontFace frontFace = FrontFace::CounterClockwise;
         int sampleCount = 1;
         bool alphaToCoverage = false;
         bool swapchain = false;
-        std::string_view label;
+        std::string_view label{};
     };
 
     // A color attachment of an offscreen pass, at a mip level and a layer of its image, with the image of one sample that resolves a multisampled attachment into its first mip level and layer when the pass ends.
     struct ColorAttachment {
-        Image image;
+        Image image{};
         int mipLevel = 0;
         int layer = 0;
         Load load = Load::Clear;
@@ -520,7 +520,7 @@ class Device {
     };
 
     struct DepthStencilAttachment {
-        Image image;
+        Image image{};
         Load depthLoad = Load::Clear;
         Store depthStore = Store::Discard;
         float clearDepth = 1.0F;
@@ -544,7 +544,7 @@ class Device {
     struct Bindings {
         std::array<Buffer, kMaxVertexBuffers> vertexBuffers{};
         std::array<int, kMaxVertexBuffers> vertexOffsets{};
-        Buffer indexBuffer;
+        Buffer indexBuffer{};
         int indexOffset = 0;
         std::array<Image, kMaxTextures> textures{};
         std::array<Sampler, kMaxSamplers> samplers{};
@@ -554,13 +554,13 @@ class Device {
 
     // New pixels for a dynamic image, which replace the pixels of its first mip level, every layer at once.
     struct ImageWrite {
-        Image image;
-        std::span<const std::byte> pixels;
+        Image image{};
+        std::span<const std::byte> pixels{};
     };
 
     // How many objects of one kind exist, out of the room the device holds for them now.
     struct Pool {
-        std::string_view name;
+        std::string_view name{};
         int used = 0;
         int size = 0;
     };
@@ -568,7 +568,7 @@ class Device {
     // The tool that captures the frames of the device, which the process loads before the device exists, or `CaptureTool::None` with the sentence that says what is missing and how to get it.
     struct CaptureSupport {
         CaptureTool tool = CaptureTool::None;
-        std::string missing;
+        std::string missing{};
     };
 
     // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, and never again, as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores. A multisampled image is read through its resolve image.
