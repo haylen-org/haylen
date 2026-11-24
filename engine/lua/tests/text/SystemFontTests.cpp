@@ -1,27 +1,20 @@
 #include <gtest/gtest.h>
 
-#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
-#include <optional>
-#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "haylen/core/Engine.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/SystemFonts.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
-#include "platform/headless/HeadlessHost.hpp"
 #include "support/FontCollection.hpp"
 #include "support/LuaFixture.hpp"
 #include "support/TestFiles.hpp"
-#include "text/FontFile.hpp"
-#include "text/GlyphTables.hpp"
 
 namespace haylen::lua::text {
 
@@ -111,29 +104,6 @@ TEST_F(SystemFontTest, ReadsTheFaceOfACollection) {
 
     const std::vector<std::uint8_t> cut(collection.begin(), collection.begin() + 18);
     EXPECT_THROW(haylen::text::TrueTypeFont(device, cut, {.face = 1}), std::runtime_error);
-}
-
-// The engine draws a face through its color layers, or through its outlines unless bitmaps hold its real glyphs, which HarfBuzz reads from the tables of the face, in a collection too.
-TEST(GlyphTablesTest, DrawsColorLayersAndOutlinesWithoutBitmaps) {
-    EXPECT_TRUE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x636D6170U, 0x676C7966U}));
-    EXPECT_TRUE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x43464620U, 0x636D6170U}));
-    EXPECT_TRUE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 3>{0x43424454U, 0x434F4C52U, 0x676C7966U}));
-    EXPECT_FALSE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x43424454U, 0x676C7966U}));
-    EXPECT_FALSE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 2>{0x676C7966U, 0x73626978U}));
-    EXPECT_FALSE(haylen::text::GlyphTables::isDrawable(std::array<std::uint32_t, 1>{0x636D6170U}));
-
-    const std::vector<std::uint8_t> letters = test::FontCollection::read("crimson-text-regular.ttf");
-    const std::vector<std::uint8_t> bitmaps = test::FontCollection::addTable(letters, 0x43424454U);
-    const std::vector<std::vector<std::uint8_t>> faces{letters, bitmaps};
-    const std::vector<std::uint8_t> collection = test::FontCollection::build(faces);
-    EXPECT_EQ(haylen::text::FontFile::countFaces(collection), 2U);
-    const std::optional<haylen::text::FontFile> first = haylen::text::FontFile::read(std::span<const std::uint8_t>(collection), 0);
-    const std::optional<haylen::text::FontFile> second = haylen::text::FontFile::read(std::span<const std::uint8_t>(collection), 1);
-    ASSERT_TRUE(first);
-    ASSERT_TRUE(second);
-    EXPECT_TRUE(first->isDrawable());
-    EXPECT_FALSE(second->isDrawable());
-    EXPECT_FALSE(haylen::text::FontFile::read(std::span<const std::uint8_t>(collection), 2).has_value());
 }
 
 // A face whose glyphs are bitmaps, or that lacks the character the platform named it for, is refused and never read again.

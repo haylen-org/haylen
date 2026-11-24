@@ -15,6 +15,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   2d/graphics/ScreenEffectsTests.cpp
   2d/graphics/ShapeTests.cpp
   2d/graphics/SpriteDataTests.cpp
+  2d/graphics/SpriteLayoutTests.cpp
   2d/graphics/TileLayerTests.cpp
   2d/graphics/VectorAtlasTests.cpp
   2d/lighting/Lighting2DTests.cpp
@@ -34,6 +35,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   2d/tiled/TiledTests.cpp
   ai/DecisionLuaTests.cpp
   ai/StateMachineTests.cpp
+  assets/AssetsLuaTests.cpp
   assets/AssetTests.cpp
   audio/AudioLuaTests.cpp
   audio/AudioOutputTests.cpp
@@ -60,11 +62,17 @@ set(HAYLEN_LUA_TEST_SOURCES
   content/ReleaseStreamingTests.cpp
   content/UpdaterTests.cpp
   conversation/ConversationTests.cpp
+  core/CollectionsLuaTests.cpp
+  core/CoreLuaTests.cpp
   core/EngineTests.cpp
   core/ErrorReportTests.cpp
   core/ErrorScreenTests.cpp
+  core/EventsLuaTests.cpp
+  core/FloatBufferLuaTests.cpp
   core/MessagePackTests.cpp
   core/RedrawTests.cpp
+  core/SceneLuaTests.cpp
+  core/TweenLuaTests.cpp
   debug/AssetReloadTests.cpp
   debug/ConsoleTests.cpp
   debug/DebugTests.cpp
@@ -84,6 +92,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   debug/StatsTests.cpp
   debug/ThreadWalkTests.cpp
   debug/TraceRecorderTests.cpp
+  development/ModuleReloadTests.cpp
   graphics/GradientTests.cpp
   graphics/GraphicsLuaTests.cpp
   graphics/ImageFiltersTests.cpp
@@ -94,29 +103,17 @@ set(HAYLEN_LUA_TEST_SOURCES
   input/CommandBufferTests.cpp
   input/GamepadMotionTests.cpp
   input/GestureTests.cpp
+  input/InputLuaTests.cpp
   input/InputRecordingLuaTests.cpp
   input/InputTests.cpp
   io/IoTests.cpp
   localization/FormatTests.cpp
   localization/LocalizationTests.cpp
-  lua/AssetsLuaTests.cpp
-  lua/BufferLuaTests.cpp
-  lua/CollectionsLuaTests.cpp
-  lua/CoreLuaTests.cpp
-  lua/EventsLuaTests.cpp
-  lua/GeometryLuaTests.cpp
-  lua/InputLuaTests.cpp
-  lua/LuaConfigTests.cpp
-  lua/LuaReferenceTests.cpp
-  lua/MathLuaTests.cpp
-  lua/ModuleReloadTests.cpp
-  lua/SceneLuaTests.cpp
-  lua/ToolkitTests.cpp
-  lua/TweenLuaTests.cpp
-  lua/YieldTests.cpp
   math/ColorSpaceLuaTests.cpp
   math/ColorTransformTests.cpp
   math/Geometry3LuaTests.cpp
+  math/GeometryLuaTests.cpp
+  math/MathLuaTests.cpp
   math/MatrixLuaTests.cpp
   math/ProceduralTests.cpp
   math/QuatLuaTests.cpp
@@ -124,6 +121,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   math/SignalFilterTests.cpp
   math/Transform3DLuaTests.cpp
   math/VectorLuaTests.cpp
+  modules/LuaReferenceTests.cpp
   net/HttpDownloadTests.cpp
   net/NetLuaTests.cpp
   net/NetPluginTests.cpp
@@ -144,6 +142,9 @@ set(HAYLEN_LUA_TEST_SOURCES
   platform/SystemTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp
+  runtime/LuaConfigTests.cpp
+  runtime/ToolkitTests.cpp
+  runtime/YieldTests.cpp
   storage/StorageTests.cpp
   support/ContentAppFixture.cpp
   support/DebugClient.cpp

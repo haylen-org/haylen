@@ -9,7 +9,7 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "lua/Probe.hpp"
+#include "runtime/Probe.hpp"
 
 namespace haylen::lua {
 

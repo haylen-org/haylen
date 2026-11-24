@@ -1,18 +1,14 @@
 #include <gtest/gtest.h>
 
 #include <map>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
-#include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/RichTextOptions.hpp"
-#include "haylen/text/RichTextRegistry.hpp"
-#include "platform/headless/HeadlessHost.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/FontCollection.hpp"
 #include "support/LuaFixture.hpp"
@@ -353,12 +349,6 @@ TEST_F(TextLuaTest, RegistersEffectsIconsAndFonts) {
     fixture.runLua("family = graphics.newFontFamily({regular = font}) ui.addFont('story', family) ui.addFont('pixel', assets.font('fonts/pixel.fnt'))");
     EXPECT_EQ(lua("local story = graphics2d.newRichText('[font=serif]x[/font]', {fonts = {serif = family}}) return story.characterCount"), "1");
     EXPECT_NE(lua("ui.addFont('story', family)").find("already has a font named \"story\""), std::string::npos);
-}
-
-TEST(TextPluginTest, RequiresAStartedEngine) {
-    test::LuaFixture fixture;
-    haylen::plugins::TextPlugin plugin(fixture.host());
-    EXPECT_THROW((void)plugin.getRegistry(), std::logic_error);
 }
 
 } // namespace haylen::lua::text

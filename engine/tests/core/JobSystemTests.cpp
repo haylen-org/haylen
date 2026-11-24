@@ -233,40 +233,4 @@ TEST_F(JobSystemTest, StopsWithoutRunningQueuedOrLaterWork) {
     EXPECT_FALSE(ran);
 }
 
-TEST(LogTest, FiltersByLevel) {
-    std::vector<std::pair<Log::Level, std::string>> lines;
-    const std::uint64_t listener = Log::addListener([&](Log::Level level, std::string_view message) { lines.emplace_back(level, std::string(message)); });
-
-    Log::setLevel(Log::Level::Info);
-    Log::debug("hidden {}", 1);
-    Log::info("loaded {} textures", 3);
-    Log::warning("slow frame");
-    Log::error("failed {}", "badly");
-    Log::setLevel(Log::Level::Debug);
-    Log::debug("visible");
-    EXPECT_EQ(Log::getLevel(), Log::Level::Debug);
-
-    Log::removeListener(listener);
-    Log::setLevel(Log::Level::Info);
-
-    ASSERT_EQ(lines.size(), 4U);
-    EXPECT_EQ(lines[0].first, Log::Level::Info);
-    EXPECT_NE(lines[0].second.find("loaded 3 textures"), std::string::npos);
-    EXPECT_EQ(lines[1].first, Log::Level::Warning);
-    EXPECT_EQ(lines[2].first, Log::Level::Error);
-    EXPECT_EQ(lines[3].first, Log::Level::Debug);
-}
-
-// A line carries its time, its level and its message, and never the name of the library that writes it.
-TEST(LogTest, WritesLinesWithTheirTimeAndLevelOnly) {
-    std::string line;
-    const std::uint64_t listener = Log::addListener([&](Log::Level, std::string_view message) { line = std::string(message); });
-    Log::info("Ready");
-    Log::removeListener(listener);
-
-    EXPECT_TRUE(line.starts_with("[")) << line;
-    EXPECT_TRUE(line.ends_with("] [info] Ready")) << line;
-    EXPECT_EQ(line.find("varn"), std::string::npos) << line;
-}
-
 } // namespace haylen::core

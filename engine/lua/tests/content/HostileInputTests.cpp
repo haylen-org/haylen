@@ -3,15 +3,11 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <iterator>
-#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "content/LuaCompiler.hpp"
 #include "content/ReleasePackage.hpp"
-#include "content/format/BinaryReader.hpp"
-#include "content/format/BinaryWriter.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
 #include "content/format/ChannelWriter.hpp"
@@ -21,7 +17,6 @@
 #include "content/format/ShardIndex.hpp"
 #include "content/format/StoreEntry.hpp"
 #include "content/format/StoreState.hpp"
-#include "haylen/content/Error.hpp"
 #include "haylen/lua/Application.hpp"
 #include "support/ContentParsers.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -107,31 +102,6 @@ TEST_F(HostileInputTest, ParsersRejectDamagedFiles) {
             test::ContentParsers::parse(damaged);
         }
     }
-}
-
-TEST(BinaryReaderTest, NeverMovesPastItsBytes) {
-    const std::vector<std::uint8_t> bytes = {2, 0, 'a', 'b', 0};
-    haylen::content::BinaryReader reader(bytes, haylen::content::Error::Code::CorruptIndex, "The test structure");
-    try {
-        reader.skip(bytes.size() + 1);
-        FAIL() << "A skip past the end must fail.";
-    } catch (const haylen::content::Error& error) {
-        EXPECT_EQ(error.getCode(), haylen::content::Error::Code::CorruptIndex);
-        EXPECT_EQ(std::string(error.what()), "The test structure is damaged or was not made by this version of Haylen.");
-    }
-
-    EXPECT_EQ(reader.getPosition(), 0U);
-    EXPECT_EQ(reader.readString(2), "ab");
-    EXPECT_THROW(reader.requireEnd(), haylen::content::Error);
-    reader.skipZeros(1);
-    reader.requireEnd();
-}
-
-TEST(BinaryWriterTest, RefusesStringsLongerThanTheirLengthField) {
-    haylen::content::BinaryWriter writer;
-    EXPECT_THROW(writer.writeString(std::string(65536, 'a')), std::length_error);
-    writer.writeString(std::string(65535, 'a'));
-    EXPECT_EQ(writer.getBytes().size(), 65537U);
 }
 
 } // namespace haylen::lua::content

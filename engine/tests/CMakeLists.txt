@@ -1,20 +1,29 @@
 set(HAYLEN_TEST_SOURCES
   support/AllocationTrackerTests.cpp
+  2d/animation/AnimatedBatchTests.cpp
   2d/animation/AtlasBuilderTests.cpp
   2d/animation/Animation2DTests.cpp
+  2d/animation/SkeletonTests.cpp
+  2d/animation/SpriteAtlasTests.cpp
+  2d/graphics/CameraRigTests.cpp
   2d/graphics/CameraTests.cpp
   2d/graphics/GlassTests.cpp
   2d/graphics/GpuInstanceTests.cpp
   2d/graphics/GroupTests.cpp
   2d/graphics/NineSliceTests.cpp
+  2d/graphics/PathTests.cpp
+  2d/graphics/ShapeTests.cpp
   2d/graphics/StrokeBuilderTests.cpp
   2d/graphics/SceneTransitionTests.cpp
   2d/graphics/RendererStateTests.cpp
   2d/graphics/RendererTests.cpp
   2d/graphics/TextPainterTests.cpp
+  2d/lighting/Lighting2DTests.cpp
   2d/navigation/CrowdTests.cpp
+  2d/navigation/Navigation2DTests.cpp
   2d/navigation/NavMeshTests.cpp
   2d/navigation/PathfindingTests.cpp
+  2d/nodes/NodeTreeTests.cpp
   2d/particles/Particles2DTests.cpp
   2d/physics/AssemblyTests.cpp
   2d/physics/BodyMotionTests.cpp
@@ -25,13 +34,22 @@ set(HAYLEN_TEST_SOURCES
   2d/physics/ForceFieldTests.cpp
   2d/physics/JointRuntimeTests.cpp
   2d/physics/MoverTests.cpp
+  2d/physics/RaycasterTests.cpp
   2d/physics/VehicleTests.cpp
+  2d/physics/WorldTests.cpp
   2d/physics/WorldTuningTests.cpp
+  2d/procedural/PlacementTests.cpp
   2d/procedural/Procedural2DTests.cpp
   2d/procedural/TilingTests.cpp
+  2d/spatial/GridAlgorithmTests.cpp
+  2d/spatial/OverlapWorldTests.cpp
+  2d/spatial/Spatial2DTests.cpp
   2d/tiled/AutoMapperTests.cpp
+  2d/tiled/MapQueryTests.cpp
   2d/tiled/TileCollisionTests.cpp
+  2d/tiled/TiledTests.cpp
   ai/DecisionTests.cpp
+  ai/StateMachineTests.cpp
   audio/AudioAssetTests.cpp
   audio/AudioEffectTests.cpp
   audio/AudioInterruptionTests.cpp
@@ -45,6 +63,7 @@ set(HAYLEN_TEST_SOURCES
   audio/SoundTests.cpp
   audio/SpatializationTests.cpp
   audio/StreamedSoundTests.cpp
+  content/BinaryTests.cpp
   content/ChunkerTests.cpp
   content/CompressionTests.cpp
   content/ContentBuilderTests.cpp
@@ -53,15 +72,22 @@ set(HAYLEN_TEST_SOURCES
   content/LocalStoreTests.cpp
   content/RecordCacheTests.cpp
   content/ShardTests.cpp
+  conversation/ConversationTests.cpp
   core/AppConfigTests.cpp
   core/Base64Tests.cpp
   core/ContainerTests.cpp
   core/CoreTests.cpp
+  core/FloatBufferTests.cpp
+  core/JobSystemTests.cpp
   core/JsonValidatorTests.cpp
-  core/RuntimeTests.cpp
+  core/LogTests.cpp
+  core/MessagePackTests.cpp
   core/SceneManagerTests.cpp
   core/SignalTests.cpp
   core/TweenTests.cpp
+  debug/ConsoleTests.cpp
+  debug/ProfilerTests.cpp
+  debug/TraceRecorderTests.cpp
   gpu/DeviceFactoryTests.cpp
   gpu/direct3d/CompileQueueTests.cpp
   gpu/direct3d/WindowSamplesTests.cpp
@@ -69,26 +95,44 @@ set(HAYLEN_TEST_SOURCES
   gpu/HandleTableTests.cpp
   gpu/NullDeviceTests.cpp
   gpu/SurfaceTurnTests.cpp
+  graphics/GradientTests.cpp
   graphics/GraphicsTests.cpp
+  graphics/ImageFiltersTests.cpp
+  graphics/ImagePaletteTests.cpp
   graphics/MaterialTests.cpp
   graphics/ShaderTests.cpp
   input/ActionMapTests.cpp
+  input/CommandBufferTests.cpp
+  input/GestureTests.cpp
   input/InputRecordingTests.cpp
+  input/InputTests.cpp
   input/PointerEmulationTests.cpp
+  io/IoTests.cpp
+  localization/CatalogTests.cpp
+  localization/FormatTests.cpp
   math/ColorSpaceTests.cpp
+  math/ColorTransformTests.cpp
   math/Geometry3Tests.cpp
   math/MatrixTests.cpp
   math/PolygonTests.cpp
+  math/ProceduralTests.cpp
   math/QuatTests.cpp
+  math/RaycastTests.cpp
+  math/SignalFilterTests.cpp
   math/Transform3DTests.cpp
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp
   math/Vec3Tests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp
+  platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidFramePacerTests.cpp
+  platform/CrashGuardTests.cpp
+  platform/FoldTests.cpp
+  platform/NativeViewsTests.cpp
+  platform/StreamTests.cpp
   platform/SystemFontReaderTests.cpp
   platform/FrameRateGateTests.cpp
   platform/PixelDensityCapTests.cpp
@@ -117,6 +161,7 @@ set(HAYLEN_TEST_SOURCES
   platform/sdl/FullscreenRequestTests.cpp
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
+  platform/SystemTests.cpp
   platform/TextHelperTests.cpp
   platform/WebEntryTests.cpp
   platform/WindowConfigTests.cpp
@@ -126,13 +171,16 @@ set(HAYLEN_TEST_SOURCES
   platform/worker/EventsTests.cpp
   platform/worker/GamepadsTests.cpp
   platform/worker/KeysTests.cpp
+  storage/StorageTests.cpp
   text/BitmapFontTests.cpp
   text/ColorGlyphTests.cpp
   text/FontTests.cpp
+  text/GlyphTablesTests.cpp
   text/LineHeightTests.cpp
   text/RichTextLayoutTests.cpp
   text/RichTextMarkupTests.cpp
   text/ShapingTests.cpp
+  text/TextPluginTests.cpp
   ui/BackendTests.cpp
   ui/CollectionDiffTests.cpp
   ui/CollectionTests.cpp
