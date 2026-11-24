@@ -87,9 +87,9 @@ endif()
 set(HAYLEN_PLATFORM "${HAYLEN_PLATFORM}" CACHE INTERNAL "Platform the engine is built for.")
 set(HAYLEN_DESKTOP "${HAYLEN_DESKTOP}" CACHE INTERNAL "Whether the platform is a desktop.")
 
-# Lua is compiled as C++ by Varn, so a Lua error unwinds as a C++ exception and a yield jumps back to its resume with `_longjmp`, and the browser build uses the native exceptions and the native `longjmp` of WebAssembly that Varn builds with.
+# Lua is compiled as C++ by Varn, so a Lua error unwinds as a C++ exception and a yield jumps back to its resume with `_longjmp`, and the browser build uses the native exceptions and the native `longjmp` of WebAssembly that Varn builds with. Every target of the browser build compiles with the SIMD instructions of WebAssembly too, which every browser that the web build supports runs, since the inline functions of the standard library take vector types of their own with them, and two objects compiled with and without them give one function two signatures.
 if(EMSCRIPTEN)
-  add_compile_options(-fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
+  add_compile_options(-fwasm-exceptions -sSUPPORT_LONGJMP=wasm -msimd128)
   add_link_options(-fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
 endif()
 

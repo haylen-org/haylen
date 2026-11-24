@@ -695,12 +695,10 @@ add_library(haylen::engine ALIAS haylen-engine)
 
 # Public headers use C++20, so projects that link the engine compile with it too.
 target_compile_features(haylen-engine PUBLIC cxx_std_20)
-# Apps live in folders of their own, so the exception and `longjmp` support of the browser build travels with the engine target instead of the engine folder.
+# Apps live in folders of their own, so the exception and `longjmp` support and the SIMD instructions of the browser build travel with the engine target instead of the engine folder.
 if(EMSCRIPTEN)
-  target_compile_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
+  target_compile_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -msimd128)
   target_link_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
-  # The batch math computes with the SIMD instructions of WebAssembly, which every browser that the web build supports runs.
-  target_compile_options(haylen-engine PRIVATE -msimd128)
 endif()
 target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
