@@ -9,12 +9,12 @@
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
 | **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | — | — |
 | **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | — |
@@ -355,6 +355,8 @@ Andamento: a execução do Tiny Island nos simuladores de iOS e tvOS começou nu
 
 Andamento: os testes de início do Tiny Island passam no simulador do iPhone 17e e no do Apple TV (commit `4eb1974e1`). Faltam o macOS, o Mac Catalyst e o player de desktop, que esperam a decisão do dono sobre os executores de testes de UI na CI e na nuvem.
 
+Decisão do dono: o macOS, o Mac Catalyst e o player de desktop rodam no runner macOS da CI, pelo mesmo executor do KB-013.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -584,6 +586,8 @@ Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por 
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Decisão do dono: testes de UI do macOS e do Mac Catalyst por XCUITest num runner macOS do GitHub, só na execução completa, e um executor do Windows em Python pela UI Automation numa máquina da Azure por cerca de uma hora, apagada logo depois. Em andamento num stream.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -610,6 +614,8 @@ Escrever `TextInputTests.kt` em `samples/tests/ui-tests/android`, como o `TextIn
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Andamento: três testes passam no emulador (`f713dee80`): cada tecla digita uma vez e Delete apaga, o teclado fica ao tocar o campo de novo e volta depois do Back e do Home. O teste de girar o aparelho espera a decisão do dono, porque o app só em paisagem gira pelo acelerômetro no Android.
+
+Decisão do dono: o executor de testes de UI do Android gira o emulador pelo console quando o teste pede, e o teste de girar volta ao `TextInputTests.kt`. Em andamento num stream.
 
 #### Acceptance criteria
 
@@ -702,6 +708,8 @@ Etapa: Código e revisão geral.
 Medir as texturas de hoje (PNG e JPEG: tamanho no pacote, tempo de carga e memória da GPU) nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal do grupo BD, que traz o KTX2 a toda plataforma, e registrar os números em `docs/graphics/rendering.md`, ao lado dos do KTX2 quando ele entrar.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Decisão do dono: a medição roda em celulares modestos alugados no AWS Device Farm, num lote só e apagado depois, sem usar os aparelhos do dono.
 
 #### Acceptance criteria
 
@@ -895,6 +903,8 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Andamento: a causa achada na engine: o UI lia cada eixo do analógico sozinho, e um analógico inclinado para cima com um pouco de lado apertava duas direções, e o navegador de foco tentava o lado primeiro e não andava numa coluna. Agora o foco anda pelo eixo mais inclinado, com o limiar e a repetição do direcional (commit `2d9d321f3`, testes `FocusTest.MovesInEveryDirectionWithTheStick` e `RepeatsWithTheStickAsWithTheDirectionalPad`). Falta a opção A que o dono escolheu: um teste de UI no simulador do iOS com o `GCVirtualController`, que passa pelo mesmo código de leitura dos controles do tvOS.
 
+Decisão do dono: opção A: um teste de UI no simulador do iOS com o `GCVirtualController`, que passa pelo mesmo código de leitura dos controles do tvOS, porque o tvOS não tem controle virtual. Em andamento num stream.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -921,6 +931,8 @@ Vários gamepads ao mesmo tempo sem perder nada em toda plataforma: cada control
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Andamento: os testes com quatro controles virtuais do SDL passam: índices estáveis, conectar e desconectar no jogo, um mapa por jogador, vibração e sensores de cada controle, e o foco da UI segue só o controle do mapa padrão (commit `e34af0b74`). Falta a opção A do dono na Apple, com o `GCVirtualController` no simulador do iOS, e a web não tem teste do gamepad do navegador.
+
+Decisão do dono: opção A: dois `GCVirtualController` no simulador do iOS mantêm os jogadores separados. Em andamento num stream.
 
 #### Acceptance criteria
 
@@ -950,6 +962,8 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 Andamento: os avisos que os logs das execuções completas mostravam estão corrigidos (variáveis que escondiam outras, conversões de sinal, condicionais de enum, macros do Windows redefinidas e a guarda `@available` do visionOS 2.0). As flags `-Wno-missing-field-initializers`, `-Wno-missing-designated-field-initializers` e `-Wno-stringop-*` saíram, e cada membro que um agregado da engine deixava de inicializar ganhou o inicializador vazio, e as estruturas de Vulkan, VMA, Box2D e SDL que a engine preenche dizem cada campo com o seu zero, sem mudar o comportamento. Faltam: o build Release com LTO do SDK Linux, o clang dos fuzzers, os sanitizers, os testes do macOS, a fatia do visionOS e os SDKs web e Android, e o commit.
 
 Andamento: as flags de campos sem inicializar saíram e a causa foi corrigida (commit `dc2d5b010`). As flags `-Wno-stringop-*` do link do GCC esperam a decisão do dono: o único aviso que escondem é um falso positivo do GCC no `lstrlib.c` do Lua, uma dependência, reproduzido só com o Lua.
+
+Decisão do dono: um patch pequeno no Lua declara ao compilador que a diferença de ponteiros do `string.gsub` nunca é negativa, as flags `-Wno-stringop-*` saem do link do GCC e o aviso some na causa. Em andamento num stream.
 
 #### Acceptance criteria
 
@@ -7067,7 +7081,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-272"></a>
 ### KB-272 — Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…
 
-- **Status:** testing
+- **Status:** doing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
@@ -7084,6 +7098,8 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 Andamento: os avisos que os logs das execuções completas mostravam estão corrigidos (variáveis que escondiam outras, conversões de sinal, condicionais de enum, macros do Windows redefinidas e a guarda `@available` do visionOS 2.0). As flags `-Wno-missing-field-initializers`, `-Wno-missing-designated-field-initializers` e `-Wno-stringop-*` saíram, e cada membro que um agregado da engine deixava de inicializar ganhou o inicializador vazio, e as estruturas de Vulkan, VMA, Box2D e SDL que a engine preenche dizem cada campo com o seu zero, sem mudar o comportamento. Faltam: o build Release com LTO do SDK Linux, o clang dos fuzzers, os sanitizers, os testes do macOS, a fatia do visionOS e os SDKs web e Android, e o commit.
 
 Andamento: os avisos de todas as plataformas estão corrigidos (commits `4bc67dabd`, `b2598d7d7` e `dc2d5b010`), com zero avisos da engine no Linux GCC e Clang, no macOS, no visionOS, no Android e na web. Falta a execução completa da CI, que prova o Windows e o Linux x86_64.
+
+Decisão do dono: a execução completa `45401241122` mostrou os avisos que faltavam: o GCC em x86_64 no código SIMD, e o MSVC e o Emscripten dentro de cabeçalhos do Clipper2 e do googletest, que entram como cabeçalhos externos do sistema. Em andamento num stream.
 
 #### Acceptance criteria
 
