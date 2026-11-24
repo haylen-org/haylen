@@ -129,6 +129,13 @@ class TerminalTest:
         assert Terminal.shorten("\u6f22\u5b57\u6f22\u5b57\u6f22\u5b57", 7) == "\u6f22\u2026\u6f22\u5b57"
         assert Terminal.shorten("cafe\u0301 au lait", 12) == "cafe\u0301 au lait"
 
+    def test_a_shortened_line_keeps_whole_graphemes_so_no_mark_or_joined_character_sits_on_the_ellipsis(self):
+        assert Terminal.shorten("Building the cafe\u0301s", 4) == "Bu\u2026s"
+        assert Terminal.shorten("Building the cafe\u0301s", 5) == "Bu\u2026e\u0301s"
+        assert Terminal.shorten("Saving the \U0001f469\u200d\U0001f467", 8) == "Savi\u2026 \U0001f469\u200d\U0001f467"
+        assert Terminal.shorten("Saving the \U0001f469\u200d\U0001f467", 6) == "Sav\u2026\U0001f469\u200d\U0001f467"
+        assert Terminal.visible_width("\U0001f469\u200d\U0001f467 e\u0301") == 4
+
     def test_the_progress_line_drops_the_escapes_and_tabs_of_a_tool_and_fits_the_width_of_the_terminal(self, monkeypatch):
         monkeypatch.setattr(shutil, "get_terminal_size", lambda: os.terminal_size((21, 24)))
         output = io.StringIO()

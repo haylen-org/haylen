@@ -347,7 +347,7 @@ class Terminal:
     @staticmethod
     def visible_width(text: str) -> int:
         """The columns of a terminal that a text takes, without the escape sequences of its colors."""
-        return sum(map(Terminal.columns, Terminal.ESCAPE.sub("", text)))
+        return sum(map(Terminal.columns, Terminal.graphemes(Terminal.ESCAPE.sub("", text))))
 
     def info(self, message: str) -> None:
         self.write(Terminal.render(message, self.stdout_color))
@@ -381,35 +381,42 @@ class Terminal:
                 self.draw_prompt()
 
     @staticmethod
-    def columns(character: str) -> int:
-        """The columns of a terminal that a character takes: none for a mark that combines with the character before it, two for a wide character of East Asian scripts and one for any other."""
-        if unicodedata.combining(character):
+    def graphemes(text: str) -> list[str]:
+        """The graphemes of a text, the characters that a person sees, each with the marks and joined characters that combine with it."""
+        return [str(grapheme) for grapheme in unicodedata.iter_graphemes(text)]
+
+    @staticmethod
+    def columns(grapheme: str) -> int:
+        """The columns of a terminal that a grapheme takes: those of its first character, which is two for a wide character of East Asian scripts, none for a mark without a character to combine with and one for any other."""
+        first = grapheme[0]
+        if unicodedata.combining(first):
             return 0
-        return 2 if unicodedata.east_asian_width(character) in "WF" else 1
+        return 2 if unicodedata.east_asian_width(first) in "WF" else 1
 
     @staticmethod
     def shorten(text: str, width: int) -> str:
-        """Fits a line into a number of columns by turning its middle into an ellipsis, so its start and its end, such as the file that a tool works on, stay visible."""
-        if sum(map(Terminal.columns, text)) <= width:
+        """Fits a line into a number of columns by turning its middle into an ellipsis between whole graphemes, so its start and its end, such as the file that a tool works on, stay visible."""
+        graphemes = Terminal.graphemes(text)
+        if sum(map(Terminal.columns, graphemes)) <= width:
             return text
         if width < 1:
             return ""
         room = width - 1
         head = ""
         head_width = 0
-        for character in text:
-            if head_width + Terminal.columns(character) > (room + 1) // 2:
+        for grapheme in graphemes:
+            if head_width + Terminal.columns(grapheme) > (room + 1) // 2:
                 break
-            head += character
-            head_width += Terminal.columns(character)
+            head += grapheme
+            head_width += Terminal.columns(grapheme)
 
         tail = ""
         tail_width = 0
-        for character in reversed(text):
-            if tail_width + Terminal.columns(character) > room - head_width:
+        for grapheme in reversed(graphemes):
+            if tail_width + Terminal.columns(grapheme) > room - head_width:
                 break
-            tail = character + tail
-            tail_width += Terminal.columns(character)
+            tail = grapheme + tail
+            tail_width += Terminal.columns(grapheme)
         return f"{head}{Terminal.ELLIPSIS}{tail}"
 
     def progress(self, line: str) -> None:
