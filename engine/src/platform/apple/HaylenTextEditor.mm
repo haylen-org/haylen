@@ -171,7 +171,7 @@ using haylen::platform::TextInput;
         view.inlinePredictionType = UITextInlinePredictionTypeNo;
     }
 
-    if (@available(iOS 18.0, tvOS 18.0, *)) {
+    if (@available(iOS 18.0, tvOS 18.0, visionOS 2.0, *)) {
         view.mathExpressionCompletionType = UITextMathExpressionCompletionTypeNo;
     }
 #if !TARGET_OS_TV
