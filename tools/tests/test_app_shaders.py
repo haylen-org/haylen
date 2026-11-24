@@ -1,5 +1,6 @@
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -85,3 +86,28 @@ class AppShadersTest:
         targets = AppShadersTest.targets(app)
         assert targets["port"] == targets["spirv"]
         assert AppShaders(fixture.context, port).update(app) == []
+
+    def test_a_source_that_goes_away_while_the_folder_is_read_is_skipped_and_never_compiles(self, tmp_path, monkeypatch):
+        fixture = ToolingFixture(tmp_path)
+        app = fixture.app({})
+        shaders = app / "content" / "shaders"
+        shaders.mkdir(parents=True)
+        (shaders / "glow.glsl").write_text("@program glow haylen_vs glow_fs\n", encoding="utf-8")
+        gone = shaders / "gone.glsl"
+        listed = Path.rglob
+
+        def rglob(folder: Path, pattern: str):
+            yield from listed(folder, pattern)
+            if folder == shaders:
+                yield gone
+
+        def compiler(*arguments: object, **options: object) -> None:
+            raise AssertionError("The compiler ran for a source that went away.")
+
+        monkeypatch.setattr(Path, "rglob", rglob)
+        monkeypatch.setattr(subprocess, "run", compiler)
+
+        assert AppShaders.sources(app) == [shaders / "glow.glsl"]
+        assert AppShaders.newest_input(app) >= (shaders / "glow.glsl").stat().st_mtime
+        AppShaders(fixture.context).compile(gone, gone.with_suffix(".shader"), None)
+        assert not gone.with_suffix(".shader").exists()

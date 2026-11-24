@@ -211,3 +211,10 @@ class AppleProjectTest:
         assert spec["targets"]["Shelf"]["type"] == "app-extension"
         assert {"target": "Shelf", "embed": True} in spec["targets"]["App"]["dependencies"]
         assert AppleFixture.plist(prepared, "extensions/Shelf/Info.plist")["NSExtension"] == {"NSExtensionPointIdentifier": "com.apple.tv-top-shelf"}
+
+    def test_the_build_of_the_app_is_the_project_version_and_its_version_the_marketing_version(self, apple):
+        built = apple.prepare(apple.app({"version": "2.4.1", "build": 37}, "built"))
+        first = apple.prepare(apple.app({"version": "1.0.0"}, "first"))
+
+        assert "MARKETING_VERSION = 2.4.1\nCURRENT_PROJECT_VERSION = 37\n" in (built.folders.project / AppleProject.CONFIG).read_text(encoding="utf-8")
+        assert "MARKETING_VERSION = 1.0.0\nCURRENT_PROJECT_VERSION = 1\n" in (first.folders.project / AppleProject.CONFIG).read_text(encoding="utf-8")

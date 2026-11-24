@@ -1,5 +1,7 @@
 import io
+import os
 import re
+import shutil
 from pathlib import Path
 
 from haylen.terminal import Terminal
@@ -114,3 +116,22 @@ class TerminalTest:
             '    "macos".',
             "✓ The engine tests passed.",
         ]
+
+    def test_with_color_only_urls_underline_paths_print_bare_and_reserved_expressions_take_their_color(self):
+        message = 'Open `https://haylen.dev/docs` and `build/sdk` with "haylen sdk build".'
+
+        assert Terminal.render(message, True) == f"Open \x1b[{Terminal.LINK}mhttps://haylen.dev/docs\x1b[0m and build/sdk with \x1b[{Terminal.EXPRESSION}mhaylen sdk build\x1b[0m."
+        assert Terminal.render(message, False) == 'Open https://haylen.dev/docs and build/sdk with "haylen sdk build".'
+
+    def test_a_line_that_is_too_long_loses_its_middle_and_keeps_its_start_and_end_by_the_columns_they_take(self):
+        assert Terminal.shorten("Compiling App.cpp", 17) == "Compiling App.cpp"
+        assert Terminal.shorten("Compiling the sources/of/the/app/App.cpp", 20) == "Compiling \u2026p/App.cpp"
+        assert Terminal.shorten("\u6f22\u5b57\u6f22\u5b57\u6f22\u5b57", 7) == "\u6f22\u2026\u6f22\u5b57"
+        assert Terminal.shorten("cafe\u0301 au lait", 12) == "cafe\u0301 au lait"
+
+    def test_the_progress_line_drops_the_escapes_and_tabs_of_a_tool_and_fits_the_width_of_the_terminal(self, monkeypatch):
+        monkeypatch.setattr(shutil, "get_terminal_size", lambda: os.terminal_size((21, 24)))
+        output = io.StringIO()
+        TerminalTest.terminal(output, color=True).progress("\x1b[32mCompiling\x1b[0m\tsome/very/long/path/to/file.cpp\n")
+
+        assert output.getvalue() == f"\r\x1b[2K\x1b[{Terminal.COMMAND}mCompiling \u2026/file.cpp\x1b[0m"
