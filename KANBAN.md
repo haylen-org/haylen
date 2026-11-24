@@ -7668,7 +7668,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** spike
 - **Priority:** low
 - **Complexity:** 3
-- **Disposition:** withdrawn
+- **Disposition:** canceled
 - **Archived:** 2026-11-24
 
 #### Description
