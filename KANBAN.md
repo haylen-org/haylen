@@ -4,18 +4,18 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 9 / not set · **Next ID:** KB-292
+**Active WIP:** 7 / not set · **Next ID:** KB-293
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | — |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 | — | — | — | — |
+| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | — | — |
 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | — |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | — | — | — | — |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
-| **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
+| **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | — | — | — | — | — |
 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 | — | — | — | — | — |
 | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | — |
@@ -281,6 +281,7 @@
 | **[KB-285 · Plugins no playground de um site](#kb-285)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-286 · Plugins que estendem o C++ da engine também no runtime web pré-compilado](#kb-286)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-287 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-287)**<br>🟡 medium · `task` · 3/10 | — | — | — | — | — |
+| **[KB-292 · Montar os dados de instância do renderizador 3D em lote](#kb-292)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-002 · Plugin de exemplo do Tiny Island só com APIs da plataforma](#kb-002)**<br>🟢 low · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | — | — |
@@ -854,6 +855,8 @@ Tirar os ganchos de teste da API pública do `DebugPlugin`: o `getInspectorLine`
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Andamento: o `setInspectorClock` e o `getInspectorLine` saíram do cabeçalho público, o inspetor atualiza pelo relógio da engine, as janelas de depuração entram na árvore de acessibilidade (cada janela como diálogo com o seu título e a linha de estado do inspetor como texto) e o `InspectorWindowTest` lê a linha pela árvore. Os testes estão rodando antes do commit.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -1117,27 +1120,28 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-034"></a>
 ### KB-034 — Matemática em lote e SIMD
 
-- **Status:** doing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-24
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
 
-Etapa: Fundações.
-
-Matemática em lote e SIMD: transformar arrays de matrizes, testar arrays de caixas contra frustums e montar dados de instâncias em lote, com SIMD portátil onde o compilador oferece (incluindo o SIMD do WebAssembly se o build web permitir) e um caminho escalar de referência com teste de paridade, sem mudar resultados além da tolerância. Pronto com benchmark no `haylen engine bench`.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
+Matemática em lote sem chamada por item, para quem transforma ou testa muitos objetos de uma vez. O `math::MatrixBatch` multiplica um pai por cada matriz de um array (`multiply`), multiplica pares (`multiplyPairs`) e aplica uma matriz a pontos (`transformPoints`), e o `Frustum::cull(boxes, visible, tolerance)` escreve os índices das caixas visíveis. Os laços rodam em lanes de 4 floats com SSE2, Neon ou o SIMD do WebAssembly, com um caminho escalar de referência que os testes comparam. Em Lua: `m.matrixBatch` e `frustum:cull(boxes)`. Medido com `haylen engine bench --suite algorithms` num Mac Apple silicon com 100 mil itens: pai vezes cada matriz de 0,42 ms para 0,22 ms e culling de caixas de 1,14 ms para 0,55 ms. Aplicar uma matriz a pontos fica igual, porque o laço é limitado pela memória. A montagem dos dados de instância do renderizador em lote é o cartão KB-292.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `BatchMathTest` confere o caminho SIMD e o escalar contra `Mat4` e `Frustum::classify`, e os testes Lua de `MatrixLuaTests` e `Geometry3DLuaTests` cobrem a API Lua (commit `981f7881c`).
+- [x] Os caminhos SSE2, Neon de armv7 e WebAssembly compilam sem aviso, e o SDK web compila com `-msimd128`.
+- [x] O caso do benchmark de algoritmos mede os dois caminhos.
 
 #### Attachments
 
-- None
+- [Referência de `haylen.math`](docs/lua-api/math.md)
+- [Matemática 3D](docs/3d/math.md)
+- [Build](docs/tools/build.md)
 
 <a name="kb-035"></a>
 ### KB-035 — Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa
@@ -1367,27 +1371,27 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-044"></a>
 ### KB-044 — Estado térmico e de desempenho do sistema em platform::System e haylen.system…
 
-- **Status:** doing
+- **Status:** done
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Finished:** 2026-11-24
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
 
-Etapa: Fundações.
-
-Estado térmico e de desempenho do sistema em `platform::System` e `haylen.system` (`system.thermalState()`, que devolve `'nominal'`, `'fair'`, `'serious'`, `'critical'` ou `'unknown'`, e o evento `thermalStateChanged` no vocabulário do ciclo de vida, pelas APIs de cada plataforma), para que o renderizador 3D e o app baixem a qualidade sob calor, com `unknown` onde a plataforma não informa. Testes: CPU com o host headless, Lua, `docs/core/lifecycle.md` com a fonte em cada plataforma.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
+O estado térmico do aparelho chega ao app: `platform::ThermalState` (`unknown`, `nominal`, `fair`, `serious`, `critical`) em `System::getThermalState`, o evento `thermalStateChanged` com `{state}` no vocabulário do ciclo de vida e `system.thermalState()` em Lua. A Apple lê o `NSProcessInfo.thermalState` e a sua notificação, o Android lê o `PowerManager` a partir da API 29, e o Windows, o Linux e a web respondem `unknown`, com o motivo na documentação.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `SystemTest.PublishesEveryChangeOfTheThermalStateOnce`, `AndroidThermalStatusTest` e `SystemLuaTest` passam, e o PLT-004 do projeto de testes mostra o estado (commit `f2ae693f2`).
+- [x] O SDK web e o SDK Android de arm64-v8a compilam. Windows e Linux são provados pela próxima execução completa da CI.
 
 #### Attachments
 
-- None
+- [Ciclo de vida](docs/core/lifecycle.md)
+- [Referência de `haylen.system`](docs/lua-api/system.md)
+- [Eventos](docs/lua-api/events.md)
 
 <a name="kb-045"></a>
 ### KB-045 — Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)
@@ -7518,6 +7522,30 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+
+#### Attachments
+
+- None
+
+<a name="kb-292"></a>
+### KB-292 — Montar os dados de instância do renderizador 3D em lote
+
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 5
+- **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
+
+#### Description
+
+Etapa: Fundações. Os dados de instância do renderizador 3D (matrizes, cores e dados próprios de cada instância) são montados em lote pelas mesmas lanes SIMD do `math::MatrixBatch` (KB-034), sem chamada por objeto, assim que o renderizador 3D define o formato das instâncias. Depende do renderizador 3D.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] A montagem das instâncias usa as lanes SIMD com o caminho escalar de referência, com teste de paridade e um caso de benchmark.
+- [ ] Um quadro que desenha o mesmo que o anterior não aloca nada na montagem.
 
 #### Attachments
 
