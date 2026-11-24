@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/io/Package.hpp"
@@ -53,7 +53,7 @@ class ContentAppFixture : public ::testing::Test {
 
     TemporaryDirectory tree;
     ContentServer server{tree.getPath()};
-    ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
     Files game;
     TemporaryDirectory shipped;
     TemporaryDirectory storeFolder;

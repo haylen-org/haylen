@@ -63,9 +63,9 @@ set(HAYLEN_LUA_SOURCES
   src/audio/AudioBinding.cpp
   src/audio/EffectBinding.cpp
   src/content/ContentBinding.cpp
-  src/content/LuaBytecodeAbi.cpp
-  src/content/LuaCompiler.cpp
-  src/content/LuaPackSource.cpp
+  src/content/BytecodeAbi.cpp
+  src/content/BytecodeCompiler.cpp
+  src/content/ScriptedPackSource.cpp
   src/conversation/ConversationBinding.cpp
   src/core/ClassBinding.cpp
   src/core/CollectionsBinding.cpp
@@ -170,7 +170,7 @@ set(HAYLEN_LUA_SOURCES
   src/runtime/Jobs.cpp
   src/runtime/JobsBinding.cpp
   src/runtime/JsonConverter.cpp
-  src/runtime/LuaConfig.cpp
+  src/runtime/Config.cpp
   src/runtime/Module.cpp
   src/runtime/Modules.cpp
   src/runtime/NativeProperty.cpp
@@ -192,8 +192,8 @@ set(HAYLEN_LUA_SOURCES
   src/storage/StorageBinding.cpp
   src/ui/CollectionBinding.cpp
   src/ui/ImGuiBinding.cpp
-  src/ui/LuaItemSource.cpp
-  src/ui/LuaPageSource.cpp
+  src/ui/ScriptedItemSource.cpp
+  src/ui/ScriptedPageSource.cpp
   src/ui/NavigationBinding.cpp
   src/ui/ScriptedScreen.cpp
   src/ui/TransformBinding.cpp

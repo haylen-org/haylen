@@ -23,9 +23,9 @@ class Gui;
 
 namespace haylen::lua::ui {
 // The items of the Lua list that `collection:setItems` gives a collection. The GUI keeps the list for the collection, and the source caches the id and the type of every item, so binding reads only the fields it binds, with raw table access that runs no Lua code. The methods that change the items change the list too, so the app and the collection always see the same items, and they check only the ids they add, so a change costs the items it touches and the shift of the list, as `table.insert` does.
-class LuaItemSource final : public haylen::ui::CollectionSource {
+class ScriptedItemSource final : public haylen::ui::CollectionSource {
   public:
-    LuaItemSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown);
+    ScriptedItemSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown);
 
     // Reads and checks every item of the list at the index before anything changes, then shows them, compared with the items before by id. The list becomes the one the GUI keeps.
     void assign(lua_State* L, int list);

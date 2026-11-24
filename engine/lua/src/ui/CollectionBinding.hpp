@@ -25,7 +25,7 @@ class Gui;
 }
 
 namespace haylen::lua::ui {
-class LuaItemSource;
+class ScriptedItemSource;
 
 // Installs the `UiCollection` class, the handle `gui:collection(id)` returns, and the `UiCell` class of the cells binders receive. The GUI keeps the Lua values of each collection, its list of items, its binders, its page loader and its pages, in the registry until it unmounts, so a binder that refers to its scene never keeps the scene alive.
 class CollectionBinding final {
@@ -77,7 +77,7 @@ class CollectionBinding final {
     [[nodiscard]] static std::size_t readTarget(lua_State* L, int index, const haylen::ui::Collection& collection);
     [[nodiscard]] static std::size_t readIndex(lua_State* L, int index, const haylen::ui::Collection& collection, std::size_t limit);
     static void checkUnbound(lua_State* L, const haylen::ui::Collection& collection);
-    [[nodiscard]] static LuaItemSource& requireList(lua_State* L, haylen::ui::Collection& collection);
+    [[nodiscard]] static ScriptedItemSource& requireList(lua_State* L, haylen::ui::Collection& collection);
     static void pushItem(lua_State* L, const haylen::ui::Collection& collection, std::size_t index);
     static void pushCell(lua_State* L, haylen::ui::CollectionCell& cell);
     [[nodiscard]] static haylen::ui::CollectionCell& checkCell(lua_State* L);

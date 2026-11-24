@@ -1,4 +1,4 @@
-#include "content/LuaBytecodeAbi.hpp"
+#include "content/BytecodeAbi.hpp"
 
 #include <array>
 #include <cstdint>
@@ -9,19 +9,19 @@
 
 namespace haylen::lua::content {
 
-std::string LuaBytecodeAbi::get() {
+std::string BytecodeAbi::get() {
     static const std::string& abi = *new std::string(read());
     return abi;
 }
 
-int LuaBytecodeAbi::append(lua_State*, const void* bytes, std::size_t size, void* output) {
+int BytecodeAbi::append(lua_State*, const void* bytes, std::size_t size, void* output) {
     const auto* first = static_cast<const std::uint8_t*>(bytes);
     std::vector<std::uint8_t>& chunk = *static_cast<std::vector<std::uint8_t>*>(output);
     chunk.insert(chunk.end(), first, first + size);
     return 0;
 }
 
-std::string LuaBytecodeAbi::read() {
+std::string BytecodeAbi::read() {
     const std::unique_ptr<lua_State, decltype(&lua_close)> state(luaL_newstate(), &lua_close);
     std::vector<std::uint8_t> chunk;
     if (state == nullptr || luaL_loadbufferx(state.get(), "", 0, "=abi", "t") != LUA_OK || lua_dump(state.get(), &append, &chunk, 0) != 0) {

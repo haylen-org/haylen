@@ -1,4 +1,4 @@
-#include "ui/LuaPageSource.hpp"
+#include "ui/ScriptedPageSource.hpp"
 
 #include <algorithm>
 #include <new>
@@ -19,10 +19,10 @@
 
 namespace haylen::lua::ui {
 
-LuaPageSource::LuaPageSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
+ScriptedPageSource::ScriptedPageSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
 
 // Pages keep their place while the page size stays, and a page whose length the new count changes loads again. The pages go before the count changes, so the collection hears of them while it still has their items.
-void LuaPageSource::configure(const Options& value) {
+void ScriptedPageSource::configure(const Options& value) {
     std::vector<std::size_t> dropped;
     for (const auto& [page, kept] : pages) {
         if (value.pageSize != options.pageSize || getPageLength(page, value) != getPageLength(page, options)) {
@@ -44,16 +44,16 @@ void LuaPageSource::configure(const Options& value) {
     changed.emit({.kind = Change::Kind::Replaced, .index = 0, .count = options.count, .target = 0, .previous = previous});
 }
 
-std::size_t LuaPageSource::getPageLength(std::size_t page, const Options& paging) noexcept {
+std::size_t ScriptedPageSource::getPageLength(std::size_t page, const Options& paging) noexcept {
     const std::size_t first = page * paging.pageSize;
     return first >= paging.count ? 0 : std::min(paging.pageSize, paging.count - first);
 }
 
-std::size_t LuaPageSource::getPageLength(std::size_t page) const noexcept {
+std::size_t ScriptedPageSource::getPageLength(std::size_t page) const noexcept {
     return getPageLength(page, options);
 }
 
-std::size_t LuaPageSource::getDistance(std::size_t page) const noexcept {
+std::size_t ScriptedPageSource::getDistance(std::size_t page) const noexcept {
     if (page < neededFirst) {
         return neededFirst - page;
     }
@@ -61,23 +61,23 @@ std::size_t LuaPageSource::getDistance(std::size_t page) const noexcept {
     return page > neededLast ? page - neededLast : 0;
 }
 
-const LuaPageSource::Page* LuaPageSource::findLoaded(std::size_t index) const {
+const ScriptedPageSource::Page* ScriptedPageSource::findLoaded(std::size_t index) const {
     const auto found = pages.find(index / options.pageSize);
     return found != pages.end() && found->second.loaded ? &found->second : nullptr;
 }
 
-std::string_view LuaPageSource::getId(std::size_t index) const {
+std::string_view ScriptedPageSource::getId(std::size_t index) const {
     const Page* page = findLoaded(index);
     return page != nullptr ? std::string_view(page->ids[index % options.pageSize]) : std::string_view();
 }
 
-std::string_view LuaPageSource::getType(std::size_t index) const {
+std::string_view ScriptedPageSource::getType(std::size_t index) const {
     const Page* page = findLoaded(index);
     return page != nullptr ? std::string_view(page->types[index % options.pageSize]) : std::string_view();
 }
 
 // Pages of the range that are neither loaded nor loading load now, and the pages farthest from the range go once more pages than `maxPages` are kept.
-void LuaPageSource::request(std::size_t first, std::size_t count) {
+void ScriptedPageSource::request(std::size_t first, std::size_t count) {
     if (count == 0 || first >= options.count) {
         return;
     }
@@ -94,7 +94,7 @@ void LuaPageSource::request(std::size_t first, std::size_t count) {
 }
 
 // The loader returns the list of the page, which stores at once, or a promise of it, which a task awaits before it stores the list.
-void LuaPageSource::load(std::size_t page) {
+void ScriptedPageSource::load(std::size_t page) {
     const std::uint64_t ticket = nextTicket++;
     pages[page] = Page{.ids = {}, .types = {}, .ticket = ticket, .loaded = false};
 
@@ -141,7 +141,7 @@ void LuaPageSource::load(std::size_t page) {
     // clang-format on
 }
 
-int LuaPageSource::awaitPage(lua_State* L) {
+int ScriptedPageSource::awaitPage(lua_State* L) {
     lua_getfield(L, 1, "await");
     lua_pushvalue(L, 1);
     lua_callk(L, 1, 2, 0, &finishPage);
@@ -149,11 +149,11 @@ int LuaPageSource::awaitPage(lua_State* L) {
 }
 
 // The promise answers with the list, or with nothing and the reason it failed, which stops the app with that reason.
-int LuaPageSource::finishPage(lua_State* L, int, lua_KContext) {
+int ScriptedPageSource::finishPage(lua_State* L, int, lua_KContext) {
     // clang-format off
     return lua::Binding::guarded(L, [L] {
         const Request& request = *static_cast<const Request*>(lua_touserdata(L, lua_upvalueindex(1)));
-        const std::shared_ptr<LuaPageSource> source = request.source.lock();
+        const std::shared_ptr<ScriptedPageSource> source = request.source.lock();
         if (!source) {
             return 0;
         }
@@ -175,21 +175,21 @@ int LuaPageSource::finishPage(lua_State* L, int, lua_KContext) {
 }
 
 // A page that failed to load leaves the pages it keeps, so the next request of its items loads it again.
-void LuaPageSource::dropPending(std::size_t page, std::uint64_t ticket) {
+void ScriptedPageSource::dropPending(std::size_t page, std::uint64_t ticket) {
     const auto found = pages.find(page);
     if (found != pages.end() && found->second.ticket == ticket && !found->second.loaded) {
         pages.erase(found);
     }
 }
 
-int LuaPageSource::collectRequest(lua_State* L) {
+int ScriptedPageSource::collectRequest(lua_State* L) {
     static_cast<Request*>(lua_touserdata(L, 1))->~Request();
     lua_pushnil(L);
     lua_setmetatable(L, 1);
     return 0;
 }
 
-void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, int list) {
+void ScriptedPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, int list) {
     const auto found = pages.find(page);
     if (found == pages.end() || found->second.ticket != ticket || found->second.loaded) {
         return;
@@ -227,7 +227,7 @@ void LuaPageSource::store(lua_State* L, std::size_t page, std::uint64_t ticket, 
     dropFarthest();
 }
 
-void LuaPageSource::drop(std::size_t page) {
+void ScriptedPageSource::drop(std::size_t page) {
     const auto found = pages.find(page);
     const bool loaded = found->second.loaded;
     pages.erase(found);
@@ -239,7 +239,7 @@ void LuaPageSource::drop(std::size_t page) {
 }
 
 // The pages of the range the view needs stay, also when a page that arrives later is stored, and the others go from the farthest one while more than `maxPages` are kept.
-void LuaPageSource::dropFarthest() {
+void ScriptedPageSource::dropFarthest() {
     while (pages.size() > options.maxPages) {
         const auto farthest = std::ranges::max_element(pages, {}, [this](const auto& entry) { return getDistance(entry.first); });
         if (getDistance(farthest->first) == 0) {
@@ -250,7 +250,7 @@ void LuaPageSource::dropFarthest() {
     }
 }
 
-void LuaPageSource::pushItem(lua_State* L, std::size_t index) const {
+void ScriptedPageSource::pushItem(lua_State* L, std::size_t index) const {
     if (findLoaded(index) == nullptr) {
         lua_pushnil(L);
         return;
@@ -261,7 +261,7 @@ void LuaPageSource::pushItem(lua_State* L, std::size_t index) const {
     lua_remove(L, -2);
 }
 
-haylen::core::Json LuaPageSource::getValue(std::size_t index, std::string_view field) const {
+haylen::core::Json ScriptedPageSource::getValue(std::size_t index, std::string_view field) const {
     haylen::core::Json value;
 
     // clang-format off
@@ -278,7 +278,7 @@ haylen::core::Json LuaPageSource::getValue(std::size_t index, std::string_view f
     return value;
 }
 
-void LuaPageSource::setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) {
+void ScriptedPageSource::setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) {
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
         pushItem(L, index);

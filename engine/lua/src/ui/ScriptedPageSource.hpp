@@ -23,7 +23,7 @@ class Gui;
 
 namespace haylen::lua::ui {
 // A number of items that a Lua loader gives in pages, for `collection:setPages`. The loader runs once per page the collection asks for, before the GUIs draw, and returns the list of the page or a promise of it. The GUI keeps the loader and the lists of the pages, at most `maxPages` of them, which drops the pages farthest from the view, and an item of a page that has not arrived has no id, so the collection shows its placeholder type.
-class LuaPageSource final : public haylen::ui::CollectionSource, public std::enable_shared_from_this<LuaPageSource> {
+class ScriptedPageSource final : public haylen::ui::CollectionSource, public std::enable_shared_from_this<ScriptedPageSource> {
   public:
     // The most items that the pages of a collection count, since the collection keeps the type and the selection of each.
     static constexpr std::int64_t kMaxCount = std::int64_t{1} << 24;
@@ -34,7 +34,7 @@ class LuaPageSource final : public haylen::ui::CollectionSource, public std::ena
         std::size_t maxPages = 16;
     };
 
-    LuaPageSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown);
+    ScriptedPageSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown);
 
     // Takes new options, keeping the pages that still fit when the page size stays.
     void configure(const Options& value);
@@ -65,7 +65,7 @@ class LuaPageSource final : public haylen::ui::CollectionSource, public std::ena
 
     // A page a promise still brings: the source, which may be gone by then, the page and the ticket of the load.
     struct Request {
-        std::weak_ptr<LuaPageSource> source;
+        std::weak_ptr<ScriptedPageSource> source;
         std::size_t page = 0;
         std::uint64_t ticket = 0;
     };

@@ -9,7 +9,7 @@
 #include <string_view>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleasePackage.hpp"
@@ -52,7 +52,7 @@ class ReleaseAcceptanceTest : public ::testing::Test {
         return {release.getKeys(), {release.getSigningKey().getVerifyingKey()}};
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
 };
 
 TEST_F(ReleaseAcceptanceTest, ShipsASmallGameWithoutAnyReadableFile) {

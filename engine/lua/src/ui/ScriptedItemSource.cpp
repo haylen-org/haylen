@@ -1,4 +1,4 @@
-#include "ui/LuaItemSource.hpp"
+#include "ui/ScriptedItemSource.hpp"
 
 #include <lua.hpp>
 
@@ -15,13 +15,13 @@
 
 namespace haylen::lua::ui {
 
-LuaItemSource::LuaItemSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
+ScriptedItemSource::ScriptedItemSource(lua_State* L, const haylen::ui::Gui& owner, haylen::ui::Collection& shown) : state(lua::Runtime::getMainThread(L)), gui(owner), collection(shown) {}
 
-void LuaItemSource::pushList(lua_State* L) const {
+void ScriptedItemSource::pushList(lua_State* L) const {
     CollectionBinding::pushValue(L, gui, collection, "items");
 }
 
-std::uint16_t LuaItemSource::internType(std::string_view type) {
+std::uint16_t ScriptedItemSource::internType(std::string_view type) {
     const auto found = std::ranges::find(typeNames, type);
     if (found != typeNames.end()) {
         return static_cast<std::uint16_t>(found - typeNames.begin());
@@ -31,12 +31,12 @@ std::uint16_t LuaItemSource::internType(std::string_view type) {
     return static_cast<std::uint16_t>(typeNames.size() - 1);
 }
 
-std::pair<std::string, std::uint16_t> LuaItemSource::readItem(lua_State* L, int table, std::size_t position) {
+std::pair<std::string, std::uint16_t> ScriptedItemSource::readItem(lua_State* L, int table, std::size_t position) {
     auto [id, type] = CollectionBinding::readItem(L, table, position, collection);
     return {std::move(id), internType(type)};
 }
 
-void LuaItemSource::assign(lua_State* L, int list) {
+void ScriptedItemSource::assign(lua_State* L, int list) {
     const int table = lua_absindex(L, list);
     const auto count = static_cast<std::size_t>(lua_rawlen(L, table));
     std::vector<std::string> nextIds(count);
@@ -59,7 +59,7 @@ void LuaItemSource::assign(lua_State* L, int list) {
 }
 
 // The items of the list move up to make room, the way `table.insert` moves them.
-void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
+void ScriptedItemSource::insert(lua_State* L, std::size_t index, int added) {
     const int source = lua_absindex(L, added);
     const auto count = static_cast<std::size_t>(lua_rawlen(L, source));
     std::vector<std::string> newIds(count);
@@ -97,7 +97,7 @@ void LuaItemSource::insert(lua_State* L, std::size_t index, int added) {
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = count});
 }
 
-void LuaItemSource::remove(lua_State* L, std::size_t index, std::size_t count) {
+void ScriptedItemSource::remove(lua_State* L, std::size_t index, std::size_t count) {
     const std::size_t removed = std::min(count, ids.size() - index);
 
     pushList(L);
@@ -126,7 +126,7 @@ void LuaItemSource::remove(lua_State* L, std::size_t index, std::size_t count) {
     changed.emit({.kind = Change::Kind::Removed, .index = index, .count = removed});
 }
 
-void LuaItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
+void ScriptedItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
     pushList(L);
     const int list = lua_gettop(L);
     lua_rawgeti(L, list, static_cast<lua_Integer>(from + 1));
@@ -155,7 +155,7 @@ void LuaItemSource::move(lua_State* L, std::size_t from, std::size_t to) {
 }
 
 // An item that keeps its id changes in place and keeps its cell, and an item with another id leaves while the new one comes in at its place.
-void LuaItemSource::replace(lua_State* L, std::size_t index, int item) {
+void ScriptedItemSource::replace(lua_State* L, std::size_t index, int item) {
     auto [id, type] = readItem(L, item, index + 1);
     const std::array<std::string_view, 1> added{id};
     const std::array<std::string_view, 1> leaving{ids[index]};
@@ -181,7 +181,7 @@ void LuaItemSource::replace(lua_State* L, std::size_t index, int item) {
     changed.emit({.kind = Change::Kind::Inserted, .index = index, .count = 1});
 }
 
-void LuaItemSource::reload(lua_State* L, std::size_t index) {
+void ScriptedItemSource::reload(lua_State* L, std::size_t index) {
     pushItem(L, index);
     auto [id, type] = readItem(L, -1, index + 1);
     lua_pop(L, 1);
@@ -197,13 +197,13 @@ void LuaItemSource::reload(lua_State* L, std::size_t index) {
     changed.emit({.kind = Change::Kind::Changed, .index = index, .count = 1});
 }
 
-void LuaItemSource::pushItem(lua_State* L, std::size_t index) const {
+void ScriptedItemSource::pushItem(lua_State* L, std::size_t index) const {
     pushList(L);
     lua_rawgeti(L, -1, static_cast<lua_Integer>(index + 1));
     lua_remove(L, -2);
 }
 
-haylen::core::Json LuaItemSource::getValue(std::size_t index, std::string_view field) const {
+haylen::core::Json ScriptedItemSource::getValue(std::size_t index, std::string_view field) const {
     haylen::core::Json value;
 
     // clang-format off
@@ -220,7 +220,7 @@ haylen::core::Json LuaItemSource::getValue(std::size_t index, std::string_view f
     return value;
 }
 
-void LuaItemSource::setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) {
+void ScriptedItemSource::setValue(std::size_t index, std::string_view field, const haylen::core::Json& value) {
     // clang-format off
     lua::Runtime::protectedRun(state, [&](lua_State* L) {
         pushItem(L, index);

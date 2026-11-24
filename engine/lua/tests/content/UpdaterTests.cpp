@@ -16,11 +16,11 @@
 #include <thread>
 #include <vector>
 
+#include "content/BytecodeCompiler.hpp"
 #include "content/ChannelPublisher.hpp"
 #include "content/Downloader.hpp"
 #include "content/FolderStoreFiles.hpp"
 #include "content/HttpTransport.hpp"
-#include "content/LuaCompiler.hpp"
 #include "content/PublicationLayout.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/Updater.hpp"
@@ -247,7 +247,7 @@ class UpdaterTest : public ::testing::Test {
         return {bytes.begin(), bytes.end()};
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
     Files game;
     test::TemporaryDirectory tree;
     test::TemporaryDirectory store;

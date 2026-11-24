@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "audio/MixerFixture.hpp"
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/format/Chunker.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/audio/Sound.hpp"
@@ -27,7 +27,7 @@ namespace haylen::lua::content {
 // Plays sounds that stream from a protected release, whose reader decrypts the chunks that a range covers and nothing else.
 class ReleaseStreamingTest : public haylen::audio::MixerFixture {
   protected:
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
 };
 
 TEST_F(ReleaseStreamingTest, DecryptsOnlyTheChunksAroundTheCursorOfAVoice) {

@@ -22,8 +22,8 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "runtime/StackScope.hpp"
-#include "ui/LuaItemSource.hpp"
-#include "ui/LuaPageSource.hpp"
+#include "ui/ScriptedItemSource.hpp"
+#include "ui/ScriptedPageSource.hpp"
 #include "ui/TransformBinding.hpp"
 
 namespace haylen::lua::ui {
@@ -244,13 +244,13 @@ void CollectionBinding::checkUnbound(lua_State* L, const haylen::ui::Collection&
     }
 }
 
-LuaItemSource& CollectionBinding::requireList(lua_State* L, haylen::ui::Collection& collection) {
+ScriptedItemSource& CollectionBinding::requireList(lua_State* L, haylen::ui::Collection& collection) {
     checkUnbound(L, collection);
-    if (std::dynamic_pointer_cast<LuaPageSource>(collection.getSource())) {
+    if (std::dynamic_pointer_cast<ScriptedPageSource>(collection.getSource())) {
         luaL_error(L, "The collection \"%s\" pages its items, so it changes them with \"setPages\".", collection.getId().c_str());
     }
 
-    auto* list = dynamic_cast<LuaItemSource*>(collection.getSource().get());
+    auto* list = dynamic_cast<ScriptedItemSource*>(collection.getSource().get());
     if (list == nullptr) {
         luaL_error(L, "The collection \"%s\" has no list of items. Give it one with \"setItems\".", collection.getId().c_str());
     }
@@ -259,9 +259,9 @@ LuaItemSource& CollectionBinding::requireList(lua_State* L, haylen::ui::Collecti
 }
 
 void CollectionBinding::pushItem(lua_State* L, const haylen::ui::Collection& collection, std::size_t index) {
-    if (const auto* list = dynamic_cast<const LuaItemSource*>(collection.getSource().get())) {
+    if (const auto* list = dynamic_cast<const ScriptedItemSource*>(collection.getSource().get())) {
         list->pushItem(L, index);
-    } else if (const auto* pages = dynamic_cast<const LuaPageSource*>(collection.getSource().get())) {
+    } else if (const auto* pages = dynamic_cast<const ScriptedPageSource*>(collection.getSource().get())) {
         pages->pushItem(L, index);
     } else {
         lua_pushnil(L);
@@ -302,12 +302,12 @@ int CollectionBinding::setItems(lua_State* L) {
     luaL_checktype(L, 2, LUA_TTABLE);
     checkUnbound(L, collection);
 
-    if (const auto list = std::dynamic_pointer_cast<LuaItemSource>(collection.getSource())) {
+    if (const auto list = std::dynamic_pointer_cast<ScriptedItemSource>(collection.getSource())) {
         list->assign(L, 2);
         return 0;
     }
 
-    auto created = std::make_shared<LuaItemSource>(L, *gui, collection);
+    auto created = std::make_shared<ScriptedItemSource>(L, *gui, collection);
     created->assign(L, 2);
     collection.setSource(created);
     setValue(L, *gui, collection, "load", 0);
@@ -328,15 +328,15 @@ int CollectionBinding::setPages(lua_State* L) {
     }
 
     lua_pop(L, 1);
-    LuaPageSource::Options options;
+    ScriptedPageSource::Options options;
     lua_Integer count = 0;
     lua_Integer pageSize = static_cast<lua_Integer>(options.pageSize);
     lua_Integer maxPages = static_cast<lua_Integer>(options.maxPages);
     lua::Table::readField(L, 2, "count", count);
     lua::Table::readField(L, 2, "pageSize", pageSize);
     lua::Table::readField(L, 2, "maxPages", maxPages);
-    if (count < 0 || count > LuaPageSource::kMaxCount) {
-        return luaL_error(L, "The option \"count\" must be from 0 to %d.", static_cast<int>(LuaPageSource::kMaxCount));
+    if (count < 0 || count > ScriptedPageSource::kMaxCount) {
+        return luaL_error(L, "The option \"count\" must be from 0 to %d.", static_cast<int>(ScriptedPageSource::kMaxCount));
     }
 
     if (pageSize < 1 || maxPages < 1) {
@@ -354,12 +354,12 @@ int CollectionBinding::setPages(lua_State* L) {
     const bool sameLoader = lua_rawequal(L, -1, load) != 0;
     lua_pop(L, 1);
 
-    if (const auto pages = std::dynamic_pointer_cast<LuaPageSource>(collection.getSource()); pages && sameLoader) {
+    if (const auto pages = std::dynamic_pointer_cast<ScriptedPageSource>(collection.getSource()); pages && sameLoader) {
         pages->configure(options);
         return 0;
     }
 
-    auto created = std::make_shared<LuaPageSource>(L, *gui, collection);
+    auto created = std::make_shared<ScriptedPageSource>(L, *gui, collection);
     setValue(L, *gui, collection, "load", load);
     lua_newtable(L);
     setValue(L, *gui, collection, "pages", -1);
@@ -371,7 +371,7 @@ int CollectionBinding::setPages(lua_State* L) {
 
 int CollectionBinding::insert(lua_State* L) {
     haylen::ui::Collection& collection = check(L);
-    LuaItemSource& list = requireList(L, collection);
+    ScriptedItemSource& list = requireList(L, collection);
     const std::size_t index = readIndex(L, 2, collection, collection.getCount() + 1);
     luaL_checktype(L, 3, LUA_TTABLE);
     list.insert(L, index, 3);
@@ -380,7 +380,7 @@ int CollectionBinding::insert(lua_State* L) {
 
 int CollectionBinding::remove(lua_State* L) {
     haylen::ui::Collection& collection = check(L);
-    LuaItemSource& list = requireList(L, collection);
+    ScriptedItemSource& list = requireList(L, collection);
     const std::size_t index = readIndex(L, 2, collection, collection.getCount());
     const lua_Integer count = luaL_optinteger(L, 3, 1);
     luaL_argcheck(L, count >= 1, 3, "the count must be at least 1");
@@ -390,7 +390,7 @@ int CollectionBinding::remove(lua_State* L) {
 
 int CollectionBinding::move(lua_State* L) {
     haylen::ui::Collection& collection = check(L);
-    LuaItemSource& list = requireList(L, collection);
+    ScriptedItemSource& list = requireList(L, collection);
     const std::size_t from = readIndex(L, 2, collection, collection.getCount());
     const std::size_t to = readIndex(L, 3, collection, collection.getCount());
     if (from != to) {
@@ -402,7 +402,7 @@ int CollectionBinding::move(lua_State* L) {
 
 int CollectionBinding::replace(lua_State* L) {
     haylen::ui::Collection& collection = check(L);
-    LuaItemSource& list = requireList(L, collection);
+    ScriptedItemSource& list = requireList(L, collection);
     const std::size_t index = readIndex(L, 2, collection, collection.getCount());
     list.replace(L, index, 3);
     return 0;
@@ -411,7 +411,7 @@ int CollectionBinding::replace(lua_State* L) {
 // The target is an id, an index or a list of them.
 int CollectionBinding::reload(lua_State* L) {
     haylen::ui::Collection& collection = check(L);
-    LuaItemSource& list = requireList(L, collection);
+    ScriptedItemSource& list = requireList(L, collection);
     if (lua_type(L, 2) != LUA_TTABLE) {
         list.reload(L, readTarget(L, 2, collection));
         return 0;

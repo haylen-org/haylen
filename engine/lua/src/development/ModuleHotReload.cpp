@@ -19,8 +19,8 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/ScriptPlugin.hpp"
 #include "runtime/Autoloads.hpp"
+#include "runtime/Config.hpp"
 #include "runtime/ErrorReader.hpp"
-#include "runtime/LuaConfig.hpp"
 #include "runtime/ScriptedScene.hpp"
 
 namespace haylen::lua {
@@ -41,7 +41,7 @@ std::string ModuleHotReload::findRestartReason(haylen::core::Engine& engine, con
         return {};
     }
 
-    if (engine.getPlugin<ScriptPlugin>().getConfig().reload == LuaConfig::Reload::Restart) {
+    if (engine.getPlugin<ScriptPlugin>().getConfig().reload == Config::Reload::Restart) {
         return "The module \"" + module->names.front() + "\" changed while \"lua.reload\" of \"haylen.json\" is \"restart\", so the app restarts.";
     }
 

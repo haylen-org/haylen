@@ -14,10 +14,10 @@
 #include <thread>
 #include <vector>
 
+#include "content/BytecodeCompiler.hpp"
 #include "content/FolderStoreFiles.hpp"
 #include "content/HpakPackage.hpp"
 #include "content/LocalStore.hpp"
-#include "content/LuaCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/ShardSet.hpp"
 #include "content/ShardWriter.hpp"
@@ -88,7 +88,7 @@ class HpakPackageTest : public ::testing::Test {
         return shards;
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
 };
 
 TEST_F(HpakPackageTest, ServesTheFilesOfTheApp) {

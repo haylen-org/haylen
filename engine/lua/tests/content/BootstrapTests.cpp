@@ -12,7 +12,7 @@
 #include <thread>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/content/EmbeddedKeyProvider.hpp"
@@ -93,7 +93,7 @@ class BootstrapTest : public ::testing::Test {
         }
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
 };
 
 TEST_F(BootstrapTest, SealsKeysThatOnlyTheProviderOpens) {

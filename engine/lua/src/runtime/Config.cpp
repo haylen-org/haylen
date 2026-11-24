@@ -1,4 +1,4 @@
-#include "runtime/LuaConfig.hpp"
+#include "runtime/Config.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -9,11 +9,11 @@
 
 namespace haylen::lua {
 
-const std::array<std::pair<std::string_view, LuaConfig::Reload>, 2> LuaConfig::kReloadNames{{{"module", Reload::Module}, {"restart", Reload::Restart}}};
+const std::array<std::pair<std::string_view, Config::Reload>, 2> Config::kReloadNames{{{"module", Reload::Module}, {"restart", Reload::Restart}}};
 
-LuaConfig LuaConfig::fromJson(const haylen::core::Json& section) {
+Config Config::fromJson(const haylen::core::Json& section) {
     haylen::core::JsonValidator::requireKnownKeys(section, {"autoloads", "reload", "executionBudget", "memoryBudget"}, "the \"lua\" section of \"haylen.json\"");
-    LuaConfig config;
+    Config config;
 
     if (const auto autoloads = section.find("autoloads"); autoloads != section.end()) {
         const bool listsNames = autoloads->is_array() && std::ranges::all_of(*autoloads, &haylen::core::Json::is_string);
@@ -55,25 +55,25 @@ LuaConfig LuaConfig::fromJson(const haylen::core::Json& section) {
     return config;
 }
 
-LuaConfig LuaConfig::fromConfig(const haylen::core::AppConfig& config) {
+Config Config::fromConfig(const haylen::core::AppConfig& config) {
     const auto section = config.sections.find(kSection);
-    return section != config.sections.end() ? fromJson(section->second) : LuaConfig{};
+    return section != config.sections.end() ? fromJson(section->second) : Config{};
 }
 
-haylen::core::Json LuaConfig::toJson() const {
+haylen::core::Json Config::toJson() const {
     return {{"autoloads", autoloads}, {"reload", reloadName(reload)}, {"executionBudget", static_cast<double>(executionBudget.count()) / 1000.0}, {"memoryBudget", static_cast<double>(memoryBudget) / (1024.0 * 1024.0)}};
 }
 
-std::optional<LuaConfig::Reload> LuaConfig::reloadFromName(std::string_view name) noexcept {
+std::optional<Config::Reload> Config::reloadFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kReloadNames, name, &std::pair<std::string_view, Reload>::first);
     return found != kReloadNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
-std::string_view LuaConfig::reloadName(Reload value) noexcept {
+std::string_view Config::reloadName(Reload value) noexcept {
     return std::ranges::find(kReloadNames, value, &std::pair<std::string_view, Reload>::second)->first;
 }
 
-bool LuaConfig::isWithin(const haylen::core::Json& value, double minimum, double maximum) noexcept {
+bool Config::isWithin(const haylen::core::Json& value, double minimum, double maximum) noexcept {
     return value.is_number() && value.get<double>() >= minimum && value.get<double>() <= maximum;
 }
 

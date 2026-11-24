@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/format/CatalogWriter.hpp"
 #include "content/format/ChannelDescriptor.hpp"
@@ -66,7 +66,7 @@ class HostileInputTest : public ::testing::Test {
         return seeds;
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
 };
 
 TEST_F(HostileInputTest, ParsersRejectRandomBytes) {

@@ -8,17 +8,17 @@
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/lua/Application.hpp"
-#include "runtime/LuaConfig.hpp"
+#include "runtime/Config.hpp"
 #include "support/LuaFixture.hpp"
 
 namespace haylen::lua {
 
-class LuaConfigTest : public ::testing::Test {
+class ConfigTest : public ::testing::Test {
   protected:
     // Returns the message that refuses the `lua` section, or an empty text when the section is valid.
     [[nodiscard]] static std::string refusal(const std::string& section) {
         try {
-            (void)LuaConfig::fromJson(haylen::core::Json::parse(section));
+            (void)Config::fromJson(haylen::core::Json::parse(section));
         } catch (const std::invalid_argument& error) {
             return error.what();
         }
@@ -27,24 +27,24 @@ class LuaConfigTest : public ::testing::Test {
     }
 };
 
-TEST_F(LuaConfigTest, ReadsTheLuaSectionOfTheApp) {
+TEST_F(ConfigTest, ReadsTheLuaSectionOfTheApp) {
     const haylen::core::AppConfig app = haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"lua": {"autoloads": ["state.player"], "reload": "restart", "executionBudget": 2.5, "memoryBudget": 64}})"), Application::kSections);
-    const LuaConfig config = LuaConfig::fromConfig(app);
+    const Config config = Config::fromConfig(app);
 
     EXPECT_EQ(config.autoloads, std::vector<std::string>{"state.player"});
-    EXPECT_EQ(config.reload, LuaConfig::Reload::Restart);
+    EXPECT_EQ(config.reload, Config::Reload::Restart);
     EXPECT_EQ(config.executionBudget, std::chrono::milliseconds(2500));
     EXPECT_EQ(config.memoryBudget, std::size_t{64} * 1024 * 1024);
-    EXPECT_EQ(LuaConfig::fromJson(config.toJson()).toJson(), config.toJson());
+    EXPECT_EQ(Config::fromJson(config.toJson()).toJson(), config.toJson());
 
-    const LuaConfig defaults = LuaConfig::fromConfig(haylen::core::AppConfig::fromJson(haylen::core::Json::object(), Application::kSections));
+    const Config defaults = Config::fromConfig(haylen::core::AppConfig::fromJson(haylen::core::Json::object(), Application::kSections));
     EXPECT_TRUE(defaults.autoloads.empty());
-    EXPECT_EQ(defaults.reload, LuaConfig::Reload::Module);
+    EXPECT_EQ(defaults.reload, Config::Reload::Module);
     EXPECT_EQ(defaults.executionBudget, std::chrono::milliseconds(5000));
     EXPECT_EQ(defaults.memoryBudget, std::size_t{1024} * 1024 * 1024);
 }
 
-TEST_F(LuaConfigTest, RefusesWrongValuesWithTheirKey) {
+TEST_F(ConfigTest, RefusesWrongValuesWithTheirKey) {
     EXPECT_EQ(refusal(R"({"autoload": ["state"]})"), "Unknown key \"autoload\" in the \"lua\" section of \"haylen.json\".");
     EXPECT_EQ(refusal(R"({"autoloads": "state"})"), "The value of \"lua.autoloads\" in \"haylen.json\" must be a list of module names.");
     EXPECT_EQ(refusal(R"({"autoloads": ["state.player", ""]})"), "The \"lua.autoloads\" list in \"haylen.json\" has an empty module name.");
@@ -56,7 +56,7 @@ TEST_F(LuaConfigTest, RefusesWrongValuesWithTheirKey) {
 }
 
 // A Lua app reads its section before the engine starts, so a wrong value fails the app with its reason, and scripts read the section with every default filled in.
-TEST_F(LuaConfigTest, TheApplicationValidatesTheSectionAndScriptsReadIt) {
+TEST_F(ConfigTest, TheApplicationValidatesTheSectionAndScriptsReadIt) {
     haylen::core::AppConfig wrong = haylen::core::AppConfig::fromJson(haylen::core::Json::parse(R"({"lua": {"reload": "always"}})"), Application::kSections);
     Application application;
     EXPECT_THROW(application.configure(wrong), std::invalid_argument);

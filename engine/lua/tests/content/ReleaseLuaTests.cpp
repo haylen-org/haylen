@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleasePackage.hpp"
 #include "core/ErrorScreen.hpp"
 #include "haylen/content/Error.hpp"
@@ -44,7 +44,7 @@ class ReleaseLuaTest : public ::testing::Test {
         return value;
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
     test::TemporaryDirectory data;
     haylen::platform::HeadlessHost host{data.getPath()};
     std::shared_ptr<haylen::io::Package> package;
@@ -87,7 +87,7 @@ TEST_F(ReleaseLuaTest, ReportsErrorsWithTheModuleTheLineAndTheLocals) {
 
 TEST_F(ReleaseLuaTest, LoadsBytecodeOnlyFromAnAuthenticatedRelease) {
     // Bytecode in any other package stays a file that loads only as text, so it never runs.
-    const std::vector<std::uint8_t> chunk = lua::content::LuaCompiler().compile("loaded = 'bytecode'", "source/main.lua");
+    const std::vector<std::uint8_t> chunk = lua::content::BytecodeCompiler().compile("loaded = 'bytecode'", "source/main.lua");
     test::LuaFixture fixture({{"source/main.lua", std::string(chunk.begin(), chunk.end())}});
     ASSERT_NE(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.engine().getError()->getMessage().find("binary chunk"), std::string::npos) << fixture.engine().getError()->getMessage();

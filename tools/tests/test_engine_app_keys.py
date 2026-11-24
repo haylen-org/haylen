@@ -6,9 +6,9 @@ from haylen.core.repository import Repository
 
 
 class EngineAppKeysTest:
-    """The engine reads the runtime keys of `haylen.json`, the Lua layer reads its `lua` section and the tooling validates the whole file, so the keys that `AppConfig.cpp` and `LuaConfig.cpp` take in each section are the keys of the schema in the same section, and the top level holds the keys of the engine and the sections of the Lua layer."""
+    """The engine reads the runtime keys of `haylen.json`, the Lua layer reads its `lua` section and the tooling validates the whole file, so the keys that `AppConfig.cpp` and `Config.cpp` take in each section are the keys of the schema in the same section, and the top level holds the keys of the engine and the sections of the Lua layer."""
 
-    SOURCES = (Repository.ENGINE / "src" / "core" / "AppConfig.cpp", Repository.ENGINE / "lua" / "src" / "runtime" / "LuaConfig.cpp")
+    SOURCES = (Repository.ENGINE / "src" / "core" / "AppConfig.cpp", Repository.ENGINE / "lua" / "src" / "runtime" / "Config.cpp")
     TOP_LEVEL = re.compile(r"AppConfig::kKeys\{([^}]*)\}")
     KNOWN_KEYS = re.compile(r'requireKnownKeys\(\w+, \{([^}]*)\}, "((?:[^"\\]|\\.)*)"')
     SECTION = re.compile(r'^the \\"([a-zA-Z.]+)\\" section of')
@@ -17,7 +17,7 @@ class EngineAppKeysTest:
 
     @staticmethod
     def engine_sections() -> dict[tuple[str, ...], set[str]]:
-        """Returns the keys that each `requireKnownKeys` of `AppConfig.cpp` and `LuaConfig.cpp` takes, by the path of its section in the schema, with the top level of `AppConfig::kKeys` and the sections that the Lua layer reads."""
+        """Returns the keys that each `requireKnownKeys` of `AppConfig.cpp` and `Config.cpp` takes, by the path of its section in the schema, with the top level of `AppConfig::kKeys` and the sections that the Lua layer reads."""
         sections: dict[tuple[str, ...], set[str]] = {}
         layer_sections: set[str] = set()
         for index, source in enumerate(EngineAppKeysTest.SOURCES):

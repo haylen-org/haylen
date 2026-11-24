@@ -52,7 +52,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   content/HostileInputTests.cpp
   content/HpakPackageTests.cpp
   content/KeyStoreTests.cpp
-  content/LuaCompilerTests.cpp
+  content/BytecodeCompilerTests.cpp
   content/ManifestTests.cpp
   content/ReleaseAcceptanceTests.cpp
   content/ReleaseBuilderTests.cpp
@@ -121,7 +121,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   math/SignalFilterTests.cpp
   math/Transform3DLuaTests.cpp
   math/VectorLuaTests.cpp
-  modules/LuaReferenceTests.cpp
+  modules/ModuleReferenceTests.cpp
   net/HttpDownloadTests.cpp
   net/NetLuaTests.cpp
   net/NetPluginTests.cpp
@@ -142,7 +142,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   platform/SystemTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp
-  runtime/LuaConfigTests.cpp
+  runtime/ConfigTests.cpp
   runtime/ToolkitTests.cpp
   runtime/YieldTests.cpp
   storage/StorageTests.cpp

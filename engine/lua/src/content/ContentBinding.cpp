@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "content/LuaPackSource.hpp"
+#include "content/ScriptedPackSource.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
@@ -214,7 +214,7 @@ int ContentBinding::addPackSource(lua_State* L) {
         owner = lua::Owners::pushDefault(L);
     }
 
-    haylen::core::Connection connection = getManager(L).addPackSource(std::make_shared<LuaPackSource>(L, 1, owner));
+    haylen::core::Connection connection = getManager(L).addPackSource(std::make_shared<ScriptedPackSource>(L, 1, owner));
     if (owner != 0) {
         lua::Owners::add(L, owner, connection);
     }

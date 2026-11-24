@@ -19,7 +19,7 @@ struct AppConfig;
 namespace haylen::lua {
 
 // The settings of the Lua of an app, from the `lua` section of `haylen.json`, which the core keeps as it is for the Lua application to read: the autoloads, how a changed module applies in development and the execution budget of development.
-struct LuaConfig {
+struct Config {
     // A changed module reloads in place with the state of the app, or restarts the app. Changes that cannot apply in place restart it either way.
     enum class Reload : std::uint8_t {
         Module,
@@ -49,10 +49,10 @@ struct LuaConfig {
     static constexpr double kMaxMemoryBudget = 4096.0;
 
     // Reads every present field of the section and validates it. Throws `std::invalid_argument` with the offending field on bad values.
-    [[nodiscard]] static LuaConfig fromJson(const haylen::core::Json& section);
+    [[nodiscard]] static Config fromJson(const haylen::core::Json& section);
 
     // Reads the section that the configuration of the app kept, or the defaults when `haylen.json` has none.
-    [[nodiscard]] static LuaConfig fromConfig(const haylen::core::AppConfig& config);
+    [[nodiscard]] static Config fromConfig(const haylen::core::AppConfig& config);
     [[nodiscard]] haylen::core::Json toJson() const;
 
     [[nodiscard]] static std::optional<Reload> reloadFromName(std::string_view name) noexcept;

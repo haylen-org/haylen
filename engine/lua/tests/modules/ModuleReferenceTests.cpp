@@ -17,7 +17,7 @@
 namespace haylen::lua {
 
 // Compares the API that Lua sees with the reference pages of the documentation in `docs/lua-api`.
-class LuaReferenceTest : public ::testing::Test {
+class ModuleReferenceTest : public ::testing::Test {
   protected:
     struct Page {
         std::string prose;
@@ -201,7 +201,7 @@ class LuaReferenceTest : public ::testing::Test {
     std::map<std::string, Page> pages = readPages();
 };
 
-TEST_F(LuaReferenceTest, EveryModuleAndEveryMemberHasItsPlaceInTheReference) {
+TEST_F(ModuleReferenceTest, EveryModuleAndEveryMemberHasItsPlaceInTheReference) {
     lua_State* L = fixture.lua();
     std::vector<std::string> missing;
     for (const std::string& module : getModules(L)) {
@@ -230,7 +230,7 @@ TEST_F(LuaReferenceTest, EveryModuleAndEveryMemberHasItsPlaceInTheReference) {
     EXPECT_TRUE(missing.empty()) << "These modules and members have no place in their reference page:" << join(missing);
 }
 
-TEST_F(LuaReferenceTest, EveryBoundTypeWithItsMethodsAndPropertiesHasItsPlaceInTheReference) {
+TEST_F(ModuleReferenceTest, EveryBoundTypeWithItsMethodsAndPropertiesHasItsPlaceInTheReference) {
     std::vector<std::string> missing;
     for (const auto& [name, type] : getTypes(fixture.lua())) {
         const auto page = std::ranges::find_if(pages, [&name](const auto& entry) { return hasHeading(entry.second, name); });
@@ -255,7 +255,7 @@ TEST_F(LuaReferenceTest, EveryBoundTypeWithItsMethodsAndPropertiesHasItsPlaceInT
     EXPECT_TRUE(missing.empty()) << "These types, methods and properties have no place in the reference:" << join(missing);
 }
 
-TEST_F(LuaReferenceTest, EveryLuaExampleOfTheReferenceCompiles) {
+TEST_F(ModuleReferenceTest, EveryLuaExampleOfTheReferenceCompiles) {
     lua_State* L = fixture.lua();
     std::vector<std::string> failing;
     for (const auto& [stem, page] : pages) {

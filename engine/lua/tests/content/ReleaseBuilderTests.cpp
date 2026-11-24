@@ -12,7 +12,7 @@
 #include <string_view>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/RecordCache.hpp"
 #include "content/ReleaseBuilder.hpp"
 #include "content/ReleasePackage.hpp"
@@ -107,7 +107,7 @@ class ReleaseBuilderTest : public ::testing::Test {
         return fixture.open(haylen::io::Package::openDirectory(directory.getPath() / name));
     }
 
-    test::ReleaseFixture fixture{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture fixture{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
     test::TemporaryDirectory directory;
 };
 

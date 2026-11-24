@@ -104,10 +104,10 @@ Every other consumer reads a file whole, within `Package::kMaxReadSize`, because
 
 ## Building content
 
-The class `content::ReleaseBuilder` builds the release of an app package into a folder of its own: `app.hmanifest` with the shards of the app domain and `content.hmanifest` with the shards of the content domain. It compiles the modules of the scripts with the `content::ModuleCompiler` that it receives, and the format of releases never depends on the language of the scripts, so the Lua layer brings the compiler of Lua modules, `content::LuaCompiler`, which the content tool hands the builder.
+The class `content::ReleaseBuilder` builds the release of an app package into a folder of its own: `app.hmanifest` with the shards of the app domain and `content.hmanifest` with the shards of the content domain. It compiles the modules of the scripts with the `content::ModuleCompiler` that it receives, and the format of releases never depends on the language of the scripts, so the Lua layer brings the compiler of Lua modules, `lua::content::BytecodeCompiler`, which the content tool hands the builder.
 
 ```cpp
-const content::LuaCompiler compiler;
+const lua::content::BytecodeCompiler compiler;
 content::ReleaseBuilder builder(keys, activeKeyId, signingKey, std::make_shared<const content::RecordCache>(cacheFolder));
 content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), compiler, releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 14, .sections = lua::Application::kSections});
 ```
@@ -152,13 +152,13 @@ Records hold only ciphertext, so the cache holds no plain content. Sealing is de
 
 ## Lua bytecode
 
-A release ships no Lua text. The class `content::LuaCompiler` of the Lua layer, the module compiler that the content tool gives the release builder, compiles every Lua module of the app domain, the files ending in `.lua` under `source` and under `source` of every plugin, with the Lua that the engine itself runs. The catalog marks each one as `LuaBytecode` under the path of its module. So `require('scenes.menu')`, the autoloads and `source/main.lua` resolve exactly as they do in development. A module that does not compile stops the build with the message of Lua, which names the file and the line. Compiling is deterministic, so an unchanged module keeps its chunk and its record from build to build, and a release loads its modules without parsing them.
+A release ships no Lua text. The class `lua::content::BytecodeCompiler` of the Lua layer, the module compiler that the content tool gives the release builder, compiles every Lua module of the app domain, the files ending in `.lua` under `source` and under `source` of every plugin, with the Lua that the engine itself runs. The catalog marks each one as `LuaBytecode` under the path of its module. So `require('scenes.menu')`, the autoloads and `source/main.lua` resolve exactly as they do in development. A module that does not compile stops the build with the message of Lua, which names the file and the line. Compiling is deterministic, so an unchanged module keeps its chunk and its record from build to build, and a release loads its modules without parsing them.
 
 The bytecode keeps all of its debug information. The chunk name is the package path of the module, such as `source/scenes/menu.lua`, and the lines and the names of local variables stay. So an error in a release reads as in development, as [errors in a release](loading.md#errors-in-a-release) shows. No folder of the machine that built the release enters a chunk, and the bytecode is encrypted in its shard like every other file.
 
 ### The format of the bytecode
 
-Bytecode of the wrong format can crash the Lua virtual machine, so its format is part of the release. The function `LuaBytecodeAbi::get` names the format from the header that Lua writes into every chunk, such as `lua-5.5-f0-i4-x4-l8-n8-le`. The name holds the version of Lua, its format, the sizes of an `int`, an instruction, a Lua integer and a Lua number, and the byte order. The compiler names it with `ModuleCompiler::getAbi`, the app manifest records it, and the content tool writes it into the bootstrap of the build, as `Bootstrap::luaAbi`, from its own Lua, which is the Lua of the SDK that the app links. A release or an update whose bytecode has another format is refused with `LuaBytecodeIncompatible` before the build reads a module. Every target of the engine runs a little-endian Lua with those sizes, the 32-bit ARM of Android TV and the web included. So the bytecode that the content tool compiles on the build machine loads everywhere.
+Bytecode of the wrong format can crash the Lua virtual machine, so its format is part of the release. The function `BytecodeAbi::get` names the format from the header that Lua writes into every chunk, such as `lua-5.5-f0-i4-x4-l8-n8-le`. The name holds the version of Lua, its format, the sizes of an `int`, an instruction, a Lua integer and a Lua number, and the byte order. The compiler names it with `ModuleCompiler::getAbi`, the app manifest records it, and the content tool writes it into the bootstrap of the build, as `Bootstrap::luaAbi`, from its own Lua, which is the Lua of the SDK that the app links. A release or an update whose bytecode has another format is refused with `LuaBytecodeIncompatible` before the build reads a module. Every target of the engine runs a little-endian Lua with those sizes, the 32-bit ARM of Android TV and the web included. So the bytecode that the content tool compiles on the build machine loads everywhere.
 
 ### Who may load bytecode
 

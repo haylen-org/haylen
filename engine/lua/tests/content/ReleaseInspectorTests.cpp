@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleasePackage.hpp"
 #include "haylen/content/Error.hpp"
@@ -50,7 +50,7 @@ class ReleaseInspectorTest : public ::testing::Test {
         }
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
 };
 
 TEST_F(ReleaseInspectorTest, ShowsTheFilesChunksAndShardsOfARelease) {
@@ -167,7 +167,7 @@ TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
 TEST_F(ReleaseInspectorTest, CountsAShardThatBothDomainsNameOnce) {
     // Content files with the bytes and the order of the files of the app domain seal into the same records, so both domains write one shard file.
     const std::string config = R"({"name": "Release Test", "identifier": "com.haylen.tests"})";
-    const std::vector<std::uint8_t> module = lua::content::LuaCompiler().compile("loaded = true", "source/main.lua");
+    const std::vector<std::uint8_t> module = lua::content::BytecodeCompiler().compile("loaded = true", "source/main.lua");
     release.build({{"haylen.json", config}, {"source/main.lua", "loaded = true"}, {"content/a.json", config}, {"content/b.bin", std::string(module.begin(), module.end())}});
     const haylen::content::ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
     ASSERT_EQ(report.app.envelope.shards, report.content.envelope.shards);

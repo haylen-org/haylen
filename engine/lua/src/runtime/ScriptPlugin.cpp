@@ -15,15 +15,15 @@
 #include "haylen/platform/DevelopmentSession.hpp"
 #include "modules/BuiltInModules.hpp"
 #include "runtime/Autoloads.hpp"
+#include "runtime/Config.hpp"
 #include "runtime/Environment.hpp"
 #include "runtime/Jobs.hpp"
-#include "runtime/LuaConfig.hpp"
 #include "runtime/Warnings.hpp"
 #include "varn/runtime/Runtime.h"
 
 namespace haylen::lua {
 
-ScriptPlugin::ScriptPlugin(const LuaConfig& settings) : config(std::make_unique<const LuaConfig>(settings)), warnings(std::make_unique<Warnings>()), autoloads(std::make_unique<Autoloads>()), jobs(std::make_unique<Jobs>()) {
+ScriptPlugin::ScriptPlugin(const Config& settings) : config(std::make_unique<const Config>(settings)), warnings(std::make_unique<Warnings>()), autoloads(std::make_unique<Autoloads>()), jobs(std::make_unique<Jobs>()) {
     lua::modules::BuiltInModules::registerAll(modules);
 }
 
@@ -140,7 +140,7 @@ varn::runtime::Runtime& ScriptPlugin::getRuntime() noexcept {
     return *runtime;
 }
 
-const LuaConfig& ScriptPlugin::getConfig() const noexcept {
+const Config& ScriptPlugin::getConfig() const noexcept {
     return *config;
 }
 

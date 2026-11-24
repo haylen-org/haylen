@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "content/LuaCompiler.hpp"
+#include "content/BytecodeCompiler.hpp"
 #include "content/ReleaseInspector.hpp"
 #include "content/ReleaseStager.hpp"
 #include "haylen/core/AppConfig.hpp"
@@ -43,7 +43,7 @@ class ReleaseStagerTest : public ::testing::Test {
         return haylen::content::ReleaseStager(inspector, config.content).stage(release.getFolder(), folder / "shipped", folder / "deferred", folder / "packs", content);
     }
 
-    test::ReleaseFixture release{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture release{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
     Files files;
     test::TemporaryDirectory work;
 };

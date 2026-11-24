@@ -1,4 +1,4 @@
-#include "content/LuaPackSource.hpp"
+#include "content/ScriptedPackSource.hpp"
 
 #include <new>
 #include <utility>
@@ -13,9 +13,9 @@
 
 namespace haylen::lua::content {
 
-LuaPackSource::LuaPackSource(lua_State* L, int functionIndex, int ownerIndex) : main(lua::Runtime::getMainThread(L)), function(std::make_shared<lua::Owners::Function>(L, functionIndex, ownerIndex)), owner(ownerIndex != 0 ? std::make_shared<lua::WeakReference>(L, ownerIndex) : nullptr) {}
+ScriptedPackSource::ScriptedPackSource(lua_State* L, int functionIndex, int ownerIndex) : main(lua::Runtime::getMainThread(L)), function(std::make_shared<lua::Owners::Function>(L, functionIndex, ownerIndex)), owner(ownerIndex != 0 ? std::make_shared<lua::WeakReference>(L, ownerIndex) : nullptr) {}
 
-void LuaPackSource::Answer::deliver(std::optional<std::filesystem::path> folder, std::optional<haylen::content::Error> failure) {
+void ScriptedPackSource::Answer::deliver(std::optional<std::filesystem::path> folder, std::optional<haylen::content::Error> failure) {
     if (!done) {
         return;
     }
@@ -24,7 +24,7 @@ void LuaPackSource::Answer::deliver(std::optional<std::filesystem::path> folder,
     finish(std::move(folder), std::move(failure));
 }
 
-void LuaPackSource::acquire(const std::string& pack, std::function<void(const Progress&)> progress, Delivery done) {
+void ScriptedPackSource::acquire(const std::string& pack, std::function<void(const Progress&)> progress, Delivery done) {
     auto answer = std::make_shared<Answer>(Answer{.done = std::move(done)});
     lua_State* L = main;
     const lua::StackScope scope(L);
@@ -74,13 +74,13 @@ void LuaPackSource::acquire(const std::string& pack, std::function<void(const Pr
     // clang-format on
 }
 
-int LuaPackSource::run(lua_State* L) {
+int ScriptedPackSource::run(lua_State* L) {
     lua_callk(L, 2, 1, kCalled, &continueRun);
     return continueRun(L, LUA_OK, kCalled);
 }
 
 // Runs once the function returned, and again once a promise it returned settled, with its value and the reason it failed.
-int LuaPackSource::continueRun(lua_State* L, int, lua_KContext context) {
+int ScriptedPackSource::continueRun(lua_State* L, int, lua_KContext context) {
     if (context == kCalled && lua::Promise::isPromise(L, -1)) {
         lua_getfield(L, -1, "await");
         lua_insert(L, -2);
@@ -114,7 +114,7 @@ int LuaPackSource::continueRun(lua_State* L, int, lua_KContext context) {
     // clang-format on
 }
 
-int LuaPackSource::reportProgress(lua_State* L) {
+int ScriptedPackSource::reportProgress(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
     // clang-format off
     return lua::Binding::guarded(L, [L] {
@@ -127,7 +127,7 @@ int LuaPackSource::reportProgress(lua_State* L) {
     // clang-format on
 }
 
-template <typename T> int LuaPackSource::collect(lua_State* L) {
+template <typename T> int ScriptedPackSource::collect(lua_State* L) {
     static_cast<T*>(lua_touserdata(L, 1))->~T();
     lua_pushnil(L);
     lua_setmetatable(L, 1);

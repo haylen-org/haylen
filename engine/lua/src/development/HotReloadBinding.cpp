@@ -8,7 +8,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/plugins/HotReloadPlugin.hpp"
 #include "modules/HotReloadModule.hpp"
-#include "runtime/LuaConfig.hpp"
+#include "runtime/Config.hpp"
 
 namespace haylen::lua {
 
@@ -18,7 +18,7 @@ int HotReloadBinding::active(lua_State* L) {
 }
 
 int HotReloadBinding::mode(lua_State* L) {
-    Stack::push(L, LuaConfig::reloadName(Runtime::getEngine(L).getPlugin<ScriptPlugin>().getConfig().reload));
+    Stack::push(L, Config::reloadName(Runtime::getEngine(L).getPlugin<ScriptPlugin>().getConfig().reload));
     return 1;
 }
 

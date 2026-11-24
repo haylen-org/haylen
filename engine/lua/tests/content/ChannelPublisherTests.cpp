@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
+#include "content/BytecodeCompiler.hpp"
 #include "content/ChannelPublisher.hpp"
-#include "content/LuaCompiler.hpp"
 #include "content/PublicationLayout.hpp"
 #include "content/format/ChannelDescriptor.hpp"
 #include "haylen/content/Error.hpp"
@@ -60,7 +60,7 @@ class ChannelPublisherTest : public ::testing::Test {
         }
     }
 
-    test::ReleaseFixture fixture{std::make_shared<lua::content::LuaCompiler>(), lua::Application::kSections};
+    test::ReleaseFixture fixture{std::make_shared<lua::content::BytecodeCompiler>(), lua::Application::kSections};
     test::TemporaryDirectory tree;
     std::shared_ptr<const haylen::content::SigningKey> signingKey;
     haylen::content::ChannelPublisher publisher;

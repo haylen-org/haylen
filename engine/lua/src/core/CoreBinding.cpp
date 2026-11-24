@@ -37,7 +37,7 @@
 #include "haylen/platform/SafeAreaSimulation.hpp"
 #include "haylen/platform/Window.hpp"
 #include "runtime/Autoloads.hpp"
-#include "runtime/LuaConfig.hpp"
+#include "runtime/Config.hpp"
 
 namespace haylen::core {
 
@@ -361,7 +361,7 @@ int CoreBinding::openRoot(lua_State* L) {
     lua::Stack::push(L, owner.getGraphics().getApiName());
     lua_setfield(L, -2, "graphicsApi");
     haylen::core::Json config = owner.getConfig().toJson();
-    config[lua::LuaConfig::kSection] = owner.getPlugin<lua::ScriptPlugin>().getConfig().toJson();
+    config[lua::Config::kSection] = owner.getPlugin<lua::ScriptPlugin>().getConfig().toJson();
     lua::JsonConverter::push(L, config);
     lua_setfield(L, -2, "config");
     return 1;
