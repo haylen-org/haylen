@@ -37,6 +37,12 @@ else()
 endif()
 set(HAYLEN_DEBUG_INFO "${haylen_debug_info}" CACHE STRING "The debug information of the Debug and RelWithDebInfo configurations: FULL, or LINES for the file and line of each instruction alone. The variable HAYLEN_DEBUG_INFO of the environment names it for every build tree.")
 set_property(CACHE HAYLEN_DEBUG_INFO PROPERTY STRINGS FULL LINES)
+if(DEFINED ENV{HAYLEN_WARNINGS_AS_ERRORS})
+  set(haylen_warnings_as_errors "$ENV{HAYLEN_WARNINGS_AS_ERRORS}")
+else()
+  set(haylen_warnings_as_errors OFF)
+endif()
+option(HAYLEN_WARNINGS_AS_ERRORS "Fail the build of the targets of the engine on any compiler warning. The variable HAYLEN_WARNINGS_AS_ERRORS of the environment names it for every build tree." ${haylen_warnings_as_errors})
 
 # The file and line of each instruction are what stack traces and sanitizer reports read, in objects about a third of the size of those that describe the code fully for a debugger, as continuous integration builds them for its compiler caches. MSVC has no format with lines alone, so its objects carry no debug information then.
 if(HAYLEN_DEBUG_INFO STREQUAL "LINES")

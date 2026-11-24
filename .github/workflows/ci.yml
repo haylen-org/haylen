@@ -21,6 +21,8 @@ env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
   # The Debug trees keep only the file and line of each instruction, which stack traces and sanitizer reports read, so the objects that the compiler cache moves stay small.
   HAYLEN_DEBUG_INFO: LINES
+  # Every build of the targets of the engine fails on a compiler warning, so the build stays free of warnings on every platform.
+  HAYLEN_WARNINGS_AS_ERRORS: "ON"
   # The compiler cache is the prefix "sccache/" of the Cloudflare R2 bucket "haylen-ci", which sccache reaches through its S3 API with the token of the secrets. A pull request from a fork gets no secrets and compiles without it. The server of sccache lives for the whole job.
   SCCACHE_BUCKET: haylen-ci
   SCCACHE_S3_KEY_PREFIX: sccache/

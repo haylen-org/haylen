@@ -423,7 +423,7 @@ TEST_F(ShardTest, NamesTheShardOfARecordThatIsNotOnTheDeviceYet) {
 
     std::array<std::uint8_t, 1> target{};
     try {
-        index.read(ShardHeader::kSize, target);
+        (void)index.read(ShardHeader::kSize, target);
         ADD_FAILURE() << "A record that is not on the device must not read.";
     } catch (const Error& error) {
         EXPECT_EQ(error.getCode(), Error::Code::MissingChunk);

@@ -38,6 +38,7 @@ if(NOT MSVC)
 endif()
 
 function(haylen_enable_warnings target)
+  set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ${HAYLEN_WARNINGS_AS_ERRORS})
   if(MSVC)
     target_compile_options(${target} PRIVATE /W4 /permissive- /Zc:preprocessor /utf-8)
   else()
