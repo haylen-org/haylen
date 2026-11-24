@@ -119,6 +119,7 @@ set(HAYLEN_TEST_SOURCES
   math/ProceduralTests.cpp
   math/QuatTests.cpp
   math/RaycastTests.cpp
+  math/Spline3Tests.cpp
   math/SignalFilterTests.cpp
   math/Transform3DTests.cpp
   math/TriangulatorTests.cpp

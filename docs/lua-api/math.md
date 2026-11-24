@@ -4437,9 +4437,9 @@ local outlines = m.marchingSquares.traceBitmap(pixels, 4, 3, {spacing = 16})
 print(#outlines) -- 2
 ```
 
-## Spline
+## Spline2
 
-A `Spline` is a smooth curve through or near control points. It is measured by its length, so it can be walked at a steady speed or sampled at even distances. Its parameter runs from `0` at the start to `1` at the end of the whole curve. The [strokes of `haylen.graphics2d`](graphics2d.md#graphics2ddrawstrokepoints-options) draw splines.
+A `Spline2` is a smooth curve in 2D through or near control points. It is measured by its length, so it can be walked at a steady speed or sampled at even distances. Its parameter runs from `0` at the start to `1` at the end of the whole curve. The [strokes of `haylen.graphics2d`](graphics2d.md#graphics2ddrawstrokepoints-options) draw splines.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -4452,13 +4452,13 @@ A `Spline` is a smooth curve through or near control points. It is measured by i
 ```lua
 local m = require('haylen.math')
 
-local loop = m.spline({{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {closed = true})
+local loop = m.spline2({{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {closed = true})
 print(loop.kind, loop.closed, #loop.points, loop.segmentCount, loop.length > 400) -- catmullRom true 4 4 true
 ```
 
-### m.spline(points, options)
+### m.spline2(points, options)
 
-Returns a new `Spline` through the list `points`. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`
+Returns a new `Spline2` through the list `points`. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -4470,7 +4470,7 @@ Each kind needs enough points, or it raises one of these errors: `A Catmull-Rom 
 ```lua
 local m = require('haylen.math')
 
-local track = m.spline({{0, 0}, {200, -80}, {400, 0}, {600, -80}}, {kind = 'catmullRom'})
+local track = m.spline2({{0, 0}, {200, -80}, {400, 0}, {600, -80}}, {kind = 'catmullRom'})
 print(track.length)
 ```
 
@@ -4481,7 +4481,7 @@ Returns the point of the curve at the parameter `t` as a `Vec2`.
 ```lua
 local m = require('haylen.math')
 
-local arc = m.spline({{0, 0}, {50, -50}, {100, 0}})
+local arc = m.spline2({{0, 0}, {50, -50}, {100, 0}})
 print(arc:point(0.5))
 ```
 
@@ -4492,7 +4492,7 @@ Returns the direction of travel at the parameter `t`, as a `Vec2` of length 1. W
 ```lua
 local m = require('haylen.math')
 
-local arc = m.spline({{0, 0}, {50, -50}, {100, 0}})
+local arc = m.spline2({{0, 0}, {50, -50}, {100, 0}})
 print(arc:tangent(0))
 ```
 
@@ -4504,7 +4504,7 @@ Returns the point at `distance` world units along the curve. Use it to move thin
 local m = require('haylen.math')
 local scene = require('haylen.scene')
 
-local rail = m.spline({{0, 0}, {300, 0}, {300, 300}})
+local rail = m.spline2({{0, 0}, {300, 0}, {300, 300}})
 local traveled = 0
 
 scene.push({
@@ -4522,7 +4522,7 @@ Returns the direction of travel at `distance` world units along the curve, as a 
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline({{0, 0}, {300, 0}, {300, 300}})
+local rail = m.spline2({{0, 0}, {300, 0}, {300, 300}})
 print(m.degrees(rail:tangentAtDistance(rail.length):angle()))
 ```
 
@@ -4533,7 +4533,7 @@ Returns the parameter at `distance` world units along the curve.
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline({{0, 0}, {300, 0}, {300, 300}})
+local rail = m.spline2({{0, 0}, {300, 0}, {300, 300}})
 print(rail:parameterAtDistance(rail.length / 2))
 ```
 
@@ -4544,7 +4544,7 @@ Returns `count` points spread evenly over the parameter. A `count` above 1677721
 ```lua
 local m = require('haylen.math')
 
-local fence = m.spline({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
+local fence = m.spline2({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
 print(#fence:sample(10)) -- 10
 ```
 
@@ -4555,7 +4555,7 @@ Returns points `spacing` world units apart along the curve, plus the end point o
 ```lua
 local m = require('haylen.math')
 
-local fence = m.spline({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
+local fence = m.spline2({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
 for _, post in ipairs(fence:sampleByDistance(25)) do
     print(post)
 end
@@ -4568,9 +4568,411 @@ Returns points along the curve, from its start to its end, whose straight lines 
 ```lua
 local m = require('haylen.math')
 
-local hill = m.spline({{0, 300}, {200, 100}, {400, 280}, {600, 120}})
+local hill = m.spline2({{0, 300}, {200, 100}, {400, 280}, {600, 120}})
 local outline = hill:flatten(1)
 print(#outline, outline[1], outline[#outline])
+```
+
+## Spline3
+
+A `Spline3` is a smooth curve in 3D built from control points, such as a rail, a road, a tube or the track of a camera. Its parameter `t` runs from `0` at the start to `1` at the end of the whole curve, and distances run in world units from its start. The [3D math guide](../3d/math.md#curves) explains the kinds of curve and how frames follow them. Make one with `m.spline3`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `kind` | string | read | The kind of curve, one of the kinds below. |
+| `closed` | boolean | read | Whether the curve returns to its start. |
+| `points` | list of `Vec3` | read | A copy of the points the curve was made from. |
+| `length` | number | read | The length of the whole curve. |
+| `segmentCount` | integer | read | The number of pieces between knots, each a polynomial or a ratio of two. |
+| `degree` | integer | read | The degree of the pieces, `1` for linear curves, `2` for quadratic ones and `3` for the other kinds unless a NURBS curve names its own. |
+| `weights` | list of numbers | read | The weight of each point of the NURBS curve that holds the spline, `1` for every kind but `'nurbs'`. |
+| `knots` | list of numbers | read | The knots of the NURBS curve that holds the spline. |
+
+```lua
+local m = require('haylen.math')
+
+local track = m.spline3({{0, 0, 0}, {10, 2, -5}, {20, 0, -5}, {30, 1, 0}})
+print(track.kind, track.segmentCount, track.length > 30) -- catmullRom 3 true
+```
+
+### m.spline3(points, options)
+
+Returns a new `Spline3` through or around `points`, a list of `Vec3` values in any form a `Vec3` argument accepts. The kinds are these:
+
+| Kind | Meaning |
+| --- | --- |
+| `'linear'` | Straight segments from point to point. |
+| `'catmullRom'` | A smooth curve through every point, the default. |
+| `'quadraticBezier'` | Segments whose points go end, control, end and so on, `2n + 1` points when open and `2n` when closed. |
+| `'bezier'` | Cubic segments whose points go end, control, control, end and so on, `3n + 1` points when open and `3n` when closed. |
+| `'bSpline'` | A smoother curve that stays inside the points without passing through them, except for the ends of an open curve. |
+| `'nurbs'` | A curve of any degree with a weight for each point and knots, which draws circles and other conics exactly. |
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `kind` | string | `'catmullRom'` | The kind of curve. |
+| `closed` | boolean | `false` | Whether the curve returns to its first point. A `'nurbs'` curve closes through its own points and knots instead. |
+| `alpha` | number | `0.5` | For `'catmullRom'` alone: `0` for the uniform parameterization, `0.5` for the centripetal one, which never loops or cusps inside a segment, and `1` for the chordal one. |
+| `tension` | number | `0` | For `'catmullRom'` alone: from `0` to `1`, how much the tangents shorten, until the curve runs straight between its points at `1`. |
+| `weights` | list of numbers | every weight `1` | For `'nurbs'` alone: a weight above `0` for each point, which pulls the curve toward it. |
+| `knots` | list of numbers | clamped uniform knots | For `'nurbs'` alone: as many knots as the points plus the degree plus `1`, never decreasing. The default reaches both end points. |
+| `degree` | integer | `3` | For `'nurbs'` alone: the degree from `1` to `9`, which needs at least one point more. |
+
+A count of points that the kind cannot take raises a sentence that says the count it needs, such as `A Bezier spline needs 3n + 1 points when open and 3n points when closed.`. An option for another kind raises `Only a NURBS spline takes weights, knots and a degree.` or `Only a Catmull-Rom spline takes an alpha and a tension.`, an alpha or a tension out of range raises `A Catmull-Rom spline needs an alpha and a tension from 0 to 1.`, and knots, weights or a degree that do not describe a NURBS curve raise a sentence that names what is wrong, such as `The NURBS spline needs at least one point more than its degree.`.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.spline3({{0, 0, 0}, {20, 0, -5}, {40, 3, 0}}, {alpha = 0.5, tension = 0.2})
+local arc = m.spline3({{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, {kind = 'nurbs', degree = 2, weights = {1, math.sqrt(0.5), 1}})
+print(string.format('%.4f', arc:point(0.3):length())) -- 1.0000, every point lies on the unit circle
+```
+
+### spline:point(t)
+
+Returns the point at the parameter `t` as a `Vec3`. A closed curve wraps `t` around, and an open one clamps it to `0` and `1`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.spline3({{0, 0, 0}, {0, 0, -10}}, {kind = 'linear'}):point(0.5)) -- Vec3(0.0, 0.0, -5.0)
+```
+
+### spline:derivatives(t)
+
+Returns a table with the `point` at `t` and its `first` and `second` derivatives by the parameter, the velocity and the acceleration of a walk from `0` to `1` over the whole curve.
+
+```lua
+local m = require('haylen.math')
+
+local d = m.spline3({{0, 0, 0}, {0, 0, -10}}):derivatives(0.5)
+print(d.point, d.first) -- Vec3(0.0, 0.0, -5.0) Vec3(0.0, 0.0, -10.0)
+```
+
+### spline:tangent(t)
+
+Returns the direction of travel at `t` as a `Vec3` of length `1`. Where the curve stops for an instant, the tangent follows the way it leaves. Where it stands still, such as on points that repeat, it raises `The spline stands still at this parameter, so it has no direction.`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.spline3({{0, 0, 0}, {0, 0, -10}}):tangent(0.2)) -- Vec3(0.0, 0.0, -1.0)
+```
+
+### spline:pointAtDistance(distance)
+
+Returns the point `distance` world units along the curve, which walks it at an even speed. A closed curve wraps the distance around.
+
+```lua
+local m = require('haylen.math')
+
+local rail = m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
+print(rail:pointAtDistance(15)) -- Vec3(10.0, 0.0, -5.0)
+```
+
+### spline:tangentAtDistance(distance)
+
+Returns the direction of travel `distance` world units along the curve, such as to turn a cart on its rail. It raises the error of `spline:tangent` where the curve stands still.
+
+```lua
+local m = require('haylen.math')
+
+local rail = m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
+print(rail:tangentAtDistance(15)) -- Vec3(0.0, 0.0, -1.0)
+```
+
+### spline:parameterAtDistance(distance)
+
+Returns the parameter `t` at `distance` world units along the curve.
+
+```lua
+local m = require('haylen.math')
+
+local rail = m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
+print(rail:parameterAtDistance(10)) -- 0.5
+```
+
+### spline:closestPoint(point)
+
+Returns a table with the parameter `t`, the `point` of the curve closest to `point` and the `distance` between them, such as to snap a vehicle to its track.
+
+```lua
+local m = require('haylen.math')
+
+local rail = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local closest = rail:closestPoint({4, 2, 0})
+print(string.format('%.1f %.1f', closest.t, closest.distance)) -- 0.4 2.0
+```
+
+### spline:sample(count)
+
+Returns `count` points spread evenly over the parameter, both ends included. More than `16777216` points raise `Sampling a spline takes at most 16777216 points.`.
+
+```lua
+local m = require('haylen.math')
+
+print(#m.spline3({{0, 0, 0}, {10, 0, 0}}):sample(5)) -- 5
+```
+
+### spline:sampleEvenly(count)
+
+Returns `count` points spread evenly by distance along the curve, both ends included, such as the posts of a fence. It takes as many points as `spline:sample`.
+
+```lua
+local m = require('haylen.math')
+
+local posts = m.spline3({{0, 0, 0}, {10, 0, -2}, {20, 0, 0}}):sampleEvenly(6)
+print(#posts) -- 6
+```
+
+### spline:sampleByDistance(spacing)
+
+Returns points `spacing` world units apart along the curve from its start, plus the end point of an open curve. A spacing that is not finite and above `0`, or one so small that it takes more than `16777216` steps, raises `Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve.`.
+
+```lua
+local m = require('haylen.math')
+
+print(#m.spline3({{0, 0, 0}, {20, 0, 0}}, {kind = 'linear'}):sampleByDistance(4)) -- 6
+```
+
+### spline:frames(count, options)
+
+Returns a list of `count` frames spread evenly by distance, both ends included. Each frame is a table with the `position`, the `tangent`, the `normal` and the `binormal`, three directions at right angles. Parallel transport carries the normal along the curve, so the frames never twist more than the curve does, and a closed curve spreads the twist of its loop over its frames so the last one meets the first. The first normal comes from `up`, the up of the world unless the option names another, or from the axis of the world most across the tangent when `up` runs along it. Fewer than `2` frames raise `The frames of a curve need at least 2 frames, one at each end.`, an `up` of zero length raises the error of `vec3:normalized()`, and a curve that stands still raises the error of `spline:tangent`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `up` | `Vec3` | `m.up()` | The direction that the first normal leans toward. |
+
+```lua
+local m = require('haylen.math')
+
+local tube = m.spline3({{0, 0, 0}, {5, 2, -5}, {10, 0, -10}})
+for _, frame in ipairs(tube:frames(16)) do
+    local ring = frame.position + frame.normal * 0.5
+    print(ring)
+end
+```
+
+## CurvePath3
+
+A `CurvePath3` walks several `Spline3` curves one after another, such as a road of straight pieces and bends. Distances run from the start of the first curve, and the parameter `t` runs from `0` at the start to `1` at the end of the path by distance. Make one with `m.curvePath3`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `length` | number | read | The length of all the curves together. |
+| `closed` | boolean | read | Whether the last curve returns to the start of the first. |
+| `curveCount` | integer | read | The number of curves. |
+| `joins` | list of strings | read | How smoothly each pair of curves joins, in order, the last one between the last curve and the first for a closed path: `'position'` when only their ends meet, `'tangent'` when their directions agree too, and `'velocity'` when their speeds also agree. |
+
+### m.curvePath3(curves, options)
+
+Returns a new `CurvePath3` from a list of `Spline3` values, which it copies. Each curve must start where the one before it ends, within a small tolerance, and a closed path also needs the last curve to end where the first starts. An empty list raises `A curve path needs at least one curve.`, and a curve that starts away from the end of the one before raises a sentence that starts with `The curves of a path must join` and says how far apart they are.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `closed` | boolean | `false` | Whether the path returns to its start. |
+
+```lua
+local m = require('haylen.math')
+
+local straight = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local bend = m.spline3({{10, 0, 0}, {15, 0, 0}, {15, 0, -5}, {15, 0, -10}}, {kind = 'bezier'})
+local road = m.curvePath3({straight, bend})
+print(road.curveCount, table.concat(road.joins, ', ')) -- 2 tangent
+```
+
+### path:point(t)
+
+Returns the point at the share `t` of the length of the path.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+print(road:point(0.5)) -- Vec3(5.0, 0.0, 0.0)
+```
+
+### path:tangent(t)
+
+Returns the direction of travel at the share `t` of the length, and raises the error of `spline:tangent` where the path stands still.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+print(road:tangent(0.5)) -- Vec3(1.0, 0.0, 0.0)
+```
+
+### path:pointAtDistance(distance)
+
+Returns the point `distance` world units along the path, wrapped around a closed path.
+
+```lua
+local m = require('haylen.math')
+
+local first = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local second = m.spline3({{10, 0, 0}, {10, 0, -5}}, {kind = 'linear'})
+print(m.curvePath3({first, second}):pointAtDistance(12)) -- Vec3(10.0, 0.0, -2.0)
+```
+
+### path:tangentAtDistance(distance)
+
+Returns the direction of travel `distance` world units along the path.
+
+```lua
+local m = require('haylen.math')
+
+local first = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local second = m.spline3({{10, 0, 0}, {10, 0, -5}}, {kind = 'linear'})
+print(m.curvePath3({first, second}):tangentAtDistance(12)) -- Vec3(0.0, 0.0, -1.0)
+```
+
+### path:closestPoint(point)
+
+Returns a table with the share `t` of the length at the closest point, the `point` and the `distance` to it, over every curve of the path.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+print(road:closestPoint({5, 1, 0}).distance) -- 1.0
+```
+
+### path:sampleEvenly(count)
+
+Returns `count` points spread evenly by distance along the path, both ends included.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+print(#road:sampleEvenly(4)) -- 4
+```
+
+### path:sampleByDistance(spacing)
+
+Returns points `spacing` world units apart along the path from its start, plus the end point of an open path, with the errors of `spline:sampleByDistance`.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+print(#road:sampleByDistance(5)) -- 3
+```
+
+### path:frames(count, options)
+
+Returns `count` frames spread evenly by distance along the path, which carry their normal across the joins, with the options and errors of `spline:frames`.
+
+```lua
+local m = require('haylen.math')
+
+local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}})})
+print(#road:frames(8)) -- 8
+```
+
+## NurbsSurface
+
+A `NurbsSurface` is a smooth surface over a grid of control points, such as a hull, a patch of terrain or a cloth. It takes two parameters from `0` to `1`: `u` across the columns of the grid and `v` along its rows. Make one with `m.nurbsSurface`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `columns` | integer | read | The points in each row of the grid. |
+| `rows` | integer | read | The rows of the grid. |
+
+### m.nurbsSurface(points, options)
+
+Returns a new `NurbsSurface` from `points`, a list of `Vec3` values row after row. Points that do not fill whole rows raise `A NURBS surface needs its points in whole rows of a number of columns above 0.`, and weights, knots or degrees that do not fit raise a sentence that names the direction, such as `The NURBS surface across its columns needs at least one point more than its degree.`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `columns` | integer | none | The points in each row. |
+| `weights` | list of numbers | every weight `1` | A weight above `0` for each point. |
+| `knotsU` | list of numbers | clamped uniform knots | The knots across the columns. |
+| `knotsV` | list of numbers | clamped uniform knots | The knots along the rows. |
+| `degreeU` | integer | `3` | The degree across the columns, from `1` to `9`. |
+| `degreeV` | integer | `3` | The degree along the rows, from `1` to `9`. |
+
+```lua
+local m = require('haylen.math')
+
+local sheet = m.nurbsSurface({{0, 0, 0}, {2, 0, 0}, {0, 0, -2}, {2, 0, -2}}, {columns = 2, degreeU = 1, degreeV = 1})
+print(sheet:point(0.5, 0.25)) -- Vec3(1.0, 0.0, -0.5)
+```
+
+### surface:point(u, v)
+
+Returns the point of the surface at `u` and `v`, each clamped to `0` and `1`.
+
+```lua
+local m = require('haylen.math')
+
+local sheet = m.nurbsSurface({{0, 0, 0}, {2, 0, 0}, {0, 0, -2}, {2, 0, -2}}, {columns = 2, degreeU = 1, degreeV = 1})
+print(sheet:point(1, 1)) -- Vec3(2.0, 0.0, -2.0)
+```
+
+### surface:derivatives(u, v)
+
+Returns a table with the `point` at `u` and `v` and its derivatives `alongU` and `alongV`, which lie in the plane that touches the surface there.
+
+```lua
+local m = require('haylen.math')
+
+local sheet = m.nurbsSurface({{0, 0, 0}, {2, 0, 0}, {0, 0, -2}, {2, 0, -2}}, {columns = 2, degreeU = 1, degreeV = 1})
+print(sheet:derivatives(0.5, 0.5).alongU) -- Vec3(2.0, 0.0, 0.0)
+```
+
+### surface:normal(u, v)
+
+Returns the normal of the surface at `u` and `v`, the derivative along `u` crossed with the one along `v`, as a `Vec3` of length `1`. Where the surface folds onto a line or a point it raises `The NURBS surface folds onto a line or a point at these parameters, so it has no normal.`.
+
+```lua
+local m = require('haylen.math')
+
+local sheet = m.nurbsSurface({{0, 0, 0}, {2, 0, 0}, {0, 0, -2}, {2, 0, -2}}, {columns = 2, degreeU = 1, degreeV = 1})
+print(sheet:normal(0.5, 0.5)) -- Vec3(0.0, 1.0, 0.0)
+```
+
+## NurbsVolume
+
+A `NurbsVolume` is a smooth block of space over a grid of control points in three directions, such as a lattice that bends a model. It takes three parameters from `0` to `1`: `u` across the columns, `v` along the rows and `w` through the layers. Make one with `m.nurbsVolume`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `columns` | integer | read | The points in each row. |
+| `rows` | integer | read | The rows in each layer. |
+| `layers` | integer | read | The layers of the block. |
+
+### m.nurbsVolume(points, options)
+
+Returns a new `NurbsVolume` from `points`, a list of `Vec3` values layer after layer and row after row. Points that do not fill whole layers raise `A NURBS volume needs its points in whole layers of a number of columns and rows above 0.`, and weights, knots or degrees that do not fit raise a sentence that names the direction.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `columns` | integer | none | The points in each row. |
+| `rows` | integer | none | The rows in each layer. |
+| `weights` | list of numbers | every weight `1` | A weight above `0` for each point. |
+| `knotsU`, `knotsV`, `knotsW` | list of numbers | clamped uniform knots | The knots of each direction. |
+| `degreeU`, `degreeV`, `degreeW` | integer | `3` | The degree of each direction, from `1` to `9`. |
+
+```lua
+local m = require('haylen.math')
+
+local corners = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}, {0, 0, 1}, {1, 0, 1}, {0, 1, 1}, {1, 1, 1}}
+local block = m.nurbsVolume(corners, {columns = 2, rows = 2, degreeU = 1, degreeV = 1, degreeW = 1})
+print(block.layers) -- 2
+```
+
+### volume:point(u, v, w)
+
+Returns the point of the volume at `u`, `v` and `w`, each clamped to `0` and `1`.
+
+```lua
+local m = require('haylen.math')
+
+local corners = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0}, {0, 0, 1}, {1, 0, 1}, {0, 1, 1}, {1, 1, 1}}
+local block = m.nurbsVolume(corners, {columns = 2, rows = 2, degreeU = 1, degreeV = 1, degreeW = 1})
+print(block:point(0.25, 0.5, 0.75)) -- Vec3(0.25, 0.5, 0.75)
 ```
 
 ## Spring

@@ -2616,7 +2616,7 @@ scene.push({
 
 ### graphics2d.drawStroke(points, options)
 
-Draws a line through `points`, with joins, caps, a width and a color for each point, a texture along its length and dashes. The points are a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs. Points that repeat the point before them are dropped. In place of the points it takes a [`Spline`](math.md#spline), such as a Bézier curve. It flattens the spline so the curve stays within a quarter pixel of the destination at any zoom, closed when the spline is, with one `width` and one `color` and without `count`. The table `options` is optional and also takes the keys of the [draw order](#draw-order):
+Draws a line through `points`, with joins, caps, a width and a color for each point, a texture along its length and dashes. The points are a flat list `{x1, y1, x2, y2, ...}` or a [`FloatBuffer`](collections.md#float-buffers) of the same pairs. Points that repeat the point before them are dropped. In place of the points it takes a [`Spline2`](math.md#spline2), such as a Bézier curve. It flattens the spline so the curve stays within a quarter pixel of the destination at any zoom, closed when the spline is, with one `width` and one `color` and without `count`. The table `options` is optional and also takes the keys of the [draw order](#draw-order):
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -2659,7 +2659,7 @@ local m = require('haylen.math')
 local scene = require('haylen.scene')
 
 local rope = assets.texture('effects/rope.png', {wrap = 'repeat'})
-local curve = m.spline({{100, 640}, {300, 520}, {500, 700}, {700, 580}}, {kind = 'bezier'})
+local curve = m.spline2({{100, 640}, {300, 520}, {500, 700}, {700, 580}}, {kind = 'bezier'})
 
 scene.push({
     render = function(self)

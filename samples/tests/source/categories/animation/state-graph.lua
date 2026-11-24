@@ -107,7 +107,7 @@ function StateGraph:enter()
     self.curves, self.chips = {}, {}
     for _, edge in ipairs(StateGraph.edges) do
         local p = edge.points
-        self.curves[edge.key] = m.spline({{p[1], p[2]}, {p[1] + (p[3] - p[1]) * 2 / 3, p[2] + (p[4] - p[2]) * 2 / 3}, {p[5] + (p[3] - p[5]) * 2 / 3, p[6] + (p[4] - p[6]) * 2 / 3}, {p[5], p[6]}}, {kind = 'bezier'})
+        self.curves[edge.key] = m.spline2({{p[1], p[2]}, {p[1] + (p[3] - p[1]) * 2 / 3, p[2] + (p[4] - p[2]) * 2 / 3}, {p[5] + (p[3] - p[5]) * 2 / 3, p[6] + (p[4] - p[6]) * 2 / 3}, {p[5], p[6]}}, {kind = 'bezier'})
         self.chips[edge.key] = graphics2d.measureText(nil, edge.text, {size = 22}) + 22
     end
 

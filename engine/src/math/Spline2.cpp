@@ -1,4 +1,4 @@
-#include "haylen/math/Spline.hpp"
+#include "haylen/math/Spline2.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6,24 +6,26 @@
 #include <stdexcept>
 #include <utility>
 
+#include "math/ArcLength.hpp"
+
 namespace haylen::math {
 
-const std::array<std::pair<std::string_view, Spline::Kind>, 3> Spline::kKindNames{{{"catmullRom", Kind::CatmullRom}, {"bezier", Kind::Bezier}, {"bSpline", Kind::BSpline}}};
+const std::array<std::pair<std::string_view, Spline2::Kind>, 3> Spline2::kKindNames{{{"catmullRom", Kind::CatmullRom}, {"bezier", Kind::Bezier}, {"bSpline", Kind::BSpline}}};
 
-Spline::Spline(std::vector<Vec2> controlPoints, Kind curveKind, bool loop) : points(std::move(controlPoints)), kind(curveKind), closed(loop), segmentCount(countSegments(points.size(), curveKind, loop)) {
+Spline2::Spline2(std::vector<Vec2> controlPoints, Kind curveKind, bool loop) : points(std::move(controlPoints)), kind(curveKind), closed(loop), segmentCount(countSegments(points.size(), curveKind, loop)) {
     measure();
 }
 
-std::optional<Spline::Kind> Spline::kindFromName(std::string_view name) noexcept {
+std::optional<Spline2::Kind> Spline2::kindFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kKindNames, name, &std::pair<std::string_view, Kind>::first);
     return found != kKindNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
-std::string_view Spline::kindName(Kind value) noexcept {
+std::string_view Spline2::kindName(Kind value) noexcept {
     return std::ranges::find(kKindNames, value, &std::pair<std::string_view, Kind>::second)->first;
 }
 
-std::size_t Spline::countSegments(std::size_t pointCount, Kind curveKind, bool loop) {
+std::size_t Spline2::countSegments(std::size_t pointCount, Kind curveKind, bool loop) {
     switch (curveKind) {
     case Kind::Bezier:
         if (loop && pointCount >= 3 && pointCount % 3 == 0) {
@@ -53,7 +55,7 @@ std::size_t Spline::countSegments(std::size_t pointCount, Kind curveKind, bool l
 }
 
 // Closed curves wrap indices around and open curves clamp them to the end points.
-Vec2 Spline::controlPoint(std::ptrdiff_t index) const noexcept {
+Vec2 Spline2::controlPoint(std::ptrdiff_t index) const noexcept {
     const auto count = static_cast<std::ptrdiff_t>(points.size());
     if (closed) {
         return points[static_cast<std::size_t>(((index % count) + count) % count)];
@@ -62,7 +64,7 @@ Vec2 Spline::controlPoint(std::ptrdiff_t index) const noexcept {
     return points[static_cast<std::size_t>(std::clamp<std::ptrdiff_t>(index, 0, count - 1))];
 }
 
-Vec2 Spline::evaluate(std::size_t segment, float u) const noexcept {
+Vec2 Spline2::evaluate(std::size_t segment, float u) const noexcept {
     switch (kind) {
     case Kind::Bezier:
         return bezier(segment, u);
@@ -75,7 +77,7 @@ Vec2 Spline::evaluate(std::size_t segment, float u) const noexcept {
 }
 
 // Evaluates the centripetal curve with the Barry and Goldman pyramid. Open curves extend their ends by mirroring the neighboring point.
-Vec2 Spline::catmullRom(std::size_t segment, float u) const noexcept {
+Vec2 Spline2::catmullRom(std::size_t segment, float u) const noexcept {
     const auto index = static_cast<std::ptrdiff_t>(segment);
     const Vec2 p1 = controlPoint(index);
     const Vec2 p2 = controlPoint(index + 1);
@@ -97,13 +99,13 @@ Vec2 Spline::catmullRom(std::size_t segment, float u) const noexcept {
     return b1 * ((t2 - t) / (t2 - t1)) + b2 * ((t - t1) / (t2 - t1));
 }
 
-Vec2 Spline::bezier(std::size_t segment, float u) const noexcept {
+Vec2 Spline2::bezier(std::size_t segment, float u) const noexcept {
     const auto first = static_cast<std::ptrdiff_t>(segment * 3);
     const float inverse = 1.0F - u;
     return controlPoint(first) * (inverse * inverse * inverse) + controlPoint(first + 1) * (3.0F * inverse * inverse * u) + controlPoint(first + 2) * (3.0F * inverse * u * u) + controlPoint(first + 3) * (u * u * u);
 }
 
-Vec2 Spline::bSpline(std::size_t segment, float u) const noexcept {
+Vec2 Spline2::bSpline(std::size_t segment, float u) const noexcept {
     const auto index = static_cast<std::ptrdiff_t>(segment) - 2;
     const float u2 = u * u;
     const float u3 = u2 * u;
@@ -115,7 +117,7 @@ Vec2 Spline::bSpline(std::size_t segment, float u) const noexcept {
 }
 
 // Records the arc length at evenly spaced parameters, which distance lookups interpolate.
-void Spline::measure() {
+void Spline2::measure() {
     lengths.assign(segmentCount * kStepsPerSegment + 1, 0.0F);
     Vec2 previous = evaluate(0, 0.0F);
     for (std::size_t segment = 0; segment < segmentCount; ++segment) {
@@ -128,7 +130,7 @@ void Spline::measure() {
     }
 }
 
-Vec2 Spline::getPoint(float t) const noexcept {
+Vec2 Spline2::getPoint(float t) const noexcept {
     const float wrapped = closed ? t - std::floor(t) : std::clamp(t, 0.0F, 1.0F);
     const float scaled = wrapped * static_cast<float>(segmentCount);
 
@@ -137,7 +139,7 @@ Vec2 Spline::getPoint(float t) const noexcept {
     return evaluate(segment, scaled - static_cast<float>(segment));
 }
 
-Vec2 Spline::getTangent(float t) const {
+Vec2 Spline2::getTangent(float t) const {
     const float step = 1e-3F / static_cast<float>(segmentCount);
     const float before = closed ? t - step : std::max(0.0F, t - step);
     const float after = closed ? t + step : std::min(1.0F, t + step);
@@ -149,38 +151,20 @@ Vec2 Spline::getTangent(float t) const {
     return travel.getNormalized();
 }
 
-float Spline::getParameterAtDistance(float distance) const noexcept {
-    const float length = getLength();
-    if (length <= 0.0F) {
-        return 0.0F;
-    }
-
-    // Rounding can carry a wrapped distance just outside the curve, so it is clamped like the distance of an open curve.
-    const float along = std::clamp(closed ? distance - std::floor(distance / length) * length : distance, 0.0F, length);
-    const auto upper = std::upper_bound(lengths.begin(), lengths.end(), along);
-    if (upper == lengths.end()) {
-        return 1.0F;
-    }
-
-    const auto index = static_cast<std::size_t>(upper - lengths.begin());
-    const float start = lengths[index - 1];
-    const float span = lengths[index] - start;
-    const float fraction = span > 0.0F ? (along - start) / span : 0.0F;
-    return (static_cast<float>(index - 1) + fraction) / static_cast<float>(lengths.size() - 1);
+float Spline2::getParameterAtDistance(float distance) const noexcept {
+    return ArcLength::getParameter(lengths, distance, closed);
 }
 
-Vec2 Spline::getPointAtDistance(float distance) const noexcept {
+Vec2 Spline2::getPointAtDistance(float distance) const noexcept {
     return getPoint(getParameterAtDistance(distance));
 }
 
-Vec2 Spline::getTangentAtDistance(float distance) const {
+Vec2 Spline2::getTangentAtDistance(float distance) const {
     return getTangent(getParameterAtDistance(distance));
 }
 
-std::vector<Vec2> Spline::sample(std::size_t count) const {
-    if (count > kMaxSteps) {
-        throw std::invalid_argument("Sampling a spline takes at most 16777216 points.");
-    }
+std::vector<Vec2> Spline2::sample(std::size_t count) const {
+    ArcLength::checkCount(count);
 
     std::vector<Vec2> result;
     result.reserve(count);
@@ -191,13 +175,8 @@ std::vector<Vec2> Spline::sample(std::size_t count) const {
     return result;
 }
 
-std::vector<Vec2> Spline::sampleByDistance(float spacing) const {
-    const double steps = std::ceil(static_cast<double>(getLength()) / static_cast<double>(spacing));
-    if (!std::isfinite(spacing) || spacing <= 0.0F || !(steps <= static_cast<double>(kMaxSteps))) {
-        throw std::invalid_argument("Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve.");
-    }
-
-    const auto count = static_cast<std::size_t>(steps);
+std::vector<Vec2> Spline2::sampleByDistance(float spacing) const {
+    const std::size_t count = ArcLength::countSteps(getLength(), spacing);
     std::vector<Vec2> result;
     result.reserve(count + 1);
     for (std::size_t index = 0; index < count; ++index) {
@@ -211,7 +190,7 @@ std::vector<Vec2> Spline::sampleByDistance(float spacing) const {
     return result;
 }
 
-void Spline::flatten(float tolerance, std::vector<Vec2>& target) const {
+void Spline2::flatten(float tolerance, std::vector<Vec2>& target) const {
     if (!std::isfinite(tolerance) || tolerance <= 0.0F) {
         throw std::invalid_argument("Flattening a spline needs a finite tolerance above 0.");
     }
@@ -228,7 +207,7 @@ void Spline::flatten(float tolerance, std::vector<Vec2>& target) const {
 }
 
 // A piece is flat enough once the curve at its middle lies within the tolerance of its chord, and then only its end joins the points.
-void Spline::subdivide(std::size_t segment, float from, float to, Vec2 start, Vec2 end, float tolerance, int depth, std::vector<Vec2>& target) const {
+void Spline2::subdivide(std::size_t segment, float from, float to, Vec2 start, Vec2 end, float tolerance, int depth, std::vector<Vec2>& target) const {
     const float middle = (from + to) * 0.5F;
     const Vec2 point = evaluate(segment, middle);
     const Vec2 chord = end - start;

@@ -111,6 +111,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   localization/LocalizationTests.cpp
   math/ColorSpaceLuaTests.cpp
   math/ColorTransformTests.cpp
+  math/Curve3LuaTests.cpp
   math/Geometry3LuaTests.cpp
   math/GeometryLuaTests.cpp
   math/MathLuaTests.cpp

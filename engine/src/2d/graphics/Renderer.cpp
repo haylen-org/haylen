@@ -28,7 +28,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
-#include "haylen/math/Spline.hpp"
+#include "haylen/math/Spline2.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
@@ -564,7 +564,7 @@ void Renderer::drawStroke(std::span<const math::Vec2> points, const Stroke& stro
     state->addMesh(used, state->strokes.getVertices(), state->strokes.getIndices(), order);
 }
 
-void Renderer::drawStroke(const math::Spline& spline, const Stroke& stroke, const DrawOrder& order) {
+void Renderer::drawStroke(const math::Spline2& spline, const Stroke& stroke, const DrawOrder& order) {
     if (!stroke.widths.empty() || !stroke.colors.empty()) {
         throw std::invalid_argument("A stroke along a spline takes one width and one color, without widths or colors for each point.");
     }

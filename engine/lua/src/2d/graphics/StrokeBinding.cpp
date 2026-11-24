@@ -13,7 +13,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "math/SplineBinding.hpp"
+#include "math/Spline2Binding.hpp"
 
 namespace haylen::lua::graphics2d {
 
@@ -54,7 +54,7 @@ void StrokeBinding::readPoints(lua_State* L, int index, std::vector<haylen::math
 
 // Draws with `drawStroke(points, {width, join, cap, ...})` or `drawStroke(spline, {...})`, whose option table also takes the keys of the draw order.
 int StrokeBinding::drawStroke(lua_State* L) {
-    const haylen::math::Spline* spline = lua::Userdata::test<haylen::math::Spline>(L, 1);
+    const haylen::math::Spline2* spline = lua::Userdata::test<haylen::math::Spline2>(L, 1);
     if (spline == nullptr) {
         readPoints(L, 1, points);
     }

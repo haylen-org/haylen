@@ -21,13 +21,14 @@
 #include "haylen/math/PoissonDisk.hpp"
 #include "math/ChoiceBinding.hpp"
 #include "math/ColorSpaceBinding.hpp"
+#include "math/Curve3Binding.hpp"
 #include "math/Geometry3Binding.hpp"
 #include "math/MatrixBinding.hpp"
 #include "math/PolygonBinding.hpp"
 #include "math/QuatBinding.hpp"
 #include "math/RaycastBinding.hpp"
 #include "math/SignalFilterBinding.hpp"
-#include "math/SplineBinding.hpp"
+#include "math/Spline2Binding.hpp"
 #include "math/SpringBinding.hpp"
 #include "math/Transform3DBinding.hpp"
 #include "math/VectorBinding.hpp"
@@ -652,7 +653,8 @@ void MathBinding::installClasses(lua_State* L) {
     QuatBinding::install(L);
     Geometry3Binding::install(L);
     Transform3DBinding::install(L);
-    SplineBinding::install(L);
+    Spline2Binding::install(L);
+    Curve3Binding::install(L);
     SpringBinding::install(L);
     SignalFilterBinding::install(L);
     ChoiceBinding::install(L);
@@ -671,7 +673,8 @@ int MathBinding::open(lua_State* L) {
     ColorSpaceBinding::addFunctions(L);
     RaycastBinding::addFunctions(L);
     PolygonBinding::addFunctions(L);
-    SplineBinding::addFunctions(L);
+    Spline2Binding::addFunctions(L);
+    Curve3Binding::addFunctions(L);
     SpringBinding::addFunctions(L);
     SignalFilterBinding::addFunctions(L);
     ChoiceBinding::addFunctions(L);

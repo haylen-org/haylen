@@ -376,6 +376,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/localization/PluralRules.cpp
   src/math/Box3.cpp
   src/math/Color.cpp
+  src/math/CurvePath3.cpp
   src/math/ColorSpace.cpp
   src/math/DualQuat.cpp
   src/math/Easing.cpp
@@ -393,6 +394,10 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/MedianFilter.cpp
   src/math/MovingAverage.cpp
   src/math/Noise2D.cpp
+  src/math/NurbsBasis.cpp
+  src/math/NurbsSurface.cpp
+  src/math/NurbsVolume.cpp
+  src/math/ParallelTransport.cpp
   src/math/Obb.cpp
   src/math/Photometry.cpp
   src/math/PoissonDisk.cpp
@@ -402,7 +407,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Raycast.cpp
   src/math/ShuffleBag.cpp
   src/math/SignalFilterHelper.cpp
-  src/math/Spline.cpp
+  src/math/Spline2.cpp
+  src/math/Spline3.cpp
   src/math/Spring.cpp
   src/math/Transform2D.cpp
   src/math/Transform3D.cpp

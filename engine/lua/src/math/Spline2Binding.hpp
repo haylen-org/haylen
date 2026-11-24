@@ -6,21 +6,21 @@
 #include <string_view>
 
 #include "haylen/lua/Type.hpp"
-#include "haylen/math/Spline.hpp"
+#include "haylen/math/Spline2.hpp"
 
 namespace haylen::lua {
 
-template <> struct Type<haylen::math::Spline> {
-    static constexpr const char* name = "haylen.Spline";
-    using Storage = haylen::math::Spline;
+template <> struct Type<haylen::math::Spline2> {
+    static constexpr const char* name = "haylen.Spline2";
+    using Storage = haylen::math::Spline2;
 };
 
 } // namespace haylen::lua
 
 namespace haylen::lua::math {
 
-// Installs the `Spline` class of `haylen.math` and its constructor.
-class SplineBinding final {
+// Installs the `Spline2` class of `haylen.math` and its constructor.
+class Spline2Binding final {
   public:
     static void install(lua_State* L);
 

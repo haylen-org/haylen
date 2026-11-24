@@ -111,6 +111,7 @@ set(HAYLEN_LUA_SOURCES
   src/localization/LocalizationBinding.cpp
   src/math/ChoiceBinding.cpp
   src/math/ColorSpaceBinding.cpp
+  src/math/Curve3Binding.cpp
   src/math/Geometry3Binding.cpp
   src/math/MathBinding.cpp
   src/math/MatrixBinding.cpp
@@ -118,7 +119,7 @@ set(HAYLEN_LUA_SOURCES
   src/math/QuatBinding.cpp
   src/math/RaycastBinding.cpp
   src/math/SignalFilterBinding.cpp
-  src/math/SplineBinding.cpp
+  src/math/Spline2Binding.cpp
   src/math/SpringBinding.cpp
   src/math/Transform3DBinding.cpp
   src/math/VectorBinding.cpp

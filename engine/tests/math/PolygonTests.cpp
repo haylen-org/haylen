@@ -12,7 +12,7 @@
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
-#include "haylen/math/Spline.hpp"
+#include "haylen/math/Spline2.hpp"
 
 namespace haylen::math {
 
@@ -202,25 +202,25 @@ TEST(MarchingSquaresTest, ClosesAreasAlongTheEdgeOfTheGrid) {
 }
 
 TEST(SplineTest, CatmullRomPassesThroughItsPoints) {
-    const Spline spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
+    const Spline2 spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
     EXPECT_EQ(spline.getSegmentCount(), 3U);
     EXPECT_EQ(spline.getPoint(0.0F), Vec2(0.0F, 0.0F));
     EXPECT_NEAR(spline.getPoint(1.0F / 3.0F).x, 100.0F, 1e-3F);
     EXPECT_NEAR(spline.getPoint(1.0F).y, 100.0F, 1e-3F);
     EXPECT_GT(spline.getLength(), 300.0F);
 
-    const Spline loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline::Kind::CatmullRom, true);
+    const Spline2 loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2::Kind::CatmullRom, true);
     EXPECT_EQ(loop.getSegmentCount(), 4U);
     EXPECT_NEAR(Vec2::distance(loop.getPoint(1.0F), loop.getPoint(0.0F)), 0.0F, 1e-3F);
 }
 
 TEST(SplineTest, AParameterThatIsNotANumberGivesAPointThatIsNotANumber) {
-    const Spline spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
+    const Spline2 spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
     EXPECT_TRUE(std::isnan(spline.getPoint(std::numeric_limits<float>::quiet_NaN()).x));
 }
 
 TEST(SplineTest, SamplesEvenlyByDistance) {
-    const Spline curve({{0.0F, 0.0F}, {50.0F, 80.0F}, {150.0F, -40.0F}, {200.0F, 30.0F}}, Spline::Kind::Bezier);
+    const Spline2 curve({{0.0F, 0.0F}, {50.0F, 80.0F}, {150.0F, -40.0F}, {200.0F, 30.0F}}, Spline2::Kind::Bezier);
     const std::vector<Vec2> points = curve.sampleByDistance(10.0F);
     ASSERT_GT(points.size(), 10U);
 
@@ -239,7 +239,7 @@ TEST(SplineTest, SamplesEvenlyByDistance) {
 }
 
 TEST(SplineTest, CurvesWithoutLengthStayAtTheirStart) {
-    const Spline dot({{0.0F, 0.0F}, {0.0F, 0.0F}});
+    const Spline2 dot({{0.0F, 0.0F}, {0.0F, 0.0F}});
     EXPECT_EQ(dot.getLength(), 0.0F);
     EXPECT_EQ(dot.getParameterAtDistance(10.0F), 0.0F);
     EXPECT_EQ(dot.sampleByDistance(1.0F), std::vector<Vec2>{Vec2{}});
@@ -247,7 +247,7 @@ TEST(SplineTest, CurvesWithoutLengthStayAtTheirStart) {
 
 // Flattening keeps every part of the curve within the tolerance of the lines between its points, spends points where the curve bends, and leaves a straight curve with the few points every segment splits into.
 TEST(SplineTest, FlattensWithinTheTolerance) {
-    const Spline curve({{0.0F, 0.0F}, {50.0F, 120.0F}, {150.0F, -80.0F}, {200.0F, 30.0F}}, Spline::Kind::Bezier);
+    const Spline2 curve({{0.0F, 0.0F}, {50.0F, 120.0F}, {150.0F, -80.0F}, {200.0F, 30.0F}}, Spline2::Kind::Bezier);
     std::vector<Vec2> fine;
     curve.flatten(0.25F, fine);
     EXPECT_EQ(fine.front(), curve.getPoint(0.0F));
@@ -267,26 +267,26 @@ TEST(SplineTest, FlattensWithinTheTolerance) {
     EXPECT_LT(coarse.size(), fine.size());
 
     std::vector<Vec2> straight;
-    Spline({{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {30.0F, 0.0F}}, Spline::Kind::Bezier).flatten(0.01F, straight);
+    Spline2({{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {30.0F, 0.0F}}, Spline2::Kind::Bezier).flatten(0.01F, straight);
     EXPECT_EQ(straight.size(), 5U);
 
     // A closed curve ends one step short of its start, which the stroke joins back.
     std::vector<Vec2> loop;
-    Spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline::Kind::CatmullRom, true).flatten(0.5F, loop);
+    Spline2({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2::Kind::CatmullRom, true).flatten(0.5F, loop);
     EXPECT_GT(Vec2::distance(loop.back(), loop.front()), 0.0F);
     EXPECT_THROW(curve.flatten(0.0F, loop), std::invalid_argument);
 }
 
 // A closed Bezier curve takes 3n points and its last segment ends on the first point.
 TEST(SplineTest, ClosedBezierCurvesReturnToTheirFirstPoint) {
-    const Spline loop({{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}}, Spline::Kind::Bezier, true);
+    const Spline2 loop({{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}}, Spline2::Kind::Bezier, true);
     EXPECT_EQ(loop.getSegmentCount(), 1U);
     EXPECT_EQ(loop.getPoint(0.5F), Vec2(7.5F, 3.75F));
-    EXPECT_THROW(Spline({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 0.0F}}, Spline::Kind::Bezier, true), std::invalid_argument);
+    EXPECT_THROW(Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 0.0F}}, Spline2::Kind::Bezier, true), std::invalid_argument);
 }
 
 TEST(SplineTest, ClosedCurvesKeepWrappedDistancesOnTheCurve) {
-    const Spline loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline::Kind::CatmullRom, true);
+    const Spline2 loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2::Kind::CatmullRom, true);
 
     // The tiniest negative distance wraps to a remainder that rounds just below zero.
     const float parameter = loop.getParameterAtDistance(-std::numeric_limits<float>::denorm_min());
@@ -295,7 +295,7 @@ TEST(SplineTest, ClosedCurvesKeepWrappedDistancesOnTheCurve) {
 }
 
 TEST(SplineTest, BSplineReachesItsEndsAndSmoothsBetween) {
-    const Spline spline({{0.0F, 0.0F}, {10.0F, 10.0F}, {20.0F, 0.0F}}, Spline::Kind::BSpline);
+    const Spline2 spline({{0.0F, 0.0F}, {10.0F, 10.0F}, {20.0F, 0.0F}}, Spline2::Kind::BSpline);
     EXPECT_EQ(spline.getSegmentCount(), 4U);
     EXPECT_NEAR(Vec2::distance(spline.getPoint(0.0F), {0.0F, 0.0F}), 0.0F, 1e-4F);
     EXPECT_NEAR(Vec2::distance(spline.getPoint(1.0F), {20.0F, 0.0F}), 0.0F, 1e-4F);
@@ -305,16 +305,16 @@ TEST(SplineTest, BSplineReachesItsEndsAndSmoothsBetween) {
 }
 
 TEST(SplineTest, RejectsWrongPointCounts) {
-    EXPECT_THROW(Spline({{0.0F, 0.0F}}), std::invalid_argument);
-    EXPECT_THROW(Spline({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, Spline::Kind::Bezier), std::invalid_argument);
-    EXPECT_THROW(Spline({{0.0F, 0.0F}, {1.0F, 0.0F}}, Spline::Kind::BSpline, true), std::invalid_argument);
-    EXPECT_THROW((void)Spline({{0.0F, 0.0F}, {1.0F, 0.0F}}).sampleByDistance(0.0F), std::invalid_argument);
-    EXPECT_EQ(Spline::kindFromName("bSpline"), Spline::Kind::BSpline);
-    EXPECT_EQ(Spline::kindName(Spline::Kind::CatmullRom), "catmullRom");
+    EXPECT_THROW(Spline2({{0.0F, 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, Spline2::Kind::Bezier), std::invalid_argument);
+    EXPECT_THROW(Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}}, Spline2::Kind::BSpline, true), std::invalid_argument);
+    EXPECT_THROW((void)Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}}).sampleByDistance(0.0F), std::invalid_argument);
+    EXPECT_EQ(Spline2::kindFromName("bSpline"), Spline2::Kind::BSpline);
+    EXPECT_EQ(Spline2::kindName(Spline2::Kind::CatmullRom), "catmullRom");
 }
 
 TEST(SplineTest, RefusesToSampleMorePointsThanItsBound) {
-    const Spline line({{0.0F, 0.0F}, {1.0F, 0.0F}});
+    const Spline2 line({{0.0F, 0.0F}, {1.0F, 0.0F}});
     EXPECT_THROW((void)line.sample(16777217), std::invalid_argument);
 }
 
