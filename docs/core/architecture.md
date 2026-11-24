@@ -29,6 +29,8 @@ Public headers live in `engine/include/haylen/<module>/`, and the code that impl
 
 Everything specific to 2D sits under a `2d` folder on both sides. Each folder under `2d` maps to a namespace with the suffix `2d`, which is also the name of its Lua module. So `engine/include/haylen/2d/graphics/Renderer.hpp` declares `haylen::graphics2d::Renderer`.
 
+Everything specific to 3D sits the same way under a `3d` folder of the headers, the sources, the tests and the Lua layer, with the suffix `3d` on its namespaces and Lua modules. So a renderer of 3D in `engine/include/haylen/3d/graphics/` lives in `haylen::graphics3d`, and its binding in `engine/lua/src/3d/graphics/` lives in `haylen::lua::graphics3d`. The reader of glTF keeps the name `haylen::gltf`, because glTF is 3D by nature, and the core of XR, which every dimension can use, is the context `haylen::xr` in `engine/src/xr/`, with the hosts of each platform in `engine/src/platform/<platform>/xr/`. The dimensions stay apart: 2D and 3D never include each other, the GPU devices and `graphics` include neither, the renderer of 3D includes no physics and no navigation, and the public headers of XR include no framework of a platform, such as SwiftUI, ARKit, Java or OpenXR. The math of every dimension lives in the dimension-agnostic context `math`.
+
 This table names the main classes of each folder. The headers of a folder list all of its public classes.
 
 | Folder | What it holds |
