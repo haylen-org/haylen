@@ -37,8 +37,8 @@ class SlotGrid final : public Component {
   private:
     struct Slot {
         std::string id;
-        std::string image;
-        TextValue count;
+        std::string image{};
+        TextValue count{};
         bool enabled = true;
     };
 

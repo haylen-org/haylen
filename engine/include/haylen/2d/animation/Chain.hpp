@@ -19,7 +19,7 @@ class Chain final {
     static constexpr int kMaxIterations = 1000;
 
     struct Options {
-        math::Vec2 root;
+        math::Vec2 root{};
         std::vector<float> lengths;
         // The direction the chain lies along from the root when it is made.
         float angle = 0.0F;
@@ -28,7 +28,7 @@ class Chain final {
 
     struct Reach {
         // A point on the side the joints bend toward, such as above the knee of a leg.
-        std::optional<math::Vec2> pole;
+        std::optional<math::Vec2> pole{};
         int iterations = 10;
         float tolerance = 0.01F;
     };

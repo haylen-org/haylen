@@ -42,7 +42,7 @@ struct DeviceState {
     struct PendingRead {
         RenderTarget target;
         Device::ReadCallback done;
-        std::unique_ptr<gpu::Device::Readback> copy;
+        std::unique_ptr<gpu::Device::Readback> copy{};
     };
 
     std::vector<PendingRead> reads;

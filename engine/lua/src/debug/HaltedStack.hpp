@@ -64,7 +64,7 @@ class HaltedStack final {
         bool numbered = false;
         lua_Integer number = 0;
         std::string name;
-        haylen::core::Json variable;
+        haylen::core::Json variable{};
     };
 
     [[nodiscard]] bool findLevel(int frameId, lua_Debug& level) const;

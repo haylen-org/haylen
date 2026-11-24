@@ -46,11 +46,11 @@ class StateGraph final {
 
     struct State {
         std::string name;
-        std::string animation;
+        std::string animation{};
 
         // The animation of each direction, by the order of `Direction`, empty for the directions a four-way set leaves out, and the vector parameter that picks one.
         std::array<std::string, 8> directions{};
-        std::optional<std::size_t> by;
+        std::optional<std::size_t> by{};
         bool eightWays = false;
     };
 

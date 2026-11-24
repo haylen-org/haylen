@@ -39,8 +39,8 @@ class BitmapFont final : public Font {
         float lineHeight = 0.0F;
         float base = 0.0F;
         std::vector<std::string> pages;
-        std::vector<Character> characters;
-        std::vector<Kerning> kernings;
+        std::vector<Character> characters{};
+        std::vector<Kerning> kernings{};
     };
 
     // A grid font: the characters of the cells in reading order as UTF-8, the size of a cell, the gap between cells and around the grid, the advance of every character, the height of a line and the baseline below the top of a cell. A zero advance, line height or baseline takes the size of the cell.

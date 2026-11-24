@@ -34,16 +34,16 @@ class ReleaseInspector final {
         Catalog::Kind kind = Catalog::Kind::File;
         Delivery delivery = Delivery::Required;
         std::uint64_t size = 0;
-        std::vector<Chunk> chunks;
+        std::vector<Chunk> chunks{};
     };
 
     struct Domain {
         Digest manifest;
         Manifest::Envelope envelope;
-        std::vector<File> files;
+        std::vector<File> files{};
 
         // Every chunk the domain stores once, by its stored ID.
-        std::map<Digest, Chunk> chunks;
+        std::map<Digest, Chunk> chunks{};
     };
 
     struct Report {

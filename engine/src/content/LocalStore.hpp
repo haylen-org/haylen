@@ -55,8 +55,8 @@ class LocalStore final {
     // What a collection keeps: the live records, the manifests and the shards whose indexes and staged records stay.
     struct Retained {
         std::unordered_set<Digest, Digest::Hash> records;
-        std::set<Digest> manifests;
-        std::set<Digest> shards;
+        std::set<Digest> manifests{};
+        std::set<Digest> shards{};
     };
 
     // Opens the store in its files: the newest whole state, the records its journal lists in segments that still hold them, and nothing that a crash or an earlier collection left behind. A store of another app opens empty, and a new build of the app starts again from the content it ships with, keeping the records and the generation it accepted.

@@ -32,7 +32,7 @@ struct GroupScope {
     DrawOrder order{};
 
     // The image the shape of a mask drew, which its content shows through.
-    graphics::Texture shape;
+    graphics::Texture shape{};
 };
 
 } // namespace haylen::graphics2d

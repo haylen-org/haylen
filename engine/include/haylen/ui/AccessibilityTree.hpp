@@ -75,7 +75,7 @@ class AccessibilityTree final {
 
   private:
     struct Level {
-        std::optional<std::size_t> element;
+        std::optional<std::size_t> element{};
         std::size_t firstTarget = 0;
         bool hidden = false;
     };

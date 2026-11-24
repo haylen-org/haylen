@@ -40,7 +40,7 @@ class ScrollbarTest : public ::testing::Test, public test::LuaUiFixture {
         haylen::math::Vec2 framebuffer;
         float pixelsPerPoint = 1.0F;
         haylen::graphics::Viewport::ScalingPolicy policy = haylen::graphics::Viewport::ScalingPolicy::Fit;
-        haylen::ui::Scaling scaling;
+        haylen::ui::Scaling scaling{};
     };
 
     // Where the bar lies against the content: after it along the width, before it in a right-to-left UI, or below it.

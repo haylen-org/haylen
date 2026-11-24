@@ -53,10 +53,10 @@ struct ShaderResource {
     struct Target {
         StageCode vertex;
         StageCode fragment;
-        std::vector<Binding> blockBindings;
-        std::vector<Binding> textureBindings;
-        std::vector<Binding> samplerBindings;
-        std::vector<GlslBlock> glslBlocks;
+        std::vector<Binding> blockBindings{};
+        std::vector<Binding> textureBindings{};
+        std::vector<Binding> samplerBindings{};
+        std::vector<GlslBlock> glslBlocks{};
     };
 
     struct Block {

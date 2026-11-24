@@ -16,9 +16,9 @@ class KeptEvents final {
     struct Event {
         std::string name;
         std::string json;
-        std::vector<std::vector<std::byte>> buffers;
-        std::vector<varn::dataview::DataView> views;
-        Bridge::EmitOptions options;
+        std::vector<std::vector<std::byte>> buffers{};
+        std::vector<varn::dataview::DataView> views{};
+        Bridge::EmitOptions options{};
     };
 
     static constexpr std::size_t kLimitPerName = 32;

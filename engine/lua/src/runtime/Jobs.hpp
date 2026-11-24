@@ -59,7 +59,7 @@ class Jobs final {
         Reference thread;
         lua_State* state = nullptr;
         Promise promise;
-        std::shared_ptr<Ownership> ownership;
+        std::shared_ptr<Ownership> ownership{};
     };
 
     [[nodiscard]] bool resume(Job& job);

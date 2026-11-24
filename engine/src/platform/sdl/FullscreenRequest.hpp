@@ -18,7 +18,7 @@ class FullscreenRequest final {
     // The display that the window covers and the exclusive mode it covers it in, with the id of the display that the app named.
     struct Destination {
         SDL_DisplayID display = 0;
-        std::optional<SDL_DisplayMode> mode;
+        std::optional<SDL_DisplayMode> mode{};
         std::string displayId;
     };
 

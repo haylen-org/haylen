@@ -26,7 +26,7 @@ class HeadlessPlayer final {
         std::optional<long long> frames;
         bool development = false;
         std::optional<std::filesystem::path> dataDirectory;
-        std::vector<std::string> arguments;
+        std::vector<std::string> arguments{};
     };
 
     static constexpr std::chrono::nanoseconds kFrameTime{16'666'667};

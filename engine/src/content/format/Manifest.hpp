@@ -37,17 +37,17 @@ class Manifest final {
         Domain domain = Domain::Content;
         Digest application;
         std::string profile;
-        std::string channel;
+        std::string channel{};
 
         // The ABI of the Lua bytecode that the catalog holds, empty when it holds none.
-        std::string luaAbi;
+        std::string luaAbi{};
         std::uint64_t generation = 0;
-        Digest previousManifest;
+        Digest previousManifest{};
         std::uint64_t minimumAppBuild = 0;
         std::uint64_t maximumAppBuild = 0;
-        Digest contentKeyId;
-        Digest signingKeyId;
-        std::vector<ShardReference> shards;
+        Digest contentKeyId{};
+        Digest signingKeyId{};
+        std::vector<ShardReference> shards{};
     };
 
     // The digest that names an app in manifests, from its identifier.

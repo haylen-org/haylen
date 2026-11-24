@@ -134,9 +134,9 @@ class NodeTree final : public std::enable_shared_from_this<NodeTree> {
 
     // The state of every node that the update and the draw rarely read.
     struct Detail {
-        std::string name;
-        NodeContent content;
-        physics2d::Body followed;
+        std::string name{};
+        NodeContent content{};
+        physics2d::Body followed{};
         std::uint32_t generation = 1;
         std::int32_t firstChild = kNone;
         std::int32_t lastChild = kNone;

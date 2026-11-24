@@ -255,8 +255,8 @@ class FocusNavigator final {
         ImGuiID id = 0;
         bool focusable = true;
         bool ring = true;
-        std::optional<std::size_t> node;
-        std::optional<std::size_t> scope;
+        std::optional<std::size_t> node{};
+        std::optional<std::size_t> scope{};
     };
 
     // Directions repeat while held at the rate ImGui moves its own navigation.

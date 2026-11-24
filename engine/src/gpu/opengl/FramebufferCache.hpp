@@ -29,7 +29,7 @@ class FramebufferCache final {
     struct Key {
         std::array<Attachment, Device::kMaxColorTargets> colors{};
         std::size_t colorCount = 0;
-        Attachment depthStencil;
+        Attachment depthStencil{};
         bool stencil = false;
 
         friend bool operator==(const Key&, const Key&) = default;

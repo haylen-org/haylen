@@ -61,7 +61,7 @@ class LayoutBuilder final {
         std::uint8_t level = 0;
         bool space = false;
         Segmenter::Break breakBefore = Segmenter::Break::Never;
-        graphics::Texture texture;
+        graphics::Texture texture{};
         math::Rect source{};
         math::Vec2 extent{};
         math::Color tint = math::Color::white();
@@ -89,15 +89,15 @@ class LayoutBuilder final {
         float top = 0.0F;
         float shift = 0.0F;
         bool wrapped = false;
-        std::vector<std::size_t> order;
+        std::vector<std::size_t> order{};
     };
 
     // The text of a paragraph with the style of every code point, the object behind each object replacement character and the pauses before code points.
     struct Source {
         std::u32string text;
         std::vector<std::size_t> styles;
-        std::map<std::size_t, const RichTextDocument::Inline*> objects;
-        std::vector<std::pair<std::size_t, float>> pauses;
+        std::map<std::size_t, const RichTextDocument::Inline*> objects{};
+        std::vector<std::pair<std::size_t, float>> pauses{};
     };
 
     // A paragraph broken into lines, with its drop cap and list marker pieces and their visual orders. The widest segment that cannot wrap is the narrowest the paragraph can get.
@@ -130,15 +130,15 @@ class LayoutBuilder final {
     struct TableBlock {
         std::vector<float> columns;
         std::vector<float> rows;
-        std::vector<std::vector<Block>> cells;
+        std::vector<std::vector<Block>> cells{};
         bool rightToLeft = false;
     };
 
     // A laid out paragraph, rule or table with its height and widths. The trailing space is the line spacing below its last line, which the last block of a column leaves out.
     struct Block {
         const RichTextDocument::Paragraph* paragraph = nullptr;
-        Flow flow;
-        std::optional<TableBlock> table;
+        Flow flow{};
+        std::optional<TableBlock> table{};
         float height = 0.0F;
         float trailing = 0.0F;
         float naturalWidth = 0.0F;

@@ -22,7 +22,7 @@ class WebSocketTransport {
         };
 
         Kind kind = Kind::Opened;
-        std::string text;
+        std::string text{};
         bool binary = false;
         int code = 0;
     };

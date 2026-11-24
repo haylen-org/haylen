@@ -35,7 +35,7 @@ class ReleaseBuilder final {
         std::uint64_t shardTarget = ContentBuilder::kDefaultShardTarget;
 
         // The sections of `haylen.json` that the application of the app reads itself, such as the `lua` section of a Lua app, which the release keeps as they are.
-        std::span<const std::string_view> sections;
+        std::span<const std::string_view> sections{};
     };
 
     struct Domain {
@@ -52,7 +52,7 @@ class ReleaseBuilder final {
 
     // The shards of one domain and its signed manifest.
     struct DomainBuild {
-        std::vector<std::uint8_t> manifest;
+        std::vector<std::uint8_t> manifest{};
         ContentBuilder::Result result;
     };
 

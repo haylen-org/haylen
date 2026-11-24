@@ -452,7 +452,7 @@ WGPURenderPipeline Device::createPipeline(const PipelineDesc& desc) {
 
     std::array<std::vector<WGPUVertexAttribute>, kMaxVertexBuffers> attributes;
     for (const VertexAttribute& attribute : desc.attributes) {
-        attributes.at(static_cast<std::size_t>(attribute.buffer)).push_back({.format = Conversion::toVertexFormat(attribute.format), .offset = static_cast<std::uint64_t>(attribute.offset), .shaderLocation = static_cast<std::uint32_t>(attribute.location)});
+        attributes.at(static_cast<std::size_t>(attribute.buffer)).push_back({.nextInChain = nullptr, .format = Conversion::toVertexFormat(attribute.format), .offset = static_cast<std::uint64_t>(attribute.offset), .shaderLocation = static_cast<std::uint32_t>(attribute.location)});
     }
 
     std::array<WGPUVertexBufferLayout, kMaxVertexBuffers> layouts{};

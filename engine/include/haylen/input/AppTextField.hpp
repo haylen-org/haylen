@@ -19,8 +19,8 @@ class AppTextField final {
         std::string text;
         int selectionStart = 0;
         int selectionEnd = 0;
-        math::Rect bounds;
-        platform::TextInput::Options options;
+        math::Rect bounds{};
+        platform::TextInput::Options options{};
     };
 
     explicit AppTextField(platform::TextInput& input) : textInput(input) {}

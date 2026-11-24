@@ -30,16 +30,16 @@ class HttpTransport final {
 
         // The first byte and the length of a range, or the whole file without a size, which may hold at most `maximumSize` bytes. A range of a file whose size the caller knows, such as a shard, names it, so an answer with the whole file must have that size.
         std::uint64_t offset = 0;
-        std::optional<std::uint64_t> size;
+        std::optional<std::uint64_t> size{};
         std::uint64_t maximumSize = std::uint64_t{64} << 20;
-        std::optional<std::uint64_t> fileSize;
+        std::optional<std::uint64_t> fileSize{};
 
         // A download that resumes names the bytes of the range it holds already and the validator that the response that sent them had.
         std::uint64_t held = 0;
-        std::string validator;
+        std::string validator{};
 
         // The deadline of the whole request, which by default grows with the bytes it asks for.
-        std::optional<std::chrono::milliseconds> timeout;
+        std::optional<std::chrono::milliseconds> timeout{};
     };
 
     // What the server answered before the body: whether it continues the bytes held or sends the range again from its start, or sends the whole file in place of the range, whose bytes then arrive from its first one, the validator of the file, empty when the server named none that resuming can use, and the size of the whole file when the server said it.
@@ -51,8 +51,8 @@ class HttpTransport final {
     };
 
     struct Callbacks {
-        std::function<void(const Start&)> onStart;
-        std::function<void(std::span<const std::uint8_t>)> onBytes;
+        std::function<void(const Start&)> onStart{};
+        std::function<void(std::span<const std::uint8_t>)> onBytes{};
 
         // Runs exactly once, with no error when every byte arrived, and nothing runs after it.
         std::function<void(std::optional<Error>)> onComplete;

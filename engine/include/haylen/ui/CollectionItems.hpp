@@ -21,7 +21,7 @@ class CollectionItems : public CollectionSource {
 
     struct Item {
         std::string id;
-        std::string type;
+        std::string type{};
         core::Json fields = core::Json::object();
     };
 

@@ -59,7 +59,7 @@ class Mover::Query final {
     struct Search {
         const Mover* mover = nullptr;
         math::Vec2 motion{};
-        Probe probe;
+        Probe probe{};
     };
 
     // Shapes the capsule already touches are what the planes handle, so the sweep looks past them.
@@ -168,7 +168,7 @@ math::Vec2 Mover::slide(math::Vec2 delta, bool flattenSteep) {
         gatherPlanes(flattenSteep);
         std::array<b2CollisionPlane, kPlaneCapacity> solverPlanes{};
         for (std::size_t index = 0; index < planeCount; ++index) {
-            solverPlanes[index] = {.plane = {Query::meters(planes[index].normal), planes[index].offset}, .pushLimit = FLT_MAX, .clipVelocity = true};
+            solverPlanes[index] = {.plane = {Query::meters(planes[index].normal), planes[index].offset}, .pushLimit = FLT_MAX, .push = 0.0F, .clipVelocity = true};
         }
 
         const b2PlaneSolverResult solved = b2SolvePlanes(Box2DConverter::toMeters(target - position, scale), solverPlanes.data(), static_cast<int>(planeCount));

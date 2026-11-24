@@ -30,8 +30,8 @@ class Rope final {
         bool pinStart = false;
         bool pinEnd = false;
         bool limitLength = true;
-        std::optional<Body> startBody;
-        std::optional<Body> endBody;
+        std::optional<Body> startBody{};
+        std::optional<Body> endBody{};
         CollisionFilter filter{};
     };
 

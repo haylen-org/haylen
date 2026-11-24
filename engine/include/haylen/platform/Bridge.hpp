@@ -34,21 +34,21 @@ class Bridge final {
     // JSON with the byte buffers it refers to as `{"$bytes": N}`, so binary data such as images and audio never turns into text, and the data views that its tokens name, which the bridge fills at every boundary so the payload keeps them alive for as long as it lives.
     struct Payload {
         core::Json json;
-        std::vector<std::vector<std::byte>> buffers;
-        std::vector<varn::dataview::DataView> views;
+        std::vector<std::vector<std::byte>> buffers{};
+        std::vector<varn::dataview::DataView> views{};
     };
 
     // Why a call failed. The code and the data are whatever native code sent, and `null` when it sent none. The bridge fails calls itself with the codes `timeout` and `cancelled`.
     struct Error {
         std::string message;
-        core::Json code;
-        core::Json data;
+        core::Json code{};
+        core::Json data{};
     };
 
     struct Result {
         bool ok = false;
-        Payload value;
-        Error error;
+        Payload value{};
+        Error error{};
     };
 
     // How a native event reaches the listeners of its name. A retained event that nothing listens to waits for the first listener. The batched events of a name that arrive in one frame reach the listeners once, as one event whose JSON lists theirs in order, such as the readings of a sensor.
@@ -159,7 +159,7 @@ class Bridge final {
         Callback callback;
         std::string method;
         bool native = false;
-        std::optional<std::chrono::steady_clock::time_point> deadline;
+        std::optional<std::chrono::steady_clock::time_point> deadline{};
     };
 
     static const EmitOptions kDefaultEmitOptions;

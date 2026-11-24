@@ -14,7 +14,7 @@ class GroupManifest final {
   public:
     struct Entry {
         std::string path;
-        std::string type;
+        std::string type{};
         core::Json options = core::Json::object();
     };
 

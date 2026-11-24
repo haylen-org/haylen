@@ -29,15 +29,15 @@ struct Layer {
         int y = 0;
         int width = 0;
         int height = 0;
-        std::vector<std::uint32_t> gids;
+        std::vector<std::uint32_t> gids{};
     };
 
     // Every cell of a chunk lies within this many cells of the origin, so the sums and spans of chunk cells never leave the range of `int`.
     static constexpr std::int64_t kMaxChunkReach = std::int64_t{1} << 24U;
 
     std::uint32_t id = 0;
-    std::string name;
-    std::string type;
+    std::string name{};
+    std::string type{};
     Kind kind = Kind::Tile;
     bool visible = true;
     float opacity = 1.0F;
@@ -45,30 +45,30 @@ struct Layer {
     math::Vec2 offset{};
     math::Vec2 parallax{1.0F, 1.0F};
     math::Color tint = math::Color::white();
-    Properties properties;
+    Properties properties{};
 
     int width = 0;
     int height = 0;
-    std::vector<std::uint32_t> gids;
-    std::vector<Chunk> chunks;
+    std::vector<std::uint32_t> gids{};
+    std::vector<Chunk> chunks{};
 
     // Whether the layer keeps its cells in chunks, as every tile layer of an infinite map does, which holds even while it has none.
     bool infinite = false;
 
-    std::vector<Object> objects;
+    std::vector<Object> objects{};
     bool indexDrawOrder = false;
 
     // The color Tiled shows the objects of an object layer in, which apps may use for their own drawings of the layer.
-    std::optional<math::Color> color;
+    std::optional<math::Color> color{};
 
-    std::string image;
-    std::optional<math::Color> transparentColor;
+    std::string image{};
+    std::optional<math::Color> transparentColor{};
     math::Vec2 imageSize{};
     bool repeatX = false;
     bool repeatY = false;
-    graphics::Texture texture;
+    graphics::Texture texture{};
 
-    std::vector<Layer> layers;
+    std::vector<Layer> layers{};
 
     [[nodiscard]] static std::string_view kindName(Kind value) noexcept;
 

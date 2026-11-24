@@ -55,7 +55,7 @@ class QuadTree final {
         std::int32_t parent = -1;
         std::int32_t firstChild = -1;
         int depth = 0;
-        std::vector<std::uint64_t> ids;
+        std::vector<std::uint64_t> ids{};
     };
 
     struct Entry {

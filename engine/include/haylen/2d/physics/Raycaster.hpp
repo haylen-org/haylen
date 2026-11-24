@@ -26,7 +26,7 @@ class Raycaster final {
     // A cast sees a shape when the shape category shares a bit with the mask and the shape mask shares a bit with the category, like a collision. A shape that shares a nonzero group with the filter is always seen when the group is positive and never when it is negative. The `accept` function, when set, then decides about each hit in order from the start of the cast.
     struct Filter {
         CollisionFilter collision{};
-        std::function<bool(const RaycastHit&)> accept;
+        std::function<bool(const RaycastHit&)> accept{};
     };
 
     explicit Raycaster(const World& target) noexcept : world(target) {}

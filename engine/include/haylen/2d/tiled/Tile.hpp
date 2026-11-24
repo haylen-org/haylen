@@ -21,12 +21,12 @@ struct Tile {
     std::uint32_t id = 0;
     std::string type;
     Properties properties;
-    std::vector<AnimationFrame> animation;
-    std::vector<Object> collision;
-    std::string image;
+    std::vector<AnimationFrame> animation{};
+    std::vector<Object> collision{};
+    std::string image{};
     math::Rect source{};
     float probability = 1.0F;
-    graphics::Texture texture;
+    graphics::Texture texture{};
 };
 
 } // namespace haylen::tiled

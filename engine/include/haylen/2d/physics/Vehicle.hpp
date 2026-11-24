@@ -40,7 +40,7 @@ class Vehicle final {
         float acceleration = 600.0F;
         float topSpeed = 900.0F;
         float brakeAcceleration = 1600.0F;
-        std::optional<math::Vec2> centerOfMass;
+        std::optional<math::Vec2> centerOfMass{};
         float airControl = 6.0F;
         float antiRoll = 0.5F;
         Drive drive = Drive::Rear;

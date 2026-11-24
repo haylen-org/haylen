@@ -30,9 +30,9 @@ struct Layout {
         float weight = 0.0F;
         float emboldenOffset = 0.0F;
         float skew = 0.0F;
-        std::optional<RichTextDocument::Shadow> shadow;
-        std::optional<RichTextDocument::Glow> glow;
-        std::optional<Gradient> gradient;
+        std::optional<RichTextDocument::Shadow> shadow{};
+        std::optional<RichTextDocument::Glow> glow{};
+        std::optional<Gradient> gradient{};
     };
 
     // A glyph with its index in its font, the top-left and size of its quad, its baseline, which effects and the skew move it around, and the page region it shows. The code point is the first one of its character. A color glyph shows the vector image of its colors in its quad instead, with the alpha of its color and without the rest of it.

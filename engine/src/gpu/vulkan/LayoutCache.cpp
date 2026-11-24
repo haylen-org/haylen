@@ -24,10 +24,10 @@ VkDescriptorSetLayout LayoutCache::getSetLayout(std::span<const Binding> binding
     std::vector<VkDescriptorSetLayoutBinding> described;
     described.reserve(bindings.size());
     for (const Binding& binding : bindings) {
-        described.push_back({.binding = binding.binding, .descriptorType = binding.type, .descriptorCount = 1, .stageFlags = binding.stages});
+        described.push_back({.binding = binding.binding, .descriptorType = binding.type, .descriptorCount = 1, .stageFlags = binding.stages, .pImmutableSamplers = nullptr});
     }
 
-    const VkDescriptorSetLayoutCreateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .bindingCount = static_cast<std::uint32_t>(described.size()), .pBindings = described.data()};
+    const VkDescriptorSetLayoutCreateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .pNext = nullptr, .flags = 0, .bindingCount = static_cast<std::uint32_t>(described.size()), .pBindings = described.data()};
     VkDescriptorSetLayout layout = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreateDescriptorSetLayout(context.getDevice(), &info, nullptr, &layout), "make a descriptor set layout");
     setLayouts.emplace(std::move(key), layout);
@@ -45,7 +45,7 @@ VkPipelineLayout LayoutCache::getPipelineLayout(std::span<const VkDescriptorSetL
         return found->second;
     }
 
-    const VkPipelineLayoutCreateInfo info{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, .setLayoutCount = static_cast<std::uint32_t>(sets.size()), .pSetLayouts = sets.data()};
+    const VkPipelineLayoutCreateInfo info{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO, .pNext = nullptr, .flags = 0, .setLayoutCount = static_cast<std::uint32_t>(sets.size()), .pSetLayouts = sets.data(), .pushConstantRangeCount = 0, .pPushConstantRanges = nullptr};
     VkPipelineLayout layout = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreatePipelineLayout(context.getDevice(), &info, nullptr, &layout), "make a pipeline layout");
     pipelineLayouts.emplace(std::move(key), layout);

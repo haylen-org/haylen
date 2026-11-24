@@ -40,7 +40,7 @@ class OverlapWorld final {
 
     // The kinds name the boxes for debug drawing and the app. Touching edges count as an overlap unless `touching` is false, and a cell size above 0 finds candidate pairs through a hash grid instead of testing every pair.
     struct Options {
-        std::vector<std::string> kinds;
+        std::vector<std::string> kinds{};
         bool touching = true;
         float cellSize = 0.0F;
     };

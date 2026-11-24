@@ -29,7 +29,7 @@ class Font {
         float advance = 0.0F;
         std::uint16_t page = 0;
         bool visible = false;
-        graphics::VectorImage image;
+        graphics::VectorImage image{};
         math::Rect ink{};
     };
 
@@ -47,7 +47,7 @@ class Font {
         std::size_t begin = 0;
         std::size_t end = 0;
         std::uint32_t script = 0;
-        std::string_view language;
+        std::string_view language{};
         bool rightToLeft = false;
         bool ligatures = true;
     };

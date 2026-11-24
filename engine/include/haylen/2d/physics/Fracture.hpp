@@ -17,7 +17,7 @@ class Fracture final {
     // The cells grow around random points inside the shape, which gather around the impact point when there is one. Pieces smaller than `minimumArea` are dropped.
     struct Options {
         int pieces = 8;
-        std::optional<math::Vec2> impact;
+        std::optional<math::Vec2> impact{};
         std::uint64_t seed = 0;
         float minimumArea = 4.0F;
     };

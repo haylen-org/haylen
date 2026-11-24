@@ -34,7 +34,7 @@ struct Fold {
     static constexpr std::array<std::pair<std::string_view, State>, 2> kStateNames{{{"flat", State::Flat}, {"halfOpened", State::HalfOpened}}};
     static constexpr std::array<std::pair<std::string_view, Posture>, 3> kPostureNames{{{"flat", Posture::Flat}, {"tabletop", Posture::Tabletop}, {"book", Posture::Book}}};
 
-    math::Rect bounds;
+    math::Rect bounds{};
     Axis axis = Axis::Vertical;
     State state = State::Flat;
     bool separating = false;

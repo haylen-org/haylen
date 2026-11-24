@@ -82,35 +82,35 @@ class AutoMapper final {
     // The condition of one target layer for one input index at one cell: the tiles one of which must be there, and the tiles none of which may be.
     struct CellCondition {
         Cell cell;
-        std::vector<Entry> wanted;
-        std::vector<Entry> unwanted;
+        std::vector<Entry> wanted{};
+        std::vector<Entry> unwanted{};
         bool negated = false;
     };
 
     struct TargetCondition {
         std::string layer;
-        std::vector<CellCondition> cells;
-        std::vector<std::uint32_t> used;
+        std::vector<CellCondition> cells{};
+        std::vector<std::uint32_t> used{};
         bool usesEmpty = false;
     };
 
     struct InputIndex {
         std::string index;
-        std::vector<TargetCondition> targets;
+        std::vector<TargetCondition> targets{};
     };
 
     struct OutputLayer {
         std::string layer;
         bool objects = false;
-        std::vector<std::pair<Cell, Entry>> cells;
-        std::vector<Object> placed;
-        Properties properties;
+        std::vector<std::pair<Cell, Entry>> cells{};
+        std::vector<Object> placed{};
+        Properties properties{};
     };
 
     struct OutputIndex {
         std::string index;
         float probability = 1.0F;
-        std::vector<OutputLayer> layers;
+        std::vector<OutputLayer> layers{};
     };
 
     struct Options {
@@ -135,7 +135,7 @@ class AutoMapper final {
     struct CompiledMap {
         std::shared_ptr<Map> source;
         std::string filter;
-        std::vector<Rule> rules;
+        std::vector<Rule> rules{};
         bool deleteTiles = false;
         bool matchOutsideMap = false;
         bool overflowBorder = false;

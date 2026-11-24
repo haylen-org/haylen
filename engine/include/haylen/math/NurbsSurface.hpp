@@ -13,9 +13,9 @@ class NurbsSurface final {
     // The grid holds its points row after row, `columns` in each row. Empty weights give every point a weight of 1, and empty knots make the clamped uniform knots of their direction, which reach the edges of the grid.
     struct Options {
         std::size_t columns = 0;
-        std::vector<float> weights;
-        std::vector<float> knotsU;
-        std::vector<float> knotsV;
+        std::vector<float> weights{};
+        std::vector<float> knotsU{};
+        std::vector<float> knotsV{};
         int degreeU = 3;
         int degreeV = 3;
     };

@@ -95,11 +95,11 @@ struct Event {
     std::size_t touchCount = 0;
 
     // A native text field reports its edits in `textEdit`, and its actions in `textAction` for the field in `textEdit.field`.
-    TextInput::Edit textEdit;
+    TextInput::Edit textEdit{};
     TextInput::Action textAction = TextInput::Action::Submit;
 
     // The area the on-screen keyboard covers, in framebuffer pixels, which is empty while it is hidden.
-    math::Rect keyboardFrame;
+    math::Rect keyboardFrame{};
 
     // Whether the device reaches the network, as `NetworkChanged` reports it.
     bool online = false;

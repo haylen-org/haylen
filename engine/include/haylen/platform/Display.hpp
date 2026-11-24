@@ -21,13 +21,13 @@ struct Display {
     };
 
     std::string id;
-    std::string name;
+    std::string name{};
     math::Rect bounds;
     math::Rect workArea;
     float scale = 1.0F;
     float refreshRate = 0.0F;
     bool primary = false;
-    std::vector<Mode> modes;
+    std::vector<Mode> modes{};
 
     // Returns the mode of the size in pixels at the refresh rate, within a hundredth of a frame per second, or at the highest rate of the size for a rate of 0, or null when the display lists no such mode.
     [[nodiscard]] const Mode* findMode(int width, int height, float rate) const noexcept;

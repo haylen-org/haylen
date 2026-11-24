@@ -149,8 +149,8 @@ void Context::createDevice() {
         extensions.push_back("VK_KHR_portability_subset");
     }
 
-    VkPhysicalDeviceDynamicRenderingFeatures renderingFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES};
-    VkPhysicalDeviceFeatures2 supported{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    VkPhysicalDeviceDynamicRenderingFeatures renderingFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .pNext = nullptr, .dynamicRendering = VK_FALSE};
+    VkPhysicalDeviceFeatures2 supported{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = nullptr, .features = {}};
     const bool canRender = apiVersion >= VK_API_VERSION_1_3 || renderingExtension;
     if (canRender) {
         supported.pNext = &renderingFeatures;
@@ -164,18 +164,22 @@ void Context::createDevice() {
 
     enabledFeatures.samplerAnisotropy = supported.features.samplerAnisotropy;
     enabledFeatures.independentBlend = supported.features.independentBlend;
-    VkPhysicalDeviceDynamicRenderingFeatures enabledRendering{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .dynamicRendering = VK_TRUE};
+    VkPhysicalDeviceDynamicRenderingFeatures enabledRendering{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES, .pNext = nullptr, .dynamicRendering = VK_TRUE};
     const VkPhysicalDeviceFeatures2 enabled{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = dynamicRendering ? &enabledRendering : nullptr, .features = enabledFeatures};
 
     const float priority = 1.0F;
-    const VkDeviceQueueCreateInfo queueInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .queueFamilyIndex = queueFamily, .queueCount = 1, .pQueuePriorities = &priority};
+    const VkDeviceQueueCreateInfo queueInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO, .pNext = nullptr, .flags = 0, .queueFamilyIndex = queueFamily, .queueCount = 1, .pQueuePriorities = &priority};
     const VkDeviceCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .pNext = &enabled,
+        .flags = 0,
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queueInfo,
+        .enabledLayerCount = 0,
+        .ppEnabledLayerNames = nullptr,
         .enabledExtensionCount = static_cast<std::uint32_t>(extensions.size()),
         .ppEnabledExtensionNames = extensions.data(),
+        .pEnabledFeatures = nullptr,
     };
     check(vkCreateDevice(physicalDevice, &info, nullptr, &device), "create its logical device");
     volkLoadDeviceTable(&functions, device);
@@ -198,9 +202,14 @@ void Context::createAllocator() {
         .flags = memoryBudget ? static_cast<VmaAllocatorCreateFlags>(VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT) : 0U,
         .physicalDevice = physicalDevice,
         .device = device,
+        .preferredLargeHeapBlockSize = 0,
+        .pAllocationCallbacks = nullptr,
+        .pDeviceMemoryCallbacks = nullptr,
+        .pHeapSizeLimit = nullptr,
         .pVulkanFunctions = &entryPoints,
         .instance = instance,
         .vulkanApiVersion = apiVersion,
+        .pTypeExternalMemoryHandleTypes = nullptr,
     };
     check(vmaCreateAllocator(&info, &allocator), "create its memory allocator");
 }

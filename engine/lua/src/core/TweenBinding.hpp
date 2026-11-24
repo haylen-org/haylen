@@ -54,8 +54,8 @@ class TweenBinding final {
         int target = 0;
         int options = 0;
         haylen::core::PropertyTween* tween = nullptr;
-        std::unique_ptr<ScriptedTrack> scripted;
-        std::vector<std::pair<std::vector<std::string>, haylen::core::TweenProperty>> pending;
+        std::unique_ptr<ScriptedTrack> scripted{};
+        std::vector<std::pair<std::vector<std::string>, haylen::core::TweenProperty>> pending{};
     };
 
     // A native property of a userdata target, or one component of a `Vec2` or `Color` property.

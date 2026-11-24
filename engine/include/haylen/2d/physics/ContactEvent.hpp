@@ -9,7 +9,7 @@ namespace haylen::physics2d {
 struct ContactEvent {
     Shape first;
     Shape second;
-    ContactManifold manifold;
+    ContactManifold manifold{};
 };
 
 } // namespace haylen::physics2d

@@ -38,7 +38,7 @@ class DriverIssues final {
     struct Driver {
         Device::Api api = Device::Api::None;
         std::string_view renderer;
-        std::string_view version;
+        std::string_view version{};
         std::uint64_t versionNumber = 0;
     };
 
@@ -53,7 +53,7 @@ class DriverIssues final {
         Device::Api api = Device::Api::None;
         Issue issue = Issue::AvoidApi;
         std::string_view renderer;
-        std::string_view version;
+        std::string_view version{};
         std::uint64_t lastVersionNumber = 0;
         std::string_view reason;
     };

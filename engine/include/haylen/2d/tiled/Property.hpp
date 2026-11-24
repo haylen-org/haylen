@@ -11,7 +11,7 @@ struct Property {
     std::string name;
     std::string type;
     std::string propertyType;
-    core::Json value;
+    core::Json value{};
 };
 
 } // namespace haylen::tiled

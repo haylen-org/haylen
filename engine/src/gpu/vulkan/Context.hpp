@@ -95,7 +95,7 @@ class Context final {
         }
 
         nameText.assign(name);
-        const VkDebugUtilsObjectNameInfoEXT info{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, .objectType = type, .objectHandle = toHandle(handle), .pObjectName = nameText.c_str()};
+        const VkDebugUtilsObjectNameInfoEXT info{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT, .pNext = nullptr, .objectType = type, .objectHandle = toHandle(handle), .pObjectName = nameText.c_str()};
         vkSetDebugUtilsObjectNameEXT(device, &info);
     }
 
@@ -117,7 +117,7 @@ class Context final {
         std::uint32_t queueFamily = 0;
         int score = -1;
         // The reason of the driver issue that rules the GPU out, when one does.
-        std::string_view avoided;
+        std::string_view avoided{};
     };
 
     [[nodiscard]] static Candidate rate(VkPhysicalDevice candidate, VkSurfaceKHR surface, Preference preference);

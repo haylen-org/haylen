@@ -26,20 +26,20 @@ class CommandBuffer final {
 
     // A sequence of button presses with nothing pressed between them. A chord is a sequence with `maxTicks` 0, whose buttons go down on the same step, and a command without a lifetime stays until it is consumed or replaced.
     struct Command {
-        std::string name;
-        std::vector<std::size_t> steps;
-        std::optional<std::uint32_t> maxTicks;
+        std::string name{};
+        std::vector<std::size_t> steps{};
+        std::optional<std::uint32_t> maxTicks{};
         int priority = 0;
-        std::optional<std::uint32_t> lifetime;
+        std::optional<std::uint32_t> lifetime{};
         bool clearsHistory = true;
     };
 
     // The buttons are also the order of presses within one step. Every button types a single-press command with its lifetime, and `directions` holds the back and the forward buttons of a character that faces right.
     struct Options {
-        std::vector<std::string> buttons;
-        std::vector<std::optional<std::uint32_t>> lifetimes;
-        std::vector<Command> commands;
-        std::optional<std::array<std::size_t, 2>> directions;
+        std::vector<std::string> buttons{};
+        std::vector<std::optional<std::uint32_t>> lifetimes{};
+        std::vector<Command> commands{};
+        std::optional<std::array<std::size_t, 2>> directions{};
     };
 
     // Throws `std::invalid_argument` for options without buttons or with more than `kMaxButtons`, a lifetime of 0, a command without a name or steps, a step that names no button, a direction step without directions, a sequence longer than `kMaxSteps` and a name used twice.

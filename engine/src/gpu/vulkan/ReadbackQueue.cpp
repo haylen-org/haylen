@@ -16,7 +16,7 @@
 namespace haylen::gpu::vulkan {
 
 ReadbackQueue::ReadbackQueue(const Context& owner) : context(owner) {
-    const VkCommandPoolCreateInfo info{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, .queueFamilyIndex = context.getQueueFamily()};
+    const VkCommandPoolCreateInfo info{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .pNext = nullptr, .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, .queueFamilyIndex = context.getQueueFamily()};
     Context::check(context.getFunctions().vkCreateCommandPool(context.getDevice(), &info, nullptr, &pool), "make the command pool of its readbacks");
 }
 
@@ -43,19 +43,19 @@ std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) 
     const VkDevice device = context.getDevice();
 
     const VkDeviceSize size = static_cast<VkDeviceSize>(source.width) * static_cast<VkDeviceSize>(source.height) * ImageInfo::getBytesPerPixel(source.format);
-    const VkBufferCreateInfo bufferInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = size, .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
-    const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO};
+    const VkBufferCreateInfo bufferInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .size = size, .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .queueFamilyIndexCount = 0, .pQueueFamilyIndices = nullptr};
+    const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     VmaAllocationInfo allocated{};
     Context::check(vmaCreateBuffer(context.getAllocator(), &bufferInfo, &memory, &copy->buffer, &copy->allocation, &allocated), "make the buffer of a readback");
     copy->data = static_cast<const std::byte*>(allocated.pMappedData);
 
-    const VkCommandBufferAllocateInfo commandsInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .commandPool = pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, .commandBufferCount = 1};
-    const VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
+    const VkCommandBufferAllocateInfo commandsInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .pNext = nullptr, .commandPool = pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, .commandBufferCount = 1};
+    const VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = 0};
     try {
         Context::check(vk.vkAllocateCommandBuffers(device, &commandsInfo, &copy->commands), "record a readback");
         Context::check(vk.vkCreateFence(device, &fenceInfo, nullptr, &copy->fence), "make the fence of a readback");
         record(copy->commands, source, copy->buffer);
-        const VkSubmitInfo submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .commandBufferCount = 1, .pCommandBuffers = &copy->commands};
+        const VkSubmitInfo submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO, .pNext = nullptr, .waitSemaphoreCount = 0, .pWaitSemaphores = nullptr, .pWaitDstStageMask = nullptr, .commandBufferCount = 1, .pCommandBuffers = &copy->commands, .signalSemaphoreCount = 0, .pSignalSemaphores = nullptr};
         Context::check(vk.vkQueueSubmit(context.getQueue(), 1, &submit, copy->fence), "submit a readback");
     } catch (...) {
         release(*copy);
@@ -68,18 +68,18 @@ std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) 
 
 void ReadbackQueue::record(VkCommandBuffer commands, const Source& source, VkBuffer buffer) const {
     const VolkDeviceTable& vk = context.getFunctions();
-    const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+    const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, .pInheritanceInfo = nullptr};
     Context::check(vk.vkBeginCommandBuffer(commands, &begin), "record a readback");
 
-    const VkImageSubresourceRange range{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1};
+    const VkImageSubresourceRange range{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
     const VkImageMemoryBarrier toSource = ImageLayouts::makeBarrier(source.image, range, source.layout, source.layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     vk.vkCmdPipelineBarrier(commands, ImageLayouts::getStages(source.layout), VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toSource);
 
-    const VkBufferImageCopy region{.imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1}, .imageExtent = {static_cast<std::uint32_t>(source.width), static_cast<std::uint32_t>(source.height), 1}};
+    const VkBufferImageCopy region{.bufferOffset = 0, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1}, .imageOffset = {}, .imageExtent = {static_cast<std::uint32_t>(source.width), static_cast<std::uint32_t>(source.height), 1}};
     vk.vkCmdCopyImageToBuffer(commands, source.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buffer, 1, &region);
 
     const VkImageMemoryBarrier toRest = ImageLayouts::makeBarrier(source.image, range, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, source.layout);
-    const VkBufferMemoryBarrier toHost{.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_HOST_READ_BIT, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .buffer = buffer, .size = VK_WHOLE_SIZE};
+    const VkBufferMemoryBarrier toHost{.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_HOST_READ_BIT, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .buffer = buffer, .offset = 0, .size = VK_WHOLE_SIZE};
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, ImageLayouts::getStages(source.layout) | VK_PIPELINE_STAGE_HOST_BIT, 0, 0, nullptr, 1, &toHost, 1, &toRest);
     Context::check(vk.vkEndCommandBuffer(commands), "record a readback");
 }

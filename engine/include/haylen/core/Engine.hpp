@@ -275,7 +275,7 @@ class Engine final {
     // The app that `requestLaunch` runs: the package at a path, a folder or a zip file, the address of the development server that plays it in development with hot reload, or an empty text for an app that plays as it is, and whether it reaches native code. Without native access the app and every app it launches in turn have no `ffi`, `process` or `haylen.native` module and no `io.popen` or `os.execute`, so it reaches the system only through the engine and the plugins of the process.
     struct Launch {
         std::filesystem::path package;
-        std::string developmentServer;
+        std::string developmentServer{};
         bool nativeAccess = true;
     };
 

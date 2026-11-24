@@ -27,7 +27,7 @@ struct Style {
     float shadowBlur = 0.0F;
 
     // Fills the glyphs with colors that blend along a direction across each line, multiplied by the color.
-    std::optional<Gradient> gradient;
+    std::optional<Gradient> gradient{};
     Alignment align = Alignment::Start;
     float maxWidth = 0.0F;
     float maxHeight = 0.0F;
@@ -46,7 +46,7 @@ struct Style {
     bool underline = false;
     bool strike = false;
     Direction direction = Direction::Auto;
-    std::string language;
+    std::string language{};
     bool pixelSnap = false;
     bool ligatures = true;
     bool code = false;

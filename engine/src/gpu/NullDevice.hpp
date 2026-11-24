@@ -181,7 +181,7 @@ class NullDevice final : public Device {
         bool index = false;
         std::uint64_t boundFrame = 0;
         std::uint64_t writtenFrame = 0;
-        std::vector<WrittenRange> written;
+        std::vector<WrittenRange> written{};
     };
 
     // The attachments that a pipeline draws into, which the pass it is applied in must have.
@@ -200,11 +200,11 @@ class NullDevice final : public Device {
         std::vector<VertexBufferLayout> buffers;
         IndexType indexType = IndexType::None;
         ColorMask firstMask = ColorMask::All;
-        Targets targets;
+        Targets targets{};
     };
 
     struct OpenPass {
-        Targets targets;
+        Targets targets{};
         std::array<std::uint64_t, kMaxColorTargets + 1> images{};
         std::size_t debugGroups = 0;
     };

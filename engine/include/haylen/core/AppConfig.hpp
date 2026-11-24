@@ -57,9 +57,9 @@ struct AppConfig {
         bool focusable = true;
         bool mousePassthrough = false;
         bool keepScreenOn = false;
-        std::optional<platform::WindowPlacement> position;
+        std::optional<platform::WindowPlacement> position{};
         platform::Window::StatusBar statusBar = platform::Window::StatusBar::Hidden;
-        std::optional<math::Color> statusBarColor;
+        std::optional<math::Color> statusBarColor{};
         platform::Window::SystemGestures systemGestures = platform::Window::SystemGestures::System;
 
         // Whether the app updates and draws in every frame or only in the frames that something changed in, as `core::Engine::setRedraw` describes.
@@ -69,7 +69,7 @@ struct AppConfig {
         bool externalDisplays = false;
 
         // The graphics APIs the window tries first, in order, before the other APIs of the build in the order of the platform, which an empty list leaves as it is.
-        std::vector<gpu::Device::Api> graphicsApis;
+        std::vector<gpu::Device::Api> graphicsApis{};
 
         // Whether the app draws on the GPU that uses the least power, such as the integrated GPU of a laptop that has two, rather than on the most powerful one.
         bool lowPowerGpu = false;

@@ -26,9 +26,9 @@ class WebOutputs final {
 
   private:
     struct Entry {
-        std::string canvas;
+        std::string canvas{};
         int sampleCount = 1;
-        Host::OutputReport report;
+        Host::OutputReport report{};
     };
 
     static std::unordered_map<std::uint32_t, Entry>& entries;

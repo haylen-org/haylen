@@ -148,9 +148,9 @@ class WebPage final {
         };
 
         Kind kind = Kind::Write;
-        std::string path;
-        std::string target;
-        std::vector<std::uint8_t> bytes;
+        std::string path{};
+        std::string target{};
+        std::vector<std::uint8_t> bytes{};
     };
     static constexpr std::array<std::string_view, 3> kEditNames = {"write", "remove", "rename"};
 

@@ -52,7 +52,7 @@ class System final {
 
   private:
     struct Part {
-        std::string name;
+        std::string name{};
         math::Vec2 offset{};
         float scale = 1.0F;
         std::shared_ptr<Emitter> emitter;

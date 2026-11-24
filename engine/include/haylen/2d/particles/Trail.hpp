@@ -25,7 +25,7 @@ class Trail final {
         float widthStart = 12.0F;
         float widthEnd = 0.0F;
         std::vector<math::Color> colors{math::Color::white(), math::Color::transparent()};
-        graphics::Texture texture;
+        graphics::Texture texture{};
         graphics2d::DrawOrder order{};
     };
 

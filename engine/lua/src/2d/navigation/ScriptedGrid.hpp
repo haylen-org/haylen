@@ -11,7 +11,7 @@ namespace haylen::lua::navigation2d {
 struct ScriptedGrid {
     haylen::navigation2d::Grid grid;
     haylen::navigation2d::GridSearch search;
-    std::shared_ptr<const haylen::navigation2d::Grid> snapshot;
+    std::shared_ptr<const haylen::navigation2d::Grid> snapshot{};
 };
 
 } // namespace haylen::lua::navigation2d

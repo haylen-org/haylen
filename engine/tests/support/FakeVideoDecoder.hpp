@@ -45,10 +45,10 @@ class FakeVideoDecoder final : public platform::VideoDecoder {
         float sample = 0.25F;
 
         // Fails the read of this frame, to show what a file that breaks while it plays does.
-        std::optional<int> failAt;
+        std::optional<int> failAt{};
 
         // Decodes frames of this width instead of the width of the info, to show a file whose frames outgrow the textures of the device.
-        std::optional<int> frameWidth;
+        std::optional<int> frameWidth{};
     };
 
     FakeVideoDecoder(Settings settings, std::shared_ptr<Log> log);

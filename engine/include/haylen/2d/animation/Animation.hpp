@@ -29,7 +29,7 @@ struct Animation {
     // A grid with ticks per frame counts fixed steps instead of seconds.
     struct GridOptions {
         math::Vec2 frameSize{};
-        std::vector<int> cells;
+        std::vector<int> cells{};
         float framesPerSecond = 10.0F;
         std::uint32_t ticksPerFrame = 0;
         Loop loop = Loop::Loop;
@@ -38,7 +38,7 @@ struct Animation {
     };
 
     graphics::Texture texture;
-    std::vector<SpriteFrame> frames;
+    std::vector<SpriteFrame> frames{};
     Loop loop = Loop::Loop;
 
     // Resolves the loop names `loop`, `once` and `pingPong`.

@@ -120,7 +120,7 @@ class GamepadsTest : public ::testing::Test {
     }
 
     static constexpr std::array<SDL_VirtualJoystickSensorDesc, 2> kSensors{{{SDL_SENSOR_ACCEL, 250.0F}, {SDL_SENSOR_GYRO, 250.0F}}};
-    static constexpr SDL_VirtualJoystickTouchpadDesc kTouchpad{.nfingers = 2};
+    static constexpr SDL_VirtualJoystickTouchpadDesc kTouchpad{.nfingers = 2, .padding = {}};
 
     test::EngineFixture session;
     Gamepads gamepads;

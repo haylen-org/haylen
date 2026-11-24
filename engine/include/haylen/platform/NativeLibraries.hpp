@@ -21,7 +21,7 @@ class NativeLibraries final {
     // A library the process can call. The path, in UTF-8, is what Varn's `ffi.load` opens to reach the same loaded library, and a linked library has neither a path nor a handle, because its symbols are part of the app.
     struct Library {
         std::string name;
-        std::string path;
+        std::string path{};
         void* handle = nullptr;
         bool linked = false;
     };

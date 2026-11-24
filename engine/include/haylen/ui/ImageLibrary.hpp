@@ -88,9 +88,9 @@ class ImageLibrary final {
 
     struct Vector {
         graphics::VectorImage image;
-        std::string error;
-        std::map<int, Raster> rasters;
-        std::set<int> pending;
+        std::string error{};
+        std::map<int, Raster> rasters{};
+        std::set<int> pending{};
     };
 
     // A raster that `release` may drop, with the frame that drew it last.

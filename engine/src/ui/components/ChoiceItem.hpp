@@ -15,12 +15,12 @@ namespace haylen::ui {
 // One entry of a list of choices, such as a tab, a menu entry or a list row.
 struct ChoiceItem {
     std::string id;
-    TextValue text;
-    TextValue caption;
-    std::string image;
-    IconColor iconColor;
+    TextValue text{};
+    TextValue caption{};
+    std::string image{};
+    IconColor iconColor{};
     bool enabled = true;
-    std::vector<ChoiceItem> children;
+    std::vector<ChoiceItem> children{};
 
     // Reads a list of items with unique ids. Nested items are only allowed where a tree reads them.
     static void readList(PropertyReader& reader, std::string_view key, std::vector<ChoiceItem>& out, bool nested = false);

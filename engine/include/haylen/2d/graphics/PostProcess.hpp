@@ -56,7 +56,7 @@ struct PostProcess {
     float bloomRadius = 12.0F;
 
     // Grades the colors through a lookup texture of square cells side by side, one cell for each step of blue, with red across a cell and green down it, mixed in by the strength. The texture of an identity grading of 16 steps is 256 by 16 pixels.
-    graphics::Texture colorLut;
+    graphics::Texture colorLut{};
     float colorLutStrength = 1.0F;
 
     // Shows the image as the deficiency of color vision sees it, to check that an app reads without the colors it loses, or with `correctColorVision` shifts the differences the deficiency cannot see into colors it can, for players who have it. It applies after the lookup texture.
@@ -69,7 +69,7 @@ struct PostProcess {
     // Spreads the rounding of every color to 8 bits over neighboring pixels, so smooth gradients, fog and light fall off without bands.
     bool dither = false;
 
-    std::vector<Material> materials;
+    std::vector<Material> materials{};
 
     // The rows of the matrix that turns a color into the one that the color vision option shows, which is the identity for normal vision.
     [[nodiscard]] std::array<std::array<float, 3>, 3> getColorVisionMatrix() const noexcept;

@@ -71,11 +71,12 @@ Instance::Instance(bool validation) {
         layers.push_back(kValidationLayer);
     }
 
-    const VkApplicationInfo application{.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pApplicationName = "Haylen", .pEngineName = "Haylen", .apiVersion = apiVersion};
+    const VkApplicationInfo application{.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO, .pNext = nullptr, .pApplicationName = "Haylen", .applicationVersion = 0, .pEngineName = "Haylen", .engineVersion = 0, .apiVersion = apiVersion};
     const VkDebugUtilsMessengerCreateInfoEXT messengerInfo = describeMessenger();
     const VkInstanceCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pNext = validating ? &messengerInfo : nullptr,
+        .flags = 0,
         .pApplicationInfo = &application,
         .enabledLayerCount = static_cast<std::uint32_t>(layers.size()),
         .ppEnabledLayerNames = layers.data(),
@@ -127,9 +128,12 @@ bool Instance::hasLayer(const char* name) {
 VkDebugUtilsMessengerCreateInfoEXT Instance::describeMessenger() noexcept {
     return {
         .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .pNext = nullptr,
+        .flags = 0,
         .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
         .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
         .pfnUserCallback = &Instance::report,
+        .pUserData = nullptr,
     };
 }
 
@@ -151,28 +155,28 @@ VkSurfaceKHR Instance::createSurface(const Surface& surface) const {
     switch (surface.kind) {
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
     case Surface::Kind::Win32: {
-        const VkWin32SurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, .hinstance = static_cast<HINSTANCE>(surface.display), .hwnd = static_cast<HWND>(surface.window)};
+        const VkWin32SurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR, .pNext = nullptr, .flags = 0, .hinstance = static_cast<HINSTANCE>(surface.display), .hwnd = static_cast<HWND>(surface.window)};
         result = vkCreateWin32SurfaceKHR(handle, &info, nullptr, &made);
         break;
     }
 #endif
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
     case Surface::Kind::Xlib: {
-        const VkXlibSurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR, .dpy = static_cast<Display*>(surface.display), .window = static_cast<Window>(reinterpret_cast<std::uintptr_t>(surface.window))};
+        const VkXlibSurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR, .pNext = nullptr, .flags = 0, .dpy = static_cast<Display*>(surface.display), .window = static_cast<Window>(reinterpret_cast<std::uintptr_t>(surface.window))};
         result = vkCreateXlibSurfaceKHR(handle, &info, nullptr, &made);
         break;
     }
 #endif
 #if defined(VK_USE_PLATFORM_WAYLAND_KHR)
     case Surface::Kind::Wayland: {
-        const VkWaylandSurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR, .display = static_cast<wl_display*>(surface.display), .surface = static_cast<wl_surface*>(surface.window)};
+        const VkWaylandSurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR, .pNext = nullptr, .flags = 0, .display = static_cast<wl_display*>(surface.display), .surface = static_cast<wl_surface*>(surface.window)};
         result = vkCreateWaylandSurfaceKHR(handle, &info, nullptr, &made);
         break;
     }
 #endif
 #if defined(VK_USE_PLATFORM_ANDROID_KHR)
     case Surface::Kind::Android: {
-        const VkAndroidSurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR, .window = static_cast<ANativeWindow*>(surface.window)};
+        const VkAndroidSurfaceCreateInfoKHR info{.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR, .pNext = nullptr, .flags = 0, .window = static_cast<ANativeWindow*>(surface.window)};
         result = vkCreateAndroidSurfaceKHR(handle, &info, nullptr, &made);
         break;
     }

@@ -15,7 +15,7 @@ class ShardReference final {
 
     Digest shardId;
     std::uint64_t fileSize = 0;
-    Digest fileDigest;
+    Digest fileDigest{};
 
     // The file of a shard is named after its ID alone, so no name tells what the shard holds.
     [[nodiscard]] std::string getFileName() const;

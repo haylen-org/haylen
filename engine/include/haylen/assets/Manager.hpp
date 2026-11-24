@@ -44,8 +44,8 @@ class Manager final {
         std::string type;
         std::string path;
         core::Json options;
-        std::vector<std::uint8_t> bytes;
-        std::shared_ptr<io::PackageReader> reader;
+        std::vector<std::uint8_t> bytes{};
+        std::shared_ptr<io::PackageReader> reader{};
         const io::Package* package = nullptr;
     };
 
@@ -62,17 +62,17 @@ class Manager final {
     // Loader for one kind of asset. The function `normalize` validates the options and returns their canonical form, so equal options share one cached asset. The function `decode` runs on a worker thread with the file bytes, and `finalize` runs on the frame thread, where GPU resources may be created. An asset for whose normalized options `streams` returns true never has its file read whole: its decoder receives a reader of the file instead and runs on the I/O pool, since it reads as it decodes, so files of any size, such as long music, load in bounded memory.
     struct Type {
         std::string name;
-        std::vector<std::string> extensions;
-        std::function<core::Json(const core::Json&)> normalize;
-        Decoder decode;
-        Finalizer finalize;
-        std::function<bool(const core::Json&)> streams;
+        std::vector<std::string> extensions{};
+        std::function<core::Json(const core::Json&)> normalize{};
+        Decoder decode{};
+        Finalizer finalize{};
+        std::function<bool(const core::Json&)> streams{};
 
         // Updates a live asset in place from the fresh bytes of its file. Types without it leave the cache on reload, so the next load reads the file again, and the live asset announces with `assetChanged` that it is stale.
-        std::function<void(const std::shared_ptr<void>&, Request&)> reload;
+        std::function<void(const std::shared_ptr<void>&, Request&)> reload{};
 
         // Names the assets a decoded asset needs, such as the textures of the files it names, which load through the cache like any other load before `finalize` runs, so assets that need the same file share one load and one object, and `finalize` takes them with `load`, which finds them cached. A decoder of a type with dependencies never decodes them itself, so loading many assets that share a large image decodes that image once.
-        std::function<std::vector<Dependency>(const std::shared_ptr<void>&, const Request&)> dependencies;
+        std::function<std::vector<Dependency>(const std::shared_ptr<void>&, const Request&)> dependencies{};
     };
 
     // One asset of a preload group. An empty type is resolved from the file extension.
@@ -180,9 +180,9 @@ class Manager final {
         std::string key;
         std::shared_ptr<Request> request;
         Finalizer finalize;
-        std::shared_ptr<void> decoded;
+        std::shared_ptr<void> decoded{};
         std::string error;
-        std::vector<std::shared_ptr<void>> held;
+        std::vector<std::shared_ptr<void>> held{};
     };
 
     struct Group {

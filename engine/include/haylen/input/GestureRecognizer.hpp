@@ -57,7 +57,7 @@ class GestureRecognizer final {
 
     struct Pointer {
         math::Vec2 start;
-        math::Vec2 position;
+        math::Vec2 position{};
         float duration = 0.0F;
         bool longPressed = false;
         bool shared = false;

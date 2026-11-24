@@ -21,7 +21,7 @@ class PropertyTypes final {
 
     struct Class {
         std::string name;
-        std::vector<Member> members;
+        std::vector<Member> members{};
     };
 
     // Reads the `propertyTypes` of a `.tiled-project` file, whose enums need no defaults and are left out. Throws `std::invalid_argument` for a class without a name or a member without one.

@@ -49,9 +49,9 @@ class AppError final : public std::runtime_error {
     // The parts of an error that the runtime of the code that raised it read: the message without its position, the file and line of that position and the stack.
     struct Details {
         std::string message;
-        std::string file;
+        std::string file{};
         int line = 0;
-        std::vector<Frame> frames;
+        std::vector<Frame> frames{};
     };
 
     // An error whose message is its text, with no position and no frames.

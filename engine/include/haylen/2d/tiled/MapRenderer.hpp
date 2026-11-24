@@ -114,9 +114,9 @@ class MapRenderer final {
 
     struct Run {
         graphics::Texture texture;
-        std::vector<graphics2d::SpriteInstance> instances;
-        graphics2d::StaticSpriteBatch batch;
-        std::vector<AnimatedTile> animated;
+        std::vector<graphics2d::SpriteInstance> instances{};
+        graphics2d::StaticSpriteBatch batch{};
+        std::vector<AnimatedTile> animated{};
     };
 
     // A block of cells, or with `ysort` a stretch of cells that stand on the same y, the ground of the region.

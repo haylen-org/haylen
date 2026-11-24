@@ -53,14 +53,14 @@ class SkeletonAnimation final {
         Property property = Property::Rotate;
         std::size_t target = 0;
         std::vector<Key> keys;
-        std::vector<std::string> names;
-        std::vector<std::vector<float>> offsets;
-        std::string attachment;
+        std::vector<std::string> names{};
+        std::vector<std::vector<float>> offsets{};
+        std::string attachment{};
     };
 
     struct DrawOrderKey {
         float time = 0.0F;
-        std::vector<std::size_t> order;
+        std::vector<std::size_t> order{};
     };
 
     struct Event {
@@ -72,9 +72,9 @@ class SkeletonAnimation final {
 
     std::string name;
     float duration = 0.0F;
-    std::vector<Timeline> timelines;
-    std::vector<DrawOrderKey> drawOrder;
-    std::vector<Event> events;
+    std::vector<Timeline> timelines{};
+    std::vector<DrawOrderKey> drawOrder{};
+    std::vector<Event> events{};
 
     // Poses the skeleton at a time, mixed over its current pose by the share `alpha`. Attachments and the draw order change only from a share of one half on.
     void apply(Skeleton& skeleton, float time, bool loop, float alpha) const;

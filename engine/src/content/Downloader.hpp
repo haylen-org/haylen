@@ -74,7 +74,7 @@ class Downloader final {
     };
 
     struct Callbacks {
-        std::function<void(const Progress&)> onProgress;
+        std::function<void(const Progress&)> onProgress{};
 
         // Runs exactly once, with no error when every chunk is on the device.
         std::function<void(std::optional<Error>)> onComplete;

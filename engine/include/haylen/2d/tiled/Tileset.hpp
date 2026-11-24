@@ -32,11 +32,11 @@ struct Tileset {
         bool preferUntransformed = false;
     };
 
-    std::string name;
-    std::string type;
-    std::string path;
+    std::string name{};
+    std::string type{};
+    std::string path{};
     std::string image;
-    std::optional<math::Color> transparentColor;
+    std::optional<math::Color> transparentColor{};
     math::Vec2 imageSize{};
     math::Vec2 tileSize{};
     int columns = 0;
@@ -47,12 +47,12 @@ struct Tileset {
     std::string objectAlignment = "unspecified";
     bool renderGridSize = false;
     bool preserveAspect = false;
-    Grid grid;
-    Transformations transformations;
-    Properties properties;
-    std::map<std::uint32_t, Tile> tiles;
-    std::vector<WangSet> wangSets;
-    graphics::Texture texture;
+    Grid grid{};
+    Transformations transformations{};
+    Properties properties{};
+    std::map<std::uint32_t, Tile> tiles{};
+    std::vector<WangSet> wangSets{};
+    graphics::Texture texture{};
 
     // Returns the source rectangle of a tile inside its texture.
     [[nodiscard]] math::Rect getSource(std::uint32_t tileId) const;

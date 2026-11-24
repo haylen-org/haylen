@@ -343,7 +343,7 @@ class Device {
 
     struct BufferDesc {
         std::size_t size = 0;
-        std::span<const std::byte> data;
+        std::span<const std::byte> data{};
         Usage usage = Usage::Immutable;
         bool index = false;
         std::string_view label;
@@ -359,7 +359,7 @@ class Device {
         int sampleCount = 1;
         PixelFormat format = PixelFormat::Rgba8;
         ImageKind kind = ImageKind::Texture;
-        std::span<const std::span<const std::byte>> levels;
+        std::span<const std::span<const std::byte>> levels{};
         std::string_view label;
     };
 
@@ -373,16 +373,16 @@ class Device {
         float minLod = 0.0F;
         float maxLod = 1000.0F;
         int maxAnisotropy = 1;
-        std::optional<CompareFunction> compare;
-        std::string_view label;
+        std::optional<CompareFunction> compare{};
+        std::string_view label{};
     };
 
     // One stage of a program in the language of the device, with the source it runs and its entry point, and the profile that HLSL compiles it for. SPIR-V comes as the bytes of the module, and the language of a port as the bytes its shader tool wrote.
     struct StageCode {
-        std::string_view source;
-        std::span<const std::byte> bytecode;
-        std::string_view entry;
-        std::string_view profile;
+        std::string_view source{};
+        std::span<const std::byte> bytecode{};
+        std::string_view entry{};
+        std::string_view profile{};
     };
 
     // A uniform block of a program at its bind slot, with the binding number that the language of the device gives it and its descriptor set or bind group where the language has them. The OpenGL languages read a block as one array of vectors, which `glslName`, `glslType` and `glslCount` describe.
@@ -392,7 +392,7 @@ class Device {
         std::uint32_t size = 0;
         int binding = 0;
         int set = 0;
-        std::string_view glslName;
+        std::string_view glslName{};
         bool glslIntegers = false;
         int glslCount = 0;
     };
@@ -430,13 +430,13 @@ class Device {
     };
 
     struct ProgramDesc {
-        StageCode vertex;
-        StageCode fragment;
-        std::span<const Attribute> attributes;
-        std::span<const BlockBinding> blocks;
-        std::span<const TextureBinding> textures;
-        std::span<const SamplerBinding> samplers;
-        std::span<const TexturePair> pairs;
+        StageCode vertex{};
+        StageCode fragment{};
+        std::span<const Attribute> attributes{};
+        std::span<const BlockBinding> blocks{};
+        std::span<const TextureBinding> textures{};
+        std::span<const SamplerBinding> samplers{};
+        std::span<const TexturePair> pairs{};
         std::string_view label;
     };
 
@@ -467,7 +467,7 @@ class Device {
     struct ColorTarget {
         PixelFormat format = PixelFormat::Rgba8;
         ColorMask writeMask = ColorMask::All;
-        Blend blend;
+        Blend blend{};
     };
 
     struct StencilFace {
@@ -483,8 +483,8 @@ class Device {
         CompareFunction depthCompare = CompareFunction::Always;
         bool depthWrite = false;
         bool stencilEnabled = false;
-        StencilFace stencilFront;
-        StencilFace stencilBack;
+        StencilFace stencilFront{};
+        StencilFace stencilBack{};
         std::uint8_t stencilReadMask = 0xFF;
         std::uint8_t stencilWriteMask = 0xFF;
         float depthBias = 0.0F;
@@ -494,12 +494,12 @@ class Device {
     // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its targets name, and the others draw into the attachments their formats and sample count describe. A device without `independentBlend` applies the blend and the write mask of the first color target to all of them.
     struct PipelineDesc {
         Program program;
-        std::span<const VertexBufferLayout> buffers;
-        std::span<const VertexAttribute> attributes;
+        std::span<const VertexBufferLayout> buffers{};
+        std::span<const VertexAttribute> attributes{};
         Primitive primitive = Primitive::Triangles;
         IndexType indexType = IndexType::None;
         std::span<const ColorTarget> colors;
-        DepthStencil depthStencil;
+        DepthStencil depthStencil{};
         CullMode cullMode = CullMode::None;
         FrontFace frontFace = FrontFace::CounterClockwise;
         int sampleCount = 1;
@@ -516,7 +516,7 @@ class Device {
         Load load = Load::Clear;
         Store store = Store::Store;
         math::Color clear = math::Color::transparent();
-        Image resolve;
+        Image resolve{};
     };
 
     struct DepthStencilAttachment {
@@ -531,13 +531,13 @@ class Device {
 
     // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. The swapchain passes of a frame into one surface follow one another, since a device may present a surface once a pass into another surface leaves it. A swapchain pass that keeps the contents keeps the depth, the stencil and the multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps. After an offscreen pass between them, a window of one sample keeps its color alone, and a multisampled window keeps no color, so a renderer of a multisampled window draws the offscreen passes of a frame before its swapchain passes.
     struct PassDesc {
-        std::span<const ColorAttachment> colors;
-        std::optional<DepthStencilAttachment> depthStencil;
+        std::span<const ColorAttachment> colors{};
+        std::optional<DepthStencilAttachment> depthStencil{};
         Load load = Load::Clear;
         math::Color clear = math::Color::transparent();
         float clearDepth = 1.0F;
         std::uint8_t clearStencil = 0;
-        std::string_view label;
+        std::string_view label{};
         int surface = 0;
     };
 

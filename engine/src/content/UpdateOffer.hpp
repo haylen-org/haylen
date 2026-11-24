@@ -14,7 +14,7 @@ struct UpdateOffer {
     std::uint64_t generation = 0;
     std::shared_ptr<const ReleasePackage::Content> content;
     std::shared_ptr<const std::vector<std::uint8_t>> manifest;
-    std::vector<Catalog::Chunk> missing;
+    std::vector<Catalog::Chunk> missing{};
     std::uint64_t downloadBytes = 0;
     std::uint64_t reusedBytes = 0;
 };

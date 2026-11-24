@@ -22,8 +22,8 @@ class TileCollision final {
     // What a cell holds: whether its collision covers the whole cell, the closed outlines of its other solid shapes in world units, which merge with the cells they touch, and the shapes that stay apart on the body, such as sensors, lines and one-way platforms.
     struct Cell {
         bool full = false;
-        std::vector<math::Polygon::Outline> outlines;
-        std::vector<physics2d::Shape> shapes;
+        std::vector<math::Polygon::Outline> outlines{};
+        std::vector<physics2d::Shape> shapes{};
     };
 
     // Cell `(column, row)` covers the rectangle from `corner + (column, row) * size`, and the merged outlines collide with `shapeFilter`.

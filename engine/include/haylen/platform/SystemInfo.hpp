@@ -43,11 +43,11 @@ struct SystemInfo {
     };
 
     Os os = Os::MacOs;
-    std::string osVersion;
-    std::string deviceModel;
-    std::string manufacturer;
+    std::string osVersion{};
+    std::string deviceModel{};
+    std::string manufacturer{};
     DeviceKind deviceKind = DeviceKind::Desktop;
-    std::string cpuName;
+    std::string cpuName{};
     int cpuCores = 0;
 
     // The processor architecture the process runs on and the width of its pointers, which the build of the engine decides, so a 32-bit Android library on a 64-bit phone reports `Arm` and 32.
@@ -56,7 +56,7 @@ struct SystemInfo {
 
     // The total memory of the device.
     std::uint64_t memoryBytes = 0;
-    std::string gpuName;
+    std::string gpuName{};
 
     // The info as `haylen.system` reports it, with the enums as their names and every value the platform left empty left out.
     [[nodiscard]] core::Json toJson() const;

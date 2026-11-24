@@ -37,8 +37,8 @@ class AtlasBuilder final {
     // The image and the frames of a packed atlas, which `finish` gives a texture.
     struct Packed {
         graphics::Image image;
-        std::vector<std::pair<std::string, SpriteFrame>> frames;
-        std::vector<std::pair<std::string, Animation>> animations;
+        std::vector<std::pair<std::string, SpriteFrame>> frames{};
+        std::vector<std::pair<std::string, Animation>> animations{};
     };
 
     // Adds an area of an image, or all of it, as a frame. Throws `std::invalid_argument` for a name given twice or an area outside the image.

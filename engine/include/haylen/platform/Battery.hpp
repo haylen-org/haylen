@@ -21,7 +21,7 @@ struct Battery {
     };
 
     // The charge from 0 to 1, empty where the platform does not tell it.
-    std::optional<float> level;
+    std::optional<float> level{};
     bool charging = false;
     State state = State::Unknown;
 

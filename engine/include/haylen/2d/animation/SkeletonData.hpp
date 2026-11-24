@@ -24,7 +24,7 @@ class SkeletonData final {
   public:
     struct Bone {
         std::string name;
-        std::optional<std::size_t> parent;
+        std::optional<std::size_t> parent{};
         math::Vec2 position{};
         float rotation = 0.0F;
         math::Vec2 scale{1.0F, 1.0F};
@@ -67,11 +67,11 @@ class SkeletonData final {
         math::Color color = math::Color::white();
 
         // The vertices of a mesh or an outline in the space of its bone, the texture coordinates of a mesh from 0 to 1 over its frame, its triangles, and the influences of each vertex of a weighted mesh, which starts at `influenceStarts[vertex]`.
-        std::vector<math::Vec2> vertices;
-        std::vector<math::Vec2> uvs;
-        std::vector<std::uint32_t> triangles;
-        std::vector<Influence> influences;
-        std::vector<std::size_t> influenceStarts;
+        std::vector<math::Vec2> vertices{};
+        std::vector<math::Vec2> uvs{};
+        std::vector<std::uint32_t> triangles{};
+        std::vector<Influence> influences{};
+        std::vector<std::size_t> influenceStarts{};
 
         [[nodiscard]] bool isWeighted() const noexcept {
             return !influenceStarts.empty();
@@ -90,7 +90,7 @@ class SkeletonData final {
     // Bends one bone, or a parent and its child, so the end of the chain reaches the target bone, or the point a skeleton gives it, with the bend direction of the elbow and a mix from 0 to 1.
     struct IkConstraint {
         std::string name;
-        std::vector<std::size_t> bones;
+        std::vector<std::size_t> bones{};
         std::size_t target = 0;
         bool bendPositive = true;
         float mix = 1.0F;
@@ -99,7 +99,7 @@ class SkeletonData final {
     // Moves bones toward the world rotation and position of a target bone, by mixes from 0 to 1, offset by a rotation and a position.
     struct TransformConstraint {
         std::string name;
-        std::vector<std::size_t> bones;
+        std::vector<std::size_t> bones{};
         std::size_t target = 0;
         float rotateMix = 1.0F;
         float translateMix = 1.0F;

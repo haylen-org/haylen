@@ -44,7 +44,7 @@ class Catalog final {
     // A stored chunk, listed once however many files use it. The shard is its position in the shard list of the manifest.
     struct Chunk {
         Digest storedId;
-        Digest contentId;
+        Digest contentId{};
         std::uint64_t plainSize = 0;
         std::uint64_t encodedSize = 0;
         std::uint32_t shard = 0;

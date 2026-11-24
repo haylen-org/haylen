@@ -61,7 +61,7 @@ class Navigation final {
             std::string id;
 
             // The label of the action, a text value of the UI such as a string or a localized key.
-            core::Json text;
+            core::Json text{};
             Role role = Role::Default;
         };
 
@@ -75,12 +75,12 @@ class Navigation final {
         [[nodiscard]] const Action* findCancel() const noexcept;
 
         Style style = Style::Alert;
-        core::Json title;
-        core::Json message;
-        std::vector<Action> actions;
+        core::Json title{};
+        core::Json message{};
+        std::vector<Action> actions{};
 
         // The node that an action sheet points at on a wide screen.
-        std::optional<Region> anchor;
+        std::optional<Region> anchor{};
     };
 
     // Creates a stack in the area of a node of a mounted GUI, with a first screen when one is given. Throws `std::invalid_argument` for a GUI that is not mounted or that has no node with the id.

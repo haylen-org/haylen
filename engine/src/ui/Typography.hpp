@@ -44,7 +44,7 @@ class Typography final {
     struct Paint {
         std::optional<math::Color> outline;
         float outlineWidth = 2.0F;
-        std::optional<text::Gradient> gradient;
+        std::optional<text::Gradient> gradient{};
     };
 
     // Draws wrapped lines aligned inside the bounds, where start and end follow the direction of the UI. A scale below 1 draws the text smaller than its font, and a minimum scale below 1 draws lines taller than the bounds smaller, down to that share, until they fit.

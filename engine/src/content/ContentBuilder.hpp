@@ -34,7 +34,7 @@ class ContentBuilder final {
         Delivery delivery = Delivery::Required;
 
         // The pack whose shards hold the file, empty for none.
-        std::string pack;
+        std::string pack{};
     };
 
     struct Statistics {
@@ -81,8 +81,8 @@ class ContentBuilder final {
     struct File {
         Input input;
         std::uint64_t size = 0;
-        std::vector<Piece> pieces;
-        std::vector<Digest> parts;
+        std::vector<Piece> pieces{};
+        std::vector<Digest> parts{};
     };
 
     [[nodiscard]] static File identify(const io::Package& source, Input input);

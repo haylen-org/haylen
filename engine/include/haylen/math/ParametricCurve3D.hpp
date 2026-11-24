@@ -34,7 +34,7 @@ class ParametricCurve3D final {
     // A helix winds around the up axis by the right hand from the point at `radius` along the right axis, rising `pitch` with each turn. An `endRadius` that differs from the radius widens or narrows it into a spiral, and negative turns wind it the other way.
     struct Helix {
         float radius = 1.0F;
-        std::optional<float> endRadius;
+        std::optional<float> endRadius{};
         float pitch = 1.0F;
         float turns = 1.0F;
     };
@@ -51,7 +51,7 @@ class ParametricCurve3D final {
     struct Lissajous {
         Vec3 amplitude{1.0F, 1.0F, 1.0F};
         Vec3 frequency{1.0F, 2.0F, 3.0F};
-        Vec3 phase;
+        Vec3 phase{};
     };
 
     // Throws `std::invalid_argument` for an empty function, for steps outside 1 to `kMaxSteps`, or for a closed curve that does not end where it starts.

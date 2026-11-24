@@ -49,7 +49,7 @@ VkRenderPass RenderPassCache::makeRenderPass(const PassKey& key) const {
 
     for (std::uint32_t index = 0; index < key.colorCount; ++index) {
         const Attachment& color = key.colors[index];
-        attachments[count] = {.format = color.format, .samples = color.samples, .loadOp = color.load, .storeOp = color.store, .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE, .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        attachments[count] = {.flags = 0, .format = color.format, .samples = color.samples, .loadOp = color.load, .storeOp = color.store, .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE, .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         colorReferences[index] = {.attachment = count++, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
     }
 
@@ -60,7 +60,7 @@ VkRenderPass RenderPassCache::makeRenderPass(const PassKey& key) const {
             continue;
         }
 
-        attachments[count] = {.format = key.resolves[index], .samples = VK_SAMPLE_COUNT_1_BIT, .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .storeOp = VK_ATTACHMENT_STORE_OP_STORE, .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE, .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+        attachments[count] = {.flags = 0, .format = key.resolves[index], .samples = VK_SAMPLE_COUNT_1_BIT, .loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .storeOp = VK_ATTACHMENT_STORE_OP_STORE, .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE, .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE, .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         resolveReferences[index].attachment = count++;
         resolves = true;
     }
@@ -68,18 +68,23 @@ VkRenderPass RenderPassCache::makeRenderPass(const PassKey& key) const {
     VkAttachmentReference depthReference{.attachment = VK_ATTACHMENT_UNUSED, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
     if (key.depth.format != VK_FORMAT_UNDEFINED) {
         const Attachment& depth = key.depth;
-        attachments[count] = {.format = depth.format, .samples = depth.samples, .loadOp = depth.load, .storeOp = depth.store, .stencilLoadOp = depth.stencilLoad, .stencilStoreOp = depth.stencilStore, .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+        attachments[count] = {.flags = 0, .format = depth.format, .samples = depth.samples, .loadOp = depth.load, .storeOp = depth.store, .stencilLoadOp = depth.stencilLoad, .stencilStoreOp = depth.stencilStore, .initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
         depthReference.attachment = count++;
     }
 
     const VkSubpassDescription subpass{
+        .flags = 0,
         .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .inputAttachmentCount = 0,
+        .pInputAttachments = nullptr,
         .colorAttachmentCount = key.colorCount,
         .pColorAttachments = colorReferences.data(),
         .pResolveAttachments = resolves ? resolveReferences.data() : nullptr,
         .pDepthStencilAttachment = key.depth.format != VK_FORMAT_UNDEFINED ? &depthReference : nullptr,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments = nullptr,
     };
-    const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, .attachmentCount = count, .pAttachments = attachments.data(), .subpassCount = 1, .pSubpasses = &subpass};
+    const VkRenderPassCreateInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO, .pNext = nullptr, .flags = 0, .attachmentCount = count, .pAttachments = attachments.data(), .subpassCount = 1, .pSubpasses = &subpass, .dependencyCount = 0, .pDependencies = nullptr};
     VkRenderPass pass = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreateRenderPass(context.getDevice(), &info, nullptr, &pass), "make a render pass");
     return pass;
@@ -93,7 +98,7 @@ VkFramebuffer RenderPassCache::getFramebuffer(VkRenderPass pass, std::span<const
         return found->second;
     }
 
-    const VkFramebufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, .renderPass = pass, .attachmentCount = key.viewCount, .pAttachments = views.data(), .width = extent.width, .height = extent.height, .layers = 1};
+    const VkFramebufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .renderPass = pass, .attachmentCount = key.viewCount, .pAttachments = views.data(), .width = extent.width, .height = extent.height, .layers = 1};
     VkFramebuffer framebuffer = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreateFramebuffer(context.getDevice(), &info, nullptr, &framebuffer), "make a framebuffer");
     framebuffers.emplace(key, framebuffer);

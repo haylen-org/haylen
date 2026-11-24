@@ -32,12 +32,12 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
 
     // The callback `start` runs when the tween starts playing forward after its delay, `update` after every render with the progress, `loop` with the number of the loop that begins, `step` with the index of a timeline step that ends, `complete` when the tween reaches its end in the direction it plays and `kill` once when it leaves.
     struct Callbacks {
-        std::function<void()> start;
-        std::function<void(float progress)> update;
-        std::function<void(int loop)> loop;
-        std::function<void(int step)> step;
+        std::function<void()> start{};
+        std::function<void(float progress)> update{};
+        std::function<void(int loop)> loop{};
+        std::function<void(int step)> step{};
         std::function<void()> complete;
-        std::function<void()> kill;
+        std::function<void()> kill{};
     };
 
     ~Tween() override = default;

@@ -52,17 +52,17 @@ class Error final : public std::runtime_error {
 
     // What else is known about a failure. Every field is empty when it does not apply. The path is the path of the file in the package that the app reads, the IDs are the hexadecimal IDs of the manifest, the pack, the plain content, the stored record and the content key involved, and the platform is the content profile of the app.
     struct Details {
-        std::optional<int> httpStatus;
-        std::optional<std::uint64_t> requiredBytes;
-        std::optional<std::uint64_t> availableBytes;
-        std::string platformMessage;
-        std::string path;
-        std::string manifestId;
-        std::string packId;
-        std::string contentId;
-        std::string storedId;
-        std::string keyId;
-        std::string platform;
+        std::optional<int> httpStatus{};
+        std::optional<std::uint64_t> requiredBytes{};
+        std::optional<std::uint64_t> availableBytes{};
+        std::string platformMessage{};
+        std::string path{};
+        std::string manifestId{};
+        std::string packId{};
+        std::string contentId{};
+        std::string storedId{};
+        std::string keyId{};
+        std::string platform{};
     };
 
     Error(Code errorCode, const std::string& message);

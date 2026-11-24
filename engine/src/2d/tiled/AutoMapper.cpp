@@ -20,10 +20,10 @@ struct AutoMapper::Target {
     Result& result;
     std::uint32_t nextLayerId = 1;
     std::uint32_t nextObjectId = 1;
-    std::map<const Tileset*, std::uint32_t> firstGids;
+    std::map<const Tileset*, std::uint32_t> firstGids{};
 
     // The layers by name and kind, found once, until a new layer moves them.
-    mutable std::map<std::pair<std::string, Layer::Kind>, Layer*, std::less<>> layers;
+    mutable std::map<std::pair<std::string, Layer::Kind>, Layer*, std::less<>> layers{};
 
     // The bottom-most layer of the name and kind, which a rule reads and writes.
     [[nodiscard]] Layer* findLayer(std::string_view name, Layer::Kind kind) const {

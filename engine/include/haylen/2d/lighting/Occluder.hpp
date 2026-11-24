@@ -27,7 +27,7 @@ struct Occluder {
         CounterClockwise,
     };
 
-    std::vector<math::Vec2> points;
+    std::vector<math::Vec2> points{};
     bool closed = true;
     Cull cull = Cull::Disabled;
     std::uint32_t mask = 1;

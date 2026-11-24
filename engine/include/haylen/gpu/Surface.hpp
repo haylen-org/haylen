@@ -63,9 +63,9 @@ struct Surface {
     void* layer = nullptr;
     void* window = nullptr;
     void* display = nullptr;
-    std::string_view canvas;
+    std::string_view canvas{};
     GlContext* gl = nullptr;
-    Size size;
+    Size size{};
     int sampleCount = 1;
     bool vsync = true;
 

@@ -21,8 +21,8 @@ class ChannelDescriptor final {
     Digest application;
     std::string channel;
     std::uint64_t generation = 0;
-    Digest manifest;
-    Digest signingKeyId;
+    Digest manifest{};
+    Digest signingKeyId{};
 
     // Verifies the signature with the trusted key of the signing key ID before it reads any other field. Throws `UnsupportedFormat`, `UnsupportedVersion`, `CorruptManifest` or `ManifestSignatureInvalid`.
     [[nodiscard]] static ChannelDescriptor read(std::span<const std::uint8_t> bytes, std::span<const VerifyingKey> trustedKeys);

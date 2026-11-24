@@ -16,11 +16,11 @@ namespace haylen::tiled {
 struct WangSet {
     struct Color {
         std::string name;
-        std::string type;
-        math::Color color;
+        std::string type{};
+        math::Color color{};
         std::int32_t tile = -1;
         float probability = 1.0F;
-        Properties properties;
+        Properties properties{};
     };
 
     struct Tile {
@@ -31,13 +31,13 @@ struct WangSet {
     // Reads one of the eight colors of a tile of the set, a whole number from 0 to 255, and throws `std::invalid_argument` naming the set and the tile for anything else.
     [[nodiscard]] static std::uint8_t readColor(const core::Json& value, std::string_view set, std::uint32_t tile);
 
-    std::string name;
-    std::string type;
+    std::string name{};
+    std::string type{};
     std::string kind;
     std::int32_t tile = -1;
-    std::vector<Color> colors;
-    std::vector<Tile> tiles;
-    Properties properties;
+    std::vector<Color> colors{};
+    std::vector<Tile> tiles{};
+    Properties properties{};
 };
 
 } // namespace haylen::tiled

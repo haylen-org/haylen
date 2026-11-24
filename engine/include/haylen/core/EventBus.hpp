@@ -69,15 +69,15 @@ class EventBus final {
 
     struct Options {
         // Listens only to events published on this channel. An empty channel listens to every channel.
-        std::string channel;
+        std::string channel{};
         int priority = 0;
         bool once = false;
 
         // Unsubscribes once the owner is destroyed.
-        std::weak_ptr<const void> owner;
+        std::weak_ptr<const void> owner{};
 
         // Skips the events for which the filter returns `false`. A once listener stays until an event passes.
-        std::function<bool(const Event&)> filter;
+        std::function<bool(const Event&)> filter{};
     };
 
     struct Topic {

@@ -17,7 +17,7 @@ namespace haylen::text {
 
 // How rich text lays out: the family and size of text without `[font]` or `[size]`, whether all of it is bold or italic as if inside `[b]` or `[i]`, the color, the width it wraps at, how wrapped lines share the words of a paragraph, the alignment and direction of paragraphs without their own, the language of the text, whether each line keeps its own height or every line takes the height of the tallest, the multiple of that height between lines, the scale of every size in the markup and options, how many characters per second the reveal shows, where zero shows everything at once, whether letters join into ligatures, which the code of `[code]` never does, and whether all of the text is code, which breaks its lines like the text of `[code]` in the faces it has. The member `fonts` resolves the names of `[font]` tags and `images` the paths of `[img]` tags, which may return an empty texture while an image still loads.
 struct RichTextOptions {
-    std::shared_ptr<FontFamily> family;
+    std::shared_ptr<FontFamily> family{};
     float size = 32.0F;
     bool bold = false;
     bool italic = false;
@@ -26,7 +26,7 @@ struct RichTextOptions {
     Balance balance = Balance::LastLine;
     Alignment align = Alignment::Start;
     Direction direction = Direction::Auto;
-    std::string language;
+    std::string language{};
     float lineSpacing = 1.2F;
     LineHeight lineHeight = LineHeight::Natural;
     float scale = 1.0F;
@@ -34,8 +34,8 @@ struct RichTextOptions {
     bool underlineLinks = true;
     bool ligatures = true;
     bool code = false;
-    std::function<std::shared_ptr<FontFamily>(std::string_view name)> fonts;
-    std::function<graphics::Texture(std::string_view path)> images;
+    std::function<std::shared_ptr<FontFamily>(std::string_view name)> fonts{};
+    std::function<graphics::Texture(std::string_view path)> images{};
 };
 
 } // namespace haylen::text

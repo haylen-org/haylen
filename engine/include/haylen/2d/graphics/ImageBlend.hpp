@@ -28,7 +28,7 @@ struct ImageBlend {
 
     Pattern pattern = Pattern::Dissolve;
     graphics::Texture from;
-    graphics::Texture to;
+    graphics::Texture to{};
     math::Rect area{};
     float progress = 0.0F;
 

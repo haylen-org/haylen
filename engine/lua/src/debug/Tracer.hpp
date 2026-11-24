@@ -41,8 +41,8 @@ class Tracer final {
         lua_State* thread = nullptr;
         int level = 0;
         Reason reason = Reason::Pause;
-        std::string text;
-        std::vector<int> breakpoints;
+        std::string text{};
+        std::vector<int> breakpoints{};
     };
 
     explicit Tracer(Debugger& owner) noexcept : debugger(owner) {}

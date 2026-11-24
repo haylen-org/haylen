@@ -59,8 +59,8 @@ class Dungeon final {
     // Connections list the rooms each corridor joins.
     struct Result {
         spatial2d::CellGrid grid;
-        std::vector<Room> rooms;
-        std::vector<std::pair<std::size_t, std::size_t>> connections;
+        std::vector<Room> rooms{};
+        std::vector<std::pair<std::size_t, std::size_t>> connections{};
     };
 
     // Throws `std::invalid_argument` when the room sizes are not positive and ordered or the map cannot hold one room.

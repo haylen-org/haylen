@@ -142,8 +142,8 @@ class Skeleton final {
     };
 
     struct Track {
-        std::optional<Entry> current;
-        std::optional<Entry> previous;
+        std::optional<Entry> current{};
+        std::optional<Entry> previous{};
         float fade = 0.0F;
         float fadeDuration = 0.0F;
         float weight = 1.0F;

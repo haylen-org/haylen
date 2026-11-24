@@ -17,7 +17,7 @@ class FontFile;
 
 // The signed distance field of one glyph of a TrueType or OpenType font, built from its whole outline, the cubic curves of CFF outlines included. Its distances are half floats from 0 to 1 that run in rows from the top, with the edge of the glyph at 0.5 and the inside above it, so every GPU filters them without the steps of a byte.
 struct DistanceField {
-    std::vector<std::uint16_t> distances;
+    std::vector<std::uint16_t> distances{};
     int width = 0;
     int height = 0;
 

@@ -18,8 +18,8 @@ class ReleaseStager final {
     // The files that ship with the app, the shards that stay for the server, and the shards of each named pack, which a store delivers on its own.
     struct Layout {
         std::vector<std::string> shipped;
-        std::vector<std::string> deferred;
-        std::map<std::string, std::vector<std::string>> packs;
+        std::vector<std::string> deferred{};
+        std::map<std::string, std::vector<std::string>> packs{};
     };
 
     // The rules of `haylen.json` name the pack of each asset, and without them no asset belongs to a pack.

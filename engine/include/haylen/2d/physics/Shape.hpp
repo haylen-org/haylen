@@ -30,7 +30,7 @@ class Shape final {
 
     // A closed outline joins its last point back to the first one, and an open outline is a line through its points.
     struct Outline {
-        std::vector<math::Vec2> points;
+        std::vector<math::Vec2> points{};
         bool closed = false;
     };
 
@@ -45,7 +45,7 @@ class Shape final {
         math::Vec2 offset{};
         float rotation = 0.0F;
         float tangentSpeed = 0.0F;
-        std::optional<math::Vec2> oneWay;
+        std::optional<math::Vec2> oneWay{};
         bool contactEvents = true;
         bool hitEvents = true;
         bool sensorEvents = true;

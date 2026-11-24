@@ -67,7 +67,7 @@ class VectorAtlas final {
     };
 
     struct Page {
-        graphics::Texture texture;
+        graphics::Texture texture{};
         std::vector<std::uint8_t> pixels;
         int width = 0;
         int height = 0;
@@ -76,7 +76,7 @@ class VectorAtlas final {
         int rowHeight = 0;
         std::uint64_t frame = 0;
         bool dirty = false;
-        std::vector<std::pair<std::uint32_t, int>> rasters;
+        std::vector<std::pair<std::uint32_t, int>> rasters{};
     };
 
     // Lets rasters finished on the task pool find the atlas only while it lives.

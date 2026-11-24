@@ -88,7 +88,7 @@ class ModuleGraph final {
     struct Loading {
         std::string path;
         Reference previous;
-        std::vector<std::string> kept;
+        std::vector<std::string> kept{};
     };
 
     static void pushSection(lua_State* L, const char* name);

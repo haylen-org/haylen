@@ -44,9 +44,9 @@ class BehaviorTree final {
     // A node of a tree description, which the static functions below build.
     struct Node {
         Kind kind = Kind::Sequence;
-        std::vector<Node> children;
-        ActionFunction action;
-        ConditionFunction condition;
+        std::vector<Node> children{};
+        ActionFunction action{};
+        ConditionFunction condition{};
         int count = 0;
         float seconds = 0.0F;
     };
@@ -104,7 +104,7 @@ class BehaviorTree final {
 
     struct State {
         Kind kind = Kind::Sequence;
-        std::vector<std::uint32_t> children;
+        std::vector<std::uint32_t> children{};
         ActionFunction action;
         ConditionFunction condition;
         int count = 0;
@@ -113,7 +113,7 @@ class BehaviorTree final {
         int finished = 0;
         float elapsed = 0.0F;
         double readyAt = 0.0;
-        std::vector<Status> results;
+        std::vector<Status> results{};
     };
 
     [[nodiscard]] static Node decorate(Kind kind, Node child, int count, float seconds);

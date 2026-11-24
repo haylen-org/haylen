@@ -39,7 +39,7 @@ struct Effect {
         math::Vec2 offset{};
         float scale = 1.0F;
         EmitterConfig config;
-        Files files;
+        Files files{};
     };
 
     // Reads a file of the package by its path, for the effect files and images that a file names.

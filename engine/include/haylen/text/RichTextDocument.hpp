@@ -52,36 +52,36 @@ struct RichTextDocument {
         bool underline = false;
         bool strike = false;
         bool mono = false;
-        std::optional<math::Color> color;
-        std::optional<math::Color> background;
-        std::string font;
-        std::optional<float> size;
+        std::optional<math::Color> color{};
+        std::optional<math::Color> background{};
+        std::string font{};
+        std::optional<float> size{};
         float sizeFactor = 1.0F;
         float outlineWidth = 0.0F;
         math::Color outlineColor = math::Color::black();
-        std::optional<Shadow> shadow;
-        std::optional<Glow> glow;
-        std::optional<Gradient> gradient;
+        std::optional<Shadow> shadow{};
+        std::optional<Glow> glow{};
+        std::optional<Gradient> gradient{};
         float alpha = 1.0F;
-        std::optional<std::size_t> link;
-        std::optional<std::size_t> hint;
-        std::vector<std::size_t> effects;
+        std::optional<std::size_t> link{};
+        std::optional<std::size_t> hint{};
+        std::vector<std::size_t> effects{};
         float revealSpeed = 1.0F;
     };
 
     struct Image {
         std::string path;
-        std::optional<float> width;
-        std::optional<float> height;
-        std::optional<math::Rect> region;
+        std::optional<float> width{};
+        std::optional<float> height{};
+        std::optional<math::Rect> region{};
         math::Color color = math::Color::white();
         VerticalAlign align = VerticalAlign::Center;
     };
 
     struct Icon {
         std::string name;
-        std::optional<float> width;
-        std::optional<float> height;
+        std::optional<float> width{};
+        std::optional<float> height{};
         math::Color color = math::Color::white();
         VerticalAlign align = VerticalAlign::Center;
     };
@@ -98,14 +98,14 @@ struct RichTextDocument {
 
         Kind kind = Kind::Text;
         std::size_t style = 0;
-        std::u32string text;
+        std::u32string text{};
         std::size_t object = 0;
         float seconds = 0.0F;
     };
 
     // A large first letter or word that spans several lines, which the lines next to it flow around.
     struct DropCap {
-        std::u32string text;
+        std::u32string text{};
         std::size_t style = 0;
         float margin = 0.0F;
     };
@@ -129,19 +129,19 @@ struct RichTextDocument {
         };
 
         Kind kind = Kind::Text;
-        std::optional<Alignment> align;
+        std::optional<Alignment> align{};
         std::optional<Direction> direction;
         float indent = 0.0F;
         float hang = 0.0F;
-        std::u32string marker;
+        std::u32string marker{};
         std::size_t markerStyle = 0;
-        std::vector<Inline> inlines;
-        std::optional<DropCap> dropCap;
+        std::vector<Inline> inlines{};
+        std::optional<DropCap> dropCap{};
 
         // A rule spans a fraction of the width with its thickness and color, drawn in the text color when it has none.
         float ruleWidth = 1.0F;
         float ruleThickness = 2.0F;
-        std::optional<math::Color> ruleColor;
+        std::optional<math::Color> ruleColor{};
         std::size_t table = 0;
     };
 
@@ -154,17 +154,17 @@ struct RichTextDocument {
 
     struct Table {
         std::size_t columns = 1;
-        std::vector<Cell> cells;
+        std::vector<Cell> cells{};
     };
 
-    std::vector<Paragraph> paragraphs;
+    std::vector<Paragraph> paragraphs{};
     std::vector<Style> styles;
-    std::vector<Image> images;
-    std::vector<Icon> icons;
-    std::vector<Table> tables;
-    std::vector<std::string> links;
-    std::vector<std::string> hints;
-    std::vector<Effect> effects;
+    std::vector<Image> images{};
+    std::vector<Icon> icons{};
+    std::vector<Table> tables{};
+    std::vector<std::string> links{};
+    std::vector<std::string> hints{};
+    std::vector<Effect> effects{};
 };
 
 } // namespace haylen::text

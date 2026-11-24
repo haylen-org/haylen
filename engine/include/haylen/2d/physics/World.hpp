@@ -51,10 +51,10 @@ class World final {
         bool interpolate = false;
         float contactHertz = 30.0F;
         float contactDampingRatio = 10.0F;
-        std::optional<float> contactPushSpeed;
-        std::optional<float> maxSpeed;
-        std::optional<float> restitutionThreshold;
-        std::optional<float> hitThreshold;
+        std::optional<float> contactPushSpeed{};
+        std::optional<float> maxSpeed{};
+        std::optional<float> restitutionThreshold{};
+        std::optional<float> hitThreshold{};
     };
 
     // A world of more than one thread steps on its threads only while this many bodies are awake, because below it waking the workers costs more than they save.

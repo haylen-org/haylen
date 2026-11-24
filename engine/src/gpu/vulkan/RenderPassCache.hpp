@@ -36,7 +36,7 @@ class RenderPassCache final {
         std::array<Attachment, Device::kMaxColorTargets> colors{};
         std::array<VkFormat, Device::kMaxColorTargets> resolves{};
         std::uint32_t colorCount = 0;
-        Attachment depth;
+        Attachment depth{};
 
         friend bool operator==(const PassKey&, const PassKey&) = default;
     };

@@ -107,9 +107,9 @@ class Owners final {
     static constexpr const char* kDefault = "haylen.defaultOwner";
 
     struct Scope {
-        haylen::core::ConnectionScope connections;
-        std::vector<std::shared_ptr<haylen::core::Connection::Link>> links;
-        std::vector<std::weak_ptr<Task>> tasks;
+        haylen::core::ConnectionScope connections{};
+        std::vector<std::shared_ptr<haylen::core::Connection::Link>> links{};
+        std::vector<std::weak_ptr<Task>> tasks{};
         haylen::core::FrameQueue* queue = nullptr;
         std::shared_ptr<const void> lifetime = std::make_shared<bool>();
     };

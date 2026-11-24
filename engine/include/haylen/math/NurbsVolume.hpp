@@ -14,10 +14,10 @@ class NurbsVolume final {
     struct Options {
         std::size_t columns = 0;
         std::size_t rows = 0;
-        std::vector<float> weights;
-        std::vector<float> knotsU;
-        std::vector<float> knotsV;
-        std::vector<float> knotsW;
+        std::vector<float> weights{};
+        std::vector<float> knotsU{};
+        std::vector<float> knotsV{};
+        std::vector<float> knotsW{};
         int degreeU = 3;
         int degreeV = 3;
         int degreeW = 3;

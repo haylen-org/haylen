@@ -32,7 +32,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surfac
 
 Device::Device(const std::optional<Surface>& surface, const Settings& settings) : instance(std::make_unique<Instance>(settings.validation)), chains(makeChains(*instance, surface)), context(std::make_unique<Context>(*instance, chains.front()->swapchain ? chains.front()->swapchain->getSurface() : VK_NULL_HANDLE, Context::Preference{.software = settings.software, .lowPower = settings.lowPower})), releases(*context), layouts(*context), descriptors(*context, releases), renderPasses(*context, releases), staging(*context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, kStagingChunkSize, kFramesInFlight, "haylen-staging"), uniforms(*context, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, kUniformChunkSize, kFramesInFlight, "haylen-uniforms"), readbacks(*context), prepared(std::make_shared<PreparedModules>(*context)), vk(context->getFunctions()), dynamicRendering(settings.dynamicRendering && context->hasDynamicRendering()) {
     try {
-        const VkPipelineCacheCreateInfo cacheInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
+        const VkPipelineCacheCreateInfo cacheInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO, .pNext = nullptr, .flags = 0, .initialDataSize = 0, .pInitialData = nullptr};
         Context::check(vk.vkCreatePipelineCache(context->getDevice(), &cacheInfo, nullptr, &pipelineCache), "make its pipeline cache");
 
         if (dynamicRendering) {
@@ -95,12 +95,12 @@ std::vector<std::unique_ptr<Device::SurfaceChain>> Device::makeChains(const Inst
 
 void Device::createFrames() {
     const VkDevice device = context->getDevice();
-    const VkCommandPoolCreateInfo poolInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, .queueFamilyIndex = context->getQueueFamily()};
-    const VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-    const VkQueryPoolCreateInfo queryInfo{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, .queryType = VK_QUERY_TYPE_TIMESTAMP, .queryCount = 2};
+    const VkCommandPoolCreateInfo poolInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .pNext = nullptr, .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, .queueFamilyIndex = context->getQueueFamily()};
+    const VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+    const VkQueryPoolCreateInfo queryInfo{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, .pNext = nullptr, .flags = 0, .queryType = VK_QUERY_TYPE_TIMESTAMP, .queryCount = 2, .pipelineStatistics = 0};
     for (Frame& frame : frames) {
         Context::check(vk.vkCreateCommandPool(device, &poolInfo, nullptr, &frame.pool), "make the command pool of a frame");
-        const VkCommandBufferAllocateInfo commandsInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .commandPool = frame.pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, .commandBufferCount = 2};
+        const VkCommandBufferAllocateInfo commandsInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .pNext = nullptr, .commandPool = frame.pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, .commandBufferCount = 2};
         std::array<VkCommandBuffer, 2> commands{};
         Context::check(vk.vkAllocateCommandBuffers(device, &commandsInfo, commands.data()), "allocate the command buffers of a frame");
         frame.uploads = commands[0];
@@ -245,7 +245,7 @@ bool Device::ensureFrame() {
     uniforms.begin(static_cast<int>(frameIndex));
 
     Context::check(vk.vkResetCommandPool(context->getDevice(), frame.pool, 0), "reset the command pool of a frame");
-    const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+    const VkCommandBufferBeginInfo begin{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT, .pInheritanceInfo = nullptr};
     Context::check(vk.vkBeginCommandBuffer(frame.uploads, &begin), "record the uploads of a frame");
     Context::check(vk.vkBeginCommandBuffer(frame.graphics, &begin), "record the passes of a frame");
 
@@ -346,7 +346,7 @@ void Device::commit() {
     endSwapchainRendering();
     Frame& frame = frames[frameIndex];
     if (bufferCopies) {
-        const VkMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT};
+        const VkMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT};
         vk.vkCmdPipelineBarrier(frame.uploads, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
     }
 
@@ -370,7 +370,7 @@ void Device::commit() {
         }
 
         waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = chain->swapchain->getImage(chain->imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}});
+        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = chain->swapchain->getImage(chain->imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}});
     }
 
     if (!imageBarriers.empty()) {
@@ -389,6 +389,7 @@ void Device::commit() {
     const std::array<VkCommandBuffer, 2> commands{frame.uploads, frame.graphics};
     const VkSubmitInfo submit{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .pNext = nullptr,
         .waitSemaphoreCount = static_cast<std::uint32_t>(waitSemaphores.size()),
         .pWaitSemaphores = waitSemaphores.data(),
         .pWaitDstStageMask = waitStages.data(),
@@ -649,8 +650,8 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     }
 
-    const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = record.stride * record.copies, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
-    VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO};
+    const VkBufferCreateInfo info{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .pNext = nullptr, .flags = 0, .size = record.stride * record.copies, .usage = usage, .sharingMode = VK_SHARING_MODE_EXCLUSIVE, .queueFamilyIndexCount = 0, .pQueueFamilyIndices = nullptr};
+    VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     if (!dynamic) {
         memory.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT;
     }
@@ -756,6 +757,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     const bool volume = desc.type == TextureType::Volume;
     const VkImageCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
         .flags = flags,
         .imageType = volume ? VK_IMAGE_TYPE_3D : VK_IMAGE_TYPE_2D,
         .format = format,
@@ -766,6 +768,8 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = usage,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
     VkImageFormatProperties supported{};
@@ -780,7 +784,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         record.restLayout = depth ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 
-    const VmaAllocationCreateInfo memory{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+    const VmaAllocationCreateInfo memory{.flags = 0, .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &record.image, &record.allocation, nullptr), std::format("make the image \"{}\"", desc.label));
     context->setName(VK_OBJECT_TYPE_IMAGE, record.image, desc.label);
 
@@ -788,7 +792,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
         if (sampled) {
             // A view that shaders sample reads the depth of a depth and stencil image.
             const VkImageAspectFlags aspect = depth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
-            const VkImageViewCreateInfo viewInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = record.image, .viewType = Conversions::toViewType(desc.type), .format = format, .subresourceRange = {.aspectMask = aspect, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
+            const VkImageViewCreateInfo viewInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = record.image, .viewType = Conversions::toViewType(desc.type), .format = format, .components = {}, .subresourceRange = {.aspectMask = aspect, .baseMipLevel = 0, .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
             Context::check(vk.vkCreateImageView(context->getDevice(), &viewInfo, nullptr, &record.sampleView), "make the view of an image");
             context->setName(VK_OBJECT_TYPE_IMAGE_VIEW, record.sampleView, desc.label);
         }
@@ -831,12 +835,12 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
 
         const UploadRing::Allocation source = staging.allocate(bytes, 16);
         std::memcpy(source.data, levels[level].data(), bytes);
-        copyRegions.push_back({.bufferOffset = source.offset, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = static_cast<std::uint32_t>(level), .layerCount = layers}, .imageExtent = {width, height, depth}});
+        copyRegions.push_back({.bufferOffset = source.offset, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = static_cast<std::uint32_t>(level), .baseArrayLayer = 0, .layerCount = layers}, .imageOffset = {}, .imageExtent = {width, height, depth}});
 
         // The ring may move to another chunk between levels, so each level copies from its own buffer.
         const VkCommandBuffer commands = frames[frameIndex].uploads;
         if (level == 0) {
-            const VkImageMemoryBarrier toDestination{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = {.aspectMask = record.aspects, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
+            const VkImageMemoryBarrier toDestination{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS}};
             vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDestination);
         }
 
@@ -847,11 +851,11 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
     const VkCommandBuffer commands = frames[frameIndex].uploads;
     if (levels.size() < static_cast<std::size_t>(record.mipLevels)) {
         const VkClearColorValue clear{};
-        const VkImageSubresourceRange rest{.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(levels.size()), .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS};
+        const VkImageSubresourceRange rest{.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(levels.size()), .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS};
         vk.vkCmdClearColorImage(commands, record.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear, 1, &rest);
     }
 
-    const VkImageSubresourceRange range{.aspectMask = record.aspects, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS};
+    const VkImageSubresourceRange range{.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS};
     const VkImageMemoryBarrier toRest = ImageLayouts::makeBarrier(record.image, range, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, record.restLayout);
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, ImageLayouts::getStages(record.restLayout), 0, 0, nullptr, 0, nullptr, 1, &toRest);
 }
@@ -859,8 +863,8 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
 // Images without pixels start transparent, and depth and stencil images at the far depth and a stencil of 0, so every device starts them alike.
 void Device::clearImage(const ImageRecord& record) {
     const VkCommandBuffer commands = frames[frameIndex].uploads;
-    const VkImageSubresourceRange range{.aspectMask = record.aspects, .levelCount = VK_REMAINING_MIP_LEVELS, .layerCount = VK_REMAINING_ARRAY_LAYERS};
-    const VkImageMemoryBarrier toDestination{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = range};
+    const VkImageSubresourceRange range{.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = VK_REMAINING_MIP_LEVELS, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS};
+    const VkImageMemoryBarrier toDestination{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = range};
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &toDestination);
 
     if ((record.aspects & VK_IMAGE_ASPECT_COLOR_BIT) != 0) {
@@ -883,12 +887,15 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
     const bool anisotropic = desc.maxAnisotropy > 1 && context->getEnabledFeatures().samplerAnisotropy == VK_TRUE;
     const VkSamplerCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
         .magFilter = Conversions::toFilter(desc.magnification),
         .minFilter = Conversions::toFilter(desc.minification),
         .mipmapMode = Conversions::toMipmapMode(desc.mipmap),
         .addressModeU = Conversions::toAddressMode(desc.wrapU),
         .addressModeV = Conversions::toAddressMode(desc.wrapV),
         .addressModeW = Conversions::toAddressMode(desc.wrapW),
+        .mipLodBias = 0.0F,
         .anisotropyEnable = anisotropic ? VK_TRUE : VK_FALSE,
         .maxAnisotropy = anisotropic ? std::min(static_cast<float>(desc.maxAnisotropy), context->getProperties().limits.maxSamplerAnisotropy) : 1.0F,
         .compareEnable = desc.compare ? VK_TRUE : VK_FALSE,
@@ -896,6 +903,7 @@ gpu::Device::Sampler Device::makeSampler(const SamplerDesc& desc) {
         .minLod = desc.minLod,
         .maxLod = desc.maxLod,
         .borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK,
+        .unnormalizedCoordinates = VK_FALSE,
     };
     SamplerRecord record;
     Context::check(vk.vkCreateSampler(context->getDevice(), &info, nullptr, &record.sampler), "make a sampler");
@@ -1005,7 +1013,7 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
             return module;
         }
 
-        const VkShaderModuleCreateInfo info{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .codeSize = bytecode.size(), .pCode = words.data()};
+        const VkShaderModuleCreateInfo info{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .pNext = nullptr, .flags = 0, .codeSize = bytecode.size(), .pCode = words.data()};
         Context::check(vk.vkCreateShaderModule(context->getDevice(), &info, nullptr, &module), std::format("make the shader modules of the program \"{}\"", desc.label));
         context->setName(VK_OBJECT_TYPE_SHADER_MODULE, module, desc.label);
         return module;
@@ -1084,8 +1092,8 @@ std::unique_ptr<Device::StoredPipeline> Device::storePipeline(const PipelineDesc
 // A pipeline that draws into the swapchain takes its formats and sample count, and the others the formats and sample count that they name.
 VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& program) {
     const std::array<VkPipelineShaderStageCreateInfo, 2> stages{{
-        {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = program.vertex, .pName = program.vertexEntry.c_str()},
-        {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = program.fragment, .pName = program.fragmentEntry.c_str()},
+        {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = program.vertex, .pName = program.vertexEntry.c_str(), .pSpecializationInfo = nullptr},
+        {.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .pNext = nullptr, .flags = 0, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = program.fragment, .pName = program.fragmentEntry.c_str(), .pSpecializationInfo = nullptr},
     }};
 
     std::array<VkVertexInputBindingDescription, kMaxVertexBuffers> bindings{};
@@ -1099,27 +1107,27 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
         attributes[index] = {.location = static_cast<std::uint32_t>(attribute.location), .binding = static_cast<std::uint32_t>(attribute.buffer), .format = Conversions::toFormat(attribute.format), .offset = static_cast<std::uint32_t>(attribute.offset)};
     }
 
-    const VkPipelineVertexInputStateCreateInfo vertexInput{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, .vertexBindingDescriptionCount = static_cast<std::uint32_t>(desc.buffers.size()), .pVertexBindingDescriptions = bindings.data(), .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(desc.attributes.size()), .pVertexAttributeDescriptions = attributes.data()};
+    const VkPipelineVertexInputStateCreateInfo vertexInput{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .vertexBindingDescriptionCount = static_cast<std::uint32_t>(desc.buffers.size()), .pVertexBindingDescriptions = bindings.data(), .vertexAttributeDescriptionCount = static_cast<std::uint32_t>(desc.attributes.size()), .pVertexAttributeDescriptions = attributes.data()};
 
     // Strips restart at the largest index, as on Metal and Direct3D.
     const bool strip = desc.primitive == Primitive::TriangleStrip || desc.primitive == Primitive::LineStrip;
-    const VkPipelineInputAssemblyStateCreateInfo inputAssembly{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, .topology = Conversions::toTopology(desc.primitive), .primitiveRestartEnable = strip && desc.indexType != IndexType::None ? VK_TRUE : VK_FALSE};
-    const VkPipelineViewportStateCreateInfo viewport{.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, .viewportCount = 1, .scissorCount = 1};
+    const VkPipelineInputAssemblyStateCreateInfo inputAssembly{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .topology = Conversions::toTopology(desc.primitive), .primitiveRestartEnable = strip && desc.indexType != IndexType::None ? VK_TRUE : VK_FALSE};
+    const VkPipelineViewportStateCreateInfo viewport{.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .viewportCount = 1, .pViewports = nullptr, .scissorCount = 1, .pScissors = nullptr};
     const bool biased = desc.depthStencil.depthBias != 0.0F || desc.depthStencil.depthBiasSlope != 0.0F;
-    const VkPipelineRasterizationStateCreateInfo rasterization{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, .polygonMode = VK_POLYGON_MODE_FILL, .cullMode = Conversions::toCullMode(desc.cullMode), .frontFace = Conversions::toFrontFace(desc.frontFace), .depthBiasEnable = biased ? VK_TRUE : VK_FALSE, .depthBiasConstantFactor = desc.depthStencil.depthBias, .depthBiasSlopeFactor = desc.depthStencil.depthBiasSlope, .lineWidth = 1.0F};
+    const VkPipelineRasterizationStateCreateInfo rasterization{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .depthClampEnable = VK_FALSE, .rasterizerDiscardEnable = VK_FALSE, .polygonMode = VK_POLYGON_MODE_FILL, .cullMode = Conversions::toCullMode(desc.cullMode), .frontFace = Conversions::toFrontFace(desc.frontFace), .depthBiasEnable = biased ? VK_TRUE : VK_FALSE, .depthBiasConstantFactor = desc.depthStencil.depthBias, .depthBiasClamp = 0.0F, .depthBiasSlopeFactor = desc.depthStencil.depthBiasSlope, .lineWidth = 1.0F};
 
     const VkSampleCountFlagBits samples = desc.swapchain ? swapchainTarget.samples : Conversions::toSampleCount(desc.sampleCount);
-    const VkPipelineMultisampleStateCreateInfo multisample{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, .rasterizationSamples = samples, .alphaToCoverageEnable = desc.alphaToCoverage ? VK_TRUE : VK_FALSE};
+    const VkPipelineMultisampleStateCreateInfo multisample{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .rasterizationSamples = samples, .sampleShadingEnable = VK_FALSE, .minSampleShading = 0.0F, .pSampleMask = nullptr, .alphaToCoverageEnable = desc.alphaToCoverage ? VK_TRUE : VK_FALSE, .alphaToOneEnable = VK_FALSE};
 
     const DepthStencil& depth = desc.depthStencil;
     const VkFormat depthFormat = desc.swapchain ? swapchainTarget.depth : (depth.format ? resolveFormat(*depth.format) : VK_FORMAT_UNDEFINED);
     // clang-format off
     const auto toStencilFace = [&depth](const StencilFace& face) {
-        return VkStencilOpState{.failOp = Conversions::toStencilOperation(face.fail), .passOp = Conversions::toStencilOperation(face.pass), .depthFailOp = Conversions::toStencilOperation(face.depthFail), .compareOp = Conversions::toCompare(face.compare), .compareMask = depth.stencilReadMask, .writeMask = depth.stencilWriteMask};
+        return VkStencilOpState{.failOp = Conversions::toStencilOperation(face.fail), .passOp = Conversions::toStencilOperation(face.pass), .depthFailOp = Conversions::toStencilOperation(face.depthFail), .compareOp = Conversions::toCompare(face.compare), .compareMask = depth.stencilReadMask, .writeMask = depth.stencilWriteMask, .reference = 0};
     };
     // clang-format on
     const bool depthTested = depthFormat != VK_FORMAT_UNDEFINED && (depth.depthCompare != CompareFunction::Always || depth.depthWrite);
-    const VkPipelineDepthStencilStateCreateInfo depthStencil{.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO, .depthTestEnable = depthTested ? VK_TRUE : VK_FALSE, .depthWriteEnable = depthTested && depth.depthWrite ? VK_TRUE : VK_FALSE, .depthCompareOp = Conversions::toCompare(depth.depthCompare), .stencilTestEnable = depthFormat != VK_FORMAT_UNDEFINED && depth.stencilEnabled ? VK_TRUE : VK_FALSE, .front = toStencilFace(depth.stencilFront), .back = toStencilFace(depth.stencilBack), .maxDepthBounds = 1.0F};
+    const VkPipelineDepthStencilStateCreateInfo depthStencil{.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .depthTestEnable = depthTested ? VK_TRUE : VK_FALSE, .depthWriteEnable = depthTested && depth.depthWrite ? VK_TRUE : VK_FALSE, .depthCompareOp = Conversions::toCompare(depth.depthCompare), .depthBoundsTestEnable = VK_FALSE, .stencilTestEnable = depthFormat != VK_FORMAT_UNDEFINED && depth.stencilEnabled ? VK_TRUE : VK_FALSE, .front = toStencilFace(depth.stencilFront), .back = toStencilFace(depth.stencilBack), .minDepthBounds = 0.0F, .maxDepthBounds = 1.0F};
 
     const std::uint32_t colorCount = desc.swapchain ? 1U : static_cast<std::uint32_t>(desc.colors.size());
     std::array<VkPipelineColorBlendAttachmentState, kMaxColorTargets> blends{};
@@ -1132,12 +1140,12 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
         colorFormats[index] = desc.swapchain ? swapchainTarget.color : resolveFormat(desc.colors[index].format);
     }
 
-    const VkPipelineColorBlendStateCreateInfo colorBlend{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, .attachmentCount = colorCount, .pAttachments = blends.data()};
+    const VkPipelineColorBlendStateCreateInfo colorBlend{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .logicOpEnable = VK_FALSE, .logicOp = VK_LOGIC_OP_CLEAR, .attachmentCount = colorCount, .pAttachments = blends.data(), .blendConstants = {}};
 
     const std::array<VkDynamicState, 4> dynamicStates{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_BLEND_CONSTANTS, VK_DYNAMIC_STATE_STENCIL_REFERENCE};
-    const VkPipelineDynamicStateCreateInfo dynamic{.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, .dynamicStateCount = static_cast<std::uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()};
+    const VkPipelineDynamicStateCreateInfo dynamic{.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO, .pNext = nullptr, .flags = 0, .dynamicStateCount = static_cast<std::uint32_t>(dynamicStates.size()), .pDynamicStates = dynamicStates.data()};
 
-    const VkPipelineRenderingCreateInfo rendering{.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, .colorAttachmentCount = colorCount, .pColorAttachmentFormats = colorFormats.data(), .depthAttachmentFormat = depthFormat, .stencilAttachmentFormat = Conversions::hasStencil(depthFormat) ? depthFormat : VK_FORMAT_UNDEFINED};
+    const VkPipelineRenderingCreateInfo rendering{.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, .pNext = nullptr, .viewMask = 0, .colorAttachmentCount = colorCount, .pColorAttachmentFormats = colorFormats.data(), .depthAttachmentFormat = depthFormat, .stencilAttachmentFormat = Conversions::hasStencil(depthFormat) ? depthFormat : VK_FORMAT_UNDEFINED};
     VkRenderPass compatible = VK_NULL_HANDLE;
     if (!dynamicRendering) {
         RenderPassCache::PassKey key{.colorCount = colorCount};
@@ -1155,10 +1163,12 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
     const VkGraphicsPipelineCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .pNext = dynamicRendering ? &rendering : nullptr,
+        .flags = 0,
         .stageCount = static_cast<std::uint32_t>(stages.size()),
         .pStages = stages.data(),
         .pVertexInputState = &vertexInput,
         .pInputAssemblyState = &inputAssembly,
+        .pTessellationState = nullptr,
         .pViewportState = &viewport,
         .pRasterizationState = &rasterization,
         .pMultisampleState = &multisample,
@@ -1167,6 +1177,9 @@ VkPipeline Device::buildPipeline(const PipelineDesc& desc, const ProgramRecord& 
         .pDynamicState = &dynamic,
         .layout = program.layout,
         .renderPass = compatible,
+        .subpass = 0,
+        .basePipelineHandle = VK_NULL_HANDLE,
+        .basePipelineIndex = 0,
     };
     VkPipeline pipeline = VK_NULL_HANDLE;
     Context::check(vk.vkCreateGraphicsPipelines(context->getDevice(), pipelineCache, 1, &info, nullptr, &pipeline), std::format("make the pipeline \"{}\"", desc.label));
@@ -1324,8 +1337,8 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         const UploadRing::Allocation source = staging.allocate(bytes, 16);
         std::memcpy(source.data, write.pixels.data(), bytes);
         sourceBuffers.push_back(source.buffer);
-        copyRegions.push_back({.bufferOffset = source.offset, .imageSubresource = {.aspectMask = record.aspects, .layerCount = volume ? 1U : static_cast<std::uint32_t>(record.layers)}, .imageExtent = {static_cast<std::uint32_t>(record.width), static_cast<std::uint32_t>(record.height), volume ? static_cast<std::uint32_t>(record.layers) : 1U}});
-        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = {.aspectMask = record.aspects, .levelCount = 1, .layerCount = VK_REMAINING_ARRAY_LAYERS}});
+        copyRegions.push_back({.bufferOffset = source.offset, .bufferRowLength = 0, .bufferImageHeight = 0, .imageSubresource = {.aspectMask = record.aspects, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = volume ? 1U : static_cast<std::uint32_t>(record.layers)}, .imageOffset = {}, .imageExtent = {static_cast<std::uint32_t>(record.width), static_cast<std::uint32_t>(record.height), volume ? static_cast<std::uint32_t>(record.layers) : 1U}});
+        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = record.image, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = VK_REMAINING_ARRAY_LAYERS}});
     }
 
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
@@ -1387,7 +1400,7 @@ void Device::beginPass(const PassDesc& desc) {
     const VkCommandBuffer commands = frames[frameIndex].graphics;
     if (labels && !desc.label.empty()) {
         labelText.assign(desc.label);
-        const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pLabelName = labelText.c_str()};
+        const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pNext = nullptr, .pLabelName = labelText.c_str(), .color = {}};
         vkCmdBeginDebugUtilsLabelEXT(commands, &label);
         pass.labeled = true;
     }
@@ -1420,7 +1433,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
 
     // The image of the swapchain keeps what earlier passes of the frame drew when the pass keeps it, while the attachments that last for one pass start anew.
     imageBarriers.clear();
-    const VkImageSubresourceRange colorRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1};
+    const VkImageSubresourceRange colorRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
     const VkImageLayout colorLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     const VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getImage(imageIndex), colorRange, chain.drawn ? colorLayout : VK_IMAGE_LAYOUT_UNDEFINED, previous, colorLayout));
@@ -1428,7 +1441,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getColorImage(), colorRange, colorLayout, VK_IMAGE_LAYOUT_UNDEFINED, colorLayout));
     }
 
-    imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getDepthImage(), {.aspectMask = Conversions::getAspects(swapchain.getDepthFormat()), .levelCount = 1, .layerCount = 1}, depthLayout, VK_IMAGE_LAYOUT_UNDEFINED, depthLayout));
+    imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getDepthImage(), {.aspectMask = Conversions::getAspects(swapchain.getDepthFormat()), .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}, depthLayout, VK_IMAGE_LAYOUT_UNDEFINED, depthLayout));
     const VkPipelineStageFlags stages = ImageLayouts::getStages(colorLayout) | ImageLayouts::getStages(depthLayout);
     vk.vkCmdPipelineBarrier(commands, stages, stages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
     chain.drawn = true;
@@ -1540,7 +1553,7 @@ VkImageView Device::getAttachmentView(ImageRecord& record, int mipLevel, int lay
         throw ContractError(ContractError::Rule::PassAttachments);
     }
 
-    const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = record.image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = record.format, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = static_cast<std::uint32_t>(layer), .layerCount = 1}};
+    const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = record.image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = record.format, .components = {}, .subresourceRange = {.aspectMask = record.aspects, .baseMipLevel = static_cast<std::uint32_t>(mipLevel), .levelCount = 1, .baseArrayLayer = static_cast<std::uint32_t>(layer), .layerCount = 1}};
     VkImageView view = VK_NULL_HANDLE;
     Context::check(vk.vkCreateImageView(context->getDevice(), &info, nullptr, &view), "make the view of an attachment");
     record.attachmentViews.push_back({.mipLevel = mipLevel, .layer = layer, .view = view});
@@ -1556,14 +1569,14 @@ void Device::beginRendering(const PassTarget& target) {
         std::array<VkRenderingAttachmentInfo, kMaxColorTargets> colors{};
         for (std::uint32_t index = 0; index < target.colorCount; ++index) {
             const AttachmentTarget& color = target.colors[index];
-            colors[index] = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .imageView = color.view, .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .resolveMode = color.resolveView != VK_NULL_HANDLE ? VK_RESOLVE_MODE_AVERAGE_BIT : VK_RESOLVE_MODE_NONE, .resolveImageView = color.resolveView, .resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .loadOp = color.load, .storeOp = color.store, .clearValue = color.clear};
+            colors[index] = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = color.view, .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .resolveMode = color.resolveView != VK_NULL_HANDLE ? VK_RESOLVE_MODE_AVERAGE_BIT : VK_RESOLVE_MODE_NONE, .resolveImageView = color.resolveView, .resolveImageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .loadOp = color.load, .storeOp = color.store, .clearValue = color.clear};
         }
 
         const AttachmentTarget& depth = target.depth;
-        const VkRenderingAttachmentInfo depthInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .loadOp = depth.load, .storeOp = depth.store, .clearValue = depth.clear};
-        const VkRenderingAttachmentInfo stencilInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .loadOp = depth.stencilLoad, .storeOp = depth.stencilStore, .clearValue = depth.clear};
+        const VkRenderingAttachmentInfo depthInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .resolveMode = VK_RESOLVE_MODE_NONE, .resolveImageView = VK_NULL_HANDLE, .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED, .loadOp = depth.load, .storeOp = depth.store, .clearValue = depth.clear};
+        const VkRenderingAttachmentInfo stencilInfo{.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO, .pNext = nullptr, .imageView = depth.view, .imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, .resolveMode = VK_RESOLVE_MODE_NONE, .resolveImageView = VK_NULL_HANDLE, .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED, .loadOp = depth.stencilLoad, .storeOp = depth.stencilStore, .clearValue = depth.clear};
         const bool stencil = target.hasDepth && Conversions::hasStencil(depth.format);
-        const VkRenderingInfo info{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO, .renderArea = area, .layerCount = 1, .colorAttachmentCount = target.colorCount, .pColorAttachments = colors.data(), .pDepthAttachment = target.hasDepth ? &depthInfo : nullptr, .pStencilAttachment = stencil ? &stencilInfo : nullptr};
+        const VkRenderingInfo info{.sType = VK_STRUCTURE_TYPE_RENDERING_INFO, .pNext = nullptr, .flags = 0, .renderArea = area, .layerCount = 1, .viewMask = 0, .colorAttachmentCount = target.colorCount, .pColorAttachments = colors.data(), .pDepthAttachment = target.hasDepth ? &depthInfo : nullptr, .pStencilAttachment = stencil ? &stencilInfo : nullptr};
         beginRenderingCommand(commands, &info);
         return;
     }
@@ -1597,7 +1610,7 @@ void Device::beginRendering(const PassTarget& target) {
 
     const VkRenderPass renderPass = renderPasses.getRenderPass(key);
     const VkFramebuffer framebuffer = renderPasses.getFramebuffer(renderPass, std::span(views.data(), count), target.extent);
-    const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, .renderPass = renderPass, .framebuffer = framebuffer, .renderArea = area, .clearValueCount = count, .pClearValues = clears.data()};
+    const VkRenderPassBeginInfo info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, .pNext = nullptr, .renderPass = renderPass, .framebuffer = framebuffer, .renderArea = area, .clearValueCount = count, .pClearValues = clears.data()};
     vk.vkCmdBeginRenderPass(commands, &info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
@@ -1927,8 +1940,8 @@ void Device::bindResources() {
                 throw ContractError(ContractError::Rule::Bindings);
             }
 
-            descriptorImages[next] = {.imageView = image->sampleView, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
-            descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstBinding = texture.binding, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .pImageInfo = &descriptorImages[next++]});
+            descriptorImages[next] = {.sampler = VK_NULL_HANDLE, .imageView = image->sampleView, .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+            descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .pNext = nullptr, .dstSet = VK_NULL_HANDLE, .dstBinding = texture.binding, .dstArrayElement = 0, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .pImageInfo = &descriptorImages[next++], .pBufferInfo = nullptr, .pTexelBufferView = nullptr});
         }
 
         for (const SlotBinding& sampler : program.samplers) {
@@ -1937,8 +1950,8 @@ void Device::bindResources() {
                 throw ContractError(ContractError::Rule::Bindings);
             }
 
-            descriptorImages[next] = {.sampler = record->sampler};
-            descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstBinding = sampler.binding, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER, .pImageInfo = &descriptorImages[next++]});
+            descriptorImages[next] = {.sampler = record->sampler, .imageView = VK_NULL_HANDLE, .imageLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+            descriptorWrites.push_back({.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .pNext = nullptr, .dstSet = VK_NULL_HANDLE, .dstBinding = sampler.binding, .dstArrayElement = 0, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER, .pImageInfo = &descriptorImages[next++], .pBufferInfo = nullptr, .pTexelBufferView = nullptr});
         }
 
         set = descriptors.addResourceSet(key, descriptorWrites, nextSerial);
@@ -1982,7 +1995,7 @@ void Device::pushDebugGroup(std::string_view name) {
     }
 
     labelText.assign(name);
-    const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pLabelName = labelText.c_str()};
+    const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pNext = nullptr, .pLabelName = labelText.c_str(), .color = {}};
     vkCmdBeginDebugUtilsLabelEXT(frames[frameIndex].graphics, &label);
 }
 

@@ -42,7 +42,7 @@ VkAccessFlags ImageLayouts::getWrites(VkImageLayout layout) noexcept {
 }
 
 VkImageMemoryBarrier ImageLayouts::makeBarrier(VkImage image, const VkImageSubresourceRange& range, VkImageLayout rest, VkImageLayout from, VkImageLayout to) noexcept {
-    return {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = getWrites(rest), .dstAccessMask = getAccess(to), .oldLayout = from, .newLayout = to, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = image, .subresourceRange = range};
+    return {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = getWrites(rest), .dstAccessMask = getAccess(to), .oldLayout = from, .newLayout = to, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = image, .subresourceRange = range};
 }
 
 } // namespace haylen::gpu::vulkan

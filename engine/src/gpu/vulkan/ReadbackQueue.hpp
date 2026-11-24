@@ -31,8 +31,8 @@ class ReadbackQueue final {
         int width = 0;
         int height = 0;
         Device::PixelFormat format = Device::PixelFormat::Rgba8;
-        std::optional<std::vector<std::uint8_t>> pixels;
-        std::string failure;
+        std::optional<std::vector<std::uint8_t>> pixels{};
+        std::string failure{};
     };
 
     // What the copy reads: the image, the layout it rests in between passes and its size and format.

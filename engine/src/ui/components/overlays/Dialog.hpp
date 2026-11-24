@@ -38,7 +38,7 @@ class Dialog final : public Component {
   private:
     struct Answer {
         std::string id;
-        TextValue text;
+        TextValue text{};
         Widgets::ButtonVariant variant = Widgets::ButtonVariant::Default;
     };
 

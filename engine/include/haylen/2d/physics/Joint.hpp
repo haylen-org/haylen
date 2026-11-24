@@ -48,8 +48,8 @@ class Joint final {
         float targetTranslation = 0.0F;
         math::Vec2 axis{1.0F, 0.0F};
         float length = 0.0F;
-        std::optional<float> breakForce;
-        std::optional<float> breakTorque;
+        std::optional<float> breakForce{};
+        std::optional<float> breakTorque{};
     };
 
     Joint() = default;

@@ -34,25 +34,25 @@ struct Stroke {
     float width = 1.0F;
 
     // One width for each point, which replaces `width` and blends along each segment.
-    std::span<const float> widths;
+    std::span<const float> widths{};
     math::Color color = math::Color::white();
 
     // One color for each point, which replaces `color` and blends along each segment.
-    std::span<const math::Color> colors;
+    std::span<const math::Color> colors{};
     Join join = Join::Miter;
     Cap cap = Cap::Butt;
 
     // A miter join longer than this many widths becomes a bevel.
     float miterLimit = 4.0F;
     bool closed = false;
-    graphics::Texture texture;
+    graphics::Texture texture{};
     TextureMode textureMode = TextureMode::Stretch;
 
     // The length one copy of the texture covers in tile mode, or the width times the aspect of the texture when 0.
     float textureLength = 0.0F;
 
     // Lengths drawn and left out in turn along the stroke, repeated, where a list of an odd count repeats twice to pair up, starting `dashOffset` into the pattern.
-    std::span<const float> dashes;
+    std::span<const float> dashes{};
     float dashOffset = 0.0F;
 
     [[nodiscard]] static std::optional<Join> joinFromName(std::string_view name) noexcept;

@@ -173,7 +173,7 @@ class Device final : public gpu::Device {
         VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
         VkImageLayout restLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         VkImageAspectFlags aspects = VK_IMAGE_ASPECT_COLOR_BIT;
-        std::vector<AttachmentView> attachmentViews;
+        std::vector<AttachmentView> attachmentViews{};
     };
 
     struct SamplerRecord {
@@ -221,7 +221,7 @@ class Device final : public gpu::Device {
         IndexType indexType = IndexType::None;
         std::uint32_t bufferCount = 0;
         std::uint32_t generation = 0;
-        std::unique_ptr<StoredPipeline> stored;
+        std::unique_ptr<StoredPipeline> stored{};
     };
 
     // The swapchain of a surface, the window or one that `addSurface` made, with its settings and what the frame that records holds of it: the image it acquired and whether a pass drew into that image. The window keeps its place while it has no swapchain.
@@ -259,7 +259,7 @@ class Device final : public gpu::Device {
     struct PassTarget {
         std::array<AttachmentTarget, kMaxColorTargets> colors{};
         std::uint32_t colorCount = 0;
-        AttachmentTarget depth;
+        AttachmentTarget depth{};
         bool hasDepth = false;
         VkExtent2D extent{};
     };

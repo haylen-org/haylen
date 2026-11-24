@@ -34,10 +34,10 @@ class SceneManager final {
   public:
     struct Transition {
         float duration = 0.0F;
-        math::EasingCurve ease;
+        math::EasingCurve ease{};
 
         // Draws the transition. A transition with a duration needs one.
-        std::shared_ptr<TransitionEffect> effect;
+        std::shared_ptr<TransitionEffect> effect{};
 
         // Holds back input events of the scenes and the action map until the change ends, including the load of the next scene.
         bool blockInput = true;
@@ -58,7 +58,7 @@ class SceneManager final {
 
     struct Result {
         Outcome outcome = Outcome::Completed;
-        std::optional<core::AppError> error;
+        std::optional<core::AppError> error{};
     };
 
     using Completion = std::function<void(const Result& result)>;
@@ -66,13 +66,13 @@ class SceneManager final {
 
     // The options of `push` and `replace`.
     struct Options {
-        Transition transition;
+        Transition transition{};
 
         // Reaches the load and enter hooks of the next scene.
-        std::any params;
+        std::any params{};
 
         // Shows while the next scene loads, once the load took longer than `loadingDelay`, and stays for at least `minimumLoadingTime` once it appears. Without a view the covered frame of the transition shows, or the current scenes.
-        std::shared_ptr<LoadingView> loading;
+        std::shared_ptr<LoadingView> loading{};
         float loadingDelay = 0.0F;
         float minimumLoadingTime = 0.0F;
 
@@ -82,10 +82,10 @@ class SceneManager final {
         // With an effect that covers the screen, the replaced scene exits and unloads at full cover before the next scene loads, for a lower peak of memory. Turned off, the next scene loads while the transition covers the screen and the replaced scene stays loaded until the next scene loaded.
         bool unloadBeforeLoad = true;
 
-        Completion completion;
+        Completion completion{};
 
         // Receives the error of a failed load instead of the error screen or the log, and may route the app to another scene.
-        ErrorHandler onError;
+        ErrorHandler onError{};
     };
 
     // The top scenes before and after a change, which the phase events of its transition carry. After a failed load, the scene after is the one the change reveals again.
@@ -209,12 +209,12 @@ class SceneManager final {
 
     struct Change {
         Operation operation = Operation::Push;
-        std::shared_ptr<Scene> scene;
+        std::shared_ptr<Scene> scene{};
         std::size_t level = 0;
         Options options;
         Phase phase = Phase::Start;
-        std::shared_ptr<Scene> from;
-        std::optional<core::AppError> failure;
+        std::shared_ptr<Scene> from{};
+        std::optional<core::AppError> failure{};
         float elapsed = 0.0F;
         float waited = 0.0F;
         float shown = 0.0F;

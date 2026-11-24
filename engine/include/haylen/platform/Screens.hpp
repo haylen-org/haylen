@@ -25,9 +25,9 @@ class Screens final {
   public:
     // The state is a JSON value that the platform keeps with the screen and hands back with a restored end. An opaque screen hides the app completely, and a timeout gives the screen up once it passes.
     struct Options {
-        core::Json state;
+        core::Json state{};
         bool opaque = true;
-        std::optional<std::chrono::steady_clock::duration> timeout;
+        std::optional<std::chrono::steady_clock::duration> timeout{};
     };
 
     using Callback = std::function<void(Bridge::Result)>;
@@ -62,7 +62,7 @@ class Screens final {
         Callback callback;
         std::string plugin;
         std::string screen;
-        std::optional<std::chrono::steady_clock::time_point> deadline;
+        std::optional<std::chrono::steady_clock::time_point> deadline{};
     };
 
     static std::atomic<std::uint64_t> nextId;

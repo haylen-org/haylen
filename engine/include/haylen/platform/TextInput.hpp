@@ -90,12 +90,12 @@ class TextInput {
     struct Field {
         std::uint64_t id = 0;
         std::uint64_t revision = 0;
-        std::string text;
+        std::string text{};
         int selectionStart = 0;
         int selectionEnd = 0;
-        math::Rect bounds;
-        math::Rect caret;
-        Options options;
+        math::Rect bounds{};
+        math::Rect caret{};
+        Options options{};
 
         [[nodiscard]] bool operator==(const Field&) const = default;
     };
@@ -104,7 +104,7 @@ class TextInput {
     struct Edit {
         std::uint64_t field = 0;
         std::uint64_t revision = 0;
-        std::string text;
+        std::string text{};
         int selectionStart = 0;
         int selectionEnd = 0;
         int compositionStart = -1;

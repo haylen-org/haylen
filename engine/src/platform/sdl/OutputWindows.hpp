@@ -42,8 +42,8 @@ class OutputWindows final {
         std::uint32_t number = 0;
         SDL_Window* window = nullptr;
         SDL_MetalView view = nullptr;
-        std::unique_ptr<GlContext> gl;
-        Host::OutputReport report;
+        std::unique_ptr<GlContext> gl{};
+        Host::OutputReport report{};
     };
 
     [[nodiscard]] Entry* findWindow(SDL_WindowID id) noexcept;

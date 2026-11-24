@@ -21,7 +21,7 @@ class SceneLoad final : public std::enable_shared_from_this<SceneLoad> {
   public:
     struct Progress {
         float value = 0.0F;
-        std::string message;
+        std::string message{};
     };
 
     // Keeps the load open until it completes or fails. A deferral destroyed before either fails the load, so a load never waits for work that was dropped, unless a failure that explains the drop follows it, such as the error of a hook that throws while it holds the deferral.

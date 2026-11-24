@@ -17,7 +17,7 @@ class Evaluation final {
     // What an evaluation did: whether it ran, the error that stopped it, and how many results it left on the stack.
     struct Result {
         bool ok = false;
-        std::string error;
+        std::string error{};
         int count = 0;
     };
 

@@ -34,21 +34,21 @@ class Spline3D final {
         bool closed = false;
         float alpha = 0.5F;
         float tension = 0.0F;
-        std::vector<float> weights;
-        std::vector<float> knots;
+        std::vector<float> weights{};
+        std::vector<float> knots{};
         int degree = 3;
     };
 
     // The point and its first and second derivatives by the parameter, which give the velocity and the acceleration of a walk along the whole curve from 0 to 1.
     struct Derivatives {
         Vec3 point;
-        Vec3 first;
-        Vec3 second;
+        Vec3 first{};
+        Vec3 second{};
     };
 
     struct ClosestPoint {
         float t = 0.0F;
-        Vec3 point;
+        Vec3 point{};
         float distance = 0.0F;
     };
 

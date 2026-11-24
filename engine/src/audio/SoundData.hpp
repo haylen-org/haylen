@@ -16,8 +16,8 @@ class SoundData final {
   public:
     // The samples of a decoded sound, or the reader of the encoded file of a streamed one, with its format.
     struct Content {
-        std::vector<float> samples;
-        std::shared_ptr<io::PackageReader> reader;
+        std::vector<float> samples{};
+        std::shared_ptr<io::PackageReader> reader{};
         std::uint32_t channels = 0;
         std::uint32_t sampleRate = 0;
         std::uint64_t frames = 0;

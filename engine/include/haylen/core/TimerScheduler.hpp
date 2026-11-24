@@ -26,7 +26,7 @@ class TimerScheduler final {
         ProcessMode processMode = ProcessMode::Inherit;
 
         // Returns the mode of the parent that an inheriting timer follows, such as the scene that owns it. Every update asks again, so the timer follows the parent when its mode changes.
-        std::function<ProcessMode()> parentMode;
+        std::function<ProcessMode()> parentMode{};
 
         // Counts real time, ignoring the time scale.
         bool unscaled = false;

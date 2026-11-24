@@ -79,7 +79,7 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
         Style style = Style::Sheet;
 
         // The transition of the presentation and of its dismissal: a rise for a sheet and a full screen presentation, a slide for a drawer and a fade of `kDialogDuration` for a dialog and a popover when empty.
-        std::optional<NavigationTransition> transition;
+        std::optional<NavigationTransition> transition{};
 
         // Whether the person dismisses it with a tap on the backdrop, a drag, Escape or the system back.
         bool dismissible = true;
@@ -88,7 +88,7 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
         bool modal = true;
 
         // The color of the surface in place of the theme color, such as a dark stage behind pictures.
-        std::optional<math::Color> color;
+        std::optional<math::Color> color{};
 
         // The widest and tallest form sheet of a wide screen, in UI units.
         float maxWidth = kSheetWidth;
@@ -100,22 +100,22 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
         std::size_t detent = 0;
 
         // Whether a sheet shows its grabber, which it does by default while it has more than one detent.
-        std::optional<bool> grabber;
+        std::optional<bool> grabber{};
 
         // The width of a popover and of a drawer, in UI units.
-        std::optional<float> width;
+        std::optional<float> width{};
 
         // The node that a popover points at.
-        std::optional<Region> anchor;
+        std::optional<Region> anchor{};
     };
 
     // Where a presentation lays out its screen and draws its surface in UI coordinates, the radius of each corner of the surface from the top left clockwise, the grabber of a sheet, the tip of the arrow of a popover and the side it points from, and how much the GUIs behind it shrink.
     struct Layout {
-        math::Rect area;
-        math::Rect surface;
+        math::Rect area{};
+        math::Rect surface{};
         std::array<float, 4> radii{};
-        math::Rect grabber;
-        std::optional<math::Vec2> arrow;
+        math::Rect grabber{};
+        std::optional<math::Vec2> arrow{};
         bool arrowUp = false;
         bool compact = false;
         float behindScale = 1.0F;
@@ -128,7 +128,7 @@ class Presentation final : public std::enable_shared_from_this<Presentation> {
         float pointsPerUnit = Scaling::kPointsPerUnit;
         float radius = 0.0F;
         float contentHeight = 0.0F;
-        std::optional<math::Rect> anchor;
+        std::optional<math::Rect> anchor{};
         bool rightToLeft = false;
     };
 

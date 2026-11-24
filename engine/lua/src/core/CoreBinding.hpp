@@ -26,7 +26,7 @@ class CoreBinding final {
         std::string version;
         std::uint32_t build = 1;
         std::string logo;
-        std::vector<std::uint8_t> logoBytes;
+        std::vector<std::uint8_t> logoBytes{};
     };
 
     static constexpr std::array<std::string_view, 1> kQuitFields{"status"};

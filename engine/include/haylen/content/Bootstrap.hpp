@@ -19,8 +19,8 @@ class Bootstrap final {
     std::uint64_t appBuild = 0;
     std::string profile;
     std::string luaAbi;
-    std::vector<PublicKey> trustedKeys;
-    std::shared_ptr<const KeyProvider> keys;
+    std::vector<PublicKey> trustedKeys{};
+    std::shared_ptr<const KeyProvider> keys{};
 
     // Makes the bootstrap the one of the running app and returns true, so the static member that calls it holds a value.
     static bool install(Bootstrap bootstrap);

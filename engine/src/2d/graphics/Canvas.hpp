@@ -23,7 +23,7 @@ struct Canvas {
 
     Kind kind = Kind::Screen;
     Renderer::CanvasOptions options{};
-    graphics::RenderTarget target;
+    graphics::RenderTarget target{};
     math::Vec2 viewSize{};
     math::Transform2D view{};
 

@@ -17,7 +17,7 @@ class PoissonDisk3D final {
         Box volume{};
         float minimumDistance = 1.0F;
         int attempts = 30;
-        std::function<bool(Vec3)> accept;
+        std::function<bool(Vec3)> accept{};
     };
 
     // Returns evenly spread random points of the box where no two points are closer than the minimum distance, and an empty list for an empty box or a distance that is not above 0. Throws `std::invalid_argument` when the distance or a side of the box is not finite, when the attempts are not between 1 and 1000, or when the distance is so small for the box that the sampling grid would need more than 16777216 cells.

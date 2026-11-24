@@ -172,7 +172,7 @@ class UiPlugin final : public Plugin {
 
     struct Mounted {
         std::shared_ptr<ui::Gui> gui;
-        std::weak_ptr<const core::Scene> scene;
+        std::weak_ptr<const core::Scene> scene{};
         bool scened = false;
         int layer = 0;
         std::uint64_t order = 0;
@@ -181,8 +181,8 @@ class UiPlugin final : public Plugin {
         const ui::Screen* screen = nullptr;
 
         // The GUI and the node of a region, and the place in the drawing order, which a GUI of a region takes from the GUI of its region.
-        std::weak_ptr<ui::Gui> host;
-        std::string hostNode;
+        std::weak_ptr<ui::Gui> host{};
+        std::string hostNode{};
         int drawLayer = 0;
         std::uint64_t drawOrder = 0;
     };

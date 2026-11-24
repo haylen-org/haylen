@@ -21,7 +21,7 @@ struct Gesture {
 
     Type type = Type::Tap;
     math::Vec2 position;
-    math::Vec2 delta;
+    math::Vec2 delta{};
     float scale = 1.0F;
     float rotation = 0.0F;
 

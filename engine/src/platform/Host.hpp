@@ -47,9 +47,9 @@ class Host : public Window {
 
     // What the platform reports of an output that `openOutput` opened: whether it ended and why, with a sentence for an output that the platform cannot show, and while it shows, the surface that the GPU device draws into, with the size of its drawable in pixels, and the pixels in a point of its display.
     struct OutputReport {
-        std::optional<Output::Ending> ending;
-        std::string reason;
-        std::optional<gpu::Surface> surface;
+        std::optional<Output::Ending> ending{};
+        std::string reason{};
+        std::optional<gpu::Surface> surface{};
         float scale = 1.0F;
     };
 

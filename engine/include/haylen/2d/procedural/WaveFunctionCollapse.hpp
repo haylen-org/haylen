@@ -64,7 +64,7 @@ class WaveFunctionCollapse final {
         int height = 32;
         bool periodic = false;
         int attempts = 10;
-        std::optional<spatial2d::CellGrid> fixed;
+        std::optional<spatial2d::CellGrid> fixed{};
     };
 
     // Returns the tile of every cell, or nothing when every attempt ran into a contradiction. Throws `std::invalid_argument` when the fixed grid does not match the size.

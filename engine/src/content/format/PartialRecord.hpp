@@ -21,8 +21,8 @@ class PartialRecord final {
     Digest shardId;
     std::uint64_t recordOffset = 0;
     std::uint64_t recordSize = 0;
-    std::string validator;
-    std::vector<std::uint8_t> bytes;
+    std::string validator{};
+    std::vector<std::uint8_t> bytes{};
 
     [[nodiscard]] std::vector<std::uint8_t> write() const;
 

@@ -50,7 +50,7 @@ class Path final {
     struct Fill {
         math::Color color = math::Color::white();
         FillRule rule = FillRule::NonZero;
-        graphics::Texture texture;
+        graphics::Texture texture{};
     };
 
     // The outlines of a path as lines: the points of each outline follow each other in `points`, `counts` holds how many each outline has, and `closed` whether it closes.

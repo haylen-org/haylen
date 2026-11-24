@@ -38,7 +38,7 @@ class FontFileTest : public ::testing::Test {
   protected:
     // The pixels that the rasterizer of HarfBuzz covers for a glyph, in rows from the top, with the place of its top left corner from the pen on the baseline.
     struct Coverage {
-        std::vector<std::uint8_t> pixels;
+        std::vector<std::uint8_t> pixels{};
         int width = 0;
         int height = 0;
         int x = 0;

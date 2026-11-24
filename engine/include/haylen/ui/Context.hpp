@@ -348,8 +348,8 @@ class Context final {
 
     // The transforms of the nodes being drawn, and of those among them that began drawing in the window that is current where the level starts.
     struct ReshapeLevel {
-        Reshape whole;
-        Reshape inWindow;
+        Reshape whole{};
+        Reshape inWindow{};
         ImGuiID window = 0;
     };
 

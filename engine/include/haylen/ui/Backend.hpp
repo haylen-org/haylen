@@ -66,10 +66,10 @@ class Backend final {
     // The TrueType or OpenType files of a UI font: its regular face, the bold, italic and bold italic faces it may add, left empty when it has none, and the fallback fonts that draw the characters its faces lack, in order.
     struct FontFiles {
         std::vector<std::uint8_t> regular;
-        std::vector<std::uint8_t> bold;
-        std::vector<std::uint8_t> italic;
-        std::vector<std::uint8_t> boldItalic;
-        std::vector<std::vector<std::uint8_t>> fallbacks;
+        std::vector<std::uint8_t> bold{};
+        std::vector<std::uint8_t> italic{};
+        std::vector<std::uint8_t> boldItalic{};
+        std::vector<std::vector<std::uint8_t>> fallbacks{};
     };
 
     Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, platform::System& hostSystem, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData);
@@ -282,10 +282,10 @@ class Backend final {
     // The faces of a UI font, without a font for a style it has no face for, and the files they and their fallbacks read.
     struct Typeface {
         Face regular;
-        Face bold;
-        Face italic;
-        Face boldItalic;
-        std::vector<const std::uint8_t*> files;
+        Face bold{};
+        Face italic{};
+        Face boldItalic{};
+        std::vector<const std::uint8_t*> files{};
     };
 
     // ImGui copies the data of a callback command into the draw list byte by byte, so a command carries the index of its function instead of the function.
@@ -431,7 +431,7 @@ class Backend final {
 
     // An area of a GUI that takes the pointer, in the window that its items hover in.
     struct PointerArea {
-        math::Rect area;
+        math::Rect area{};
         const void* gui = nullptr;
         ImGuiID window = 0;
     };

@@ -63,7 +63,7 @@ class TileLayer final {
   private:
     struct Chunk {
         std::vector<std::int32_t> cells;
-        std::vector<StaticSpriteBatch> batches;
+        std::vector<StaticSpriteBatch> batches{};
         std::size_t filled = 0;
         bool stale = true;
     };

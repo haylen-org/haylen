@@ -28,10 +28,10 @@ struct SpriteFrame {
     math::Vec2 originalSize{};
     float duration = 0.1F;
     std::uint32_t ticks = 0;
-    std::optional<math::Vec2> pivot;
-    std::vector<Box> boxes;
-    std::vector<Point> points;
-    std::vector<std::string> events;
+    std::optional<math::Vec2> pivot{};
+    std::vector<Box> boxes{};
+    std::vector<Point> points{};
+    std::vector<std::string> events{};
 
     [[nodiscard]] const Box* findBox(std::string_view name) const noexcept {
         for (const Box& box : boxes) {

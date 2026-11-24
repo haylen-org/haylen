@@ -19,8 +19,8 @@ class PoissonDisk2D final {
         float minimumDistance = 64.0F;
         float maximumDistance = 0.0F;
         int attempts = 30;
-        std::function<bool(Vec2)> accept;
-        std::function<float(Vec2)> distance;
+        std::function<bool(Vec2)> accept{};
+        std::function<float(Vec2)> distance{};
     };
 
     // Returns evenly spread random points where no two points are closer than the minimum distance. Throws `std::invalid_argument` when a distance or a result of the distance function is not finite, when a distance function comes with a maximum distance below the minimum, when the attempts are not between 1 and 1000, or when the minimum distance is so small for the area that the sampling grid would need more than 16777216 cells.

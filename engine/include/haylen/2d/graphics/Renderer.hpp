@@ -96,9 +96,9 @@ class Renderer final {
         // Canvases reach their destination by order, lowest first, and canvases with the same order in the order they began.
         int order = 0;
         std::uint32_t visibilityMask = 0xFFFFFFFFU;
-        std::optional<math::Color> ambientLight;
-        std::optional<PostProcess> postProcess;
-        std::optional<math::Color> clear;
+        std::optional<math::Color> ambientLight{};
+        std::optional<PostProcess> postProcess{};
+        std::optional<math::Color> clear{};
 
         // Shows the debug drawings of `haylen.debug` over the canvas when it finishes. A canvas of an interface, such as the one the UI draws in, turns them off, since its units are not the units of the worlds and sprites they outline.
         bool debugDrawings = true;
@@ -145,7 +145,7 @@ class Renderer final {
     struct Drawn {
         std::array<math::Vec2, 4> corners{};
         bool text = false;
-        std::string_view label;
+        std::string_view label{};
     };
 
     using DrawnVisitor = std::function<void(const Drawn& drawn)>;

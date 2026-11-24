@@ -40,19 +40,19 @@ struct Object {
     };
 
     std::uint32_t id = 0;
-    std::string name;
-    std::string type;
+    std::string name{};
+    std::string type{};
     math::Vec2 position{};
     math::Vec2 size{};
     float rotation = 0.0F;
     bool visible = true;
     float opacity = 1.0F;
     Shape shape = Shape::Rectangle;
-    std::vector<math::Vec2> points;
+    std::vector<math::Vec2> points{};
     std::uint32_t gid = 0;
-    Text text;
-    Properties properties;
-    std::string templatePath;
+    Text text{};
+    Properties properties{};
+    std::string templatePath{};
 
     [[nodiscard]] static std::string_view shapeName(Shape value) noexcept;
 };

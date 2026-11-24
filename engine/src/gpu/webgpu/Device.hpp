@@ -106,7 +106,7 @@ class Device final : public gpu::Device {
     struct ImageRecord {
         WGPUTexture texture = nullptr;
         WGPUTextureView sampled = nullptr;
-        std::vector<std::pair<std::uint32_t, WGPUTextureView>> attachments;
+        std::vector<std::pair<std::uint32_t, WGPUTextureView>> attachments{};
         TextureType type = TextureType::Flat;
         int width = 0;
         int height = 0;
@@ -172,7 +172,7 @@ class Device final : public gpu::Device {
         WGPURenderPipeline pipeline = nullptr;
         std::uint64_t program = 0;
         WGPUIndexFormat indexFormat = WGPUIndexFormat_Undefined;
-        std::optional<SwapchainPipeline> swapchain;
+        std::optional<SwapchainPipeline> swapchain{};
     };
 
     // The bytes of the uniform block at a bind slot in the uniform ring, which a slot the frame did not fill leaves empty.

@@ -10,7 +10,7 @@ namespace haylen::ui {
 // Text a component shows: a literal, or a localization key with arguments that is translated whenever it is drawn, so a language change shows at once.
 struct TextValue {
     std::string literal;
-    std::string key;
+    std::string key{};
     core::Json arguments = core::Json::object();
 
     // Reads text, a number or a translation such as `{key = 'menu.play'}`, naming the property as `context` in errors.

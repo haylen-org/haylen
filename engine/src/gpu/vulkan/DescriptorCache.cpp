@@ -68,7 +68,7 @@ VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkB
     std::array<VkWriteDescriptorSet, Device::kMaxBlocks> writes{};
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         infos[index] = {.buffer = buffer, .offset = 0, .range = blocks[index].size};
-        writes[index] = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .dstSet = set, .dstBinding = blocks[index].binding, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .pBufferInfo = &infos[index]};
+        writes[index] = {.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, .pNext = nullptr, .dstSet = set, .dstBinding = blocks[index].binding, .dstArrayElement = 0, .descriptorCount = 1, .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .pImageInfo = nullptr, .pBufferInfo = &infos[index], .pTexelBufferView = nullptr};
     }
 
     context.getFunctions().vkUpdateDescriptorSets(context.getDevice(), static_cast<std::uint32_t>(blocks.size()), writes.data(), 0, nullptr);
@@ -114,7 +114,7 @@ void DescriptorCache::trim(std::uint64_t completed) {
 
 // Freed sets go back to their pools, so every pool is tried before a new one is made.
 std::pair<VkDescriptorPool, VkDescriptorSet> DescriptorCache::allocate(VkDescriptorSetLayout layout) {
-    VkDescriptorSetAllocateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, .descriptorSetCount = 1, .pSetLayouts = &layout};
+    VkDescriptorSetAllocateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO, .pNext = nullptr, .descriptorPool = VK_NULL_HANDLE, .descriptorSetCount = 1, .pSetLayouts = &layout};
     VkDescriptorSet set = VK_NULL_HANDLE;
     for (auto pool = pools.rbegin(); pool != pools.rend(); ++pool) {
         info.descriptorPool = *pool;
@@ -140,7 +140,7 @@ VkDescriptorPool DescriptorCache::makePool() const {
         {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, .descriptorCount = kSetsPerPool * 4},
         {.type = VK_DESCRIPTOR_TYPE_SAMPLER, .descriptorCount = kSetsPerPool * 4},
     }};
-    const VkDescriptorPoolCreateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, .maxSets = kSetsPerPool, .poolSizeCount = static_cast<std::uint32_t>(sizes.size()), .pPoolSizes = sizes.data()};
+    const VkDescriptorPoolCreateInfo info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, .pNext = nullptr, .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT, .maxSets = kSetsPerPool, .poolSizeCount = static_cast<std::uint32_t>(sizes.size()), .pPoolSizes = sizes.data()};
     VkDescriptorPool pool = VK_NULL_HANDLE;
     Context::check(context.getFunctions().vkCreateDescriptorPool(context.getDevice(), &info, nullptr, &pool), "make a descriptor pool");
     return pool;

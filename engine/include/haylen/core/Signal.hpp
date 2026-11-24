@@ -29,7 +29,7 @@ template <typename... Args> class Signal final {
         bool once = false;
 
         // Disconnects the slot once the owner is destroyed, before it would be called again.
-        std::weak_ptr<const void> owner;
+        std::weak_ptr<const void> owner{};
 
         // Delivers every call through this queue at the end of the frame instead of during the emit, with copies of the arguments. The slot is skipped when it disconnects before the queue runs.
         FrameQueue* queue = nullptr;

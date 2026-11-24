@@ -17,7 +17,7 @@ void PreparedModules::prepare(std::span<const std::uint32_t> code) {
         return;
     }
 
-    const VkShaderModuleCreateInfo info{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .codeSize = code.size_bytes(), .pCode = code.data()};
+    const VkShaderModuleCreateInfo info{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .pNext = nullptr, .flags = 0, .codeSize = code.size_bytes(), .pCode = code.data()};
     VkShaderModule module = VK_NULL_HANDLE;
     if (context->getFunctions().vkCreateShaderModule(context->getDevice(), &info, nullptr, &module) == VK_SUCCESS) {
         modules.emplace_back(std::vector<std::uint32_t>(code.begin(), code.end()), module);

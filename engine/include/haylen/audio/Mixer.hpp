@@ -80,7 +80,7 @@ class Mixer final {
         std::size_t maxVoices = 128;
         Session session{};
         OutputSettings::Latency latency = OutputSettings::Latency::Balanced;
-        std::shared_ptr<port::AudioOutput> output;
+        std::shared_ptr<port::AudioOutput> output{};
     };
 
     // A looping voice repeats the part of its sound between the loop start and the loop end in seconds, the whole sound by default, after it played from its start to the loop end once. A pitch variation picks the pitch of each play at random within pitch plus or minus the variation, so repeated sounds never sound exactly alike. The process mode decides whether the voice plays while the engine is paused, where `Inherit` takes the mode of its bus, and the effects process the voice in order before its bus. When every voice plays, a new one stops the voice of the lowest priority, the quietest among them and then the oldest.
@@ -93,12 +93,12 @@ class Mixer final {
         bool loop = false;
         float fadeIn = 0.0F;
         float startAt = 0.0F;
-        std::optional<math::Vec2> position;
+        std::optional<math::Vec2> position{};
         core::ProcessMode processMode = core::ProcessMode::Inherit;
-        std::vector<std::shared_ptr<Effect>> effects;
+        std::vector<std::shared_ptr<Effect>> effects{};
         std::uint8_t priority = kDefaultPriority;
         float loopStart = 0.0F;
-        std::optional<float> loopEnd;
+        std::optional<float> loopEnd{};
     };
 
     // The voices that one sound may play at once and the seconds of app time between two plays of it. A play beyond the voices stops the oldest or the quietest voice of the sound, or starts nothing with `Steal::None`, and a play within the cooldown starts nothing, returning the id of a voice that already finished.
@@ -128,7 +128,7 @@ class Mixer final {
         bool loop = true;
         float startAt = 0.0F;
         float loopStart = 0.0F;
-        std::optional<float> loopEnd;
+        std::optional<float> loopEnd{};
     };
 
     // How positional voices fade, pan and shift in pitch with their place relative to the listener. The fade models are those of OpenAL between the minimum and the maximum distance: linear reaches silence at the maximum distance with a rolloff of 1, inverse and exponential keep fading more slowly and stop at the maximum distance. A voice pans by its horizontal offset over the pan distance, and a Doppler factor above 0 shifts the pitch of voices that move toward or away from the listener, with the speed of sound in world units per second.

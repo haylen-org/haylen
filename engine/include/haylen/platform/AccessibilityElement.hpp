@@ -64,11 +64,11 @@ struct AccessibilityElement {
     std::uint64_t parent = 0;
 
     // The part of the element that shows on the screen, in framebuffer pixels from the top left corner.
-    math::Rect bounds;
+    math::Rect bounds{};
     Role role = Role::Group;
     std::string label;
-    std::string value;
-    std::string hint;
+    std::string value{};
+    std::string hint{};
     std::uint8_t states = 0;
     std::uint8_t actions = 0;
 

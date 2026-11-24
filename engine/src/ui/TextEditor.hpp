@@ -38,7 +38,7 @@ class TextEditor final {
     };
 
     struct Options {
-        std::string_view placeholder;
+        std::string_view placeholder{};
         platform::TextInput::Options input;
         bool focus = false;
         float reserveStart = 0.0F;
@@ -79,7 +79,7 @@ class TextEditor final {
         int anchor = -1;
 
         // Where a finger tapped the field that the tap began to edit, which places the caret once the field edits.
-        std::optional<math::Vec2> tap;
+        std::optional<math::Vec2> tap{};
     };
 
     // Where the parts of a field lie inside its bounds: the frame of its surface and the area of its scroll bar inside it, the box of the ImGui field, which leaves the lane of the bar, the area its text lays out in, and the padding and the font size of the ImGui field.

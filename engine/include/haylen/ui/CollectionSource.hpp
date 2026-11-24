@@ -36,7 +36,7 @@ class CollectionSource {
         std::size_t target = 0;
 
         // For a replacement, the index before of every item now, or `kNew`, valid while the change is reported.
-        std::span<const std::size_t> previous;
+        std::span<const std::size_t> previous{};
     };
 
     CollectionSource() = default;

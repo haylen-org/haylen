@@ -25,8 +25,8 @@ struct Raycaster::Gather {
     float length = 0.0F;
     bool closest = true;
     bool skipOverlap = true;
-    std::optional<RaycastHit> best;
-    std::vector<RaycastHit> hits;
+    std::optional<RaycastHit> best{};
+    std::vector<RaycastHit> hits{};
 
     // Box2D prefilters by category and mask, unless a group asks for the full rule, which `report` applies itself.
     [[nodiscard]] b2QueryFilter getQueryFilter() const noexcept {

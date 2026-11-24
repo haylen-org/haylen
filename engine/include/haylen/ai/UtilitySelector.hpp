@@ -19,7 +19,7 @@ class UtilitySelector final {
   public:
     // The input is mapped from `minimum` and `maximum` to 0 and 1 before the curve.
     struct Consideration {
-        std::string name;
+        std::string name{};
         std::function<float()> input;
         float minimum = 0.0F;
         float maximum = 1.0F;
@@ -27,7 +27,7 @@ class UtilitySelector final {
     };
 
     struct Option {
-        std::string name;
+        std::string name{};
         std::vector<Consideration> considerations;
         float weight = 1.0F;
     };

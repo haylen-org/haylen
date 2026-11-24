@@ -25,8 +25,8 @@ class ContentServer final {
   public:
     struct Exchange {
         std::string path;
-        std::optional<std::uint64_t> first;
-        std::optional<std::uint64_t> last;
+        std::optional<std::uint64_t> first{};
+        std::optional<std::uint64_t> last{};
         int status = 0;
         std::uint64_t bytes = 0;
     };

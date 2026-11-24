@@ -55,7 +55,7 @@ struct Light {
     // Turns the texture of point lights and points spot and directional lights, where 0 points right and a quarter turn points down.
     float rotation = 0.0F;
     math::Vec2 scale{1.0F, 1.0F};
-    graphics::Texture texture;
+    graphics::Texture texture{};
 
     // Full angles of the cone of spot lights, which shine fully inside the inner angle and fade out at the outer angle.
     float innerAngle = 0.5F;

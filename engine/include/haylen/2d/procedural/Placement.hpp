@@ -33,7 +33,7 @@ class Placement final {
         math::Vec2 center{};
         float radius = 0.0F;
         math::Vec2 size{};
-        std::vector<math::Vec2> points;
+        std::vector<math::Vec2> points{};
         float rotation = 0.0F;
     };
 
@@ -55,8 +55,8 @@ class Placement final {
     // The footprint of every entity lies inside the area, and `attempts` random positions are tried for each entity before it is left out.
     struct Options {
         math::Rect area{};
-        std::vector<Kind> kinds;
-        std::vector<Shape> forbidden;
+        std::vector<Kind> kinds{};
+        std::vector<Shape> forbidden{};
         Order order = Order::Shuffled;
         int attempts = 30;
     };

@@ -18,7 +18,7 @@ void Swapchain::attach(const Context& owner, std::size_t frames) {
     context = &owner;
     depthFormat = owner.getDepthStencilFormat();
 
-    const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
     acquired.resize(frames, VK_NULL_HANDLE);
     for (VkSemaphore& semaphore : acquired) {
         Context::check(owner.getFunctions().vkCreateSemaphore(owner.getDevice(), &semaphoreInfo, nullptr, &semaphore), "make a semaphore of the swapchain");
@@ -214,6 +214,8 @@ bool Swapchain::configure(const Settings& settings) {
     const VkSwapchainKHR old = handle;
     const VkSwapchainCreateInfoKHR info{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .pNext = nullptr,
+        .flags = 0,
         .surface = surface,
         .minImageCount = imageCount,
         .imageFormat = format,
@@ -222,6 +224,8 @@ bool Swapchain::configure(const Settings& settings) {
         .imageArrayLayers = 1,
         .imageUsage = usage,
         .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
         .preTransform = transform,
         .compositeAlpha = alpha,
         .presentMode = presentMode,
@@ -253,7 +257,7 @@ bool Swapchain::configure(const Settings& settings) {
     Context::check(vk.vkGetSwapchainImagesKHR(context->getDevice(), handle, &count, made.data()), "read the images of the swapchain");
 
     images.resize(count);
-    const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
     for (std::uint32_t index = 0; index < count; ++index) {
         images[index].image = made[index];
         images[index].view = makeView(made[index], format);
@@ -292,17 +296,17 @@ bool Swapchain::canScale(const VkSurfaceCapabilitiesKHR& capabilities) const {
 
 void Swapchain::recordScale(VkCommandBuffer commands, std::uint32_t index) const {
     const VolkDeviceTable& vk = context->getFunctions();
-    const VkImageSubresourceRange range{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1};
+    const VkImageSubresourceRange range{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
     const VkImage source = drawables[index].image;
     const VkImage target = images[index].image;
 
     const std::array<VkImageMemoryBarrier, 2> toCopy{{
-        {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = source, .subresourceRange = range},
-        {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = target, .subresourceRange = range},
+        {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = source, .subresourceRange = range},
+        {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = 0, .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED, .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = target, .subresourceRange = range},
     }};
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(toCopy.size()), toCopy.data());
 
-    const VkImageSubresourceLayers layers{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .layerCount = 1};
+    const VkImageSubresourceLayers layers{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1};
     const VkImageBlit region{
         .srcSubresource = layers,
         .srcOffsets = {{0, 0, 0}, {static_cast<std::int32_t>(extent.width), static_cast<std::int32_t>(extent.height), 1}},
@@ -311,7 +315,7 @@ void Swapchain::recordScale(VkCommandBuffer commands, std::uint32_t index) const
     };
     vk.vkCmdBlitImage(commands, source, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, target, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_LINEAR);
 
-    const VkImageMemoryBarrier toPresent{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = target, .subresourceRange = range};
+    const VkImageMemoryBarrier toPresent{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .pNext = nullptr, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = target, .subresourceRange = range};
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &toPresent);
 }
 
@@ -320,7 +324,7 @@ VkResult Swapchain::acquire(std::size_t frame, std::uint64_t timeout, std::uint3
 }
 
 VkResult Swapchain::present(std::uint32_t index) const {
-    const VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .waitSemaphoreCount = 1, .pWaitSemaphores = &images[index].finished, .swapchainCount = 1, .pSwapchains = &handle, .pImageIndices = &index};
+    const VkPresentInfoKHR info{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR, .pNext = nullptr, .waitSemaphoreCount = 1, .pWaitSemaphores = &images[index].finished, .swapchainCount = 1, .pSwapchains = &handle, .pImageIndices = &index, .pResults = nullptr};
     return context->getFunctions().vkQueuePresentKHR(context->getQueue(), &info);
 }
 
@@ -344,7 +348,7 @@ std::vector<VkImageView> Swapchain::getViews() const {
 }
 
 VkImageView Swapchain::makeView(VkImage image, VkFormat viewFormat) const {
-    const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .image = image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = viewFormat, .subresourceRange = {.aspectMask = Conversions::getAspects(viewFormat), .levelCount = 1, .layerCount = 1}};
+    const VkImageViewCreateInfo info{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, .pNext = nullptr, .flags = 0, .image = image, .viewType = VK_IMAGE_VIEW_TYPE_2D, .format = viewFormat, .components = {}, .subresourceRange = {.aspectMask = Conversions::getAspects(viewFormat), .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1}};
     VkImageView view = VK_NULL_HANDLE;
     Context::check(context->getFunctions().vkCreateImageView(context->getDevice(), &info, nullptr, &view), "make a view of the swapchain");
     return view;
@@ -354,6 +358,8 @@ VkImageView Swapchain::makeView(VkImage image, VkFormat viewFormat) const {
 Swapchain::Attachment Swapchain::makeAttachment(VkFormat attachmentFormat, VkImageUsageFlags usage) const {
     const VkImageCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = attachmentFormat,
         .extent = {extent.width, extent.height, 1},
@@ -363,10 +369,12 @@ Swapchain::Attachment Swapchain::makeAttachment(VkFormat attachmentFormat, VkIma
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = usage | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
     Attachment made;
-    VmaAllocationCreateInfo memory{.usage = VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED};
+    VmaAllocationCreateInfo memory{.flags = 0, .usage = VMA_MEMORY_USAGE_GPU_LAZILY_ALLOCATED, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     if (vmaCreateImage(context->getAllocator(), &info, &memory, &made.image, &made.allocation, nullptr) != VK_SUCCESS) {
         memory.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
         Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &made.image, &made.allocation, nullptr), "make an attachment of the swapchain");
@@ -380,6 +388,8 @@ Swapchain::Attachment Swapchain::makeAttachment(VkFormat attachmentFormat, VkIma
 Swapchain::Attachment Swapchain::makeDrawable() const {
     const VkImageCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = format,
         .extent = {extent.width, extent.height, 1},
@@ -389,10 +399,12 @@ Swapchain::Attachment Swapchain::makeDrawable() const {
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
     Attachment made;
-    const VmaAllocationCreateInfo memory{.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE};
+    const VmaAllocationCreateInfo memory{.flags = 0, .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE, .requiredFlags = 0, .preferredFlags = 0, .memoryTypeBits = 0, .pool = VK_NULL_HANDLE, .pUserData = nullptr, .priority = 0.0F, .minAlignment = 0};
     Context::check(vmaCreateImage(context->getAllocator(), &info, &memory, &made.image, &made.allocation, nullptr), "make a drawable of the swapchain");
     made.view = makeView(made.image, format);
     context->setName(VK_OBJECT_TYPE_IMAGE, made.image, "haylen-swapchain-drawable");

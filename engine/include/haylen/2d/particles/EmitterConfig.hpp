@@ -157,7 +157,7 @@ struct EmitterConfig {
             Alive,
         };
 
-        std::shared_ptr<EmitterConfig> config;
+        std::shared_ptr<EmitterConfig> config{};
         Trigger trigger = Trigger::Death;
         CountRange count{1, 1};
         float rate = 10.0F;
@@ -202,18 +202,18 @@ struct EmitterConfig {
         float widthStart = 6.0F;
         float widthEnd = 0.0F;
         std::vector<math::Color> colors{math::Color::white(), math::Color::transparent()};
-        graphics::Texture texture;
+        graphics::Texture texture{};
     };
 
     graphics::Texture texture;
-    std::vector<math::Rect> frames;
+    std::vector<math::Rect> frames{};
     FrameGrid frameGrid{};
     FrameMode frameMode = FrameMode::OverLife;
     float frameRate = 10.0F;
 
     float rate = 20.0F;
     float rateOverDistance = 0.0F;
-    std::vector<Burst> bursts;
+    std::vector<Burst> bursts{};
     float delay = 0.0F;
     float duration = 0.0F;
     bool loop = false;
@@ -224,7 +224,7 @@ struct EmitterConfig {
     math::FloatRange speed{50.0F, 100.0F};
 
     // Eases the speed from its full value at birth to 0 at the end of the life, as `sizeCurve` eases the size, and `spinCurve` does the same for the spin. Without a curve both stay as they are.
-    std::optional<math::EasingCurve> speedCurve;
+    std::optional<math::EasingCurve> speedCurve{};
     float direction = -1.5707964F;
     DirectionMode directionMode = DirectionMode::Fixed;
     float spread = 0.5F;
@@ -234,14 +234,14 @@ struct EmitterConfig {
     math::FloatRange tangentialAcceleration{};
     float damping = 0.0F;
     Turbulence turbulence{};
-    std::vector<Attractor> attractors;
+    std::vector<Attractor> attractors{};
     Collision collision{};
-    std::optional<math::Rect> bounds;
+    std::optional<math::Rect> bounds{};
     BoundsMode boundsMode = BoundsMode::Kill;
 
     math::FloatRange startSize{16.0F, 16.0F};
     math::FloatRange endSize{16.0F, 16.0F};
-    std::optional<math::FloatRange> endSizeScale;
+    std::optional<math::FloatRange> endSizeScale{};
     math::EasingCurve sizeCurve{math::Easing::Type::Linear};
     math::FloatRange aspect{1.0F, 1.0F};
     float stretch = 0.0F;
@@ -250,30 +250,30 @@ struct EmitterConfig {
     float tilt = 0.0F;
     bool alignToVelocity = false;
     math::FloatRange spin{};
-    std::optional<math::EasingCurve> spinCurve;
+    std::optional<math::EasingCurve> spinCurve{};
 
     std::vector<math::Color> colors{math::Color::white()};
-    std::vector<float> colorTimes;
+    std::vector<float> colorTimes{};
     ColorBlend colorBlend = ColorBlend::Smooth;
-    std::vector<math::Color> tints;
+    std::vector<math::Color> tints{};
     TintMode tintMode = TintMode::Random;
 
     Shape shape = Shape::Point;
     math::Vec2 shapeSize{};
     float shapeAngle = 0.0F;
     math::FloatRange shapeArc{0.0F, 6.2831855F};
-    std::vector<math::Vec2> shapePoints;
+    std::vector<math::Vec2> shapePoints{};
     float shapeThickness = 0.0F;
-    std::shared_ptr<ImageShape> shapeImage;
+    std::shared_ptr<ImageShape> shapeImage{};
     bool colorFromImage = false;
 
     bool localSpace = false;
     float pixelSnap = 0.0F;
     ParticleOrder particleOrder = ParticleOrder::OldestFirst;
-    std::vector<SubEmitter> subEmitters;
+    std::vector<SubEmitter> subEmitters{};
     ParticleTrail trail{};
-    std::optional<Light> light;
-    std::optional<ParticleLights> particleLights;
+    std::optional<Light> light{};
+    std::optional<ParticleLights> particleLights{};
     graphics2d::DrawOrder order{};
 
     // Every enum has one table of its names, which effect files and Lua read and write through `fromName` and `nameOf`.

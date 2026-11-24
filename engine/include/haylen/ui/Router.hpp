@@ -49,34 +49,34 @@ class Router final : public std::enable_shared_from_this<Router> {
         std::string path;
 
         // The query parameters the route reads, which a link may leave out.
-        std::vector<std::pair<std::string, Type>> query;
+        std::vector<std::pair<std::string, Type>> query{};
 
         // The tab the route shows in, when the router has tabs. Without one, it shows in the tab of its nearest parent that names one, or in the selected tab.
-        std::string tab;
+        std::string tab{};
 
         // The route whose screens lie under the screen of this one, made from the same parameters.
-        std::string parent;
+        std::string parent{};
 
         // Shows the screen as the detail of the split that the screen under it holds.
         bool detail = false;
 
         // Presents the screen over everything with these options instead of showing it in a stack.
-        std::optional<Presentation::Options> presentation;
+        std::optional<Presentation::Options> presentation{};
 
         // Makes the screen of the route from its parameters. A route without one only selects its tab and shows the root of the tab.
-        Factory screen;
+        Factory screen{};
     };
 
     struct Options {
         std::vector<Route> routes;
 
         // Where the routes show their screens: the stacks of the tabs, or one stack.
-        std::shared_ptr<NavigationTabs> tabs;
-        std::shared_ptr<NavigationStack> stack;
+        std::shared_ptr<NavigationTabs> tabs{};
+        std::shared_ptr<NavigationStack> stack{};
 
         // The schemes of the links of the app, such as `music`, whose host is the first segment of their path, and the hosts of its web links, such as `music.example.com`. A link of another scheme or host matches no route.
-        std::vector<std::string> schemes;
-        std::vector<std::string> hosts;
+        std::vector<std::string> schemes{};
+        std::vector<std::string> hosts{};
 
         // Whether the router opens the links that open the app or arrive while it runs, which `linkOpened` reports.
         bool links = true;

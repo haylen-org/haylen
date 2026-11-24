@@ -21,8 +21,8 @@ class CameraRig final {
         math::Rect area{};
 
         // The limits of the camera inside the zone, its area when absent.
-        std::optional<math::Rect> limits;
-        std::optional<math::Vec2> zoom;
+        std::optional<math::Rect> limits{};
+        std::optional<math::Vec2> zoom{};
         math::Vec2 offset{};
 
         // A zone of higher priority wins where zones overlap, and between equal ones the zone the target is in already stays.
@@ -31,7 +31,7 @@ class CameraRig final {
 
     // The limits and zoom the camera has outside every zone, and the seconds it takes to ease into a zone.
     struct Options {
-        std::optional<math::Rect> limits;
+        std::optional<math::Rect> limits{};
         math::Vec2 zoom{1.0F, 1.0F};
         float blendTime = 0.5F;
     };
@@ -65,7 +65,7 @@ class CameraRig final {
   private:
     // What the camera holds in a zone or outside every zone.
     struct Framing {
-        std::optional<math::Rect> limits;
+        std::optional<math::Rect> limits{};
         math::Vec2 zoom{1.0F, 1.0F};
         math::Vec2 offset{};
     };

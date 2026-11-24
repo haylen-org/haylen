@@ -22,8 +22,8 @@ class NumberFormat final {
     // Fraction digits default to 0 to 3 for decimals, 0 for percentages, the digits of the currency for amounts and one decimal for compact numbers below ten.
     struct Options {
         Style style = Style::Decimal;
-        std::optional<int> minimumFractionDigits;
-        std::optional<int> maximumFractionDigits;
+        std::optional<int> minimumFractionDigits{};
+        std::optional<int> maximumFractionDigits{};
         std::string currency = "USD";
         bool grouping = true;
     };

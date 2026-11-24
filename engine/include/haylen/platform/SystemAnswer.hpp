@@ -32,8 +32,8 @@ struct SystemAnswer {
     };
 
     State state = State::Unsupported;
-    std::vector<Requirement> missing;
-    std::string message;
+    std::vector<Requirement> missing{};
+    std::string message{};
 
     // Reads the JSON object `{state, missing, message}` that native code answers with, where `missing` lists `{kind, name, file, snippet}`.
     [[nodiscard]] static SystemAnswer fromJson(const core::Json& value);

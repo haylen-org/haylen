@@ -25,7 +25,7 @@ namespace haylen::core {
 class JobSystem final {
   public:
     template <typename T> struct Result {
-        std::optional<T> value;
+        std::optional<T> value{};
         std::string error;
 
         [[nodiscard]] bool isOk() const noexcept {

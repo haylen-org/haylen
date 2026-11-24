@@ -48,7 +48,7 @@ class ActionMap final {
         float direction = 1.0F;
         bool rightStick = false;
         bool tiltY = false;
-        std::string name;
+        std::string name{};
 
         [[nodiscard]] static std::optional<Binding> parse(std::string_view text);
         [[nodiscard]] std::string toString() const;
@@ -65,13 +65,13 @@ class ActionMap final {
 
         std::string name;
         Type type = Type::Button;
-        std::vector<Binding> bindings;
-        std::vector<Binding> positive;
-        std::vector<Binding> negative;
-        std::vector<Binding> up;
-        std::vector<Binding> down;
-        std::vector<Binding> left;
-        std::vector<Binding> right;
+        std::vector<Binding> bindings{};
+        std::vector<Binding> positive{};
+        std::vector<Binding> negative{};
+        std::vector<Binding> up{};
+        std::vector<Binding> down{};
+        std::vector<Binding> left{};
+        std::vector<Binding> right{};
         float buffer = 0.0F;
 
         [[nodiscard]] static Action fromJson(const core::Json& json);
@@ -98,7 +98,7 @@ class ActionMap final {
         Gamepads gamepads = Gamepads::Every;
         std::size_t gamepad = 0;
         bool virtualControls = true;
-        std::string virtualPrefix;
+        std::string virtualPrefix{};
 
         [[nodiscard]] bool operator==(const Devices&) const = default;
     };
@@ -106,10 +106,10 @@ class ActionMap final {
     // The keys, gamepad buttons and gamepad axes the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open and the directions while a control has the focus. The buttons and axes are those of the gamepads the UI reads, so the press of a player whose gamepad the UI does not hear stays with the map of that player.
     struct Capture {
         bool keyboard = false;
-        std::bitset<Controls::kKeyCount> keys;
-        std::bitset<Controls::kGamepadButtonCount> buttons;
-        std::bitset<Controls::kGamepadAxisCount> axes;
-        std::bitset<Input::kMaxGamepads> gamepads;
+        std::bitset<Controls::kKeyCount> keys{};
+        std::bitset<Controls::kGamepadButtonCount> buttons{};
+        std::bitset<Controls::kGamepadAxisCount> axes{};
+        std::bitset<Input::kMaxGamepads> gamepads{};
     };
 
     void load(const core::Json& document);

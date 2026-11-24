@@ -20,7 +20,7 @@ class GridSearch final {
         bool smooth = false;
 
         // Estimates the distance left, Octile with diagonal steps and Manhattan without them when unset. Hexagonal grids count hex steps and take none.
-        std::optional<Grid::Heuristic> heuristic;
+        std::optional<Grid::Heuristic> heuristic{};
 
         // Values above 1 trade length for speed, finding paths that cost at most `weight` times the cheapest one.
         float weight = 1.0F;

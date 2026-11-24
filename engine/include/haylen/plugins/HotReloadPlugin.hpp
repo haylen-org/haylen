@@ -55,11 +55,11 @@ class HotReloadPlugin final : public Plugin {
 
     // What one batch of changes did, for the log, the page and the development server, with every changed file. The restored modules are those whose file holds again the code that runs, after a reload of it failed.
     struct Report {
-        std::vector<File> files;
-        std::vector<std::string> modules;
-        std::vector<std::string> restored;
-        std::vector<std::string> assets;
-        std::vector<Rejection> rejected;
+        std::vector<File> files{};
+        std::vector<std::string> modules{};
+        std::vector<std::string> restored{};
+        std::vector<std::string> assets{};
+        std::vector<Rejection> rejected{};
         bool resumed = false;
         bool restarted = false;
         std::string reason;

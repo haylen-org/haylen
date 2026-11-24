@@ -22,12 +22,12 @@ class FontFamily final {
   public:
     struct Faces {
         std::shared_ptr<Font> regular;
-        std::shared_ptr<Font> bold;
-        std::shared_ptr<Font> italic;
-        std::shared_ptr<Font> boldItalic;
-        std::shared_ptr<Font> mono;
-        std::vector<std::shared_ptr<Font>> fallbacks;
-        std::shared_ptr<SystemFonts> systemFonts;
+        std::shared_ptr<Font> bold{};
+        std::shared_ptr<Font> italic{};
+        std::shared_ptr<Font> boldItalic{};
+        std::shared_ptr<Font> mono{};
+        std::vector<std::shared_ptr<Font>> fallbacks{};
+        std::shared_ptr<SystemFonts> systemFonts{};
     };
 
     // The face that draws a style, the styles it must synthesize because the family lacks the real face, and whether a font of the system that draws the character is still to come.

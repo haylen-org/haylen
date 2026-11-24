@@ -32,8 +32,8 @@ class ModuleReloader final {
     // A failed module changed nothing and carries its error, and a module that cannot reload in place carries the reason the app restarts instead.
     struct Result {
         Status status = Status::Unchanged;
-        std::optional<haylen::core::AppError> error;
-        std::string reason;
+        std::optional<haylen::core::AppError> error{};
+        std::string reason{};
     };
 
     ModuleReloader(lua_State* L, ModuleGraph& modules, const haylen::io::Package& source);

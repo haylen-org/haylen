@@ -22,7 +22,7 @@ class Events final {
     // What the translation reads from the window and the keyboard: the framebuffer pixels per unit of the coordinates of the window, the size of the framebuffer, which the positions of fingers are fractions of, and the modifier keys held, which only the events of keys carry.
     struct Context {
         float density = 1.0F;
-        math::Vec2 framebuffer;
+        math::Vec2 framebuffer{};
         SDL_Keymod modifiers = SDL_KMOD_NONE;
     };
 

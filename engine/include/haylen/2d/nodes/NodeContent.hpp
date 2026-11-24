@@ -26,15 +26,15 @@ namespace haylen::nodes2d {
 struct NodeContent {
     // A block of text in a font, the default font of the engine when the font is empty.
     struct Text {
-        std::shared_ptr<text::Font> font;
-        std::string content;
-        text::Style style;
-        graphics2d::DrawOrder order;
+        std::shared_ptr<text::Font> font{};
+        std::string content{};
+        text::Style style{};
+        graphics2d::DrawOrder order{};
     };
 
     // A nine-slice frame of a size around its pivot.
     struct Frame {
-        graphics2d::NineSlice slice;
+        graphics2d::NineSlice slice{};
         math::Vec2 size{};
         math::Vec2 pivot{0.5F, 0.5F};
         math::Color color = math::Color::white();
@@ -47,7 +47,7 @@ struct NodeContent {
     Value value;
 
     // The package path of the font of text or of the effect file of particles, which saving writes, empty for the default font and for particles made in code.
-    std::string path;
+    std::string path{};
 
     [[nodiscard]] bool isEmpty() const noexcept {
         return std::holds_alternative<std::monostate>(value);

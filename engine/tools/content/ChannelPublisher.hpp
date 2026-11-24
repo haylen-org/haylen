@@ -32,16 +32,16 @@ class ChannelPublisher final {
         std::uint64_t shardTarget = ContentBuilder::kDefaultShardTarget;
 
         // The sections of `haylen.json` that the application of the app reads itself, such as the `lua` section of a Lua app.
-        std::span<const std::string_view> sections;
+        std::span<const std::string_view> sections{};
 
         // The release that ships with the app, whose shards the first generation of a channel keeps and publishes, so an app that holds them downloads only what changed. Empty for none.
-        std::filesystem::path release;
+        std::filesystem::path release{};
     };
 
     struct Publication {
         std::uint64_t generation = 0;
-        Digest manifest;
-        std::vector<ShardReference> newPacks;
+        Digest manifest{};
+        std::vector<ShardReference> newPacks{};
         ContentBuilder::Statistics statistics;
     };
 

@@ -23,7 +23,7 @@ class DateFormat final {
     struct Options {
         std::optional<Style> date = Style::Medium;
         bool time = false;
-        std::optional<int> timeZoneOffset;
+        std::optional<int> timeZoneOffset{};
     };
 
     // The fields of a moment in a time zone, with the month from 1 and the day of the week from 0 for Sunday.

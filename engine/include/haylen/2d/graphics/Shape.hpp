@@ -36,7 +36,7 @@ struct Shape {
     math::Color color = math::Color::white();
 
     // An image stretched over the bounds under the fill color, such as a portrait in a circle or a gradient, white when empty.
-    graphics::Texture texture;
+    graphics::Texture texture{};
 
     // The border runs inside the edge, at most half the shorter side wide, over the fill.
     float borderWidth = 0.0F;

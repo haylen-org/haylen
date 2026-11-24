@@ -47,7 +47,7 @@ class Body final {
         float continuousThreshold = 0.5F;
         bool fastRotation = false;
         bool sleepEnabled = true;
-        std::optional<float> sleepThreshold;
+        std::optional<float> sleepThreshold{};
     };
 
     // The mass in kilograms, the center of mass in the space of the body and the rotational inertia around that center in kilograms times squared world units.

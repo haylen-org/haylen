@@ -24,15 +24,15 @@ class StoreState final {
     std::uint64_t appBuild = 0;
 
     // The active and the previous content manifest, zero for the content that ships with the app.
-    Digest active;
-    Digest previous;
+    Digest active{};
+    Digest previous{};
 
     // The content manifest that an install is bringing, zero for none, whose records stay through restarts until the install commits or another update replaces it.
-    Digest pending;
+    Digest pending{};
 
-    std::string channel;
+    std::string channel{};
     std::uint64_t acceptedGeneration = 0;
-    Digest acceptedManifest;
+    Digest acceptedManifest{};
 
     std::uint64_t journal = 0;
     std::uint64_t sequence = 0;

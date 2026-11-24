@@ -57,7 +57,7 @@ class Breakpoints final {
         int id = 0;
         int line = 0;
         bool verified = false;
-        std::string message;
+        std::string message{};
     };
 
     // The breakpoints of one file by their line.

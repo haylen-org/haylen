@@ -18,7 +18,7 @@ class CollectionLayout {
         std::size_t lanes = 1;
 
         // The lanes each item spans, where zero spans the whole line. An empty list spans one lane with every item.
-        std::span<const std::uint16_t> spans;
+        std::span<const std::uint16_t> spans{};
     };
 
     struct Slot {

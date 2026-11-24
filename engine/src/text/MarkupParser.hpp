@@ -64,9 +64,9 @@ class MarkupParser final {
         std::size_t offset = 0;
         RichTextDocument::Style style;
         std::optional<std::size_t> styleIndex;
-        std::optional<std::size_t> link;
+        std::optional<std::size_t> link{};
         bool captures = false;
-        std::string captured;
+        std::string captured{};
     };
 
     // A byte offset of the markup with its line and column, both counted from one.

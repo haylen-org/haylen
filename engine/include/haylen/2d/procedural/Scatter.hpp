@@ -42,11 +42,11 @@ class Scatter final {
         float maximumSpacing = 0.0F;
         float jitter = 1.0F;
         int attempts = 30;
-        std::function<float(math::Vec2)> densityMap;
-        std::vector<Region> exclusions;
-        std::vector<float> weights;
-        std::function<float(math::Vec2)> biome;
-        std::vector<Layer> layers;
+        std::function<float(math::Vec2)> densityMap{};
+        std::vector<Region> exclusions{};
+        std::vector<float> weights{};
+        std::function<float(math::Vec2)> biome{};
+        std::vector<Layer> layers{};
     };
 
     struct Point {

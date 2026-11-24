@@ -41,7 +41,7 @@ class ForceField final {
         math::Vec2 position{};
         float radius = 0.0F;
         math::Vec2 size{};
-        std::vector<math::Vec2> points;
+        std::vector<math::Vec2> points{};
         float strength = 0.0F;
         math::Vec2 direction{1.0F, 0.0F};
         Falloff falloff = Falloff::None;

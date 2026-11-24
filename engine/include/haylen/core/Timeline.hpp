@@ -62,8 +62,8 @@ class Timeline final : public Tween {
     friend class Tween;
 
     struct Child {
-        std::shared_ptr<Tween> tween;
-        std::function<void()> call;
+        std::shared_ptr<Tween> tween{};
+        std::function<void()> call{};
         float start = 0.0F;
         int step = -1;
         bool removed = false;

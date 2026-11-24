@@ -128,7 +128,7 @@ class Device final : public gpu::Device {
 
     struct PipelineRecord {
         std::shared_ptr<ShaderProgram> shader;
-        std::unique_ptr<VertexArray> vertexArray;
+        std::unique_ptr<VertexArray> vertexArray{};
         StateCache::Raster raster;
         Gl::Enum primitive = Gl::kTriangles;
         bool indexed = false;
@@ -157,8 +157,8 @@ class Device final : public gpu::Device {
     struct Drawable {
         GlContext* context = nullptr;
         Surface::Size size;
-        std::optional<Surface::Size> nextSize;
-        std::unique_ptr<ScaledDrawable> scaled;
+        std::optional<Surface::Size> nextSize{};
+        std::unique_ptr<ScaledDrawable> scaled{};
         bool drawn = false;
         bool presented = false;
     };

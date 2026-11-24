@@ -18,7 +18,7 @@ class StoreEntry final {
     using Bytes = std::array<std::uint8_t, kSize>;
 
     Digest storedId;
-    Digest keyId;
+    Digest keyId{};
     std::uint32_t segment = 0;
     std::uint64_t offset = 0;
     std::uint64_t size = 0;

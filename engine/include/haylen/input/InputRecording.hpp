@@ -19,11 +19,11 @@ class InputRecording final {
     static constexpr std::uint32_t kMaxSteps = 1U << 26U;
 
     struct Header {
-        std::vector<std::string> buttons;
+        std::vector<std::string> buttons{};
         std::size_t players = 1;
-        std::string identifier;
+        std::string identifier{};
         double fixedRate = 60.0;
-        std::string data;
+        std::string data{};
     };
 
     // Throws `std::invalid_argument` for a header without buttons or players, with more than the bounds above, or with a name longer than `kMaxNameSize`.
