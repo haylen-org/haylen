@@ -123,6 +123,15 @@ function demo.videoStream()
     return handle:videoStream('island')
 end
 
+-- Connects the virtual controller of GameController with a left stick and the south button, which the plugin draws over the app and the app reads as one more gamepad, and answers with `{name, elements, language}`. Only iPhones and iPads with iOS 17 or later have it, and the others fail with the code `unsupported`.
+function demo.showVirtualController()
+    return handle:call('showVirtualController')
+end
+
+function demo.hideVirtualController()
+    return handle:call('hideVirtualController')
+end
+
 -- Starts a sine wave of the frequency in hertz that the native part synthesizes into the audio stream `tone`, and answers with `{frequency, sampleRate, channels, format, language}`.
 function demo.startTone(frequency)
     return handle:call('startTone', {frequency = frequency})

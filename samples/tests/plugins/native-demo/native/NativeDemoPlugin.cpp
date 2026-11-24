@@ -31,7 +31,7 @@ const std::array<std::pair<std::string_view, NativeDemoPlugin::Handler>, 20> Nat
     {"echo", &NativeDemoPlugin::echo}, {"echoBytes", &NativeDemoPlugin::echoBytes}, {"generatedImage", &NativeDemoPlugin::generatedImage}, {"captureFrame", &NativeDemoPlugin::captureFrame}, {"checksumView", &NativeDemoPlugin::checksumView}, {"startVideo", &NativeDemoPlugin::startVideo}, {"stopVideo", &NativeDemoPlugin::stopVideo}, {"startTone", &NativeDemoPlugin::startTone}, {"stopTone", &NativeDemoPlugin::stopTone}, {"burst", &NativeDemoPlugin::burst}, {"compute", &NativeDemoPlugin::compute}, {"fail", &NativeDemoPlugin::failOnPurpose}, {"wait", &NativeDemoPlugin::wait}, {"ticks", &NativeDemoPlugin::ticks}, {"start", &NativeDemoPlugin::start}, {"products", &NativeDemoPlugin::products}, {"restorePurchases", &NativeDemoPlugin::restorePurchases}, {"currentUser", &NativeDemoPlugin::currentUser}, {"signOut", &NativeDemoPlugin::signOut}, {"openApp", &NativeDemoPlugin::openApp},
 }};
 
-const std::array<std::pair<std::string_view, std::string_view>, 15> NativeDemoPlugin::kUnsupported{{
+const std::array<std::pair<std::string_view, std::string_view>, 17> NativeDemoPlugin::kUnsupported{{
     {"config", "Native libraries receive no plugin parameters, so the desktop part leaves them to the Lua API of the plugin."},
     {"showScreen", "The desktops give native libraries no view API, so the plugin cannot show a native screen over the app."},
     {"pickFile", "The desktop systems share no API for a file picker, so the desktop part of the plugin has none."},
@@ -47,6 +47,8 @@ const std::array<std::pair<std::string_view, std::string_view>, 15> NativeDemoPl
     {"showBanner", "The desktops give native libraries no view API, so the plugin cannot place a banner over the app."},
     {"setBannerVisible", "The desktops give native libraries no view API, so the plugin cannot place a banner over the app."},
     {"removeBanner", "The desktops give native libraries no view API, so the plugin cannot place a banner over the app."},
+    {"showVirtualController", "Only iPhones and iPads with iOS 17 or later connect the virtual controller of GameController."},
+    {"hideVirtualController", "Only iPhones and iPads with iOS 17 or later connect the virtual controller of GameController."},
 }};
 
 int NativeDemoPlugin::initialize(const HaylenNativeApi* api) {

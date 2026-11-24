@@ -21,6 +21,7 @@ from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
 from haylen.engine.android_ui_tests import AndroidUiTests
 from haylen.engine.device_farm_ui_tests import DeviceFarmUiTests
+from haylen.engine.mac_keyboard import MacKeyboard
 from haylen.engine.ui_test_run import UiTestRun
 from haylen.engine.unified_log import UnifiedLog
 from haylen.platforms.apple.apple_devices import AppleDevices
@@ -31,7 +32,7 @@ from haylen.toolchains.xcodegen import XcodeGen
 
 
 class UiTests:
-    """Runs the UI tests of an app on an iOS, tvOS or visionOS simulator or device, or on Android through `AndroidUiTests`: the app builds through the pipeline for the target, and the XCUITest runner of `engine/tests/ui/apple/project.yml` builds with the Swift tests of the folder `ui-tests` of the app and drives the installed app, taps, the remote and the system UI included. The run fails on a failed test, and on a simulator also on an error that the engine logged meanwhile. It uninstalls the app and the runner, and shuts down a simulator that it booted."""
+    """Runs the UI tests of an app on an iOS, tvOS or visionOS simulator or device, on this Mac as a macOS or a Mac Catalyst app, or on Android through `AndroidUiTests`: the app builds through the pipeline for the target, and the XCUITest runner of `engine/tests/ui/apple/project.yml` builds with the Swift tests of the folder `ui-tests` of the app and drives the app, taps, clicks, keys, the remote and the system UI included. The runner of the Mac launches the app from the bundle that the run built, since a Mac installs no app for the tests. The run fails on a failed test, and on a simulator also on an error that the engine logged meanwhile. It uninstalls the app and the runner, and shuts down a simulator that it booted."""
 
     PROJECT = Repository.ENGINE / "tests" / "ui" / "apple"
     FOLDER = "ui-tests"
@@ -42,6 +43,9 @@ class UiTests:
     PLATFORMS = {"ios-simulator": ("iOS", "iOS"), "tvos-simulator": ("tvOS", "tvOS"), "visionos-simulator": ("visionOS", "xrOS")}
     # Each device platform of the UI tests with the scheme of the runner.
     DEVICES = {"ios": "iOS", "tvos": "tvOS", "visionos": "visionOS"}
+    # The targets of the apps of this Mac, which the runner of the Mac drives, since a Mac Catalyst app is an app of the Mac too.
+    MACS = ("macos", "catalyst")
+    MAC_SCHEME = "macOS"
     # The longest that one UI test runs before xcodebuild stops it, so a gesture that the system never finishes fails the test instead of the run waiting forever.
     TEST_SECONDS = 600
     # The folder of the screenshots in the container of the runner on a device, which the run copies back.
@@ -60,8 +64,8 @@ class UiTests:
 
     @staticmethod
     def command(action: str, project: Path, scheme: str, destination: str, derived: Path, classes: Sequence[str] = ()) -> list[object]:
-        """The command that builds the runner of a scheme with "build-for-testing", or runs its tests on the simulator or device of that identifier with "test-without-building", whose output holds only the tests, the classes that it names alone or every class. The target of the runner of each platform takes the name of its scheme."""
-        command: list[object] = ["xcodebuild", action, "-project", project, "-scheme", scheme, "-destination", f"id={destination}", "-derivedDataPath", derived]
+        """The command that builds the runner of a scheme with "build-for-testing", or runs its tests on the destination with "test-without-building", a simulator or a device by its identifier or this Mac by its processor, whose output holds only the tests, the classes that it names alone or every class. The target of the runner of each platform takes the name of its scheme."""
+        command: list[object] = ["xcodebuild", action, "-project", project, "-scheme", scheme, "-destination", destination, "-derivedDataPath", derived]
         if action == "test-without-building":
             command += ["-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", str(UiTests.TEST_SECONDS), "-collect-test-diagnostics", "never"]
             command += [f"-only-testing:{scheme}/{name}" for name in classes]
@@ -73,9 +77,15 @@ class UiTests:
         return ["-allowProvisioningUpdates", f"DEVELOPMENT_TEAM={team}", "CODE_SIGN_STYLE=Automatic", "CODE_SIGN_IDENTITY=Apple Development"]
 
     @staticmethod
-    def generation(environment: Mapping[str, str], tests: Path, runner: Path, identifier: str, output: str) -> dict[str, str]:
-        """The environment of XcodeGen, which writes the tests of the app into the project of the runner, and the identifier of the app and the folder of the screenshots into the Info.plist of the runner."""
-        return {**environment, "HAYLEN_UI_TESTS": str(tests), "HAYLEN_UI_RUNNER": str(runner), "HAYLEN_UI_APP": identifier, "HAYLEN_UI_OUTPUT": output}
+    def generation(environment: Mapping[str, str], tests: Path, runner: Path, identifier: str, output: str, bundle: Path | None = None) -> dict[str, str]:
+        """The environment of XcodeGen, which writes the tests of the app into the project of the runner, and the identifier of the app, the bundle that the runner of the Mac launches and the folder of the screenshots into the Info.plist of the runner."""
+        app = "" if bundle is None else str(bundle)
+        return {**environment, "HAYLEN_UI_TESTS": str(tests), "HAYLEN_UI_RUNNER": str(runner), "HAYLEN_UI_APP": identifier, "HAYLEN_UI_APP_PATH": app, "HAYLEN_UI_OUTPUT": output}
+
+    @staticmethod
+    def mac_destination() -> str:
+        """The destination of the runner of the Mac: this Mac, with the processor that the app builds for."""
+        return f"platform=macOS,arch={Host.architecture()}"
 
     @staticmethod
     def tests(app: str, runner: str) -> tuple[Path, Path]:
@@ -109,14 +119,16 @@ class UiTests:
             folder, tests = UiTests.tests(app, "android")
             android = AndroidUiTests(self.context, self.pipeline)
             return android.run_on_farm(folder, tests, configuration, farm) if farm else android.run(folder, tests, configuration, device, classes)
-        if platform not in UiTests.PLATFORMS and platform not in UiTests.DEVICES:
-            names = ", ".join(f'"{name}"' for name in (*UiTests.PLATFORMS, *UiTests.DEVICES, "android"))
+        if platform not in UiTests.PLATFORMS and platform not in UiTests.DEVICES and platform not in UiTests.MACS:
+            names = ", ".join(f'"{name}"' for name in (*UiTests.PLATFORMS, *UiTests.DEVICES, *UiTests.MACS, "android"))
             raise UnsupportedTarget(f'The UI tests run on {names}. Pick one with "--target".')
         if Host.system() != "macos":
             raise UnsupportedTarget(f'The UI tests of Apple platforms run with Xcode, which needs macOS, and this machine runs "{Host.system()}".')
         folder, tests = UiTests.tests(app, "apple")
 
-        request = ProductRequest(folder, platform, Configuration(configuration), Configuration.RELEASE, None)
+        # A Mac runs the app that the run built, so the app builds for the processor of this Mac alone.
+        architectures = (Host.architecture(),) if platform in UiTests.MACS else None
+        request = ProductRequest(folder, platform, Configuration(configuration), Configuration.RELEASE, architectures)
         product = self.pipeline.build(self.pipeline.prepare(self.pipeline.resolve(request, build_sdk=True)))
         ReportPrinter.verification(self.pipeline.verify(product), self.context.terminal, f"`{Repository.shown(product.path)}`")
         output = ProductFolders.app_folder(folder) / "ui-tests" / platform
@@ -125,15 +137,19 @@ class UiTests:
         runner = Repository.ENGINE_BUILDS / f"{platform}-ui-tests"
         runner.mkdir(parents=True, exist_ok=True)
         self.context.terminal.step(f"Generating the UI test runner in `{Repository.shown(runner)}`")
-        identifier = plistlib.loads((product.path / "Info.plist").read_bytes())["CFBundleIdentifier"]
-        # A runner on a simulator writes its screenshots into the folder of the app on this Mac, and a runner on a device into its own container.
+        # The Info.plist of an app of the Mac sits in the folder "Contents" of its bundle.
+        info = product.path / "Contents" / "Info.plist" if platform in UiTests.MACS else product.path / "Info.plist"
+        identifier = plistlib.loads(info.read_bytes())["CFBundleIdentifier"]
+        # A runner on a simulator or on this Mac writes its screenshots into the folder of the app on this Mac, and a runner on a device into its own container.
         screenshots = UiTests.DEVICE_OUTPUT if platform in UiTests.DEVICES else str(output)
+        bundle = product.path if platform in UiTests.MACS else None
         generate = [XcodeGen.path(self.context), "generate", "--quiet", "--spec", UiTests.PROJECT / "project.yml", "--project", runner]
-        self.context.process.run(generate, env=UiTests.generation(self.context.environment, tests, runner, identifier, screenshots))
+        self.context.process.run(generate, env=UiTests.generation(self.context.environment, tests, runner, identifier, screenshots, bundle))
 
         if farm:
             return self.run_on_farm(product, runner, farm, ProductFolders.app_folder(folder) / "ui-tests" / "device-farm-ios")
-        run = self.run_on_device if platform in UiTests.DEVICES else self.run_on_simulator
+        runs = {**dict.fromkeys(UiTests.DEVICES, self.run_on_device), **dict.fromkeys(UiTests.MACS, self.run_on_mac)}
+        run = runs.get(platform, self.run_on_simulator)
         name = run(product, platform, device, runner, output, classes)
         if any(output.iterdir()):
             self.context.terminal.info(f"The screenshots of the UI tests are in `{Repository.shown(output)}`.")
@@ -145,7 +161,7 @@ class UiTests:
         scheme, family = UiTests.PLATFORMS[platform]
         with AppleSimulators(self.context).booted(family, device) as simulator:
             udid = simulator["udid"]
-            project = (runner / "HaylenUITests.xcodeproj", scheme, udid, runner / "derived")
+            project = (runner / "HaylenUITests.xcodeproj", scheme, f"id={udid}", runner / "derived")
             self.context.terminal.step("Building the UI test runner")
             self.context.process.run(UiTests.command("build-for-testing", *project))
             self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
@@ -199,13 +215,24 @@ class UiTests:
             subprocess.run(UiTests.log_command(udid, seconds), stdout=output, stderr=subprocess.STDOUT, check=False)
         self.context.terminal.info(f"The log of the simulator during the UI tests is in `{Repository.shown(path)}`.")
 
+    def run_on_mac(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
+        """Runs the tests on this Mac. The runner launches the app from the bundle that the run built and ends it after each test, so nothing installs or stays. Its clicks and keys reach the app in front, so the Mac runs nothing else meanwhile, such as on a runner of continuous integration, and the run holds the keys that a test asks it to hold through `MacKeyboard`."""
+        if device is not None:
+            raise UnsupportedTarget(f'The UI tests of "{platform}" run on this Mac, so they take no "--device".')
+        project = (runner / "HaylenUITests.xcodeproj", UiTests.MAC_SCHEME, UiTests.mac_destination(), runner / "derived")
+        self.context.terminal.step("Building the UI test runner of the Mac")
+        self.context.process.run(UiTests.command("build-for-testing", *project))
+        self.context.terminal.step(f'Running the UI tests of "{product.prepared.product.app.name}" on this Mac')
+        UiTestRun(self.context.terminal, answer=MacKeyboard.answer).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
+        return "this Mac"
+
     def run_on_device(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         """Runs the tests on a device, which gives the Mac no stream of its unified log, so the checks of the tests are the results. The tests write their screenshots into the container of the runner on the device, which the run copies back."""
         info = plistlib.loads((product.path / "Info.plist").read_bytes())
         target = AppleDevices(self.context).device(device, platform)
         # The command "codesign" describes a signature on its error output.
         signature = subprocess.run(["codesign", "--display", "--verbose=2", str(product.path)], capture_output=True, text=True, check=True).stderr
-        project = (runner / "HaylenUITests.xcodeproj", UiTests.DEVICES[platform], target.identifier, runner / "derived")
+        project = (runner / "HaylenUITests.xcodeproj", UiTests.DEVICES[platform], f"id={target.identifier}", runner / "derived")
         self.context.terminal.step(f'Building the UI test runner for "{target.name}"')
         self.context.process.run([*UiTests.command("build-for-testing", *project), *UiTests.signing(UiTests.team(signature))])
         devicectl = ["xcrun", "devicectl", "device"]

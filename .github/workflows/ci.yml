@@ -624,6 +624,49 @@ jobs:
       - uses: ./.github/actions/compiler-cache
         if: always()
 
+  # The UI tests of the Mac on the runner of the job, which nobody else uses, so their clicks and keys reach only the apps they test: the text input of the test project and the start of Tiny Island as a macOS and as a Mac Catalyst app, and the quit of Tiny Island on macOS.
+  apple-mac-ui:
+    if: github.event_name == 'workflow_dispatch'
+    name: Mac UI tests
+    needs: apple-slices
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          xcodegen: "true"
+      - uses: ./.github/actions/sdk
+        with:
+          name: apple-slice-macos
+      - uses: ./.github/actions/sdk
+        with:
+          name: apple-slice-catalyst
+      - name: Join the slices of the Mac
+        run: uv run --locked haylen --verbose sdk join build/slices/macos build/slices/catalyst
+      # XCUITest drives the apps of a Mac only in the automation mode of macOS, which a machine of continuous integration turns on once without the password of a person, as Apple documents for "automationmodetool".
+      - name: Let the UI tests drive the Mac
+        run: sudo automationmodetool enable-automationmode-without-authentication
+      - name: UI tests of the macOS app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target macos --ui-test MacTextInputTests
+      - name: UI tests of the Mac Catalyst app
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target catalyst --ui-test MacTextInputTests
+      - name: Start Tiny Island on macOS
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/games/tiny-island --target macos
+      - name: Start Tiny Island on Mac Catalyst
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/games/tiny-island --target catalyst
+      - name: Quit Tiny Island on macOS
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --target macos --app samples/games/tiny-island
+      - name: Keep the results of the UI tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: apple-mac-ui-results
+          path: build/engine/*-ui-tests/derived/Logs/Test
+          retention-days: 3
+          if-no-files-found: ignore
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+
   # The joined Apple SDK, the starter apps for the iOS simulator against it, the quit of the starter app on macOS and Mac Catalyst, and the start of the protected web release of the test project on WebGPU, which Chrome draws through Metal.
   apple:
     if: github.event_name == 'workflow_dispatch'

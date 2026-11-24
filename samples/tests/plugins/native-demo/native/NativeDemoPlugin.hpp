@@ -64,7 +64,7 @@ class NativeDemoPlugin final {
     static constexpr int kBurstsPerSecond = 30;
 
     static const std::array<std::pair<std::string_view, Handler>, 20> kHandlers;
-    static const std::array<std::pair<std::string_view, std::string_view>, 15> kUnsupported;
+    static const std::array<std::pair<std::string_view, std::string_view>, 17> kUnsupported;
 
     explicit NativeDemoPlugin(const HaylenNativeApi& engine);
 

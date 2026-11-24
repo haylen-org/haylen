@@ -1,7 +1,7 @@
 import re
 import subprocess
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from haylen.core.errors.build_failed import BuildFailed
@@ -9,7 +9,7 @@ from haylen.terminal import Terminal
 
 
 class UiTestRun:
-    """Runs the tests of a built UI test runner, such as `xcodebuild test-without-building` or the instrumentation of Android, printing their output as it comes and returning its lines. The runner must start its first test within a bounded time, which a line of its output tells: a runner that never connects, such as one that waits for a debugger, ends the run with a sentence that says so instead of holding it."""
+    """Runs the tests of a built UI test runner, such as `xcodebuild test-without-building` or the instrumentation of Android, printing their output as it comes and returning its lines. The runner must start its first test within a bounded time, which a line of its output tells: a runner that never connects, such as one that waits for a debugger, ends the run with a sentence that says so instead of holding it. A run that answers the tests hands each line to `answer` as it comes, such as the request of a test to turn the emulator, which only the computer that runs the tests can serve."""
 
     START_SECONDS = 300
     # The line of xcodebuild that starts a test suite.
@@ -22,9 +22,10 @@ class UiTestRun:
         ),
     )
 
-    def __init__(self, terminal: Terminal, started: re.Pattern[str] = STARTED) -> None:
+    def __init__(self, terminal: Terminal, started: re.Pattern[str] = STARTED, answer: Callable[[str], None] | None = None) -> None:
         self.terminal = terminal
         self.started = started
+        self.answer = answer
 
     def run(self, command: Sequence[object], environment: Mapping[str, str], start_seconds: int = START_SECONDS) -> list[str]:
         parts = [str(part) for part in command]
@@ -40,7 +41,14 @@ class UiTestRun:
                     started.set()
                 lines.append(line.rstrip("\n"))
                 self.terminal.verbatim(lines[-1])
+                if self.answer is not None:
+                    self.answer(lines[-1])
             code = process.wait()
+        except BaseException:
+            # A run whose answer to a test failed, or that was interrupted, ends the runner instead of leaving it to wait for the answer.
+            process.kill()
+            process.wait()
+            raise
         finally:
             timer.cancel()
             process.stdout.close()

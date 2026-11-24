@@ -16,10 +16,10 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class UiTestsTest:
-    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run and an iOS simulator run give every setting they changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, and a failed simulator run keeps the log of the simulator over the whole run."""
+    """The UI tests run the scheme of their platform on one simulator or device with the identifier of the app, or on this Mac with the bundle of the app, the runner of a device carries the signature of the team of the app, the Android runner runs its instrumentation against the app, both run the classes that the run names alone, the Android run turns the emulator when a test asks, the Android run and an iOS simulator run give every setting they changed its value back, each runner takes the tests of its own folder, a simulator run fails on the errors that the engine logs meanwhile, and a failed simulator run keeps the log of the simulator over the whole run."""
 
     def test_the_runner_runs_the_scheme_of_the_platform_and_its_info_names_the_app(self):
-        project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "SIMULATOR-ID", Path("/build/derived"))
+        project = (Path("/build/HaylenUITests.xcodeproj"), "visionOS", "id=SIMULATOR-ID", Path("/build/derived"))
         common = ["-project", "/build/HaylenUITests.xcodeproj", "-scheme", "visionOS", "-destination", "id=SIMULATOR-ID", "-derivedDataPath", "/build/derived"]
         assert [str(part) for part in UiTests.command("build-for-testing", *project)] == ["xcodebuild", "build-for-testing", *common]
         limits = ["-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", "600", "-collect-test-diagnostics", "never"]
@@ -32,8 +32,11 @@ class UiTestsTest:
             "HAYLEN_UI_TESTS": "/app/ui-tests/apple",
             "HAYLEN_UI_RUNNER": "/build/runner",
             "HAYLEN_UI_APP": "com.haylen.tests",
+            "HAYLEN_UI_APP_PATH": "",
             "HAYLEN_UI_OUTPUT": "/build/screenshots",
         }
+        mac = UiTests.generation({}, Path("/app/ui-tests/apple"), Path("/build/runner"), "com.haylen.tests", "/build/screenshots", Path("/build/products/Tests.app"))
+        assert mac["HAYLEN_UI_APP_PATH"] == "/build/products/Tests.app"
 
     def test_the_log_of_a_failed_simulator_run_covers_the_whole_run(self):
         show = ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "log", "show", "--last"]
@@ -47,10 +50,12 @@ class UiTestsTest:
         with pytest.raises(BuildFailed, match="carries no signature of a development team"):
             UiTests.team("Executable=/build/App.app/App\nSignature=adhoc\nTeamIdentifier=not set\n")
 
-    def test_the_runner_builds_for_ios_tvos_and_visionos_with_the_tests_of_the_app(self):
+    def test_the_runner_builds_for_ios_tvos_visionos_and_the_mac_with_the_tests_of_the_app(self):
         spec = (UiTests.PROJECT / "project.yml").read_text(encoding="utf-8")
-        for scheme, _ in UiTests.PLATFORMS.values():
+        for scheme in (*(scheme for scheme, _ in UiTests.PLATFORMS.values()), UiTests.MAC_SCHEME):
             assert f"  {scheme}:\n    type: bundle.ui-testing" in spec
+        assert "HaylenUIAppPath: ${HAYLEN_UI_APP_PATH}" in spec
+        assert UiTests.mac_destination().startswith("platform=macOS,arch=")
         assert set(UiTests.DEVICES.values()) == {scheme for scheme, _ in UiTests.PLATFORMS.values()}
         assert "path: ${HAYLEN_UI_TESTS}" in spec
         for variable in ("HAYLEN_UI_RUNNER", "HAYLEN_UI_APP", "HAYLEN_UI_OUTPUT"):
@@ -59,8 +64,8 @@ class UiTestsTest:
 
     def test_the_ui_tests_take_an_apple_or_android_platform_and_an_app_with_tests_of_its_runner(self, tmp_path):
         tests = UiTests(RecordedCommands(tmp_path).context, None)
-        with pytest.raises(UnsupportedTarget, match='"ios-simulator", "tvos-simulator", "visionos-simulator", "ios", "tvos", "visionos", "android"'):
-            tests.run(str(tmp_path), "catalyst", "Debug", None)
+        with pytest.raises(UnsupportedTarget, match='"ios-simulator", "tvos-simulator", "visionos-simulator", "ios", "tvos", "visionos", "macos", "catalyst", "android"'):
+            tests.run(str(tmp_path), "web", "Debug", None)
         with pytest.raises(UnsupportedTarget, match='so "--device-farm" takes no "--ui-test"'):
             tests.run(str(tmp_path), "ios", "Debug", None, ["Google Pixel 9"], ["CameraTests"])
         (tmp_path / "haylen.json").write_text("{}", encoding="utf-8")
@@ -104,6 +109,22 @@ class UiTestsTest:
             ["settings", "put", "secure", "immersive_mode_confirmations", "''"],
             ["shell", "settings", "delete", "secure", "immersive_mode_confirmations"],
         ]
+
+    def test_the_android_run_turns_the_emulator_when_a_test_asks_and_reads_its_accelerometer(self, tmp_path):
+        (tmp_path / "sdk" / "platform-tools").mkdir(parents=True)
+        (tmp_path / "sdk" / "platform-tools" / "adb").write_text("", encoding="utf-8")
+        recorded = RecordedCommands(tmp_path, {"ANDROID_HOME": str(tmp_path / "sdk")}, lambda command: "acceleration = 0:9.77631:0.812349\nOK\n")
+        tests = AndroidUiTests(recorded.context, None)
+        assert tests.acceleration("emulator-5554") == "0:9.77631:0.812349"
+        for line in ("INSTRUMENTATION_STATUS: test=testA", "INSTRUMENTATION_STATUS: haylenTurn=3", "INSTRUMENTATION_STATUS: haylenTurn=0\r"):
+            tests.answer("emulator-5554", line)
+        assert [command[-5:] for command in recorded.commands] == [
+            ["emulator-5554", "emu", "sensor", "get", "acceleration"],
+            ["emu", "sensor", "set", "acceleration", "-9.80665:0:0"],
+            ["emu", "sensor", "set", "acceleration", "0:9.80665:0"],
+        ]
+        assert AndroidUiTests.is_emulator("emulator-5554")
+        assert not AndroidUiTests.is_emulator("0061296928")
 
     def test_the_ios_simulator_run_gives_the_keyboard_minimization_back_the_value_it_had(self, tmp_path):
         recorded = RecordedCommands(tmp_path)

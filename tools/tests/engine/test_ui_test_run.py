@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import time
 
 import pytest
 
@@ -30,9 +31,26 @@ class UiTestRunTest:
         with pytest.raises(BuildFailed, match=re.escape('Turn on "Enable UI Automation" in Settings > Developer on the device')):
             UiTestRun(terminal).run(command, os.environ, start_seconds=30)
 
+    def test_a_run_answers_each_line_and_ends_the_runner_when_an_answer_fails(self, tmp_path):
+        terminal = ToolingFixture(tmp_path).context.terminal
+        heard: list[str] = []
+        command = [sys.executable, "-c", "print(\"Test Suite 'All tests' started\", flush=True); print('first', flush=True)"]
+        UiTestRun(terminal, answer=heard.append).run(command, os.environ, start_seconds=30)
+        assert heard == ["Test Suite 'All tests' started", "first"]
+
+        def fail(line: str) -> None:
+            if line == "ask":
+                raise BuildFailed("The answer failed.")
+
+        command = [sys.executable, "-c", "import time; print('ask', flush=True); time.sleep(30)"]
+        started = time.monotonic()
+        with pytest.raises(BuildFailed, match=re.escape("The answer failed.")):
+            UiTestRun(terminal, answer=fail).run(command, os.environ, start_seconds=30)
+        assert time.monotonic() - started < 20
+
     def test_every_scheme_runs_its_tests_without_a_debugger(self):
         spec = (Repository.ENGINE / "tests" / "ui" / "apple" / "project.yml").read_text(encoding="utf-8")
         schemes = spec.split("\nschemes:\n")[1]
-        assert re.findall(r"^  (\w+):$", schemes, re.MULTILINE) == ["iOS", "tvOS", "visionOS"]
-        assert schemes.count("debugEnabled: false") == 3
+        assert re.findall(r"^  (\w+):$", schemes, re.MULTILINE) == ["iOS", "tvOS", "visionOS", "macOS"]
+        assert schemes.count("debugEnabled: false") == 4
         assert "testTargets" not in spec

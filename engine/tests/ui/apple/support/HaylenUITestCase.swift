@@ -1,7 +1,7 @@
 import CoreLocation
 import XCTest
 
-// The base of the UI tests of a Haylen app. The command "haylen test --ui" installs the app on a simulator or a device and names it to the runner, and each test starts it again with the launch arguments of its class. The GUIs of the app expose their components to the tests through the accessibility tree, by the text they show.
+// The base of the UI tests of a Haylen app. The command "haylen test --ui" installs the app on a simulator or a device and names it to the runner, or on a Mac names the bundle of the macOS or Mac Catalyst app that it built, and each test starts it again with the launch arguments of its class. The GUIs of the app expose their components to the tests through the accessibility tree, by the text they show.
 @MainActor
 class HaylenUITestCase: XCTestCase {
     // The Info.plist of the runner names the app it drives and the folder of its screenshots, which "haylen test --ui" writes into it.
@@ -29,7 +29,13 @@ class HaylenUITestCase: XCTestCase {
     override func setUp() async throws {
         continueAfterFailure = false
         identifier = try XCTUnwrap(Self.info["HaylenUIApp"] as? String, "Build the UI tests with \"haylen test --ui\", which names the app they drive.")
+#if os(macOS)
+        // A Mac installs no app for the tests, so the runner launches the bundle that the run built, a macOS or a Mac Catalyst app.
+        let bundle = try XCTUnwrap(Self.info["HaylenUIAppPath"] as? String, "Build the UI tests with \"haylen test --ui\", which names the app they drive.")
+        app = XCUIApplication(url: URL(fileURLWithPath: bundle))
+#else
         app = XCUIApplication(bundleIdentifier: identifier)
+#endif
 #if !os(visionOS)
         for resource in resetResources {
             app.resetAuthorizationStatus(for: resource)
@@ -73,7 +79,11 @@ class HaylenUITestCase: XCTestCase {
         return element
     }
 
-#if !os(tvOS)
+#if os(macOS)
+    func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
+        waitFor(element(label), file: file, line: line).click()
+    }
+#elseif !os(tvOS)
     func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
         waitFor(element(label), file: file, line: line).tap()
     }
@@ -84,7 +94,7 @@ class HaylenUITestCase: XCTestCase {
         case up, down, left, right
     }
 
-    // Presses a component of a GUI of the engine the way the person does: a tap, or on the Apple TV the arrows of the remote and then its select button. The focus of a GUI belongs to the engine, which XCUITest does not read, so a test names the arrows that take the focus from the component that holds it to this one, which the other platforms ignore.
+    // Presses a component of a GUI of the engine the way the person does: a tap, a click on a Mac, or on the Apple TV the arrows of the remote and then its select button. The focus of a GUI belongs to the engine, which XCUITest does not read, so a test names the arrows that take the focus from the component that holds it to this one, which the other platforms ignore.
     func activate(_ label: String, after arrows: [Arrow] = [], file: StaticString = #filePath, line: UInt = #line) {
         waitFor(element(label), file: file, line: line)
 #if os(tvOS)
@@ -94,17 +104,21 @@ class HaylenUITestCase: XCTestCase {
             settle()
         }
         remote.press(.select)
+#elseif os(macOS)
+        element(label).click()
 #else
         element(label).tap()
 #endif
     }
 
-    // Presses a native view the way the person does: a tap, or on the Apple TV the select button of the remote once the focus of UIKit reached the view.
+    // Presses a native view the way the person does: a tap, a click on a Mac, or on the Apple TV the select button of the remote once the focus of UIKit reached the view.
     func activate(_ view: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         waitFor(view, file: file, line: line)
 #if os(tvOS)
         focus(view, in: app, file: file, line: line)
         XCUIRemote.shared.press(.select)
+#elseif os(macOS)
+        view.click()
 #else
         view.tap()
 #endif
@@ -225,6 +239,14 @@ class HaylenUITestCase: XCTestCase {
         button.tap()
 #endif
         XCTAssertTrue(alert.waitForNonExistence(timeout: timeout), "The alert \"\(alert.label)\" stays after the answer.", file: file, line: line)
+    }
+#endif
+
+#if os(macOS)
+    // Holds the key with the virtual key code of the Mac down as a person does, which the app hears as one press and then the repeats of the system, each marked as a repeat, before the key goes up. XCUITest presses a key only once, so the test asks "haylen test --ui" in a line of its output, and the run posts the key to the app in front. The test then waits for what the key does.
+    func holdKey(_ code: UInt16, repeats: Int) {
+        print("HaylenHoldKey: \(code) \(repeats)")
+        fflush(stdout)
     }
 #endif
 

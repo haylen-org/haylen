@@ -360,6 +360,13 @@ export default function load(context) {
         return null;
     });
 
+    // The virtual controller of GameController exists only on iPhones and iPads, while a page reads the gamepads of the browser.
+    for (const method of ["showVirtualController", "hideVirtualController"]) {
+        context.register(method, () => {
+            throw failure("Only iPhones and iPads with iOS 17 or later connect the virtual controller of GameController.", "unsupported");
+        });
+    }
+
     // Synthesizes a sine wave a tenth of a second ahead of the clock of the page, which the audio stream copies into its ring.
     context.register("startTone", (params) => {
         stopTone();

@@ -18,5 +18,6 @@ return {
         {code = 'INP-012', title = 'Commands', description = 'A command buffer that types runs, a jump attack and specials from keys, gamepads and touch buttons that a sliding thumb presses in turn, with the kept command, its age, the facing and a freeze like hit stop.', module = 'commands'},
         {code = 'INP-013', title = 'Replay', description = 'A run recorded on fixed steps with the state of its random generator and replayed in place of the devices, with a hash of every step that shows the replay matches.', module = 'replay'},
         {code = 'INP-014', title = 'Gamepad motion', description = 'A ball that rolls with the tilt of a gamepad through the action map, the raw readings of the accelerometer, the gyroscope and the attitude of a gamepad, and the fingers on its touchpads.', module = 'gamepad-motion'},
+        {code = 'INP-015', title = 'Stick focus', description = 'A compass of buttons whose focus the left stick moves in four directions, a push up with a sideways lean moving up, and the virtual controller of iPhones and iPads.', module = 'stick-focus'},
     },
 }

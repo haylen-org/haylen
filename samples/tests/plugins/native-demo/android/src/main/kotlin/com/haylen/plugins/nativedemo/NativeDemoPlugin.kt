@@ -244,6 +244,13 @@ class NativeDemoPlugin : HaylenPlugin() {
             tone = null
             reply.success(null)
         }
+
+        // The virtual controller of GameController exists only on iPhones and iPads, while Android reads the gamepads that connect to the device.
+        for (method in listOf("showVirtualController", "hideVirtualController")) {
+            context.register(method) { _, reply ->
+                reply.failure("Only iPhones and iPads with iOS 17 or later connect the virtual controller of GameController.", "unsupported", null)
+            }
+        }
     }
 
     private fun registerBanner() {

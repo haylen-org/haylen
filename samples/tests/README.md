@@ -455,6 +455,7 @@ The keyboard, the mouse, touches, gestures, gamepads with their motion sensors, 
 | `INP-012` | Commands | A command buffer that types runs, a jump attack and specials from keys, gamepads and touch buttons that a sliding thumb presses in turn, with the kept command, its age, the facing and a freeze like hit stop. |  |
 | `INP-013` | Replay | A run recorded on fixed steps with the state of its random generator and replayed in place of the devices, with a hash of every step that shows the replay matches. |  |
 | `INP-014` | Gamepad motion | A ball that rolls with the tilt of a gamepad through the action map, the raw readings of the accelerometer, the gyroscope and the attitude of a gamepad, and the fingers on its touchpads. |  |
+| `INP-015` | Stick focus | A compass of buttons whose focus the left stick moves in four directions, a push up with a sideways lean moving up, and the virtual controller of iPhones and iPads. |  |
 
 #### Physics (PHY)
 

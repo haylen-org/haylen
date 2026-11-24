@@ -159,6 +159,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin, UNUserNotificationCenterDe
     private var tone: NativeDemoTone?
     private var access: NativeDemoAccess!
     private var device: NativeDemoDevice?
+    private var gamepad: NativeDemoGamepad?
     private let store = NativeDemoStore()
 
     func load(with context: HaylenPluginContext) {
@@ -168,6 +169,9 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin, UNUserNotificationCenterDe
         let device = NativeDemoDevice(context: context, access: access)
         device.register()
         self.device = device
+        let gamepad = NativeDemoGamepad()
+        gamepad.register(context, language: Self.language)
+        self.gamepad = gamepad
         store.register(context)
         registerCalls(context)
         registerBytes(context)
@@ -222,6 +226,7 @@ final class NativeDemoPlugin: NSObject, HaylenPlugin, UNUserNotificationCenterDe
             self.banner?.remove()
             self.banner = nil
             self.device?.stop()
+            self.gamepad?.hide()
             if let failure = self.lastError {
                 context.emitRetained("lastError", payload: failure)
                 self.lastError = nil

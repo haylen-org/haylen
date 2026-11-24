@@ -9,6 +9,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.location.provider.ProviderProperties
 import android.os.Build
+import android.os.Bundle
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.test.platform.app.InstrumentationRegistry
@@ -43,6 +44,9 @@ abstract class HaylenUiTestCase {
         const val LOCATION_INTERVAL = 500L
         // The longest that UI Automator waits for the screen to settle before a search or a tap.
         const val IDLE_TIMEOUT = 1_000L
+        // The status of the report of the instrumentation that asks "haylen test --ui" to turn the emulator, with the key of the rotation of the display it asks for. The code differs from the codes of the test runner, which report the start and the end of each test.
+        const val TURN_STATUS = 2
+        const val TURN_KEY = "haylenTurn"
     }
 
     val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -333,6 +337,13 @@ abstract class HaylenUiTestCase {
 
     // Whether the tests run on the Android emulator, which sets the property "ro.boot.qemu", and which lacks hardware such as a microphone that hears a room.
     fun isEmulator(): Boolean = device.executeShellCommand("getprop ro.boot.qemu").trim() == "1"
+
+    // Turns the device as a person does, until the display takes the rotation, a quarter turn from 0 to 3 from the natural orientation of the device. An app that follows the sensor turns only with the device, never with the rotation that UI Automator sets, so the test asks "haylen test --ui" in a status of its report, and the run sets the accelerometer of the emulator through its console. A physical device turns only in the hands of a person, so the test fails there.
+    fun turnDevice(rotation: Int) {
+        assertTrue("Turning the device needs the Android emulator, whose accelerometer the run sets from the computer. Run this test on an emulator.", isEmulator())
+        instrumentation.sendStatus(TURN_STATUS, Bundle().apply { putString(TURN_KEY, rotation.toString()) })
+        waitUntil("The display does not take the rotation $rotation after the run turned the emulator.") { device.displayRotation == rotation }
+    }
 
     // Leaves the app for the home screen, which sends it to the background.
     fun goHome() {

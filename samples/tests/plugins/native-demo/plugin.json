@@ -23,6 +23,7 @@
         {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "AVFoundation.framework"},
         {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "CoreLocation.framework"},
         {"type": "framework", "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"], "name": "MapKit.framework"},
+        {"type": "framework", "platforms": ["ios"], "name": "GameController.framework"},
         {
             "type": "infoPlist",
             "platforms": ["ios", "catalyst", "tvos", "visionos", "macos"],

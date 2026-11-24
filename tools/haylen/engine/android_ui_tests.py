@@ -23,7 +23,7 @@ from haylen.toolchains.gradle import Gradle
 
 
 class AndroidUiTests:
-    """Runs the UI tests of an app on an Android device or emulator: the app builds through the pipeline for the ABI of the device, and the runner of `engine/tests/ui/android` builds with the Kotlin tests of the folder `ui-tests/android` of the app into a test APK that instruments itself. Its instrumentation drives the installed app through UI Automator, the dialogs, the notifications, the home screen, the recent apps and the back button of the system included. The run fails on a failed test, copies back the screenshots of the tests, uninstalls the app and the runner, and shuts down an emulator that it started."""
+    """Runs the UI tests of an app on an Android device or emulator: the app builds through the pipeline for the ABI of the device, and the runner of `engine/tests/ui/android` builds with the Kotlin tests of the folder `ui-tests/android` of the app into a test APK that instruments itself. Its instrumentation drives the installed app through UI Automator, the dialogs, the notifications, the home screen, the recent apps and the back button of the system included. A test that turns the device asks the run in a status of its report, and the run turns the emulator by its accelerometer through the console of the emulator, which an app that follows the sensor obeys, and gives the accelerometer back its reading after the run. The run fails on a failed test, copies back the screenshots of the tests, uninstalls the app and the runner, and shuts down an emulator that it started."""
 
     PROJECT = Repository.ENGINE / "tests" / "ui" / "android"
     # The test APK of the runner instruments itself, so the device holds only the app and that APK.
@@ -43,6 +43,13 @@ class AndroidUiTests:
     # The result that "am instrument" reports when every test passed.
     PASSED = "INSTRUMENTATION_CODE: -1"
     FAILED = "INSTRUMENTATION_STATUS_CODE: -2"
+    # The status of a test that asks the run to turn the device until the display takes a rotation, a quarter turn from 0 to 3 from the natural orientation of the device, which "turnDevice" of the tests sends.
+    TURN = re.compile(r"^INSTRUMENTATION_STATUS: haylenTurn=([0-3])$")
+    # The reading of the accelerometer that holds the device in each rotation of the display, the push that holds it up in meters per second squared along the axes of the device, so the side that faces down turns the display.
+    GRAVITY = 9.80665
+    ACCELERATIONS = {0: (0.0, GRAVITY, 0.0), 1: (GRAVITY, 0.0, 0.0), 2: (0.0, -GRAVITY, 0.0), 3: (-GRAVITY, 0.0, 0.0)}
+    # The answer of the console of the emulator to "sensor get acceleration", such as "acceleration = 0:9.77631:0.812349".
+    READING = re.compile(r"^acceleration = (\S+)$", re.MULTILINE)
 
     def __init__(self, context: ToolingContext, pipeline: AppPipeline) -> None:
         self.context = context
@@ -96,6 +103,7 @@ class AndroidUiTests:
             kept = {setting: self.setting(serial, setting) for setting in AndroidUiTests.SETTINGS}
             for setting, value in AndroidUiTests.SETTINGS.items():
                 self.context.process.run(self.bridge.command(serial, "shell", "settings", "put", "secure", setting, value))
+            acceleration = self.acceleration(serial) if AndroidUiTests.is_emulator(serial) else None
             try:
                 self.instrument_on(serial, classes)
             except BuildFailed:
@@ -104,6 +112,8 @@ class AndroidUiTests:
             finally:
                 for setting, value in kept.items():
                     self.restore_setting(serial, setting, value)
+                if acceleration is not None:
+                    self.context.process.run(self.bridge.command(serial, "emu", "sensor", "set", "acceleration", acceleration))
                 self.copy_screenshots(serial, output)
                 for package in (identifier, AndroidUiTests.RUNNER):
                     subprocess.run([str(part) for part in self.bridge.command(serial, "uninstall", package)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
@@ -123,11 +133,35 @@ class AndroidUiTests:
         self.context.process.run(self.bridge.command(serial, "shell", "settings", *action))
 
     def instrument_on(self, serial: str, classes: Sequence[str]) -> None:
-        """Runs the instrumentation, prints its report as it comes and fails unless it reports that every test passed."""
+        """Runs the instrumentation, prints its report as it comes, answers the tests that turn the device and fails unless it reports that every test passed."""
         command = self.bridge.command(serial, "shell", *AndroidUiTests.instrument(classes))
-        lines = UiTestRun(self.context.terminal, AndroidUiTests.STARTED).run(command, self.context.environment)
+        lines = UiTestRun(self.context.terminal, AndroidUiTests.STARTED, lambda line: self.answer(serial, line)).run(command, self.context.environment)
         if not AndroidUiTests.passed(lines):
             raise BuildFailed("The UI tests failed, and the report above shows which ones and why.")
+
+    @staticmethod
+    def is_emulator(serial: str) -> bool:
+        """Whether the device is an emulator, whose console takes the commands of "adb emu"."""
+        return serial.startswith("emulator-")
+
+    def acceleration(self, serial: str) -> str:
+        """The reading of the accelerometer of the emulator, in the form that "sensor set acceleration" takes."""
+        answer = self.context.process.capture(self.bridge.command(serial, "emu", "sensor", "get", "acceleration"))
+        reading = AndroidUiTests.READING.search(answer)
+        if reading is None:
+            raise BuildFailed(f'The emulator "{serial}" does not report the reading of its accelerometer, so the run cannot turn it.')
+        return reading[1]
+
+    @staticmethod
+    def turned(rotation: int) -> str:
+        """The reading of the accelerometer that turns the display to the rotation, in the form that "sensor set acceleration" takes."""
+        return ":".join(f"{axis:g}" for axis in AndroidUiTests.ACCELERATIONS[rotation])
+
+    def answer(self, serial: str, line: str) -> None:
+        """Turns the emulator when the line asks for it. A test asks only on an emulator, since a physical device turns only in the hands of a person, so the test fails there before it asks."""
+        request = AndroidUiTests.TURN.match(line.strip())
+        if request is not None:
+            self.context.process.run(self.bridge.command(serial, "emu", "sensor", "set", "acceleration", AndroidUiTests.turned(int(request[1]))))
 
     @staticmethod
     def passed(lines: list[str]) -> bool:

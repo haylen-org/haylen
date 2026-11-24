@@ -7,11 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
-// The address field of the test "Text fields" types through the keys of the keyboard of the system: each key types once, Backspace deletes, the keyboard stays open when the field is tapped again and comes back after it hid. The keyboard covers the status line of the test on a phone in landscape, so the tests read the text of the field itself.
+// The address field of the test "Text fields" types through the keys of the keyboard of the system: each key types once, Backspace deletes, the keyboard stays open when the field is tapped again, comes back after it hid, and the field keeps its text and its focus when the device turns. The keyboard covers the status line of the test on a phone in landscape, so the tests read the text of the field itself.
 class TextInputTests : HaylenUiTestCase() {
     companion object {
         const val FIELD = "https://haylen.dev"
-        // The time during which the tests watch that the keyboard stays, after a tap that could close it.
+        // The time during which the tests watch that the keyboard stays, after a tap or a turn that could close it.
         const val WATCH = 1_500L
     }
 
@@ -67,6 +67,19 @@ class TextInputTests : HaylenUiTestCase() {
         type("e")
         expectText("ilhase")
         saveScreenshot("keyboard-back")
+    }
+
+    // The test project shows only landscape, so the device turns from one side of landscape to the other, which the app follows by the sensor.
+    @Test
+    fun theFieldKeepsItsTextAndItsFocusWhenTheDeviceTurns() {
+        type("mar")
+        expectText("mar")
+        turnDevice((device.displayRotation + 2) % 4)
+        watchTheKeyboard("The keyboard closes when the device turns.")
+        expectText("mar")
+        type("e")
+        expectText("mare")
+        saveScreenshot("text-turned")
     }
 
     private fun startTyping() {
