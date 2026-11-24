@@ -288,7 +288,6 @@
 | **[KB-289 · README.md final, revisto quando todo o resto estiver pronto](#kb-289)**<br>🟢 low · `docs` · 3/10 | — | — | — | — | — |
 | **[KB-290 · Documentação completa em docs](#kb-290)**<br>🟢 low · `docs` · 3/10 | — | — | — | — | — |
 | **[KB-291 · Revisão final do AGENTS.md, do KANBAN.md, do README.md, de docs, dos comentários e de todo arquivo do…](#kb-291)**<br>🟢 low · `task` · 5/10 | — | — | — | — | — |
-| **[KB-297 · Medir o custo do JSON nos carregamentos](#kb-297)**<br>🟢 low · `spike` · 3/10 | — | — | — | — | — |
 
 <!-- KANBAN:BOARD:END -->
 
@@ -7669,12 +7668,16 @@ A complexidade é uma estimativa provisória.
 - **Type:** spike
 - **Priority:** low
 - **Complexity:** 3
+- **Disposition:** withdrawn
+- **Archived:** 2026-11-24
 
 #### Description
 
 Pergunta: quanto do tempo de carga de mapas do Tiled, esqueletos, atlas, localização e `haylen.json` vai na leitura do JSON pelo nlohmann/json, nos aparelhos modestos? Duração: um dia. Resultado: uma tabela em `docs/graphics/rendering.md` ou no guia de assets com o tempo de cada formato, e, se o JSON pesar, as opções para o dono com o que as engines de referência fazem. O nlohmann/json é parte da base fixa do contrato de plugins, então qualquer troca vai ao dono antes.
 
 A complexidade é uma estimativa provisória.
+
+Motivo da retirada: o dono decidiu que o JSON da engine continua sendo o nlohmann/json, então medir o custo para avaliar uma troca não tem uso.
 
 #### Acceptance criteria
 
