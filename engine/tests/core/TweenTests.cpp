@@ -19,6 +19,8 @@
 #include "haylen/core/TweenProperty.hpp"
 #include "haylen/core/TweenValue.hpp"
 #include "haylen/math/Math.hpp"
+#include "haylen/math/Quat.hpp"
+#include "haylen/math/Vec3.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -116,6 +118,54 @@ TEST(TweenPropertyTest, ResolvesModesWhenItBegins) {
 
     TweenProperty wrong = TweenProperty::to(math::Vec2{});
     EXPECT_THROW(wrong.begin(1.0), std::invalid_argument);
+}
+
+// A `Vec3` travels in a straight line, a rotation turns by slerp along the shorter way at an even speed, and HDR colors keep their light above 1.
+TEST(TweenValueTest, MixesVectorsRotationsAndHdrColorsOf3D) {
+    using Interpolation = TweenValue::Interpolation;
+    const math::Vec3 middle = TweenValue::mix(math::Vec3{0.0F, 2.0F, -4.0F}, math::Vec3{2.0F, 4.0F, 0.0F}, 0.5F, Interpolation::Linear).getVector3();
+    EXPECT_EQ(middle, (math::Vec3{1.0F, 3.0F, -2.0F}));
+    EXPECT_FLOAT_EQ(TweenValue::distance(math::Vec3{}, math::Vec3{3.0F, 4.0F, 12.0F}, Interpolation::Linear), 13.0F);
+    EXPECT_EQ(TweenValue::add(math::Vec3{1.0F, 1.0F, 1.0F}, math::Vec3{0.0F, 2.0F, 0.0F}, 2.0F).getVector3(), (math::Vec3{1.0F, 5.0F, 1.0F}));
+
+    const math::Quat start = math::Quat::identity();
+    const math::Quat end = math::Quat::fromAxisAngle(math::Vec3::up(), math::Math::kHalfPi);
+    const math::Quat quarter = TweenValue::mix(start, end, 0.5F, Interpolation::Linear).getRotation();
+    EXPECT_TRUE(math::Quat::approximately(quarter, math::Quat::fromAxisAngle(math::Vec3::up(), math::Math::kHalfPi * 0.5F)));
+    EXPECT_NEAR(TweenValue::distance(start, end, Interpolation::Linear), math::Math::kHalfPi, 1e-5F);
+
+    // The same rotation written with the opposite sign is the same turn, so the tween takes the shorter way to it.
+    const math::Quat flipped{-end.x, -end.y, -end.z, -end.w};
+    EXPECT_NEAR(math::Quat::angleBetween(TweenValue::mix(start, flipped, 0.5F, Interpolation::Linear).getRotation(), quarter), 0.0F, 1e-3F);
+
+    const math::Quat offset = TweenValue::difference(end, start).getRotation();
+    EXPECT_TRUE(math::Quat::approximately(TweenValue::add(start, offset, 2.0F).getRotation(), math::Quat::fromAxisAngle(math::Vec3::up(), math::Math::kPi)));
+    EXPECT_EQ(TweenValue::add(end, math::Quat::identity(), 3.0F).getRotation(), end);
+
+    const math::Color glow = TweenValue::mix(math::Color{0.0F, 0.0F, 0.0F, 1.0F}, math::Color{8.0F, 4.0F, 2.0F, 1.0F}, 0.5F, Interpolation::Linear).getColor();
+    EXPECT_EQ(glow, (math::Color{4.0F, 2.0F, 1.0F, 1.0F}));
+    EXPECT_THROW(static_cast<void>(TweenValue::mix(math::Vec3{}, math::Vec2{}, 0.5F, Interpolation::Linear)), std::invalid_argument);
+}
+
+// Every frame of a tween of a `Vec3` or a rotation evaluates without allocating, and an incremental loop turns once more for every loop.
+TEST(TweenPropertyTest, EvaluatesVectorsAndRotationsOf3DWithoutAllocating) {
+    TweenProperty position = TweenProperty::to(math::Vec3{10.0F, 0.0F, -10.0F});
+    position.begin(math::Vec3{});
+    TweenProperty turn = TweenProperty::by(math::Quat::fromAxisAngle(math::Vec3::up(), math::Math::kHalfPi));
+    turn.begin(math::Quat::identity());
+
+    const test::AllocationTracker tracker;
+    math::Vec3 last;
+    for (int frame = 0; frame <= 600; ++frame) {
+        const float progress = static_cast<float>(frame) / 600.0F;
+        last = position.evaluate(progress, 0).getVector3();
+        static_cast<void>(turn.evaluate(progress, 0));
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+    EXPECT_EQ(last, (math::Vec3{10.0F, 0.0F, -10.0F}));
+    EXPECT_TRUE(math::Quat::approximately(turn.evaluate(0.0F, 2).getRotation(), math::Quat::fromAxisAngle(math::Vec3::up(), math::Math::kPi)));
+    EXPECT_NEAR(turn.getDistance(), math::Math::kHalfPi, 1e-5F);
 }
 
 TEST(TweenMotionTest, FollowsShapesAndComesBack) {

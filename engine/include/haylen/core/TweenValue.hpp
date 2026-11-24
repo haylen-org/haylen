@@ -6,11 +6,13 @@
 #include <variant>
 
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Quat.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/math/Vec3.hpp"
 
 namespace haylen::core {
 
-// A value that a tween animates: a number, a `Vec2`, a `Color` or a text, with the arithmetic that tweens need to travel between two values of the same kind.
+// A value that a tween animates: a number, a `Vec2`, a `Color`, a text, a `Vec3` or a rotation, with the arithmetic that tweens need to travel between two values of the same kind. Colors may go above 1 for HDR light, and rotations travel by `slerp` along the shorter way.
 class TweenValue final {
   public:
     enum class Kind : std::uint8_t {
@@ -18,6 +20,8 @@ class TweenValue final {
         Vector,
         Color,
         Text,
+        Vector3,
+        Rotation,
     };
 
     // How a value travels from its start to its end. The interpolation `Angle` takes the shorter way around the circle in radians, `Integer` rounds numbers such as score counters, and `Hsv` blends colors through hue, saturation and value.
@@ -33,6 +37,8 @@ class TweenValue final {
     TweenValue(math::Vec2 value) : data(value) {}
     TweenValue(math::Color value) : data(value) {}
     TweenValue(std::string value) : data(std::move(value)) {}
+    TweenValue(math::Vec3 value) : data(value) {}
+    TweenValue(math::Quat value) : data(value) {}
 
     [[nodiscard]] Kind getKind() const noexcept {
         return static_cast<Kind>(data.index());
@@ -49,17 +55,23 @@ class TweenValue final {
     [[nodiscard]] const std::string& getText() const {
         return std::get<std::string>(data);
     }
+    [[nodiscard]] math::Vec3 getVector3() const {
+        return std::get<math::Vec3>(data);
+    }
+    [[nodiscard]] math::Quat getRotation() const {
+        return std::get<math::Quat>(data);
+    }
 
     // Both values must have the same kind. A text reveals the end text over the start text one character at a time, like a typewriter.
     [[nodiscard]] static TweenValue mix(const TweenValue& from, const TweenValue& to, float t, Interpolation interpolation);
 
-    // Returns `value` plus `times` the offset, which is how relative tweens and incremental loops move their range. Texts cannot be offset.
+    // Returns `value` plus `times` the offset, which is how relative tweens and incremental loops move their range. A rotation turns by its offset `times` over. Texts cannot be offset.
     [[nodiscard]] static TweenValue add(const TweenValue& value, const TweenValue& offset, float times = 1.0F);
 
     // Returns the offset from start to end, the inverse of `add`.
     [[nodiscard]] static TweenValue difference(const TweenValue& end, const TweenValue& start);
 
-    // Measures how far apart the values are, which is how speed-based tweens find their duration: units for numbers and vectors, the largest channel change for colors and characters for texts.
+    // Measures how far apart the values are, which is how speed-based tweens find their duration: units for numbers and vectors, the largest channel change for colors, characters for texts and radians for rotations.
     [[nodiscard]] static float distance(const TweenValue& from, const TweenValue& to, Interpolation interpolation);
 
     [[nodiscard]] bool operator==(const TweenValue&) const = default;
@@ -68,7 +80,7 @@ class TweenValue final {
     [[nodiscard]] static std::string mixText(const std::string& from, const std::string& to, float t);
     static void requireSameKind(const TweenValue& first, const TweenValue& second);
 
-    std::variant<double, math::Vec2, math::Color, std::string> data;
+    std::variant<double, math::Vec2, math::Color, std::string, math::Vec3, math::Quat> data;
 };
 
 } // namespace haylen::core

@@ -81,11 +81,19 @@ haylen::core::TweenValue ScriptedTrack::toValue(lua_State* L, int index, const P
         return *color;
     }
 
+    if (const haylen::math::Vec3* vector = lua::Userdata::test<haylen::math::Vec3>(L, index)) {
+        return *vector;
+    }
+
+    if (const haylen::math::Quat* rotation = lua::Userdata::test<haylen::math::Quat>(L, index)) {
+        return *rotation;
+    }
+
     if (lua_type(L, index) == LUA_TSTRING) {
         return lua::Stack::read<std::string>(L, index);
     }
 
-    luaL_error(L, "Cannot tween the field \"%s\" because it is not a number, a \"Vec2\", a \"Color\" or a text.", join(path).c_str());
+    luaL_error(L, "Cannot tween the field \"%s\" because it is not a number, a \"Vec2\", a \"Vec3\", a \"Quat\", a \"Color\" or a text.", join(path).c_str());
     return {};
 }
 
@@ -127,10 +135,16 @@ void ScriptedTrack::pushValue(lua_State* L, const haylen::core::TweenValue& valu
     case haylen::core::TweenValue::Kind::Text:
         lua::Stack::push(L, value.getText());
         return;
+    case haylen::core::TweenValue::Kind::Vector3:
+        lua::Stack::push(L, value.getVector3());
+        return;
+    case haylen::core::TweenValue::Kind::Rotation:
+        lua::Stack::push(L, value.getRotation());
+        return;
     }
 }
 
-// A path that ends inside a `Vec2` or a `Color`, such as `position.x`, writes a changed copy back to the field that holds it, since those values are copies in Lua and changing one in place would change every field that shares it.
+// A path that ends inside a `Vec2`, a `Vec3` or a `Color`, such as `position.x`, writes a changed copy back to the field that holds it, since those values are copies in Lua and changing one in place would change every field that shares it.
 void ScriptedTrack::write(lua_State* L, int object, const Path& path, const haylen::core::TweenValue& value) {
     if (path.size() == 1) {
         pushValue(L, value);
@@ -160,6 +174,17 @@ void ScriptedTrack::write(lua_State* L, int object, const Path& path, const hayl
         }
 
         (component == "x" ? copy.x : copy.y) = amount;
+        lua_pop(L, 1);
+        lua::Stack::push(L, copy);
+        lua_setfield(L, holder, container.c_str());
+    } else if (const haylen::math::Vec3* vector3 = lua::Userdata::test<haylen::math::Vec3>(L, -1)) {
+        haylen::math::Vec3 copy = *vector3;
+        float* axis = component == "x" ? &copy.x : component == "y" ? &copy.y : component == "z" ? &copy.z : nullptr;
+        if (axis == nullptr) {
+            luaL_error(L, "Cannot tween the field \"%s\" because a \"Vec3\" has only \"x\", \"y\" and \"z\".", join(path).c_str());
+        }
+
+        *axis = amount;
         lua_pop(L, 1);
         lua::Stack::push(L, copy);
         lua_setfield(L, holder, container.c_str());

@@ -332,11 +332,11 @@ std::optional<std::vector<TweenBinding::NativeField>> TweenBinding::findNativeFi
             return std::nullopt;
         }
 
-        // One level of components reaches into a `Vec2` or a `Color`, such as `position.x` or `color.a`.
+        // One level of components reaches into a `Vec2`, a `Vec3` or a `Color`, such as `position.x` or `color.a`.
         NativeField field{.storage = lua_touserdata(L, target), .property = property};
         if (dot != std::string::npos) {
             const std::string_view tail = std::string_view(name).substr(dot + 1);
-            const std::string_view components = property->kind == lua::NativeProperty::Kind::Vector ? "xy" : property->kind == lua::NativeProperty::Kind::Color ? "rgba" : "";
+            const std::string_view components = componentsOf(property->kind);
             if (tail.size() != 1 || components.find(tail.front()) == std::string_view::npos) {
                 return std::nullopt;
             }
@@ -355,6 +355,22 @@ std::optional<std::vector<TweenBinding::NativeField>> TweenBinding::findNativeFi
     return fields;
 }
 
+std::string_view TweenBinding::componentsOf(lua::NativeProperty::Kind kind) noexcept {
+    switch (kind) {
+    case lua::NativeProperty::Kind::Vector:
+        return "xy";
+    case lua::NativeProperty::Kind::Vector3:
+        return "xyz";
+    case lua::NativeProperty::Kind::Color:
+        return "rgba";
+    case lua::NativeProperty::Kind::Number:
+    case lua::NativeProperty::Kind::Rotation:
+        break;
+    }
+
+    return {};
+}
+
 haylen::core::TweenValue TweenBinding::readNativeField(const NativeField& field) {
     lua::NativeProperty::Values values{};
     (void)field.property->read(field.storage, values);
@@ -368,6 +384,10 @@ haylen::core::TweenValue TweenBinding::readNativeField(const NativeField& field)
         return haylen::math::Vec2{values[0], values[1]};
     case lua::NativeProperty::Kind::Color:
         return haylen::math::Color{values[0], values[1], values[2], values[3]};
+    case lua::NativeProperty::Kind::Vector3:
+        return haylen::math::Vec3{values[0], values[1], values[2]};
+    case lua::NativeProperty::Kind::Rotation:
+        return haylen::math::Quat{values[0], values[1], values[2], values[3]};
     case lua::NativeProperty::Kind::Number:
         break;
     }
@@ -417,6 +437,18 @@ void TweenBinding::writeNative(const std::vector<NativeField>& fields, const hay
         (void)field.property->write(field.storage, values);
         return;
     }
+    case haylen::core::TweenValue::Kind::Vector3: {
+        lua::NativeProperty::Values values{};
+        lua::NativeProperty::pack(value.getVector3(), values);
+        (void)field.property->write(field.storage, values);
+        return;
+    }
+    case haylen::core::TweenValue::Kind::Rotation: {
+        lua::NativeProperty::Values values{};
+        lua::NativeProperty::pack(value.getRotation(), values);
+        (void)field.property->write(field.storage, values);
+        return;
+    }
     case haylen::core::TweenValue::Kind::Text:
         return;
     }
@@ -447,6 +479,10 @@ haylen::core::TweenValue TweenBinding::readLike(lua_State* L, int index, const h
         return lua::Stack::read<haylen::math::Vec2>(L, index);
     case haylen::core::TweenValue::Kind::Color:
         return lua::Stack::read<haylen::math::Color>(L, index);
+    case haylen::core::TweenValue::Kind::Vector3:
+        return lua::Stack::read<haylen::math::Vec3>(L, index);
+    case haylen::core::TweenValue::Kind::Rotation:
+        return lua::Stack::read<haylen::math::Quat>(L, index);
     case haylen::core::TweenValue::Kind::Text:
         if (lua_type(L, index) != LUA_TSTRING) {
             luaL_error(L, "The tween value of \"%s\" must be a text.", field.c_str());

@@ -39,6 +39,29 @@ TEST(TweenLuaTest, TweensEveryKindOfValue) {
     EXPECT_EQ(fixture.lua("return box.label .. ' ' .. moved.x .. ' ' .. tween.size()"), "hello 15.0 0");
 }
 
+// Vectors and rotations of 3D tween in tables through Lua and in a `Transform3D` natively, rotations by slerp, and HDR colors keep their light above 1.
+TEST(TweenLuaTest, TweensVectorsRotationsAndHdrColorsOf3D) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        tween = require('haylen.tween')
+        m = require('haylen.math')
+        camera = {eye = m.vec3(0, 0, 0), turn = m.quat(), glow = m.color(0, 0, 0, 1), focus = {at = m.vec3(0, 0, 0)}}
+        tween.to(camera, 1, {eye = {10, 0, -10}, turn = m.fromAxisAngle(m.up(), math.pi / 2), glow = {8, 4, 2, 1}, ['focus.at.z'] = -6})
+        placed = m.transform3d()
+        tween.to(placed, 1, {position = {4, 2, 0}, rotation = m.fromAxisAngle(m.up(), math.pi), ['scale.y'] = 3})
+        spun = m.transform3d()
+        tween.by(spun, 1, {rotation = m.fromAxisAngle(m.right(), math.pi / 2)})
+    )");
+    // clang-format on
+    fixture.frames(2, 0.25);
+    EXPECT_EQ(fixture.lua("return tostring(camera.eye) .. ' ' .. string.format('%.4f', camera.turn:angleTo(m.fromAxisAngle(m.up(), math.pi / 4))) .. ' ' .. string.format('%.1f %.1f', camera.glow.r, camera.focus.at.z)"), "Vec3(5.0, 0.0, -5.0) 0.0000 4.0 -3.0");
+    EXPECT_EQ(fixture.lua("return tostring(placed.position) .. ' ' .. string.format('%.4f %.1f', placed.rotation:angle(), placed.scale.y)"), "Vec3(2.0, 1.0, 0.0) 1.5708 2.0");
+    fixture.frames(2, 0.25);
+    EXPECT_EQ(fixture.lua("return string.format('%.4f %.4f', spun.rotation:angle(), camera.turn:angleTo(m.fromAxisAngle(m.up(), math.pi / 2)))"), "1.5708 0.0000");
+    EXPECT_NE(fixture.lua("tween.to(camera, 1, {eye = 'far'})").find("Vec3"), std::string::npos);
+}
+
 TEST(TweenLuaTest, TweensFieldsAlongPathsOfTablesAndValues) {
     {
         test::LuaFixture fixture;
@@ -511,7 +534,7 @@ TEST(TweenLuaTest, ReportsMistakes) {
     test::LuaFixture fixture;
     fixture.runLua("tween = require('haylen.tween') box = {x = 0, name = {}}");
     EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 1}, {speed = 2})").find("Unknown option \"speed\""), std::string::npos);
-    EXPECT_NE(fixture.lua("tween.to(box, 1, {name = 'x'})").find("not a number, a \"Vec2\", a \"Color\" or a text"), std::string::npos);
+    EXPECT_NE(fixture.lua("tween.to(box, 1, {name = 'x'})").find("not a number, a \"Vec2\", a \"Vec3\", a \"Quat\", a \"Color\" or a text"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {x = 'far'})").find("must be a number"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 1, {[1] = 2})").find("tween fields are named by strings"), std::string::npos);
     EXPECT_NE(fixture.lua("tween.to(box, 0, {x = 1})").find("positive duration"), std::string::npos);

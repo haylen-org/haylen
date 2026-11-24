@@ -94,6 +94,8 @@ class TweenBinding final {
     static void applyOverwrite(lua_State* L, int options, const haylen::core::PropertyTween& tween);
     static void finishTracks(Builder& builder);
     [[nodiscard]] static std::optional<std::vector<NativeField>> findNativeFields(lua_State* L, int target, const std::vector<std::string>& names);
+    // The names of the components that a path reaches into, such as `x` of `position.x`, or none for a value without components.
+    [[nodiscard]] static std::string_view componentsOf(lua::NativeProperty::Kind kind) noexcept;
     [[nodiscard]] static haylen::core::TweenValue readNativeField(const NativeField& field);
     [[nodiscard]] static haylen::core::TweenValue readNative(const std::vector<NativeField>& fields);
     static void writeNativeNumber(const NativeField& field, float number);

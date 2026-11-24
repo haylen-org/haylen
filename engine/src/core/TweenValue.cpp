@@ -57,6 +57,10 @@ TweenValue TweenValue::mix(const TweenValue& from, const TweenValue& to, float t
         return interpolation == Interpolation::Hsv ? math::Color::lerpHsv(from.getColor(), to.getColor(), t) : math::Color::lerp(from.getColor(), to.getColor(), t);
     case Kind::Text:
         return mixText(from.getText(), to.getText(), t);
+    case Kind::Vector3:
+        return math::Vec3::lerp(from.getVector3(), to.getVector3(), t);
+    case Kind::Rotation:
+        return math::Quat::slerp(from.getRotation(), to.getRotation(), t);
     }
 
     return from;
@@ -74,6 +78,18 @@ TweenValue TweenValue::add(const TweenValue& value, const TweenValue& offset, fl
         const math::Color base = value.getColor();
         const math::Color delta = offset.getColor();
         return math::Color{base.r + delta.r * times, base.g + delta.g * times, base.b + delta.b * times, base.a + delta.a * times};
+    }
+    case Kind::Vector3:
+        return value.getVector3() + offset.getVector3() * times;
+    case Kind::Rotation: {
+        // A turn by no angle has no axis, and turning by it any number of times keeps the rotation.
+        const math::Quat turn = offset.getRotation();
+        const float angle = turn.getAngle();
+        if (angle == 0.0F) {
+            return value;
+        }
+
+        return math::Quat::fromAxisAngle(turn.getAxis(), angle * times) * value.getRotation();
     }
     case Kind::Text:
         break;
@@ -95,6 +111,10 @@ TweenValue TweenValue::difference(const TweenValue& end, const TweenValue& start
         const math::Color first = start.getColor();
         return math::Color{last.r - first.r, last.g - first.g, last.b - first.b, last.a - first.a};
     }
+    case Kind::Vector3:
+        return end.getVector3() - start.getVector3();
+    case Kind::Rotation:
+        return end.getRotation() * start.getRotation().getInverse();
     case Kind::Text:
         break;
     }
@@ -119,6 +139,10 @@ float TweenValue::distance(const TweenValue& from, const TweenValue& to, Interpo
     }
     case Kind::Text:
         return static_cast<float>(Utf8::countCodePoints(to.getText()));
+    case Kind::Vector3:
+        return math::Vec3::distance(from.getVector3(), to.getVector3());
+    case Kind::Rotation:
+        return math::Quat::angleBetween(from.getRotation(), to.getRotation());
     }
 
     return 0.0F;

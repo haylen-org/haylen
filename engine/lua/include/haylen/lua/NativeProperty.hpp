@@ -9,16 +9,20 @@
 #include <type_traits>
 
 #include "haylen/math/Color.hpp"
+#include "haylen/math/Quat.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/math/Vec3.hpp"
 
 namespace haylen::lua {
 
-// A number, `Vec2` or `Color` field of a bound type that native code reads and writes without running Lua, such as the position of a sprite. The class `ClassBuilder` records one for every field of those types, and tweens use them to animate userdata natively. The functions take the userdata block and return `false` when the object behind it was released.
+// A number, `Vec2`, `Color`, `Vec3` or `Quat` field of a bound type that native code reads and writes without running Lua, such as the position of a sprite. The class `ClassBuilder` records one for every field of those types, and tweens use them to animate userdata natively. The functions take the userdata block and return `false` when the object behind it was released.
 struct NativeProperty {
     enum class Kind : std::uint8_t {
         Number,
         Vector,
         Color,
+        Vector3,
+        Rotation,
     };
 
     using Values = std::array<float, 4>;
@@ -37,6 +41,10 @@ struct NativeProperty {
             return Kind::Vector;
         } else if constexpr (std::is_same_v<Field, haylen::math::Color>) {
             return Kind::Color;
+        } else if constexpr (std::is_same_v<Field, haylen::math::Vec3>) {
+            return Kind::Vector3;
+        } else if constexpr (std::is_same_v<Field, haylen::math::Quat>) {
+            return Kind::Rotation;
         } else {
             return std::nullopt;
         }
@@ -47,6 +55,10 @@ struct NativeProperty {
             values = {value.x, value.y, 0.0F, 0.0F};
         } else if constexpr (std::is_same_v<Field, haylen::math::Color>) {
             values = {value.r, value.g, value.b, value.a};
+        } else if constexpr (std::is_same_v<Field, haylen::math::Vec3>) {
+            values = {value.x, value.y, value.z, 0.0F};
+        } else if constexpr (std::is_same_v<Field, haylen::math::Quat>) {
+            values = {value.x, value.y, value.z, value.w};
         } else {
             values = {static_cast<float>(value), 0.0F, 0.0F, 0.0F};
         }
@@ -56,6 +68,10 @@ struct NativeProperty {
         if constexpr (std::is_same_v<Field, haylen::math::Vec2>) {
             return {values[0], values[1]};
         } else if constexpr (std::is_same_v<Field, haylen::math::Color>) {
+            return {values[0], values[1], values[2], values[3]};
+        } else if constexpr (std::is_same_v<Field, haylen::math::Vec3>) {
+            return {values[0], values[1], values[2]};
+        } else if constexpr (std::is_same_v<Field, haylen::math::Quat>) {
             return {values[0], values[1], values[2], values[3]};
         } else {
             return static_cast<Field>(values[0]);

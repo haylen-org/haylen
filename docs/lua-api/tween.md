@@ -19,9 +19,9 @@ local tween = require('haylen.tween')
 
 ## Native properties
 
-A native property is a number, `Vec2` or `Color` property of an engine type that C++ reads and writes directly. A tween writes native properties without calling Lua, so thousands of them cost no script time. Sprites, cameras, lights, particle emitters, the nodes of [`haylen.nodes2d`](nodes2d.md), audio effects, the values of [`haylen.math`](math.md) such as `Vec2` and `Color`, and the transforms of UI nodes have them, among others.
+A native property is a number, `Vec2`, `Vec3`, `Quat` or `Color` property of an engine type that C++ reads and writes directly. A tween writes native properties without calling Lua, so thousands of them cost no script time. Sprites, cameras, lights, particle emitters, the nodes of [`haylen.nodes2d`](nodes2d.md), audio effects, the values of [`haylen.math`](math.md) such as `Vec2`, `Color` and the `position`, `rotation` and `scale` of a `Transform3D`, and the transforms of UI nodes have them, among others.
 
-A native field may reach one level into a value, such as `'position.x'` of a `Vec2` property or `'color.a'` of a `Color` property. A pair of fields, such as the `x` and `y` that `tween.move` animates, is native when both are number properties. A field that is not a native property goes through the Lua accessors of the object, like a field of a table. So a tween may even change the `timeScale` of another tween.
+A native field may reach one level into a value, such as `'position.x'` of a `Vec2` or `Vec3` property or `'color.a'` of a `Color` property. A `Vec3` travels in a straight line, a `Quat` turns by `slerp` along the shorter way, and a `Color` may go above `1` for HDR light, with no clamp on the way. A pair of fields, such as the `x` and `y` that `tween.move` animates, is native when both are number properties. A field that is not a native property goes through the Lua accessors of the object, like a field of a table. So a tween may even change the `timeScale` of another tween.
 
 The transform that [`gui:transform(id)`](ui.md#guitransformid) returns moves, scales, fades and tints a node of a GUI. The GUI keeps it alive while the node exists, so a tween may target it directly.
 
@@ -38,7 +38,7 @@ tween.to(combo, 0.3, {scale = math2d.vec2(1, 1), opacity = 0.8, tint = '#FFFFD04
 
 ## Values
 
-A tween animates four kinds of values. It finds the kind from the current value of the field, and it reads the end value as the same kind.
+A tween animates six kinds of values. It finds the kind from the current value of the field, and it reads the end value as the same kind.
 
 | Kind | End values it accepts | How it travels |
 | --- | --- | --- |
@@ -46,8 +46,10 @@ A tween animates four kinds of values. It finds the kind from the current value 
 | `Vec2` | A `Vec2`, `{x = 10, y = 20}` or `{10, 20}`. | In a straight line. |
 | `Color` | A `Color`, a text `'#RRGGBB'` or `'#AARRGGBB'`, or a table with `r`, `g`, `b` and an optional `a`. | Channel by channel, or through the hue with `colorSpace = 'hsv'`. |
 | Text | A string. | The end text replaces the start text one character at a time, like a typewriter. |
+| `Vec3` | A `Vec3`, `{x = 1, y = 2, z = 3}` or `{1, 2, 3}`. | In a straight line. |
+| `Quat` | A `Quat`, `{x = 0, y = 0, z = 0, w = 1}` or `{0, 0, 0, 1}`. | By `slerp` along the shorter way, at an even speed of turning. A `by` tween turns by its offset once more for each loop. |
 
-A field name may be a path with dots. It reaches into nested tables, such as `'stats.hp'`, and into the parts of a value, such as `'position.x'` or `'color.a'`. A `Vec2` has the parts `x` and `y`, and a `Color` has `r`, `g`, `b` and `a`. These values are copies in Lua, so the tween writes a changed copy back to the field that holds the value. A variable that held the old value keeps it. One tween animates every field that its table of values names.
+A field name may be a path with dots. It reaches into nested tables, such as `'stats.hp'`, and into the parts of a value, such as `'position.x'` or `'color.a'`. A `Vec2` has the parts `x` and `y`, a `Vec3` has `x`, `y` and `z`, and a `Color` has `r`, `g`, `b` and `a`. These values are copies in Lua, so the tween writes a changed copy back to the field that holds the value. A variable that held the old value keeps it. One tween animates every field that its table of values names.
 
 The tween writes numbers as Lua floats, so a counter reads `1500.0`. Format it with `%d` to show `1500`.
 
@@ -840,7 +842,7 @@ These messages come from the functions and methods when they are called.
 | `A tween needs a positive duration.` | The `seconds` of a tween, or a pause of a timeline, is not above `0`. |
 | `A speed-based tween needs a positive speed.` | The `seconds` of a tween with `speedBased = true` is not above `0`. |
 | `bad argument #3 to 'to' (tween fields are named by strings)` | A key of the table of values is not a string. |
-| `Cannot tween the field "<name>" because it is not a number, a "Vec2", a "Color" or a text.` | The field is missing or holds another type. |
+| `Cannot tween the field "<name>" because it is not a number, a "Vec2", a "Vec3", a "Quat", a "Color" or a text.` | The field is missing or holds another type. |
 | `Cannot tween the field "<name>" because part of its path is <type>, not a table or an object.` | A step of the path of the field is not a table or a userdata. |
 | `The tween field "<name>" has an empty part.` | The name of the field has two dots in a row, or starts or ends with a dot. |
 | `Cannot tween the field "<name>" as part of a "Vec2" because it is not a number.` | One field of a pair of fields is not a number. |
