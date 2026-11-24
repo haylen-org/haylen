@@ -14,7 +14,6 @@ class AppleSimulators:
 
     # The platform of each family that "xcodebuild -downloadPlatform" installs the runtime of.
     DOWNLOAD_PLATFORMS = {"iOS": "iOS", "tvOS": "tvOS", "xrOS": "visionOS"}
-    DEVICES_HINT = 'Use the command "haylen devices" to list the simulators, emulators and devices of this machine.'
     # SpringBoard of iOS writes this report to the unified log once its notification center loaded the apps whose notifications it shows. An app that installs before the report never becomes one of them, so its requests for notifications hang or fail, and a busy Mac delays the report for minutes after the boot.
     NOTIFICATION_SOURCES = 'process == "SpringBoard" AND subsystem == "com.apple.UserNotifications" AND eventMessage CONTAINS "notificationSourcesDidInstall" AND eventMessage CONTAINS "initialLoad=1"'
     NOTIFICATION_SECONDS = 900
@@ -33,7 +32,7 @@ class AppleSimulators:
         if requested:
             matches = [device for device in candidates if requested in (device["udid"], device["name"])]
             if not matches:
-                raise UnsupportedTarget(f'No available {family} simulator has the name or identifier "{requested}". {AppleSimulators.DEVICES_HINT}')
+                raise UnsupportedTarget(f'No available {family} simulator has the name or identifier "{requested}". {UnsupportedTarget.DEVICES_HINT}')
             return matches[0]
         if not candidates:
             raise UnsupportedTarget(f'No {family} simulator is installed. Install the runtime with "xcodebuild -downloadPlatform {AppleSimulators.DOWNLOAD_PLATFORMS[family]}".')

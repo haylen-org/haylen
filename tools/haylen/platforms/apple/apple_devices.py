@@ -6,7 +6,6 @@ from pathlib import Path
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.device import Device
-from haylen.toolchains.apple_simulators import AppleSimulators
 
 
 class AppleDevices:
@@ -79,8 +78,8 @@ class AppleDevices:
     def device(self, requested: str | None, target: str) -> Device:
         """The paired device of a target that `--device` names by its identifier or its name."""
         if not requested:
-            raise UnsupportedTarget(f'Name the device of "{target}" with "--device". {AppleSimulators.DEVICES_HINT}')
+            raise UnsupportedTarget(f'Name the device of "{target}" with "--device". {UnsupportedTarget.DEVICES_HINT}')
         for device in self.physical():
             if requested in (device.identifier, device.name) and target in device.targets:
                 return device
-        raise UnsupportedTarget(f'No device of "{target}" paired with this Mac has the name or identifier "{requested}". {AppleSimulators.DEVICES_HINT}')
+        raise UnsupportedTarget(f'No device of "{target}" paired with this Mac has the name or identifier "{requested}". {UnsupportedTarget.DEVICES_HINT}')

@@ -11,7 +11,6 @@ from haylen.engine.desktop_gpu_tests import DesktopGpuTests
 from haylen.engine.engine_tree import EngineTree
 from haylen.engine.gpu_test_results import GpuTestResults
 from haylen.toolchains.apple_sdk import AppleSdk
-from haylen.toolchains.apple_simulators import AppleSimulators
 
 
 class AppleDeviceGpuTests:
@@ -48,7 +47,7 @@ class AppleDeviceGpuTests:
         if Host.system() != "macos":
             raise UnsupportedTarget(f'The GPU tests of "{platform}" build only on macOS, and this machine runs "{Host.system()}".')
         if not device:
-            raise UnsupportedTarget(f'Name the device with "--device". {AppleSimulators.DEVICES_HINT}')
+            raise UnsupportedTarget(f'Name the device with "--device". {UnsupportedTarget.DEVICES_HINT}')
         tree = EngineTree(self.context, f"{platform}-gpu-tests-{configuration.lower()}")
         tree.ensure(self.configure_command(tree, platform, configuration))
         tree.build([DesktopGpuTests.TARGET], configuration, "-allowProvisioningUpdates")

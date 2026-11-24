@@ -7,8 +7,6 @@ from haylen.toolchains.android_sdk import AndroidSdk
 class AndroidDebugBridge:
     """The `adb` of the Android SDK, through which the tooling finds the connected devices and emulators and reads what they run."""
 
-    DEVICES_HINT = 'Use the command "haylen devices" to list the simulators, emulators and devices of this machine.'
-
     def __init__(self, context: ToolingContext, sdk: AndroidSdk) -> None:
         self.context = context
         self.sdk = sdk
@@ -27,13 +25,13 @@ class AndroidDebugBridge:
         devices = self.devices()
         if requested:
             if requested not in devices:
-                raise UnsupportedTarget(f'The device "{requested}" is not a connected Android device. {AndroidDebugBridge.DEVICES_HINT}')
+                raise UnsupportedTarget(f'The device "{requested}" is not a connected Android device. {UnsupportedTarget.DEVICES_HINT}')
             return requested
         if not devices:
-            raise UnsupportedTarget(f'Name the Android device with "--device", because none is connected. {AndroidDebugBridge.DEVICES_HINT}')
+            raise UnsupportedTarget(f'Name the Android device with "--device", because none is connected. {UnsupportedTarget.DEVICES_HINT}')
         if len(devices) > 1:
             names = ", ".join(f'"{name}"' for name in devices)
-            raise UnsupportedTarget(f'Name the Android device with "--device", because {len(devices)} are connected: {names}. {AndroidDebugBridge.DEVICES_HINT}')
+            raise UnsupportedTarget(f'Name the Android device with "--device", because {len(devices)} are connected: {names}. {UnsupportedTarget.DEVICES_HINT}')
         return devices[0]
 
     def property(self, serial: str, name: str) -> str:
