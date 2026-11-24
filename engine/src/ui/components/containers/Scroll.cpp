@@ -37,6 +37,21 @@ void Scroll::command(Context& context, std::string_view name, const core::Json& 
         return;
     }
 
+    Request next = readRequest(arguments);
+    if (next.offset) {
+        request = std::move(next);
+        return;
+    }
+
+    if (next.node.empty() || findNode(*this, next.node) == nullptr) {
+        throw std::invalid_argument("The scroll \"" + getId() + "\" holds no node with the id \"" + next.node + "\".");
+    }
+
+    request = std::move(next);
+    context.revealNode(arguments);
+}
+
+Scroll::Request Scroll::readRequest(const core::Json& arguments) const {
     if (!arguments.is_object() || arguments.contains("node") == arguments.contains("offset")) {
         throw std::invalid_argument("The \"scrollTo\" command of a \"scroll\" takes a table with either \"node\" or \"offset\".");
     }
@@ -53,8 +68,21 @@ void Scroll::command(Context& context, std::string_view name, const core::Json& 
 
     if (arguments.contains("offset")) {
         next.offset = offset;
-    } else if (next.node.empty() || findNode(*this, next.node) == nullptr) {
-        throw std::invalid_argument("The scroll \"" + getId() + "\" holds no node with the id \"" + next.node + "\".");
+    }
+
+    return next;
+}
+
+// A node that a scroll inside this one brings into view comes into view here too, so it shows on the screen and not only in the inner scroll.
+void Scroll::followReveal(const Context& context) {
+    const core::Json* revealed = context.getRevealedNode();
+    if (revealed == nullptr) {
+        return;
+    }
+
+    Request next = readRequest(*revealed);
+    if (findNode(*this, next.node) == nullptr || (request && request->node == next.node)) {
+        return;
     }
 
     request = std::move(next);
@@ -118,6 +146,7 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         const float cover = horizontal ? 0.0F : context.getBackend().getKeyboardCover(box);
         scroller.setRange(std::max(0.0F, (horizontal ? size.x : size.y + cover) - view), view);
         followWindow();
+        followReveal(context);
 
         // The wheel, the finger and an item dragged near an end move the content along the axis, and the bar takes the pointer in its lane before the content does.
         const bool underPointer = ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows);
@@ -184,14 +213,17 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             }
         }
 
+        // A scroll without motion jumps to its node until the node stays where it shows, since a scroll inside this one moves the node in the same frame.
         if (request) {
             const std::optional<double> target = findTarget(*request, origin, view);
+            const bool reached = target && std::fabs(*target - scroller.getOffset()) <= kSettleDistance;
             if (!target) {
+                request.reset();
+            } else if (!request->animated && reached) {
                 request.reset();
             } else if (!request->animated) {
                 scroller.jumpTo(*target);
-                request.reset();
-            } else if (scroller.isResting() && std::fabs(*target - scroller.getOffset()) <= kSettleDistance) {
+            } else if (scroller.isResting() && reached) {
                 request.reset();
             } else {
                 scroller.animateTo(*target);

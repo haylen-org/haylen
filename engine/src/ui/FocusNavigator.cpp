@@ -27,7 +27,7 @@ bool FocusNavigator::wrapsAlong(FocusWrap wrap, FocusDirection direction) noexce
     return wrap == FocusWrap::Both || wrap == (horizontal ? FocusWrap::Horizontal : FocusWrap::Vertical);
 }
 
-// Focus that moves into a draggable window brings it to the front, like a click would, and a scrolled container or popup scrolls the item into view.
+// Focus that moves into a draggable window brings it to the front, like a click would, and every scrolled container or popup around the item scrolls it into view, the innermost first, so an item of a list that a page hides shows on the screen.
 void FocusNavigator::setFocus(ImGuiID item, ImGuiWindow* window, const math::Rect& bounds) {
     const ImGuiWindow* current = GImGui->NavWindow;
     if ((window->RootWindow->Flags & ImGuiWindowFlags_Popup) == 0 && (current == nullptr || current->RootWindow != window->RootWindow)) {
@@ -36,8 +36,13 @@ void FocusNavigator::setFocus(ImGuiID item, ImGuiWindow* window, const math::Rec
 
     ImGui::SetFocusID(item, window);
 
-    if ((window->Flags & (ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_Popup)) != 0) {
-        ImGui::ScrollToRectEx(window, ImGuiConverter::toImRect(bounds), ImGuiScrollFlags_KeepVisibleEdgeX | ImGuiScrollFlags_KeepVisibleEdgeY | ImGuiScrollFlags_NoScrollParent);
+    // Each area scrolls the item where the scrolls inside it will have moved it, and the window of the GUI around them never scrolls.
+    ImRect shown = ImGuiConverter::toImRect(bounds);
+    ImGuiWindow* area = window;
+    while (area != nullptr && (area->Flags & (ImGuiWindowFlags_ChildWindow | ImGuiWindowFlags_Popup)) != 0) {
+        const ImVec2 moved = ImGui::ScrollToRectEx(area, shown, ImGuiScrollFlags_KeepVisibleEdgeX | ImGuiScrollFlags_KeepVisibleEdgeY | ImGuiScrollFlags_NoScrollParent);
+        shown.Translate(ImVec2{-moved.x, -moved.y});
+        area = (area->Flags & ImGuiWindowFlags_ChildWindow) != 0 ? area->ParentWindow : nullptr;
     }
 }
 

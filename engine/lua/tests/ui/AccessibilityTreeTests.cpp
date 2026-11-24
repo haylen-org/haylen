@@ -49,6 +49,26 @@ class AccessibilityTreeTest : public ::testing::Test {
         return *element;
     }
 
+    // Mounts a list of six rows inside a page that scrolls, under a header, so the page hides the end of the list, with a footer under the page.
+    void mountListInPage() {
+        // clang-format off
+        fixture.runLua(R"(
+            local rows = {}
+            for index = 1, 6 do
+                rows[index] = ui.button{id = 'row' .. index, text = 'Row ' .. index, height = 40}
+            end
+            gui = ui.mount(ui.column{gap = 0,
+                ui.scroll{id = 'page', height = 200, ui.column{gap = 0,
+                    ui.button{text = 'Header', height = 100},
+                    ui.scroll{id = 'list', height = 160, ui.column{gap = 0, children = rows}},
+                }},
+                ui.button{text = 'Footer', height = 40},
+            }, {placement = 'screen'})
+        )");
+        // clang-format on
+        fixture.frames(3);
+    }
+
     [[nodiscard]] const haylen::platform::HeadlessHost::AccessibilityTree& getLastTree() {
         const std::vector<haylen::platform::HeadlessHost::AccessibilityTree>& trees = fixture.host().getAccessibilityTrees();
         if (trees.empty()) {
@@ -246,6 +266,38 @@ TEST_F(AccessibilityTreeTest, CoversOnlyWhatTheScrollAreaShows) {
     EXPECT_EQ(fixture.lua("return ui.focused().id"), "row1");
     EXPECT_FLOAT_EQ(get("Row 1").bounds.height, third.height);
     EXPECT_FLOAT_EQ(get("Row 1").bounds.y, search.getBottom());
+}
+
+// A scroll that brings a row of a list into view brings it into view in the page around the list too, which hides the end of the list, with and without motion.
+TEST_F(AccessibilityTreeTest, BringsANodeIntoViewInEveryScrollThatHoldsIt) {
+    mountListInPage();
+    EXPECT_FLOAT_EQ(get("Row 6").bounds.height, 0.0F);
+
+    fixture.runLua("gui:command('list', 'scrollTo', {node = 'row6'})");
+    fixture.frames(60);
+    EXPECT_FLOAT_EQ(get("Row 6").bounds.height, get("Row 5").bounds.height);
+    EXPECT_LE(get("Row 6").bounds.getBottom(), get("Footer").bounds.y);
+
+    fixture.runLua("gui:command('page', 'scrollTo', {offset = 0, animated = false})");
+    fixture.runLua("gui:command('list', 'scrollTo', {offset = 0, animated = false})");
+    fixture.frames(3);
+    EXPECT_FLOAT_EQ(get("Row 6").bounds.height, 0.0F);
+
+    fixture.runLua("gui:command('list', 'scrollTo', {node = 'row6', animated = false})");
+    fixture.frames(3);
+    EXPECT_FLOAT_EQ(get("Row 6").bounds.height, get("Row 5").bounds.height);
+}
+
+// The focus that a screen reader moves to a row of a list that the page around it hides scrolls the row into view in the list and in the page.
+TEST_F(AccessibilityTreeTest, BringsTheFocusIntoViewInEveryScrollThatHoldsIt) {
+    mountListInPage();
+    EXPECT_FLOAT_EQ(get("Row 6").bounds.height, 0.0F);
+
+    haylen::platform::AccessibilityRelay::perform({.element = get("Row 6").id, .action = Element::Focus});
+    fixture.frames(30);
+    EXPECT_EQ(fixture.lua("return ui.focused().id"), "row6");
+    EXPECT_FLOAT_EQ(get("Row 6").bounds.height, get("Row 5").bounds.height);
+    EXPECT_LE(get("Row 6").bounds.getBottom(), get("Footer").bounds.y);
 }
 
 // A modal presentation hides the GUIs under it from screen readers, which reach its screen, the messages above it, the grabber of its sheet and the action of a message, though neither takes the focus.

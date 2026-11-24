@@ -379,6 +379,11 @@ void Context::beginFrame(double now, float delta) noexcept {
     frameRequested = false;
 }
 
+void Context::revealNode(const core::Json& arguments) {
+    revealedNode = arguments;
+    revealFrame = frame;
+}
+
 void Context::emit(const Component& component, std::string name, core::Json value) {
     if (events == nullptr) {
         throw std::logic_error("A component emitted an event outside of a GUI.");

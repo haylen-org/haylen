@@ -160,6 +160,12 @@ class Context final {
     // Returns how far an area scrolls in this frame, toward its bottom or right end when positive, while the player drags an item near one of its ends: within a quarter of its length or the theme metric `listRowHeight`, whichever is shorter, in the innermost area that can move that way, faster the closer the item gets to the edge. The `position` is how far the area shows from its top or left end, out of `maximum`.
     [[nodiscard]] float takeEdgeScroll(ImGuiID area, const math::Rect& bounds, bool horizontal, double position, double maximum);
 
+    // A scroll that brings a node into view hands the arguments of its `scrollTo` to the scrolls that draw in this frame and the next one, since a command may come between two frames, so every scroll that holds the node brings it into view too, from the innermost one out to the scrolls around it.
+    void revealNode(const core::Json& arguments);
+    [[nodiscard]] const core::Json* getRevealedNode() const noexcept {
+        return revealedNode && frame <= revealFrame + 1 ? &*revealedNode : nullptr;
+    }
+
     // Holds an item that the pointer drags outside drag and drop, such as the lifted item of a collection, for the next frame, so it scrolls the areas it nears.
     void carryItem() noexcept;
 
@@ -389,6 +395,8 @@ class Context final {
     float deltaSeconds = 0.0F;
     float textScale = 1.0F;
     bool frameRequested = false;
+    std::optional<core::Json> revealedNode;
+    std::uint64_t revealFrame = 0;
     AccessibilityTree accessibility;
 };
 
