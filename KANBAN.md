@@ -4,24 +4,25 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 13 / not set · **Next ID:** KB-294
+**Active WIP:** 8 / not set · **Next ID:** KB-295
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 | — | — | — | — |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 | — | — | — | — |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 | — | — | — | — |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 | — | — | — | — |
-| **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | — | — |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | — |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | — | — | — | — |
-| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
-| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | — |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | — | — |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | — |
+| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
+| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -352,6 +353,8 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Andamento: a execução do Tiny Island nos simuladores de iOS e tvOS começou num stream de estabilização. O macOS, o Mac Catalyst e o player de desktop rodam na nuvem ou na CI, porque nenhuma janela de app abre no Mac do dono.
 
+Andamento: os testes de início do Tiny Island passam no simulador do iPhone 17e e no do Apple TV (commit `4eb1974e1`). Faltam o macOS, o Mac Catalyst e o player de desktop, que esperam a decisão do dono sobre os executores de testes de UI na CI e na nuvem.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -606,6 +609,8 @@ Escrever `TextInputTests.kt` em `samples/tests/ui-tests/android`, como o `TextIn
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Andamento: três testes passam no emulador (`f713dee80`): cada tecla digita uma vez e Delete apaga, o teclado fica ao tocar o campo de novo e volta depois do Back e do Home. O teste de girar o aparelho espera a decisão do dono, porque o app só em paisagem gira pelo acelerômetro no Android.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -617,77 +622,69 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-015"></a>
 ### KB-015 — Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…
 
-- **Status:** doing
+- **Status:** done
 - **Type:** test
 - **Priority:** high
 - **Complexity:** 3
+- **Finished:** 2026-11-24
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
 
-Etapa: Código e revisão geral.
-
-Testes de UI de `PLG-023` (`DataViewTests`) em `samples/tests/ui-tests/apple` e `samples/tests/ui-tests/android`, que conferem que os quadros chegam em views de dados e que a parte nativa lê e escreve a view do app, já que hoje só a parte C++ das views tem teste automático.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
+Os testes de UI do PLG-023 leem as data views pelo app: a parte nativa (Swift ou Kotlin) preenche 30 quadros em views de 230400 bytes que a textura envia no lugar, e soma a view de 4096 bytes do app, que o Lua lê de volta da mesma memória.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `DataViewTests.swift` e `DataViewTests.kt` passaram no simulador do iPhone 17e, no do Apple TV 4K e no emulador Android (commit `1cc0250ec`).
 
 #### Attachments
 
-- None
+- [Testes](docs/tools/testing.md)
+- [Projeto de testes](samples/tests/README.md)
 
 <a name="kb-016"></a>
 ### KB-016 — O check da web confere o carregamento
 
-- **Status:** doing
+- **Status:** done
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
+- **Finished:** 2026-11-24
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
 
-Etapa: Código e revisão geral.
-
-O check da web confere o carregamento: os valores de `#splash-percent` crescem e chegam a 100% antes de o splash sair, o logo carrega antes de `haylen.wasm` e do pacote, e uma página sem `#splash-logo` mostra só a barra (`engine/tests/web/app-start-check.mjs` e `tools/haylen/engine/web_checks.py`, com um teste pytest que recebe um relatório fora de ordem).
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
+A página web carrega na ordem certa e o check da web confere: a porcentagem só cresce e chega a 100% quando o splash termina, o logo aparece desde a primeira pintura e chega antes do `haylen.wasm` e do pacote, e uma página sem `#splash-logo` mostra a barra e nenhuma imagem. O `WebStartReport` guarda essas conferências, que o check de início de todo app e o nono check da web, "loading", usam.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `WebStartReportTest` com relatórios fora de ordem, e `haylen test --target web --shard 9/9` passou no Chrome headless em WebGPU (commit `36015b870`).
 
 #### Attachments
 
-- None
+- [Testes](docs/tools/testing.md)
 
 <a name="kb-017"></a>
 ### KB-017 — Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock
 
-- **Status:** doing
+- **Status:** done
 - **Type:** test
 - **Priority:** high
 - **Complexity:** 5
+- **Finished:** 2026-11-24
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
 
-Etapa: Código e revisão geral.
-
-Testes pytest das referências de plugins por repositório git (`git`, `ref` e `path`) e do `haylen.lock`: plugin por repositório git local em `ref` com o commit do `haylen.lock`, Release recusando um plugin sem commit fixado, `path` que sai do checkout recusado, `plugin add --reference` de um repositório, `plugin update` para o commit novo e `plugin list` com a origem. A cópia, a referência a uma pasta, a remoção e a cópia que não sai já têm `AppPluginsTest`.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
+Os plugins vindos de repositório git têm testes com repositórios git locais de verdade: `plugin add --reference` fixa o commit e os builds o mantêm enquanto o ramo anda, `plugin update` move o pin, um build Release recusa um plugin sem pin, um pin de outra ref não fixa nada, um `path` que sai do checkout é recusado e `plugin list` diz de onde vem cada plugin. A mensagem do `--path` que escapa diz `The option "--path" names …`.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `PluginRepositoriesTest` em `tools/tests/plugins/test_plugin_repositories.py`, 10 testes (commit `6263160c3`).
 
 #### Attachments
 
-- None
+- [Testes](docs/tools/testing.md)
 
 <a name="kb-018"></a>
 ### KB-018 — Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…
@@ -717,27 +714,24 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-019"></a>
 ### KB-019 — Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…
 
-- **Status:** doing
+- **Status:** done
 - **Type:** test
 - **Priority:** high
 - **Complexity:** 3
+- **Finished:** 2026-11-24
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
 
-Etapa: Código e revisão geral.
-
-Teste de regressão do cartão de destaque do `music-streaming` numa janela de iPad mini em retrato, conferindo que a coluna dos textos fica com pelo menos 280 unidades e que a ilustração desce para uma linha própria.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
+O cartão de destaque do app de música mantém os textos e a ilustração separados num iPad mini em retrato: a descrição, que quebra na coluna de texto, tem ao menos 280 unidades, e a linha da ilustração fica entre o botão de tocar e a prateleira seguinte.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `FeaturedCardTests.swift` passou no simulador do iPad mini (A17 Pro) em retrato, com a captura conferida (commit `ea3447d28`).
 
 #### Attachments
 
-- None
+- [README do app de música](samples/apps/music-streaming/README.md)
 
 <a name="kb-020"></a>
 ### KB-020 — Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
@@ -826,6 +820,8 @@ Os testes instrumentados das bibliotecas Android (`engine/platform/android/hayle
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Andamento: o teste no emulador passou (`HaylenTouchpadSwipeTest` local e `HaylenAccessibilityTreeTest` no emulador, sem falha). Falta o passo da CI no job de GPU do Android, que roda na execução completa.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -861,34 +857,24 @@ A API pública do `DebugPlugin` não tem ganchos de teste. O inspetor atualiza p
 <a name="kb-025"></a>
 ### KB-025 — O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…
 
-- **Status:** doing
+- **Status:** done
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 5
+- **Finished:** 2026-11-24
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
 
-Etapa: Testes.
-
-O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda (visto pelo dono no macOS, sem passo para reproduzir, com o paddle de um jogo parado): achar a causa com medições do tempo de cada quadro, do caminho dos eventos da janela até o app e do que bloqueia a thread do quadro, conferir no macOS, no Windows e no Linux, corrigir na raiz e cobrir com um teste que falha sem a correção. Pronto quando uma sessão longa de jogo com entrada contínua não tem nenhuma pausa de entrada em nenhum desktop.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-Andamento: o dono acredita que o paddle parou porque o cursor saiu da janela, e uma janela só recebe o movimento do mouse enquanto o cursor está sobre ela ou com um botão pressionado, em todo sistema. O stream de entrada confere com evidência se os eventos param com o cursor dentro da janela, com a máquina parada e carregada. Prender o cursor visível na janela é o cartão KB-293.
-
-Evidência: um app de teste recebeu 1000 movimentos de mouse por segundo na própria fila do AppKit, com o Mac carregado pelos builds (carga média de 10 a 14), por cerca de 2,5 minutos (16,5 mil quadros a cerca de 118 fps). Nenhum movimento esperou 1 s ou mais na fila (o máximo foi 354 ms), e o quadro mais longo foi de 313 ms, uma vez no começo, com os outros abaixo de 202 ms, então a thread do quadro, a fila de eventos e o caminho da entrada nunca pararam por segundos. Com o cursor fora da janela, o SDL 3.4 no Cocoa descarta todo movimento enquanto o cursor real não está sobre a janela, que é o comportamento normal do sistema sem botão pressionado e o sintoma do dono. Falta o commit do teste de regressão `MouseMotionTest`, que manda movimento a 1 kHz pela fila do SDL por 4 s num engine headless e exige o movimento em todo quadro, nenhum evento perdido e nenhuma espera de 250 ms ou mais.
-
-Os quadros longos com a máquina carregada vêm da máquina tirando a CPU da thread do quadro, não de trabalho da engine: em 10 minutos de um app de paddle no player headless (36 mil quadros, com 2000 tabelas Lua de vida curta por quadro e carga média de 7 a 15), o tempo de parede por quadro teve p50 de 16,6 ms, p99 de 21,8 ms e máximo de 325 ms, enquanto o tempo de CPU da thread do quadro teve p50 de 1,1 ms, p99 de 1,6 ms e máximo de 14,8 ms. Cada quadro lento teve centenas de trocas de contexto involuntárias e nenhuma voluntária, então nada esperou disco nem trava, e nenhum coincidiu com o coletor do Lua.
+O mouse não para por erro da engine: uma janela só recebe o movimento do mouse enquanto o cursor está sobre ela ou com um botão pressionado, em todo sistema, e o paddle parava quando o cursor saía da janela. A fila de eventos e a thread do quadro nunca param por segundos, e os quadros longos com a máquina carregada vêm do sistema tirando a CPU da thread do quadro, como as medições do cartão mostram.
 
 #### Acceptance criteria
 
-- [ ] Pronto quando uma sessão longa de jogo com entrada contínua não tem nenhuma pausa de entrada em nenhum desktop.
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `MouseMotionTest` manda movimento a 1 kHz pela fila do SDL por 4 s e exige o movimento em todo quadro, nenhum evento perdido e nenhuma espera de 250 ms ou mais (commit `6b7a63687`).
 
 #### Attachments
 
-- None
+- [Entrada](docs/input/input.md)
 
 <a name="kb-026"></a>
 ### KB-026 — No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)
@@ -906,6 +892,8 @@ Etapa: Testes.
 No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe): a navegação do foco da UI pelo analógico funciona nas quatro direções em toda plataforma, com o mesmo limiar e a mesma repetição do direcional, e um teste de engine move o foco nas quatro direções pelo analógico e outro confere no simulador do tvOS.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Andamento: a causa achada na engine: o UI lia cada eixo do analógico sozinho, e um analógico inclinado para cima com um pouco de lado apertava duas direções, e o navegador de foco tentava o lado primeiro e não andava numa coluna. Agora o foco anda pelo eixo mais inclinado, com o limiar e a repetição do direcional (commit `2d9d321f3`, testes `FocusTest.MovesInEveryDirectionWithTheStick` e `RepeatsWithTheStickAsWithTheDirectionalPad`). Falta a opção A que o dono escolheu: um teste de UI no simulador do iOS com o `GCVirtualController`, que passa pelo mesmo código de leitura dos controles do tvOS.
 
 #### Acceptance criteria
 
@@ -931,6 +919,8 @@ Etapa: Testes.
 Vários gamepads ao mesmo tempo sem perder nada em toda plataforma: cada controle com o seu id estável, conectar e desconectar no meio do jogo, o mapa de ações por jogador, a vibração e os sensores de cada controle e o foco da UI do controle certo, testados com controles virtuais (os controles virtuais do SDL nos desktops e na web, o `GCVirtualController` na Apple e os dispositivos de entrada do emulador no Android), já que o dono não tem vários controles para testar.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Andamento: os testes com quatro controles virtuais do SDL passam: índices estáveis, conectar e desconectar no jogo, um mapa por jogador, vibração e sensores de cada controle, e o foco da UI segue só o controle do mapa padrão (commit `e34af0b74`). Falta a opção A do dono na Apple, com o `GCVirtualController` no simulador do iOS, e a web não tem teste do gamepad do navegador.
 
 #### Acceptance criteria
 
@@ -958,6 +948,8 @@ Nada silenciado: tirar as flags `-Wno-stringop-overflow` e `-Wno-stringop-overre
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Andamento: os avisos que os logs das execuções completas mostravam estão corrigidos (variáveis que escondiam outras, conversões de sinal, condicionais de enum, macros do Windows redefinidas e a guarda `@available` do visionOS 2.0). As flags `-Wno-missing-field-initializers`, `-Wno-missing-designated-field-initializers` e `-Wno-stringop-*` saíram, e cada membro que um agregado da engine deixava de inicializar ganhou o inicializador vazio, e as estruturas de Vulkan, VMA, Box2D e SDL que a engine preenche dizem cada campo com o seu zero, sem mudar o comportamento. Faltam: o build Release com LTO do SDK Linux, o clang dos fuzzers, os sanitizers, os testes do macOS, a fatia do visionOS e os SDKs web e Android, e o commit.
+
+Andamento: as flags de campos sem inicializar saíram e a causa foi corrigida (commit `dc2d5b010`). As flags `-Wno-stringop-*` do link do GCC esperam a decisão do dono: o único aviso que escondem é um falso positivo do GCC no `lstrlib.c` do Lua, uma dependência, reproduzido só com o Lua.
 
 #### Acceptance criteria
 
@@ -7075,7 +7067,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-272"></a>
 ### KB-272 — Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…
 
-- **Status:** doing
+- **Status:** testing
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
@@ -7090,6 +7082,8 @@ Os builds da CI falham com qualquer aviso nos alvos da engine, para que as corre
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Andamento: os avisos que os logs das execuções completas mostravam estão corrigidos (variáveis que escondiam outras, conversões de sinal, condicionais de enum, macros do Windows redefinidas e a guarda `@available` do visionOS 2.0). As flags `-Wno-missing-field-initializers`, `-Wno-missing-designated-field-initializers` e `-Wno-stringop-*` saíram, e cada membro que um agregado da engine deixava de inicializar ganhou o inicializador vazio, e as estruturas de Vulkan, VMA, Box2D e SDL que a engine preenche dizem cada campo com o seu zero, sem mudar o comportamento. Faltam: o build Release com LTO do SDK Linux, o clang dos fuzzers, os sanitizers, os testes do macOS, a fatia do visionOS e os SDKs web e Android, e o commit.
+
+Andamento: os avisos de todas as plataformas estão corrigidos (commits `4bc67dabd`, `b2598d7d7` e `dc2d5b010`), com zero avisos da engine no Linux GCC e Clang, no macOS, no visionOS, no Android e na web. Falta a execução completa da CI, que prova o Windows e o Linux x86_64.
 
 #### Acceptance criteria
 
@@ -7575,6 +7569,29 @@ A complexidade é uma estimativa provisória.
 - [ ] Os quatro modos funcionam no macOS, no Windows e no Linux, e a web, o iOS, o tvOS, o visionOS e o Android respondem como a descrição diz, com frases claras.
 - [ ] O `window.setMouseLocked` não existe mais em lugar nenhum do repositório (busca vazia).
 - [ ] Testes de engine, testes Lua, um teste no projeto de testes e a referência em `docs/lua-api/window.md`.
+
+#### Attachments
+
+- None
+
+<a name="kb-294"></a>
+### KB-294 — O teclado do Android não mostra sugestões num campo de texto do app
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 3
+
+#### Description
+
+No emulador com o Gboard, a faixa de sugestões do teclado ainda aparece nos campos de texto do app, mas o campo nativo que edita fica escondido e nunca prevê, completa nem corrige texto, e a correção só vale com `autocorrect`. O campo nativo do Android pede ao teclado que não mostre sugestões quando `autocorrect` está desligado, pelos tipos de entrada que o Android oferece para isso.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] Num campo sem `autocorrect`, o Gboard não mostra a faixa de sugestões, conferido por um teste de UI no emulador.
+- [ ] Num campo com `autocorrect`, o teclado oferece as sugestões.
 
 #### Attachments
 
