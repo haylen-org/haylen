@@ -144,6 +144,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidYuvImageTests.cpp
   platform/DeviceRecoveryTests.cpp
   platform/FrameTimerTests.cpp
+  platform/GraphicsApiFallbackTests.cpp
   platform/GraphicsApiOrderTests.cpp
   platform/KeptEventsTests.cpp
   platform/LaunchOptionsTests.cpp

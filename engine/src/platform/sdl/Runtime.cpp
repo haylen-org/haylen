@@ -238,7 +238,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 
     // AppKit and UIKit lay out the views of the services over the window as soon as they create it, before the first frame initializes the app.
     platform::NativeWindow::install(&window);
-    apis = Player::getGraphicsApis();
+    apiFallback.emplace(Player::getGraphicsApis(), "No graphics API could start on this machine, so the app cannot open its window.");
     return start();
 }
 
@@ -279,41 +279,42 @@ bool Runtime::isHiddenUntilComplete() noexcept {
     return Services::hasDesktop() && !WaylandDisplays::isSession();
 }
 
-// Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `haylen.json` puts it on the desktop, since they know the desktop points of each monitor. A window without area, such as a canvas that its page hides, holds the start until it has one, so no device starts on a drawable without pixels.
+// The fallback opens the window and starts the device of the first graphics API of the app that starts. The services of the platform place the window where `haylen.json` puts it on the desktop, since they know the desktop points of each monitor. A window without area, such as a canvas that its page hides, holds the start until it has one, so no device starts on a drawable without pixels.
 bool Runtime::openWindow() {
-    const core::AppConfig& config = Player::getOpeningConfig();
 #if defined(__APPLE__)
-    AppleApplication::prepareWindow(config);
+    AppleApplication::prepareWindow(Player::getOpeningConfig());
 #endif
-    for (; nextApi < apis.size(); ++nextApi) {
-        const gpu::Device::Api api = apis[nextApi];
-        if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
-            return false;
-        }
+    FallbackWindow target(window);
+    openedDevice = apiFallback->open(target);
+    return openedDevice != nullptr;
+}
 
-        try {
-            if (window.getApi() != api) {
-                window.open(config.window, api);
-                if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
-                    Services::setWindowFrame(*frame);
-                }
-            }
+bool Runtime::FallbackWindow::prepare(gpu::Device::Api api) {
+    return gpu::DeviceFactory::prepare(api, getDeviceOptions());
+}
 
-            window.refresh();
-            if (!window.getSurfaceSize().hasArea()) {
-                return false;
-            }
+gpu::Device::Api Runtime::FallbackWindow::getApi() const noexcept {
+    return window.getApi();
+}
 
-            openedDevice = gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
-            core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
-            return true;
-        } catch (const std::exception& error) {
-            core::Log::warning("The graphics API \"{}\" could not start. {}", gpu::DeviceFactory::getApiName(api), error.what());
-            window.close();
-        }
+void Runtime::FallbackWindow::open(gpu::Device::Api api) {
+    window.open(Player::getOpeningConfig().window, api);
+    if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
+        Services::setWindowFrame(*frame);
     }
+}
 
-    throw std::runtime_error("No graphics API could start on this machine, so the app cannot open its window.");
+bool Runtime::FallbackWindow::hasArea() {
+    window.refresh();
+    return window.getSurfaceSize().hasArea();
+}
+
+std::unique_ptr<gpu::Device> Runtime::FallbackWindow::createDevice(gpu::Device::Api api) {
+    return gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
+}
+
+void Runtime::FallbackWindow::close() noexcept {
+    window.close();
 }
 
 // A runtime that closes never starts again, such as one that the system stopped at once from outside the frames, which AppKit does as it handles the quit of the Dock and of logging out.

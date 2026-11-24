@@ -177,7 +177,7 @@ int Runtime::initialize(int argc, char* argv[]) {
 
     window.setMaxPixelDensity(Player::getOpeningConfig().window.maxPixelDensity);
     platform::NativeWindow::install(&window);
-    apis = Player::getGraphicsApis();
+    apiFallback.emplace(Player::getGraphicsApis(), "No graphics API could start in this browser, so the app cannot draw into its canvas.");
     emscripten_set_main_loop_arg(&Runtime::onFrame, this, 0, false);
     return 0;
 }
@@ -215,34 +215,35 @@ void Runtime::start() {
     started = true;
 }
 
-// Each graphics API in the order of the app prepares the canvas and starts its device, and the first that starts keeps the canvas. The reasons of the ones that failed reach the log. A canvas without area, such as one that the page hides, holds the start until it shows, so no device starts on a drawable without pixels.
 bool Runtime::openWindow() {
-    for (; nextApi < apis.size(); ++nextApi) {
-        const gpu::Device::Api api = apis[nextApi];
-        if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
-            return false;
-        }
+    FallbackWindow target(window);
+    openedDevice = apiFallback->open(target);
+    return openedDevice != nullptr;
+}
 
-        try {
-            if (window.getApi() != api) {
-                window.open(Player::getOpeningConfig().window, api);
-            }
+bool Runtime::FallbackWindow::prepare(gpu::Device::Api api) {
+    return gpu::DeviceFactory::prepare(api, getDeviceOptions());
+}
 
-            window.refresh();
-            if (!window.getSurfaceSize().hasArea()) {
-                return false;
-            }
+gpu::Device::Api Runtime::FallbackWindow::getApi() const noexcept {
+    return window.getApi();
+}
 
-            openedDevice = gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
-            core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
-            return true;
-        } catch (const std::exception& error) {
-            core::Log::warning("The graphics API \"{}\" could not start. {}", gpu::DeviceFactory::getApiName(api), error.what());
-            window.close();
-        }
-    }
+void Runtime::FallbackWindow::open(gpu::Device::Api api) {
+    window.open(Player::getOpeningConfig().window, api);
+}
 
-    throw std::runtime_error("No graphics API could start in this browser, so the app cannot draw into its canvas.");
+bool Runtime::FallbackWindow::hasArea() {
+    window.refresh();
+    return window.getSurfaceSize().hasArea();
+}
+
+std::unique_ptr<gpu::Device> Runtime::FallbackWindow::createDevice(gpu::Device::Api api) {
+    return gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
+}
+
+void Runtime::FallbackWindow::close() noexcept {
+    window.close();
 }
 
 // A device that stopped working, such as a WebGL2 context that the browser lost, gives way to a new one, which the app starts again on. A device gets one replacement, and a replacement that stops working too ends the app with the reason.

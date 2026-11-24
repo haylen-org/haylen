@@ -292,7 +292,7 @@ Three things change the order. Each one puts its APIs first, and the APIs of the
 haylen --dev my-app --graphics-api openGl
 ```
 
-Some APIs need other window flags than others, such as an OpenGL context or a Metal layer, so the platform layer opens the window again for each API it tries. WebGPU gets its adapter and device from the browser in a later turn of the event loop, so `gpu::DeviceFactory::prepare` starts the request and the platform layer keeps running frames until it is ready.
+The class `platform::GraphicsApiFallback` walks that order for the SDL platform layer and for the worker of the web. Each API opens the window and starts its device, and the first that starts keeps the window. An API that fails closes the window, logs why and gives way to the next one, and the app ends with a sentence once no API is left. Some APIs need other window flags than others, such as an OpenGL context or a Metal layer, so the window opens again for each API that the fallback tries. WebGPU gets its adapter and device from the browser in a later turn of the event loop, so `gpu::DeviceFactory::prepare` starts the request and the platform layer keeps running frames until it is ready.
 
 The options `software` and `lowPower` of `gpu::DeviceFactory::Options` ask a device for the software rasterizer of its API, such as WARP on Direct3D, Mesa lavapipe on Vulkan or the fallback adapter of WebGPU, or for the GPU that uses the least power. The GPU tests set them through `HAYLEN_TEST_GPU_SOFTWARE` and `HAYLEN_TEST_GPU_LOW_POWER`, as the [testing guide](../tools/testing.md#the-gpu-tests) describes.
 

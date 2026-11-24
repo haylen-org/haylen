@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -13,6 +14,7 @@
 #include "platform/DeviceRecovery.hpp"
 #include "platform/FrameRateGate.hpp"
 #include "platform/FrameTimer.hpp"
+#include "platform/GraphicsApiFallback.hpp"
 #include "platform/Touches.hpp"
 #include "platform/worker/Events.hpp"
 #include "platform/worker/Gamepads.hpp"
@@ -75,6 +77,22 @@ class Runtime final {
     void setPageVisible(bool visible);
 
   private:
+    // The window of the runtime as the fallback through the graphics APIs drives it.
+    class FallbackWindow final : public GraphicsApiFallback::Window {
+      public:
+        explicit FallbackWindow(worker::Window& target) noexcept : window(target) {}
+
+        [[nodiscard]] bool prepare(gpu::Device::Api api) override;
+        [[nodiscard]] gpu::Device::Api getApi() const noexcept override;
+        void open(gpu::Device::Api api) override;
+        [[nodiscard]] bool hasArea() override;
+        [[nodiscard]] std::unique_ptr<gpu::Device> createDevice(gpu::Device::Api api) override;
+        void close() noexcept override;
+
+      private:
+        worker::Window& window;
+    };
+
     static constexpr int kHiddenRate = 60;
 
     // The values that the page posts for each controller: its index, its buttons and its axes.
@@ -104,8 +122,7 @@ class Runtime final {
     FrameTimer timer;
     FrameRateGate frameRate;
     std::unique_ptr<gpu::Device> openedDevice;
-    std::vector<gpu::Device::Api> apis;
-    std::size_t nextApi = 0;
+    std::optional<GraphicsApiFallback> apiFallback;
     bool started = false;
     bool closing = false;
     bool hidden = false;

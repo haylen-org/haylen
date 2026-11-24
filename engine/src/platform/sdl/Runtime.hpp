@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <SDL3/SDL_events.h>
@@ -15,6 +16,7 @@
 #include "platform/DeviceRecovery.hpp"
 #include "platform/FrameRateGate.hpp"
 #include "platform/FrameTimer.hpp"
+#include "platform/GraphicsApiFallback.hpp"
 #include "platform/sdl/Events.hpp"
 #include "platform/sdl/OutputWindows.hpp"
 #include "platform/sdl/Window.hpp"
@@ -111,6 +113,22 @@ class Runtime final {
 #endif
 
   private:
+    // The window of the runtime as the fallback through the graphics APIs drives it, which places the window where `haylen.json` puts it on the desktop once it opens.
+    class FallbackWindow final : public GraphicsApiFallback::Window {
+      public:
+        explicit FallbackWindow(sdl::Window& target) noexcept : window(target) {}
+
+        [[nodiscard]] bool prepare(gpu::Device::Api api) override;
+        [[nodiscard]] gpu::Device::Api getApi() const noexcept override;
+        void open(gpu::Device::Api api) override;
+        [[nodiscard]] bool hasArea() override;
+        [[nodiscard]] std::unique_ptr<gpu::Device> createDevice(gpu::Device::Api api) override;
+        void close() noexcept override;
+
+      private:
+        sdl::Window& window;
+    };
+
     // The highest number of iterations per second while the window shows nothing, minimized or hidden, which the display no longer paces, so the app keeps running timers and network callbacks without spending a core.
     static constexpr int kHiddenRate = 60;
 
@@ -165,9 +183,7 @@ class Runtime final {
     std::vector<platform::Event> translated;
     std::unique_ptr<gpu::Device> openedDevice;
 
-    // The graphics APIs to try in order, and the next one to try.
-    std::vector<gpu::Device::Api> apis;
-    std::size_t nextApi = 0;
+    std::optional<GraphicsApiFallback> apiFallback;
     bool transparent = false;
     bool started = false;
     bool closing = false;

@@ -774,6 +774,7 @@ add_library(haylen-platform STATIC
   src/platform/CrashGuard.cpp
   src/platform/SystemFontReader.cpp
   src/platform/DeviceRecovery.cpp
+  src/platform/GraphicsApiFallback.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
   src/platform/FrameRateGate.cpp
