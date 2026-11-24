@@ -727,6 +727,7 @@ The rules of the repository need no build either. The tests of `tools/tests/repo
 - That the test port reaches the engine only through its public headers, and that the tooling names only the capabilities of the contract of ports.
 - That comments and the texts of the interface are written as the project asks, that the tooling reads and writes every text as UTF-8, that the launchers run the tooling through uv, that the scripts of `tools` follow the code rules, that the format check finds the lambdas without their markers, and that the package of the tooling carries the version of the engine.
 - That the animated sheets and the images of the samples hold their pivots and have clean edges.
+- That no tracked file records the history of the repository, such as a rename, an earlier name or a change, through `NoHistoryTest`.
 - That the [commands page](commands.md) has a section for every command of the command line that names each of its options, and that the paragraph of the command line in `AGENTS.md` names every command, through `CommandDocsTest`.
 - The documentation, through `DocsTest`: the titles, the languages of code blocks, one line per paragraph, every relative link and its heading, the tables of the indexes, that every row of a table has as many cells as its header, and that no long sentence repeats in another page.
 

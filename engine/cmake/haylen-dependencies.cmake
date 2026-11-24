@@ -291,7 +291,7 @@ CPMAddPackage(
   SYSTEM YES
 )
 
-# Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`. Its core header uses `std::back_inserter` without the header `iterator` that declares it, which the standard library of Emscripten no longer brings in through another header, so a patch includes it.
+# Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`. Its core header uses `std::back_inserter` without the header `iterator` that declares it, which the standard library of Emscripten does not bring in through another header, so a patch includes it.
 set(clipper2_patches "${CMAKE_CURRENT_LIST_DIR}/patches/clipper2-iterator.patch")
 set(clipper2_hash 2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e)
 haylen_patched_package_key(clipper2_cache_key ${clipper2_hash} ${clipper2_patches})
