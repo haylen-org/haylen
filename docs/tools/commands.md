@@ -5,7 +5,7 @@ This page is the reference of the command `haylen`: every command with its argum
 ## The command tree
 
 ```text
-haylen new <folder> [--kind lua|cpp] [--name] [--identifier] [--orientation]
+haylen new <folder> [--kind lua|cpp] [--category] [--name] [--identifier] [--orientation]
 haylen doctor [--target]
 haylen devices
 haylen plugin add|update|remove|list|new

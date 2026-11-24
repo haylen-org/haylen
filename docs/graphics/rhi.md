@@ -25,7 +25,7 @@ platform layer                    the window, the frames, the input and gpu::Sur
 | Renderer3D | A future `engine/src/3d/graphics/` | Does not exist yet. It will draw through the same `graphics::Device` and `gpu::Device` as the 2D renderer, so both share textures, render targets and the window. |
 | `graphics::Device` | `engine/src/graphics/Device.cpp` | Owns the GPU device of the app. It makes textures, font atlases and render targets, keeps the graveyard of released objects and reads render targets back for the renderers of every dimension. |
 | `gpu::Device` | `engine/include/haylen/gpu/Device.hpp` | The RHI. Each graphics API has a device in `engine/src/gpu/<api>/` that implements it with the native API alone. |
-| Platform layer | `engine/src/platform/sdl/`, `engine/src/platform/android/` | Opens the window, hands the device a `gpu::Surface` with the native handles of the window, runs the frames and tells the device when the window changes size, goes away or comes back. |
+| Platform layer | `engine/src/platform/sdl/`, `engine/src/platform/worker/`, `engine/src/platform/android/` | Opens the window, hands the device a `gpu::Surface` with the native handles of the window, runs the frames and tells the device when the window changes size, goes away or comes back. |
 
 The [architecture guide](../core/architecture.md#layers) describes the platform layers, the player and the host around them.
 
@@ -153,7 +153,7 @@ A transparent window composites the alpha of its pixels as premultiplied where t
 
 ## Lost devices
 
-A device is lost when the GPU resets or is removed, when its driver fails or updates, when the system revokes the GPU, or when an OpenGL or WebGL context is lost. `isLost` then answers `true`, and the device stops waiting for the GPU and recording work. The SDL platform layer and the Android runtime check it before each frame, log which API stopped, make a new device, on a new context for OpenGL and OpenGL ES, and start the app again on it. The Android runtime also counts an EGL context that reports itself lost as a lost device, and it makes the new device through the same order of APIs, so a Vulkan device that cannot start again gives way to OpenGL ES. A lost device gets one replacement. A replacement that is lost too shows a GPU that keeps no device for the app, so the platform ends the app through `Player::fail`, whose reason reaches the log and the web page, and a window of the desktop closes with the exit status 1. A replacement that cannot be created ends the app the same way, as an engine that cannot start. The class `platform::DeviceRecovery` holds this rule for every platform layer, and its tests lose the null device of the headless host through `gpu::NullDevice::lose`, so they show the replacement that draws on and the reason that ends the app. A lost surface is not a lost device: the platform calls `detachSurface` and `attachSurface` and the app goes on.
+A device is lost when the GPU resets or is removed, when its driver fails or updates, when the system revokes the GPU, or when an OpenGL or WebGL context is lost. `isLost` then answers `true`, and the device stops waiting for the GPU and recording work. The SDL platform layer, the worker layer of the web and the Android runtime check it before each frame, log which API stopped, make a new device, on a new context for OpenGL and OpenGL ES, and start the app again on it. The Android runtime also counts an EGL context that reports itself lost as a lost device, and it makes the new device through the same order of APIs, so a Vulkan device that cannot start again gives way to OpenGL ES. A lost device gets one replacement. A replacement that is lost too shows a GPU that keeps no device for the app, so the platform ends the app through `Player::fail`, whose reason reaches the log and the web page, and a window of the desktop closes with the exit status 1. A replacement that cannot be created ends the app the same way, as an engine that cannot start. The class `platform::DeviceRecovery` holds this rule for every platform layer, and its tests lose the null device of the headless host through `gpu::NullDevice::lose`, so they show the replacement that draws on and the reason that ends the app. A lost surface is not a lost device: the platform calls `detachSurface` and `attachSurface` and the app goes on.
 
 ## Capabilities
 
@@ -229,7 +229,7 @@ The [testing guide](../tools/testing.md#the-headless-host) lists every check and
 
 | Device | Folder | Graphics API | Shader language | Platforms |
 | --- | --- | --- | --- | --- |
-| [Metal](metal.md) | `engine/src/gpu/metal/` | Metal | MSL for macOS, iOS and the iOS simulator | macOS, iOS, iPadOS, Mac Catalyst and tvOS |
+| [Metal](metal.md) | `engine/src/gpu/metal/` | Metal | MSL for macOS, iOS and the iOS simulator | macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS |
 | [Direct3D 12](direct3d.md) | `engine/src/gpu/d3d12/` | Direct3D 12 | HLSL for shader model 5.0 | Windows |
 | [Direct3D 11](direct3d.md) | `engine/src/gpu/d3d11/` | Direct3D 11.1 | HLSL for shader model 5.0 | Windows |
 | [Vulkan](vulkan.md) | `engine/src/gpu/vulkan/` | Vulkan 1.1 | SPIR-V | Windows, Linux and Android |
@@ -267,7 +267,7 @@ A build compiles the device of every API of its platform, which the CMake list `
 
 | Platform | Default order |
 | --- | --- |
-| macOS, iOS, iPadOS, Mac Catalyst and tvOS | Metal |
+| macOS, iOS, iPadOS, Mac Catalyst, tvOS and visionOS | Metal |
 | Windows | Direct3D 12, Direct3D 11, Vulkan, OpenGL |
 | Linux | Vulkan, OpenGL |
 | Android | Vulkan, OpenGL ES |
@@ -358,4 +358,4 @@ No device has met a real lost device on any API yet. The paths that replace a lo
 
 ## Writing a device
 
-A new graphics API of the repository gets a folder in `engine/src/gpu/<api>/` with a `device.cmake`, which adds its sources to `haylen-gpu` and defines `HAYLEN_GPU_<API>`, a value in `gpu::Device::Api` and `kApiNames`, its shader language in `gpu::Device::Language`, a case in `gpu::DeviceFactory`, and a place in the default order of its platforms in `engine/cmake/haylen-gpu.cmake`. The GPU tests then run the whole conformance suite and the reference images on it. A graphics API that the repository cannot hold, such as the API of a game console, comes through a [port](../platform/ports.md) instead.
+A new graphics API of the repository gets a folder in `engine/src/gpu/<api>/` with a `device.cmake`, which adds its sources to `haylen-gpu` and defines `HAYLEN_GPU_<API>`, a value in `gpu::Device::Api` and `kApiNames`, its shader language in `gpu::Device::Language`, a case in `gpu::DeviceFactory`, a place in the default order of its platforms and its shader languages in `haylen_shader_languages_<api>` of `engine/cmake/haylen-gpu.cmake`, and its name in `TestCommand.GRAPHICS_APIS` of `tools/haylen/cli/commands/test.py`, which `tools/tests/repository/test_graphics_api_names.py` checks. The GPU tests then run the whole conformance suite and the reference images on it. A graphics API that the repository cannot hold, such as the API of a game console, comes through a [port](../platform/ports.md) instead.

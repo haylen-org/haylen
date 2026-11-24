@@ -565,6 +565,8 @@ The Release configuration builds what an app ships:
 
 A release follows the last release of its profile in the build folder, so a build after a small change writes only the shards of what changed. The option `--previous-release` of `app prepare`, `app build`, `app run` and `app package` makes the release of the build follow the one in another folder instead, such as the release that shipped last, which continuous integration keeps, and `content build --previous-release` builds such a release without the app. The Debug configuration ships the package as it is, for development.
 
+A Debug and a Release build of an app declare and integrate exactly the same things. These are the permissions, the keys of the `Info.plist`, the entitlements, the privacy entries, the Android manifest with its network security configuration, the permissions of the browser, the plugins and the capabilities. The two differ only in what development is: optimization, symbols, the development session with hot reload, the debugger, the console and the execution budget, and the protected release with its bootstrap.
+
 ```sh
 haylen app build ~/apps/my-game --target linux --config Release
 haylen app verify ~/apps/my-game --target linux --config Release

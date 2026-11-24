@@ -970,7 +970,7 @@ Pictures, such as the `image` of `ui.image`, `ui.icon`, `ui.avatar` and list ite
 
 The color `currentColor` of an SVG document paints white, so the UI can tint it. The `color` of `ui.icon` tints an icon drawn with it. Toolbar and icon buttons tint it like their text, and the `iconColor` of a button tints it in every variant. The pictures of the items of lists, trees and menus take the color of the text of their item in every theme and state. So a line icon stays readable on a light theme and on a dark one. An item names another theme color with `iconColor`, or keeps the colors of a painted picture with `iconColor = false`.
 
-The rasters that no frame drew lately go once they pass a memory budget, `ImageLibrary::kRasterBudget` in `engine/src/ui/ImageLibrary.hpp`. So a long list of pictures keeps only the memory of the pictures in view. An SVG document that changes during hot reload shows once the app restarts. The property `radius` of `ui.image` rounds the corners of a picture, such as a photo on a card.
+The rasters that no frame drew lately go once they pass a memory budget, `ImageLibrary::kRasterBudget` in `engine/include/haylen/ui/ImageLibrary.hpp`. So a long list of pictures keeps only the memory of the pictures in view. An SVG document that changes during hot reload shows once the app restarts. The property `radius` of `ui.image` rounds the corners of a picture, such as a photo on a card.
 
 An image made while the app runs, such as a minimap from a render target, takes a name that starts with `@` through [`ui.setImage`](../lua-api/ui.md#uisetimagename-source). Every picture of the UI then shows it like a file.
 

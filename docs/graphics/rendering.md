@@ -744,7 +744,7 @@ The function `graphics2d.drawVector`, `Renderer::drawVector(image, sprite)` in C
 - Once the atlas holds eight pages, the page that drew longest ago starts over with a new texture, and its images make their rasters again when they draw.
 - A page whose rasters changed uploads once per frame, before the passes.
 
-The UI draws the SVG pictures of its components through `ui::ImageLibrary` (`engine/src/ui/ImageLibrary.hpp`) instead of the atlas, because ImGui draws each picture as a texture of its own. It rasterizes a document in the same steps for the pixels a component covers, every raster on the task pool with the nearest raster standing in. It keeps each raster as a texture. While the rasters pass its budget, it releases the ones that no frame drew in the last two frames, the longest unused first, as the [UI guide](../ui/ui.md#component-catalog) describes.
+The UI draws the SVG pictures of its components through `ui::ImageLibrary` (`engine/include/haylen/ui/ImageLibrary.hpp`) instead of the atlas, because ImGui draws each picture as a texture of its own. It rasterizes a document in the same steps for the pixels a component covers, every raster on the task pool with the nearest raster standing in. It keeps each raster as a texture. While the rasters pass its budget, it releases the ones that no frame drew in the last two frames, the longest unused first, as the [UI guide](../ui/ui.md#component-catalog) describes.
 
 ```lua
 local assets = require('haylen.assets')

@@ -14,7 +14,7 @@ haylen engine build --cmake-target haylen-native-test
 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
-- Shards: the variable `HAYLEN_TESTS_SHARD` of the headless player names one part of the automatic run, such as `2/4`, so several machines run the project side by side, as the CI job `test-project` does on every push. Whole categories go to the shards, the category with the most tests first, each to the shard with the fewest tests so far, so the shards take about the same time and together run every test once:
+- Shards: the variable `HAYLEN_TESTS_SHARD` of the headless player names one part of the automatic run, such as `2/4`, so several machines run the project side by side, as the CI job `test-project` does in every run of the full matrix. Whole categories go to the shards, the category with the most tests first, each to the shard with the fewest tests so far, so the shards take about the same time and together run every test once:
 
 ```sh
 HAYLEN_TESTS_SHARD=2/4 build/engine/macos-debug/bin/haylen-headless samples/tests --frames 60000
@@ -392,7 +392,7 @@ Path finding, spatial queries, procedural generation, geometry and game AI, each
 
 #### Audio (AUD)
 
-Music, effects, buses, filters, positional sound, interruptions and many voices with sounds synthesized for these tests. The tests are in `source/categories/audio/`. The codes `AUD-010` and `AUD-012`, which showed the now-playing controls of the system and the playback in the background, left the project, since those controls and the background playback that they need are capabilities of plugins.
+Music, effects, buses, filters, positional sound, interruptions and many voices with sounds synthesized for these tests. The tests are in `source/categories/audio/`. The codes `AUD-010` and `AUD-012` are retired and never used again, since the controls of the system that show what plays and the playback in the background are capabilities of plugins.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -771,7 +771,7 @@ HTTP requests with Varn "http" and WebSockets with "haylen.net" against public e
 
 #### Platform (PLT)
 
-The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", every event of the platform, the displays and the outputs on other displays. The tests are in `source/categories/platform/`. The code `PLT-010`, which showed the permissions of the engine, left the project, since the engine owns no permissions.
+The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", every event of the platform, the displays and the outputs on other displays. The tests are in `source/categories/platform/`. The code `PLT-010` is retired and never used again, since the engine owns no permissions.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -789,7 +789,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 
 #### Plugins (PLG)
 
-Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, the plugin "native-base" that it depends on, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in. The tests are in `source/categories/plugins/`. The code `PLG-011`, which asked for the permissions of the demo plugin through the engine, left the project, since the permissions of plugins belong to the plugins, which ask the system for them through the APIs of each platform.
+Every capability of native plugins through the plugin "native-demo", written with the APIs of each platform alone, the plugin "native-base" that it depends on, and its simulations of the SDKs of cameras, maps, stores, ads and sign-in. The tests are in `source/categories/plugins/`. The code `PLG-011` is retired and never used again, since the permissions of plugins belong to the plugins, which ask the system for them through the APIs of each platform.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |

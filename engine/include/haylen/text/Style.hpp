@@ -51,7 +51,7 @@ struct Style {
     bool ligatures = true;
     bool code = false;
 
-    // The alignment names `start`, `end`, `left`, `center`, `right` and `fill`, the direction names `auto`, `leftToRight` and `rightToLeft` the balance names `none`, `lastLine` and `allLines` and the line height names `natural` and `uniform`, which Lua, markup and GUIs share.
+    // The alignment names `start`, `end`, `left`, `center`, `right` and `fill`, the direction names `auto`, `leftToRight` and `rightToLeft`, the balance names `none`, `lastLine` and `allLines`, and the line height names `natural` and `uniform`, which Lua, markup and GUIs share.
     static const std::array<std::pair<std::string_view, Alignment>, 6> kAlignmentNames;
     static const std::array<std::pair<std::string_view, Direction>, 3> kDirectionNames;
     static const std::array<std::pair<std::string_view, Balance>, 3> kBalanceNames;

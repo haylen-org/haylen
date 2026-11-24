@@ -92,7 +92,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 
 ```text
 online-store/
-  haylen.json               Window, physical UI scale, any orientation, the orders autoload and the identifier.
+  haylen.json               Window with the status bar in dark content, physical UI scale, any orientation, the orders autoload and the identifier.
   source/
     main.lua             Registers the theme and the swatches, and starts the shell.
     style.lua            The palette, the type scale, the spacing scale, the shapes and the theme.
