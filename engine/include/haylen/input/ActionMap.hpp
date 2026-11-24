@@ -103,12 +103,13 @@ class ActionMap final {
         [[nodiscard]] bool operator==(const Devices&) const = default;
     };
 
-    // The keys, gamepad buttons and gamepad axes the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open and the directions while a control has the focus.
+    // The keys, gamepad buttons and gamepad axes the UI answers itself in the next frame: every key while a text field edits, and the bindings of the navigation actions it handles, such as `cancel` while a popup is open and the directions while a control has the focus. The buttons and axes are those of the gamepads the UI reads, so the press of a player whose gamepad the UI does not hear stays with the map of that player.
     struct Capture {
         bool keyboard = false;
         std::bitset<Controls::kKeyCount> keys;
         std::bitset<Controls::kGamepadButtonCount> buttons;
         std::bitset<Controls::kGamepadAxisCount> axes;
+        std::bitset<Input::kMaxGamepads> gamepads;
     };
 
     void load(const core::Json& document);
@@ -125,6 +126,7 @@ class ActionMap final {
     [[nodiscard]] const Devices& getDevices() const noexcept {
         return devices;
     }
+    [[nodiscard]] bool readsGamepad(std::size_t index) const noexcept;
     [[nodiscard]] float getPressThreshold() const noexcept {
         return pressThreshold;
     }

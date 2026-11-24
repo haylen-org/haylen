@@ -10,6 +10,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/input/ActionMap.hpp"
+#include "haylen/input/ActionMaps.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/Navigation.hpp"
@@ -140,6 +141,58 @@ TEST_F(FocusTest, RepeatsWithTheStickAsWithTheDirectionalPad) {
     const int stickMoves = heldMoves(lean);
     EXPECT_GT(padMoves, 2);
     EXPECT_EQ(stickMoves, padMoves);
+}
+
+// A game that gives the menus to one player reads that gamepad alone in its default map, so the focus follows that gamepad, and the presses of the other players stay with their own maps.
+TEST_F(FocusTest, FollowsTheGamepadThatTheDefaultMapReads) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "button", "id": "a", "text": "A", "autofocus": true}, {"kind": "button", "id": "b", "text": "B"}, {"kind": "button", "id": "c", "text": "C"}
+    ]})");
+    // clang-format on
+    getEngine().getActions().define({.name = "jump", .type = input::ActionMap::Action::Type::Button, .bindings = {input::ActionMap::Binding{.source = input::ActionMap::Binding::Source::GamepadButton, .gamepadButton = input::GamepadButton::South}}});
+    getEngine().getActions().setDevices({.gamepads = input::ActionMap::Devices::Gamepads::One, .gamepad = 2});
+    const std::shared_ptr<input::ActionMap> first = getEngine().getActionMaps().create({.gamepads = input::ActionMap::Devices::Gamepads::One, .gamepad = 0});
+    first->define(*getEngine().getActions().findAction("jump"));
+    // clang-format off
+    const auto press = [&](std::size_t index, input::GamepadButton pressed) {
+        input::GamepadState state{.connected = true};
+        state.buttons[static_cast<std::size_t>(pressed)] = true;
+        getFixture().host().setGamepad(index, state);
+        frames();
+    };
+    const auto release = [&](std::size_t index) {
+        getFixture().host().setGamepad(index, input::GamepadState{.connected = true});
+        frames();
+    };
+    // clang-format on
+    for (const std::size_t index : {0U, 1U, 2U, 3U}) {
+        release(index);
+    }
+
+    press(2, input::GamepadButton::DpadDown);
+    release(2);
+    ASSERT_TRUE(isRingVisible());
+    for (const std::size_t index : {0U, 1U, 3U}) {
+        press(index, input::GamepadButton::DpadDown);
+        release(index);
+        EXPECT_TRUE(isFocused(*gui, "a")) << "The gamepad " << index << " moved the focus.";
+    }
+
+    press(2, input::GamepadButton::DpadDown);
+    release(2);
+    EXPECT_TRUE(isFocused(*gui, "b"));
+
+    // The south button of the first player reaches the map of that player while a control has the focus, since the UI does not hear that gamepad.
+    press(0, input::GamepadButton::South);
+    EXPECT_TRUE(first->isDown("jump"));
+    EXPECT_FALSE(getEngine().getActionMaps().getDefault()->isDown("jump"));
+    EXPECT_TRUE(isFocused(*gui, "b"));
+    release(0);
+
+    press(2, input::GamepadButton::South);
+    EXPECT_FALSE(getEngine().getActions().isDown("jump"));
+    release(2);
 }
 
 TEST_F(FocusTest, StopsNavigatingWithAKeyHeldWhenTheWindowLostTheFocus) {

@@ -342,6 +342,19 @@ void ActionMap::setDevices(Devices value) {
     devices = std::move(value);
 }
 
+bool ActionMap::readsGamepad(std::size_t index) const noexcept {
+    switch (devices.gamepads) {
+    case Devices::Gamepads::Every:
+        return index < Input::kMaxGamepads;
+    case Devices::Gamepads::One:
+        return index == devices.gamepad;
+    case Devices::Gamepads::None:
+        return false;
+    }
+
+    return false;
+}
+
 // The prefix of the virtual controls of the map goes in front of the name of the binding, in a buffer that keeps its room, so reading it allocates nothing after the first frame.
 std::string_view ActionMap::getVirtualName(const Binding& binding) const noexcept {
     if (devices.virtualPrefix.empty()) {
@@ -581,7 +594,7 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
         for (std::size_t code = 0; code < Controls::kGamepadButtonCount; ++code) {
             const auto button = static_cast<GamepadButton>(code);
             if (input.isGamepadPressed(index, button)) {
-                capturedButtons[index].set(code, capture.buttons.test(code));
+                capturedButtons[index].set(code, capture.buttons.test(code) && capture.gamepads.test(index));
             } else if (!input.isGamepadDown(index, button)) {
                 capturedButtons[index].reset(code);
             }
@@ -589,7 +602,7 @@ void ActionMap::holdCaptured(const Input& input) noexcept {
 
         for (std::size_t code = 0; code < Controls::kGamepadAxisCount; ++code) {
             const bool leaning = std::fabs(input.getGamepadAxis(index, static_cast<GamepadAxis>(code))) >= pressThreshold;
-            if (leaning && !leaningAxes[index].test(code) && capture.axes.test(code)) {
+            if (leaning && !leaningAxes[index].test(code) && capture.axes.test(code) && capture.gamepads.test(index)) {
                 capturedAxes[index].set(code);
             } else if (!leaning) {
                 capturedAxes[index].reset(code);

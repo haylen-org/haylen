@@ -653,7 +653,7 @@ Buttons, choices, inputs, rows, slots, play areas and the other interactive part
 - Page Up, Page Down, Home, End and the shoulder buttons page through collections.
 - Tab walks the controls in drawing order, also from one text field on to the next.
 
-An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings.
+An app remaps any of them by defining an action with the same name in its action map, and the others keep their built-in bindings. The UI hears the gamepads that the default action map reads, so a game that hands the menus to one player sets the `devices` of the default map to the gamepad of that player, and the other players move nothing in the menus. Their presses stay with their own maps, as the [input guide](../input/input.md#local-multiplayer) explains.
 
 A screen gives the first focus with `autofocus = true` on a node, or with `gui:command(id, 'focus')`. Every Tiny Island screen does this, so a gamepad player can start at once. Set `focusable = false` to keep a HUD button out of navigation, and call `ui.clearFocus()` to drop the focus when gameplay starts.
 

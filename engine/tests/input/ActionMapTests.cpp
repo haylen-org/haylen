@@ -358,6 +358,7 @@ TEST_F(ActionMapTest, EachMapReadsOnlyItsDevices) {
     // The presses that the UI captures stay away from every map, and a map nobody holds leaves at the next update.
     ActionMap::Capture capture;
     capture.buttons.set(static_cast<std::size_t>(GamepadButton::South));
+    capture.gamepads.set();
     maps.setCapture(capture);
     pads[7] = {};
     input.updateGamepads(pads);

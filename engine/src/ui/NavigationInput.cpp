@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 
 #include "haylen/core/Json.hpp"
 
@@ -35,6 +36,15 @@ void NavigationInput::update(const input::ActionMap& actions, const input::Input
         if (*resolved.findAction(name) != wanted) {
             resolved.define(wanted);
         }
+    }
+
+    // The UI hears the gamepads that the default map of the app reads, so a game that gives the menus to one player hands them the gamepad of that player alone.
+    const input::ActionMap::Devices& app = actions.getDevices();
+    if (resolved.getDevices().gamepads != app.gamepads || resolved.getDevices().gamepad != app.gamepad) {
+        input::ActionMap::Devices heard = resolved.getDevices();
+        heard.gamepads = app.gamepads;
+        heard.gamepad = app.gamepad;
+        resolved.setDevices(std::move(heard));
     }
 
     resolved.update(devices, virtualInput, blocked);

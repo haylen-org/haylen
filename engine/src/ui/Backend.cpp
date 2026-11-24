@@ -760,10 +760,10 @@ void Backend::feedGamepad(const input::Input& input, const NavigationInput& navi
         io.AddKeyEvent(key, navigation.isDown(action) && !typed(action));
     }
 
-    // The other buttons and the triggers come from the first connected gamepad, for the windows ImGui navigates itself.
+    // The other buttons and the triggers come from the first connected gamepad that the UI hears, for the windows ImGui navigates itself.
     std::optional<std::size_t> pad;
     for (std::size_t index = 0; index < input::Input::kMaxGamepads && !pad; ++index) {
-        if (input.getGamepad(index).connected) {
+        if (input.getGamepad(index).connected && navigation.readsGamepad(index)) {
             pad = index;
         }
     }

@@ -699,8 +699,14 @@ input::ActionMap::Capture UiPlugin::getCapture() const {
     const ImGuiContext& state = *backend->getImGuiContext();
     const bool listening = focus.isEditing() && state.ActiveIdUsingAllKeyboardKeys;
     input::ActionMap::Capture capture{.keyboard = listening || state.PlatformImeData.WantTextInput};
+    // A key capture listens to every gamepad, and the navigation to the gamepads that the UI hears.
     if (listening) {
         capture.buttons.set();
+        capture.gamepads.set();
+    } else {
+        for (std::size_t index = 0; index < input::Input::kMaxGamepads; ++index) {
+            capture.gamepads.set(index, navigationInput.readsGamepad(index));
+        }
     }
 
     const ui::FocusNavigator::Owner holder = focus.getOwner();

@@ -648,7 +648,7 @@ scene.push(setmetatable({}, Settings))
 
 ### What the UI captures
 
-A press that the UI answers itself never triggers an action, the same way the action map leaves alone a mouse button that went down over the UI. At the end of every frame, the UI captures for the next frame the keys, gamepad buttons and gamepad axes of the presses it will answer:
+A press that the UI answers itself never triggers an action, the same way the action map leaves alone a mouse button that went down over the UI. At the end of every frame, the UI captures for the next frame the keys, and the buttons and axes of the gamepads it hears, of the presses it will answer:
 
 - The bindings of every navigation action and Tab, while a control has the focus.
 - The bindings of `uiCancel` and Tab while a play area has the focus. By default `uiCancel` is Escape, the east button and the Menu button of a TV remote.
@@ -676,6 +676,8 @@ scene.push({
 ## Local multiplayer
 
 In a local multiplayer game, each player gets an action map of their own. The function [`input.newActionMap(options)`](../lua-api/input.md#inputnewactionmapoptions) makes a map that reads only the devices its options name: the keyboard, the mouse, one gamepad or none, and the virtual controls. The option `virtualPrefix` goes in front of the names of `virtual:` bindings, so two touch layouts on one screen drive two players. Every map loads the same documents as the default map. It updates at the start of every frame and every fixed step, and it leaves the engine once Lua lets go of it. The functions of the module, such as `input.down`, read the default map, which `input.actions()` returns as a map too.
+
+The UI hears the gamepads that the default map reads, every gamepad by default. A game whose menus belong to one player sets the devices of the default map to the gamepad of that player, such as `input.actions().devices = {gamepad = 1}`. Then only that gamepad moves the focus and presses the controls, and the UI captures no press of the other gamepads, which reach the maps of their players while a control has the focus.
 
 A join screen finds the gamepad that pressed a button with `input.findGamepadPress('start')`, which returns the lowest index of a gamepad that pressed it in this frame. It gives that player a map that reads only that gamepad. The events `gamepadConnected` and `gamepadDisconnected` of [`haylen.events`](../lua-api/events.md#engine-events) carry the index. So a game pauses when the gamepad of a player leaves, and resumes when it comes back at the same index.
 

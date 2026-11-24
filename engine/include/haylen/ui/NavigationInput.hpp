@@ -35,11 +35,16 @@ class NavigationInput final {
 
     NavigationInput();
 
-    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up until it is released, like the actions of the app map. While a play area has the focus, the presses of the directions, accept and menu belong to the game, so they read as up until they are released, even once the focus moved to a control.
+    // Reads every action with the bindings the app map gives it when it defines it and with the built-in bindings otherwise, from the gamepads that the app map reads. The UI reads the presses it captures from the app map itself, and blocked input, such as during a scene transition, holds every action up until it is released, like the actions of the app map. While a play area has the focus, the presses of the directions, accept and menu belong to the game, so they read as up until they are released, even once the focus moved to a control.
     void update(const input::ActionMap& actions, const input::Input& devices, const input::VirtualInput& virtualInput, bool blocked, bool playing);
 
     // The bindings an action reads, remapped by the app or built in.
     [[nodiscard]] const std::vector<input::ActionMap::Binding>& getBindings(Action action) const;
+
+    // Whether the UI hears the gamepad at the index, which is a gamepad that the default map of the app reads.
+    [[nodiscard]] bool readsGamepad(std::size_t index) const noexcept {
+        return resolved.readsGamepad(index);
+    }
 
     [[nodiscard]] bool isDown(Action action) const noexcept {
         return down[static_cast<std::size_t>(action)];
