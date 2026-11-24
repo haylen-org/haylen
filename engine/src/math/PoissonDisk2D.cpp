@@ -1,4 +1,4 @@
-#include "haylen/math/PoissonDisk.hpp"
+#include "haylen/math/PoissonDisk2D.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -10,7 +10,7 @@
 namespace haylen::math {
 
 // Remembers which sample occupies each cell of a grid whose cells are small enough to hold at most one sample.
-class PoissonDisk::Grid final {
+class PoissonDisk2D::Grid final {
   public:
     Grid(const Rect& sampledArea, float size) : area(sampledArea), cellSize(size), columns(cellCount(sampledArea.width, size, sampledArea.height)), rows(cellCount(sampledArea.height, size, sampledArea.width)), cells(static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows), -1) {}
 
@@ -78,7 +78,7 @@ class PoissonDisk::Grid final {
     std::vector<int> cells;
 };
 
-std::vector<Vec2> PoissonDisk::sample(const Options& options, Random& random) {
+std::vector<Vec2> PoissonDisk2D::sample(const Options& options, Random& random) {
     std::vector<Vec2> samples;
     if (options.area.isEmpty() || options.minimumDistance <= 0.0F) {
         return samples;

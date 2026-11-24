@@ -20,7 +20,7 @@
 
 namespace haylen::lua::math {
 
-// Installs `haylen.math` and the `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, the 3D shapes, `Rect`, `Color`, `Transform2D`, `Transform3D`, `DualQuat`, `Random`, `Noise2D`, `Spline2`, the 3D curves and NURBS shapes, `Spring`, `ShuffleBag` and `WeightedChoice` classes.
+// Installs `haylen.math` and the `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, the 3D shapes, `Rect`, `Color`, `Transform2D`, `Transform3D`, `DualQuat`, `Random`, `Noise2D`, `Noise3D`, `Spline2`, the 3D curves and NURBS shapes, `Spring`, `ShuffleBag` and `WeightedChoice` classes.
 class MathBinding final {
   public:
     static void install(lua_State* L);
@@ -33,6 +33,7 @@ class MathBinding final {
     static constexpr int kMaxOctaves = 16;
     static constexpr std::size_t kGridGrain = 4096;
     static constexpr std::array<std::string_view, 8> kPoissonFields{"area", "minimumDistance", "maximumDistance", "attempts", "random", "seed", "accept", "distance"};
+    static constexpr std::array<std::string_view, 6> kPoisson3Fields{"volume", "minimumDistance", "attempts", "random", "seed", "accept"};
 
     [[nodiscard]] static bool isWholeValue(lua_State* L);
 
@@ -82,6 +83,10 @@ class MathBinding final {
     [[nodiscard]] static int randomInteger(haylen::math::Random& self, int minimum, int maximum);
     [[nodiscard]] static bool randomChance(haylen::math::Random& self, float probability);
     static void randomReseed(haylen::math::Random& self, lua_Integer seed);
+    [[nodiscard]] static haylen::math::Vec3 randomInSphere(haylen::math::Random& self, std::optional<float> radius);
+    [[nodiscard]] static haylen::math::Vec3 randomOnSphere(haylen::math::Random& self, std::optional<float> radius);
+    [[nodiscard]] static haylen::math::Vec3 randomInCone(haylen::math::Random& self, haylen::math::Vec3 axis, float angle);
+    [[nodiscard]] static haylen::math::Vec3 randomInBox(haylen::math::Random& self, const haylen::math::Box3& box);
     static int randomWeightedIndex(lua_State* L);
     static int randomShuffle(lua_State* L);
     static int randomState(lua_State* L);
@@ -113,6 +118,7 @@ class MathBinding final {
     [[nodiscard]] static std::vector<haylen::math::Vec2> hull(std::vector<haylen::math::Vec2> points);
     static int triangulatePolygon(lua_State* L);
     static int poissonDisk(lua_State* L);
+    static int poissonDisk3d(lua_State* L);
 
     static void installClasses(lua_State* L);
     static int open(lua_State* L);

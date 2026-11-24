@@ -76,7 +76,7 @@ end
 -- Bushes and rocks stand evenly apart, each whole inside the meadow.
 function Classes:scatterProps(area)
     local margin = Classes.propSize * 0.6
-    local points = m.poissonDisk({area = m.rect(margin, margin * 1.4, area.width - margin * 2, area.height - margin * 2), minimumDistance = Classes.propSpacing, seed = 7})
+    local points = m.poissonDisk2d({area = m.rect(margin, margin * 1.4, area.width - margin * 2, area.height - margin * 2), minimumDistance = Classes.propSpacing, seed = 7})
     self.props = {}
     for index, point in ipairs(points) do
         self.props[index] = {x = point.x, y = point.y, source = Classes.props[index % 2 + 1]}

@@ -60,7 +60,7 @@ end
 
 function StaticBatches:enter()
     local size, columns, rows = StaticBatches.tile, StaticBatches.columns, StaticBatches.rows
-    local lakes, roads = m.noise(3), m.noise(11)
+    local lakes, roads = m.noise2d(3), m.noise2d(11)
     local function kindAt(column, row)
         return StaticBatches.kindAt(lakes, roads, column, row)
     end
@@ -82,7 +82,7 @@ end
 function StaticBatches:plant(kindAt)
     local size = StaticBatches.tile
     local area = {size, size, (StaticBatches.columns - 2) * size, (StaticBatches.rows - 2) * size}
-    local points = m.poissonDisk({area = area, minimumDistance = 150, seed = 6, accept = function(point)
+    local points = m.poissonDisk2d({area = area, minimumDistance = 150, seed = 6, accept = function(point)
         local column, row = math.floor(point.x / size), math.floor(point.y / size)
         for dy = 0, 1 do
             for dx = 0, 1 do
@@ -107,7 +107,7 @@ function StaticBatches:sky()
     local texture = assets.texture('tiled/images/clouds.png', {filter = 'linear'})
     local clouds, shadows = graphics2d.newSpriteBatch(texture), graphics2d.newSpriteBatch(texture)
     local mapWidth, mapHeight = StaticBatches.columns * StaticBatches.tile, StaticBatches.rows * StaticBatches.tile
-    local points = m.poissonDisk({area = {0, -300, mapWidth, mapHeight * 1.6}, minimumDistance = 700, seed = 4})
+    local points = m.poissonDisk2d({area = {0, -300, mapWidth, mapHeight * 1.6}, minimumDistance = 700, seed = 4})
     for copy = -1, 1 do
         for index, point in ipairs(points) do
             local scale = 1.6 + (index % 4) * 0.35

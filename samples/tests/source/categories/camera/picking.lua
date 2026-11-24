@@ -60,7 +60,7 @@ end
 -- Places two of every thing on the grass, apart from each other, and draws them from the top down.
 function Picking:scatter()
     local area = Picking.area
-    local points = m.poissonDisk({area = {area[1] + 120, area[2] + 160, area[3] - 240, area[4] - 220}, minimumDistance = 200, seed = 9, accept = function(point)
+    local points = m.poissonDisk2d({area = {area[1] + 120, area[2] + 160, area[3] - 240, area[4] - 220}, minimumDistance = 200, seed = 9, accept = function(point)
         return Picking.kindAt(point.x, point.y) == Terrain.grass and Picking.kindAt(point.x, point.y - 40) == Terrain.grass
     end})
     table.sort(points, function(a, b) return a.y < b.y end)

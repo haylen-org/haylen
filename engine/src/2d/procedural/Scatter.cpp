@@ -7,7 +7,7 @@
 #include <stdexcept>
 
 #include "haylen/math/Math.hpp"
-#include "haylen/math/PoissonDisk.hpp"
+#include "haylen/math/PoissonDisk2D.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/WeightedChoice.hpp"
 
@@ -83,14 +83,14 @@ std::vector<math::Vec2> Scatter::placeGrid(const Region& region, const Options& 
 }
 
 std::vector<math::Vec2> Scatter::placePoisson(const Region& region, const Options& options, math::Random& random) {
-    math::PoissonDisk::Options poisson{.area = region.getBounds(), .minimumDistance = options.spacing, .attempts = options.attempts};
+    math::PoissonDisk2D::Options poisson{.area = region.getBounds(), .minimumDistance = options.spacing, .attempts = options.attempts};
     poisson.accept = [&](math::Vec2 point) { return region.contains(point) && !isExcluded(options, point); };
     if (options.densityMap) {
         poisson.maximumDistance = options.maximumSpacing;
         poisson.distance = [&](math::Vec2 point) { return math::Math::lerp(options.maximumSpacing, options.spacing, math::Math::saturate(options.densityMap(point))); };
     }
 
-    return math::PoissonDisk::sample(poisson, random);
+    return math::PoissonDisk2D::sample(poisson, random);
 }
 
 std::vector<math::Vec2> Scatter::place(const Region& region, const Options& options, math::Random& random) {

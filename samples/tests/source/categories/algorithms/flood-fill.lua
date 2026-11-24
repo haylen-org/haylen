@@ -51,7 +51,7 @@ function FloodFill:enter()
 end
 
 function FloodFill:build()
-    local noise = m.noise(self.random:integer(1, 9999))
+    local noise = m.noise2d(self.random:integer(1, 9999))
     local land = {}
     for row = 0, kRows - 1 do
         for column = 0, kColumns - 1 do

@@ -62,7 +62,7 @@ function Wind:enter()
     self.camera.position = {0, 40}
     self.force, self.gusts, self.time = 14, true, 0
     self.enabled = {floor = true, updraft = true, vortex = true}
-    self.noise = m.noise(50)
+    self.noise = m.noise2d(50)
     self.random = m.random(50)
     self.string = {0, 0, 0, 0, 0, 0, 0, 0}
     self.stringStroke = {width = 1, color = '#E6FFFFFF', join = 'round', cap = 'round', layer = 1}

@@ -52,7 +52,7 @@ end
 
 function FlowField:build()
     self.grid = navigation2d.newGrid(kColumns, kRows)
-    local noise = m.noise(self.random:integer(1, 999))
+    local noise = m.noise2d(self.random:integer(1, 999))
     self.blocked = {}
     self.walls:clear()
     for row = 0, kRows - 1 do

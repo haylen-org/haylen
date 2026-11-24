@@ -33,7 +33,7 @@ local back = graphics.decodeImage(storage.readText('tests/screen-capture.png'))]
 
 function ScreenCapture:enter()
     self.time = 0
-    self.noise = m.noise(23)
+    self.noise = m.noise2d(23)
     self.message = 'Press "Capture the screen" to take a picture of everything the screen shows.'
     self.hero = SpriteTest.texture('images/hero.png')
     self.terrain = assets.texture('tiled/tiles/terrain.png', Terrain.textureOptions)

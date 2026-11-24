@@ -115,6 +115,7 @@ set(HAYLEN_LUA_SOURCES
   src/math/Geometry3Binding.cpp
   src/math/MathBinding.cpp
   src/math/MatrixBinding.cpp
+  src/math/Noise3DBinding.cpp
   src/math/PolygonBinding.cpp
   src/math/QuatBinding.cpp
   src/math/RaycastBinding.cpp

@@ -115,6 +115,7 @@ set(HAYLEN_TEST_SOURCES
   math/ColorTransformTests.cpp
   math/Geometry3Tests.cpp
   math/MatrixTests.cpp
+  math/Noise3DTests.cpp
   math/PolygonTests.cpp
   math/ProceduralTests.cpp
   math/QuatTests.cpp

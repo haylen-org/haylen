@@ -76,7 +76,7 @@ function IslandMap:init(journal)
 end
 
 function IslandMap:load(context)
-    local noise = m.noise(17)
+    local noise = m.noise2d(17)
     local image = graphics.newImage(kColumns, kRows)
     for row = 1, kRows do
         for column = 1, kColumns do

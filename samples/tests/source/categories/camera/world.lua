@@ -67,7 +67,7 @@ end
 
 function World:init()
     local bounds, cell, sea = World.bounds, World.cell, World.sea
-    self.noise = m.noise(5)
+    self.noise = m.noise2d(5)
     self.ground, self.edges = Terrain.bake((bounds.width + sea * 2) // cell, (bounds.height + sea * 2) // cell, cell, bounds.x - sea, bounds.y - sea, function(column, row)
         return self:kindAt(bounds.x - sea + column * cell, bounds.y - sea + row * cell)
     end)
@@ -201,7 +201,7 @@ function World:plant()
     local bounds = World.bounds
     local inner = m.rect(bounds.x + 380, bounds.y + 320, bounds.width - 760, bounds.height - 640)
     local random = m.random(12)
-    local trees = m.poissonDisk({area = bounds, minimumDistance = 120, maximumDistance = 520, seed = 3, distance = function(point)
+    local trees = m.poissonDisk2d({area = bounds, minimumDistance = 120, maximumDistance = 520, seed = 3, distance = function(point)
         return inner:contains(point) and 520 or 120
     end, accept = function(point)
         return self:free(point.x, point.y, 70)
@@ -209,7 +209,7 @@ function World:plant()
     for _, point in ipairs(trees) do
         self:place(random:nextFloat() < 0.35 and 'pine' or 'tree', point.x, point.y, random:nextFloat() < 0.5)
     end
-    local scattered = m.poissonDisk({area = inner, minimumDistance = 260, seed = 8, accept = function(point)
+    local scattered = m.poissonDisk2d({area = inner, minimumDistance = 260, seed = 8, accept = function(point)
         return self:free(point.x, point.y, 40)
     end})
     for _, point in ipairs(scattered) do
@@ -232,7 +232,7 @@ function World:plant()
         local point = self:shore(index / 7 * math.pi * 2 + 0.4, random:range(0.25, 0.65))
         self:place('lilies', point.x, point.y, random:nextFloat() < 0.5)
     end
-    local small = m.poissonDisk({area = inner, minimumDistance = 420, seed = 21, accept = function(point)
+    local small = m.poissonDisk2d({area = inner, minimumDistance = 420, seed = 21, accept = function(point)
         return self:free(point.x, point.y, 60)
     end})
     for index, point in ipairs(small) do

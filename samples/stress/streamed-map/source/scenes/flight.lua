@@ -59,7 +59,7 @@ function Flight:enter()
     self.pinchScale = 1
     self.mouseDrag = false
     self.tilesDrawn, self.decorationsDrawn = 0, 0
-    self.turns = m.noise(5)
+    self.turns = m.noise2d(5)
     self.hud = Hud.new(self, {
         title = 'Streamed Map',
         caption = 'A world of 16,384 by 16,384 tiles from a seed, streamed in chunks of 64 by 64 tiles.',

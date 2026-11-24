@@ -80,7 +80,7 @@ end
 function WorldMap.build(options)
     local columns, rows = WorldMap.columns, WorldMap.rows
     local random = m.random(options.seed)
-    local relief, wetness = m.noise(options.seed), m.noise(options.seed + 1000)
+    local relief, wetness = m.noise2d(options.seed), m.noise2d(options.seed + 1000)
     local centers = {}
     for _ = 1, options.islands do
         centers[#centers + 1] = {random:range(0.22, 0.78) * columns, random:range(0.36, 0.64) * rows, random:range(0.2, 0.32) * columns}

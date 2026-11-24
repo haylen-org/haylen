@@ -76,7 +76,7 @@ function Terrain:build()
     self.world = physics2d.newWorld({owner = self})
     self.crates = {}
     self.terrain = physics2d.newTerrain(self.world, {columns = Terrain.columns, rows = Terrain.rows, cellSize = Terrain.cellSize, x = Terrain.origin.x, y = Terrain.origin.y})
-    local noise = m.noise(self.random:integer(1, 1000))
+    local noise = m.noise2d(self.random:integer(1, 1000))
     local size = Terrain.cellSize
     local surface, backfill, above, top = {}, {}, {}, {}
     for column = 0, Terrain.columns - 1 do

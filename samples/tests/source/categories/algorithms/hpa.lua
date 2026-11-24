@@ -60,7 +60,7 @@ end
 function Hpa:build()
     self.grid = navigation2d.newGrid(kSize, kSize)
     self.walls = {}
-    local noise = m.noise(self.random:integer(1, 9999))
+    local noise = m.noise2d(self.random:integer(1, 9999))
     for row = 0, kSize - 1 do
         for column = 0, kSize - 1 do
             local wall = noise:fractal(column / 30, row / 30, 3) > 0.32

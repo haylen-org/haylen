@@ -6,6 +6,9 @@
 #include <span>
 #include <utility>
 
+#include "haylen/math/Box3.hpp"
+#include "haylen/math/Vec3.hpp"
+
 namespace haylen::math {
 
 // Deterministic xoshiro256** generator. The same seed always produces the same sequence on every platform.
@@ -29,6 +32,15 @@ class Random final {
     [[nodiscard]] bool chance(float probability) noexcept;
     // Throws `std::invalid_argument` when a weight is negative or not finite, or when no weight is positive.
     [[nodiscard]] std::size_t weightedIndex(std::span<const float> weights);
+
+    // Returns a point spread evenly through the ball of `radius` around the origin.
+    [[nodiscard]] Vec3 inSphere(float radius = 1.0F) noexcept;
+    // Returns a point spread evenly over the sphere of `radius` around the origin.
+    [[nodiscard]] Vec3 onSphere(float radius = 1.0F) noexcept;
+    // Returns a unit direction spread evenly over the directions within `angle` radians of `axis`, such as the sparks of a fountain. Throws `std::invalid_argument` for an axis without a direction or an angle outside 0 to pi.
+    [[nodiscard]] Vec3 inCone(Vec3 axis, float angle);
+    // Returns a point spread evenly through the box.
+    [[nodiscard]] Vec3 inBox(const Box3& box) noexcept;
 
     template <typename T> void shuffle(std::span<T> values) noexcept {
         for (std::size_t index = values.size(); index > 1; --index) {

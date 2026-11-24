@@ -129,12 +129,12 @@ TEST_F(GeometryLuaTest, DealsFromBagsAndWeightedChoices) {
 }
 
 TEST_F(GeometryLuaTest, WorleyWarpAndVaryingPoisson) {
-    fixture.runLua("noise = m.noise(3) nearest, second, cell = noise:worley(1.5, 2.5) wx, wy = noise:warp(10, 20, 4, 0.1)");
+    fixture.runLua("noise = m.noise2d(3) nearest, second, cell = noise:worley(1.5, 2.5) wx, wy = noise:warp(10, 20, 4, 0.1)");
     EXPECT_EQ(lua("return tostring(nearest <= second) .. ' ' .. tostring(cell >= 0 and cell < 1) .. ' ' .. tostring(math.abs(wx - 10) <= 4 and math.abs(wy - 20) <= 4)"), "true true true");
 
     // clang-format off
     fixture.runLua(R"(
-        points = m.poissonDisk({area = {0, 0, 200, 100}, minimumDistance = 5, maximumDistance = 20, seed = 2, distance = function(point) return point.x < 100 and 5 or 20 end})
+        points = m.poissonDisk2d({area = {0, 0, 200, 100}, minimumDistance = 5, maximumDistance = 20, seed = 2, distance = function(point) return point.x < 100 and 5 or 20 end})
         left = 0
         for _, point in ipairs(points) do
             if point.x < 100 then left = left + 1 end
@@ -142,7 +142,7 @@ TEST_F(GeometryLuaTest, WorleyWarpAndVaryingPoisson) {
     )");
     // clang-format on
     EXPECT_EQ(lua("return tostring(left > (#points - left) * 4)"), "true");
-    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 10, 10}, minimumDistance = 5, maximumDistance = 1, distance = function() return 5 end})").find("maximum distance"), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk2d({area = {0, 0, 10, 10}, minimumDistance = 5, maximumDistance = 1, distance = function() return 5 end})").find("maximum distance"), std::string::npos);
 }
 
 } // namespace haylen::lua::math

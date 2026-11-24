@@ -76,7 +76,7 @@ function RuntimeAtlases:enter()
     self.layout = RuntimeAtlases.layouts.landscape
 
     -- Every sprite of the meadow takes a cell of a jittered grid, so the meadow fills evenly, and the sprites draw from the back to the front.
-    local random, noise = m.random(5), m.noise(9)
+    local random, noise = m.random(5), m.noise2d(9)
     local columns = RuntimeAtlases.columns
     local rows = math.ceil(RuntimeAtlases.count / columns)
     self.spots = {}

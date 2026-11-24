@@ -2,29 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
-#include <numeric>
 #include <span>
 
 #include "haylen/math/Math.hpp"
-#include "haylen/math/Random.hpp"
+#include "math/NoiseHelper.hpp"
 
 namespace haylen::math {
 
-Noise2D::Noise2D(std::uint64_t seed) noexcept {
-    std::array<std::uint8_t, 256> values{};
-    std::iota(values.begin(), values.end(), std::uint8_t{0});
-
-    Random random(seed);
-    random.shuffle(std::span<std::uint8_t>(values));
-
-    for (std::size_t index = 0; index < permutation.size(); ++index) {
-        permutation[index] = values[index & 255U];
-    }
-}
-
-float Noise2D::fade(float t) noexcept {
-    return t * t * t * (t * (t * 6.0F - 15.0F) + 10.0F);
-}
+Noise2D::Noise2D(std::uint64_t seed) noexcept : permutation(NoiseHelper::makePermutation(seed)) {}
 
 float Noise2D::gradientDot(std::uint8_t cornerHash, float x, float y) noexcept {
     const auto& gradient = kGradients[cornerHash & 7U];
@@ -37,17 +22,11 @@ std::uint8_t Noise2D::hash(int x, int y) const noexcept {
     return permutation[permutation[ix] + iy];
 }
 
-// The lattice repeats every 256 cells, so a cell wraps into that period before it becomes an integer, which keeps coordinates of any size in range. A coordinate that is not finite hashes the first cell, and its sample is not a number either.
-int Noise2D::cellOf(float floored) noexcept {
-    const float wrapped = std::fmod(floored, 256.0F);
-    return std::isfinite(wrapped) ? static_cast<int>(wrapped) : 0;
-}
-
 float Noise2D::perlin(float x, float y) const noexcept {
     const float floorX = std::floor(x);
     const float floorY = std::floor(y);
-    const int cellX = cellOf(floorX);
-    const int cellY = cellOf(floorY);
+    const int cellX = NoiseHelper::cellOf(floorX);
+    const int cellY = NoiseHelper::cellOf(floorY);
     const float localX = x - floorX;
     const float localY = y - floorY;
 
@@ -56,8 +35,8 @@ float Noise2D::perlin(float x, float y) const noexcept {
     const float n01 = gradientDot(hash(cellX, cellY + 1), localX, localY - 1.0F);
     const float n11 = gradientDot(hash(cellX + 1, cellY + 1), localX - 1.0F, localY - 1.0F);
 
-    const float u = fade(localX);
-    const float v = fade(localY);
+    const float u = NoiseHelper::fade(localX);
+    const float v = NoiseHelper::fade(localY);
     return Math::lerp(Math::lerp(n00, n10, u), Math::lerp(n01, n11, u), v) * 1.41421356F;
 }
 
@@ -68,8 +47,8 @@ float Noise2D::simplex(float x, float y) const noexcept {
     const float skew = (x + y) * kSkew;
     const float floorI = std::floor(x + skew);
     const float floorJ = std::floor(y + skew);
-    const int i = cellOf(floorI);
-    const int j = cellOf(floorJ);
+    const int i = NoiseHelper::cellOf(floorI);
+    const int j = NoiseHelper::cellOf(floorJ);
     const float unskew = (floorI + floorJ) * kUnskew;
     const float x0 = x - (floorI - unskew);
     const float y0 = y - (floorJ - unskew);
@@ -116,8 +95,8 @@ float Noise2D::fractal(float x, float y, int octaves, float lacunarity, float ga
 Noise2D::Cellular Noise2D::worley(float x, float y) const noexcept {
     const float floorX = std::floor(x);
     const float floorY = std::floor(y);
-    const int cellX = cellOf(floorX);
-    const int cellY = cellOf(floorY);
+    const int cellX = NoiseHelper::cellOf(floorX);
+    const int cellY = NoiseHelper::cellOf(floorY);
 
     Cellular result{.nearest = 1e9F, .second = 1e9F};
     for (int offsetY = -1; offsetY <= 1; ++offsetY) {

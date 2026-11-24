@@ -116,6 +116,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   math/GeometryLuaTests.cpp
   math/MathLuaTests.cpp
   math/MatrixLuaTests.cpp
+  math/Noise3DLuaTests.cpp
   math/ProceduralTests.cpp
   math/QuatLuaTests.cpp
   math/RaycastTests.cpp

@@ -394,13 +394,15 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/MedianFilter.cpp
   src/math/MovingAverage.cpp
   src/math/Noise2D.cpp
+  src/math/Noise3D.cpp
   src/math/NurbsBasis.cpp
   src/math/NurbsSurface.cpp
   src/math/NurbsVolume.cpp
   src/math/ParallelTransport.cpp
   src/math/Obb.cpp
   src/math/Photometry.cpp
-  src/math/PoissonDisk.cpp
+  src/math/PoissonDisk2D.cpp
+  src/math/PoissonDisk3D.cpp
   src/math/Polygon.cpp
   src/math/Quat.cpp
   src/math/Random.cpp

@@ -40,7 +40,7 @@ local jobs = require('haylen.jobs')
 local m = require('haylen.math')
 
 local function generateHeights(size, seed)
-    local noise = m.noise(seed)
+    local noise = m.noise2d(seed)
     local heights = {}
     for y = 1, size do
         for x = 1, size do

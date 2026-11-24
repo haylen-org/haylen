@@ -58,7 +58,7 @@ The asynchronous generators work on a copy of the `random` option, so the `Rando
 | --- | --- |
 | Trees, rocks, loot and spawn points spread naturally over an area | [`procedural.scatter`](../lua-api/procedural2d.md#proceduralscatteroptions), at random, on a shaken grid or with Poisson spacing. |
 | A set count of each kind of object, such as trees, rocks and houses, kept apart by the shapes they occupy, with what did not fit | [`procedural.place`](../lua-api/procedural2d.md#proceduralplaceoptions), as the [placement recipe](#recipe-trees-rocks-and-houses-that-never-overlap) shows. |
-| Points that never sit closer than a distance, without regions or types | [`m.poissonDisk`](../lua-api/math.md#mpoissondiskoptions) of `haylen.math`. |
+| Points that never sit closer than a distance, without regions or types | [`m.poissonDisk`](../lua-api/math.md#mpoissondisk2doptions) of `haylen.math`. |
 | Organic caves and islands | [`procedural.cellularAutomaton`](../lua-api/procedural2d.md#proceduralcellularautomatonoptions). |
 | Long winding tunnels and mines | [`procedural.drunkardWalk`](../lua-api/procedural2d.md#proceduraldrunkardwalkoptions). |
 | Rooms joined by corridors | [`procedural.dungeon`](../lua-api/procedural2d.md#proceduraldungeonoptions). |

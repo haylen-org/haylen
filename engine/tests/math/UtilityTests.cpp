@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "haylen/math/Noise2D.hpp"
-#include "haylen/math/PoissonDisk.hpp"
+#include "haylen/math/PoissonDisk2D.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/ShuffleBag.hpp"
 #include "haylen/math/Spring.hpp"
@@ -176,10 +176,10 @@ TEST(NoiseTest, WarpMovesPointsWithinTheAmplitude) {
 
 TEST(PoissonDiskTest, VariesTheSpacingWithADistanceMap) {
     Random random(21);
-    PoissonDisk::Options options{.area = {0.0F, 0.0F, 400.0F, 200.0F}, .minimumDistance = 10.0F, .maximumDistance = 30.0F};
+    PoissonDisk2D::Options options{.area = {0.0F, 0.0F, 400.0F, 200.0F}, .minimumDistance = 10.0F, .maximumDistance = 30.0F};
     // Points crowd on the left, where the map asks for the minimum distance, and spread out to the right.
     options.distance = [](Vec2 point) { return point.x < 200.0F ? 10.0F : 30.0F; };
-    const std::vector<Vec2> points = PoissonDisk::sample(options, random);
+    const std::vector<Vec2> points = PoissonDisk2D::sample(options, random);
 
     std::size_t left = 0;
     for (std::size_t first = 0; first < points.size(); ++first) {
@@ -194,7 +194,7 @@ TEST(PoissonDiskTest, VariesTheSpacingWithADistanceMap) {
     EXPECT_GT(left, (points.size() - left) * 4);
 
     options.maximumDistance = 5.0F;
-    EXPECT_THROW((void)PoissonDisk::sample(options, random), std::invalid_argument);
+    EXPECT_THROW((void)PoissonDisk2D::sample(options, random), std::invalid_argument);
 }
 
 } // namespace haylen::math

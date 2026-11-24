@@ -12,7 +12,7 @@
 #include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Noise2D.hpp"
-#include "haylen/math/PoissonDisk.hpp"
+#include "haylen/math/PoissonDisk2D.hpp"
 #include "haylen/math/Random.hpp"
 
 namespace haylen::math {
@@ -260,7 +260,7 @@ TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {
 
     for (const Rect area : {Rect{-infinity, 0.0F, 100.0F, 100.0F}, Rect{0.0F, 0.0F, 100.0F, std::numeric_limits<float>::quiet_NaN()}}) {
         try {
-            (void)PoissonDisk::sample({.area = area, .minimumDistance = 10.0F}, random);
+            (void)PoissonDisk2D::sample({.area = area, .minimumDistance = 10.0F}, random);
             ADD_FAILURE() << "An area without finite edges must be refused.";
         } catch (const std::invalid_argument& error) {
             EXPECT_STREQ(error.what(), "Poisson sampling needs an area whose edges are finite.");
@@ -270,12 +270,12 @@ TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {
 
 TEST(PoissonDiskTest, KeepsMinimumDistanceAndPredicate) {
     Random random(5);
-    const PoissonDisk::Options options{
+    const PoissonDisk2D::Options options{
         .area = Rect{0.0F, 0.0F, 500.0F, 300.0F},
         .minimumDistance = 40.0F,
         .accept = [](Vec2 point) { return point.x < 400.0F; },
     };
-    const std::vector<Vec2> points = PoissonDisk::sample(options, random);
+    const std::vector<Vec2> points = PoissonDisk2D::sample(options, random);
 
     ASSERT_GT(points.size(), 20U);
 
@@ -291,12 +291,12 @@ TEST(PoissonDiskTest, KeepsMinimumDistanceAndPredicate) {
 
 TEST(PoissonDiskTest, RejectsDegenerateInput) {
     Random random(5);
-    EXPECT_TRUE(PoissonDisk::sample(PoissonDisk::Options{.area = Rect{}}, random).empty());
-    EXPECT_TRUE(PoissonDisk::sample(PoissonDisk::Options{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .minimumDistance = 0.0F}, random).empty());
+    EXPECT_TRUE(PoissonDisk2D::sample(PoissonDisk2D::Options{.area = Rect{}}, random).empty());
+    EXPECT_TRUE(PoissonDisk2D::sample(PoissonDisk2D::Options{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .minimumDistance = 0.0F}, random).empty());
 
-    const PoissonDisk::Options nothingAccepted{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .accept = [](Vec2) { return false; }};
-    EXPECT_TRUE(PoissonDisk::sample(nothingAccepted, random).empty());
-    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = Rect{0.0F, 0.0F, 2000.0F, 2000.0F}, .minimumDistance = 0.01F}, random), std::invalid_argument);
+    const PoissonDisk2D::Options nothingAccepted{.area = Rect{0.0F, 0.0F, 10.0F, 10.0F}, .accept = [](Vec2) { return false; }};
+    EXPECT_TRUE(PoissonDisk2D::sample(nothingAccepted, random).empty());
+    EXPECT_THROW((void)PoissonDisk2D::sample(PoissonDisk2D::Options{.area = Rect{0.0F, 0.0F, 2000.0F, 2000.0F}, .minimumDistance = 0.01F}, random), std::invalid_argument);
 }
 
 TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
@@ -305,7 +305,7 @@ TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
 
     // The largest distances reach far beyond any `int` number of cells, and the search stays within the grid.
     for (const float maximum : {1e30F, std::numeric_limits<float>::max()}) {
-        const std::vector<Vec2> points = PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](Vec2) { return 10.0F; }}, random);
+        const std::vector<Vec2> points = PoissonDisk2D::sample(PoissonDisk2D::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = maximum, .distance = [](Vec2) { return 10.0F; }}, random);
         ASSERT_GT(points.size(), 10U);
 
         for (std::size_t first = 0; first < points.size(); ++first) {
@@ -316,8 +316,8 @@ TEST(PoissonDiskTest, BoundsHugeDistancesAndRejectsOnesThatAreNotFinite) {
     }
 
     const float infinity = std::numeric_limits<float>::infinity();
-    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = infinity, .distance = [](Vec2) { return 10.0F; }}, random), std::invalid_argument);
-    EXPECT_THROW((void)PoissonDisk::sample(PoissonDisk::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 20.0F, .distance = [](Vec2) { return std::numeric_limits<float>::quiet_NaN(); }}, random), std::invalid_argument);
+    EXPECT_THROW((void)PoissonDisk2D::sample(PoissonDisk2D::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = infinity, .distance = [](Vec2) { return 10.0F; }}, random), std::invalid_argument);
+    EXPECT_THROW((void)PoissonDisk2D::sample(PoissonDisk2D::Options{.area = area, .minimumDistance = 10.0F, .maximumDistance = 20.0F, .distance = [](Vec2) { return std::numeric_limits<float>::quiet_NaN(); }}, random), std::invalid_argument);
 }
 
 } // namespace haylen::math

@@ -70,7 +70,7 @@ end
 function island:scatter(random, spacing, accept)
     local spots = {}
     for _, region in ipairs(self.wilds) do
-        local points = mathx.poissonDisk({area = mathx.rect(region.x, region.y, region.width, region.height), minimumDistance = spacing, random = random, accept = function(point)
+        local points = mathx.poissonDisk2d({area = mathx.rect(region.x, region.y, region.width, region.height), minimumDistance = spacing, random = random, accept = function(point)
             return self:walkable(point.x, point.y) and self:walkable(point.x, point.y + 40) and not self:onPath(point.x, point.y) and accept(point)
         end})
         for _, point in ipairs(points) do

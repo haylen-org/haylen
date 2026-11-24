@@ -11,7 +11,7 @@ namespace haylen::math {
 class Random;
 
 // Poisson disk sampling, which spreads random points evenly over an area.
-class PoissonDisk final {
+class PoissonDisk2D final {
   public:
     // A distance function makes the spacing vary over the area, such as from a density or noise map. Its results are clamped between the minimum and maximum distances, and two points stay at least the larger of their own distances apart.
     struct Options {

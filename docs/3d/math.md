@@ -174,6 +174,36 @@ end
 
 NURBS also make surfaces and volumes. A `NurbsSurface` spreads a grid of points into a smooth sheet with a normal at every place, such as a hull or a patch of terrain, and a `NurbsVolume` bends the space of a block, such as a lattice that deforms a model inside it.
 
+## Noise and random points
+
+Noise gives values that change smoothly from one point to the next, which shapes caves, clouds, terrain and the textures of 3D surfaces. A `Noise3D` samples it in three dimensions, or in four, where the fourth often runs with time so a pattern changes in place. Perlin and simplex noise are gradient noise, smooth hills of values, and value noise is softer and blockier. Worley noise, from `noise:cellular`, measures the distance to scattered points, which draws cells, stones and crystals. A fractal sums octaves of a noise at rising frequencies: plain fBm for rolling terrain, billows for clouds, ridges for mountain crests and ping-pong for bands. Warping the point before sampling bends any pattern into marble or smoke.
+
+```lua
+local m = require('haylen.math')
+
+local noise = m.noise3d(12)
+local function isRock(x, y, z)
+    return noise:fractal(x / 16, y / 16, z / 16, {octaves = 4}) > 0.1
+end
+
+print(isRock(3, -8, 20))
+```
+
+A `Random` also draws points of 3D shapes: inside or on a sphere, in a cone of directions and inside a box. A random direction is a point on a sphere of radius `1`, and the spread of a shot or the sparks of a fountain is a cone. To spread things evenly without clumps, `m.poissonDisk3d` places points that keep a distance from each other through a box, which suits trees, rocks and stars.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(9)
+local sparks = {}
+for index = 1, 20 do
+    sparks[index] = random:inCone(m.up(), m.radians(25)) * random:range(4, 8)
+end
+
+local rocks = m.poissonDisk3d({volume = m.box3({0, 0, 0}, {40, 2, 40}), minimumDistance = 5, random = random})
+print(#sparks, #rocks > 0)
+```
+
 ## Planes
 
 A `Plane` splits space into a front side and a back side, such as the ground, a wall or the surface of water. Its signed distance tells on which side a point lies and how far, and its closest point drops a point onto it. A plane in the space of a camera also clips a projection with `obliqueNearPlane`, which draws only what lies behind a mirror or a portal.

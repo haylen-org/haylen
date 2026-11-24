@@ -78,7 +78,7 @@ end
 function Autotile:build()
     self.cells = spatial2d.newCellGrid(kColumns, kRows)
     self.corners = spatial2d.newCellGrid(kColumns + 1, kRows + 1, 1)
-    local noise = m.noise(self.random:integer(1, 9999))
+    local noise = m.noise2d(self.random:integer(1, 9999))
     for row = 0, kRows do
         for column = 0, kColumns do
             local land = noise:fractal(column / 9, row / 9, 3) > 0.1

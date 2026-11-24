@@ -110,15 +110,15 @@ TEST_F(MathLuaTest, GeneratesDeterministicRandomValuesAndNoise) {
     EXPECT_EQ(lua("return type(m.random():nextFloat())"), "number");
     EXPECT_NE(lua("return m.random(1):weightedIndex({})").find("expected at least one weight"), std::string::npos);
 
-    EXPECT_EQ(lua("local n = m.noise(4) return n:perlin(1.5, 2.5) == m.noise(4):perlin(1.5, 2.5)"), "true");
-    EXPECT_EQ(lua("local n = m.noise(4) local v = n:simplex(0.3, 0.7) return v >= -1 and v <= 1"), "true");
-    EXPECT_EQ(lua("local n = m.noise() return n:fractal(0.5, 0.5) ~= n:fractal(0.5, 0.5, 2, 3, 0.25)"), "true");
+    EXPECT_EQ(lua("local n = m.noise2d(4) return n:perlin(1.5, 2.5) == m.noise2d(4):perlin(1.5, 2.5)"), "true");
+    EXPECT_EQ(lua("local n = m.noise2d(4) local v = n:simplex(0.3, 0.7) return v >= -1 and v <= 1"), "true");
+    EXPECT_EQ(lua("local n = m.noise2d() return n:fractal(0.5, 0.5) ~= n:fractal(0.5, 0.5, 2, 3, 0.25)"), "true");
 }
 
 TEST_F(MathLuaTest, SamplesGridsOfNoiseInOneCall) {
     // clang-format off
     EXPECT_EQ(lua(R"(
-        local n = m.noise(7)
+        local n = m.noise2d(7)
         local grid = n:sampleGrid({columns = 64, rows = 48, x = 2, y = -1, step = 0.125, octaves = 3})
         for row = 0, 47, 5 do
             for column = 0, 63, 7 do
@@ -136,27 +136,27 @@ TEST_F(MathLuaTest, SamplesGridsOfNoiseInOneCall) {
     )"), "3072 same same same");
     // clang-format on
 
-    fixture.runLua("done = nil require('async').spawn(function() local grid = m.noise(7):sampleGridAsync({columns = 32, rows = 32}):await() done = #grid .. ' ' .. tostring(grid[33] == m.noise(7):fractal(0, 1)) end)");
+    fixture.runLua("done = nil require('async').spawn(function() local grid = m.noise2d(7):sampleGridAsync({columns = 32, rows = 32}):await() done = #grid .. ' ' .. tostring(grid[33] == m.noise2d(7):fractal(0, 1)) end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return lua("return tostring(done)") != "nil"; }));
     EXPECT_EQ(lua("return done"), "1024 true");
 
-    EXPECT_NE(lua("m.noise():sampleGrid({rows = 2})").find("The option \"columns\" is required."), std::string::npos);
-    EXPECT_NE(lua("m.noise():sampleGrid({columns = 0, rows = 2})").find("The option \"columns\" must be a whole number from 1 to 16384."), std::string::npos);
-    EXPECT_NE(lua("m.noise():sampleGrid({columns = 16384, rows = 16384})").find("more than the limit of 16777216."), std::string::npos);
-    EXPECT_NE(lua("m.noise():sampleGrid({columns = 2, rows = 2, kind = 'value'})").find("The option \"kind\" must be \"perlin\", \"simplex\", \"fractal\" or \"worley\"."), std::string::npos);
-    EXPECT_NE(lua("m.noise():sampleGrid({columns = 2, rows = 2, octaves = 40})").find("The option \"octaves\" must be a whole number from 1 to 16."), std::string::npos);
-    EXPECT_NE(lua("m.noise():sampleGrid({columns = 4, rows = 4, into = require('haylen.collections').newFloatBuffer(8)})").find("The buffer of \"into\" holds 8 floats, fewer than the 16 samples of the grid."), std::string::npos);
-    EXPECT_NE(lua("m.noise():sampleGridAsync({columns = 2, rows = 2, into = require('haylen.collections').newFloatBuffer(8)})").find("Unknown option \"into\"."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGrid({rows = 2})").find("The option \"columns\" is required."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGrid({columns = 0, rows = 2})").find("The option \"columns\" must be a whole number from 1 to 16384."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGrid({columns = 16384, rows = 16384})").find("more than the limit of 16777216."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGrid({columns = 2, rows = 2, kind = 'value'})").find("The option \"kind\" must be \"perlin\", \"simplex\", \"fractal\" or \"worley\"."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGrid({columns = 2, rows = 2, octaves = 40})").find("The option \"octaves\" must be a whole number from 1 to 16."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGrid({columns = 4, rows = 4, into = require('haylen.collections').newFloatBuffer(8)})").find("The buffer of \"into\" holds 8 floats, fewer than the 16 samples of the grid."), std::string::npos);
+    EXPECT_NE(lua("m.noise2d():sampleGridAsync({columns = 2, rows = 2, into = require('haylen.collections').newFloatBuffer(8)})").find("Unknown option \"into\"."), std::string::npos);
 }
 
 TEST_F(MathLuaTest, BoundsTheOctavesOfNoise) {
-    EXPECT_EQ(lua("local n = m.noise(3) local x, y = n:warp(1, 2, 4, 1, 16) return type(n:fractal(0.5, 0.25, 16)) .. ' ' .. type(x)"), "number number");
+    EXPECT_EQ(lua("local n = m.noise2d(3) local x, y = n:warp(1, 2, 4, 1, 16) return type(n:fractal(0.5, 0.25, 16)) .. ' ' .. type(x)"), "number number");
 
     for (const std::string call : {"fractal(0.5, 0.25, 17)", "fractal(0.5, 0.25, 0)", "warp(1, 2, 4, 1, 17)", "warp(1, 2, 4, 1, 1000000000)"}) {
-        EXPECT_NE(lua("m.noise(3):" + call).find("The octaves must be a whole number from 1 to 16."), std::string::npos) << call;
+        EXPECT_NE(lua("m.noise2d(3):" + call).find("The octaves must be a whole number from 1 to 16."), std::string::npos) << call;
     }
 
-    EXPECT_NE(lua("m.noise(3):warp(1, 2, 4, 1, 2^32 + 3)").find("error: "), std::string::npos);
+    EXPECT_NE(lua("m.noise2d(3):warp(1, 2, 4, 1, 2^32 + 3)").find("error: "), std::string::npos);
 }
 
 TEST_F(MathLuaTest, ProvidesScalarHelpers) {
@@ -246,15 +246,15 @@ TEST_F(MathLuaTest, AnalyzesPolygons) {
 }
 
 TEST_F(MathLuaTest, SamplesPoissonDisks) {
-    EXPECT_EQ(lua("local points = m.poissonDisk({area = m.rect(0, 0, 200, 200), minimumDistance = 30, seed = 9}) return #points > 10"), "true");
-    EXPECT_EQ(lua("local a = m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, seed = 2}) local b = m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, seed = 2}) return #a == #b and a[1] == b[1]"), "true");
-    EXPECT_EQ(lua("local points = m.poissonDisk({area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4), accept = function(p) return p.x < 100 end}) for _, p in ipairs(points) do if p.x >= 100 then return false end end return #points > 0"), "true");
-    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, accept = function() error('rejected') end})").find("rejected"), std::string::npos);
-    EXPECT_EQ(lua("local options = {area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4)} options.accept = function() options.random = nil collectgarbage() return true end local points = m.poissonDisk(options) local expected = m.poissonDisk({area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4)}) return #points == #expected and points[#points] == expected[#expected]"), "true");
-    EXPECT_NE(lua("return m.poissonDisk('area')").find("error: "), std::string::npos);
-    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, attempts = 0})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
-    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 20, attempts = 1073741824})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
-    EXPECT_NE(lua("return m.poissonDisk({area = {0, 0, 100, 100}, minimumDistance = 10, maximumDistance = 20, distance = function() return 'far' end})").find("A Poisson distance function must return a number, not string."), std::string::npos);
+    EXPECT_EQ(lua("local points = m.poissonDisk2d({area = m.rect(0, 0, 200, 200), minimumDistance = 30, seed = 9}) return #points > 10"), "true");
+    EXPECT_EQ(lua("local a = m.poissonDisk2d({area = {0, 0, 100, 100}, minimumDistance = 20, seed = 2}) local b = m.poissonDisk2d({area = {0, 0, 100, 100}, minimumDistance = 20, seed = 2}) return #a == #b and a[1] == b[1]"), "true");
+    EXPECT_EQ(lua("local points = m.poissonDisk2d({area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4), accept = function(p) return p.x < 100 end}) for _, p in ipairs(points) do if p.x >= 100 then return false end end return #points > 0"), "true");
+    EXPECT_NE(lua("return m.poissonDisk2d({area = {0, 0, 100, 100}, minimumDistance = 20, accept = function() error('rejected') end})").find("rejected"), std::string::npos);
+    EXPECT_EQ(lua("local options = {area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4)} options.accept = function() options.random = nil collectgarbage() return true end local points = m.poissonDisk2d(options) local expected = m.poissonDisk2d({area = {0, 0, 200, 200}, minimumDistance = 20, random = m.random(4)}) return #points == #expected and points[#points] == expected[#expected]"), "true");
+    EXPECT_NE(lua("return m.poissonDisk2d('area')").find("error: "), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk2d({area = {0, 0, 100, 100}, minimumDistance = 20, attempts = 0})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk2d({area = {0, 0, 100, 100}, minimumDistance = 20, attempts = 1073741824})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
+    EXPECT_NE(lua("return m.poissonDisk2d({area = {0, 0, 100, 100}, minimumDistance = 10, maximumDistance = 20, distance = function() return 'far' end})").find("A Poisson distance function must return a number, not string."), std::string::npos);
 }
 
 } // namespace haylen::lua::math

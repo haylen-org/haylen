@@ -52,7 +52,7 @@ function TileLayers:enter()
         end
         self.layers[kind] = layer
     end
-    self.lakes, self.roads = m.noise(3), m.noise(11)
+    self.lakes, self.roads = m.noise2d(3), m.noise2d(11)
     self.painted = {}
     local cells = TileLayers.chunk * TileLayers.chunk
     self.buffers = {}

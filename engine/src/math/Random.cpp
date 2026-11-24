@@ -1,8 +1,11 @@
 #include "haylen/math/Random.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <cmath>
 #include <stdexcept>
+
+#include "haylen/math/Math.hpp"
 
 namespace haylen::math {
 
@@ -100,6 +103,42 @@ std::size_t Random::weightedIndex(std::span<const float> weights) {
     }
 
     return lastPositive;
+}
+
+// The height along the axis of a point of the sphere spreads evenly, which spreads the points evenly over its area.
+Vec3 Random::onSphere(float radius) noexcept {
+    const float height = range(-1.0F, 1.0F);
+    const float turn = range(0.0F, Math::kTau);
+    const float across = std::sqrt(std::max(0.0F, 1.0F - height * height));
+    return Vec3{across * std::cos(turn), across * std::sin(turn), height} * radius;
+}
+
+// The cube root of the distance from the center spreads the points evenly through the volume, which grows with the cube of the radius.
+Vec3 Random::inSphere(float radius) noexcept {
+    return onSphere(radius) * std::cbrt(nextFloat());
+}
+
+Vec3 Random::inCone(Vec3 axis, float angle) {
+    if (!(angle >= 0.0F && angle <= Math::kPi)) {
+        throw std::invalid_argument("A random cone needs an angle from 0 to pi radians.");
+    }
+
+    // The cosine of the angle from the axis spreads evenly over the cap, and two directions across the axis place the turn around it.
+    const Vec3 unit = axis.getNormalized();
+    const Vec3 helper = std::fabs(unit.x) < 0.9F ? Vec3::right() : Vec3::up();
+    const Vec3 first = Vec3::cross(unit, helper).getNormalized();
+    const Vec3 second = Vec3::cross(unit, first);
+    const float cosine = range(std::cos(angle), 1.0F);
+    const float sine = std::sqrt(std::max(0.0F, 1.0F - cosine * cosine));
+    const float turn = range(0.0F, Math::kTau);
+    return unit * cosine + (first * std::cos(turn) + second * std::sin(turn)) * sine;
+}
+
+Vec3 Random::inBox(const Box3& box) noexcept {
+    const float x = range(box.min.x, box.max.x);
+    const float y = range(box.min.y, box.max.y);
+    const float z = range(box.min.z, box.max.z);
+    return {x, y, z};
 }
 
 } // namespace haylen::math

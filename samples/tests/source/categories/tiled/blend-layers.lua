@@ -30,7 +30,7 @@ function BlendLayers:enter()
     self.map:addLayer({name = 'ground'})
 
     -- The ground is grass with flowers, and the water lies on the corners of the cells where a noise rises, so each cell takes the shore tile of its corners under water.
-    local noise = m.noise(9)
+    local noise = m.noise2d(9)
     local ground, water = spatial2d.newCellGrid(kColumns, kRows), spatial2d.newCellGrid(kColumns, kRows)
     local function wet(column, row)
         return noise:fractal(column * 0.09 + 40, row * 0.09, 3, 2, 0.5) > 0.05 and 1 or 0

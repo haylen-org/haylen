@@ -41,8 +41,8 @@ Terrain.growth = {
 function Terrain.new(seed)
     local self = setmetatable({}, Terrain)
     self.seed = seed
-    self.height = m.noise(seed)
-    self.moisture = m.noise(seed + 1)
+    self.height = m.noise2d(seed)
+    self.moisture = m.noise2d(seed + 1)
     return self
 end
 

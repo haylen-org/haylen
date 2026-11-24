@@ -101,7 +101,7 @@ end
 -- Fills the ground in one call, grass and grass with flowers as local ids of the terrain tileset, and paints the dirt paths where the noise rises with the corner Wang set of the paths.
 function BuiltMap:generate()
     self.seed = self.seed + 1
-    local noise = m.noise(self.seed)
+    local noise = m.noise2d(self.seed)
     for row = 0, kRows - 1 do
         for column = 0, kColumns - 1 do
             self.grid:set(column, row, (column * 7 + row * 3) % 9 == 0 and 1 or 0)

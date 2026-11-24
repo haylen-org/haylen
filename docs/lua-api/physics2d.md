@@ -3094,7 +3094,7 @@ local m = require('haylen.math')
 
 local world = physics2d.newWorld()
 local terrain = physics2d.newTerrain(world, {columns = 201, rows = 101, cellSize = 4})
-local noise = m.noise(7)
+local noise = m.noise2d(7)
 terrain.samples = function(column, row)
     local surface = 200 + noise:fractal(column / 40, 0) * 60
     return row * 4 > surface and 1 or 0

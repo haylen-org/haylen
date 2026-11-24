@@ -11,7 +11,7 @@
 #include "haylen/2d/procedural/WaveFunctionCollapse.hpp"
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Noise2D.hpp"
-#include "haylen/math/PoissonDisk.hpp"
+#include "haylen/math/PoissonDisk2D.hpp"
 #include "haylen/math/Random.hpp"
 
 namespace haylen::bench {
@@ -30,13 +30,13 @@ class ProceduralBenchmark final {
         });
         measure("Poisson disk 2048x2048, distance 16", 10, [] {
             math::Random random(2);
-            (void)math::PoissonDisk::sample({.area = {0.0F, 0.0F, 2048.0F, 2048.0F}, .minimumDistance = 16.0F}, random);
+            (void)math::PoissonDisk2D::sample({.area = {0.0F, 0.0F, 2048.0F, 2048.0F}, .minimumDistance = 16.0F}, random);
         });
         measure("Poisson disk 2048x2048, distance 16 to 64", 10, [] {
             math::Random random(3);
-            math::PoissonDisk::Options options{.area = {0.0F, 0.0F, 2048.0F, 2048.0F}, .minimumDistance = 16.0F, .maximumDistance = 64.0F};
+            math::PoissonDisk2D::Options options{.area = {0.0F, 0.0F, 2048.0F, 2048.0F}, .minimumDistance = 16.0F, .maximumDistance = 64.0F};
             options.distance = [](math::Vec2 point) { return 16.0F + point.x / 2048.0F * 48.0F; };
-            (void)math::PoissonDisk::sample(options, random);
+            (void)math::PoissonDisk2D::sample(options, random);
         });
         measure("Scatter random 4096x4096, 0.001 per unit", 10, [] {
             math::Random random(4);

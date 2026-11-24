@@ -17,7 +17,7 @@ local density = {seed = 1, frequency = 0.0035, octaves = 3}
 local options = {region = area, method = 'poisson', spacing = 14, maximumSpacing = 70, densityMap = density}
 local points = procedural2d.scatterAsync(options):await()  -- On a worker thread.
 local spacing = function(point) return m.lerp(14, 70, m.smoothstep(0, 400, point:distance({0, 0}))) end
-local crowded = m.poissonDisk({area = area, minimumDistance = 14, maximumDistance = 70, seed = 1, distance = spacing})]]
+local crowded = m.poissonDisk2d({area = area, minimumDistance = 14, maximumDistance = 70, seed = 1, distance = spacing})]]
 
 local kArea = {-720, -390, 1440, 780}
 local kNearest, kFarthest = 14, 70
@@ -67,7 +67,7 @@ end
 function Poisson:sampleAroundFocus()
     local fx, fy, spread = self.focusPoint[1], self.focusPoint[2], self.spread
     profiler.beginScope('poissonDisk')
-    self.points = m.poissonDisk({
+    self.points = m.poissonDisk2d({
         area = kArea,
         minimumDistance = kNearest,
         maximumDistance = kFarthest,

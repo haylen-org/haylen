@@ -67,7 +67,7 @@ end
 
 function Vehicle:build()
     self.world = physics2d.newWorld({owner = self})
-    local noise = m.noise(4)
+    local noise = m.noise2d(4)
     -- Every segment of an open chain collides, so the walls at both ends close the road.
     local road = {{Vehicle.start, -600}, {Vehicle.start, 300}}
     self.surface = {}

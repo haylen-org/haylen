@@ -3751,6 +3751,52 @@ if random:chance(0.25) then
 end
 ```
 
+### random:inSphere(radius)
+
+Returns a `Vec3` spread evenly through the ball of `radius` around the origin, `1` when left out, such as the debris of a blast.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(5)
+print(random:inSphere(3):length() <= 3) -- true
+```
+
+### random:onSphere(radius)
+
+Returns a `Vec3` spread evenly over the sphere of `radius` around the origin, `1` when left out, such as a random direction when the radius is `1`.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(5)
+print(string.format('%.1f', random:onSphere(2):length())) -- 2.0
+```
+
+### random:inCone(axis, angle)
+
+Returns a direction of length `1` spread evenly over the directions within `angle` radians of `axis`, such as the sparks of a fountain or the spread of a shotgun. An axis of zero length raises `The vector has no direction, because its length is zero.`, and an angle outside `0` to pi raises `A random cone needs an angle from 0 to pi radians.`.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(5)
+local spark = random:inCone(m.up(), m.radians(20))
+print(spark:dot(m.up()) >= math.cos(m.radians(20))) -- true
+```
+
+### random:inBox(box)
+
+Returns a `Vec3` spread evenly through the `Box3` `box`, such as a spawn point inside a room.
+
+```lua
+local m = require('haylen.math')
+
+local random = m.random(5)
+local spawn = random:inBox(m.box3({-5, 0, -5}, {5, 3, 5}))
+print(spawn.y >= 0 and spawn.y <= 3) -- true
+```
+
 ### random:weightedIndex(weights)
 
 Picks a position of the list `weights` and returns it, counted from 1. Each position has a chance in proportion to its weight, and a weight of zero is never picked. An empty list raises `bad argument #1 to 'weightedIndex' (expected at least one weight)`, a weight that is negative or not finite raises `Weights must be finite and not negative.`, and weights that are all zero raise `A weighted pick needs at least one positive weight.` For the same weights picked many times, a [`WeightedChoice`](#weightedchoice) is faster.
@@ -3816,16 +3862,16 @@ print(copy:nextFloat() == random:nextFloat()) -- true
 
 ## Noise2D
 
-A `Noise2D` is seeded gradient noise, made with `m.noise`. Noise gives values that change smoothly from one point to the next, without the jumps of random numbers, which suits terrain, clouds, wind and wobble. The methods `noise:perlin`, `noise:simplex` and `noise:fractal` return values from `-1` to `1`. The method `noise:worley` returns distances and a region value, and `noise:warp` returns a point. Features of the noise lie about one unit apart, so scale world coordinates down before sampling, such as `x / 200`. The noise repeats every 256 units, so coordinates of any size sample it. At a coordinate that is infinite or not a number, `noise:perlin`, `noise:simplex` and `noise:fractal` return a value that is not a number.
+A `Noise2D` is seeded gradient noise in 2D, made with `m.noise2d`. Noise gives values that change smoothly from one point to the next, without the jumps of random numbers, which suits terrain, clouds, wind and wobble. The methods `noise:perlin`, `noise:simplex` and `noise:fractal` return values from `-1` to `1`. The method `noise:worley` returns distances and a region value, and `noise:warp` returns a point. Features of the noise lie about one unit apart, so scale world coordinates down before sampling, such as `x / 200`. The noise repeats every 256 units, so coordinates of any size sample it. At a coordinate that is infinite or not a number, `noise:perlin`, `noise:simplex` and `noise:fractal` return a value that is not a number.
 
-### m.noise(seed)
+### m.noise2d(seed)
 
 Returns a new `Noise2D`. The whole number `seed`, `0` by default, picks the noise field, and each seed gives a different one.
 
 ```lua
 local m = require('haylen.math')
 
-local terrain = m.noise(7)
+local terrain = m.noise2d(7)
 print(terrain:perlin(3.5, 8.25))
 ```
 
@@ -3836,7 +3882,7 @@ Returns classic Perlin noise at `x`, `y`.
 ```lua
 local m = require('haylen.math')
 
-local wind = m.noise(3):perlin(12 / 50, 0.5)
+local wind = m.noise2d(3):perlin(12 / 50, 0.5)
 print(wind)
 ```
 
@@ -3847,7 +3893,7 @@ Returns simplex noise at `x`, `y`, which has fewer patterns along the axes than 
 ```lua
 local m = require('haylen.math')
 
-local moisture = m.noise(21):simplex(640 / 200, 320 / 200)
+local moisture = m.noise2d(21):simplex(640 / 200, 320 / 200)
 print(moisture)
 ```
 
@@ -3858,7 +3904,7 @@ Returns several layers of simplex noise added together, kept from `-1` to `1`. E
 ```lua
 local m = require('haylen.math')
 
-local noise = m.noise(99)
+local noise = m.noise2d(99)
 local tiles = {}
 for y = 1, 32 do
     for x = 1, 32 do
@@ -3876,7 +3922,7 @@ Returns cellular noise, also called Worley noise, at `x`, `y` as three numbers. 
 ```lua
 local m = require('haylen.math')
 
-local nearest, second, cell = m.noise(5):worley(3.2, 7.5)
+local nearest, second, cell = m.noise2d(5):worley(3.2, 7.5)
 local crack = second - nearest < 0.05
 print(nearest, crack, cell)
 ```
@@ -3888,7 +3934,7 @@ Moves the point by fractal noise and returns the new `x` and `y`. The noise is s
 ```lua
 local m = require('haylen.math')
 
-local noise = m.noise(8)
+local noise = m.noise2d(8)
 local wx, wy = noise:warp(120, 45, 30, 0.01)
 print(noise:fractal(wx / 200, wy / 200))
 ```
@@ -3912,7 +3958,7 @@ These errors come from wrong options: `The option "columns" is required.`, `The 
 ```lua
 local m = require('haylen.math')
 
-local heights = m.noise(42):sampleGrid({columns = 256, rows = 256, step = 1 / 32, octaves = 5})
+local heights = m.noise2d(42):sampleGrid({columns = 256, rows = 256, step = 1 / 32, octaves = 5})
 local water = 0
 for index = 1, #heights do
     if heights[index] < 0 then
@@ -3931,9 +3977,101 @@ local async = require('async')
 local m = require('haylen.math')
 
 async.spawn(function()
-    local moisture = m.noise(7):sampleGridAsync({columns = 1024, rows = 1024, kind = 'simplex', step = 0.01}):await()
+    local moisture = m.noise2d(7):sampleGridAsync({columns = 1024, rows = 1024, kind = 'simplex', step = 0.01}):await()
     print(#moisture)
 end)
+```
+
+## Noise3D
+
+A `Noise3D` is seeded noise in three and four dimensions, made with `m.noise3d`, for caves, clouds, volumes and the textures of 3D surfaces. The fourth dimension often runs with time, so a 3D pattern changes in place instead of sliding. Every method takes `x`, `y` and `z`, and one more number `w` after them makes the sample 4D. The methods `noise:perlin`, `noise:simplex`, `noise:value` and `noise:fractal` return values from `-1` to `1`, and the same seed gives the same values on every platform. Features lie about one unit apart, so scale world coordinates before sampling, such as `x / 50`. The [3D math guide](../3d/math.md#noise-and-random-points) explains each kind.
+
+### m.noise3d(seed)
+
+Returns a new `Noise3D`. The whole number `seed`, `0` by default, picks the noise field.
+
+```lua
+local m = require('haylen.math')
+
+local caves = m.noise3d(42)
+print(caves:simplex(1.5, 2.25, -3))
+```
+
+### noise:perlin(x, y, z, w)
+
+Returns gradient noise of Perlin at the point, `0` on every whole coordinate. The argument `w` is optional and makes the sample 4D.
+
+```lua
+local m = require('haylen.math')
+
+local noise = m.noise3d(1)
+print(noise:perlin(2, 3, 4), noise:perlin(0.5, 0.5, 0.5, 0.25))
+```
+
+### noise:simplex(x, y, z, w)
+
+Returns simplex noise at the point, which has no lines along the axes and costs less than Perlin noise, more so in 4D. The argument `w` is optional.
+
+```lua
+local m = require('haylen.math')
+local haylen = require('haylen')
+
+local clouds = m.noise3d(3)
+print(clouds:simplex(1.2, 0.5, 3.4, haylen.elapsed() * 0.1))
+```
+
+### noise:value(x, y, z, w)
+
+Returns value noise at the point, which blends random values on the corners of the lattice and looks softer and blockier than gradient noise. The argument `w` is optional.
+
+```lua
+local m = require('haylen.math')
+
+print(m.noise3d(3):value(1.5, 2.5, 3.5))
+```
+
+### noise:cellular(x, y, z, w)
+
+Returns three numbers of Worley noise: the distance to the nearest feature point, the distance to the second nearest, and a value from `0` up to `1` that tells the cell of the nearest point apart, for stone, cells and crystals. The argument `w` is optional.
+
+```lua
+local m = require('haylen.math')
+
+local nearest, second, cell = m.noise3d(8):cellular(1.5, 2.5, 3.5)
+print(second - nearest, cell) -- small near the walls between cells
+```
+
+### noise:fractal(x, y, z, w, options)
+
+Returns octaves of a noise summed at rising frequencies and falling amplitudes, scaled back to `-1` to `1`. The argument `w` is optional, so the options follow `z` or `w`. Octaves outside `1` to `16` raise `The octaves must be a whole number from 1 to 16.`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `basis` | string | `'simplex'` | The noise of each octave: `'perlin'`, `'simplex'` or `'value'`. |
+| `fractal` | string | `'fbm'` | How each octave shapes its noise: `'fbm'` as it is, `'billow'` folded into round billows, `'ridged'` folded into sharp ridges, or `'pingPong'` bounced back and forth. |
+| `octaves` | integer | `4` | The number of octaves. |
+| `lacunarity` | number | `2` | How much the frequency grows from one octave to the next. |
+| `gain` | number | `0.5` | How much the amplitude falls from one octave to the next. |
+| `pingPongStrength` | number | `2` | How many times `'pingPong'` bounces across the range. |
+
+```lua
+local m = require('haylen.math')
+
+local noise = m.noise3d(4)
+local mountains = noise:fractal(10 / 64, 0, 20 / 64, {fractal = 'ridged', octaves = 6})
+print(mountains)
+```
+
+### noise:warp(x, y, z, amplitude, frequency, octaves)
+
+Returns three numbers, the point moved by fractal simplex noise sampled at `frequency`, `1` by default, up to `amplitude` away on each axis, with `octaves`, `3` by default. Sampling any noise at the moved point bends its patterns, such as marble or swirling smoke.
+
+```lua
+local m = require('haylen.math')
+
+local noise = m.noise3d(6)
+local x, y, z = noise:warp(1, 2, 3, 0.5, 0.25)
+print(noise:simplex(x, y, z))
 ```
 
 ## Circles and segments
@@ -4090,7 +4228,7 @@ local m = require('haylen.math')
 print(m.bounds({{120, 300}, {180, 260}, {90, 340}})) -- Rect(90.0, 260.0, 90.0, 80.0)
 ```
 
-### m.poissonDisk(options)
+### m.poissonDisk2d(options)
 
 Returns random points spread evenly inside an area, as a list of `Vec2`. No two points are closer than a minimum distance, so the points never clump. Use it to scatter trees, rocks or spawn points. The same options and seed always give the same points. For points with types, regions and exclusions, use [`procedural.scatter`](procedural2d.md#proceduralscatteroptions) of `haylen.procedural2d`.
 
@@ -4120,7 +4258,7 @@ These errors come from wrong options:
 local m = require('haylen.math')
 
 local lake = m.rect(600, 400, 300, 200)
-local trees = m.poissonDisk({
+local trees = m.poissonDisk2d({
     area = {0, 0, 1920, 1080},
     minimumDistance = 90,
     seed = 12,
@@ -4136,7 +4274,7 @@ A distance function thins the points out where it asks for more room, here from 
 ```lua
 local m = require('haylen.math')
 
-local woods = m.poissonDisk({
+local woods = m.poissonDisk2d({
     area = {0, 0, 1920, 1080},
     minimumDistance = 40,
     maximumDistance = 160,
@@ -4146,6 +4284,26 @@ local woods = m.poissonDisk({
     end,
 })
 print(#woods)
+```
+
+### m.poissonDisk3d(options)
+
+Returns a list of `Vec3` points spread evenly through a box, no two closer than `minimumDistance`, such as trees, rocks or stars. The points come in a random order, and the same seed gives the same points. An empty box or a distance that is not above `0` gives an empty list. Attempts outside `1` to `1000` raise `Poisson sampling needs between 1 and 1000 attempts.`, a distance or a side of the box that is not finite raises `Poisson sampling in 3D needs a finite distance and a box whose sides are finite.`, and a distance so small that the sampling grid would need more than `16777216` cells raises `The minimum distance is too small for the box, whose sampling grid would need more than 16777216 cells.`.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `volume` | `Box3` | the point at the origin | The box that the points fill. |
+| `minimumDistance` | number | `1` | The smallest distance between two points. |
+| `attempts` | integer | `30` | How many places each point tries for a neighbor before it gives up. |
+| `random` | `Random` | none | The generator that draws the points, in place of `seed`. |
+| `seed` | integer | `0` | The seed of the points when no `random` is given. |
+| `accept` | function | none | Receives each candidate `Vec3` and returns `false` to leave it out, such as points under the ground. |
+
+```lua
+local m = require('haylen.math')
+
+local stars = m.poissonDisk3d({volume = m.box3({-50, -50, -50}, {50, 50, 50}), minimumDistance = 8, seed = 3})
+print(#stars > 100) -- true
 ```
 
 ## Ray casts
@@ -4409,7 +4567,7 @@ Traces a field of `width` times `height` numbers stored row by row. Sample `(x, 
 ```lua
 local m = require('haylen.math')
 
-local noise = m.noise(4)
+local noise = m.noise2d(4)
 local width, height = 64, 36
 local heights = {}
 for y = 0, height - 1 do
