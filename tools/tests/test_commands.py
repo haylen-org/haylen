@@ -61,6 +61,11 @@ class CommandsTest:
         def devices(self) -> tuple[Device, ...]:
             return CommandsTest.DeviceBackend.DEVICES
 
+    @pytest.fixture(autouse=True)
+    def own_sdks(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        """Every test reads the SDKs of its own folder, never those that the checkout installed."""
+        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
+
     @staticmethod
     def session(fixture: ToolingFixture, monkeypatch: pytest.MonkeyPatch, structured: bool = False) -> CommandSession:
         session = CommandSession(fixture.context, structured)
@@ -190,7 +195,6 @@ class CommandsTest:
 
     def test_the_json_of_the_doctor_keeps_its_fields(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
-        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
         monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
         fixture.sdk()
         described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["doctor", "--target", "fake"])
@@ -228,7 +232,6 @@ class CommandsTest:
 
     def test_an_app_build_builds_the_sdk_that_no_installed_sdk_of_the_sources_holds_while_an_inspection_never_builds(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
-        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
         monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
         fixture.sdk(revision="b" * 64)
         requests: list[SdkRequest] = []
@@ -272,7 +275,6 @@ class CommandsTest:
 
     def test_a_build_never_stops_on_or_names_an_sdk_of_other_targets_that_this_tooling_cannot_use(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
-        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
         monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
         fixture.unusable_sdk("other-older", system="otheros")
         fixture.unusable_sdk("other-damaged", system="otheros", damaged=True)
@@ -288,7 +290,6 @@ class CommandsTest:
 
     def test_an_sdk_of_the_target_that_an_older_haylen_built_is_built_again_and_an_inspection_says_how(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
-        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
         monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
         fixture.unusable_sdk("fake-release")
         requests: list[SdkRequest] = []
@@ -315,7 +316,6 @@ class CommandsTest:
 
     def test_the_doctor_and_the_sdk_list_show_an_sdk_that_an_older_haylen_built_and_a_damaged_one_in_plain_words(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
-        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
         monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
         older = fixture.unusable_sdk("fake-release")
         damaged = fixture.unusable_sdk("web-release", damaged=True)
@@ -346,7 +346,6 @@ class CommandsTest:
 
     def test_a_release_build_builds_the_sdk_of_this_machine_that_carries_the_content_tool_when_none_holds_it(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)
-        monkeypatch.setattr(Repository, "SDKS", tmp_path / "sdk")
         monkeypatch.setattr(Repository, "engine_revision", staticmethod(lambda: ToolingFixture.REVISION))
         fixture.sdk()
         ContentToolTest.sdk(tmp_path / "sdk" / "stale", revision="b" * 64)
