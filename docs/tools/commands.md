@@ -494,7 +494,7 @@ Result: `folder`, the key folder, and `report`.
 ### test
 
 ```sh
-haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--ui-test <class>] [--device-farm <devices>] [--app <folder>] [--port]
+haylen test [--target <target>] [--config Debug|Release|RelWithDebInfo] [--sanitizers address|thread] [--cmake-target <cmake target>] [--shard <index>/<count>] [--gpu] [--graphics-api <api>] [--device <identifier>] [--ui <app>] [--ui-test <class>] [--device-farm <devices>] [--app <folder>] [--libraries] [--port]
 ```
 
 Builds and runs the engine tests of this machine by default. The [testing guide](testing.md#running-the-tests) explains each mode.
@@ -513,9 +513,20 @@ Builds and runs the engine tests of this machine by default. The [testing guide]
 | `--ui-test` | A class of the UI tests of `--ui` to run alone, such as `CameraTests`, which repeats, so a device runs only the tests that need its hardware. Every class runs by default. |
 | `--device-farm` | Runs the UI tests of `--ui` on the phones of AWS Device Farm that this list names, separated by commas, with `--target android` or `ios`. |
 | `--app` | Builds the app of this folder in the configuration of `--config` and checks instead that it starts: with `--target web` in a page on WebGPU and WebGL2 or on the API of `--graphics-api`, and with `--target android` on the device of `--device` or on an emulator that it starts. With `--target macos` or `--target catalyst` it checks that the app ends with the status 0 on this Mac when its window closes and when the Dock quits it. |
+| `--libraries` | With `--target android`, runs the tests of the Android libraries of the engine instead: the tests of `src/test` on the Java of this machine and the instrumented tests of `src/androidTest` on the device of `--device` or on an emulator that it starts. Gradle installs the test app, runs it and uninstalls it. |
 | `--port` | Builds the engine with the test port and plays its app instead. |
 
-Result: the build tree with what ran, such as `tree`, `configuration`, `sanitizers` and `shard` for the engine tests, `tree` and `graphicsApi` for the GPU tests, with the `output` folder of their images, the `target` or the `abi` and the `device` where they ran on the web, Android and the Apple platforms, `graphicsApi`, `memory` and `shard` for the checks of the web, `app`, `configuration`, `graphicsApis` and `site` for the start check of an app on the web, `app`, `target`, `configuration`, `device` and `graphicsApi` for the start check of an app on Android, `app`, `target`, `configuration` and `ways` for the quit check of an app on a Mac, `app`, `target`, `simulator` and `screenshots` for the UI tests, and `tree` and `app` for the test port.
+Result: the build tree with what ran, which depends on what the command ran:
+
+- The engine tests: `tree`, `configuration`, `sanitizers` and `shard`.
+- The GPU tests: `tree`, `graphicsApi` and the `output` folder of their images, with the `target` or the `abi` and the `device` where they ran on the web, Android and the Apple platforms.
+- The checks of the web: `graphicsApi`, `memory` and `shard`.
+- The start check of an app on the web: `app`, `configuration`, `graphicsApis` and `site`.
+- The start check of an app on Android: `app`, `target`, `configuration`, `device` and `graphicsApi`.
+- The quit check of an app on a Mac: `app`, `target`, `configuration` and `ways`.
+- The UI tests: `app`, `target`, `simulator` and `screenshots`.
+- The tests of the Android libraries: `tree`, `abi` and `reports`.
+- The test port: `tree` and `app`.
 
 ### engine configure
 

@@ -364,13 +364,14 @@ jobs:
           distribution: temurin
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
-      - name: Install the NDK, CMake, the emulator and its image
-        run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
+      - name: Install the NDK, CMake, the platform, the emulator and its image
+        run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
       - uses: ./.github/actions/build-environment
         with:
           dependencies: android-gpu
           ndk: "true"
           packages: ninja-build
+          gradle: android-gpu
       - name: Let the emulator use KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -380,6 +381,8 @@ jobs:
         run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
       - name: GPU tests on the emulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --gpu --target android
+      - name: Tests of the Android libraries
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --libraries --target android
       - uses: ./.github/actions/compiler-cache
         if: always()
       - uses: ./.github/actions/caches

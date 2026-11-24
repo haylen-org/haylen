@@ -7,6 +7,7 @@ from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.host import Host
 from haylen.engine.android_app_check import AndroidAppCheck
 from haylen.engine.android_gpu_tests import AndroidGpuTests
+from haylen.engine.android_library_tests import AndroidLibraryTests
 from haylen.engine.apple_device_gpu_tests import AppleDeviceGpuTests
 from haylen.engine.apple_gpu_tests import AppleGpuTests
 from haylen.engine.desktop_gpu_tests import DesktopGpuTests
@@ -23,7 +24,7 @@ from haylen.engine.web_gpu_tests import WebGpuTests
 
 class TestCommand(Command):
     PATH = ("test",)
-    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--target macos" or "catalyst" and "--app" how an app quits on this Mac, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, and with "--port" the app of the test port.'
+    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--target macos" or "catalyst" and "--app" how an app quits on this Mac, with "--ui" the UI tests of an app on an Apple simulator or device or on Android, with "--libraries" the tests of the Android libraries of the engine, and with "--port" the app of the test port.'
 
     DESKTOPS = ("macos", "windows", "linux")
     # The names of `gpu::Device::kApiNames`, which "--graphics-api" takes.
@@ -91,6 +92,11 @@ class TestCommand(Command):
             help='Build the app of this folder in the configuration of "--config" and check that it starts, instead of the checks of the web or the GPU tests: with "--target web" in a headless browser on WebGPU and WebGL2, or on the API of "--graphics-api", and with "--target android" on the device of "--device" or an emulator that it starts. With "--target macos" or "catalyst" it checks instead that the app quits on this Mac when its window closes and when the Dock quits it.',
         )
         parser.add_argument(
+            "--libraries",
+            action="store_true",
+            help='Run the tests of the Android libraries of the engine with "--target android", those of the Java of this machine and the instrumented ones on the device of "--device" or an emulator that it starts, instead of the GPU tests.',
+        )
+        parser.add_argument(
             "--port",
             action="store_true",
             help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.',
@@ -106,6 +112,13 @@ class TestCommand(Command):
             raise UnsupportedTarget(
                 'The option "--shard" splits the engine tests of this machine or the checks of the web, so it takes neither the GPU tests, "--app", "--ui", "--port" nor a "--target" other than a desktop or "web".'
             )
+        if arguments.libraries:
+            others = gpu or arguments.app or arguments.ui or arguments.ui_tests or arguments.device_farm or arguments.port or arguments.sanitizers
+            if target != "android" or others:
+                raise UnsupportedTarget(
+                    'The option "--libraries" runs the tests of the Android libraries of the engine alone, so it takes "--target android" with "--config" and "--device", and no option of the other tests.'
+                )
+            return AndroidLibraryTests(context).run(arguments.config, arguments.device)
         if arguments.app:
             if target not in ("web", "android", *MacAppCheck.TARGETS):
                 raise UnsupportedTarget(

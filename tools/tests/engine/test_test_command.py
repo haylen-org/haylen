@@ -10,6 +10,7 @@ from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.host import Host
 from haylen.core.repository import Repository
 from haylen.engine.android_app_check import AndroidAppCheck
+from haylen.engine.android_library_tests import AndroidLibraryTests
 from haylen.engine.engine_tests import EngineTests
 from haylen.engine.engine_tree import EngineTree
 from haylen.engine.mac_app_check import MacAppCheck
@@ -55,6 +56,15 @@ class TestCommandTest:
     def test_the_checks_of_the_web_draw_only_through_the_apis_of_the_web(self, tmp_path):
         with pytest.raises(UnsupportedTarget, match='draw through "webGpu" or "webGl2", not "metal"'):
             TestCommandTest.run(tmp_path, "--target", "web", "--graphics-api", "metal")
+
+    def test_the_tests_of_the_android_libraries_run_alone_on_android(self, tmp_path, monkeypatch):
+        called = []
+        monkeypatch.setattr(AndroidLibraryTests, "run", lambda self, configuration, device: called.append((configuration, device)) or {})
+        TestCommandTest.run(tmp_path, "--libraries", "--target", "android", "--device", "emulator-5554")
+        assert called == [("Debug", "emulator-5554")]
+        for extra in (["--target", Host.system()], ["--target", "android", "--gpu"], ["--target", "android", "--ui", "app"]):
+            with pytest.raises(UnsupportedTarget, match='The option "--libraries" runs the tests of the Android libraries of the engine alone'):
+                TestCommandTest.run(tmp_path, "--libraries", *extra)
 
     def test_the_ui_tests_and_the_port_take_no_gpu_tests(self, tmp_path):
         with pytest.raises(UnsupportedTarget, match='The option "--ui" runs the UI tests of an app, so it takes neither "--gpu"'):
