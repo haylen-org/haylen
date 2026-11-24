@@ -31,6 +31,11 @@ class InspectorWindow final {
     // Draws the window and returns `false` once the player closed it.
     bool draw(Inspector::Provider& provider, ui::Backend& backend);
 
+    // The line that the window shows over its values: what the last edit did, why the setter of the value refused it, or the hint.
+    [[nodiscard]] std::string_view getLine() const noexcept {
+        return status.empty() ? kHint : std::string_view(status);
+    }
+
   private:
     // The values at one path as the last refresh listed them, with the path of each value.
     struct Snapshot {

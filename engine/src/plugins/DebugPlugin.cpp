@@ -380,6 +380,10 @@ void DebugPlugin::setInspectorClock(std::function<double()> clock) {
     inspectorWindow = std::make_unique<debug::InspectorWindow>(std::move(clock));
 }
 
+std::string_view DebugPlugin::getInspectorLine() const noexcept {
+    return inspectorWindow->getLine();
+}
+
 void DebugPlugin::setInspectorVisible(bool value) {
     if (value && !consoleEnabled) {
         throw std::logic_error("The inspector is off outside development runs. Set \"debug.console\" to true in \"haylen.json\" to turn it on.");

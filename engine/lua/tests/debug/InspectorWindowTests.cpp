@@ -132,4 +132,42 @@ TEST_F(InspectorWindowTest, DrawsTheSameRowsWithoutAllocating) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
+// An edit in the field of a value says what it changed in place of the hint, and a text that the setter refuses says why.
+TEST_F(InspectorWindowTest, TellsWhatAnEditChangedOrWhyItFailed) {
+    getFixture().runLua("values = {speed = 2} require('haylen.debug').watch('values', values) require('haylen.scene').push({}) require('haylen.debug').setInspectorVisible(true)");
+    frames(2);
+    const haylen::plugins::DebugPlugin& debug = getEngine().getPlugin<haylen::plugins::DebugPlugin>();
+    EXPECT_EQ(debug.getInspectorLine(), haylen::debug::InspectorWindow::kHint);
+
+    haylen::ui::Backend& backend = getUi().getBackend();
+    backend.makeCurrent();
+    ImGuiWindow* window = ImGui::FindWindowByName("Inspector");
+    ASSERT_NE(window, nullptr);
+    const ImGuiTable* table = ImGui::TableFindByID(window->GetID("##values"));
+    ASSERT_NE(table, nullptr);
+    const float row = (table->OuterRect.Max.y - table->OuterRect.Min.y) / 5.0F;
+    const ImVec2 first{table->OuterRect.Min.x + 60.0F, table->OuterRect.Min.y + row * 0.5F};
+    tap(place(first));
+    tap(place({first.x, first.y + row}));
+
+    // The row of the speed comes under the root of the watched values and the watched table, with its field in the column of the values.
+    const haylen::math::Vec2 field = place({table->OuterRect.Max.x - 20.0F, first.y + row * 2.0F});
+    tap(field);
+    type(U"5");
+    key(haylen::input::Key::Enter);
+    frames(2);
+    EXPECT_EQ(debug.getInspectorLine(), "Set \"watched.values.speed\" to 25.");
+    EXPECT_EQ(getFixture().lua("return values.speed"), "25");
+
+    // The line of the edit is shorter than the hint, so the rows move up and the field takes its place again.
+    const ImGuiTable* moved = ImGui::TableFindByID(window->GetID("##values"));
+    ASSERT_NE(moved, nullptr);
+    tap(place({moved->OuterRect.Max.x - 20.0F, moved->OuterRect.Min.y + row * 2.5F}));
+    type(U"x");
+    key(haylen::input::Key::Enter);
+    frames(2);
+    EXPECT_EQ(debug.getInspectorLine(), "The value at \"watched.values.speed\" is a number, and \"25x\" is not one.");
+    EXPECT_EQ(getFixture().lua("return values.speed"), "25");
+}
+
 } // namespace haylen::lua::debug

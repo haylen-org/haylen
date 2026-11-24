@@ -28,7 +28,8 @@ bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend) 
     bool open = true;
     if (DebugWindow::begin("Inspector", &open, backend, initial)) {
         ImGui::PushStyleColor(ImGuiCol_Text, failed ? DebugWindow::kErrorColor : DebugWindow::kMutedColor);
-        ImGui::TextWrapped("%s", status.empty() ? kHint.data() : status.c_str());
+        const std::string_view line = getLine();
+        ImGui::TextWrapped("%.*s", static_cast<int>(line.size()), line.data());
         ImGui::PopStyleColor();
 
         if (std::exchange(expired, false)) {
