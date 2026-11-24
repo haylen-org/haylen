@@ -17,8 +17,9 @@
 namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, Theme>, 2> System::kThemeNames{{{"light", Theme::Light}, {"dark", Theme::Dark}}};
+const std::array<std::pair<std::string_view, ThermalState>, 5> System::kThermalStateNames{{{"unknown", ThermalState::Unknown}, {"nominal", ThermalState::Nominal}, {"fair", ThermalState::Fair}, {"serious", ThermalState::Serious}, {"critical", ThermalState::Critical}}};
 
-System::System(Host& owner, core::EventBus& bus, std::string gpuName) : host(owner), events(bus), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()), languagesRevision(owner.getLanguagesRevision()) {
+System::System(Host& owner, core::EventBus& bus, std::string gpuName) : host(owner), events(bus), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), thermalState(owner.getThermalState()), timeZone(owner.getTimeZone()), languagesRevision(owner.getLanguagesRevision()) {
     languages = owner.getLanguages();
     info.gpuName = std::move(gpuName);
 }
@@ -37,6 +38,10 @@ const Battery& System::getBattery() const noexcept {
 
 std::optional<bool> System::getPowerSaving() const noexcept {
     return powerSaving;
+}
+
+ThermalState System::getThermalState() const noexcept {
+    return thermalState;
 }
 
 const std::string& System::getTimeZone() const noexcept {
@@ -162,6 +167,13 @@ bool System::publishChanges() {
         events.emit(core::LifecycleEvent::kPowerSavingChanged, {{"enabled", powerSaving.has_value() ? core::Json(*powerSaving) : core::Json()}});
     }
 
+    const ThermalState reportedThermalState = host.getThermalState();
+    if (reportedThermalState != thermalState) {
+        published = true;
+        thermalState = reportedThermalState;
+        events.emit(core::LifecycleEvent::kThermalStateChanged, {{"state", thermalStateName(thermalState)}});
+    }
+
     std::string reportedTimeZone = host.getTimeZone();
     if (reportedTimeZone != timeZone) {
         published = true;
@@ -190,6 +202,10 @@ bool System::publishChanges() {
 
 std::string_view System::themeName(Theme value) noexcept {
     return std::ranges::find(kThemeNames, value, &std::pair<std::string_view, Theme>::second)->first;
+}
+
+std::string_view System::thermalStateName(ThermalState value) noexcept {
+    return std::ranges::find(kThermalStateNames, value, &std::pair<std::string_view, ThermalState>::second)->first;
 }
 
 } // namespace haylen::platform

@@ -350,6 +350,9 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::optional<bool> getPowerSaving() const override {
         return systemState.getPowerSaving();
     }
+    [[nodiscard]] ThermalState getThermalState() const override {
+        return systemState.getThermalState();
+    }
     [[nodiscard]] std::string getTimeZone() const override {
         return systemState.getTimeZone();
     }
@@ -570,6 +573,9 @@ class HeadlessHost final : public Host {
     }
     void setPowerSaving(std::optional<bool> value) {
         systemState.setPowerSaving(value);
+    }
+    void setThermalState(ThermalState value) {
+        systemState.setThermalState(value);
     }
     void setTimeZone(std::string value) {
         systemState.setTimeZone(std::move(value));

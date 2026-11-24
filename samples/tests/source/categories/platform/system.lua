@@ -1,4 +1,4 @@
--- What `haylen.system` tells about the device, its theme, its battery, its power saving mode, its time zone and its languages with their changes as they happen, and the clipboard of the system, with the answer of each copy and read and the frames it took.
+-- What `haylen.system` tells about the device, its theme, its battery, its power saving mode, its thermal state, its time zone and its languages with their changes as they happen, and the clipboard of the system, with the answer of each copy and read and the frames it took.
 local haylen = require('haylen')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
@@ -7,11 +7,11 @@ local Test = require('harness.test')
 
 local System = haylen.class('System', Test)
 
-System.events = {'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'timeZoneChanged', 'systemLanguagesChanged'}
+System.events = {'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'thermalStateChanged', 'timeZoneChanged', 'systemLanguagesChanged'}
 System.fields = {
     {'os', 'System'}, {'osVersion', 'Version'}, {'deviceKind', 'Kind of device'}, {'deviceModel', 'Model'}, {'manufacturer', 'Manufacturer'},
     {'cpuName', 'Processor'}, {'cpuCores', 'Processor cores'}, {'gpuName', 'Graphics'}, {'memoryBytes', 'Memory'},
-    {'languages', 'Preferred languages'}, {'timeZone', 'Time zone'}, {'theme', 'Theme'}, {'battery', 'Battery'}, {'powerSaving', 'Power saving'},
+    {'languages', 'Preferred languages'}, {'timeZone', 'Time zone'}, {'theme', 'Theme'}, {'battery', 'Battery'}, {'powerSaving', 'Power saving'}, {'thermalState', 'Thermal state'},
 }
 System.kept = 20
 System.longest = 44
@@ -30,6 +30,9 @@ local function describeBattery(battery)
     return string.format('%.0f percent, %s', battery.level * 100, state)
 end
 
+-- How hot the device runs in words, which some platforms do not tell.
+System.thermalStates = {nominal = 'Nominal', fair = 'Fair', serious = 'Serious', critical = 'Critical', unknown = 'Not reported'}
+
 -- Whether the power saving mode of the system is on, which some platforms do not tell.
 local function describePowerSaving(enabled)
     if enabled == nil then
@@ -43,6 +46,8 @@ function System.describeEvent(name, data)
         return describeBattery(data)
     elseif name == 'powerSavingChanged' then
         return 'Power saving is now ' .. describePowerSaving(data.enabled):lower() .. '.'
+    elseif name == 'thermalStateChanged' then
+        return 'The thermal state is now ' .. System.thermalStates[data.state]:lower() .. '.'
     elseif name == 'timeZoneChanged' then
         return 'The time zone is now "' .. data.timeZone .. '".'
     elseif name == 'systemLanguagesChanged' then
@@ -98,7 +103,7 @@ function System:enter()
                 ui.scroll{id = 'eventsScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'events', items = {}}},
             },
         }},
-        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level, system.powerSaving(), system.timeZone())\nprint(table.concat(system.languages(), ', '))\nlocal _, message = system.setClipboard(info.deviceModel):await()\nlocal text = system.clipboard():await()",
+        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level, system.powerSaving(), system.thermalState(), system.timeZone())\nprint(table.concat(system.languages(), ', '))\nlocal _, message = system.setClipboard(info.deviceModel):await()\nlocal text = system.clipboard():await()",
     }
     self:showValues()
 end
@@ -160,6 +165,7 @@ function System:values()
     values.battery = describeBattery(system.battery())
     values.timeZone = system.timeZone() or 'Not reported'
     values.powerSaving = describePowerSaving(system.powerSaving())
+    values.thermalState = System.thermalStates[system.thermalState()]
     return values
 end
 

@@ -52,6 +52,11 @@ int SystemBinding::powerSaving(lua_State* L) {
     return 1;
 }
 
+int SystemBinding::thermalState(lua_State* L) {
+    lua::Stack::push(L, haylen::platform::System::thermalStateName(lua::Runtime::getEngine(L).getSystem().getThermalState()));
+    return 1;
+}
+
 // Returns the IANA name of the time zone, or nil where the platform does not tell.
 int SystemBinding::timeZone(lua_State* L) {
     const std::string& zone = lua::Runtime::getEngine(L).getSystem().getTimeZone();
@@ -85,7 +90,7 @@ int SystemBinding::setClipboard(lua_State* L) {
 
 int SystemBinding::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"thermalState", &thermalState}, {"timeZone", &timeZone}, {"languages", &languages}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

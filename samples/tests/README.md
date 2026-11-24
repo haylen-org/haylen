@@ -778,7 +778,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-001` | Native events | The ticks of a native ticker and an event sent from Lua through the plugin "platform-sample", next to the events of the platform. |  |
 | `PLT-002` | Custom handler | The method "platform-sample.echo", answered by Java, Objective-C or JavaScript, and its failure without a text. |  |
 | `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, keeping the screen on, the on-screen keyboard and the network. |  |
-| `PLT-004` | System | What "haylen.system" tells about the device, its theme, battery, power saving and time zone with their changes, and a copy to the clipboard and a read of it. |  |
+| `PLT-004` | System | What "haylen.system" tells about the device, its theme, battery, power saving, thermal state and time zone with their changes, and a copy to the clipboard and a read of it. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |
 | `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again. |  |
 | `PLT-008` | Displays | Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays. |  |

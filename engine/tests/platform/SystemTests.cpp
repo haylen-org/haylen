@@ -132,6 +132,33 @@ TEST_F(SystemTest, PublishesEveryChangeOfPowerSavingAndTimeZoneOnce) {
     EXPECT_EQ(fixture.engine().getSystem().getPowerSaving(), false);
 }
 
+// The thermal state starts unknown, follows every state the platform reports once per change, and a new app starts with the last one.
+TEST_F(SystemTest, PublishesEveryChangeOfTheThermalStateOnce) {
+    test::EngineFixture fixture;
+    std::vector<std::string> log;
+    fixture.engine().getEvents().on(haylen::core::LifecycleEvent::kThermalStateChanged, [&log](haylen::core::EventBus::Event& event) { log.push_back(event.getData().dump()); });
+
+    System& system = fixture.engine().getSystem();
+    EXPECT_EQ(system.getThermalState(), ThermalState::Unknown);
+    fixture.host().setThermalState(ThermalState::Nominal);
+    fixture.frames(1);
+    fixture.host().setThermalState(ThermalState::Serious);
+    fixture.frames(2);
+    fixture.host().setThermalState(ThermalState::Critical);
+    fixture.host().setThermalState(ThermalState::Fair);
+    fixture.frames(1);
+    EXPECT_EQ(log, (std::vector<std::string>{R"({"state":"nominal"})", R"({"state":"serious"})", R"({"state":"fair"})"}));
+    EXPECT_EQ(system.getThermalState(), ThermalState::Fair);
+    EXPECT_EQ(System::thermalStateName(ThermalState::Unknown), "unknown");
+
+    fixture.restart();
+    std::vector<std::string> restarted;
+    fixture.engine().getEvents().on(haylen::core::LifecycleEvent::kThermalStateChanged, [&restarted](haylen::core::EventBus::Event& event) { restarted.push_back(event.getData().dump()); });
+    fixture.frames(1);
+    EXPECT_TRUE(restarted.empty());
+    EXPECT_EQ(fixture.engine().getSystem().getThermalState(), ThermalState::Fair);
+}
+
 TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
     SystemState state;
     std::vector<std::thread> reporters;

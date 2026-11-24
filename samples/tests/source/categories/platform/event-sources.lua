@@ -6,7 +6,7 @@ sources.events = {
     'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowDisplayChanged',
     'displayConnected', 'displayDisconnected', 'displayChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline',
-    'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'timeZoneChanged', 'gamepadConnected', 'gamepadDisconnected',
+    'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'thermalStateChanged', 'timeZoneChanged', 'gamepadConnected', 'gamepadDisconnected',
 }
 
 local kDesktopFold = 'A window of a desktop counts as landscape and reports no fold.'
@@ -24,10 +24,12 @@ sources.never = {
     windows = {
         windowOrientationChanged = kDesktopFold, windowFoldChanged = kDesktopFold, keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard,
         audioInterrupted = 'Windows does not interrupt the audio of apps.', audioResumed = 'Windows does not interrupt the audio of apps.',
+        thermalStateChanged = 'Windows tells apps nothing about how hot the device runs.',
     },
     linux = {
         windowOrientationChanged = kDesktopFold, windowFoldChanged = kDesktopFold, keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard,
         audioInterrupted = 'Linux does not interrupt the audio of apps.', audioResumed = 'Linux does not interrupt the audio of apps.',
+        thermalStateChanged = 'Linux offers apps no thermal state of the system.',
     },
     ios = {
         appQuitRequested = 'iOS apps never quit on request.', windowFullscreenChanged = kAlwaysFull,
@@ -53,6 +55,7 @@ sources.never = {
     web = {
         appLowMemory = 'Browsers tell pages nothing about memory pressure.', appQuitRequested = 'A page that closes cannot wait for the app.',
         windowMoved = 'A page has no place on a desktop.', linkOpened = 'A page is the link that opened it.', powerSavingChanged = 'Browsers tell pages nothing about the power saving mode.',
+        thermalStateChanged = 'Browsers tell pages nothing about how hot the device runs.',
         audioInterrupted = 'Browsers suspend the audio of the page without telling it why.', audioResumed = 'Browsers suspend the audio of the page without telling it why.',
         audioRouteChanged = 'The audio of the page follows the browser without telling the page.',
     },

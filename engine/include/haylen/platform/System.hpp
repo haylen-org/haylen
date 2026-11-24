@@ -19,6 +19,7 @@
 #include "haylen/platform/SystemAnswer.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
+#include "haylen/platform/ThermalState.hpp"
 
 namespace haylen::core {
 class EventBus;
@@ -28,7 +29,7 @@ namespace haylen::platform {
 
 class Host;
 
-// The operating system of the device as the app sees it: what the device is, its theme, its battery, its power saving mode, its time zone and the languages the person prefers, and the services it offers apps. The engine owns it and publishes `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `timeZoneChanged` and `systemLanguagesChanged` once per change. Every method runs on the frame thread, and so does every callback.
+// The operating system of the device as the app sees it: what the device is, its theme, its battery, its power saving mode, its thermal state, its time zone and the languages the person prefers, and the services it offers apps. The engine owns it and publishes `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `thermalStateChanged`, `timeZoneChanged` and `systemLanguagesChanged` once per change. Every method runs on the frame thread, and so does every callback.
 class System final {
     struct Inbox;
 
@@ -45,6 +46,9 @@ class System final {
 
     // Whether the power saving mode of the system is on, or empty where the platform does not tell.
     [[nodiscard]] std::optional<bool> getPowerSaving() const noexcept;
+
+    // How hot the device runs as the system judges it, or `Unknown` where the platform does not tell.
+    [[nodiscard]] ThermalState getThermalState() const noexcept;
 
     // The IANA name of the time zone of the device, such as `America/Sao_Paulo`, or an empty text where the platform does not tell.
     [[nodiscard]] const std::string& getTimeZone() const noexcept;
@@ -73,10 +77,11 @@ class System final {
     // Keeps the callback of a call that a platform may gate until its answer, and returns what the platform calls with the answer from any thread, which reaches the callback at the next pump, such as the answers of the fullscreen of the window.
     [[nodiscard]] std::function<void(SystemAnswer)> awaitAnswer(std::function<void(SystemAnswer)> callback);
 
-    // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving, the time zone and the languages, and returns whether it delivered or published anything. The engine calls it at the start of every frame.
+    // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving, the thermal state, the time zone and the languages, and returns whether it delivered or published anything. The engine calls it at the start of every frame.
     bool pump();
 
     [[nodiscard]] static std::string_view themeName(Theme value) noexcept;
+    [[nodiscard]] static std::string_view thermalStateName(ThermalState value) noexcept;
 
   private:
     using Callback = std::function<void(SystemAnswer answer, std::string text)>;
@@ -95,6 +100,7 @@ class System final {
     };
 
     static const std::array<std::pair<std::string_view, Theme>, 2> kThemeNames;
+    static const std::array<std::pair<std::string_view, ThermalState>, 5> kThermalStateNames;
 
     // Keeps the callback of a call until its answer, and returns what the platform calls with the answer, which waits for the next pump.
     [[nodiscard]] Callback awaitReply(Callback callback);
@@ -108,6 +114,7 @@ class System final {
     Theme theme;
     Battery battery;
     std::optional<bool> powerSaving;
+    ThermalState thermalState;
     std::string timeZone;
     std::vector<std::string> languages;
     std::uint64_t languagesRevision = 0;

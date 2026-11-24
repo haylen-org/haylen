@@ -26,6 +26,7 @@
 #include "haylen/platform/SystemFont.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
+#include "haylen/platform/ThermalState.hpp"
 #include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
 #include "varn/dataview/DataView.h"
@@ -106,6 +107,9 @@ class Host : public Window {
 
     // Whether the power saving mode of the system is on, such as the low power mode of Apple platforms or the battery saver of Android and Windows, or empty where the platform does not tell, which the engine reads once per frame.
     [[nodiscard]] virtual std::optional<bool> getPowerSaving() const = 0;
+
+    // How hot the device runs as the system judges it, such as the thermal state of Apple platforms or the thermal status of Android, or `Unknown` where the platform does not tell, which the engine reads once per frame.
+    [[nodiscard]] virtual ThermalState getThermalState() const = 0;
 
     // The IANA name of the time zone of the device, such as `America/Sao_Paulo`, or an empty text where the platform does not tell, which the engine reads once per frame.
     [[nodiscard]] virtual std::string getTimeZone() const = 0;

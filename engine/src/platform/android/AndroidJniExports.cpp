@@ -31,6 +31,7 @@
 #include "platform/android/AndroidServices.hpp"
 #include "platform/android/AndroidStreams.hpp"
 #include "platform/android/AndroidTextInput.hpp"
+#include "platform/android/AndroidThermalStatus.hpp"
 #include "platform/android/JavaBridge.hpp"
 
 extern "C" {
@@ -208,6 +209,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jcla
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenPowerSaving_nativePowerSaving(JNIEnv*, jclass, jboolean enabled) {
     haylen::platform::NativeHost::getSystemState().setPowerSaving(enabled == JNI_TRUE);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenThermalState_nativeThermalState(JNIEnv*, jclass, jint status) {
+    haylen::platform::NativeHost::getSystemState().setThermalState(haylen::platform::AndroidThermalStatus::toThermalState(status));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenTimeZone_nativeTimeZone(JNIEnv* env, jclass, jbyteArray zone) {

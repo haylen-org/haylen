@@ -14,6 +14,7 @@ class SystemBinding final {
     static int theme(lua_State* L);
     static int battery(lua_State* L);
     static int powerSaving(lua_State* L);
+    static int thermalState(lua_State* L);
     static int timeZone(lua_State* L);
     static int languages(lua_State* L);
     static int clipboard(lua_State* L);

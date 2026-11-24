@@ -99,6 +99,7 @@ class NativeHost : public Host {
     [[nodiscard]] Theme getTheme() const override;
     [[nodiscard]] Battery getBattery() const override;
     [[nodiscard]] std::optional<bool> getPowerSaving() const override;
+    [[nodiscard]] ThermalState getThermalState() const override;
     [[nodiscard]] bool isBackgroundAudioDeclared() const override;
     void setBackgroundAudio(bool value) override;
     [[nodiscard]] std::string getTimeZone() const override;

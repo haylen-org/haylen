@@ -303,6 +303,10 @@ std::optional<bool> NativeHost::getPowerSaving() const {
     return getSystemState().getPowerSaving();
 }
 
+ThermalState NativeHost::getThermalState() const {
+    return getSystemState().getThermalState();
+}
+
 std::string NativeHost::getTimeZone() const {
     return getSystemState().getTimeZone();
 }

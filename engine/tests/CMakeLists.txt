@@ -136,6 +136,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidFramePacerTests.cpp
+  platform/AndroidThermalStatusTests.cpp
   platform/CrashGuardTests.cpp
   platform/FoldTests.cpp
   platform/NativeViewsTests.cpp

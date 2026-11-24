@@ -43,6 +43,7 @@
 #import "platform/apple/AppleStrings.hpp"
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleSystemGestures.hpp"
+#import "platform/apple/AppleThermalState.hpp"
 #import "platform/apple/AppleTimeZone.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
 #import "platform/apple/CatalystWindow.hpp"
@@ -76,6 +77,7 @@ void AppleServices::initialize() {
     AppleNetwork::observe();
     AppleBattery::observe();
     ApplePowerSaving::observe();
+    AppleThermalState::observe();
     AppleTimeZone::observe();
     AppleAccessibility::observe();
     AppleLanguages::observe();

@@ -80,6 +80,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private final HaylenSplash splash = new HaylenSplash(this);
     private final HaylenBattery battery = new HaylenBattery(this);
     private final HaylenPowerSaving powerSaving = new HaylenPowerSaving(this);
+    private final HaylenThermalState thermalState = new HaylenThermalState(this);
     private final HaylenTimeZone timeZone = new HaylenTimeZone(this);
     private final HaylenAccessibility accessibility = new HaylenAccessibility(this);
     private HaylenAccessibilityTree accessibilityTree;
@@ -123,6 +124,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeLanguages(readLanguages(getResources().getConfiguration()));
         battery.register();
         powerSaving.register();
+        thermalState.register();
         timeZone.register();
         accessibility.register();
         accessibilityTree.reportWanted();
@@ -348,6 +350,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         splash.dismiss();
         battery.unregister();
         powerSaving.unregister();
+        thermalState.unregister();
         timeZone.unregister();
         accessibility.unregister();
         accessibilityTree.detach();

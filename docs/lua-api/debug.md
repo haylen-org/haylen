@@ -18,7 +18,7 @@ The engine shows its statistics in one of three modes:
 | `'compact'` | One line for each [compact item](#compact-items) that is on, in the bottom left corner of the safe area. By default those are the frame rate, the draw calls and the geometry. The 2D renderer draws the lines above everything else, scene transitions and the error screen included, so they work in every app, with or without UI. The numbers change four times per second, so they stay readable, and the frames in between allocate nothing. |
 | `'full'` | The statistics window, drawn over the app. Its close button turns the statistics off. |
 
-The statistics window and the [inspector](#inspector) window have one look of their own in every app, dark and translucent with light text in the default font of the engine, which the theme of the app never changes, so they read the same over a light app and a dark one.
+The statistics window and the [inspector](#inspector) window have one look of their own in every app, dark and translucent with light text in the default font of the engine, which the theme of the app never changes, so they read the same over a light app and a dark one. Screen readers find each of them in the tree of the UI as a dialog with its title, and they read the line of the inspector as text.
 
 The statistics window shows:
 

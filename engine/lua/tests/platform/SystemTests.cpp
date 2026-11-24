@@ -47,6 +47,13 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "dark, charging 0.5, pt-BR,en, saving true, Asia/Tokyo");
     EXPECT_EQ(fixture.lua("return tostring(system.powerSaving()) .. ' ' .. system.timeZone()"), "true Asia/Tokyo");
     EXPECT_EQ(fixture.lua("local battery = system.battery() return system.theme() .. ' ' .. battery.level .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "dark 0.5 true charging");
+
+    // The thermal state reads unknown until the platform tells it, and every change reaches the app.
+    EXPECT_EQ(fixture.lua("return system.thermalState()"), "unknown");
+    fixture.runLua("events.on('thermalStateChanged', function(data) heard[#heard + 1] = 'thermal ' .. data.state end)");
+    fixture.host().setThermalState(haylen::platform::ThermalState::Serious);
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return system.thermalState() .. ' ' .. heard[#heard]"), "serious thermal serious");
 }
 
 TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {

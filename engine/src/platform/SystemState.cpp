@@ -39,6 +39,16 @@ std::optional<bool> SystemState::getPowerSaving() const {
     return powerSaving;
 }
 
+void SystemState::setThermalState(ThermalState value) {
+    const std::scoped_lock lock(mutex);
+    thermalState = value;
+}
+
+ThermalState SystemState::getThermalState() const {
+    const std::scoped_lock lock(mutex);
+    return thermalState;
+}
+
 void SystemState::setTimeZone(std::string value) {
     const std::scoped_lock lock(mutex);
     timeZone = std::move(value);

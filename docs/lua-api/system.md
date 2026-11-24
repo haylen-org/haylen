@@ -1,12 +1,12 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the time zone and the languages of the system. It also offers services that every system has. It reads and writes the clipboard, whose calls the system may refuse, as the [failures](#failures) describe. Use it to know the languages the person prefers, to match the colors of the app to the system, and to do less work on a low battery or while the system saves power. Optional capabilities of the device, such as the camera, the location, opening links, vibrating, native dialogs or the controls of the system that show what the app plays, live in plugins with the permissions that they need, and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the thermal state, the time zone and the languages of the system. It also offers services that every system has. It reads and writes the clipboard, whose calls the system may refuse, as the [failures](#failures) describe. Use it to know the languages the person prefers, to match the colors of the app to the system, and to do less work on a low battery, while the system saves power or while the device runs hot. Optional capabilities of the device, such as the camera, the location, opening links, vibrating, native dialogs or the controls of the system that show what the app plays, live in plugins with the permissions that they need, and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
 ```
 
-The platform reads what the device is once, when the first app of the process starts. It reads the theme, the battery, the power saving mode, the time zone and the languages whenever the system reports a change. The engine publishes each change once, at the start of the next frame, as the [events](#events) `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `timeZoneChanged` and `systemLanguagesChanged`.
+The platform reads what the device is once, when the first app of the process starts. It reads the theme, the battery, the power saving mode, the thermal state, the time zone and the languages whenever the system reports a change. The engine publishes each change once, at the start of the next frame, as the [events](#events) `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `thermalStateChanged`, `timeZoneChanged` and `systemLanguagesChanged`.
 
 ## Functions
 
@@ -99,6 +99,33 @@ events.on('powerSavingChanged', function(change)
 end)
 ```
 
+### system.thermalState()
+
+Returns how hot the device runs as the system judges it, so the app draws less before the system slows the device down to cool it, and its frames stay smooth. The event `thermalStateChanged` reports every change. The [platforms](#platforms) section tells where each platform reads it.
+
+| State | Meaning |
+| --- | --- |
+| `'nominal'` | The device runs cool, and the app needs to do nothing. |
+| `'fair'` | The device runs a little warm. An app can stop work that can wait. |
+| `'serious'` | The device runs hot and the system slows it down. An app lowers its quality, such as fewer shadows, effects and particles, or a lower frame rate. |
+| `'critical'` | The device runs so hot that the system slows it down a lot to cool it. An app does as little as it can until the state comes down. |
+| `'unknown'` | The platform does not tell. |
+
+```lua
+local events = require('haylen.events')
+local system = require('haylen.system')
+local window = require('haylen.window')
+
+local function follow(state)
+    window.setFrameRate((state == 'serious' or state == 'critical') and 30 or 0)
+end
+
+follow(system.thermalState())
+events.on('thermalStateChanged', function(change)
+    follow(change.state)
+end)
+```
+
 ### system.timeZone()
 
 Returns the IANA name of the time zone of the device, such as `'America/Sao_Paulo'`, or `nil` where the platform does not tell it. The event `timeZoneChanged` reports every change, such as a traveler who lands in another zone, and the local times that [`localization.formatDate`](localization.md) writes follow the new zone from that event on.
@@ -167,6 +194,7 @@ The engine publishes these changes on [`haylen.events`](events.md#engine-events)
 | `systemThemeChanged` | The system switched between light and dark colors. | `{theme}`, which is `'light'` or `'dark'`. |
 | `batteryChanged` | The level, the charging or the state of the battery changed. | The table that `system.battery()` returns. |
 | `powerSavingChanged` | The power saving mode of the system turned on or off. | `{enabled}`, the boolean that `system.powerSaving()` returns. |
+| `thermalStateChanged` | The device runs hotter or cooler. | `{state}`, the state that `system.thermalState()` returns. |
 | `timeZoneChanged` | The time zone of the device changed. | `{timeZone}`, the IANA name that `system.timeZone()` returns. |
 | `systemLanguagesChanged` | The languages that the person prefers changed, such as when the person picked another language in the settings of the device. | `{languages}`, the list that `system.languages()` returns. |
 
@@ -214,16 +242,16 @@ This table tells where each platform reads the theme, the battery and what the d
 | Windows | The app theme of the personalization settings, with every change. | The power status of the system, with every change that Windows announces, `'none'` on desktops without a battery. | The version of the kernel, the model and the maker of the computer and the processor from the registry, the cores, the memory and the time zone. The ICU of Windows 10 1903 and later gives the IANA name of the time zone. |
 | Linux | The color scheme of the settings portal of the desktop, with every change, through GIO, which the engine loads at run time. Without GIO or the portal the theme stays `'light'` and never changes. | The first battery among the power supplies of the system, read when the app starts and every 30 seconds, `'none'` without one. | The distribution of `os-release` with the release of the kernel, the model and the maker of the computer, the processor, which ARM processors often leave out, the cores, the memory, and the time zone of `TZ` or `/etc/localtime`. |
 
-This table tells where each platform reads the power saving mode and the time zone.
+This table tells where each platform reads the power saving mode, the thermal state and the time zone.
 
-| Platform | Power saving | Time zone |
-| --- | --- | --- |
-| macOS, iOS, iPadOS and Mac Catalyst | The low power mode of `NSProcessInfo`, with every change. | The time zone of the system, with every change. |
-| tvOS | `false`, since a TV has no low power mode. | The time zone of the system, with every change. |
-| Android | The battery saver of the power manager, with every change while the activity lives. | The default time zone, and the broadcast of every change while the activity lives. |
-| Web | `nil`, since browsers tell pages nothing about it. | The time zone of `Intl`, which the page reads again each time it becomes visible or its window takes the focus, since browsers announce no change. |
-| Windows | The battery saver of the power status, which Windows 11 calls the energy saver, with every change. | The time zone of the system turned into its IANA name by the ICU of Windows, with every time change that the window hears. |
-| Linux | The power saver profile of the power profile monitor of GIO, from GLib 2.70 on, with every change, and `nil` without it. | The zone of `TZ`, which stays for the process, or else the zone that `/etc/localtime` links to, with every change of the link that GIO sees. |
+| Platform | Power saving | Thermal state | Time zone |
+| --- | --- | --- | --- |
+| macOS, iOS, iPadOS and Mac Catalyst | The low power mode of `NSProcessInfo`, with every change. | The thermal state of `NSProcessInfo`, with every change. | The time zone of the system, with every change. |
+| tvOS | `false`, since a TV has no low power mode. | The thermal state of `NSProcessInfo`, with every change. | The time zone of the system, with every change. |
+| Android | The battery saver of the power manager, with every change while the activity lives. | The thermal status of the power manager from Android 10 on, with every change while the activity lives. Light and moderate throttling count as `'fair'`, severe throttling as `'serious'`, and the statuses from critical to shutdown as `'critical'`. Older versions report none, so it stays `'unknown'`. | The default time zone, and the broadcast of every change while the activity lives. |
+| Web | `nil`, since browsers tell pages nothing about it. | `'unknown'`, since browsers tell pages nothing about it. | The time zone of `Intl`, which the page reads again each time it becomes visible or its window takes the focus, since browsers announce no change. |
+| Windows | The battery saver of the power status, which Windows 11 calls the energy saver, with every change. | `'unknown'`, since Windows tells apps nothing about it. | The time zone of the system turned into its IANA name by the ICU of Windows, with every time change that the window hears. |
+| Linux | The power saver profile of the power profile monitor of GIO, from GLib 2.70 on, with every change, and `nil` without it. | `'unknown'`, since Linux offers apps no thermal state of the system. The thermal zones of the kernel give temperatures, but not how the system judges them. | The zone of `TZ`, which stays for the process, or else the zone that `/etc/localtime` links to, with every change of the link that GIO sees. |
 
 ## Android permissions
 
@@ -247,6 +275,7 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getTheme()` | The `haylen::platform::Theme`, `Light` or `Dark`. |
 | `getBattery()` | The `haylen::platform::Battery`, with its optional `level`, `charging` and `State`. |
 | `getPowerSaving()` | A `std::optional<bool>`, empty where the platform does not tell. |
+| `getThermalState()` | The `haylen::platform::ThermalState` of `haylen/platform/ThermalState.hpp`, `Unknown` where the platform does not tell. |
 | `getTimeZone()` | The IANA name of the time zone, empty where the platform does not tell. |
 | `getLanguages()` | The languages that the person prefers, most preferred first, in their canonical form. |
 | `getClipboard()` | The text on the clipboard for a paste of the person into a field of the UI. |

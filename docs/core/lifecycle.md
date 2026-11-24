@@ -84,6 +84,7 @@ The engine names every moment of the system, of the app and of its screen with o
 | The light or dark colors of the system change. | `systemThemeChanged` | [`system.theme()`](../lua-api/system.md#systemtheme) |
 | The battery changes. | `batteryChanged` | [`system.battery()`](../lua-api/system.md#systembattery) |
 | The power saving mode of the system turns on or off. | `powerSavingChanged` | [`system.powerSaving()`](../lua-api/system.md#systempowersaving) |
+| The device runs hotter or cooler. | `thermalStateChanged` | [`system.thermalState()`](../lua-api/system.md#systemthermalstate) |
 | The time zone changes. | `timeZoneChanged` | [`system.timeZone()`](../lua-api/system.md#systemtimezone) |
 | The network comes or goes. | `networkOnline`, `networkOffline` | [`haylen.networkState()`](../lua-api/haylen.md#haylennetworkstate) |
 | The accessibility settings change. | `accessibilitySettingsChanged` | [`accessibility.settings()`](../lua-api/accessibility.md#accessibilitysettings) |
@@ -198,7 +199,7 @@ The engine publishes other moments of the app and the device as events too.
 - **Quit requests.** A request to close the window publishes `appQuitRequested`. It also comes from Quit in the menu of a Mac app, Command+Q and the Dock, as the [desktop guide](../platform/desktop.md#menus-and-quitting) describes. The app then stops through its lifecycle and its process ends, however the person closed it. The function `haylen.quit()` ends the app.
 - **The on-screen keyboard.** The events `keyboardShown` and `keyboardHidden` follow it. The UI already avoids it by lifting the focused text field above it, as the [text input guide](../ui/text-input.md) explains.
 - **The network.** The events `networkOnline` and `networkOffline` follow the network on every platform: browsers, Android, Apple platforms, Windows and Linux. The first report publishes the state that the app starts in, usually on its first frame, and later reports publish each change. The function `haylen.networkState()` returns the last state at any time.
-- **Theme, battery, power saving and time zone.** The events `systemThemeChanged`, `batteryChanged`, `powerSavingChanged` and `timeZoneChanged` follow the light or dark colors of the system, the battery, the power saving mode of the system, such as the low power mode of an iPhone, and the time zone of the device, once per change, as [`haylen.system`](../lua-api/system.md#events) describes. An app that sees power saving turn on does less work, such as fewer particles or a lower frame rate, and the local times of [`haylen.localization`](../lua-api/localization.md) follow a new time zone from the event on.
+- **Theme, battery, power saving, heat and time zone.** The events `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `thermalStateChanged` and `timeZoneChanged` follow the light or dark colors of the system, the battery, the power saving mode of the system, such as the low power mode of an iPhone, how hot the device runs and the time zone of the device, once per change, as [`haylen.system`](../lua-api/system.md#events) describes. An app that sees power saving turn on or the device run hot does less work, such as fewer particles or a lower frame rate, and the local times of [`haylen.localization`](../lua-api/localization.md) follow a new time zone from the event on.
 - **Accessibility.** The event `accessibilitySettingsChanged` follows the text scale, reduced motion, contrast, transparency and screen reader of the system, as [`haylen.accessibility`](../lua-api/accessibility.md#events) describes.
 - **Orientation and folds.** The event `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [`haylen.window`](../lua-api/window.md) describes. The event `windowFoldChanged` follows the fold of foldable and dual-screen devices, its posture and the segments of the window on each side of it, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes.
 - **The safe area.** The event `windowSafeAreaChanged` follows the safe area of [`haylen.viewport`](../lua-api/viewport.md#viewportsaferect). It is the safe area of the device, widened edge by edge by the edges that native views of plugins reserve, such as a banner at the bottom. So UI anchored to the safe area moves out of their way on its own.
@@ -276,6 +277,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | A change of the default output device of Core Audio, such as headphones plugged in. |
 | `systemThemeChanged`, `batteryChanged` | The appearance of the app and the power sources of the Mac, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `thermalStateChanged` | The thermal state of `NSProcessInfo`, with every change. |
 | `accessibilitySettingsChanged` | The display options of the accessibility settings and the state of VoiceOver, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads GameController and HID controllers. |
 
@@ -299,6 +301,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | A change of the default output device of WASAPI. |
 | `systemThemeChanged`, `batteryChanged` | The app theme of the personalization settings and the power status of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged`, `timeZoneChanged` | The battery saver of the power status and the time changes that the window hears, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `thermalStateChanged` | Never, because Windows tells apps nothing about how hot the device runs, so `system.thermalState()` stays `'unknown'`. |
 | `accessibilitySettingsChanged` | The accessibility settings and the transparency effects of the personalization settings, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads XInput, Windows.Gaming.Input, raw input and HID controllers. |
 
@@ -322,6 +325,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | A stream that PulseAudio, or PipeWire through it, moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The color scheme of the settings portal and the power supplies of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged`, `timeZoneChanged` | The power profile monitor of GIO, from GLib 2.70 on, and the link `/etc/localtime`, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
+| `thermalStateChanged` | Never, because Linux offers apps no thermal state of the system, so `system.thermalState()` stays `'unknown'`. The thermal zones of the kernel give temperatures, but not how the system judges them. |
 | `accessibilitySettingsChanged` | The appearance settings of the settings portal and the text scaling factor of the GNOME interface settings, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the event devices under `/dev/input` and HID controllers. |
 
@@ -348,6 +352,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | The route changes of the audio session, such as headphones unplugged. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the battery of the device, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system. |
+| `thermalStateChanged` | The thermal state of `NSProcessInfo`, with every change. |
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
@@ -372,6 +377,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app. `batteryChanged` never fires, since a TV runs on mains power. |
 | `powerSavingChanged`, `timeZoneChanged` | The time zone of the system. `powerSavingChanged` never fires, since a TV has no low power mode. |
+| `thermalStateChanged` | The thermal state of `NSProcessInfo`, with every change. |
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController, the Siri Remote included. |
 
@@ -396,6 +402,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | The route changes of the audio session. |
 | `systemThemeChanged`, `batteryChanged` | The trait collection of the app and the power sources of the Mac, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged`, `timeZoneChanged` | The low power mode of `NSProcessInfo` and the time zone of the system. |
+| `thermalStateChanged` | The thermal state of `NSProcessInfo`, with every change. |
 | `accessibilitySettingsChanged` | The settings of `UIAccessibility` and the preferred content size of the app, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | GameController. |
 
@@ -422,6 +429,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | The AAudio stream that the system moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The night mode of the configuration and the battery broadcast, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged`, `timeZoneChanged` | The battery saver of the power manager and the broadcast of a new time zone, heard while the activity lives. |
+| `thermalStateChanged` | The thermal status of the power manager, from Android 10 on, heard while the activity lives. Older versions report none, so `system.thermalState()` stays `'unknown'` there. |
 | `accessibilitySettingsChanged` | The font scale of the configuration, the animator duration scale, the contrast of the UI mode and touch exploration, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The input devices that Android adds and removes, with the name of each controller, and a controller whose first event comes before Android tells of it. The remote of an Android TV reports the directional pad as keys, so it is no gamepad. |
 
@@ -448,6 +456,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | Never, because the audio output of the page follows the output of the browser without telling the page. |
 | `systemThemeChanged`, `batteryChanged` | The `prefers-color-scheme` media query and the Battery Status API, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `powerSavingChanged` | Never, because browsers tell pages nothing about the power saving mode of the system. |
+| `thermalStateChanged` | Never, because browsers tell pages nothing about how hot the device runs, so `system.thermalState()` stays `'unknown'`. |
 | `timeZoneChanged` | The time zone of `Intl`, which the page reads again each time it becomes visible or its window takes the focus, since browsers announce no change of the zone. |
 | `accessibilitySettingsChanged` | The media queries of reduced motion, contrast and transparency and the default font size of the browser, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
 | `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the Gamepad API of the browser, once a button of the gamepad is pressed. |
@@ -833,7 +842,7 @@ C++ code sees the same lifecycle through the engine.
 | `Engine::setLifecycle` | Changes the lifecycle options. |
 | `Engine::setBackgroundAudio`, `Engine::isBackgroundAudio` | Turn the sound that plays in the background off and on within what the app declared to the system, as `audio.setBackground` does. |
 | The signal `lowMemory` | Follows the memory warnings with their `platform::Event::MemoryLevel`. |
-| `platform::System::getPowerSaving()`, `getTimeZone()` | The power saving mode and the time zone, as `haylen.system` reads them. |
+| `platform::System::getPowerSaving()`, `getThermalState()`, `getTimeZone()` | The power saving mode, the thermal state and the time zone, as `haylen.system` reads them. |
 | `TimerScheduler::Options` | Gives a timer a process mode and `unscaled`. |
 | `setProcessMode`, `setUnscaledTime` and `setFixedStep` of a tween | Give a tween its process mode, its clock and its step. |
 | `Engine::getEvents()` | The event bus. `core::LifecycleEvent` names every engine event. |

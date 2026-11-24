@@ -21,6 +21,10 @@ void SystemReports::setPowerSaving(std::optional<bool> value) {
     platform::NativeHost::getSystemState().setPowerSaving(value);
 }
 
+void SystemReports::setThermalState(platform::ThermalState value) {
+    platform::NativeHost::getSystemState().setThermalState(value);
+}
+
 void SystemReports::setTimeZone(std::string value) {
     platform::NativeHost::getSystemState().setTimeZone(std::move(value));
 }

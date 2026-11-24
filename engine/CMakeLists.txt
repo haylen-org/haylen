@@ -800,6 +800,7 @@ add_library(haylen-platform STATIC
   src/platform/PluginLoadOrder.cpp
   src/platform/SharedTextInput.cpp
   src/platform/android/AndroidBatteryStatus.cpp
+  src/platform/android/AndroidThermalStatus.cpp
   src/platform/android/AndroidDeviceInfo.cpp
   src/platform/android/AndroidFramePacer.cpp
   src/platform/android/AndroidGamepadStates.cpp
@@ -861,6 +862,7 @@ elseif(APPLE)
     src/platform/apple/AppleOrientation.mm
     src/platform/apple/ApplePlugins.mm
     src/platform/apple/ApplePowerSaving.mm
+    src/platform/apple/AppleThermalState.mm
     src/platform/apple/ApplePresenter.mm
     src/platform/apple/AppleRuntime.mm
     src/platform/apple/AppleScroll.mm

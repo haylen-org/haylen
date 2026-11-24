@@ -302,6 +302,7 @@ end)
 | `systemThemeChanged` | The system switched between light and dark colors, as [`system.theme()`](system.md#systemtheme) reports them. | `{theme}`, `'light'` or `'dark'`. |
 | `batteryChanged` | The level, the charging or the state of the battery changed, as [`system.battery()`](system.md#systembattery) reports it. | `{level, charging, state}`, without `level` when the platform does not know it. |
 | `powerSavingChanged` | The power saving mode of the system turned on or off, as [`system.powerSaving()`](system.md#systempowersaving) reports it. | `{enabled}` |
+| `thermalStateChanged` | The device runs hotter or cooler, as [`system.thermalState()`](system.md#systemthermalstate) reports it. | `{state}`, `'nominal'`, `'fair'`, `'serious'`, `'critical'` or `'unknown'`. |
 | `timeZoneChanged` | The time zone of the device changed, as [`system.timeZone()`](system.md#systemtimezone) reports it. | `{timeZone}`, the IANA name of the zone. |
 | `systemLanguagesChanged` | The languages that the person prefers on the device changed, as [`system.languages()`](system.md#systemlanguages) reports them. | `{languages}`, most preferred first, in their canonical form. |
 | `languageChanged` | The current language of [`haylen.localization`](localization.md#events) changed, because the app picked one, the languages of the system changed or a language that the app added matches better. It comes at the start of the frame after the change, once however many changes the frame made. | `{language, previous}`, where `previous` is empty when no language was current before. |

@@ -9,15 +9,17 @@
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Theme.hpp"
+#include "haylen/platform/ThermalState.hpp"
 
 namespace haylen::port {
 
-// What the system of a port tells the engine whenever it changes, from any thread: the theme, the battery, the power saving mode, the time zone, the languages of the person and the accessibility settings, which belong to the process so every app that starts hears the last report, and the memory warnings, the links that open the app and the actions of the screen reader.
+// What the system of a port tells the engine whenever it changes, from any thread: the theme, the battery, the power saving mode, the thermal state, the time zone, the languages of the person and the accessibility settings, which belong to the process so every app that starts hears the last report, and the memory warnings, the links that open the app and the actions of the screen reader.
 class SystemReports final {
   public:
     static void setTheme(platform::Theme value);
     static void setBattery(const platform::Battery& value);
     static void setPowerSaving(std::optional<bool> value);
+    static void setThermalState(platform::ThermalState value);
 
     // The IANA name of the time zone of the device, such as `America/Sao_Paulo`.
     static void setTimeZone(std::string value);
