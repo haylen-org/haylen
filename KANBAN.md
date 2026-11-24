@@ -4,20 +4,20 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 8 / not set · **Next ID:** KB-299
+**Active WIP:** 6 / not set · **Next ID:** KB-299
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | — | — |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | — |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
@@ -346,6 +346,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** low
 - **Complexity:** 5
+- **Progress:** iOS e tvOS passam (`4eb1974e1`). O macOS, o Mac Catalyst e a conferência de fechar o player rodam no job `apple-mac-ui` da próxima execução completa da CI.
 - **Parent:** [KB-001 · Arte, samples e jogos](#kb-001)
 
 #### Description
@@ -579,6 +580,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
+- **Progress:** o executor de testes de UI do macOS e do Mac Catalyst e os testes de entrada de texto do Mac existem (`611cf76a5`) e rodam no job `apple-mac-ui` da próxima execução completa da CI. O executor do Windows está compilando o SDK numa máquina da Azure.
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
@@ -602,31 +604,24 @@ Decisão do dono: testes de UI do macOS e do Mac Catalyst por XCUITest num runne
 <a name="kb-014"></a>
 ### KB-014 — Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple
 
-- **Status:** doing
+- **Status:** done
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 3
+- **Finished:** 2026-11-24
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
 
-Etapa: Código e revisão geral.
-
-Escrever `TextInputTests.kt` em `samples/tests/ui-tests/android`, como o `TextInputTests.swift` da Apple: cada tecla digita uma vez, Backspace apaga, o teclado fica aberto ao tocar no campo, volta depois de escondido e o campo mantém texto e foco ao girar.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-Andamento: três testes passam no emulador (`f713dee80`): cada tecla digita uma vez e Delete apaga, o teclado fica ao tocar o campo de novo e volta depois do Back e do Home. O teste de girar o aparelho espera a decisão do dono, porque o app só em paisagem gira pelo acelerômetro no Android.
-
-Decisão do dono: o executor de testes de UI do Android gira o emulador pelo console quando o teste pede, e o teste de girar volta ao `TextInputTests.kt`. Em andamento num stream.
+Os testes de entrada de texto do Android (`TextInputTests.kt`) conferem no emulador que cada tecla do teclado digita uma vez e Delete apaga, que o teclado fica ao tocar o campo de novo e volta depois do Back e do Home, e que o texto e o teclado ficam quando o aparelho gira: o executor dos testes de UI do Android gira o emulador pelo console quando o teste pede, pelo acelerômetro, que é como o Android gira um app de paisagem.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] Os quatro testes passam no emulador headless Pixel_10a (commits `f713dee80` e `611cf76a5`).
 
 #### Attachments
 
-- None
+- [Testes](docs/tools/testing.md)
 
 <a name="kb-015"></a>
 ### KB-015 — Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…
@@ -890,31 +885,26 @@ O mouse não para por erro da engine: uma janela só recebe o movimento do mouse
 <a name="kb-026"></a>
 ### KB-026 — No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)
 
-- **Status:** doing
+- **Status:** done
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 3
+- **Finished:** 2026-11-24
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
 
-Etapa: Testes.
-
-No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe): a navegação do foco da UI pelo analógico funciona nas quatro direções em toda plataforma, com o mesmo limiar e a mesma repetição do direcional, e um teste de engine move o foco nas quatro direções pelo analógico e outro confere no simulador do tvOS.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-Andamento: a causa achada na engine: o UI lia cada eixo do analógico sozinho, e um analógico inclinado para cima com um pouco de lado apertava duas direções, e o navegador de foco tentava o lado primeiro e não andava numa coluna. Agora o foco anda pelo eixo mais inclinado, com o limiar e a repetição do direcional (commit `2d9d321f3`, testes `FocusTest.MovesInEveryDirectionWithTheStick` e `RepeatsWithTheStickAsWithTheDirectionalPad`). Falta a opção A que o dono escolheu: um teste de UI no simulador do iOS com o `GCVirtualController`, que passa pelo mesmo código de leitura dos controles do tvOS.
-
-Decisão do dono: opção A: um teste de UI no simulador do iOS com o `GCVirtualController`, que passa pelo mesmo código de leitura dos controles do tvOS, porque o tvOS não tem controle virtual. Em andamento num stream.
+O analógico de um gamepad move o foco da UI nas quatro direções, também inclinado para cima com um pouco de lado, com o limiar e a repetição do direcional: o foco anda pelo eixo mais inclinado. No simulador do iOS, um `GCVirtualController` prova o caminho dos controles da Apple, o mesmo do tvOS, que não tem controle virtual.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] `FocusTest.MovesInEveryDirectionWithTheStick` e `RepeatsWithTheStickAsWithTheDirectionalPad` (commit `2d9d321f3`).
+- [x] O teste INP-015 e `StickFocusTests` passam no simulador do iOS com o controle virtual (commit `611cf76a5`).
 
 #### Attachments
 
-- None
+- [UI](docs/ui/ui.md)
+- [Testes](docs/tools/testing.md)
 
 <a name="kb-027"></a>
 ### KB-027 — Vários gamepads ao mesmo tempo sem perder nada em toda plataforma
@@ -923,6 +913,7 @@ Decisão do dono: opção A: um teste de UI no simulador do iOS com o `GCVirtual
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
+- **Progress:** quatro controles virtuais do SDL provam índices estáveis, conectar e desconectar, um mapa por jogador, vibração e sensores de cada controle e o foco só do controle do mapa padrão (`e34af0b74`), e no iOS um controle virtual reconecta no mesmo lugar e o controle próprio do simulador fica parado enquanto o virtual age (`611cf76a5`). Falta um teste do gamepad do navegador na web.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
