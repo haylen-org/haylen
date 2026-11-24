@@ -4,16 +4,16 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 7 / not set · **Next ID:** KB-294
+**Active WIP:** 6 / not set · **Next ID:** KB-294
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | — | — |
-| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | — |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | — | — | — | — |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
+| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 | — | — | — | — |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | — | — | — | — | — |
 | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
@@ -38,7 +38,7 @@
 | **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseLocked e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -842,29 +842,26 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 <a name="kb-024"></a>
 ### KB-024 — Tirar os ganchos de teste da API pública do DebugPlugin
 
-- **Status:** doing
+- **Status:** done
 - **Type:** refactor
 - **Priority:** high
 - **Complexity:** 5
+- **Finished:** 2026-11-24
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
 
-Etapa: Testes.
-
-Tirar os ganchos de teste da API pública do `DebugPlugin`: o `getInspectorLine` e o `setInspectorClock` são públicos em `engine/include/haylen/plugins/DebugPlugin.hpp` sem binding de Lua, o que a regra de exportar tudo ao Lua não aceita. A linha de estado do inspetor entra na árvore de acessibilidade como um elemento de texto da janela, e o `InspectorWindowTest` a lê por ela, como os testes de UI leem os checks. O relógio das atualizações do inspetor vem da fonte de tempo do motor (o relógio dos quadros de `core::FrameClock` que `Engine::getClock` dá) em vez de um `std::function` que um teste troca, e o teste avança o tempo pelos quadros do headless. Com testes de C++ e a seção do inspetor de `docs/lua-api/debug.md` atualizada.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-Andamento: o `setInspectorClock` e o `getInspectorLine` saíram do cabeçalho público, o inspetor atualiza pelo relógio da engine, as janelas de depuração entram na árvore de acessibilidade (cada janela como diálogo com o seu título e a linha de estado do inspetor como texto) e o `InspectorWindowTest` lê a linha pela árvore. Os testes estão rodando antes do commit.
+A API pública do `DebugPlugin` não tem ganchos de teste. O inspetor atualiza pelo relógio da engine (`engine.getClock().getUnscaledDelta()`), cada janela de depuração entra na árvore de acessibilidade como um diálogo com o seu título e a linha de estado do inspetor entra como texto, e o `UiPlugin` publica a árvore no `endFrame`, depois que todo plugin desenhou a sua UI.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O `setInspectorClock` e o `getInspectorLine` não existem no repositório (commit `bd59c26d0`).
+- [x] O `InspectorWindowTest.TellsWhatAnEditChangedOrWhyItFailed` lê a linha pela árvore de acessibilidade, e o `DrawsTheSameRowsWithoutAllocating` avança o relógio pela fixture.
+- [x] Os dois programas de teste, a conferência de formato e o pytest passam sem aviso.
 
 #### Attachments
 
-- None
+- [Referência de `haylen.debug`](docs/lua-api/debug.md)
 
 <a name="kb-025"></a>
 ### KB-025 — O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…
@@ -1326,7 +1323,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - None
 
 <a name="kb-042"></a>
-### KB-042 — Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseLocked e o input.mouseDelta()…
+### KB-042 — Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…
 
 - **Status:** todo
 - **Type:** feature
@@ -1338,9 +1335,11 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 Etapa: Fundações.
 
-Mouse relativo para câmeras em primeira pessoa e de voo, sobre o `window.setMouseLocked` e o `input.mouseDelta()` que já existem: o movimento cru do mouse, sem a aceleração do sistema e em contagens do aparelho em vez de unidades de design, por `input.mouseDelta({raw = true})` onde a plataforma dá (o modo relativo do SDL com o movimento cru nos desktops e o `unadjustedMovement` do Pointer Lock da web, com a resposta `unsupported` e o motivo no navegador que não o tem), e o travamento onde hoje falta, pelas APIs das plataformas: a captura de ponteiro do Android (`View.requestPointerCapture`, para mouses em tablets, Chromebooks e modos de desktop) no lugar da recusa de hoje, e o `prefersPointerLocked` do UIKit no iPadOS com mouse, que o sistema concede só a uma cena em tela cheia, com a resposta `unsupported` e o motivo em celulares sem mouse e na TV. Testes: CPU com o host headless, Lua, projeto de testes na categoria de entrada, e as referências `docs/lua-api/window.md` e `docs/lua-api/input.md`.
+Mouse relativo para câmeras em primeira pessoa e de voo, sobre o `window.setMouseMode('locked')` e o `input.mouseDelta()` que já existem: o movimento cru do mouse, sem a aceleração do sistema e em contagens do aparelho em vez de unidades de design, por `input.mouseDelta({raw = true})` onde a plataforma dá (o modo relativo do SDL com o movimento cru nos desktops e o `unadjustedMovement` do Pointer Lock da web, com a resposta `unsupported` e o motivo no navegador que não o tem), e o travamento onde hoje falta, pelas APIs das plataformas: a captura de ponteiro do Android (`View.requestPointerCapture`, para mouses em tablets, Chromebooks e modos de desktop) no lugar da recusa de hoje, e o `prefersPointerLocked` do UIKit no iPadOS com mouse, que o sistema concede só a uma cena em tela cheia, com a resposta `unsupported` e o motivo em celulares sem mouse e na TV. Testes: CPU com o host headless, Lua, projeto de testes na categoria de entrada, e as referências `docs/lua-api/window.md` e `docs/lua-api/input.md`.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Depende do KB-293, que dá o modo do mouse da janela.
 
 #### Acceptance criteria
 
