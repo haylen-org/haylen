@@ -493,7 +493,7 @@ end)
 
 ### demo.onUrlOpened(listener)
 
-Calls `listener({url})` for every URL with the `urlScheme` that opens the app, whether it launched the app or reached it while it ran. The native part sends `urlOpened` retained, so the URL that launched the app waits for the first listener. The web stands in with the address of the page when it loads with a hash and whenever the hash changes.
+Calls `listener({url})` for every URL with the `urlScheme` that opens the app, whether it launched the app or reached it while it ran. The native part sends `urlOpened` retained, so the URL that launched the app waits for the first listener. The web stands in with the address of the page when it loads with a hash and whenever the hash changes. It also hands that address to the app with `context.openLink`, so the app hears it as `linkOpened` too.
 
 ```lua
 local demo = require('native-demo')

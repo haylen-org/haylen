@@ -1,4 +1,4 @@
--- Links with the scheme of the plugin open the app. The engine publishes each one as `linkOpened` on every platform but the web, and the native part of the plugin sends each one as `urlOpened`, retained, so the link that launched the app and the links that arrived while this test was closed wait for its listener.
+-- Links with the scheme of the plugin open the app. The engine publishes each one as `linkOpened` on every platform, on the web once the web module of the plugin hands it over with `context.openLink`, and the native part of the plugin sends each one as `urlOpened`, retained, so the link that launched the app and the links that arrived while this test was closed wait for its listener.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 

@@ -550,9 +550,10 @@ export default function load(context) {
         finishRedirect(context.restoredScreen);
     }
 
-    // The page stands in for links that open the app: the hash of its address when it loads and every later change of the hash.
+    // The page stands in for links that open the app: the hash of its address when it loads and every later change of the hash, which the app hears as `linkOpened` and as the event of the plugin.
     const openUrl = () => {
         if (location.hash.length > 1) {
+            context.openLink(location.href);
             context.emit("urlOpened", { url: location.href }, { retain: true });
         }
     };
