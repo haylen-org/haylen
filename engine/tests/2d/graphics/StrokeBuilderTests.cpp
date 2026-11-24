@@ -195,6 +195,17 @@ TEST_F(StrokeBuilderTest, SplitsDashesAlongTheWholeLength) {
     EXPECT_EQ(sections(), 0U);
 }
 
+TEST_F(StrokeBuilderTest, DropsTheEndOfADashThatRoundsOntoThePointBesideIt) {
+    // The end of the first dash lies a ten millionth past the turn, which the coordinates near 1000 round onto the turn itself.
+    const std::array<math::Vec2, 3> turn{{{1000.0F, 1000.0F}, {1000.5F, 1000.0F}, {1000.5F, 1001.0F}}};
+    const std::array<float, 2> pattern{0.5000001F, 0.25F};
+    build(turn, {.width = 0.2F, .dashes = pattern});
+    EXPECT_GT(sections(), 0U);
+    for (const GpuVertex& vertex : builder.getVertices()) {
+        EXPECT_TRUE(std::isfinite(vertex.position[0]) && std::isfinite(vertex.position[1]));
+    }
+}
+
 TEST_F(StrokeBuilderTest, RejectsStrokesThatCannotDraw) {
     const std::array<float, 1> oneWidth{2.0F};
     EXPECT_THROW(build(line, {.widths = oneWidth}), std::invalid_argument);

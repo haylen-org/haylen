@@ -109,7 +109,7 @@ void StrokeBuilder::collect(std::span<const math::Vec2> points, const Stroke& st
         Node node{points[index], (stroke.widths.empty() ? stroke.width : stroke.widths[index]) * 0.5F, stroke.colors.empty() ? stroke.color : stroke.colors[index], 0.0F};
         if (!nodes.empty()) {
             const float step = math::Vec2::distance(nodes.back().position, node.position);
-            if (step <= 1e-6F) {
+            if (step <= kMinStep) {
                 continue;
             }
 
@@ -119,7 +119,7 @@ void StrokeBuilder::collect(std::span<const math::Vec2> points, const Stroke& st
         nodes.push_back(node);
     }
 
-    if (stroke.closed && nodes.size() > 2 && math::Vec2::distance(nodes.front().position, nodes.back().position) <= 1e-6F) {
+    if (stroke.closed && nodes.size() > 2 && math::Vec2::distance(nodes.front().position, nodes.back().position) <= kMinStep) {
         nodes.pop_back();
     }
 }
@@ -162,26 +162,33 @@ void StrokeBuilder::buildDashes(std::span<const float> pattern, float offset) {
 
         dash.clear();
         dash.push_back(interpolate(nodes[cursor - 1], nodes[cursor], start));
-
-        // A dash of no length draws as the dot its caps make, turned along the segment it lies on.
-        if (end - start <= 1e-6F) {
-            Node tip = dash.front();
-            tip.position += (nodes[cursor].position - nodes[cursor - 1].position).getNormalized() * (pixel * 1e-3F);
-            dash.push_back(tip);
-            buildPath(dash, false);
-            continue;
-        }
-
         std::size_t last = cursor;
         for (; last + 1 < nodes.size() && nodes[last].distance < end; ++last) {
             if (nodes[last].distance > start) {
-                dash.push_back(nodes[last]);
+                extendDash(nodes[last]);
             }
         }
 
-        dash.push_back(interpolate(nodes[last - 1], nodes[last], end));
+        extendDash(interpolate(nodes[last - 1], nodes[last], end));
+
+        // A dash of no length draws as the dot its caps make, turned along the segment it lies on.
+        if (dash.size() == 1) {
+            Node tip = dash.front();
+            tip.position += (nodes[cursor].position - nodes[cursor - 1].position).getNormalized() * (pixel * 1e-3F);
+            dash.push_back(tip);
+        }
+
         buildPath(dash, false);
     }
+}
+
+// The ends of a dash fall between points, so an end that lands on the point beside it leaves no segment and is dropped, as `collect` drops repeated points.
+void StrokeBuilder::extendDash(const Node& node) {
+    if (math::Vec2::distance(dash.back().position, node.position) <= kMinStep) {
+        return;
+    }
+
+    dash.push_back(node);
 }
 
 // A closed path starts with the last section of the join at its first point and ends with that whole join, so its run closes on itself.

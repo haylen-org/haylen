@@ -17,6 +17,7 @@ class StrokeBuilder final {
   public:
     static constexpr std::size_t kMaxDashes = 65536;
     static constexpr int kMaxArcSteps = 64;
+    static constexpr float kMinStep = 1e-6F;
 
     // Replaces the vertices and indices with the triangles of the stroke, where `pixelSize` is the length of one pixel of the destination in the units of the points, `textureSize` the size of the texture in pixels and `flippedRows` turns its rows over for render targets that start at the bottom. Throws `std::invalid_argument` for a stroke whose values cannot draw.
     void build(std::span<const math::Vec2> points, const Stroke& stroke, float pixelSize, math::Vec2 textureSize, bool flippedRows);
@@ -53,6 +54,7 @@ class StrokeBuilder final {
 
     void collect(std::span<const math::Vec2> points, const Stroke& stroke);
     void buildDashes(std::span<const float> pattern, float offset);
+    void extendDash(const Node& node);
     void buildPath(std::span<const Node> path, bool closed);
 
     // Fills the joint with the sections of the turn at a point, which the closed paths take apart.
