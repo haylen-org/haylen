@@ -12,6 +12,7 @@
 #include "gpu/support/LoggedErrors.hpp"
 #include "gpu/vulkan/Device.hpp"
 #include "gpu/vulkan/Swapchain.hpp"
+#include "support/ContractRule.hpp"
 
 namespace haylen::gpu::vulkan {
 
@@ -106,9 +107,9 @@ TEST_F(VulkanDeviceTest, ReleasesTheFramebuffersOfDestroyedImages) {
 
 // Vulkan would make such an image against its rules, which only validation reports.
 TEST_F(VulkanDeviceTest, RefusesImagesBeyondTheLimitsOfTheirFormat) {
-    EXPECT_THROW((void)device->makeImage({.width = kSize, .height = kSize, .mipLevels = 6, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-test-levels"}), std::invalid_argument);
-    EXPECT_THROW((void)device->makeImage({.width = kSize, .height = kSize, .layers = 2, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-test-flat-layers"}), std::invalid_argument);
-    EXPECT_THROW((void)device->makeImage({.type = gpu::Device::TextureType::Array, .width = kSize, .height = kSize, .layers = 1 << 24, .label = "haylen-test-layers"}), std::invalid_argument);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeImage({.width = kSize, .height = kSize, .mipLevels = 6, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-test-levels"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeImage({.width = kSize, .height = kSize, .layers = 2, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-test-flat-layers"}); }), gpu::ContractError::Rule::Image);
+    EXPECT_EQ(test::ContractRule::of([&] { (void)device->makeImage({.type = gpu::Device::TextureType::Array, .width = kSize, .height = kSize, .layers = 1 << 24, .label = "haylen-test-layers"}); }), gpu::ContractError::Rule::Image);
 }
 
 TEST_F(VulkanDeviceTest, DrawsNothingIntoTheSwapchainOfADeviceWithoutASurface) {
