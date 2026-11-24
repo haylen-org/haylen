@@ -27,7 +27,7 @@
 | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | — |
-| **[KB-293 · Prender o cursor visível dentro da janela](#kb-293)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | — |
+| **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -7555,24 +7555,24 @@ A complexidade é uma estimativa provisória.
 - None
 
 <a name="kb-293"></a>
-### KB-293 — Prender o cursor visível dentro da janela
+### KB-293 — Modo do mouse da janela: normal, oculto, travado e preso
 
 - **Status:** todo
 - **Type:** feature
 - **Priority:** high
-- **Complexity:** 4
+- **Complexity:** 5
 
 #### Description
 
-Jogos em que o cursor fica visível, como um paddle guiado pelo mouse ou estratégia com rolagem pela borda, prendem o cursor dentro da janela para nunca perder o movimento quando ele chegaria à borda. A janela ganha `window.setMouseConfined(confined)` em Lua e `platform::Window::setMouseConfined` em C++, com a resposta `platform::SystemAnswer` como as outras chamadas que o sistema pode recusar, pelo grab do mouse do SDL no macOS, no Windows e no Linux. Na web o navegador não deixa uma página prender um cursor visível (só travá-lo escondido, que é o `window.setMouseLocked`), e no celular e na TV não há cursor, então a resposta é `unsupported` com o motivo. O cursor solta sozinho quando a janela perde o foco e volta a ficar preso quando ela o recebe, como o sistema faz.
+O mouse da janela tem um modo, com os termos comuns das engines: `window.setMouseMode(mode)` em Lua e `platform::Window::setMouseMode` em C++, com `normal` (cursor visível e livre), `hidden` (cursor escondido e livre), `locked` (cursor escondido e travado, com o movimento relativo em `input.mouseDelta()`, para câmeras em primeira pessoa e paddles) e `confined` (cursor visível e preso dentro da janela, para estratégia com rolagem pela borda e jogos com cursor), e `window.mouseMode` diz o modo atual. A resposta é um `platform::SystemAnswer`, como nas outras chamadas que o sistema pode recusar. O `window.setMouseLocked` sai da engine, dos samples, dos templates e da documentação, substituído por `setMouseMode('locked')`, sem nome antigo guardado. Desktops: o modo relativo e o grab do mouse do SDL. Web: `locked` pelo Pointer Lock do navegador, que só começa com um gesto da pessoa, e `confined` responde `unsupported`, porque o navegador não deixa uma página prender um cursor visível. Celular e TV: só `normal`, e os outros respondem `unsupported`, porque não há cursor. Um modo que prende ou trava solta quando a janela perde o foco e volta quando ela o recebe, como o sistema faz.
 
 A complexidade é uma estimativa provisória.
 
 #### Acceptance criteria
 
-- [ ] `window.setMouseConfined(true)` mantém o cursor visível dentro da janela no macOS, no Windows e no Linux, e `false` o solta.
-- [ ] A web, o iOS, o tvOS, o visionOS e o Android respondem `unsupported` com uma frase clara que diz o motivo.
-- [ ] Testes de engine, teste Lua, um teste no projeto de testes e a referência em `docs/lua-api/window.md`.
+- [ ] Os quatro modos funcionam no macOS, no Windows e no Linux, e a web, o iOS, o tvOS, o visionOS e o Android respondem como a descrição diz, com frases claras.
+- [ ] O `window.setMouseLocked` não existe mais em lugar nenhum do repositório (busca vazia).
+- [ ] Testes de engine, testes Lua, um teste no projeto de testes e a referência em `docs/lua-api/window.md`.
 
 #### Attachments
 
