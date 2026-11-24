@@ -9,7 +9,7 @@
 #include "haylen/2d/navigation/Crowd.hpp"
 #include "haylen/2d/navigation/SteeringAgent.hpp"
 #include "haylen/core/JobSystem.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::navigation2d {
@@ -84,7 +84,7 @@ TEST_F(CrowdTest, WalksAroundObstaclesAndWalls) {
     for (int step = 0; step < 400; ++step) {
         crowd.step(1.0F / 30.0F);
         const math::Vec2 position = crowd.getPosition(walker);
-        EXPECT_FALSE(math::Geometry::contains(block, position));
+        EXPECT_FALSE(math::Geometry2::contains(block, position));
         EXPECT_LT(position.x, 100.0F);
     }
 

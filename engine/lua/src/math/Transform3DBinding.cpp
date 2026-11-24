@@ -6,6 +6,7 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "math/NumberText.hpp"
 
 namespace haylen::lua::math {
 
@@ -61,9 +62,9 @@ int Transform3DBinding::transformEqual(lua_State* L) {
 
 int Transform3DBinding::transformToString(lua_State* L) {
     const haylen::math::Transform3D& t = lua::Userdata::check<haylen::math::Transform3D>(L, 1);
-    lua_pushfstring(L, "Transform3D((%f, %f, %f), ", static_cast<double>(t.position.x), static_cast<double>(t.position.y), static_cast<double>(t.position.z));
-    lua_pushfstring(L, "(%f, %f, %f, %f), ", static_cast<double>(t.rotation.x), static_cast<double>(t.rotation.y), static_cast<double>(t.rotation.z), static_cast<double>(t.rotation.w));
-    lua_pushfstring(L, "(%f, %f, %f))", static_cast<double>(t.scale.x), static_cast<double>(t.scale.y), static_cast<double>(t.scale.z));
+    lua_pushfstring(L, "Transform3D((%f, %f, %f), ", NumberText::plain(t.position.x), NumberText::plain(t.position.y), NumberText::plain(t.position.z));
+    lua_pushfstring(L, "(%f, %f, %f, %f), ", NumberText::plain(t.rotation.x), NumberText::plain(t.rotation.y), NumberText::plain(t.rotation.z), NumberText::plain(t.rotation.w));
+    lua_pushfstring(L, "(%f, %f, %f))", NumberText::plain(t.scale.x), NumberText::plain(t.scale.y), NumberText::plain(t.scale.z));
     lua_concat(L, 3);
     return 1;
 }
@@ -96,8 +97,8 @@ int Transform3DBinding::dualQuatMultiply(lua_State* L) {
 int Transform3DBinding::dualQuatToString(lua_State* L) {
     const haylen::math::DualQuat& value = lua::Userdata::check<haylen::math::DualQuat>(L, 1);
     const haylen::math::Vec3 translation = value.getTranslation();
-    lua_pushfstring(L, "DualQuat((%f, %f, %f, %f), ", static_cast<double>(value.real.x), static_cast<double>(value.real.y), static_cast<double>(value.real.z), static_cast<double>(value.real.w));
-    lua_pushfstring(L, "(%f, %f, %f))", static_cast<double>(translation.x), static_cast<double>(translation.y), static_cast<double>(translation.z));
+    lua_pushfstring(L, "DualQuat((%f, %f, %f, %f), ", NumberText::plain(value.real.x), NumberText::plain(value.real.y), NumberText::plain(value.real.z), NumberText::plain(value.real.w));
+    lua_pushfstring(L, "(%f, %f, %f))", NumberText::plain(translation.x), NumberText::plain(translation.y), NumberText::plain(translation.z));
     lua_concat(L, 2);
     return 1;
 }

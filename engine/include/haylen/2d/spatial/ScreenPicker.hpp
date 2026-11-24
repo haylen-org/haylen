@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "haylen/2d/graphics/Camera.hpp"
-#include "haylen/math/Ray.hpp"
+#include "haylen/math/Ray2.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -20,8 +20,8 @@ class ScreenPicker final {
     }
 
     // Returns the ray from the world point at the center of the view to the world point under the screen point, for aiming from the view.
-    [[nodiscard]] math::Ray toRay(math::Vec2 point) const noexcept {
-        return math::Ray::between(toWorld(camera.getViewRect(screen).getCenter()), toWorld(point));
+    [[nodiscard]] math::Ray2 toRay(math::Vec2 point) const noexcept {
+        return math::Ray2::between(toWorld(camera.getViewRect(screen).getCenter()), toWorld(point));
     }
 
     // Fills `ids` with the entries of a spatial structure whose bounds contain the world point under the screen point.

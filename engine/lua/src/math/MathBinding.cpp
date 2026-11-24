@@ -16,7 +16,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/math/EasingCurve.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/PoissonDisk.hpp"
 #include "math/ChoiceBinding.hpp"
@@ -519,36 +519,36 @@ bool MathBinding::approximatelyValue(float lhs, float rhs, std::optional<float> 
 
 int MathBinding::circleIntersects(lua_State* L) {
     const auto circle = lua::Stack::read<haylen::math::Circle>(L, 1);
-    lua::Stack::push(L, lua::Stack::is<haylen::math::Circle>(L, 2) ? haylen::math::Geometry::intersects(circle, lua::Stack::read<haylen::math::Circle>(L, 2)) : haylen::math::Geometry::intersects(circle, lua::Stack::read<haylen::math::Rect>(L, 2)));
+    lua::Stack::push(L, lua::Stack::is<haylen::math::Circle>(L, 2) ? haylen::math::Geometry2::intersects(circle, lua::Stack::read<haylen::math::Circle>(L, 2)) : haylen::math::Geometry2::intersects(circle, lua::Stack::read<haylen::math::Rect>(L, 2)));
     return 1;
 }
 
 haylen::math::Rect MathBinding::pointBounds(std::vector<haylen::math::Vec2> points) {
-    return haylen::math::Geometry::bounds(points);
+    return haylen::math::Geometry2::bounds(points);
 }
 
 bool MathBinding::polygonContains(std::vector<haylen::math::Vec2> polygon, haylen::math::Vec2 point) {
-    return haylen::math::Geometry::contains(polygon, point);
+    return haylen::math::Geometry2::contains(polygon, point);
 }
 
 float MathBinding::polygonSignedArea(std::vector<haylen::math::Vec2> polygon) {
-    return haylen::math::Geometry::signedArea(polygon);
+    return haylen::math::Geometry2::signedArea(polygon);
 }
 
 haylen::math::Vec2 MathBinding::polygonCentroid(std::vector<haylen::math::Vec2> polygon) {
-    return haylen::math::Geometry::centroid(polygon);
+    return haylen::math::Geometry2::centroid(polygon);
 }
 
 bool MathBinding::polygonConvex(std::vector<haylen::math::Vec2> polygon) {
-    return haylen::math::Geometry::isConvex(polygon);
+    return haylen::math::Geometry2::isConvex(polygon);
 }
 
 std::vector<haylen::math::Vec2> MathBinding::hull(std::vector<haylen::math::Vec2> points) {
-    return haylen::math::Geometry::convexHull(points);
+    return haylen::math::Geometry2::convexHull(points);
 }
 
 int MathBinding::triangulatePolygon(lua_State* L) {
-    const std::vector<std::uint32_t> indices = haylen::math::Geometry::triangulate(PolygonBinding::readShape(L, 1));
+    const std::vector<std::uint32_t> indices = haylen::math::Geometry2::triangulate(PolygonBinding::readShape(L, 1));
     lua_createtable(L, static_cast<int>(indices.size()), 0);
     for (std::size_t index = 0; index < indices.size(); ++index) {
         lua_pushinteger(L, static_cast<lua_Integer>(indices[index] + 1));
@@ -648,7 +648,7 @@ void MathBinding::installClasses(lua_State* L) {
 
 int MathBinding::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"vec2", &vec2New}, {"fromAngle", &lua::Binding::function<&vec2FromAngle>}, {"rect", &rectNew}, {"fromMinMax", &lua::Binding::function<&haylen::math::Rect::fromMinMax>}, {"fromCenter", &lua::Binding::function<&haylen::math::Rect::fromCenter>}, {"color", &lua::Binding::native<&colorNew>}, {"white", &lua::Binding::function<&haylen::math::Color::white>}, {"black", &lua::Binding::function<&haylen::math::Color::black>}, {"transparent", &lua::Binding::function<&haylen::math::Color::transparent>}, {"fromRgba8", &colorFromRgba8}, {"fromHex", &colorFromHex}, {"fromHsv", &lua::Binding::function<&colorFromHsv>}, {"contrast", &lua::Binding::function<&haylen::math::Color::contrast>}, {"transform2d", &lua::Binding::function<&transformCompose>}, {"identity", &lua::Binding::function<&haylen::math::Transform2D::identity>}, {"translation", &lua::Binding::function<&haylen::math::Transform2D::translation>}, {"rotation", &lua::Binding::function<&haylen::math::Transform2D::rotation>}, {"scaling", &lua::Binding::function<&haylen::math::Transform2D::scaling>}, {"random", &randomNew}, {"noise", &noiseNew}, {"ease", &lua::Binding::function<&ease>}, {"clamp", &clampValue}, {"lerp", &lua::Binding::function<&haylen::math::Math::lerp>}, {"inverseLerp", &lua::Binding::function<&haylen::math::Math::inverseLerp>}, {"remap", &lua::Binding::function<&haylen::math::Math::remap>}, {"smoothstep", &lua::Binding::function<&haylen::math::Math::smoothstep>}, {"moveToward", &lua::Binding::function<&haylen::math::Math::moveToward>}, {"wrapAngle", &lua::Binding::function<&haylen::math::Math::wrapAngle>}, {"dampFactor", &lua::Binding::function<&haylen::math::Math::dampFactor>}, {"radians", &lua::Binding::function<&haylen::math::Math::radians>}, {"degrees", &lua::Binding::function<&haylen::math::Math::degrees>}, {"approximately", &lua::Binding::function<&approximatelyValue>}, {"sign", &lua::Binding::function<&haylen::math::Math::sign>}, {"saturate", &lua::Binding::function<&haylen::math::Math::saturate>}, {"intersects", &circleIntersects}, {"intersection", &lua::Binding::function<&haylen::math::Geometry::intersection>}, {"closestPoint", &lua::Binding::function<&haylen::math::Geometry::closestPoint>}, {"distanceToSegment", &lua::Binding::function<&haylen::math::Geometry::distanceToSegment>}, {"bounds", &lua::Binding::function<&pointBounds>}, {"polygonContains", &lua::Binding::function<&polygonContains>}, {"polygonSignedArea", &lua::Binding::function<&polygonSignedArea>}, {"polygonCentroid", &lua::Binding::function<&polygonCentroid>}, {"polygonConvex", &lua::Binding::function<&polygonConvex>}, {"convexHull", &lua::Binding::function<&hull>}, {"triangulate", &lua::Binding::native<&triangulatePolygon>}, {"poissonDisk", &lua::Binding::native<&poissonDisk>}, {nullptr, nullptr},
+        {"vec2", &vec2New}, {"fromAngle", &lua::Binding::function<&vec2FromAngle>}, {"rect", &rectNew}, {"fromMinMax", &lua::Binding::function<&haylen::math::Rect::fromMinMax>}, {"fromCenter", &lua::Binding::function<&haylen::math::Rect::fromCenter>}, {"color", &lua::Binding::native<&colorNew>}, {"white", &lua::Binding::function<&haylen::math::Color::white>}, {"black", &lua::Binding::function<&haylen::math::Color::black>}, {"transparent", &lua::Binding::function<&haylen::math::Color::transparent>}, {"fromRgba8", &colorFromRgba8}, {"fromHex", &colorFromHex}, {"fromHsv", &lua::Binding::function<&colorFromHsv>}, {"contrast", &lua::Binding::function<&haylen::math::Color::contrast>}, {"transform2d", &lua::Binding::function<&transformCompose>}, {"identity", &lua::Binding::function<&haylen::math::Transform2D::identity>}, {"translation", &lua::Binding::function<&haylen::math::Transform2D::translation>}, {"rotation", &lua::Binding::function<&haylen::math::Transform2D::rotation>}, {"scaling", &lua::Binding::function<&haylen::math::Transform2D::scaling>}, {"random", &randomNew}, {"noise", &noiseNew}, {"ease", &lua::Binding::function<&ease>}, {"clamp", &clampValue}, {"lerp", &lua::Binding::function<&haylen::math::Math::lerp>}, {"inverseLerp", &lua::Binding::function<&haylen::math::Math::inverseLerp>}, {"remap", &lua::Binding::function<&haylen::math::Math::remap>}, {"smoothstep", &lua::Binding::function<&haylen::math::Math::smoothstep>}, {"moveToward", &lua::Binding::function<&haylen::math::Math::moveToward>}, {"wrapAngle", &lua::Binding::function<&haylen::math::Math::wrapAngle>}, {"dampFactor", &lua::Binding::function<&haylen::math::Math::dampFactor>}, {"radians", &lua::Binding::function<&haylen::math::Math::radians>}, {"degrees", &lua::Binding::function<&haylen::math::Math::degrees>}, {"approximately", &lua::Binding::function<&approximatelyValue>}, {"sign", &lua::Binding::function<&haylen::math::Math::sign>}, {"saturate", &lua::Binding::function<&haylen::math::Math::saturate>}, {"intersects", &circleIntersects}, {"intersection", &lua::Binding::function<&haylen::math::Geometry2::intersection>}, {"closestPoint", &lua::Binding::function<&haylen::math::Geometry2::closestPoint>}, {"distanceToSegment", &lua::Binding::function<&haylen::math::Geometry2::distanceToSegment>}, {"bounds", &lua::Binding::function<&pointBounds>}, {"polygonContains", &lua::Binding::function<&polygonContains>}, {"polygonSignedArea", &lua::Binding::function<&polygonSignedArea>}, {"polygonCentroid", &lua::Binding::function<&polygonCentroid>}, {"polygonConvex", &lua::Binding::function<&polygonConvex>}, {"convexHull", &lua::Binding::function<&hull>}, {"triangulate", &lua::Binding::native<&triangulatePolygon>}, {"poissonDisk", &lua::Binding::native<&poissonDisk>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     VectorBinding::addFunctions(L);

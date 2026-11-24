@@ -11,7 +11,7 @@
 #include "haylen/2d/particles/System.hpp"
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/core/JobSystem.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/text/Font.hpp"
 
 namespace haylen::nodes2d {
@@ -28,7 +28,7 @@ NodeTree::Placement NodeTree::placementOf(const math::Transform2D& transform) no
 
 math::Rect NodeTree::transformBounds(const math::Transform2D& transform, const math::Rect& area) noexcept {
     const std::array<math::Vec2, 4> corners{transform.apply(area.getMin()), transform.apply(math::Vec2{area.getRight(), area.y}), transform.apply(area.getMax()), transform.apply(math::Vec2{area.x, area.getBottom()})};
-    return math::Geometry::bounds(corners);
+    return math::Geometry2::bounds(corners);
 }
 
 bool NodeTree::isParticles(const NodeContent& content) noexcept {

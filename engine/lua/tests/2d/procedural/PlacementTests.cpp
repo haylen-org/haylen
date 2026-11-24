@@ -10,10 +10,10 @@
 #include <vector>
 
 #include "haylen/2d/procedural/Placement.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Random.hpp"
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Segment2.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/LuaFixture.hpp"
 
@@ -46,13 +46,13 @@ class PlacementTest : public ::testing::Test {
     [[nodiscard]] static bool overlaps(const std::vector<haylen::math::Vec2>& lhs, const std::vector<haylen::math::Vec2>& rhs) {
         for (std::size_t first = 0; first < lhs.size(); ++first) {
             for (std::size_t second = 0; second < rhs.size(); ++second) {
-                if (haylen::math::Geometry::intersection(haylen::math::Segment{lhs[first], lhs[(first + 1) % lhs.size()]}, haylen::math::Segment{rhs[second], rhs[(second + 1) % rhs.size()]})) {
+                if (haylen::math::Geometry2::intersection(haylen::math::Segment2{lhs[first], lhs[(first + 1) % lhs.size()]}, haylen::math::Segment2{rhs[second], rhs[(second + 1) % rhs.size()]})) {
                     return true;
                 }
             }
         }
 
-        return haylen::math::Geometry::contains(lhs, rhs.front()) || haylen::math::Geometry::contains(rhs, lhs.front());
+        return haylen::math::Geometry2::contains(lhs, rhs.front()) || haylen::math::Geometry2::contains(rhs, lhs.front());
     }
 };
 

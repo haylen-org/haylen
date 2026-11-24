@@ -3,6 +3,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Table.hpp"
+#include "math/NumberText.hpp"
 
 namespace haylen::lua::math {
 
@@ -165,7 +166,7 @@ int MatrixBinding::mat3Unpack(lua_State* L) {
 int MatrixBinding::mat3ToString(lua_State* L) {
     const haylen::math::Mat3& self = lua::Userdata::check<haylen::math::Mat3>(L, 1);
     const std::array<float, 9>& v = self.values;
-    lua_pushfstring(L, "Mat3((%f, %f, %f), (%f, %f, %f), (%f, %f, %f))", static_cast<double>(v[0]), static_cast<double>(v[1]), static_cast<double>(v[2]), static_cast<double>(v[3]), static_cast<double>(v[4]), static_cast<double>(v[5]), static_cast<double>(v[6]), static_cast<double>(v[7]), static_cast<double>(v[8]));
+    lua_pushfstring(L, "Mat3((%f, %f, %f), (%f, %f, %f), (%f, %f, %f))", NumberText::plain(v[0]), NumberText::plain(v[1]), NumberText::plain(v[2]), NumberText::plain(v[3]), NumberText::plain(v[4]), NumberText::plain(v[5]), NumberText::plain(v[6]), NumberText::plain(v[7]), NumberText::plain(v[8]));
     return 1;
 }
 
@@ -226,8 +227,8 @@ int MatrixBinding::mat4Unpack(lua_State* L) {
 int MatrixBinding::mat4ToString(lua_State* L) {
     const haylen::math::Mat4& self = lua::Userdata::check<haylen::math::Mat4>(L, 1);
     const std::array<float, 16>& v = self.values;
-    lua_pushfstring(L, "Mat4((%f, %f, %f, %f), (%f, %f, %f, %f), ", static_cast<double>(v[0]), static_cast<double>(v[1]), static_cast<double>(v[2]), static_cast<double>(v[3]), static_cast<double>(v[4]), static_cast<double>(v[5]), static_cast<double>(v[6]), static_cast<double>(v[7]));
-    lua_pushfstring(L, "(%f, %f, %f, %f), (%f, %f, %f, %f))", static_cast<double>(v[8]), static_cast<double>(v[9]), static_cast<double>(v[10]), static_cast<double>(v[11]), static_cast<double>(v[12]), static_cast<double>(v[13]), static_cast<double>(v[14]), static_cast<double>(v[15]));
+    lua_pushfstring(L, "Mat4((%f, %f, %f, %f), (%f, %f, %f, %f), ", NumberText::plain(v[0]), NumberText::plain(v[1]), NumberText::plain(v[2]), NumberText::plain(v[3]), NumberText::plain(v[4]), NumberText::plain(v[5]), NumberText::plain(v[6]), NumberText::plain(v[7]));
+    lua_pushfstring(L, "(%f, %f, %f, %f), (%f, %f, %f, %f))", NumberText::plain(v[8]), NumberText::plain(v[9]), NumberText::plain(v[10]), NumberText::plain(v[11]), NumberText::plain(v[12]), NumberText::plain(v[13]), NumberText::plain(v[14]), NumberText::plain(v[15]));
     lua_concat(L, 2);
     return 1;
 }

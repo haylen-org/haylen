@@ -9,10 +9,10 @@
 #include <vector>
 
 #include "haylen/math/Circle.hpp"
-#include "haylen/math/Ray.hpp"
-#include "haylen/math/RayHit.hpp"
+#include "haylen/math/Ray2.hpp"
+#include "haylen/math/RayHit2.hpp"
 #include "haylen/math/Rect.hpp"
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Segment2.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::math {
@@ -27,30 +27,30 @@ class Raycast final {
     static constexpr float kSurfaceOffset = 1e-3F;
 
     // Returns the distances along the ray where it enters and leaves the rectangle, limited to the ray, or nothing when the ray misses the rectangle.
-    [[nodiscard]] static std::optional<std::array<float, 2>> clip(const Ray& ray, const Rect& area) noexcept;
+    [[nodiscard]] static std::optional<std::array<float, 2>> clip(const Ray2& ray, const Rect& area) noexcept;
 
-    [[nodiscard]] static std::optional<RayHit> segment(const Ray& ray, const Segment& target) noexcept;
-    [[nodiscard]] static std::optional<RayHit> rect(const Ray& ray, const Rect& target) noexcept;
-    [[nodiscard]] static std::optional<RayHit> circle(const Ray& ray, const Circle& target) noexcept;
+    [[nodiscard]] static std::optional<RayHit2> segment(const Ray2& ray, const Segment2& target) noexcept;
+    [[nodiscard]] static std::optional<RayHit2> rect(const Ray2& ray, const Rect& target) noexcept;
+    [[nodiscard]] static std::optional<RayHit2> circle(const Ray2& ray, const Circle& target) noexcept;
 
     // The polygon is simple and in either winding. The hit index is the edge that starts at that point index.
-    [[nodiscard]] static std::optional<RayHit> polygon(const Ray& ray, std::span<const Vec2> points) noexcept;
+    [[nodiscard]] static std::optional<RayHit2> polygon(const Ray2& ray, std::span<const Vec2> points) noexcept;
 
     // Casts against the segments between consecutive points, plus the closing segment of a loop. The hit index is the first point of the segment.
-    [[nodiscard]] static std::optional<RayHit> chain(const Ray& ray, std::span<const Vec2> points, bool loop) noexcept;
+    [[nodiscard]] static std::optional<RayHit2> chain(const Ray2& ray, std::span<const Vec2> points, bool loop) noexcept;
 
     // Returns the closest hit on any of the segments, whose index is the position of the segment in the list.
-    [[nodiscard]] static std::optional<RayHit> segments(const Ray& ray, std::span<const Segment> targets) noexcept;
+    [[nodiscard]] static std::optional<RayHit2> segments(const Ray2& ray, std::span<const Segment2> targets) noexcept;
 
     // Fills `hits` with every segment the ray crosses, sorted by distance and then by index, keeping at most `limit` hits. A limit of zero keeps them all.
-    static void segmentsAll(const Ray& ray, std::span<const Segment> targets, std::size_t limit, std::vector<RayHit>& hits);
+    static void segmentsAll(const Ray2& ray, std::span<const Segment2> targets, std::size_t limit, std::vector<RayHit2>& hits);
 
     [[nodiscard]] static Vec2 reflect(Vec2 direction, Vec2 normal) noexcept {
         return direction - normal * (2.0F * Vec2::dot(direction, normal));
     }
 
-    // Follows a ray that bounces off every surface it hits, like a laser between mirrors, for at most `bounces` reflections. The function `cast` takes a `Ray` and returns an optional hit with `point`, `normal` and `distance` members. The list `hits` receives every bounce point in order, and the returned ray is the last leg of the path, whose end is where the path stops. A hit with a zero normal stops the path.
-    template <typename Hit, typename Cast> static Ray bounce(Ray ray, int bounces, Cast&& cast, std::vector<Hit>& hits) {
+    // Follows a ray that bounces off every surface it hits, like a laser between mirrors, for at most `bounces` reflections. The function `cast` takes a `Ray2` and returns an optional hit with `point`, `normal` and `distance` members. The list `hits` receives every bounce point in order, and the returned ray is the last leg of the path, whose end is where the path stops. A hit with a zero normal stops the path.
+    template <typename Hit, typename Cast> static Ray2 bounce(Ray2 ray, int bounces, Cast&& cast, std::vector<Hit>& hits) {
         if (bounces < 0 || bounces > kMaxBounces) {
             throw std::invalid_argument("A bouncing ray takes from 0 to " + std::to_string(kMaxBounces) + " bounces.");
         }
@@ -82,7 +82,7 @@ class Raycast final {
         const float step = count > 1 ? spread / static_cast<float>(count - 1) : 0.0F;
         const float first = count > 1 ? angle - spread * 0.5F : angle;
         for (std::size_t index = 0; index < count; ++index) {
-            results.push_back(cast(Ray::fromAngle(origin, first + step * static_cast<float>(index), length)));
+            results.push_back(cast(Ray2::fromAngle(origin, first + step * static_cast<float>(index), length)));
         }
     }
 
@@ -91,7 +91,7 @@ class Raycast final {
     [[nodiscard]] static Vec2 facingNormal(Vec2 edge, Vec2 direction) noexcept;
 
     // Returns the distance along the ray where it crosses the segment from `start` to `end`, including both ends.
-    [[nodiscard]] static std::optional<float> crossing(const Ray& ray, Vec2 start, Vec2 end) noexcept;
+    [[nodiscard]] static std::optional<float> crossing(const Ray2& ray, Vec2 start, Vec2 end) noexcept;
 };
 
 } // namespace haylen::math

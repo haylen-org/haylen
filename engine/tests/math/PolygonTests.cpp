@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
@@ -34,7 +34,7 @@ class PolygonTest : public ::testing::Test {
     static float area(const std::vector<Polygon::Outline>& shape) {
         float total = 0.0F;
         for (const Polygon::Outline& outline : shape) {
-            total += Geometry::signedArea(outline);
+            total += Geometry2::signedArea(outline);
         }
 
         return total;
@@ -58,7 +58,7 @@ TEST_F(PolygonTest, ResultsWindOuterOutlinesPositiveAndHolesNegative) {
 
     const std::vector<Polygon::Outline> ring = Polygon::subtract(outer, inner);
     ASSERT_EQ(ring.size(), 2U);
-    EXPECT_EQ(std::count_if(ring.begin(), ring.end(), [](const Polygon::Outline& outline) { return Geometry::signedArea(outline) > 0.0F; }), 1);
+    EXPECT_EQ(std::count_if(ring.begin(), ring.end(), [](const Polygon::Outline& outline) { return Geometry2::signedArea(outline) > 0.0F; }), 1);
     EXPECT_NEAR(area(ring), 800.0F, 1e-3F);
 
     // A clockwise input fills the same area as a counter-clockwise one.
@@ -101,7 +101,7 @@ TEST_F(PolygonTest, SimplifyDropsPointsWithinTheTolerance) {
     dense.push_back({0.0F, 40.0F});
     const Polygon::Outline corners = Polygon::simplify(dense, 0.5F);
     EXPECT_EQ(corners.size(), 4U);
-    EXPECT_NEAR(std::fabs(Geometry::signedArea(corners)), 1580.0F, 1e-3F);
+    EXPECT_NEAR(std::fabs(Geometry2::signedArea(corners)), 1580.0F, 1e-3F);
 
     // An outline thinner than the tolerance still keeps three points, even when all its points are the same.
     EXPECT_EQ(Polygon::simplify(std::vector<Vec2>{{0.0F, 0.0F}, {10.0F, 0.1F}, {20.0F, 0.0F}, {10.0F, -0.1F}}, 1.0F).size(), 3U);
@@ -119,10 +119,10 @@ TEST_F(PolygonTest, DecompositionCoversTheShapeWithConvexPieces) {
     ASSERT_FALSE(pieces.empty());
     float total = 0.0F;
     for (const Polygon::Outline& piece : pieces) {
-        EXPECT_TRUE(Geometry::isConvex(piece));
+        EXPECT_TRUE(Geometry2::isConvex(piece));
         EXPECT_LE(piece.size(), 8U);
-        EXPECT_GT(Geometry::signedArea(piece), 0.0F);
-        total += Geometry::signedArea(piece);
+        EXPECT_GT(Geometry2::signedArea(piece), 0.0F);
+        total += Geometry2::signedArea(piece);
     }
 
     EXPECT_NEAR(total, Polygon::getArea(shape), 0.05F);
@@ -144,10 +144,10 @@ TEST(MarchingSquaresTest, TracesClosedOutlinesAroundAField) {
 
     const std::vector<std::vector<Vec2>> outlines = MarchingSquares::trace(field, 7, 7, {.threshold = 0.5F, .spacing = 2.0F, .origin = {10.0F, 0.0F}});
     ASSERT_EQ(outlines.size(), 1U);
-    EXPECT_GT(Geometry::signedArea(outlines[0]), 0.0F);
+    EXPECT_GT(Geometry2::signedArea(outlines[0]), 0.0F);
     // The outline runs halfway between inside and outside samples, cutting the corners diagonally.
-    EXPECT_NEAR(Geometry::signedArea(outlines[0]), (9.0F - 0.5F) * 4.0F, 1e-3F);
-    const Rect bounds = Geometry::bounds(outlines[0]);
+    EXPECT_NEAR(Geometry2::signedArea(outlines[0]), (9.0F - 0.5F) * 4.0F, 1e-3F);
+    const Rect bounds = Geometry2::bounds(outlines[0]);
     EXPECT_FLOAT_EQ(bounds.x, 13.0F);
     EXPECT_FLOAT_EQ(bounds.width, 6.0F);
 
@@ -171,8 +171,8 @@ TEST(MarchingSquaresTest, TracesHolesAndSeparateIslandsOfABitmap) {
     int holes = 0;
     float total = 0.0F;
     for (const std::vector<Vec2>& outline : outlines) {
-        holes += Geometry::signedArea(outline) < 0.0F ? 1 : 0;
-        total += Geometry::signedArea(outline);
+        holes += Geometry2::signedArea(outline) < 0.0F ? 1 : 0;
+        total += Geometry2::signedArea(outline);
         // Consecutive points never repeat, and the last point does not repeat the first.
         for (std::size_t index = 0; index < outline.size(); ++index) {
             EXPECT_NE(outline[index], outline[(index + 1) % outline.size()]);
@@ -197,7 +197,7 @@ TEST(MarchingSquaresTest, ClosesAreasAlongTheEdgeOfTheGrid) {
     const std::vector<float> full(16, 1.0F);
     const std::vector<std::vector<Vec2>> outlines = MarchingSquares::trace(full, 4, 4);
     ASSERT_EQ(outlines.size(), 1U);
-    EXPECT_NEAR(Geometry::signedArea(outlines[0]), 9.0F, 1e-4F);
+    EXPECT_NEAR(Geometry2::signedArea(outlines[0]), 9.0F, 1e-4F);
     EXPECT_TRUE(MarchingSquares::trace(std::vector<float>(16, 0.0F), 4, 4).empty());
 }
 
@@ -256,7 +256,7 @@ TEST(SplineTest, FlattensWithinTheTolerance) {
     for (const Vec2 point : curve.sample(2000)) {
         float nearest = std::numeric_limits<float>::max();
         for (std::size_t index = 1; index < fine.size(); ++index) {
-            nearest = std::min(nearest, Geometry::distanceToSegment({fine[index - 1], fine[index]}, point));
+            nearest = std::min(nearest, Geometry2::distanceToSegment({fine[index - 1], fine[index]}, point));
         }
 
         EXPECT_LE(nearest, 0.3F);

@@ -115,6 +115,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   lua/TweenLuaTests.cpp
   lua/YieldTests.cpp
   math/ColorTransformTests.cpp
+  math/Geometry3LuaTests.cpp
   math/MatrixLuaTests.cpp
   math/ProceduralTests.cpp
   math/QuatLuaTests.cpp

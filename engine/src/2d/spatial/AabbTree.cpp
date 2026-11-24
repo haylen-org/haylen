@@ -287,7 +287,7 @@ void AabbTree::queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) con
     query({point.x, point.y, 0.0F, 0.0F}, ids);
 }
 
-void AabbTree::collectCrossed(std::int32_t node, const math::Ray& ray, std::size_t limit, std::vector<RayHit>& hits) const {
+void AabbTree::collectCrossed(std::int32_t node, const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const {
     const Node& current = at(node);
     const std::optional<std::array<float, 2>> travel = math::Raycast::clip(ray, current.box);
     if (!travel || EntryBounds::isSettled(hits, limit, (*travel)[0])) {
@@ -295,7 +295,7 @@ void AabbTree::collectCrossed(std::int32_t node, const math::Ray& ray, std::size
     }
 
     if (current.isLeaf()) {
-        if (const std::optional<math::RayHit> hit = math::Raycast::rect(ray, current.bounds)) {
+        if (const std::optional<math::RayHit2> hit = math::Raycast::rect(ray, current.bounds)) {
             EntryBounds::insertHit(hits, {.id = current.id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
         }
 
@@ -306,7 +306,7 @@ void AabbTree::collectCrossed(std::int32_t node, const math::Ray& ray, std::size
     collectCrossed(current.right, ray, limit, hits);
 }
 
-void AabbTree::raycast(const math::Ray& ray, std::size_t limit, std::vector<RayHit>& hits) const {
+void AabbTree::raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const {
     hits.clear();
     if (root >= 0) {
         collectCrossed(root, ray, limit, hits);

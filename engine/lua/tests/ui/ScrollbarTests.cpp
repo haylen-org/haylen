@@ -16,7 +16,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -92,7 +92,7 @@ class ScrollbarTest : public ::testing::Test, public test::LuaUiFixture {
         return getEngine().getRenderer2D().addCanvasOverlay([&top](haylen::graphics2d::Renderer& drawing) {
             drawing.visitDrawn([&top](const haylen::graphics2d::Renderer::Drawn& drawn) {
                 if (drawn.text) {
-                    top = haylen::math::Geometry::bounds(drawn.corners).y;
+                    top = haylen::math::Geometry2::bounds(drawn.corners).y;
                 }
             });
         });
@@ -709,7 +709,7 @@ TEST_F(ScrollbarTest, KeepsTheGapForBarsDrawnWithThemeImages) {
             }
 
             if (image != nullptr) {
-                image->push_back(haylen::math::Geometry::bounds(drawn.corners));
+                image->push_back(haylen::math::Geometry2::bounds(drawn.corners));
             }
         });
     });

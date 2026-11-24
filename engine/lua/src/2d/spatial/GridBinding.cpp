@@ -21,8 +21,8 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Ray.hpp"
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Segment2.hpp"
 #include "math/RaycastBinding.hpp"
 
 namespace haylen::lua {
@@ -161,7 +161,7 @@ haylen::math::Vec2 GridBinding::readCellSize(lua_State* L, int index) {
 // Casts over the solid cells of a grid with `raycastGrid(grid, from, to, cellSize)`, where the cell size is a number or a `{width, height}` pair.
 int GridBinding::raycastGrid(lua_State* L) {
     const haylen::spatial2d::CellGrid& grid = lua::Userdata::check<haylen::spatial2d::CellGrid>(L, 1);
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 2), lua::Stack::read<haylen::math::Vec2>(L, 3));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 2), lua::Stack::read<haylen::math::Vec2>(L, 3));
     const std::optional<haylen::spatial2d::GridRay::Hit> hit = haylen::spatial2d::GridRay::cast(ray, readCellSize(L, 4), grid);
     if (!hit) {
         lua_pushnil(L);
@@ -178,7 +178,7 @@ int GridBinding::raycastGrid(lua_State* L) {
 
 // Lists the cells that the ray from one point to another crosses with `traverseGrid(from, to, cellSize)`, in order, each as `{x, y, distance}` with the distance where the ray enters it.
 int GridBinding::traverseGrid(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
     std::vector<std::pair<haylen::spatial2d::Cell, float>> crossed;
     // clang-format off
     haylen::spatial2d::GridRay::traverse(ray, readCellSize(L, 3), [&crossed](haylen::spatial2d::Cell cell, float distance, haylen::math::Vec2) {
@@ -254,7 +254,7 @@ int GridBinding::fieldOfView(lua_State* L) {
 // Returns the outline of the area visible from a point with `visibilityPolygon(origin, walls, bounds)`, as a list of `Vec2`.
 int GridBinding::visibilityPolygon(lua_State* L) {
     haylen::spatial2d::VisibilityPolygon polygon;
-    lua::Stack::push(L, polygon.compute(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<std::vector<haylen::math::Segment>>(L, 2), lua::Stack::read<haylen::math::Rect>(L, 3)));
+    lua::Stack::push(L, polygon.compute(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<std::vector<haylen::math::Segment2>>(L, 2), lua::Stack::read<haylen::math::Rect>(L, 3)));
     return 1;
 }
 

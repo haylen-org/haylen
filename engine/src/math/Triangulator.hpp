@@ -18,7 +18,7 @@ class Triangulator final {
         Inside,
     };
 
-    // Triangulates the shape whose outlines are the runs of `counts` points that follow each other in `points`. The triangles index `points` and turn the way an outline with a positive `Geometry::signedArea` turns. An outline that crosses itself fills only what its ears reach.
+    // Triangulates the shape whose outlines are the runs of `counts` points that follow each other in `points`. The triangles index `points` and turn the way an outline with a positive `Geometry2::signedArea` turns. An outline that crosses itself fills only what its ears reach.
     void triangulate(std::span<const Vec2> points, std::span<const std::uint32_t> counts);
 
     [[nodiscard]] const std::vector<std::uint32_t>& getTriangles() const noexcept {

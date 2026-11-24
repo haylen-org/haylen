@@ -15,7 +15,7 @@ void GridRay::requireCellSize(math::Vec2 cellSize) {
     }
 }
 
-void GridRay::requireCastable(const math::Ray& ray, math::Vec2 cellSize) {
+void GridRay::requireCastable(const math::Ray2& ray, math::Vec2 cellSize) {
     requireCellSize(cellSize);
 
     if (!std::isfinite(ray.length)) {
@@ -31,17 +31,17 @@ void GridRay::requireCastable(const math::Ray& ray, math::Vec2 cellSize) {
     }
 }
 
-std::optional<GridRay::Hit> GridRay::cast(const math::Ray& ray, math::Vec2 cellSize, const CellGrid& grid) {
+std::optional<GridRay::Hit> GridRay::cast(const math::Ray2& ray, math::Vec2 cellSize, const CellGrid& grid) {
     requireCellSize(cellSize);
     const math::Rect area{0.0F, 0.0F, static_cast<float>(grid.getWidth()) * cellSize.x, static_cast<float>(grid.getHeight()) * cellSize.y};
-    const std::optional<math::RayHit> entry = math::Raycast::rect(ray, area);
+    const std::optional<math::RayHit2> entry = math::Raycast::rect(ray, area);
     const std::optional<std::array<float, 2>> travel = math::Raycast::clip(ray, area);
     if (!entry || !travel) {
         return std::nullopt;
     }
 
     // The ray only travels between the sides of the grid where it enters and leaves it.
-    const math::Ray inside{entry->point, ray.direction, (*travel)[1] - (*travel)[0]};
+    const math::Ray2 inside{entry->point, ray.direction, (*travel)[1] - (*travel)[0]};
     std::optional<Hit> hit = cast(inside, cellSize, [&grid](Cell cell) { return grid.contains(cell) && grid[cell] != 0; });
     if (!hit) {
         return std::nullopt;

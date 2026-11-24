@@ -17,7 +17,7 @@
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Transform2D.hpp"
 #include "support/AllocationTracker.hpp"

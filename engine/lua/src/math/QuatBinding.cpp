@@ -4,6 +4,7 @@
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "math/NumberText.hpp"
 
 namespace haylen::lua::math {
 
@@ -43,7 +44,7 @@ int QuatBinding::equal(lua_State* L) {
 
 int QuatBinding::toString(lua_State* L) {
     const haylen::math::Quat value = lua::Stack::read<haylen::math::Quat>(L, 1);
-    lua_pushfstring(L, "Quat(%f, %f, %f, %f)", static_cast<double>(value.x), static_cast<double>(value.y), static_cast<double>(value.z), static_cast<double>(value.w));
+    lua_pushfstring(L, "Quat(%f, %f, %f, %f)", NumberText::plain(value.x), NumberText::plain(value.y), NumberText::plain(value.z), NumberText::plain(value.w));
     return 1;
 }
 

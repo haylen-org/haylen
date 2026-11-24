@@ -21,7 +21,7 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Ray.hpp"
+#include "haylen/math/Ray2.hpp"
 #include "haylen/math/Raycast.hpp"
 
 namespace haylen::lua {
@@ -223,7 +223,7 @@ int WorldRaycastBinding::bounceRay(lua_State* L) {
     luaL_argcheck(L, bounces >= 0, 7, "the bounce count must not be negative");
 
     std::vector<haylen::physics2d::RaycastHit> hits;
-    const haylen::math::Ray last = haylen::physics2d::Raycaster(world).bounce({origin, direction, length}, bounces, readFilter(L, 8), hits);
+    const haylen::math::Ray2 last = haylen::physics2d::Raycaster(world).bounce({origin, direction, length}, bounces, readFilter(L, 8), hits);
     haylen::math::Vec2 legStart = origin;
     float traveled = 0.0F;
     lua_createtable(L, static_cast<int>(hits.size()), 0);
@@ -262,7 +262,7 @@ int WorldRaycastBinding::rayFan(lua_State* L) {
     // The fan hands each ray to the cast, which records it with its hit.
     std::vector<std::optional<haylen::physics2d::RaycastHit>> results;
     // clang-format off
-    haylen::math::Raycast::fan(origin, angle, spread, count, length, [&](const haylen::math::Ray& ray) {
+    haylen::math::Raycast::fan(origin, angle, spread, count, length, [&](const haylen::math::Ray2& ray) {
         std::optional<haylen::physics2d::RaycastHit> hit = caster.castRay(ray.origin, ray.getEnd(), filter);
         record(L, ray.origin, ray.getEnd(), hit);
         return hit;
@@ -408,7 +408,7 @@ int WorldRaycastBinding::batchSetRay(lua_State* L) {
 }
 
 int WorldRaycastBinding::batchRay(lua_State* L) {
-    const haylen::math::Segment& ray = lua::Userdata::check<haylen::physics2d::RayBatch>(L, 1).getRay(readBatchIndex(L, 2));
+    const haylen::math::Segment2& ray = lua::Userdata::check<haylen::physics2d::RayBatch>(L, 1).getRay(readBatchIndex(L, 2));
     lua::Stack::push(L, ray.start.x);
     lua::Stack::push(L, ray.start.y);
     lua::Stack::push(L, ray.end.x);

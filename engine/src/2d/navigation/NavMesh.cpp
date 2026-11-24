@@ -8,7 +8,7 @@
 #include <string>
 
 #include "2d/navigation/ConstrainedTriangulation.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Rect.hpp"
 
 namespace haylen::navigation2d {
@@ -95,7 +95,7 @@ void NavMesh::build() {
     ConstrainedTriangulation triangulation;
     // clang-format off
     triangulation.build(segments, [this](math::Vec2 point) {
-        return math::Geometry::contains(boundary, point) && std::ranges::none_of(obstacles, [point](const auto& obstacle) { return math::Geometry::contains(obstacle.second, point); });
+        return math::Geometry2::contains(boundary, point) && std::ranges::none_of(obstacles, [point](const auto& obstacle) { return math::Geometry2::contains(obstacle.second, point); });
     });
     // clang-format on
     vertices = triangulation.getVertices();
@@ -116,7 +116,7 @@ void NavMesh::build() {
         }
 
         const std::array<math::Vec2, 3> corners{vertexAt(current.vertices[0]), vertexAt(current.vertices[1]), vertexAt(current.vertices[2])};
-        triangleIndex.set(triangle, math::Geometry::bounds(corners));
+        triangleIndex.set(triangle, math::Geometry2::bounds(corners));
     }
 
     dirty = false;
@@ -175,8 +175,8 @@ std::optional<math::Vec2> NavMesh::getClosestPoint(math::Vec2 point) {
 
     std::optional<math::Vec2> closest;
     float closestDistance = std::numeric_limits<float>::infinity();
-    for (const math::Segment& wall : walls) {
-        const math::Vec2 candidate = math::Geometry::closestPoint(wall, point);
+    for (const math::Segment2& wall : walls) {
+        const math::Vec2 candidate = math::Geometry2::closestPoint(wall, point);
         const float distance = math::Vec2::distanceSquared(candidate, point);
         if (distance < closestDistance) {
             closestDistance = distance;
@@ -201,19 +201,19 @@ void NavMesh::gatherWalls(math::Vec2 point, float distance) {
 }
 
 bool NavMesh::hasRoom(math::Vec2 spot, float agentRadius) const noexcept {
-    return std::ranges::none_of(nearWalls, [&](const math::Segment& wall) { return math::Geometry::distanceToSegment(wall, spot) < agentRadius - kEdgeTolerance; });
+    return std::ranges::none_of(nearWalls, [&](const math::Segment2& wall) { return math::Geometry2::distanceToSegment(wall, spot) < agentRadius - kEdgeTolerance; });
 }
 
 bool NavMesh::canStep(math::Vec2 from, math::Vec2 to) const noexcept {
     // clang-format off
-    return std::ranges::none_of(nearWalls, [&](const math::Segment& wall) {
-        const std::optional<math::Vec2> crossing = math::Geometry::intersection({from, to}, wall);
+    return std::ranges::none_of(nearWalls, [&](const math::Segment2& wall) {
+        const std::optional<math::Vec2> crossing = math::Geometry2::intersection({from, to}, wall);
         return crossing && math::Vec2::distance(*crossing, from) > kEdgeTolerance;
     });
     // clang-format on
 }
 
-void NavMesh::addCrossings(const math::Segment& piece, math::Vec2 center, float radius, std::vector<math::Vec2>& crossings) {
+void NavMesh::addCrossings(const math::Segment2& piece, math::Vec2 center, float radius, std::vector<math::Vec2>& crossings) {
     const math::Vec2 direction = piece.end - piece.start;
     const float length = direction.getLength();
     if (length <= 0.0F) {
@@ -263,17 +263,17 @@ std::optional<math::Vec2> NavMesh::findRoom(math::Vec2 point, float agentRadius)
     offsets.clear();
     spots.clear();
 
-    for (const math::Segment& wall : nearWalls) {
+    for (const math::Segment2& wall : nearWalls) {
         const math::Vec2 normal = (wall.end - wall.start).getNormalized().getPerpendicular() * agentRadius;
         offsets.push_back({wall.start + normal, wall.end + normal});
     }
 
     for (std::size_t index = 0; index < offsets.size(); ++index) {
         const math::Vec2 corner = nearWalls[index].start;
-        spots.push_back(math::Geometry::closestPoint(offsets[index], point));
+        spots.push_back(math::Geometry2::closestPoint(offsets[index], point));
         spots.push_back(corner + (point - corner).getNormalized() * agentRadius);
         for (std::size_t other = index + 1; other < offsets.size(); ++other) {
-            if (const std::optional<math::Vec2> crossing = math::Geometry::intersection(offsets[index], offsets[other])) {
+            if (const std::optional<math::Vec2> crossing = math::Geometry2::intersection(offsets[index], offsets[other])) {
                 spots.push_back(*crossing);
             }
 

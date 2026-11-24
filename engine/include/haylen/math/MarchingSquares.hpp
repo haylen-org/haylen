@@ -8,7 +8,7 @@
 
 namespace haylen::math {
 
-// Traces the outlines of the areas of a sampled field that reach a threshold. Outlines are closed, outer outlines wind with a positive `Geometry::signedArea` and holes with a negative one, like the results of `Polygon`.
+// Traces the outlines of the areas of a sampled field that reach a threshold. Outlines are closed, outer outlines wind with a positive `Geometry2::signedArea` and holes with a negative one, like the results of `Polygon`.
 class MarchingSquares final {
   public:
     // Sample (x, y) lies at `origin + (x, y) * spacing`.

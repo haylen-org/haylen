@@ -2,6 +2,7 @@
 
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
+#include "math/NumberText.hpp"
 
 namespace haylen::lua::math {
 
@@ -34,13 +35,13 @@ int VectorBinding::newVec4(lua_State* L) {
 
 int VectorBinding::vec3ToString(lua_State* L) {
     const haylen::math::Vec3 value = lua::Stack::read<haylen::math::Vec3>(L, 1);
-    lua_pushfstring(L, "Vec3(%f, %f, %f)", static_cast<double>(value.x), static_cast<double>(value.y), static_cast<double>(value.z));
+    lua_pushfstring(L, "Vec3(%f, %f, %f)", NumberText::plain(value.x), NumberText::plain(value.y), NumberText::plain(value.z));
     return 1;
 }
 
 int VectorBinding::vec4ToString(lua_State* L) {
     const haylen::math::Vec4 value = lua::Stack::read<haylen::math::Vec4>(L, 1);
-    lua_pushfstring(L, "Vec4(%f, %f, %f, %f)", static_cast<double>(value.x), static_cast<double>(value.y), static_cast<double>(value.z), static_cast<double>(value.w));
+    lua_pushfstring(L, "Vec4(%f, %f, %f, %f)", NumberText::plain(value.x), NumberText::plain(value.y), NumberText::plain(value.z), NumberText::plain(value.w));
     return 1;
 }
 

@@ -374,11 +374,14 @@ set(HAYLEN_ENGINE_SOURCES
   src/localization/LocaleData.cpp
   src/localization/NumberFormat.cpp
   src/localization/PluralRules.cpp
+  src/math/Box3.cpp
   src/math/Color.cpp
   src/math/DualQuat.cpp
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
-  src/math/Geometry.cpp
+  src/math/Frustum.cpp
+  src/math/Geometry2.cpp
+  src/math/Geometry3.cpp
   src/math/HalfFloat.cpp
   src/math/HampelFilter.cpp
   src/math/KalmanFilter.cpp
@@ -389,6 +392,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/MedianFilter.cpp
   src/math/MovingAverage.cpp
   src/math/Noise2D.cpp
+  src/math/Obb.cpp
   src/math/PoissonDisk.cpp
   src/math/Polygon.cpp
   src/math/Quat.cpp
@@ -400,6 +404,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Spring.cpp
   src/math/Transform2D.cpp
   src/math/Transform3D.cpp
+  src/math/Triangle3.cpp
   src/math/Triangulator.cpp
   src/math/WeightedChoice.cpp
   src/net/SocketLink.cpp

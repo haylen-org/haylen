@@ -7,14 +7,14 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
-#include "haylen/math/Ray.hpp"
+#include "haylen/math/Ray2.hpp"
 #include "haylen/math/Raycast.hpp"
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Segment2.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::lua::math {
 
-void RaycastBinding::pushHit(lua_State* L, const haylen::math::RayHit& hit, float length) {
+void RaycastBinding::pushHit(lua_State* L, const haylen::math::RayHit2& hit, float length) {
     lua_createtable(L, 0, 7);
     lua::Stack::push(L, hit.point.x);
     lua_setfield(L, -2, "x");
@@ -30,12 +30,12 @@ void RaycastBinding::pushHit(lua_State* L, const haylen::math::RayHit& hit, floa
     lua_setfield(L, -2, "fraction");
 }
 
-void RaycastBinding::setIndex(lua_State* L, const haylen::math::RayHit& hit) {
+void RaycastBinding::setIndex(lua_State* L, const haylen::math::RayHit2& hit) {
     lua_pushinteger(L, static_cast<lua_Integer>(hit.index + 1));
     lua_setfield(L, -2, "index");
 }
 
-void RaycastBinding::pushResult(lua_State* L, const std::optional<haylen::math::RayHit>& hit, float length, bool indexed) {
+void RaycastBinding::pushResult(lua_State* L, const std::optional<haylen::math::RayHit2>& hit, float length, bool indexed) {
     if (!hit) {
         lua_pushnil(L);
         return;
@@ -49,49 +49,49 @@ void RaycastBinding::pushResult(lua_State* L, const std::optional<haylen::math::
 }
 
 int RaycastBinding::raycastSegment(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
-    pushResult(L, haylen::math::Raycast::segment(ray, lua::Stack::read<haylen::math::Segment>(L, 3)), ray.length, false);
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    pushResult(L, haylen::math::Raycast::segment(ray, lua::Stack::read<haylen::math::Segment2>(L, 3)), ray.length, false);
     return 1;
 }
 
 int RaycastBinding::raycastRect(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
     pushResult(L, haylen::math::Raycast::rect(ray, lua::Stack::read<haylen::math::Rect>(L, 3)), ray.length, false);
     return 1;
 }
 
 int RaycastBinding::raycastCircle(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
     pushResult(L, haylen::math::Raycast::circle(ray, lua::Stack::read<haylen::math::Circle>(L, 3)), ray.length, false);
     return 1;
 }
 
 int RaycastBinding::raycastPolygon(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
     pushResult(L, haylen::math::Raycast::polygon(ray, lua::Stack::read<std::vector<haylen::math::Vec2>>(L, 3)), ray.length, true);
     return 1;
 }
 
 // Casts against a polyline with `raycastChain(from, to, points[, loop])`, where a loop also joins the last point to the first.
 int RaycastBinding::raycastChain(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
     const bool loop = !lua_isnoneornil(L, 4) && lua::Stack::read<bool>(L, 4);
     pushResult(L, haylen::math::Raycast::chain(ray, lua::Stack::read<std::vector<haylen::math::Vec2>>(L, 3), loop), ray.length, true);
     return 1;
 }
 
 int RaycastBinding::raycastSegments(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
-    pushResult(L, haylen::math::Raycast::segments(ray, lua::Stack::read<std::vector<haylen::math::Segment>>(L, 3)), ray.length, true);
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    pushResult(L, haylen::math::Raycast::segments(ray, lua::Stack::read<std::vector<haylen::math::Segment2>>(L, 3)), ray.length, true);
     return 1;
 }
 
 // Returns every crossed segment with `raycastSegmentsAll(from, to, segments[, limit])`, sorted by distance and cut to the limit.
 int RaycastBinding::raycastSegmentsAll(lua_State* L) {
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 1), lua::Stack::read<haylen::math::Vec2>(L, 2));
     const auto limit = lua_isnoneornil(L, 4) ? std::size_t{0} : lua::Stack::read<std::size_t>(L, 4);
-    std::vector<haylen::math::RayHit> hits;
-    haylen::math::Raycast::segmentsAll(ray, lua::Stack::read<std::vector<haylen::math::Segment>>(L, 3), limit, hits);
+    std::vector<haylen::math::RayHit2> hits;
+    haylen::math::Raycast::segmentsAll(ray, lua::Stack::read<std::vector<haylen::math::Segment2>>(L, 3), limit, hits);
 
     lua_createtable(L, static_cast<int>(hits.size()), 0);
     for (std::size_t index = 0; index < hits.size(); ++index) {
@@ -111,16 +111,16 @@ int RaycastBinding::bounceRay(lua_State* L) {
     const auto length = lua::Stack::read<float>(L, 3);
     const auto bounces = lua::Stack::read<int>(L, 4);
     luaL_argcheck(L, bounces >= 0, 4, "the bounce count must not be negative");
-    const std::vector<haylen::math::Segment> walls = lua::Stack::read<std::vector<haylen::math::Segment>>(L, 5);
+    const std::vector<haylen::math::Segment2> walls = lua::Stack::read<std::vector<haylen::math::Segment2>>(L, 5);
 
-    std::vector<haylen::math::RayHit> hits;
-    const haylen::math::Ray last = haylen::math::Raycast::bounce(haylen::math::Ray{origin, direction, length}, bounces, [&walls](const haylen::math::Ray& ray) { return haylen::math::Raycast::segments(ray, walls); }, hits);
+    std::vector<haylen::math::RayHit2> hits;
+    const haylen::math::Ray2 last = haylen::math::Raycast::bounce(haylen::math::Ray2{origin, direction, length}, bounces, [&walls](const haylen::math::Ray2& ray) { return haylen::math::Raycast::segments(ray, walls); }, hits);
 
     lua_createtable(L, static_cast<int>(hits.size()), 0);
     float traveled = 0.0F;
     for (std::size_t index = 0; index < hits.size(); ++index) {
         traveled += hits[index].distance;
-        haylen::math::RayHit along = hits[index];
+        haylen::math::RayHit2 along = hits[index];
         along.distance = traveled;
         pushHit(L, along, length);
         setIndex(L, along);
@@ -140,10 +140,10 @@ int RaycastBinding::rayFan(lua_State* L) {
     const auto spread = lua::Stack::read<float>(L, 3);
     const auto count = lua::Stack::read<std::size_t>(L, 4);
     const auto length = lua::Stack::read<float>(L, 5);
-    const std::vector<haylen::math::Segment> walls = lua::Stack::read<std::vector<haylen::math::Segment>>(L, 6);
+    const std::vector<haylen::math::Segment2> walls = lua::Stack::read<std::vector<haylen::math::Segment2>>(L, 6);
 
-    std::vector<std::optional<haylen::math::RayHit>> results;
-    haylen::math::Raycast::fan(origin, angle, spread, count, length, [&walls](const haylen::math::Ray& ray) { return haylen::math::Raycast::segments(ray, walls); }, results);
+    std::vector<std::optional<haylen::math::RayHit2>> results;
+    haylen::math::Raycast::fan(origin, angle, spread, count, length, [&walls](const haylen::math::Ray2& ray) { return haylen::math::Raycast::segments(ray, walls); }, results);
 
     lua_createtable(L, static_cast<int>(results.size()), 0);
     for (std::size_t index = 0; index < results.size(); ++index) {

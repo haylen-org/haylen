@@ -5,9 +5,9 @@
 #include <cmath>
 #include <limits>
 
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Segment2.hpp"
 
 namespace haylen::lighting2d {
 
@@ -115,7 +115,7 @@ void ShadowMap::castRadial(const Light& light, std::span<const Segment> segments
     for (const Segment& segment : segments) {
         const math::Vec2 from = segment.from - light.position;
         const math::Vec2 to = segment.to - light.position;
-        if (!casts(light, segment) || isEdgeOn(from, to) || math::Geometry::distanceToSegment(math::Segment{from, to}, math::Vec2{}) > range) {
+        if (!casts(light, segment) || isEdgeOn(from, to) || math::Geometry2::distanceToSegment(math::Segment2{from, to}, math::Vec2{}) > range) {
             continue;
         }
 

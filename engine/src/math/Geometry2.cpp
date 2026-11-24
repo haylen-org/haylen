@@ -1,4 +1,4 @@
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,16 +10,16 @@
 
 namespace haylen::math {
 
-bool Geometry::intersects(const Circle& lhs, const Circle& rhs) noexcept {
+bool Geometry2::intersects(const Circle& lhs, const Circle& rhs) noexcept {
     const float radius = lhs.radius + rhs.radius;
     return Vec2::distanceSquared(lhs.center, rhs.center) <= radius * radius;
 }
 
-bool Geometry::intersects(const Circle& circle, const Rect& rect) noexcept {
+bool Geometry2::intersects(const Circle& circle, const Rect& rect) noexcept {
     return Vec2::distanceSquared(rect.clamp(circle.center), circle.center) <= circle.radius * circle.radius;
 }
 
-std::optional<Vec2> Geometry::intersection(const Segment& lhs, const Segment& rhs) noexcept {
+std::optional<Vec2> Geometry2::intersection(const Segment2& lhs, const Segment2& rhs) noexcept {
     const Vec2 r = lhs.end - lhs.start;
     const Vec2 s = rhs.end - rhs.start;
     const float denominator = Vec2::cross(r, s);
@@ -37,7 +37,7 @@ std::optional<Vec2> Geometry::intersection(const Segment& lhs, const Segment& rh
     return lhs.start + r * t;
 }
 
-Vec2 Geometry::closestPoint(const Segment& segment, Vec2 point) noexcept {
+Vec2 Geometry2::closestPoint(const Segment2& segment, Vec2 point) noexcept {
     const Vec2 direction = segment.end - segment.start;
     const float lengthSquared = direction.getLengthSquared();
     if (lengthSquared <= 0.0F) {
@@ -48,11 +48,11 @@ Vec2 Geometry::closestPoint(const Segment& segment, Vec2 point) noexcept {
     return segment.start + direction * t;
 }
 
-float Geometry::distanceToSegment(const Segment& segment, Vec2 point) noexcept {
+float Geometry2::distanceToSegment(const Segment2& segment, Vec2 point) noexcept {
     return Vec2::distance(closestPoint(segment, point), point);
 }
 
-bool Geometry::contains(std::span<const Vec2> polygon, Vec2 point) noexcept {
+bool Geometry2::contains(std::span<const Vec2> polygon, Vec2 point) noexcept {
     bool inside = false;
     for (std::size_t current = 0, previous = polygon.size() - 1; current < polygon.size(); previous = current++) {
         const Vec2 a = polygon[current];
@@ -66,7 +66,7 @@ bool Geometry::contains(std::span<const Vec2> polygon, Vec2 point) noexcept {
     return inside;
 }
 
-float Geometry::signedArea(std::span<const Vec2> polygon) noexcept {
+float Geometry2::signedArea(std::span<const Vec2> polygon) noexcept {
     float area = 0.0F;
     for (std::size_t current = 0, previous = polygon.size() - 1; current < polygon.size(); previous = current++) {
         area += Vec2::cross(polygon[previous], polygon[current]);
@@ -75,7 +75,7 @@ float Geometry::signedArea(std::span<const Vec2> polygon) noexcept {
     return area * 0.5F;
 }
 
-Vec2 Geometry::centroid(std::span<const Vec2> polygon) noexcept {
+Vec2 Geometry2::centroid(std::span<const Vec2> polygon) noexcept {
     const float area = signedArea(polygon);
     if (std::fabs(area) <= 1e-9F) {
         const Vec2 sum = std::accumulate(polygon.begin(), polygon.end(), Vec2{});
@@ -91,7 +91,7 @@ Vec2 Geometry::centroid(std::span<const Vec2> polygon) noexcept {
     return center / (6.0F * area);
 }
 
-bool Geometry::isConvex(std::span<const Vec2> polygon) noexcept {
+bool Geometry2::isConvex(std::span<const Vec2> polygon) noexcept {
     if (polygon.size() < 3) {
         return false;
     }
@@ -119,7 +119,7 @@ bool Geometry::isConvex(std::span<const Vec2> polygon) noexcept {
     return winding != 0.0F && std::fabs(turning) < Math::kTau * 1.5F;
 }
 
-Rect Geometry::bounds(std::span<const Vec2> points) noexcept {
+Rect Geometry2::bounds(std::span<const Vec2> points) noexcept {
     if (points.empty()) {
         return {};
     }
@@ -134,7 +134,7 @@ Rect Geometry::bounds(std::span<const Vec2> points) noexcept {
     return Rect::fromMinMax(minimum, maximum);
 }
 
-std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
+std::vector<Vec2> Geometry2::convexHull(std::span<const Vec2> points) {
     // Points with a NaN coordinate have no place in the order, so they are left out.
     std::vector<Vec2> sorted(points.begin(), points.end());
     std::erase_if(sorted, [](Vec2 point) { return std::isnan(point.x) || std::isnan(point.y); });
@@ -173,14 +173,14 @@ std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
     return hull;
 }
 
-std::vector<std::uint32_t> Geometry::triangulate(std::span<const Vec2> polygon) {
+std::vector<std::uint32_t> Geometry2::triangulate(std::span<const Vec2> polygon) {
     Triangulator triangulator;
     const std::array<std::uint32_t, 1> counts{static_cast<std::uint32_t>(polygon.size())};
     triangulator.triangulate(polygon, counts);
     return triangulator.getTriangles();
 }
 
-std::vector<std::uint32_t> Geometry::triangulate(std::span<const std::vector<Vec2>> shape) {
+std::vector<std::uint32_t> Geometry2::triangulate(std::span<const std::vector<Vec2>> shape) {
     std::vector<Vec2> points;
     std::vector<std::uint32_t> counts;
     for (const std::vector<Vec2>& outline : shape) {

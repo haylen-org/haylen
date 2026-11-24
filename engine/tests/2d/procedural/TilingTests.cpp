@@ -12,7 +12,7 @@
 #include "haylen/2d/procedural/Voronoi.hpp"
 #include "haylen/2d/procedural/WaveFunctionCollapse.hpp"
 #include "haylen/2d/tiled/WangSet.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Random.hpp"
 
 namespace haylen::procedural2d {
@@ -51,7 +51,7 @@ TEST_F(TilingTest, DelaunayTrianglesHaveEmptyCircumcircles) {
     const std::vector<std::uint32_t>& triangles = delaunay.getTriangles();
     for (std::size_t triangle = 0; triangle < delaunay.getTriangleCount(); ++triangle) {
         const std::vector<math::Vec2> corners{points[triangles[triangle * 3]], points[triangles[triangle * 3 + 1]], points[triangles[triangle * 3 + 2]]};
-        EXPECT_GT(math::Geometry::signedArea(corners), 0.0F);
+        EXPECT_GT(math::Geometry2::signedArea(corners), 0.0F);
 
         const math::Vec2 center = delaunay.getCircumcenter(triangle);
         const float radius = math::Vec2::distance(center, corners[0]);
@@ -103,10 +103,10 @@ TEST_F(TilingTest, VoronoiCellsTileTheBoundsAroundTheirSites) {
     for (std::size_t index = 0; index < points.size(); ++index) {
         const std::vector<math::Vec2>& cell = voronoi.getCells()[index];
         ASSERT_GE(cell.size(), 3U);
-        EXPECT_TRUE(math::Geometry::isConvex(cell));
-        EXPECT_GT(math::Geometry::signedArea(cell), 0.0F);
-        EXPECT_TRUE(math::Geometry::contains(cell, points[index]));
-        total += math::Geometry::signedArea(cell);
+        EXPECT_TRUE(math::Geometry2::isConvex(cell));
+        EXPECT_GT(math::Geometry2::signedArea(cell), 0.0F);
+        EXPECT_TRUE(math::Geometry2::contains(cell, points[index]));
+        total += math::Geometry2::signedArea(cell);
     }
 
     EXPECT_NEAR(total, bounds.getArea(), 10.0F);
@@ -115,7 +115,7 @@ TEST_F(TilingTest, VoronoiCellsTileTheBoundsAroundTheirSites) {
     EXPECT_GT(closestPair(Voronoi::relax(points, bounds, 5)), closestPair(points) * 2.0F);
 
     const Voronoi single({{10.0F, 10.0F}, {10.0F, 10.0F}}, bounds);
-    EXPECT_NEAR(math::Geometry::signedArea(single.getCells()[0]), bounds.getArea(), 1e-3F);
+    EXPECT_NEAR(math::Geometry2::signedArea(single.getCells()[0]), bounds.getArea(), 1e-3F);
     EXPECT_TRUE(single.getCells()[1].empty());
     EXPECT_THROW(Voronoi(points, {0.0F, 0.0F, std::numeric_limits<float>::infinity(), 10.0F}), std::invalid_argument);
     EXPECT_THROW(Voronoi({{std::nanf(""), 0.0F}}, bounds), std::invalid_argument);

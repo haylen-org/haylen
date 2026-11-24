@@ -9,7 +9,7 @@
 
 #include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Polygon.hpp"
 
 namespace haylen::physics2d {
@@ -367,7 +367,7 @@ std::vector<Shape> Body::addPolygon(std::span<const math::Vec2> points, const Sh
     const b2ShapeDef def = Box2DConverter::toShapeDef(options);
     const b2BodyId body = b2LoadBodyId(checkedId());
     std::vector<Shape> shapes;
-    if (points.size() <= B2_MAX_POLYGON_VERTICES && math::Geometry::isConvex(points)) {
+    if (points.size() <= B2_MAX_POLYGON_VERTICES && math::Geometry2::isConvex(points)) {
         const b2Polygon polygon = Box2DConverter::toHullPolygon(local);
         shapes.push_back(finishShape(b2StoreShapeId(b2CreatePolygonShape(body, &def, &polygon)), options));
         return shapes;

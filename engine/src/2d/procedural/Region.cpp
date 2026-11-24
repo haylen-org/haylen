@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #include "haylen/2d/tiled/Object.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Random.hpp"
@@ -45,7 +45,7 @@ Region Region::polygon(std::span<const std::vector<math::Vec2>> outlines) {
     region.kind = Kind::Polygon;
     region.shape = math::Polygon::unite(outlines);
     for (const std::vector<math::Vec2>& triangle : math::Polygon::decompose(region.shape, 3)) {
-        const float triangleArea = std::fabs(math::Geometry::signedArea(triangle));
+        const float triangleArea = std::fabs(math::Geometry2::signedArea(triangle));
         region.area += triangleArea;
         region.triangles.push_back({triangle[0], triangle[1], triangle[2]});
         region.cumulativeAreas.push_back(region.area);
@@ -60,7 +60,7 @@ Region Region::polygon(std::span<const std::vector<math::Vec2>> outlines) {
         corners.insert(corners.end(), outline.begin(), outline.end());
     }
 
-    region.bounds = math::Geometry::bounds(corners);
+    region.bounds = math::Geometry2::bounds(corners);
     return region;
 }
 
@@ -120,7 +120,7 @@ bool Region::contains(math::Vec2 point) const noexcept {
     // Normalized outlines never cross, so a point inside an odd number of them is inside the area.
     bool inside = false;
     for (const std::vector<math::Vec2>& outline : shape) {
-        if (math::Geometry::contains(outline, point)) {
+        if (math::Geometry2::contains(outline, point)) {
             inside = !inside;
         }
     }

@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <optional>
 
-#include "haylen/math/Ray.hpp"
-#include "haylen/math/RayHit.hpp"
+#include "haylen/math/Ray2.hpp"
+#include "haylen/math/RayHit2.hpp"
 #include "haylen/math/Raycast.hpp"
 
 namespace haylen::navigation2d {
@@ -74,11 +74,11 @@ math::Vec2 SteeringAgent::avoid(std::span<const math::Circle> obstacles, float l
     }
 
     // The closest circle the path ahead enters is the threat, and the push points from its center across the heading.
-    const math::Ray ahead{position, heading, lookAhead};
+    const math::Ray2 ahead{position, heading, lookAhead};
     const math::Circle* threat = nullptr;
     float closest = lookAhead;
     for (const math::Circle& obstacle : obstacles) {
-        const std::optional<math::RayHit> hit = math::Raycast::circle(ahead, obstacle);
+        const std::optional<math::RayHit2> hit = math::Raycast::circle(ahead, obstacle);
         if (hit && hit->distance <= closest) {
             closest = hit->distance;
             threat = &obstacle;

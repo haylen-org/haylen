@@ -14,7 +14,7 @@ These value types carry positions, areas, colors and transforms through the whol
 
 - A [`Vec2`](#vec2) is a 2D vector with `x` and `y`. It is a point, such as a position, or a direction with a length, such as a velocity.
 - A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../3d/math.md) explains how they carry points and directions.
-- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface. A [`Transform3D`](#transform3d) places an object in 3D, and a [`DualQuat`](#dualquat) blends the joints of a skinned mesh.
+- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface. A [`Transform3D`](#transform3d) places an object in 3D, and a [`DualQuat`](#dualquat) blends the joints of a skinned mesh. The [3D shapes](#3d-shapes) are rays, segments, boxes, spheres, oriented boxes, capsules, triangles and frustums.
 - A [`Rect`](#rect) is a rectangle that is not rotated, with its top left corner at `x`, `y` and a `width` and `height`.
 - A [`Color`](#color) has red, green, blue and alpha components from 0 to 1. Alpha is the opacity, 0 for invisible and 1 for solid.
 - A [`Transform2D`](#transform2d) moves, rotates, scales and skews points, such as the placement of a sprite or the chain from a child to its parent.
@@ -1699,6 +1699,582 @@ The operator `a == b` compares the normal and the distance, and `tostring(p)` gi
 local m = require('haylen.math')
 
 print(m.plane({0, 2, 0}, 4) == m.plane(m.up(), 2)) -- true
+```
+
+## 3D shapes
+
+The 3D shapes are userdata of their own types: `Ray3`, `Segment3`, `Box3`, `Sphere`, `Obb`, `Capsule3`, `Triangle3` and `Frustum`, next to [`Plane`](#plane). A ray casts against any of the solid shapes and returns a hit table with the `distance` from its origin, the `point` and the `normal` of the surface, which faces the ray, or `nil` when it misses. Boxes, oriented boxes, spheres and capsules are solid, so a ray that starts inside one hits it at distance `0` with a zero normal, and triangles and planes are hit from both sides. The [3D math guide](../3d/math.md#shapes-and-ray-casts) explains which shape suits which task.
+
+```lua
+local m = require('haylen.math')
+
+local ray = m.ray3({0, 1.7, 0}, m.forward())
+local hit = ray:cast(m.box3({-1, 0, -6}, {1, 2, -4}))
+print(hit.distance, hit.normal) -- 4.0 Vec3(0.0, 0.0, 1.0)
+```
+
+## Ray3
+
+A `Ray3` is a half-line from its `origin` along its `direction`, which stops after its `length`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.ray3({0, 0, 0}, m.forward())) -- a Ray3
+```
+
+### m.ray3(origin, direction, length)
+
+Returns a `Ray3` from `origin` along `direction`, which it scales to a length of `1`, and that stops after `length`, `math.huge` by default. A direction of length zero raises the errors of [`vec3:normalized`](#vec3normalized). The fields `origin`, `direction` and `length` read and write, and a direction of another length than `1` raises `The direction of a ray must have a length of one. Make the ray with "ray3" of "haylen.math", which scales its direction.`
+
+```lua
+local m = require('haylen.math')
+
+local sight = m.ray3({0, 1.7, 0}, {0, 0, -5}, 50)
+print(sight.direction, sight.length) -- Vec3(0.0, 0.0, -1.0) 50.0
+```
+
+### m.ray3Between(from, to)
+
+Returns the `Ray3` from the point `from` to the point `to`, which stops at `to`.
+
+```lua
+local m = require('haylen.math')
+
+local shot = m.ray3Between({0, 1, 0}, {0, 1, -8})
+print(shot.length) -- 8.0
+```
+
+### ray:at(distance)
+
+Returns the point at `distance` along the ray.
+
+```lua
+local m = require('haylen.math')
+
+print(m.ray3({0, 0, 0}, m.forward()):at(3)) -- Vec3(0.0, 0.0, -3.0)
+```
+
+### ray:endPoint()
+
+Returns the point where the ray stops.
+
+```lua
+local m = require('haylen.math')
+
+print(m.ray3Between({0, 0, 0}, {2, 0, 0}):endPoint()) -- Vec3(2.0, 0.0, 0.0)
+```
+
+### ray:cast(shape)
+
+Returns the hit table of the ray on a `Triangle3`, a `Box3`, an `Obb`, a `Sphere`, a `Plane` or a `Capsule3`, or `nil` when the ray misses it before it stops. A triangle never lets a ray slip through the edge it shares with the next triangle. Another value raises `A ray casts against a Triangle3, a Box3, an Obb, a Sphere, a Plane or a Capsule3, not a <type>.`
+
+```lua
+local m = require('haylen.math')
+
+local down = m.ray3({2, 10, 3}, {0, -1, 0})
+local hit = down:cast(m.triangle3({0, 0, 0}, {0, 0, 10}, {10, 0, 0}))
+print(hit.point, hit.normal) -- Vec3(2.0, 0.0, 3.0) Vec3(0.0, 1.0, 0.0)
+```
+
+## Segment3
+
+A `Segment3` is the straight piece of a line between two points.
+
+```lua
+local m = require('haylen.math')
+
+print(m.segment3({0, 0, 0}, {1, 0, 0})) -- a Segment3
+```
+
+### m.segment3(start, end)
+
+Returns the `Segment3` between two points, whose fields `start` and `end` read and write. Lua reads the field `end` as `segment['end']`, since `end` is a word of the language.
+
+```lua
+local m = require('haylen.math')
+
+local bone = m.segment3({0, 0, 0}, {0, 0.4, 0})
+print(bone:length(), bone['end']) -- 0.4 Vec3(0.0, 0.4, 0.0)
+```
+
+### segment:length()
+
+Returns the distance between the two ends.
+
+```lua
+local m = require('haylen.math')
+
+print(m.segment3({0, 0, 0}, {3, 4, 0}):length()) -- 5.0
+```
+
+### segment:closestPoint(point)
+
+Returns the point of the segment closest to `point`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.segment3({0, 0, 0}, {10, 0, 0}):closestPoint({4, 3, 0})) -- Vec3(4.0, 0.0, 0.0)
+```
+
+### segment:closestPoints(other)
+
+Returns the point of this segment and the point of `other` that lie closest to each other.
+
+```lua
+local m = require('haylen.math')
+
+local a, b = m.segment3({0, 0, 0}, {10, 0, 0}):closestPoints(m.segment3({5, 3, -1}, {5, 3, 1}))
+print(a, b) -- Vec3(5.0, 0.0, 0.0) Vec3(5.0, 3.0, 0.0)
+```
+
+## Box3
+
+A `Box3` is a box whose faces line up with the axes, from the corner `min` to the corner `max`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {1, 1, 1})) -- a Box3
+```
+
+### m.box3(min, max)
+
+Returns the `Box3` with its faces along the axes from the corner `min` to the corner `max`, whose fields `min` and `max` read and write. Its faces count as part of it.
+
+```lua
+local m = require('haylen.math')
+
+local room = m.box3({0, 0, 0}, {5, 3, 4})
+print(room:size()) -- Vec3(5.0, 3.0, 4.0)
+```
+
+### m.box3FromCenter(center, size)
+
+Returns the `Box3` of `size` around `center`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3FromCenter({0, 1, 0}, {2, 2, 2}).min) -- Vec3(-1.0, 0.0, -1.0)
+```
+
+### m.box3Bounds(points)
+
+Returns the smallest `Box3` that holds every point of the list. An empty list raises `The bounds of points need at least one point.`
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3Bounds({{1, 2, 3}, {-1, 5, 0}}).max) -- Vec3(1.0, 5.0, 3.0)
+```
+
+### box:center()
+
+Returns the point in the middle of the box.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {2, 4, 6}):center()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### box:size()
+
+Returns the size of the box along each axis.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {2, 4, 6}):size()) -- Vec3(2.0, 4.0, 6.0)
+```
+
+### box:halfExtents()
+
+Returns half the size of the box along each axis, the reach of its faces from its center.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {2, 4, 6}):halfExtents()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### box:isEmpty()
+
+Returns `true` when `max` lies below `min` on an axis.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {-1, 1, 1}):isEmpty()) -- true
+```
+
+### box:contains(value)
+
+Returns `true` when the box holds the point or the whole `Box3` `value`.
+
+```lua
+local m = require('haylen.math')
+
+local room = m.box3({0, 0, 0}, {5, 3, 4})
+print(room:contains({1, 1, 1}), room:contains(m.box3({4, 0, 0}, {6, 1, 1}))) -- true false
+```
+
+### box:intersects(shape)
+
+Returns `true` when the box overlaps or touches the `Box3` or `Sphere` `shape`.
+
+```lua
+local m = require('haylen.math')
+
+local crate = m.box3({0, 0, 0}, {1, 1, 1})
+print(crate:intersects(m.box3({1, 0, 0}, {2, 1, 1})), crate:intersects(m.sphere({3, 0, 0}, 1))) -- true false
+```
+
+### box:merged(value)
+
+Returns the smallest box that holds this box and the point or `Box3` `value`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {1, 1, 1}):merged({3, -1, 0}).min) -- Vec3(0.0, -1.0, 0.0)
+```
+
+### box:expanded(amount)
+
+Returns the box grown by `amount` on every side, or shrunk by a negative amount.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {1, 1, 1}):expanded(0.5):size()) -- Vec3(2.0, 2.0, 2.0)
+```
+
+### box:clamp(point)
+
+Returns the point of the box closest to `point`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3({0, 0, 0}, {1, 1, 1}):clamp({5, 0.5, -2})) -- Vec3(1.0, 0.5, 0.0)
+```
+
+### box:transformed(placement)
+
+Returns the smallest box along the axes that holds this box after the affine `Mat4` `placement` places it, such as the bounds of a model in the world. A matrix that is not affine raises `A box is placed only by an affine matrix, whose last row is 0, 0, 0 and 1.`
+
+```lua
+local m = require('haylen.math')
+
+local model = m.box3({-1, 0, -1}, {1, 2, 1})
+print(model:transformed(m.compose({10, 0, 0})).min) -- Vec3(9.0, 0.0, -1.0)
+```
+
+### Box3 operators
+
+The operator `a == b` compares both corners.
+
+```lua
+local m = require('haylen.math')
+
+print(m.box3FromCenter({0, 0, 0}, {2, 2, 2}) == m.box3({-1, -1, -1}, {1, 1, 1})) -- true
+```
+
+## Sphere
+
+A `Sphere` is the ball of the points within `radius` of `center`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.sphere({0, 0, 0}, 1)) -- a Sphere
+```
+
+### m.sphere(center, radius)
+
+Returns the `Sphere` of `radius` around `center`, whose fields `center` and `radius` read and write. A radius below `0` or not finite raises `A radius must be a finite number of 0 or more.`
+
+```lua
+local m = require('haylen.math')
+
+local blast = m.sphere({0, 0, -5}, 3)
+print(blast:contains({1, 0, -5})) -- true
+```
+
+### sphere:contains(point)
+
+Returns `true` when `point` lies in the sphere.
+
+```lua
+local m = require('haylen.math')
+
+print(m.sphere({0, 0, 0}, 1):contains({0.5, 0.5, 0})) -- true
+```
+
+### sphere:intersects(shape)
+
+Returns `true` when the sphere overlaps or touches the `Sphere` or `Box3` `shape`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.sphere({0, 0, 0}, 1):intersects(m.sphere({1.5, 0, 0}, 0.6))) -- true
+```
+
+### sphere:bounds()
+
+Returns the `Box3` around the sphere.
+
+```lua
+local m = require('haylen.math')
+
+print(m.sphere({0, 0, 0}, 1):bounds().max) -- Vec3(1.0, 1.0, 1.0)
+```
+
+## Obb
+
+An `Obb` is an oriented box, a box that turns with its object.
+
+```lua
+local m = require('haylen.math')
+
+print(m.obb({0, 0, 0}, nil, {1, 1, 1})) -- a Obb
+```
+
+### m.obb(center, rotation, halfExtents)
+
+Returns the `Obb`, an oriented box of `halfExtents` around `center`, turned by the `Quat` `rotation`, none when `nil`. Its fields `center`, `rotation` and `halfExtents` read and write, and half extents below `0` or not finite raise `The half extents of an oriented box must be finite numbers of 0 or more.`
+
+```lua
+local m = require('haylen.math')
+
+local car = m.obb({0, 0.7, 0}, m.fromAxisAngle(m.up(), 0.4), {1, 0.7, 2.2})
+print(car:contains({0, 0.7, 2})) -- true
+```
+
+### m.obbFromTransform(box, transform)
+
+Returns the `Obb` that the `Transform3D` `transform` makes of the `Box3` `box`, such as a box of a model placed in the world. A negative scale counts by its size.
+
+```lua
+local m = require('haylen.math')
+
+local placed = m.obbFromTransform(m.box3({-1, -1, -1}, {1, 1, 1}), m.transform3d({5, 0, 0}, nil, {2, 1, 1}))
+print(placed.center, placed.halfExtents) -- Vec3(5.0, 0.0, 0.0) Vec3(2.0, 1.0, 1.0)
+```
+
+### obb:axes()
+
+Returns the three axes of the box as the columns of a `Mat3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.obb({0, 0, 0}, nil, {1, 1, 1}):axes():column(1)) -- Vec3(1.0, 0.0, 0.0)
+```
+
+### obb:contains(point)
+
+Returns `true` when `point` lies in the box.
+
+```lua
+local m = require('haylen.math')
+
+print(m.obb({0, 0, 0}, m.fromAxisAngle(m.up(), m.pi / 4), {1, 1, 1}):contains({1.3, 0, 0})) -- true
+```
+
+### obb:closestPoint(point)
+
+Returns the point of the box closest to `point`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.obb({0, 0, 0}, nil, {1, 1, 1}):closestPoint({5, 0.5, -7})) -- Vec3(1.0, 0.5, -1.0)
+```
+
+### obb:bounds()
+
+Returns the smallest `Box3` along the axes around the box.
+
+```lua
+local m = require('haylen.math')
+
+print(m.obb({0, 0, 0}, m.fromAxisAngle(m.up(), m.pi / 4), {1, 1, 1}):bounds().max) -- close to Vec3(1.414, 1.0, 1.414)
+```
+
+### obb:intersects(other)
+
+Returns `true` when the box overlaps the `Obb` `other`, by the test of the fifteen axes that can separate two boxes.
+
+```lua
+local m = require('haylen.math')
+
+local a = m.obb({0, 0, 0}, nil, {1, 1, 1})
+local b = m.obb({2.3, 0, 0}, m.fromAxisAngle(m.up(), m.pi / 4), {1, 1, 1})
+print(a:intersects(b)) -- true
+```
+
+## Capsule3
+
+A `Capsule3` is the room within a radius of a segment.
+
+```lua
+local m = require('haylen.math')
+
+print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5)) -- a Capsule3
+```
+
+### m.capsule3(start, end, radius)
+
+Returns the `Capsule3`, the points within `radius` of the segment from `start` to `end`, such as the body of a character. Its fields `start`, `end` and `radius` read and write, with the error of [`m.sphere`](#mspherecenter-radius) for a radius out of range.
+
+```lua
+local m = require('haylen.math')
+
+local body = m.capsule3({0, 0.3, 0}, {0, 1.5, 0}, 0.3)
+print(body:contains({0.2, 1, 0})) -- true
+```
+
+### capsule:axis()
+
+Returns the segment at the middle of the capsule as a `Segment3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5):axis():length()) -- 2.0
+```
+
+### capsule:contains(point)
+
+Returns `true` when `point` lies in the capsule.
+
+```lua
+local m = require('haylen.math')
+
+print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5):contains({0, 2.4, 0})) -- true
+```
+
+### capsule:bounds()
+
+Returns the `Box3` around the capsule.
+
+```lua
+local m = require('haylen.math')
+
+print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5):bounds().max) -- Vec3(0.5, 2.5, 0.5)
+```
+
+## Triangle3
+
+A `Triangle3` is a triangle of three corners, the piece that meshes are made of.
+
+```lua
+local m = require('haylen.math')
+
+print(m.triangle3({0, 0, 0}, {1, 0, 0}, {0, 0, -1})) -- a Triangle3
+```
+
+### m.triangle3(a, b, c)
+
+Returns the `Triangle3` with the corners `a`, `b` and `c`, whose front side sees them run counter-clockwise. Its fields `a`, `b` and `c` read and write.
+
+```lua
+local m = require('haylen.math')
+
+local floor = m.triangle3({0, 0, 0}, {0, 0, 4}, {4, 0, 0})
+print(floor:normal()) -- Vec3(0.0, 1.0, 0.0)
+```
+
+### triangle:area()
+
+Returns the area of the triangle.
+
+```lua
+local m = require('haylen.math')
+
+print(m.triangle3({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):area()) -- 8.0
+```
+
+### triangle:normal()
+
+Returns the unit normal of the front side. A triangle without area raises `The triangle has no area, so it has no normal.`
+
+```lua
+local m = require('haylen.math')
+
+print(m.triangle3({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):normal()) -- Vec3(0.0, 1.0, 0.0)
+```
+
+### triangle:closestPoint(point)
+
+Returns the point of the triangle closest to `point`, on its face, an edge or a corner.
+
+```lua
+local m = require('haylen.math')
+
+print(m.triangle3({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):closestPoint({1, 5, -1})) -- Vec3(1.0, 0.0, -1.0)
+```
+
+## Frustum
+
+A `Frustum` is the space that a camera sees, bounded by the planes of its view.
+
+```lua
+local m = require('haylen.math')
+
+print(m.frustum(m.perspective({farPlane = 100}))) -- a Frustum
+```
+
+### m.frustum(viewProjection, depthRange)
+
+Returns the `Frustum`, the space that a camera sees, from its `projection * view` matrix and the range of depth that the projection was built with, `'zeroToOne'` by default. A projection without a far end gives a frustum of five planes.
+
+```lua
+local m = require('haylen.math')
+
+local camera = m.perspective({aspect = 16 / 9, nearPlane = 0.1, farPlane = 200}) * m.lookAt({0, 2, 10}, {0, 0, 0})
+local frustum = m.frustum(camera)
+print(frustum:classify(m.sphere({0, 0, 0}, 1))) -- inside
+```
+
+### frustum:planes()
+
+Returns the list of the planes of the frustum, whose normals point inside: the left, right, bottom and top planes and the planes of depth.
+
+```lua
+local m = require('haylen.math')
+
+print(#m.frustum(m.perspective({farPlane = 100})):planes()) -- 6
+```
+
+### frustum:contains(point, tolerance)
+
+Returns `true` when `point` lies inside, or within `tolerance` of a plane outside it, `0.0001` by default, so a point on a face is never lost to rounding.
+
+```lua
+local m = require('haylen.math')
+
+print(m.frustum(m.perspective({farPlane = 100})):contains({0, 0, -10})) -- true
+```
+
+### frustum:classify(shape, tolerance)
+
+Returns `'inside'`, `'intersecting'` or `'outside'` for the `Sphere` or `Box3` `shape`, with the `tolerance` of `frustum:contains`. It never calls a shape outside that reaches inside, so culling by it never hides what the camera sees, while a box near a corner may count as intersecting though it lies outside.
+
+```lua
+local m = require('haylen.math')
+
+local frustum = m.frustum(m.perspective({nearPlane = 0.5, farPlane = 100}) * m.lookAt({0, 0, 10}, {0, 0, 0}))
+for _, rock in ipairs({m.sphere({0, 0, 0}, 1), m.sphere({0, 0, 50}, 1)}) do
+    if frustum:classify(rock) ~= 'outside' then
+        print('Draw the rock at', rock.center)
+    end
+end
 ```
 
 ## Transform3D
@@ -4207,6 +4783,13 @@ These messages come from the functions and methods of the module. Messages that 
 | `The up direction needs a finite length above zero and must not run along the direction to look along, or it cannot choose how the view turns around that direction.` | The `up` of `m.lookRotation` or `m.lookAt` is zero or runs along the view. |
 | `The three points lie on one line, so they span no plane.` | The points of `m.planeFromPoints` lie on one line. |
 | `The normal of a plane must have a length of one. Make the plane with "plane" of "haylen.math", which scales its normal.` | The `normal` of a plane was set to a vector of another length. |
+| `The direction of a ray must have a length of one. Make the ray with "ray3" of "haylen.math", which scales its direction.` | The `direction` of a ray was set to a vector of another length. |
+| `A ray casts against a Triangle3, a Box3, an Obb, a Sphere, a Plane or a Capsule3, not a <type>.` | The shape of `ray:cast` has another type. |
+| `The bounds of points need at least one point.` | The list of `m.box3Bounds` is empty. |
+| `A box is placed only by an affine matrix, whose last row is 0, 0, 0 and 1.` | The matrix of `box:transformed` is not affine. |
+| `A radius must be a finite number of 0 or more.` | The radius of a sphere or a capsule is negative or not finite. |
+| `The half extents of an oriented box must be finite numbers of 0 or more.` | The half extents of an `Obb` are negative or not finite. |
+| `The triangle has no area, so it has no normal.` | The triangle of `triangle:normal` has no area. |
 | `The transform scales an axis to zero or to infinity, so nothing undoes it.` | A transform with a scale of zero was undone or placed a normal. |
 | `A transform whose scale differs between axes has no inverse of the same form. Invert its matrix instead.` | The transform of `transform:inverse` has a scale that differs between axes. |
 | `A blend of dual quaternions needs one weight for each dual quaternion.` | The lists of `m.blendDualQuats` have different lengths. |

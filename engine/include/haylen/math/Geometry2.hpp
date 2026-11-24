@@ -7,19 +7,19 @@
 
 #include "haylen/math/Circle.hpp"
 #include "haylen/math/Rect.hpp"
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Segment2.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::math {
 
 // Intersection tests and polygon algorithms on the math types.
-class Geometry final {
+class Geometry2 final {
   public:
     [[nodiscard]] static bool intersects(const Circle& lhs, const Circle& rhs) noexcept;
     [[nodiscard]] static bool intersects(const Circle& circle, const Rect& rect) noexcept;
-    [[nodiscard]] static std::optional<Vec2> intersection(const Segment& lhs, const Segment& rhs) noexcept;
-    [[nodiscard]] static Vec2 closestPoint(const Segment& segment, Vec2 point) noexcept;
-    [[nodiscard]] static float distanceToSegment(const Segment& segment, Vec2 point) noexcept;
+    [[nodiscard]] static std::optional<Vec2> intersection(const Segment2& lhs, const Segment2& rhs) noexcept;
+    [[nodiscard]] static Vec2 closestPoint(const Segment2& segment, Vec2 point) noexcept;
+    [[nodiscard]] static float distanceToSegment(const Segment2& segment, Vec2 point) noexcept;
 
     [[nodiscard]] static bool contains(std::span<const Vec2> polygon, Vec2 point) noexcept;
     [[nodiscard]] static float signedArea(std::span<const Vec2> polygon) noexcept;

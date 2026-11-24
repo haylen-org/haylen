@@ -4,7 +4,7 @@
 #include <bit>
 #include <cmath>
 
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 
 namespace haylen::graphics2d {
 
@@ -47,7 +47,7 @@ void PolygonMesh::markFadingEdges(std::span<const math::Vec2> points, std::span<
             continue;
         }
 
-        const float area = math::Geometry::signedArea(points.subspan(first, count));
+        const float area = math::Geometry2::signedArea(points.subspan(first, count));
         const float side = (area > 0.0F ? 1.0F : -1.0F) * (kinds[outline] == math::Triangulator::Kind::Hole ? -1.0F : 1.0F);
         for (std::uint32_t step = 0; step < count; ++step) {
             const math::Vec2 delta = points[first + (step + 1) % count] - points[first + step];

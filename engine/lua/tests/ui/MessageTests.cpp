@@ -16,7 +16,7 @@
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/text/Direction.hpp"
@@ -85,7 +85,7 @@ class MessageTest : public ::testing::Test, public test::LuaUiFixture {
         const std::uint64_t overlay = renderer.addCanvasOverlay([&blocks](haylen::graphics2d::Renderer& drawing) {
             drawing.visitDrawn([&blocks](const haylen::graphics2d::Renderer::Drawn& drawn) {
                 if (drawn.text) {
-                    blocks.push_back(haylen::math::Geometry::bounds(drawn.corners));
+                    blocks.push_back(haylen::math::Geometry2::bounds(drawn.corners));
                 }
             });
         });

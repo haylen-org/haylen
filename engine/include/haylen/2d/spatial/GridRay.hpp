@@ -7,7 +7,7 @@
 
 #include "haylen/2d/spatial/Cell.hpp"
 #include "haylen/2d/spatial/CellGrid.hpp"
-#include "haylen/math/Ray.hpp"
+#include "haylen/math/Ray2.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::spatial2d {
@@ -23,7 +23,7 @@ class GridRay final {
     };
 
     // Calls `visit(cell, distance, normal)` for every crossed cell in order, with the distance where the ray enters the cell and the normal of the side it enters through, which is zero for the cell of the origin. Visiting stops when `visit` returns `false` or the ray ends, so the ray needs a finite length within the 32-bit range of cells and the cells a positive size, or it throws `std::invalid_argument`.
-    template <typename Visit> static void traverse(const math::Ray& ray, math::Vec2 cellSize, Visit&& visit) {
+    template <typename Visit> static void traverse(const math::Ray2& ray, math::Vec2 cellSize, Visit&& visit) {
         requireCastable(ray, cellSize);
         Cell cell{static_cast<int>(std::floor(ray.origin.x / cellSize.x)), static_cast<int>(std::floor(ray.origin.y / cellSize.y))};
         const int stepX = ray.direction.x > 0.0F ? 1 : -1;
@@ -63,7 +63,7 @@ class GridRay final {
     // Returns the first crossed cell for which `blocked(cell)` is `true`. A ray that starts in a blocked cell hits it at distance zero with a zero normal.
     template <typename Blocked>
         requires std::predicate<Blocked&, Cell>
-    [[nodiscard]] static std::optional<Hit> cast(const math::Ray& ray, math::Vec2 cellSize, Blocked&& blocked) {
+    [[nodiscard]] static std::optional<Hit> cast(const math::Ray2& ray, math::Vec2 cellSize, Blocked&& blocked) {
         std::optional<Hit> hit;
         // clang-format off
         traverse(ray, cellSize, [&](Cell cell, float distance, math::Vec2 normal) {
@@ -79,7 +79,7 @@ class GridRay final {
     }
 
     // Casts against the solid cells of a grid. The ray only travels while it is over the grid, so its length may be infinite, and it enters a grid from outside through the side of the grid. Throws `std::invalid_argument` for cells without a positive and finite size, even when the ray misses the grid.
-    [[nodiscard]] static std::optional<Hit> cast(const math::Ray& ray, math::Vec2 cellSize, const CellGrid& grid);
+    [[nodiscard]] static std::optional<Hit> cast(const math::Ray2& ray, math::Vec2 cellSize, const CellGrid& grid);
 
   private:
     static constexpr double kUnreachable = std::numeric_limits<double>::infinity();
@@ -88,7 +88,7 @@ class GridRay final {
     static constexpr float kCellLimit = 2147483648.0F;
 
     static void requireCellSize(math::Vec2 cellSize);
-    static void requireCastable(const math::Ray& ray, math::Vec2 cellSize);
+    static void requireCastable(const math::Ray2& ray, math::Vec2 cellSize);
 
     [[nodiscard]] static double boundary(float origin, float direction, float size, int cell) noexcept {
         if (direction > 0.0F) {

@@ -4,7 +4,7 @@
 #include <cmath>
 #include <utility>
 
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 
 namespace haylen::tiled {
 
@@ -57,16 +57,16 @@ void TileCollision::setCell(int column, int row, Cell value) {
 
     // Every outline winds the same way, so overlapping shapes add up instead of cutting holes into each other.
     for (math::Polygon::Outline& outline : value.outlines) {
-        if (math::Geometry::signedArea(outline) < 0.0F) {
+        if (math::Geometry2::signedArea(outline) < 0.0F) {
             std::reverse(outline.begin(), outline.end());
         }
     }
 
     // Shapes that stand out of their cell widen the neighborhood where regions look for touching shapes.
     const math::Rect own = cellBounds(column, row);
-    math::Rect bounds = value.full ? own : math::Geometry::bounds(value.outlines.empty() ? std::span<const math::Vec2>{} : value.outlines.front());
+    math::Rect bounds = value.full ? own : math::Geometry2::bounds(value.outlines.empty() ? std::span<const math::Vec2>{} : value.outlines.front());
     for (const math::Polygon::Outline& outline : value.outlines) {
-        bounds = bounds.merged(math::Geometry::bounds(outline));
+        bounds = bounds.merged(math::Geometry2::bounds(outline));
     }
 
     if (isSolid(value)) {

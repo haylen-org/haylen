@@ -22,7 +22,7 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Ray.hpp"
+#include "haylen/math/Ray2.hpp"
 #include "math/RaycastBinding.hpp"
 
 namespace haylen::lua {
@@ -318,7 +318,7 @@ int NavGridBinding::raycast(lua_State* L) {
         return luaL_error(L, "Grid ray casts need a square grid.");
     }
 
-    const haylen::math::Ray ray = haylen::math::Ray::between(lua::Stack::read<haylen::math::Vec2>(L, 2), lua::Stack::read<haylen::math::Vec2>(L, 3));
+    const haylen::math::Ray2 ray = haylen::math::Ray2::between(lua::Stack::read<haylen::math::Vec2>(L, 2), lua::Stack::read<haylen::math::Vec2>(L, 3));
     const haylen::math::Vec2 cellSize = lua_type(L, 4) == LUA_TNUMBER ? haylen::math::Vec2{lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 4)} : lua::Stack::read<haylen::math::Vec2>(L, 4);
     const std::optional<haylen::spatial2d::GridRay::Hit> hit = haylen::spatial2d::GridRay::cast(ray, cellSize, [&grid](haylen::spatial2d::Cell cell) { return !grid.isWalkable({cell.x, cell.y}); });
     if (!hit) {

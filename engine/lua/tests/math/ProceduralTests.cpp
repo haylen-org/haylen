@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "haylen/math/Easing.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Noise2D.hpp"
 #include "haylen/math/PoissonDisk.hpp"
@@ -171,38 +171,38 @@ TEST(GeometryTest, CirclesAndSegments) {
     EXPECT_TRUE(circle.contains(haylen::math::Vec2(3.0F, 4.0F)));
     EXPECT_FALSE(circle.contains(haylen::math::Vec2(4.0F, 4.0F)));
     EXPECT_EQ(circle.getBounds(), (haylen::math::Rect{-5.0F, -5.0F, 10.0F, 10.0F}));
-    EXPECT_TRUE(haylen::math::Geometry::intersects(circle, haylen::math::Circle{haylen::math::Vec2(9.0F, 0.0F), 4.0F}));
-    EXPECT_FALSE(haylen::math::Geometry::intersects(circle, haylen::math::Circle{haylen::math::Vec2(10.0F, 0.0F), 4.0F}));
-    EXPECT_TRUE(haylen::math::Geometry::intersects(circle, haylen::math::Rect{4.0F, -1.0F, 2.0F, 2.0F}));
-    EXPECT_FALSE(haylen::math::Geometry::intersects(circle, haylen::math::Rect{6.0F, 6.0F, 2.0F, 2.0F}));
+    EXPECT_TRUE(haylen::math::Geometry2::intersects(circle, haylen::math::Circle{haylen::math::Vec2(9.0F, 0.0F), 4.0F}));
+    EXPECT_FALSE(haylen::math::Geometry2::intersects(circle, haylen::math::Circle{haylen::math::Vec2(10.0F, 0.0F), 4.0F}));
+    EXPECT_TRUE(haylen::math::Geometry2::intersects(circle, haylen::math::Rect{4.0F, -1.0F, 2.0F, 2.0F}));
+    EXPECT_FALSE(haylen::math::Geometry2::intersects(circle, haylen::math::Rect{6.0F, 6.0F, 2.0F, 2.0F}));
 
-    const haylen::math::Segment horizontal{haylen::math::Vec2(-1.0F, 0.0F), haylen::math::Vec2(1.0F, 0.0F)};
-    const haylen::math::Segment vertical{haylen::math::Vec2(0.0F, -1.0F), haylen::math::Vec2(0.0F, 1.0F)};
-    EXPECT_EQ(haylen::math::Geometry::intersection(horizontal, vertical), haylen::math::Vec2{});
-    EXPECT_FALSE(haylen::math::Geometry::intersection(horizontal, haylen::math::Segment{haylen::math::Vec2(-1.0F, 1.0F), haylen::math::Vec2(1.0F, 1.0F)}).has_value());
-    EXPECT_FALSE(haylen::math::Geometry::intersection(horizontal, haylen::math::Segment{haylen::math::Vec2(2.0F, -1.0F), haylen::math::Vec2(2.0F, 1.0F)}).has_value());
-    EXPECT_EQ(haylen::math::Geometry::closestPoint(horizontal, haylen::math::Vec2(5.0F, 3.0F)), haylen::math::Vec2(1.0F, 0.0F));
-    EXPECT_EQ(haylen::math::Geometry::closestPoint(haylen::math::Segment{haylen::math::Vec2(1.0F, 1.0F), haylen::math::Vec2(1.0F, 1.0F)}, haylen::math::Vec2{}), haylen::math::Vec2(1.0F, 1.0F));
-    EXPECT_FLOAT_EQ(haylen::math::Geometry::distanceToSegment(horizontal, haylen::math::Vec2(0.0F, 2.0F)), 2.0F);
+    const haylen::math::Segment2 horizontal{haylen::math::Vec2(-1.0F, 0.0F), haylen::math::Vec2(1.0F, 0.0F)};
+    const haylen::math::Segment2 vertical{haylen::math::Vec2(0.0F, -1.0F), haylen::math::Vec2(0.0F, 1.0F)};
+    EXPECT_EQ(haylen::math::Geometry2::intersection(horizontal, vertical), haylen::math::Vec2{});
+    EXPECT_FALSE(haylen::math::Geometry2::intersection(horizontal, haylen::math::Segment2{haylen::math::Vec2(-1.0F, 1.0F), haylen::math::Vec2(1.0F, 1.0F)}).has_value());
+    EXPECT_FALSE(haylen::math::Geometry2::intersection(horizontal, haylen::math::Segment2{haylen::math::Vec2(2.0F, -1.0F), haylen::math::Vec2(2.0F, 1.0F)}).has_value());
+    EXPECT_EQ(haylen::math::Geometry2::closestPoint(horizontal, haylen::math::Vec2(5.0F, 3.0F)), haylen::math::Vec2(1.0F, 0.0F));
+    EXPECT_EQ(haylen::math::Geometry2::closestPoint(haylen::math::Segment2{haylen::math::Vec2(1.0F, 1.0F), haylen::math::Vec2(1.0F, 1.0F)}, haylen::math::Vec2{}), haylen::math::Vec2(1.0F, 1.0F));
+    EXPECT_FLOAT_EQ(haylen::math::Geometry2::distanceToSegment(horizontal, haylen::math::Vec2(0.0F, 2.0F)), 2.0F);
 }
 
 TEST(GeometryTest, Polygons) {
     const std::array<haylen::math::Vec2, 4> square{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(10.0F, 0.0F), haylen::math::Vec2(10.0F, 10.0F), haylen::math::Vec2(0.0F, 10.0F)};
-    EXPECT_TRUE(haylen::math::Geometry::contains(square, haylen::math::Vec2(5.0F, 5.0F)));
-    EXPECT_FALSE(haylen::math::Geometry::contains(square, haylen::math::Vec2(15.0F, 5.0F)));
-    EXPECT_FLOAT_EQ(haylen::math::Geometry::signedArea(square), 100.0F);
-    EXPECT_EQ(haylen::math::Geometry::centroid(square), haylen::math::Vec2(5.0F, 5.0F));
-    EXPECT_TRUE(haylen::math::Geometry::isConvex(square));
-    EXPECT_EQ(haylen::math::Geometry::bounds(square), (haylen::math::Rect{0.0F, 0.0F, 10.0F, 10.0F}));
-    EXPECT_EQ(haylen::math::Geometry::bounds(std::span<const haylen::math::Vec2>{}), haylen::math::Rect{});
+    EXPECT_TRUE(haylen::math::Geometry2::contains(square, haylen::math::Vec2(5.0F, 5.0F)));
+    EXPECT_FALSE(haylen::math::Geometry2::contains(square, haylen::math::Vec2(15.0F, 5.0F)));
+    EXPECT_FLOAT_EQ(haylen::math::Geometry2::signedArea(square), 100.0F);
+    EXPECT_EQ(haylen::math::Geometry2::centroid(square), haylen::math::Vec2(5.0F, 5.0F));
+    EXPECT_TRUE(haylen::math::Geometry2::isConvex(square));
+    EXPECT_EQ(haylen::math::Geometry2::bounds(square), (haylen::math::Rect{0.0F, 0.0F, 10.0F, 10.0F}));
+    EXPECT_EQ(haylen::math::Geometry2::bounds(std::span<const haylen::math::Vec2>{}), haylen::math::Rect{});
 
     const std::array<haylen::math::Vec2, 5> arrow{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(10.0F, 0.0F), haylen::math::Vec2(5.0F, 3.0F), haylen::math::Vec2(10.0F, 10.0F), haylen::math::Vec2(0.0F, 10.0F)};
-    EXPECT_FALSE(haylen::math::Geometry::isConvex(arrow));
-    EXPECT_FALSE(haylen::math::Geometry::isConvex(std::span<const haylen::math::Vec2>(square.data(), 2)));
+    EXPECT_FALSE(haylen::math::Geometry2::isConvex(arrow));
+    EXPECT_FALSE(haylen::math::Geometry2::isConvex(std::span<const haylen::math::Vec2>(square.data(), 2)));
 
     const std::array<haylen::math::Vec2, 3> line{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(1.0F, 1.0F), haylen::math::Vec2(2.0F, 2.0F)};
-    EXPECT_EQ(haylen::math::Geometry::centroid(line), haylen::math::Vec2(1.0F, 1.0F));
-    EXPECT_EQ(haylen::math::Geometry::centroid(std::span<const haylen::math::Vec2>{}), haylen::math::Vec2{});
+    EXPECT_EQ(haylen::math::Geometry2::centroid(line), haylen::math::Vec2(1.0F, 1.0F));
+    EXPECT_EQ(haylen::math::Geometry2::centroid(std::span<const haylen::math::Vec2>{}), haylen::math::Vec2{});
 }
 
 TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
@@ -217,43 +217,43 @@ TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
         pentagram.push_back(haylen::math::Vec2::fromAngle(haylen::math::Math::kTau * static_cast<float>(index * 2) / 5.0F, 10.0F));
     }
 
-    EXPECT_TRUE(haylen::math::Geometry::isConvex(hexagon));
-    EXPECT_FALSE(haylen::math::Geometry::isConvex(pentagram));
+    EXPECT_TRUE(haylen::math::Geometry2::isConvex(hexagon));
+    EXPECT_FALSE(haylen::math::Geometry2::isConvex(pentagram));
     std::reverse(hexagon.begin(), hexagon.end());
     std::reverse(pentagram.begin(), pentagram.end());
-    EXPECT_TRUE(haylen::math::Geometry::isConvex(hexagon));
-    EXPECT_FALSE(haylen::math::Geometry::isConvex(pentagram));
+    EXPECT_TRUE(haylen::math::Geometry2::isConvex(hexagon));
+    EXPECT_FALSE(haylen::math::Geometry2::isConvex(pentagram));
 }
 
 TEST(GeometryTest, ConvexHullDropsInteriorPoints) {
     const std::array<haylen::math::Vec2, 6> points{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(4.0F, 0.0F), haylen::math::Vec2(4.0F, 4.0F), haylen::math::Vec2(0.0F, 4.0F), haylen::math::Vec2(2.0F, 2.0F), haylen::math::Vec2(4.0F, 0.0F)};
-    const std::vector<haylen::math::Vec2> hull = haylen::math::Geometry::convexHull(points);
+    const std::vector<haylen::math::Vec2> hull = haylen::math::Geometry2::convexHull(points);
     EXPECT_EQ(hull.size(), 4U);
-    EXPECT_GT(haylen::math::Geometry::signedArea(hull), 0.0F);
-    EXPECT_EQ(haylen::math::Geometry::convexHull(std::span<const haylen::math::Vec2>(points.data(), 2)).size(), 2U);
+    EXPECT_GT(haylen::math::Geometry2::signedArea(hull), 0.0F);
+    EXPECT_EQ(haylen::math::Geometry2::convexHull(std::span<const haylen::math::Vec2>(points.data(), 2)).size(), 2U);
 
     // A point with a NaN coordinate is left out instead of breaking the sort.
     const std::array<haylen::math::Vec2, 5> withNaN{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(4.0F, 0.0F), haylen::math::Vec2(std::numeric_limits<float>::quiet_NaN(), 2.0F), haylen::math::Vec2(4.0F, 4.0F), haylen::math::Vec2(0.0F, 4.0F)};
-    EXPECT_EQ(haylen::math::Geometry::convexHull(withNaN).size(), 4U);
+    EXPECT_EQ(haylen::math::Geometry2::convexHull(withNaN).size(), 4U);
 }
 
 TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
     std::vector<haylen::math::Vec2> arrow{haylen::math::Vec2(0.0F, 0.0F), haylen::math::Vec2(10.0F, 0.0F), haylen::math::Vec2(5.0F, 3.0F), haylen::math::Vec2(10.0F, 10.0F), haylen::math::Vec2(0.0F, 10.0F)};
-    const auto triangles = haylen::math::Geometry::triangulate(arrow);
+    const auto triangles = haylen::math::Geometry2::triangulate(arrow);
     ASSERT_EQ(triangles.size(), 9U);
 
     float area = 0.0F;
     for (std::size_t index = 0; index < triangles.size(); index += 3) {
         const std::array<haylen::math::Vec2, 3> triangle{arrow[triangles[index]], arrow[triangles[index + 1]], arrow[triangles[index + 2]]};
-        EXPECT_GT(haylen::math::Geometry::signedArea(triangle), 0.0F);
-        area += haylen::math::Geometry::signedArea(triangle);
+        EXPECT_GT(haylen::math::Geometry2::signedArea(triangle), 0.0F);
+        area += haylen::math::Geometry2::signedArea(triangle);
     }
 
-    EXPECT_NEAR(area, haylen::math::Geometry::signedArea(arrow), 1e-3F);
+    EXPECT_NEAR(area, haylen::math::Geometry2::signedArea(arrow), 1e-3F);
 
     std::reverse(arrow.begin(), arrow.end());
-    EXPECT_EQ(haylen::math::Geometry::triangulate(arrow).size(), 9U);
-    EXPECT_TRUE(haylen::math::Geometry::triangulate(std::span<const haylen::math::Vec2>(arrow.data(), 2)).empty());
+    EXPECT_EQ(haylen::math::Geometry2::triangulate(arrow).size(), 9U);
+    EXPECT_TRUE(haylen::math::Geometry2::triangulate(std::span<const haylen::math::Vec2>(arrow.data(), 2)).empty());
 }
 
 TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {

@@ -5,7 +5,7 @@
 
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/2d/tiled/TileCollision.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 
 namespace haylen::tiled {
 
@@ -16,7 +16,7 @@ class TileCollisionTest : public ::testing::Test {
     // Returns the outlines of the body sorted by their signed area, holes first.
     [[nodiscard]] std::vector<physics2d::Shape::Outline> outlines() const {
         std::vector<physics2d::Shape::Outline> result = floor.getOutlines();
-        std::sort(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) { return math::Geometry::signedArea(lhs.points) < math::Geometry::signedArea(rhs.points); });
+        std::sort(result.begin(), result.end(), [](const auto& lhs, const auto& rhs) { return math::Geometry2::signedArea(lhs.points) < math::Geometry2::signedArea(rhs.points); });
         return result;
     }
 
@@ -66,9 +66,9 @@ TEST_F(TileCollisionTest, MergesTouchingCellsAndTracesHoles) {
 
     const std::vector<physics2d::Shape::Outline> loops = outlines();
     ASSERT_EQ(loops.size(), 3U);
-    EXPECT_NEAR(math::Geometry::signedArea(loops[0].points), -kCell * kCell, 0.1F);
-    EXPECT_NEAR(math::Geometry::signedArea(loops[1].points), kCell * kCell, 0.1F);
-    EXPECT_NEAR(math::Geometry::signedArea(loops[2].points), 9.0F * kCell * kCell, 0.1F);
+    EXPECT_NEAR(math::Geometry2::signedArea(loops[0].points), -kCell * kCell, 0.1F);
+    EXPECT_NEAR(math::Geometry2::signedArea(loops[1].points), kCell * kCell, 0.1F);
+    EXPECT_NEAR(math::Geometry2::signedArea(loops[2].points), 9.0F * kCell * kCell, 0.1F);
 
     for (const physics2d::Shape::Outline& loop : loops) {
         EXPECT_TRUE(loop.closed);
@@ -139,7 +139,7 @@ TEST_F(TileCollisionTest, MergesSlopesWithTheGround) {
     const std::vector<physics2d::Shape::Outline> loops = outlines();
     ASSERT_EQ(loops.size(), 1U);
     EXPECT_EQ(loops[0].points.size(), 7U);
-    EXPECT_NEAR(math::Geometry::signedArea(loops[0].points), 3.5F * kCell * kCell, 0.1F);
+    EXPECT_NEAR(math::Geometry2::signedArea(loops[0].points), 3.5F * kCell * kCell, 0.1F);
 
     // A lone triangle has too few corners for a loop and stays a polygon.
     collision.setCell(8, 0, {.outlines = {{{8.0F * kCell, kCell}, {9.0F * kCell, 0.0F}, {9.0F * kCell, kCell}}}});

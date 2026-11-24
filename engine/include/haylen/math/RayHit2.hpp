@@ -7,7 +7,7 @@
 namespace haylen::math {
 
 // Where a ray meets a surface. The normal is a unit vector that faces the side the ray came from, or zero when the ray starts inside a solid shape. Casts against lists report the index of the element or edge they hit.
-struct RayHit {
+struct RayHit2 {
     Vec2 point{};
     Vec2 normal{};
     float distance = 0.0F;

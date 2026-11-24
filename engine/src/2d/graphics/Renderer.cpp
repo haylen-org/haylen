@@ -26,7 +26,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Viewport.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Spline.hpp"
 #include "haylen/text/Font.hpp"
@@ -1120,7 +1120,7 @@ void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) 
     // clang-format off
     visitDrawn([&](const Drawn& drawn) {
         if (drawn.text) {
-            drawRectOutline(math::Geometry::bounds(drawn.corners), unit, color.withAlpha(color.a * 0.6F), order);
+            drawRectOutline(math::Geometry2::bounds(drawn.corners), unit, color.withAlpha(color.a * 0.6F), order);
             return;
         }
 
@@ -1157,7 +1157,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
             const std::size_t step = item.program == Program::GradientText ? 2 : 1;
             math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
             for (std::size_t quad = item.first; quad < item.first + item.count; quad += step) {
-                block = block.merged(math::Geometry::bounds(state->instances[quad].getCorners()));
+                block = block.merged(math::Geometry2::bounds(state->instances[quad].getCorners()));
             }
 
             visitor({.corners = {block.getMin(), math::Vec2{block.getRight(), block.y}, block.getMax(), math::Vec2{block.x, block.getBottom()}}, .text = true});

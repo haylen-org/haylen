@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include "haylen/math/Segment.hpp"
+#include "haylen/math/Segment2.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::navigation2d {
@@ -27,7 +27,7 @@ class ConstrainedTriangulation final {
     };
 
     // Keeps the areas that the test accepts at a point inside them. The neighbor of a kept triangle across the edge of an area is -1.
-    void build(std::span<const math::Segment> segments, const std::function<bool(math::Vec2)>& keeps);
+    void build(std::span<const math::Segment2> segments, const std::function<bool(math::Vec2)>& keeps);
 
     [[nodiscard]] const std::vector<math::Vec2>& getVertices() const noexcept {
         return vertices;
@@ -88,7 +88,7 @@ class ConstrainedTriangulation final {
     [[nodiscard]] bool crosses(std::int32_t a, std::int32_t b, std::int32_t c, std::int32_t d) const noexcept;
 
     // Welds the segment end points and splits segments where they cross or touch, filling points and constraints.
-    void prepare(std::span<const math::Segment> segments);
+    void prepare(std::span<const math::Segment2> segments);
     [[nodiscard]] std::int32_t weld(const Point& point);
     void intersect(std::size_t first, std::size_t second);
 

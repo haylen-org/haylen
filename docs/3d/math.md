@@ -115,6 +115,29 @@ Parts cannot hold everything a chain of matrices holds. When a parent scales its
 
 A skinned mesh, whose vertices follow the joints of a skeleton, blends the placements of several joints for each vertex. Blending matrices pinches the mesh where a joint twists, such as a wrist, so `DualQuat` holds the rotation and translation of a joint in a form that blends without that loss.
 
+## Shapes and ray casts
+
+The shapes of 3D stand for the room that things take, and each suits its own task:
+
+- A `Box3` lines up with the axes. It is the cheapest shape to test, so it bounds models, levels and anything that culling and spatial searches sort.
+- An `Obb` is a box that turns with its object, such as a car or a crate, and fits it more tightly than a box along the axes.
+- A `Sphere` has no direction at all, so it suits blasts, ranges and objects that roll.
+- A `Capsule3` is a segment with a radius, the usual body of a character, since it slides along walls and steps over edges.
+- A `Triangle3` is a piece of a mesh, and a `Plane` is the ground or a wall without an end.
+
+A `Ray3` asks what lies along a line, such as what the player aims at or how far the ground is below a foot. Its cast returns the nearest hit with its distance, point and normal. A ray never slips between two triangles that share an edge, so a ray cast against a mesh finds the surface even through the seams of its triangles. The overlap tests answer whether two shapes touch, and the closest points tell where they come nearest.
+
+```lua
+local m = require('haylen.math')
+
+local foot = m.ray3({3, 1, -2}, -m.up(), 2)
+local ground = m.triangle3({0, 0, 0}, {0, 0, -10}, {10, 0, 0})
+local hit = foot:cast(ground)
+print(hit and hit.distance) -- 1.0, so the foot stands one meter above the ground
+```
+
+A `Frustum` is the space that a camera sees, which `m.frustum` builds from the view and the projection of the camera. Culling skips the objects whose bounds lie outside it, which saves the work of drawing them. The test is conservative: it never calls a shape outside that reaches inside, so nothing that the camera sees disappears, and it allows a little room past each plane so a shape that rests on one is never cut by rounding.
+
 ## Planes
 
 A `Plane` splits space into a front side and a back side, such as the ground, a wall or the surface of water. Its signed distance tells on which side a point lies and how far, and its closest point drops a point onto it. A plane in the space of a camera also clips a projection with `obliqueNearPlane`, which draws only what lies behind a mirror or a portal.

@@ -132,13 +132,13 @@ TEST_F(RaycasterTest, BouncesPiercesAndFansRays) {
 
     // A laser between the mirrors bounces until it runs out of bounces or of length.
     std::vector<haylen::physics2d::RaycastHit> hits;
-    const haylen::math::Ray last = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 5000.0F}, 3, mirrors, hits);
+    const haylen::math::Ray2 last = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 5000.0F}, 3, mirrors, hits);
     ASSERT_EQ(hits.size(), 4U);
     EXPECT_EQ(hits[0].shape, range.rightMirror);
     EXPECT_EQ(hits[1].shape, range.leftMirror);
     EXPECT_NEAR(hits[1].distance, 790.0F, 0.5F);
     EXPECT_NEAR(last.getEnd().x, -395.0F, 0.5F);
-    const haylen::math::Ray open = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 1000.0F}, 5, mirrors, hits);
+    const haylen::math::Ray2 open = caster.bounce({{0.0F, 50.0F}, {1.0F, 0.0F}, 1000.0F}, 5, mirrors, hits);
     EXPECT_EQ(hits.size(), 1U);
     EXPECT_NEAR(open.getEnd().x, -210.0F, 0.5F);
     EXPECT_THROW((void)caster.bounce({{0.0F, 0.0F}, {1.0F, 0.0F}}, 1, mirrors, hits), std::invalid_argument);
@@ -168,7 +168,7 @@ TEST_F(RaycasterTest, CastsBatchesInParallelLikeOneByOne) {
     caster.castBatch(batch, {}, &fixture.engine().getJobs());
     std::size_t hits = 0;
     for (std::size_t index = 0; index < batch.size(); ++index) {
-        const haylen::math::Segment& ray = batch.getRay(index);
+        const haylen::math::Segment2& ray = batch.getRay(index);
         const std::optional<haylen::physics2d::RaycastHit> expected = caster.castRay(ray.start, ray.end);
         ASSERT_EQ(batch.getHit(index).has_value(), expected.has_value());
 

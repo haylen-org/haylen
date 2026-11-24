@@ -10,7 +10,7 @@
 #include "haylen/2d/physics/Fracture.hpp"
 #include "haylen/2d/physics/Terrain.hpp"
 #include "haylen/2d/physics/World.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Polygon.hpp"
 
 namespace haylen::physics2d {
@@ -53,8 +53,8 @@ TEST_F(DestructionTest, TerrainBuildsChainsFromFilledShapes) {
     float area = 0.0F;
     for (const std::vector<math::Vec2>& outline : terrain.getOutlines()) {
         EXPECT_GE(outline.size(), 4U);
-        EXPECT_GT(math::Geometry::signedArea(outline), 0.0F);
-        area += math::Geometry::signedArea(outline);
+        EXPECT_GT(math::Geometry2::signedArea(outline), 0.0F);
+        area += math::Geometry2::signedArea(outline);
 
         for (const math::Vec2 point : outline) {
             EXPECT_GE(point.y, 101.9F);
@@ -92,7 +92,7 @@ TEST_F(DestructionTest, CarvingRebuildsOnlyTheChunksItTouches) {
     EXPECT_EQ(terrain.update(), 2U);
     float area = 0.0F;
     for (const std::vector<math::Vec2>& outline : terrain.getOutlines()) {
-        area += math::Geometry::signedArea(outline);
+        area += math::Geometry2::signedArea(outline);
     }
 
     const float craters = 3.14159265F * (20.0F * 20.0F + 24.0F * 24.0F) * 0.5F + 4.0F * (20.0F + 24.0F);

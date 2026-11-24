@@ -7,7 +7,7 @@
 
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/math/Color.hpp"
-#include "haylen/math/Geometry.hpp"
+#include "haylen/math/Geometry2.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Noise2D.hpp"
 
@@ -166,7 +166,7 @@ void Camera::frame(std::span<const math::Vec2> points, float padding, float delt
         throw std::invalid_argument("Framing needs at least one point.");
     }
 
-    const math::Rect bounds = math::Geometry::bounds(points).expanded(padding);
+    const math::Rect bounds = math::Geometry2::bounds(points).expanded(padding);
     const math::Vec2 viewSize = getViewRect(screen).getSize();
     const float fit = std::min(viewSize.x / std::max(bounds.width, 1e-3F), viewSize.y / std::max(bounds.height, 1e-3F));
     const math::Vec2 wanted{fit, fit};
@@ -304,7 +304,7 @@ std::array<math::Vec2, 4> Camera::getViewCorners(const math::Rect& screen) const
 }
 
 math::Rect Camera::visibleBounds(const math::Rect& screen) const noexcept {
-    return math::Geometry::bounds(getViewCorners(screen));
+    return math::Geometry2::bounds(getViewCorners(screen));
 }
 
 void Camera::drawDebug(Renderer& renderer, const math::Rect& screen, const DrawOrder& order) const {
