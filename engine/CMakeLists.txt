@@ -751,11 +751,12 @@ haylen_enable_coverage(haylen-engine)
 
 haylen_add_gpu_library()
 
-# GCC and MSVC link the intermediate code of a Release build only when the link asks for it, so every program that links the engine asks, whatever its own configuration, which a Debug app that links the prebuilt SDK has. GCC repeats its checks of string bounds at that link on code that it inlines from other files and reports bounds that no call reaches, while every file of the engine passes those checks where it compiles, so the link leaves them to the compile.
+# GCC and MSVC link the intermediate code of a Release build only when the link asks for it, so every program that links the engine asks, whatever its own configuration, which a Debug app that links the prebuilt SDK has.
 if(HAYLEN_LINK_TIME_OPTIMIZATION AND CMAKE_BUILD_TYPE STREQUAL "Release")
   if(MSVC)
     target_link_options(haylen-engine INTERFACE /LTCG /INCREMENTAL:NO)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # The only code that the late string checks of the link of GCC report is `lstrlib.c` of Lua, a dependency, whose `add_s` copies a match whose start GCC cannot prove lies before its end, while every file of the engine compiles with those checks on.
     target_link_options(haylen-engine INTERFACE -flto=auto -Wno-stringop-overflow -Wno-stringop-overread)
   elseif(ANDROID AND ANDROID_PLATFORM_LEVEL LESS 29)
     # Android before API 29 keeps thread-local variables in emulated storage, which the compile uses, so the code that the link generates from the intermediate code uses it too.

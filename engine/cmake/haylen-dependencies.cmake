@@ -290,6 +290,7 @@ CPMAddPackage(
   CUSTOM_CACHE_KEY ${box2d_cache_key}
   SYSTEM YES
 )
+haylen_disable_warnings(box2d)
 
 # Clipper2 computes the polygon booleans, offsets and constrained triangulations of `math::Polygon`. Its core header uses `std::back_inserter` without the header `iterator` that declares it, which the standard library of Emscripten does not bring in through another header, so a patch includes it.
 set(clipper2_patches "${CMAKE_CURRENT_LIST_DIR}/patches/clipper2-iterator.patch")
@@ -305,6 +306,7 @@ CPMAddPackage(
   OPTIONS "CLIPPER2_UTILS OFF" "CLIPPER2_EXAMPLES OFF" "CLIPPER2_TESTS OFF" "CLIPPER2_USINGZ OFF"
   SYSTEM YES
 )
+haylen_disable_warnings(Clipper2)
 # Clipper2 links the math library by name, which Apple platforms keep in libSystem, and libuv links it too, so the Apple linker warns about the duplicate.
 if(APPLE)
   set_property(TARGET Clipper2 PROPERTY INTERFACE_LINK_LIBRARIES "")
@@ -327,6 +329,7 @@ CPMAddPackage(
     "ZSTD_MULTITHREAD_SUPPORT OFF"
   SYSTEM YES
 )
+haylen_disable_warnings(libzstd_static)
 # Zstandard passes an option to the assembler, which the link of GCC drops from code compiled for link-time optimization with a warning, so it builds as machine code.
 set_property(TARGET libzstd_static PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF)
 
@@ -369,6 +372,7 @@ if(HAYLEN_BUILD_TESTS AND (HAYLEN_DESKTOP OR HAYLEN_GPU_TESTS_ALONE))
     OPTIONS "BUILD_GMOCK OFF" "INSTALL_GTEST OFF" "gtest_force_shared_crt ON"
     SYSTEM YES
   )
+  haylen_disable_warnings(gtest gtest_main)
 endif()
 
 if(ANDROID)

@@ -2,8 +2,6 @@
 
 #include <algorithm>
 #include <array>
-#include <clipper2/clipper.h>
-#include <clipper2/clipper.triangulation.h>
 #include <cmath>
 #include <map>
 #include <stdexcept>
@@ -11,6 +9,7 @@
 #include <utility>
 
 #include "haylen/math/Geometry2D.hpp"
+#include "math/Clipper2.hpp"
 
 namespace haylen::math {
 

@@ -1,7 +1,5 @@
 #include "2d/graphics/PathTessellation.hpp"
 
-#include <clipper2/clipper.h>
-
 #include <algorithm>
 #include <cmath>
 #include <span>
@@ -11,6 +9,7 @@
 #include "2d/graphics/StrokeBuilder.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Geometry2D.hpp"
+#include "math/Clipper2.hpp"
 
 namespace haylen::graphics2d {
 
