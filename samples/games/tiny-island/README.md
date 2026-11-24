@@ -106,7 +106,7 @@ tiny-island/
   tools/
     generate-island-map.py  The island map generator.
   ui-tests/
-    StartTests.swift     The UI test that taps Play and Start and waits for the island, which "haylen test --ui samples/games/tiny-island" runs on a simulator.
+    StartTests.swift     The UI test that taps Play and Start, or presses them with the remote of the Apple TV, and waits for the island, which "haylen test --ui samples/games/tiny-island" runs on an iOS or tvOS simulator.
 ```
 
 The day runs dawn, day, dusk and night in a loop of 15, 150, 15 and 90 seconds. The file `systems/day-night.lua` counts the days, reports every phase to the run and eases the ambient light from night through a warm dawn into full daylight and back through the dusk color.
