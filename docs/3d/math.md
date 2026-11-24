@@ -172,6 +172,18 @@ for _, frame in ipairs(road:frames(12)) do
 end
 ```
 
+Circles and ellipses are conics, so a NURBS curve draws them exactly, and `m.ellipse3d`, `m.arc3d` and `m.arcThrough3d` build those curves from a center and axes, from a start turned around a normal or from three points. They are splines like any other, so a road joins its straight pieces and its bends into one path whose joins keep their direction.
+
+Some curves come from a formula rather than from points, such as the coil of a spring, a spiral staircase or a knot. A `ParametricCurve3D` holds one, from `m.helix`, `m.torusKnot` or `m.lissajous3d`, and it measures, walks and frames itself as a spline does. Its points come out in one call with `curve:sample`, which suits building the mesh of a tube or placing many lights along a coil. Code in C++ makes a parametric curve of any formula that gives the point and its derivatives.
+
+```lua
+local m = require('haylen.math')
+
+local coil = m.helix({radius = 0.5, pitch = 0.1, turns = 12})
+local ring = m.arc3d({0, 0, 0}, {3, 0, 0}, m.up(), 2 * math.pi)
+print(#coil:sample(400), ring.closed) -- 400 true
+```
+
 NURBS also make surfaces and volumes. A `NurbsSurface` spreads a grid of points into a smooth sheet with a normal at every place, such as a hull or a patch of terrain, and a `NurbsVolume` bends the space of a block, such as a lattice that deforms a model inside it.
 
 ## Noise and random points

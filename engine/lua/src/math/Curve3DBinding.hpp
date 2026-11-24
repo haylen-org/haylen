@@ -11,6 +11,7 @@
 #include "haylen/math/CurvePath3D.hpp"
 #include "haylen/math/NurbsSurface.hpp"
 #include "haylen/math/NurbsVolume.hpp"
+#include "haylen/math/ParametricCurve3D.hpp"
 #include "haylen/math/Spline3D.hpp"
 
 namespace haylen::lua {
@@ -23,6 +24,11 @@ template <> struct Type<haylen::math::Spline3D> {
 template <> struct Type<haylen::math::CurvePath3D> {
     static constexpr const char* name = "haylen.CurvePath3D";
     using Storage = haylen::math::CurvePath3D;
+};
+
+template <> struct Type<haylen::math::ParametricCurve3D> {
+    static constexpr const char* name = "haylen.ParametricCurve3D";
+    using Storage = haylen::math::ParametricCurve3D;
 };
 
 template <> struct Type<haylen::math::NurbsSurface> {
@@ -39,23 +45,33 @@ template <> struct Type<haylen::math::NurbsVolume> {
 
 namespace haylen::lua::math {
 
-// Installs the curves and NURBS shapes of 3D in `haylen.math`: the classes `Spline3D`, `CurvePath3D`, `NurbsSurface` and `NurbsVolume` with their constructors.
+// Installs the curves and NURBS shapes of 3D in `haylen.math`: the classes `Spline3D`, `CurvePath3D`, `ParametricCurve3D`, `NurbsSurface` and `NurbsVolume` with their constructors.
 class Curve3DBinding final {
   public:
     static void install(lua_State* L);
 
-    // Sets `spline3d`, `curvePath3d`, `nurbsSurface` and `nurbsVolume` on the module table at the top of the stack.
+    // Sets `spline3d`, `ellipse3d`, `arc3d`, `arcThrough3d`, `curvePath3d`, `helix`, `torusKnot`, `lissajous3d`, `nurbsSurface` and `nurbsVolume` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
     static constexpr std::array<std::string_view, 7> kSplineFields{"kind", "closed", "alpha", "tension", "weights", "knots", "degree"};
     static constexpr std::array<std::string_view, 1> kPathFields{"closed"};
     static constexpr std::array<std::string_view, 1> kFrameFields{"up"};
+    static constexpr std::array<std::string_view, 2> kEllipseFields{"startAngle", "endAngle"};
+    static constexpr std::array<std::string_view, 4> kHelixFields{"radius", "endRadius", "pitch", "turns"};
+    static constexpr std::array<std::string_view, 4> kTorusKnotFields{"p", "q", "radius", "tubeRadius"};
+    static constexpr std::array<std::string_view, 3> kLissajousFields{"amplitude", "frequency", "phase"};
     static constexpr std::array<std::string_view, 6> kSurfaceFields{"columns", "weights", "knotsU", "knotsV", "degreeU", "degreeV"};
     static constexpr std::array<std::string_view, 9> kVolumeFields{"columns", "rows", "weights", "knotsU", "knotsV", "knotsW", "degreeU", "degreeV", "degreeW"};
 
     static int newSpline(lua_State* L);
+    static int newEllipse(lua_State* L);
+    static int newArc(lua_State* L);
+    static int newArcThrough(lua_State* L);
     static int newPath(lua_State* L);
+    static int newHelix(lua_State* L);
+    static int newTorusKnot(lua_State* L);
+    static int newLissajous(lua_State* L);
     static int newSurface(lua_State* L);
     static int newVolume(lua_State* L);
 
@@ -92,6 +108,20 @@ class Curve3DBinding final {
     static int pathCurveCount(lua_State* L);
     static int pathJoins(lua_State* L);
 
+    static int curvePoint(lua_State* L);
+    static int curveDerivatives(lua_State* L);
+    static int curveTangent(lua_State* L);
+    static int curvePointAtDistance(lua_State* L);
+    static int curveTangentAtDistance(lua_State* L);
+    static int curveParameterAtDistance(lua_State* L);
+    static int curveClosestPoint(lua_State* L);
+    static int curveSample(lua_State* L);
+    static int curveSampleEvenly(lua_State* L);
+    static int curveSampleByDistance(lua_State* L);
+    static int curveFrames(lua_State* L);
+    static int curveLength(lua_State* L);
+    static int curveClosed(lua_State* L);
+
     static int surfacePoint(lua_State* L);
     static int surfaceDerivatives(lua_State* L);
     static int surfaceNormal(lua_State* L);
@@ -103,6 +133,7 @@ class Curve3DBinding final {
     static int volumeRows(lua_State* L);
     static int volumeLayers(lua_State* L);
 
+    static void pushDerivatives(lua_State* L, const haylen::math::Spline3D::Derivatives& derivatives);
     static void pushClosest(lua_State* L, const haylen::math::Spline3D::ClosestPoint& closest);
     static void pushFrames(lua_State* L, std::span<const haylen::math::CurveFrame> frames);
     [[nodiscard]] static haylen::math::Vec3 readUp(lua_State* L, int index);

@@ -52,6 +52,38 @@ TEST_F(Curve3DLuaTest, JoinsCurvesIntoPaths) {
     EXPECT_NE(lua("return m.curvePath3d({})").find("A curve path needs at least one curve."), std::string::npos);
 }
 
+TEST_F(Curve3DLuaTest, DrawsEllipsesAndArcsAsSplines) {
+    EXPECT_EQ(lua("local e = m.ellipse3d({0, 0, 0}, {2, 0, 0}, {0, 0, -1}) return e.kind .. ' ' .. tostring(e.closed) .. ' ' .. e.segmentCount .. ' ' .. tostring(e:point(0.25):approximately({0, 0, -1}, 1e-5))"), "nurbs true 4 true");
+    EXPECT_EQ(lua("local e = m.ellipse3d({0, 0, 0}, {2, 0, 0}, {0, 1, 0}, {startAngle = 0, endAngle = math.pi}) return tostring(e.closed) .. ' ' .. tostring(e:point(1):approximately({-2, 0, 0}, 1e-5))"), "false true");
+    EXPECT_EQ(lua("local a = m.arc3d({0, 0, 0}, {5, 0, 0}, m.up(), math.pi / 2) return string.format('%.2f', a.length) .. ' ' .. tostring(a:point(1):approximately({0, 0, -5}, 1e-5))"), "7.85 true");
+    EXPECT_EQ(lua("local a = m.arcThrough3d({1, 0, 0}, {0, 0, -1}, {-1, 0, 0}) return string.format('%.2f %.3f', a.length, a:closestPoint({0, 0, -1}).distance)"), "3.14 0.000");
+    EXPECT_NE(lua("return m.ellipse3d({0, 0, 0}, {1, 0, 0}, {2, 0, 0})").find("The center and the two axes of an ellipse must be finite, and the axes must run in different directions so they span a plane."), std::string::npos);
+    EXPECT_NE(lua("return m.ellipse3d({0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {endAngle = 0})").find("The angles of an ellipse must be finite and apart by more than 0 and at most a whole turn."), std::string::npos);
+    EXPECT_NE(lua("return m.ellipse3d({0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {turns = 1})").find("Unknown option \"turns\"."), std::string::npos);
+    EXPECT_NE(lua("return m.arc3d({0, 0, 0}, {0, 2, 0}, m.up(), 1)").find("The start of an arc lies on its axis, so the arc has no radius."), std::string::npos);
+    EXPECT_NE(lua("return m.arc3d({0, 0, 0}, {1, 0, 0}, m.up(), 0)").find("The angle of an arc must be a finite number of radians other than 0 and at most a whole turn."), std::string::npos);
+    EXPECT_NE(lua("return m.arcThrough3d({0, 0, 0}, {1, 0, 0}, {2, 0, 0})").find("The three points of an arc must be finite and must not lie on one line, or no circle passes through them."), std::string::npos);
+    EXPECT_NE(lua("return m.spline3d({{0, 0, 0}, {1, 0, 0}}, {kind = 'nurbs', degree = 1, closed = true})").find("A closed NURBS spline must end where it starts."), std::string::npos);
+}
+
+TEST_F(Curve3DLuaTest, WindsParametricCurvesAndSamplesThemInBatches) {
+    fixture.runLua("spring = m.helix({radius = 2, pitch = 0.5, turns = 3})");
+    EXPECT_EQ(lua("return tostring(spring.closed) .. ' ' .. string.format('%.1f', spring.length) .. ' ' .. tostring(spring:point(1 / 12):approximately({0, 0.125, -2}, 1e-5))"), "false 37.7 true");
+    EXPECT_EQ(lua("local points = spring:sample(13) return #points .. ' ' .. tostring(points[13]:approximately({2, 1.5, 0}, 1e-4)) .. ' ' .. #spring:sampleEvenly(4) .. ' ' .. #spring:sampleByDistance(10)"), "13 true 4 5");
+    EXPECT_EQ(lua("local d = spring:derivatives(0) return tostring(d.point:approximately({2, 0, 0})) .. ' ' .. string.format('%.3f', d.first.y) .. ' ' .. tostring(spring:tangentAtDistance(0):approximately(spring:tangent(0), 1e-6))"), "true 1.500 true");
+    EXPECT_EQ(lua("local c = spring:closestPoint({0, 0.125, -3}) return string.format('%.3f %.3f %.3f', c.t, c.distance, spring:parameterAtDistance(spring.length))"), "0.083 1.000 1.000");
+    EXPECT_EQ(lua("local s = m.helix({radius = 1, endRadius = 3, pitch = 0, turns = -2}) return tostring(s:pointAtDistance(s.length):approximately({3, 0, 0}, 1e-4))"), "true");
+    EXPECT_EQ(lua("local knot = m.torusKnot({p = 3, q = 2}) local frames = knot:frames(16) return tostring(knot.closed) .. ' ' .. #frames .. ' ' .. tostring(frames[16].position:approximately(frames[1].position, 1e-4))"), "true 16 true");
+    EXPECT_EQ(lua("local figure = m.lissajous3d({amplitude = {2, 1, 3}, phase = {math.pi / 2, 0, 0}}) return tostring(figure.closed) .. ' ' .. tostring(figure:point(0.25):approximately({0, 0, -3}, 1e-5))"), "true true");
+    EXPECT_NE(lua("return m.helix({turns = 0})").find("A helix needs a finite number of turns other than 0 and at most 16384 either way."), std::string::npos);
+    EXPECT_NE(lua("return m.helix({radius = -1})").find("The radius and the end radius of a helix must be finite numbers of 0 or more."), std::string::npos);
+    EXPECT_NE(lua("return m.torusKnot({p = 2, q = 4})").find("The windings p and q of a torus knot must be whole numbers from 1 to 1024 with no common divisor above 1, or the knot runs over itself."), std::string::npos);
+    EXPECT_NE(lua("return m.torusKnot({tubeRadius = 2})").find("A torus knot needs a finite tube radius above 0 and below its radius."), std::string::npos);
+    EXPECT_NE(lua("return m.lissajous3d({frequency = {1, 2.5, 3}})").find("The frequencies of a Lissajous curve must be whole numbers from 1 to 1024."), std::string::npos);
+    EXPECT_NE(lua("return m.helix({width = 1})").find("Unknown option \"width\"."), std::string::npos);
+    EXPECT_NE(lua("return m.helix({radius = 0, pitch = 0}):tangent(0.5)").find("The curve stands still at this parameter, so it has no direction."), std::string::npos);
+}
+
 TEST_F(Curve3DLuaTest, EvaluatesSurfacesAndVolumes) {
     fixture.runLua("sheet = m.nurbsSurface({{0, 0, 0}, {2, 0, 0}, {0, 0, -2}, {2, 0, -2}}, {columns = 2, degreeU = 1, degreeV = 1})");
     EXPECT_EQ(lua("return sheet.columns .. ' ' .. sheet.rows .. ' ' .. tostring(sheet:point(0.5, 0.25)) .. ' ' .. tostring(sheet:normal(0.5, 0.5))"), "2 2 Vec3(1.0, 0.0, -0.5) Vec3(0.0, 1.0, 0.0)");

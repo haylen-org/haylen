@@ -6,8 +6,7 @@
 #include <limits>
 #include <stdexcept>
 
-#include "math/ArcLength.hpp"
-#include "math/ParallelTransport.hpp"
+#include "math/Curve3DHelper.hpp"
 
 namespace haylen::math {
 
@@ -110,48 +109,15 @@ CurvePath3D::ClosestPoint CurvePath3D::getClosestPoint(Vec3 point) const noexcep
 }
 
 std::vector<Vec3> CurvePath3D::sampleEvenly(std::size_t count) const {
-    ArcLength::checkCount(count);
-    std::vector<Vec3> result;
-    result.reserve(count);
-    for (std::size_t index = 0; index < count; ++index) {
-        const float share = count == 1 ? 0.0F : static_cast<float>(index) / static_cast<float>(count - 1);
-        result.push_back(share >= 1.0F ? curves.back().getPoint(1.0F) : getPointAtDistance(getLength() * share));
-    }
-
-    return result;
+    return Curve3DHelper::sampleEvenly(*this, count);
 }
 
 std::vector<Vec3> CurvePath3D::sampleByDistance(float spacing) const {
-    const std::size_t count = ArcLength::countSteps(getLength(), spacing);
-    std::vector<Vec3> result;
-    result.reserve(count + 1);
-    for (std::size_t index = 0; index < count; ++index) {
-        result.push_back(getPointAtDistance(static_cast<float>(index) * spacing));
-    }
-
-    if (!closed) {
-        result.push_back(curves.back().getPoint(1.0F));
-    }
-
-    return result;
+    return Curve3DHelper::sampleByDistance(*this, spacing);
 }
 
 std::vector<CurveFrame> CurvePath3D::getFrames(std::size_t count, Vec3 up) const {
-    if (count < 2) {
-        throw std::invalid_argument("The frames of a curve need at least 2 frames, one at each end.");
-    }
-
-    ArcLength::checkCount(count);
-    std::vector<CurveFrame> frames(count);
-    for (std::size_t index = 0; index < count; ++index) {
-        const bool last = index + 1 == count;
-        const float distance = getLength() * static_cast<float>(index) / static_cast<float>(count - 1);
-        frames[index].position = last && !closed ? curves.back().getPoint(1.0F) : getPointAtDistance(last ? 0.0F : distance);
-        frames[index].tangent = last && !closed ? curves.back().getTangent(1.0F) : getTangentAtDistance(last ? 0.0F : distance);
-    }
-
-    ParallelTransport::carry(frames, up, closed);
-    return frames;
+    return Curve3DHelper::getFrames(*this, count, up);
 }
 
 } // namespace haylen::math

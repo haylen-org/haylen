@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "haylen/math/CurveFrame.hpp"
+#include "haylen/math/Math.hpp"
 #include "haylen/math/Vec3.hpp"
 
 namespace haylen::math {
@@ -27,7 +28,7 @@ class Spline3D final {
         Nurbs,
     };
 
-    // The `alpha` of a Catmull-Rom curve is 0 for the uniform parameterization, 0.5 for the centripetal one, which never loops or cusps inside a segment, and 1 for the chordal one, and its `tension` from 0 to 1 shortens its tangents until the curve runs straight at 1. The weights, knots and degree belong to NURBS curves alone. Empty weights give every point a weight of 1, and empty knots make the clamped uniform knots, which reach both end points.
+    // The `alpha` of a Catmull-Rom curve is 0 for the uniform parameterization, 0.5 for the centripetal one, which never loops or cusps inside a segment, and 1 for the chordal one, and its `tension` from 0 to 1 shortens its tangents until the curve runs straight at 1. The weights, knots and degree belong to NURBS curves alone. Empty weights give every point a weight of 1, and empty knots make the clamped uniform knots, which reach both end points. A NURBS curve closes through its own points and knots, and `closed` says that it ends where it starts, so its parameters and distances wrap around.
     struct Options {
         Kind kind = Kind::CatmullRom;
         bool closed = false;
@@ -51,9 +52,16 @@ class Spline3D final {
         float distance = 0.0F;
     };
 
-    // Throws `std::invalid_argument` when the kind needs more points or a different count, for an alpha or a tension outside 0 to 1, or for weights, knots or a degree that do not describe a NURBS curve.
+    // Throws `std::invalid_argument` when the kind needs more points or a different count, for an alpha or a tension outside 0 to 1, for weights, knots or a degree that do not describe a NURBS curve, or for a closed NURBS curve that does not end where it starts.
     explicit Spline3D(std::vector<Vec3> controlPoints, const Options& options);
     explicit Spline3D(std::vector<Vec3> controlPoints);
+
+    // Returns the exact NURBS curve of the ellipse whose point at the angle `a` is `center + xAxis * cos(a) + yAxis * sin(a)`, from `startAngle` to `endAngle` in radians, such as an orbit or the rim of a dish. A whole turn makes a closed curve. Throws `std::invalid_argument` for values that are not finite, for axes that do not span a plane, or for angles that are not apart by more than 0 and at most a whole turn.
+    [[nodiscard]] static Spline3D ellipse(Vec3 center, Vec3 xAxis, Vec3 yAxis, float startAngle = 0.0F, float endAngle = Math::kTau);
+    // Returns the exact NURBS curve of the arc that turns `start` around the axis through `center` along `normal` by `angle` radians, by the right hand, such as a bend of a road. A whole turn makes a closed circle. Throws `std::invalid_argument` for values that are not finite, for a normal without a direction, for a start on the axis or for an angle that is 0 or more than a whole turn.
+    [[nodiscard]] static Spline3D arc(Vec3 center, Vec3 start, Vec3 normal, float angle);
+    // Returns the exact NURBS curve of the arc of the circle through three points, from `start` through `through` to `end`. Throws `std::invalid_argument` for points that are not finite or that lie on one line.
+    [[nodiscard]] static Spline3D arcThrough(Vec3 start, Vec3 through, Vec3 end);
 
     [[nodiscard]] static std::optional<Kind> kindFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view kindName(Kind value) noexcept;
@@ -107,7 +115,10 @@ class Spline3D final {
   private:
     static const std::array<std::pair<std::string_view, Kind>, 6> kKindNames;
     static constexpr std::size_t kStepsPerSegment = 32;
-    static constexpr int kClosestIterations = 8;
+    static constexpr double kWholeTurn = 6.283185307179586;
+    static constexpr double kTurnTolerance = 1e-6;
+    static constexpr float kFlatSine = 1e-6F;
+    static constexpr float kCloseTolerance = 1e-4F;
 
     void buildLinear();
     void buildCatmullRom(float alpha, float tension);
@@ -120,7 +131,6 @@ class Spline3D final {
     [[nodiscard]] Vec3 wrappedPoint(std::ptrdiff_t index) const noexcept;
     [[nodiscard]] float toKnot(float t) const noexcept;
     [[nodiscard]] Derivatives evaluate(float u) const noexcept;
-    [[nodiscard]] float refineClosest(Vec3 point, float t) const noexcept;
 
     std::vector<Vec3> points;
     Kind kind;

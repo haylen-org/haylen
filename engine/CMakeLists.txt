@@ -399,6 +399,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/NurbsSurface.cpp
   src/math/NurbsVolume.cpp
   src/math/ParallelTransport.cpp
+  src/math/ParametricCurve3D.cpp
   src/math/Obb.cpp
   src/math/Photometry.cpp
   src/math/PoissonDisk2D.cpp

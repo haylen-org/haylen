@@ -4769,14 +4769,14 @@ Returns a new `Spline3D` through or around `points`, a list of `Vec3` values in 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `kind` | string | `'catmullRom'` | The kind of curve. |
-| `closed` | boolean | `false` | Whether the curve returns to its first point. A `'nurbs'` curve closes through its own points and knots instead. |
+| `closed` | boolean | `false` | Whether the curve returns to its first point. A `'nurbs'` curve closes through its own points and knots, and `closed` then says that it ends where it starts, so its parameter and distances wrap around. |
 | `alpha` | number | `0.5` | For `'catmullRom'` alone: `0` for the uniform parameterization, `0.5` for the centripetal one, which never loops or cusps inside a segment, and `1` for the chordal one. |
 | `tension` | number | `0` | For `'catmullRom'` alone: from `0` to `1`, how much the tangents shorten, until the curve runs straight between its points at `1`. |
 | `weights` | list of numbers | every weight `1` | For `'nurbs'` alone: a weight above `0` for each point, which pulls the curve toward it. |
 | `knots` | list of numbers | clamped uniform knots | For `'nurbs'` alone: as many knots as the points plus the degree plus `1`, never decreasing. The default reaches both end points. |
 | `degree` | integer | `3` | For `'nurbs'` alone: the degree from `1` to `9`, which needs at least one point more. |
 
-A count of points that the kind cannot take raises a sentence that says the count it needs, such as `A Bezier spline needs 3n + 1 points when open and 3n points when closed.`. An option for another kind raises `Only a NURBS spline takes weights, knots and a degree.` or `Only a Catmull-Rom spline takes an alpha and a tension.`, an alpha or a tension out of range raises `A Catmull-Rom spline needs an alpha and a tension from 0 to 1.`, and knots, weights or a degree that do not describe a NURBS curve raise a sentence that names what is wrong, such as `The NURBS spline needs at least one point more than its degree.`.
+A count of points that the kind cannot take raises a sentence that says the count it needs, such as `A Bezier spline needs 3n + 1 points when open and 3n points when closed.`. An option for another kind raises `Only a NURBS spline takes weights, knots and a degree.` or `Only a Catmull-Rom spline takes an alpha and a tension.`, an alpha or a tension out of range raises `A Catmull-Rom spline needs an alpha and a tension from 0 to 1.`, knots, weights or a degree that do not describe a NURBS curve raise a sentence that names what is wrong, such as `The NURBS spline needs at least one point more than its degree.`, and a closed NURBS curve that ends away from its start raises `A closed NURBS spline must end where it starts.`.
 
 ```lua
 local m = require('haylen.math')
@@ -4784,6 +4784,49 @@ local m = require('haylen.math')
 local road = m.spline3d({{0, 0, 0}, {20, 0, -5}, {40, 3, 0}}, {alpha = 0.5, tension = 0.2})
 local arc = m.spline3d({{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, {kind = 'nurbs', degree = 2, weights = {1, math.sqrt(0.5), 1}})
 print(string.format('%.4f', arc:point(0.3):length())) -- 1.0000, every point lies on the unit circle
+```
+
+### m.ellipse3d(center, xAxis, yAxis, options)
+
+Returns a new `Spline3D` that draws an ellipse exactly, or a part of one, such as an orbit, the rim of a dish or an oval track. The point at the angle `a` is `center + xAxis * cos(a) + yAxis * sin(a)`, so `xAxis` reaches from the center to the point at angle `0` and `yAxis` to the point a quarter turn later. Two axes of the same length at right angles draw a circle. The curve is a `'nurbs'` curve of degree `2`, and a whole turn makes it `closed`. Its parameter does not follow the angle evenly, so walk it by distance for an even speed.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `startAngle` | number | `0` | The angle in radians where the curve starts. |
+| `endAngle` | number | `2 * math.pi` | The angle in radians where the curve ends, at most a whole turn from the start either way. |
+
+Axes that are not finite or that run along one line raise `The center and the two axes of an ellipse must be finite, and the axes must run in different directions so they span a plane.`, and angles that are equal, more than a whole turn apart or not finite raise `The angles of an ellipse must be finite and apart by more than 0 and at most a whole turn.`.
+
+```lua
+local m = require('haylen.math')
+
+local orbit = m.ellipse3d({0, 0, 0}, {12, 0, 0}, {0, 0, -8})
+local moon = orbit:pointAtDistance(30)
+print(orbit.closed, moon)
+```
+
+### m.arc3d(center, start, normal, angle)
+
+Returns a new `Spline3D` that draws an arc of a circle exactly, such as the bend of a road or the swing of a door. The arc turns `start` around the axis through `center` along `normal` by `angle` radians, counterclockwise when the normal points at the viewer, and a negative angle turns it the other way. A start off the plane of the center turns at its own height around the axis. A whole turn makes a closed circle. A center or a start that is not finite or a normal without a direction raises `The center and the start of an arc must be finite, and its normal must have a finite length above 0.`, an angle of `0` or beyond a whole turn raises `The angle of an arc must be a finite number of radians other than 0 and at most a whole turn.`, and a start on the axis raises `The start of an arc lies on its axis, so the arc has no radius.`.
+
+```lua
+local m = require('haylen.math')
+
+local straight = m.spline3d({{-20, 0, 10}, {0, 0, 10}}, {kind = 'linear'})
+local bend = m.arc3d({0, 0, 0}, {0, 0, 10}, m.up(), math.pi / 2)
+local road = m.curvePath3d({straight, bend})
+print(road.joins[1]) -- tangent
+```
+
+### m.arcThrough3d(start, through, end)
+
+Returns a new `Spline3D` that draws the arc of the circle through three points, from `start` through `through` to `end`, such as an arch that a person places by its ends and its top. Points that are not finite or that lie on one line raise `The three points of an arc must be finite and must not lie on one line, or no circle passes through them.`.
+
+```lua
+local m = require('haylen.math')
+
+local arch = m.arcThrough3d({-4, 0, 0}, {0, 4, 0}, {4, 0, 0})
+print(string.format('%.1f', arch.length)) -- 12.6, half of a circle of radius 4
 ```
 
 ### spline:point(t)
@@ -5027,6 +5070,195 @@ local m = require('haylen.math')
 
 local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}})})
 print(#road:frames(8)) -- 8
+```
+
+## ParametricCurve3D
+
+A `ParametricCurve3D` is a curve that a formula of its parameter defines, such as a helix, a spring, a spiral staircase, a torus knot or a Lissajous figure. Its parameter `t` runs from `0` at the start to `1` at the end, and like a `Spline3D` it measures its length, walks by distance, finds its closest point and gives frames for tubes. The [3D math guide](../3d/math.md#curves) explains when to use one. Make one with `m.helix`, `m.torusKnot` or `m.lissajous3d`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `length` | number | read | The length of the whole curve. |
+| `closed` | boolean | read | Whether the curve ends where it starts, so its parameter and distances wrap around. Torus knots and Lissajous curves are closed. |
+
+### m.helix(options)
+
+Returns a new `ParametricCurve3D` that winds around the up axis, such as a spring, a spiral staircase or the path of a falling leaf. It starts at the point `radius` along the right axis and turns counterclockwise seen from above, rising `pitch` with each turn. An `endRadius` that differs from the radius widens or narrows it into a spiral, and a `pitch` of `0` keeps it flat.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `radius` | number | `1` | The distance from the axis at the start, `0` or more. |
+| `endRadius` | number | `radius` | The distance from the axis at the end, `0` or more. |
+| `pitch` | number | `1` | How far the curve rises with each turn, negative to go down. |
+| `turns` | number | `1` | How many turns it makes, negative to wind the other way, at most `16384` either way. |
+
+A radius below `0` raises `The radius and the end radius of a helix must be finite numbers of 0 or more.`, a pitch that is not finite raises `The pitch of a helix must be a finite number.`, and turns of `0` or too many raise `A helix needs a finite number of turns other than 0 and at most 16384 either way.`.
+
+```lua
+local m = require('haylen.math')
+
+local stairs = m.helix({radius = 3, pitch = 4, turns = 2})
+for index, step in ipairs(stairs:sampleEvenly(24)) do
+    print(index, step)
+end
+```
+
+### m.torusKnot(options)
+
+Returns a new closed `ParametricCurve3D` that winds `p` times around the up axis and `q` times through the tube of a ring, such as a knotted rail of a coaster or an ornament. The default is the trefoil, the simplest knot.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `p` | integer | `2` | The turns around the up axis, from `1` to `1024`. |
+| `q` | integer | `3` | The turns through the tube, from `1` to `1024`, with no common divisor with `p` above `1`. |
+| `radius` | number | `1` | The radius of the ring, from the axis to the middle of the tube. |
+| `tubeRadius` | number | `0.4` | The radius of the tube, above `0` and below `radius`. |
+
+Windings that share a divisor raise `The windings p and q of a torus knot must be whole numbers from 1 to 1024 with no common divisor above 1, or the knot runs over itself.`, and a tube that does not fit the ring raises `A torus knot needs a finite tube radius above 0 and below its radius.`.
+
+```lua
+local m = require('haylen.math')
+
+local knot = m.torusKnot({p = 3, q = 5, radius = 6, tubeRadius = 2})
+local frames = knot:frames(200)
+print(knot.closed, #frames) -- true 200
+```
+
+### m.lissajous3d(options)
+
+Returns a new closed `ParametricCurve3D` that swings along each axis as `amplitude * sin(2 * pi * frequency * t + phase)`, such as the flight of a firefly or a path that a camera drifts along.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `amplitude` | `Vec3` | `{1, 1, 1}` | How far the curve swings along each axis. |
+| `frequency` | `Vec3` | `{1, 2, 3}` | How many swings it makes along each axis, whole numbers from `1` to `1024`. |
+| `phase` | `Vec3` | `{0, 0, 0}` | Where each swing starts, in radians. |
+
+An amplitude or a phase that is not finite raises `The amplitude and the phase of a Lissajous curve must be finite.`, and a frequency that is not whole raises `The frequencies of a Lissajous curve must be whole numbers from 1 to 1024.`.
+
+```lua
+local m = require('haylen.math')
+
+local firefly = m.lissajous3d({amplitude = {4, 1, 4}, frequency = {3, 5, 2}})
+print(firefly:pointAtDistance(10))
+```
+
+### curve:point(t)
+
+Returns the point at the parameter `t` as a `Vec3`. A closed curve wraps `t` around, and an open one clamps it to `0` and `1`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.helix({radius = 2, pitch = 1}):point(0.5):approximately({-2, 0.5, 0})) -- true
+```
+
+### curve:derivatives(t)
+
+Returns a table with the `point` at `t` and its `first` and `second` derivatives by the parameter, as `spline:derivatives` does.
+
+```lua
+local m = require('haylen.math')
+
+local d = m.helix({radius = 2, pitch = 1}):derivatives(0)
+print(d.first.y) -- 1.0, the rise over the whole walk
+```
+
+### curve:tangent(t)
+
+Returns the direction of travel at `t` as a `Vec3` of length `1`. Where the curve stands still, such as a helix without a radius or a pitch, it raises `The curve stands still at this parameter, so it has no direction.`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.helix({radius = 0, pitch = 3}):tangent(0.5).y) -- 1.0
+```
+
+### curve:pointAtDistance(distance)
+
+Returns the point `distance` world units along the curve, which walks it at an even speed. A closed curve wraps the distance around.
+
+```lua
+local m = require('haylen.math')
+
+local spring = m.helix({radius = 1, pitch = 0.2, turns = 10})
+print(spring:pointAtDistance(spring.length / 2))
+```
+
+### curve:tangentAtDistance(distance)
+
+Returns the direction of travel `distance` world units along the curve, with the error of `curve:tangent`.
+
+```lua
+local m = require('haylen.math')
+
+local knot = m.torusKnot()
+print(knot:tangentAtDistance(1))
+```
+
+### curve:parameterAtDistance(distance)
+
+Returns the parameter `t` at `distance` world units along the curve.
+
+```lua
+local m = require('haylen.math')
+
+local spring = m.helix({radius = 1, pitch = 0, turns = 1})
+print(string.format('%.2f', spring:parameterAtDistance(math.pi))) -- 0.50
+```
+
+### curve:closestPoint(point)
+
+Returns a table with the parameter `t`, the `point` of the curve closest to `point` and the `distance` between them.
+
+```lua
+local m = require('haylen.math')
+
+local closest = m.helix({radius = 2, pitch = 0}):closestPoint({3, 0, 0})
+print(string.format('%.1f', closest.distance)) -- 1.0
+```
+
+### curve:sample(count)
+
+Returns `count` points spread evenly over the parameter, both ends included, which the engine evaluates in one call. More than `16777216` points raise `Sampling a spline takes at most 16777216 points.`.
+
+```lua
+local m = require('haylen.math')
+
+print(#m.torusKnot():sample(256)) -- 256
+```
+
+### curve:sampleEvenly(count)
+
+Returns `count` points spread evenly by distance along the curve, both ends included, with the limit of `curve:sample`.
+
+```lua
+local m = require('haylen.math')
+
+local lights = m.helix({radius = 4, pitch = 2, turns = 3}):sampleEvenly(30)
+print(#lights) -- 30
+```
+
+### curve:sampleByDistance(spacing)
+
+Returns points `spacing` world units apart along the curve from its start, plus the end point of an open curve, with the errors of `spline:sampleByDistance`.
+
+```lua
+local m = require('haylen.math')
+
+print(#m.helix({radius = 1, pitch = 0}):sampleByDistance(1) > 0) -- true
+```
+
+### curve:frames(count, options)
+
+Returns `count` frames spread evenly by distance, with the options and errors of `spline:frames`. A closed curve spreads the twist of its loop over its frames, so a tube around a knot meets its own start.
+
+```lua
+local m = require('haylen.math')
+
+for _, frame in ipairs(m.torusKnot():frames(64)) do
+    print(frame.position + frame.normal * 0.1)
+end
 ```
 
 ## NurbsSurface
@@ -5654,6 +5886,21 @@ These messages come from the functions and methods of the module. Messages that 
 | `A Catmull-Rom spline needs at least two points when open and three when closed.` | A `'catmullRom'` spline has too few points. |
 | `A Bezier spline needs 3n + 1 points when open and 3n points when closed.` | A `'bezier'` spline has a count of points that does not fit. |
 | `A B-spline needs at least two points when open and three when closed.` | A `'bSpline'` spline has too few points. |
+| `A closed NURBS spline must end where it starts.` | A `'nurbs'` spline is `closed` but ends away from its start. |
+| `The center and the two axes of an ellipse must be finite, and the axes must run in different directions so they span a plane.` | The axes of `m.ellipse3d` run along one line or are not finite. |
+| `The angles of an ellipse must be finite and apart by more than 0 and at most a whole turn.` | The angles of `m.ellipse3d` are equal, too far apart or not finite. |
+| `The center and the start of an arc must be finite, and its normal must have a finite length above 0.` | A value of `m.arc3d` is not finite, or its normal has no direction. |
+| `The angle of an arc must be a finite number of radians other than 0 and at most a whole turn.` | The angle of `m.arc3d` is out of range. |
+| `The start of an arc lies on its axis, so the arc has no radius.` | The start of `m.arc3d` lies on the line through its center along its normal. |
+| `The three points of an arc must be finite and must not lie on one line, or no circle passes through them.` | The points of `m.arcThrough3d` lie on one line or are not finite. |
+| `The radius and the end radius of a helix must be finite numbers of 0 or more.` | A radius of `m.helix` is negative or not finite. |
+| `The pitch of a helix must be a finite number.` | The `pitch` of `m.helix` is not finite. |
+| `A helix needs a finite number of turns other than 0 and at most 16384 either way.` | The `turns` of `m.helix` are out of range. |
+| `The windings p and q of a torus knot must be whole numbers from 1 to 1024 with no common divisor above 1, or the knot runs over itself.` | The `p` and `q` of `m.torusKnot` are out of range or share a divisor. |
+| `A torus knot needs a finite tube radius above 0 and below its radius.` | The tube of `m.torusKnot` does not fit its ring. |
+| `The amplitude and the phase of a Lissajous curve must be finite.` | The `amplitude` or the `phase` of `m.lissajous3d` is not finite. |
+| `The frequencies of a Lissajous curve must be whole numbers from 1 to 1024.` | A `frequency` of `m.lissajous3d` is out of range or not whole. |
+| `The curve stands still at this parameter, so it has no direction.` | The tangent of a `ParametricCurve3D` was asked where it does not move. |
 | `Sampling a spline takes at most 16777216 points.` | The `count` of `spline:sample` is above 16777216. |
 | `Sampling by distance needs a finite spacing above 0 that takes at most 16777216 steps along the curve.` | The spacing of `spline:sampleByDistance` is out of range. |
 | `Flattening a spline needs a finite tolerance above 0.` | The tolerance of `spline:flatten` is not finite and above 0. |

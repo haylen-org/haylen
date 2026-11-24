@@ -2,12 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <stdexcept>
 
 #include "math/ArcLength.hpp"
+#include "math/Curve3DHelper.hpp"
 #include "math/NurbsBasis.hpp"
-#include "math/ParallelTransport.hpp"
 
 namespace haylen::math {
 
@@ -63,6 +62,77 @@ std::optional<Spline3D::Kind> Spline3D::kindFromName(std::string_view name) noex
 
 std::string_view Spline3D::kindName(Kind value) noexcept {
     return std::ranges::find(kKindNames, value, &std::pair<std::string_view, Kind>::second)->first;
+}
+
+// The ellipse is an affine image of the unit circle, which rational quadratic Bezier pieces of at most a quarter turn draw exactly: the middle point of each piece lies where the tangents at its ends cross, with the cosine of half its turn as its weight.
+Spline3D Spline3D::ellipse(Vec3 center, Vec3 xAxis, Vec3 yAxis, float startAngle, float endAngle) {
+    if (!center.isFinite() || !xAxis.isFinite() || !yAxis.isFinite() || !(Vec3::cross(xAxis, yAxis).getLength() > kFlatSine * xAxis.getLength() * yAxis.getLength())) {
+        throw std::invalid_argument("The center and the two axes of an ellipse must be finite, and the axes must run in different directions so they span a plane.");
+    }
+
+    const double sweep = static_cast<double>(endAngle) - startAngle;
+    if (!std::isfinite(startAngle) || !std::isfinite(endAngle) || sweep == 0.0 || std::fabs(sweep) > kWholeTurn * (1.0 + kTurnTolerance)) {
+        throw std::invalid_argument("The angles of an ellipse must be finite and apart by more than 0 and at most a whole turn.");
+    }
+
+    const bool whole = std::fabs(sweep) >= kWholeTurn * (1.0 - kTurnTolerance);
+    const auto pieces = static_cast<std::size_t>(std::max(1.0, std::ceil(std::fabs(sweep) / (kWholeTurn / 4.0) - kTurnTolerance)));
+    const double step = sweep / static_cast<double>(pieces);
+    const double weight = std::cos(step / 2.0);
+    const auto at = [&](double angle, double reach) { return center + xAxis * static_cast<float>(std::cos(angle) * reach) + yAxis * static_cast<float>(std::sin(angle) * reach); };
+
+    std::vector<Vec3> controlPoints{at(startAngle, 1.0)};
+    Options options{.kind = Kind::Nurbs, .closed = whole, .weights = {1.0F}, .knots = {0.0F, 0.0F, 0.0F}, .degree = 2};
+    for (std::size_t piece = 0; piece < pieces; ++piece) {
+        const double from = startAngle + step * static_cast<double>(piece);
+        const bool last = piece + 1 == pieces;
+        controlPoints.push_back(at(from + step / 2.0, 1.0 / weight));
+        controlPoints.push_back(last && whole ? controlPoints.front() : at(from + step, 1.0));
+        options.weights.push_back(static_cast<float>(weight));
+        options.weights.push_back(1.0F);
+        options.knots.insert(options.knots.end(), last ? 3U : 2U, static_cast<float>(piece + 1));
+    }
+
+    return Spline3D(std::move(controlPoints), options);
+}
+
+// The start turns around the foot of its perpendicular on the axis, so the circle lies in the plane through the start across the normal.
+Spline3D Spline3D::arc(Vec3 center, Vec3 start, Vec3 normal, float angle) {
+    if (!center.isFinite() || !start.isFinite() || !normal.isFinite() || normal.isZero()) {
+        throw std::invalid_argument("The center and the start of an arc must be finite, and its normal must have a finite length above 0.");
+    }
+
+    if (!std::isfinite(angle) || angle == 0.0F || std::fabs(angle) > Math::kTau * (1.0F + static_cast<float>(kTurnTolerance))) {
+        throw std::invalid_argument("The angle of an arc must be a finite number of radians other than 0 and at most a whole turn.");
+    }
+
+    const Vec3 axis = normal.getNormalized();
+    const Vec3 foot = center + axis * Vec3::dot(start - center, axis);
+    const Vec3 xAxis = start - foot;
+    if (!(xAxis.getLength() > kFlatSine * std::max(1.0F, (start - center).getLength()))) {
+        throw std::invalid_argument("The start of an arc lies on its axis, so the arc has no radius.");
+    }
+
+    return ellipse(foot, xAxis, Vec3::cross(axis, xAxis), 0.0F, angle);
+}
+
+// The center of the circle through three points is the point of their plane as far from all three, and the arc turns from the start through the middle point by the right hand around the normal of the three.
+Spline3D Spline3D::arcThrough(Vec3 start, Vec3 through, Vec3 end) {
+    const Vec3 toThrough = through - start;
+    const Vec3 toEnd = end - start;
+    const Vec3 normal = Vec3::cross(toThrough, toEnd);
+    if (!start.isFinite() || !through.isFinite() || !end.isFinite() || !(normal.getLength() > kFlatSine * toThrough.getLength() * toEnd.getLength())) {
+        throw std::invalid_argument("The three points of an arc must be finite and must not lie on one line, or no circle passes through them.");
+    }
+
+    const Vec3 offset = (Vec3::cross(normal, toThrough) * toEnd.getLengthSquared() + Vec3::cross(toEnd, normal) * toThrough.getLengthSquared()) / (2.0F * normal.getLengthSquared());
+    const Vec3 center = start + offset;
+    const Vec3 xAxis = start - center;
+    const Vec3 yAxis = Vec3::cross(normal.getNormalized(), xAxis);
+    const Vec3 toFinish = end - center;
+    const double angle = std::atan2(static_cast<double>(Vec3::dot(toFinish, yAxis)), static_cast<double>(Vec3::dot(toFinish, xAxis)));
+    const double turned = angle > 0.0 ? angle : angle + kWholeTurn;
+    return ellipse(center, xAxis, yAxis, 0.0F, static_cast<float>(turned));
 }
 
 // Closed curves wrap indices around and open curves clamp them to the end points.
@@ -164,10 +234,6 @@ void Spline3D::buildBSpline() {
 }
 
 void Spline3D::buildNurbs(const Options& options) {
-    if (closed) {
-        throw std::invalid_argument("A NURBS spline closes through its own points and knots, so it takes no option closed.");
-    }
-
     const std::size_t count = points.size();
     weights = NurbsBasis::checkWeights("NURBS spline", options.weights, count);
     degree = options.degree;
@@ -175,6 +241,17 @@ void Spline3D::buildNurbs(const Options& options) {
     knots = options.knots.empty() && fitsDegree ? NurbsBasis::makeClampedKnots(count, degree) : options.knots;
     NurbsBasis::check("NURBS spline", count, degree, knots);
     controls = points;
+    if (!closed) {
+        return;
+    }
+
+    // The knots end where the curve ends, which a closed curve wraps around to its start.
+    const Vec3 start = evaluate(knots[static_cast<std::size_t>(degree)]).point;
+    const Vec3 end = evaluate(knots[controls.size()]).point;
+    const float scale = std::max({1.0F, start.getLength(), end.getLength()});
+    if (!(Vec3::distance(start, end) <= kCloseTolerance * scale)) {
+        throw std::invalid_argument("A closed NURBS spline must end where it starts.");
+    }
 }
 
 // The segments share their end points, so each one adds the points after its first and the knot of its end once for every degree.
@@ -189,16 +266,8 @@ void Spline3D::appendBezierSegment(std::span<const Vec3> segment) {
     knots.insert(knots.end(), segment.size() - 1, knot);
 }
 
-// Records the arc length at evenly spaced parameters, which distance lookups interpolate.
 void Spline3D::measure() {
-    const std::size_t steps = segmentCount * kStepsPerSegment;
-    lengths.assign(steps + 1, 0.0F);
-    Vec3 previous = getPoint(0.0F);
-    for (std::size_t step = 1; step <= steps; ++step) {
-        const Vec3 point = evaluate(toKnot(static_cast<float>(step) / static_cast<float>(steps))).point;
-        lengths[step] = lengths[step - 1] + Vec3::distance(previous, point);
-        previous = point;
-    }
+    Curve3DHelper::measure(*this, segmentCount * kStepsPerSegment, lengths);
 }
 
 float Spline3D::toKnot(float t) const noexcept {
@@ -250,16 +319,12 @@ Spline3D::Derivatives Spline3D::getDerivatives(float t) const noexcept {
 }
 
 Vec3 Spline3D::getTangent(float t) const {
-    const Derivatives derivatives = getDerivatives(t);
-    if (!derivatives.first.isZero()) {
-        return derivatives.first.getNormalized();
+    const std::optional<Vec3> direction = Curve3DHelper::getDirection(getDerivatives(t));
+    if (!direction) {
+        throw std::invalid_argument("The spline stands still at this parameter, so it has no direction.");
     }
 
-    if (!derivatives.second.isZero()) {
-        return derivatives.second.getNormalized();
-    }
-
-    throw std::invalid_argument("The spline stands still at this parameter, so it has no direction.");
+    return *direction;
 }
 
 float Spline3D::getParameterAtDistance(float distance) const noexcept {
@@ -274,110 +339,24 @@ Vec3 Spline3D::getTangentAtDistance(float distance) const {
     return getTangent(getParameterAtDistance(distance));
 }
 
-// The nearest of the points of the table of lengths starts a search by Newton's method for the parameter where the line to the point stands at a right angle to the curve, kept between the neighbors of that point.
 Spline3D::ClosestPoint Spline3D::getClosestPoint(Vec3 point) const noexcept {
-    const std::size_t steps = lengths.size() - 1;
-    std::size_t nearest = 0;
-    float nearestSquared = std::numeric_limits<float>::infinity();
-    for (std::size_t step = 0; step <= steps; ++step) {
-        const float squared = Vec3::distanceSquared(evaluate(toKnot(static_cast<float>(step) / static_cast<float>(steps))).point, point);
-        if (squared < nearestSquared) {
-            nearestSquared = squared;
-            nearest = step;
-        }
-    }
-
-    const float start = static_cast<float>(nearest) / static_cast<float>(steps);
-    const float refined = refineClosest(point, start);
-    const float t = closed ? refined - std::floor(refined) : refined;
-    const Vec3 found = getPoint(t);
-    const float distance = Vec3::distance(found, point);
-    if (distance * distance > nearestSquared) {
-        return {.t = start, .point = getPoint(start), .distance = std::sqrt(nearestSquared)};
-    }
-
-    return {.t = t, .point = found, .distance = distance};
-}
-
-float Spline3D::refineClosest(Vec3 point, float t) const noexcept {
-    const float step = 1.0F / static_cast<float>(lengths.size() - 1);
-    const float low = closed ? t - step : std::max(0.0F, t - step);
-    const float high = closed ? t + step : std::min(1.0F, t + step);
-    float current = t;
-    for (int iteration = 0; iteration < kClosestIterations; ++iteration) {
-        const Derivatives derivatives = getDerivatives(current);
-        const Vec3 offset = derivatives.point - point;
-        const float slope = Vec3::dot(offset, derivatives.first);
-        const float curvature = Vec3::dot(derivatives.first, derivatives.first) + Vec3::dot(offset, derivatives.second);
-        if (!(curvature > 0.0F)) {
-            break;
-        }
-
-        const float next = std::clamp(current - slope / curvature, low, high);
-        const bool settled = std::fabs(next - current) <= 1e-7F;
-        current = next;
-        if (settled) {
-            break;
-        }
-    }
-
-    return current;
+    return Curve3DHelper::findClosest(*this, point, lengths.size() - 1);
 }
 
 std::vector<Vec3> Spline3D::sample(std::size_t count) const {
-    ArcLength::checkCount(count);
-    std::vector<Vec3> result;
-    result.reserve(count);
-    for (std::size_t index = 0; index < count; ++index) {
-        result.push_back(getPoint(count == 1 ? 0.0F : static_cast<float>(index) / static_cast<float>(count - 1)));
-    }
-
-    return result;
+    return Curve3DHelper::sample(*this, count);
 }
 
 std::vector<Vec3> Spline3D::sampleEvenly(std::size_t count) const {
-    ArcLength::checkCount(count);
-    std::vector<Vec3> result;
-    result.reserve(count);
-    for (std::size_t index = 0; index < count; ++index) {
-        const float share = count == 1 ? 0.0F : static_cast<float>(index) / static_cast<float>(count - 1);
-        result.push_back(share >= 1.0F ? getPoint(1.0F) : getPointAtDistance(getLength() * share));
-    }
-
-    return result;
+    return Curve3DHelper::sampleEvenly(*this, count);
 }
 
 std::vector<Vec3> Spline3D::sampleByDistance(float spacing) const {
-    const std::size_t count = ArcLength::countSteps(getLength(), spacing);
-    std::vector<Vec3> result;
-    result.reserve(count + 1);
-    for (std::size_t index = 0; index < count; ++index) {
-        result.push_back(getPointAtDistance(static_cast<float>(index) * spacing));
-    }
-
-    if (!closed) {
-        result.push_back(getPoint(1.0F));
-    }
-
-    return result;
+    return Curve3DHelper::sampleByDistance(*this, spacing);
 }
 
 std::vector<CurveFrame> Spline3D::getFrames(std::size_t count, Vec3 up) const {
-    if (count < 2) {
-        throw std::invalid_argument("The frames of a curve need at least 2 frames, one at each end.");
-    }
-
-    ArcLength::checkCount(count);
-    std::vector<CurveFrame> frames(count);
-    for (std::size_t index = 0; index < count; ++index) {
-        const float share = static_cast<float>(index) / static_cast<float>(count - 1);
-        const float t = index + 1 == count ? 1.0F : getParameterAtDistance(getLength() * share);
-        frames[index].position = getPoint(t);
-        frames[index].tangent = getTangent(t);
-    }
-
-    ParallelTransport::carry(frames, up, closed);
-    return frames;
+    return Curve3DHelper::getFrames(*this, count, up);
 }
 
 } // namespace haylen::math

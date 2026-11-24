@@ -146,6 +146,72 @@ TEST_F(Spline3DTest, DrawsExactConicsWithWeightsAndKnots) {
     expectNear(line.getTangentAtDistance(11.0F), {0.0F, 0.0F, 1.0F}, 1e-5F);
 }
 
+// Ellipses and arcs are exact NURBS curves of pieces of at most a quarter turn, so every point lies on them, and a whole turn closes the curve so its distances wrap around.
+TEST_F(Spline3DTest, DrawsExactEllipsesAndArcsInSpace) {
+    const Vec3 center{1.0F, 2.0F, -3.0F};
+    const Vec3 xAxis{4.0F, 0.0F, 0.0F};
+    const Vec3 yAxis{0.0F, 1.0F, -1.0F};
+    const Spline3D orbit = Spline3D::ellipse(center, xAxis, yAxis);
+    EXPECT_TRUE(orbit.isClosed());
+    EXPECT_EQ(orbit.getDegree(), 2);
+    EXPECT_EQ(orbit.getSegmentCount(), 4U);
+    for (int step = 0; step <= 64; ++step) {
+        // The point lies on the ellipse when its coordinates along the two axes, which are at right angles here, make a point of the unit circle.
+        const Vec3 offset = orbit.getPoint(static_cast<float>(step) / 64.0F) - center;
+        const float along = Vec3::dot(offset, xAxis) / xAxis.getLengthSquared();
+        const float across = Vec3::dot(offset, yAxis) / yAxis.getLengthSquared();
+        EXPECT_NEAR(along * along + across * across, 1.0F, 1e-5F) << step;
+    }
+
+    expectNear(orbit.getPoint(0.0F), center + xAxis, 1e-5F);
+    expectNear(orbit.getPoint(0.25F), center + yAxis, 1e-5F);
+    expectNear(orbit.getPointAtDistance(orbit.getLength() + 0.5F), orbit.getPointAtDistance(0.5F), 1e-4F);
+    const std::vector<CurveFrame> frames = orbit.getFrames(9);
+    expectNear(frames.back().normal, frames.front().normal, 1e-4F);
+
+    // A half of an ellipse takes two pieces and keeps its ends open.
+    const Spline3D half = Spline3D::ellipse(center, xAxis, yAxis, 0.0F, Math::kPi);
+    EXPECT_FALSE(half.isClosed());
+    EXPECT_EQ(half.getSegmentCount(), 2U);
+    expectNear(half.getPoint(1.0F), center - xAxis, 1e-5F);
+
+    // An arc turns its start around the normal by the right hand, and its length is the radius times the angle.
+    const Spline3D bend = Spline3D::arc({0.0F, 0.0F, 0.0F}, {5.0F, 0.0F, 0.0F}, Vec3::up(), Math::kHalfPi);
+    expectNear(bend.getPoint(1.0F), {0.0F, 0.0F, -5.0F}, 1e-5F);
+    EXPECT_NEAR(bend.getLength(), 5.0F * Math::kHalfPi, 5e-3F);
+    expectNear(bend.getTangent(0.0F), {0.0F, 0.0F, -1.0F}, 1e-5F);
+
+    // A start above the center turns around the foot of the axis at its own height.
+    const Spline3D raised = Spline3D::arc({0.0F, 0.0F, 0.0F}, {2.0F, 3.0F, 0.0F}, Vec3::up(), Math::kTau);
+    EXPECT_TRUE(raised.isClosed());
+    EXPECT_NEAR(raised.getLength(), 2.0F * Math::kTau, 5e-3F);
+    expectNear(raised.getPoint(0.5F), {-2.0F, 3.0F, 0.0F}, 1e-5F);
+
+    // An arc through three points passes through the middle one on its way and ends at the last.
+    const Spline3D through = Spline3D::arcThrough({1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, -1.0F}, {-1.0F, 0.0F, 0.0F});
+    EXPECT_NEAR(through.getClosestPoint({0.0F, 0.0F, -1.0F}).distance, 0.0F, 1e-4F);
+    expectNear(through.getPoint(1.0F), {-1.0F, 0.0F, 0.0F}, 1e-5F);
+    EXPECT_NEAR(through.getLength(), Math::kPi, 1e-3F);
+    const Spline3D longWay = Spline3D::arcThrough({1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, 1.0F}, {0.0F, 0.0F, -1.0F});
+    EXPECT_NEAR(longWay.getLength(), Math::kPi * 1.5F, 1e-3F);
+
+    // Arcs join the other curves of a path with their exact tangents.
+    const Spline3D straight({{-5.0F, 0.0F, 5.0F}, {5.0F, 0.0F, 5.0F}}, {.kind = Spline3D::Kind::Linear});
+    const CurvePath3D road({straight, Spline3D::arc({5.0F, 0.0F, 0.0F}, {5.0F, 0.0F, 5.0F}, Vec3::up(), Math::kHalfPi)});
+    EXPECT_EQ(road.getJoins(), (std::vector<CurvePath3D::Continuity>{CurvePath3D::Continuity::Tangent}));
+
+    EXPECT_THROW(static_cast<void>(Spline3D::ellipse(center, xAxis, xAxis * 2.0F)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Spline3D::ellipse(center, xAxis, yAxis, 0.0F, 0.0F)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Spline3D::ellipse(center, xAxis, yAxis, 0.0F, 7.0F)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Spline3D::arc(center, center + Vec3::up(), Vec3::up(), 1.0F)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Spline3D::arc(center, xAxis, {}, 1.0F)), std::invalid_argument);
+    EXPECT_THROW(static_cast<void>(Spline3D::arcThrough(center, center + xAxis, center + xAxis * 2.0F)), std::invalid_argument);
+
+    // A NURBS curve may close only where it ends at its start.
+    const Spline3D loop(orbit.getPoints(), {.kind = Spline3D::Kind::Nurbs, .closed = true, .weights = orbit.getWeights(), .knots = orbit.getKnots(), .degree = 2});
+    EXPECT_NEAR(loop.getLength(), orbit.getLength(), 1e-4F);
+}
+
 TEST_F(Spline3DTest, FindsTheClosestPointAtARightAngle) {
     const Spline3D arc = quarterCircle();
     const Spline3D::ClosestPoint closest = arc.getClosestPoint({2.0F, 2.0F, 0.0F});

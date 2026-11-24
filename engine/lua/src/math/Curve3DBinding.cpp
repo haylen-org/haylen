@@ -10,6 +10,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "haylen/math/Math.hpp"
 
 namespace haylen::core {
 
@@ -46,6 +47,40 @@ int Curve3DBinding::newSpline(lua_State* L) {
     return 1;
 }
 
+// Creates the exact curve of an ellipse with `ellipse3d(center, xAxis, yAxis, {startAngle = 0, endAngle = 2 * pi})`.
+int Curve3DBinding::newEllipse(lua_State* L) {
+    const auto center = lua::Stack::read<haylen::math::Vec3>(L, 1);
+    const auto xAxis = lua::Stack::read<haylen::math::Vec3>(L, 2);
+    const auto yAxis = lua::Stack::read<haylen::math::Vec3>(L, 3);
+    float startAngle = 0.0F;
+    float endAngle = haylen::math::Math::kTau;
+    if (!lua_isnoneornil(L, 4)) {
+        luaL_checktype(L, 4, LUA_TTABLE);
+        lua::Table::checkFields(L, 4, {kEllipseFields});
+        lua::Table::readField(L, 4, "startAngle", startAngle);
+        lua::Table::readField(L, 4, "endAngle", endAngle);
+    }
+
+    lua::Userdata::emplace<haylen::math::Spline3D>(L, haylen::math::Spline3D::ellipse(center, xAxis, yAxis, startAngle, endAngle));
+    return 1;
+}
+
+int Curve3DBinding::newArc(lua_State* L) {
+    const auto center = lua::Stack::read<haylen::math::Vec3>(L, 1);
+    const auto start = lua::Stack::read<haylen::math::Vec3>(L, 2);
+    const auto normal = lua::Stack::read<haylen::math::Vec3>(L, 3);
+    lua::Userdata::emplace<haylen::math::Spline3D>(L, haylen::math::Spline3D::arc(center, start, normal, lua::Stack::read<float>(L, 4)));
+    return 1;
+}
+
+int Curve3DBinding::newArcThrough(lua_State* L) {
+    const auto start = lua::Stack::read<haylen::math::Vec3>(L, 1);
+    const auto through = lua::Stack::read<haylen::math::Vec3>(L, 2);
+    const auto end = lua::Stack::read<haylen::math::Vec3>(L, 3);
+    lua::Userdata::emplace<haylen::math::Spline3D>(L, haylen::math::Spline3D::arcThrough(start, through, end));
+    return 1;
+}
+
 // Creates a path with `curvePath3d(curves, {closed = false})` from a list of `Spline3D` values, which it copies.
 int Curve3DBinding::newPath(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
@@ -65,6 +100,55 @@ int Curve3DBinding::newPath(lua_State* L) {
     }
 
     lua::Userdata::emplace<haylen::math::CurvePath3D>(L, std::move(curves), closed);
+    return 1;
+}
+
+// Creates a helix with `helix({radius = 1, endRadius = radius, pitch = 1, turns = 1})`.
+int Curve3DBinding::newHelix(lua_State* L) {
+    haylen::math::ParametricCurve3D::Helix helix;
+    if (!lua_isnoneornil(L, 1)) {
+        luaL_checktype(L, 1, LUA_TTABLE);
+        lua::Table::checkFields(L, 1, {kHelixFields});
+        lua::Table::readField(L, 1, "radius", helix.radius);
+        float endRadius = helix.radius;
+        lua::Table::readField(L, 1, "endRadius", endRadius);
+        helix.endRadius = endRadius;
+        lua::Table::readField(L, 1, "pitch", helix.pitch);
+        lua::Table::readField(L, 1, "turns", helix.turns);
+    }
+
+    lua::Userdata::emplace<haylen::math::ParametricCurve3D>(L, haylen::math::ParametricCurve3D::helix(helix));
+    return 1;
+}
+
+// Creates a torus knot with `torusKnot({p = 2, q = 3, radius = 1, tubeRadius = 0.4})`.
+int Curve3DBinding::newTorusKnot(lua_State* L) {
+    haylen::math::ParametricCurve3D::TorusKnot knot;
+    if (!lua_isnoneornil(L, 1)) {
+        luaL_checktype(L, 1, LUA_TTABLE);
+        lua::Table::checkFields(L, 1, {kTorusKnotFields});
+        lua::Table::readField(L, 1, "p", knot.p);
+        lua::Table::readField(L, 1, "q", knot.q);
+        lua::Table::readField(L, 1, "radius", knot.radius);
+        lua::Table::readField(L, 1, "tubeRadius", knot.tubeRadius);
+    }
+
+    lua::Userdata::emplace<haylen::math::ParametricCurve3D>(L, haylen::math::ParametricCurve3D::torusKnot(knot));
+    return 1;
+}
+
+// Creates a Lissajous curve with `lissajous3d({amplitude = {1, 1, 1}, frequency = {1, 2, 3}, phase = {0, 0, 0}})`.
+int Curve3DBinding::newLissajous(lua_State* L) {
+    haylen::math::ParametricCurve3D::Lissajous figure;
+    if (!lua_isnoneornil(L, 1)) {
+        luaL_checktype(L, 1, LUA_TTABLE);
+        lua::Table::checkFields(L, 1, {kLissajousFields});
+        lua::Table::readField(L, 1, "amplitude", figure.amplitude);
+        lua::Table::readField(L, 1, "frequency", figure.frequency);
+        lua::Table::readField(L, 1, "phase", figure.phase);
+    }
+
+    lua::Userdata::emplace<haylen::math::ParametricCurve3D>(L, haylen::math::ParametricCurve3D::lissajous(figure));
     return 1;
 }
 
@@ -109,14 +193,7 @@ int Curve3DBinding::splinePoint(lua_State* L) {
 }
 
 int Curve3DBinding::splineDerivatives(lua_State* L) {
-    const haylen::math::Spline3D::Derivatives result = lua::Userdata::check<haylen::math::Spline3D>(L, 1).getDerivatives(lua::Stack::read<float>(L, 2));
-    lua_createtable(L, 0, 3);
-    lua::Stack::push(L, result.point);
-    lua_setfield(L, -2, "point");
-    lua::Stack::push(L, result.first);
-    lua_setfield(L, -2, "first");
-    lua::Stack::push(L, result.second);
-    lua_setfield(L, -2, "second");
+    pushDerivatives(L, lua::Userdata::check<haylen::math::Spline3D>(L, 1).getDerivatives(lua::Stack::read<float>(L, 2)));
     return 1;
 }
 
@@ -276,6 +353,73 @@ int Curve3DBinding::pathJoins(lua_State* L) {
     return 1;
 }
 
+int Curve3DBinding::curvePoint(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getPoint(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveDerivatives(lua_State* L) {
+    pushDerivatives(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getDerivatives(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveTangent(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getTangent(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curvePointAtDistance(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getPointAtDistance(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveTangentAtDistance(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getTangentAtDistance(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveParameterAtDistance(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getParameterAtDistance(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveClosestPoint(lua_State* L) {
+    pushClosest(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getClosestPoint(lua::Stack::read<haylen::math::Vec3>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveSample(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).sample(lua::Stack::read<std::size_t>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveSampleEvenly(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).sampleEvenly(lua::Stack::read<std::size_t>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveSampleByDistance(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).sampleByDistance(lua::Stack::read<float>(L, 2)));
+    return 1;
+}
+
+int Curve3DBinding::curveFrames(lua_State* L) {
+    const haylen::math::ParametricCurve3D& curve = lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1);
+    const std::vector<haylen::math::CurveFrame> frames = curve.getFrames(lua::Stack::read<std::size_t>(L, 2), readUp(L, 3));
+    pushFrames(L, frames);
+    return 1;
+}
+
+int Curve3DBinding::curveLength(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).getLength());
+    return 1;
+}
+
+int Curve3DBinding::curveClosed(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<haylen::math::ParametricCurve3D>(L, 1).isClosed());
+    return 1;
+}
+
 int Curve3DBinding::surfacePoint(lua_State* L) {
     lua::Stack::push(L, lua::Userdata::check<haylen::math::NurbsSurface>(L, 1).getPoint(lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)));
     return 1;
@@ -329,6 +473,16 @@ int Curve3DBinding::volumeLayers(lua_State* L) {
     return 1;
 }
 
+void Curve3DBinding::pushDerivatives(lua_State* L, const haylen::math::Spline3D::Derivatives& derivatives) {
+    lua_createtable(L, 0, 3);
+    lua::Stack::push(L, derivatives.point);
+    lua_setfield(L, -2, "point");
+    lua::Stack::push(L, derivatives.first);
+    lua_setfield(L, -2, "first");
+    lua::Stack::push(L, derivatives.second);
+    lua_setfield(L, -2, "second");
+}
+
 void Curve3DBinding::pushClosest(lua_State* L, const haylen::math::Spline3D::ClosestPoint& closest) {
     lua_createtable(L, 0, 3);
     lua::Stack::push(L, closest.t);
@@ -374,6 +528,8 @@ void Curve3DBinding::install(lua_State* L) {
 
     lua::ClassBuilder<haylen::math::CurvePath3D>(L).function("point", &lua::Binding::native<&pathPoint>).function("tangent", &lua::Binding::native<&pathTangent>).function("pointAtDistance", &lua::Binding::native<&pathPointAtDistance>).function("tangentAtDistance", &lua::Binding::native<&pathTangentAtDistance>).function("closestPoint", &lua::Binding::native<&pathClosestPoint>).function("sampleEvenly", &lua::Binding::native<&pathSampleEvenly>).function("sampleByDistance", &lua::Binding::native<&pathSampleByDistance>).function("frames", &lua::Binding::native<&pathFrames>).property("length", &pathLength).property("closed", &pathClosed).property("curveCount", &pathCurveCount).property("joins", &pathJoins).install();
 
+    lua::ClassBuilder<haylen::math::ParametricCurve3D>(L).function("point", &lua::Binding::native<&curvePoint>).function("derivatives", &lua::Binding::native<&curveDerivatives>).function("tangent", &lua::Binding::native<&curveTangent>).function("pointAtDistance", &lua::Binding::native<&curvePointAtDistance>).function("tangentAtDistance", &lua::Binding::native<&curveTangentAtDistance>).function("parameterAtDistance", &lua::Binding::native<&curveParameterAtDistance>).function("closestPoint", &lua::Binding::native<&curveClosestPoint>).function("sample", &lua::Binding::native<&curveSample>).function("sampleEvenly", &lua::Binding::native<&curveSampleEvenly>).function("sampleByDistance", &lua::Binding::native<&curveSampleByDistance>).function("frames", &lua::Binding::native<&curveFrames>).property("length", &curveLength).property("closed", &curveClosed).install();
+
     lua::ClassBuilder<haylen::math::NurbsSurface>(L).function("point", &lua::Binding::native<&surfacePoint>).function("derivatives", &lua::Binding::native<&surfaceDerivatives>).function("normal", &lua::Binding::native<&surfaceNormal>).property("columns", &surfaceColumns).property("rows", &surfaceRows).install();
 
     lua::ClassBuilder<haylen::math::NurbsVolume>(L).function("point", &lua::Binding::native<&volumePoint>).property("columns", &volumeColumns).property("rows", &volumeRows).property("layers", &volumeLayers).install();
@@ -381,7 +537,7 @@ void Curve3DBinding::install(lua_State* L) {
 
 void Curve3DBinding::addFunctions(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"spline3d", &lua::Binding::native<&newSpline>}, {"curvePath3d", &lua::Binding::native<&newPath>}, {"nurbsSurface", &lua::Binding::native<&newSurface>}, {"nurbsVolume", &lua::Binding::native<&newVolume>}, {nullptr, nullptr},
+        {"spline3d", &lua::Binding::native<&newSpline>}, {"ellipse3d", &lua::Binding::native<&newEllipse>}, {"arc3d", &lua::Binding::native<&newArc>}, {"arcThrough3d", &lua::Binding::native<&newArcThrough>}, {"curvePath3d", &lua::Binding::native<&newPath>}, {"helix", &lua::Binding::native<&newHelix>}, {"torusKnot", &lua::Binding::native<&newTorusKnot>}, {"lissajous3d", &lua::Binding::native<&newLissajous>}, {"nurbsSurface", &lua::Binding::native<&newSurface>}, {"nurbsVolume", &lua::Binding::native<&newVolume>}, {nullptr, nullptr},
     };
     luaL_setfuncs(L, functions, 0);
 }
