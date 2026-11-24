@@ -647,7 +647,7 @@ scene.push({
 
 Buttons, choices, inputs, rows, slots, play areas and the other interactive parts of a GUI take the focus. The [navigation actions](../lua-api/ui.md#navigation-actions) move it:
 
-- The arrow keys, the directional pad and the left stick move the focus to the nearest control in that direction. A node can name its neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Sliders, range sliders, steppers, segmented controls and carousel dots use left and right themselves.
+- The arrow keys, the directional pad and the left stick move the focus to the nearest control in that direction. A stick moves it once it leans past the press threshold, and a stick or a key held repeats the move at the same rate as the directional pad. A stick that leans along both axes moves the focus along the axis it leans the most, so a push up with a little sideways lean moves up. A node can name its neighbor with `focusLeft`, `focusRight`, `focusUp` or `focusDown`. Sliders, range sliders, steppers, segmented controls and carousel dots use left and right themselves.
 - Enter, Space and the south button press the focused control. Escape and the east button go back.
 - The menu key and the north button open the context menu around the focus.
 - Page Up, Page Down, Home, End and the shoulder buttons page through collections.

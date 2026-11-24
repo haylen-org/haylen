@@ -1,5 +1,6 @@
 #include "haylen/ui/NavigationInput.hpp"
 
+#include <algorithm>
 #include <string>
 
 #include "haylen/core/Json.hpp"
@@ -37,9 +38,16 @@ void NavigationInput::update(const input::ActionMap& actions, const input::Input
     }
 
     resolved.update(devices, virtualInput, blocked);
+
+    // A stick that leans past the threshold along both axes moves the focus along the axis it leans the most, the way a directional pad presses one direction, while two directions of the same strength, such as two buttons of a pad, both stay down.
+    const float horizontal = std::max(resolved.getValue(kNames[static_cast<std::size_t>(Action::Left)]), resolved.getValue(kNames[static_cast<std::size_t>(Action::Right)]));
+    const float vertical = std::max(resolved.getValue(kNames[static_cast<std::size_t>(Action::Up)]), resolved.getValue(kNames[static_cast<std::size_t>(Action::Down)]));
     for (std::size_t index = 0; index < kActionCount; ++index) {
-        const bool pressed = resolved.isDown(kNames[index]);
         const auto action = static_cast<Action>(index);
+        const bool sideways = action == Action::Left || action == Action::Right;
+        const bool upright = action == Action::Up || action == Action::Down;
+        const bool weaker = (sideways && vertical > horizontal) || (upright && horizontal > vertical);
+        const bool pressed = resolved.isDown(kNames[index]) && !weaker;
         const bool game = action != Action::Cancel && action != Action::Focus;
         held[index] = pressed && (held[index] || (playing && game && !wasDown[index]));
         down[index] = pressed && !held[index];

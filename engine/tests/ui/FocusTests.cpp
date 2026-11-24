@@ -80,6 +80,68 @@ TEST_F(FocusTest, MovesBetweenNeighborsWithArrowsTheDirectionalPadAndTheStick) {
     EXPECT_TRUE(isFocused(*gui, "b"));
 }
 
+// The left stick moves the focus up, down, left and right like the directional pad, each lean past the press threshold moving it once.
+TEST_F(FocusTest, MovesInEveryDirectionWithTheStick) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "row", "children": [{"kind": "button", "id": "a", "text": "A"}, {"kind": "button", "id": "b", "text": "B"}, {"kind": "button", "id": "c", "text": "C"}]},
+        {"kind": "row", "children": [{"kind": "button", "id": "d", "text": "D"}, {"kind": "button", "id": "e", "text": "E", "autofocus": true}, {"kind": "button", "id": "f", "text": "F"}]},
+        {"kind": "row", "children": [{"kind": "button", "id": "g", "text": "G"}, {"kind": "button", "id": "h", "text": "H"}, {"kind": "button", "id": "i", "text": "I"}]}
+    ]})");
+    // clang-format on
+    stick({0.0F, -1.0F});
+    stick({});
+    ASSERT_TRUE(isRingVisible());
+    ASSERT_TRUE(isFocused(*gui, "e"));
+
+    const std::vector<std::pair<math::Vec2, const char*>> leans{
+        {{0.0F, -1.0F}, "b"}, {{0.0F, 1.0F}, "e"}, {{0.0F, 1.0F}, "h"}, {{0.0F, -1.0F}, "e"}, {{-1.0F, 0.0F}, "d"}, {{1.0F, 0.0F}, "e"}, {{1.0F, 0.0F}, "f"},
+    };
+    for (const auto& [lean, expected] : leans) {
+        stick(lean);
+        stick({});
+        EXPECT_TRUE(isFocused(*gui, expected)) << "The stick leaned to " << lean.x << ", " << lean.y << ".";
+    }
+}
+
+// A stick held in one direction repeats the moves as often as the directional pad held as long, and a stick that leans past the threshold mostly up moves only up.
+TEST_F(FocusTest, RepeatsWithTheStickAsWithTheDirectionalPad) {
+    std::string children;
+    for (int index = 0; index < 40; ++index) {
+        children += std::string(index == 0 ? "" : ", ") + R"({"kind": "button", "id": "b)" + std::to_string(index) + R"(", "text": "B)" + std::to_string(index) + (index == 0 ? R"(", "autofocus": true})" : "\"}");
+    }
+    auto gui = mount(R"({"kind": "column", "children": [)" + children + "]}");
+    // clang-format off
+    const auto heldMoves = [&](const input::GamepadState& held) {
+        gui->command(getUi().getContext(), "b0", "focus", core::Json::object());
+        getFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+        frames(4);
+        getFixture().host().setGamepad(0, held);
+        frames(90);
+        getFixture().host().setGamepad(0, input::GamepadState{.connected = true});
+        frames(4);
+        for (int index = 0; index < 40; ++index) {
+            if (isFocused(*gui, "b" + std::to_string(index))) {
+                return index;
+            }
+        }
+        return -1;
+    };
+    // clang-format on
+    button(input::GamepadButton::DpadDown);
+    ASSERT_TRUE(isRingVisible());
+
+    input::GamepadState pad{.connected = true};
+    pad.buttons[static_cast<std::size_t>(input::GamepadButton::DpadDown)] = true;
+    const int padMoves = heldMoves(pad);
+    input::GamepadState lean{.connected = true};
+    lean.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = 0.7F;
+    lean.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = 0.8F;
+    const int stickMoves = heldMoves(lean);
+    EXPECT_GT(padMoves, 2);
+    EXPECT_EQ(stickMoves, padMoves);
+}
+
 TEST_F(FocusTest, StopsNavigatingWithAKeyHeldWhenTheWindowLostTheFocus) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
