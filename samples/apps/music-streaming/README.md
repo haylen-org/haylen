@@ -116,4 +116,7 @@ music-streaming/
     fonts/               Kanit and its license.
   plugins/
     music-links/         The local plugin that registers the scheme of the links.
+  ui-tests/
+    apple/
+      FeaturedCardTests.swift  The UI test that checks on an iPad mini in portrait that the texts of the mix of the day keep their width and its illustration takes a line of its own, which "haylen test --ui samples/apps/music-streaming" runs on the simulator "iPad mini (A17 Pro)".
 ```
