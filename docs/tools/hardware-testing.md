@@ -188,6 +188,18 @@ The quota of 8 virtual processors holds one machine at a time, so run the Linux 
 
 The V620 of these machines is a virtual function of a shared GPU, whose driver must load firmware through the host. The Ubuntu 24.04 image of Azure blacklists `amdgpu`, and the `amdgpu` of the newest kernel of the image fails there with `PSP firmware loading failed`. The `amdgpu` of the Azure kernel `6.8.0-1071-azure` loads the firmware, so install that kernel, take `amdgpu` off the blacklist and add Mesa RADV and the Vulkan and OpenGL drivers of AMD. The `amdgpu-dkms` that Azure names does not compile for that kernel, so the module of the kernel is the driver. The OpenGL driver of AMD takes over the EGL of the machine, so Mesa radeonsi does not run beside it. Check the driver version that Azure supports for the size before renting it again.
 
+### UI tests of Windows
+
+The [UI tests of Windows](testing.md#windows) click and type into the desktop of a person who is signed in, so a machine of the cloud runs them once its console signs a user in on its own. A burstable Azure machine such as `Standard_B8ms` with Windows Server 2025 serves, since the tests need no GPU and WARP draws the app:
+
+1. Create the machine in a resource group of its own, give it a shutdown timer with `az vm auto-shutdown`, open SSH only to the address of your machine, and turn on its OpenSSH server with `az vm run-command invoke`, which runs a PowerShell script on it.
+2. Install the build tools of Windows that the [requirements](build.md#requirements) name and the Japanese language with its input method, `Install-Language ja-JP`, which the composition test types with.
+3. Copy the sources and build the app with `haylen app build samples/tests --target windows` over SSH, from the environment of `vcvars64.bat`.
+4. Sign the user in on the console at every start with the `AutoAdminLogon` values of `Winlogon`, turn off the lock screen, the screen saver, the Server Manager that opens at sign-in and the privacy screen of the first sign-in, with the policy `DisablePrivacyExperience` of `OOBE`, and restart the machine. Each of them would take the front of the desktop from the app.
+5. Give the console a resolution that holds the window of the app whole, such as `Set-DisplayResolution -Width 1920 -Height 1080` in the session of the user, since the console of a machine of the cloud starts at 1024 by 768.
+6. Run `haylen test --ui samples/tests --target windows` in the session of that user through a scheduled task that runs only while the user is signed in, `schtasks /create ... /it`, since a command of SSH runs in a session without a desktop, and start the task through `conhost.exe --headless`, so no console window covers the app. Read its log over SSH.
+7. Delete the resource group and check with `az group exists` that it is gone.
+
 ## What the hardware covers
 
 These machines and devices ran the whole battery on real GPUs, beyond what continuous integration, the simulators and the emulator show.

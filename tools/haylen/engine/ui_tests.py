@@ -24,6 +24,7 @@ from haylen.engine.device_farm_ui_tests import DeviceFarmUiTests
 from haylen.engine.mac_keyboard import MacKeyboard
 from haylen.engine.ui_test_run import UiTestRun
 from haylen.engine.unified_log import UnifiedLog
+from haylen.engine.windows_ui_tests import WindowsUiTests
 from haylen.platforms.apple.apple_devices import AppleDevices
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.product_folders import ProductFolders
@@ -32,12 +33,12 @@ from haylen.toolchains.xcodegen import XcodeGen
 
 
 class UiTests:
-    """Runs the UI tests of an app on an iOS, tvOS or visionOS simulator or device, on this Mac as a macOS or a Mac Catalyst app, or on Android through `AndroidUiTests`: the app builds through the pipeline for the target, and the XCUITest runner of `engine/tests/ui/apple/project.yml` builds with the Swift tests of the folder `ui-tests` of the app and drives the app, taps, clicks, keys, the remote and the system UI included. The runner of the Mac launches the app from the bundle that the run built, since a Mac installs no app for the tests. The run fails on a failed test, and on a simulator also on an error that the engine logged meanwhile. It uninstalls the app and the runner, and shuts down a simulator that it booted."""
+    """Runs the UI tests of an app on an iOS, tvOS or visionOS simulator or device, on this Mac as a macOS or a Mac Catalyst app, on Android through `AndroidUiTests`, or on this Windows machine through `WindowsUiTests`: the app builds through the pipeline for the target, and the XCUITest runner of `engine/tests/ui/apple/project.yml` builds with the Swift tests of the folder `ui-tests` of the app and drives the app, taps, clicks, keys, the remote and the system UI included. The runner of the Mac launches the app from the bundle that the run built, since a Mac installs no app for the tests. The run fails on a failed test, and on a simulator also on an error that the engine logged meanwhile. It uninstalls the app and the runner, and shuts down a simulator that it booted."""
 
     PROJECT = Repository.ENGINE / "tests" / "ui" / "apple"
     FOLDER = "ui-tests"
     # The folder of the tests of each runner inside the folder of the UI tests, with their language and their files.
-    RUNNERS = {"apple": ("Swift", "*.swift"), "android": ("Kotlin", "*.kt")}
+    RUNNERS = {"apple": ("Swift", "*.swift"), "android": ("Kotlin", "*.kt"), "windows": ("Python", "test_*.py")}
     RUNNER = "com.haylen.uitests.xctrunner"
     # Each simulator platform of the UI tests with the scheme of the runner and the family of its simulators.
     PLATFORMS = {"ios-simulator": ("iOS", "iOS"), "tvos-simulator": ("tvOS", "tvOS"), "visionos-simulator": ("visionOS", "xrOS")}
@@ -89,7 +90,7 @@ class UiTests:
 
     @staticmethod
     def tests(app: str, runner: str) -> tuple[Path, Path]:
-        """The folder of the app and the folder of its UI tests for a runner, `apple` or `android`, which must hold at least one test in the language of the runner."""
+        """The folder of the app and the folder of its UI tests for a runner, `apple`, `android` or `windows`, which must hold at least one test in the language of the runner."""
         folder = Path(app).expanduser().resolve()
         if not AppManifest.is_app(folder):
             raise InvalidManifest(f'The folder `{Repository.shown(folder)}` holds no "{AppManifest.FILE}". Name the folder of an app with UI tests.')
@@ -119,8 +120,11 @@ class UiTests:
             folder, tests = UiTests.tests(app, "android")
             android = AndroidUiTests(self.context, self.pipeline)
             return android.run_on_farm(folder, tests, configuration, farm) if farm else android.run(folder, tests, configuration, device, classes)
+        if platform == "windows":
+            folder, tests = UiTests.tests(app, "windows")
+            return WindowsUiTests(self.context, self.pipeline).run(folder, tests, configuration, device, classes)
         if platform not in UiTests.PLATFORMS and platform not in UiTests.DEVICES and platform not in UiTests.MACS:
-            names = ", ".join(f'"{name}"' for name in (*UiTests.PLATFORMS, *UiTests.DEVICES, *UiTests.MACS, "android"))
+            names = ", ".join(f'"{name}"' for name in (*UiTests.PLATFORMS, *UiTests.DEVICES, *UiTests.MACS, "android", "windows"))
             raise UnsupportedTarget(f'The UI tests run on {names}. Pick one with "--target".')
         if Host.system() != "macos":
             raise UnsupportedTarget(f'The UI tests of Apple platforms run with Xcode, which needs macOS, and this machine runs "{Host.system()}".')

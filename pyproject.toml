@@ -4,7 +4,7 @@ version = "0.0.1"
 description = "The command line of Haylen, which creates, prepares, builds, verifies and runs apps through platform backends, and builds and tests the engine."
 license = "MIT"
 requires-python = ">=3.15"
-dependencies = ["jsonschema==4.26.0"]
+dependencies = ["jsonschema==4.26.0", "comtypes==1.5.0; sys_platform == 'win32'"]
 
 [project.scripts]
 haylen = "haylen.cli.application:Application.main"
@@ -36,8 +36,8 @@ module-name = "haylen"
 [tool.ruff]
 line-length = 200
 src = ["tools"]
-# Ruff formats and lints the Python of the tooling, the package and the scripts of `tools`.
-include = ["tools/**/*.py"]
+# Ruff formats and lints the Python of the tooling, the package and the scripts of `tools`, and the UI tests of Windows with their runner.
+include = ["tools/**/*.py", "engine/tests/ui/windows/*.py", "samples/**/ui-tests/windows/*.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "PIE", "RET", "PTH"]
