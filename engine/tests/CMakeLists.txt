@@ -167,6 +167,7 @@ set(HAYLEN_TEST_SOURCES
   platform/SharedTextInputTests.cpp
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp
+  platform/sdl/MouseMotionTests.cpp
   platform/sdl/FullscreenRequestTests.cpp
   platform/sdl/TextInputTests.cpp
   platform/SupportedOrientationsTests.cpp
