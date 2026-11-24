@@ -115,8 +115,14 @@ endif()
 set(haylen_sdl_options
   "SDL_SHARED OFF" "SDL_STATIC ON" "SDL_TEST_LIBRARY OFF" "SDL_TESTS OFF" "SDL_EXAMPLES OFF" "SDL_INSTALL OFF" "SDL_UNINSTALL OFF"
   "SDL_AUDIO OFF" "SDL_GPU OFF" "SDL_RENDER OFF" "SDL_CAMERA OFF" "SDL_SENSOR OFF" "SDL_HAPTIC OFF" "SDL_HIDAPI_LIBUSB OFF" "SDL_POWER OFF" "SDL_DIALOG OFF" "SDL_TRAY OFF"
-  "SDL_OFFSCREEN OFF" "SDL_DUMMYVIDEO OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
+  "SDL_OFFSCREEN OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
 )
+# The tests open windows of the dummy video driver of SDL, which draws nothing and needs no display, so only a tree with the tests builds it, and no SDK or app carries it.
+if(HAYLEN_BUILD_TESTS)
+  list(APPEND haylen_sdl_options "SDL_DUMMYVIDEO ON")
+else()
+  list(APPEND haylen_sdl_options "SDL_DUMMYVIDEO OFF")
+endif()
 # Apple platforms draw through Metal alone, so their SDL carries neither OpenGL nor Vulkan, and UIKit apps read their controllers through GameController, so their SDL reads none.
 if(APPLE)
   list(APPEND haylen_sdl_options "SDL_OPENGL OFF" "SDL_OPENGLES OFF" "SDL_VULKAN OFF")
