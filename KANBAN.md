@@ -289,7 +289,7 @@
 | **[KB-288 · Documentação final e repositório sem passado](#kb-288)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-289 · README.md final, revisto quando todo o resto estiver pronto](#kb-289)**<br>🟢 low · `docs` · 3/10 | — | — | — | — | — |
 | **[KB-290 · Documentação completa em docs](#kb-290)**<br>🟢 low · `docs` · 3/10 | — | — | — | — | — |
-| **[KB-291 · Revisão final do AGENTS.md, do PROJECT.md, do README.md, de docs, dos comentários e de todo arquivo do…](#kb-291)**<br>🟢 low · `task` · 5/10 | — | — | — | — | — |
+| **[KB-291 · Revisão final do AGENTS.md, do KANBAN.md, do README.md, de docs, dos comentários e de todo arquivo do…](#kb-291)**<br>🟢 low · `task` · 5/10 | — | — | — | — | — |
 
 <!-- KANBAN:BOARD:END -->
 
@@ -7501,7 +7501,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - None
 
 <a name="kb-291"></a>
-### KB-291 — Revisão final do AGENTS.md, do PROJECT.md, do README.md, de docs, dos comentários e de todo arquivo do…
+### KB-291 — Revisão final do AGENTS.md, do KANBAN.md, do README.md, de docs, dos comentários e de todo arquivo do…
 
 - **Status:** todo
 - **Type:** task
@@ -7511,7 +7511,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Description
 
-Revisão final do `AGENTS.md`, do `PROJECT.md`, do `README.md`, de `docs`, dos comentários e de todo arquivo do repositório tirando qualquer registro do passado: listas do que existia, comparações de antes e depois, mudanças de API, nomes que o código não tem, histórico e notas datadas, deixando só o que existe no fim do projeto, de forma simples, objetiva e limpa.
+Revisão final do `AGENTS.md`, do `KANBAN.md`, do `README.md`, de `docs`, dos comentários e de todo arquivo do repositório tirando qualquer registro do passado: listas do que existia, comparações de antes e depois, mudanças de API, nomes que o código não tem, histórico e notas datadas, deixando só o que existe no fim do projeto, de forma simples, objetiva e limpa.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
