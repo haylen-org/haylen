@@ -50,7 +50,7 @@ TEST(OverlapWorldLuaTest, RejectsPlacementsWhoseIdsAreNotWholeNumbersOf32Bits) {
         placements = collections.newFloatBuffer(6)
     )");
     // clang-format on
-    for (const std::string& group : {"entity + 0.5, 4, 0, 0, 1, set", "-1, 4, 0, 0, 1, set", "5e9, 4, 0, 0, 1, set", "0 / 0, 4, 0, 0, 1, set", "entity, 4, 0, 0, 1, set + 0.5"}) {
+    for (const std::string group : {"entity + 0.5, 4, 0, 0, 1, set", "-1, 4, 0, 0, 1, set", "5e9, 4, 0, 0, 1, set", "0 / 0, 4, 0, 0, 1, set", "entity, 4, 0, 0, 1, set + 0.5"}) {
         EXPECT_NE(fixture.lua("placements:set(1, {" + group + "}) world:placeAll(placements)").find("The entity and the set of a placement in a buffer are whole numbers of 32 bits."), std::string::npos) << group;
     }
 

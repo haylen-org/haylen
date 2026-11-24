@@ -74,7 +74,7 @@ class FontFuzzer final {
 
         ImFontConfig config;
         config.FontDataOwnedByAtlas = false;
-        config.FontNo = static_cast<int>(face);
+        config.FontNo = face;
         ImFont* font = atlas.AddFontFromMemoryTTF(copy.data(), static_cast<int>(copy.size()), 24.0F, &config);
         for (const float size : {13.0F, 40.0F}) {
             ImFontBaked* baked = font->GetFontBaked(size);

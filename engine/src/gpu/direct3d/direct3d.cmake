@@ -13,7 +13,6 @@ target_sources(haylen-gpu PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Swapchain.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/WideText.cpp"
 )
-target_compile_definitions(haylen-gpu PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(haylen-gpu PRIVATE dxgi dxguid)
 
 # The tests of both devices on WARP and in windows, and of the shader compiler they share, which run on every Windows machine.

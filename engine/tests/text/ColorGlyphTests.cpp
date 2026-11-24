@@ -37,7 +37,7 @@ class ColorGlyphTest : public ::testing::Test {
             const bool red = std::abs(pixels[index] - static_cast<int>(rgb >> 16U & 0xFFU)) <= tolerance;
             const bool green = std::abs(pixels[index + 1] - static_cast<int>(rgb >> 8U & 0xFFU)) <= tolerance;
             const bool blue = std::abs(pixels[index + 2] - static_cast<int>(rgb & 0xFFU)) <= tolerance;
-            count += pixels[index + 3] == 255 && red && green && blue ? 1 : 0;
+            count += pixels[index + 3] == 255 && red && green && blue ? 1U : 0U;
         }
 
         return count;
@@ -47,7 +47,7 @@ class ColorGlyphTest : public ::testing::Test {
         const std::span<const std::uint8_t> pixels = raster.getPixels();
         std::size_t count = 0;
         for (std::size_t index = 3; index < pixels.size(); index += 4) {
-            count += pixels[index] == 255 ? 1 : 0;
+            count += pixels[index] == 255 ? 1U : 0U;
         }
 
         return count;

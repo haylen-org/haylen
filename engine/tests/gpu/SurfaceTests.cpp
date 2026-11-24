@@ -43,12 +43,12 @@ class GpuSurfaceTest : public test::GpuFixture {
     }
 
     // Clears the swapchain of the surface and draws over it in a pass that keeps what the first one drew.
-    void drawInto(int surface, math::Color color) {
-        device().beginPass({.clear = color, .label = "haylen-test-surface", .surface = surface});
+    void drawInto(int number, math::Color color) {
+        device().beginPass({.clear = color, .label = "haylen-test-surface", .surface = number});
         device().applyPipeline(plane);
         drawPlane(color);
         device().endPass();
-        device().beginPass({.load = Device::Load::Keep, .label = "haylen-test-surface-kept", .surface = surface});
+        device().beginPass({.load = Device::Load::Keep, .label = "haylen-test-surface-kept", .surface = number});
         device().applyPipeline(plane);
         device().applyViewport({0.0F, 0.0F, 8.0F, 8.0F});
         drawPlane(math::Color::white());

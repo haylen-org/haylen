@@ -103,7 +103,7 @@ void Segmenter::keepCode(std::u32string_view text, std::size_t begin, std::size_
 
         std::size_t close = index + 1;
         while (close < end && text[close] != text[index] && found[close - 1] != Break::Mandatory) {
-            close += text[close] == U'\\' && close + 1 < end ? 2 : 1;
+            close += text[close] == U'\\' && close + 1 < end ? 2U : 1U;
         }
 
         close = std::min(close, end - 1);

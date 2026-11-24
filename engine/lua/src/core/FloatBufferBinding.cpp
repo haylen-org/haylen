@@ -55,7 +55,7 @@ int FloatBufferBinding::length(lua_State* L) {
 int FloatBufferBinding::set(lua_State* L) {
     haylen::core::FloatBuffer& buffer = check(L);
     const bool list = lua_istable(L, 3);
-    const std::uint64_t requested = list ? lua_rawlen(L, 3) : static_cast<std::uint64_t>(lua_gettop(L) - 2);
+    const std::uint64_t requested = list ? static_cast<std::uint64_t>(lua_rawlen(L, 3)) : static_cast<std::uint64_t>(lua_gettop(L) - 2);
     const std::size_t first = checkPosition(L, buffer, 2, requested);
     const auto count = static_cast<std::size_t>(requested);
     const std::span<float> values = buffer.getValues().subspan(first, count);

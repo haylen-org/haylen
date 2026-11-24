@@ -168,8 +168,8 @@ TEST_P(GpuLifetimeTest, ReleasesADeviceWithoutReportingItLost) {
         GTEST_SKIP() << "Only WebGPU reports the end of a device that the engine releases.";
     }
 
-    std::unique_ptr<test::OffscreenSurface> surface;
-    std::unique_ptr<Device> released = makeDevice(GetParam(), surface);
+    std::unique_ptr<test::OffscreenSurface> releasedSurface;
+    std::unique_ptr<Device> released = makeDevice(GetParam(), releasedSurface);
     EXPECT_FALSE(released->isLost());
     released.reset();
 

@@ -209,7 +209,7 @@ void Table::addPart(Context& context, const Row& entry, const math::Rect& area) 
         label.append(text);
     }
 
-    const std::uint8_t states = entry.id == selected ? platform::AccessibilityElement::Selected : 0U;
+    const std::uint8_t states = entry.id == selected ? platform::AccessibilityElement::Selected : 0;
     context.getAccessibility().addPart(context, ImGui::GetItemID(), area, platform::AccessibilityElement::Role::Button, label, states);
 }
 

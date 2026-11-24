@@ -209,13 +209,13 @@ TEST_P(OpenGlDeviceTest, RefusesImagesWhoseShapeTheContextCannotStore) {
 
 // A texture names its last level, so a driver that ignores the level count of immutable storage still samples a texture of one level as complete.
 TEST_P(OpenGlDeviceTest, LimitsTheLevelsOfATextureToTheLevelsItHas) {
-    const Device::Image image = device->makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::Dynamic, .label = "level-count"});
+    const Device::Image oneLevel = device->makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::Dynamic, .label = "level-count"});
     Context opened;
     opened.gl.load(*context, GetParam());
     Gl::Int lastLevel = -1;
     opened.gl.getTexParameteriv(kTexture2D, Gl::kTextureMaxLevel, &lastLevel);
     EXPECT_EQ(lastLevel, 0);
-    device->destroy(image);
+    device->destroy(oneLevel);
 }
 
 // The objects of the device live in its context, so a surface that brings another context cannot take the place of the one it lost.

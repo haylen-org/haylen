@@ -607,7 +607,7 @@ TEST(StatsTest, GivesTheDrawingsOfTheOverlayIdsOfTheirOwn) {
     ASSERT_GE(row, 0.0F);
     std::size_t hovered = 0;
     for (float x = origin.x; x < origin.x + size.x; x += 3.0F) {
-        hovered += hover(x, row) != 0 ? 1 : 0;
+        hovered += hover(x, row) != 0 ? 1U : 0U;
     }
 
     EXPECT_GT(hovered, 0U);

@@ -155,7 +155,7 @@ void Tree::toggle(Context& context, const ChoiceItem& item) {
 
 // Every row reads as an element of the tree, with its text and whether it is selected, open and disabled.
 void Tree::addPart(Context& context, const ChoiceItem& item, const math::Rect& area, bool open) const {
-    std::uint8_t states = item.id == selected ? platform::AccessibilityElement::Selected : 0U;
+    std::uint8_t states = item.id == selected ? platform::AccessibilityElement::Selected : 0;
     if (!item.enabled) {
         states |= platform::AccessibilityElement::Disabled;
     }

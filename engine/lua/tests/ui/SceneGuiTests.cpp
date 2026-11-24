@@ -180,7 +180,7 @@ TEST_F(SceneGuiTest, DrawsAGuiWithoutASceneOnTheScreenAboveATransition) {
 
 // A GUI lays out as it draws for the first time, so the frame it first draws in is not the complete frame that a splash screen hands over to.
 TEST_F(SceneGuiTest, CompletesTheFrameAfterTheOneThatLaidOutANewGui) {
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "title", "text": "Island"}]})");
+    auto titleGui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "title", "text": "Island"}]})");
     EXPECT_FALSE(getEngine().isFrameComplete());
     frames(1);
     EXPECT_TRUE(getEngine().isFrameComplete());
@@ -188,7 +188,7 @@ TEST_F(SceneGuiTest, CompletesTheFrameAfterTheOneThatLaidOutANewGui) {
 
 // Frames that render nothing, such as those of an app in the background, leave the answer of the last frame that rendered, so a splash screen never ends over a frame that nobody saw drawn complete.
 TEST_F(SceneGuiTest, KeepsTheFrameIncompleteWhileTheAppRendersNothing) {
-    auto gui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "title", "text": "Island"}]})");
+    auto titleGui = mount(R"({"kind": "column", "children": [{"kind": "label", "id": "title", "text": "Island"}]})");
     getEngine().handleEvent({.type = haylen::platform::Event::Type::Suspended});
     frames(3);
     EXPECT_FALSE(getEngine().isFrameComplete());

@@ -285,8 +285,8 @@ StateGraph StateGraph::parse(const core::Json& description) {
             std::size_t diagonals = 0;
             for (std::size_t index = 0; index < state.directions.size(); ++index) {
                 const bool named = !state.directions[index].empty();
-                straight += named && index % 2 == 0 ? 1 : 0;
-                diagonals += named && index % 2 == 1 ? 1 : 0;
+                straight += named && index % 2 == 0 ? 1U : 0U;
+                diagonals += named && index % 2 == 1 ? 1U : 0U;
             }
 
             if (straight != 4 || (diagonals != 0 && diagonals != 4)) {

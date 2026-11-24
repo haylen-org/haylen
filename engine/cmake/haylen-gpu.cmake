@@ -67,9 +67,10 @@ list(REMOVE_DUPLICATES HAYLEN_SHADER_LANGUAGES)
 function(haylen_add_gpu_library)
   add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/ContractError.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DriverIssues.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/NullDevice.cpp")
   add_library(haylen::gpu ALIAS haylen-gpu)
-  # Only the drivers of Windows read the GPU that a process wants.
+  # Only the drivers of Windows read the GPU that a process wants. The sources of Windows in the library include the header of the system without its rarely used parts and without its macros "min" and "max".
   if(WIN32)
     target_sources(haylen-gpu PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/windows/GpuPreference.cpp")
+    target_compile_definitions(haylen-gpu PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
   else()
     target_sources(haylen-gpu PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/unavailable/GpuPreference.cpp")
   endif()

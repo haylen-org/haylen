@@ -131,7 +131,7 @@ TEST(StorageLuaTest, RefusesTheUserDataThatThePlatformKeepsFromTheApp) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_FALSE(fixture.engine().getStorage().isAvailable());
 
-    for (const std::string& call : {"storage.writeText('note.txt', 'kept')", "storage.readText('note.txt')", "storage.exists('note.txt')", "storage.list()", "storage.remove('note.txt')", "storage.flush()", "storage.root()", "storage.writeSlot('one', {day = 1})"}) {
+    for (const std::string call : {"storage.writeText('note.txt', 'kept')", "storage.readText('note.txt')", "storage.exists('note.txt')", "storage.list()", "storage.remove('note.txt')", "storage.flush()", "storage.root()", "storage.writeSlot('one', {day = 1})"}) {
         SCOPED_TRACE(call);
         const std::string answer = fixture.lua("local ok, failure = pcall(function() return " + call + " end) return tostring(ok) .. ' ' .. tostring(failure)");
         EXPECT_TRUE(answer.starts_with("false ") && answer.find(refusal) != std::string::npos) << answer;

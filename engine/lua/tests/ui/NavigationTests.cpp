@@ -407,7 +407,7 @@ TEST_F(NavigationTest, FinishesAChangeWhoseHandlerChangesTheStack) {
 
     bool pushed = false;
     // clang-format off
-    const haylen::core::Connection connection = stack->changed.connect([&](haylen::ui::NavigationStack& changed) {
+    const haylen::core::Connection pushAlbum = stack->changed.connect([&](haylen::ui::NavigationStack& changed) {
         if (!std::exchange(pushed, true)) {
             changed.push(album);
         }

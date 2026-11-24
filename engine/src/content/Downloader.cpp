@@ -447,8 +447,8 @@ void Downloader::start(std::shared_ptr<Transfer> transfer) {
             if (started.resumed) {
                 ++statistics.resumedRecords;
 
-                if (const auto first = wanted.find(transfer->records.front().first); first != wanted.end()) {
-                    first->second.resumed = true;
+                if (const auto resumed = wanted.find(transfer->records.front().first); resumed != wanted.end()) {
+                    resumed->second.resumed = true;
                 }
 
                 return;

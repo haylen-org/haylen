@@ -175,7 +175,7 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
 
     haylen::graphics::Texture first;
     haylen::graphics::Texture second;
-    std::string error;
+    std::string missingError;
     int callbacks = 0;
     // clang-format off
     assets.textureAsync("images/red.png", [&](haylen::graphics::Texture texture, std::string) {
@@ -187,7 +187,7 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
         ++callbacks;
     });
     assets.textureAsync("images/missing.png", [&](haylen::graphics::Texture, std::string message) {
-        error = message;
+        missingError = message;
         ++callbacks;
     });
     // clang-format on
@@ -196,7 +196,7 @@ TEST_F(AssetsManagerTest, LoadsAsynchronouslyOnWorkers) {
     ASSERT_TRUE(fixture.frameUntil([&] { return callbacks == 3; }));
     EXPECT_TRUE(first.isValid());
     EXPECT_EQ(first, second);
-    EXPECT_NE(error.find("missing.png"), std::string::npos);
+    EXPECT_NE(missingError.find("missing.png"), std::string::npos);
 
     bool cached = false;
     assets.textureAsync("images/red.png", [&](haylen::graphics::Texture texture, std::string) { cached = texture == first; });

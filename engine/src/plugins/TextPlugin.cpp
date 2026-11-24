@@ -282,8 +282,8 @@ bool TextPlugin::isSameDrawn(const DrawnText& drawn, std::string_view markup, co
     const text::RichTextOptions& kept = drawn.options;
     const bool sameOptions = kept.family == options.family && kept.size == options.size && kept.bold == options.bold && kept.italic == options.italic && kept.color == options.color && kept.maxWidth == options.maxWidth && kept.align == options.align && kept.direction == options.direction && kept.language == options.language && kept.lineSpacing == options.lineSpacing && kept.lineHeight == options.lineHeight && kept.scale == options.scale && kept.revealSpeed == options.revealSpeed && kept.underlineLinks == options.underlineLinks && kept.balance == options.balance && kept.ligatures == options.ligatures && kept.code == options.code;
     // clang-format off
-    const bool sameFonts = std::ranges::equal(drawn.fonts, fonts, [](const auto& kept, const FontName& given) {
-        return kept.first == given.first && kept.second == given.second;
+    const bool sameFonts = std::ranges::equal(drawn.fonts, fonts, [](const auto& drawnFont, const FontName& given) {
+        return drawnFont.first == given.first && drawnFont.second == given.second;
     });
     // clang-format on
     return sameOptions && sameFonts && drawn.markup == markup;

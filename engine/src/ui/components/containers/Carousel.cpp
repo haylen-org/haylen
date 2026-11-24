@@ -193,8 +193,8 @@ int Carousel::drawIndicators(Context& context, const math::Rect& row, std::size_
         const Widgets::Interaction state = Widgets::interact(context, dot.expanded(size * 0.5F), size, "##dot", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
         const bool current = static_cast<int>(index) + 1 == page;
-        const Theme::Color hovered = state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong;
-        Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : hovered), size * 0.5F);
+        const Theme::Color otherPage = state.hovered ? Theme::Color::TextMuted : Theme::Color::BorderStrong;
+        Surfaces::fill(context, dot, context.getColor(current ? Theme::Color::Accent : otherPage), size * 0.5F);
 
         if (state.clicked) {
             picked = static_cast<int>(index) + 1;
