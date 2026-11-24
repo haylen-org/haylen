@@ -54,7 +54,7 @@ class PluginSource:
                 f'The plugin "{reference.id}" comes from `{reference.git}` at "{ref}", which "{PluginLock.FILE}" does not pin to a commit, and a Release build takes only reproducible plugins. Pin it with "haylen plugin update {reference.id}".'
             )
         checkout = self.checkout(address, commit or ref)
-        return PluginSource.inside(checkout, reference.path, f"plugins.{reference.id}.path")
+        return PluginSource.inside(checkout, reference.path, f'The key "plugins.{reference.id}.path"')
 
     def address(self, git: str) -> str:
         """Returns the address of a repository: a remote as it is, or a local repository relative to the app folder."""
@@ -92,14 +92,12 @@ class PluginSource:
         return self.head(checkout)
 
     @staticmethod
-    def inside(checkout: Path, path: str | None, key: str) -> Path:
-        """Returns the folder that `path` names inside a checkout, refusing one that leads outside it through an absolute path, `..` or a symbolic link."""
+    def inside(checkout: Path, path: str | None, subject: str) -> Path:
+        """Returns the folder that `path` names inside a checkout, refusing one that leads outside it through an absolute path, `..` or a symbolic link. The subject names where the path comes from, such as a key of `haylen.json` or an option."""
         if path is None:
             return checkout
         folder = (checkout / path).resolve()
         windows = PureWindowsPath(path)
         if windows.anchor or ".." in windows.parts or not folder.is_relative_to(checkout.resolve()):
-            raise InvalidManifest(
-                f'The key "{key}" names the folder "{path}" of a git repository, which leads outside it. Name a folder inside the repository, relative to its root, such as "camera".'
-            )
+            raise InvalidManifest(f'{subject} names the folder "{path}" of a git repository, which leads outside it. Name a folder inside the repository, relative to its root, such as "camera".')
         return folder

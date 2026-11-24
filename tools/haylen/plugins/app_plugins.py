@@ -81,7 +81,7 @@ class AppPlugins:
             git = plugin if PluginSource.REMOTE.fullmatch(plugin) else self.relative(Path(plugin).expanduser())
             entry = PluginReference.parse("pending", {"git": git, **({"ref": ref} if ref else {}), **({"path": path} if path else {})})
             commit = self.source.resolve_commit(entry)
-            source = PluginSource.inside(self.source.checkout(self.source.address(git), commit), path, 'option "--path"')
+            source = PluginSource.inside(self.source.checkout(self.source.address(git), commit), path, 'The option "--path"')
             origin = {"git": git, **({"ref": ref} if ref else {}), **({"path": path} if path else {})}
         else:
             source = Path(plugin).expanduser().resolve()
