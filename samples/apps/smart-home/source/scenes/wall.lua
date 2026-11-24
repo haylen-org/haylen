@@ -4,7 +4,6 @@ local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
 local viewport = require('haylen.viewport')
-local window = require('haylen.window')
 
 local Home = require('home')
 local Panel = require('panel')
@@ -31,9 +30,7 @@ function Wall:enter()
     end
 end
 
--- The day of the home goes on and the camera sways its tree all the time, so the wall asks for every frame.
 function Wall:update(dt)
-    window.requestRedraw()
     self.home:update(dt)
     self.panel:update()
     if self.layoutFrames > 0 then

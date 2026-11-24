@@ -4,7 +4,6 @@ local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
 local viewport = require('haylen.viewport')
-local window = require('haylen.window')
 
 local Cluster = require('cluster')
 local Controls = require('controls')
@@ -64,9 +63,7 @@ function Cockpit:orient()
     self.controls:build(landscape)
 end
 
--- The car drives all the time, so the dashboard asks for every frame.
 function Cockpit:update(dt)
-    window.requestRedraw()
     if self.layoutFrames > 0 then
         self.layoutFrames = self.layoutFrames - 1
         self:layOut()
