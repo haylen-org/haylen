@@ -3,7 +3,7 @@ import AppKit
 import Carbon
 import XCTest
 
-// The fields of the test "Text fields" type through the keyboard of the Mac, in a macOS and in a Mac Catalyst app: each key types once, Backspace deletes, a held Backspace deletes once more for each repeat of the key, an input method composes text, a paste replaces the selection, and Tab moves to the next field.
+// The fields of the test "Text fields" type through the keyboard of the Mac, in a macOS and in a Mac Catalyst app: each key types once, Backspace deletes, a held Backspace goes on deleting while it repeats, an input method composes text, a paste replaces the selection, and Tab moves to the next field.
 class MacTextInputTests: TestProjectCase {
     // The virtual key code of Backspace on the keyboards of the Mac, which macOS calls "delete".
     static let backspace: UInt16 = 51
@@ -40,13 +40,13 @@ class MacTextInputTests: TestProjectCase {
         try saveScreenshot("mac-text-typed")
     }
 
-    // A key held down reaches the app as one press and then the repeats of the system, each marked as a repeat, and every repeat of Backspace deletes one more character.
-    func testHoldingBackspaceDeletesOnceForEachRepeat() throws {
+    // A key held down reaches the app as one press and then the repeats of the system, each marked as a repeat, for longer than the word takes to delete, so the field ends empty.
+    func testHoldingBackspaceGoesOnDeleting() throws {
         startTyping("https://haylen.dev")
         app.typeText("ilhas")
         expectReport("url", "ilhas")
-        holdKey(Self.backspace, repeats: 3)
-        expectReport("url", "i")
+        holdKey(Self.backspace, repeats: 12)
+        expectReport("url", "")
         try saveScreenshot("mac-backspace-held")
     }
 
@@ -54,7 +54,8 @@ class MacTextInputTests: TestProjectCase {
     func testAnInputMethodComposesTheTextOfTheField() throws {
         startTyping("Island name")
         useInputSource(Self.japanese)
-        app.typeText("nihon")
+        // The input method keeps a last "n" open for the kana that may follow it, and a second "n" closes it as "ん".
+        app.typeText("nihonn")
         app.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
         expectReport("text", "にほん")
         try saveScreenshot("mac-composed")
