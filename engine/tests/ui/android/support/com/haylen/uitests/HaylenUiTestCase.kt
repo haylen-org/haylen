@@ -26,6 +26,7 @@ import java.util.regex.Pattern
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.rules.TestRule
@@ -338,9 +339,9 @@ abstract class HaylenUiTestCase {
     // Whether the tests run on the Android emulator, which sets the property "ro.boot.qemu", and which lacks hardware such as a microphone that hears a room.
     fun isEmulator(): Boolean = device.executeShellCommand("getprop ro.boot.qemu").trim() == "1"
 
-    // Turns the device as a person does, until the display takes the rotation, a quarter turn from 0 to 3 from the natural orientation of the device. An app that follows the sensor turns only with the device, never with the rotation that UI Automator sets, so the test asks "haylen test --ui" in a status of its report, and the run sets the accelerometer of the emulator through its console. A physical device turns only in the hands of a person, so the test fails there.
+    // Turns the device as a person does, until the display takes the rotation, a quarter turn from 0 to 3 from the natural orientation of the device. An app that follows the sensor turns only with the device, never with the rotation that UI Automator sets, so the test asks "haylen test --ui" in a status of its report, and the run sets the accelerometer of the emulator through its console. A physical device turns only in the hands of a person, so the test skips there with that reason.
     fun turnDevice(rotation: Int) {
-        assertTrue("Turning the device needs the Android emulator, whose accelerometer the run sets from the computer. Run this test on an emulator.", isEmulator())
+        assumeTrue("Turning the device needs the Android emulator, whose accelerometer the run sets from the computer, since nothing turns a physical device but a person.", isEmulator())
         instrumentation.sendStatus(TURN_STATUS, Bundle().apply { putString(TURN_KEY, rotation.toString()) })
         waitUntil("The display does not take the rotation $rotation after the run turned the emulator.") { device.displayRotation == rotation }
     }
