@@ -2281,6 +2281,18 @@ for _, rock in ipairs({m.sphere({0, 0, 0}, 1), m.sphere({0, 0, 50}, 1)}) do
 end
 ```
 
+### frustum:cull(boxes, tolerance)
+
+Returns the positions, from `1` and in order, of the boxes of the list `boxes` that are not wholly outside, with the `tolerance` of `frustum:contains`. It keeps exactly the boxes that `frustum:classify` does not call `'outside'`, and it tests them in one call with the vector instructions of the processor, which the [3D math guide](../3d/math.md#batches) describes.
+
+```lua
+local m = require('haylen.math')
+
+local frustum = m.frustum(m.perspective({nearPlane = 0.5, farPlane = 100}) * m.lookAt({0, 0, 10}, {0, 0, 0}))
+local crates = {m.boxFromCenter({0, 0, 0}, {1, 1, 1}), m.boxFromCenter({0, 0, -200}, {1, 1, 1})}
+print(table.concat(frustum:cull(crates), ', ')) -- 1
+```
+
 ## Spherical
 
 A `Spherical` holds a point by its distance from the origin and two angles, such as the place of a camera that orbits a target or a direction on the sky. The polar angle runs down from the up axis and the azimuth turns around it, as the [coordinates page](../3d/coordinates.md#spherical-and-cylindrical-coordinates) shows. Make one with `m.spherical`.
@@ -3301,6 +3313,56 @@ print(m.color('#00000000') == m.color(0, 0, 0, 0)) -- true
 
 local glow = m.fromTemperature(3000):linear() * 4
 print(string.format('%.1f', glow.r)) -- 4.0
+```
+
+## Matrix batches
+
+The table `m.matrixBatch` multiplies and applies lists of matrices in one call, such as the world matrices of many objects under one parent or the points of a shape, with the vector instructions of the processor. Each result matches the matrix math of `Mat4` within rounding. The [3D math guide](../3d/math.md#batches) explains when a batch pays off.
+
+### m.matrixBatch.multiply(parent, matrices)
+
+Returns a new list with `parent * matrix` for each `Mat4` of the list `matrices`, in order.
+
+```lua
+local m = require('haylen.math')
+
+local ship = m.compose({0, 10, 0}, m.fromAxisAngle(m.up(), 0.5))
+local parts = {m.compose({1, 0, 0}), m.compose({-1, 0, 0}), m.compose({0, 0, -3})}
+local worlds = m.matrixBatch.multiply(ship, parts)
+print(worlds[3]:translation())
+```
+
+### m.matrixBatch.multiplyPairs(lhs, rhs)
+
+Returns a new list with `lhs[i] * rhs[i]` for each pair of the two lists of `Mat4` values. Lists of different lengths raise `The two lists of matrices must hold as many matrices each, but they hold <count> and <count>.`.
+
+```lua
+local m = require('haylen.math')
+
+local parents = {m.compose({0, 0, -5}), m.compose({4, 0, -5})}
+local locals = {m.compose({0, 1, 0}), m.compose({0, 2, 0})}
+print(m.matrixBatch.multiplyPairs(parents, locals)[2]:translation()) -- Vec3(4.0, 2.0, -5.0)
+```
+
+### m.matrixBatch.transformPoints(matrix, points)
+
+Returns a new list with `matrix:apply(point)` for each `Vec3` of the list `points`, which divides by the `w` the point maps to, as `mat4:apply` does.
+
+```lua
+local m = require('haylen.math')
+
+local lift = m.compose({0, 2, 0})
+print(m.matrixBatch.transformPoints(lift, {{0, 0, 0}, {1, 0, 0}})[2]) -- Vec3(1.0, 2.0, 0.0)
+```
+
+### m.matrixBatch.instructions
+
+The vector instructions that the batches run on in this build: `'SSE2'` on x64 processors, `'Neon'` on ARM processors, `'WebAssembly SIMD'` on the web, or `'scalar'` on a processor without them.
+
+```lua
+local m = require('haylen.math')
+
+print(m.matrixBatch.instructions) -- Neon on a phone or a Mac with Apple silicon
 ```
 
 ## Color spaces
@@ -6080,6 +6142,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `A Catmull-Rom spline needs at least two points when open and three when closed.` | A `'catmullRom'` spline has too few points. |
 | `A Bezier spline needs 3n + 1 points when open and 3n points when closed.` | A `'bezier'` spline has a count of points that does not fit. |
 | `A B-spline needs at least two points when open and three when closed.` | A `'bSpline'` spline has too few points. |
+| `The two lists of matrices must hold as many matrices each, but they hold <count> and <count>.` | The lists of `m.matrixBatch.multiplyPairs` have different lengths. |
 | `Spherical harmonics take 9 coefficients, not <count>.` | The list of `m.sphericalHarmonics` holds another count. |
 | `The side of a cubemap must be from 1 to 16384 texels.` | The `size` of `m.sphericalHarmonicsFromCubemap` is out of range. |
 | `A cubemap of side <size> holds <count> floats, the red, green and blue of each texel of its 6 faces, not <size>.` | The buffer of `m.sphericalHarmonicsFromCubemap` has another size. |

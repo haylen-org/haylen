@@ -24,6 +24,7 @@
 #include "math/ColorSpaceBinding.hpp"
 #include "math/Curve3DBinding.hpp"
 #include "math/Geometry3DBinding.hpp"
+#include "math/MatrixBatchBinding.hpp"
 #include "math/MatrixBinding.hpp"
 #include "math/Noise3DBinding.hpp"
 #include "math/PolygonBinding.hpp"
@@ -733,6 +734,7 @@ int MathBinding::open(lua_State* L) {
     Geometry3DBinding::addFunctions(L);
     Transform3DBinding::addFunctions(L);
     ColorSpaceBinding::addFunctions(L);
+    MatrixBatchBinding::addFunctions(L);
     RaycastBinding::addFunctions(L);
     PolygonBinding::addFunctions(L);
     Spline2DBinding::addFunctions(L);

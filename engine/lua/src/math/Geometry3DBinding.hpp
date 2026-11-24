@@ -58,6 +58,7 @@ class Geometry3DBinding final {
     static int frustumPlanes(lua_State* L);
     [[nodiscard]] static bool frustumContains(const haylen::math::Frustum& self, haylen::math::Vec3 point, std::optional<float> tolerance);
     static int frustumClassify(lua_State* L);
+    static int frustumCull(lua_State* L);
 };
 
 } // namespace haylen::lua::math

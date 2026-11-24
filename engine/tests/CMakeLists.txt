@@ -111,6 +111,7 @@ set(HAYLEN_TEST_SOURCES
   io/IoTests.cpp
   localization/CatalogTests.cpp
   localization/FormatTests.cpp
+  math/BatchMathTests.cpp
   math/ColorSpaceTests.cpp
   math/ColorTransformTests.cpp
   math/Geometry3DTests.cpp

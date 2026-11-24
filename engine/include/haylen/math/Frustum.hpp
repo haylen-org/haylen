@@ -45,6 +45,9 @@ class Frustum final {
     [[nodiscard]] Containment classify(const Sphere& sphere, float tolerance = kTolerance) const noexcept;
     [[nodiscard]] Containment classify(const Box& box, float tolerance = kTolerance) const noexcept;
 
+    // Writes the indices of the boxes that are not wholly outside, in order, into `visible` and returns their count, which skips what a camera cannot see in one call, with the vector instructions of the processor where the build has them. A box counts as outside exactly where `classify` says so. Throws `std::invalid_argument` when `visible` holds fewer indices than the boxes or the boxes do not fit in 32 bits of indices.
+    std::size_t cull(std::span<const Box> boxes, std::span<std::uint32_t> visible, float tolerance = kTolerance) const;
+
   private:
     static const std::array<std::pair<std::string_view, Containment>, 3> kContainmentNames;
 

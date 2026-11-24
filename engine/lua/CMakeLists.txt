@@ -114,6 +114,7 @@ set(HAYLEN_LUA_SOURCES
   src/math/Curve3DBinding.cpp
   src/math/Geometry3DBinding.cpp
   src/math/MathBinding.cpp
+  src/math/MatrixBatchBinding.cpp
   src/math/MatrixBinding.cpp
   src/math/Noise3DBinding.cpp
   src/math/PolygonBinding.cpp

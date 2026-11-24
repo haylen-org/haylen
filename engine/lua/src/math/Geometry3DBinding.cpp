@@ -1,6 +1,7 @@
 #include "math/Geometry3DBinding.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <optional>
 #include <stdexcept>
@@ -193,6 +194,22 @@ int Geometry3DBinding::frustumClassify(lua_State* L) {
     return 1;
 }
 
+// Returns the positions in the list of the boxes that are not wholly outside, from 1.
+int Geometry3DBinding::frustumCull(lua_State* L) {
+    const haylen::math::Frustum& self = lua::Userdata::check<haylen::math::Frustum>(L, 1);
+    const std::vector<haylen::math::Box> boxes = lua::Stack::read<std::vector<haylen::math::Box>>(L, 2);
+    const float tolerance = lua::Converter<float>::readOr(L, 3, haylen::math::Frustum::kTolerance);
+    std::vector<std::uint32_t> visible(boxes.size());
+    const std::size_t count = self.cull(boxes, visible, tolerance);
+    lua_createtable(L, static_cast<int>(count), 0);
+    for (std::size_t index = 0; index < count; ++index) {
+        lua_pushinteger(L, static_cast<lua_Integer>(visible[index]) + 1);
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
+    }
+
+    return 1;
+}
+
 void Geometry3DBinding::install(lua_State* L) {
     using haylen::math::Box;
     using haylen::math::Capsule;
@@ -220,7 +237,7 @@ void Geometry3DBinding::install(lua_State* L) {
 
     lua::ClassBuilder<Triangle>(L).field<&Triangle::a>("a").field<&Triangle::b>("b").field<&Triangle::c>("c").method<&Triangle::getArea>("area").function("normal", &lua::Binding::function<&triangleNormal>).method<&Triangle::getClosestPoint>("closestPoint").install();
 
-    lua::ClassBuilder<Frustum>(L).function("planes", &lua::Binding::native<&frustumPlanes>).function("contains", &lua::Binding::function<&frustumContains>).function("classify", &lua::Binding::native<&frustumClassify>).install();
+    lua::ClassBuilder<Frustum>(L).function("planes", &lua::Binding::native<&frustumPlanes>).function("contains", &lua::Binding::function<&frustumContains>).function("classify", &lua::Binding::native<&frustumClassify>).function("cull", &lua::Binding::native<&frustumCull>).install();
 }
 
 void Geometry3DBinding::addFunctions(lua_State* L) {

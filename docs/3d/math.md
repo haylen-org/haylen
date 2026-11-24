@@ -186,6 +186,24 @@ print(#coil:sample(400), ring.closed) -- 400 true
 
 NURBS also make surfaces and volumes. A `NurbsSurface` spreads a grid of points into a smooth sheet with a normal at every place, such as a hull or a patch of terrain, and a `NurbsVolume` bends the space of a block, such as a lattice that deforms a model inside it.
 
+## Batches
+
+A scene of thousands of objects repeats the same small math for each of them every frame: it places each object under its parent and skips each one that the camera cannot see. Doing that one value at a time spends most of the time on the calls themselves. The batches do the whole list in one call and compute four numbers at once with the vector instructions of the processor: SSE2 on x64, Neon on ARM and the SIMD of WebAssembly on the web, which every browser that runs Haylen has. A processor without them takes the same loops one number at a time.
+
+A batch adds and multiplies in the same order as the math of one value, so its results match within rounding, and its culling keeps exactly the boxes that the frustum classifies as not outside. The batches of the matrices live in `m.matrixBatch`, and `frustum:cull` culls a list of boxes. The command `haylen engine bench --suite algorithms` times each batch against the same work done one value at a time.
+
+```lua
+local m = require('haylen.math')
+
+local camera = m.frustum(m.perspective({farPlane = 300}) * m.lookAt({0, 20, 40}, {0, 0, 0}))
+local trees = {}
+for index = 1, 500 do
+    trees[index] = m.boxFromCenter({(index % 25) * 8 - 100, 3, -(index // 25) * 8}, {2, 6, 2})
+end
+
+print(#camera:cull(trees), 'trees to draw on', m.matrixBatch.instructions)
+```
+
 ## Spherical coordinates
 
 A point around a center often reads better as a distance and two angles than as `x`, `y` and `z`. A camera that orbits a target keeps its distance while the person drags its angles, and a sun moves across the sky by its height and its heading. A `Spherical` holds such a point, and a `Cylindrical` holds one by its distance from the up axis, its angle and its height, which suits towers, carousels and spirals. The [coordinates page](coordinates.md#spherical-and-cylindrical-coordinates) shows which way the angles run.

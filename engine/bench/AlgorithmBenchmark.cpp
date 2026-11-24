@@ -23,13 +23,19 @@
 #include "haylen/2d/spatial/Neighbor.hpp"
 #include "haylen/2d/spatial/RayHit.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/math/Box.hpp"
+#include "haylen/math/Frustum.hpp"
+#include "haylen/math/Mat4.hpp"
+#include "haylen/math/MatrixBatch.hpp"
+#include "haylen/math/Quat.hpp"
 #include "haylen/math/Random.hpp"
 #include "haylen/math/Ray2D.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/math/Vec3.hpp"
 
 namespace haylen::bench {
 
-// Times the path finding, crowd, spatial and ray casting algorithms on the CPU and prints the average time of each run.
+// Times the path finding, crowd, spatial, ray casting and batch math algorithms on the CPU and prints the average time of each run.
 class AlgorithmBenchmark final {
   public:
     static int run() {
@@ -41,6 +47,7 @@ class AlgorithmBenchmark final {
         measureCrowd(jobs);
         measureSpatial();
         measureRaycasts(jobs);
+        measureBatchMath();
         return 0;
     }
 
@@ -258,6 +265,56 @@ class AlgorithmBenchmark final {
         measure("Physics batch of 100000 rays, one thread", 5, [&] { caster.castBatch(batch); });
         measure("Physics batch of 100000 rays, job system", 5, [&] { caster.castBatch(batch, {}, &jobs); });
         std::printf("Job system workers: %zu, hardware threads: %u\n", jobs.getWorkerCount(), std::thread::hardware_concurrency());
+    }
+
+    // Compares the batches of matrices, points and culling with the same work done one value at a time by the scalar math of `Mat4` and `Frustum`.
+    static void measureBatchMath() {
+        constexpr std::size_t kCount = 100000;
+        math::Random random(23);
+        std::vector<math::Mat4> matrices;
+        std::vector<math::Vec3> points;
+        std::vector<math::Box> boxes;
+        for (std::size_t index = 0; index < kCount; ++index) {
+            const math::Vec3 position{random.range(-500.0F, 500.0F), random.range(-50.0F, 50.0F), random.range(-500.0F, 500.0F)};
+            matrices.push_back(math::Mat4::compose(position, math::Quat::fromAxisAngle(math::Vec3::up(), random.range(0.0F, 6.28F)), {1.0F, 1.0F, 1.0F}));
+            points.push_back(position);
+            boxes.push_back(math::Box::fromCenter(position, {random.range(0.5F, 8.0F), random.range(0.5F, 8.0F), random.range(0.5F, 8.0F)}));
+        }
+
+        const math::Mat4 parent = math::Mat4::compose({10.0F, 0.0F, -5.0F}, math::Quat::fromAxisAngle(math::Vec3::up(), 0.4F), {2.0F, 2.0F, 2.0F});
+        const math::Mat4 viewProjection = math::Mat4::perspective({.aspect = 16.0F / 9.0F, .farPlane = 400.0F}) * math::Mat4::lookAt({0.0F, 20.0F, 0.0F}, {100.0F, 0.0F, -100.0F});
+        const math::Frustum frustum = math::Frustum::fromMatrix(viewProjection, math::Mat4::DepthRange::ZeroToOne);
+        std::vector<math::Mat4> worlds(kCount);
+        std::vector<math::Vec3> mapped(kCount);
+        std::vector<std::uint32_t> visible(kCount);
+        std::size_t kept = 0;
+
+        std::printf("Batch math instructions: %.*s\n", static_cast<int>(math::MatrixBatch::getInstructions().size()), math::MatrixBatch::getInstructions().data());
+        // clang-format off
+        measure("Parent times 100000 matrices, scalar", 20, [&] {
+            for (std::size_t index = 0; index < kCount; ++index) {
+                worlds[index] = parent * matrices[index];
+            }
+        });
+        measure("Parent times 100000 matrices, batch", 20, [&] { math::MatrixBatch::multiply(parent, matrices, worlds); });
+        measure("Apply a matrix to 100000 points, scalar", 20, [&] {
+            for (std::size_t index = 0; index < kCount; ++index) {
+                mapped[index] = viewProjection.apply(points[index]);
+            }
+        });
+        measure("Apply a matrix to 100000 points, batch", 20, [&] { math::MatrixBatch::transformPoints(viewProjection, points, mapped); });
+        measure("Cull 100000 boxes, scalar", 20, [&] {
+            kept = 0;
+            for (std::size_t index = 0; index < kCount; ++index) {
+                if (frustum.classify(boxes[index]) != math::Frustum::Containment::Outside) {
+                    visible[kept] = static_cast<std::uint32_t>(index);
+                    ++kept;
+                }
+            }
+        });
+        measure("Cull 100000 boxes, batch", 20, [&] { kept = frustum.cull(boxes, visible); });
+        // clang-format on
+        std::printf("Boxes inside the frustum: %zu of %zu\n", kept, kCount);
     }
 };
 

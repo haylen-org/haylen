@@ -392,6 +392,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/MarchingSquares.cpp
   src/math/Mat3.cpp
   src/math/Mat4.cpp
+  src/math/MatrixBatch.cpp
   src/math/MedianFilter.cpp
   src/math/MovingAverage.cpp
   src/math/Noise2D.cpp
@@ -698,6 +699,8 @@ target_compile_features(haylen-engine PUBLIC cxx_std_20)
 if(EMSCRIPTEN)
   target_compile_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
   target_link_options(haylen-engine INTERFACE -fwasm-exceptions -sSUPPORT_LONGJMP=wasm)
+  # The batch math computes with the SIMD instructions of WebAssembly, which every browser that the web build supports runs.
+  target_compile_options(haylen-engine PRIVATE -msimd128)
 endif()
 target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
@@ -1064,7 +1067,7 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   set_target_properties(haylen-procedural-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-procedural-benchmark)
 
-  # The algorithm benchmark times path finding, crowds, spatial queries and ray casts on the CPU, so it is a plain executable too. The physics world links the debug drawing of the renderer, whose GPU calls the null GPU device of the headless host satisfies.
+  # The algorithm benchmark times path finding, crowds, spatial queries, ray casts and batch math on the CPU, so it is a plain executable too. The physics world links the debug drawing of the renderer, whose GPU calls the null GPU device of the headless host satisfies.
   add_executable(haylen-algorithm-benchmark bench/AlgorithmBenchmark.cpp)
   target_link_libraries(haylen-algorithm-benchmark PRIVATE haylen::engine haylen::headless)
   set_target_properties(haylen-algorithm-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")

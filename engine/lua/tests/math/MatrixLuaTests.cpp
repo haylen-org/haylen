@@ -65,4 +65,13 @@ TEST_F(MatrixLuaTest, WorksWithPlanes) {
     EXPECT_NE(lua("return m.plane({0, 0, 0}, 1)").find("The vector has no direction, because its length is zero."), std::string::npos);
 }
 
+TEST_F(MatrixLuaTest, MultipliesAndAppliesListsOfMatrices) {
+    fixture.runLua("parent = m.compose({0, 10, 0}, m.fromAxisAngle(m.up(), 0.5)) children = {m.compose({1, 0, 0}), m.compose({0, 0, -3}, m.fromAxisAngle(m.right(), 0.2), {2, 2, 2})}");
+    EXPECT_EQ(lua("local worlds = m.matrixBatch.multiply(parent, children) return #worlds .. ' ' .. tostring(worlds[1]:approximately(parent * children[1])) .. ' ' .. tostring(worlds[2]:approximately(parent * children[2]))"), "2 true true");
+    EXPECT_EQ(lua("local pairs = m.matrixBatch.multiplyPairs(children, {parent, parent}) return tostring(pairs[2]:approximately(children[2] * parent))"), "true");
+    EXPECT_EQ(lua("local points = m.matrixBatch.transformPoints(parent, {{0, 0, 0}, {1, 0, 0}}) return tostring(points[1]) .. ' ' .. tostring(points[2]:approximately(parent:apply({1, 0, 0})))"), "Vec3(0.0, 10.0, 0.0) true");
+    EXPECT_EQ(lua("return #m.matrixBatch.multiply(parent, {}) .. ' ' .. type(m.matrixBatch.instructions)"), "0 string");
+    EXPECT_NE(lua("return m.matrixBatch.multiplyPairs(children, {parent})").find("The two lists of matrices must hold as many matrices each, but they hold 2 and 1."), std::string::npos);
+}
+
 } // namespace haylen::lua::math

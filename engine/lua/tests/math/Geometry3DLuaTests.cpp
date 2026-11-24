@@ -54,6 +54,8 @@ TEST_F(Geometry3DLuaTest, CullsWithTheFrustumOfACamera) {
     EXPECT_EQ(lua("return frustum:classify(m.sphere({0, 0, 0}, 1)) .. ' ' .. frustum:classify(m.sphere({0, 0, 9.5}, 1)) .. ' ' .. frustum:classify(m.boxFromCenter({0, 0, -200}, {1, 1, 1}))"), "inside intersecting outside");
     EXPECT_EQ(lua("return #m.frustum(m.perspective({nearPlane = 0.5}) * m.lookAt({0, 0, 10}, {0, 0, 0})):planes()"), "5");
     EXPECT_EQ(lua("local f = m.frustum(m.perspective({nearPlane = 1, farPlane = 10, depthRange = 'negativeOneToOne', reversedDepth = false}), 'negativeOneToOne') return tostring(f:contains({0, 0, -5})) .. ' ' .. tostring(f:contains({0, 0, -0.5}))"), "true false");
+    EXPECT_EQ(lua("local boxes = {m.boxFromCenter({0, 0, 0}, {1, 1, 1}), m.boxFromCenter({0, 0, -200}, {1, 1, 1}), m.boxFromCenter({0, 0, 9.5}, {2, 2, 2}), m.boxFromCenter({500, 0, 0}, {1, 1, 1})} return table.concat(frustum:cull(boxes), ',') .. ' ' .. #frustum:cull({})"), "1,3 0");
+    EXPECT_EQ(lua("return #frustum:cull({m.boxFromCenter({0, 0, 9.55}, {0.1, 0.1, 0.1})}, 0.2)"), "1");
 }
 
 } // namespace haylen::lua::math

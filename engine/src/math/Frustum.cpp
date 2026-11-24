@@ -2,6 +2,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <stdexcept>
+
+#include "math/BatchKernels.hpp"
+#include "math/Float4.hpp"
 
 namespace haylen::math {
 
@@ -74,6 +79,14 @@ Frustum::Containment Frustum::classify(const Sphere& sphere, float tolerance) co
 
 Frustum::Containment Frustum::classify(const Box& box, float tolerance) const noexcept {
     return classify(box.getCenter(), box.getHalfExtents(), 0.0F, tolerance);
+}
+
+std::size_t Frustum::cull(std::span<const Box> boxes, std::span<std::uint32_t> visible, float tolerance) const {
+    if (visible.size() < boxes.size() || boxes.size() > std::numeric_limits<std::uint32_t>::max()) {
+        throw std::invalid_argument("Culling boxes needs room for the index of every box, at most 4294967295 of them.");
+    }
+
+    return BatchKernels::cull<Float4>(getPlanes(), boxes, visible, tolerance);
 }
 
 } // namespace haylen::math
