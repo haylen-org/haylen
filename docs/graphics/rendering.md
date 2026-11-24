@@ -1256,7 +1256,7 @@ The app quits after the last phase. Each phase logs one line:
 | `work ms` | CPU time of the frame outside the `submit` step, where the renderer uploads and waits for the next drawable. |
 | `frames` | Frames measured, 240, or until every texture of the last phase is ready. |
 
-These results are recorded in `PROJECT.md`, measured on an Apple M5 Pro with Metal in Release:
+These are the results measured on an Apple M5 Pro with Metal in Release:
 
 | Phase | Frame rate | CPU per frame (`work ms`) |
 | --- | --- | --- |
