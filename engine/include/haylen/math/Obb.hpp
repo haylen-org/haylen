@@ -1,6 +1,6 @@
 #pragma once
 
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 #include "haylen/math/Mat3.hpp"
 #include "haylen/math/Quat.hpp"
 #include "haylen/math/Transform3D.hpp"
@@ -15,7 +15,7 @@ struct Obb {
     Vec3 halfExtents;
 
     // Returns the box that `placement` makes of `box`, whose scale may be negative.
-    [[nodiscard]] static Obb fromTransform(const Box3& box, const Transform3D& placement) noexcept;
+    [[nodiscard]] static Obb fromTransform(const Box& box, const Transform3D& placement) noexcept;
 
     [[nodiscard]] constexpr bool operator==(const Obb&) const noexcept = default;
 
@@ -26,7 +26,7 @@ struct Obb {
 
     [[nodiscard]] bool contains(Vec3 point) const noexcept;
     [[nodiscard]] Vec3 getClosestPoint(Vec3 point) const noexcept;
-    [[nodiscard]] Box3 getBounds() const noexcept;
+    [[nodiscard]] Box getBounds() const noexcept;
 };
 
 } // namespace haylen::math

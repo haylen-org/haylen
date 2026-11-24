@@ -5,7 +5,7 @@
 namespace haylen::math {
 
 // Where a 3D ray hits a shape: its distance from the origin of the ray, the point and the normal of the surface, which faces the ray.
-struct RayHit3 {
+struct RayHit3D {
     float distance = 0.0F;
     Vec3 point;
     Vec3 normal;

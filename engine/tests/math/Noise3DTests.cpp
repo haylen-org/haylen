@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <vector>
 
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Noise3D.hpp"
 #include "haylen/math/PoissonDisk3D.hpp"
@@ -146,7 +146,7 @@ TEST_F(Noise3DTest, SpreadsRandomPointsInSpheresConesAndBoxes) {
         EXPECT_GE(Vec3::dot(random.inCone(-Vec3::forward(), Math::kPi), Vec3{0.0F, 0.0F, 1.0F}), -1.0F - 1e-5F);
     }
 
-    const Box3 crate{{-1.0F, 0.0F, 2.0F}, {1.0F, 5.0F, 3.0F}};
+    const Box crate{{-1.0F, 0.0F, 2.0F}, {1.0F, 5.0F, 3.0F}};
     for (int index = 0; index < 1000; ++index) {
         EXPECT_TRUE(crate.contains(random.inBox(crate)));
     }

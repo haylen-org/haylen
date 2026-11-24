@@ -4,7 +4,7 @@
 
 namespace haylen::math {
 
-struct Segment2 {
+struct Segment2D {
     Vec2 start{};
     Vec2 end{};
 };

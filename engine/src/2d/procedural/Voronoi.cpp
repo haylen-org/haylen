@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "haylen/2d/procedural/Delaunay.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::procedural2d {
 
@@ -77,7 +77,7 @@ std::vector<math::Vec2> Voronoi::relax(std::vector<math::Vec2> sites, const math
         for (std::size_t index = 0; index < sites.size(); ++index) {
             const std::vector<math::Vec2>& cell = diagram.getCells()[index];
             if (!cell.empty()) {
-                sites[index] = math::Geometry2::centroid(cell);
+                sites[index] = math::Geometry2D::centroid(cell);
             }
         }
     }

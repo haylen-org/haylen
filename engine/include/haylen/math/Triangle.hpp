@@ -5,12 +5,12 @@
 namespace haylen::math {
 
 // A triangle whose front side sees its corners run counter-clockwise from `a` to `b` to `c`.
-struct Triangle3 {
+struct Triangle {
     Vec3 a;
     Vec3 b;
     Vec3 c;
 
-    [[nodiscard]] constexpr bool operator==(const Triangle3&) const noexcept = default;
+    [[nodiscard]] constexpr bool operator==(const Triangle&) const noexcept = default;
 
     [[nodiscard]] float getArea() const noexcept {
         return Vec3::cross(b - a, c - a).getLength() * 0.5F;

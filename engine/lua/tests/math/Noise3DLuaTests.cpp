@@ -39,13 +39,13 @@ TEST_F(Noise3DLuaTest, SumsFractalsAndWarpsPoints) {
 TEST_F(Noise3DLuaTest, SpreadsRandomPointsAndPoissonPointsIn3D) {
     fixture.runLua("random = m.random(3)");
     EXPECT_EQ(lua("return string.format('%.3f', random:onSphere(2):length())"), "2.000");
-    EXPECT_EQ(lua("return tostring(random:inSphere():length() <= 1 and random:inBox(m.box3({0, 0, 0}, {1, 2, 3})).y <= 2)"), "true");
+    EXPECT_EQ(lua("return tostring(random:inSphere():length() <= 1 and random:inBox(m.box({0, 0, 0}, {1, 2, 3})).y <= 2)"), "true");
     EXPECT_EQ(lua("return tostring(random:inCone({0, 1, 0}, 0.2):dot({0, 1, 0}) >= math.cos(0.2) - 1e-4)"), "true");
     EXPECT_NE(lua("return random:inCone({0, 0, 0}, 0.2)").find("The vector has no direction, because its length is zero."), std::string::npos);
     EXPECT_NE(lua("return random:inCone({0, 1, 0}, 5)").find("A random cone needs an angle from 0 to pi radians."), std::string::npos);
-    EXPECT_EQ(lua("local points = m.poissonDisk3d({volume = m.box3({0, 0, 0}, {6, 6, 6}), minimumDistance = 1.5, seed = 2}) local again = m.poissonDisk3d({volume = m.box3({0, 0, 0}, {6, 6, 6}), minimumDistance = 1.5, seed = 2}) return tostring(#points > 20 and #points == #again and points[1] == again[1])"), "true");
-    EXPECT_EQ(lua("local points = m.poissonDisk3d({volume = m.box3({0, 0, 0}, {6, 6, 6}), minimumDistance = 2, accept = function(point) return point.y > 3 end}) for _, point in ipairs(points) do if point.y <= 3 then return 'below' end end return 'above'"), "above");
-    EXPECT_NE(lua("return m.poissonDisk3d({volume = m.box3({0, 0, 0}, {6, 6, 6}), attempts = 0})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
+    EXPECT_EQ(lua("local points = m.poissonDisk3d({volume = m.box({0, 0, 0}, {6, 6, 6}), minimumDistance = 1.5, seed = 2}) local again = m.poissonDisk3d({volume = m.box({0, 0, 0}, {6, 6, 6}), minimumDistance = 1.5, seed = 2}) return tostring(#points > 20 and #points == #again and points[1] == again[1])"), "true");
+    EXPECT_EQ(lua("local points = m.poissonDisk3d({volume = m.box({0, 0, 0}, {6, 6, 6}), minimumDistance = 2, accept = function(point) return point.y > 3 end}) for _, point in ipairs(points) do if point.y <= 3 then return 'below' end end return 'above'"), "above");
+    EXPECT_NE(lua("return m.poissonDisk3d({volume = m.box({0, 0, 0}, {6, 6, 6}), attempts = 0})").find("Poisson sampling needs between 1 and 1000 attempts."), std::string::npos);
 }
 
 } // namespace haylen::lua::math

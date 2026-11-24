@@ -991,7 +991,7 @@ math::Rect FrameSubmitter::getPixels(const Canvas& canvas, const std::array<math
         corner = canvas.view.apply(corner);
     }
 
-    const math::Rect units = math::Geometry2::bounds(placed);
+    const math::Rect units = math::Geometry2D::bounds(placed);
     const math::Vec2 low = passRect.getMin() + units.getMin() * scale;
     const math::Vec2 high = passRect.getMin() + units.getMax() * scale;
     if (touched) {
@@ -1343,7 +1343,7 @@ std::optional<math::Rect> FrameSubmitter::getCommandPixels(const Canvas& canvas,
 // The quads of sprites, glyphs and shapes, the vertices of meshes and the bounds of baked batches hold what their draws change, while the quads of effects reach past their sprites by an outline and a glow, and image blends, groups and metaballs cover areas of their own.
 std::optional<math::Rect> FrameSubmitter::getCommandBounds(const Command& command) const {
     if (command.program == Program::Glass) {
-        return math::Geometry2::bounds(state.glasses[command.first].corners);
+        return math::Geometry2D::bounds(state.glasses[command.first].corners);
     }
 
     if (command.batch != nullptr) {

@@ -1,4 +1,4 @@
--- Poisson disk sampling whose spacing follows a density: a noise map sampled on a worker thread by `procedural2d.scatterAsync`, or a distance function around a point you pick with `math.poissonDisk`.
+-- Poisson disk sampling whose spacing follows a density: a noise map sampled on a worker thread by `procedural2d.scatterAsync`, or a distance function around a point you pick with `math.poissonDisk2d`.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -66,7 +66,7 @@ end
 -- Spacing grows from the nearest spacing at the focus to the farthest one a spread away.
 function Poisson:sampleAroundFocus()
     local fx, fy, spread = self.focusPoint[1], self.focusPoint[2], self.spread
-    profiler.beginScope('poissonDisk')
+    profiler.beginScope('poissonDisk2d')
     self.points = m.poissonDisk2d({
         area = kArea,
         minimumDistance = kNearest,
@@ -140,7 +140,7 @@ function Poisson:update(dt)
         self.dirty, self.wait = false, kResampleDelay
         self:sample()
     end
-    local timing = self.latency and string.format('on a worker thread in %.0f ms', self.latency) or string.format('by the function "poissonDisk" in %s', AlgorithmTest.milliseconds(self:timing('poissonDisk')))
+    local timing = self.latency and string.format('on a worker thread in %.0f ms', self.latency) or string.format('by the function "poissonDisk2d" in %s', AlgorithmTest.milliseconds(self:timing('poissonDisk2d')))
     self:status(string.format('%d points spaced from %d to %d units apart were placed %s.', #self.points, kNearest, kFarthest, timing))
 end
 

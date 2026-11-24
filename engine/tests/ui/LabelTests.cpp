@@ -10,7 +10,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
@@ -31,7 +31,7 @@ class LabelTest : public ::testing::Test, public test::UiFixture {
         const std::uint64_t overlay = renderer.addCanvasOverlay([&blocks](graphics2d::Renderer& drawing) {
             drawing.visitDrawn([&blocks](const graphics2d::Renderer::Drawn& drawn) {
                 if (drawn.text) {
-                    blocks.push_back(math::Geometry2::bounds(drawn.corners));
+                    blocks.push_back(math::Geometry2D::bounds(drawn.corners));
                 }
             });
         });

@@ -1,4 +1,4 @@
-#include "haylen/math/Spline3.hpp"
+#include "haylen/math/Spline3D.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,11 +11,11 @@
 
 namespace haylen::math {
 
-const std::array<std::pair<std::string_view, Spline3::Kind>, 6> Spline3::kKindNames{{{"linear", Kind::Linear}, {"catmullRom", Kind::CatmullRom}, {"quadraticBezier", Kind::QuadraticBezier}, {"bezier", Kind::Bezier}, {"bSpline", Kind::BSpline}, {"nurbs", Kind::Nurbs}}};
+const std::array<std::pair<std::string_view, Spline3D::Kind>, 6> Spline3D::kKindNames{{{"linear", Kind::Linear}, {"catmullRom", Kind::CatmullRom}, {"quadraticBezier", Kind::QuadraticBezier}, {"bezier", Kind::Bezier}, {"bSpline", Kind::BSpline}, {"nurbs", Kind::Nurbs}}};
 
-Spline3::Spline3(std::vector<Vec3> controlPoints) : Spline3(std::move(controlPoints), Options{}) {}
+Spline3D::Spline3D(std::vector<Vec3> controlPoints) : Spline3D(std::move(controlPoints), Options{}) {}
 
-Spline3::Spline3(std::vector<Vec3> controlPoints, const Options& options) : points(std::move(controlPoints)), kind(options.kind), closed(options.closed) {
+Spline3D::Spline3D(std::vector<Vec3> controlPoints, const Options& options) : points(std::move(controlPoints)), kind(options.kind), closed(options.closed) {
     if (kind != Kind::Nurbs && (!options.weights.empty() || !options.knots.empty() || options.degree != 3)) {
         throw std::invalid_argument("Only a NURBS spline takes weights, knots and a degree.");
     }
@@ -56,17 +56,17 @@ Spline3::Spline3(std::vector<Vec3> controlPoints, const Options& options) : poin
     measure();
 }
 
-std::optional<Spline3::Kind> Spline3::kindFromName(std::string_view name) noexcept {
+std::optional<Spline3D::Kind> Spline3D::kindFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kKindNames, name, &std::pair<std::string_view, Kind>::first);
     return found != kKindNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
-std::string_view Spline3::kindName(Kind value) noexcept {
+std::string_view Spline3D::kindName(Kind value) noexcept {
     return std::ranges::find(kKindNames, value, &std::pair<std::string_view, Kind>::second)->first;
 }
 
 // Closed curves wrap indices around and open curves clamp them to the end points.
-Vec3 Spline3::wrappedPoint(std::ptrdiff_t index) const noexcept {
+Vec3 Spline3D::wrappedPoint(std::ptrdiff_t index) const noexcept {
     const auto count = static_cast<std::ptrdiff_t>(points.size());
     if (closed) {
         return points[static_cast<std::size_t>(((index % count) + count) % count)];
@@ -75,7 +75,7 @@ Vec3 Spline3::wrappedPoint(std::ptrdiff_t index) const noexcept {
     return points[static_cast<std::size_t>(std::clamp<std::ptrdiff_t>(index, 0, count - 1))];
 }
 
-void Spline3::buildLinear() {
+void Spline3D::buildLinear() {
     if (points.size() < (closed ? 3U : 2U)) {
         throw std::invalid_argument("A linear spline needs at least two points when open and three when closed.");
     }
@@ -90,7 +90,7 @@ void Spline3::buildLinear() {
 }
 
 // Each segment is the cubic of the pyramid of Barry and Goldman, which its ends and the derivatives there fix, so it becomes a Bezier segment exactly. The tension shortens both derivatives, and open curves extend their ends by mirroring the neighboring point.
-void Spline3::buildCatmullRom(float alpha, float tension) {
+void Spline3D::buildCatmullRom(float alpha, float tension) {
     if (!(alpha >= 0.0F && alpha <= 1.0F) || !(tension >= 0.0F && tension <= 1.0F)) {
         throw std::invalid_argument("A Catmull-Rom spline needs an alpha and a tension from 0 to 1.");
     }
@@ -122,7 +122,7 @@ void Spline3::buildCatmullRom(float alpha, float tension) {
     knots.push_back(knots.back());
 }
 
-void Spline3::buildBezier(int segmentDegree) {
+void Spline3D::buildBezier(int segmentDegree) {
     const auto step = static_cast<std::size_t>(segmentDegree);
     const std::size_t count = points.size();
     const bool valid = closed ? count >= step && count % step == 0 : count >= step + 1 && (count - 1) % step == 0;
@@ -148,7 +148,7 @@ void Spline3::buildBezier(int segmentDegree) {
 }
 
 // The uniform cubic B-spline takes its points with uniform knots. Open curves repeat their end points three times so the curve reaches them, and closed curves repeat their first three points after the last.
-void Spline3::buildBSpline() {
+void Spline3D::buildBSpline() {
     if (points.size() < (closed ? 3U : 2U)) {
         throw std::invalid_argument("A B-spline needs at least two points when open and three when closed.");
     }
@@ -163,7 +163,7 @@ void Spline3::buildBSpline() {
     }
 }
 
-void Spline3::buildNurbs(const Options& options) {
+void Spline3D::buildNurbs(const Options& options) {
     if (closed) {
         throw std::invalid_argument("A NURBS spline closes through its own points and knots, so it takes no option closed.");
     }
@@ -178,7 +178,7 @@ void Spline3::buildNurbs(const Options& options) {
 }
 
 // The segments share their end points, so each one adds the points after its first and the knot of its end once for every degree.
-void Spline3::appendBezierSegment(std::span<const Vec3> segment) {
+void Spline3D::appendBezierSegment(std::span<const Vec3> segment) {
     if (controls.empty()) {
         controls.push_back(segment.front());
         knots.assign(segment.size(), 0.0F);
@@ -190,7 +190,7 @@ void Spline3::appendBezierSegment(std::span<const Vec3> segment) {
 }
 
 // Records the arc length at evenly spaced parameters, which distance lookups interpolate.
-void Spline3::measure() {
+void Spline3D::measure() {
     const std::size_t steps = segmentCount * kStepsPerSegment;
     lengths.assign(steps + 1, 0.0F);
     Vec3 previous = getPoint(0.0F);
@@ -201,7 +201,7 @@ void Spline3::measure() {
     }
 }
 
-float Spline3::toKnot(float t) const noexcept {
+float Spline3D::toKnot(float t) const noexcept {
     const float low = knots[static_cast<std::size_t>(degree)];
     const float high = knots[controls.size()];
     const float wrapped = closed ? t - std::floor(t) : std::clamp(t, 0.0F, 1.0F);
@@ -209,7 +209,7 @@ float Spline3::toKnot(float t) const noexcept {
 }
 
 // The point is the ratio of the weighted points to the weights, and its derivatives follow by the rule of quotients. A parameter that is not a number gives a point that is not a number either.
-Spline3::Derivatives Spline3::evaluate(float u) const noexcept {
+Spline3D::Derivatives Spline3D::evaluate(float u) const noexcept {
     const auto p = static_cast<std::size_t>(degree);
     const std::size_t span = NurbsBasis::findSpan(knots, degree, controls.size(), u);
     NurbsBasis::Values basis{};
@@ -241,15 +241,15 @@ Spline3::Derivatives Spline3::evaluate(float u) const noexcept {
     return {.point = toVector(curve[0], 1.0), .first = toVector(curve[1], stretch), .second = toVector(curve[2], stretch * stretch)};
 }
 
-Vec3 Spline3::getPoint(float t) const noexcept {
+Vec3 Spline3D::getPoint(float t) const noexcept {
     return evaluate(toKnot(t)).point;
 }
 
-Spline3::Derivatives Spline3::getDerivatives(float t) const noexcept {
+Spline3D::Derivatives Spline3D::getDerivatives(float t) const noexcept {
     return evaluate(toKnot(t));
 }
 
-Vec3 Spline3::getTangent(float t) const {
+Vec3 Spline3D::getTangent(float t) const {
     const Derivatives derivatives = getDerivatives(t);
     if (!derivatives.first.isZero()) {
         return derivatives.first.getNormalized();
@@ -262,20 +262,20 @@ Vec3 Spline3::getTangent(float t) const {
     throw std::invalid_argument("The spline stands still at this parameter, so it has no direction.");
 }
 
-float Spline3::getParameterAtDistance(float distance) const noexcept {
+float Spline3D::getParameterAtDistance(float distance) const noexcept {
     return ArcLength::getParameter(lengths, distance, closed);
 }
 
-Vec3 Spline3::getPointAtDistance(float distance) const noexcept {
+Vec3 Spline3D::getPointAtDistance(float distance) const noexcept {
     return getPoint(getParameterAtDistance(distance));
 }
 
-Vec3 Spline3::getTangentAtDistance(float distance) const {
+Vec3 Spline3D::getTangentAtDistance(float distance) const {
     return getTangent(getParameterAtDistance(distance));
 }
 
 // The nearest of the points of the table of lengths starts a search by Newton's method for the parameter where the line to the point stands at a right angle to the curve, kept between the neighbors of that point.
-Spline3::ClosestPoint Spline3::getClosestPoint(Vec3 point) const noexcept {
+Spline3D::ClosestPoint Spline3D::getClosestPoint(Vec3 point) const noexcept {
     const std::size_t steps = lengths.size() - 1;
     std::size_t nearest = 0;
     float nearestSquared = std::numeric_limits<float>::infinity();
@@ -299,7 +299,7 @@ Spline3::ClosestPoint Spline3::getClosestPoint(Vec3 point) const noexcept {
     return {.t = t, .point = found, .distance = distance};
 }
 
-float Spline3::refineClosest(Vec3 point, float t) const noexcept {
+float Spline3D::refineClosest(Vec3 point, float t) const noexcept {
     const float step = 1.0F / static_cast<float>(lengths.size() - 1);
     const float low = closed ? t - step : std::max(0.0F, t - step);
     const float high = closed ? t + step : std::min(1.0F, t + step);
@@ -324,7 +324,7 @@ float Spline3::refineClosest(Vec3 point, float t) const noexcept {
     return current;
 }
 
-std::vector<Vec3> Spline3::sample(std::size_t count) const {
+std::vector<Vec3> Spline3D::sample(std::size_t count) const {
     ArcLength::checkCount(count);
     std::vector<Vec3> result;
     result.reserve(count);
@@ -335,7 +335,7 @@ std::vector<Vec3> Spline3::sample(std::size_t count) const {
     return result;
 }
 
-std::vector<Vec3> Spline3::sampleEvenly(std::size_t count) const {
+std::vector<Vec3> Spline3D::sampleEvenly(std::size_t count) const {
     ArcLength::checkCount(count);
     std::vector<Vec3> result;
     result.reserve(count);
@@ -347,7 +347,7 @@ std::vector<Vec3> Spline3::sampleEvenly(std::size_t count) const {
     return result;
 }
 
-std::vector<Vec3> Spline3::sampleByDistance(float spacing) const {
+std::vector<Vec3> Spline3D::sampleByDistance(float spacing) const {
     const std::size_t count = ArcLength::countSteps(getLength(), spacing);
     std::vector<Vec3> result;
     result.reserve(count + 1);
@@ -362,7 +362,7 @@ std::vector<Vec3> Spline3::sampleByDistance(float spacing) const {
     return result;
 }
 
-std::vector<CurveFrame> Spline3::getFrames(std::size_t count, Vec3 up) const {
+std::vector<CurveFrame> Spline3D::getFrames(std::size_t count, Vec3 up) const {
     if (count < 2) {
         throw std::invalid_argument("The frames of a curve need at least 2 frames, one at each end.");
     }

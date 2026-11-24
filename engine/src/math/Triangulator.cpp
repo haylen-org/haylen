@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::math {
 
@@ -82,7 +82,7 @@ void Triangulator::classify(std::span<const std::uint32_t> counts) {
     std::uint32_t first = 0;
     for (const std::uint32_t count : counts) {
         const std::span<const Vec2> run = points.subspan(first, count);
-        Outline outline{.first = first, .count = count, .low = run.empty() ? Vec2{} : run.front(), .high = run.empty() ? Vec2{} : run.front(), .area = count >= 3 ? Geometry2::signedArea(run) : 0.0F};
+        Outline outline{.first = first, .count = count, .low = run.empty() ? Vec2{} : run.front(), .high = run.empty() ? Vec2{} : run.front(), .area = count >= 3 ? Geometry2D::signedArea(run) : 0.0F};
         for (const Vec2 point : run) {
             outline.low = Vec2::min(outline.low, point);
             outline.high = Vec2::max(outline.high, point);

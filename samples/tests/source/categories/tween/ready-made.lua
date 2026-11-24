@@ -104,13 +104,13 @@ function ReadyMade:play()
         elseif kind == 'path' then
             local points = {{x + 90 * s, y - 20 * s}, {x, y + 50 * s}, {x - 90 * s, y - 20 * s}, {x, y - 50 * s}}
             shape.start = {x, y - 50 * s}
-            shape.spline = m.spline2({{x, y - 50 * s}, points[1], points[2], points[3]}, {closed = true})
+            shape.spline = m.spline2d({{x, y - 50 * s}, points[1], points[2], points[3]}, {closed = true})
             sprite.x, sprite.y = x, y - 50 * s
             tween.path(sprite, 3, points, {owner = self, closed = true, orient = true, repeatCount = -1})
         elseif kind == 'bezier' then
             local first, second, finish = {x - 40 * s, y - 55 * s}, {x + 40 * s, y + 55 * s}, {x + 90 * s, y}
             shape.start = {x - 90 * s, y}
-            shape.spline = m.spline2({{x - 90 * s, y}, first, second, finish}, {kind = 'bezier'})
+            shape.spline = m.spline2d({{x - 90 * s, y}, first, second, finish}, {kind = 'bezier'})
             shape.handles = {{x - 90 * s, y, first[1], first[2]}, {finish[1], finish[2], second[1], second[2]}}
             sprite.x = x - 90 * s
             tween.bezier(sprite, 1.4, {first, second, finish}, loop)

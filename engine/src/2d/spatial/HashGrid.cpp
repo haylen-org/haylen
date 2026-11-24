@@ -179,7 +179,7 @@ void HashGrid::queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) con
     query({point.x, point.y, 0.0F, 0.0F}, ids);
 }
 
-void HashGrid::raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const {
+void HashGrid::raycast(const math::Ray2D& ray, std::size_t limit, std::vector<RayHit>& hits) const {
     hits.clear();
     const math::Rect extent{static_cast<float>(occupied.left) * cellSize, static_cast<float>(occupied.top) * cellSize, static_cast<float>(occupied.right - occupied.left + 1) * cellSize, static_cast<float>(occupied.bottom - occupied.top + 1) * cellSize};
     const std::optional<std::array<float, 2>> travel = entries.empty() ? std::nullopt : math::Raycast::clip(ray, extent);
@@ -188,12 +188,12 @@ void HashGrid::raycast(const math::Ray2& ray, std::size_t limit, std::vector<Ray
     }
 
     // A ray that crosses more cells than there are entries costs less when it tests every entry.
-    const math::Ray2 inside{ray.at((*travel)[0]), ray.direction, (*travel)[1] - (*travel)[0]};
+    const math::Ray2D inside{ray.at((*travel)[0]), ray.direction, (*travel)[1] - (*travel)[0]};
     const math::Vec2 end = inside.getEnd();
     const double crossed = std::fabs(static_cast<double>(cellOf(end.x)) - cellOf(inside.origin.x)) + std::fabs(static_cast<double>(cellOf(end.y)) - cellOf(inside.origin.y)) + 1.0;
     if (crossed > static_cast<double>(entries.size())) {
         for (const auto& [id, entry] : entries) {
-            if (const std::optional<math::RayHit2> hit = math::Raycast::rect(ray, entry.bounds)) {
+            if (const std::optional<math::RayHit2D> hit = math::Raycast::rect(ray, entry.bounds)) {
                 EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
             }
         }
@@ -219,7 +219,7 @@ void HashGrid::raycast(const math::Ray2& ray, std::size_t limit, std::vector<Ray
                 continue;
             }
 
-            if (const std::optional<math::RayHit2> hit = math::Raycast::rect(ray, entries.at(id).bounds)) {
+            if (const std::optional<math::RayHit2D> hit = math::Raycast::rect(ray, entries.at(id).bounds)) {
                 EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
             }
         }

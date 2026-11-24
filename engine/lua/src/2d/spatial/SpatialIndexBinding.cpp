@@ -18,7 +18,7 @@
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "math/RaycastBinding.hpp"
 
 namespace haylen::lua {
@@ -247,7 +247,7 @@ template <typename Structure> int SpatialIndexBinding::queryPoint(lua_State* L) 
 // Casts a ray with `raycast(x1, y1, x2, y2[, limit])` and returns the hits from the start on, each with the value it hit.
 template <typename Structure> int SpatialIndexBinding::raycast(lua_State* L) {
     const Structure& structure = lua::Userdata::check<ScriptedIndex<Structure>>(L, 1).index;
-    const haylen::math::Ray2 ray = haylen::math::Ray2::between({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, {lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)});
+    const haylen::math::Ray2D ray = haylen::math::Ray2D::between({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)}, {lua::Stack::read<float>(L, 4), lua::Stack::read<float>(L, 5)});
     const auto limit = lua_isnoneornil(L, 6) ? std::size_t{0} : lua::Stack::read<std::size_t>(L, 6);
     std::vector<haylen::spatial2d::RayHit> hits;
     structure.raycast(ray, limit, hits);

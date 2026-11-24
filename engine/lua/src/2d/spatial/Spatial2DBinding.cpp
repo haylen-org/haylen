@@ -20,7 +20,7 @@ namespace haylen::lua::spatial2d {
 // Returns the ray from the center of the view to the world point under a screen point with `screenRay(camera, x, y)`, as `x1, y1, x2, y2`.
 int Spatial2DBinding::screenRay(lua_State* L) {
     const haylen::spatial2d::ScreenPicker picker(lua::Userdata::check<haylen::graphics2d::Camera>(L, 1), lua::Runtime::getEngine(L).getViewport().getVisibleRect());
-    const haylen::math::Ray2 ray = picker.toRay({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)});
+    const haylen::math::Ray2D ray = picker.toRay({lua::Stack::read<float>(L, 2), lua::Stack::read<float>(L, 3)});
     const haylen::math::Vec2 end = ray.getEnd();
     lua::Stack::push(L, ray.origin.x);
     lua::Stack::push(L, ray.origin.y);

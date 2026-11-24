@@ -9,7 +9,7 @@
 #include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/Body.hpp"
 #include "haylen/2d/physics/World.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 
 namespace haylen::physics2d {
@@ -60,7 +60,7 @@ void ForceField::destroy() {
 
 void ForceField::check() const {
     const bool shaped = options.radius > 0.0F || area.size() >= 3;
-    const bool convex = options.kind != Kind::Buoyancy || (options.radius <= 0.0F && math::Geometry2::isConvex(area));
+    const bool convex = options.kind != Kind::Buoyancy || (options.radius <= 0.0F && math::Geometry2D::isConvex(area));
     const bool drags = options.linearDrag >= 0.0F && options.angularDrag >= 0.0F && options.airDrag >= 0.0F && std::isfinite(options.lift) && options.density >= 0.0F && options.minDistance >= 0.0F;
     if (!shaped || !convex || !drags || options.direction.isZero() || (options.falloff == Falloff::InverseSquare && options.minDistance <= 0.0F)) {
         throw std::invalid_argument("A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, a finite lift, and a minimum distance for an inverse square falloff.");
@@ -144,7 +144,7 @@ math::Rect ForceField::getBounds() const {
         return {options.position.x - options.radius, options.position.y - options.radius, options.radius * 2.0F, options.radius * 2.0F};
     }
 
-    math::Rect bounds = math::Geometry2::bounds(area);
+    math::Rect bounds = math::Geometry2D::bounds(area);
     bounds.x += options.position.x;
     bounds.y += options.position.y;
     return bounds;
@@ -156,7 +156,7 @@ bool ForceField::contains(math::Vec2 point) const {
         return local.getLengthSquared() <= options.radius * options.radius;
     }
 
-    return math::Geometry2::contains(area, local);
+    return math::Geometry2D::contains(area, local);
 }
 
 float ForceField::fade(float distance) const noexcept {
@@ -273,21 +273,21 @@ void ForceField::floatShape(const Body& body, std::uint64_t shape) {
     }
 
     const std::vector<math::Vec2> submerged = clip(outline);
-    const float wet = submerged.size() < 3 ? 0.0F : std::abs(math::Geometry2::signedArea(submerged));
+    const float wet = submerged.size() < 3 ? 0.0F : std::abs(math::Geometry2D::signedArea(submerged));
     if (wet <= 0.0F) {
         return;
     }
 
     const float scale = world.getPixelsPerMeter();
     const float displaced = options.density * wet / (scale * scale);
-    const math::Vec2 centroid = math::Geometry2::centroid(submerged);
+    const math::Vec2 centroid = math::Geometry2D::centroid(submerged);
     math::Vec2 force = world.getGravity() * -displaced;
     force -= (body.getVelocityAt(centroid) - options.flow) * (options.linearDrag * displaced);
     const b2BodyId id = b2LoadBodyId(body.getId());
     b2Body_ApplyForce(id, Box2DConverter::toMeters(force, scale), Box2DConverter::toMeters(centroid, scale), false);
 
     if (options.angularDrag > 0.0F) {
-        const float share = wet / std::abs(math::Geometry2::signedArea(outline));
+        const float share = wet / std::abs(math::Geometry2D::signedArea(outline));
         b2Body_ApplyTorque(id, -options.angularDrag * share * b2Body_GetRotationalInertia(id) * b2Body_GetAngularVelocity(id), false);
     }
 }
@@ -351,7 +351,7 @@ std::vector<math::Vec2> ForceField::outlineOf(std::uint64_t shape) const {
 
 // Sutherland and Hodgman clipping keeps the part of the polygon on the inner side of every edge of the convex area.
 std::vector<math::Vec2> ForceField::clip(std::vector<math::Vec2> polygon) const {
-    const float winding = math::Geometry2::signedArea(area) >= 0.0F ? 1.0F : -1.0F;
+    const float winding = math::Geometry2D::signedArea(area) >= 0.0F ? 1.0F : -1.0F;
     std::vector<math::Vec2> kept;
     for (std::size_t edge = 0; edge < area.size() && !polygon.empty(); ++edge) {
         const math::Vec2 from = area[edge] + options.position;

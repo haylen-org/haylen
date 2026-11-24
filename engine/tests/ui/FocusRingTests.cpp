@@ -12,7 +12,7 @@
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/Key.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Theme.hpp"
@@ -64,7 +64,7 @@ TEST_F(FocusRingTest, FramesTheFocusWithTheImageOfTheTheme) {
             }
 
             if (framing) {
-                frame.push_back(math::Geometry2::bounds(drawn.corners));
+                frame.push_back(math::Geometry2D::bounds(drawn.corners));
             }
         });
     });

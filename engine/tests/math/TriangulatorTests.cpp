@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "math/Triangulator.hpp"
@@ -52,8 +52,8 @@ class TriangulatorTest : public ::testing::Test {
         float area = 0.0F;
         for (std::size_t index = 0; index < triangles.size(); index += 3) {
             const std::array<Vec2, 3> triangle{points[triangles[index]], points[triangles[index + 1]], points[triangles[index + 2]]};
-            EXPECT_GE(Geometry2::signedArea(triangle), 0.0F);
-            area += Geometry2::signedArea(triangle);
+            EXPECT_GE(Geometry2D::signedArea(triangle), 0.0F);
+            area += Geometry2D::signedArea(triangle);
         }
 
         return area;
@@ -63,7 +63,7 @@ class TriangulatorTest : public ::testing::Test {
     [[nodiscard]] float shapeArea() const {
         float area = 0.0F;
         for (std::size_t outline = 0, first = 0; outline < counts.size(); first += counts[outline++]) {
-            area += Geometry2::signedArea(std::span(points).subspan(first, counts[outline]));
+            area += Geometry2D::signedArea(std::span(points).subspan(first, counts[outline]));
         }
 
         return area;
@@ -74,7 +74,7 @@ class TriangulatorTest : public ::testing::Test {
         const std::vector<std::uint32_t>& triangles = triangulator.getTriangles();
         for (std::size_t index = 0; index < triangles.size(); index += 3) {
             const std::array<Vec2, 3> triangle{points[triangles[index]], points[triangles[index + 1]], points[triangles[index + 2]]};
-            if (Geometry2::contains(triangle, point)) {
+            if (Geometry2D::contains(triangle, point)) {
                 return true;
             }
         }

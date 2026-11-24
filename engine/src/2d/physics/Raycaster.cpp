@@ -162,12 +162,12 @@ std::optional<RaycastHit> Raycaster::castPolygon(std::span<const math::Vec2> poi
     return castShape(points, 0.0F, translation, filter);
 }
 
-math::Ray2 Raycaster::bounce(const math::Ray2& ray, int bounces, const Filter& filter, std::vector<RaycastHit>& hits) const {
+math::Ray2D Raycaster::bounce(const math::Ray2D& ray, int bounces, const Filter& filter, std::vector<RaycastHit>& hits) const {
     if (!std::isfinite(ray.length)) {
         throw std::invalid_argument("A bouncing physics ray needs a finite length.");
     }
 
-    return math::Raycast::bounce(ray, bounces, [this, &filter](const math::Ray2& leg) { return castRay(leg.origin, leg.getEnd(), filter); }, hits);
+    return math::Raycast::bounce(ray, bounces, [this, &filter](const math::Ray2D& leg) { return castRay(leg.origin, leg.getEnd(), filter); }, hits);
 }
 
 void Raycaster::fan(math::Vec2 origin, float angle, float spread, std::size_t count, float length, const Filter& filter, std::vector<std::optional<RaycastHit>>& results) const {
@@ -175,7 +175,7 @@ void Raycaster::fan(math::Vec2 origin, float angle, float spread, std::size_t co
         throw std::invalid_argument("A fan of physics rays needs a finite length.");
     }
 
-    math::Raycast::fan(origin, angle, spread, count, length, [this, &filter](const math::Ray2& ray) { return castRay(ray.origin, ray.getEnd(), filter); }, results);
+    math::Raycast::fan(origin, angle, spread, count, length, [this, &filter](const math::Ray2D& ray) { return castRay(ray.origin, ray.getEnd(), filter); }, results);
 }
 
 bool Raycaster::hasLineOfSight(math::Vec2 from, math::Vec2 to, const Filter& filter) const {

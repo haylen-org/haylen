@@ -8,8 +8,8 @@
 #include <optional>
 #include <stdexcept>
 
-#include "haylen/math/Ray2.hpp"
-#include "haylen/math/RayHit2.hpp"
+#include "haylen/math/Ray2D.hpp"
+#include "haylen/math/RayHit2D.hpp"
 #include "haylen/math/Raycast.hpp"
 
 namespace haylen::spatial2d {
@@ -18,8 +18,8 @@ bool VisibilityPolygon::isFinite(math::Vec2 point) noexcept {
     return std::isfinite(point.x) && std::isfinite(point.y);
 }
 
-const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std::span<const math::Segment2> walls, const math::Rect& bounds) {
-    const bool finite = isFinite(bounds.getMin()) && isFinite(bounds.getMax()) && std::ranges::all_of(walls, [](const math::Segment2& wall) { return isFinite(wall.start) && isFinite(wall.end); });
+const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std::span<const math::Segment2D> walls, const math::Rect& bounds) {
+    const bool finite = isFinite(bounds.getMin()) && isFinite(bounds.getMax()) && std::ranges::all_of(walls, [](const math::Segment2D& wall) { return isFinite(wall.start) && isFinite(wall.end); });
     if (!finite) {
         throw std::invalid_argument("A visibility polygon needs finite walls and bounds.");
     }
@@ -36,7 +36,7 @@ const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std
     }
 
     angles.clear();
-    for (const math::Segment2& segment : segments) {
+    for (const math::Segment2D& segment : segments) {
         for (const math::Vec2 end : {segment.start, segment.end}) {
             const float angle = (end - origin).getAngle();
             angles.insert(angles.end(), {angle - kCornerAngle, angle, angle + kCornerAngle});
@@ -52,7 +52,7 @@ const std::vector<math::Vec2>& VisibilityPolygon::compute(math::Vec2 origin, std
 
     points.clear();
     for (const float angle : angles) {
-        const std::optional<math::RayHit2> hit = math::Raycast::segments(math::Ray2::fromAngle(origin, angle, std::numeric_limits<float>::infinity()), segments);
+        const std::optional<math::RayHit2D> hit = math::Raycast::segments(math::Ray2D::fromAngle(origin, angle, std::numeric_limits<float>::infinity()), segments);
         if (hit && (points.empty() || math::Vec2::distanceSquared(points.back(), hit->point) > 1e-6F)) {
             points.push_back(hit->point);
         }

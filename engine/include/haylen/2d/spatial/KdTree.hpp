@@ -8,7 +8,7 @@
 
 #include "haylen/2d/spatial/Neighbor.hpp"
 #include "haylen/2d/spatial/RayHit.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -37,7 +37,7 @@ class KdTree final {
     void query(const math::Rect& area, std::vector<std::uint64_t>& ids) const;
     void queryCircle(math::Vec2 center, float radius, std::vector<std::uint64_t>& ids) const;
     void queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) const;
-    void raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const;
+    void raycast(const math::Ray2D& ray, std::size_t limit, std::vector<RayHit>& hits) const;
     void nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const;
 
   private:

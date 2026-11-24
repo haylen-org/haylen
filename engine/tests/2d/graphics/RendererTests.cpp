@@ -33,7 +33,7 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "haylen/math/Insets.hpp"
-#include "haylen/math/Spline2.hpp"
+#include "haylen/math/Spline2D.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/Gradient.hpp"
 #include "support/AllocationTracker.hpp"
@@ -804,7 +804,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
     const StaticSpriteBatch baked = batch.bake(engine.getRenderer2D());
     const std::vector<math::Vec2> line{{0.0F, 0.0F}, {40.0F, 10.0F}, {80.0F, 0.0F}};
     const math::Color dotColor = math::Color::white();
-    const math::Spline2 curve({{0.0F, 0.0F}, {40.0F, 60.0F}, {80.0F, -20.0F}, {120.0F, 30.0F}}, math::Spline2::Kind::Bezier);
+    const math::Spline2D curve({{0.0F, 0.0F}, {40.0F, 60.0F}, {80.0F, -20.0F}, {120.0F, 30.0F}}, math::Spline2D::Kind::Bezier);
     const std::vector<math::Vec2> points{{10.0F, 10.0F}, {20.0F, 12.0F}, {30.0F, 8.0F}};
     const std::vector<math::Vec2> polygon{{0.0F, 0.0F}, {40.0F, 0.0F}, {40.0F, 30.0F}, {20.0F, 10.0F}, {0.0F, 30.0F}};
     const std::vector<MeshVertex> mesh{{{0.0F, 0.0F}}, {{10.0F, 0.0F}}, {{0.0F, 10.0F}}};

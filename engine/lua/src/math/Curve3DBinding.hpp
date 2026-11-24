@@ -8,21 +8,21 @@
 
 #include "haylen/lua/Type.hpp"
 #include "haylen/math/CurveFrame.hpp"
-#include "haylen/math/CurvePath3.hpp"
+#include "haylen/math/CurvePath3D.hpp"
 #include "haylen/math/NurbsSurface.hpp"
 #include "haylen/math/NurbsVolume.hpp"
-#include "haylen/math/Spline3.hpp"
+#include "haylen/math/Spline3D.hpp"
 
 namespace haylen::lua {
 
-template <> struct Type<haylen::math::Spline3> {
-    static constexpr const char* name = "haylen.Spline3";
-    using Storage = haylen::math::Spline3;
+template <> struct Type<haylen::math::Spline3D> {
+    static constexpr const char* name = "haylen.Spline3D";
+    using Storage = haylen::math::Spline3D;
 };
 
-template <> struct Type<haylen::math::CurvePath3> {
-    static constexpr const char* name = "haylen.CurvePath3";
-    using Storage = haylen::math::CurvePath3;
+template <> struct Type<haylen::math::CurvePath3D> {
+    static constexpr const char* name = "haylen.CurvePath3D";
+    using Storage = haylen::math::CurvePath3D;
 };
 
 template <> struct Type<haylen::math::NurbsSurface> {
@@ -39,12 +39,12 @@ template <> struct Type<haylen::math::NurbsVolume> {
 
 namespace haylen::lua::math {
 
-// Installs the curves and NURBS shapes of 3D in `haylen.math`: the classes `Spline3`, `CurvePath3`, `NurbsSurface` and `NurbsVolume` with their constructors.
-class Curve3Binding final {
+// Installs the curves and NURBS shapes of 3D in `haylen.math`: the classes `Spline3D`, `CurvePath3D`, `NurbsSurface` and `NurbsVolume` with their constructors.
+class Curve3DBinding final {
   public:
     static void install(lua_State* L);
 
-    // Sets `spline3`, `curvePath3`, `nurbsSurface` and `nurbsVolume` on the module table at the top of the stack.
+    // Sets `spline3d`, `curvePath3d`, `nurbsSurface` and `nurbsVolume` on the module table at the top of the stack.
     static void addFunctions(lua_State* L);
 
   private:
@@ -103,7 +103,7 @@ class Curve3Binding final {
     static int volumeRows(lua_State* L);
     static int volumeLayers(lua_State* L);
 
-    static void pushClosest(lua_State* L, const haylen::math::Spline3::ClosestPoint& closest);
+    static void pushClosest(lua_State* L, const haylen::math::Spline3D::ClosestPoint& closest);
     static void pushFrames(lua_State* L, std::span<const haylen::math::CurveFrame> frames);
     [[nodiscard]] static haylen::math::Vec3 readUp(lua_State* L, int index);
 };

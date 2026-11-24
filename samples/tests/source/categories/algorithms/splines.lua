@@ -9,7 +9,7 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 local Splines = haylen.class('Splines', AlgorithmTest)
 
 Splines.code = [[
-local track = m.spline2(points, {kind = 'catmullRom', closed = false})  -- Or 'bezier' and 'bSpline'.
+local track = m.spline2d(points, {kind = 'catmullRom', closed = false})  -- Or 'bezier' and 'bSpline'.
 local curve = track:sample(160)
 local even = track:sampleByDistance(60)  -- A point every 60 units.
 traveled = (traveled + 380 * dt) % track.length
@@ -50,7 +50,7 @@ function Splines:rebuild()
     if options.kind == 'bezier' and options.closed then
         points = {table.unpack(self.points, 1, 6)}
     end
-    self.spline = m.spline2(points, {kind = options.kind, closed = options.closed})
+    self.spline = m.spline2d(points, {kind = options.kind, closed = options.closed})
     self.curve = self.spline:sample(160)
     self.samples = self.spline:sampleByDistance(options.spacing)
 end

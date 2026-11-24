@@ -52,7 +52,7 @@ struct Occluder;
 } // namespace haylen::lighting2d
 
 namespace haylen::math {
-class Spline2;
+class Spline2D;
 }
 
 namespace haylen::text {
@@ -215,7 +215,7 @@ class Renderer final {
     void drawStroke(std::span<const math::Vec2> points, const Stroke& stroke, const DrawOrder& order = {});
 
     // Draws a stroke along the spline, flattened so the straight lines between its points stay within a quarter pixel of the curve, closed when the spline is. Throws `std::invalid_argument` for a stroke with widths or colors for each point, which a curve does not have.
-    void drawStroke(const math::Spline2& spline, const Stroke& stroke, const DrawOrder& order = {});
+    void drawStroke(const math::Spline2D& spline, const Stroke& stroke, const DrawOrder& order = {});
     void drawImageBlend(const ImageBlend& blend, const DrawOrder& order = {});
 
     // Lights and occluders belong to lit canvases, and a light draws in the order it was drawn over the lights before it. Disabled lights draw nothing.

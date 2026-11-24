@@ -8,7 +8,7 @@
 #include <span>
 
 #include "graphics/TextureResource.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 #include "math/HalfFloat.hpp"
 
@@ -197,7 +197,7 @@ math::Rect GpuInstance::getBounds() const noexcept {
         points[index] = origin + math::Vec2{local.x * cosine - local.y * sine, local.x * sine + local.y * cosine};
     }
 
-    return math::Geometry2::bounds(points);
+    return math::Geometry2D::bounds(points);
 }
 
 math::Rect GpuInstance::getShapeBounds() const noexcept {

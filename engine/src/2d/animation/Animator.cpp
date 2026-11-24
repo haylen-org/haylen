@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "haylen/2d/graphics/Sprite.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::animation2d {
 
@@ -246,7 +246,7 @@ std::optional<math::Rect> Animator::getBox(std::string_view name, const graphics
 
     const math::Rect& area = box->area;
     const std::array<math::Vec2, 4> corners{place(area.getMin(), sprite), place({area.getRight(), area.y}, sprite), place(area.getMax(), sprite), place({area.x, area.getBottom()}, sprite)};
-    return math::Geometry2::bounds(corners);
+    return math::Geometry2D::bounds(corners);
 }
 
 std::optional<math::Vec2> Animator::getPoint(std::string_view name, const graphics2d::Sprite& sprite) const {

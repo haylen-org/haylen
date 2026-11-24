@@ -16,7 +16,7 @@
 #include "haylen/2d/spatial/GridRay.hpp"
 #include "haylen/2d/spatial/UnionFind.hpp"
 #include "haylen/2d/spatial/VisibilityPolygon.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Random.hpp"
 
 namespace haylen::spatial2d {
@@ -27,7 +27,7 @@ TEST(GridRayTest, WalksCrossedCellsInOrder) {
     Cells visited;
     std::vector<haylen::math::Vec2> normals;
     // clang-format off
-    GridRay::traverse(haylen::math::Ray2::between({5.0F, 5.0F}, {35.0F, 17.0F}), {10.0F, 10.0F}, [&](Cell cell, float, haylen::math::Vec2 normal) {
+    GridRay::traverse(haylen::math::Ray2D::between({5.0F, 5.0F}, {35.0F, 17.0F}), {10.0F, 10.0F}, [&](Cell cell, float, haylen::math::Vec2 normal) {
         visited.push_back(cell);
         normals.push_back(normal);
         return true;
@@ -39,22 +39,22 @@ TEST(GridRayTest, WalksCrossedCellsInOrder) {
     EXPECT_EQ(normals[2], (haylen::math::Vec2{0.0F, -1.0F}));
 
     const auto blocked = [](Cell cell) { return cell.x == 2; };
-    const std::optional<GridRay::Hit> hit = GridRay::cast(haylen::math::Ray2::between({5.0F, 5.0F}, {35.0F, 5.0F}), {10.0F, 10.0F}, blocked);
+    const std::optional<GridRay::Hit> hit = GridRay::cast(haylen::math::Ray2D::between({5.0F, 5.0F}, {35.0F, 5.0F}), {10.0F, 10.0F}, blocked);
     ASSERT_TRUE(hit.has_value());
     EXPECT_EQ(hit->cell, (Cell{2, 0}));
     EXPECT_FLOAT_EQ(hit->distance, 15.0F);
     EXPECT_EQ(hit->point, (haylen::math::Vec2{20.0F, 5.0F}));
     EXPECT_EQ(hit->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
-    EXPECT_FALSE(GridRay::cast(haylen::math::Ray2::between({5.0F, 5.0F}, {15.0F, 5.0F}), {10.0F, 10.0F}, blocked).has_value());
+    EXPECT_FALSE(GridRay::cast(haylen::math::Ray2D::between({5.0F, 5.0F}, {15.0F, 5.0F}), {10.0F, 10.0F}, blocked).has_value());
 
-    const std::optional<GridRay::Hit> inside = GridRay::cast(haylen::math::Ray2::between({25.0F, 5.0F}, {5.0F, 5.0F}), {10.0F, 10.0F}, blocked);
+    const std::optional<GridRay::Hit> inside = GridRay::cast(haylen::math::Ray2D::between({25.0F, 5.0F}, {5.0F, 5.0F}), {10.0F, 10.0F}, blocked);
     ASSERT_TRUE(inside.has_value());
     EXPECT_EQ(inside->distance, 0.0F);
     EXPECT_TRUE(inside->normal.isZero());
 
-    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2{{0.0F, 0.0F}, {1.0F, 0.0F}}, {10.0F, 10.0F}, blocked), std::invalid_argument);
-    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2::between({0.0F, 0.0F}, {1.0F, 0.0F}), {0.0F, 10.0F}, blocked), std::invalid_argument);
-    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2::between({0.0F, 0.0F}, {1e30F, 0.0F}), {10.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2D{{0.0F, 0.0F}, {1.0F, 0.0F}}, {10.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2D::between({0.0F, 0.0F}, {1.0F, 0.0F}), {0.0F, 10.0F}, blocked), std::invalid_argument);
+    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2D::between({0.0F, 0.0F}, {1e30F, 0.0F}), {10.0F, 10.0F}, blocked), std::invalid_argument);
 }
 
 // The distances to the next cell sides add up in double precision, so a ray across more than 2^24 cells, where a float sum stops growing, still walks to its end.
@@ -63,7 +63,7 @@ TEST(GridRayTest, WalksRaysLongerThanAFloatSumCanCount) {
     Cell last{};
     float lastDistance = 0.0F;
     // clang-format off
-    GridRay::traverse(haylen::math::Ray2{{0.5F, 0.5F}, {1.0F, 0.0F}, 16800000.0F}, {1.0F, 1.0F}, [&](Cell cell, float distance, haylen::math::Vec2) {
+    GridRay::traverse(haylen::math::Ray2D{{0.5F, 0.5F}, {1.0F, 0.0F}, 16800000.0F}, {1.0F, 1.0F}, [&](Cell cell, float distance, haylen::math::Vec2) {
         ++visits;
         last = cell;
         lastDistance = distance;
@@ -80,27 +80,27 @@ TEST(GridRayTest, CastsOverCellGridsFromInsideAndOutside) {
     grid.set({5, 3}, 1);
     const haylen::math::Vec2 cellSize{16.0F, 16.0F};
 
-    const std::optional<GridRay::Hit> hit = GridRay::cast(haylen::math::Ray2{{8.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
+    const std::optional<GridRay::Hit> hit = GridRay::cast(haylen::math::Ray2D{{8.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
     ASSERT_TRUE(hit.has_value());
     EXPECT_EQ(hit->cell, (Cell{5, 3}));
     EXPECT_FLOAT_EQ(hit->distance, 72.0F);
 
     // A ray from outside enters through the side of the grid and keeps its full distance.
-    const std::optional<GridRay::Hit> fromOutside = GridRay::cast(haylen::math::Ray2{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
+    const std::optional<GridRay::Hit> fromOutside = GridRay::cast(haylen::math::Ray2D{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
     ASSERT_TRUE(fromOutside.has_value());
     EXPECT_FLOAT_EQ(fromOutside->distance, 180.0F);
     EXPECT_EQ(fromOutside->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
 
     grid.set({0, 3}, 2);
-    const std::optional<GridRay::Hit> edge = GridRay::cast(haylen::math::Ray2{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
+    const std::optional<GridRay::Hit> edge = GridRay::cast(haylen::math::Ray2D{{-100.0F, 56.0F}, {1.0F, 0.0F}}, cellSize, grid);
     ASSERT_TRUE(edge.has_value());
     EXPECT_EQ(edge->cell, (Cell{0, 3}));
     EXPECT_EQ(edge->normal, (haylen::math::Vec2{-1.0F, 0.0F}));
-    EXPECT_FALSE(GridRay::cast(haylen::math::Ray2{{-100.0F, 200.0F}, {1.0F, 0.0F}}, cellSize, grid).has_value());
-    EXPECT_FALSE(GridRay::cast(haylen::math::Ray2{{24.0F, 8.0F}, {0.0F, 1.0F}}, cellSize, grid).has_value());
+    EXPECT_FALSE(GridRay::cast(haylen::math::Ray2D{{-100.0F, 200.0F}, {1.0F, 0.0F}}, cellSize, grid).has_value());
+    EXPECT_FALSE(GridRay::cast(haylen::math::Ray2D{{24.0F, 8.0F}, {0.0F, 1.0F}}, cellSize, grid).has_value());
 
     // An invalid cell size raises even when the ray misses the grid it would describe.
-    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2{{8.0F, 56.0F}, {1.0F, 0.0F}}, {-16.0F, 16.0F}, grid), std::invalid_argument);
+    EXPECT_THROW((void)GridRay::cast(haylen::math::Ray2D{{8.0F, 56.0F}, {1.0F, 0.0F}}, {-16.0F, 16.0F}, grid), std::invalid_argument);
 }
 
 TEST(BresenhamTest, DrawsLinesAndCircles) {
@@ -201,14 +201,14 @@ TEST(VisibilityPolygonTest, OutlinesWhatAPointSeesAmongWalls) {
     const haylen::math::Rect room{0.0F, 0.0F, 100.0F, 100.0F};
     const std::vector<haylen::math::Vec2>& open = visibility.compute({50.0F, 50.0F}, {}, room);
     EXPECT_GE(open.size(), 4U);
-    EXPECT_NEAR(std::fabs(haylen::math::Geometry2::signedArea(open)), 10000.0F, 1.0F);
+    EXPECT_NEAR(std::fabs(haylen::math::Geometry2D::signedArea(open)), 10000.0F, 1.0F);
 
     // A pillar between the origin and the right wall hides a wedge behind it.
-    const std::vector<haylen::math::Segment2> pillar{{{70.0F, 40.0F}, {70.0F, 60.0F}}, {{70.0F, 60.0F}, {80.0F, 60.0F}}, {{80.0F, 60.0F}, {80.0F, 40.0F}}, {{80.0F, 40.0F}, {70.0F, 40.0F}}};
+    const std::vector<haylen::math::Segment2D> pillar{{{70.0F, 40.0F}, {70.0F, 60.0F}}, {{70.0F, 60.0F}, {80.0F, 60.0F}}, {{80.0F, 60.0F}, {80.0F, 40.0F}}, {{80.0F, 40.0F}, {70.0F, 40.0F}}};
     const std::vector<haylen::math::Vec2> shadowed = visibility.compute({50.0F, 50.0F}, pillar, room);
-    EXPECT_TRUE(haylen::math::Geometry2::contains(shadowed, {60.0F, 50.0F}));
-    EXPECT_TRUE(haylen::math::Geometry2::contains(shadowed, {90.0F, 10.0F}));
-    EXPECT_FALSE(haylen::math::Geometry2::contains(shadowed, {95.0F, 50.0F}));
+    EXPECT_TRUE(haylen::math::Geometry2D::contains(shadowed, {60.0F, 50.0F}));
+    EXPECT_TRUE(haylen::math::Geometry2D::contains(shadowed, {90.0F, 10.0F}));
+    EXPECT_FALSE(haylen::math::Geometry2D::contains(shadowed, {95.0F, 50.0F}));
 
     for (std::size_t index = 1; index < shadowed.size(); ++index) {
         EXPECT_LE((shadowed[index - 1] - haylen::math::Vec2{50.0F, 50.0F}).getAngle(), (shadowed[index] - haylen::math::Vec2{50.0F, 50.0F}).getAngle() + 1e-5F);
@@ -218,7 +218,7 @@ TEST(VisibilityPolygonTest, OutlinesWhatAPointSeesAmongWalls) {
 
     // Points that are not finite would leave the angles without an order, so they raise.
     const float nan = std::numeric_limits<float>::quiet_NaN();
-    const std::vector<haylen::math::Segment2> broken{{{nan, 40.0F}, {70.0F, 60.0F}}};
+    const std::vector<haylen::math::Segment2D> broken{{{nan, 40.0F}, {70.0F, 60.0F}}};
     EXPECT_THROW((void)visibility.compute({nan, 50.0F}, pillar, room), std::invalid_argument);
     EXPECT_THROW((void)visibility.compute({50.0F, 50.0F}, broken, room), std::invalid_argument);
     EXPECT_THROW((void)visibility.compute({50.0F, 50.0F}, pillar, {0.0F, 0.0F, std::numeric_limits<float>::infinity(), 100.0F}), std::invalid_argument);

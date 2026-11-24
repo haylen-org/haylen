@@ -1,4 +1,4 @@
-#include "haylen/math/CurvePath3.hpp"
+#include "haylen/math/CurvePath3D.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,9 +11,9 @@
 
 namespace haylen::math {
 
-const std::array<std::pair<std::string_view, CurvePath3::Continuity>, 3> CurvePath3::kContinuityNames{{{"position", Continuity::Position}, {"tangent", Continuity::Tangent}, {"velocity", Continuity::Velocity}}};
+const std::array<std::pair<std::string_view, CurvePath3D::Continuity>, 3> CurvePath3D::kContinuityNames{{{"position", Continuity::Position}, {"tangent", Continuity::Tangent}, {"velocity", Continuity::Velocity}}};
 
-CurvePath3::CurvePath3(std::vector<Spline3> pathCurves, bool loop) : curves(std::move(pathCurves)), closed(loop) {
+CurvePath3D::CurvePath3D(std::vector<Spline3D> pathCurves, bool loop) : curves(std::move(pathCurves)), closed(loop) {
     if (curves.empty()) {
         throw std::invalid_argument("A curve path needs at least one curve.");
     }
@@ -32,17 +32,17 @@ CurvePath3::CurvePath3(std::vector<Spline3> pathCurves, bool loop) : curves(std:
     }
 }
 
-std::optional<CurvePath3::Continuity> CurvePath3::continuityFromName(std::string_view name) noexcept {
+std::optional<CurvePath3D::Continuity> CurvePath3D::continuityFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kContinuityNames, name, &std::pair<std::string_view, Continuity>::first);
     return found != kContinuityNames.end() ? std::optional(found->second) : std::nullopt;
 }
 
-std::string_view CurvePath3::continuityName(Continuity value) noexcept {
+std::string_view CurvePath3D::continuityName(Continuity value) noexcept {
     return std::ranges::find(kContinuityNames, value, &std::pair<std::string_view, Continuity>::second)->first;
 }
 
 // Two curves join when the end of one lies on the start of the next, turn smoothly when their tangents agree there and move smoothly when their velocities agree too.
-CurvePath3::Continuity CurvePath3::measureJoin(const Spline3& before, const Spline3& after) {
+CurvePath3D::Continuity CurvePath3D::measureJoin(const Spline3D& before, const Spline3D& after) {
     const Vec3 end = before.getPoint(1.0F);
     const Vec3 start = after.getPoint(0.0F);
     const float scale = std::max({1.0F, end.getLength(), start.getLength()});
@@ -60,7 +60,7 @@ CurvePath3::Continuity CurvePath3::measureJoin(const Spline3& before, const Spli
     return Vec3::distance(leaving, arriving) <= 1e-3F * speed ? Continuity::Velocity : Continuity::Tangent;
 }
 
-float CurvePath3::wrap(float distance) const noexcept {
+float CurvePath3D::wrap(float distance) const noexcept {
     const float length = getLength();
     if (!closed || length <= 0.0F) {
         return std::clamp(distance, 0.0F, length);
@@ -70,35 +70,35 @@ float CurvePath3::wrap(float distance) const noexcept {
 }
 
 // Returns the curve that holds a distance along the path and the distance along that curve.
-std::pair<std::size_t, float> CurvePath3::locate(float distance) const noexcept {
+std::pair<std::size_t, float> CurvePath3D::locate(float distance) const noexcept {
     const float along = wrap(distance);
     const auto upper = std::upper_bound(starts.begin() + 1, starts.end() - 1, along);
     const auto curve = static_cast<std::size_t>(upper - starts.begin()) - 1;
     return {curve, along - starts[curve]};
 }
 
-Vec3 CurvePath3::getPointAtDistance(float distance) const noexcept {
+Vec3 CurvePath3D::getPointAtDistance(float distance) const noexcept {
     const auto [curve, along] = locate(distance);
     return curves[curve].getPointAtDistance(along);
 }
 
-Vec3 CurvePath3::getTangentAtDistance(float distance) const {
+Vec3 CurvePath3D::getTangentAtDistance(float distance) const {
     const auto [curve, along] = locate(distance);
     return curves[curve].getTangentAtDistance(along);
 }
 
-Vec3 CurvePath3::getPoint(float t) const noexcept {
+Vec3 CurvePath3D::getPoint(float t) const noexcept {
     return getPointAtDistance(t * getLength());
 }
 
-Vec3 CurvePath3::getTangent(float t) const {
+Vec3 CurvePath3D::getTangent(float t) const {
     return getTangentAtDistance(t * getLength());
 }
 
-CurvePath3::ClosestPoint CurvePath3::getClosestPoint(Vec3 point) const noexcept {
+CurvePath3D::ClosestPoint CurvePath3D::getClosestPoint(Vec3 point) const noexcept {
     ClosestPoint best{.distance = std::numeric_limits<float>::infinity()};
     for (std::size_t index = 0; index < curves.size(); ++index) {
-        const Spline3::ClosestPoint found = curves[index].getClosestPoint(point);
+        const Spline3D::ClosestPoint found = curves[index].getClosestPoint(point);
         if (found.distance < best.distance) {
             const float along = starts[index] + curves[index].getLength() * found.t;
             const float length = getLength();
@@ -109,7 +109,7 @@ CurvePath3::ClosestPoint CurvePath3::getClosestPoint(Vec3 point) const noexcept 
     return best;
 }
 
-std::vector<Vec3> CurvePath3::sampleEvenly(std::size_t count) const {
+std::vector<Vec3> CurvePath3D::sampleEvenly(std::size_t count) const {
     ArcLength::checkCount(count);
     std::vector<Vec3> result;
     result.reserve(count);
@@ -121,7 +121,7 @@ std::vector<Vec3> CurvePath3::sampleEvenly(std::size_t count) const {
     return result;
 }
 
-std::vector<Vec3> CurvePath3::sampleByDistance(float spacing) const {
+std::vector<Vec3> CurvePath3D::sampleByDistance(float spacing) const {
     const std::size_t count = ArcLength::countSteps(getLength(), spacing);
     std::vector<Vec3> result;
     result.reserve(count + 1);
@@ -136,7 +136,7 @@ std::vector<Vec3> CurvePath3::sampleByDistance(float spacing) const {
     return result;
 }
 
-std::vector<CurveFrame> CurvePath3::getFrames(std::size_t count, Vec3 up) const {
+std::vector<CurveFrame> CurvePath3D::getFrames(std::size_t count, Vec3 up) const {
     if (count < 2) {
         throw std::invalid_argument("The frames of a curve need at least 2 frames, one at each end.");
     }

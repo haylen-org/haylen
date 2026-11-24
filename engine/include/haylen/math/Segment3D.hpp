@@ -4,11 +4,11 @@
 
 namespace haylen::math {
 
-struct Segment3 {
+struct Segment3D {
     Vec3 start;
     Vec3 end;
 
-    [[nodiscard]] constexpr bool operator==(const Segment3&) const noexcept = default;
+    [[nodiscard]] constexpr bool operator==(const Segment3D&) const noexcept = default;
 
     [[nodiscard]] float getLength() const noexcept {
         return Vec3::distance(start, end);

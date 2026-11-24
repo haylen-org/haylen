@@ -253,10 +253,10 @@ void QuadTree::queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) con
     query({point.x, point.y, 0.0F, 0.0F}, ids);
 }
 
-void QuadTree::collectCrossed(std::int32_t node, const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const {
+void QuadTree::collectCrossed(std::int32_t node, const math::Ray2D& ray, std::size_t limit, std::vector<RayHit>& hits) const {
     const Node& current = nodes[static_cast<std::size_t>(node)];
     for (const std::uint64_t id : current.ids) {
-        if (const std::optional<math::RayHit2> hit = math::Raycast::rect(ray, entries.at(id).bounds)) {
+        if (const std::optional<math::RayHit2D> hit = math::Raycast::rect(ray, entries.at(id).bounds)) {
             EntryBounds::insertHit(hits, {.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
         }
     }
@@ -269,7 +269,7 @@ void QuadTree::collectCrossed(std::int32_t node, const math::Ray2& ray, std::siz
     }
 }
 
-void QuadTree::raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const {
+void QuadTree::raycast(const math::Ray2D& ray, std::size_t limit, std::vector<RayHit>& hits) const {
     hits.clear();
     collectCrossed(0, ray, limit, hits);
     EntryBounds::finishHits(hits, limit);

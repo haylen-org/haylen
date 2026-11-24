@@ -113,14 +113,14 @@ set(HAYLEN_TEST_SOURCES
   localization/FormatTests.cpp
   math/ColorSpaceTests.cpp
   math/ColorTransformTests.cpp
-  math/Geometry3Tests.cpp
+  math/Geometry3DTests.cpp
   math/MatrixTests.cpp
   math/Noise3DTests.cpp
   math/PolygonTests.cpp
   math/ProceduralTests.cpp
   math/QuatTests.cpp
   math/RaycastTests.cpp
-  math/Spline3Tests.cpp
+  math/Spline3DTests.cpp
   math/SignalFilterTests.cpp
   math/Transform3DTests.cpp
   math/TriangulatorTests.cpp

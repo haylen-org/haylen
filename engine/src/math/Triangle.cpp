@@ -1,10 +1,10 @@
-#include "haylen/math/Triangle3.hpp"
+#include "haylen/math/Triangle.hpp"
 
 #include <stdexcept>
 
 namespace haylen::math {
 
-Vec3 Triangle3::getNormal() const {
+Vec3 Triangle::getNormal() const {
     const Vec3 perpendicular = Vec3::cross(b - a, c - a);
     if (perpendicular.isZero() || !perpendicular.isFinite()) {
         throw std::invalid_argument("The triangle has no area, so it has no normal.");
@@ -14,7 +14,7 @@ Vec3 Triangle3::getNormal() const {
 }
 
 // Finds the region of the point from the corners outward, the corners first, then the edges, then the face, using the barycentric coordinates that the dot products give.
-Vec3 Triangle3::getClosestPoint(Vec3 point) const noexcept {
+Vec3 Triangle::getClosestPoint(Vec3 point) const noexcept {
     const Vec3 ab = b - a;
     const Vec3 ac = c - a;
     const Vec3 ap = point - a;

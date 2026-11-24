@@ -7,7 +7,7 @@
 #include <string>
 
 #include "haylen/2d/spatial/GridRay.hpp"
-#include "haylen/math/RayHit2.hpp"
+#include "haylen/math/RayHit2D.hpp"
 #include "haylen/math/Raycast.hpp"
 
 namespace haylen::tiled {
@@ -215,13 +215,13 @@ void MapQuery::getOutlines(std::string_view layer, std::vector<std::vector<math:
     // clang-format on
 }
 
-std::optional<MapQuery::ObjectHit> MapQuery::castObjects(std::string_view layer, const math::Ray2& ray) const {
+std::optional<MapQuery::ObjectHit> MapQuery::castObjects(std::string_view layer, const math::Ray2D& ray) const {
     std::optional<ObjectHit> closest;
     std::vector<math::Vec2> points;
     // clang-format off
     forEachObject(layer, [&](const Object& object, math::Vec2 offset) {
         getOutline(object, offset, points);
-        const std::optional<math::RayHit2> hit = object.shape == Object::Shape::Polyline ? math::Raycast::chain(ray, points, false) : math::Raycast::polygon(ray, points);
+        const std::optional<math::RayHit2D> hit = object.shape == Object::Shape::Polyline ? math::Raycast::chain(ray, points, false) : math::Raycast::polygon(ray, points);
         if (hit && (!closest || hit->distance < closest->distance)) {
             closest = ObjectHit{.object = &object, .point = hit->point, .normal = hit->normal, .distance = hit->distance};
         }
@@ -254,7 +254,7 @@ math::Vec2 MapQuery::cellToWorldVector(math::Vec2 vector) const noexcept {
     return map.objectToWorld(vector * scale) - map.objectToWorld({});
 }
 
-std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, const math::Ray2& ray, const SolidTile& solid) const {
+std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, const math::Ray2D& ray, const SolidTile& solid) const {
     if (map.orientation == Map::Orientation::Staggered || map.orientation == Map::Orientation::Hexagonal) {
         throw std::invalid_argument("Tile ray casts need an orthogonal, isometric or oblique map.");
     }
@@ -269,9 +269,9 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
     const math::Vec2 start = worldToCell(ray.origin - found->second);
     const math::Vec2 step = worldToCell(ray.direction) - worldToCell({});
     const float cellsPerUnit = step.getLength();
-    const math::Ray2 cellRay{start, step / cellsPerUnit, ray.length * cellsPerUnit};
+    const math::Ray2D cellRay{start, step / cellsPerUnit, ray.length * cellsPerUnit};
     const math::Rect area = getCellBounds(tiles);
-    const std::optional<math::RayHit2> entry = math::Raycast::rect(cellRay, area);
+    const std::optional<math::RayHit2D> entry = math::Raycast::rect(cellRay, area);
     const std::optional<std::array<float, 2>> travel = math::Raycast::clip(cellRay, area);
     if (!entry || !travel) {
         return std::nullopt;
@@ -279,7 +279,7 @@ std::optional<MapQuery::TileHit> MapQuery::castTiles(std::string_view layer, con
 
     // The walk gathers the tiles first, so the `solid` callback runs after it and may even change the map.
     std::vector<CrossedTile> crossed;
-    const math::Ray2 inside{entry->point, cellRay.direction, (*travel)[1] - (*travel)[0]};
+    const math::Ray2D inside{entry->point, cellRay.direction, (*travel)[1] - (*travel)[0]};
     // clang-format off
     spatial2d::GridRay::traverse(inside, {1.0F, 1.0F}, [&](spatial2d::Cell cell, float distance, math::Vec2 normal) {
         if (const std::uint32_t gid = tiles.getGid(cell.x, cell.y); gid != 0) {

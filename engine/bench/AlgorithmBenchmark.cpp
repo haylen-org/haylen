@@ -24,7 +24,7 @@
 #include "haylen/2d/spatial/RayHit.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/math/Random.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::bench {
@@ -228,7 +228,7 @@ class AlgorithmBenchmark final {
         measure("AABB tree, 1000 rays of 500 units", 10, [&] {
             for (int ray = 0; ray < 1000; ++ray) {
                 const math::Vec2 start{random.range(0.0F, 10000.0F), random.range(0.0F, 10000.0F)};
-                tree.raycast(math::Ray2::fromAngle(start, random.range(0.0F, 6.28F), 500.0F), 1, hits);
+                tree.raycast(math::Ray2D::fromAngle(start, random.range(0.0F, 6.28F), 500.0F), 1, hits);
             }
         });
         measure("k-d tree, 1000 queries for the 8 nearest", 10, [&] {

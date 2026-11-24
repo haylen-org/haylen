@@ -7,19 +7,19 @@
 namespace haylen::math {
 
 // A half-line that starts at the origin, runs along a unit direction and stops after its length. Casts measure their hits as distances from the origin.
-struct Ray2 {
+struct Ray2D {
     Vec2 origin{};
     Vec2 direction{1.0F, 0.0F};
     float length = std::numeric_limits<float>::infinity();
 
     // Returns the ray from one point to the other, which points along x with zero length when both points are equal.
-    [[nodiscard]] static Ray2 between(Vec2 from, Vec2 to) noexcept {
+    [[nodiscard]] static Ray2D between(Vec2 from, Vec2 to) noexcept {
         const Vec2 offset = to - from;
         const float distance = offset.getLength();
         return {from, distance > 0.0F ? offset / distance : Vec2{1.0F, 0.0F}, distance};
     }
 
-    [[nodiscard]] static Ray2 fromAngle(Vec2 start, float radians, float distance) noexcept {
+    [[nodiscard]] static Ray2D fromAngle(Vec2 start, float radians, float distance) noexcept {
         return {start, Vec2::fromAngle(radians), distance};
     }
 

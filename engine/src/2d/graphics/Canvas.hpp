@@ -6,7 +6,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/math/Color.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Transform2D.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -81,7 +81,7 @@ struct Canvas {
     [[nodiscard]] math::Rect getWorldBounds() const noexcept {
         const math::Transform2D inverse = view.getInverse();
         const std::array<math::Vec2, 4> corners{inverse.apply(math::Vec2{}), inverse.apply(math::Vec2{viewSize.x, 0.0F}), inverse.apply(viewSize), inverse.apply(math::Vec2{0.0F, viewSize.y})};
-        return math::Geometry2::bounds(corners);
+        return math::Geometry2D::bounds(corners);
     }
 
     // Lit or post-processed canvases, and canvases with a group that blends with what lies below, render offscreen first and reach their destination through the composite pass.

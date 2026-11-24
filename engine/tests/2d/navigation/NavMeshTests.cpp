@@ -11,9 +11,9 @@
 #include <vector>
 
 #include "haylen/2d/navigation/NavMesh.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Random.hpp"
-#include "haylen/math/Segment2.hpp"
+#include "haylen/math/Segment2D.hpp"
 
 namespace haylen::navigation2d {
 
@@ -66,8 +66,8 @@ class NavMeshTest : public ::testing::Test {
     }
 
     // Returns the walls of the mesh, each with the walkable side on its left.
-    static std::vector<math::Segment2> collectWalls(navigation2d::NavMesh& mesh) {
-        std::vector<math::Segment2> walls;
+    static std::vector<math::Segment2D> collectWalls(navigation2d::NavMesh& mesh) {
+        std::vector<math::Segment2D> walls;
         for (const navigation2d::NavMesh::Triangle& triangle : mesh.getTriangles()) {
             for (std::size_t side = 0; side < 3; ++side) {
                 if (triangle.neighbors[side] < 0) {
@@ -80,8 +80,8 @@ class NavMeshTest : public ::testing::Test {
     }
 
     // Returns a point on the walkable side of a random wall, closer to it than the radius.
-    static math::Vec2 pointNearWall(std::span<const math::Segment2> walls, math::Random& random, float radius) {
-        const math::Segment2& wall = walls[static_cast<std::size_t>(random.range(0, static_cast<int>(walls.size()) - 1))];
+    static math::Vec2 pointNearWall(std::span<const math::Segment2D> walls, math::Random& random, float radius) {
+        const math::Segment2D& wall = walls[static_cast<std::size_t>(random.range(0, static_cast<int>(walls.size()) - 1))];
         const math::Vec2 along = math::Vec2::lerp(wall.start, wall.end, random.range(0.0F, 1.0F));
         return along + (wall.end - wall.start).getNormalized().getPerpendicular() * random.range(0.0F, radius);
     }
@@ -104,7 +104,7 @@ class NavMeshTest : public ::testing::Test {
     static void expectClear(std::span<const math::Vec2> path, std::span<const math::Vec2> corners, float radius) {
         for (std::size_t index = 1; index < path.size(); ++index) {
             for (const math::Vec2 corner : corners) {
-                EXPECT_GE(math::Geometry2::distanceToSegment({path[index - 1], path[index]}, corner), radius - 1e-3F) << corner.x << "," << corner.y;
+                EXPECT_GE(math::Geometry2D::distanceToSegment({path[index - 1], path[index]}, corner), radius - 1e-3F) << corner.x << "," << corner.y;
             }
         }
     }
@@ -300,7 +300,7 @@ TEST_F(NavMeshTest, KeepsPathsBetweenPointsNearWallsInsideTheMesh) {
         mesh.setBoundary(box(0.0F, 0.0F, 800.0F, 600.0F));
         math::Random random(static_cast<std::uint64_t>(seed));
         addPolygons(mesh, random, 20, 3 + seed % 4);
-        const std::vector<math::Segment2> walls = collectWalls(mesh);
+        const std::vector<math::Segment2D> walls = collectWalls(mesh);
 
         // Points pushed off a wall by less than the radius can land inside another obstacle or where the agent has no room, and those have no path.
         for (int probe = 0; probe < 40; ++probe) {

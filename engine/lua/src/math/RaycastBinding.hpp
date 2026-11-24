@@ -4,7 +4,7 @@
 
 #include <optional>
 
-#include "haylen/math/RayHit2.hpp"
+#include "haylen/math/RayHit2D.hpp"
 
 namespace haylen::lua::math {
 
@@ -15,14 +15,14 @@ class RaycastBinding final {
     static void addFunctions(lua_State* L);
 
     // Pushes a hit table for a ray of the given length. The fraction is the distance over that length, or zero for rays without an end.
-    static void pushHit(lua_State* L, const haylen::math::RayHit2& hit, float length);
+    static void pushHit(lua_State* L, const haylen::math::RayHit2D& hit, float length);
 
     // Sets the 1-based index field of the hit table on top of the stack.
-    static void setIndex(lua_State* L, const haylen::math::RayHit2& hit);
+    static void setIndex(lua_State* L, const haylen::math::RayHit2D& hit);
 
   private:
     // Pushes `nil` when there is no hit, and otherwise the hit with its index when the cast targets a list.
-    static void pushResult(lua_State* L, const std::optional<haylen::math::RayHit2>& hit, float length, bool indexed);
+    static void pushResult(lua_State* L, const std::optional<haylen::math::RayHit2D>& hit, float length, bool indexed);
 
     static int raycastSegment(lua_State* L);
     static int raycastRect(lua_State* L);

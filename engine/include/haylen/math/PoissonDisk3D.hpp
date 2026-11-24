@@ -3,7 +3,7 @@
 #include <functional>
 #include <vector>
 
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 #include "haylen/math/Vec3.hpp"
 
 namespace haylen::math {
@@ -14,7 +14,7 @@ class Random;
 class PoissonDisk3D final {
   public:
     struct Options {
-        Box3 volume{};
+        Box volume{};
         float minimumDistance = 1.0F;
         int attempts = 30;
         std::function<bool(Vec3)> accept;

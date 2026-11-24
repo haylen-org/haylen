@@ -9,7 +9,7 @@
 #include "haylen/2d/spatial/Cell.hpp"
 #include "haylen/2d/spatial/Neighbor.hpp"
 #include "haylen/2d/spatial/RayHit.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -40,7 +40,7 @@ class HashGrid final {
     void queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) const;
 
     // Fills `hits` with the entries the ray crosses, sorted by distance and then by id, keeping at most `limit` hits unless the limit is zero. The ray only travels across the cells that ever held entries, so its length may be infinite.
-    void raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const;
+    void raycast(const math::Ray2D& ray, std::size_t limit, std::vector<RayHit>& hits) const;
 
     // Fills `neighbors` with up to `count` entries whose bounds lie within `maxDistance` of the point, closest first and then by id.
     void nearest(math::Vec2 point, std::size_t count, float maxDistance, std::vector<Neighbor>& neighbors) const;

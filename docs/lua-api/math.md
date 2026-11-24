@@ -1707,45 +1707,45 @@ print(m.plane({0, 2, 0}, 4) == m.plane(m.up(), 2)) -- true
 
 ## 3D shapes
 
-The 3D shapes are userdata of their own types: `Ray3`, `Segment3`, `Box3`, `Sphere`, `Obb`, `Capsule3`, `Triangle3` and `Frustum`, next to [`Plane`](#plane). A ray casts against any of the solid shapes and returns a hit table with the `distance` from its origin, the `point` and the `normal` of the surface, which faces the ray, or `nil` when it misses. Boxes, oriented boxes, spheres and capsules are solid, so a ray that starts inside one hits it at distance `0` with a zero normal, and triangles and planes are hit from both sides. The [3D math guide](../3d/math.md#shapes-and-ray-casts) explains which shape suits which task.
+The 3D shapes are userdata of their own types: `Ray3D`, `Segment3D`, `Box`, `Sphere`, `Obb`, `Capsule`, `Triangle` and `Frustum`, next to [`Plane`](#plane). A ray casts against any of the solid shapes and returns a hit table with the `distance` from its origin, the `point` and the `normal` of the surface, which faces the ray, or `nil` when it misses. Boxes, oriented boxes, spheres and capsules are solid, so a ray that starts inside one hits it at distance `0` with a zero normal, and triangles and planes are hit from both sides. The [3D math guide](../3d/math.md#shapes-and-ray-casts) explains which shape suits which task.
 
 ```lua
 local m = require('haylen.math')
 
-local ray = m.ray3({0, 1.7, 0}, m.forward())
-local hit = ray:cast(m.box3({-1, 0, -6}, {1, 2, -4}))
+local ray = m.ray3d({0, 1.7, 0}, m.forward())
+local hit = ray:cast(m.box({-1, 0, -6}, {1, 2, -4}))
 print(hit.distance, hit.normal) -- 4.0 Vec3(0.0, 0.0, 1.0)
 ```
 
-## Ray3
+## Ray3D
 
-A `Ray3` is a half-line from its `origin` along its `direction`, which stops after its `length`.
+A `Ray3D` is a half-line from its `origin` along its `direction`, which stops after its `length`.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.ray3({0, 0, 0}, m.forward())) -- a Ray3
+print(m.ray3d({0, 0, 0}, m.forward())) -- a Ray3D
 ```
 
-### m.ray3(origin, direction, length)
+### m.ray3d(origin, direction, length)
 
-Returns a `Ray3` from `origin` along `direction`, which it scales to a length of `1`, and that stops after `length`, `math.huge` by default. A direction of length zero raises the errors of [`vec3:normalized`](#vec3normalized). The fields `origin`, `direction` and `length` read and write, and a direction of another length than `1` raises `The direction of a ray must have a length of one. Make the ray with "ray3" of "haylen.math", which scales its direction.`
+Returns a `Ray3D` from `origin` along `direction`, which it scales to a length of `1`, and that stops after `length`, `math.huge` by default. A direction of length zero raises the errors of [`vec3:normalized`](#vec3normalized). The fields `origin`, `direction` and `length` read and write, and a direction of another length than `1` raises `The direction of a ray must have a length of one. Make the ray with "ray3d" of "haylen.math", which scales its direction.`
 
 ```lua
 local m = require('haylen.math')
 
-local sight = m.ray3({0, 1.7, 0}, {0, 0, -5}, 50)
+local sight = m.ray3d({0, 1.7, 0}, {0, 0, -5}, 50)
 print(sight.direction, sight.length) -- Vec3(0.0, 0.0, -1.0) 50.0
 ```
 
-### m.ray3Between(from, to)
+### m.ray3dBetween(from, to)
 
-Returns the `Ray3` from the point `from` to the point `to`, which stops at `to`.
+Returns the `Ray3D` from the point `from` to the point `to`, which stops at `to`.
 
 ```lua
 local m = require('haylen.math')
 
-local shot = m.ray3Between({0, 1, 0}, {0, 1, -8})
+local shot = m.ray3dBetween({0, 1, 0}, {0, 1, -8})
 print(shot.length) -- 8.0
 ```
 
@@ -1756,7 +1756,7 @@ Returns the point at `distance` along the ray.
 ```lua
 local m = require('haylen.math')
 
-print(m.ray3({0, 0, 0}, m.forward()):at(3)) -- Vec3(0.0, 0.0, -3.0)
+print(m.ray3d({0, 0, 0}, m.forward()):at(3)) -- Vec3(0.0, 0.0, -3.0)
 ```
 
 ### ray:endPoint()
@@ -1766,39 +1766,39 @@ Returns the point where the ray stops.
 ```lua
 local m = require('haylen.math')
 
-print(m.ray3Between({0, 0, 0}, {2, 0, 0}):endPoint()) -- Vec3(2.0, 0.0, 0.0)
+print(m.ray3dBetween({0, 0, 0}, {2, 0, 0}):endPoint()) -- Vec3(2.0, 0.0, 0.0)
 ```
 
 ### ray:cast(shape)
 
-Returns the hit table of the ray on a `Triangle3`, a `Box3`, an `Obb`, a `Sphere`, a `Plane` or a `Capsule3`, or `nil` when the ray misses it before it stops. A triangle never lets a ray slip through the edge it shares with the next triangle. Another value raises `A ray casts against a Triangle3, a Box3, an Obb, a Sphere, a Plane or a Capsule3, not a <type>.`
+Returns the hit table of the ray on a `Triangle`, a `Box`, an `Obb`, a `Sphere`, a `Plane` or a `Capsule`, or `nil` when the ray misses it before it stops. A triangle never lets a ray slip through the edge it shares with the next triangle. Another value raises `A ray casts against a Triangle, a Box, an Obb, a Sphere, a Plane or a Capsule, not a <type>.`
 
 ```lua
 local m = require('haylen.math')
 
-local down = m.ray3({2, 10, 3}, {0, -1, 0})
-local hit = down:cast(m.triangle3({0, 0, 0}, {0, 0, 10}, {10, 0, 0}))
+local down = m.ray3d({2, 10, 3}, {0, -1, 0})
+local hit = down:cast(m.triangle({0, 0, 0}, {0, 0, 10}, {10, 0, 0}))
 print(hit.point, hit.normal) -- Vec3(2.0, 0.0, 3.0) Vec3(0.0, 1.0, 0.0)
 ```
 
-## Segment3
+## Segment3D
 
-A `Segment3` is the straight piece of a line between two points.
+A `Segment3D` is the straight piece of a line between two points.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.segment3({0, 0, 0}, {1, 0, 0})) -- a Segment3
+print(m.segment3d({0, 0, 0}, {1, 0, 0})) -- a Segment3D
 ```
 
-### m.segment3(start, end)
+### m.segment3d(start, end)
 
-Returns the `Segment3` between two points, whose fields `start` and `end` read and write. Lua reads the field `end` as `segment['end']`, since `end` is a word of the language.
+Returns the `Segment3D` between two points, whose fields `start` and `end` read and write. Lua reads the field `end` as `segment['end']`, since `end` is a word of the language.
 
 ```lua
 local m = require('haylen.math')
 
-local bone = m.segment3({0, 0, 0}, {0, 0.4, 0})
+local bone = m.segment3d({0, 0, 0}, {0, 0.4, 0})
 print(bone:length(), bone['end']) -- 0.4 Vec3(0.0, 0.4, 0.0)
 ```
 
@@ -1809,7 +1809,7 @@ Returns the distance between the two ends.
 ```lua
 local m = require('haylen.math')
 
-print(m.segment3({0, 0, 0}, {3, 4, 0}):length()) -- 5.0
+print(m.segment3d({0, 0, 0}, {3, 4, 0}):length()) -- 5.0
 ```
 
 ### segment:closestPoint(point)
@@ -1819,7 +1819,7 @@ Returns the point of the segment closest to `point`.
 ```lua
 local m = require('haylen.math')
 
-print(m.segment3({0, 0, 0}, {10, 0, 0}):closestPoint({4, 3, 0})) -- Vec3(4.0, 0.0, 0.0)
+print(m.segment3d({0, 0, 0}, {10, 0, 0}):closestPoint({4, 3, 0})) -- Vec3(4.0, 0.0, 0.0)
 ```
 
 ### segment:closestPoints(other)
@@ -1829,49 +1829,49 @@ Returns the point of this segment and the point of `other` that lie closest to e
 ```lua
 local m = require('haylen.math')
 
-local a, b = m.segment3({0, 0, 0}, {10, 0, 0}):closestPoints(m.segment3({5, 3, -1}, {5, 3, 1}))
+local a, b = m.segment3d({0, 0, 0}, {10, 0, 0}):closestPoints(m.segment3d({5, 3, -1}, {5, 3, 1}))
 print(a, b) -- Vec3(5.0, 0.0, 0.0) Vec3(5.0, 3.0, 0.0)
 ```
 
-## Box3
+## Box
 
-A `Box3` is a box whose faces line up with the axes, from the corner `min` to the corner `max`.
+A `Box` is a box whose faces line up with the axes, from the corner `min` to the corner `max`.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {1, 1, 1})) -- a Box3
+print(m.box({0, 0, 0}, {1, 1, 1})) -- a Box
 ```
 
-### m.box3(min, max)
+### m.box(min, max)
 
-Returns the `Box3` with its faces along the axes from the corner `min` to the corner `max`, whose fields `min` and `max` read and write. Its faces count as part of it.
+Returns the `Box` with its faces along the axes from the corner `min` to the corner `max`, whose fields `min` and `max` read and write. Its faces count as part of it.
 
 ```lua
 local m = require('haylen.math')
 
-local room = m.box3({0, 0, 0}, {5, 3, 4})
+local room = m.box({0, 0, 0}, {5, 3, 4})
 print(room:size()) -- Vec3(5.0, 3.0, 4.0)
 ```
 
-### m.box3FromCenter(center, size)
+### m.boxFromCenter(center, size)
 
-Returns the `Box3` of `size` around `center`.
+Returns the `Box` of `size` around `center`.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.box3FromCenter({0, 1, 0}, {2, 2, 2}).min) -- Vec3(-1.0, 0.0, -1.0)
+print(m.boxFromCenter({0, 1, 0}, {2, 2, 2}).min) -- Vec3(-1.0, 0.0, -1.0)
 ```
 
-### m.box3Bounds(points)
+### m.boxBounds(points)
 
-Returns the smallest `Box3` that holds every point of the list. An empty list raises `The bounds of points need at least one point.`
+Returns the smallest `Box` that holds every point of the list. An empty list raises `The bounds of points need at least one point.`
 
 ```lua
 local m = require('haylen.math')
 
-print(m.box3Bounds({{1, 2, 3}, {-1, 5, 0}}).max) -- Vec3(1.0, 5.0, 3.0)
+print(m.boxBounds({{1, 2, 3}, {-1, 5, 0}}).max) -- Vec3(1.0, 5.0, 3.0)
 ```
 
 ### box:center()
@@ -1881,7 +1881,7 @@ Returns the point in the middle of the box.
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {2, 4, 6}):center()) -- Vec3(1.0, 2.0, 3.0)
+print(m.box({0, 0, 0}, {2, 4, 6}):center()) -- Vec3(1.0, 2.0, 3.0)
 ```
 
 ### box:size()
@@ -1891,7 +1891,7 @@ Returns the size of the box along each axis.
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {2, 4, 6}):size()) -- Vec3(2.0, 4.0, 6.0)
+print(m.box({0, 0, 0}, {2, 4, 6}):size()) -- Vec3(2.0, 4.0, 6.0)
 ```
 
 ### box:halfExtents()
@@ -1901,7 +1901,7 @@ Returns half the size of the box along each axis, the reach of its faces from it
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {2, 4, 6}):halfExtents()) -- Vec3(1.0, 2.0, 3.0)
+print(m.box({0, 0, 0}, {2, 4, 6}):halfExtents()) -- Vec3(1.0, 2.0, 3.0)
 ```
 
 ### box:isEmpty()
@@ -1911,39 +1911,39 @@ Returns `true` when `max` lies below `min` on an axis.
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {-1, 1, 1}):isEmpty()) -- true
+print(m.box({0, 0, 0}, {-1, 1, 1}):isEmpty()) -- true
 ```
 
 ### box:contains(value)
 
-Returns `true` when the box holds the point or the whole `Box3` `value`.
+Returns `true` when the box holds the point or the whole `Box` `value`.
 
 ```lua
 local m = require('haylen.math')
 
-local room = m.box3({0, 0, 0}, {5, 3, 4})
-print(room:contains({1, 1, 1}), room:contains(m.box3({4, 0, 0}, {6, 1, 1}))) -- true false
+local room = m.box({0, 0, 0}, {5, 3, 4})
+print(room:contains({1, 1, 1}), room:contains(m.box({4, 0, 0}, {6, 1, 1}))) -- true false
 ```
 
 ### box:intersects(shape)
 
-Returns `true` when the box overlaps or touches the `Box3` or `Sphere` `shape`.
+Returns `true` when the box overlaps or touches the `Box` or `Sphere` `shape`.
 
 ```lua
 local m = require('haylen.math')
 
-local crate = m.box3({0, 0, 0}, {1, 1, 1})
-print(crate:intersects(m.box3({1, 0, 0}, {2, 1, 1})), crate:intersects(m.sphere({3, 0, 0}, 1))) -- true false
+local crate = m.box({0, 0, 0}, {1, 1, 1})
+print(crate:intersects(m.box({1, 0, 0}, {2, 1, 1})), crate:intersects(m.sphere({3, 0, 0}, 1))) -- true false
 ```
 
 ### box:merged(value)
 
-Returns the smallest box that holds this box and the point or `Box3` `value`.
+Returns the smallest box that holds this box and the point or `Box` `value`.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {1, 1, 1}):merged({3, -1, 0}).min) -- Vec3(0.0, -1.0, 0.0)
+print(m.box({0, 0, 0}, {1, 1, 1}):merged({3, -1, 0}).min) -- Vec3(0.0, -1.0, 0.0)
 ```
 
 ### box:expanded(amount)
@@ -1953,7 +1953,7 @@ Returns the box grown by `amount` on every side, or shrunk by a negative amount.
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {1, 1, 1}):expanded(0.5):size()) -- Vec3(2.0, 2.0, 2.0)
+print(m.box({0, 0, 0}, {1, 1, 1}):expanded(0.5):size()) -- Vec3(2.0, 2.0, 2.0)
 ```
 
 ### box:clamp(point)
@@ -1963,7 +1963,7 @@ Returns the point of the box closest to `point`.
 ```lua
 local m = require('haylen.math')
 
-print(m.box3({0, 0, 0}, {1, 1, 1}):clamp({5, 0.5, -2})) -- Vec3(1.0, 0.5, 0.0)
+print(m.box({0, 0, 0}, {1, 1, 1}):clamp({5, 0.5, -2})) -- Vec3(1.0, 0.5, 0.0)
 ```
 
 ### box:transformed(placement)
@@ -1973,18 +1973,18 @@ Returns the smallest box along the axes that holds this box after the affine `Ma
 ```lua
 local m = require('haylen.math')
 
-local model = m.box3({-1, 0, -1}, {1, 2, 1})
+local model = m.box({-1, 0, -1}, {1, 2, 1})
 print(model:transformed(m.compose({10, 0, 0})).min) -- Vec3(9.0, 0.0, -1.0)
 ```
 
-### Box3 operators
+### Box operators
 
 The operator `a == b` compares both corners.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.box3FromCenter({0, 0, 0}, {2, 2, 2}) == m.box3({-1, -1, -1}, {1, 1, 1})) -- true
+print(m.boxFromCenter({0, 0, 0}, {2, 2, 2}) == m.box({-1, -1, -1}, {1, 1, 1})) -- true
 ```
 
 ## Sphere
@@ -2020,7 +2020,7 @@ print(m.sphere({0, 0, 0}, 1):contains({0.5, 0.5, 0})) -- true
 
 ### sphere:intersects(shape)
 
-Returns `true` when the sphere overlaps or touches the `Sphere` or `Box3` `shape`.
+Returns `true` when the sphere overlaps or touches the `Sphere` or `Box` `shape`.
 
 ```lua
 local m = require('haylen.math')
@@ -2030,7 +2030,7 @@ print(m.sphere({0, 0, 0}, 1):intersects(m.sphere({1.5, 0, 0}, 0.6))) -- true
 
 ### sphere:bounds()
 
-Returns the `Box3` around the sphere.
+Returns the `Box` around the sphere.
 
 ```lua
 local m = require('haylen.math')
@@ -2061,12 +2061,12 @@ print(car:contains({0, 0.7, 2})) -- true
 
 ### m.obbFromTransform(box, transform)
 
-Returns the `Obb` that the `Transform3D` `transform` makes of the `Box3` `box`, such as a box of a model placed in the world. A negative scale counts by its size.
+Returns the `Obb` that the `Transform3D` `transform` makes of the `Box` `box`, such as a box of a model placed in the world. A negative scale counts by its size.
 
 ```lua
 local m = require('haylen.math')
 
-local placed = m.obbFromTransform(m.box3({-1, -1, -1}, {1, 1, 1}), m.transform3d({5, 0, 0}, nil, {2, 1, 1}))
+local placed = m.obbFromTransform(m.box({-1, -1, -1}, {1, 1, 1}), m.transform3d({5, 0, 0}, nil, {2, 1, 1}))
 print(placed.center, placed.halfExtents) -- Vec3(5.0, 0.0, 0.0) Vec3(2.0, 1.0, 1.0)
 ```
 
@@ -2102,7 +2102,7 @@ print(m.obb({0, 0, 0}, nil, {1, 1, 1}):closestPoint({5, 0.5, -7})) -- Vec3(1.0, 
 
 ### obb:bounds()
 
-Returns the smallest `Box3` along the axes around the box.
+Returns the smallest `Box` along the axes around the box.
 
 ```lua
 local m = require('haylen.math')
@@ -2122,35 +2122,35 @@ local b = m.obb({2.3, 0, 0}, m.fromAxisAngle(m.up(), m.pi / 4), {1, 1, 1})
 print(a:intersects(b)) -- true
 ```
 
-## Capsule3
+## Capsule
 
-A `Capsule3` is the room within a radius of a segment.
+A `Capsule` is the room within a radius of a segment.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5)) -- a Capsule3
+print(m.capsule({0, 0, 0}, {0, 2, 0}, 0.5)) -- a Capsule
 ```
 
-### m.capsule3(start, end, radius)
+### m.capsule(start, end, radius)
 
-Returns the `Capsule3`, the points within `radius` of the segment from `start` to `end`, such as the body of a character. Its fields `start`, `end` and `radius` read and write, with the error of [`m.sphere`](#mspherecenter-radius) for a radius out of range.
+Returns the `Capsule`, the points within `radius` of the segment from `start` to `end`, such as the body of a character. Its fields `start`, `end` and `radius` read and write, with the error of [`m.sphere`](#mspherecenter-radius) for a radius out of range.
 
 ```lua
 local m = require('haylen.math')
 
-local body = m.capsule3({0, 0.3, 0}, {0, 1.5, 0}, 0.3)
+local body = m.capsule({0, 0.3, 0}, {0, 1.5, 0}, 0.3)
 print(body:contains({0.2, 1, 0})) -- true
 ```
 
 ### capsule:axis()
 
-Returns the segment at the middle of the capsule as a `Segment3`.
+Returns the segment at the middle of the capsule as a `Segment3D`.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5):axis():length()) -- 2.0
+print(m.capsule({0, 0, 0}, {0, 2, 0}, 0.5):axis():length()) -- 2.0
 ```
 
 ### capsule:contains(point)
@@ -2160,37 +2160,37 @@ Returns `true` when `point` lies in the capsule.
 ```lua
 local m = require('haylen.math')
 
-print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5):contains({0, 2.4, 0})) -- true
+print(m.capsule({0, 0, 0}, {0, 2, 0}, 0.5):contains({0, 2.4, 0})) -- true
 ```
 
 ### capsule:bounds()
 
-Returns the `Box3` around the capsule.
+Returns the `Box` around the capsule.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.capsule3({0, 0, 0}, {0, 2, 0}, 0.5):bounds().max) -- Vec3(0.5, 2.5, 0.5)
+print(m.capsule({0, 0, 0}, {0, 2, 0}, 0.5):bounds().max) -- Vec3(0.5, 2.5, 0.5)
 ```
 
-## Triangle3
+## Triangle
 
-A `Triangle3` is a triangle of three corners, the piece that meshes are made of.
+A `Triangle` is a triangle of three corners, the piece that meshes are made of.
 
 ```lua
 local m = require('haylen.math')
 
-print(m.triangle3({0, 0, 0}, {1, 0, 0}, {0, 0, -1})) -- a Triangle3
+print(m.triangle({0, 0, 0}, {1, 0, 0}, {0, 0, -1})) -- a Triangle
 ```
 
-### m.triangle3(a, b, c)
+### m.triangle(a, b, c)
 
-Returns the `Triangle3` with the corners `a`, `b` and `c`, whose front side sees them run counter-clockwise. Its fields `a`, `b` and `c` read and write.
+Returns the `Triangle` with the corners `a`, `b` and `c`, whose front side sees them run counter-clockwise. Its fields `a`, `b` and `c` read and write.
 
 ```lua
 local m = require('haylen.math')
 
-local floor = m.triangle3({0, 0, 0}, {0, 0, 4}, {4, 0, 0})
+local floor = m.triangle({0, 0, 0}, {0, 0, 4}, {4, 0, 0})
 print(floor:normal()) -- Vec3(0.0, 1.0, 0.0)
 ```
 
@@ -2201,7 +2201,7 @@ Returns the area of the triangle.
 ```lua
 local m = require('haylen.math')
 
-print(m.triangle3({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):area()) -- 8.0
+print(m.triangle({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):area()) -- 8.0
 ```
 
 ### triangle:normal()
@@ -2211,7 +2211,7 @@ Returns the unit normal of the front side. A triangle without area raises `The t
 ```lua
 local m = require('haylen.math')
 
-print(m.triangle3({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):normal()) -- Vec3(0.0, 1.0, 0.0)
+print(m.triangle({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):normal()) -- Vec3(0.0, 1.0, 0.0)
 ```
 
 ### triangle:closestPoint(point)
@@ -2221,7 +2221,7 @@ Returns the point of the triangle closest to `point`, on its face, an edge or a 
 ```lua
 local m = require('haylen.math')
 
-print(m.triangle3({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):closestPoint({1, 5, -1})) -- Vec3(1.0, 0.0, -1.0)
+print(m.triangle({0, 0, 0}, {4, 0, 0}, {0, 0, -4}):closestPoint({1, 5, -1})) -- Vec3(1.0, 0.0, -1.0)
 ```
 
 ## Frustum
@@ -2268,7 +2268,7 @@ print(m.frustum(m.perspective({farPlane = 100})):contains({0, 0, -10})) -- true
 
 ### frustum:classify(shape, tolerance)
 
-Returns `'inside'`, `'intersecting'` or `'outside'` for the `Sphere` or `Box3` `shape`, with the `tolerance` of `frustum:contains`. It never calls a shape outside that reaches inside, so culling by it never hides what the camera sees, while a box near a corner may count as intersecting though it lies outside.
+Returns `'inside'`, `'intersecting'` or `'outside'` for the `Sphere` or `Box` `shape`, with the `tolerance` of `frustum:contains`. It never calls a shape outside that reaches inside, so culling by it never hides what the camera sees, while a box near a corner may count as intersecting though it lies outside.
 
 ```lua
 local m = require('haylen.math')
@@ -3787,13 +3787,13 @@ print(spark:dot(m.up()) >= math.cos(m.radians(20))) -- true
 
 ### random:inBox(box)
 
-Returns a `Vec3` spread evenly through the `Box3` `box`, such as a spawn point inside a room.
+Returns a `Vec3` spread evenly through the `Box` `box`, such as a spawn point inside a room.
 
 ```lua
 local m = require('haylen.math')
 
 local random = m.random(5)
-local spawn = random:inBox(m.box3({-5, 0, -5}, {5, 3, 5}))
+local spawn = random:inBox(m.box({-5, 0, -5}, {5, 3, 5}))
 print(spawn.y >= 0 and spawn.y <= 3) -- true
 ```
 
@@ -4292,7 +4292,7 @@ Returns a list of `Vec3` points spread evenly through a box, no two closer than 
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `volume` | `Box3` | the point at the origin | The box that the points fill. |
+| `volume` | `Box` | the point at the origin | The box that the points fill. |
 | `minimumDistance` | number | `1` | The smallest distance between two points. |
 | `attempts` | integer | `30` | How many places each point tries for a neighbor before it gives up. |
 | `random` | `Random` | none | The generator that draws the points, in place of `seed`. |
@@ -4302,7 +4302,7 @@ Returns a list of `Vec3` points spread evenly through a box, no two closer than 
 ```lua
 local m = require('haylen.math')
 
-local stars = m.poissonDisk3d({volume = m.box3({-50, -50, -50}, {50, 50, 50}), minimumDistance = 8, seed = 3})
+local stars = m.poissonDisk3d({volume = m.box({-50, -50, -50}, {50, 50, 50}), minimumDistance = 8, seed = 3})
 print(#stars > 100) -- true
 ```
 
@@ -4595,9 +4595,9 @@ local outlines = m.marchingSquares.traceBitmap(pixels, 4, 3, {spacing = 16})
 print(#outlines) -- 2
 ```
 
-## Spline2
+## Spline2D
 
-A `Spline2` is a smooth curve in 2D through or near control points. It is measured by its length, so it can be walked at a steady speed or sampled at even distances. Its parameter runs from `0` at the start to `1` at the end of the whole curve. The [strokes of `haylen.graphics2d`](graphics2d.md#graphics2ddrawstrokepoints-options) draw splines.
+A `Spline2D` is a smooth curve in 2D through or near control points. It is measured by its length, so it can be walked at a steady speed or sampled at even distances. Its parameter runs from `0` at the start to `1` at the end of the whole curve. The [strokes of `haylen.graphics2d`](graphics2d.md#graphics2ddrawstrokepoints-options) draw splines.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -4610,13 +4610,13 @@ A `Spline2` is a smooth curve in 2D through or near control points. It is measur
 ```lua
 local m = require('haylen.math')
 
-local loop = m.spline2({{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {closed = true})
+local loop = m.spline2d({{0, 0}, {100, 0}, {100, 100}, {0, 100}}, {closed = true})
 print(loop.kind, loop.closed, #loop.points, loop.segmentCount, loop.length > 400) -- catmullRom true 4 4 true
 ```
 
-### m.spline2(points, options)
+### m.spline2d(points, options)
 
-Returns a new `Spline2` through the list `points`. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`
+Returns a new `Spline2D` through the list `points`. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -4628,7 +4628,7 @@ Each kind needs enough points, or it raises one of these errors: `A Catmull-Rom 
 ```lua
 local m = require('haylen.math')
 
-local track = m.spline2({{0, 0}, {200, -80}, {400, 0}, {600, -80}}, {kind = 'catmullRom'})
+local track = m.spline2d({{0, 0}, {200, -80}, {400, 0}, {600, -80}}, {kind = 'catmullRom'})
 print(track.length)
 ```
 
@@ -4639,7 +4639,7 @@ Returns the point of the curve at the parameter `t` as a `Vec2`.
 ```lua
 local m = require('haylen.math')
 
-local arc = m.spline2({{0, 0}, {50, -50}, {100, 0}})
+local arc = m.spline2d({{0, 0}, {50, -50}, {100, 0}})
 print(arc:point(0.5))
 ```
 
@@ -4650,7 +4650,7 @@ Returns the direction of travel at the parameter `t`, as a `Vec2` of length 1. W
 ```lua
 local m = require('haylen.math')
 
-local arc = m.spline2({{0, 0}, {50, -50}, {100, 0}})
+local arc = m.spline2d({{0, 0}, {50, -50}, {100, 0}})
 print(arc:tangent(0))
 ```
 
@@ -4662,7 +4662,7 @@ Returns the point at `distance` world units along the curve. Use it to move thin
 local m = require('haylen.math')
 local scene = require('haylen.scene')
 
-local rail = m.spline2({{0, 0}, {300, 0}, {300, 300}})
+local rail = m.spline2d({{0, 0}, {300, 0}, {300, 300}})
 local traveled = 0
 
 scene.push({
@@ -4680,7 +4680,7 @@ Returns the direction of travel at `distance` world units along the curve, as a 
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline2({{0, 0}, {300, 0}, {300, 300}})
+local rail = m.spline2d({{0, 0}, {300, 0}, {300, 300}})
 print(m.degrees(rail:tangentAtDistance(rail.length):angle()))
 ```
 
@@ -4691,7 +4691,7 @@ Returns the parameter at `distance` world units along the curve.
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline2({{0, 0}, {300, 0}, {300, 300}})
+local rail = m.spline2d({{0, 0}, {300, 0}, {300, 300}})
 print(rail:parameterAtDistance(rail.length / 2))
 ```
 
@@ -4702,7 +4702,7 @@ Returns `count` points spread evenly over the parameter. A `count` above 1677721
 ```lua
 local m = require('haylen.math')
 
-local fence = m.spline2({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
+local fence = m.spline2d({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
 print(#fence:sample(10)) -- 10
 ```
 
@@ -4713,7 +4713,7 @@ Returns points `spacing` world units apart along the curve, plus the end point o
 ```lua
 local m = require('haylen.math')
 
-local fence = m.spline2({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
+local fence = m.spline2d({{0, 0}, {100, 40}, {200, 0}, {300, 40}}, {kind = 'bezier'})
 for _, post in ipairs(fence:sampleByDistance(25)) do
     print(post)
 end
@@ -4726,14 +4726,14 @@ Returns points along the curve, from its start to its end, whose straight lines 
 ```lua
 local m = require('haylen.math')
 
-local hill = m.spline2({{0, 300}, {200, 100}, {400, 280}, {600, 120}})
+local hill = m.spline2d({{0, 300}, {200, 100}, {400, 280}, {600, 120}})
 local outline = hill:flatten(1)
 print(#outline, outline[1], outline[#outline])
 ```
 
-## Spline3
+## Spline3D
 
-A `Spline3` is a smooth curve in 3D built from control points, such as a rail, a road, a tube or the track of a camera. Its parameter `t` runs from `0` at the start to `1` at the end of the whole curve, and distances run in world units from its start. The [3D math guide](../3d/math.md#curves) explains the kinds of curve and how frames follow them. Make one with `m.spline3`.
+A `Spline3D` is a smooth curve in 3D built from control points, such as a rail, a road, a tube or the track of a camera. Its parameter `t` runs from `0` at the start to `1` at the end of the whole curve, and distances run in world units from its start. The [3D math guide](../3d/math.md#curves) explains the kinds of curve and how frames follow them. Make one with `m.spline3d`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -4749,13 +4749,13 @@ A `Spline3` is a smooth curve in 3D built from control points, such as a rail, a
 ```lua
 local m = require('haylen.math')
 
-local track = m.spline3({{0, 0, 0}, {10, 2, -5}, {20, 0, -5}, {30, 1, 0}})
+local track = m.spline3d({{0, 0, 0}, {10, 2, -5}, {20, 0, -5}, {30, 1, 0}})
 print(track.kind, track.segmentCount, track.length > 30) -- catmullRom 3 true
 ```
 
-### m.spline3(points, options)
+### m.spline3d(points, options)
 
-Returns a new `Spline3` through or around `points`, a list of `Vec3` values in any form a `Vec3` argument accepts. The kinds are these:
+Returns a new `Spline3D` through or around `points`, a list of `Vec3` values in any form a `Vec3` argument accepts. The kinds are these:
 
 | Kind | Meaning |
 | --- | --- |
@@ -4781,8 +4781,8 @@ A count of points that the kind cannot take raises a sentence that says the coun
 ```lua
 local m = require('haylen.math')
 
-local road = m.spline3({{0, 0, 0}, {20, 0, -5}, {40, 3, 0}}, {alpha = 0.5, tension = 0.2})
-local arc = m.spline3({{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, {kind = 'nurbs', degree = 2, weights = {1, math.sqrt(0.5), 1}})
+local road = m.spline3d({{0, 0, 0}, {20, 0, -5}, {40, 3, 0}}, {alpha = 0.5, tension = 0.2})
+local arc = m.spline3d({{1, 0, 0}, {1, 1, 0}, {0, 1, 0}}, {kind = 'nurbs', degree = 2, weights = {1, math.sqrt(0.5), 1}})
 print(string.format('%.4f', arc:point(0.3):length())) -- 1.0000, every point lies on the unit circle
 ```
 
@@ -4793,7 +4793,7 @@ Returns the point at the parameter `t` as a `Vec3`. A closed curve wraps `t` aro
 ```lua
 local m = require('haylen.math')
 
-print(m.spline3({{0, 0, 0}, {0, 0, -10}}, {kind = 'linear'}):point(0.5)) -- Vec3(0.0, 0.0, -5.0)
+print(m.spline3d({{0, 0, 0}, {0, 0, -10}}, {kind = 'linear'}):point(0.5)) -- Vec3(0.0, 0.0, -5.0)
 ```
 
 ### spline:derivatives(t)
@@ -4803,7 +4803,7 @@ Returns a table with the `point` at `t` and its `first` and `second` derivatives
 ```lua
 local m = require('haylen.math')
 
-local d = m.spline3({{0, 0, 0}, {0, 0, -10}}):derivatives(0.5)
+local d = m.spline3d({{0, 0, 0}, {0, 0, -10}}):derivatives(0.5)
 print(d.point, d.first) -- Vec3(0.0, 0.0, -5.0) Vec3(0.0, 0.0, -10.0)
 ```
 
@@ -4814,7 +4814,7 @@ Returns the direction of travel at `t` as a `Vec3` of length `1`. Where the curv
 ```lua
 local m = require('haylen.math')
 
-print(m.spline3({{0, 0, 0}, {0, 0, -10}}):tangent(0.2)) -- Vec3(0.0, 0.0, -1.0)
+print(m.spline3d({{0, 0, 0}, {0, 0, -10}}):tangent(0.2)) -- Vec3(0.0, 0.0, -1.0)
 ```
 
 ### spline:pointAtDistance(distance)
@@ -4824,7 +4824,7 @@ Returns the point `distance` world units along the curve, which walks it at an e
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
+local rail = m.spline3d({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
 print(rail:pointAtDistance(15)) -- Vec3(10.0, 0.0, -5.0)
 ```
 
@@ -4835,7 +4835,7 @@ Returns the direction of travel `distance` world units along the curve, such as 
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
+local rail = m.spline3d({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
 print(rail:tangentAtDistance(15)) -- Vec3(0.0, 0.0, -1.0)
 ```
 
@@ -4846,7 +4846,7 @@ Returns the parameter `t` at `distance` world units along the curve.
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
+local rail = m.spline3d({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}}, {kind = 'linear'})
 print(rail:parameterAtDistance(10)) -- 0.5
 ```
 
@@ -4857,7 +4857,7 @@ Returns a table with the parameter `t`, the `point` of the curve closest to `poi
 ```lua
 local m = require('haylen.math')
 
-local rail = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local rail = m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
 local closest = rail:closestPoint({4, 2, 0})
 print(string.format('%.1f %.1f', closest.t, closest.distance)) -- 0.4 2.0
 ```
@@ -4869,7 +4869,7 @@ Returns `count` points spread evenly over the parameter, both ends included. Mor
 ```lua
 local m = require('haylen.math')
 
-print(#m.spline3({{0, 0, 0}, {10, 0, 0}}):sample(5)) -- 5
+print(#m.spline3d({{0, 0, 0}, {10, 0, 0}}):sample(5)) -- 5
 ```
 
 ### spline:sampleEvenly(count)
@@ -4879,7 +4879,7 @@ Returns `count` points spread evenly by distance along the curve, both ends incl
 ```lua
 local m = require('haylen.math')
 
-local posts = m.spline3({{0, 0, 0}, {10, 0, -2}, {20, 0, 0}}):sampleEvenly(6)
+local posts = m.spline3d({{0, 0, 0}, {10, 0, -2}, {20, 0, 0}}):sampleEvenly(6)
 print(#posts) -- 6
 ```
 
@@ -4890,7 +4890,7 @@ Returns points `spacing` world units apart along the curve from its start, plus 
 ```lua
 local m = require('haylen.math')
 
-print(#m.spline3({{0, 0, 0}, {20, 0, 0}}, {kind = 'linear'}):sampleByDistance(4)) -- 6
+print(#m.spline3d({{0, 0, 0}, {20, 0, 0}}, {kind = 'linear'}):sampleByDistance(4)) -- 6
 ```
 
 ### spline:frames(count, options)
@@ -4904,16 +4904,16 @@ Returns a list of `count` frames spread evenly by distance, both ends included. 
 ```lua
 local m = require('haylen.math')
 
-local tube = m.spline3({{0, 0, 0}, {5, 2, -5}, {10, 0, -10}})
+local tube = m.spline3d({{0, 0, 0}, {5, 2, -5}, {10, 0, -10}})
 for _, frame in ipairs(tube:frames(16)) do
     local ring = frame.position + frame.normal * 0.5
     print(ring)
 end
 ```
 
-## CurvePath3
+## CurvePath3D
 
-A `CurvePath3` walks several `Spline3` curves one after another, such as a road of straight pieces and bends. Distances run from the start of the first curve, and the parameter `t` runs from `0` at the start to `1` at the end of the path by distance. Make one with `m.curvePath3`.
+A `CurvePath3D` walks several `Spline3D` curves one after another, such as a road of straight pieces and bends. Distances run from the start of the first curve, and the parameter `t` runs from `0` at the start to `1` at the end of the path by distance. Make one with `m.curvePath3d`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -4922,9 +4922,9 @@ A `CurvePath3` walks several `Spline3` curves one after another, such as a road 
 | `curveCount` | integer | read | The number of curves. |
 | `joins` | list of strings | read | How smoothly each pair of curves joins, in order, the last one between the last curve and the first for a closed path: `'position'` when only their ends meet, `'tangent'` when their directions agree too, and `'velocity'` when their speeds also agree. |
 
-### m.curvePath3(curves, options)
+### m.curvePath3d(curves, options)
 
-Returns a new `CurvePath3` from a list of `Spline3` values, which it copies. Each curve must start where the one before it ends, within a small tolerance, and a closed path also needs the last curve to end where the first starts. An empty list raises `A curve path needs at least one curve.`, and a curve that starts away from the end of the one before raises a sentence that starts with `The curves of a path must join` and says how far apart they are.
+Returns a new `CurvePath3D` from a list of `Spline3D` values, which it copies. Each curve must start where the one before it ends, within a small tolerance, and a closed path also needs the last curve to end where the first starts. An empty list raises `A curve path needs at least one curve.`, and a curve that starts away from the end of the one before raises a sentence that starts with `The curves of a path must join` and says how far apart they are.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -4933,9 +4933,9 @@ Returns a new `CurvePath3` from a list of `Spline3` values, which it copies. Eac
 ```lua
 local m = require('haylen.math')
 
-local straight = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
-local bend = m.spline3({{10, 0, 0}, {15, 0, 0}, {15, 0, -5}, {15, 0, -10}}, {kind = 'bezier'})
-local road = m.curvePath3({straight, bend})
+local straight = m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local bend = m.spline3d({{10, 0, 0}, {15, 0, 0}, {15, 0, -5}, {15, 0, -10}}, {kind = 'bezier'})
+local road = m.curvePath3d({straight, bend})
 print(road.curveCount, table.concat(road.joins, ', ')) -- 2 tangent
 ```
 
@@ -4946,7 +4946,7 @@ Returns the point at the share `t` of the length of the path.
 ```lua
 local m = require('haylen.math')
 
-local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
 print(road:point(0.5)) -- Vec3(5.0, 0.0, 0.0)
 ```
 
@@ -4957,7 +4957,7 @@ Returns the direction of travel at the share `t` of the length, and raises the e
 ```lua
 local m = require('haylen.math')
 
-local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
 print(road:tangent(0.5)) -- Vec3(1.0, 0.0, 0.0)
 ```
 
@@ -4968,9 +4968,9 @@ Returns the point `distance` world units along the path, wrapped around a closed
 ```lua
 local m = require('haylen.math')
 
-local first = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
-local second = m.spline3({{10, 0, 0}, {10, 0, -5}}, {kind = 'linear'})
-print(m.curvePath3({first, second}):pointAtDistance(12)) -- Vec3(10.0, 0.0, -2.0)
+local first = m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local second = m.spline3d({{10, 0, 0}, {10, 0, -5}}, {kind = 'linear'})
+print(m.curvePath3d({first, second}):pointAtDistance(12)) -- Vec3(10.0, 0.0, -2.0)
 ```
 
 ### path:tangentAtDistance(distance)
@@ -4980,9 +4980,9 @@ Returns the direction of travel `distance` world units along the path.
 ```lua
 local m = require('haylen.math')
 
-local first = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
-local second = m.spline3({{10, 0, 0}, {10, 0, -5}}, {kind = 'linear'})
-print(m.curvePath3({first, second}):tangentAtDistance(12)) -- Vec3(0.0, 0.0, -1.0)
+local first = m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local second = m.spline3d({{10, 0, 0}, {10, 0, -5}}, {kind = 'linear'})
+print(m.curvePath3d({first, second}):tangentAtDistance(12)) -- Vec3(0.0, 0.0, -1.0)
 ```
 
 ### path:closestPoint(point)
@@ -4992,7 +4992,7 @@ Returns a table with the share `t` of the length at the closest point, the `poin
 ```lua
 local m = require('haylen.math')
 
-local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
 print(road:closestPoint({5, 1, 0}).distance) -- 1.0
 ```
 
@@ -5003,7 +5003,7 @@ Returns `count` points spread evenly by distance along the path, both ends inclu
 ```lua
 local m = require('haylen.math')
 
-local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
 print(#road:sampleEvenly(4)) -- 4
 ```
 
@@ -5014,7 +5014,7 @@ Returns points `spacing` world units apart along the path from its start, plus t
 ```lua
 local m = require('haylen.math')
 
-local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
+local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})})
 print(#road:sampleByDistance(5)) -- 3
 ```
 
@@ -5025,7 +5025,7 @@ Returns `count` frames spread evenly by distance along the path, which carry the
 ```lua
 local m = require('haylen.math')
 
-local road = m.curvePath3({m.spline3({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}})})
+local road = m.curvePath3d({m.spline3d({{0, 0, 0}, {10, 0, 0}, {10, 0, -10}})})
 print(#road:frames(8)) -- 8
 ```
 
@@ -5587,9 +5587,9 @@ These messages come from the functions and methods of the module. Messages that 
 | `The up direction needs a finite length above zero and must not run along the direction to look along, or it cannot choose how the view turns around that direction.` | The `up` of `m.lookRotation` or `m.lookAt` is zero or runs along the view. |
 | `The three points lie on one line, so they span no plane.` | The points of `m.planeFromPoints` lie on one line. |
 | `The normal of a plane must have a length of one. Make the plane with "plane" of "haylen.math", which scales its normal.` | The `normal` of a plane was set to a vector of another length. |
-| `The direction of a ray must have a length of one. Make the ray with "ray3" of "haylen.math", which scales its direction.` | The `direction` of a ray was set to a vector of another length. |
-| `A ray casts against a Triangle3, a Box3, an Obb, a Sphere, a Plane or a Capsule3, not a <type>.` | The shape of `ray:cast` has another type. |
-| `The bounds of points need at least one point.` | The list of `m.box3Bounds` is empty. |
+| `The direction of a ray must have a length of one. Make the ray with "ray3d" of "haylen.math", which scales its direction.` | The `direction` of a ray was set to a vector of another length. |
+| `A ray casts against a Triangle, a Box, an Obb, a Sphere, a Plane or a Capsule, not a <type>.` | The shape of `ray:cast` has another type. |
+| `The bounds of points need at least one point.` | The list of `m.boxBounds` is empty. |
 | `A box is placed only by an affine matrix, whose last row is 0, 0, 0 and 1.` | The matrix of `box:transformed` is not affine. |
 | `A radius must be a finite number of 0 or more.` | The radius of a sphere or a capsule is negative or not finite. |
 | `The half extents of an oriented box must be finite numbers of 0 or more.` | The half extents of an `Obb` are negative or not finite. |
@@ -5636,11 +5636,11 @@ These messages come from the functions and methods of the module. Messages that 
 | `The option "kind" must be "perlin", "simplex", "fractal" or "worley".` | The `kind` of a noise grid is another value. |
 | `The option "octaves" must be a whole number from 1 to 16.` | The `octaves` of a noise grid are out of range. |
 | `The buffer of "into" holds <size> floats, fewer than the <count> samples of the grid.` | The `into` buffer of a noise grid is too small. |
-| `Poisson distances must be finite.` | A distance of `m.poissonDisk` is infinite or not a number. |
-| `Poisson sampling needs an area whose edges are finite.` | The `area` of `m.poissonDisk` has an edge that is infinite or not a number. |
+| `Poisson distances must be finite.` | A distance of `m.poissonDisk2d` is infinite or not a number. |
+| `Poisson sampling needs an area whose edges are finite.` | The `area` of `m.poissonDisk2d` has an edge that is infinite or not a number. |
 | `A varying Poisson distance needs a maximum distance of at least the minimum distance.` | A `distance` function comes without a valid `maximumDistance`. |
-| `Poisson sampling needs between 1 and 1000 attempts.` | The `attempts` of `m.poissonDisk` are out of range. |
-| `The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.` | The area of `m.poissonDisk` is too large for its distance. |
+| `Poisson sampling needs between 1 and 1000 attempts.` | The `attempts` of `m.poissonDisk2d` are out of range. |
+| `The minimum distance is too small for the area, whose sampling grid would need more than 16777216 cells.` | The area of `m.poissonDisk2d` is too large for its distance. |
 | `A Poisson distance function must return a number, not <type>.` | A `distance` function returned something else. |
 | `A Poisson distance function must return finite distances.` | A `distance` function returned an infinite distance or one that is not a number. |
 | `bad argument #2 to 'bounceRay' (the direction must not be zero)` | The direction of `m.bounceRay` is zero. |

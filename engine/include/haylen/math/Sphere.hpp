@@ -1,6 +1,6 @@
 #pragma once
 
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 #include "haylen/math/Vec3.hpp"
 
 namespace haylen::math {
@@ -18,10 +18,10 @@ struct Sphere {
         const float reach = radius + other.radius;
         return Vec3::distanceSquared(center, other.center) <= reach * reach;
     }
-    [[nodiscard]] constexpr bool intersects(const Box3& box) const noexcept {
+    [[nodiscard]] constexpr bool intersects(const Box& box) const noexcept {
         return contains(box.clamp(center));
     }
-    [[nodiscard]] constexpr Box3 getBounds() const noexcept {
+    [[nodiscard]] constexpr Box getBounds() const noexcept {
         return {center - Vec3{radius, radius, radius}, center + Vec3{radius, radius, radius}};
     }
 };

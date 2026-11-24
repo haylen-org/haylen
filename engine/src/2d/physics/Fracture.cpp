@@ -12,7 +12,7 @@
 #include "haylen/2d/physics/World.hpp"
 #include "haylen/2d/procedural/Region.hpp"
 #include "haylen/2d/procedural/Voronoi.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Random.hpp"
@@ -57,13 +57,13 @@ std::vector<std::vector<std::vector<math::Vec2>>> Fracture::split(std::span<cons
         const std::vector<std::vector<math::Vec2>> cells{cell};
         const std::vector<std::vector<math::Vec2>> parts = math::Polygon::intersect(outlines, cells);
         for (const std::vector<math::Vec2>& outer : parts) {
-            if (math::Geometry2::signedArea(outer) <= 0.0F) {
+            if (math::Geometry2D::signedArea(outer) <= 0.0F) {
                 continue;
             }
 
             std::vector<std::vector<math::Vec2>> piece{outer};
             for (const std::vector<math::Vec2>& hole : parts) {
-                if (math::Geometry2::signedArea(hole) < 0.0F && math::Geometry2::contains(outer, hole.front())) {
+                if (math::Geometry2D::signedArea(hole) < 0.0F && math::Geometry2D::contains(outer, hole.front())) {
                     piece.push_back(hole);
                 }
             }
@@ -131,7 +131,7 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
                 continue;
             }
 
-            const math::Vec2 offset = position + math::Geometry2::centroid(piece.front()).rotated(rotation) - center;
+            const math::Vec2 offset = position + math::Geometry2D::centroid(piece.front()).rotated(rotation) - center;
             Body::Options placed = settings;
             placed.velocity = velocity + math::Vec2{-spin * offset.y, spin * offset.x};
             Body& fragment = fragments.emplace_back(world.createBody(placed));

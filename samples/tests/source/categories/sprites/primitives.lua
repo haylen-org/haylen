@@ -150,9 +150,9 @@ function Primitives:cell(index, x, y, rx, ry)
         graphics2d.drawShape(portrait, {kind = 'ellipse', texture = self.hero, borderWidth = 4, borderColor = Test.accent, layer = 1})
     elseif index == 11 then
         local swing = math.sin(time * 1.5) * ry * 0.3
-        local curve = m.spline2({{x - rx * 0.85, y - ry * 0.3}, {x - rx * 0.35, y - ry * 0.85 - swing}, {x + rx * 0.35, y - ry * 0.25 + swing}, {x + rx * 0.85, y - ry * 0.7}}, {kind = 'bezier'})
+        local curve = m.spline2d({{x - rx * 0.85, y - ry * 0.3}, {x - rx * 0.35, y - ry * 0.85 - swing}, {x + rx * 0.35, y - ry * 0.25 + swing}, {x + rx * 0.85, y - ry * 0.7}}, {kind = 'bezier'})
         graphics2d.drawStroke(curve, {width = 6, cap = 'round', color = Test.warm})
-        local loop = m.spline2({{x - rx * 0.8, y + ry * 0.45}, {x, y + ry * 0.15}, {x + rx * 0.8, y + ry * 0.45}, {x, y + ry * 0.78}}, {closed = true})
+        local loop = m.spline2d({{x - rx * 0.8, y + ry * 0.45}, {x, y + ry * 0.15}, {x + rx * 0.8, y + ry * 0.45}, {x, y + ry * 0.78}}, {closed = true})
         graphics2d.drawStroke(loop, {width = 4, color = Test.green, dashes = {14, 8}, dashOffset = -time * 40, cap = 'round'})
     else
         -- Every point drifts around its place, and its color dims and brightens with its own phase.

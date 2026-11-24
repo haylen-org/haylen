@@ -13,7 +13,7 @@
 
 namespace haylen::math {
 
-// Boolean operations, offsets, simplification and convex decomposition of shapes. A shape is a list of closed outlines where any single outline is filled in either winding and an outline wound opposite to the one around it is a hole. Results wind outer outlines with a positive `Geometry2::signedArea` and holes with a negative one, and keep three decimal places.
+// Boolean operations, offsets, simplification and convex decomposition of shapes. A shape is a list of closed outlines where any single outline is filled in either winding and an outline wound opposite to the one around it is a hole. Results wind outer outlines with a positive `Geometry2D::signedArea` and holes with a negative one, and keep three decimal places.
 class Polygon final {
   public:
     using Outline = std::vector<Vec2>;

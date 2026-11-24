@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "haylen/math/Easing.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Noise2D.hpp"
 #include "haylen/math/PoissonDisk2D.hpp"
@@ -169,38 +169,38 @@ TEST(GeometryTest, CirclesAndSegments) {
     EXPECT_TRUE(circle.contains(Vec2(3.0F, 4.0F)));
     EXPECT_FALSE(circle.contains(Vec2(4.0F, 4.0F)));
     EXPECT_EQ(circle.getBounds(), (Rect{-5.0F, -5.0F, 10.0F, 10.0F}));
-    EXPECT_TRUE(Geometry2::intersects(circle, Circle{Vec2(9.0F, 0.0F), 4.0F}));
-    EXPECT_FALSE(Geometry2::intersects(circle, Circle{Vec2(10.0F, 0.0F), 4.0F}));
-    EXPECT_TRUE(Geometry2::intersects(circle, Rect{4.0F, -1.0F, 2.0F, 2.0F}));
-    EXPECT_FALSE(Geometry2::intersects(circle, Rect{6.0F, 6.0F, 2.0F, 2.0F}));
+    EXPECT_TRUE(Geometry2D::intersects(circle, Circle{Vec2(9.0F, 0.0F), 4.0F}));
+    EXPECT_FALSE(Geometry2D::intersects(circle, Circle{Vec2(10.0F, 0.0F), 4.0F}));
+    EXPECT_TRUE(Geometry2D::intersects(circle, Rect{4.0F, -1.0F, 2.0F, 2.0F}));
+    EXPECT_FALSE(Geometry2D::intersects(circle, Rect{6.0F, 6.0F, 2.0F, 2.0F}));
 
-    const Segment2 horizontal{Vec2(-1.0F, 0.0F), Vec2(1.0F, 0.0F)};
-    const Segment2 vertical{Vec2(0.0F, -1.0F), Vec2(0.0F, 1.0F)};
-    EXPECT_EQ(Geometry2::intersection(horizontal, vertical), Vec2{});
-    EXPECT_FALSE(Geometry2::intersection(horizontal, Segment2{Vec2(-1.0F, 1.0F), Vec2(1.0F, 1.0F)}).has_value());
-    EXPECT_FALSE(Geometry2::intersection(horizontal, Segment2{Vec2(2.0F, -1.0F), Vec2(2.0F, 1.0F)}).has_value());
-    EXPECT_EQ(Geometry2::closestPoint(horizontal, Vec2(5.0F, 3.0F)), Vec2(1.0F, 0.0F));
-    EXPECT_EQ(Geometry2::closestPoint(Segment2{Vec2(1.0F, 1.0F), Vec2(1.0F, 1.0F)}, Vec2{}), Vec2(1.0F, 1.0F));
-    EXPECT_FLOAT_EQ(Geometry2::distanceToSegment(horizontal, Vec2(0.0F, 2.0F)), 2.0F);
+    const Segment2D horizontal{Vec2(-1.0F, 0.0F), Vec2(1.0F, 0.0F)};
+    const Segment2D vertical{Vec2(0.0F, -1.0F), Vec2(0.0F, 1.0F)};
+    EXPECT_EQ(Geometry2D::intersection(horizontal, vertical), Vec2{});
+    EXPECT_FALSE(Geometry2D::intersection(horizontal, Segment2D{Vec2(-1.0F, 1.0F), Vec2(1.0F, 1.0F)}).has_value());
+    EXPECT_FALSE(Geometry2D::intersection(horizontal, Segment2D{Vec2(2.0F, -1.0F), Vec2(2.0F, 1.0F)}).has_value());
+    EXPECT_EQ(Geometry2D::closestPoint(horizontal, Vec2(5.0F, 3.0F)), Vec2(1.0F, 0.0F));
+    EXPECT_EQ(Geometry2D::closestPoint(Segment2D{Vec2(1.0F, 1.0F), Vec2(1.0F, 1.0F)}, Vec2{}), Vec2(1.0F, 1.0F));
+    EXPECT_FLOAT_EQ(Geometry2D::distanceToSegment(horizontal, Vec2(0.0F, 2.0F)), 2.0F);
 }
 
 TEST(GeometryTest, Polygons) {
     const std::array<Vec2, 4> square{Vec2(0.0F, 0.0F), Vec2(10.0F, 0.0F), Vec2(10.0F, 10.0F), Vec2(0.0F, 10.0F)};
-    EXPECT_TRUE(Geometry2::contains(square, Vec2(5.0F, 5.0F)));
-    EXPECT_FALSE(Geometry2::contains(square, Vec2(15.0F, 5.0F)));
-    EXPECT_FLOAT_EQ(Geometry2::signedArea(square), 100.0F);
-    EXPECT_EQ(Geometry2::centroid(square), Vec2(5.0F, 5.0F));
-    EXPECT_TRUE(Geometry2::isConvex(square));
-    EXPECT_EQ(Geometry2::bounds(square), (Rect{0.0F, 0.0F, 10.0F, 10.0F}));
-    EXPECT_EQ(Geometry2::bounds(std::span<const Vec2>{}), Rect{});
+    EXPECT_TRUE(Geometry2D::contains(square, Vec2(5.0F, 5.0F)));
+    EXPECT_FALSE(Geometry2D::contains(square, Vec2(15.0F, 5.0F)));
+    EXPECT_FLOAT_EQ(Geometry2D::signedArea(square), 100.0F);
+    EXPECT_EQ(Geometry2D::centroid(square), Vec2(5.0F, 5.0F));
+    EXPECT_TRUE(Geometry2D::isConvex(square));
+    EXPECT_EQ(Geometry2D::bounds(square), (Rect{0.0F, 0.0F, 10.0F, 10.0F}));
+    EXPECT_EQ(Geometry2D::bounds(std::span<const Vec2>{}), Rect{});
 
     const std::array<Vec2, 5> arrow{Vec2(0.0F, 0.0F), Vec2(10.0F, 0.0F), Vec2(5.0F, 3.0F), Vec2(10.0F, 10.0F), Vec2(0.0F, 10.0F)};
-    EXPECT_FALSE(Geometry2::isConvex(arrow));
-    EXPECT_FALSE(Geometry2::isConvex(std::span<const Vec2>(square.data(), 2)));
+    EXPECT_FALSE(Geometry2D::isConvex(arrow));
+    EXPECT_FALSE(Geometry2D::isConvex(std::span<const Vec2>(square.data(), 2)));
 
     const std::array<Vec2, 3> line{Vec2(0.0F, 0.0F), Vec2(1.0F, 1.0F), Vec2(2.0F, 2.0F)};
-    EXPECT_EQ(Geometry2::centroid(line), Vec2(1.0F, 1.0F));
-    EXPECT_EQ(Geometry2::centroid(std::span<const Vec2>{}), Vec2{});
+    EXPECT_EQ(Geometry2D::centroid(line), Vec2(1.0F, 1.0F));
+    EXPECT_EQ(Geometry2D::centroid(std::span<const Vec2>{}), Vec2{});
 }
 
 TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
@@ -215,43 +215,43 @@ TEST(GeometryTest, StarsThatTurnOneWayAreNotConvex) {
         pentagram.push_back(Vec2::fromAngle(Math::kTau * static_cast<float>(index * 2) / 5.0F, 10.0F));
     }
 
-    EXPECT_TRUE(Geometry2::isConvex(hexagon));
-    EXPECT_FALSE(Geometry2::isConvex(pentagram));
+    EXPECT_TRUE(Geometry2D::isConvex(hexagon));
+    EXPECT_FALSE(Geometry2D::isConvex(pentagram));
     std::reverse(hexagon.begin(), hexagon.end());
     std::reverse(pentagram.begin(), pentagram.end());
-    EXPECT_TRUE(Geometry2::isConvex(hexagon));
-    EXPECT_FALSE(Geometry2::isConvex(pentagram));
+    EXPECT_TRUE(Geometry2D::isConvex(hexagon));
+    EXPECT_FALSE(Geometry2D::isConvex(pentagram));
 }
 
 TEST(GeometryTest, ConvexHullDropsInteriorPoints) {
     const std::array<Vec2, 6> points{Vec2(0.0F, 0.0F), Vec2(4.0F, 0.0F), Vec2(4.0F, 4.0F), Vec2(0.0F, 4.0F), Vec2(2.0F, 2.0F), Vec2(4.0F, 0.0F)};
-    const std::vector<Vec2> hull = Geometry2::convexHull(points);
+    const std::vector<Vec2> hull = Geometry2D::convexHull(points);
     EXPECT_EQ(hull.size(), 4U);
-    EXPECT_GT(Geometry2::signedArea(hull), 0.0F);
-    EXPECT_EQ(Geometry2::convexHull(std::span<const Vec2>(points.data(), 2)).size(), 2U);
+    EXPECT_GT(Geometry2D::signedArea(hull), 0.0F);
+    EXPECT_EQ(Geometry2D::convexHull(std::span<const Vec2>(points.data(), 2)).size(), 2U);
 
     // A point with a NaN coordinate is left out instead of breaking the sort.
     const std::array<Vec2, 5> withNaN{Vec2(0.0F, 0.0F), Vec2(4.0F, 0.0F), Vec2(std::numeric_limits<float>::quiet_NaN(), 2.0F), Vec2(4.0F, 4.0F), Vec2(0.0F, 4.0F)};
-    EXPECT_EQ(Geometry2::convexHull(withNaN).size(), 4U);
+    EXPECT_EQ(Geometry2D::convexHull(withNaN).size(), 4U);
 }
 
 TEST(GeometryTest, TriangulatesConcavePolygonsInEitherWinding) {
     std::vector<Vec2> arrow{Vec2(0.0F, 0.0F), Vec2(10.0F, 0.0F), Vec2(5.0F, 3.0F), Vec2(10.0F, 10.0F), Vec2(0.0F, 10.0F)};
-    const auto triangles = Geometry2::triangulate(arrow);
+    const auto triangles = Geometry2D::triangulate(arrow);
     ASSERT_EQ(triangles.size(), 9U);
 
     float area = 0.0F;
     for (std::size_t index = 0; index < triangles.size(); index += 3) {
         const std::array<Vec2, 3> triangle{arrow[triangles[index]], arrow[triangles[index + 1]], arrow[triangles[index + 2]]};
-        EXPECT_GT(Geometry2::signedArea(triangle), 0.0F);
-        area += Geometry2::signedArea(triangle);
+        EXPECT_GT(Geometry2D::signedArea(triangle), 0.0F);
+        area += Geometry2D::signedArea(triangle);
     }
 
-    EXPECT_NEAR(area, Geometry2::signedArea(arrow), 1e-3F);
+    EXPECT_NEAR(area, Geometry2D::signedArea(arrow), 1e-3F);
 
     std::reverse(arrow.begin(), arrow.end());
-    EXPECT_EQ(Geometry2::triangulate(arrow).size(), 9U);
-    EXPECT_TRUE(Geometry2::triangulate(std::span<const Vec2>(arrow.data(), 2)).empty());
+    EXPECT_EQ(Geometry2D::triangulate(arrow).size(), 9U);
+    EXPECT_TRUE(Geometry2D::triangulate(std::span<const Vec2>(arrow.data(), 2)).empty());
 }
 
 TEST(PoissonDiskTest, RefusesAnAreaWithEdgesThatAreNotFinite) {

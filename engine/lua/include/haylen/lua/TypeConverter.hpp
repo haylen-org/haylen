@@ -48,8 +48,8 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/Type.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Box3.hpp"
-#include "haylen/math/Capsule3.hpp"
+#include "haylen/math/Box.hpp"
+#include "haylen/math/Capsule.hpp"
 #include "haylen/math/Circle.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/ColorSpace.hpp"
@@ -66,14 +66,14 @@
 #include "haylen/math/Plane.hpp"
 #include "haylen/math/Quat.hpp"
 #include "haylen/math/Random.hpp"
-#include "haylen/math/Ray3.hpp"
+#include "haylen/math/Ray3D.hpp"
 #include "haylen/math/Rect.hpp"
-#include "haylen/math/Segment2.hpp"
-#include "haylen/math/Segment3.hpp"
+#include "haylen/math/Segment2D.hpp"
+#include "haylen/math/Segment3D.hpp"
 #include "haylen/math/Sphere.hpp"
 #include "haylen/math/Transform2D.hpp"
 #include "haylen/math/Transform3D.hpp"
-#include "haylen/math/Triangle3.hpp"
+#include "haylen/math/Triangle.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/math/Vec3.hpp"
 #include "haylen/math/Vec4.hpp"
@@ -197,19 +197,19 @@ template <> struct Type<haylen::math::DualQuat> {
     using Storage = haylen::math::DualQuat;
 };
 
-template <> struct Type<haylen::math::Ray3> {
-    static constexpr const char* name = "haylen.Ray3";
-    using Storage = haylen::math::Ray3;
+template <> struct Type<haylen::math::Ray3D> {
+    static constexpr const char* name = "haylen.Ray3D";
+    using Storage = haylen::math::Ray3D;
 };
 
-template <> struct Type<haylen::math::Segment3> {
-    static constexpr const char* name = "haylen.Segment3";
-    using Storage = haylen::math::Segment3;
+template <> struct Type<haylen::math::Segment3D> {
+    static constexpr const char* name = "haylen.Segment3D";
+    using Storage = haylen::math::Segment3D;
 };
 
-template <> struct Type<haylen::math::Box3> {
-    static constexpr const char* name = "haylen.Box3";
-    using Storage = haylen::math::Box3;
+template <> struct Type<haylen::math::Box> {
+    static constexpr const char* name = "haylen.Box";
+    using Storage = haylen::math::Box;
 };
 
 template <> struct Type<haylen::math::Sphere> {
@@ -222,14 +222,14 @@ template <> struct Type<haylen::math::Obb> {
     using Storage = haylen::math::Obb;
 };
 
-template <> struct Type<haylen::math::Capsule3> {
-    static constexpr const char* name = "haylen.Capsule3";
-    using Storage = haylen::math::Capsule3;
+template <> struct Type<haylen::math::Capsule> {
+    static constexpr const char* name = "haylen.Capsule";
+    using Storage = haylen::math::Capsule;
 };
 
-template <> struct Type<haylen::math::Triangle3> {
-    static constexpr const char* name = "haylen.Triangle3";
-    using Storage = haylen::math::Triangle3;
+template <> struct Type<haylen::math::Triangle> {
+    static constexpr const char* name = "haylen.Triangle";
+    using Storage = haylen::math::Triangle;
 };
 
 template <> struct Type<haylen::math::Frustum> {
@@ -440,8 +440,8 @@ template <> struct Converter<haylen::math::Circle> {
 };
 
 // Segments accept a table with `start` and `end` fields or the two points in order.
-template <> struct Converter<haylen::math::Segment2> {
-    static haylen::math::Segment2 read(lua_State* L, int index);
+template <> struct Converter<haylen::math::Segment2D> {
+    static haylen::math::Segment2D read(lua_State* L, int index);
 };
 
 // Insets accept one number for every side, or a table with `left`, `top`, `right` and `bottom` fields or the same four values in order, and push as a table with the four fields.

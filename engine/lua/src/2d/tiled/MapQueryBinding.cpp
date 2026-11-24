@@ -11,7 +11,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "math/RaycastBinding.hpp"
 
 namespace haylen::lua::tiled {
@@ -24,7 +24,7 @@ const haylen::tiled::Map& MapQueryBinding::checkMap(lua_State* L) {
 int MapQueryBinding::raycastTiles(lua_State* L) {
     const haylen::tiled::Map& map = checkMap(L);
     const std::string layer = lua::Stack::read<std::string>(L, 2);
-    const haylen::math::Ray2 ray = haylen::math::Ray2::between({lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, {lua::Stack::read<float>(L, 5), lua::Stack::read<float>(L, 6)});
+    const haylen::math::Ray2D ray = haylen::math::Ray2D::between({lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, {lua::Stack::read<float>(L, 5), lua::Stack::read<float>(L, 6)});
     haylen::tiled::MapQuery::SolidTile solid;
     if (!lua_isnoneornil(L, 7)) {
         luaL_checktype(L, 7, LUA_TFUNCTION);
@@ -60,7 +60,7 @@ int MapQueryBinding::raycastTiles(lua_State* L) {
 int MapQueryBinding::raycastObjects(lua_State* L) {
     const haylen::tiled::Map& map = checkMap(L);
     const std::string layer = lua_isnoneornil(L, 2) ? std::string{} : lua::Stack::read<std::string>(L, 2);
-    const haylen::math::Ray2 ray = haylen::math::Ray2::between({lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, {lua::Stack::read<float>(L, 5), lua::Stack::read<float>(L, 6)});
+    const haylen::math::Ray2D ray = haylen::math::Ray2D::between({lua::Stack::read<float>(L, 3), lua::Stack::read<float>(L, 4)}, {lua::Stack::read<float>(L, 5), lua::Stack::read<float>(L, 6)});
     const std::optional<haylen::tiled::MapQuery::ObjectHit> hit = haylen::tiled::MapQuery(map).castObjects(layer, ray);
     if (!hit) {
         lua_pushnil(L);

@@ -41,7 +41,7 @@
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/text/Font.hpp"
@@ -807,7 +807,7 @@ int Graphics2DBinding::drawn(lua_State* L) {
     lua_Integer count = 0;
     // clang-format off
     getRenderer(L).visitDrawn([L, &count](const haylen::graphics2d::Renderer::Drawn& item) {
-        const haylen::math::Rect bounds = haylen::math::Geometry2::bounds(item.corners);
+        const haylen::math::Rect bounds = haylen::math::Geometry2D::bounds(item.corners);
         lua_createtable(L, 0, 6);
         lua::Stack::push(L, bounds.x);
         lua_setfield(L, -2, "x");

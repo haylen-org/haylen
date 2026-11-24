@@ -6,7 +6,7 @@
 #include <span>
 #include <utility>
 
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 #include "haylen/math/Vec3.hpp"
 
 namespace haylen::math {
@@ -40,7 +40,7 @@ class Random final {
     // Returns a unit direction spread evenly over the directions within `angle` radians of `axis`, such as the sparks of a fountain. Throws `std::invalid_argument` for an axis without a direction or an angle outside 0 to pi.
     [[nodiscard]] Vec3 inCone(Vec3 axis, float angle);
     // Returns a point spread evenly through the box.
-    [[nodiscard]] Vec3 inBox(const Box3& box) noexcept;
+    [[nodiscard]] Vec3 inBox(const Box& box) noexcept;
 
     template <typename T> void shuffle(std::span<T> values) noexcept {
         for (std::size_t index = values.size(); index > 1; --index) {

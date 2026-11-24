@@ -9,7 +9,7 @@
 
 #include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
@@ -119,10 +119,10 @@ template <typename Distance> void Terrain::stamp(const math::Rect& area, bool ad
 float Terrain::distanceToPolygon(std::span<const math::Vec2> polygon, math::Vec2 point) noexcept {
     float nearest = std::numeric_limits<float>::max();
     for (std::size_t index = 0; index < polygon.size(); ++index) {
-        nearest = std::min(nearest, math::Geometry2::distanceToSegment({polygon[index], polygon[(index + 1) % polygon.size()]}, point));
+        nearest = std::min(nearest, math::Geometry2D::distanceToSegment({polygon[index], polygon[(index + 1) % polygon.size()]}, point));
     }
 
-    return math::Geometry2::contains(polygon, point) ? -nearest : nearest;
+    return math::Geometry2D::contains(polygon, point) ? -nearest : nearest;
 }
 
 void Terrain::fill(const math::Circle& circle) {
@@ -130,7 +130,7 @@ void Terrain::fill(const math::Circle& circle) {
 }
 
 void Terrain::fill(std::span<const math::Vec2> polygon) {
-    stamp(math::Geometry2::bounds(polygon), true, [polygon](math::Vec2 point) { return distanceToPolygon(polygon, point); });
+    stamp(math::Geometry2D::bounds(polygon), true, [polygon](math::Vec2 point) { return distanceToPolygon(polygon, point); });
 }
 
 void Terrain::carve(const math::Circle& circle) {
@@ -138,7 +138,7 @@ void Terrain::carve(const math::Circle& circle) {
 }
 
 void Terrain::carve(std::span<const math::Vec2> polygon) {
-    stamp(math::Geometry2::bounds(polygon), false, [polygon](math::Vec2 point) { return distanceToPolygon(polygon, point); });
+    stamp(math::Geometry2D::bounds(polygon), false, [polygon](math::Vec2 point) { return distanceToPolygon(polygon, point); });
 }
 
 std::vector<Explosion::Hit> Terrain::explode(const math::Circle& crater, const Explosion::Options& blast) {
@@ -209,7 +209,7 @@ void Terrain::rebuild(std::size_t index) {
     for (const std::vector<math::Vec2>& traced : math::MarchingSquares::trace(field, width, height, {.threshold = 0.5F, .spacing = options.cellSize, .origin = corner})) {
         std::vector<math::Vec2> outline = simplify(smooth(traced, area, field, width), area);
         // Specks smaller than a quarter cell carry no useful collision.
-        if (outline.size() < 3 || std::fabs(math::Geometry2::signedArea(outline)) < options.cellSize * options.cellSize * 0.25F) {
+        if (outline.size() < 3 || std::fabs(math::Geometry2D::signedArea(outline)) < options.cellSize * options.cellSize * 0.25F) {
             continue;
         }
 

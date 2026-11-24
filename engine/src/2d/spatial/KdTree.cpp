@@ -143,7 +143,7 @@ void KdTree::queryPoint(math::Vec2 point, std::vector<std::uint64_t>& ids) const
     queryCircle(point, 0.0F, ids);
 }
 
-void KdTree::raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHit>& hits) const {
+void KdTree::raycast(const math::Ray2D& ray, std::size_t limit, std::vector<RayHit>& hits) const {
     requireBuilt();
     hits.clear();
 
@@ -162,7 +162,7 @@ void KdTree::raycast(const math::Ray2& ray, std::size_t limit, std::vector<RayHi
 
     // clang-format off
     const auto visit = [&](const Entry& entry) {
-        if (const std::optional<math::RayHit2> hit = math::Raycast::circle(ray, {entry.point, entry.radius})) {
+        if (const std::optional<math::RayHit2D> hit = math::Raycast::circle(ray, {entry.point, entry.radius})) {
             EntryBounds::insertHit(hits, {.id = entry.id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
         }
     };

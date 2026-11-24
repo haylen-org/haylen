@@ -9,7 +9,7 @@
 #include "haylen/2d/physics/CollisionFilter.hpp"
 #include "haylen/2d/physics/RayBatch.hpp"
 #include "haylen/2d/physics/RaycastHit.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::core {
@@ -46,7 +46,7 @@ class Raycaster final {
     [[nodiscard]] std::optional<RaycastHit> castPolygon(std::span<const math::Vec2> points, math::Vec2 translation, const Filter& filter = kDefaultFilter) const;
 
     // Follows a ray of finite length that bounces off every shape it hits, like a laser between mirrors, for at most `bounces` reflections. The vector `hits` receives each bounce with its distance along its own leg, and the returned ray is the last leg, whose end is where the path stops.
-    math::Ray2 bounce(const math::Ray2& ray, int bounces, const Filter& filter, std::vector<RaycastHit>& hits) const;
+    math::Ray2D bounce(const math::Ray2D& ray, int bounces, const Filter& filter, std::vector<RaycastHit>& hits) const;
 
     // Casts `count` rays of the given length spread evenly across an arc of `spread` radians centered on `angle`, like a cone of vision, with one optional hit per ray in order of increasing angle.
     void fan(math::Vec2 origin, float angle, float spread, std::size_t count, float length, const Filter& filter, std::vector<std::optional<RaycastHit>>& results) const;

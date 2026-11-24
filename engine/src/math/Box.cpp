@@ -1,4 +1,4 @@
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 
 #include <algorithm>
 #include <array>
@@ -6,12 +6,12 @@
 
 namespace haylen::math {
 
-Box3 Box3::bounds(std::span<const Vec3> points) {
+Box Box::bounds(std::span<const Vec3> points) {
     if (points.empty()) {
         throw std::invalid_argument("The bounds of points need at least one point.");
     }
 
-    Box3 box{points.front(), points.front()};
+    Box box{points.front(), points.front()};
     for (const Vec3 point : points.subspan(1)) {
         box = box.merged(point);
     }
@@ -20,7 +20,7 @@ Box3 Box3::bounds(std::span<const Vec3> points) {
 }
 
 // Each element of the linear part spreads the box along one axis of the result, from the smaller to the larger of its two products with the corners, which gives the tightest box around the eight placed corners.
-Box3 Box3::transformed(const Mat4& placement) const {
+Box Box::transformed(const Mat4& placement) const {
     if (!placement.isAffine()) {
         throw std::invalid_argument("A box is placed only by an affine matrix, whose last row is 0, 0, 0 and 1.");
     }

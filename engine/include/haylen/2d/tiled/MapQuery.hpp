@@ -10,7 +10,7 @@
 #include "haylen/2d/tiled/Layer.hpp"
 #include "haylen/2d/tiled/Map.hpp"
 #include "haylen/2d/tiled/Object.hpp"
-#include "haylen/math/Ray2.hpp"
+#include "haylen/math/Ray2D.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -46,10 +46,10 @@ class MapQuery final {
     void getOutlines(std::string_view layer, std::vector<std::vector<math::Vec2>>& outlines) const;
 
     // Casts a ray over the cells of a tile layer and returns the first cell whose tile is solid, which is every tile unless `solid` decides. The ray only travels over the cells the layer holds, so it may be infinite, and `solid` runs once the walk has gathered the tiles the ray crosses, so it may change the map. Orthogonal, isometric and oblique maps take tile casts.
-    [[nodiscard]] std::optional<TileHit> castTiles(std::string_view layer, const math::Ray2& ray, const SolidTile& solid = {}) const;
+    [[nodiscard]] std::optional<TileHit> castTiles(std::string_view layer, const math::Ray2D& ray, const SolidTile& solid = {}) const;
 
     // Casts a ray against the objects of the named object layer, or of every object layer when the name is empty, and returns the closest hit. Closed shapes are solid and polylines are hit from both sides.
-    [[nodiscard]] std::optional<ObjectHit> castObjects(std::string_view layer, const math::Ray2& ray) const;
+    [[nodiscard]] std::optional<ObjectHit> castObjects(std::string_view layer, const math::Ray2D& ray) const;
 
   private:
     friend class MapRenderer;

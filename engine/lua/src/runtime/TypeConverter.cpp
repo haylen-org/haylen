@@ -255,7 +255,7 @@ bool Converter<haylen::math::Circle>::is(lua_State* L, int index) {
     return named || lua_rawlen(L, index) == 2;
 }
 
-haylen::math::Segment2 Converter<haylen::math::Segment2>::read(lua_State* L, int index) {
+haylen::math::Segment2D Converter<haylen::math::Segment2D>::read(lua_State* L, int index) {
     if (!lua_istable(L, index)) {
         luaL_typeerror(L, index, "table with start and end");
     }

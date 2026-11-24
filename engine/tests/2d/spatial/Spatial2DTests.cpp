@@ -46,11 +46,11 @@ TEST(HashGridTest, SparseEntriesKeepQueriesProportionalToTheEntries) {
 
     // Rays across the empty cells between the entries test the entries instead of walking the cells.
     std::vector<RayHit> hits;
-    hash.raycast(haylen::math::Ray2::between({-10.0F, 0.5F}, {2e8F, 0.5F}), 0, hits);
+    hash.raycast(haylen::math::Ray2D::between({-10.0F, 0.5F}, {2e8F, 0.5F}), 0, hits);
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_EQ(hits[0].id, 1U);
     EXPECT_FLOAT_EQ(hits[0].distance, 10.0F);
-    hash.raycast(haylen::math::Ray2{{-10.0F, -10.0F}, haylen::math::Vec2{1.0F, 1.0F}.getNormalized()}, 0, hits);
+    hash.raycast(haylen::math::Ray2D{{-10.0F, -10.0F}, haylen::math::Vec2{1.0F, 1.0F}.getNormalized()}, 0, hits);
     ASSERT_EQ(hits.size(), 2U);
     EXPECT_EQ(hits[0].id, 1U);
     EXPECT_EQ(hits[1].id, 2U);
@@ -75,10 +75,10 @@ TEST(HashGridTest, CastsEndlessRaysAndRejectsInvalidCellSizes) {
     HashGrid hash(4.0F);
     hash.set(1, {0.0F, 0.0F, 2.0F, 2.0F});
     std::vector<RayHit> hits;
-    hash.raycast(haylen::math::Ray2{{-10.0F, 1.0F}, {1.0F, 0.0F}}, 0, hits);
+    hash.raycast(haylen::math::Ray2D{{-10.0F, 1.0F}, {1.0F, 0.0F}}, 0, hits);
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_FLOAT_EQ(hits[0].distance, 10.0F);
-    hash.raycast(haylen::math::Ray2{{-10.0F, 100.0F}, {1.0F, 0.0F}}, 0, hits);
+    hash.raycast(haylen::math::Ray2D{{-10.0F, 100.0F}, {1.0F, 0.0F}}, 0, hits);
     EXPECT_TRUE(hits.empty());
     EXPECT_EQ(hash.getCellSize(), 4.0F);
 }
@@ -207,12 +207,12 @@ TEST(KdTreeTest, TreatsEntriesWithRadiusAsCircles) {
     EXPECT_EQ(tree.size(), 3U);
 
     std::vector<RayHit> hits;
-    tree.raycast(haylen::math::Ray2::between({0.0F, 0.0F}, {200.0F, 0.0F}), 0, hits);
+    tree.raycast(haylen::math::Ray2D::between({0.0F, 0.0F}, {200.0F, 0.0F}), 0, hits);
     ASSERT_EQ(hits.size(), 2U);
     EXPECT_EQ(hits[0].id, 1U);
     EXPECT_FLOAT_EQ(hits[0].distance, 40.0F);
     EXPECT_FLOAT_EQ(hits[1].distance, 95.0F);
-    tree.raycast(haylen::math::Ray2{{0.0F, 0.0F}, {1.0F, 0.0F}}, 1, hits);
+    tree.raycast(haylen::math::Ray2D{{0.0F, 0.0F}, {1.0F, 0.0F}}, 1, hits);
     EXPECT_EQ(hits.size(), 1U);
 
     Ids ids;
@@ -247,7 +247,7 @@ TEST(ScreenPickerTest, MapsScreenPointsThroughTheCameraViewport) {
     EXPECT_NEAR(picker.toWorld({700.0F, 300.0F}).x, 1050.0F, 1e-3F);
     EXPECT_NEAR(picker.toWorld({700.0F, 300.0F}).y, 500.0F, 1e-3F);
 
-    const haylen::math::Ray2 aim = picker.toRay({700.0F, 300.0F});
+    const haylen::math::Ray2D aim = picker.toRay({700.0F, 300.0F});
     EXPECT_NEAR(aim.origin.x, 1000.0F, 1e-3F);
     EXPECT_NEAR(aim.direction.x, 1.0F, 1e-5F);
     EXPECT_NEAR(aim.length, 50.0F, 1e-3F);
@@ -297,10 +297,10 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             return ids;
         }
 
-        [[nodiscard]] std::vector<RayHit> raycast(const haylen::math::Ray2& ray, std::size_t limit) const {
+        [[nodiscard]] std::vector<RayHit> raycast(const haylen::math::Ray2D& ray, std::size_t limit) const {
             std::vector<RayHit> hits;
             for (const auto& [id, bounds] : entries) {
-                if (const std::optional<haylen::math::RayHit2> hit = haylen::math::Raycast::rect(ray, bounds)) {
+                if (const std::optional<haylen::math::RayHit2D> hit = haylen::math::Raycast::rect(ray, bounds)) {
                     hits.push_back({.id = id, .point = hit->point, .normal = hit->normal, .distance = hit->distance});
                 }
             }
@@ -356,7 +356,7 @@ template <typename Structure> class SpatialStructureTest : public ::testing::Tes
             structure.queryPoint(point, ids);
             EXPECT_EQ(ids, reference.query({point.x, point.y, 0.0F, 0.0F}));
 
-            const haylen::math::Ray2 ray = haylen::math::Ray2::between(point, {random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)});
+            const haylen::math::Ray2D ray = haylen::math::Ray2D::between(point, {random.range(-550.0F, 550.0F), random.range(-550.0F, 550.0F)});
             const std::size_t limit = static_cast<std::size_t>(random.range(0, 3));
             structure.raycast(ray, limit, hits);
             const std::vector<RayHit> expectedHits = reference.raycast(ray, limit);
@@ -459,7 +459,7 @@ TYPED_TEST(SpatialStructureTest, CountsTouchingBoundsAndRejectsInvalidInput) {
     EXPECT_TRUE(ids.empty());
 
     std::vector<RayHit> hits;
-    structure.raycast(haylen::math::Ray2::between({0.0F, 5.0F}, {100.0F, 5.0F}), 0, hits);
+    structure.raycast(haylen::math::Ray2D::between({0.0F, 5.0F}, {100.0F, 5.0F}), 0, hits);
     ASSERT_EQ(hits.size(), 1U);
     EXPECT_EQ(hits[0].id, 8U);
     EXPECT_EQ(hits[0].normal, (haylen::math::Vec2{-1.0F, 0.0F}));

@@ -134,7 +134,7 @@ Vec3 Random::inCone(Vec3 axis, float angle) {
     return unit * cosine + (first * std::cos(turn) + second * std::sin(turn)) * sine;
 }
 
-Vec3 Random::inBox(const Box3& box) noexcept {
+Vec3 Random::inBox(const Box& box) noexcept {
     const float x = range(box.min.x, box.max.x);
     const float y = range(box.min.y, box.max.y);
     const float z = range(box.min.z, box.max.z);

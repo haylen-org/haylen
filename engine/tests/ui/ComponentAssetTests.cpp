@@ -17,7 +17,7 @@
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Event.hpp"
@@ -75,7 +75,7 @@ class ComponentAssetTest : public ::testing::Test, public test::ComponentFixture
                 }
 
                 current = quad.label.empty() ? current : std::string(quad.label);
-                const math::Rect bounds = math::Geometry2::bounds(quad.corners);
+                const math::Rect bounds = math::Geometry2D::bounds(quad.corners);
                 const auto found = drawn.find(current);
                 drawn.insert_or_assign(current, found == drawn.end() ? bounds : found->second.merged(bounds));
             });

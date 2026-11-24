@@ -26,9 +26,9 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/Viewport.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
-#include "haylen/math/Spline2.hpp"
+#include "haylen/math/Spline2D.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/Layout.hpp"
@@ -564,7 +564,7 @@ void Renderer::drawStroke(std::span<const math::Vec2> points, const Stroke& stro
     state->addMesh(used, state->strokes.getVertices(), state->strokes.getIndices(), order);
 }
 
-void Renderer::drawStroke(const math::Spline2& spline, const Stroke& stroke, const DrawOrder& order) {
+void Renderer::drawStroke(const math::Spline2D& spline, const Stroke& stroke, const DrawOrder& order) {
     if (!stroke.widths.empty() || !stroke.colors.empty()) {
         throw std::invalid_argument("A stroke along a spline takes one width and one color, without widths or colors for each point.");
     }
@@ -1120,7 +1120,7 @@ void Renderer::drawBounds(text::Font& font, math::Color color, float labelSize) 
     // clang-format off
     visitDrawn([&](const Drawn& drawn) {
         if (drawn.text) {
-            drawRectOutline(math::Geometry2::bounds(drawn.corners), unit, color.withAlpha(color.a * 0.6F), order);
+            drawRectOutline(math::Geometry2D::bounds(drawn.corners), unit, color.withAlpha(color.a * 0.6F), order);
             return;
         }
 
@@ -1157,7 +1157,7 @@ void Renderer::visitDrawn(const DrawnVisitor& visitor) const {
             const std::size_t step = item.program == Program::GradientText ? 2 : 1;
             math::Rect block = math::Rect::fromCenter(math::Vec2{state->instances[item.first].position[0], state->instances[item.first].position[1]}, {});
             for (std::size_t quad = item.first; quad < item.first + item.count; quad += step) {
-                block = block.merged(math::Geometry2::bounds(state->instances[quad].getCorners()));
+                block = block.merged(math::Geometry2D::bounds(state->instances[quad].getCorners()));
             }
 
             visitor({.corners = {block.getMin(), math::Vec2{block.getRight(), block.y}, block.getMax(), math::Vec2{block.x, block.getBottom()}}, .text = true});

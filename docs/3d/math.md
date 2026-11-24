@@ -119,19 +119,19 @@ A skinned mesh, whose vertices follow the joints of a skeleton, blends the place
 
 The shapes of 3D stand for the room that things take, and each suits its own task:
 
-- A `Box3` lines up with the axes. It is the cheapest shape to test, so it bounds models, levels and anything that culling and spatial searches sort.
+- A `Box` lines up with the axes. It is the cheapest shape to test, so it bounds models, levels and anything that culling and spatial searches sort.
 - An `Obb` is a box that turns with its object, such as a car or a crate, and fits it more tightly than a box along the axes.
 - A `Sphere` has no direction at all, so it suits blasts, ranges and objects that roll.
-- A `Capsule3` is a segment with a radius, the usual body of a character, since it slides along walls and steps over edges.
-- A `Triangle3` is a piece of a mesh, and a `Plane` is the ground or a wall without an end.
+- A `Capsule` is a segment with a radius, the usual body of a character, since it slides along walls and steps over edges.
+- A `Triangle` is a piece of a mesh, and a `Plane` is the ground or a wall without an end.
 
-A `Ray3` asks what lies along a line, such as what the player aims at or how far the ground is below a foot. Its cast returns the nearest hit with its distance, point and normal. A ray never slips between two triangles that share an edge, so a ray cast against a mesh finds the surface even through the seams of its triangles. The overlap tests answer whether two shapes touch, and the closest points tell where they come nearest.
+A `Ray3D` asks what lies along a line, such as what the player aims at or how far the ground is below a foot. Its cast returns the nearest hit with its distance, point and normal. A ray never slips between two triangles that share an edge, so a ray cast against a mesh finds the surface even through the seams of its triangles. The overlap tests answer whether two shapes touch, and the closest points tell where they come nearest.
 
 ```lua
 local m = require('haylen.math')
 
-local foot = m.ray3({3, 1, -2}, -m.up(), 2)
-local ground = m.triangle3({0, 0, 0}, {0, 0, -10}, {10, 0, 0})
+local foot = m.ray3d({3, 1, -2}, -m.up(), 2)
+local ground = m.triangle({0, 0, 0}, {0, 0, -10}, {10, 0, 0})
 local hit = foot:cast(ground)
 print(hit and hit.distance) -- 1.0, so the foot stands one meter above the ground
 ```
@@ -140,7 +140,7 @@ A `Frustum` is the space that a camera sees, which `m.frustum` builds from the v
 
 ## Curves
 
-A curve in 3D gives a smooth way through space from a few points, such as the rail of a coaster, the center of a road, a tube or the track that a camera follows. A `Spline3` holds one, and its kind decides how the points shape it:
+A curve in 3D gives a smooth way through space from a few points, such as the rail of a coaster, the center of a road, a tube or the track that a camera follows. A `Spline3D` holds one, and its kind decides how the points shape it:
 
 - A linear curve runs straight from point to point, for paths of corners.
 - A Catmull-Rom curve passes through every point, which suits paths that a person places by hand. Its `alpha` picks how it spaces itself between points: the centripetal default never loops or cusps inside a segment, while `0` and `1` give the uniform and the chordal curves, and its `tension` tightens it toward straight lines.
@@ -153,20 +153,20 @@ Every kind becomes a NURBS curve inside, so one exact evaluation gives the point
 ```lua
 local m = require('haylen.math')
 
-local track = m.spline3({{0, 0, 0}, {20, 4, -10}, {40, 0, -10}, {60, 2, 0}})
+local track = m.spline3d({{0, 0, 0}, {20, 4, -10}, {40, 0, -10}, {60, 2, 0}})
 local cart = track:pointAtDistance(25)
 local snapped = track:closestPoint({18, 6, -9})
 print(cart, snapped.distance)
 ```
 
-A tube, a ribbon or a camera on a rail needs more than the direction of travel: it needs a frame, which also says where up is along the way. The frames of `spline:frames` carry their normal along the curve by parallel transport, which turns it only as much as the curve turns, so a tube never twists on its own. A path of several curves, `CurvePath3`, walks them one after another as one length and tells how smoothly each pair joins, so a road made of straight pieces and bends keeps one distance from start to end.
+A tube, a ribbon or a camera on a rail needs more than the direction of travel: it needs a frame, which also says where up is along the way. The frames of `spline:frames` carry their normal along the curve by parallel transport, which turns it only as much as the curve turns, so a tube never twists on its own. A path of several curves, `CurvePath3D`, walks them one after another as one length and tells how smoothly each pair joins, so a road made of straight pieces and bends keeps one distance from start to end.
 
 ```lua
 local m = require('haylen.math')
 
-local straight = m.spline3({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
-local bend = m.spline3({{10, 0, 0}, {15, 0, 0}, {15, 0, -5}, {15, 0, -10}}, {kind = 'bezier'})
-local road = m.curvePath3({straight, bend})
+local straight = m.spline3d({{0, 0, 0}, {10, 0, 0}}, {kind = 'linear'})
+local bend = m.spline3d({{10, 0, 0}, {15, 0, 0}, {15, 0, -5}, {15, 0, -10}}, {kind = 'bezier'})
+local road = m.curvePath3d({straight, bend})
 for _, frame in ipairs(road:frames(12)) do
     print(frame.position, frame.normal)
 end
@@ -200,7 +200,7 @@ for index = 1, 20 do
     sparks[index] = random:inCone(m.up(), m.radians(25)) * random:range(4, 8)
 end
 
-local rocks = m.poissonDisk3d({volume = m.box3({0, 0, 0}, {40, 2, 40}), minimumDistance = 5, random = random})
+local rocks = m.poissonDisk3d({volume = m.box({0, 0, 0}, {40, 2, 40}), minimumDistance = 5, random = random})
 print(#sparks, #rocks > 0)
 ```
 

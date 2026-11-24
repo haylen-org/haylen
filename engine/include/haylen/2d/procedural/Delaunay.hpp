@@ -17,7 +17,7 @@ class Delaunay final {
     [[nodiscard]] const std::vector<math::Vec2>& getPoints() const noexcept {
         return points;
     }
-    // Returns three point indices per triangle, wound with a positive `Geometry2::signedArea`.
+    // Returns three point indices per triangle, wound with a positive `Geometry2D::signedArea`.
     [[nodiscard]] const std::vector<std::uint32_t>& getTriangles() const noexcept {
         return triangles;
     }

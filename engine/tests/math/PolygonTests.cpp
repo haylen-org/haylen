@@ -8,11 +8,11 @@
 #include <stdexcept>
 #include <vector>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/MarchingSquares.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Polygon.hpp"
-#include "haylen/math/Spline2.hpp"
+#include "haylen/math/Spline2D.hpp"
 
 namespace haylen::math {
 
@@ -34,7 +34,7 @@ class PolygonTest : public ::testing::Test {
     static float area(const std::vector<Polygon::Outline>& shape) {
         float total = 0.0F;
         for (const Polygon::Outline& outline : shape) {
-            total += Geometry2::signedArea(outline);
+            total += Geometry2D::signedArea(outline);
         }
 
         return total;
@@ -58,7 +58,7 @@ TEST_F(PolygonTest, ResultsWindOuterOutlinesPositiveAndHolesNegative) {
 
     const std::vector<Polygon::Outline> ring = Polygon::subtract(outer, inner);
     ASSERT_EQ(ring.size(), 2U);
-    EXPECT_EQ(std::count_if(ring.begin(), ring.end(), [](const Polygon::Outline& outline) { return Geometry2::signedArea(outline) > 0.0F; }), 1);
+    EXPECT_EQ(std::count_if(ring.begin(), ring.end(), [](const Polygon::Outline& outline) { return Geometry2D::signedArea(outline) > 0.0F; }), 1);
     EXPECT_NEAR(area(ring), 800.0F, 1e-3F);
 
     // A clockwise input fills the same area as a counter-clockwise one.
@@ -101,7 +101,7 @@ TEST_F(PolygonTest, SimplifyDropsPointsWithinTheTolerance) {
     dense.push_back({0.0F, 40.0F});
     const Polygon::Outline corners = Polygon::simplify(dense, 0.5F);
     EXPECT_EQ(corners.size(), 4U);
-    EXPECT_NEAR(std::fabs(Geometry2::signedArea(corners)), 1580.0F, 1e-3F);
+    EXPECT_NEAR(std::fabs(Geometry2D::signedArea(corners)), 1580.0F, 1e-3F);
 
     // An outline thinner than the tolerance still keeps three points, even when all its points are the same.
     EXPECT_EQ(Polygon::simplify(std::vector<Vec2>{{0.0F, 0.0F}, {10.0F, 0.1F}, {20.0F, 0.0F}, {10.0F, -0.1F}}, 1.0F).size(), 3U);
@@ -119,10 +119,10 @@ TEST_F(PolygonTest, DecompositionCoversTheShapeWithConvexPieces) {
     ASSERT_FALSE(pieces.empty());
     float total = 0.0F;
     for (const Polygon::Outline& piece : pieces) {
-        EXPECT_TRUE(Geometry2::isConvex(piece));
+        EXPECT_TRUE(Geometry2D::isConvex(piece));
         EXPECT_LE(piece.size(), 8U);
-        EXPECT_GT(Geometry2::signedArea(piece), 0.0F);
-        total += Geometry2::signedArea(piece);
+        EXPECT_GT(Geometry2D::signedArea(piece), 0.0F);
+        total += Geometry2D::signedArea(piece);
     }
 
     EXPECT_NEAR(total, Polygon::getArea(shape), 0.05F);
@@ -144,10 +144,10 @@ TEST(MarchingSquaresTest, TracesClosedOutlinesAroundAField) {
 
     const std::vector<std::vector<Vec2>> outlines = MarchingSquares::trace(field, 7, 7, {.threshold = 0.5F, .spacing = 2.0F, .origin = {10.0F, 0.0F}});
     ASSERT_EQ(outlines.size(), 1U);
-    EXPECT_GT(Geometry2::signedArea(outlines[0]), 0.0F);
+    EXPECT_GT(Geometry2D::signedArea(outlines[0]), 0.0F);
     // The outline runs halfway between inside and outside samples, cutting the corners diagonally.
-    EXPECT_NEAR(Geometry2::signedArea(outlines[0]), (9.0F - 0.5F) * 4.0F, 1e-3F);
-    const Rect bounds = Geometry2::bounds(outlines[0]);
+    EXPECT_NEAR(Geometry2D::signedArea(outlines[0]), (9.0F - 0.5F) * 4.0F, 1e-3F);
+    const Rect bounds = Geometry2D::bounds(outlines[0]);
     EXPECT_FLOAT_EQ(bounds.x, 13.0F);
     EXPECT_FLOAT_EQ(bounds.width, 6.0F);
 
@@ -171,8 +171,8 @@ TEST(MarchingSquaresTest, TracesHolesAndSeparateIslandsOfABitmap) {
     int holes = 0;
     float total = 0.0F;
     for (const std::vector<Vec2>& outline : outlines) {
-        holes += Geometry2::signedArea(outline) < 0.0F ? 1 : 0;
-        total += Geometry2::signedArea(outline);
+        holes += Geometry2D::signedArea(outline) < 0.0F ? 1 : 0;
+        total += Geometry2D::signedArea(outline);
         // Consecutive points never repeat, and the last point does not repeat the first.
         for (std::size_t index = 0; index < outline.size(); ++index) {
             EXPECT_NE(outline[index], outline[(index + 1) % outline.size()]);
@@ -197,30 +197,30 @@ TEST(MarchingSquaresTest, ClosesAreasAlongTheEdgeOfTheGrid) {
     const std::vector<float> full(16, 1.0F);
     const std::vector<std::vector<Vec2>> outlines = MarchingSquares::trace(full, 4, 4);
     ASSERT_EQ(outlines.size(), 1U);
-    EXPECT_NEAR(Geometry2::signedArea(outlines[0]), 9.0F, 1e-4F);
+    EXPECT_NEAR(Geometry2D::signedArea(outlines[0]), 9.0F, 1e-4F);
     EXPECT_TRUE(MarchingSquares::trace(std::vector<float>(16, 0.0F), 4, 4).empty());
 }
 
 TEST(SplineTest, CatmullRomPassesThroughItsPoints) {
-    const Spline2 spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
+    const Spline2D spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
     EXPECT_EQ(spline.getSegmentCount(), 3U);
     EXPECT_EQ(spline.getPoint(0.0F), Vec2(0.0F, 0.0F));
     EXPECT_NEAR(spline.getPoint(1.0F / 3.0F).x, 100.0F, 1e-3F);
     EXPECT_NEAR(spline.getPoint(1.0F).y, 100.0F, 1e-3F);
     EXPECT_GT(spline.getLength(), 300.0F);
 
-    const Spline2 loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2::Kind::CatmullRom, true);
+    const Spline2D loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2D::Kind::CatmullRom, true);
     EXPECT_EQ(loop.getSegmentCount(), 4U);
     EXPECT_NEAR(Vec2::distance(loop.getPoint(1.0F), loop.getPoint(0.0F)), 0.0F, 1e-3F);
 }
 
 TEST(SplineTest, AParameterThatIsNotANumberGivesAPointThatIsNotANumber) {
-    const Spline2 spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
+    const Spline2D spline({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}});
     EXPECT_TRUE(std::isnan(spline.getPoint(std::numeric_limits<float>::quiet_NaN()).x));
 }
 
 TEST(SplineTest, SamplesEvenlyByDistance) {
-    const Spline2 curve({{0.0F, 0.0F}, {50.0F, 80.0F}, {150.0F, -40.0F}, {200.0F, 30.0F}}, Spline2::Kind::Bezier);
+    const Spline2D curve({{0.0F, 0.0F}, {50.0F, 80.0F}, {150.0F, -40.0F}, {200.0F, 30.0F}}, Spline2D::Kind::Bezier);
     const std::vector<Vec2> points = curve.sampleByDistance(10.0F);
     ASSERT_GT(points.size(), 10U);
 
@@ -239,7 +239,7 @@ TEST(SplineTest, SamplesEvenlyByDistance) {
 }
 
 TEST(SplineTest, CurvesWithoutLengthStayAtTheirStart) {
-    const Spline2 dot({{0.0F, 0.0F}, {0.0F, 0.0F}});
+    const Spline2D dot({{0.0F, 0.0F}, {0.0F, 0.0F}});
     EXPECT_EQ(dot.getLength(), 0.0F);
     EXPECT_EQ(dot.getParameterAtDistance(10.0F), 0.0F);
     EXPECT_EQ(dot.sampleByDistance(1.0F), std::vector<Vec2>{Vec2{}});
@@ -247,7 +247,7 @@ TEST(SplineTest, CurvesWithoutLengthStayAtTheirStart) {
 
 // Flattening keeps every part of the curve within the tolerance of the lines between its points, spends points where the curve bends, and leaves a straight curve with the few points every segment splits into.
 TEST(SplineTest, FlattensWithinTheTolerance) {
-    const Spline2 curve({{0.0F, 0.0F}, {50.0F, 120.0F}, {150.0F, -80.0F}, {200.0F, 30.0F}}, Spline2::Kind::Bezier);
+    const Spline2D curve({{0.0F, 0.0F}, {50.0F, 120.0F}, {150.0F, -80.0F}, {200.0F, 30.0F}}, Spline2D::Kind::Bezier);
     std::vector<Vec2> fine;
     curve.flatten(0.25F, fine);
     EXPECT_EQ(fine.front(), curve.getPoint(0.0F));
@@ -256,7 +256,7 @@ TEST(SplineTest, FlattensWithinTheTolerance) {
     for (const Vec2 point : curve.sample(2000)) {
         float nearest = std::numeric_limits<float>::max();
         for (std::size_t index = 1; index < fine.size(); ++index) {
-            nearest = std::min(nearest, Geometry2::distanceToSegment({fine[index - 1], fine[index]}, point));
+            nearest = std::min(nearest, Geometry2D::distanceToSegment({fine[index - 1], fine[index]}, point));
         }
 
         EXPECT_LE(nearest, 0.3F);
@@ -267,26 +267,26 @@ TEST(SplineTest, FlattensWithinTheTolerance) {
     EXPECT_LT(coarse.size(), fine.size());
 
     std::vector<Vec2> straight;
-    Spline2({{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {30.0F, 0.0F}}, Spline2::Kind::Bezier).flatten(0.01F, straight);
+    Spline2D({{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}, {30.0F, 0.0F}}, Spline2D::Kind::Bezier).flatten(0.01F, straight);
     EXPECT_EQ(straight.size(), 5U);
 
     // A closed curve ends one step short of its start, which the stroke joins back.
     std::vector<Vec2> loop;
-    Spline2({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2::Kind::CatmullRom, true).flatten(0.5F, loop);
+    Spline2D({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2D::Kind::CatmullRom, true).flatten(0.5F, loop);
     EXPECT_GT(Vec2::distance(loop.back(), loop.front()), 0.0F);
     EXPECT_THROW(curve.flatten(0.0F, loop), std::invalid_argument);
 }
 
 // A closed Bezier curve takes 3n points and its last segment ends on the first point.
 TEST(SplineTest, ClosedBezierCurvesReturnToTheirFirstPoint) {
-    const Spline2 loop({{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}}, Spline2::Kind::Bezier, true);
+    const Spline2D loop({{0.0F, 0.0F}, {10.0F, 0.0F}, {10.0F, 10.0F}}, Spline2D::Kind::Bezier, true);
     EXPECT_EQ(loop.getSegmentCount(), 1U);
     EXPECT_EQ(loop.getPoint(0.5F), Vec2(7.5F, 3.75F));
-    EXPECT_THROW(Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 0.0F}}, Spline2::Kind::Bezier, true), std::invalid_argument);
+    EXPECT_THROW(Spline2D({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 0.0F}}, Spline2D::Kind::Bezier, true), std::invalid_argument);
 }
 
 TEST(SplineTest, ClosedCurvesKeepWrappedDistancesOnTheCurve) {
-    const Spline2 loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2::Kind::CatmullRom, true);
+    const Spline2D loop({{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}}, Spline2D::Kind::CatmullRom, true);
 
     // The tiniest negative distance wraps to a remainder that rounds just below zero.
     const float parameter = loop.getParameterAtDistance(-std::numeric_limits<float>::denorm_min());
@@ -295,7 +295,7 @@ TEST(SplineTest, ClosedCurvesKeepWrappedDistancesOnTheCurve) {
 }
 
 TEST(SplineTest, BSplineReachesItsEndsAndSmoothsBetween) {
-    const Spline2 spline({{0.0F, 0.0F}, {10.0F, 10.0F}, {20.0F, 0.0F}}, Spline2::Kind::BSpline);
+    const Spline2D spline({{0.0F, 0.0F}, {10.0F, 10.0F}, {20.0F, 0.0F}}, Spline2D::Kind::BSpline);
     EXPECT_EQ(spline.getSegmentCount(), 4U);
     EXPECT_NEAR(Vec2::distance(spline.getPoint(0.0F), {0.0F, 0.0F}), 0.0F, 1e-4F);
     EXPECT_NEAR(Vec2::distance(spline.getPoint(1.0F), {20.0F, 0.0F}), 0.0F, 1e-4F);
@@ -305,16 +305,16 @@ TEST(SplineTest, BSplineReachesItsEndsAndSmoothsBetween) {
 }
 
 TEST(SplineTest, RejectsWrongPointCounts) {
-    EXPECT_THROW(Spline2({{0.0F, 0.0F}}), std::invalid_argument);
-    EXPECT_THROW(Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, Spline2::Kind::Bezier), std::invalid_argument);
-    EXPECT_THROW(Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}}, Spline2::Kind::BSpline, true), std::invalid_argument);
-    EXPECT_THROW((void)Spline2({{0.0F, 0.0F}, {1.0F, 0.0F}}).sampleByDistance(0.0F), std::invalid_argument);
-    EXPECT_EQ(Spline2::kindFromName("bSpline"), Spline2::Kind::BSpline);
-    EXPECT_EQ(Spline2::kindName(Spline2::Kind::CatmullRom), "catmullRom");
+    EXPECT_THROW(Spline2D({{0.0F, 0.0F}}), std::invalid_argument);
+    EXPECT_THROW(Spline2D({{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}, Spline2D::Kind::Bezier), std::invalid_argument);
+    EXPECT_THROW(Spline2D({{0.0F, 0.0F}, {1.0F, 0.0F}}, Spline2D::Kind::BSpline, true), std::invalid_argument);
+    EXPECT_THROW((void)Spline2D({{0.0F, 0.0F}, {1.0F, 0.0F}}).sampleByDistance(0.0F), std::invalid_argument);
+    EXPECT_EQ(Spline2D::kindFromName("bSpline"), Spline2D::Kind::BSpline);
+    EXPECT_EQ(Spline2D::kindName(Spline2D::Kind::CatmullRom), "catmullRom");
 }
 
 TEST(SplineTest, RefusesToSampleMorePointsThanItsBound) {
-    const Spline2 line({{0.0F, 0.0F}, {1.0F, 0.0F}});
+    const Spline2D line({{0.0F, 0.0F}, {1.0F, 0.0F}});
     EXPECT_THROW((void)line.sample(16777217), std::invalid_argument);
 }
 

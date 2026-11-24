@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "haylen/2d/spatial/AabbTree.hpp"
-#include "haylen/math/Segment2.hpp"
+#include "haylen/math/Segment2D.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::navigation2d {
@@ -94,7 +94,7 @@ class NavMesh final {
     [[nodiscard]] static math::Vec2 tangentDirection(math::Vec2 from, math::Vec2 to, float offset);
 
     // These add the points where a segment or a second circle crosses the circle of the radius around the center.
-    static void addCrossings(const math::Segment2& piece, math::Vec2 center, float radius, std::vector<math::Vec2>& crossings);
+    static void addCrossings(const math::Segment2D& piece, math::Vec2 center, float radius, std::vector<math::Vec2>& crossings);
     static void addCrossings(math::Vec2 center, math::Vec2 other, float radius, std::vector<math::Vec2>& crossings);
 
     void ensureBuilt();
@@ -129,14 +129,14 @@ class NavMesh final {
     std::uint32_t nextObstacle = 1;
     bool dirty = true;
 
-    std::vector<math::Segment2> segments;
+    std::vector<math::Segment2D> segments;
     std::vector<math::Vec2> vertices;
     std::vector<Triangle> triangles;
-    std::vector<math::Segment2> walls;
+    std::vector<math::Segment2D> walls;
     spatial2d::AabbTree triangleIndex;
     std::vector<std::uint64_t> candidates;
-    std::vector<math::Segment2> nearWalls;
-    std::vector<math::Segment2> offsets;
+    std::vector<math::Segment2D> nearWalls;
+    std::vector<math::Segment2D> offsets;
     std::vector<math::Vec2> spots;
 
     std::vector<float> scores;

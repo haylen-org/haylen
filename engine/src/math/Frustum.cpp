@@ -72,7 +72,7 @@ Frustum::Containment Frustum::classify(const Sphere& sphere, float tolerance) co
     return classify(sphere.center, {}, sphere.radius, tolerance);
 }
 
-Frustum::Containment Frustum::classify(const Box3& box, float tolerance) const noexcept {
+Frustum::Containment Frustum::classify(const Box& box, float tolerance) const noexcept {
     return classify(box.getCenter(), box.getHalfExtents(), 0.0F, tolerance);
 }
 

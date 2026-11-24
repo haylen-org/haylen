@@ -34,13 +34,13 @@ class MarchingSquares::Tracer final {
         Left,
     };
 
-    struct Segment2 {
+    struct Segment2D {
         Edge from;
         Edge to;
     };
 
     // The segments of each corner case, with the top left corner as bit 8, top right 4, bottom right 2 and bottom left 1, oriented so the inside lies on their left. Saddle cases 5 and 10 list the variant whose center is outside.
-    static constexpr std::array<std::array<Segment2, 2>, 16> kSegments{{
+    static constexpr std::array<std::array<Segment2D, 2>, 16> kSegments{{
         {},
         {{{Left, Bottom}}},
         {{{Bottom, Right}}},
@@ -59,8 +59,8 @@ class MarchingSquares::Tracer final {
         {},
     }};
     static constexpr std::array<std::uint8_t, 16> kSegmentCounts{0, 1, 1, 1, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1, 1, 0};
-    static constexpr std::array<Segment2, 2> kConnectedFive{{{Left, Top}, {Right, Bottom}}};
-    static constexpr std::array<Segment2, 2> kConnectedTen{{{Top, Right}, {Bottom, Left}}};
+    static constexpr std::array<Segment2D, 2> kConnectedFive{{{Left, Top}, {Right, Bottom}}};
+    static constexpr std::array<Segment2D, 2> kConnectedTen{{{Top, Right}, {Bottom, Left}}};
 
     [[nodiscard]] static std::size_t edgeCount(int columns, int rows) {
         const auto count = static_cast<std::size_t>(columns + 2) * static_cast<std::size_t>(rows + 2) * 2;
@@ -129,7 +129,7 @@ class MarchingSquares::Tracer final {
     void march(int column, int row) {
         const int corners = (isInside(column, row) ? 8 : 0) | (isInside(column + 1, row) ? 4 : 0) | (isInside(column + 1, row + 1) ? 2 : 0) | (isInside(column, row + 1) ? 1 : 0);
         const auto index = static_cast<std::size_t>(corners);
-        std::array<Segment2, 2> segments = kSegments[index];
+        std::array<Segment2D, 2> segments = kSegments[index];
         if ((corners == 5 || corners == 10) && isCenterInside(column, row)) {
             segments = corners == 5 ? kConnectedFive : kConnectedTen;
         }

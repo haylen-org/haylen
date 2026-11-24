@@ -1,4 +1,4 @@
-#include "haylen/math/Geometry3.hpp"
+#include "haylen/math/Geometry3D.hpp"
 
 #include <algorithm>
 #include <array>
@@ -10,7 +10,7 @@
 namespace haylen::math {
 
 // Turns the ray into a space where it runs along z and tests on which side of each edge it passes, which gives two triangles that share an edge the same answer for a ray through that edge. Edge tests that land on exactly zero are redone in double precision, where rounding cannot flip their sign.
-std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Triangle3& triangle) noexcept {
+std::optional<RayHit3D> Geometry3D::raycast(const Ray3D& ray, const Triangle& triangle) noexcept {
     const std::array<float, 3> direction{ray.direction.x, ray.direction.y, ray.direction.z};
     std::size_t kz = 0;
     for (std::size_t axis = 1; axis < 3; ++axis) {
@@ -67,13 +67,13 @@ std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Triangle3& tria
     }
 
     const Vec3 normal = Vec3::cross(triangle.b - triangle.a, triangle.c - triangle.a).getNormalized();
-    return RayHit3{distance, ray.at(distance), Vec3::dot(normal, ray.direction) > 0.0F ? -normal : normal};
+    return RayHit3D{distance, ray.at(distance), Vec3::dot(normal, ray.direction) > 0.0F ? -normal : normal};
 }
 
 // Cuts the ray by the pair of planes of each axis and keeps the part inside all three, whose start is the hit.
-std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Box3& box) noexcept {
+std::optional<RayHit3D> Geometry3D::raycast(const Ray3D& ray, const Box& box) noexcept {
     if (box.contains(ray.origin)) {
-        return RayHit3{0.0F, ray.origin, {}};
+        return RayHit3D{0.0F, ray.origin, {}};
     }
 
     const std::array<float, 3> origin{ray.origin.x, ray.origin.y, ray.origin.z};
@@ -111,27 +111,27 @@ std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Box3& box) noex
 
     std::array<float, 3> normal{};
     normal[enterAxis] = direction[enterAxis] > 0.0F ? -1.0F : 1.0F;
-    return RayHit3{enter, ray.at(enter), {normal[0], normal[1], normal[2]}};
+    return RayHit3D{enter, ray.at(enter), {normal[0], normal[1], normal[2]}};
 }
 
 // Casts in the space of the box, where it is a box along the axes, and turns the hit back.
-std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Obb& box) noexcept {
+std::optional<RayHit3D> Geometry3D::raycast(const Ray3D& ray, const Obb& box) noexcept {
     const Quat back{-box.rotation.x, -box.rotation.y, -box.rotation.z, box.rotation.w};
-    const Ray3 local{back.rotate(ray.origin - box.center), back.rotate(ray.direction), ray.length};
-    const std::optional<RayHit3> hit = raycast(local, Box3{-box.halfExtents, box.halfExtents});
+    const Ray3D local{back.rotate(ray.origin - box.center), back.rotate(ray.direction), ray.length};
+    const std::optional<RayHit3D> hit = raycast(local, Box{-box.halfExtents, box.halfExtents});
     if (!hit) {
         return std::nullopt;
     }
 
-    return RayHit3{hit->distance, ray.at(hit->distance), box.rotation.rotate(hit->normal)};
+    return RayHit3D{hit->distance, ray.at(hit->distance), box.rotation.rotate(hit->normal)};
 }
 
-std::optional<RayHit3> Geometry3::raycastSphere(const Ray3& ray, Vec3 center, float radius) noexcept {
+std::optional<RayHit3D> Geometry3D::raycastSphere(const Ray3D& ray, Vec3 center, float radius) noexcept {
     const Vec3 offset = ray.origin - center;
     const float along = Vec3::dot(offset, ray.direction);
     const float outside = offset.getLengthSquared() - radius * radius;
     if (outside <= 0.0F) {
-        return RayHit3{0.0F, ray.origin, {}};
+        return RayHit3D{0.0F, ray.origin, {}};
     }
 
     const float discriminant = along * along - outside;
@@ -145,14 +145,14 @@ std::optional<RayHit3> Geometry3::raycastSphere(const Ray3& ray, Vec3 center, fl
     }
 
     const Vec3 point = ray.at(distance);
-    return RayHit3{distance, point, (point - center) / radius};
+    return RayHit3D{distance, point, (point - center) / radius};
 }
 
-std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Sphere& sphere) noexcept {
+std::optional<RayHit3D> Geometry3D::raycast(const Ray3D& ray, const Sphere& sphere) noexcept {
     return raycastSphere(ray, sphere.center, sphere.radius);
 }
 
-std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Plane& plane) noexcept {
+std::optional<RayHit3D> Geometry3D::raycast(const Ray3D& ray, const Plane& plane) noexcept {
     const float facing = Vec3::dot(plane.normal, ray.direction);
     if (std::fabs(facing) < kParallel) {
         return std::nullopt;
@@ -163,17 +163,17 @@ std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Plane& plane) n
         return std::nullopt;
     }
 
-    return RayHit3{distance, ray.at(distance), facing < 0.0F ? plane.normal : -plane.normal};
+    return RayHit3D{distance, ray.at(distance), facing < 0.0F ? plane.normal : -plane.normal};
 }
 
 // Takes the nearest of the hits on the side of the capsule, a cylinder around its axis, and on the spheres at its ends.
-std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Capsule3& capsule) noexcept {
+std::optional<RayHit3D> Geometry3D::raycast(const Ray3D& ray, const Capsule& capsule) noexcept {
     if (capsule.contains(ray.origin)) {
-        return RayHit3{0.0F, ray.origin, {}};
+        return RayHit3D{0.0F, ray.origin, {}};
     }
 
-    std::optional<RayHit3> nearest = raycastSphere(ray, capsule.start, capsule.radius);
-    const std::optional<RayHit3> endHit = raycastSphere(ray, capsule.end, capsule.radius);
+    std::optional<RayHit3D> nearest = raycastSphere(ray, capsule.start, capsule.radius);
+    const std::optional<RayHit3D> endHit = raycastSphere(ray, capsule.end, capsule.radius);
     if (endHit && (!nearest || endHit->distance < nearest->distance)) {
         nearest = endHit;
     }
@@ -203,11 +203,11 @@ std::optional<RayHit3> Geometry3::raycast(const Ray3& ray, const Capsule3& capsu
 
     const Vec3 point = ray.at(distance);
     const Vec3 onAxis = capsule.start + axis * (height / axisSquared);
-    return RayHit3{distance, point, (point - onAxis) / capsule.radius};
+    return RayHit3D{distance, point, (point - onAxis) / capsule.radius};
 }
 
 // Projects both boxes on the three axes of each box and the nine cross products of their axes. A tiny amount added to the products of parallel axes keeps their cross products, which are near zero, from separating boxes by rounding.
-bool Geometry3::intersects(const Obb& lhs, const Obb& rhs) noexcept {
+bool Geometry3D::intersects(const Obb& lhs, const Obb& rhs) noexcept {
     const Mat3 lhsAxes = lhs.getAxes();
     const Mat3 rhsAxes = rhs.getAxes();
     const std::array<float, 3> lhsExtents{lhs.halfExtents.x, lhs.halfExtents.y, lhs.halfExtents.z};
@@ -259,7 +259,7 @@ bool Geometry3::intersects(const Obb& lhs, const Obb& rhs) noexcept {
 }
 
 // Minimizes the distance between a point of each segment, clamping the parameter of each to the segment, and handles segments of zero length as points.
-std::pair<Vec3, Vec3> Geometry3::closestPoints(const Segment3& lhs, const Segment3& rhs) noexcept {
+std::pair<Vec3, Vec3> Geometry3D::closestPoints(const Segment3D& lhs, const Segment3D& rhs) noexcept {
     const Vec3 first = lhs.end - lhs.start;
     const Vec3 second = rhs.end - rhs.start;
     const Vec3 offset = lhs.start - rhs.start;

@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "haylen/math/Rect.hpp"
-#include "haylen/math/Segment2.hpp"
+#include "haylen/math/Segment2D.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::spatial2d {
@@ -13,7 +13,7 @@ namespace haylen::spatial2d {
 class VisibilityPolygon final {
   public:
     // Returns the outline of the area visible from the origin, clipped to the bounds, as points in order of increasing angle from -pi. The points stay valid until the next call. Throws `std::invalid_argument` when a wall or the bounds are not finite or the origin lies outside the bounds.
-    const std::vector<math::Vec2>& compute(math::Vec2 origin, std::span<const math::Segment2> walls, const math::Rect& bounds);
+    const std::vector<math::Vec2>& compute(math::Vec2 origin, std::span<const math::Segment2D> walls, const math::Rect& bounds);
 
   private:
     // Rays pass this far on each side of every wall corner, so they reach past corners that do not block them.
@@ -21,7 +21,7 @@ class VisibilityPolygon final {
 
     [[nodiscard]] static bool isFinite(math::Vec2 point) noexcept;
 
-    std::vector<math::Segment2> segments;
+    std::vector<math::Segment2D> segments;
     std::vector<float> angles;
     std::vector<math::Vec2> points;
 };

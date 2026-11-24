@@ -21,7 +21,7 @@
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Image.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/DrawingScene.hpp"
@@ -679,7 +679,7 @@ TEST(MapRendererTest, BuildsCollisionBodies) {
     for (const haylen::physics2d::Shape::Outline& outline : outlines) {
         EXPECT_TRUE(outline.closed);
         EXPECT_EQ(outline.points.size(), 4U);
-        EXPECT_GT(haylen::math::Geometry2::signedArea(outline.points), 0.0F);
+        EXPECT_GT(haylen::math::Geometry2D::signedArea(outline.points), 0.0F);
     }
 
     EXPECT_NEAR(test::Physics2DHelper::requireHit(world.raycast({24.0F, -10.0F}, {24.0F, 30.0F})).point.y, 0.0F, 0.01F);

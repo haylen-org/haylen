@@ -147,14 +147,14 @@ void ConstrainedTriangulation::intersect(std::size_t first, std::size_t second) 
     }
 }
 
-void ConstrainedTriangulation::prepare(std::span<const math::Segment2> segments) {
+void ConstrainedTriangulation::prepare(std::span<const math::Segment2D> segments) {
     points.clear();
     pieces.clear();
     constraints.clear();
     weldIndex.clear();
 
     double extent = 1.0;
-    for (const math::Segment2& segment : segments) {
+    for (const math::Segment2D& segment : segments) {
         for (const math::Vec2 end : {segment.start, segment.end}) {
             extent = std::max({extent, std::fabs(static_cast<double>(end.x)), std::fabs(static_cast<double>(end.y))});
         }
@@ -162,7 +162,7 @@ void ConstrainedTriangulation::prepare(std::span<const math::Segment2> segments)
 
     tolerance = extent * 1e-6;
 
-    for (const math::Segment2& segment : segments) {
+    for (const math::Segment2D& segment : segments) {
         const std::int32_t start = weld({segment.start.x, segment.start.y});
         const std::int32_t end = weld({segment.end.x, segment.end.y});
         if (start != end) {
@@ -758,7 +758,7 @@ void ConstrainedTriangulation::finish() {
     triangles = std::move(output);
 }
 
-void ConstrainedTriangulation::build(std::span<const math::Segment2> segments, const std::function<bool(math::Vec2)>& keeps) {
+void ConstrainedTriangulation::build(std::span<const math::Segment2D> segments, const std::function<bool(math::Vec2)>& keeps) {
     triangles.clear();
     vertices.clear();
     prepare(segments);

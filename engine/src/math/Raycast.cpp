@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::math {
 
@@ -13,7 +13,7 @@ Vec2 Raycast::facingNormal(Vec2 edge, Vec2 direction) noexcept {
     return Vec2::dot(normal, direction) > 0.0F ? -normal : normal;
 }
 
-std::optional<float> Raycast::crossing(const Ray2& ray, Vec2 start, Vec2 end) noexcept {
+std::optional<float> Raycast::crossing(const Ray2D& ray, Vec2 start, Vec2 end) noexcept {
     const Vec2 edge = end - start;
     const float denominator = Vec2::cross(ray.direction, edge);
     if (std::fabs(denominator) <= 1e-9F) {
@@ -31,7 +31,7 @@ std::optional<float> Raycast::crossing(const Ray2& ray, Vec2 start, Vec2 end) no
     return distance;
 }
 
-std::optional<std::array<float, 2>> Raycast::clip(const Ray2& ray, const Rect& area) noexcept {
+std::optional<std::array<float, 2>> Raycast::clip(const Ray2D& ray, const Rect& area) noexcept {
     float enter = 0.0F;
     float exit = ray.length;
     for (float Vec2::* axis : {&Vec2::x, &Vec2::y}) {
@@ -58,16 +58,16 @@ std::optional<std::array<float, 2>> Raycast::clip(const Ray2& ray, const Rect& a
     return std::array<float, 2>{enter, exit};
 }
 
-std::optional<RayHit2> Raycast::segment(const Ray2& ray, const Segment2& target) noexcept {
+std::optional<RayHit2D> Raycast::segment(const Ray2D& ray, const Segment2D& target) noexcept {
     const std::optional<float> distance = crossing(ray, target.start, target.end);
     if (!distance) {
         return std::nullopt;
     }
 
-    return RayHit2{.point = ray.at(*distance), .normal = facingNormal(target.end - target.start, ray.direction), .distance = *distance};
+    return RayHit2D{.point = ray.at(*distance), .normal = facingNormal(target.end - target.start, ray.direction), .distance = *distance};
 }
 
-std::optional<RayHit2> Raycast::rect(const Ray2& ray, const Rect& target) noexcept {
+std::optional<RayHit2D> Raycast::rect(const Ray2D& ray, const Rect& target) noexcept {
     const Vec2 minimum = target.getMin();
     const Vec2 maximum = target.getMax();
     float enter = -std::numeric_limits<float>::infinity();
@@ -103,17 +103,17 @@ std::optional<RayHit2> Raycast::rect(const Ray2& ray, const Rect& target) noexce
     }
 
     if (enter < 0.0F) {
-        return RayHit2{.point = ray.origin};
+        return RayHit2D{.point = ray.origin};
     }
 
-    return RayHit2{.point = ray.at(enter), .normal = normal, .distance = enter};
+    return RayHit2D{.point = ray.at(enter), .normal = normal, .distance = enter};
 }
 
-std::optional<RayHit2> Raycast::circle(const Ray2& ray, const Circle& target) noexcept {
+std::optional<RayHit2D> Raycast::circle(const Ray2D& ray, const Circle& target) noexcept {
     const Vec2 offset = ray.origin - target.center;
     const float outside = offset.getLengthSquared() - target.radius * target.radius;
     if (outside <= 0.0F) {
-        return RayHit2{.point = ray.origin};
+        return RayHit2D{.point = ray.origin};
     }
 
     const float along = Vec2::dot(offset, ray.direction);
@@ -130,63 +130,63 @@ std::optional<RayHit2> Raycast::circle(const Ray2& ray, const Circle& target) no
     // A circle without a radius is a point, which faces the ray that strikes it.
     const Vec2 point = ray.at(distance);
     const Vec2 outward = point - target.center;
-    return RayHit2{.point = point, .normal = outward.isZero() ? -ray.direction : outward.getNormalized(), .distance = distance};
+    return RayHit2D{.point = point, .normal = outward.isZero() ? -ray.direction : outward.getNormalized(), .distance = distance};
 }
 
-std::optional<RayHit2> Raycast::polygon(const Ray2& ray, std::span<const Vec2> points) noexcept {
+std::optional<RayHit2D> Raycast::polygon(const Ray2D& ray, std::span<const Vec2> points) noexcept {
     if (points.size() < 3) {
         return std::nullopt;
     }
 
-    if (Geometry2::contains(points, ray.origin)) {
-        return RayHit2{.point = ray.origin};
+    if (Geometry2D::contains(points, ray.origin)) {
+        return RayHit2D{.point = ray.origin};
     }
 
     return chain(ray, points, true);
 }
 
-std::optional<RayHit2> Raycast::chain(const Ray2& ray, std::span<const Vec2> points, bool loop) noexcept {
+std::optional<RayHit2D> Raycast::chain(const Ray2D& ray, std::span<const Vec2> points, bool loop) noexcept {
     if (points.size() < 2) {
         return std::nullopt;
     }
 
     const std::size_t edges = loop ? points.size() : points.size() - 1;
-    std::optional<RayHit2> closest;
+    std::optional<RayHit2D> closest;
     for (std::size_t index = 0; index < edges; ++index) {
         const Vec2 start = points[index];
         const Vec2 end = points[(index + 1) % points.size()];
         const std::optional<float> distance = crossing(ray, start, end);
         if (distance && (!closest || *distance < closest->distance)) {
-            closest = RayHit2{.point = ray.at(*distance), .normal = facingNormal(end - start, ray.direction), .distance = *distance, .index = index};
+            closest = RayHit2D{.point = ray.at(*distance), .normal = facingNormal(end - start, ray.direction), .distance = *distance, .index = index};
         }
     }
 
     return closest;
 }
 
-std::optional<RayHit2> Raycast::segments(const Ray2& ray, std::span<const Segment2> targets) noexcept {
-    std::optional<RayHit2> closest;
+std::optional<RayHit2D> Raycast::segments(const Ray2D& ray, std::span<const Segment2D> targets) noexcept {
+    std::optional<RayHit2D> closest;
     for (std::size_t index = 0; index < targets.size(); ++index) {
-        const Segment2& target = targets[index];
+        const Segment2D& target = targets[index];
         const std::optional<float> distance = crossing(ray, target.start, target.end);
         if (distance && (!closest || *distance < closest->distance)) {
-            closest = RayHit2{.point = ray.at(*distance), .normal = facingNormal(target.end - target.start, ray.direction), .distance = *distance, .index = index};
+            closest = RayHit2D{.point = ray.at(*distance), .normal = facingNormal(target.end - target.start, ray.direction), .distance = *distance, .index = index};
         }
     }
 
     return closest;
 }
 
-void Raycast::segmentsAll(const Ray2& ray, std::span<const Segment2> targets, std::size_t limit, std::vector<RayHit2>& hits) {
+void Raycast::segmentsAll(const Ray2D& ray, std::span<const Segment2D> targets, std::size_t limit, std::vector<RayHit2D>& hits) {
     hits.clear();
     for (std::size_t index = 0; index < targets.size(); ++index) {
-        const Segment2& target = targets[index];
+        const Segment2D& target = targets[index];
         if (const std::optional<float> distance = crossing(ray, target.start, target.end)) {
             hits.push_back({.point = ray.at(*distance), .normal = facingNormal(target.end - target.start, ray.direction), .distance = *distance, .index = index});
         }
     }
 
-    std::ranges::sort(hits, [](const RayHit2& lhs, const RayHit2& rhs) { return lhs.distance != rhs.distance ? lhs.distance < rhs.distance : lhs.index < rhs.index; });
+    std::ranges::sort(hits, [](const RayHit2D& lhs, const RayHit2D& rhs) { return lhs.distance != rhs.distance ? lhs.distance < rhs.distance : lhs.index < rhs.index; });
 
     if (limit > 0 && hits.size() > limit) {
         hits.resize(limit);

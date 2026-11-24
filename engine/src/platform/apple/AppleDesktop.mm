@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
@@ -223,7 +223,7 @@ void AppleDesktop::update() {
 }
 
 bool AppleDesktop::isOverRegion(math::Vec2 pixel) {
-    return std::ranges::any_of(regions, [pixel](const math::Polygon::Outline& region) { return math::Geometry2::contains(region, pixel); });
+    return std::ranges::any_of(regions, [pixel](const math::Polygon::Outline& region) { return math::Geometry2D::contains(region, pixel); });
 }
 
 void AppleDesktop::followPointer(math::Vec2 pixel, bool inside) {

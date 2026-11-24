@@ -8,7 +8,7 @@
 #include <string_view>
 #include <utility>
 
-#include "haylen/math/Box3.hpp"
+#include "haylen/math/Box.hpp"
 #include "haylen/math/Mat4.hpp"
 #include "haylen/math/Plane.hpp"
 #include "haylen/math/Sphere.hpp"
@@ -43,7 +43,7 @@ class Frustum final {
 
     // Tells whether a shape lies wholly inside, crosses a plane or lies wholly outside. The test never calls a shape outside that reaches inside, while a box near a corner of the frustum may count as crossing though it lies outside.
     [[nodiscard]] Containment classify(const Sphere& sphere, float tolerance = kTolerance) const noexcept;
-    [[nodiscard]] Containment classify(const Box3& box, float tolerance = kTolerance) const noexcept;
+    [[nodiscard]] Containment classify(const Box& box, float tolerance = kTolerance) const noexcept;
 
   private:
     static const std::array<std::pair<std::string_view, Containment>, 3> kContainmentNames;

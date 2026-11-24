@@ -5,10 +5,10 @@
 #include <limits>
 #include <stdexcept>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Random.hpp"
-#include "haylen/math/Segment2.hpp"
+#include "haylen/math/Segment2D.hpp"
 
 namespace haylen::procedural2d {
 
@@ -205,12 +205,12 @@ class Placement::Placer final {
         if (first.circle || second.circle) {
             const Solid& round = first.circle ? first : second;
             const std::span<const math::Vec2> outline = getPoints(first.circle ? second : first);
-            return !math::Geometry2::contains(outline, round.center) && getDistance(outline, round.center) >= round.radius + gap;
+            return !math::Geometry2D::contains(outline, round.center) && getDistance(outline, round.center) >= round.radius + gap;
         }
 
         const std::span<const math::Vec2> lhs = getPoints(first);
         const std::span<const math::Vec2> rhs = getPoints(second);
-        if (math::Geometry2::contains(lhs, rhs.front()) || math::Geometry2::contains(rhs, lhs.front()) || crosses(lhs, rhs)) {
+        if (math::Geometry2D::contains(lhs, rhs.front()) || math::Geometry2D::contains(rhs, lhs.front()) || crosses(lhs, rhs)) {
             return false;
         }
 
@@ -220,7 +220,7 @@ class Placement::Placer final {
     [[nodiscard]] static float getDistance(std::span<const math::Vec2> outline, math::Vec2 point) noexcept {
         float nearest = std::numeric_limits<float>::infinity();
         for (std::size_t index = 0; index < outline.size(); ++index) {
-            nearest = std::min(nearest, math::Geometry2::distanceToSegment({outline[index], outline[(index + 1) % outline.size()]}, point));
+            nearest = std::min(nearest, math::Geometry2D::distanceToSegment({outline[index], outline[(index + 1) % outline.size()]}, point));
         }
 
         return nearest;
@@ -228,9 +228,9 @@ class Placement::Placer final {
 
     [[nodiscard]] static bool crosses(std::span<const math::Vec2> lhs, std::span<const math::Vec2> rhs) noexcept {
         for (std::size_t first = 0; first < lhs.size(); ++first) {
-            const math::Segment2 edge{lhs[first], lhs[(first + 1) % lhs.size()]};
+            const math::Segment2D edge{lhs[first], lhs[(first + 1) % lhs.size()]};
             for (std::size_t second = 0; second < rhs.size(); ++second) {
-                if (math::Geometry2::intersection(edge, {rhs[second], rhs[(second + 1) % rhs.size()]})) {
+                if (math::Geometry2D::intersection(edge, {rhs[second], rhs[(second + 1) % rhs.size()]})) {
                     return true;
                 }
             }
@@ -284,7 +284,7 @@ void Placement::validateShape(const Shape& shape) {
         sized = shape.size.x > 0.0F && shape.size.y > 0.0F && std::isfinite(shape.size.x) && std::isfinite(shape.size.y);
         break;
     case Shape::Kind::Polygon:
-        sized = shape.points.size() >= 3 && math::Geometry2::signedArea(shape.points) != 0.0F;
+        sized = shape.points.size() >= 3 && math::Geometry2D::signedArea(shape.points) != 0.0F;
         break;
     }
 

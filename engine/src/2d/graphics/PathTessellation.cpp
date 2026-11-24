@@ -10,7 +10,7 @@
 #include "2d/graphics/PolygonMesh.hpp"
 #include "2d/graphics/StrokeBuilder.hpp"
 #include "haylen/math/Color.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::graphics2d {
 
@@ -67,7 +67,7 @@ void PathTessellation::buildFill(FillBuild& fill, float pixel, PolygonMesh& poly
         return;
     }
 
-    const math::Rect bounds = math::Geometry2::bounds(outlines.points);
+    const math::Rect bounds = math::Geometry2D::bounds(outlines.points);
     const double extent = std::max({std::fabs(static_cast<double>(bounds.getLeft())), std::fabs(static_cast<double>(bounds.getRight())), std::fabs(static_cast<double>(bounds.getTop())), std::fabs(static_cast<double>(bounds.getBottom())), 1.0});
     const double scale = std::min(kGridSteps / static_cast<double>(pixel), kGridLimit / extent);
     resolveOutlines(outlines, fill.rule, scale);

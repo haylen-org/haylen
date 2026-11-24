@@ -10,7 +10,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::math {
 
@@ -395,7 +395,7 @@ std::vector<Polygon::Outline> Polygon::decompose(std::span<const Outline> shape,
 float Polygon::getArea(std::span<const Outline> shape) {
     float area = 0.0F;
     for (const Outline& outline : unite(shape)) {
-        area += Geometry2::signedArea(outline);
+        area += Geometry2D::signedArea(outline);
     }
 
     return area;

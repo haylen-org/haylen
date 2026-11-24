@@ -7,7 +7,7 @@
 #include <string>
 
 #include "haylen/core/JobSystem.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 
 namespace haylen::navigation2d {
 
@@ -121,7 +121,7 @@ void Crowd::addObstacle(std::span<const math::Vec2> polygon) {
     }
 
     // The solver expects solid outlines with a positive signed area, whose outside lies to the right of every edge.
-    if (points.size() > 2 && math::Geometry2::signedArea(points) < 0.0F) {
+    if (points.size() > 2 && math::Geometry2D::signedArea(points) < 0.0F) {
         std::ranges::reverse(points);
     }
 

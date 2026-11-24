@@ -12,7 +12,7 @@ namespace haylen::math {
 // The algorithm of Bridson in three dimensions: a grid whose cells hold at most one sample, a seed point, and new points tried in the shell between one and two distances around a random active point until none fits.
 std::vector<Vec3> PoissonDisk3D::sample(const Options& options, Random& random) {
     std::vector<Vec3> samples;
-    const Box3& volume = options.volume;
+    const Box& volume = options.volume;
     if (!std::isfinite(options.minimumDistance) || !volume.min.isFinite() || !volume.max.isFinite()) {
         throw std::invalid_argument("Poisson sampling in 3D needs a finite distance and a box whose sides are finite.");
     }

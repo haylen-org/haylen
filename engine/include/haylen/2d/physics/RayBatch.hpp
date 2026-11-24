@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "haylen/2d/physics/RaycastHit.hpp"
-#include "haylen/math/Segment2.hpp"
+#include "haylen/math/Segment2D.hpp"
 #include "haylen/math/Vec2.hpp"
 
 namespace haylen::physics2d {
@@ -23,7 +23,7 @@ class RayBatch final {
     }
 
     void setRay(std::size_t index, math::Vec2 from, math::Vec2 to);
-    [[nodiscard]] const math::Segment2& getRay(std::size_t index) const;
+    [[nodiscard]] const math::Segment2D& getRay(std::size_t index) const;
 
     // Returns the closest hit of the ray from the last cast, or nothing when it hit nothing.
     [[nodiscard]] const std::optional<RaycastHit>& getHit(std::size_t index) const;
@@ -33,7 +33,7 @@ class RayBatch final {
 
     void requireIndex(std::size_t index) const;
 
-    std::vector<math::Segment2> rays;
+    std::vector<math::Segment2D> rays;
     std::vector<std::optional<RaycastHit>> results;
 };
 

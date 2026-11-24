@@ -16,7 +16,7 @@
 #include "haylen/2d/particles/ImageShape.hpp"
 #include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/core/JobSystem.hpp"
-#include "haylen/math/Geometry2.hpp"
+#include "haylen/math/Geometry2D.hpp"
 #include "haylen/math/Math.hpp"
 
 namespace haylen::particles2d {
@@ -151,7 +151,7 @@ void Emitter::validateLook(const EmitterConfig& settings) {
 void Emitter::validateShape(const EmitterConfig& settings) {
     using Shape = EmitterConfig::Shape;
     // Ear clipping finds no triangle in an outline that crosses itself everywhere, which leaves nothing to spawn in.
-    if (settings.shape == Shape::Polygon && (std::fabs(math::Geometry2::signedArea(settings.shapePoints)) <= 0.0F || math::Geometry2::triangulate(settings.shapePoints).empty())) {
+    if (settings.shape == Shape::Polygon && (std::fabs(math::Geometry2D::signedArea(settings.shapePoints)) <= 0.0F || math::Geometry2D::triangulate(settings.shapePoints).empty())) {
         throw std::invalid_argument("The polygon shape of a particle emitter needs at least three points that enclose an area.");
     }
 
@@ -278,7 +278,7 @@ void Emitter::prepareShape() {
     const std::vector<math::Vec2>& points = config.shapePoints;
     float total = 0.0F;
     if (config.shape == EmitterConfig::Shape::Polygon) {
-        const std::vector<std::uint32_t> triangles = math::Geometry2::triangulate(points);
+        const std::vector<std::uint32_t> triangles = math::Geometry2D::triangulate(points);
         for (std::size_t index = 0; index + 2 < triangles.size(); index += 3) {
             const math::Vec2 a = points[triangles[index]];
             total += std::fabs(math::Vec2::cross(points[triangles[index + 1]] - a, points[triangles[index + 2]] - a)) * 0.5F;

@@ -25,7 +25,7 @@ void RayBatch::setRay(std::size_t index, math::Vec2 from, math::Vec2 to) {
     rays[index] = {from, to};
 }
 
-const math::Segment2& RayBatch::getRay(std::size_t index) const {
+const math::Segment2D& RayBatch::getRay(std::size_t index) const {
     requireIndex(index);
     return rays[index];
 }

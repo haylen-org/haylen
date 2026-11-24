@@ -13,7 +13,7 @@
 namespace haylen::math {
 
 // A smooth curve built from control points and measured by arc length, so it can be walked at a steady speed or sampled at even distances. Parameters run from 0 at the start to 1 at the end of the whole curve.
-class Spline2 final {
+class Spline2D final {
   public:
     // Catmull-Rom curves pass through every point with centripetal parameterization. Bezier curves chain cubic segments whose points go end, control, control, end and so on, so open curves take 3n + 1 points and closed ones 3n. B-splines stay inside the hull of the points without passing through them, except for the ends of open curves.
     enum class Kind : std::uint8_t {
@@ -23,7 +23,7 @@ class Spline2 final {
     };
 
     // Throws `std::invalid_argument` when the kind needs more points or a different count.
-    explicit Spline2(std::vector<Vec2> controlPoints, Kind curveKind = Kind::CatmullRom, bool loop = false);
+    explicit Spline2D(std::vector<Vec2> controlPoints, Kind curveKind = Kind::CatmullRom, bool loop = false);
 
     [[nodiscard]] static std::optional<Kind> kindFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view kindName(Kind value) noexcept;
