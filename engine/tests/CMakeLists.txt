@@ -78,6 +78,7 @@ set(HAYLEN_TEST_SOURCES
   math/PolygonTests.cpp
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp
+  math/Vec3Tests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp
   platform/AndroidBatteryStatusTests.cpp

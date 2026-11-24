@@ -7,6 +7,7 @@ The documentation of Haylen has two parts. The guides explain how each block of 
 | Name | Description | Link |
 | --- | --- | --- |
 | 📐 2D | The 2D block holds the modules that build 2D games and apps: retained node trees, frame and skeletal animation, particles, lighting, physics, Tiled maps, navigation, spatial queries and procedural generation. Their Lua modules end with `2d`, so 3D modules can grow next to them. | [`2d/README.md`](2d/README.md) |
+| 🧊 3D | The 3D block holds what builds 3D games and apps, starting with the conventions that every 3D module follows and the math of 3D space. Its Lua modules end with `3d`, next to the 2D modules, while the math of both dimensions lives in `haylen.math`. | [`3d/README.md`](3d/README.md) |
 | 🔊 Audio | Audio mixes sounds and music through buses with effects, follows the pause and the sessions of each platform and places sounds in the world. | [`audio/README.md`](audio/README.md) |
 | 📦 Content | Content brings the files of an app to the device and into memory, protects them in releases and updates them. | [`content/README.md`](content/README.md) |
 | ⚙️ Core | The core runs an app: the engine and its plugins, the frame, the threads, the Lua runtime, scenes, events, timers, tweens and jobs, and the values and services that every other module builds on. | [`core/README.md`](core/README.md) |

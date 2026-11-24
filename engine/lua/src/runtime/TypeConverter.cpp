@@ -78,6 +78,40 @@ bool Converter<haylen::math::Vec2>::is(lua_State* L, int index) {
     return Userdata::test<haylen::math::Vec2>(L, index) != nullptr || lua_istable(L, index);
 }
 
+haylen::math::Vec3 Converter<haylen::math::Vec3>::read(lua_State* L, int index) {
+    if (const haylen::math::Vec3* value = Userdata::test<haylen::math::Vec3>(L, index)) {
+        return *value;
+    }
+
+    if (!lua_istable(L, index)) {
+        luaL_typeerror(L, index, "Vec3 or table with x, y and z");
+    }
+
+    const int table = lua_absindex(L, index);
+    return {TypeConverter::numberComponent(L, table, "x", 1), TypeConverter::numberComponent(L, table, "y", 2), TypeConverter::numberComponent(L, table, "z", 3)};
+}
+
+bool Converter<haylen::math::Vec3>::is(lua_State* L, int index) {
+    return Userdata::test<haylen::math::Vec3>(L, index) != nullptr || lua_istable(L, index);
+}
+
+haylen::math::Vec4 Converter<haylen::math::Vec4>::read(lua_State* L, int index) {
+    if (const haylen::math::Vec4* value = Userdata::test<haylen::math::Vec4>(L, index)) {
+        return *value;
+    }
+
+    if (!lua_istable(L, index)) {
+        luaL_typeerror(L, index, "Vec4 or table with x, y, z and w");
+    }
+
+    const int table = lua_absindex(L, index);
+    return {TypeConverter::numberComponent(L, table, "x", 1), TypeConverter::numberComponent(L, table, "y", 2), TypeConverter::numberComponent(L, table, "z", 3), TypeConverter::numberComponent(L, table, "w", 4)};
+}
+
+bool Converter<haylen::math::Vec4>::is(lua_State* L, int index) {
+    return Userdata::test<haylen::math::Vec4>(L, index) != nullptr || lua_istable(L, index);
+}
+
 haylen::math::Rect Converter<haylen::math::Rect>::read(lua_State* L, int index) {
     if (const haylen::math::Rect* value = Userdata::test<haylen::math::Rect>(L, index)) {
         return *value;

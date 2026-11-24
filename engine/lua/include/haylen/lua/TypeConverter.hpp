@@ -59,6 +59,8 @@
 #include "haylen/math/Segment.hpp"
 #include "haylen/math/Transform2D.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/math/Vec3.hpp"
+#include "haylen/math/Vec4.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/TextInput.hpp"
@@ -134,6 +136,16 @@ class TypeConverter final {
 template <> struct Type<haylen::math::Vec2> {
     static constexpr const char* name = "haylen.Vec2";
     using Storage = haylen::math::Vec2;
+};
+
+template <> struct Type<haylen::math::Vec3> {
+    static constexpr const char* name = "haylen.Vec3";
+    using Storage = haylen::math::Vec3;
+};
+
+template <> struct Type<haylen::math::Vec4> {
+    static constexpr const char* name = "haylen.Vec4";
+    using Storage = haylen::math::Vec4;
 };
 
 template <> struct Type<haylen::math::Rect> {
@@ -257,6 +269,24 @@ template <> struct Converter<haylen::math::Vec2> {
         Userdata::emplace<haylen::math::Vec2>(L, value);
     }
     static haylen::math::Vec2 read(lua_State* L, int index);
+    static bool is(lua_State* L, int index);
+};
+
+// Vectors accept a `Vec3` or a table with `x`, `y` and `z` fields or the three values in order.
+template <> struct Converter<haylen::math::Vec3> {
+    static void push(lua_State* L, haylen::math::Vec3 value) {
+        Userdata::emplace<haylen::math::Vec3>(L, value);
+    }
+    static haylen::math::Vec3 read(lua_State* L, int index);
+    static bool is(lua_State* L, int index);
+};
+
+// Vectors accept a `Vec4` or a table with `x`, `y`, `z` and `w` fields or the four values in order.
+template <> struct Converter<haylen::math::Vec4> {
+    static void push(lua_State* L, haylen::math::Vec4 value) {
+        Userdata::emplace<haylen::math::Vec4>(L, value);
+    }
+    static haylen::math::Vec4 read(lua_State* L, int index);
     static bool is(lua_State* L, int index);
 };
 

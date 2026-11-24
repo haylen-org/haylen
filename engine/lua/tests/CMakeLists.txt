@@ -118,6 +118,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   math/ProceduralTests.cpp
   math/RaycastTests.cpp
   math/SignalFilterTests.cpp
+  math/VectorLuaTests.cpp
   net/HttpDownloadTests.cpp
   net/NetLuaTests.cpp
   net/NetPluginTests.cpp

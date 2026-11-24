@@ -1,6 +1,6 @@
 # 📖 `haylen.math`
 
-The module `haylen.math` holds the math that games and apps need, and the value types that every other module passes around: `Vec2`, `Rect`, `Color` and `Transform2D`. It also has seeded random numbers, noise, easing curves and scalar helpers. For shapes, it tests circles and segments, casts rays, combines and splits polygons and traces outlines with marching squares. It ends with splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, for procedural generation and for any position, area, color or transform that goes to another module. This page has no guide of its own, so it starts with a short tour of the value types. The standard `math` library of Lua stays available for everything else.
+The module `haylen.math` holds the math that games and apps need, and the value types that every other module passes around: `Vec2`, `Vec3`, `Vec4`, `Rect`, `Color` and `Transform2D`. It also has seeded random numbers, noise, easing curves and scalar helpers. For shapes, it tests circles and segments, casts rays, combines and splits polygons and traces outlines with marching squares. It ends with splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, for procedural generation and for any position, area, color or transform that goes to another module. This page has no guide of its own, so it starts with a short tour of the value types. The standard `math` library of Lua stays available for everything else.
 
 ```lua
 local m = require('haylen.math')
@@ -10,14 +10,15 @@ The examples name the module `m`, so the standard `math` library keeps its name.
 
 ## Value types
 
-Four value types carry positions, areas, colors and transforms through the whole engine:
+These value types carry positions, areas, colors and transforms through the whole engine:
 
 - A [`Vec2`](#vec2) is a 2D vector with `x` and `y`. It is a point, such as a position, or a direction with a length, such as a velocity.
+- A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../3d/math.md) explains how they carry points and directions.
 - A [`Rect`](#rect) is a rectangle that is not rotated, with its top left corner at `x`, `y` and a `width` and `height`.
 - A [`Color`](#color) has red, green, blue and alpha components from 0 to 1. Alpha is the opacity, 0 for invisible and 1 for solid.
 - A [`Transform2D`](#transform2d) moves, rotates, scales and skews points, such as the placement of a sprite or the chain from a child to its parent.
 
-The y axis points down, as on the screen: a larger `y` is lower. Angles are in radians, and a positive angle turns from the positive x axis toward the positive y axis, which is clockwise on the screen. The functions `m.radians` and `m.degrees` convert between radians and degrees.
+In 2D, the y axis points down, as on the screen: a larger `y` is lower. In 3D, the y axis points up, as [the 3D coordinates guide](../3d/coordinates.md) shows. Angles are in radians, and a positive angle turns from the positive x axis toward the positive y axis, which is clockwise on the screen. The functions `m.radians` and `m.degrees` convert between radians and degrees.
 
 ```lua
 local m = require('haylen.math')
@@ -39,10 +40,12 @@ Every function of every engine module accepts plain tables wherever it expects o
 | Type | Accepted forms |
 | --- | --- |
 | `Vec2` | A `Vec2`, `{x = 10, y = 20}` or `{10, 20}`. |
+| `Vec3` | A `Vec3`, `{x = 1, y = 2, z = 3}` or `{1, 2, 3}`. |
+| `Vec4` | A `Vec4`, `{x = 1, y = 2, z = 3, w = 4}` or `{1, 2, 3, 4}`. |
 | `Rect` | A `Rect`, `{x = 0, y = 0, width = 100, height = 50}` or `{0, 0, 100, 50}`. |
 | `Color` | A `Color`, `'#AARRGGBB'` or `'#RRGGBB'` text where the `#` is optional, `{r = 1, g = 0.5, b = 0, a = 1}` or `{1, 0.5, 0}`. Components go from `0` to `1`, and alpha is `1` when a table leaves it out. |
 
-The functions `m.vec2`, `m.rect` and `m.color` take the same forms as a single argument, which also copies an existing value. These errors come from wrong values:
+The functions `m.vec2`, `m.vec3`, `m.vec4`, `m.rect` and `m.color` take the same forms as a single argument, which also copies an existing value. These errors come from wrong values:
 
 - A table with a missing component or one that is not a number raises `Expected a number in field "y".`, with the name of the field.
 - A value of another type raises an error such as `bad argument #2 to 'drawRect' (Color, color text or table with r, g and b expected, got number)`.
@@ -61,7 +64,7 @@ print(red:lerp({0, 0, 1}, 0.5), red == m.color('FF0000')) -- #FF800080 true
 
 ### Shared values
 
-The values `Vec2`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
+The values `Vec2`, `Vec3`, `Vec4`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
 
 Reading a member that a value does not have raises `The type "haylen.Vec2" has no member "z".`, and assigning one raises `The type "haylen.Vec2" has no writable property "z".`, with the type name of the value.
 
@@ -380,6 +383,486 @@ position = position + velocity * 0.5
 print(position) -- Vec2(115.0, 95.0)
 print(-velocity, velocity / 10, m.vec2(2, 3) * {4, 5}) -- Vec2(-30.0, 10.0) Vec2(3.0, -1.0) Vec2(8.0, 15.0)
 print(position == m.vec2(115, 95)) -- true
+```
+
+## Vec3
+
+A `Vec3` is a 3D vector with `x`, `y` and `z` components. It is a point, such as a position in a 3D world, or a direction with a length, such as a velocity. The 3D space of the engine is right-handed with `y` up, and a camera looks along negative `z`, as [the 3D coordinates guide](../3d/coordinates.md) shows. Make one with `m.vec3`, `m.right`, `m.up` or `m.forward`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `x` | number | read and write | The component along the right axis. |
+| `y` | number | read and write | The component along the up axis. |
+| `z` | number | read and write | The component along the axis that points back toward a camera. |
+
+```lua
+local m = require('haylen.math')
+
+local position = m.vec3(1, 2, 3)
+position.y = position.y + 0.5
+print(position) -- Vec3(1.0, 2.5, 3.0)
+```
+
+### m.vec3(x, y, z)
+
+Returns a new `Vec3`. Every component is `0` when left out.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(), m.vec3(4, 0, -2)) -- Vec3(0.0, 0.0, 0.0) Vec3(4.0, 0.0, -2.0)
+```
+
+### m.vec3(value)
+
+Returns a new `Vec3` from any form that a `Vec3` argument accepts: a `Vec3`, `{x = 1, y = 2, z = 3}` or `{1, 2, 3}`. A `Vec3` gives an independent copy.
+
+```lua
+local m = require('haylen.math')
+
+local spawn = m.vec3({x = 0, y = 1, z = -5})
+local copy = m.vec3(spawn)
+copy.z = 0
+print(spawn.z, copy.z) -- -5.0 0.0
+```
+
+### m.right()
+
+Returns the direction `Vec3(1, 0, 0)`, the right axis of the 3D space.
+
+```lua
+local m = require('haylen.math')
+
+local strafe = m.right() * 2
+print(strafe) -- Vec3(2.0, 0.0, 0.0)
+```
+
+### m.up()
+
+Returns the direction `Vec3(0, 1, 0)`, the up axis of the 3D space, which gravity pulls against.
+
+```lua
+local m = require('haylen.math')
+
+local jump = m.up() * 4.5
+print(jump) -- Vec3(0.0, 4.5, 0.0)
+```
+
+### m.forward()
+
+Returns the direction `Vec3(0, 0, -1)`, where a camera without rotation looks.
+
+```lua
+local m = require('haylen.math')
+
+local step = m.forward() * 1.5
+print(step) -- Vec3(0.0, 0.0, -1.5)
+```
+
+### vec3:length()
+
+Returns the length of the vector.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(2, 3, 6):length()) -- 7.0
+```
+
+### vec3:lengthSquared()
+
+Returns the length times itself. It is cheaper than `vec3:length` and enough to compare lengths.
+
+```lua
+local m = require('haylen.math')
+
+local speed = m.vec3(3, 0, 4)
+print(speed:lengthSquared() > 4 * 4) -- true
+```
+
+### vec3:isZero()
+
+Returns `true` when all three components are exactly `0`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3():isZero(), m.vec3(0, 0, 0.1):isZero()) -- true false
+```
+
+### vec3:isFinite()
+
+Returns `true` when no component is infinite or not a number.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(1, 2, 3):isFinite(), m.vec3(1 / 0, 0, 0):isFinite()) -- true false
+```
+
+### vec3:normalized()
+
+Returns a vector of length `1` in the same direction. It keeps the direction of vectors that are very short or very long too. A vector without a direction raises an error: `The vector has no direction, because its length is zero.` for a zero vector, and `The vector has no direction, because one of its components is not a finite number.` for a vector with an infinite component or one that is not a number. Check `vec3:isZero()` first where a zero vector can happen, such as an input that rests.
+
+```lua
+local m = require('haylen.math')
+
+local toTarget = m.vec3(10, 0, -10) - m.vec3(0, 0, 0)
+print(toTarget:normalized()) -- Vec3(0.70710..., 0.0, -0.70710...)
+```
+
+### vec3:dot(other)
+
+Returns the dot product with `other`, `x * other.x + y * other.y + z * other.z`. For two vectors of length 1, it is 1 when they point the same way, 0 when they are at a right angle and -1 when they point opposite ways.
+
+```lua
+local m = require('haylen.math')
+
+local facing = m.forward()
+local toEnemy = m.vec3(1, 0, -4):normalized()
+print(facing:dot(toEnemy) > 0.9) -- true
+```
+
+### vec3:cross(other)
+
+Returns the cross product with `other`, a vector at a right angle to both. It follows the right hand, so the cross product of `m.right()` and `m.up()` points back toward the camera, opposite to `m.forward()`. Its length is the area of the parallelogram the two vectors span.
+
+```lua
+local m = require('haylen.math')
+
+local edge1 = m.vec3(1, 0, 0)
+local edge2 = m.vec3(0, 0, -1)
+print(edge1:cross(edge2)) -- Vec3(0.0, 1.0, 0.0)
+```
+
+### vec3:distance(other)
+
+Returns the distance to the point `other`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(0, 0, 0):distance({2, 3, 6})) -- 7.0
+```
+
+### vec3:distanceSquared(other)
+
+Returns the distance to `other` times itself. It is cheaper than `vec3:distance` and enough to compare distances.
+
+```lua
+local m = require('haylen.math')
+
+local range = 5
+print(m.vec3(0, 0, 0):distanceSquared({3, 0, 3}) <= range * range) -- true
+```
+
+### vec3:project(onto)
+
+Returns the part of the vector that runs along `onto`. The vector `onto` needs a direction, so a zero vector raises `A vector projects only onto a vector with a direction, and this one has a zero or infinite length.`
+
+```lua
+local m = require('haylen.math')
+
+local velocity = m.vec3(3, 4, 5)
+print(velocity:project(m.up())) -- Vec3(0.0, 4.0, 0.0)
+```
+
+### vec3:projectOnPlane(normal)
+
+Returns the part of the vector that lies in the plane through the origin with the given `normal`, such as a velocity that slides along a wall. The normal needs a direction, with the error of `vec3:project`.
+
+```lua
+local m = require('haylen.math')
+
+local velocity = m.vec3(3, -4, 5)
+print(velocity:projectOnPlane(m.up())) -- Vec3(3.0, 0.0, 5.0)
+```
+
+### vec3:reflect(normal)
+
+Returns the direction mirrored by a surface with the given `normal`, which has a length of `1`, such as a ball that bounces off a wall.
+
+```lua
+local m = require('haylen.math')
+
+local falling = m.vec3(1, -1, 0)
+print(falling:reflect(m.up())) -- Vec3(1.0, 1.0, 0.0)
+```
+
+### vec3:refract(normal, ratio)
+
+Returns the direction that bends through a surface, such as light that enters water, or `nil` when the light reflects totally inside the surface. The vector and `normal` have a length of `1`, the normal faces the incoming direction, and `ratio` is the refractive index of the side the light leaves divided by that of the side it enters.
+
+```lua
+local m = require('haylen.math')
+
+local ray = m.vec3(1, -1, 0):normalized()
+print(ray:refract(m.up(), 1 / 1.33)) -- bends toward the normal
+print(ray:refract(m.up(), 1.5)) -- nil
+```
+
+### vec3:lerp(to, t)
+
+Returns the point at `t` of the way toward `to`, a linear interpolation. It returns the vector itself at `0` and `to` at `1`, and `t` is not clamped.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(0, 0, 0):lerp({10, 20, 30}, 0.5)) -- Vec3(5.0, 10.0, 15.0)
+```
+
+### vec3:min(other)
+
+Returns a `Vec3` with the smaller of each component of the two vectors.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(1, 5, 0):min({2, 3, -1})) -- Vec3(1.0, 3.0, -1.0)
+```
+
+### vec3:max(other)
+
+Returns a `Vec3` with the larger of each component of the two vectors.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec3(1, 5, 0):max({2, 3, -1})) -- Vec3(2.0, 5.0, 0.0)
+```
+
+### vec3:approximately(other, epsilon)
+
+Returns `true` when every component is close to the one of `other`, within `epsilon` times the larger of `1` and the size of the components, `0.00001` by default. A component that is not a number is never close to anything.
+
+```lua
+local m = require('haylen.math')
+
+local a = m.vec3(2.000001, 4, 8)
+print(a == m.vec3(2, 4, 8), a:approximately({2, 4, 8})) -- false true
+```
+
+### vec3:unpack()
+
+Returns `x`, `y` and `z` as three numbers.
+
+```lua
+local m = require('haylen.math')
+
+local x, y, z = m.vec3(1, 2, 3):unpack()
+print(x + y + z) -- 6.0
+```
+
+### Vec3 operators
+
+The operators of a `Vec3` work like those of a [`Vec2`](#vec2-operators): `a + b`, `a - b`, `a * b` and `a / b` work component by component, `v * s`, `s * v` and `v / s` scale by a number, `-v` negates, `a == b` compares every component and `tostring(v)` gives `Vec3(x, y, z)`. The operand that is not a `Vec3` may be a table, and every operator returns a new value.
+
+```lua
+local m = require('haylen.math')
+
+local position = m.vec3(0, 1, 0)
+local velocity = m.vec3(2, 2, -4)
+position = position + velocity * 0.5
+print(position, -velocity, position == m.vec3(1, 2, -2)) -- Vec3(1.0, 2.0, -2.0) Vec3(-2.0, -2.0, 4.0) true
+```
+
+## Vec4
+
+A `Vec4` is a 4D vector with `x`, `y`, `z` and `w` components. It holds a point of 3D space in homogeneous coordinates, with `w` of `1` for a point and `0` for a direction, or any four numbers that go together, such as a value for a shader. Make one with `m.vec4`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `x`, `y`, `z`, `w` | number | read and write | The four components. |
+
+```lua
+local m = require('haylen.math')
+
+local point = m.vec4(m.vec3(1, 2, 3), 1)
+point.w = 0
+print(point) -- Vec4(1.0, 2.0, 3.0, 0.0)
+```
+
+### m.vec4(x, y, z, w)
+
+Returns a new `Vec4`. Every component is `0` when left out.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 2, 3, 4)) -- Vec4(1.0, 2.0, 3.0, 4.0)
+```
+
+### m.vec4(value)
+
+Returns a new `Vec4` from any form that a `Vec4` argument accepts: a `Vec4`, `{x = 1, y = 2, z = 3, w = 4}` or `{1, 2, 3, 4}`. A `Vec4` gives an independent copy.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4({1, 2, 3, 4})) -- Vec4(1.0, 2.0, 3.0, 4.0)
+```
+
+### m.vec4(xyz, w)
+
+Returns a new `Vec4` with the components of the `Vec3` or table `xyz` and the number `w`.
+
+```lua
+local m = require('haylen.math')
+
+local direction = m.vec4(m.forward(), 0)
+print(direction) -- Vec4(0.0, 0.0, -1.0, 0.0)
+```
+
+### vec4:xyz()
+
+Returns `x`, `y` and `z` as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 2, 3, 1):xyz()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### vec4:length()
+
+Returns the length of the vector.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 1, 1, 1):length()) -- 2.0
+```
+
+### vec4:lengthSquared()
+
+Returns the length times itself.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 2, 2, 4):lengthSquared()) -- 25.0
+```
+
+### vec4:isZero()
+
+Returns `true` when all four components are exactly `0`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4():isZero()) -- true
+```
+
+### vec4:isFinite()
+
+Returns `true` when no component is infinite or not a number.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(0, 0, 0, 0 / 0):isFinite()) -- false
+```
+
+### vec4:normalized()
+
+Returns a vector of length `1` in the same direction, with the errors of [`vec3:normalized`](#vec3normalized) for a vector without a direction.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(0, 0, 0, 3):normalized()) -- Vec4(0.0, 0.0, 0.0, 1.0)
+```
+
+### vec4:dot(other)
+
+Returns the dot product with `other`, the sum of the products of the four pairs of components.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 2, 3, 4):dot({1, 1, 1, 1})) -- 10.0
+```
+
+### vec4:distance(other)
+
+Returns the distance to `other`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4():distance({1, 1, 1, 1})) -- 2.0
+```
+
+### vec4:distanceSquared(other)
+
+Returns the distance to `other` times itself.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4():distanceSquared({1, 1, 1, 1})) -- 4.0
+```
+
+### vec4:lerp(to, t)
+
+Returns the vector at `t` of the way toward `to`, without clamping `t`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4():lerp({2, 4, 6, 8}, 0.5)) -- Vec4(1.0, 2.0, 3.0, 4.0)
+```
+
+### vec4:min(other)
+
+Returns a `Vec4` with the smaller of each component of the two vectors.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 5, 0, 9):min({2, 3, 1, -9})) -- Vec4(1.0, 3.0, 0.0, -9.0)
+```
+
+### vec4:max(other)
+
+Returns a `Vec4` with the larger of each component of the two vectors.
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 5, 0, 9):max({2, 3, 1, -9})) -- Vec4(2.0, 5.0, 1.0, 9.0)
+```
+
+### vec4:approximately(other, epsilon)
+
+Returns `true` when every component is close to the one of `other`, like [`vec3:approximately`](#vec3approximatelyother-epsilon).
+
+```lua
+local m = require('haylen.math')
+
+print(m.vec4(1, 2, 3, 4):approximately({1, 2, 3, 4.000001})) -- true
+```
+
+### vec4:unpack()
+
+Returns `x`, `y`, `z` and `w` as four numbers.
+
+```lua
+local m = require('haylen.math')
+
+local x, y, z, w = m.vec4(1, 2, 3, 4):unpack()
+print(x + y + z + w) -- 10.0
+```
+
+### Vec4 operators
+
+The operators of a `Vec4` work like those of a [`Vec3`](#vec3-operators), and `tostring(v)` gives `Vec4(x, y, z, w)`.
+
+```lua
+local m = require('haylen.math')
+
+local a = m.vec4(1, 2, 3, 4)
+print((a + {1, 1, 1, 1}) * 2, a / 2) -- Vec4(4.0, 6.0, 8.0, 10.0) Vec4(0.5, 1.0, 1.5, 2.0)
 ```
 
 ## Rect
@@ -2605,7 +3088,11 @@ These messages come from the functions and methods of the module. Messages that 
 
 | Message | Cause |
 | --- | --- |
-| `Expected a number in field "<field>".` | A table given as a `Vec2`, a `Rect`, a `Color` or a circle misses a number. |
+| `Expected a number in field "<field>".` | A table given as a `Vec2`, a `Vec3`, a `Vec4`, a `Rect`, a `Color` or a circle misses a number. |
+| `bad argument #<n> to '<function>' (Vec3 or table with x, y and z expected, got <type>)` | A `Vec3` argument has another type. |
+| `The vector has no direction, because its length is zero.` | A zero vector was normalized. |
+| `The vector has no direction, because one of its components is not a finite number.` | A vector with an infinite component or one that is not a number was normalized. |
+| `A vector projects only onto a vector with a direction, and this one has a zero or infinite length.` | The vector of `vec3:project` or the normal of `vec3:projectOnPlane` has no direction. |
 | `Expected a point in field "<field>".` | A table given as a circle or a segment misses a point. |
 | `bad argument #<n> to '<function>' (Color, color text or table with r, g and b expected, got <type>)` | A color argument has another type. |
 | `bad argument #1 to 'color' (invalid color text, expected #RRGGBB or #AARRGGBB)` | Color text is not valid. |
