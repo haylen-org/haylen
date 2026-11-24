@@ -10,6 +10,7 @@
 #include "haylen/math/Capsule3.hpp"
 #include "haylen/math/Frustum.hpp"
 #include "haylen/math/Geometry3.hpp"
+#include "haylen/math/Mat3.hpp"
 #include "haylen/math/Mat4.hpp"
 #include "haylen/math/Math.hpp"
 #include "haylen/math/Obb.hpp"
@@ -24,6 +25,17 @@ class Geometry3Test : public ::testing::Test {
   protected:
     static Ray3 down(float x, float z) {
         return Ray3::between({x, 10.0F, z}, {x, -10.0F, z});
+    }
+
+    // Returns the gap between the shadows of two boxes on a unit axis, which is negative where the shadows overlap.
+    static float separation(const Obb& first, const Obb& second, Vec3 axis) {
+        // clang-format off
+        const auto reach = [axis](const Obb& box) {
+            const Mat3 axes = box.getAxes();
+            return box.halfExtents.x * std::fabs(Vec3::dot(axes.getColumn(0), axis)) + box.halfExtents.y * std::fabs(Vec3::dot(axes.getColumn(1), axis)) + box.halfExtents.z * std::fabs(Vec3::dot(axes.getColumn(2), axis));
+        };
+        // clang-format on
+        return std::fabs(Vec3::dot(second.center - first.center, axis)) - reach(first) - reach(second);
     }
 };
 
@@ -134,6 +146,26 @@ TEST_F(Geometry3Test, SeparatesOrientedBoxesOnTheirAxes) {
     EXPECT_FALSE(diamond.contains({2.3F + 1.0F, 0.0F, 1.0F}));
     EXPECT_TRUE(Vec3::approximately(first.getClosestPoint({5.0F, 0.5F, -7.0F}), {1.0F, 0.5F, -1.0F}));
     EXPECT_TRUE(Vec3::approximately(diamond.getBounds().max, {2.3F + std::sqrt(2.0F), 1.0F, std::sqrt(2.0F)}, 1e-5F));
+}
+
+// Two unit cubes, one turned 45 degrees about x and the other 45 degrees about z, show diamonds to the axis y that crosses their edges, x of the first and z of the second. Each reaches half the diagonal of a face, sqrt(2) / 2, along y, so with the second one `offset` above the first the gap along y is offset - sqrt(2). The faces see more of each other: along the face normal (1, 1, 0) / sqrt(2) of the second cube the first reaches (sqrt(2) + 2) / 4, about 0.854, against 0.5 of the second and a distance of offset / sqrt(2), and the same holds for the face normals (0, 1, 1) / sqrt(2) of the first cube, so no face separates them before an offset of about 1.914, while the axis y separates them past sqrt(2).
+TEST_F(Geometry3Test, SeparatesOrientedBoxesOnTheAxisAcrossTheirEdges) {
+    const Obb rolled{{}, Quat::fromAxisAngle(Vec3::right(), Math::kPi / 4.0F), {0.5F, 0.5F, 0.5F}};
+    const auto tilted = [](float offset) { return Obb{{0.0F, offset, 0.0F}, Quat::fromAxisAngle({0.0F, 0.0F, 1.0F}, Math::kPi / 4.0F), {0.5F, 0.5F, 0.5F}}; };
+
+    const float touching = std::sqrt(2.0F);
+    const Obb apart = tilted(touching + 0.08F);
+    EXPECT_FALSE(Geometry3::intersects(rolled, apart));
+    EXPECT_FALSE(Geometry3::intersects(apart, rolled));
+    EXPECT_GT(separation(rolled, apart, Vec3::up()), 0.07F);
+    for (const Vec3 face : {Vec3::right(), Vec3{0.0F, 0.0F, 1.0F}, rolled.getAxes().getColumn(1), rolled.getAxes().getColumn(2), apart.getAxes().getColumn(0), apart.getAxes().getColumn(1)}) {
+        EXPECT_LT(separation(rolled, apart, face), 0.0F) << face.x << " " << face.y << " " << face.z;
+    }
+
+    EXPECT_TRUE(Geometry3::intersects(rolled, tilted(touching)));
+    EXPECT_TRUE(Geometry3::intersects(rolled, tilted(touching - 0.05F)));
+    EXPECT_TRUE(Geometry3::intersects(tilted(touching - 0.05F), rolled));
+    EXPECT_TRUE(Geometry3::intersects(rolled, tilted(0.5F)));
 }
 
 TEST_F(Geometry3Test, BoxesMergeTransformAndStayStableAtAnyScale) {
