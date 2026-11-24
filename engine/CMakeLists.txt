@@ -379,6 +379,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/CurvePath3D.cpp
   src/math/ColorSpace.cpp
   src/math/DualQuat.cpp
+  src/math/Cylindrical.cpp
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
   src/math/Frustum.cpp
@@ -410,6 +411,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Raycast.cpp
   src/math/ShuffleBag.cpp
   src/math/SignalFilterHelper.cpp
+  src/math/Spherical.cpp
+  src/math/SphericalHarmonics.cpp
   src/math/Spline2D.cpp
   src/math/Spline3D.cpp
   src/math/Spring.cpp

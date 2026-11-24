@@ -123,6 +123,8 @@ set(HAYLEN_TEST_SOURCES
   math/ParametricCurve3DTests.cpp
   math/Spline3DTests.cpp
   math/SignalFilterTests.cpp
+  math/SphericalCoordinatesTests.cpp
+  math/SphericalHarmonicsTests.cpp
   math/Transform3DTests.cpp
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp

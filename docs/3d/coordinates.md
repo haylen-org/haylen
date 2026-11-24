@@ -48,6 +48,28 @@ Angles are in radians, as in 2D. A full turn is `m.tau`, half a turn is `m.pi`, 
    (+z points at the viewer)
 ```
 
+## Spherical and cylindrical coordinates
+
+Spherical coordinates place a point by its distance from the origin, its polar angle and its azimuth. The polar angle runs down from the up axis, `0` straight up and `m.pi` straight down. The azimuth turns around the up axis by the right hand, so it starts at positive `z` and grows counterclockwise seen from above, through positive `x`. Cylindrical coordinates use the same azimuth with a distance from the up axis and a height along it.
+
+```text
+            +y   polar 0
+             |
+             |  polar
+             | /
+             |/
+             +-------- +x   azimuth a quarter turn
+            /
+           /  azimuth 0
+         +z
+```
+
+```lua
+local m = require('haylen.math')
+
+print(m.spherical(1, m.halfPi, 0):vector(), m.cylindrical(1, m.halfPi, 0):vector()) -- close to (0, 0, 1) and (1, 0, 0)
+```
+
 ## Matrices
 
 Matrices are stored by columns, and a matrix multiplies a column vector on its right. So the matrices of a draw chain from right to left, `projection * view * model`: the model matrix moves a point from the space of the object into the world, the view matrix moves it into the space of the camera, and the projection matrix moves it into the clip space of the graphics API.

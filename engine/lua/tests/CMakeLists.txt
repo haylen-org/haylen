@@ -121,6 +121,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   math/QuatLuaTests.cpp
   math/RaycastTests.cpp
   math/SignalFilterTests.cpp
+  math/SphericalLuaTests.cpp
   math/Transform3DLuaTests.cpp
   math/VectorLuaTests.cpp
   modules/ModuleReferenceTests.cpp

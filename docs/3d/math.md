@@ -186,6 +186,36 @@ print(#coil:sample(400), ring.closed) -- 400 true
 
 NURBS also make surfaces and volumes. A `NurbsSurface` spreads a grid of points into a smooth sheet with a normal at every place, such as a hull or a patch of terrain, and a `NurbsVolume` bends the space of a block, such as a lattice that deforms a model inside it.
 
+## Spherical coordinates
+
+A point around a center often reads better as a distance and two angles than as `x`, `y` and `z`. A camera that orbits a target keeps its distance while the person drags its angles, and a sun moves across the sky by its height and its heading. A `Spherical` holds such a point, and a `Cylindrical` holds one by its distance from the up axis, its angle and its height, which suits towers, carousels and spirals. The [coordinates page](coordinates.md#spherical-and-cylindrical-coordinates) shows which way the angles run.
+
+```lua
+local m = require('haylen.math')
+
+local orbit = m.spherical(m.vec3(0, 4, 8))
+orbit.azimuth = orbit.azimuth + 0.1
+orbit.polar = m.clamp(orbit.polar, 0.1, m.pi - 0.1)
+local eye = orbit:vector()
+print(eye:length()) -- the same distance from the target
+```
+
+## Spherical harmonics
+
+The light that reaches a point from every direction, such as the sky over a field, changes slowly from one direction to the next. Spherical harmonics hold such light in a few numbers: nine of them for each color channel keep its broad shape, the bright side and the dark side, without its sharp details. That is the light of an ambient sky, of a light probe or of what an AR session estimates around the device, and the renderer reads it in a few operations.
+
+Gather the light into `SphericalHarmonics` from a cubemap, from a panorama or one direction at a time, then `convolveLambert` turns it into the irradiance, the light that a matte surface facing each direction receives. Harmonics add and blend, so the light between two probes is a blend of theirs.
+
+```lua
+local m = require('haylen.math')
+
+local sky = m.sphericalHarmonics()
+sky:projectDirection(m.up(), {0.5, 0.7, 1.0}, 2 * math.pi)
+sky:projectDirection(-m.up(), {0.3, 0.25, 0.2}, 2 * math.pi)
+local irradiance = sky:convolveLambert()
+print(irradiance:evaluate(m.up()), irradiance:evaluate(m.right()))
+```
+
 ## Noise and random points
 
 Noise gives values that change smoothly from one point to the next, which shapes caves, clouds, terrain and the textures of 3D surfaces. A `Noise3D` samples it in three dimensions, or in four, where the fourth often runs with time so a pattern changes in place. Perlin and simplex noise are gradient noise, smooth hills of values, and value noise is softer and blockier. Worley noise, from `noise:cellular`, measures the distance to scattered points, which draws cells, stones and crystals. A fractal sums octaves of a noise at rising frequencies: plain fBm for rolling terrain, billows for clouds, ridges for mountain crests and ping-pong for bands. Warping the point before sampling bends any pattern into marble or smoke.

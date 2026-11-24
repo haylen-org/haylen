@@ -14,7 +14,7 @@ These value types carry positions, areas, colors and transforms through the whol
 
 - A [`Vec2`](#vec2) is a 2D vector with `x` and `y`. It is a point, such as a position, or a direction with a length, such as a velocity.
 - A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../3d/math.md) explains how they carry points and directions.
-- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface. A [`Transform3D`](#transform3d) places an object in 3D, and a [`DualQuat`](#dualquat) blends the joints of a skinned mesh. The [3D shapes](#3d-shapes) are rays, segments, boxes, spheres, oriented boxes, capsules, triangles and frustums.
+- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface. A [`Spherical`](#spherical) or a [`Cylindrical`](#cylindrical) holds a point by its angles around the up axis, and [`SphericalHarmonics`](#sphericalharmonics) hold the light that arrives from every direction. A [`Transform3D`](#transform3d) places an object in 3D, and a [`DualQuat`](#dualquat) blends the joints of a skinned mesh. The [3D shapes](#3d-shapes) are rays, segments, boxes, spheres, oriented boxes, capsules, triangles and frustums.
 - A [`Rect`](#rect) is a rectangle that is not rotated, with its top left corner at `x`, `y` and a `width` and `height`.
 - A [`Color`](#color) has red, green, blue and alpha components from 0 to 1. Alpha is the opacity, 0 for invisible and 1 for solid.
 - A [`Transform2D`](#transform2d) moves, rotates, scales and skews points, such as the placement of a sprite or the chain from a child to its parent.
@@ -68,7 +68,7 @@ print(red:lerp({0, 0, 1}, 0.5), red == m.color('FF0000')) -- #FF800080 true
 
 ### Shared values
 
-The values `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Transform3D`, `DualQuat`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
+The values `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Spherical`, `Cylindrical`, `SphericalHarmonics`, `Transform3D`, `DualQuat`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
 
 Reading a member that a value does not have raises `The type "haylen.Vec2" has no member "z".`, and assigning one raises `The type "haylen.Vec2" has no writable property "z".`, with the type name of the value.
 
@@ -2279,6 +2279,200 @@ for _, rock in ipairs({m.sphere({0, 0, 0}, 1), m.sphere({0, 0, 50}, 1)}) do
         print('Draw the rock at', rock.center)
     end
 end
+```
+
+## Spherical
+
+A `Spherical` holds a point by its distance from the origin and two angles, such as the place of a camera that orbits a target or a direction on the sky. The polar angle runs down from the up axis and the azimuth turns around it, as the [coordinates page](../3d/coordinates.md#spherical-and-cylindrical-coordinates) shows. Make one with `m.spherical`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `radius` | number | read and write | The distance from the origin. |
+| `polar` | number | read and write | The angle in radians down from the up axis, `0` straight up and `math.pi` straight down. |
+| `azimuth` | number | read and write | The angle in radians around the up axis, `0` toward positive `z`, growing counterclockwise seen from above. |
+
+### m.spherical(radius, polar, azimuth)
+
+Returns a new `Spherical` with the three numbers, or with all of them `0` when it gets none.
+
+```lua
+local m = require('haylen.math')
+
+local orbit = m.spherical(10, m.radians(60), 0)
+orbit.azimuth = orbit.azimuth + 0.5
+print(orbit:vector())
+```
+
+### m.spherical(point)
+
+Returns the `Spherical` of a point in any form a `Vec3` argument accepts. A point on the up axis has an azimuth of `0`, and the origin also has a polar angle of `0`. The azimuth runs from `-math.pi` to `math.pi`.
+
+```lua
+local m = require('haylen.math')
+
+local where = m.spherical({0, 0, 3})
+print(where.radius, where.azimuth) -- 3.0 0.0
+```
+
+### spherical:vector()
+
+Returns the point as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.spherical(2, math.pi / 2, math.pi / 2):vector()) -- close to Vec3(2.0, 0.0, 0.0)
+```
+
+## Cylindrical
+
+A `Cylindrical` holds a point by its distance from the up axis, its angle around that axis and its height, such as a place on a tower, a carousel or a spiral path. Make one with `m.cylindrical`.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `radius` | number | read and write | The distance from the up axis. |
+| `azimuth` | number | read and write | The angle in radians around the up axis, as the azimuth of a `Spherical`. |
+| `height` | number | read and write | The height along the up axis. |
+
+### m.cylindrical(radius, azimuth, height)
+
+Returns a new `Cylindrical` with the three numbers, or with all of them `0` when it gets none.
+
+```lua
+local m = require('haylen.math')
+
+local seat = m.cylindrical(4, 0, 1)
+seat.azimuth = seat.azimuth + m.radians(30)
+print(seat:vector())
+```
+
+### m.cylindrical(point)
+
+Returns the `Cylindrical` of a point in any form a `Vec3` argument accepts. A point on the axis has an azimuth of `0`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.cylindrical({0, -4, 0})) -- Cylindrical(0.0, 0.0, -4.0)
+```
+
+### cylindrical:vector()
+
+Returns the point as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.cylindrical(3, math.pi / 2, 2):vector()) -- close to Vec3(3.0, 2.0, 0.0)
+```
+
+## SphericalHarmonics
+
+A `SphericalHarmonics` holds the light that reaches a point from every direction in nine coefficients, such as the sky of a scene or a light probe, which the [3D math guide](../3d/math.md#spherical-harmonics) explains. Each coefficient is a `Vec3` with the red, green and blue of linear light in `x`, `y` and `z`, and the nine follow these basis functions of a unit direction `(x, y, z)`:
+
+| Coefficient | Basis function |
+| --- | --- |
+| `1` | `0.282095` |
+| `2` | `0.488603 y` |
+| `3` | `0.488603 z` |
+| `4` | `0.488603 x` |
+| `5` | `1.092548 xy` |
+| `6` | `1.092548 yz` |
+| `7` | `0.315392 (3z² - 1)` |
+| `8` | `1.092548 xz` |
+| `9` | `0.546274 (x² - y²)` |
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `coefficients` | list of `Vec3` | read | A copy of the nine coefficients. |
+
+Harmonics add with `+` and scale by a number with `*` on either side, and `==` compares every coefficient.
+
+### m.sphericalHarmonics(coefficients)
+
+Returns new harmonics from a list of nine `Vec3` values, or without any light when it gets none. Another count raises `Spherical harmonics take 9 coefficients, not <count>.`.
+
+```lua
+local m = require('haylen.math')
+
+local sky = m.sphericalHarmonics()
+sky:projectDirection(m.up(), {0.6, 0.8, 1.2}, 4 * math.pi)
+print(#sky.coefficients) -- 9
+```
+
+### m.sphericalHarmonicsFromCubemap(buffer, size)
+
+Returns the harmonics of a cube of linear light in a `FloatBuffer` of [`haylen.collections`](collections.md), each face `size` by `size` texels of red, green and blue. The faces follow each other in the order positive x, negative x, positive y, negative y, positive z and negative z, with the rows of each face from the top, as graphics APIs lay out cube textures. Each texel counts with the solid angle it covers. A size of `0` or above `16384` raises `The side of a cubemap must be from 1 to 16384 texels.`, and a buffer of another size raises `A cubemap of side <size> holds <count> floats, the red, green and blue of each texel of its 6 faces, not <size>.`.
+
+```lua
+local m = require('haylen.math')
+local collections = require('haylen.collections')
+
+local gray = collections.newFloatBuffer(6 * 8 * 8 * 3, 0.5)
+local sky = m.sphericalHarmonicsFromCubemap(gray, 8)
+print(sky:evaluate(m.up())) -- close to the gray of every texel
+```
+
+### m.sphericalHarmonicsFromPanorama(buffer, width, height)
+
+Returns the harmonics of a panorama of linear light in a `FloatBuffer`, `width` by `height` texels of red, green and blue from the top row down. Its rows run from straight up to straight down, and its middle column looks forward, along negative `z`, turning right toward its right edge. A side of `0` or above `16384` raises `The width and the height of a panorama must be from 1 to 16384 texels.`, and a buffer of another size raises `A panorama of <width> by <height> texels holds <count> floats, the red, green and blue of each texel, not <size>.`.
+
+```lua
+local m = require('haylen.math')
+local collections = require('haylen.collections')
+
+local night = collections.newFloatBuffer(64 * 32 * 3, 0.02)
+local ambient = m.sphericalHarmonicsFromPanorama(night, 64, 32):convolveLambert()
+print(ambient:evaluate(m.up()))
+```
+
+### harmonics:projectDirection(direction, color, weight)
+
+Adds the light of `color` that arrives from `direction` into the harmonics in place, scaled by `weight`, `1` unless it names another. A weight of `1` suits the light of one direction, such as the sun, and a weight of the solid angle that a sample covers suits samples spread over the sky. A direction of zero length raises the error of `vec3:normalized()`.
+
+```lua
+local m = require('haylen.math')
+
+local probe = m.sphericalHarmonics()
+probe:projectDirection({0.3, 1, -0.2}, {3, 2.8, 2.5})
+print(probe.coefficients[1])
+```
+
+### harmonics:evaluate(direction)
+
+Returns the light that arrives from a direction as a `Color` of linear light with an alpha of `1`. A direction of zero length raises the error of `vec3:normalized()`.
+
+```lua
+local m = require('haylen.math')
+
+local sky = m.sphericalHarmonics()
+sky:projectDirection(m.up(), {1, 1, 1})
+print(sky:evaluate(m.up()).r > sky:evaluate(-m.up()).r) -- true
+```
+
+### harmonics:convolveLambert()
+
+Returns the harmonics of the irradiance, the light that a surface facing each direction receives from the half of the sphere in front of it. A matte white surface sends back the irradiance divided by `math.pi`. Nine coefficients cannot hold a sharp light exactly, so the irradiance of one direction comes out as `1.0625` times its light on a surface that faces it and `0.0625` on a surface that faces away.
+
+```lua
+local m = require('haylen.math')
+
+local sun = m.sphericalHarmonics()
+sun:projectDirection(m.up(), {1, 1, 1})
+print(string.format('%.4f', sun:convolveLambert():evaluate(m.up()).r)) -- 1.0625
+```
+
+### harmonics:lerp(to, t)
+
+Returns harmonics that blend from these to `to` by `t`, such as the light between two probes.
+
+```lua
+local m = require('haylen.math')
+
+local day, dusk = m.sphericalHarmonics(), m.sphericalHarmonics()
+day:projectDirection(m.up(), {2, 2, 2})
+dusk:projectDirection({1, 0.2, 0}, {1.5, 0.6, 0.3})
+print(day:lerp(dusk, 0.5):evaluate(m.up()))
 ```
 
 ## Transform3D
@@ -5886,6 +6080,11 @@ These messages come from the functions and methods of the module. Messages that 
 | `A Catmull-Rom spline needs at least two points when open and three when closed.` | A `'catmullRom'` spline has too few points. |
 | `A Bezier spline needs 3n + 1 points when open and 3n points when closed.` | A `'bezier'` spline has a count of points that does not fit. |
 | `A B-spline needs at least two points when open and three when closed.` | A `'bSpline'` spline has too few points. |
+| `Spherical harmonics take 9 coefficients, not <count>.` | The list of `m.sphericalHarmonics` holds another count. |
+| `The side of a cubemap must be from 1 to 16384 texels.` | The `size` of `m.sphericalHarmonicsFromCubemap` is out of range. |
+| `A cubemap of side <size> holds <count> floats, the red, green and blue of each texel of its 6 faces, not <size>.` | The buffer of `m.sphericalHarmonicsFromCubemap` has another size. |
+| `The width and the height of a panorama must be from 1 to 16384 texels.` | A side of `m.sphericalHarmonicsFromPanorama` is out of range. |
+| `A panorama of <width> by <height> texels holds <count> floats, the red, green and blue of each texel, not <size>.` | The buffer of `m.sphericalHarmonicsFromPanorama` has another size. |
 | `A closed NURBS spline must end where it starts.` | A `'nurbs'` spline is `closed` but ends away from its start. |
 | `The center and the two axes of an ellipse must be finite, and the axes must run in different directions so they span a plane.` | The axes of `m.ellipse3d` run along one line or are not finite. |
 | `The angles of an ellipse must be finite and apart by more than 0 and at most a whole turn.` | The angles of `m.ellipse3d` are equal, too far apart or not finite. |

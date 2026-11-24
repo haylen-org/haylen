@@ -30,6 +30,7 @@
 #include "math/QuatBinding.hpp"
 #include "math/RaycastBinding.hpp"
 #include "math/SignalFilterBinding.hpp"
+#include "math/SphericalBinding.hpp"
 #include "math/Spline2DBinding.hpp"
 #include "math/SpringBinding.hpp"
 #include "math/Transform3DBinding.hpp"
@@ -714,6 +715,7 @@ void MathBinding::installClasses(lua_State* L) {
     Transform3DBinding::install(L);
     Spline2DBinding::install(L);
     Curve3DBinding::install(L);
+    SphericalBinding::install(L);
     SpringBinding::install(L);
     SignalFilterBinding::install(L);
     ChoiceBinding::install(L);
@@ -735,6 +737,7 @@ int MathBinding::open(lua_State* L) {
     PolygonBinding::addFunctions(L);
     Spline2DBinding::addFunctions(L);
     Curve3DBinding::addFunctions(L);
+    SphericalBinding::addFunctions(L);
     SpringBinding::addFunctions(L);
     SignalFilterBinding::addFunctions(L);
     ChoiceBinding::addFunctions(L);

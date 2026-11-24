@@ -121,6 +121,7 @@ set(HAYLEN_LUA_SOURCES
   src/math/RaycastBinding.cpp
   src/math/SignalFilterBinding.cpp
   src/math/Spline2DBinding.cpp
+  src/math/SphericalBinding.cpp
   src/math/SpringBinding.cpp
   src/math/Transform3DBinding.cpp
   src/math/VectorBinding.cpp
