@@ -50,6 +50,7 @@
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/math/Circle.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/math/DualQuat.hpp"
 #include "haylen/math/Easing.hpp"
 #include "haylen/math/EasingCurve.hpp"
 #include "haylen/math/FloatRange.hpp"
@@ -63,6 +64,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Segment.hpp"
 #include "haylen/math/Transform2D.hpp"
+#include "haylen/math/Transform3D.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/math/Vec3.hpp"
 #include "haylen/math/Vec4.hpp"
@@ -174,6 +176,16 @@ template <> struct Type<haylen::math::Quat> {
 template <> struct Type<haylen::math::Plane> {
     static constexpr const char* name = "haylen.Plane";
     using Storage = haylen::math::Plane;
+};
+
+template <> struct Type<haylen::math::Transform3D> {
+    static constexpr const char* name = "haylen.Transform3D";
+    using Storage = haylen::math::Transform3D;
+};
+
+template <> struct Type<haylen::math::DualQuat> {
+    static constexpr const char* name = "haylen.DualQuat";
+    using Storage = haylen::math::DualQuat;
 };
 
 template <> struct Type<haylen::math::Rect> {

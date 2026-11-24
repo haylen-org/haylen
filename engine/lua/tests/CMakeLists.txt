@@ -120,6 +120,7 @@ set(HAYLEN_LUA_TEST_SOURCES
   math/QuatLuaTests.cpp
   math/RaycastTests.cpp
   math/SignalFilterTests.cpp
+  math/Transform3DLuaTests.cpp
   math/VectorLuaTests.cpp
   net/HttpDownloadTests.cpp
   net/NetLuaTests.cpp

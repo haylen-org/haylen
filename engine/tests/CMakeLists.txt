@@ -78,6 +78,7 @@ set(HAYLEN_TEST_SOURCES
   math/MatrixTests.cpp
   math/PolygonTests.cpp
   math/QuatTests.cpp
+  math/Transform3DTests.cpp
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp
   math/Vec3Tests.cpp

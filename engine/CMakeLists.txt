@@ -369,6 +369,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/localization/NumberFormat.cpp
   src/localization/PluralRules.cpp
   src/math/Color.cpp
+  src/math/DualQuat.cpp
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
   src/math/Geometry.cpp
@@ -392,6 +393,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Spline.cpp
   src/math/Spring.cpp
   src/math/Transform2D.cpp
+  src/math/Transform3D.cpp
   src/math/Triangulator.cpp
   src/math/WeightedChoice.cpp
   src/net/SocketLink.cpp

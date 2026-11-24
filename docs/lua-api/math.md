@@ -1,6 +1,6 @@
 # 📖 `haylen.math`
 
-The module `haylen.math` holds the math that games and apps need, and the value types that every other module passes around: `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Rect`, `Color` and `Transform2D`. It also has seeded random numbers, noise, easing curves and scalar helpers. For shapes, it tests circles and segments, casts rays, combines and splits polygons and traces outlines with marching squares. It ends with splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, for procedural generation and for any position, area, color or transform that goes to another module. This page has no guide of its own, so it starts with a short tour of the value types. The standard `math` library of Lua stays available for everything else.
+The module `haylen.math` holds the math that games and apps need, and the value types that every other module passes around: `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Transform3D`, `DualQuat`, `Rect`, `Color` and `Transform2D`. It also has seeded random numbers, noise, easing curves and scalar helpers. For shapes, it tests circles and segments, casts rays, combines and splits polygons and traces outlines with marching squares. It ends with splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, for procedural generation and for any position, area, color or transform that goes to another module. This page has no guide of its own, so it starts with a short tour of the value types. The standard `math` library of Lua stays available for everything else.
 
 ```lua
 local m = require('haylen.math')
@@ -14,7 +14,7 @@ These value types carry positions, areas, colors and transforms through the whol
 
 - A [`Vec2`](#vec2) is a 2D vector with `x` and `y`. It is a point, such as a position, or a direction with a length, such as a velocity.
 - A [`Vec3`](#vec3) is a 3D vector with `x`, `y` and `z`, and a [`Vec4`](#vec4) adds `w`. The [3D math guide](../3d/math.md) explains how they carry points and directions.
-- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface.
+- A [`Mat3`](#mat3) or a [`Mat4`](#mat4) is a matrix that places, views or projects 3D space, a [`Quat`](#quat) is a 3D rotation and a [`Plane`](#plane) is an infinite flat surface. A [`Transform3D`](#transform3d) places an object in 3D, and a [`DualQuat`](#dualquat) blends the joints of a skinned mesh.
 - A [`Rect`](#rect) is a rectangle that is not rotated, with its top left corner at `x`, `y` and a `width` and `height`.
 - A [`Color`](#color) has red, green, blue and alpha components from 0 to 1. Alpha is the opacity, 0 for invisible and 1 for solid.
 - A [`Transform2D`](#transform2d) moves, rotates, scales and skews points, such as the placement of a sprite or the chain from a child to its parent.
@@ -28,7 +28,7 @@ local position = m.vec2(100, 50)
 local velocity = m.fromAngle(m.radians(90), 30)
 local hitbox = m.fromCenter(position, {32, 48})
 local tint = m.color('#FF66CCFF')
-local placement = m.transform(position, m.radians(45), {2, 2})
+local placement = m.transform2d(position, m.radians(45), {2, 2})
 
 position = position + velocity
 print(position, hitbox:contains(position), tint.b, placement:apply({0, 0}))
@@ -68,7 +68,7 @@ print(red:lerp({0, 0, 1}, 0.5), red == m.color('FF0000')) -- #FF800080 true
 
 ### Shared values
 
-The values `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
+The values `Vec2`, `Vec3`, `Vec4`, `Mat3`, `Mat4`, `Quat`, `Plane`, `Transform3D`, `DualQuat`, `Rect`, `Color`, `Transform2D`, `Random` and `Noise2D` are userdata, objects that the engine owns. Assigning one to another variable shares the same object, so a change made through one variable shows through the other. Operators and methods always return new values, and engine functions copy the values they receive. Copy a value with its constructor, such as `m.vec2(other)`.
 
 Reading a member that a value does not have raises `The type "haylen.Vec2" has no member "z".`, and assigning one raises `The type "haylen.Vec2" has no writable property "z".`, with the type name of the value.
 
@@ -1701,6 +1701,261 @@ local m = require('haylen.math')
 print(m.plane({0, 2, 0}, 4) == m.plane(m.up(), 2)) -- true
 ```
 
+## Transform3D
+
+A `Transform3D` places an object in 3D with a `position`, a `rotation` and a `scale`. It scales a point first, then turns it, then moves it. A child placed in a parent combines with `parent * child`. Make one with `m.transform3d`, and turn it into a matrix with `transform:matrix()`. The [3D math guide](../3d/math.md#transforms) explains when to keep a transform and when a matrix.
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `position` | `Vec3` | read and write | Where the object is. |
+| `x`, `y`, `z` | number | read and write | The components of the position, which read and write without making a `Vec3`. |
+| `rotation` | `Quat` | read and write | How the object is turned. |
+| `scale` | `Vec3` | read and write | The size of the object on each of its axes, negative to mirror it. |
+
+```lua
+local m = require('haylen.math')
+
+local crate = m.transform3d({0, 0.5, -3})
+crate.x = crate.x + 1
+crate.rotation = m.fromAxisAngle(m.up(), 0.3)
+print(crate.position) -- Vec3(1.0, 0.5, -3.0)
+```
+
+### m.transform3d(position, rotation, scale)
+
+Returns a new `Transform3D`. The position is `{0, 0, 0}`, the rotation is none and the scale is `{1, 1, 1}` when left out.
+
+```lua
+local m = require('haylen.math')
+
+local tree = m.transform3d({4, 0, -2}, m.fromAxisAngle(m.up(), 1.2), {1.5, 1.5, 1.5})
+print(tree:apply({0, 2, 0})) -- the top of the tree in the world
+```
+
+### m.transform3d(value)
+
+Returns a copy of a `Transform3D`, or the parts of a `Mat4`, with the errors of [`mat4:decompose`](#mat4decompose).
+
+```lua
+local m = require('haylen.math')
+
+local placement = m.transform3d(m.compose({1, 2, 3}, nil, {2, 2, 2}))
+print(placement.position, placement.scale) -- Vec3(1.0, 2.0, 3.0) Vec3(2.0, 2.0, 2.0)
+```
+
+### transform:apply(point)
+
+Returns where the transform puts `point`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.transform3d({1, 2, 3}):apply({4, 0, 0})) -- Vec3(5.0, 2.0, 3.0)
+```
+
+### transform:applyVector(vector)
+
+Returns the direction `vector` scaled and turned, without the move.
+
+```lua
+local m = require('haylen.math')
+
+print(m.transform3d({1, 2, 3}, nil, {2, 2, 2}):applyVector({1, 0, 0})) -- Vec3(2.0, 0.0, 0.0)
+```
+
+### transform:applyNormal(normal)
+
+Returns the normal of a surface that the transform places, with a length of `1`. It stays at a right angle to the surface when the scale differs between axes. A scale of zero on an axis raises `The transform scales an axis to zero or to infinity, so nothing undoes it.`
+
+```lua
+local m = require('haylen.math')
+
+local squashed = m.transform3d({0, 0, 0}, nil, {4, 1, 1})
+print(squashed:applyNormal({1, -1, 0})) -- tilted toward x less than the surface
+```
+
+### transform:applyInverse(point)
+
+Returns the point that the transform puts at `point`, such as a point of the world in the space of the object. It undoes any scale exactly, with the error of `transform:applyNormal` for a scale of zero.
+
+```lua
+local m = require('haylen.math')
+
+local door = m.transform3d({5, 0, 0}, m.fromAxisAngle(m.up(), m.halfPi))
+print(door:applyInverse({5, 0, -1})) -- close to Vec3(1.0, 0.0, 0.0)
+```
+
+### transform:applyInverseVector(vector)
+
+Returns the direction that the transform turns and scales into `vector`, with the error of `transform:applyNormal` for a scale of zero.
+
+```lua
+local m = require('haylen.math')
+
+print(m.transform3d({0, 0, 0}, nil, {2, 2, 2}):applyInverseVector({2, 0, 0})) -- Vec3(1.0, 0.0, 0.0)
+```
+
+### transform:inverse()
+
+Returns the transform that undoes this one. Its scale must be the same on every axis, since the undoing of a scale that differs between axes after a rotation is no transform of this form. Such a scale raises `A transform whose scale differs between axes has no inverse of the same form. Invert its matrix instead.`, and a scale of zero raises the error of `transform:applyNormal`.
+
+```lua
+local m = require('haylen.math')
+
+local placement = m.transform3d({1, 2, 3}, m.fromAxisAngle(m.up(), 0.5), {2, 2, 2})
+print((placement * placement:inverse()):approximately(m.transform3d())) -- true
+```
+
+### transform:matrix()
+
+Returns the transform as a `Mat4`, which chains exactly with other matrices.
+
+```lua
+local m = require('haylen.math')
+
+print(m.transform3d({1, 2, 3}):matrix():translation()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### transform:lerp(to, t)
+
+Returns the transform at `t` of the way toward `to`: the position and the scale in a straight line and the rotation along the shorter arc.
+
+```lua
+local m = require('haylen.math')
+
+local closed = m.transform3d()
+local open = m.transform3d({0, 0, 0}, m.fromAxisAngle(m.up(), m.halfPi))
+print(closed:lerp(open, 0.5).rotation:angle()) -- close to m.pi / 4
+```
+
+### transform:approximately(other, epsilon)
+
+Returns `true` when the positions, rotations and scales are close, with the tolerance of [`vec3:approximately`](#vec3approximatelyother-epsilon).
+
+```lua
+local m = require('haylen.math')
+
+print(m.transform3d({1, 0, 0}):approximately(m.transform3d({1.000001, 0, 0}))) -- true
+```
+
+### Transform3D operators
+
+The operator `parent * child` returns the transform of `child` in the space of `parent`, as a hierarchy of objects does. The position of the child always lands where the parent puts it. The rotations and scales combine exactly while the scale of the parent is the same on every axis or the child does not turn, and otherwise multiply their matrices, which keep the shear that a transform cannot hold. The operator `a == b` compares every part, and `tostring(t)` lists the position, the rotation and the scale.
+
+```lua
+local m = require('haylen.math')
+
+local car = m.transform3d({10, 0, 0}, m.fromAxisAngle(m.up(), m.halfPi))
+local wheel = m.transform3d({1, -0.3, 0})
+print((car * wheel).position) -- close to Vec3(10.0, -0.3, -1.0)
+```
+
+## DualQuat
+
+A `DualQuat` holds a rotation and a translation without scale in one dual quaternion. Blending dual quaternions keeps the volume of a skinned mesh at twisted joints, such as a wrist or a shoulder, where blending matrices pinches it. Make one with `m.dualQuat` and blend several with `m.blendDualQuats`.
+
+```lua
+local m = require('haylen.math')
+
+local elbow = m.dualQuat(m.fromAxisAngle(m.right(), 0.6), {0, 1.2, 0})
+print(elbow:apply({0, 0.3, 0})) -- a point of the forearm in the space of the arm
+```
+
+### m.dualQuat(rotation, translation)
+
+Returns the dual quaternion that turns by the `Quat` `rotation` and then moves by `translation`. Both are none when left out.
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(nil, {1, 2, 3}):translation()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### m.blendDualQuats(dualQuats, weights)
+
+Returns the blend of a list of dual quaternions by a list of weights, one for each, along the shorter arc of each, as the joints that move a vertex blend. Lists of different lengths raise `A blend of dual quaternions needs one weight for each dual quaternion.`, an empty list raises `A blend of dual quaternions needs at least one dual quaternion.`, a weight that is negative or not finite raises `The weights of a blend of dual quaternions must be finite and not negative.`, and weights that add up to zero raise `The weights of a blend of dual quaternions add up to zero, so they blend nothing.`
+
+```lua
+local m = require('haylen.math')
+
+local straight = m.dualQuat()
+local twisted = m.dualQuat(m.fromAxisAngle(m.right(), 2.8))
+local wrist = m.blendDualQuats({straight, twisted}, {0.5, 0.5})
+print(wrist:apply({0, 1, 0}):length()) -- close to 1.0, so the skin keeps its distance from the bone
+```
+
+### dualQuat:rotation()
+
+Returns the rotation as a `Quat`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(m.fromAxisAngle(m.up(), 1)):rotation():angle()) -- 1.0
+```
+
+### dualQuat:translation()
+
+Returns the translation as a `Vec3`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(m.fromAxisAngle(m.up(), 1), {0, 2, 0}):translation()) -- close to Vec3(0.0, 2.0, 0.0)
+```
+
+### dualQuat:apply(point)
+
+Returns `point` turned and then moved.
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(m.fromAxisAngle(m.up(), m.halfPi), {1, 2, 3}):apply(m.right())) -- close to Vec3(1.0, 2.0, 2.0)
+```
+
+### dualQuat:normalized()
+
+Returns the dual quaternion with a real part of length `1`, which keeps its translation. A real part of length zero raises `The dual quaternion holds no rotation, because the length of its real part is zero or not a finite number.`
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(nil, {1, 0, 0}):normalized():translation()) -- Vec3(1.0, 0.0, 0.0)
+```
+
+### dualQuat:matrix()
+
+Returns the dual quaternion as a `Mat4`.
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(nil, {1, 2, 3}):matrix():translation()) -- Vec3(1.0, 2.0, 3.0)
+```
+
+### dualQuat:approximately(other, epsilon)
+
+Returns `true` when the rotations and the translations are close, with the tolerance of [`vec3:approximately`](#vec3approximatelyother-epsilon).
+
+```lua
+local m = require('haylen.math')
+
+print(m.dualQuat(nil, {1, 0, 0}):approximately(m.dualQuat(nil, {1.000001, 0, 0}))) -- true
+```
+
+### DualQuat operators
+
+The operator `a * b` returns the dual quaternion that applies `b` first and `a` after it, and `tostring(d)` lists the rotation and the translation.
+
+```lua
+local m = require('haylen.math')
+
+local shoulder = m.dualQuat(m.fromAxisAngle(m.right(), 0.4), {0, 1.5, 0})
+local elbow = m.dualQuat(m.fromAxisAngle(m.right(), 0.6), {0, 0.3, 0})
+print((shoulder * elbow):apply({0, 0.25, 0})) -- the wrist in the space of the body
+```
+
 ## Rect
 
 A `Rect` is a rectangle that is not rotated, with its top left corner at `x`, `y`. Make one with `m.rect`, `m.fromMinMax`, `m.fromCenter` or [`m.bounds`](#mboundspoints).
@@ -2240,7 +2495,7 @@ print(m.color('#00000000') == m.color(0, 0, 0, 0)) -- true
 
 ## Transform2D
 
-A `Transform2D` is an affine transform: it moves, rotates, scales and skews points in one step. Make one with `m.transform`, `m.identity`, `m.translation`, `m.rotation` or `m.scaling`. It maps a point `p` to `(a * p.x + c * p.y + tx, b * p.x + d * p.y + ty)`.
+A `Transform2D` is an affine transform: it moves, rotates, scales and skews points in one step. Make one with `m.transform2d`, `m.identity`, `m.translation`, `m.rotation` or `m.scaling`. It maps a point `p` to `(a * p.x + c * p.y + tx, b * p.x + d * p.y + ty)`.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -2257,18 +2512,18 @@ flip.tx = 64
 print(flip:apply({10, 5})) -- Vec2(54.0, 5.0)
 ```
 
-### m.transform(position, rotation, scale, skew)
+### m.transform2d(position, rotation, scale, skew)
 
 Returns a new `Transform2D` that scales by `scale`, then skews by `skew`, then rotates by `rotation` radians, then moves by `position`. The `Vec2` `position` is required. The `rotation` is `0` when left out, and the `Vec2` `scale` is `{1, 1}`. The `skew` is a `Vec2` of angles in radians, `{0, 0}` by default, that shears the shape. The angle `skew.x` turns the local y axis, and `skew.y` turns the local x axis, the same way as `rotation` turns.
 
 ```lua
 local m = require('haylen.math')
 
-local turret = m.transform({400, 300}, m.pi / 2, {2, 2})
+local turret = m.transform2d({400, 300}, m.pi / 2, {2, 2})
 print(turret:apply({16, 0})) -- close to Vec2(400.0, 332.0)
 
 -- Leaning the y axis by 15 degrees shears a banner sideways.
-local banner = m.transform({0, 0}, 0, {1, 1}, {m.radians(15), 0})
+local banner = m.transform2d({0, 0}, 0, {1, 1}, {m.radians(15), 0})
 print(banner:apply({0, 100})) -- close to Vec2(-25.9, 96.6)
 ```
 
@@ -2324,7 +2579,7 @@ Returns `point` transformed, translation included, as a `Vec2`.
 ```lua
 local m = require('haylen.math')
 
-local ship = m.transform({500, 300}, m.pi / 4)
+local ship = m.transform2d({500, 300}, m.pi / 4)
 print(ship:apply({40, 0}))
 ```
 
@@ -2335,7 +2590,7 @@ Returns `vector` transformed without the translation, which suits directions and
 ```lua
 local m = require('haylen.math')
 
-local ship = m.transform({500, 300}, m.pi / 2)
+local ship = m.transform2d({500, 300}, m.pi / 2)
 local forward = ship:applyVector({1, 0})
 print(m.approximately(forward.y, 1)) -- true
 ```
@@ -2347,7 +2602,7 @@ Returns `a * d - b * c`, the factor by which the transform scales areas. It is n
 ```lua
 local m = require('haylen.math')
 
-print(m.transform({0, 0}, 0.3, {2, -3}):determinant() < 0) -- true
+print(m.transform2d({0, 0}, 0.3, {2, -3}):determinant() < 0) -- true
 ```
 
 ### transform:translation()
@@ -2357,7 +2612,7 @@ Returns `tx` and `ty` as a `Vec2`, the point where the transform moves the origi
 ```lua
 local m = require('haylen.math')
 
-print(m.transform({300, 200}, m.pi / 3):translation()) -- Vec2(300.0, 200.0)
+print(m.transform2d({300, 200}, m.pi / 3):translation()) -- Vec2(300.0, 200.0)
 ```
 
 ### transform:inverse()
@@ -2367,7 +2622,7 @@ Returns the inverse transform, which maps transformed points back. A transform w
 ```lua
 local m = require('haylen.math')
 
-local body = m.transform({200, 100}, m.pi / 6, {2, 2})
+local body = m.transform2d({200, 100}, m.pi / 6, {2, 2})
 local world = body:apply({10, 5})
 local localPoint = body:inverse():apply(world)
 print(m.approximately(localPoint.x, 10), m.approximately(localPoint.y, 5)) -- true true
@@ -2380,8 +2635,8 @@ The operator `a * b` composes two transforms. The result applies `b` first and t
 ```lua
 local m = require('haylen.math')
 
-local parent = m.transform({300, 200}, m.pi / 2)
-local child = m.transform({50, 0})
+local parent = m.transform2d({300, 200}, m.pi / 2)
+local child = m.transform2d({50, 0})
 print((parent * child):apply({0, 0})) -- close to Vec2(300.0, 250.0)
 ```
 
@@ -3952,6 +4207,13 @@ These messages come from the functions and methods of the module. Messages that 
 | `The up direction needs a finite length above zero and must not run along the direction to look along, or it cannot choose how the view turns around that direction.` | The `up` of `m.lookRotation` or `m.lookAt` is zero or runs along the view. |
 | `The three points lie on one line, so they span no plane.` | The points of `m.planeFromPoints` lie on one line. |
 | `The normal of a plane must have a length of one. Make the plane with "plane" of "haylen.math", which scales its normal.` | The `normal` of a plane was set to a vector of another length. |
+| `The transform scales an axis to zero or to infinity, so nothing undoes it.` | A transform with a scale of zero was undone or placed a normal. |
+| `A transform whose scale differs between axes has no inverse of the same form. Invert its matrix instead.` | The transform of `transform:inverse` has a scale that differs between axes. |
+| `A blend of dual quaternions needs one weight for each dual quaternion.` | The lists of `m.blendDualQuats` have different lengths. |
+| `A blend of dual quaternions needs at least one dual quaternion.` | The list of `m.blendDualQuats` is empty. |
+| `The weights of a blend of dual quaternions must be finite and not negative.` | A weight of `m.blendDualQuats` is negative or not finite. |
+| `The weights of a blend of dual quaternions add up to zero, so they blend nothing.` | The weights of `m.blendDualQuats` are all zero. |
+| `The dual quaternion holds no rotation, because the length of its real part is zero or not a finite number.` | A dual quaternion of length zero was normalized. |
 | `Expected a point in field "<field>".` | A table given as a circle or a segment misses a point. |
 | `bad argument #<n> to '<function>' (Color, color text or table with r, g and b expected, got <type>)` | A color argument has another type. |
 | `bad argument #1 to 'color' (invalid color text, expected #RRGGBB or #AARRGGBB)` | Color text is not valid. |

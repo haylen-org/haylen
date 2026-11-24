@@ -98,6 +98,23 @@ end
 print(current:angleTo(target) < 0.1) -- true
 ```
 
+## Transforms
+
+A `Transform3D` holds a placement as its three parts: a position, a rotation and a scale. The parts are easy to read, to edit and to animate, so a transform is the form that an object keeps, while a matrix is the form that drawing and the GPU take. A child placed in a parent combines as `parent * child`, which lands the child where the parent puts it.
+
+```lua
+local m = require('haylen.math')
+
+local ship = m.transform3d({0, 10, 0}, m.fromAxisAngle(m.up(), 0.5))
+local cannon = m.transform3d({1.5, 0.2, -2})
+local muzzle = (ship * cannon):apply({0, 0, -1})
+print(muzzle) -- the tip of the cannon in the world
+```
+
+Parts cannot hold everything a chain of matrices holds. When a parent scales its axes by different amounts and a child turns inside it, the child would be sheared, slanted along an axis, and a position, a rotation and a scale cannot slant. So such a chain multiplies the matrices of `transform:matrix()` instead, which keep the shear. The same holds for undoing a transform: `transform:applyInverse` undoes any scale exactly, while `transform:inverse` needs a scale that is the same on every axis.
+
+A skinned mesh, whose vertices follow the joints of a skeleton, blends the placements of several joints for each vertex. Blending matrices pinches the mesh where a joint twists, such as a wrist, so `DualQuat` holds the rotation and translation of a joint in a form that blends without that loss.
+
 ## Planes
 
 A `Plane` splits space into a front side and a back side, such as the ground, a wall or the surface of water. Its signed distance tells on which side a point lies and how far, and its closest point drops a point onto it. A plane in the space of a camera also clips a projection with `obliqueNearPlane`, which draws only what lies behind a mirror or a portal.

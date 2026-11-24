@@ -87,17 +87,17 @@ TEST_F(MathLuaTest, WorksWithColors) {
 }
 
 TEST_F(MathLuaTest, ComposesTransforms) {
-    lua("t = m.transform({10, 0}, m.pi / 2, {2, 2})");
+    lua("t = m.transform2d({10, 0}, m.pi / 2, {2, 2})");
     EXPECT_EQ(lua("local p = t:apply({1, 0}) return m.approximately(p.x, 10) and m.approximately(p.y, 2)"), "true");
     EXPECT_EQ(lua("local v = t:applyVector({1, 0}) return m.approximately(v.x, 0) and m.approximately(v.y, 2)"), "true");
     EXPECT_EQ(lua("local p = t:inverse():apply(t:apply({3, 4})) return m.approximately(p.x, 3) and m.approximately(p.y, 4)"), "true");
-    EXPECT_EQ(lua("local p = (t * m.transform({1, 1})):apply({0, 0}) return m.approximately(p.x, 8) and m.approximately(p.y, 2)"), "true");
+    EXPECT_EQ(lua("local p = (t * m.transform2d({1, 1})):apply({0, 0}) return m.approximately(p.x, 8) and m.approximately(p.y, 2)"), "true");
 
     EXPECT_EQ(lua("return m.approximately(t.a, 0) and m.approximately(t.b, 2) and m.approximately(t.c, -2) and m.approximately(t.d, 0) and t.tx == 10 and t.ty == 0"), "true");
     EXPECT_EQ(lua("local u = m.identity() u.tx, u.d = 5, 3 return tostring(u:apply({1, 1})) .. ' ' .. u:determinant()"), "Vec2(6.0, 3.0) 3.0");
     EXPECT_EQ(lua("return tostring(m.translation({3, 4}):translation()) .. ' ' .. tostring(m.scaling({2, 3}):apply({1, 1}))"), "Vec2(3.0, 4.0) Vec2(2.0, 3.0)");
     EXPECT_EQ(lua("local p = m.rotation(m.halfPi):apply({1, 0}) return m.approximately(p.x, 0) and m.approximately(p.y, 1) and m.approximately(t:determinant(), 4)"), "true");
-    EXPECT_EQ(lua("local s = m.transform({0, 0}, 0, {1, 1}, {m.pi / 4, 0}) local p = s:apply({0, 1}) return m.approximately(p.x, -math.sqrt(0.5)) and m.approximately(s:apply({1, 0}).y, 0)"), "true");
+    EXPECT_EQ(lua("local s = m.transform2d({0, 0}, 0, {1, 1}, {m.pi / 4, 0}) local p = s:apply({0, 1}) return m.approximately(p.x, -math.sqrt(0.5)) and m.approximately(s:apply({1, 0}).y, 0)"), "true");
 }
 
 TEST_F(MathLuaTest, GeneratesDeterministicRandomValuesAndNoise) {

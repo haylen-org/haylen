@@ -119,6 +119,7 @@ set(HAYLEN_LUA_SOURCES
   src/math/SignalFilterBinding.cpp
   src/math/SplineBinding.cpp
   src/math/SpringBinding.cpp
+  src/math/Transform3DBinding.cpp
   src/math/VectorBinding.cpp
   src/modules/Animation2DModule.cpp
   src/modules/AssetsModule.cpp
