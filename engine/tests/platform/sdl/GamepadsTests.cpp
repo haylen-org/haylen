@@ -122,6 +122,8 @@ class GamepadsTest : public ::testing::Test {
     static constexpr std::array<SDL_VirtualJoystickSensorDesc, 2> kSensors{{{SDL_SENSOR_ACCEL, 250.0F}, {SDL_SENSOR_GYRO, 250.0F}}};
     static constexpr SDL_VirtualJoystickTouchpadDesc kTouchpad{.nfingers = 2, .padding = {}};
 
+    // SDL stops the motors of a controller that still rumbles when it closes it, after the test and before the fixture goes, so the fixture keeps the motors that the controllers write into.
+    std::array<Motors, input::Input::kMaxGamepads> controllerMotors{};
     test::EngineFixture session;
     Gamepads gamepads;
     std::array<input::GamepadState, input::Input::kMaxGamepads> states{};
@@ -173,21 +175,20 @@ TEST_F(GamepadsTest, ReadsTheButtonsTheSticksAndTheTriggersOfAController) {
 }
 
 TEST_F(GamepadsTest, RumblesTheMotorsOfTheControllerInTheSlot) {
-    Motors motors;
-    attach("Controller", 0x045E, 0x0B12, &motors);
+    attach("Controller", 0x045E, 0x0B12, &controllerMotors[0]);
     pump();
 
     gamepads.rumble(0, 1.0F, 0.5F, 0.25F);
-    EXPECT_EQ(motors.low, 65535);
-    EXPECT_EQ(motors.high, 32768);
+    EXPECT_EQ(controllerMotors[0].low, 65535);
+    EXPECT_EQ(controllerMotors[0].high, 32768);
 
     gamepads.rumble(0, 0.0F, 0.0F, 0.0F);
-    EXPECT_EQ(motors.low, 0);
-    EXPECT_EQ(motors.high, 0);
+    EXPECT_EQ(controllerMotors[0].low, 0);
+    EXPECT_EQ(controllerMotors[0].high, 0);
 
     // A slot without a controller rumbles nothing.
     gamepads.rumble(3, 1.0F, 1.0F, 1.0F);
-    EXPECT_EQ(motors.low, 0);
+    EXPECT_EQ(controllerMotors[0].low, 0);
 }
 
 // The sensors of a controller stay off until the app runs them, read with y out of the face of the controller as z of a face that lies flat, and the fingers on its touchpad go with the controller.
@@ -286,10 +287,9 @@ TEST_F(GamepadsTest, KeepsFourPlayersApartWhileTheirControllersComeAndGo) {
 
 // The rumble that the app asks of a player reaches the motors of that controller alone, and the sensors of each controller read its own motion.
 TEST_F(GamepadsTest, RumblesAndReadsTheMotionOfEachControllerOnItsOwn) {
-    std::array<Motors, 4> motors;
     std::array<SDL_Joystick*, 4> pads{};
     for (std::size_t index = 0; index < pads.size(); ++index) {
-        pads[index] = attach(("Player " + std::to_string(index + 1)).c_str(), 0x054C, 0x0CE6, &motors[index], true);
+        pads[index] = attach(("Player " + std::to_string(index + 1)).c_str(), 0x054C, 0x0CE6, &controllerMotors[index], true);
     }
 
     play();
@@ -305,8 +305,8 @@ TEST_F(GamepadsTest, RumblesAndReadsTheMotionOfEachControllerOnItsOwn) {
     }
 
     for (std::size_t slot = 0; slot < pads.size(); ++slot) {
-        EXPECT_EQ(motors[slot].low, static_cast<Uint16>(std::lround(0.25F * static_cast<float>(slot + 1) * 65535.0F))) << "The controller " << slot + 1 << " rumbled with another strength.";
-        EXPECT_EQ(motors[slot].high, 0);
+        EXPECT_EQ(controllerMotors[slot].low, static_cast<Uint16>(std::lround(0.25F * static_cast<float>(slot + 1) * 65535.0F))) << "The controller " << slot + 1 << " rumbled with another strength.";
+        EXPECT_EQ(controllerMotors[slot].high, 0);
     }
 
     input::GamepadMotion::Sensors wanted;
@@ -326,7 +326,7 @@ TEST_F(GamepadsTest, RumblesAndReadsTheMotionOfEachControllerOnItsOwn) {
     detach(pads[2]);
     play();
     gamepads.rumble(2, 1.0F, 1.0F, 1.0F);
-    EXPECT_EQ(motors[3].low, static_cast<Uint16>(std::lround(65535.0F)));
+    EXPECT_EQ(controllerMotors[3].low, static_cast<Uint16>(std::lround(65535.0F)));
     EXPECT_EQ(session.engine().getInput().getGamepad(3).motion.acceleration, (std::array<float, 3>{3.0F, 0.0F, 9.8F}));
 }
 
