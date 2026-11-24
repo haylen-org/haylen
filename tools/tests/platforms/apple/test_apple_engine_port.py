@@ -13,6 +13,7 @@ from haylen.native.engine_sdk_tree import EngineSdkTree
 from haylen.platforms.apple.apple_engine_port import AppleEnginePort
 from haylen.platforms.apple.apple_framework_check import AppleFrameworkCheck
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
+from haylen.platforms.apple.apple_symbol_check import AppleSymbolCheck
 from haylen.platforms.apple.apple_targets import AppleTargets
 from haylen.platforms.sdk_join_request import SdkJoinRequest
 from haylen.platforms.sdk_request import SdkRequest
@@ -34,6 +35,7 @@ class AppleEnginePortTest:
         recorded = RecordedCommands(tmp_path)
         recorded.context.process.run = lambda command, **options: self.run(recorded, [str(part) for part in command])
         monkeypatch.setattr(AppleFrameworkCheck, "check", lambda check, library, sdk, frameworks: recorded.commands.append(["check", sdk, *frameworks]))
+        monkeypatch.setattr(AppleSymbolCheck, "check", lambda check, library, sdk: recorded.commands.append(["symbols", sdk, library.name]))
         return AppleEnginePort(recorded.context), recorded
 
     def run(self, recorded: RecordedCommands, command: list[str]) -> None:
@@ -78,6 +80,11 @@ class AppleEnginePortTest:
         engine_port, recorded = port
         engine_port.build_sdk(self.request(tmp_path, ("macos", "ios-simulator")))
         assert [command for command in recorded.commands if command[0] == "check"] == [["check", "macosx", "macOSKit.framework"], ["check", "iphonesimulator", "iOSKit.framework"]]
+
+    def test_every_built_slice_checks_that_its_library_keeps_the_symbols_of_openssl_and_poco_hidden(self, port, tmp_path):
+        engine_port, recorded = port
+        engine_port.build_sdk(self.request(tmp_path, ("macos", "ios-simulator")))
+        assert [command for command in recorded.commands if command[0] == "symbols"] == [["symbols", "macosx", "libhaylen.a"], ["symbols", "iphonesimulator", "libhaylen.a"]]
 
     def test_the_sdk_holds_both_frameworks_and_a_slice_per_system_and_environment(self, port, tmp_path):
         engine_port, recorded = port
