@@ -19,7 +19,7 @@ std::vector<Display> WaylandDisplays::read() {
     SDL_DisplayID* ids = SDL_GetDisplays(&count);
     if (ids == nullptr || count == 0) {
         SDL_free(ids);
-        throw std::runtime_error("SDL lists no display. " + std::string(SDL_GetError()));
+        throw std::runtime_error("The window system lists no display. " + std::string(SDL_GetError()));
     }
 
     const SDL_DisplayID primary = SDL_GetPrimaryDisplay();
@@ -36,7 +36,7 @@ std::vector<Display> WaylandDisplays::read() {
 std::string WaylandDisplays::findWindowDisplay(SDL_Window* window) {
     const SDL_DisplayID display = SDL_GetDisplayForWindow(window);
     if (display == 0) {
-        throw std::runtime_error("SDL knows no display that shows the window. " + std::string(SDL_GetError()));
+        throw std::runtime_error("The window system knows no display that shows the window. " + std::string(SDL_GetError()));
     }
 
     return getId(display);
@@ -55,7 +55,7 @@ SDL_DisplayID WaylandDisplays::find(const Display& display) {
     SDL_free(ids);
 
     if (found == 0) {
-        throw std::runtime_error("SDL knows no display \"" + display.id + "\".");
+        throw std::runtime_error("The window system knows no display \"" + display.id + "\".");
     }
 
     return found;
@@ -66,7 +66,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
     SDL_Rect bounds{};
     SDL_Rect usable{};
     if (!SDL_GetDisplayBounds(id, &bounds) || !SDL_GetDisplayUsableBounds(id, &usable)) {
-        throw std::runtime_error("SDL could not read the bounds of a display. " + std::string(SDL_GetError()));
+        throw std::runtime_error("The window system could not read the bounds of a display. " + std::string(SDL_GetError()));
     }
 
     const float scale = SDL_GetDisplayContentScale(id);
@@ -101,7 +101,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
 std::string WaylandDisplays::getId(SDL_DisplayID id) {
     const char* name = SDL_GetDisplayName(id);
     if (name == nullptr) {
-        throw std::runtime_error("SDL could not read the name of a display. " + std::string(SDL_GetError()));
+        throw std::runtime_error("The window system could not read the name of a display. " + std::string(SDL_GetError()));
     }
 
     return name;

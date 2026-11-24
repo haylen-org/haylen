@@ -29,7 +29,7 @@ class SystemMacrosTest:
 
     def test_portable_code_names_no_system(self):
         found = []
-        for root in (Repository.ENGINE / "src", Repository.ENGINE / "include"):
+        for root in (Repository.ENGINE / "src", Repository.ENGINE / "include", Repository.ENGINE / "lua" / "src", Repository.ENGINE / "lua" / "include"):
             for path in sorted(root.rglob("*")):
                 if path.suffix not in SystemMacrosTest.SOURCE_SUFFIXES or SystemMacrosTest.is_system_specific(path):
                     continue

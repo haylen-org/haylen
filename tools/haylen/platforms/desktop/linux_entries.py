@@ -87,7 +87,8 @@ class LinuxEntries:
         try:
             component = ElementTree.fromstring(text)
         except ElementTree.ParseError as error:
-            raise InvalidManifest(f"The AppStream metainfo `{where}` is not valid XML: {error}.", origin=where) from error
+            line, column = error.position
+            raise InvalidManifest(f"The AppStream metainfo `{where}` is not valid XML. Check line {line}, column {column + 1}.", origin=where) from error
         if component.tag != "component":
             raise InvalidManifest(f'The AppStream metainfo `{where}` must hold one "component" element.', origin=where)
 

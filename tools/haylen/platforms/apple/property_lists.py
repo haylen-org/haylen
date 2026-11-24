@@ -17,7 +17,7 @@ class PropertyLists:
         try:
             return plistlib.loads(path.read_bytes())
         except plistlib.InvalidFileException as error:
-            raise BuildFailed(f"The file `{Repository.shown(path)}` is not a property list: {error}.") from error
+            raise BuildFailed(f"The file `{Repository.shown(path)}` is not a property list. Write it again as the XML of a property list.") from error
 
     @staticmethod
     def dumps(values: Mapping[str, object]) -> bytes:

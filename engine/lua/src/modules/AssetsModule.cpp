@@ -49,7 +49,7 @@ void AssetsModule::registerPusher(std::string type, Pusher pusher) {
 void AssetsModule::pushAsset(lua_State* L, std::string_view type, const std::shared_ptr<void>& asset) const {
     const auto found = pushers.find(std::string(type));
     if (found == pushers.end()) {
-        throw std::logic_error("The asset type \"" + std::string(type) + "\" has no Lua representation.");
+        throw std::logic_error("The asset type \"" + std::string(type) + "\" loads, but no Lua module of the app gives it a form in Lua. Add a module that gives assets of this type a form in Lua.");
     }
 
     found->second(L, asset);

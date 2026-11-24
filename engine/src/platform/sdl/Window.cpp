@@ -318,7 +318,7 @@ SDL_DisplayID Window::findDisplay(const Display& display) {
     const SDL_Point point{.x = static_cast<int>(std::lround(center.x)), .y = static_cast<int>(std::lround(center.y))};
     const SDL_DisplayID found = SDL_GetDisplayForPoint(&point);
     if (found == 0) {
-        throw std::runtime_error("SDL knows no display at the place of the display \"" + display.id + "\". " + SDL_GetError());
+        throw std::runtime_error("The window system knows no display at the place of the display \"" + display.id + "\". " + SDL_GetError());
     }
 
     return found;

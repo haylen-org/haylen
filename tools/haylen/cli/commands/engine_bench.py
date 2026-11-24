@@ -21,7 +21,7 @@ class EngineBenchCommand(Command):
         parser.add_argument(
             "--graphics-api",
             choices=TestCommand.GRAPHICS_APIS,
-            help='A name of "gpu::Device::kApiNames", such as "vulkan", which a benchmark that draws draws through instead of the null device of the headless host or the first API of the window.',
+            help='A graphics API, such as "vulkan", which a benchmark that draws draws through instead of the null device of the headless host or the first API of the window.',
         )
         parser.add_argument("--gpu", action="store_true", help="Run a benchmark that draws once on every graphics API that the build compiled, past the ones that cannot start on this machine.")
 

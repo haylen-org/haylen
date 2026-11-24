@@ -12,7 +12,7 @@ namespace haylen::lua {
 
 void Binding::preload(lua_State* L, const char* name, lua_CFunction opener) {
     if (!Runtime::getEngine(L).getPlugin<ScriptPlugin>().getRuntime().addModule(name, opener)) {
-        throw std::runtime_error("The Lua module \"" + std::string(name) + "\" cannot be added, because a module of Varn or another module of the engine already has its name. Give the module another name.");
+        throw std::runtime_error("The Lua module \"" + std::string(name) + "\" cannot be added, because a built-in module, such as \"json\", or another module of the engine already has its name. Give the module another name.");
     }
 }
 

@@ -59,7 +59,7 @@ class TestCommand(Command):
         parser.add_argument(
             "--graphics-api",
             choices=TestCommand.GRAPHICS_APIS,
-            help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone. With "--target web" and without "--gpu", "webGpu" or "webGl2" names the API that the pages of the checks of the web draw through.',
+            help='A graphics API, such as "vulkan", which runs the GPU tests on that device alone. With "--target web" and without "--gpu", "webGpu" or "webGl2" names the API that the pages of the checks of the web draw through.',
         )
         parser.add_argument(
             "--device",
@@ -141,7 +141,7 @@ class TestCommand(Command):
                 return WebGpuTests(context).run(arguments.config, arguments.graphics_api)
             return WebChecks(context, session.pipeline).run(arguments.graphics_api, arguments.shard)
         if target not in TestCommand.DESKTOPS and not gpu:
-            raise UnsupportedTarget(f'The target "{target}" runs only the GPU tests. Add "--gpu", or a name of "gpu::Device::kApiNames" with "--graphics-api".')
+            raise UnsupportedTarget(f'The target "{target}" runs only the GPU tests. Add "--gpu", or name a graphics API such as "vulkan" with "--graphics-api".')
         if target == "android":
             return AndroidGpuTests(context).run(arguments.config, arguments.graphics_api, arguments.device)
         if target in AppleGpuTests.SLICES:

@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <iterator>
@@ -13,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include "content/ShardIndexFile.hpp"
 #include "content/ShardReader.hpp"
 #include "content/ShardWriter.hpp"
 #include "content/crypto/Aead.hpp"
@@ -405,6 +408,27 @@ TEST_F(ShardTest, OpensEachShardWithItsOwnKey) {
     keys.add(test::ReleaseFixture::makeKey(2));
     const ShardReader reader(makeReader(file), reference, keys);
     EXPECT_EQ(reader.getHeader().keyId, second->getId());
+}
+
+TEST_F(ShardTest, NamesTheShardOfARecordThatIsNotOnTheDeviceYet) {
+    const ShardReference reference = writeShard(directory.getPath(), makeChunks(), getKey());
+    const std::vector<std::uint8_t> file = test::TestFiles::read(directory.getPath() / reference.getFileName());
+    const ShardHeader header = ShardHeader::parse(std::span(file).first<ShardHeader::kSize>(), file.size());
+
+    // The local store keeps the header followed by the index of a shard whose records come by download.
+    std::vector<std::uint8_t> headerAndIndex(file.begin(), file.begin() + ShardHeader::kSize);
+    const auto indexStart = file.begin() + static_cast<std::ptrdiff_t>(header.indexOffset);
+    headerAndIndex.insert(headerAndIndex.end(), indexStart, indexStart + static_cast<std::ptrdiff_t>(header.indexSize));
+    ShardIndexFile index(std::move(headerAndIndex), reference);
+
+    std::array<std::uint8_t, 1> target{};
+    try {
+        index.read(ShardHeader::kSize, target);
+        ADD_FAILURE() << "A record that is not on the device must not read.";
+    } catch (const Error& error) {
+        EXPECT_EQ(error.getCode(), Error::Code::MissingChunk);
+        EXPECT_EQ(std::string(error.what()), "A chunk of the shard \"" + reference.getFileName() + "\" is not on the device yet, so it must be downloaded before it is read.");
+    }
 }
 
 TEST_F(ShardTest, ReportsChunksTheShardDoesNotHold) {

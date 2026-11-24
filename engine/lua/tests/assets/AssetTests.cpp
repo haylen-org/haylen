@@ -473,7 +473,7 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
 
     // Lua loads an asset of a new type once the plugin of the type tells how Lua sees it.
     fixture.runLua("assets = require('haylen.assets')");
-    EXPECT_NE(fixture.lua("assets.load('levels/one.level')").find("The asset type \"level\" has no Lua representation."), std::string::npos);
+    EXPECT_NE(fixture.lua("assets.load('levels/one.level')").find("The asset type \"level\" loads, but no Lua module of the app gives it a form in Lua. Add a module that gives assets of this type a form in Lua."), std::string::npos);
     fixture.engine().getPlugin<lua::ScriptPlugin>().getModule<lua::modules::AssetsModule>().registerPusher("level", [](lua_State* L, const std::shared_ptr<void>& asset) { lua_pushinteger(L, *std::static_pointer_cast<int>(asset)); });
     EXPECT_EQ(fixture.lua("return assets.load('levels/one.level')"), "3");
 }

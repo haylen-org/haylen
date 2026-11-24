@@ -128,13 +128,13 @@ class JavaBridge final {
     [[nodiscard]] static JavaLocalRef<jlongArray> toViewHandles(JNIEnv& env, std::span<const varn::dataview::DataView> views);
 
     // Returns the text of a byte array that a static method of Java returns, or `fallback` when the method threw.
-    [[nodiscard]] static std::string callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback);
+    [[nodiscard]] static std::string callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view fallback);
 
     // Return a global reference to the class, or the static method, and log an engine error that names it when it is missing.
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);
     [[nodiscard]] static jmethodID findMethod(JNIEnv& env, jclass owner, const char* name, const char* signature);
 
-    static bool clearException(JNIEnv& env, std::string_view method);
+    static bool clearException(JNIEnv& env);
 
     static JavaVM* javaVm;
     static pthread_key_t attachedThreads;

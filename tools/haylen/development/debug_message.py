@@ -29,7 +29,7 @@ class DebugMessage:
         try:
             message = json.loads(body)
         except ValueError as error:
-            raise ValueError(f"The editor sent a message whose body is not JSON: {error}.") from error
+            raise ValueError("The editor sent a message whose body is not JSON.") from error
         if not isinstance(message, dict):
             raise ValueError("The editor sent a message whose body is not a JSON object.")
         return message

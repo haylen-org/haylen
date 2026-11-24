@@ -8,14 +8,14 @@
 
 namespace haylen::content {
 
-ShardIndexFile::ShardIndexFile(std::vector<std::uint8_t> headerAndIndex, const ShardReference& reference) : bytes(std::move(headerAndIndex)), fileSize(reference.fileSize), indexOffset(0) {
+ShardIndexFile::ShardIndexFile(std::vector<std::uint8_t> headerAndIndex, const ShardReference& reference) : bytes(std::move(headerAndIndex)), fileName(reference.getFileName()), fileSize(reference.fileSize), indexOffset(0) {
     if (bytes.size() < ShardHeader::kSize) {
-        throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" is damaged or was not made by this version of Haylen.", reference.getFileName()));
+        throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" is damaged or was not made by this version of Haylen.", fileName));
     }
 
     const ShardHeader header = ShardHeader::parse(std::span(bytes).first<ShardHeader::kSize>(), fileSize);
     if (bytes.size() != ShardHeader::kSize + header.indexSize) {
-        throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" is damaged or was not made by this version of Haylen.", reference.getFileName()));
+        throw Error(Error::Code::CorruptHeader, std::format("The shard \"{}\" is damaged or was not made by this version of Haylen.", fileName));
     }
 
     indexOffset = header.indexOffset;
@@ -30,7 +30,7 @@ std::size_t ShardIndexFile::read(std::uint64_t offset, std::span<std::uint8_t> t
     } else if (offset >= indexOffset && offset - indexOffset + target.size() <= indexSize) {
         source = static_cast<std::size_t>(ShardHeader::kSize + offset - indexOffset);
     } else {
-        throw Error(Error::Code::MissingChunk, "A chunk of a shard is not on the device yet, so it must be downloaded before it is read.");
+        throw Error(Error::Code::MissingChunk, std::format("A chunk of the shard \"{}\" is not on the device yet, so it must be downloaded before it is read.", fileName));
     }
 
     std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(source), target.size(), target.begin());

@@ -9,8 +9,8 @@ class EngineMessagesTest:
 
     # The calls whose texts reach a person: a thrown exception, a Lua error and a line of the log.
     CALL = re.compile(r"\bthrow\s+[\w:]+\s*[({]|\bluaL_error\s*\(|\bLog::(?:error|warning|info|debug)\s*\(")
-    # An index of a list after a name, with a number or a value that the message fills in, the root of a JSON path, a constant of the code, a code of an enum and a name of the standard library.
-    INTERNAL = re.compile(r"\w\[(?:\d+|\{\})\]|\$\.|\bk[A-Z][A-Za-z0-9]+\b|\bCode::|\bstd::")
+    # An index of a list after a name, with a number or a value that the message fills in, the root of a JSON path, a constant of the code, a code of an enum, a name of the standard library, a method of the Java code of the engine and a library that the engine uses.
+    INTERNAL = re.compile(r"\w\[(?:\d+|\{\})\]|\$\.|\bk[A-Z][A-Za-z0-9]+\b|\bCode::|\bstd::|\bdev\.haylen\.\w+\.\w+|\b(?:SDL|Dear ImGui|Varn|nlohmann)\b")
     # A failure of a GPU device that describes a broken contract in words instead of throwing the rule that the call breaks.
     CONTRACT_TEXT = re.compile(r'throw std::(?:logic_error|invalid_argument|out_of_range)\(\s*(?:std::format\(\s*)?"')
     GPU_SOURCES = ("engine/src/gpu/*.cpp", "engine/src/gpu/*.hpp", "engine/src/gpu/*.mm")
@@ -64,8 +64,8 @@ class EngineMessagesTest:
         return found
 
     def test_the_rule_finds_internals_in_a_message(self):
-        source = 'throw std::invalid_argument("The key \\"slices[0]\\" is wrong.");\nluaL_error(L, "The value of $.window is wrong.");\ncore::Log::error("The limit is {}.", kMaxSize);\nthrow Error(Error::Code::CorruptHeader, "The code Code::CorruptHeader failed.");\nthrow std::runtime_error(std::string("The image ") + "could not load.");\nLog::warning("Item 2 of \\"plugins\\" is fine.");\n'
-        assert [line for line, text in EngineMessagesTest.messages(source) if EngineMessagesTest.INTERNAL.search(text)] == [1, 2, 4]
+        source = 'throw std::invalid_argument("The key \\"slices[0]\\" is wrong.");\nluaL_error(L, "The value of $.window is wrong.");\ncore::Log::error("The limit is {}.", kMaxSize);\nthrow Error(Error::Code::CorruptHeader, "The code Code::CorruptHeader failed.");\nthrow std::runtime_error(std::string("The image ") + "could not load.");\nLog::warning("Item 2 of \\"plugins\\" is fine.");\nLog::error("The Java method \\"dev.haylen.HaylenBridge.dispatch\\" threw.");\nthrow std::runtime_error("SDL lists no display.");\n'
+        assert [line for line, text in EngineMessagesTest.messages(source) if EngineMessagesTest.INTERNAL.search(text)] == [1, 2, 4, 7, 8]
 
     def test_no_message_of_the_engine_holds_internals(self):
         wrong = []

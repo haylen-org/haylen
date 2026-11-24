@@ -712,7 +712,7 @@ TEST(BindingTest, RefusesAModuleNameThatIsTaken) {
             Binding::preload(L, taken, open);
             ADD_FAILURE() << "The module \"" << taken << "\" should be refused.";
         } catch (const std::runtime_error& error) {
-            EXPECT_EQ(std::string(error.what()), "The Lua module \"" + std::string(taken) + "\" cannot be added, because a module of Varn or another module of the engine already has its name. Give the module another name.");
+            EXPECT_EQ(std::string(error.what()), "The Lua module \"" + std::string(taken) + "\" cannot be added, because a built-in module, such as \"json\", or another module of the engine already has its name. Give the module another name.");
         }
     }
 

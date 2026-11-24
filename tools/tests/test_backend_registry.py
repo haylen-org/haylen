@@ -26,7 +26,7 @@ class BackendRegistryTest:
 
     def test_an_extension_that_does_not_load_stops_the_commands_that_need_targets(self, tmp_path):
         registry = ToolingFixture(tmp_path).registry([FakeBackend, FakeBackend.variant("BrokenBackend", FAILURE="its module needs a newer tooling")])
-        with pytest.raises(IncompatibleExtension, match=re.escape('The backend "BrokenBackend" does not load: its module needs a newer tooling.')):
+        with pytest.raises(IncompatibleExtension, match=re.escape('The backend "BrokenBackend" does not load, since it is not a backend of Haylen or it fails as it starts.')):
             registry.target("fake")
 
     def test_refuses_two_backends_of_one_target(self, tmp_path):

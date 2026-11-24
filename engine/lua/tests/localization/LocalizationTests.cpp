@@ -240,7 +240,7 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
         {"content/i18n/en.json", R"({"hud": {"day": "Day {day}", "wood": {"one": "{count} log", "other": "{count} logs"}}})"},
         {"content/i18n/pt_BR.json", R"({"hud": {"day": "Dia {day}"}})"},
         {"content/i18n/notes.txt", "ignored"},
-        {"content/broken/en.json", "{"},
+        {"content/broken/en.json", "{\n  \"hud\": @\n}"},
     });
     // clang-format on
     fixture.runLua("localization = require('haylen.localization')");
@@ -255,7 +255,7 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     EXPECT_EQ(fixture.lua("localization.setPseudo(true) local text = localization.text('hud.day', {day = 5}) localization.setPseudo(false) return text .. ' ' .. tostring(localization.pseudo())"), "« Díá 5 . » false");
 
     EXPECT_EQ(fixture.lua("localization.add('ar', {['@direction'] = 'rightToLeft', hud = {day = 'اليوم {day}'}}) return localization.direction('ar') .. ' ' .. localization.direction()"), "rightToLeft leftToRight");
-    EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("broken/en.json\" is not valid JSON"), std::string::npos);
+    EXPECT_NE(fixture.lua("localization.loadFolder('broken')").find("The file \"broken/en.json\" is not valid JSON. Check line 2, column 10."), std::string::npos);
     EXPECT_NE(fixture.lua("localization.setLanguage('pt BR')").find("The language tag \"pt BR\" is not valid."), std::string::npos);
     EXPECT_NE(fixture.lua("localization.setFallback('xx')").find("No localization table was added for \"xx\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return localization.normalizeTag('zh_hant_tw')"), "zh-Hant-TW");

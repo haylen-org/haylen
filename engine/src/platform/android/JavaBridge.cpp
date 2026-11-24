@@ -115,7 +115,7 @@ jint JavaBridge::load(JavaVM* vm) {
 
     // The plugins load when the process starts, before any activity loads this library, so their list is final here.
     const JavaLocalRef ids(*env, static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, idsMethod)));
-    if (!clearException(*env, "dev.haylen.HaylenPlugins.ids")) {
+    if (!clearException(*env)) {
         plugins = core::Json::parse(toString(*env, ids.get())).get<std::vector<std::string>>();
     }
 
@@ -162,7 +162,7 @@ void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string
     }
 
     // A call that the Java registry never took would wait forever, so it fails at once.
-    if (clearException(env, "dev.haylen.HaylenBridge.dispatch")) {
+    if (clearException(env)) {
         const std::string message = "The call \"" + std::string(method) + "\" failed, because its Android code threw an exception, whose stack logcat shows under the tag \"System.err\".";
         BridgeRelay::resolve(id, false, core::Json{{"message", message}, {"code", "exception"}}.dump());
     }
@@ -171,19 +171,19 @@ void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string
 void JavaBridge::cancel(std::uint64_t id) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(bridgeClass, cancelMethod, static_cast<jlong>(id));
-    clearException(env, "dev.haylen.HaylenBridge.cancel");
+    clearException(env);
 }
 
 void JavaBridge::setAppRunning(bool value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(bridgeClass, setAppRunningMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
-    clearException(env, "dev.haylen.HaylenBridge.setAppRunning");
+    clearException(env);
 }
 
 void JavaBridge::reportError(std::string_view reportJson) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(pluginsClass, reportErrorMethod, toBytes(env, reportJson).get());
-    clearException(env, "dev.haylen.HaylenPlugins.reportError");
+    clearException(env);
 }
 
 const std::vector<std::string>& JavaBridge::getPlugins() noexcept {
@@ -193,56 +193,56 @@ const std::vector<std::string>& JavaBridge::getPlugins() noexcept {
 void JavaBridge::editText(std::string_view fieldJson) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(editorClass, editMethod, toBytes(env, fieldJson).get());
-    clearException(env, "dev.haylen.HaylenEditText.edit");
+    clearException(env);
 }
 
 void JavaBridge::finishText() {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(editorClass, finishMethod);
-    clearException(env, "dev.haylen.HaylenEditText.finish");
+    clearException(env);
 }
 
 void JavaBridge::lockOrientation(int value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, lockOrientationMethod, static_cast<jint>(value));
-    clearException(env, "dev.haylen.HaylenActivity.lockOrientation");
+    clearException(env);
 }
 
 void JavaBridge::setStatusBar(int value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, setStatusBarMethod, static_cast<jint>(value));
-    clearException(env, "dev.haylen.HaylenActivity.setStatusBar");
+    clearException(env);
 }
 
 void JavaBridge::setSystemGestures(int value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, setSystemGesturesMethod, static_cast<jint>(value));
-    clearException(env, "dev.haylen.HaylenActivity.setSystemGestures");
+    clearException(env);
 }
 
 void JavaBridge::keepScreenOn(bool value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, keepScreenOnMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
-    clearException(env, "dev.haylen.HaylenActivity.keepScreenOn");
+    clearException(env);
 }
 
 void JavaBridge::captureBack(bool value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, captureBackMethod, static_cast<jboolean>(value ? JNI_TRUE : JNI_FALSE));
-    clearException(env, "dev.haylen.HaylenActivity.captureBack");
+    clearException(env);
 }
 
 // The device reports nothing when Java fails, so every value of the info stays unknown.
 std::string JavaBridge::getSystemInfo() {
     JNIEnv& env = getEnv();
-    return callText(env, activityClass, systemInfoMethod, "dev.haylen.HaylenActivity.systemInfo", "{}");
+    return callText(env, activityClass, systemInfoMethod, "{}");
 }
 
 SystemAnswer JavaBridge::setClipboard(std::string_view text) {
     JNIEnv& env = getEnv();
     const JavaLocalRef answer(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, setClipboardMethod, toBytes(env, text).get())));
 
-    if (clearException(env, "dev.haylen.HaylenActivity.setClipboard")) {
+    if (clearException(env)) {
         return {.state = SystemAnswer::State::Unsupported, .message = "The clipboard could not be written, because Java failed."};
     }
 
@@ -251,23 +251,23 @@ SystemAnswer JavaBridge::setClipboard(std::string_view text) {
 
 std::string JavaBridge::getClipboard() {
     JNIEnv& env = getEnv();
-    return callText(env, activityClass, clipboardMethod, "dev.haylen.HaylenActivity.clipboard", "");
+    return callText(env, activityClass, clipboardMethod, "");
 }
 
 std::string JavaBridge::getNetworkRequirement() {
     JNIEnv& env = getEnv();
-    return callText(env, activityClass, networkRequirementMethod, "dev.haylen.HaylenActivity.networkRequirement", "");
+    return callText(env, activityClass, networkRequirementMethod, "");
 }
 
 std::string JavaBridge::getDevelopmentServer() {
     JNIEnv& env = getEnv();
-    return callText(env, activityClass, developmentServerMethod, "dev.haylen.HaylenActivity.developmentServer", "");
+    return callText(env, activityClass, developmentServerMethod, "");
 }
 
 std::vector<std::string> JavaBridge::getLaunchArguments() {
     JNIEnv& env = getEnv();
     const JavaLocalRef arguments(env, static_cast<jobjectArray>(env.CallStaticObjectMethod(activityClass, launchArgumentsMethod)));
-    if (clearException(env, "dev.haylen.HaylenActivity.launchArguments")) {
+    if (clearException(env)) {
         return {};
     }
 
@@ -279,7 +279,7 @@ void JavaBridge::openOutput(std::uint32_t number, std::string_view display, std:
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(outputsClass, openOutputMethod, static_cast<jint>(number), static_cast<jint>(std::stoi(std::string(display))), toBytes(env, title).get());
 
-    if (clearException(env, "dev.haylen.HaylenOutputs.open")) {
+    if (clearException(env)) {
         AndroidOutputs::receiveEnding(number, Output::Ending::Unsupported, "The activity could not open the presentation of the output.");
     }
 }
@@ -287,38 +287,38 @@ void JavaBridge::openOutput(std::uint32_t number, std::string_view display, std:
 void JavaBridge::closeOutput(std::uint32_t number) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(outputsClass, closeOutputMethod, static_cast<jint>(number));
-    clearException(env, "dev.haylen.HaylenOutputs.close");
+    clearException(env);
 }
 
 // A call that Java failed counts as allowed, so a failure explains nothing it cannot tell.
 bool JavaBridge::isLocalNetworkAllowed() {
     JNIEnv& env = getEnv();
     const jboolean allowed = env.CallStaticBooleanMethod(networkClass, localNetworkAllowedMethod);
-    return clearException(env, "dev.haylen.HaylenNetwork.isLocalNetworkAllowed") || allowed == JNI_TRUE;
+    return clearException(env) || allowed == JNI_TRUE;
 }
 
 void JavaBridge::rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, rumbleGamepadMethod, static_cast<jint>(device), static_cast<jfloat>(low), static_cast<jfloat>(high), static_cast<jlong>(milliseconds));
-    clearException(env, "dev.haylen.HaylenActivity.rumbleGamepad");
+    clearException(env);
 }
 
 void JavaBridge::updateAccessibility(std::string_view treeJson) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(accessibilityClass, updateAccessibilityMethod, toBytes(env, treeJson).get());
-    clearException(env, "dev.haylen.HaylenAccessibilityTree.update");
+    clearException(env);
 }
 
 void JavaBridge::announce(std::string_view text, bool interrupt) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(accessibilityClass, announceMethod, toBytes(env, text).get(), static_cast<jboolean>(interrupt ? JNI_TRUE : JNI_FALSE));
-    clearException(env, "dev.haylen.HaylenAccessibilityTree.announce");
+    clearException(env);
 }
 
 bool JavaBridge::isBackgroundAudioDeclared() {
     JNIEnv& env = getEnv();
     const jboolean declared = env.CallStaticBooleanMethod(backgroundAudioClass, backgroundAudioDeclaredMethod);
-    if (clearException(env, "dev.haylen.HaylenBackgroundAudio.isDeclared")) {
+    if (clearException(env)) {
         return false;
     }
 
@@ -328,7 +328,7 @@ bool JavaBridge::isBackgroundAudioDeclared() {
 void JavaBridge::setBackgroundAudio(bool value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(backgroundAudioClass, setBackgroundAudioMethod, value ? JNI_TRUE : JNI_FALSE);
-    clearException(env, "dev.haylen.HaylenBackgroundAudio.setEnabled");
+    clearException(env);
 }
 
 void JavaBridge::openScreen(const ScreenRequest& request) {
@@ -343,7 +343,7 @@ void JavaBridge::openScreen(const ScreenRequest& request) {
         env.CallStaticVoidMethod(screensClass, openScreenMethod, static_cast<jlong>(request.id), plugin.get(), screen.get(), params.get(), buffers.get(), handles.get(), state.get(), static_cast<jboolean>(request.opaque ? JNI_TRUE : JNI_FALSE));
     }
 
-    if (clearException(env, "dev.haylen.HaylenScreens.open")) {
+    if (clearException(env)) {
         ScreenRelay::finish(request.id, false, core::Json{{"message", "The screen \"" + request.plugin + "." + request.screen + "\" failed, because its Android code threw an exception, whose stack logcat shows under the tag \"System.err\"."}, {"code", "exception"}}.dump());
     }
 }
@@ -351,18 +351,18 @@ void JavaBridge::openScreen(const ScreenRequest& request) {
 void JavaBridge::cancelScreen(std::uint64_t id) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(screensClass, cancelScreenMethod, static_cast<jlong>(id));
-    clearException(env, "dev.haylen.HaylenScreens.cancel");
+    clearException(env);
 }
 
-// A pending exception would abort the next JNI call of the thread, so it goes to logcat with its stack and leaves an engine error that names the method. Returns whether the method left one.
-bool JavaBridge::clearException(JNIEnv& env, std::string_view method) {
+// A pending exception would abort the next JNI call of the thread, so it goes to logcat with its stack and leaves an engine error that points there. Returns whether the method left one.
+bool JavaBridge::clearException(JNIEnv& env) {
     if (env.ExceptionCheck() == JNI_FALSE) {
         return false;
     }
 
     env.ExceptionDescribe();
     env.ExceptionClear();
-    core::Log::error("The Java method \"{}\" threw an exception, whose stack logcat shows under the tag \"System.err\".", method);
+    core::Log::error("Haylen hit an internal error in its Android code, whose stack logcat shows under the tag \"System.err\". Report it with that stack.");
     return true;
 }
 
@@ -410,7 +410,7 @@ std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectAr
 JavaLocalRef<jbyteArray> JavaBridge::toBytes(JNIEnv& env, std::string_view text) {
     JavaLocalRef bytes(env, env.NewByteArray(static_cast<jsize>(text.size())));
     if (bytes.get() == nullptr) {
-        clearException(env, "NewByteArray");
+        clearException(env);
         throw std::runtime_error("Java has no memory for an array of " + std::to_string(text.size()) + " bytes.");
     }
 
@@ -421,7 +421,7 @@ JavaLocalRef<jbyteArray> JavaBridge::toBytes(JNIEnv& env, std::string_view text)
 JavaLocalRef<jobjectArray> JavaBridge::toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers) {
     JavaLocalRef arrays(env, env.NewObjectArray(static_cast<jsize>(buffers.size()), byteArrayClass, nullptr));
     if (arrays.get() == nullptr) {
-        clearException(env, "NewObjectArray");
+        clearException(env);
         throw std::runtime_error("Java has no memory for a list of " + std::to_string(buffers.size()) + " buffers.");
     }
 
@@ -436,7 +436,7 @@ JavaLocalRef<jobjectArray> JavaBridge::toByteArrays(JNIEnv& env, std::span<const
 JavaLocalRef<jlongArray> JavaBridge::toViewHandles(JNIEnv& env, std::span<const varn::dataview::DataView> views) {
     JavaLocalRef handles(env, env.NewLongArray(static_cast<jsize>(views.size())));
     if (handles.get() == nullptr) {
-        clearException(env, "NewLongArray");
+        clearException(env);
         throw std::runtime_error("Java has no memory for a list of " + std::to_string(views.size()) + " data views.");
     }
 
@@ -453,10 +453,10 @@ jlong JavaBridge::shareView(jlong handle) noexcept {
     return static_cast<jlong>(reinterpret_cast<std::uintptr_t>(varn::dataview::DataView::share(lent).detach()));
 }
 
-std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback) {
+std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view fallback) {
     const JavaLocalRef bytes(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(owner, method)));
 
-    if (clearException(env, name)) {
+    if (clearException(env)) {
         return std::string(fallback);
     }
 

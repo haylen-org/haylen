@@ -14,6 +14,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
+#include "haylen/core/JsonValidator.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
@@ -91,10 +92,7 @@ std::vector<std::string> LocalizationPlugin::loadFolder(const io::Package& packa
 }
 
 std::string LocalizationPlugin::addFile(const io::Package& package, const std::string& file) {
-    const core::Json table = core::Json::parse(package.readAssetText(file), nullptr, false);
-    if (table.is_discarded()) {
-        throw std::runtime_error("The localization file \"" + file + "\" is not valid JSON.");
-    }
+    const core::Json table = core::JsonValidator::parse(package.readAssetText(file), file);
 
     const std::string name = std::filesystem::path(file).stem().string();
     const std::optional<std::string> language = localization::LanguageTag::parse(name);

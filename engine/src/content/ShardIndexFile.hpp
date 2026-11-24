@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
 #include <vector>
 
 #include "content/format/ShardHeader.hpp"
@@ -23,6 +24,7 @@ class ShardIndexFile final : public io::PackageReader {
 
   private:
     std::vector<std::uint8_t> bytes;
+    std::string fileName;
     std::uint64_t fileSize;
     std::uint64_t indexOffset;
 };

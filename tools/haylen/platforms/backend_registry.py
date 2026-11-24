@@ -66,8 +66,10 @@ class BackendRegistry:
             if not isinstance(backend, PlatformBackend):
                 raise TypeError("it is not a PlatformBackend")
             description = backend.describe()
-        except Exception as error:
-            self.problems.append(f'The backend "{name}" does not load: {error}. Install a version of it that works with this tooling, or uninstall it.')
+        except Exception:
+            self.problems.append(
+                f'The backend "{name}" does not load, since it is not a backend of Haylen or it fails as it starts. Install a version of it that works with this tooling, or uninstall it.'
+            )
             return None
         if description.contract != Contract.BACKEND:
             self.problems.append(
@@ -82,8 +84,10 @@ class BackendRegistry:
             if not isinstance(port, EnginePort):
                 raise TypeError("it is not an EnginePort")
             description = port.describe()
-        except Exception as error:
-            self.problems.append(f'The engine port "{name}" does not load: {error}. Install a version of it that works with this tooling, or uninstall it.')
+        except Exception:
+            self.problems.append(
+                f'The engine port "{name}" does not load, since it is not an engine port of Haylen or it fails as it starts. Install a version of it that works with this tooling, or uninstall it.'
+            )
             return None
         if description.contract != Contract.ENGINE_PORT:
             self.problems.append(

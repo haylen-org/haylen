@@ -77,7 +77,7 @@ std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, std::u
 
 void GpuFixture::SetUp() {
     if (GetParam() == gpu::Device::Api::None) {
-        FAIL() << "The variable \"HAYLEN_TEST_GRAPHICS_API\" names \"" << Environment::get("HAYLEN_TEST_GRAPHICS_API") << "\", which is not a graphics API of \"gpu::Device::kApiNames\".";
+        FAIL() << "The variable \"HAYLEN_TEST_GRAPHICS_API\" names \"" << Environment::get("HAYLEN_TEST_GRAPHICS_API") << "\", which is not a graphics API. Name one that \"haylen test --graphics-api\" takes, such as \"vulkan\".";
     }
 
     errors = std::make_unique<LoggedErrors>();
