@@ -4,7 +4,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 8 / not set · **Next ID:** KB-295
+**Active WIP:** 8 / not set · **Next ID:** KB-298
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -278,6 +278,8 @@
 | **[KB-286 · Plugins que estendem o C++ da engine também no runtime web pré-compilado](#kb-286)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-287 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-287)**<br>🟡 medium · `task` · 3/10 | — | — | — | — | — |
 | **[KB-292 · Montar os dados de instância do renderizador 3D em lote](#kb-292)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-295 · Texto ao longo de caminhos, arcos e curvas 3D](#kb-295)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-002 · Plugin de exemplo do Tiny Island só com APIs da plataforma](#kb-002)**<br>🟢 low · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
@@ -286,6 +288,7 @@
 | **[KB-289 · README.md final, revisto quando todo o resto estiver pronto](#kb-289)**<br>🟢 low · `docs` · 3/10 | — | — | — | — | — |
 | **[KB-290 · Documentação completa em docs](#kb-290)**<br>🟢 low · `docs` · 3/10 | — | — | — | — | — |
 | **[KB-291 · Revisão final do AGENTS.md, do KANBAN.md, do README.md, de docs, dos comentários e de todo arquivo do…](#kb-291)**<br>🟢 low · `task` · 5/10 | — | — | — | — | — |
+| **[KB-297 · Medir o custo do JSON nos carregamentos](#kb-297)**<br>🟢 low · `spike` · 3/10 | — | — | — | — | — |
 
 <!-- KANBAN:BOARD:END -->
 
@@ -7608,6 +7611,75 @@ A complexidade é uma estimativa provisória.
 
 - [ ] Num campo sem `autocorrect`, o Gboard não mostra a faixa de sugestões, conferido por um teste de UI no emulador.
 - [ ] Num campo com `autocorrect`, o teclado oferece as sugestões.
+
+#### Attachments
+
+- None
+
+<a name="kb-295"></a>
+### KB-295 — Texto ao longo de caminhos, arcos e curvas 3D
+
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 5
+
+#### Description
+
+O texto segue um caminho: em 2D, um texto ou um texto rico desenha os glifos ao longo de uma `Spline2D`, de um arco ou de um caminho de `graphics2d`, com o alinhamento no caminho, o deslocamento ao longo dele, a distância para fora da curva e o giro de cada glifo pela tangente, sem distorcer o glifo do campo de distância; em 3D, o texto do mundo segue uma `Spline3D` ou um `CurvePath3D` pelos referenciais sem torção. Em C++ e em Lua (`graphics2d.drawTextOnPath` ou uma opção `path` do texto, nos termos comuns das engines), com o mesmo cache de layout do texto, sem alocar num quadro igual ao anterior.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] O texto segue arcos, splines e caminhos em 2D, com alinhamento, deslocamento e distância da curva, e em 3D ao longo de uma curva quando o texto 3D existir.
+- [ ] Testes de layout headless, capturas comparadas em Metal, Vulkan e WebGPU, um teste no projeto de testes e a referência.
+
+#### Attachments
+
+- None
+
+<a name="kb-296"></a>
+### KB-296 — Texturas HDR carregadas de arquivo no 2D e no 3D
+
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 5
+
+#### Description
+
+Imagens de alto alcance dinâmico viram texturas de ponto flutuante (RGBA16F) em todas as APIs que as amostram, carregadas de `.hdr` (RGBE), de EXR e de KTX2 HDR, para céus e ambientes, luzes e bloom do 2D e o 3D. O formato HDR de cada API vem das tabelas de capacidade da camada da GPU, com a resposta `unsupported` e o motivo onde a API não amostra textura de ponto flutuante filtrada, como no nível portátil quando falta a extensão. Liga-se aos itens de formatos e de assets da camada da GPU do 3D.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] Um `.hdr`, um EXR e um KTX2 HDR carregam como textura de ponto flutuante e desenham com valores acima de 1 em Metal, Vulkan, Direct3D, OpenGL, WebGPU e WebGL2 onde a API permite.
+- [ ] Testes de decodificação como entrada hostil, com fuzzer, capturas, um teste no projeto de testes e a referência.
+
+#### Attachments
+
+- None
+
+<a name="kb-297"></a>
+### KB-297 — Medir o custo do JSON nos carregamentos
+
+- **Status:** todo
+- **Type:** spike
+- **Priority:** low
+- **Complexity:** 3
+
+#### Description
+
+Pergunta: quanto do tempo de carga de mapas do Tiled, esqueletos, atlas, localização e `haylen.json` vai na leitura do JSON pelo nlohmann/json, nos aparelhos modestos? Duração: um dia. Resultado: uma tabela em `docs/graphics/rendering.md` ou no guia de assets com o tempo de cada formato, e, se o JSON pesar, as opções para o dono com o que as engines de referência fazem. O nlohmann/json é parte da base fixa do contrato de plugins, então qualquer troca vai ao dono antes.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] A tabela com o tempo de leitura do JSON de cada formato em pelo menos um aparelho modesto.
+- [ ] Uma recomendação ao dono, se o JSON pesar.
 
 #### Attachments
 
