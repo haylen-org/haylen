@@ -24,7 +24,7 @@ from haylen.engine.web_gpu_tests import WebGpuTests
 
 class TestCommand(Command):
     PATH = ("test",)
-    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--target macos" or "catalyst" and "--app" how an app quits on this Mac, with "--ui" the UI tests of an app on an Apple simulator or device, on this Mac or on Android, with "--libraries" the tests of the Android libraries of the engine, and with "--port" the app of the test port.'
+    HELP = 'Build and run the engine tests on this machine. With "--gpu" it runs the GPU tests on this machine, the web, Android, the Apple simulators, Mac Catalyst or Apple devices instead, with "--target web" alone the checks of the web in headless browsers, with "--target web" or "android" and "--app" the start of an app on the web or Android, with "--target macos" or "catalyst" and "--app" how an app quits on this Mac, with "--ui" the UI tests of an app on an Apple simulator or device, on this Mac, on Android or on this Windows machine, with "--libraries" the tests of the Android libraries of the engine, and with "--port" the app of the test port.'
 
     DESKTOPS = ("macos", "windows", "linux")
     # The names of `gpu::Device::kApiNames`, which "--graphics-api" takes.
@@ -37,7 +37,7 @@ class TestCommand(Command):
             "--target",
             default=Host.system(),
             choices=TestCommand.TARGETS,
-            help='The target that the tests build for and run on, this machine by default. The web, Android, the Apple simulators, Mac Catalyst and Apple devices run the GPU tests, the web also its checks, and "--ui" takes "ios-simulator", "tvos-simulator", "visionos-simulator", "ios", "tvos", "visionos", "macos", "catalyst" or "android".',
+            help='The target that the tests build for and run on, this machine by default. The web, Android, the Apple simulators, Mac Catalyst and Apple devices run the GPU tests, the web also its checks, and "--ui" takes "ios-simulator", "tvos-simulator", "visionos-simulator", "ios", "tvos", "visionos", "macos", "catalyst", "android" or "windows".',
         )
         parser.add_argument("--config", default="Debug", choices=EngineTree.CONFIGURATIONS, help='The configuration of the build tree, or of the app of "--ui" or "--app", "Debug" by default.')
         parser.add_argument("--sanitizers", choices=EngineTree.SANITIZERS, help="Build in a tree of its own with AddressSanitizer and UndefinedBehaviorSanitizer, or with ThreadSanitizer.")
@@ -69,7 +69,7 @@ class TestCommand(Command):
         parser.add_argument(
             "--ui",
             metavar="app",
-            help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests/apple" on an Apple simulator or device or on this Mac as a macOS or a Mac Catalyst app, or the Kotlin tests of its folder "ui-tests/android" on Android, as "--target" and "--device" name, instead of the engine tests.',
+            help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests/apple" on an Apple simulator or device or on this Mac as a macOS or a Mac Catalyst app, the Kotlin tests of its folder "ui-tests/android" on Android, or the Python tests of its folder "ui-tests/windows" on this Windows machine, as "--target" and "--device" name, instead of the engine tests.',
         )
         parser.add_argument(
             "--ui-test",
