@@ -186,6 +186,7 @@ void UiPlugin::beginFrame(core::Engine& engine, float) {
     const auto delta = static_cast<float>(engine.getClock().getUnscaledDelta());
     elapsed += delta;
     drawBegun = false;
+    currentDrawn = false;
     guiAppeared = false;
     navigationInput.update(engine.getActions(), engine.getInput(), engine.getVirtualInput(), engine.isHalted() || engine.getScenes().isInputBlocked(), focus.getOwner() == ui::FocusNavigator::Owner::PlayArea);
     const graphics::Viewport& viewport = engine.getViewport();
@@ -257,6 +258,13 @@ void UiPlugin::perform(const platform::Accessibility::Request& request) {
     case Element::Decrement:
         (void)focus.stepTarget(*target, decrease);
         break;
+    }
+}
+
+// The tree goes to the platform once every plugin drew its UI, so the windows of the debug tools join the GUIs of the app in it.
+void UiPlugin::endFrame(core::Engine& engine) {
+    if (std::exchange(currentDrawn, false)) {
+        publishAccessibility(engine);
     }
 }
 
@@ -670,7 +678,7 @@ void UiPlugin::drawCurrent(core::Engine& engine, const core::SceneView& view) {
 
     ImGui::End();
     focus.endDraw();
-    publishAccessibility(engine);
+    currentDrawn = true;
 
     if (safeAreaVisible) {
         drawSafeArea();

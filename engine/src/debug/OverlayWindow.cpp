@@ -16,6 +16,7 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/plugins/DebugPlugin.hpp"
+#include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
 
 namespace haylen::debug {
@@ -317,7 +318,7 @@ bool OverlayWindow::draw(core::Engine& engine, ui::Backend& backend, plugins::De
     const math::Rect safe = backend.getSafeRect();
     const math::Rect initial{safe.x + DebugWindow::kMargin, safe.y + DebugWindow::kMargin, std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F), std::min(kHeight, safe.height - DebugWindow::kMargin * 2.0F)};
     bool open = true;
-    if (!DebugWindow::begin("Statistics", &open, backend, initial)) {
+    if (!DebugWindow::begin("Statistics", &open, backend, engine.getPlugin<plugins::UiPlugin>().getContext(), initial)) {
         DebugWindow::end();
         return open;
     }

@@ -3,13 +3,17 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <cstddef>
+#include <span>
+#include <string>
 
 #include "debug/InspectorWindow.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/platform/Accessibility.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/Event.hpp"
-#include "haylen/plugins/DebugPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "support/AllocationTracker.hpp"
@@ -44,6 +48,14 @@ class InspectorWindowTest : public ::testing::Test, public test::LuaUiFixture {
         frames();
         touch(haylen::platform::Event::Type::TouchEnded, 1, point);
         frames(2);
+    }
+
+    // Returns the line that the inspector shows over its values as screen readers read it, the text that follows the dialog of the window in the tree of the UI.
+    [[nodiscard]] std::string readLine() {
+        const std::span<const haylen::platform::AccessibilityElement> elements = getEngine().getAccessibility().getElements();
+        const auto window = std::ranges::find_if(elements, [](const haylen::platform::AccessibilityElement& element) { return element.role == haylen::platform::AccessibilityElement::Role::Dialog && element.label == "Inspector"; });
+        const auto line = std::find_if(window, elements.end(), [](const haylen::platform::AccessibilityElement& element) { return element.role == haylen::platform::AccessibilityElement::Role::Text; });
+        return line != elements.end() ? line->label : std::string();
     }
 };
 
@@ -98,16 +110,13 @@ TEST_F(InspectorWindowTest, FollowsAFingerAndStaysInsideTheSafeArea) {
 
 // The inspector lists the values again into the storage it keeps, with the path of every row, so frames that show the same rows allocate no more than frames without the window, also when every frame refreshes them.
 TEST_F(InspectorWindowTest, DrawsTheSameRowsWithoutAllocating) {
-    double now = 0.0;
-    getEngine().getPlugin<haylen::plugins::DebugPlugin>().setInspectorClock([&now] { return now; });
     getFixture().runLua("values = {flag = true, title = 'A title that is longer than a short string'} for index = 1, 80 do values['a value whose name is longer than a short string ' .. index] = index * 0.5 end require('haylen.debug').watch('values', values) require('haylen.scene').push({})");
     // clang-format off
-    const auto measure = [this, &now] {
+    const auto measure = [this] {
         frames(5);
         const test::AllocationTracker tracker;
         for (int frame = 0; frame < 10; ++frame) {
-            now += haylen::debug::InspectorWindow::kRefreshSeconds;
-            frames(1);
+            getFixture().frames(1, haylen::debug::InspectorWindow::kRefreshSeconds);
         }
         return tracker.getTotal();
     };
@@ -132,12 +141,12 @@ TEST_F(InspectorWindowTest, DrawsTheSameRowsWithoutAllocating) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
-// An edit in the field of a value says what it changed in place of the hint, and a text that the setter refuses says why.
+// An edit in the field of a value says what it changed in place of the hint, and a text that the setter refuses says why, which screen readers read from the tree of the UI.
 TEST_F(InspectorWindowTest, TellsWhatAnEditChangedOrWhyItFailed) {
+    getFixture().host().setAccessibilityTreeWanted(true);
     getFixture().runLua("values = {speed = 2} require('haylen.debug').watch('values', values) require('haylen.scene').push({}) require('haylen.debug').setInspectorVisible(true)");
     frames(2);
-    const haylen::plugins::DebugPlugin& debug = getEngine().getPlugin<haylen::plugins::DebugPlugin>();
-    EXPECT_EQ(debug.getInspectorLine(), haylen::debug::InspectorWindow::kHint);
+    EXPECT_EQ(readLine(), haylen::debug::InspectorWindow::kHint);
 
     haylen::ui::Backend& backend = getUi().getBackend();
     backend.makeCurrent();
@@ -156,7 +165,7 @@ TEST_F(InspectorWindowTest, TellsWhatAnEditChangedOrWhyItFailed) {
     type(U"5");
     key(haylen::input::Key::Enter);
     frames(2);
-    EXPECT_EQ(debug.getInspectorLine(), "Set \"watched.values.speed\" to 25.");
+    EXPECT_EQ(readLine(), "Set \"watched.values.speed\" to 25.");
     EXPECT_EQ(getFixture().lua("return values.speed"), "25");
 
     // The line of the edit is shorter than the hint, so the rows move up and the field takes its place again.
@@ -166,7 +175,7 @@ TEST_F(InspectorWindowTest, TellsWhatAnEditChangedOrWhyItFailed) {
     type(U"x");
     key(haylen::input::Key::Enter);
     frames(2);
-    EXPECT_EQ(debug.getInspectorLine(), "The value at \"watched.values.speed\" is a number, and \"25x\" is not one.");
+    EXPECT_EQ(readLine(), "The value at \"watched.values.speed\" is a number, and \"25x\" is not one.");
     EXPECT_EQ(getFixture().lua("return values.speed"), "25");
 }
 

@@ -170,11 +170,6 @@ class DebugPlugin final : public Plugin {
     }
     void setInspectorVisible(bool value);
 
-    // Gives the inspector the clock that its refreshes count, in seconds, such as one that a test drives, in place of the steady clock of the system, and starts it closed of every row it opened.
-    void setInspectorClock(std::function<double()> clock);
-
-    // The line that the inspector shows over its values: what the last edit changed, why the setter of the value refused it, or the hint of the window.
-    [[nodiscard]] std::string_view getInspectorLine() const noexcept;
     [[nodiscard]] bool isInspectorVisible() const noexcept {
         return inspectorVisible;
     }

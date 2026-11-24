@@ -4,7 +4,6 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
-#include <chrono>
 #include <exception>
 #include <format>
 #include <span>
@@ -15,22 +14,18 @@
 
 namespace haylen::debug {
 
-InspectorWindow::InspectorWindow(Clock source) : clock(source ? std::move(source) : Clock(&getSteadySeconds)) {}
-
-double InspectorWindow::getSteadySeconds() {
-    return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
-}
-
-bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend) {
+bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend, ui::Context& context, double seconds) {
+    elapsed += seconds;
     const math::Rect safe = backend.getSafeRect();
     const float width = std::min(kWidth, safe.width - DebugWindow::kMargin * 2.0F);
     const math::Rect initial{safe.x + safe.width - width - DebugWindow::kMargin, safe.y + DebugWindow::kMargin, width, safe.height - DebugWindow::kMargin * 2.0F};
     bool open = true;
-    if (DebugWindow::begin("Inspector", &open, backend, initial)) {
+    if (DebugWindow::begin("Inspector", &open, backend, context, initial)) {
         ImGui::PushStyleColor(ImGuiCol_Text, failed ? DebugWindow::kErrorColor : DebugWindow::kMutedColor);
         const std::string_view line = getLine();
         ImGui::TextWrapped("%.*s", static_cast<int>(line.size()), line.data());
         ImGui::PopStyleColor();
+        DebugWindow::describeItem(context, ImGui::GetID("##line"), line);
 
         if (std::exchange(expired, false)) {
             for (auto& [key, snapshot] : snapshots) {
@@ -42,7 +37,7 @@ bool InspectorWindow::draw(Inspector::Provider& provider, ui::Backend& backend) 
         if (ImGui::BeginTable("##values", 2, flags)) {
             ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 1.4F);
             ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 1.0F);
-            drawRows(provider, 0, rootPath, clock());
+            drawRows(provider, 0, rootPath, elapsed);
             ImGui::EndTable();
         }
     }

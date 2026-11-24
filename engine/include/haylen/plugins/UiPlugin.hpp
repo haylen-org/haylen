@@ -58,6 +58,7 @@ class UiPlugin final : public Plugin {
     void update(core::Engine& engine, float deltaSeconds) override;
     void render(core::Engine& engine) override;
     void renderUi(core::Engine& engine, const core::SceneView& view) override;
+    void endFrame(core::Engine& engine) override;
     [[nodiscard]] bool isCapturingBack() const override;
     [[nodiscard]] bool isFrameComplete() const override;
 
@@ -287,6 +288,7 @@ class UiPlugin final : public Plugin {
     // The points per UI unit the ImGui style took its scroll bar gap at, so a change of scale styles it again.
     float styledPoints = 0.0F;
     bool drawBegun = false;
+    bool currentDrawn = false;
     bool guiAppeared = false;
     core::Engine* owner = nullptr;
 };

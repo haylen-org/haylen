@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <map>
 #include <string>
 #include <string_view>
@@ -11,30 +10,21 @@
 
 namespace haylen::ui {
 class Backend;
-}
+class Context;
+} // namespace haylen::ui
 
 namespace haylen::debug {
 
-// Draws the inspector with ImGui: a line that says what the window holds, or what the last edit did, and a table of the roots of `Inspector` whose rows open into the values they hold, with a check box for each boolean and a field for each number and string, which edit the value in place. The open rows refresh a few times per second by the clock of the window, into storage the window keeps with the path of every row, so a frame that shows the same values allocates nothing, and nothing runs while the window is closed.
+// Draws the inspector with ImGui: a line that says what the window holds, or what the last edit did, and a table of the roots of `Inspector` whose rows open into the values they hold, with a check box for each boolean and a field for each number and string, which edit the value in place. The open rows refresh a few times per second by the seconds that the frames of the window take, into storage the window keeps with the path of every row, so a frame that shows the same values allocates nothing, and nothing runs while the window is closed. The line reaches screen readers as text of the tree of the UI.
 class InspectorWindow final {
   public:
-    // Answers the seconds that the refreshes count, the steady clock of the system unless a caller, such as a test, gives another.
-    using Clock = std::function<double()>;
-
     static constexpr double kRefreshSeconds = 0.25;
     static constexpr float kWidth = 460.0F;
     static constexpr std::string_view kOpenRoot = "scenes";
     static constexpr std::string_view kHint = "The values of the app. A check box or a field changes a value of the app at once, and the app shows the change where it reads that value.";
 
-    explicit InspectorWindow(Clock source = {});
-
-    // Draws the window and returns `false` once the player closed it.
-    bool draw(Inspector::Provider& provider, ui::Backend& backend);
-
-    // The line that the window shows over its values: what the last edit did, why the setter of the value refused it, or the hint.
-    [[nodiscard]] std::string_view getLine() const noexcept {
-        return status.empty() ? kHint : std::string_view(status);
-    }
+    // Draws the window, `seconds` after the frame that drew it last, and returns `false` once the player closed it.
+    bool draw(Inspector::Provider& provider, ui::Backend& backend, ui::Context& context, double seconds);
 
   private:
     // The values at one path as the last refresh listed them, with the path of each value.
@@ -45,7 +35,10 @@ class InspectorWindow final {
         std::string error;
     };
 
-    [[nodiscard]] static double getSteadySeconds();
+    // The line that the window shows over its values: what the last edit did, why the setter of the value refused it, or the hint.
+    [[nodiscard]] std::string_view getLine() const noexcept {
+        return status.empty() ? kHint : std::string_view(status);
+    }
 
     // Each row reads the keys from the root to it in the first `depth` keys of `path`, and `key` is the whole path joined, which names its snapshot and its edit.
     void drawRows(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now);
@@ -55,7 +48,7 @@ class InspectorWindow final {
     [[nodiscard]] const Snapshot& snapshotOf(Inspector::Provider& provider, std::size_t depth, const std::string& key, double now);
     void reset();
 
-    Clock clock;
+    double elapsed = 0.0;
     std::map<std::string, Snapshot, std::less<>> snapshots;
     std::map<std::string, std::string, std::less<>> edits;
     std::vector<std::string> path;

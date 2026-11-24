@@ -364,24 +364,18 @@ void DebugPlugin::renderUi(core::Engine& engine, const core::SceneView& view) {
         return;
     }
 
-    ui::Backend& backend = engine.getPlugin<UiPlugin>().getBackend();
+    UiPlugin& uiPlugin = engine.getPlugin<UiPlugin>();
+    ui::Backend& backend = uiPlugin.getBackend();
     backend.makeCurrent();
 
     if (statsMode == debug::StatsDisplay::Mode::Full && !overlayWindow->draw(engine, backend, *this)) {
         statsMode = debug::StatsDisplay::Mode::Off;
     }
 
+    // The inspector refreshes by the real time of the frames, which the time scale and the pause leave alone.
     if (inspectorVisible) {
-        inspectorVisible = inspected != nullptr && inspectorWindow->draw(*inspected, backend);
+        inspectorVisible = inspected != nullptr && inspectorWindow->draw(*inspected, backend, uiPlugin.getContext(), engine.getClock().getUnscaledDelta());
     }
-}
-
-void DebugPlugin::setInspectorClock(std::function<double()> clock) {
-    inspectorWindow = std::make_unique<debug::InspectorWindow>(std::move(clock));
-}
-
-std::string_view DebugPlugin::getInspectorLine() const noexcept {
-    return inspectorWindow->getLine();
 }
 
 void DebugPlugin::setInspectorVisible(bool value) {

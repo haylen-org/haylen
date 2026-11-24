@@ -6,13 +6,16 @@
 #include <cmath>
 #include <string_view>
 
+#include "haylen/platform/AccessibilityElement.hpp"
+#include "haylen/ui/AccessibilityTree.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Context.hpp"
 #include "haylen/ui/Scrollbar.hpp"
 #include "ui/ScrollArbiter.hpp"
 
 namespace haylen::debug {
 
-bool DebugWindow::begin(const char* title, bool* open, ui::Backend& backend, const math::Rect& initial) {
+bool DebugWindow::begin(const char* title, bool* open, ui::Backend& backend, ui::Context& context, const math::Rect& initial) {
     pushStyle(backend);
 
     const math::Rect safe = backend.getSafeRect();
@@ -24,7 +27,24 @@ bool DebugWindow::begin(const char* title, bool* open, ui::Backend& backend, con
     ImGuiWindow& window = *ImGui::GetCurrentWindow();
     keepInside(window, safe);
     holdFinger(window, backend);
+    ui::AccessibilityTree& tree = context.getAccessibility();
+    if (tree.isEnabled()) {
+        const math::Rect frame{window.Pos.x, window.Pos.y, window.Size.x, window.Size.y};
+        tree.addElement(context, window.ID, frame, platform::AccessibilityElement::Role::Dialog, title);
+    }
+
     return visible;
+}
+
+void DebugWindow::describeItem(ui::Context& context, ImGuiID id, std::string_view label) {
+    ui::AccessibilityTree& tree = context.getAccessibility();
+    if (!tree.isEnabled()) {
+        return;
+    }
+
+    const ImVec2 min = ImGui::GetItemRectMin();
+    const ImVec2 max = ImGui::GetItemRectMax();
+    tree.addElement(context, id, math::Rect::fromMinMax({min.x, min.y}, {max.x, max.y}), platform::AccessibilityElement::Role::Text, label);
 }
 
 void DebugWindow::end() {

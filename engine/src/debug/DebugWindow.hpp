@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include <array>
+#include <string_view>
 #include <utility>
 
 #include "haylen/math/Rect.hpp"
@@ -11,11 +12,12 @@ struct ImGuiWindow;
 
 namespace haylen::ui {
 class Backend;
-}
+class Context;
+} // namespace haylen::ui
 
 namespace haylen::debug {
 
-// Begins and ends the windows of the debug tools with ImGui. Every window has one look of its own whatever the theme of the app, dark and translucent with light text in the default font of the engine, so the tools read the same in every app. A window stays inside the safe area, moves by its title bar and resizes by its corner with the mouse or a finger, and scrolls its content under a finger that drags it, while a tap still reaches its items.
+// Begins and ends the windows of the debug tools with ImGui. Every window has one look of its own whatever the theme of the app, dark and translucent with light text in the default font of the engine, so the tools read the same in every app. A window stays inside the safe area, moves by its title bar and resizes by its corner with the mouse or a finger, and scrolls its content under a finger that drags it, while a tap still reaches its items. Each window joins the tree of the UI that screen readers read as a dialog with its title, and its texts join it as text.
 class DebugWindow final {
   public:
     static constexpr float kMargin = 16.0F;
@@ -30,8 +32,11 @@ class DebugWindow final {
     static constexpr ImVec4 kErrorColor{1.0F, 0.54F, 0.52F, 1.0F};
 
     // Begins a window that first shows over `initial`, an area of UI coordinates, and returns whether its content shows. Every call ends with `end`, whatever it returned.
-    static bool begin(const char* title, bool* open, ui::Backend& backend, const math::Rect& initial);
+    static bool begin(const char* title, bool* open, ui::Backend& backend, ui::Context& context, const math::Rect& initial);
     static void end();
+
+    // Adds the last item that the window drew to the tree of the UI as text that reads `label`, while screen readers or the app want the tree.
+    static void describeItem(ui::Context& context, ImGuiID id, std::string_view label);
 
   private:
     static constexpr float kScrollbarSize = 10.0F;
