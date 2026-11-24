@@ -961,6 +961,8 @@ Nada silenciado: tirar as flags `-Wno-stringop-overflow` e `-Wno-stringop-overre
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
+Andamento: os avisos que os logs das execuções completas mostravam estão corrigidos (variáveis que escondiam outras, conversões de sinal, condicionais de enum, macros do Windows redefinidas e a guarda `@available` do visionOS 2.0). As flags `-Wno-missing-field-initializers`, `-Wno-missing-designated-field-initializers` e `-Wno-stringop-*` saíram, e cada membro que um agregado da engine deixava de inicializar ganhou o inicializador vazio, e as estruturas de Vulkan, VMA, Box2D e SDL que a engine preenche dizem cada campo com o seu zero, sem mudar o comportamento. Faltam: o build Release com LTO do SDK Linux, o clang dos fuzzers, os sanitizers, os testes do macOS, a fatia do visionOS e os SDKs web e Android, e o commit.
+
 #### Acceptance criteria
 
 - [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -7088,6 +7090,8 @@ Etapa: Permissões e capacidades fora da engine.
 Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um teste de regressão em todas as plataformas. Existe: a opção `HAYLEN_WARNINGS_AS_ERRORS` do CMake, que também vem da variável de mesmo nome do ambiente, liga `COMPILE_WARNING_AS_ERROR` em cada alvo de `haylen_enable_warnings` (`-Werror` no Clang e no GCC e `/WX` no MSVC), as dependências seguem sem avisos por `haylen_disable_warnings`, o workflow da CI a define para todos os jobs e o `docs/tools/build.md` a descreve. Falta: uma rodada completa da CI, iniciada à mão, que passa em todas as plataformas com a opção ligada, e a correção na raiz de cada aviso que ela encontrar.
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
+
+Andamento: os avisos que os logs das execuções completas mostravam estão corrigidos (variáveis que escondiam outras, conversões de sinal, condicionais de enum, macros do Windows redefinidas e a guarda `@available` do visionOS 2.0). As flags `-Wno-missing-field-initializers`, `-Wno-missing-designated-field-initializers` e `-Wno-stringop-*` saíram, e cada membro que um agregado da engine deixava de inicializar ganhou o inicializador vazio, e as estruturas de Vulkan, VMA, Box2D e SDL que a engine preenche dizem cada campo com o seu zero, sem mudar o comportamento. Faltam: o build Release com LTO do SDK Linux, o clang dos fuzzers, os sanitizers, os testes do macOS, a fatia do visionOS e os SDKs web e Android, e o commit.
 
 #### Acceptance criteria
 
