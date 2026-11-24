@@ -13,7 +13,7 @@ from haylen.core.product_request import ProductRequest
 from haylen.core.repository import Repository
 from haylen.core.tooling_context import ToolingContext
 from haylen.engine.android_test_device import AndroidTestDevice
-from haylen.engine.web_app_check import WebAppCheck
+from haylen.engine.web_start_report import WebStartReport
 from haylen.platforms.android.android_launcher import AndroidLauncher
 from haylen.toolchains.android_debug_bridge import AndroidDebugBridge
 from haylen.toolchains.android_sdk import AndroidSdk
@@ -71,7 +71,7 @@ class AndroidAppCheck:
         settled: float | None = None
         while True:
             lines = self.context.process.capture(self.bridge.command(serial, "logcat", "-d", "-b", "main", "-b", "crash", "-v", "tag", *AndroidAppCheck.FILTERS)).splitlines()
-            details = "\n".join(lines[-WebAppCheck.LOG_LINES :])
+            details = "\n".join(lines[-WebStartReport.LOG_LINES :])
             entries = [entry.groups() for entry in map(AndroidAppCheck.LINE.fullmatch, lines) if entry is not None]
             failure = next((message for level, tag, message in entries if level in AndroidAppCheck.FAILURES.get(tag, ())), None)
             if failure is not None:

@@ -16,29 +16,28 @@ from tests.support.recorded_commands import RecordedCommands
 
 
 class WebAppCheckTest:
-    """The start check of an app on the web passes only an app that drew its first frames through the API of its address without an error, names the first reason of a start that went wrong, and stops the server and the browser in every case."""
-
-    PAGE = 'The page of "Tests" on "webGpu"'
+    """The start check of an app on the web opens the page of the app on each graphics API in a browser of its own, checks the start and the loading of each page and stops the server and the browser in every case."""
 
     @staticmethod
     def report(**changes: object) -> dict:
-        """The report of the driver for an app that started on WebGPU, with the fields that `changes` replaces."""
+        """The report of the driver for an app of development that started on WebGPU after a splash without a logo that loaded in order, with the fields that `changes` replaces."""
+        splash = [
+            {"percent": percent, "starting": starting, "ended": ended, "logo": None, "images": 0, "bar": True}
+            for percent, starting, ended in (("0%", True, False), ("100%", False, False), ("100%", False, True))
+        ]
+        resources = [{"url": f"http://127.0.0.1:8000/{path}", "start": 1.0, "end": 2.0} for path in ("haylen.wasm", "app.zip")]
         started = {
             "drawsThrough": "webGpu",
             "firstFrame": True,
             "splashFailure": None,
             "exceptions": [],
             "log": [{"level": "info", "text": '[2026-11-16 10:00:00.000] [info] The app draws through "webGpu".'}],
+            "splash": splash,
+            "resources": resources,
             "expired": False,
             "stalled": False,
         }
         return {**started, **changes}
-
-    @staticmethod
-    def failure(report: dict) -> str:
-        with pytest.raises(BuildFailed) as failed:
-            WebAppCheck.check_report(report, "webGpu", WebAppCheckTest.PAGE)
-        return failed.value.message
 
     @staticmethod
     def app(tmp_path: Path) -> Path:
@@ -46,33 +45,6 @@ class WebAppCheckTest:
         folder.mkdir()
         (folder / "haylen.json").write_text("{}", encoding="utf-8")
         return folder
-
-    def test_an_app_that_drew_its_first_frames_through_the_api_of_its_address_passes(self):
-        warning = {"level": "warning", "text": "[2026-11-16 10:00:00.000] [warning] The browser keeps no files for the page."}
-        WebAppCheck.check_report(WebAppCheckTest.report(log=[*WebAppCheckTest.report()["log"], warning]), "webGpu", WebAppCheckTest.PAGE)
-
-    def test_the_error_screen_of_the_app_fails_the_check_with_its_report_in_the_details(self):
-        screen = '[2026-11-16 10:00:00.000] [error] The app stopped with an error\n\nThe chunk "87eb" is not on the device yet, so its file must be downloaded before it is read.'
-        report = WebAppCheckTest.report(firstFrame=False, log=[*WebAppCheckTest.report()["log"], {"level": "error", "text": screen}])
-        with pytest.raises(BuildFailed, match="showed the error screen of the app") as failed:
-            WebAppCheck.check_report(report, "webGpu", WebAppCheckTest.PAGE)
-        assert "is not on the device yet" in failed.value.details
-
-    def test_each_failure_names_its_reason(self):
-        error = {"level": "error", "text": "Saving user data failed."}
-        cases = {
-            "threw an error: TypeError: x is undefined at app.js:1:2": WebAppCheckTest.report(exceptions=["TypeError: x is undefined at app.js:1:2"]),
-            "could not start the app: The app could not be loaded. The file was missing.": WebAppCheckTest.report(
-                drawsThrough=None, firstFrame=False, splashFailure={"status": "The app could not be loaded.", "details": "The file was missing."}
-            ),
-            "logged an error in its console: Saving user data failed.": WebAppCheckTest.report(log=[error]),
-            'did not log "The app draws through "webGpu"." within': WebAppCheckTest.report(drawsThrough=None, firstFrame=False, expired=True, log=[]),
-            'drew through "webGl2" instead of "webGpu"': WebAppCheckTest.report(drawsThrough="webGl2"),
-            "did not draw the first complete frame of the app": WebAppCheckTest.report(firstFrame=False, expired=True),
-            "stopped answering": WebAppCheckTest.report(stalled=True),
-        }
-        for reason, report in cases.items():
-            assert reason in WebAppCheckTest.failure(report)
 
     def test_only_the_apis_of_the_web_and_an_app_folder_are_checked(self, tmp_path):
         check = WebAppCheck(RecordedCommands(tmp_path).context, None)
@@ -93,7 +65,10 @@ class WebAppCheckTest:
         monkeypatch.setattr(HeadlessBrowser, "__enter__", lambda self: 9222)
         monkeypatch.setattr(HeadlessBrowser, "__exit__", lambda self, *_: ended.append(("browser", tuple(self.arguments))))
         monkeypatch.setattr(Emscripten, "node", staticmethod(lambda: Path("node")))
-        product = SimpleNamespace(path=tmp_path / "site", prepared=SimpleNamespace(product=SimpleNamespace(app=SimpleNamespace(name="Tests"))))
+        site = tmp_path / "site"
+        site.mkdir()
+        (site / "config.json").write_text(json.dumps({"splash": {"logo": "splash.svg"}}), encoding="utf-8")
+        product = SimpleNamespace(path=site, prepared=SimpleNamespace(product=SimpleNamespace(app=SimpleNamespace(name="Tests"))))
         pipeline = SimpleNamespace(resolve=lambda request, build_sdk: request, prepare=lambda resolved: resolved, build=lambda prepared: product, verify=lambda built: VerificationReport(()))
 
         reports = {"webGpu": WebAppCheckTest.report(), "webGl2": WebAppCheckTest.report(drawsThrough="webGl2", firstFrame=False, expired=True)}

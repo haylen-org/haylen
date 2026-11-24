@@ -1,0 +1,9 @@
+{
+    "name": "Web Loading Bar",
+    "identifier": "com.haylen.webloadingbar",
+    "version": "1.0.0",
+    "category": "developer",
+    "platforms": {
+        "web": {"files": {"index.html": "native/web/index.html"}}
+    }
+}

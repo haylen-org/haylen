@@ -18,6 +18,8 @@ from haylen.core.tooling_context import ToolingContext
 from haylen.engine.headless_browser import HeadlessBrowser
 from haylen.engine.served_site import ServedSite
 from haylen.engine.suite_shard import SuiteShard
+from haylen.engine.web_start_report import WebStartReport
+from haylen.platforms.web.web_project import WebProject
 from haylen.sdk.sdk_catalog import SdkCatalog
 from haylen.sdk.sdk_selector import SdkSelector
 from haylen.toolchains.emscripten import Emscripten
@@ -129,6 +131,8 @@ class WebChecks:
     MEMORY_WASM_LIMIT = MEMORY_FILE_SIZE // 2
     MEMORY_BUFFER_LIMIT = 64 * 1024**2
     MEMORY_SECONDS = 600
+    # The loading check: the page of the template, with its logo, and a page of the app without "#splash-logo", which shows the bar alone.
+    LOADING_APPS = {"web-loading": "with the logo of the template", "web-loading-bar": "without a logo"}
 
     def __init__(self, context: ToolingContext, pipeline: AppPipeline) -> None:
         self.context = context
@@ -153,6 +157,7 @@ class WebChecks:
             "editor": self.editor,
             "memory": self.memory,
             "screens": self.screens,
+            "loading": self.loading,
         }
         reports = {}
         for place, (name, check) in enumerate(checks.items()):
@@ -234,6 +239,22 @@ class WebChecks:
                 WebChecks.check_steps(report, steps, f"The page of the wake lock check in a browser that {browser}")
         self.context.terminal.success(
             "The page took the wake lock while the app kept the screen on, gave it up when it hid, took it again when it showed and released it when the app let the screen sleep, and a browser that refused it or lacked it only warned."
+        )
+
+    def loading(self, api: str | None) -> None:
+        """Opens the page of the template and a page without a logo in browsers that draw through SwiftShader, as the start check of an app does, on the API that `api` names or on WebGPU."""
+        each = api or WebChecks.GRAPHICS_APIS[0]
+        for app, splash in WebChecks.LOADING_APPS.items():
+            site = self.site(WebChecks.DATA / app)
+            config = json.loads((site / WebProject.CONFIG).read_text(encoding="utf-8"))
+            page = f'The page of the loading check {splash} on "{each}"'
+            with ServedSite(site) as served:
+                self.context.terminal.step(f'Running the loading check of the web {splash} on "{each}" in a headless browser')
+                report = self.drive(WebStartReport.DRIVER, HeadlessBrowser.SOFTWARE_GPU, "the loading check of the web", served.page(WebChecks.query(each)), str(WebStartReport.START_SECONDS))
+            WebStartReport.check(report, each, page)
+            WebStartReport.check_loading(report, config, page)
+        self.context.terminal.success(
+            "The percentage of the splash grew to 100% before the splash ended, the logo arrived before the runtime and the package started to download, and a page without a logo showed the bar alone."
         )
 
     def screens(self, api: str | None) -> None:

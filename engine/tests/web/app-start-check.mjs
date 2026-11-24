@@ -1,7 +1,7 @@
-// Opens the page of an app in a headless browser over its debugging protocol and follows its start, then prints what happened as JSON: the graphics API that the app logged it draws through, whether the splash ended, which it does only after the first complete frame of the app, the failure that the splash shows, the errors that the page threw and every line of its console with its level. The check ends at the first error, once the app drew its first frames for a few more seconds without one, or once the seconds pass.
+// Opens the page of an app in a headless browser over its debugging protocol and follows its start, then prints what happened as JSON: the graphics API that the app logged it draws through, whether the splash ended, which it does only after the first complete frame of the app, the failure that the splash shows, the errors that the page threw, every line of its console with its level, every state that the splash went through and when each file of the page downloaded. The check ends at the first error, once the app drew its first frames for a few more seconds without one, or once the seconds pass.
 // Run it with Node: node app-start-check.mjs <debugging port> <page address> <seconds>
 const [port, url, seconds] = process.argv.slice(2);
-const result = { drawsThrough: null, firstFrame: false, splashFailure: null, exceptions: [], log: [], expired: false, stalled: false };
+const result = { drawsThrough: null, firstFrame: false, splashFailure: null, exceptions: [], log: [], splash: [], resources: [], expired: false, stalled: false };
 // The app goes on drawing for these seconds after its first complete frame, so an error of its first frames still reaches the report.
 const settleSeconds = 3;
 const drawsThrough = /The app draws through "([^"]+)"\./;
@@ -63,6 +63,35 @@ const { sessionId } = await send("Target.attachToTarget", { targetId: page.targe
 await send("Runtime.enable", {}, sessionId);
 await send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }, sessionId);
 await send("Page.enable", {}, sessionId);
+// This script runs in the page before any of its own and records every state of the splash as it changes: the text of the percentage, whether the content of the splash still waits to show, whether the splash ended, whether its logo shows, how many images it shows and whether its bar shows. The page keeps the timing of every file it downloads, more than the browser keeps by default.
+const splashRecorder = `(() => {
+    const states = [];
+    globalThis.splashStates = states;
+    performance.setResourceTimingBufferSize(100000);
+    const shown = (element) => element !== null && !element.hidden && getComputedStyle(element).display !== "none";
+    const record = () => {
+        const splash = document.getElementById("splash");
+        if (splash === null) {
+            return;
+        }
+
+        const logo = document.getElementById("splash-logo");
+        const state = {
+            percent: document.getElementById("splash-percent")?.textContent ?? null,
+            starting: splash.classList.contains("starting"),
+            ended: splash.classList.contains("hidden"),
+            logo: logo === null ? null : shown(logo) && logo.complete !== false && logo.naturalWidth !== 0,
+            images: [...splash.querySelectorAll("img, svg")].filter(shown).length,
+            bar: shown(document.getElementById("splash-progress")),
+        };
+        const last = states[states.length - 1];
+        if (last === undefined || JSON.stringify(last) !== JSON.stringify(state)) {
+            states.push(state);
+        }
+    };
+    new MutationObserver(record).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
+})();`;
+await send("Page.addScriptToEvaluateOnNewDocument", { source: splashRecorder }, sessionId);
 await send("Page.navigate", { url }, sessionId);
 
 // The splash of the page fades out once the app drew its first complete frame, and shows the failure of a start that never got that far.
@@ -98,4 +127,10 @@ for (;;) {
 
     await pause(250);
 }
+
+const loading = `JSON.stringify({
+    splash: globalThis.splashStates ?? [],
+    resources: performance.getEntriesByType("resource").map((entry) => ({ url: entry.name, start: entry.startTime, end: entry.responseEnd })),
+})`;
+Object.assign(result, JSON.parse((await send("Runtime.evaluate", { expression: loading, returnByValue: true }, sessionId)).result?.value ?? "{}"));
 report();
