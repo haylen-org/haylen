@@ -4,7 +4,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 4 / not set · **Next ID:** KB-299
+**Active WIP:** 4 / not set · **Next ID:** KB-302
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -24,6 +24,7 @@
 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
+| **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -281,6 +282,8 @@
 | **[KB-292 · Montar os dados de instância do renderizador 3D em lote](#kb-292)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-295 · Texto ao longo de caminhos, arcos e curvas 3D](#kb-295)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
+| **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | — | — |
+| **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-002 · Plugin de exemplo do Tiny Island só com APIs da plataforma](#kb-002)**<br>🟢 low · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
@@ -580,7 +583,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** o executor de testes de UI do macOS e do Mac Catalyst e os testes de entrada de texto do Mac existem (`611cf76a5`) e rodam no job `apple-mac-ui` da próxima execução completa da CI. O executor do Windows está compilando o SDK numa máquina da Azure.
+- **Progress:** o executor do macOS e do Mac Catalyst roda no job `apple-mac-ui` da próxima execução completa da CI (`611cf76a5`, `b6e0d0902`). O executor do Windows (`11d1ef4c4`) roda pela UI Automation numa máquina da Azure: uma rodada de 4 passou 20 de 20, mas rodadas seguintes falharam 1 ou 2 testes, com cliques num campo que não recebem o foco em 10 s e teclas que vão para o campo que tinha o foco antes. A causa ainda não está achada.
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
@@ -913,7 +916,7 @@ O analógico de um gamepad move o foco da UI nas quatro direções, também incl
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** quatro controles virtuais do SDL provam índices estáveis, conectar e desconectar, um mapa por jogador, vibração e sensores de cada controle e o foco só do controle do mapa padrão (`e34af0b74`), e no iOS um controle virtual reconecta no mesmo lugar e o controle próprio do simulador fica parado enquanto o virtual age (`611cf76a5`). Falta um teste do gamepad do navegador na web.
+- **Progress:** quatro controles virtuais do SDL nos testes da engine e, no iOS, um controle virtual que reconecta no mesmo lugar e o controle próprio do simulador parado enquanto o virtual age (`e34af0b74`, `611cf76a5`). Falta um teste do gamepad do navegador na web e o segfault do teste de vibração e sensores no Linux, que outro stream corrige.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
@@ -7681,6 +7684,74 @@ A complexidade é uma estimativa provisória.
 
 - [ ] Nenhum abort depois do fim do runtime nos testes de GPU da web, com a causa corrigida.
 - [ ] O executor dos testes da web falha quando a página aborta, com um teste do tooling que prova isso.
+
+#### Attachments
+
+- None
+
+<a name="kb-299"></a>
+### KB-299 — O foco pedido por uma GUI não tira o foco que a pessoa já deu
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 4
+
+#### Description
+
+Um campo com `focus` recebe o foco cerca de 0,8 s depois que a GUI aparece, e esse foco atrasado tira o foco de um campo que a pessoa já clicou ou tocou nesse meio tempo, como os testes de UI do Windows mostraram. O foco pedido pela GUI vale só enquanto a pessoa ainda não escolheu outro controle, como nos toolkits nativos, e chega no primeiro quadro em que a GUI está pronta.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] Um clique ou toque num campo antes do foco pedido mantém o foco nesse campo, conferido por um teste de engine.
+- [ ] O foco pedido continua chegando quando a pessoa não escolheu nada.
+
+#### Attachments
+
+- None
+
+<a name="kb-300"></a>
+### KB-300 — A tecla segurada no Windows repete no ritmo do sistema
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 4
+
+#### Description
+
+No Windows a engine ignora as repetições de tecla do sistema e usa a repetição do Dear ImGui, que repete no máximo uma vez por quadro, então um Backspace segurado apaga mais devagar quando os quadros ficam lentos e não segue o atraso e a taxa que a pessoa configurou no sistema. A repetição de uma tecla segurada segue as repetições que o sistema manda em cada plataforma, e a UI aplica cada uma.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] Um Backspace segurado apaga no ritmo do sistema em quadros lentos e rápidos, conferido por um teste de engine e pelo teste de UI do Windows.
+- [ ] As outras plataformas seguem o ritmo dos seus sistemas da mesma forma.
+
+#### Attachments
+
+- None
+
+<a name="kb-301"></a>
+### KB-301 — A tela de erro expõe os seus elementos aos leitores de tela no Windows
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 3
+
+#### Description
+
+No Windows a tela de erro não aparece na árvore de acessibilidade, então um leitor de tela e os testes de UI não leem a mensagem, o arquivo, a linha nem os botões. A tela de erro descreve os seus elementos como toda GUI, em todas as plataformas.
+
+A complexidade é uma estimativa provisória.
+
+#### Acceptance criteria
+
+- [ ] A mensagem, o local e os botões da tela de erro aparecem na árvore de acessibilidade no Windows e nas outras plataformas, conferido por um teste de engine e um teste de UI.
 
 #### Attachments
 
