@@ -36,15 +36,15 @@ class Promise final {
     // The function runs on the frame thread when the coroutine resumes and pushes exactly one value.
     void resolveWith(std::function<void(lua_State* L)> pushValue) const;
 
-    // Settles the promise with the result of a job on the frame thread: it rejects with the error of a job that failed, or resolves with the value the job made, which `push(L, value)` pushes for every coroutine that awaits it.
-    template <typename T, typename Push> void settle(haylen::core::JobSystem::Result<T> result, Push push) const {
+    // Settles the promise with the result of a job on the frame thread: it rejects with the error of a job that failed, or resolves with the value the job made, which `pushValue(L, value)` pushes for every coroutine that awaits it.
+    template <typename T, typename Push> void settle(haylen::core::JobSystem::Result<T> result, Push pushValue) const {
         if (!result.isOk()) {
             reject(std::move(result.error));
             return;
         }
 
         const auto value = std::make_shared<const T>(std::move(*result.value));
-        resolveWith([push = std::move(push), value](lua_State* L) { push(L, *value); });
+        resolveWith([pushValue = std::move(pushValue), value](lua_State* L) { pushValue(L, *value); });
     }
 
     // A rejection that nothing awaits or catches stops the app like a failed task, as `async.onFailure` receives it.
