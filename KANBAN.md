@@ -8041,7 +8041,7 @@ No Linux com Wayland, o Weston apaga as telas depois de cinco minutos parado, e 
 - **Type:** performance
 - **Priority:** medium
 - **Complexity:** 4
-- **Progress:** Começou no trabalho da plataforma, junto com o KB-316, o KB-317, o KB-318, o KB-320 e o KB-326.
+- **Progress:** A causa foi achada. O alocador de memória do Vulkan guarda um bloco vazio de cada tipo de memória, com blocos de até 256 MB, e a sua API pública não consegue soltar esse bloco. Os anéis de envio e de uniformes do dispositivo Vulkan também guardam para sempre os pedaços do pico. Os dispositivos de Metal, Direct3D 11 e 12, OpenGL e WebGPU também guardam o pico dos seus anéis. O plano aprovado tem três partes: um patch pequeno do alocador que solta os blocos vazios; a liberação dos blocos vazios e dos pedaços que sobram depois da rajada; e a chamada nova `gpu::Device::trim()`, que a engine faz no aviso de memória baixa, também sem quadros, em segundo plano. A chamada é real em todo dispositivo, e o código do Direct3D passa pela CI de um branch próprio.
 
 #### Description
 
