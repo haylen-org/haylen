@@ -278,6 +278,7 @@
 | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 | — | — | — | — | — |
 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 | — | — | — | — | — |
 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | — | — | — | — | — |
+| **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8063,6 +8064,28 @@ O aviso de quando o dispositivo de áudio não abre cita o texto de erro da bibl
 
 - None
 
+### KB-319
+
+- **Title:** Juntar famílias de métodos que descrevem um só estado num método com um enum
+- **Status:** todo
+- **Type:** refactor
+- **Priority:** medium
+- **Complexity:** 6
+
+#### Description
+
+O modo do mouse do [KB-293](#kb-293) juntou várias chamadas que descreviam um só estado, como esconder o cursor e travar o mouse, num modo com um enum, e assim acabaram as combinações contraditórias. O dono pediu o mesmo em toda a engine, só onde fizer sentido. A revisão passa por toda a API pública de C++ e de Lua e acha as famílias de métodos ou de booleanos que descrevem estados que se excluem, como um par de `setX` e `setY` que não podem valer ao mesmo tempo ou vários booleanos que formam um modo. Cada uma vira uma propriedade com um enum de nomes comuns, como as engines grandes fazem, com a tabela de nomes do enum, a binding Lua, os testes e a documentação, e nada dos nomes de antes fica no repositório. Uma família só muda quando os estados de fato se excluem: opções independentes continuam separadas. A regra entra em `docs/tools/api-policy.md`.
+
+#### Acceptance criteria
+
+- [ ] Toda família candidata da API pública está listada com o seu veredito: vira um enum ou continua como está, com o motivo.
+- [ ] Cada família que muda vira uma propriedade com um enum, em C++ e em Lua, com testes e documentação, e a busca pelos nomes de antes está vazia.
+- [ ] O `docs/tools/api-policy.md` diz quando um estado é um enum e quando são opções independentes.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8085,7 +8108,7 @@ O aviso de quando o dispositivo de áudio não abre cita o texto de erro da bibl
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-319. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-320. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
