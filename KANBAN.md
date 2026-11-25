@@ -7,18 +7,18 @@
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | **[KB-325 · O teste dos bytes que esperam para sair do WebSocket falha às vezes no macOS](#kb-325)**<br>🟠 high · `bug` · 3/10 | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 | — | — | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-329 · No Mac Catalyst e no iPad, cliques e teclas vêm do UIKit, de qualquer origem](#kb-329)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
 | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
 | **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
@@ -8065,7 +8065,13 @@ No Linux com Wayland, o Weston apaga as telas depois de cinco minutos parado, e 
 - **Type:** performance
 - **Priority:** medium
 - **Complexity:** 4
-- **Progress:** A causa foi achada. O alocador de memória do Vulkan guarda um bloco vazio de cada tipo de memória, com blocos de até 256 MB, e a sua API pública não consegue soltar esse bloco. Os anéis de envio e de uniformes do dispositivo Vulkan também guardam para sempre os pedaços do pico. Os dispositivos de Metal, Direct3D 11 e 12, OpenGL e WebGPU também guardam o pico dos seus anéis. O plano aprovado tem três partes: um patch pequeno do alocador que solta os blocos vazios; a liberação dos blocos vazios e dos pedaços que sobram depois da rajada; e a chamada nova `gpu::Device::trim()`, que a engine faz no aviso de memória baixa, também sem quadros, em segundo plano. A chamada é real em todo dispositivo, e o código do Direct3D passa pela CI de um branch próprio.
+- **Progress:** Os trims do Vulkan, do Direct3D 12 (o pool de páginas e a arena de buffers), do Direct3D 11 (`ClearState` e `IDXGIDevice3::Trim`) e dos anéis do OpenGL e do WebGPU estão escritos. Faltam:
+  - o Metal e o dispositivo nulo;
+  - o contrato `gpu::Device::trim()`;
+  - a regra do `graphics::Device`, que faz o trim quando os bytes que sobram param de crescer por 2 segundos;
+  - o aviso de memória baixa;
+  - o `debug.stats`;
+  - os testes.
 
 #### Description
 
@@ -8084,11 +8090,11 @@ No Galaxy A14 5G, o dispositivo Vulkan fica com cerca de 200 MB de memória de G
 ### KB-318
 
 - **Title:** A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio
-- **Status:** doing
+- **Status:** testing
 - **Type:** fix
 - **Priority:** medium
 - **Complexity:** 2
-- **Progress:** Codificado, com os testes da verificação compilando: a causa era o `audio::Device`, que punha o texto de resultado da biblioteca de áudio nos avisos de recusa e de partida. O motivo é um valor tipado, `Device::Problem` (sem dispositivo, negado, ocupado, formato não aceito, sem memória, falha e recusado), com frases da Haylen que dizem o que conferir. O teste `AudioDeviceTest` confere o mapa e que nenhuma frase tem o texto da biblioteca, e o `EngineMessagesTest` falha em qualquer fonte da engine que pede esse texto. O guia do áudio foi atualizado.
+- **Progress:** No `main` (`4be0cf4ee`): o motivo de o dispositivo de áudio não abrir é um valor tipado, com frases da Haylen que dizem o que conferir, e nenhum texto da biblioteca de áudio. O `AudioDeviceTest` confere o mapa, e o `EngineMessagesTest` falha no fonte anterior, que pedia o texto da biblioteca. As verificações passaram: 3033 testes da engine com avisos como erros, o formato e 549 testes do pytest. Falta a execução completa da CI.
 
 #### Description
 
@@ -8278,11 +8284,11 @@ Na execução completa 45585549922, o teste `WebSocketTest.CountsTheBytesThatWai
 ### KB-326
 
 - **Title:** Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera
-- **Status:** doing
+- **Status:** testing
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 2
-- **Progress:** Codificado, com os testes da verificação compilando: o `NetPlugin` não respondia `isAnimating`, então a queda do `bufferedAmount` não pedia quadro. Agora ele responde verdadeiro enquanto algum socket tem bytes à espera. O teste `NetRedrawTest` roda um app `onChange` que envia 16 MB do seu update para um caminho `/sink` novo do servidor de eco, e prova que o envio termina e os quadros depois descansam.
+- **Progress:** No `main` (`ad2bc381d`): o plugin da rede responde `isAnimating` enquanto algum WebSocket tem bytes à espera. O `NetRedrawTest.FinishesAnUploadWithoutAnotherChange` envia 16 MB num app `onChange`, e sem a correção ele esgota os 30 segundos. As verificações passaram: 3033 testes da engine com avisos como erros, o formato e 549 testes do pytest. Falta a execução completa da CI.
 
 #### Description
 
