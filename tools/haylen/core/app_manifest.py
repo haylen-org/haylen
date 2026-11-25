@@ -19,7 +19,9 @@ class AppManifest:
     """The `haylen.json` of an app, read and checked once against its schema: the identity of the app, its category, its kind, its C++ code, its native libraries, its plugins and the sections of its generated projects. The engine reads the same file from the package, and the tooling never writes another manifest next to it."""
 
     FILE = "haylen.json"
-    # The version of an app that names none, the same one that the engine reads from such a `haylen.json`.
+    # The name and the version of an app that names none, the same ones that the engine reads from such a `haylen.json`, and the name in the one-word form of executables, files and packages.
+    DEFAULT_NAME = "Haylen App"
+    DEFAULT_SLUG = DEFAULT_NAME.lower().replace(" ", "-")
     DEFAULT_VERSION = "1.0.0"
 
     folder: Path
@@ -76,7 +78,7 @@ class AppManifest:
         return AppManifest(
             folder=folder.resolve(),
             document=Frozen.freeze(document),
-            name=document["name"],
+            name=document.get("name") or AppManifest.DEFAULT_NAME,
             identifier=document["identifier"],
             version=document.get("version", AppManifest.DEFAULT_VERSION),
             build=document.get("build", 1),

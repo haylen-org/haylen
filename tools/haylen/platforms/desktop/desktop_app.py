@@ -3,12 +3,11 @@ from dataclasses import dataclass
 
 from haylen.core.app_category import AppCategory
 from haylen.core.app_manifest import AppManifest
-from haylen.core.errors.invalid_manifest import InvalidManifest
 
 
 @dataclass(frozen=True)
 class DesktopApp:
-    """What the projects and packages of a desktop app take from `haylen.json`, with the defaults that the engine applies: the publisher follows the name of the app until the app gives its own, and the executable and the packages take the name of the app folder in lowercase dash-case, which every package format accepts."""
+    """What the projects and packages of a desktop app take from `haylen.json`, with the defaults that the engine applies: the publisher follows the name of the app until the app gives its own, and the executable and the packages take the name of the app folder in lowercase dash-case, which every package format accepts, or `haylen-app` for a folder name without letters or digits."""
 
     name: str
     identifier: str
@@ -41,6 +40,4 @@ class DesktopApp:
     @staticmethod
     def executable_of(app: AppManifest) -> str:
         name = re.sub(r"[^a-z0-9]+", "-", app.folder.name.lower()).strip("-")
-        if not name:
-            raise InvalidManifest(f'The app folder name "{app.folder.name}" gives no name of an executable. Rename the folder with letters or digits.', origin=app.origin)
-        return name
+        return name or AppManifest.DEFAULT_SLUG

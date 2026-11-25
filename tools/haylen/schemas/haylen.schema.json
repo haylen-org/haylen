@@ -4,9 +4,9 @@
     "description": "The manifest of a Haylen app, which the tooling and the engine read.",
     "type": "object",
     "additionalProperties": false,
-    "required": ["name", "identifier"],
+    "required": ["identifier"],
     "properties": {
-        "name": {"type": "string", "minLength": 1, "description": "The name that people read."},
+        "name": {"type": ["string", "null"], "description": "The name that people read, \"Haylen App\" when it is missing, empty or null."},
         "identifier": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*(\\.[A-Za-z][A-Za-z0-9-]*)+$", "description": "The reverse domain identifier, such as \"com.example.game\"."},
         "version": {"type": "string", "pattern": "^\\d+(\\.\\d+){0,2}$", "description": "The version that people see, one to three numbers separated by dots, \"1.0.0\" when it is missing."},
         "build": {"type": "integer", "minimum": 1, "maximum": 2100000000, "description": "The build number, which grows with every upload of the app."},

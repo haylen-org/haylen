@@ -223,6 +223,17 @@ template <typename T> void AppConfig::readValue(const Json& object, std::string_
     }
 }
 
+std::string AppConfig::readName(const Json& document) {
+    const auto found = document.find("name");
+    if (found == document.end() || found->is_null()) {
+        return std::string(kDefaultName);
+    }
+
+    std::string name;
+    readValue(document, "", "name", name);
+    return name.empty() ? std::string(kDefaultName) : name;
+}
+
 std::uint32_t AppConfig::readBuild(const Json& document) {
     if (!document.contains("build")) {
         return 1;
@@ -758,7 +769,7 @@ void AppConfig::readDebug(const Json& section, AppConfig& config) {
 AppConfig AppConfig::fromJson(const Json& document, std::span<const std::string_view> applicationSections) {
     AppConfig config;
     readKeys(document, applicationSections, config);
-    readValue(document, "", "name", config.name);
+    config.name = readName(document);
     readValue(document, "", "identifier", config.identifier);
     readValue(document, "", "version", config.version);
     config.build = readBuild(document);

@@ -38,6 +38,21 @@ class AppManifestTest:
         engine = (Repository.ENGINE / "include" / "haylen" / "core" / "AppConfig.hpp").read_text(encoding="utf-8")
         assert f'std::string version = "{AppManifest.DEFAULT_VERSION}";' in engine, "The tooling and the engine read a haylen.json without a version alike."
 
+    def test_an_app_without_a_name_takes_the_name_of_the_engine(self, tmp_path):
+        fixture = ToolingFixture(tmp_path)
+        for name, value in (("missing", None), ("empty", ""), ("null", None)):
+            app = fixture.app({}, name)
+            document = json.loads((app / AppManifest.FILE).read_text(encoding="utf-8"))
+            if name == "missing":
+                del document["name"]
+            else:
+                document["name"] = value
+            (app / AppManifest.FILE).write_text(json.dumps(document), encoding="utf-8")
+            assert AppManifest.load(app).name == AppManifest.DEFAULT_NAME, name
+
+        engine = (Repository.ENGINE / "include" / "haylen" / "core" / "AppConfig.hpp").read_text(encoding="utf-8")
+        assert f'static constexpr std::string_view kDefaultName = "{AppManifest.DEFAULT_NAME}";' in engine, "The tooling and the engine name an app without a name alike."
+
     def test_fails_with_every_problem_and_its_key(self, tmp_path):
         app = ToolingFixture(tmp_path).app({"orientation": "sideways", "window": {"width": "wide", "highDpi": True}, "build": 0})
 

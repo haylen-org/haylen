@@ -42,6 +42,8 @@ class DesktopProjectTest:
         assert (app.description, app.company, app.copyright, app.website) == ("Sky Garden", "Sky Garden", "Copyright © Sky Garden", "")
         assert app.executable == "sky-garden"
 
+        assert DesktopApp.of(AppManifest.load(fixture.app({}, "日本"))).executable == AppManifest.DEFAULT_SLUG
+
         app = DesktopApp.of(AppManifest.load(fixture.app({"name": "Sky Garden", "company": "Harbor Games", "website": "https://harbor.example"}, "garden")))
         assert (app.company, app.copyright, app.website) == ("Harbor Games", "Copyright © Harbor Games", "https://harbor.example")
 

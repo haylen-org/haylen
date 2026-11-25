@@ -153,16 +153,19 @@ struct AppConfig {
         std::string language;
     };
 
-    std::string name = "Haylen App";
+    // The name of an app whose `haylen.json` gives none, an empty one or null, which the tooling gives its projects too.
+    static constexpr std::string_view kDefaultName = "Haylen App";
+
+    std::string name{kDefaultName};
     std::string identifier = "com.haylen.app";
     std::string version = "1.0.0";
 
     // The build number of the app, a whole number that grows with every upload to a store, while `version` is the version that people see. It is the bundle version of Apple platforms, the version code of Android and the app build that protected releases and content updates match.
     std::uint32_t build = 1;
 
-    std::string description = "Haylen App";
-    std::string company = "Haylen App";
-    std::string copyright = "Copyright \xC2\xA9 Haylen App";
+    std::string description{kDefaultName};
+    std::string company{kDefaultName};
+    std::string copyright = std::string("Copyright \xC2\xA9 ").append(kDefaultName);
     std::string website;
     Window window{};
     math::Vec2 designSize{1920.0F, 1080.0F};
@@ -228,6 +231,7 @@ struct AppConfig {
     static const std::array<std::string_view, 10> kCategoryNames;
 
     template <typename T> static void readValue(const Json& object, std::string_view section, const char* key, T& target);
+    [[nodiscard]] static std::string readName(const Json& document);
     [[nodiscard]] static std::uint32_t readBuild(const Json& document);
     static void requirePositive(double value, const char* key);
     static void requireNonNegative(double value, const char* key);

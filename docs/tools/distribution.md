@@ -243,6 +243,10 @@ The time scale is 0.25.
 
 Type `help` to list the commands of the app, with how to type each one in a column and what it does beside it, broken between words at the width of the terminal and aligned under the column, and `help stats` to show one command. The terminal answers `help` itself from the commands that the app sent, so the list prints once however many apps are connected. The [console reference](../lua-api/debug.md#console) lists the commands of the engine, such as `timeScale 0.25`, `pause`, `restart`, `inspect watched.player` and `lua player.speed`, and shows how an app adds its own, such as `gold 50`. The console asks the app for its commands as it opens and after every line, so the completions follow the commands that the app adds and removes as it runs.
 
+## Name
+
+The `name` of `haylen.json` is the name that people read: the title of the window, the label of the launcher, the display name of the bundle and the entries of the menus. It is optional. An app without a `name`, or with an empty or `null` one, is `Haylen App` in the engine and in every generated project alike. The one-word names of an app, such as the executable of a desktop and its packages, come from the app folder in lowercase dash-case, and a folder name without letters or digits gives `haylen-app`.
+
 ## Version and build number
 
 Every platform takes two numbers from `haylen.json`. The `version`, such as `1.2.0`, is the version that people see in the stores, and it is `1.0.0` when `haylen.json` gives none, as the engine reads it too. The `build` is a whole number that grows with every upload of the app, such as 1, 2 and 3, and it starts at 1 when `haylen.json` gives none. The `build` is the only source of every build number of the app, so nothing derives one from the version, and no setting of a section sets one of its own.
@@ -403,7 +407,7 @@ The desktop backend generates the CMake project of a Windows or Linux app from t
 | `signing.cmake` | On Windows, the signing of the executable, the installer and the uninstaller, as [signing](#signing) describes. |
 | `links.iss` | On Windows, for an app whose plugins declare URL schemes, the registry entries that the installer adds for them. |
 
-The executable takes the name of the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts. The installed app is the app as it ships:
+The executable takes the name of the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts, or `haylen-app` for a folder name without letters or digits. The installed app is the app as it ships:
 
 ```text
 build/apps/my-game-1a2b3c4d/windows-debug/products/

@@ -111,6 +111,19 @@ TEST_F(AppConfigTest, ReadsEveryField) {
     EXPECT_EQ(AppConfig::fromJson(Json::object()).window.title, "Haylen App");
 }
 
+// An app without a name, with an empty one or with null is the app of the default name, the one that the tooling gives its projects.
+TEST_F(AppConfigTest, AnAppWithoutANameTakesTheDefaultName) {
+    const std::array<Json, 3> documents{Json::object(), Json{{"name", ""}}, Json{{"name", nullptr}}};
+    for (const Json& document : documents) {
+        const AppConfig config = AppConfig::fromJson(document);
+        EXPECT_EQ(config.name, AppConfig::kDefaultName) << document.dump();
+        EXPECT_EQ(config.window.title, AppConfig::kDefaultName) << document.dump();
+        EXPECT_EQ(config.company, AppConfig::kDefaultName) << document.dump();
+    }
+
+    EXPECT_EQ(AppConfig::fromJson(Json{{"name", "Sky Garden"}}).name, "Sky Garden");
+}
+
 // The sections that the application reads itself stay as they are for it, and the engine refuses them for an application that does not read them.
 TEST_F(AppConfigTest, KeepsTheSectionsThatTheApplicationReads) {
     const Json document = Json::parse(R"({"name": "Sections", "lua": {"autoloads": ["state"]}})");
