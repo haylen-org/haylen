@@ -8044,7 +8044,10 @@ Um app sem `identifier` que roda pelo `haylen app run` recebe o identificador ge
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** Medido num contêiner com o Weston 14 sem tela: ele não tem o estado `suspended` do xdg-shell 6, e quando as saídas dormem os avisos de quadro param sem nenhum outro evento. O caminho decidido segue o modelo dos toolkits nativos do Wayland:
+- **Progress:** Caminho decidido: os quadros que apresentam seguem os avisos de quadro da superfície; enquanto nenhum aviso chega, um timer no ritmo de janela escondida roda os quadros sem apresentar; e o estado `suspended` para a apresentação na hora. Os testes de integração rodam em Docker, sem máquina na nuvem:
+  - o Sway sem tela, onde desligar e religar a saída para e devolve os avisos;
+  - o Mutter sem tela, que manda `suspended` quando a janela é minimizada;
+  - o Weston, onde a tela apagada para os avisos.
   - Os quadros que apresentam seguem os avisos de quadro da superfície, e a engine só apresenta depois que o aviso da última apresentação chegou, então nunca espera dentro da swapchain.
   - Enquanto nenhum aviso chega, um timer no ritmo de janela escondida roda os quadros sem apresentar, como no macOS.
   - Onde o compositor manda o estado `suspended`, a apresentação para na hora.
@@ -8071,7 +8074,7 @@ No Linux com Wayland, o Weston apaga as telas depois de cinco minutos parado, e 
 - **Type:** performance
 - **Priority:** medium
 - **Complexity:** 4
-- **Progress:** Os trims do Vulkan, do Direct3D 12 (o pool de páginas e a arena de buffers), do Direct3D 11 (`ClearState` e `IDXGIDevice3::Trim`) e dos anéis do OpenGL e do WebGPU estão escritos. Faltam:
+- **Progress:** Passa na engine sem cabeça: todo dispositivo tem `trim` e `getSpareBytes`. O `graphics::Device` faz o trim 2 segundos depois que a memória de sobra para de crescer, e na hora no aviso de memória baixa. O Lua ganha `graphics.trim()` e `debug.stats().memory.gpuSpare`. O `haylen test` passou 3038 testes com avisos como erros. Os testes novos são o `MemoryTrimTest` e o `GraphicsLuaTest.TrimsTheMemoryThatTheDeviceHoldsForLater`, com quadros iguais sem trim e sem alocação. Agora o teste de GPU `GpuMemoryTrimTest` roda no Metal, no Linux em Docker, na web e no emulador do Android. O código do Direct3D vai para o branch `device-trim`, e o contrato dos ports sobe para a versão 13.
   - o Metal e o dispositivo nulo;
   - o contrato `gpu::Device::trim()`;
   - a regra do `graphics::Device`, que faz o trim quando os bytes que sobram param de crescer por 2 segundos;
