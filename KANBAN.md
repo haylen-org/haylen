@@ -7858,6 +7858,7 @@ Na execução completa 45537704137, dois shards do job `Sanitizers (address)` pe
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 3
+- **Progress:** A categoria é opcional desde `f1f64c102`: sem ela, os projetos gerados deixam de fora a categoria da Apple, a do Android e as categorias do menu e do metainfo do Linux, e o `.deb` fica na seção `misc` do Debian. Só o instalador do Linux recusa um app sem categoria, porque a ferramenta do AppImage exige a chave `Categories`, com um teste. A revisão do nome, do identificador e da versão começou.
 
 #### Description
 
