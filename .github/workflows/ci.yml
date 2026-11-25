@@ -465,8 +465,8 @@ jobs:
         run: pip install cmake
       - name: Create the starter apps and a plugin
         run: |
-          uv run --locked haylen --verbose new build/starter
-          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose new build/starter --identifier com.haylen.starter --category game
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp --identifier com.haylen.startercpp --category game
           uv run --locked haylen --verbose plugin new build/echo-check
           uv run --locked haylen --verbose plugin add build/echo-check --app build/starter
       - name: Package the protected release as installers
@@ -500,8 +500,8 @@ jobs:
       - name: Create the starter apps and a plugin
         shell: bash
         run: |
-          uv run --locked haylen --verbose new build/starter
-          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose new build/starter --identifier com.haylen.starter --category game
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp --identifier com.haylen.startercpp --category game
           uv run --locked haylen --verbose plugin new build/echo-check
           uv run --locked haylen --verbose plugin add build/echo-check --app build/starter
       - name: Package the protected release as an installer
@@ -579,8 +579,8 @@ jobs:
           name: android-sdk
       - name: Create the starter apps and an upload key
         run: |
-          uv run --locked haylen --verbose new build/starter
-          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose new build/starter --identifier com.haylen.starter --category game
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp --identifier com.haylen.startercpp --category game
           uv run --locked haylen --verbose app sign build/starter --target android
       - name: Build the protected release
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target android --config Release
@@ -693,8 +693,8 @@ jobs:
         run: uv run --locked haylen --verbose sdk join build/slices/*
       - name: Create the starter apps
         run: |
-          uv run --locked haylen --verbose new build/starter
-          uv run --locked haylen --verbose new build/starter-cpp --kind cpp
+          uv run --locked haylen --verbose new build/starter --identifier com.haylen.starter --category game
+          uv run --locked haylen --verbose new build/starter-cpp --kind cpp --identifier com.haylen.startercpp --category game
       - name: Build the protected release for the iOS simulator
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} app build build/starter --target ios-simulator --config Release
       - name: Build the C++ app for the iOS simulator
