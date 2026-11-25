@@ -207,6 +207,12 @@ class Runtime final {
     // The presses and releases of the back button that the player took as they arrived, which reach no app.
     int takenBacks = 0;
 
+#if defined(__APPLE__) && TARGET_OS_OSX
+
+    // The events that wake the main callbacks for a frame of macOS.
+    std::uint32_t frameType = 0;
+#endif
+
     // The events that the platform read on its own, which wait for the event of SDL that keeps their place in the queue.
     std::uint32_t postedType = 0;
     std::vector<platform::Event> posted;

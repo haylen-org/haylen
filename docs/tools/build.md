@@ -239,7 +239,7 @@ haylen engine configure --config Release --sanitizers address
 haylen engine configure --xcode
 ```
 
-Configures the tree of this machine, with `--config` (`Debug`, `Release` or `RelWithDebInfo`, `Debug` by default), `--sanitizers` (`address` or `thread`) and `--xcode`, which uses the Xcode generator on macOS for debugging the engine in Xcode. Every tree receives `HAYLEN_SHADERC`, `CMAKE_BUILD_TYPE`, `HAYLEN_SANITIZERS` and `HAYLEN_UV`, the uv that the engine tests run the tooling with, and a macOS tree targets macOS 13.3 through `CMAKE_OSX_DEPLOYMENT_TARGET`.
+Configures the tree of this machine, with `--config` (`Debug`, `Release` or `RelWithDebInfo`, `Debug` by default), `--sanitizers` (`address` or `thread`) and `--xcode`, which uses the Xcode generator on macOS for debugging the engine in Xcode. Every tree receives `HAYLEN_SHADERC`, `CMAKE_BUILD_TYPE`, `HAYLEN_SANITIZERS` and `HAYLEN_UV`, the uv that the engine tests run the tooling with, and a macOS tree targets macOS 14.0 through `CMAKE_OSX_DEPLOYMENT_TARGET`.
 
 Every build carries the GPU device of each graphics API of its platform, which `HAYLEN_GRAPHICS_APIS` lists, and the app chooses one when it runs, as the [RHI guide](../graphics/rhi.md#choosing-the-graphics-api) describes.
 

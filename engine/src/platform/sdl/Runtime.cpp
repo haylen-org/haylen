@@ -34,6 +34,7 @@
 #include "haylen/platform/apple/HaylenMain.h"
 #include "platform/apple/AppleServices.hpp"
 #include "platform/sdl/apple/AppleApplication.hpp"
+#include "platform/sdl/apple/AppleFramePacer.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include <emscripten/emscripten.h>
 
@@ -235,6 +236,13 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     }
 
     postedType = SDL_RegisterEvents(1);
+#if defined(__APPLE__) && TARGET_OS_OSX
+    // The main callbacks wait for events in the run loop of AppKit, and the frames come from the display link of the screen as events too, so the main thread waits between the frames as the one of every native app does.
+    SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, "waitevent");
+    frameType = SDL_RegisterEvents(1);
+    updateCallbackRate();
+    AppleFramePacer::start(frameType);
+#endif
 
     // AppKit and UIKit lay out the views of the services over the window as soon as they create it, before the first frame initializes the app.
     platform::NativeWindow::install(&window);
@@ -254,6 +262,9 @@ SDL_AppResult Runtime::start() {
     }
 #if defined(__APPLE__)
     AppleApplication::finishLaunching(*this);
+#endif
+#if defined(__APPLE__) && TARGET_OS_OSX
+    AppleFramePacer::followScreen();
 #endif
 #if defined(__APPLE__) && TARGET_OS_TV
     SDL_SetEventFilter(&Runtime::onFilter, this);
@@ -323,6 +334,13 @@ SDL_AppResult Runtime::iterate() {
         return SDL_APP_SUCCESS;
     }
 
+#if defined(__APPLE__) && TARGET_OS_OSX
+    // The events of the window wake the main callbacks too, and only a frame of the display link or the timer plays.
+    if (!AppleFramePacer::takeFrame()) {
+        return SDL_APP_CONTINUE;
+    }
+#endif
+
     if (!started) {
         return start();
     }
@@ -369,6 +387,12 @@ void Runtime::recover() {
 
 // Controllers open as SDL connects them, also the ones connected before the app started, while the other events before the app started find no app to hear them.
 SDL_AppResult Runtime::handle(const SDL_Event& event) {
+#if defined(__APPLE__) && TARGET_OS_OSX
+    if (event.type == frameType) {
+        AppleFramePacer::receiveWake();
+        return SDL_APP_CONTINUE;
+    }
+#endif
 #if !defined(__APPLE__) || TARGET_OS_OSX
     gamepads.handle(event);
 #endif
@@ -441,6 +465,9 @@ void Runtime::quit() noexcept {
         Player::cleanup();
     }
 
+#if defined(__APPLE__) && TARGET_OS_OSX
+    AppleFramePacer::stop();
+#endif
     host = nullptr;
     platform::NativeWindow::install(nullptr);
     openedDevice.reset();
@@ -515,6 +542,11 @@ void Runtime::followWindow(const SDL_Event& event) {
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
         host->followFullscreen(event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN);
         return;
+#if defined(__APPLE__) && TARGET_OS_OSX
+    case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+        AppleFramePacer::followScreen();
+        return;
+#endif
 #if defined(_WIN32) || defined(__linux__)
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
         textInput.restore();
@@ -545,23 +577,25 @@ void Runtime::setFrameRate(int framesPerSecond) {
     updateCallbackRate();
 }
 
-// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on desktops and by the rate of the display link on UIKit, and the present of each frame paces them without one. A hidden window, which no display paces, runs them at most at `kHiddenRate`, and on a desktop the frames that present nothing run at the refresh of the display of the window, so input still reaches the app at once. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
+// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on Windows and Linux and by the rate of the display link on UIKit, and the present of each frame paces them without one. On macOS the display link of the screen of the window plays the frames at that rate. A hidden window, which no display paces, runs them at most at `kHiddenRate`, and on Windows and Linux the frames that present nothing run at the refresh of the display of the window, so input still reaches the app at once. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
 void Runtime::updateCallbackRate() {
     const int target = frameRate.getTarget();
-    int rate = target;
-    if (hidden) {
-        rate = target > 0 ? std::min(target, kHiddenRate) : kHiddenRate;
-    }
+    const int hiddenRate = target > 0 ? std::min(target, kHiddenRate) : kHiddenRate;
+#if defined(__APPLE__) && TARGET_OS_OSX
+    AppleFramePacer::pace(target, hiddenRate, hidden);
+#else
+    int rate = hidden ? hiddenRate : target;
 #if defined(__EMSCRIPTEN__)
     if (!hidden) {
         rate = 0;
     }
-#elif !defined(__APPLE__) || TARGET_OS_OSX
+#elif !defined(__APPLE__)
     if (!hidden && !presenting && target == 0) {
         rate = getRefreshRate();
     }
 #endif
     SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, std::to_string(rate).c_str());
+#endif
 }
 
 // A frame that draws nothing presents nothing that the display could pace, so the rate of the iterations changes whenever the app starts or stops presenting.

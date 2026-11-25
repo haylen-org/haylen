@@ -14,7 +14,7 @@ assert(haylen.graphicsApi == 'metal', 'Apple platforms draw through Metal.')
 
 ## What the machine needs
 
-The device runs on every GPU of the systems that the engine supports: macOS 13.3, iOS and iPadOS 16.3 and tvOS 16.3 and later. Those systems run only GPUs of the Apple families and, on macOS, the GPUs of Intel Macs. The platform layer hands the device a `CAMetalLayer`. On macOS and Mac Catalyst the device draws on the GPU that the layer prefers, which is the GPU of the display that shows the window, and elsewhere on the default GPU of the system.
+The device runs on every GPU of the systems that the engine supports: macOS 14.0, Mac Catalyst 16.4, iOS and iPadOS 16.3 and tvOS 16.3 and later. Those systems run only GPUs of the Apple families and, on macOS, the GPUs of Intel Macs. The platform layer hands the device a `CAMetalLayer`. On macOS and Mac Catalyst the device draws on the GPU that the layer prefers, which is the GPU of the display that shows the window, and elsewhere on the default GPU of the system.
 
 ## How it draws a frame
 

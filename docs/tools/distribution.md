@@ -739,7 +739,7 @@ The slices target the oldest systems that the code of the engine allows, which e
 
 - iOS and tvOS 16.3, and Mac Catalyst 16.4, which is macOS 13.3 on the Mac. Those releases have a C++ library whose `std::format` formats floating point numbers, which the engine uses for text and logs. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point.
 - visionOS 1.0, its first release, whose C++ library already formats floating point numbers with `std::format`.
-- macOS 13.3, for the same `std::format` of its C++ library. SDL runs from macOS 10.13 on, and the Metal device from macOS 10.15 on, where Metal sorts GPUs into the families that it asks about, so neither sets the minimum.
+- macOS 14.0, the first release with the display link of a screen on the run loop, `CADisplayLink`, which plays the frames of a macOS app, so the main thread waits in the run loop between them as the main thread of every native app does. The C++ library of macOS formats floating point numbers with `std::format` from 13.3 on, SDL runs from macOS 10.13 on, and the Metal device from macOS 10.15 on, where Metal sorts GPUs into the families that it asks about, so none of them sets the minimum.
 - Mac Catalyst starts at 16.4 rather than 16.3, because Xcode maps iOS 16.3 to macOS 13.2.
 - The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26.
 
@@ -773,7 +773,7 @@ The Android SDK keeps the list `HAYLEN_ANDROID_LIBRARIES` of the same file. The 
 | `CoreFoundation`, `CoreGraphics` | macOS, and `CoreGraphics` on every Apple platform | The displays, the geometry and the collections of the system. |
 | `CoreText` | Every Apple platform | The fonts of the system that text falls back on. |
 | `Metal` | Every Apple platform | The GPU device of Metal. |
-| `QuartzCore` | iOS, iPadOS, Mac Catalyst, tvOS, visionOS | The Metal layer of the views and the display link. On macOS the engine sends the Metal layer of the window only messages of Objective-C and references no symbol of `QuartzCore`, which AppKit loads. |
+| `QuartzCore` | Every Apple platform | The Metal layer of the views and the display link that plays the frames. |
 | `GameController` | Every Apple platform | Gamepads, the keyboards and mice of iPads and TV remotes. |
 | `CoreHaptics`, `ForceFeedback` | macOS | The rumble of gamepads, through GameController and SDL. |
 | `AVFoundation`, `AudioToolbox`, `CoreMedia`, `CoreVideo` | Every Apple platform | The audio session, the audio output and the decoding of videos. |
@@ -1016,7 +1016,7 @@ A deeper change, such as another layout, edits the rules below the variables and
 
 | Platform | Status | How it runs |
 | --- | --- | --- |
-| macOS | Supported | macOS 13.3 and later, the first release whose C++ library formats floating point numbers with `std::format`, as [Haylen.xcframework](#haylenxcframework) explains. The `player` target in development, or the `macos` target of the Apple backend. |
+| macOS | Supported | macOS 14.0 and later, the first release with the display link of a screen on the run loop, which plays the frames of the app, as [Haylen.xcframework](#haylenxcframework) explains. The `player` target in development, or the `macos` target of the Apple backend. |
 | Windows, Linux | Supported | Windows 10 version 1903 and later, the first that applies the UTF-8 code page of the application manifest, through which the engine reads its command line. Linux with X11, or with Wayland, where the window keeps the place and the level that the compositor gives it, and the glibc of the machine that built the app, or later. The `player` target in development, or the `windows` and `linux` targets of the desktop backend. CI builds and tests on those hosts. The application manifest of Windows apps declares Windows 10 and 11. Linux apps load GIO at run time for the theme, and run without it, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | iOS, iPadOS | Supported | iOS and iPadOS 16.3 and later, on iPhone and iPad, with every orientation of `haylen.json` and every iPad window size. The fold of the foldable iPhone needs iOS 27.1 or later on the device, whose UIKit reports the hinge and the reserved regions. |
 | Mac Catalyst | Supported | macOS 13.3 and later. The iPad app on the Mac, whose window opens at the size of `haylen.json` in the points of the Mac, where macOS places it. SDL reads the buttons and the wheel of the mouse through `GCMouse` and the pointer position through a hover gesture on the view of the app, as on an iPad with a mouse or a trackpad, and the runtime reads the keyboard through `GCKeyboard`, as on iOS and tvOS. Typed text comes from the native field of the [text input](../ui/text-input.md) of the runtime. |

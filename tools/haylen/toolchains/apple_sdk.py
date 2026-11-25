@@ -4,8 +4,8 @@ from haylen.core.repository import Repository
 class AppleSdk:
     """The SDKs of Xcode that the engine builds the slices of Apple platforms with, by the names of the slices of `Haylen.xcframework`, and the oldest system of each platform."""
 
-    # The engine formats text and logs with `std::format` with floating point, which reaches the C++ library of the system in macOS 13.3 and in iOS and tvOS 16.3. Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
-    MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "visionOS": "1.0", "macOS": "13.3"}
+    # The engine formats text and logs with `std::format` with floating point, which reaches the C++ library of the system in iOS and tvOS 16.3. A macOS app plays its frames from the display link of its screen on the run loop, which macOS has from 14.0. Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
+    MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "visionOS": "1.0", "macOS": "14.0"}
     SLICE_SYSTEMS = {"macos": "macOS", "ios": "iOS", "ios-simulator": "iOS", "tvos": "tvOS", "tvos-simulator": "tvOS", "xros": "visionOS", "xros-simulator": "visionOS"}
     SLICE_SDKS = {
         "macos": "macosx",
