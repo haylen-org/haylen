@@ -4,7 +4,7 @@ from haylen.core.errors.build_failed import BuildFailed
 
 
 class MacInputSources:
-    """Selects an input source of this Mac for the UI tests of the Mac and gives the Mac back the input sources it had, through Text Input Sources of Carbon. A test runs in the sandbox of macOS, which keeps the input sources that it turns on or selects to its own process, so the run, which runs outside the sandbox, selects them for it. An input mode, such as the Japanese one that composes kana from Latin letters, is selected only once it and its input method are on, so the run turns both on when the Mac has them off and off again when it gives the Mac back its input sources."""
+    """Selects an input source of this Mac for the UI tests of the Mac, through Text Input Sources of Carbon, and sets the preferences of input methods, through the preferences of Core Foundation, and gives the Mac back the input sources and the preferences it had. A test runs in the sandbox of macOS, which keeps the input sources that it turns on or selects to its own process and the settings of the input methods from it, so the run, which runs outside the sandbox, changes them for it. An input mode, such as the Japanese one that composes kana from Latin letters, is selected only once it and its input method are on, so the run turns both on when the Mac has them off and off again when it gives the Mac back its input sources."""
 
     CARBON = "/System/Library/Frameworks/Carbon.framework/Carbon"
     CORE_FOUNDATION = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
@@ -21,6 +21,8 @@ class MacInputSources:
         # The input source that was current before the first selection, and the input sources that the run turned on, in the order it turned them on, each retained until the run gives them back.
         self.previous: int | None = None
         self.enabled: list[int] = []
+        # The domain, the key and the value that each preference that the run set had before, in the order the run set them, each value retained until the run gives it back, or None for a preference that the Mac did not hold.
+        self.preferences: list[tuple[str, str, int | None]] = []
 
     @staticmethod
     def declare(carbon: ctypes.CDLL, foundation: ctypes.CDLL) -> None:
@@ -46,6 +48,9 @@ class MacInputSources:
             ("CFBooleanGetValue", ctypes.c_bool, (pointer,)),
             ("CFRetain", pointer, (pointer,)),
             ("CFRelease", None, (pointer,)),
+            ("CFPreferencesCopyAppValue", pointer, (pointer, pointer)),
+            ("CFPreferencesSetAppValue", None, (pointer, pointer, pointer)),
+            ("CFPreferencesAppSynchronize", ctypes.c_bool, (pointer,)),
         ):
             function = getattr(foundation, name)
             function.restype = result
@@ -112,19 +117,52 @@ class MacInputSources:
             for source in sources:
                 self.foundation.CFRelease(source)
 
+    def set_preference(self, domain: str, key: str, value: bool) -> None:
+        """Sets a boolean preference in the domain of the settings of an input method, such as the live conversion of the Japanese one, which the input method reads from there, keeping the value it had for `restore`."""
+        if not any(changed[:2] == (domain, key) for changed in self.preferences):
+            self.preferences.append((domain, key, self.copy_preference(domain, key)))
+        constant = "kCFBooleanTrue" if value else "kCFBooleanFalse"
+        if not self.write_preference(domain, key, ctypes.c_void_p.in_dll(self.foundation, constant).value):
+            raise BuildFailed(f'The setting "{key}" of the input method "{domain}" of this Mac cannot be changed for a UI test.')
+
+    def copy_preference(self, domain: str, key: str) -> int | None:
+        """The value of a preference, retained, or None when the Mac does not hold it."""
+        domain_name = self.string(domain)
+        key_name = self.string(key)
+        value = self.foundation.CFPreferencesCopyAppValue(key_name, domain_name)
+        self.foundation.CFRelease(key_name)
+        self.foundation.CFRelease(domain_name)
+        return value
+
+    def write_preference(self, domain: str, key: str, value: int | None) -> bool:
+        """Writes the value of a preference, or removes it for None, and tells whether the Mac stored the change."""
+        domain_name = self.string(domain)
+        key_name = self.string(key)
+        self.foundation.CFPreferencesSetAppValue(key_name, value, domain_name)
+        stored = self.foundation.CFPreferencesAppSynchronize(domain_name)
+        self.foundation.CFRelease(key_name)
+        self.foundation.CFRelease(domain_name)
+        return stored
+
     def restore(self) -> None:
-        """Selects the input source that was current before the first selection again and turns off the input sources that the run turned on, the last one first."""
+        """Gives back the values that the preferences had before the run set them, selects the input source that was current before the first selection again and turns off the input sources that the run turned on, the last one first."""
         failed: list[str] = []
+        for domain, key, value in reversed(self.preferences):
+            if not self.write_preference(domain, key, value):
+                failed.append(f'the setting "{key}" of "{domain}"')
+            if value is not None:
+                self.foundation.CFRelease(value)
+        self.preferences = []
         if self.previous is not None:
             if self.carbon.TISSelectInputSource(self.previous) != MacInputSources.NO_ERROR:
-                failed.append(self.text(self.property(self.previous, "kTISPropertyInputSourceID")))
+                failed.append(f'the input source "{self.text(self.property(self.previous, "kTISPropertyInputSourceID"))}"')
             self.foundation.CFRelease(self.previous)
             self.previous = None
         for source in reversed(self.enabled):
             if self.carbon.TISDisableInputSource(source) != MacInputSources.NO_ERROR:
-                failed.append(self.text(self.property(source, "kTISPropertyInputSourceID")))
+                failed.append(f'the input source "{self.text(self.property(source, "kTISPropertyInputSourceID"))}"')
             self.foundation.CFRelease(source)
         self.enabled = []
         if failed:
-            names = ", ".join(f'"{name}"' for name in failed)
-            raise BuildFailed(f"The UI tests could not give this Mac back its input sources {names}. Set them again in the keyboard settings of the Mac.")
+            names = ", ".join(failed)
+            raise BuildFailed(f"The UI tests could not give this Mac back {names}. Set them again in the keyboard settings of the Mac.")

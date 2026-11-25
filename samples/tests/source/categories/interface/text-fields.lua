@@ -36,6 +36,21 @@ function TextFields:enter()
     }
 end
 
+-- An input method, such as the Japanese one that turns Latin letters into kana, composes its text in the field before it commits it, and the line under the fields shows that text while it composes.
+function TextFields:event(event)
+    if event.type ~= 'textEdited' then
+        return
+    end
+
+    local text = 'No input method composes text.'
+    if event.compositionStart then
+        local first = utf8.offset(event.text, event.compositionStart + 1)
+        local last = utf8.offset(event.text, event.compositionEnd + 1) - 1
+        text = string.format('The input method composes "%s".', event.text:sub(first, last))
+    end
+    self:set('composition', {text = text})
+end
+
 function TextFields:report(name)
     return function(event)
         self:set('status', {text = string.format('The field "%s" reported "%s" with "%s".', name, event.name, event.value)})
@@ -58,7 +73,10 @@ function TextFields:columns()
         end},
     }
     return layout.columns{
-        layout.section('Keyboards, return keys, limits and secrets', {grow = 3, ui.grid{columns = 3, gap = 20, rowGap = 28, children = keyboards}}),
+        layout.section('Keyboards, return keys, limits and secrets', {grow = 3,
+            ui.grid{columns = 3, gap = 20, rowGap = 28, children = keyboards},
+            ui.label{id = 'composition', text = 'No input method composes text.', color = 'textMuted'},
+        }),
         ui.column{grow = 1, gap = 24,
             layout.section('Component "textArea"', {
                 ui.textArea{rows = 5, value = TextFields.diary, autocorrect = true, onChange = function(event)

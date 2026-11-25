@@ -8,7 +8,7 @@ return {
         {code = 'GUI-002', title = 'Text', description = 'Labels in every font role and color, alignment, wrapping, page headers, empty states and alerts.', module = 'text'},
         {code = 'GUI-003', title = 'Buttons', description = 'Every button variant, icons above labels for tab bars, content at the start for search bars, image buttons, chips and menu buttons.', module = 'buttons'},
         {code = 'GUI-004', title = 'Choices', description = 'Check boxes, toggles and radio groups.', module = 'choices'},
-        {code = 'GUI-005', title = 'Text fields', description = 'Text fields with every keyboard and return key, secret fields, text areas and filter fields.', module = 'text-fields'},
+        {code = 'GUI-005', title = 'Text fields', description = 'Text fields with every keyboard and return key, secret fields, text areas, filter fields and the text that an input method composes.', module = 'text-fields'},
         {code = 'GUI-006', title = 'Pickers', description = 'Combos, color fields, number fields and sliders.', module = 'pickers'},
         {code = 'GUI-007', title = 'Indicators', description = 'Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars.', module = 'indicators'},
         {code = 'GUI-008', title = 'Collections', description = 'Lists with draggable rows that draw only the rows in view, trees and tables.', module = 'collections'},

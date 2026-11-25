@@ -8,7 +8,7 @@ from haylen.engine.mac_input_sources import MacInputSources
 
 
 class MacKeyboard:
-    """The keyboard of this Mac for the UI tests of the Mac, which ask for what the sandbox of their runner keeps them from doing with a line of their output, which `answer` reads. A test holds a key down, which XCUITest cannot, since it presses a key only once: the run posts the key down, its repeats and the key up into the events of the system at the place where the keyboard posts them, so they reach the app in front as a held key does, each repeat marked as one. A test also presses keys one after the other as a person types, which reach the input method of the Mac as the presses of its keyboard, while XCUITest types the characters of a text, which reach the field without the input method. macOS lets a process post such events only once the person allowed the app that runs it in Accessibility. A test also selects an input source, which the run selects through `MacInputSources` until the test asks for the input sources of the Mac back, or the run ends. After each change the run writes the identifier of the input source that it selected, or nothing once the Mac has its input sources back, into a file that the test reads, since the sandbox lets the test read files but keeps the input sources of the Mac from it."""
+    """The keyboard of this Mac for the UI tests of the Mac, which ask for what the sandbox of their runner keeps them from doing with a line of their output, which `answer` reads. A test holds a key down, which XCUITest cannot, since it presses a key only once: the run posts the key down, its repeats and the key up into the events of the system at the place where the keyboard posts them, so they reach the app in front as a held key does, each repeat marked as one. A test also presses keys one after the other as a person types, which reach the input method of the Mac as the presses of its keyboard, while XCUITest types the characters of a text, which reach the field without the input method. macOS lets a process post such events only once the person allowed the app that runs it in Accessibility. A test also selects an input source and sets the preferences of input methods, which the run changes through `MacInputSources` until the test asks for the input sources of the Mac back, or the run ends. After each change the run writes the identifier of the input source that it selected, or nothing once the Mac has its input sources back, into a file that the test reads, since the sandbox lets the test read files but keeps the input sources of the Mac from it."""
 
     # The line of a test that asks to hold a key, with the virtual key code of the Mac and the count of repeats after the first press, which "holdKey" of the tests writes.
     REQUEST = re.compile(r"HaylenHoldKey: (\d+) (\d+)$")
@@ -17,6 +17,8 @@ class MacKeyboard:
     # The line of a test that asks to select an input source by its identifier, and the line that asks for the input sources of the Mac back, which "useInputSource" and the end of the test write.
     INPUT_SOURCE = re.compile(r"HaylenInputSource: (\S+)$")
     RESTORE_INPUT_SOURCES = re.compile(r"HaylenRestoreInputSources$")
+    # The line of a test that asks to set a boolean preference of an input method by the domain of its settings and its key, which "setInputMethodPreference" writes.
+    INPUT_METHOD_PREFERENCE = re.compile(r"HaylenInputMethodPreference: (\S+) (\S+) (true|false)$")
     CORE_GRAPHICS = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
     CORE_FOUNDATION = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"
     SERVICES = "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices"
@@ -35,7 +37,7 @@ class MacKeyboard:
         self.status.write_text("", encoding="utf-8")
 
     def answer(self, line: str) -> None:
-        """Holds the key, selects the input source or gives the Mac back its input sources when the line asks for it."""
+        """Holds the key, presses the keys, selects the input source, sets the preference of an input method or gives the Mac back its input sources when the line asks for it."""
         text = line.strip()
         request = MacKeyboard.REQUEST.search(text)
         if request is not None:
@@ -49,17 +51,25 @@ class MacKeyboard:
 
         source = MacKeyboard.INPUT_SOURCE.search(text)
         if source is not None:
-            if self.sources is None:
-                self.sources = MacInputSources()
-            self.sources.select(source[1])
+            self.input_sources().select(source[1])
             self.status.write_text(source[1], encoding="utf-8")
+            return
+
+        preference = MacKeyboard.INPUT_METHOD_PREFERENCE.search(text)
+        if preference is not None:
+            self.input_sources().set_preference(preference[1], preference[2], preference[3] == "true")
             return
 
         if MacKeyboard.RESTORE_INPUT_SOURCES.search(text) is not None:
             self.restore()
 
+    def input_sources(self) -> MacInputSources:
+        if self.sources is None:
+            self.sources = MacInputSources()
+        return self.sources
+
     def restore(self) -> None:
-        """Gives the Mac back the input sources it had before a test selected one."""
+        """Gives the Mac back the input sources and the preferences of input methods it had before a test changed them."""
         if self.sources is not None:
             self.sources.restore()
         self.status.write_text("", encoding="utf-8")

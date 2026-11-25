@@ -52,7 +52,7 @@ class HaylenUITestCase: XCTestCase {
     override func tearDown() async throws {
         app.terminate()
 #if os(macOS)
-        if selectedInputSource {
+        if changedInputSources {
             restoreInputSources()
         }
 #endif
@@ -248,25 +248,32 @@ class HaylenUITestCase: XCTestCase {
 #endif
 
 #if os(macOS)
-    // Whether the test selected an input source, whose change the end of the test undoes.
-    var selectedInputSource = false
+    // Whether the test selected an input source or set a preference of an input method, whose changes the end of the test undoes.
+    var changedInputSources = false
+
+    // Sets a preference of an input method of the Mac, a boolean of the domain of its settings, until the test ends, such as the live conversion of the Japanese one. The sandbox of the runner keeps the settings of the input methods from it, so the test asks "haylen test --ui" in a line of its output, and the run sets the preference. The run answers the lines of a test in order, so the input method types with the preference once a later "useInputSource" selects it and starts the app again.
+    func setInputMethodPreference(_ key: String, of domain: String, to value: Bool) {
+        print("HaylenInputMethodPreference: \(domain) \(key) \(value)")
+        fflush(stdout)
+        changedInputSources = true
+    }
 
     // Selects an input source of the Mac by its identifier, such as "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese", until the test ends. The sandbox of the runner keeps the input sources that a test selects to its own process, so the test asks "haylen test --ui" in a line of its output, and the run selects the source, turning on first its input method and the source when the Mac has them off. The test waits until the run reports the source in its file. An app in front keeps typing through the input source it had when it came to the front when another process in the background selects one, even in a native field that takes the focus after the change, while a person who switches from the menu bar or with Control+Space switches the app in front. So the test starts the app again, which comes to the front with the new source.
     func useInputSource(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
         print("HaylenInputSource: \(identifier)")
         fflush(stdout)
         waitForInputSource(identifier, "The run does not select the input source \"\(identifier)\" of the Mac.", file: file, line: line)
-        selectedInputSource = true
+        changedInputSources = true
         app.terminate()
         app.launch()
     }
 
-    // Gives the Mac back the input sources it had before the test selected one.
+    // Gives the Mac back the input sources and the preferences of input methods it had before the test changed them.
     func restoreInputSources(file: StaticString = #filePath, line: UInt = #line) {
         print("HaylenRestoreInputSources")
         fflush(stdout)
         waitForInputSource("", "The run does not give the Mac back its input sources after the test.", file: file, line: line)
-        selectedInputSource = false
+        changedInputSources = false
     }
 
     // Waits until the file of the run names the input source, or names none once the Mac has its input sources back. The sandbox of the runner lets it read files anywhere.

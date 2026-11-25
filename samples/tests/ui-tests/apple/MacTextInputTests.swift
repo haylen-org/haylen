@@ -14,6 +14,9 @@ class MacTextInputTests: TestProjectCase {
     static let returnKey: UInt16 = 36
     // The input source of Japanese that composes kana from Latin letters, which every Mac has.
     static let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+    // The domain of the settings of the Japanese input method and its live conversion, which turns the kana into a word of its dictionary while they are typed.
+    static let japaneseSettings = "com.apple.inputmethod.Kotoeri"
+    static let liveConversion = "JIMPrefLiveConversionKey"
 
     override var code: String {
         "GUI-005"
@@ -41,12 +44,16 @@ class MacTextInputTests: TestProjectCase {
         try saveScreenshot("mac-backspace-held")
     }
 
-    // The Japanese input method composes the kana of the Latin letters while they are typed, and Return commits them into the field.
+    // The Japanese input method composes the kana of the Latin letters while they are typed, which the field holds as a composition until Return commits them. The live conversion, which macOS turns on by default, would commit a word of its dictionary instead, so the test turns it off and its text depends on no setting or dictionary of the Mac.
     func testAnInputMethodComposesTheTextOfTheField() throws {
+        setInputMethodPreference(Self.liveConversion, of: Self.japaneseSettings, to: false)
         useInputSource(Self.japanese)
         startTyping("Island name")
         // The input method keeps a last "n" open for the kana that may follow it, and a second "n" closes it as "ん".
-        pressKeys([Self.n, Self.i, Self.h, Self.o, Self.n, Self.n, Self.returnKey])
+        pressKeys([Self.n, Self.i, Self.h, Self.o, Self.n, Self.n])
+        waitFor(element("The input method composes \"にほん\"."), timeout: 10)
+        pressKeys([Self.returnKey])
+        waitFor(element("No input method composes text."), timeout: 10)
         expectReport("text", "にほん")
         try saveScreenshot("mac-composed")
     }

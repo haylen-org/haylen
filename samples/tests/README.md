@@ -606,7 +606,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-002` | Text | Labels in every font role and color, alignment, wrapping, page headers, empty states and alerts. |  |
 | `GUI-003` | Buttons | Every button variant, icons above labels for tab bars, content at the start for search bars, image buttons, chips and menu buttons. |  |
 | `GUI-004` | Choices | Check boxes, toggles and radio groups. |  |
-| `GUI-005` | Text fields | Text fields with every keyboard and return key, secret fields, text areas and filter fields. |  |
+| `GUI-005` | Text fields | Text fields with every keyboard and return key, secret fields, text areas, filter fields and the text that an input method composes. |  |
 | `GUI-006` | Pickers | Combos, color fields, number fields and sliders. |  |
 | `GUI-007` | Indicators | Badges, status dots, busy rings, progress bars, circular progress and cooldowns, icons, images and avatars. |  |
 | `GUI-008` | Collections | Lists with draggable rows that draw only the rows in view, trees and tables. |  |

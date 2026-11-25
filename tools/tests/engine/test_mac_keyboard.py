@@ -3,7 +3,7 @@ from haylen.engine.mac_keyboard import MacKeyboard
 
 
 class MacKeyboardTest:
-    """A UI test of the Mac asks with a line of its output to hold a key with its virtual key code and repeats, to press keys one after the other, to select an input source by its identifier or to give the Mac back its input sources, and every other line asks for nothing. The input sources go back only once a test selected one, and the file of the run tells the test the input source that the run selected."""
+    """A UI test of the Mac asks with a line of its output to hold a key with its virtual key code and repeats, to press keys one after the other, to select an input source by its identifier, to set a preference of an input method or to give the Mac back its input sources, and every other line asks for nothing. The input sources go back only once a test changed them, and the file of the run tells the test the input source that the run selected."""
 
     class Sources:
         """Input sources of the Mac that record what the run asks of them."""
@@ -13,6 +13,9 @@ class MacKeyboardTest:
 
         def select(self, identifier: str) -> None:
             self.calls.append(f"select {identifier}")
+
+        def set_preference(self, domain: str, key: str, value: bool) -> None:
+            self.calls.append(f"set {domain} {key} {value}")
 
         def restore(self) -> None:
             self.calls.append("restore")
@@ -47,3 +50,20 @@ class MacKeyboardTest:
             keyboard.answer(line)
         assert calls == ["select com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese", "restore"]
         assert status.read_text(encoding="utf-8") == ""
+
+    def test_a_line_that_asks_sets_a_preference_of_an_input_method_before_its_input_source(self, monkeypatch, tmp_path):
+        calls: list[str] = []
+        monkeypatch.setattr(mac_keyboard, "MacInputSources", lambda: MacKeyboardTest.Sources(calls))
+        keyboard = MacKeyboard(tmp_path / "input-source")
+        for line in (
+            "HaylenInputMethodPreference: com.apple.inputmethod.Kotoeri JIMPrefLiveConversionKey false\r",
+            "HaylenInputMethodPreference: com.apple.inputmethod.Kotoeri JIMPrefLiveConversionKey no",
+            "HaylenInputSource: com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese",
+            "HaylenRestoreInputSources",
+        ):
+            keyboard.answer(line)
+        assert calls == [
+            "set com.apple.inputmethod.Kotoeri JIMPrefLiveConversionKey False",
+            "select com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese",
+            "restore",
+        ]
