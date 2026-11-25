@@ -8038,7 +8038,11 @@ Um app sem `identifier` que roda pelo `haylen app run` recebe o identificador ge
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** Começou no trabalho da plataforma, junto com o KB-316, o KB-317, o KB-318, o KB-320 e o KB-326.
+- **Progress:** Medido num contêiner com o Weston 14 sem tela: ele não tem o estado `suspended` do xdg-shell 6, e quando as saídas dormem os avisos de quadro param sem nenhum outro evento. O caminho decidido segue o modelo dos toolkits nativos do Wayland:
+  - Os quadros que apresentam seguem os avisos de quadro da superfície, e a engine só apresenta depois que o aviso da última apresentação chegou, então nunca espera dentro da swapchain.
+  - Enquanto nenhum aviso chega, um timer no ritmo de janela escondida roda os quadros sem apresentar, como no macOS.
+  - Onde o compositor manda o estado `suspended`, a apresentação para na hora.
+  - Os avisos são lidos pela libwayland-client que o SDL já carrega, sem dependência nova.
 
 #### Description
 
