@@ -279,6 +279,7 @@
 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 | — | — | — | — | — |
 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | — | — | — | — | — |
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
+| **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -430,7 +431,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** Verificado no Mac: os 3021 testes da engine e os 71 testes de GPU do Metal passam, com os testes novos da escrita de região, do pipeline só de profundidade e do pipeline aplicado que sobrevive a objetos criados dentro de um pass. No benchmark de render do Metal num Apple M5 Pro, a cena com um glifo novo a cada quadro envia 28,1 KB por quadro em vez de 1747,7 KB, cerca de 62 vezes menos. O código do Direct3D 11 e 12 não compila neste Mac, então os commits vão primeiro para um branch com uma execução completa da CI, e o `main` avança só quando o Windows compilar e os testes de GPU passarem em toda API.
+- **Progress:** Verificado no Mac: os 3021 testes da engine e os 71 testes de GPU do Metal passam, com os testes novos da escrita de região, do pipeline só de profundidade e do pipeline aplicado que sobrevive a objetos criados dentro de um pass. No benchmark de render do Metal num Apple M5 Pro, a cena com um glifo novo a cada quadro envia 28,1 KB por quadro em vez de 1747,7 KB, cerca de 62 vezes menos. O código do Direct3D 11 e 12 não compila neste Mac, então os commits estão no branch `rhi-kb008` com a execução completa da CI 45585549922, e o `main` avança só quando o Windows compilar e os testes de GPU passarem em toda API.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -454,7 +455,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** Quatro revisões só de leitura, do Vulkan, do Direct3D 11 e 12, do OpenGL com o WebGPU e da camada do SDL3, trouxeram cerca de 45 defeitos candidatos, cada um conferido por um teste ou pelo código antes de ser corrigido. Os mais fortes: o OpenGL e os Direct3D recusam pipelines só de profundidade que o dispositivo nulo e o Metal aceitam, o Vulkan deixa o quadro e as swapchains abertos depois de perder o dispositivo, o SDL manda à janela principal os eventos de janelas de saída já destruídas, o Wayland lista os modos de tela em pontos em vez de pixels, e uma caneta manda eventos de mouse e de toque juntos. As correções do pipeline só de profundidade, do OpenGL que religa o pipeline, dos modos do Wayland em pixels, dos eventos de janelas fechadas e das páginas de upload do Direct3D 12 esperam a compilação. No Wayland, dois monitores iguais têm o mesmo id porque o SDL só entrega o nome do monitor; o dono decidiu por um patch pequeno no SDL que entrega o nome da porta, que vira o id. O teste do pipeline só de profundidade achou que o leitor de pacotes de shader recusava programas sem saída de cor, o que está corrigido com o seu teste.
+- **Progress:** Sete commits estão no branch `rhi-kb008`, com a execução completa da CI 45585549922 rodando: o envio de só a região que mudou, os pipelines só de profundidade e os programas sem saída de cor, o OpenGL que mantém o estado do pipeline aplicado, os eventos de janelas fechadas, os modos do Wayland em pixels, as telas do Wayland nomeadas pela saída por um patch do SDL e as páginas de envio do Direct3D 12 maiores que 4 MiB. O `main` avança quando o Windows compilar e os testes de GPU passarem em toda API, e a lista com o veredito de cada candidato da revisão fica no relatório final.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8086,6 +8087,26 @@ O modo do mouse do [KB-293](#kb-293) juntou várias chamadas que descreviam um s
 
 - None
 
+### KB-320
+
+- **Title:** Conferir no Wayland duas telas iguais pelo nome da saída
+- **Status:** todo
+- **Type:** test
+- **Priority:** medium
+- **Complexity:** 2
+
+#### Description
+
+O [KB-009](#kb-009) passa a nomear as telas do Wayland pelo nome da saída, como `DP-1`, por um patch do SDL, e lista os modos em pixels. Falta conferir numa máquina Linux com duas telas iguais no Wayland, sem X11: a lista de telas mostra as duas com ids iguais aos nomes das saídas e o modelo como nome, uma saída e a tela cheia caem na tela que o id nomeia, e a tela cheia exclusiva acha um modo da lista, com os modos em pixels na escala 2. Roda na mesma sessão de nuvem do [KB-316](#kb-316), que também precisa do Wayland.
+
+#### Acceptance criteria
+
+- [ ] As três conferências passam numa máquina Linux com duas telas iguais no Wayland, com a evidência no cartão.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8108,7 +8129,7 @@ O modo do mouse do [KB-293](#kb-293) juntou várias chamadas que descreviam um s
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-320. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-321. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
