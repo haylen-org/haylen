@@ -2436,12 +2436,23 @@ Module.haylen = Module.haylen || {};
         return [event.deltaX * scale, event.deltaY * scale, precise ? 1 : 0, readModifiers(event)];
     };
 
-    // Once the runtime runs, the page takes the work that waited for it and follows the canvas and the document. On the page, SDL follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize, and SDL leaves out the units of scrolls. In the Worker mode the page posts all of its input to the worker. A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the time zone, the color scheme, the languages, the accessibility preferences and the battery reach the app when it starts and whenever they change.
+    // A change of the zoom or of the screen changes the pixels of the screen in each CSS pixel, which the drawable of the canvas follows, also where the box of the canvas keeps its size, such as when the window moves to a screen of another density.
+    const watchDensity = (changed) => {
+        const query = matchMedia("(resolution: " + (window.devicePixelRatio || 1) + "dppx)");
+        query.addEventListener("change", () => {
+            changed();
+            watchDensity(changed);
+        }, { once: true });
+    };
+
+    // Once the runtime runs, the page takes the work that waited for it and follows the canvas and the document. On the page, SDL follows window resizes only, so a canvas resized by the page layout and a change of the density announce themselves as a window resize, and SDL leaves out the units of scrolls. In the Worker mode the page posts all of its input to the worker. A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the time zone, the color scheme, the languages, the accessibility preferences and the battery reach the app when it starts and whenever they change.
     const startPage = () => {
         if (hostedInWorker) {
             worker.watchInput();
         } else {
-            new ResizeObserver(() => window.dispatchEvent(new Event("resize"))).observe(Module.canvas);
+            const announceResize = () => window.dispatchEvent(new Event("resize"));
+            new ResizeObserver(announceResize).observe(Module.canvas);
+            watchDensity(announceResize);
             Module.canvas.addEventListener("wheel", (event) => {
                 engine.call("haylen_web_scroll", null, ["number", "number", "number", "number"], readScroll(event));
                 event.preventDefault();
@@ -2679,15 +2690,7 @@ Module.haylen = Module.haylen || {};
             navigator.devicePosture.addEventListener("change", worker.postLayout);
         }
 
-        // A change of the zoom or of the screen changes the pixels of the screen in each CSS pixel, which the canvas box follows.
-        const watchDensity = () => {
-            const query = matchMedia("(resolution: " + (window.devicePixelRatio || 1) + "dppx)");
-            query.addEventListener("change", () => {
-                resized();
-                watchDensity();
-            }, { once: true });
-        };
-        watchDensity();
+        watchDensity(resized);
         reportVisibility();
         readGamepads();
     };

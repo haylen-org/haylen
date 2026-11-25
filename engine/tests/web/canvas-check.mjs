@@ -1,5 +1,5 @@
-// Opens the page of the canvas check in a headless browser over its debugging protocol as a desktop window of density 2 and resizes the page, then prints what happened as JSON. The canvas must fill the page each time, with a framebuffer of the pixels of the page, which the app logs. With "first" the page draws through the first graphics API that starts, and with "fallback" the browser offers no WebGPU adapter, so the window of WebGPU closes and the window of WebGL2 opens on the same canvas.
-// Run it with Node: node canvas-check.mjs <debugging port> <page address> <first|fallback>
+// Opens the page of the canvas check in a headless browser over its debugging protocol as a desktop window of density 2, resizes the page and moves it to a screen of density 1, then prints what happened as JSON. The canvas must fill the page each time, with a framebuffer of the pixels of the page, which the app logs. With "first" the page draws through the first graphics API that starts, with "fallback" the browser offers no WebGPU adapter, so the window of WebGPU closes and the window of WebGL2 opens on the same canvas, and with "worker" the page runs the app in the Worker mode, whose canvas the worker draws into.
+// Run it with Node: node canvas-check.mjs <debugging port> <page address> <first|fallback|worker>
 const [port, url, mode] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);
@@ -36,6 +36,10 @@ const step = async (name, text, { seconds = 10, since = result.log.length } = {}
 
 socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
+    // The runtime of the Worker mode logs in its worker, whose console the check follows like the console of the page.
+    if (message.method === "Target.attachedToTarget" && message.params.targetInfo.type === "worker") {
+        send("Runtime.enable", {}, message.params.sessionId);
+    }
     if (message.id && pending.has(message.id)) {
         pending.get(message.id)(message.result ?? {});
         pending.delete(message.id);
@@ -63,11 +67,20 @@ await new Promise((resolve) => (socket.onopen = resolve));
 const page = (await send("Target.getTargets")).targetInfos.find((target) => target.type === "page");
 const { sessionId } = await send("Target.attachToTarget", { targetId: page.targetId, flatten: true });
 await send("Runtime.enable", {}, sessionId);
+await send("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: false, flatten: true }, sessionId);
 await send("Page.enable", {}, sessionId);
 
 // A desktop window without touch, whose size the check changes.
 const size = (width, height, density) => send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: density, mobile: false }, sessionId);
 await size(1440, 900, 2);
+
+// The debugging protocol changes the density of the page without the change of its resolution that a browser reports when a window moves to another screen, so the page keeps the media queries of the resolution that it makes, and the check reports that change to them itself once it changed the density.
+const resolutions = "const pageMatchMedia = window.matchMedia.bind(window); window.haylenResolutionQueries = []; window.matchMedia = (text) => { const list = pageMatchMedia(text); if (text.includes('resolution')) { window.haylenResolutionQueries.push(list); } return list; };";
+await send("Page.addScriptToEvaluateOnNewDocument", { source: resolutions }, sessionId);
+const moveToScreen = async (width, height, density) => {
+    await size(width, height, density);
+    await send("Runtime.evaluate", { expression: 'for (const list of window.haylenResolutionQueries.splice(0)) { list.dispatchEvent(new Event("change")); }' }, sessionId);
+};
 if (mode === "fallback") {
     await send("Page.addScriptToEvaluateOnNewDocument", { source: "if (window.GPU) { GPU.prototype.requestAdapter = async () => null; }" }, sessionId);
 }
@@ -77,14 +90,15 @@ await send("Page.navigate", { url }, sessionId);
 const canvas = async () =>
     (await send("Runtime.evaluate", { expression: '(() => { const canvas = document.getElementById("canvas"); const box = canvas.getBoundingClientRect(); return { width: box.width, height: box.height, pixelWidth: canvas.width, pixelHeight: canvas.height }; })()', returnByValue: true }, sessionId)).result.value;
 
-// Waits until the canvas covers the whole page with a drawable of every pixel of the page and the app logs that framebuffer, and records whether that happened within the seconds, with what the canvas showed otherwise.
+// Waits until the canvas covers the whole page with a drawable of every pixel of the page and the app logs that framebuffer, and records whether that happened within the seconds, with what the canvas showed otherwise. In the Worker mode the page hands the drawable of its canvas to the worker, so there the framebuffer that the app logs tells the pixels.
 const fills = async (name, width, height, density, since, seconds = 10) => {
     const pixelWidth = width * density;
     const pixelHeight = height * density;
     const logged = await waitForLine(`The canvas check draws ${pixelWidth} by ${pixelHeight} pixels.`, since, seconds);
     const deadline = Date.now() + seconds * 1000;
     let shown = await canvas();
-    const filled = () => shown.width === width && shown.height === height && shown.pixelWidth === pixelWidth && shown.pixelHeight === pixelHeight;
+    const drawn = () => mode === "worker" || (shown.pixelWidth === pixelWidth && shown.pixelHeight === pixelHeight);
+    const filled = () => shown.width === width && shown.height === height && drawn();
     while (Date.now() < deadline && !filled()) {
         await new Promise((resolve) => setTimeout(resolve, 200));
         shown = await canvas();
@@ -103,6 +117,9 @@ if (await step("ready", "The canvas check is ready", { seconds: 60, since: 0 }))
     let since = result.log.length;
     await size(1200, 760, 2);
     await fills("follows a resize", 1200, 760, 2, since);
+    since = result.log.length;
+    await moveToScreen(1200, 760, 1);
+    await fills("follows the density", 1200, 760, 1, since);
 }
 console.log(JSON.stringify(result));
 process.exit(0);
