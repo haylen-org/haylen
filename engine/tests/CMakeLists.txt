@@ -171,6 +171,7 @@ set(HAYLEN_TEST_SOURCES
   platform/sdl/MouseMotionTests.cpp
   platform/sdl/FullscreenRequestTests.cpp
   platform/sdl/TextInputTests.cpp
+  platform/sdl/WindowTests.cpp
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
   platform/SystemTests.cpp

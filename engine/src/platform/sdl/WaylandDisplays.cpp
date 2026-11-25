@@ -7,6 +7,8 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_stdinc.h>
 
+#include "platform/sdl/Window.hpp"
+
 namespace haylen::platform::sdl {
 
 bool WaylandDisplays::isSession() noexcept {
@@ -61,7 +63,7 @@ SDL_DisplayID WaylandDisplays::find(const Display& display) {
     return found;
 }
 
-// The bounds and the work area are in the points of the desktop, and the modes in pixels at their own density.
+// The bounds and the work area are in the points of the desktop, and the modes in pixels.
 Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
     SDL_Rect bounds{};
     SDL_Rect usable{};
@@ -86,8 +88,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
     int count = 0;
     SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(id, &count);
     for (int index = 0; index < count; ++index) {
-        const SDL_DisplayMode& mode = *modes[index];
-        const Display::Mode found{.width = mode.w, .height = mode.h, .refreshRate = mode.refresh_rate, .scale = mode.pixel_density};
+        const Display::Mode found = Window::describeMode(*modes[index]);
         if (std::ranges::find(display.modes, found) == display.modes.end()) {
             display.modes.push_back(found);
         }

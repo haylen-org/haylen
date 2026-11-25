@@ -309,6 +309,12 @@ gpu::Surface Window::describe([[maybe_unused]] SDL_Window* described, SDL_MetalV
 #endif
 }
 
+Display::Mode Window::describeMode(const SDL_DisplayMode& mode) noexcept {
+    const auto width = static_cast<int>(std::lround(static_cast<float>(mode.w) * mode.pixel_density));
+    const auto height = static_cast<int>(std::lround(static_cast<float>(mode.h) * mode.pixel_density));
+    return {.width = width, .height = height, .refreshRate = mode.refresh_rate, .scale = mode.pixel_density};
+}
+
 // SDL counts the desktop of macOS in points, like the engine, and the desktops of Windows and X11 in pixels, which are desktop points times the scale of the primary display. A Wayland session names its displays after their outputs.
 SDL_DisplayID Window::findDisplay(const Display& display) {
     if (WaylandDisplays::isSession()) {

@@ -74,6 +74,9 @@ class Window final : public platform::NativeWindow {
     // Returns the display of SDL at the place of a display of the desktop. Throws `std::runtime_error` when SDL knows no display there.
     [[nodiscard]] static SDL_DisplayID findDisplay(const Display& display);
 
+    // The mode of exclusive fullscreen in pixels, from a mode of SDL in the points of its display at its density.
+    [[nodiscard]] static Display::Mode describeMode(const SDL_DisplayMode& mode) noexcept;
+
   protected:
     [[nodiscard]] bool queryOpen() const noexcept override;
     [[nodiscard]] void* queryHandle() const noexcept override;

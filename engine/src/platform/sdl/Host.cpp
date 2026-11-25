@@ -189,7 +189,8 @@ std::optional<SDL_DisplayMode> Host::findMode(SDL_DisplayID display, const Displ
     std::optional<SDL_DisplayMode> found;
     for (int index = 0; index < count && !found; ++index) {
         const SDL_DisplayMode& candidate = *modes[index];
-        const bool size = std::lround(static_cast<float>(candidate.w) * candidate.pixel_density) == mode.width && std::lround(static_cast<float>(candidate.h) * candidate.pixel_density) == mode.height;
+        const Display::Mode described = sdl::Window::describeMode(candidate);
+        const bool size = described.width == mode.width && described.height == mode.height;
         if (size && std::abs(candidate.refresh_rate - mode.refreshRate) <= kRateTolerance) {
             found = candidate;
         }
