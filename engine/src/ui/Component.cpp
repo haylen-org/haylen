@@ -248,9 +248,13 @@ void Component::draw(Context& context, const math::Rect& layout) {
         context.emit(*this, "show");
     }
 
-    // Autofocus takes the focus when the node appears and the focus is elsewhere, such as when its GUI mounts or its dialog opens.
+    // Autofocus takes the focus when the node appears and the focus is elsewhere, such as when its GUI mounts or its dialog opens. A focus that the GUI asked for holds only while the person presses nothing after it, since a press chose a control of its own.
     if (common.autofocus && appeared && isFocusable() && !focus.hasFocusHere()) {
-        focusRequested = true;
+        requestFocus(context);
+    }
+
+    if (focusRequested && focusRequestPresses != context.getBackend().getPressCount()) {
+        focusRequested = false;
     }
 
     const bool styled = pushStyle(context, true);
@@ -505,7 +509,7 @@ void Component::drawTooltip(Context& context, const math::Rect& bounds) {
     ImGui::PopStyleColor();
 }
 
-void Component::command(Context&, std::string_view name, const core::Json& arguments) {
+void Component::command(Context& context, std::string_view name, const core::Json& arguments) {
     if (name != "focus" || !isFocusable()) {
         throw std::invalid_argument("The component kind \"" + std::string(getKind()) + "\" does not answer the command \"" + std::string(name) + "\".");
     }
@@ -514,7 +518,12 @@ void Component::command(Context&, std::string_view name, const core::Json& argum
         throw std::invalid_argument("The \"focus\" command takes no arguments.");
     }
 
+    requestFocus(context);
+}
+
+void Component::requestFocus(Context& context) {
     focusRequested = true;
+    focusRequestPresses = context.getBackend().getPressCount();
 }
 
 // A node that stops drawing lets go of the pointer, so a hover or a press never stays on while it is hidden.

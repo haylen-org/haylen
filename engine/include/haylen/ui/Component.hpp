@@ -316,6 +316,7 @@ class Component {
     void renderReshaped(Context& context, const math::Rect& bounds);
     void drawDetachedChildren(Context& context, const math::Rect& bounds);
     void noticeStoppedDrawing(Context& context);
+    void requestFocus(Context& context);
 
     std::string id;
     CommonProperties common;
@@ -343,6 +344,7 @@ class Component {
     // Whether the node told that it joined its GUI, which it tells once.
     bool mountReported = false;
     bool focusRequested = false;
+    std::uint64_t focusRequestPresses = 0;
 };
 
 } // namespace haylen::ui

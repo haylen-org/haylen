@@ -762,6 +762,30 @@ TEST_F(TextInputTest, StartsEditingAFieldThatAClickReachesAtOnce) {
     EXPECT_EQ(getPublished().id, fields[0].id);
 }
 
+// The focus that a GUI asks for holds only while the person chooses no other control, so a click on another field before the focus arrives, in the frame the GUI asks for it or in the frame the focus lands, keeps the editing in the field the person clicked.
+TEST_F(TextInputTest, KeepsTheFieldThatAClickChoseBeforeTheFocusThatTheGuiAskedFor) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "textField", "id": "crew"}]})");
+    const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
+    ASSERT_EQ(fields.size(), 2U);
+    const haylen::math::Vec2 crew = fields[1].bounds.getCenter();
+    send({.type = haylen::platform::Event::Type::MouseMove, .position = crew});
+
+    for (int framesBeforeClick = 0; framesBeforeClick < 2; ++framesBeforeClick) {
+        getUi().getContext().getBackend().makeCurrent();
+        ImGui::ClearActiveID();
+        fixture.frames(2);
+        ASSERT_FALSE(getInput().isEditing());
+
+        gui->command(getUi().getContext(), "name", "focus", haylen::core::Json::object());
+        fixture.frames(framesBeforeClick);
+        getEngine().handleEvent({.type = haylen::platform::Event::Type::MouseDown, .position = crew});
+        getEngine().handleEvent({.type = haylen::platform::Event::Type::MouseUp, .position = crew});
+        fixture.frames(6);
+        ASSERT_TRUE(getInput().isEditing());
+        EXPECT_EQ(getPublished().id, fields[1].id) << "The focus that the GUI asked for took the clicked field, with " << framesBeforeClick << " frames between the request and the click.";
+    }
+}
+
 // A screen that turns lays the GUI out again around the field being edited, which keeps its text, its focus and the keyboard.
 TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Name"}, {"kind": "textField", "id": "name", "align": "stretch"}]})");

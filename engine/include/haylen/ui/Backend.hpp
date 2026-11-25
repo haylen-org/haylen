@@ -142,6 +142,11 @@ class Backend final {
     [[nodiscard]] bool isUsingPointer() const;
     [[nodiscard]] bool isUsingKeyboard() const;
 
+    // How many presses of the mouse and of fingers the UI received, so a focus that a GUI asks for yields to a press that came after it.
+    [[nodiscard]] std::uint64_t getPressCount() const noexcept {
+        return pressCount;
+    }
+
     // Whether ImGui or the input of the UI has still to settle in the next frames: input that ImGui keeps in its queue for the next frame, a press of the mouse that waits for ImGui to move the pointer to it, a move of the focus whose result ImGui applies in the next frame, a text field that edits and blinks its caret, the UI that glides above the keyboard or a gesture of a wheel that waits for its pause.
     [[nodiscard]] bool isSettling() const;
 
@@ -392,6 +397,7 @@ class Backend final {
     [[nodiscard]] bool isFollowingTouch() const;
     void releaseTravelledTouch();
     void releaseLiftedTouch();
+    void yieldFocusToPress();
     void updateTextures(ImDrawData& data);
     static void collectLists(const ImGuiWindow& window, std::vector<const ImDrawList*>& lists);
     void drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawList* const> lists);
@@ -465,6 +471,7 @@ class Backend final {
     bool touchShared = false;
     std::vector<bool> queuedTouchTaps;
     std::vector<MouseInput> heldMouse;
+    std::uint64_t pressCount = 0;
     int heldSince = 0;
     std::optional<math::Vec2> pointerPosition;
     std::string clipboard;

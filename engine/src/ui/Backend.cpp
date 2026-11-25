@@ -620,6 +620,10 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
         break;
     case platform::Event::Type::MouseDown:
     case platform::Event::Type::MouseUp: {
+        if (event.type == platform::Event::Type::MouseDown) {
+            ++pressCount;
+        }
+
         const math::Vec2 point = placeMouse(event.position);
         addMouse({.kind = MouseInput::Kind::Button, .value = point, .button = static_cast<int>(event.mouseButton), .down = event.type == platform::Event::Type::MouseDown});
         break;
@@ -644,6 +648,7 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
     const std::span<const platform::TouchPoint> touches(event.touches.data(), event.touchCount);
     switch (event.type) {
     case platform::Event::Type::TouchBegan:
+        ++pressCount;
         for (const platform::TouchPoint& touch : touches) {
             if (primaryTouch && touch.changed && touch.id != *primaryTouch) {
                 touchShared = true;
@@ -900,6 +905,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     renderedLists.clear();
     deferredLists.clear();
     ImGui::NewFrame();
+    yieldFocusToPress();
     releaseLiftedTouch();
     dragKeeper = 0;
     immediateWindows.clear();
@@ -1047,6 +1053,20 @@ void Backend::releaseLiftedTouch() {
     if (!*tap || travelled >= ScrollArbiter::kDragSlop * ScrollArbiter::kDragSlop) {
         ImGui::ClearActiveID();
     }
+}
+
+// The focus that a GUI asks for lands in the frame after it asked, and a press of the person in that frame chose a control of its own, which keeps the press instead of the control that the GUI asked for, as in native toolkits.
+void Backend::yieldFocusToPress() {
+    ImGuiContext& state = *imguiContext;
+    const bool pressed = std::ranges::any_of(state.IO.MouseClicked, [](bool clicked) { return clicked; });
+    if (!pressed || (state.NavActivateFlags & ImGuiActivateFlags_FromFocusApi) == 0) {
+        return;
+    }
+
+    state.NavActivateId = 0;
+    state.NavActivateDownId = 0;
+    state.NavActivatePressedId = 0;
+    state.NavActivateFlags = ImGuiActivateFlags_None;
 }
 
 void Backend::blockPointer(const math::Rect& area) {
