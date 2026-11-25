@@ -8152,7 +8152,17 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no SDL, que ainda não 
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Começou num trabalho próprio, que corrige cada defeito confirmado na raiz com um teste que falha sem a correção e confirma ou descarta cada incerto com o motivo.
+- **Progress:** Os itens só do Direct3D estão escritos e vão para o branch `rhi-defects`, que tem uma CI própria, com os testes de conformidade comuns:
+  - D5: as superfícies acrescentadas seguem as amostras da janela.
+  - D6: o `addSurface` devolve as suas vistas quando falha.
+  - D7: falhas de apresentação que não são perda de dispositivo lançam erro.
+  - D8: o offset do `writeBuffer`, a regra dos slots e os registradores repetidos.
+  - D9: os destroys nunca alocam.
+  - D11: o tempo de GPU do D3D12 inclui a lista de transferência.
+  - D13: o `Adapter::list` confere a falha.
+  - D14: confirmado; cada pass define as suas tabelas de novo.
+
+O D10 foi descartado: o `Trim` só precisa do `ClearState` para soltar as ligações, e os buffers da swapchain já estão soltos antes do `ResizeBuffers`. Decisão do dono para o D12: o Direct3D 11 exige a fence do Direct3D 11.4 e bloqueia no evento dela, num caminho só. Uma GPU cujo driver não tem essa fence abre na próxima API da ordem do app.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
