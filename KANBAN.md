@@ -4,15 +4,15 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 6 / not set · **Next ID:** KB-307
+**Active WIP:** 6 / not set · **Next ID:** KB-309
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
 | **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
 | **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
@@ -284,6 +284,8 @@
 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
 | **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
+| **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
+| **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -7703,11 +7705,11 @@ A complexidade é uma estimativa provisória.
 <a name="kb-299"></a>
 ### KB-299 — O foco pedido por uma GUI não tira o foco que a pessoa já deu
 
-- **Status:** doing
+- **Status:** testing
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** A causa está achada e corrigida localmente: o foco que uma GUI pede leva um ou dois quadros para chegar, e nos primeiros quadros de um app que começa, que são lentos pelo trabalho dos shaders, isso dá os cerca de 0,8 s. Agora o pedido guarda quantos apertos a interface já recebeu e cai se um aperto do mouse ou do dedo chegou depois dele, e um aperto no quadro em que o ImGui pousaria o foco cancela esse pouso. Um teste da engine sem cabeça falha sem qualquer das duas partes, e a suíte da engine passa. Falta o teste de página e o commit.
+- **Progress:** Corrigido em `ab61929f6`: o pedido de foco de uma GUI cai quando a pessoa apertou depois dele, e um aperto no quadro em que o ImGui pousaria o foco cancela o pouso. Os 0,8 s eram os um ou dois quadros do pedido nos primeiros quadros lentos de um app que começa. O teste `TextInputTest.KeepsTheFieldThatAClickChoseBeforeTheFocusThatTheGuiAskedFor` falha sem qualquer das duas partes. Falta a execução completa da CI.
 
 #### Description
 
@@ -7844,11 +7846,11 @@ O playground do site, que edita e roda apps no navegador sem backend pelo runtim
 <a name="kb-305"></a>
 ### KB-305 — No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json
 
-- **Status:** doing
+- **Status:** testing
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** A causa está achada: ao fechar uma janela, o SDL escreve no canvas um tamanho CSS de 1 pixel em toda densidade diferente de 1, mesmo num canvas que a página dimensiona. Quando o WebGPU não começa e a engine abre a janela do WebGL2, o SDL acha esse estilo, trata o canvas como não dimensionado pela página e grava nele o tamanho de `window` do `haylen.json` para sempre. Por isso só quebra com densidade 2 ou mais depois de reabrir a janela, como na troca para o WebGL2. A correção é um patch pequeno do SDL que só desfaz um tamanho CSS que o próprio SDL escreveu, já conferida localmente com o canvas enchendo a página e acompanhando a mudança de tamanho. Falta o teste de página e o commit.
+- **Progress:** Corrigido em `963fddad2` com o patch `sdl-web-canvas-style.patch`, que só deixa o SDL desfazer um tamanho CSS que ele mesmo escreveu. A verificação de página `canvas-check` abre uma janela de desktop de 1440×900 com densidade 2, no primeiro API que começa e num navegador sem WebGPU, e o canvas enche a página com 2880×1800 e acompanha a mudança para 1200×760; sem a correção a página da troca para o WebGL2 fica em 640×400. Falta a execução completa da CI.
 
 #### Description
 
@@ -7866,11 +7868,11 @@ Com `devicePixelRatio` 2 e uma janela de navegador de desktop, o canvas ganha o 
 <a name="kb-306"></a>
 ### KB-306 — Um toque ou clique instantâneo num campo às vezes não começa a edição na web
 
-- **Status:** doing
+- **Status:** testing
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** As três causas estão achadas e reproduzidas no navegador e em testes da engine sem cabeça que falham sem as correções. No toque, o aviso de fim de edição do campo anterior limpava o aperto que já pertencia ao campo novo, e agora uma ação só encerra o seu próprio campo. No clique instantâneo, o ponteiro e o aperto chegavam no mesmo quadro e a superfície da folha, que ainda tinha o hover do quadro anterior, ficava com o aperto, e agora a interface segura um aperto num ponto novo até o ponteiro chegar lá num quadro próprio, como o ImGui já faz com o toque. Na primeira tecla perdida, a página entregava o elemento ao campo tocado na hora mas a engine só começava a editar alguns quadros depois e apagava o que se digitou no meio, e agora a página guarda o texto e as teclas desse intervalo e os junta ao campo quando a edição começa. Falta a suíte completa, os testes de página e o commit.
+- **Progress:** Corrigido em `492fb63dc`, nas três causas: uma ação só encerra o seu próprio campo, um aperto num ponto novo do mouse espera o ponteiro chegar lá num quadro próprio, e a página entrega o elemento ao campo tocado na hora e guarda as teclas até a engine começar a edição. Os testes `TextInputTest.MovesTheEditingWhenTheFieldThatEditedHearsItsDismissDuringAnInstantTap` e `TextInputTest.StartsEditingAFieldThatAClickReachesAtOnce` e a verificação de página `text-input-check` falham sem a correção e passam com ela. Falta a execução completa da CI.
 
 #### Description
 
@@ -7881,6 +7883,47 @@ No navegador, um toque instantâneo no campo de senha enquanto o campo de e-mail
 - [ ] Um aperto e uma soltura que chegam no mesmo quadro, pelo toque ou pelo mouse, começam a edição do campo tocado, também com outro campo editando antes.
 - [ ] A primeira tecla digitada logo depois do toque chega ao campo.
 - [ ] Testes da engine sem cabeça e um teste de página provam os dois casos e falham sem a correção.
+
+#### Attachments
+
+- None
+
+<a name="kb-307"></a>
+### KB-307 — Na web, o canvas do modo de página não acompanha a mudança de densidade da tela
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 3
+
+#### Description
+
+Quando a janela do navegador vai para uma tela de outra densidade, o modo de página mantém a densidade antiga no drawable, porque o tamanho CSS não muda e nada avisa a engine. O modo Worker já observa `matchMedia("(resolution: …dppx)")`. O Chromium sem janela não dispara essa media query nem o `resize` quando o fator de escala muda pelo protocolo de depuração, então a prova automática passa por uma verificação de página que entrega à página uma media query de resolução controlada pelo teste.
+
+#### Acceptance criteria
+
+- [ ] O modo de página acompanha cada mudança de densidade como o modo Worker, pelo mesmo código da página.
+- [ ] Uma verificação de página automática prova a mudança e falha sem a correção.
+
+#### Attachments
+
+- None
+
+<a name="kb-308"></a>
+### KB-308 — Conferir na web um app com window.resizable falso
+
+- **Status:** todo
+- **Type:** task
+- **Priority:** medium
+- **Complexity:** 2
+
+#### Description
+
+O SDL só muda o tamanho do drawable do canvas quando a página muda de tamanho se a janela pode mudar de tamanho. Falta conferir como um app com `window.resizable` falso aparece e acompanha a página na web, e corrigir o que estiver errado.
+
+#### Acceptance criteria
+
+- [ ] Um app com `window.resizable` falso enche a página e acompanha cada mudança de tamanho na web, ou a documentação diz o que ele faz ali e por quê, com uma verificação de página que prova o comportamento.
 
 #### Attachments
 
