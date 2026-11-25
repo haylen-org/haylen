@@ -117,7 +117,7 @@ Checks that the backend of the target packages apps, then builds and verifies th
 
 | Target | Format | Options |
 | --- | --- | --- |
-| `windows`, `linux` | `installer`: the Inno Setup installer of Windows, or the `.deb` package and the AppImage of Linux, whose AppImage needs the `category` of the app. | None. |
+| `windows`, `linux` | `installer`: the Inno Setup installer of Windows, or the `.deb` package and the AppImage of Linux, whose AppImage needs the `category` of the app and the AppImage generator of CPack, which CMake has from 4.2. | None. |
 | `windows`, `linux` | `steam`: the depots of the app and of its named packs with the build scripts of SteamPipe. | `appId`, `depots` as `<name>=<id>` once per depot, such as `--option depots=windows=481` for one depot, and `branch`. |
 | `android` | `bundle`: the Android App Bundle with its asset packs. | None. |
 | `android` | `apks`: the APK set of a connected device, built from the bundle in the local testing mode of Google Play and installed. | `device`. |

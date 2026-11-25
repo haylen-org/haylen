@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 from types import MappingProxyType
@@ -13,6 +14,7 @@ from haylen.core.configuration import Configuration
 from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.invalid_option import InvalidOption
+from haylen.core.errors.missing_toolchain import MissingToolchain
 from haylen.core.folders import Folders
 from haylen.core.host import Host
 from haylen.core.repository import Repository
@@ -67,6 +69,8 @@ class DesktopBackend(PlatformBackend):
     PACKAGES = (".exe", ".deb", ".AppImage")
     DEVICES = {"windows": "This PC", "linux": "This computer"}
     # The `.deb` lists the libraries of the system that the app links, which CPack finds with these tools of Debian.
+    # The AppImage generator of CPack, which the Linux installer packs with, came with CMake 4.2.
+    APPIMAGE_CPACK = (4, 2)
     DEBIAN_TOOLS = (
         PathTool("file", 'Install it with the package "file", such as with "apt install file".'),
         PathTool("dpkg-shlibdeps", 'Install it with the package "dpkg-dev", such as with "apt install dpkg-dev".'),
@@ -232,6 +236,7 @@ class DesktopBackend(PlatformBackend):
             DesktopBackend.require_categories(product)
             for tool in DesktopBackend.DEBIAN_TOOLS:
                 tool.require()
+            DesktopBackend.require_appimage_generator(self.context.process.capture(["cpack", "--version"]))
         tools = [f"-DCPACK_INNOSETUP_EXECUTABLE={InnoSetup.compiler(self.context)}"] if resolved.platform == "windows" else AppImageTools.ensure(self.context).cpack_options()
         staging = folders.root / "packages"
         Folders.remove(staging)
@@ -259,6 +264,18 @@ class DesktopBackend(PlatformBackend):
         raise InvalidManifest(
             f'The Linux installer holds an AppImage, which needs the category of the app, and `{app.origin}` names none. Add "category" to it with one of {values}.',
             origin=app.origin,
+        )
+
+    @staticmethod
+    def require_appimage_generator(version: str) -> None:
+        """Stops the Linux installer when the CPack of this machine, whose `--version` answer is the text, comes from a CMake older than the AppImage generator."""
+        found = re.search(r"(\d+)\.(\d+)", version)
+        if found is not None and (int(found.group(1)), int(found.group(2))) >= DesktopBackend.APPIMAGE_CPACK:
+            return
+        needed = ".".join(str(part) for part in DesktopBackend.APPIMAGE_CPACK)
+        shown = found.group(0) if found is not None else "of an unknown version"
+        raise MissingToolchain(
+            f'The Linux installer holds an AppImage, which the AppImage generator of CPack makes from CMake {needed} on, and the "cpack" of this machine is {shown}. Install a newer CMake, such as with "pip install cmake", and package the app again.'
         )
 
     def steam(self, product: BuildProduct, request: PackageRequest) -> tuple[str, ...]:

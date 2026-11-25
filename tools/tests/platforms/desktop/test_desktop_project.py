@@ -10,6 +10,7 @@ from haylen.core.app_category import AppCategory
 from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_manifest import InvalidManifest
+from haylen.core.errors.missing_toolchain import MissingToolchain
 from haylen.core.project_resolver import ProjectResolver
 from haylen.core.repository import Repository
 from haylen.native.cmake_app import CMakeApp
@@ -153,6 +154,18 @@ class DesktopProjectTest:
 
         (folders.project / LinuxEntries.ENTRY).write_text("[Desktop Entry]\nType=Application\nCategories=Office;\n", encoding="utf-8")
         DesktopBackend.require_categories(built)
+
+    # CMake 3.28, the oldest that the engine builds with, has no AppImage generator, and its CPack would fail after the .deb with a sentence that names no fix.
+    def test_the_linux_installer_stops_a_cpack_older_than_the_appimage_generator(self):
+        with pytest.raises(MissingToolchain) as raised:
+            DesktopBackend.require_appimage_generator("cpack version 3.28.3\n")
+        assert (
+            raised.value.message
+            == 'The Linux installer holds an AppImage, which the AppImage generator of CPack makes from CMake 4.2 on, and the "cpack" of this machine is 3.28. Install a newer CMake, such as with "pip install cmake", and package the app again.'
+        )
+
+        DesktopBackend.require_appimage_generator("cpack version 4.2.0\n")
+        DesktopBackend.require_appimage_generator("cpack version 4.5.1\n")
 
     def test_the_files_of_the_section_replace_the_files_of_the_template(self, fixture: DesktopFixture):
         app = fixture.app({"platforms": {"linux": {"files": {"resources/app.desktop": "desktop/garden.desktop", "resources/icons": "desktop/icons"}}}}, "garden")
