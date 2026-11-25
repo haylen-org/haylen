@@ -12,7 +12,7 @@
 | **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
 | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-310 · A categoria do app deixa de ser obrigatória no haylen.json](#kb-310)**<br>🟠 high · `fix` · 3/10 | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
@@ -7853,7 +7853,7 @@ Na execução completa 45537704137, dois shards do job `Sanitizers (address)` pe
 
 ### KB-310
 
-- **Title:** A categoria do app deixa de ser obrigatória no haylen.json
+- **Title:** O haylen.json só exige o que a engine e a plataforma realmente precisam
 - **Status:** doing
 - **Type:** fix
 - **Priority:** high
@@ -7861,13 +7861,14 @@ Na execução completa 45537704137, dois shards do job `Sanitizers (address)` pe
 
 #### Description
 
-Hoje `haylen app run` recusa um app sem `category` no `haylen.json`, mesmo só para rodar num aparelho, como aconteceu com um app do dono rodando num iPhone. Nem as engines grandes nem as plataformas exigem uma categoria para rodar um app: o `LSApplicationCategoryType` da Apple, a categoria do Android e as categorias do menu do Linux são opcionais, e só uma entrega na Mac App Store exige a categoria. A categoria passa a ser opcional: sem ela, cada backend deixa de fora a chave da categoria, e só o empacotamento para uma loja que a exige para com uma frase que diz qual chave escrever, em vez de um padrão que rotularia o app errado.
+Hoje `haylen app run` recusa um app sem `category` no `haylen.json`, mesmo só para rodar num aparelho, como aconteceu com um app do dono rodando num iPhone. Nem as engines grandes nem as plataformas exigem uma categoria para rodar um app: o `LSApplicationCategoryType` da Apple, a categoria do Android e as categorias do menu do Linux são opcionais, e só uma entrega na Mac App Store exige a categoria. O dono pediu para tirar toda exigência do `haylen.json` e das ferramentas que a engine não precisa. Cada chave obrigatória e cada validação que recusa um app passam por uma revisão: o que nem a engine nem a plataforma precisam para rodar deixa de ser exigido, com um valor sensato onde a plataforma precisa de um, como as engines grandes fazem; o que só uma loja exige passa a ser exigido só no empacotamento para ela; e o que só a pessoa pode dar continua exigido só no passo que precisa, com o motivo. A categoria é a primeira: sem ela, cada backend deixa de fora a chave da categoria, e só o empacotamento para uma loja que a exige para com uma frase que diz qual chave escrever, em vez de um padrão que rotularia o app errado.
 
 #### Acceptance criteria
 
 - [ ] Um app sem `category` prepara, compila e roda em todo alvo, e o projeto gerado não leva nenhuma chave de categoria.
 - [ ] Um app com `category` continua levando a categoria a cada plataforma.
 - [ ] Só o empacotamento para uma loja que exige a categoria recusa um app sem ela, com uma frase clara, e um teste prova isso.
+- [ ] Toda exigência do `haylen.json` e das ferramentas tem o seu veredito registrado: tirada, movida para o empacotamento de uma loja ou mantida com o motivo.
 - [ ] O esquema, o `haylen new`, a documentação e o `AGENTS.md` dizem que a categoria é opcional.
 
 #### Attachments
