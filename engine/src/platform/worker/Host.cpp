@@ -2,7 +2,9 @@
 
 #include <emscripten/emscripten.h>
 
+#include <cstdint>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include "platform/Player.hpp"
@@ -55,20 +57,36 @@ void Host::setTitle(std::string_view value) {
 
 void Host::setCursor(Cursor value) {
     cursor = value;
+    showCursor();
+}
 
-    if (cursorVisible) {
-        haylen_js_set_cursor(std::string(toCssCursor(value)).c_str());
+// The page shows the cursor over the canvas only in the mode `Normal`, since a locked pointer hides anyway.
+void Host::showCursor() {
+    haylen_js_set_cursor(appliedMouseMode == MouseMode::Normal ? std::string(toCssCursor(cursor)).c_str() : "none");
+}
+
+// The page locks the pointer to the canvas, which browsers allow only during an input of the person, and answers once the browser settled it. A lock that the browser refuses gives the page the mode before it again, so the next press never locks the pointer for a mode that the app no longer has.
+void Host::applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) {
+    if (const std::optional<std::string> refusal = WebPage::refuseMouseMode(value)) {
+        callback({.state = SystemAnswer::State::Unsupported, .message = *refusal});
+        return;
     }
-}
 
-void Host::setCursorVisible(bool value) {
-    cursorVisible = value;
-    haylen_js_set_cursor(value ? std::string(toCssCursor(cursor)).c_str() : "none");
-}
+    const MouseMode previous = std::exchange(appliedMouseMode, value);
+    const std::uint64_t change = ++mouseModeChange;
+    showCursor();
 
-// The page locks the pointer to the canvas, which browsers allow only during an input of the person, and answers once the browser settled it.
-void Host::applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
-    WebPage::lockPointer(value, std::move(callback));
+    // clang-format off
+    WebPage::lockPointer(value == MouseMode::Locked, [this, previous, change, callback = std::move(callback)](SystemAnswer answer) {
+        if (answer.state != SystemAnswer::State::Granted && change == mouseModeChange) {
+            appliedMouseMode = previous;
+            showCursor();
+            WebPage::lockPointer(previous == MouseMode::Locked, [](const SystemAnswer&) {});
+        }
+
+        callback(std::move(answer));
+    });
+    // clang-format on
 }
 
 void Host::setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) {

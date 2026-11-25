@@ -443,7 +443,7 @@ The keyboard, the mouse, touches, gestures, gamepads with their motion sensors, 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
 | `INP-001` | Keyboard | Keys held, pressed and released, modifiers, key events with repeats and the text typed with the layout of the platform. |  |
-| `INP-002` | Mouse | Buttons, the wheel and the trackpad with their units and the scroll speed, the movement of a frame, cursor shapes, a hidden cursor, a captured mouse and a finger acting as the mouse. | tvos |
+| `INP-002` | Mouse | Buttons, the wheel and the trackpad with their units and the scroll speed, the movement of a frame, cursor shapes, the modes of the mouse with their refusals and a finger acting as the mouse. | tvos |
 | `INP-003` | Touch | Up to ten fingers drawn with their id, phase, trail and time on the screen, and the mouse acting as a finger. | tvos |
 | `INP-004` | Gestures | Taps, double taps, long presses and swipes, and pinches that zoom, turn and move a picture, with their thresholds. | tvos |
 | `INP-005` | Gamepads | Eight live controllers with sticks, triggers and buttons labeled as each controller labels them, their connections, rumbles of both motors and the dead zone. |  |

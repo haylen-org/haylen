@@ -106,9 +106,6 @@ class HeadlessHost final : public Host {
     void setCursor(Cursor value) override {
         cursor = value;
     }
-    void setCursorVisible(bool value) override {
-        cursorVisible = value;
-    }
     void setKeyboardVisible(bool value) override {
         textInput.setKeyboardVisible(value);
     }
@@ -549,9 +546,17 @@ class HeadlessHost final : public Host {
         outputReports[number] = std::move(value);
     }
 
-    // How the headless window answers fullscreen, the lock of the pointer and keeping the screen on, at once, the way a browser refuses them without an input of the person.
+    // How the headless window answers fullscreen, the modes of the mouse and keeping the screen on, at once, the way a browser refuses them without an input of the person.
     void setWindowAnswer(SystemAnswer value) {
         windowAnswer = std::move(value);
+    }
+
+    // Keeps the answer of the next mode of the mouse until `answerHeldMouseMode` gives it, the way a browser answers a lock of the pointer only once the person clicks.
+    void holdMouseModeAnswer() noexcept {
+        holdingMouseModeAnswer = true;
+    }
+    void answerHeldMouseMode(SystemAnswer value) {
+        std::exchange(heldMouseModeAnswer, {})(std::move(value));
     }
 
     // The ids of the plugins whose native part the headless platform reports as loaded.
@@ -660,12 +665,6 @@ class HeadlessHost final : public Host {
     [[nodiscard]] Cursor getCursor() const noexcept {
         return cursor;
     }
-    [[nodiscard]] bool isCursorVisible() const noexcept {
-        return cursorVisible;
-    }
-    [[nodiscard]] bool isMouseLocked() const noexcept {
-        return mouseLocked;
-    }
     // The text input of the platform under the one that the engine shares, which records what reaches it.
     [[nodiscard]] HeadlessTextInput& getPlatformTextInput() noexcept {
         return platformInput;
@@ -735,9 +734,10 @@ class HeadlessHost final : public Host {
     // Goes fullscreen like a desktop, on the display and in the mode of the target, which `getFullscreenTarget` reports.
     void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) override;
 
-    void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override {
-        if (windowAnswer.state == SystemAnswer::State::Granted) {
-            mouseLocked = value;
+    void applyMouseMode(MouseMode, std::function<void(SystemAnswer answer)> callback) override {
+        if (std::exchange(holdingMouseModeAnswer, false)) {
+            heldMouseModeAnswer = std::move(callback);
+            return;
         }
 
         callback(windowAnswer);
@@ -834,8 +834,8 @@ class HeadlessHost final : public Host {
     std::string userDataRefusal;
     bool fullscreen = false;
     bool resizable = true;
-    bool cursorVisible = true;
-    bool mouseLocked = false;
+    bool holdingMouseModeAnswer = false;
+    std::function<void(SystemAnswer answer)> heldMouseModeAnswer;
     bool quitRequested = false;
     bool pointerDevice = true;
     bool screenKeptOn = false;

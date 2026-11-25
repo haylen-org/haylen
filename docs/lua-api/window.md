@@ -175,30 +175,54 @@ end
 hoverButton(true)
 ```
 
-### window.setCursorVisible(visible)
+### window.mouseMode()
 
-Shows or hides the mouse cursor while it is over the window.
+Returns the mode of the mouse over the window, one of the names of [`window.setMouseMode`](#windowsetmousemodemode). It is `'normal'` until the platform grants another mode.
 
 ```lua
 local window = require('haylen.window')
 
--- The app draws its own crosshair sprite.
-window.setCursorVisible(false)
+print(window.mouseMode())
 ```
 
-### window.setMouseLocked(locked)
+### window.setMouseMode(mode)
 
-Locks the mouse to the window and hides it, or frees it, and returns a Varn promise that resolves on a later frame, with nothing once the mouse is locked or free. While the mouse is locked its position stops changing, and `input.mouseDelta()` of [`haylen.input`](input.md) reads how it moves. Browsers grant the lock only in answer to a click or a key, at once or at the next one, and the promise rejects with a [failure](system.md#failures) of the code `'denied'` when no lock comes within 5 seconds. Android rejects a lock with the code `'unsupported'`, since the engine reads its pointer as it moves on the screen. The error screen frees and shows the mouse. An app that restarts starts with the mouse free, the cursor shown in its default shape and the on-screen keyboard hidden.
+Puts the mouse in a mode and returns a Varn promise that resolves on a later frame, with nothing once the mouse is in the mode. When the platform cannot keep the mode, the promise rejects with a [failure](system.md#failures) of the code `'denied'` or `'unsupported'` and the sentence that says why, and the mouse keeps the mode it had. An unknown name raises a bad argument error, such as `bad argument #1 to 'setMouseMode' (unknown value 'captured')`. When the platform grants an older request after a newer one, the mouse keeps the mode of the newer one.
+
+| Mode | What it does |
+| --- | --- |
+| `'normal'` | The cursor shows and moves freely. Every platform grants it. |
+| `'hidden'` | The cursor hides over the window and moves freely, for an app that draws its own pointer. |
+| `'locked'` | The cursor hides and stays in place, and `input.mouseDelta()` of [`haylen.input`](input.md) reads how the mouse moves. It suits a camera that the mouse turns, or a paddle. |
+| `'confined'` | The cursor shows and cannot leave the window, for a strategy game that scrolls when the cursor reaches an edge. |
+| `'confinedHidden'` | The cursor hides and cannot leave the window, for a game that draws its own cursor and scrolls at the edges. |
+
+A mode that holds the pointer, `'locked'`, `'confined'` or `'confinedHidden'`, lets it go while the window has no focus, as the system does, and holds it again once the window gets the focus back. A browser holds it again at the next click on the page. The error screen puts the mouse back in the mode `'normal'`, and an app that restarts starts with the mouse in the mode `'normal'`, the cursor in its default shape and the on-screen keyboard hidden.
+
+| Platform | What it answers |
+| --- | --- |
+| macOS, Windows, Linux | Every mode. |
+| Web | `'normal'` and `'hidden'`. A browser locks the pointer only during a click or a key of the person, at once or at the next one, and the promise rejects with the code `'denied'` when no lock comes within 5 seconds. The modes `'confined'` and `'confinedHidden'` reject with the code `'unsupported'`, since a browser keeps no pointer inside a page. |
+| iPadOS, Mac Catalyst | `'normal'` and `'hidden'`, which hides the pointer of a mouse or a trackpad over the app. The system locks the pointer only while a mouse or a trackpad is connected and the window of the app fills the screen with no other app beside it, so `'locked'` rejects with the code `'denied'` when the system does not lock it within a second. The modes `'confined'` and `'confinedHidden'` reject with the code `'unsupported'`, since the system keeps no pointer inside the window of an iPad app. |
+| iOS on iPhone, tvOS, visionOS, Android | `'normal'`. Every other mode rejects with the code `'unsupported'`, since an iPhone, an Apple TV and an Apple Vision Pro have no pointer that an app controls and the engine reads the pointer of Android as it moves on the screen. |
 
 ```lua
+local async = require('async')
 local input = require('haylen.input')
 local scene = require('haylen.scene')
 local window = require('haylen.window')
 
 local aim = {x = 0, y = 0}
-window.setMouseLocked(true)
 
 scene.push({
+    enter = function(self)
+        async.spawn(function()
+            local _, refusal = window.setMouseMode('locked'):await()
+            if refusal then
+                print(refusal)
+            end
+        end)
+    end,
     update = function(self, dt)
         local dx, dy = input.mouseDelta()
         aim.x = aim.x + dx

@@ -35,8 +35,9 @@ class Host {
 
     virtual void setTitle(std::string_view value) = 0;
     virtual void setCursor(platform::Window::Cursor value) = 0;
-    virtual void setCursorVisible(bool value) = 0;
-    virtual void setMouseLocked(bool value, std::function<void(platform::SystemAnswer answer)> callback) = 0;
+
+    // Puts the mouse in the mode, as `platform::Window::setMouseMode` describes, and calls back exactly once with `Granted` or with the state and the sentence that say why the port cannot keep it. A port grants `Normal` always.
+    virtual void setMouseMode(platform::Window::MouseMode value, std::function<void(platform::SystemAnswer answer)> callback) = 0;
 
     // The clipboard of the system, as `platform::Window` describes it for apps.
     virtual void setClipboard(std::string_view value, std::function<void(platform::SystemAnswer answer)> callback) = 0;

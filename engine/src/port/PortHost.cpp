@@ -31,12 +31,8 @@ void PortHost::setCursor(Cursor value) {
     host->setCursor(value);
 }
 
-void PortHost::setCursorVisible(bool value) {
-    host->setCursorVisible(value);
-}
-
-void PortHost::applyMouseLocked(bool value, std::function<void(platform::SystemAnswer answer)> callback) {
-    host->setMouseLocked(value, std::move(callback));
+void PortHost::applyMouseMode(MouseMode value, std::function<void(platform::SystemAnswer answer)> callback) {
+    host->setMouseMode(value, std::move(callback));
 }
 
 void PortHost::setClipboard(std::string_view value, std::function<void(platform::SystemAnswer answer)> callback) {

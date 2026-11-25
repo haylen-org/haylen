@@ -25,8 +25,7 @@ class TestPortHost final : public port::Host {
     void setFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override;
     void setTitle(std::string_view value) override;
     void setCursor(Window::Cursor value) override;
-    void setCursorVisible(bool value) override;
-    void setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override;
+    void setMouseMode(Window::MouseMode value, std::function<void(SystemAnswer answer)> callback) override;
     void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override;

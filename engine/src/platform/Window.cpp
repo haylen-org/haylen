@@ -80,8 +80,29 @@ void Window::enterFullscreen(const Fullscreen& value, std::function<void(SystemA
     applyFullscreenTarget(value, answerTo(std::move(callback)));
 }
 
-void Window::setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
-    applyMouseLocked(value, answerTo(std::move(callback)));
+std::string_view Window::mouseModeName(MouseMode value) noexcept {
+    return std::ranges::find(kMouseModeNames, value, &std::pair<std::string_view, MouseMode>::second)->first;
+}
+
+Window::MouseMode Window::getMouseMode() const noexcept {
+    return mouseMode;
+}
+
+// The window takes the mode of a request once the platform grants it, unless the platform granted a newer request first, which keeps its mode.
+void Window::setMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) {
+    const std::uint64_t request = ++mouseModeRequest;
+    std::function<void(SystemAnswer answer)> answer = answerTo(std::move(callback));
+
+    // clang-format off
+    applyMouseMode(value, [this, value, request, answer = std::move(answer)](SystemAnswer result) {
+        if (result.state == SystemAnswer::State::Granted && request > mouseModeGranted) {
+            mouseMode = value;
+            mouseModeGranted = request;
+        }
+
+        answer(std::move(result));
+    });
+    // clang-format on
 }
 
 void Window::setKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback) {

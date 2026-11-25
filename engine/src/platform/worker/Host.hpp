@@ -26,7 +26,6 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] bool isFullscreen() const noexcept override;
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
-    void setCursorVisible(bool value) override;
     void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override;
@@ -55,7 +54,7 @@ class Host final : public platform::NativeHost {
   protected:
     void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override;
     void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) override;
-    void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override;
+    void applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] bool allowsQuit() const noexcept override {
         return false;
     }
@@ -67,10 +66,14 @@ class Host final : public platform::NativeHost {
 
   private:
     [[nodiscard]] static std::string_view toCssCursor(Cursor cursor) noexcept;
+    void showCursor();
 
     Runtime& runtime;
     Cursor cursor = Cursor::Default;
-    bool cursorVisible = true;
+
+    // The mode of the mouse that the page holds and the count of its changes, which tells an answer of the browser that a newer mode came after it.
+    MouseMode appliedMouseMode = MouseMode::Normal;
+    std::uint64_t mouseModeChange = 0;
 };
 
 } // namespace haylen::platform::worker

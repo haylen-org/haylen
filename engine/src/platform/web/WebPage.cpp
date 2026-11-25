@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <cstdlib>
 #include <exception>
+#include <format>
 #include <map>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -167,6 +169,14 @@ void WebPage::awaitPointerLock(bool value, std::function<void(SystemAnswer answe
 
 void WebPage::lockPointer(bool value, std::function<void(SystemAnswer answer)> callback) {
     haylen_js_lock_pointer(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
+}
+
+std::optional<std::string> WebPage::refuseMouseMode(Window::MouseMode value) {
+    if (value != Window::MouseMode::Confined && value != Window::MouseMode::ConfinedHidden) {
+        return std::nullopt;
+    }
+
+    return std::format("A browser keeps no pointer inside a page, so the mouse cannot take the mode \"{}\".", Window::mouseModeName(value));
 }
 
 void WebPage::setClipboard(std::string_view text, std::function<void(SystemAnswer answer)> callback) {

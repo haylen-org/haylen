@@ -46,7 +46,7 @@ The folder holds a `port.cmake`, which describes the port with one call of `hayl
 
 ```cmake
 haylen_port(
-  CONTRACT 10
+  CONTRACT 11
   PLATFORM console
   SYSTEM_API posix
   THREADS ON
@@ -117,7 +117,7 @@ A port with `SDK ON` installs the SDK of its platform like any other platform, w
 ```json
 {
   "platform": "console",
-  "contract": 10,
+  "contract": 11,
   "capabilities": ["dynamicLibraries"],
   "hostTools": ["port-shaders"],
   "appFunction": "console_add_app",
@@ -165,7 +165,7 @@ A port reaches the engine through the headers of `engine/include/haylen/port/`, 
 | Header | What it gives a port |
 | --- | --- |
 | `Contract.hpp` | `port::Contract`, the version of the contract of ports. |
-| `Host.hpp` | `port::Host`, the window that the port implements: the size and scale of its framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, the text input, closing, whether an app may quit itself, the splash, the halts of the debugger, the controllers, the screen saver, the frame rate, the pixel density cap and the GPU device. |
+| `Host.hpp` | `port::Host`, the window that the port implements: the size and scale of its framebuffer, fullscreen, the title, the cursor, the mode of the mouse, the clipboard, the text input, closing, whether an app may quit itself, the splash, the halts of the debugger, the controllers, the screen saver, the frame rate, the pixel density cap and the GPU device. |
 | `Player.hpp` | `port::Player`, which installs the services and plays apps for the runtime of the port: `installServices`, `create`, `getGraphicsApis`, `initialize`, `frame`, `handleEvent`, `postEvent`, `cleanup`, `getGpuDevice` and `getExitStatus`. |
 | `Services.hpp` and the services | `port::Services`, the services of the platform by capability, which [the services of a port](#the-services-of-a-port) lists. |
 | `SystemReports.hpp` | `port::SystemReports`, what the system tells the engine from any thread: the theme, the battery, the power saving mode, the thermal state, the time zone, the languages, the accessibility settings, memory warnings, the links that open the app and the actions of the screen reader. |

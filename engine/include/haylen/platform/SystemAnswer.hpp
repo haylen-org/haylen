@@ -12,7 +12,7 @@
 
 namespace haylen::platform {
 
-// The answer of a call that the system may refuse, such as fullscreen, a locked mouse, a screen kept on, the clipboard or the persistence of the storage of a browser: `Granted` once the call did its work, `Prompt` where the system did not show the prompt that the call needs, such as a browser without a recent input of the person, `Denied` when the person or the system refused it, and `Unsupported` where the platform has no such capability or the project of the app lacks a requirement, with the sentence that says why and what to do.
+// The answer of a call that the system may refuse, such as fullscreen, a mode of the mouse, a screen kept on, the clipboard or the persistence of the storage of a browser: `Granted` once the call did its work, `Prompt` where the system did not show the prompt that the call needs, such as a browser without a recent input of the person, `Denied` when the person or the system refused it, and `Unsupported` where the platform has no such capability or the project of the app lacks a requirement, with the sentence that says why and what to do.
 struct SystemAnswer {
     enum class State : std::uint8_t {
         Granted,

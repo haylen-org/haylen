@@ -55,10 +55,10 @@ TEST_F(WindowEngineTest, TakesCallsWhoseAnswerNobodyWants) {
     test::LuaFixture fixture;
     haylen::platform::HeadlessHost& host = fixture.host();
     haylen::platform::Window& window = host;
-    window.setMouseLocked(true, {});
+    window.setMouseMode(haylen::platform::Window::MouseMode::Locked, {});
     window.setKeepScreenOn(true, {});
     window.enterFullscreen({}, {});
-    EXPECT_TRUE(host.isMouseLocked());
+    EXPECT_EQ(host.getMouseMode(), haylen::platform::Window::MouseMode::Locked);
     EXPECT_TRUE(host.isScreenKeptOn());
     EXPECT_TRUE(host.isFullscreen());
 

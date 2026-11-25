@@ -28,6 +28,9 @@
 #include "platform/apple/AppleRuntime.hpp"
 #include "platform/apple/AppleTextInput.hpp"
 #endif
+#if defined(__APPLE__) && TARGET_OS_IOS
+#include "platform/apple/ApplePointer.hpp"
+#endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
 #include "platform/apple/AppleOutputs.hpp"
@@ -264,23 +267,90 @@ void Host::setCursor(Cursor value) {
     SDL_SetCursor(cursor);
 }
 
-void Host::setCursorVisible(bool value) {
-    if (value) {
-        SDL_ShowCursor();
+// A mode that the system may refuse, the lock of a browser or of an iPad, keeps the mode before it unless the system grants it, so the pointer never locks later for a mode that the app no longer has.
+void Host::applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) {
+    if (const std::optional<std::string> refusal = refuseMouseMode(value)) {
+        callback({.state = SystemAnswer::State::Unsupported, .message = *refusal});
         return;
     }
 
-    SDL_HideCursor();
+    const MouseMode previous = appliedMouseMode;
+    if (!applySdlMouseMode(value)) {
+        const std::string error = SDL_GetError();
+        if (!applySdlMouseMode(previous)) {
+            core::Log::error("The mouse could not go back to the mode \"{}\". {}", mouseModeName(previous), SDL_GetError());
+        }
+
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The mouse could not take the mode \"{}\". {}", mouseModeName(value), error)});
+        return;
+    }
+
+    if (value != MouseMode::Locked) {
+        callback({.state = SystemAnswer::State::Granted});
+        return;
+    }
+
+    const std::uint64_t change = mouseModeChange;
+
+    // clang-format off
+    awaitMouseLock([this, previous, change, callback = std::move(callback)](SystemAnswer answer) {
+        if (answer.state != SystemAnswer::State::Granted && change == mouseModeChange && !applySdlMouseMode(previous)) {
+            core::Log::error("The mouse could not go back to the mode \"{}\". {}", mouseModeName(previous), SDL_GetError());
+        }
+
+        callback(std::move(answer));
+    });
+    // clang-format on
 }
 
-// The page locks the pointer once the browser lets it, which the page answers.
-void Host::applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
-    if (!SDL_SetWindowRelativeMouseMode(runtime.getWindow().get(), value)) {
-        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The pointer could not be {}. {}", value ? "locked" : "released", SDL_GetError())});
-        return;
-    }
+// Browsers keep no pointer inside a page, iPads and Macs keep none inside the window of an iPad app, and iPhones, TVs and headsets show no pointer that an app controls.
+std::optional<std::string> Host::refuseMouseMode([[maybe_unused]] MouseMode value) {
 #if defined(__EMSCRIPTEN__)
-    WebPage::awaitPointerLock(value, std::move(callback));
+    return WebPage::refuseMouseMode(value);
+#elif defined(__APPLE__) && TARGET_OS_IOS
+    if (value != MouseMode::Normal && !ApplePointer::isControllable()) {
+        return std::format("An iPhone has no pointer that an app controls, so the mouse cannot take the mode \"{}\".", mouseModeName(value));
+    }
+
+    if (value == MouseMode::Confined || value == MouseMode::ConfinedHidden) {
+        return std::format("An iPad or a Mac keeps no pointer inside the window of an iPad app, so the mouse cannot take the mode \"{}\".", mouseModeName(value));
+    }
+
+    return std::nullopt;
+#elif defined(__APPLE__) && !TARGET_OS_OSX
+    if (value != MouseMode::Normal) {
+        return std::format("An Apple TV and an Apple Vision Pro have no pointer that an app controls, so the mouse cannot take the mode \"{}\".", mouseModeName(value));
+    }
+
+    return std::nullopt;
+#else
+    return std::nullopt;
+#endif
+}
+
+// SDL holds the pointer of a locked or confined window only while the window has the focus, and holds it again once the window gets the focus back.
+bool Host::applySdlMouseMode(MouseMode value) {
+    SDL_Window* window = runtime.getWindow().get();
+    const bool locked = value == MouseMode::Locked;
+    const bool confined = value == MouseMode::Confined || value == MouseMode::ConfinedHidden;
+    const bool visible = value == MouseMode::Normal || value == MouseMode::Confined;
+    if (!SDL_SetWindowRelativeMouseMode(window, locked) || !SDL_SetWindowMouseGrab(window, confined) || !(visible ? SDL_ShowCursor() : SDL_HideCursor())) {
+        return false;
+    }
+#if defined(__APPLE__) && TARGET_OS_IOS
+    ApplePointer::refreshStyle();
+#endif
+    appliedMouseMode = value;
+    ++mouseModeChange;
+    return true;
+}
+
+// A desktop locks the pointer at once, while a browser locks it during an input of the person and UIKit where it lets the scene of the app keep it, which they answer.
+void Host::awaitMouseLock(std::function<void(SystemAnswer answer)> callback) {
+#if defined(__EMSCRIPTEN__)
+    WebPage::awaitPointerLock(true, std::move(callback));
+#elif defined(__APPLE__) && TARGET_OS_IOS
+    ApplePointer::awaitLock(std::move(callback));
 #else
     callback({.state = SystemAnswer::State::Granted});
 #endif

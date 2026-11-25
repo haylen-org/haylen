@@ -175,6 +175,7 @@ set(HAYLEN_TEST_SOURCES
   platform/SystemTests.cpp
   platform/TextHelperTests.cpp
   platform/WebEntryTests.cpp
+  platform/MouseModeTests.cpp
   platform/WindowConfigTests.cpp
   platform/WindowPlacementTests.cpp
   platform/DisplayTests.cpp

@@ -281,9 +281,8 @@ void Engine::applyWindowOptions() {
     current.statusBarColor = window.statusBarColor;
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
 
-    // A pointer that goes free needs no answer.
-    host.setMouseLocked(false, [](const platform::SystemAnswer&) {});
-    host.setCursorVisible(true);
+    // Every platform grants the mode `Normal`, so the mouse goes free without an answer.
+    host.setMouseMode(platform::Window::MouseMode::Normal, {});
     host.setCursor(platform::Window::Cursor::Default);
     host.setKeyboardVisible(false);
 }
@@ -1376,12 +1375,11 @@ bool Engine::isCancelled() const noexcept {
     return state->cancelled;
 }
 
-// The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
+// The player reaches the buttons of the error screen with the mouse, also when the app hid, locked or confined it.
 void Engine::showError(const core::AppError& error, bool resumable) {
     EngineState& current = *state;
     current.errorScreen = std::make_unique<ErrorScreen>(*this, error, resumable);
-    current.host.setMouseLocked(false, [](const platform::SystemAnswer&) {});
-    current.host.setCursorVisible(true);
+    current.host.setMouseMode(platform::Window::MouseMode::Normal, {});
 
     Log::error("{}", current.errorScreen->getReport());
     current.errorPhase = current.starting ? std::string_view("startup") : kPhaseNames[static_cast<std::size_t>(current.phase)];

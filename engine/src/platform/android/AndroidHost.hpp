@@ -26,7 +26,6 @@ class AndroidHost final : public NativeHost {
     }
     void setTitle(std::string_view) override {}
     void setCursor(Cursor) override {}
-    void setCursorVisible(bool) override {}
     void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override;
@@ -50,7 +49,7 @@ class AndroidHost final : public NativeHost {
 
   protected:
     void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override;
-    void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override;
+    void applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] bool allowsQuit() const noexcept override {
         return true;
     }

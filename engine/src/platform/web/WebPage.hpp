@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -17,6 +18,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/platform/SystemAnswer.hpp"
+#include "haylen/platform/Window.hpp"
 
 namespace haylen::core {
 class Engine;
@@ -48,6 +50,9 @@ class WebPage final {
 
     // Locks the pointer to the canvas, or releases it, for the Worker mode, whose page asks the browser itself, and answers as `awaitPointerLock` does.
     static void lockPointer(bool value, std::function<void(SystemAnswer answer)> callback);
+
+    // The sentence that refuses a mode of the mouse that a browser cannot keep, which are the modes that keep the pointer inside the page.
+    [[nodiscard]] static std::optional<std::string> refuseMouseMode(Window::MouseMode value);
 
     // The calls that a browser may gate: the writes and reads of its clipboard and and the request to see every screen, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `SystemAnswer::fromJson` and the text of a read.
     static void setClipboard(std::string_view text, std::function<void(SystemAnswer answer)> callback);

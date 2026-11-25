@@ -52,6 +52,23 @@ class Window {
         {"notAllowed", Cursor::NotAllowed},
     }};
 
+    // How the mouse behaves over the window: a visible pointer that moves freely, a hidden one that moves freely, a hidden one that stays in place and reports only its movement, as a camera that the mouse turns needs, or a pointer that stays inside the window, visible or hidden for an app that draws its own cursor, as a game that scrolls at the edges does.
+    enum class MouseMode : std::uint8_t {
+        Normal,
+        Hidden,
+        Locked,
+        Confined,
+        ConfinedHidden,
+    };
+
+    static constexpr std::array<std::pair<std::string_view, MouseMode>, 5> kMouseModeNames{{
+        {"normal", MouseMode::Normal},
+        {"hidden", MouseMode::Hidden},
+        {"locked", MouseMode::Locked},
+        {"confined", MouseMode::Confined},
+        {"confinedHidden", MouseMode::ConfinedHidden},
+    }};
+
     // Where clicks pass through the window to what is behind it: nowhere, everywhere, or everywhere outside the regions that keep the mouse for the app.
     enum class Passthrough : std::uint8_t {
         Off,
@@ -113,6 +130,9 @@ class Window {
     [[nodiscard]] static std::optional<Redraw> redrawFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view redrawName(Redraw value) noexcept;
 
+    // The name of a mouse mode as Lua writes it, such as `confinedHidden`.
+    [[nodiscard]] static std::string_view mouseModeName(MouseMode value) noexcept;
+
     [[nodiscard]] virtual math::Vec2 getFramebufferSize() const noexcept = 0;
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
     [[nodiscard]] virtual bool isFullscreen() const noexcept = 0;
@@ -126,10 +146,12 @@ class Window {
     virtual void setResizable(bool value) = 0;
     virtual void setTitle(std::string_view value) = 0;
     virtual void setCursor(Cursor value) = 0;
-    virtual void setCursorVisible(bool value) = 0;
 
-    // Hides the pointer and reports only its movement, or brings it back, and answers like `setFullscreen`. Browsers lock the pointer only during a click or a key of the person.
-    void setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback);
+    // The mode of the mouse over the window, which changes once the platform granted a request of `setMouseMode`.
+    [[nodiscard]] MouseMode getMouseMode() const noexcept;
+
+    // Puts the mouse in the mode and answers like `setFullscreen`, while a request that the platform grants after a newer one leaves the mode to the newer one. Every platform grants `Normal`. Desktops grant every mode, and a mode that holds the pointer lets it go while the window has no focus and holds it again once the window gets it back. Browsers hide the pointer over the canvas, lock it only during a click or a key of the person and keep no pointer inside the page, iPads and Mac Catalyst windows hide the pointer and lock it where the system lets the app, such as an app that fills the screen, and phones, TVs and headsets have no pointer that an app controls, so the modes that they cannot keep answer `Unsupported`.
+    void setMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback);
     virtual void setKeyboardVisible(bool value) = 0;
     virtual void requestQuit() = 0;
 
@@ -212,10 +234,10 @@ class Window {
     virtual void requestEveryScreen(std::function<void(SystemAnswer answer)> callback) = 0;
 
   protected:
-    // What `setFullscreen`, `enterFullscreen`, `setMouseLocked` and `setKeepScreenOn` do on the platform, which always receive a callback.
+    // What `setFullscreen`, `enterFullscreen`, `setMouseMode` and `setKeepScreenOn` do on the platform, which always receive a callback.
     virtual void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
     virtual void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) = 0;
-    virtual void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
+    virtual void applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) = 0;
     virtual void applyKeepScreenOn(bool value, std::function<void(SystemAnswer answer)> callback) = 0;
 
   private:
@@ -225,6 +247,10 @@ class Window {
     static const std::array<std::pair<std::string_view, StatusBar>, 4> kStatusBarNames;
     static const std::array<std::pair<std::string_view, SystemGestures>, 3> kSystemGesturesNames;
     static const std::array<std::pair<std::string_view, Redraw>, 2> kRedrawNames;
+
+    MouseMode mouseMode = MouseMode::Normal;
+    std::uint64_t mouseModeRequest = 0;
+    std::uint64_t mouseModeGranted = 0;
 };
 
 } // namespace haylen::platform

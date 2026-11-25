@@ -40,8 +40,8 @@ class WindowBinding final {
     static int setResizable(lua_State* L);
     static int setTitle(lua_State* L);
     static int setCursor(lua_State* L);
-    static int setCursorVisible(lua_State* L);
-    static int setMouseLocked(lua_State* L);
+    static int mouseMode(lua_State* L);
+    static int setMouseMode(lua_State* L);
     static int setKeyboardVisible(lua_State* L);
     static int orientation(lua_State* L);
     static int lockOrientation(lua_State* L);

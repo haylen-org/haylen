@@ -1,5 +1,7 @@
 #include "platform/android/AndroidHost.hpp"
 
+#include <format>
+
 #include "haylen/core/Engine.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/android/AndroidActivity.hpp"
@@ -129,9 +131,9 @@ void AndroidHost::applyFullscreen(bool value, std::function<void(SystemAnswer an
     callback({.state = SystemAnswer::State::Granted});
 }
 
-void AndroidHost::applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
-    if (value) {
-        callback({.state = SystemAnswer::State::Unsupported, .message = "Android apps of the engine read the pointer as it moves on the screen and lock no pointer."});
+void AndroidHost::applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) {
+    if (value != MouseMode::Normal) {
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("Android apps of the engine read the pointer as it moves on the screen, so the mouse keeps the mode \"normal\" instead of \"{}\".", mouseModeName(value))});
         return;
     }
 

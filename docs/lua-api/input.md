@@ -224,7 +224,7 @@ print('Pixel ' .. x .. ', ' .. y .. '.')
 
 ### input.mouseDelta()
 
-Returns how far the mouse moved in this frame, in design units, as two numbers. It keeps reporting movement while `window.setMouseLocked` of [`haylen.window`](window.md) locks the mouse. A pointer that comes into the window, or a finger that lands while it drives the mouse, arrives without moving, so the mouse never jumps from where it left.
+Returns how far the mouse moved in this frame, in design units, as two numbers. It keeps reporting movement while the mode `locked` of [`window.setMouseMode`](window.md#windowsetmousemodemode) locks the mouse. A pointer that comes into the window, or a finger that lands while it drives the mouse, arrives without moving, so the mouse never jumps from where it left.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

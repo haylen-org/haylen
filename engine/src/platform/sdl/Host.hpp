@@ -2,8 +2,10 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -29,7 +31,6 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] bool isFullscreen() const noexcept override;
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
-    void setCursorVisible(bool value) override;
     void setClipboard(std::string_view value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(SystemAnswer answer, std::string text)> callback) override;
@@ -65,7 +66,7 @@ class Host final : public platform::NativeHost {
   protected:
     void applyFullscreen(bool value, std::function<void(SystemAnswer answer)> callback) override;
     void applyFullscreenTarget(const Fullscreen& value, std::function<void(SystemAnswer answer)> callback) override;
-    void applyMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) override;
+    void applyMouseMode(MouseMode value, std::function<void(SystemAnswer answer)> callback) override;
     [[nodiscard]] bool allowsQuit() const noexcept override;
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
@@ -83,9 +84,16 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] static std::optional<SDL_DisplayMode> findMode(SDL_DisplayID display, const Display::Mode& mode);
     void enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(SystemAnswer answer)> callback);
     void coverDisplay(const FullscreenRequest::Destination& destination);
+    [[nodiscard]] static std::optional<std::string> refuseMouseMode(MouseMode value);
+    [[nodiscard]] bool applySdlMouseMode(MouseMode value);
+    static void awaitMouseLock(std::function<void(SystemAnswer answer)> callback);
 
     Runtime& runtime;
     FullscreenRequest fullscreenRequest;
+
+    // The mode of the mouse that SDL holds and the count of its changes, which tells an answer of the system that a newer mode came after it.
+    MouseMode appliedMouseMode = MouseMode::Normal;
+    std::uint64_t mouseModeChange = 0;
 
     // The cursors of the system, which SDL makes the first time the app shows each one.
     std::array<SDL_Cursor*, kCursorCount> cursors{};

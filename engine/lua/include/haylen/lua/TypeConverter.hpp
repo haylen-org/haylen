@@ -688,6 +688,15 @@ template <> struct EnumNames<haylen::platform::Window::Cursor> {
     }
 };
 
+template <> struct EnumNames<haylen::platform::Window::MouseMode> {
+    static std::optional<haylen::platform::Window::MouseMode> fromName(std::string_view name) {
+        return lua::TypeConverter::fromTable(haylen::platform::Window::kMouseModeNames, name);
+    }
+    static std::string_view name(haylen::platform::Window::MouseMode value) {
+        return lua::TypeConverter::toName(haylen::platform::Window::kMouseModeNames, value);
+    }
+};
+
 template <> struct EnumNames<haylen::platform::Window::Passthrough> {
     static std::optional<haylen::platform::Window::Passthrough> fromName(std::string_view name) {
         return lua::TypeConverter::fromTable(lua::TypeConverter::kPassthroughs, name);

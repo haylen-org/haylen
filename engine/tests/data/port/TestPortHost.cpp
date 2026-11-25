@@ -34,11 +34,9 @@ void TestPortHost::setTitle(std::string_view) {}
 
 void TestPortHost::setCursor(Window::Cursor) {}
 
-void TestPortHost::setCursorVisible(bool) {}
-
-void TestPortHost::setMouseLocked(bool value, std::function<void(SystemAnswer answer)> callback) {
-    if (value) {
-        callback({.state = SystemAnswer::State::Unsupported, .message = "The test port has no pointer to lock."});
+void TestPortHost::setMouseMode(Window::MouseMode value, std::function<void(SystemAnswer answer)> callback) {
+    if (value != Window::MouseMode::Normal) {
+        callback({.state = SystemAnswer::State::Unsupported, .message = "The test port has no pointer to hide, lock or confine."});
         return;
     }
 

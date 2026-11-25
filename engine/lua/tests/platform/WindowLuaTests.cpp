@@ -63,7 +63,7 @@ TEST(WindowLuaTest, KeepsTheScreenOnAsTheAppAsks) {
     EXPECT_TRUE(fixture.host().isScreenKeptOn());
 }
 
-// Fullscreen, the lock of the pointer and keeping the screen on answer on a later frame, and a refusal, such as a browser without an input of the person, rejects with its code and sentence and changes nothing.
+// Fullscreen, the modes of the mouse and keeping the screen on answer on a later frame, and a refusal, such as a browser without an input of the person, rejects with its code and sentence and changes nothing.
 TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
     test::LuaFixture fixture;
     // clang-format off
@@ -77,21 +77,51 @@ TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
                 answers[#answers + 1] = failure and (failure.code .. ': ' .. message) or 'done'
             end)
         end
-        remember(window.setFullscreen(true)) remember(window.setMouseLocked(true)) remember(window.setKeepScreenOn(true))
+        remember(window.setFullscreen(true)) remember(window.setMouseMode('locked')) remember(window.setKeepScreenOn(true))
     )");
     // clang-format on
     EXPECT_EQ(fixture.lua("return #answers"), "0");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "3"; }));
     EXPECT_TRUE(fixture.host().isFullscreen());
-    EXPECT_TRUE(fixture.host().isMouseLocked());
+    EXPECT_EQ(fixture.lua("return window.mouseMode()"), "locked");
 
     fixture.host().setWindowAnswer({.state = haylen::platform::SystemAnswer::State::Denied, .message = "The browser refused fullscreen."});
-    fixture.runLua("remember(window.setFullscreen(false)) window.setMouseLocked(false)");
+    fixture.runLua("remember(window.setFullscreen(false)) window.setMouseMode('normal')");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
     fixture.frames(2);
     EXPECT_EQ(fixture.lua("return table.concat(answers, ' | ')"), "done | done | done | denied: The browser refused fullscreen.");
     EXPECT_TRUE(fixture.host().isFullscreen());
-    EXPECT_TRUE(fixture.host().isMouseLocked());
+    EXPECT_EQ(fixture.lua("return window.mouseMode()"), "locked");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// A mode of the mouse that the platform refuses, such as one that keeps the pointer inside a page, rejects with its code and sentence and leaves the mode as it was.
+TEST(WindowLuaTest, PutsTheMouseInEachModeOrSaysWhyNot) {
+    test::LuaFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        window = require('haylen.window')
+        async = require('async')
+        answers = {}
+        function remember(promise)
+            async.spawn(function()
+                local _, message, failure = promise:await()
+                answers[#answers + 1] = (failure and (failure.code .. ': ' .. message) or 'done') .. ' ' .. window.mouseMode()
+            end)
+        end
+        for _, mode in ipairs({'hidden', 'locked', 'confined', 'confinedHidden'}) do
+            remember(window.setMouseMode(mode))
+        end
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return window.mouseMode()"), "confinedHidden");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
+
+    fixture.host().setWindowAnswer({.state = haylen::platform::SystemAnswer::State::Unsupported, .message = "A browser keeps no pointer inside a page."});
+    fixture.runLua("remember(window.setMouseMode('confined'))");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "5"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(answers, ' | ')"), "done confinedHidden | done confinedHidden | done confinedHidden | done confinedHidden | unsupported: A browser keeps no pointer inside a page. confinedHidden");
+    EXPECT_NE(fixture.lua("window.setMouseMode('captured')").find("unknown value 'captured'"), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
@@ -170,18 +200,16 @@ TEST(WindowLuaTest, CapsThePixelDensityOfTheFramebuffer) {
 
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::LuaFixture fixture;
-    fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");
+    fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setMouseMode('locked') window.setKeyboardVisible(true)");
     fixture.restart();
     EXPECT_EQ(fixture.host().getCursor(), haylen::platform::Window::Cursor::Default);
-    EXPECT_TRUE(fixture.host().isCursorVisible());
-    EXPECT_FALSE(fixture.host().isMouseLocked());
+    EXPECT_EQ(fixture.host().getMouseMode(), haylen::platform::Window::MouseMode::Normal);
     EXPECT_FALSE(fixture.host().isKeyboardVisible());
 
     // The error screen frees the mouse, so its buttons stay within reach.
-    fixture.runLua("window = require('haylen.window') window.setCursorVisible(false) window.setMouseLocked(true)");
+    fixture.runLua("window = require('haylen.window') window.setMouseMode('confinedHidden')");
     fixture.engine().reportError("The app failed.");
-    EXPECT_TRUE(fixture.host().isCursorVisible());
-    EXPECT_FALSE(fixture.host().isMouseLocked());
+    EXPECT_EQ(fixture.host().getMouseMode(), haylen::platform::Window::MouseMode::Normal);
 }
 
 TEST(WindowLuaTest, TurnsTransparencyOffAndOn) {

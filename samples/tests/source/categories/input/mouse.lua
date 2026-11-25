@@ -1,4 +1,4 @@
--- Mouse: the three buttons held, pressed and released, the wheel and the trackpad with the scroll speed, the movement of each frame, the position in design units and framebuffer pixels, a zone per cursor shape, a hidden cursor and a captured mouse that moves a crosshair by its movement alone.
+-- Mouse: the three buttons held, pressed and released, the wheel and the trackpad with the scroll speed, the movement of each frame, the position in design units and framebuffer pixels, a zone per cursor shape, and the modes of the mouse, where a locked mouse moves a crosshair by its movement alone and each refusal of the platform shows its reason.
 local collections = require('haylen.collections')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -19,11 +19,12 @@ local dx, dy = input.mouseDelta()
 local scrollX, scrollY = input.mouseScroll()
 if input.mousePressed('left') and not input.pointerCaptured() then fire(x, y) end
 window.setCursor('pointingHand')
-window.setMouseLocked(true)  -- Hides the cursor and reports only the movement.]]
+local _, refusal = window.setMouseMode('locked'):await()  -- Hides the cursor and reports only the movement.]]
 
 local kButtons = {'left', 'middle', 'right'}
 local kCursors = {'default', 'arrow', 'iBeam', 'crosshair', 'pointingHand', 'resizeHorizontal', 'resizeVertical', 'resizeDiagonalDown', 'resizeDiagonalUp', 'resizeAll', 'notAllowed'}
 local kCursorNames = {default = 'Default', arrow = 'Arrow', iBeam = 'Text beam', crosshair = 'Crosshair', pointingHand = 'Pointing hand', resizeHorizontal = 'Resize sideways', resizeVertical = 'Resize up and down', resizeDiagonalDown = 'Resize down diagonal', resizeDiagonalUp = 'Resize up diagonal', resizeAll = 'Move', notAllowed = 'Not allowed'}
+local kModes = {{id = 'normal', text = 'Normal'}, {id = 'hidden', text = 'Hidden'}, {id = 'locked', text = 'Locked'}, {id = 'confined', text = 'Confined'}, {id = 'confinedHidden', text = 'Confined and hidden'}}
 local kMouse = {220, 330}
 local kFlash = 0.3
 
@@ -45,10 +46,10 @@ function Mouse:enter()
         hint = 'Hover a zone to change the cursor, click, scroll and move the mouse. On a touch screen, turn on the finger as the mouse to drive the buttons with the first finger down.',
         focus = 'visible',
         controls = {
-            ui.toggle{id = 'visible', text = 'Show the cursor', checked = true, onChange = function(event) window.setCursorVisible(event.checked) end},
             ui.toggle{id = 'touchAsMouse', text = 'A finger acts as the mouse', checked = input.touchAsMouse(), onChange = function(event) input.setTouchAsMouse(event.checked) end},
-            ui.toggle{id = 'locked', text = 'Capture the mouse', onChange = function(event) self:capture(event.checked) end},
-            ui.label{text = 'A captured mouse stays hidden over this toggle and reports only its movement, which moves the white crosshair. A click releases it.', color = 'textMuted', font = 'caption'},
+            ui.sectionTitle{text = 'Mouse mode'},
+            ui.radioGroup{id = 'mode', items = kModes, selected = 'normal', onChange = function(event) self:setMode(event.value) end},
+            ui.label{text = 'A locked mouse stays hidden and reports only its movement, which moves the white crosshair, and a click frees it. A confined mouse stays inside the window.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'Reset the wheel totals', onClick = function() self.scrollX, self.scrollY = 0, 0 end},
             ui.label{text = 'Scroll speed', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'scrollSpeed', value = self.scrollSpeed, min = 0.25, max = 3, step = 0.25, showValue = true, onChange = function(event) input.setScrollSpeed(event.value) end},
@@ -61,8 +62,7 @@ function Mouse:exit()
     input.setTouchAsMouse(false)
     input.setScrollSpeed(self.scrollSpeed)
     window.setCursor('default')
-    window.setCursorVisible(true)
-    window.setMouseLocked(false)
+    window.setMouseMode('normal')
 end
 
 -- A texture that runs from `top` to `bottom`, which shades the body and the buttons of the mouse.
@@ -72,13 +72,20 @@ function Mouse.gradient(top, bottom)
     return graphics.newTexture(image, {filter = 'linear'})
 end
 
-function Mouse:capture(locked)
-    window.setMouseLocked(locked)
-    self.locked = locked
-    self.gui:set('locked', {checked = locked})
-    if locked then
+-- The platform answers each mode, and the choice goes back to the mode the mouse keeps when it refuses one, with its reason in the log.
+function Mouse:setMode(mode)
+    if mode == 'locked' then
         self.aimX, self.aimY = self.area.width * 0.5, self.area.height * 0.5
     end
+    self:spawn(function()
+        local _, refusal = window.setMouseMode(mode):await()
+        if refusal then
+            self.journal:add(refusal, Test.red)
+            self.gui:set('mode', {selected = window.mouseMode()})
+            return
+        end
+        self.journal:add(string.format('The mouse is in the mode "%s".', mode), Test.green)
+    end)
 end
 
 -- The mouse stands on the left, the cursor zones in three columns next to it and the log on the right.
@@ -135,11 +142,12 @@ function Mouse:update(dt)
     if self.deltaX ~= 0 or self.deltaY ~= 0 then
         self.trail:push({x, y})
     end
-    if self.locked then
+    if window.mouseMode() == 'locked' then
         self.aimX = math.max(0, math.min(self.area.width, self.aimX + self.deltaX))
         self.aimY = math.max(0, math.min(self.area.height, self.aimY + self.deltaY))
         if input.mousePressed('left') and not ui.usingPointer() then
-            self:capture(false)
+            self.gui:set('mode', {selected = 'normal'})
+            self:setMode('normal')
         end
     end
 
@@ -150,7 +158,7 @@ function Mouse:update(dt)
     end
 
     local fx, fy = input.mouseFramebufferPosition()
-    self:status(string.format('The mouse is at %.0f, %.0f design units and %.0f, %.0f pixels, %s the window, and it moved %.1f, %.1f this frame.%s', mouseX, mouseY, fx, fy, input.mouseInside() and 'inside' or 'outside', self.deltaX, self.deltaY, input.pointerCaptured() and ' The interface holds it.' or ''))
+    self:status(string.format('The mouse is at %.0f, %.0f design units and %.0f, %.0f pixels, %s the window, in the mode "%s", and it moved %.1f, %.1f this frame.%s', mouseX, mouseY, fx, fy, input.mouseInside() and 'inside' or 'outside', window.mouseMode(), self.deltaX, self.deltaY, input.pointerCaptured() and ' The interface holds it.' or ''))
 end
 
 -- Draws the mouse seen from above: a shaded body on its shadow whose two buttons light while held and flash on a press or a release, the wheel between them, which turns with the vertical total and leans with the horizontal one, and the movement of the frame from the dot in its middle, ten times longer. The body gets shorter when the caption and the wheel totals under it would otherwise pass `bottom`.
@@ -225,7 +233,7 @@ function Mouse:draw(area)
     if self.pointerX then
         graphics2d.drawRing(self.pointerX, self.pointerY, 14, 3, Test.accent, {layer = 7})
     end
-    if self.locked then
+    if window.mouseMode() == 'locked' and self.aimX then
         graphics2d.drawLine(self.aimX - 24, self.aimY, self.aimX + 24, self.aimY, 3, Test.ink, {layer = 8})
         graphics2d.drawLine(self.aimX, self.aimY - 24, self.aimX, self.aimY + 24, 3, Test.ink, {layer = 8})
     end

@@ -22,7 +22,6 @@ class PortHost final : public platform::NativeHost {
     [[nodiscard]] bool isFullscreen() const noexcept override;
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
-    void setCursorVisible(bool value) override;
     void setClipboard(std::string_view value, std::function<void(platform::SystemAnswer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(platform::SystemAnswer answer, std::string text)> callback) override;
@@ -39,7 +38,7 @@ class PortHost final : public platform::NativeHost {
 
   protected:
     void applyFullscreen(bool value, std::function<void(platform::SystemAnswer answer)> callback) override;
-    void applyMouseLocked(bool value, std::function<void(platform::SystemAnswer answer)> callback) override;
+    void applyMouseMode(MouseMode value, std::function<void(platform::SystemAnswer answer)> callback) override;
     [[nodiscard]] bool allowsQuit() const noexcept override;
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;

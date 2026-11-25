@@ -210,12 +210,11 @@ TEST(CoreLuaTest, ControlsTheWindow) {
     EXPECT_EQ(fixture.lua("local w, h = window.framebufferSize() return w .. 'x' .. h"), "1920.0x1080.0");
     EXPECT_EQ(fixture.lua("return window.dpiScale()"), "1.0");
 
-    fixture.runLua("window.setTitle('Tiny Island') window.setFullscreen(true) window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");
+    fixture.runLua("window.setTitle('Tiny Island') window.setFullscreen(true) window.setCursor('pointingHand') window.setMouseMode('locked') window.setKeyboardVisible(true)");
     EXPECT_EQ(fixture.host().getTitle(), "Tiny Island");
     EXPECT_EQ(fixture.lua("return window.fullscreen()"), "true");
     EXPECT_EQ(fixture.host().getCursor(), haylen::platform::Window::Cursor::PointingHand);
-    EXPECT_FALSE(fixture.host().isCursorVisible());
-    EXPECT_TRUE(fixture.host().isMouseLocked());
+    EXPECT_EQ(fixture.lua("return window.mouseMode()"), "locked");
     EXPECT_TRUE(fixture.host().isKeyboardVisible());
     EXPECT_NE(fixture.lua("window.setCursor('spinning')").find("error: "), std::string::npos);
 
