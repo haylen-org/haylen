@@ -272,16 +272,42 @@ class HaylenUITestCase: XCTestCase {
 
     // Writes the request of the test and waits for the notification of the system that the current input source changed, which reaches a process in a sandbox too.
     func waitForInputSourceChange(_ message: String, file: StaticString, line: UInt, request: () -> Void) {
-        let name = Notification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String)
-        let changed = XCTNSNotificationExpectation(name: name, object: nil, notificationCenter: DistributedNotificationCenter.default())
+        let observer = InputSourceObserver()
         request()
         fflush(stdout)
-        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: Self.timeout), .completed, message, file: file, line: line)
+        XCTAssertEqual(XCTWaiter.wait(for: [observer.changed], timeout: Self.timeout), .completed, message, file: file, line: line)
+        observer.stop()
+    }
+
+    // Fulfills its expectation when the current input source of the Mac changes. The system holds the distributed notifications of an app in the background until it comes to the front, as the runner is while the app it drives is in front, so the observer asks for its notification at once.
+    final class InputSourceObserver: NSObject {
+        let changed = XCTestExpectation(description: "The input source of the Mac changes.")
+
+        override init() {
+            super.init()
+            changed.assertForOverFulfill = false
+            let name = NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String)
+            DistributedNotificationCenter.default().addObserver(self, selector: #selector(inputSourceChanged(_:)), name: name, object: nil, suspensionBehavior: .deliverImmediately)
+        }
+
+        @objc func inputSourceChanged(_ notification: Notification) {
+            changed.fulfill()
+        }
+
+        func stop() {
+            DistributedNotificationCenter.default().removeObserver(self)
+        }
     }
 
     // Holds the key with the virtual key code of the Mac down as a person does, which the app hears as one press and then the repeats of the system, each marked as a repeat, before the key goes up. XCUITest presses a key only once, so the test asks "haylen test --ui" in a line of its output, and the run posts the key to the app in front. The test then waits for what the key does.
     func holdKey(_ code: UInt16, repeats: Int) {
         print("HaylenHoldKey: \(code) \(repeats)")
+        fflush(stdout)
+    }
+
+    // Presses the keys with the virtual key codes of the Mac one after the other as a person types, which the input method of the Mac reads as the presses of its keyboard. XCUITest types the characters of a text, which reach the field without the input method, so a test of an input method presses keys. The run posts the keys for the test, as for a held key, and the test then waits for what they do.
+    func pressKeys(_ codes: [UInt16]) {
+        print("HaylenPressKeys: \(codes.map(String.init).joined(separator: " "))")
         fflush(stdout)
     }
 #endif

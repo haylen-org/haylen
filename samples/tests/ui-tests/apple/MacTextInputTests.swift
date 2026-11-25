@@ -6,6 +6,12 @@ import XCTest
 class MacTextInputTests: TestProjectCase {
     // The virtual key code of Backspace on the keyboards of the Mac, which macOS calls "delete".
     static let backspace: UInt16 = 51
+    // The virtual key codes of the letters that the input method composes and of Return on the keyboards of the Mac.
+    static let n: UInt16 = 45
+    static let i: UInt16 = 34
+    static let h: UInt16 = 4
+    static let o: UInt16 = 31
+    static let returnKey: UInt16 = 36
     // The input source of Japanese that composes kana from Latin letters, which every Mac has.
     static let japanese = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
 
@@ -40,8 +46,7 @@ class MacTextInputTests: TestProjectCase {
         useInputSource(Self.japanese)
         startTyping("Island name")
         // The input method keeps a last "n" open for the kana that may follow it, and a second "n" closes it as "ん".
-        app.typeText("nihonn")
-        app.typeKey(XCUIKeyboardKey.return, modifierFlags: [])
+        pressKeys([Self.n, Self.i, Self.h, Self.o, Self.n, Self.n, Self.returnKey])
         expectReport("text", "にほん")
         try saveScreenshot("mac-composed")
     }
