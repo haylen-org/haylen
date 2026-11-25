@@ -1,0 +1,13 @@
+Leaves the CSS size of a canvas that the page sizes itself as the page styled it when the window closes, so the next window on the canvas, such as the window of the next graphics API that the app tries, still finds the size of the page and follows it at every pixel density.
+
+--- a/src/video/emscripten/SDL_emscriptenvideo.c
++++ b/src/video/emscripten/SDL_emscriptenvideo.c
+@@ -690,7 +690,7 @@
+
+         // We can't destroy the canvas, so resize it to zero instead
+         emscripten_set_canvas_element_size(data->canvas_id, 0, 0);
+-        if (data->pixel_ratio != 1.0f) {
++        if (!data->external_size && data->pixel_ratio != 1.0f) {
+             emscripten_set_element_css_size(data->canvas_id, 1, 1);
+         }
+         SDL_free(data->canvas_id);

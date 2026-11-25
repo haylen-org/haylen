@@ -58,6 +58,12 @@ class WebChecks:
         "missing": ["ready", "unsupported"],
     }
     SCREENS_BROWSERS = {"granted": "grants every screen", "denied": "denies every screen", "missing": "has no Window Management API"}
+    # The canvas check: a page in a desktop window of density 2 whose canvas fills the page and follows a resize, both when the first graphics API starts and when the browser offers no WebGPU adapter, so the window of WebGL2 opens on the canvas after the window of WebGPU closed.
+    CANVAS_STEPS = {
+        "first": ["ready", "fills the page", "follows a resize"],
+        "fallback": ["ready", "fell back to WebGL2", "fills the page", "follows a resize"],
+    }
+    CANVAS_BROWSERS = {"first": "starts the graphics API of the page", "fallback": "offers no WebGPU adapter"}
     # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code `denied`.
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
     # The orientation check: a phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on, the screen goes away once the phone turns, and the lock of the app replaces the orientation of `haylen.json`.
@@ -157,6 +163,7 @@ class WebChecks:
             "editor": self.editor,
             "memory": self.memory,
             "screens": self.screens,
+            "canvas": self.canvas,
             "loading": self.loading,
         }
         reports = {}
@@ -268,6 +275,18 @@ class WebChecks:
         self.context.terminal.success(
             'The app saw every screen after a key where the browser granted "window-management", and its request failed with the code "denied" where the browser denied it and with "unsupported" where the browser lacked the Window Management API.'
         )
+
+    def canvas(self, api: str | None) -> None:
+        """Opens the page on the API that `api` names, or on the first API that starts, and opens it again without an API in a browser that offers no WebGPU adapter, so the page falls back to WebGL2. The browsers draw through SwiftShader, so WebGPU starts on a machine without a GPU for it."""
+        site = self.site(WebChecks.DATA / "web-canvas")
+        with ServedSite(site) as served:
+            for mode, steps in WebChecks.CANVAS_STEPS.items():
+                browser = WebChecks.CANVAS_BROWSERS[mode]
+                query = WebChecks.query(api if mode == "first" else None)
+                self.context.terminal.step(f"Running the canvas check of the web in a headless browser that {browser}")
+                report = self.drive("canvas-check.mjs", HeadlessBrowser.SOFTWARE_GPU, "the canvas check of the web", served.page(query), mode)
+                WebChecks.check_steps(report, steps, f"The page of the canvas check in a browser that {browser}")
+        self.context.terminal.success("The canvas filled a page of density 2 and followed a resize, also after the browser offered no WebGPU adapter and the page fell back to WebGL2.")
 
     def fullscreen(self, api: str | None) -> None:
         site = self.site(WebChecks.DATA / "web-fullscreen")

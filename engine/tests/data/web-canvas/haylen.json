@@ -1,0 +1,10 @@
+{
+    "name": "Web Canvas",
+    "identifier": "com.haylen.webcanvas",
+    "version": "1.0.0",
+    "category": "developer",
+    "window": {
+        "width": 640,
+        "height": 400
+    }
+}
