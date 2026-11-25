@@ -52,8 +52,8 @@ class UiTests:
     TEST_SECONDS = 600
     # The folder of the screenshots in the container of the runner on a device, which the run copies back.
     DEVICE_OUTPUT = "Library/Caches/ui-tests"
-    # The name that Xcode suggests for an attachment of a result bundle as it exports it: the name of the attachment, its place and a unique identifier, and the extension of its type.
-    ATTACHMENT_NAME = re.compile(r"^(?P<name>.+)_\d+_[0-9A-F-]{36}(?P<extension>\.\w+)$")
+    # The name that Xcode suggests for a screenshot that a test attached to a result bundle as it exports it: the name of the attachment, its place and a unique identifier, and the extension of a PNG image. XCTest attaches its own screenshots as HEIC images and its descriptions of elements as text.
+    ATTACHMENT_NAME = re.compile(r"^(?P<name>.+)_\d+_[0-9A-F-]{36}(?P<extension>\.png)$")
     # The development team in the signature of an app, as "codesign" describes it.
     TEAM = re.compile(r"^TeamIdentifier=(\w+)$", re.MULTILINE)
     # The file of the unified log of a simulator during a failed run, next to the result bundles of the run.
@@ -253,7 +253,7 @@ class UiTests:
             self.context.terminal.warning(f"The screenshots of the UI tests stay in `{Repository.shown(results)}`, since they could not be exported: {error}")
 
     def export_screenshots(self, results: Path, attachments: Path, output: Path) -> None:
-        """Exports the attachments of a result bundle and moves the ones that the tests added, which no failure made, into the folder of the screenshots under the names the tests gave them."""
+        """Exports the attachments of a result bundle and moves the screenshots that the tests added into the folder of the screenshots under the names the tests gave them."""
         Folders.remove(attachments)
         self.context.process.run(["xcrun", "xcresulttool", "export", "attachments", "--path", results, "--output-path", attachments])
         manifest = json.loads((attachments / "manifest.json").read_text(encoding="utf-8"))
@@ -266,7 +266,7 @@ class UiTests:
 
     @staticmethod
     def attachment_name(suggested: str) -> str | None:
-        """The file name of an attachment from the name that Xcode suggests for it, or None for a name of another form."""
+        """The file name of a screenshot that a test attached from the name that Xcode suggests for it, or None for another attachment."""
         match = UiTests.ATTACHMENT_NAME.match(suggested)
         return None if match is None else match["name"] + match["extension"]
 

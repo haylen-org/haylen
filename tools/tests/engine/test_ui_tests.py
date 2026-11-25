@@ -46,6 +46,8 @@ class UiTestsTest:
         assert UiTests.attachment_name("mac-text-typed_0_F94D26F7-1A0F-4684-8E9F-28323BDE0082.png") == "mac-text-typed.png"
         assert UiTests.attachment_name("Screenshot at failure.png") is None
         spec = (UiTests.PROJECT / "project.yml").read_text(encoding="utf-8")
+        assert UiTests.attachment_name("Debug description for `Any (First Match)`_0_673AA5DB-655A-4A79-AA1E-C275192DDF41.txt") is None
+        assert UiTests.attachment_name("App UI hierarchy for com.haylen_0_7E4CC8AB-4832-4597-9ADE-9504291B7D70.tests") is None
         mac = spec[spec.index("  macOS:\n    type: bundle.ui-testing") : spec.index("schemes:")]
         assert "HaylenUIOutput" not in mac
 
