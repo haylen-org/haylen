@@ -470,6 +470,7 @@ SDL reads the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS 
 
 - Reads no keyboard through GameController and turns every press of UIKit into a key, the keys of keyboards from any source and the presses of remotes and game controllers, whether a keyboard is connected or not. A press whose key the app drops through its event filter goes on to UIKit, such as the Menu press of the Apple TV remote, or the Escape key of a keyboard of the Apple TV, while the app leaves the back button to the system.
 - Makes the view of SDL the first responder once it is in a window, outside tvOS, whose focus hands the presses to the view, since UIKit hands the presses of a keyboard to the first responder. The hidden field of a text field takes the first responder while it edits and gives it back to the view when the editing finishes.
+- Sends only the presses that reach the view as the first responder, and the release of each press it sent wherever UIKit delivers it. The presses that a text field that edits passes on go on to UIKit, which matches them with the key commands of the field, such as Tab, which moves to the next field, and Escape, which cancels the editing.
 - Removes the key commands of the arrows and escape.
 - Removes the swipe gestures of the Apple TV remote.
 - Reads whether the joystick subsystem opened the Siri Remote only where SDL builds that subsystem, which the UIKit builds of the engine leave out.

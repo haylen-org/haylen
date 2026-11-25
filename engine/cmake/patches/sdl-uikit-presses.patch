@@ -1,4 +1,4 @@
-Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from the presses of UIKit alone, which carry the keys of every source, such as a hardware keyboard, Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests, while GameController reads only the keyboards of the hardware. So SDL reads no keyboard through GameController, turns every press into a key whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. Outside tvOS, whose focus hands the presses to the view, the view becomes the first responder once it is in a window, since UIKit hands the presses of a keyboard to the first responder. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote, and reads the Siri Remote that the joystick subsystem opens only where SDL builds that subsystem.
+Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from the presses of UIKit alone, which carry the keys of every source, such as a hardware keyboard, Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests, while GameController reads only the keyboards of the hardware. So SDL reads no keyboard through GameController, turns every press into a key whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. Outside tvOS, whose focus hands the presses to the view, the view becomes the first responder once it is in a window, since UIKit hands the presses of a keyboard to the first responder, and it sends only the presses that reach it as the first responder, with the release of each, so the presses that a text field that edits passes on go on to UIKit, which matches them with the key commands of the field, such as its tab and escape. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote, and reads the Siri Remote that the joystick subsystem opens only where SDL builds that subsystem.
 
 --- a/src/video/uikit/SDL_uikitview.m
 +++ b/src/video/uikit/SDL_uikitview.m
@@ -13,7 +13,17 @@ Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from
  
  @implementation SDL_uikitview
  {
-@@ -57,25 +59,6 @@
+@@ -49,6 +51,9 @@
+     SDL_TouchID indirectTouchId;
+     float pinch_scale;
+ 
++    // The presses that the view sent as keys, whose release it sends too, wherever UIKit delivers it.
++    NSMutableSet<UIPress *> *sentPresses;
++
+ #if !defined(SDL_PLATFORM_TVOS)
+     UIPointerInteraction *indirectPointerInteraction API_AVAILABLE(ios(13.4));
+ #endif
+@@ -57,25 +62,6 @@
  - (instancetype)initWithFrame:(CGRect)frame
  {
      if ((self = [super initWithFrame:frame])) {
@@ -39,7 +49,7 @@ Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from
  #if !defined(SDL_PLATFORM_TVOS)
          /* Pinch gestures */
          UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(sdlPinchGesture:)];
-@@ -520,7 +503,7 @@
+@@ -520,7 +506,7 @@
  
      // Presses from Apple TV remote or game controller
      bool controller_opened = false;
@@ -48,7 +58,7 @@ Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from
      // tvOS doesn't send these for game controllers, but does for the Siri remote
      controller_opened = (SDL_AppleTVRemoteOpenedAsJoystick > 0);
  #else
-@@ -556,42 +539,62 @@
+@@ -556,42 +542,88 @@
      return SDL_SCANCODE_UNKNOWN;
  }
  
@@ -73,26 +83,52 @@ Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from
 +}
 +#endif
 +
-+// Sends every press as a key, the keys of keyboards from any source, such as a hardware keyboard, Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests, and the buttons of remotes and game controllers, and returns the ones whose key the app dropped through its event filter, which go on to UIKit, such as the Menu press of the remote that leaves the app.
++// Whether a press that goes down belongs to the app: one that reaches the view as the first responder, and on tvOS every press, whose focus hands them to the view. A press that a responder before the view in the responder chain passes on, such as a text field that edits, goes on to UIKit, which matches it with the key commands of that responder, such as the tab and escape of the field.
++- (BOOL)takesPress
++{
++#ifdef SDL_PLATFORM_TVOS
++    return YES;
++#else
++    return self.isFirstResponder;
++#endif
++}
++
++// Sends the presses that belong to the app as keys, the keys of keyboards from any source, such as a hardware keyboard, Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests, and the buttons of remotes and game controllers, and the release of each press it sent. It returns the presses that go on to UIKit: those of other responders and those whose key the app dropped through its event filter, such as the Menu press of the remote that leaves the app.
 +- (NSSet<UIPress *> *)sendPresses:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event down:(bool)down
 +{
-+    NSMutableSet<UIPress *> *dropped = [NSMutableSet set];
++    if (sentPresses == nil) {
++        sentPresses = [NSMutableSet set];
++    }
++
++    NSMutableSet<UIPress *> *passed = [NSMutableSet set];
 +    for (UIPress *press in presses) {
++        const bool belongs = down ? [self takesPress] : [sentPresses containsObject:press];
++        if (!belongs) {
++            [passed addObject:press];
++            continue;
+         }
++
++        if (down) {
++            [sentPresses addObject:press];
++        } else {
++            [sentPresses removeObject:press];
++        }
++
 +        SDL_Scancode scancode = [self scancodeFromPress:press];
 +        if (!SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, down)) {
-+            [dropped addObject:press];
-         }
++            [passed addObject:press];
++        }
      }
-+    return dropped;
++    return passed;
 +}
 +
 +- (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 +{
-+    NSSet<UIPress *> *dropped = [self sendPresses:presses withEvent:event down:true];
++    NSSet<UIPress *> *passed = [self sendPresses:presses withEvent:event down:true];
      if (SDL_TextInputActive(sdlwindow)) {
          [super pressesBegan:presses withEvent:event];
-+    } else if (dropped.count > 0) {
-+        [super pressesBegan:dropped withEvent:event];
++    } else if (passed.count > 0) {
++        [super pressesBegan:passed withEvent:event];
      }
  }
  
@@ -104,11 +140,11 @@ Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from
 -            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
 -        }
 -    }
-+    NSSet<UIPress *> *dropped = [self sendPresses:presses withEvent:event down:false];
++    NSSet<UIPress *> *passed = [self sendPresses:presses withEvent:event down:false];
      if (SDL_TextInputActive(sdlwindow)) {
          [super pressesEnded:presses withEvent:event];
-+    } else if (dropped.count > 0) {
-+        [super pressesEnded:dropped withEvent:event];
++    } else if (passed.count > 0) {
++        [super pressesEnded:passed withEvent:event];
      }
  }
  
@@ -120,15 +156,15 @@ Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from
 -            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
 -        }
 -    }
-+    NSSet<UIPress *> *dropped = [self sendPresses:presses withEvent:event down:false];
++    NSSet<UIPress *> *passed = [self sendPresses:presses withEvent:event down:false];
      if (SDL_TextInputActive(sdlwindow)) {
          [super pressesCancelled:presses withEvent:event];
-+    } else if (dropped.count > 0) {
-+        [super pressesCancelled:dropped withEvent:event];
++    } else if (passed.count > 0) {
++        [super pressesCancelled:passed withEvent:event];
      }
  }
  
-@@ -603,34 +606,6 @@
+@@ -603,34 +635,6 @@
      }
  }
  

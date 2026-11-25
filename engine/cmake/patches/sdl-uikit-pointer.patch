@@ -2,7 +2,7 @@ Takes the buttons of a mouse or a trackpad on iPadOS, Mac Catalyst and visionOS 
 
 --- a/src/video/uikit/SDL_uikitview.m
 +++ b/src/video/uikit/SDL_uikitview.m
-@@ -92,6 +92,10 @@
+@@ -95,6 +95,10 @@
              indirectPointerRecognizer.allowedTouchTypes = @[@(UITouchTypeIndirectPointer)];
              [self addGestureRecognizer:indirectPointerRecognizer];
          }
@@ -13,7 +13,7 @@ Takes the buttons of a mouse or a trackpad on iPadOS, Mac Catalyst and visionOS 
  #endif // !defined(SDL_PLATFORM_TVOS)
      }
  
-@@ -197,9 +201,17 @@
+@@ -200,9 +204,17 @@
      SDL_SendMouseMotion(0, sdlwindow, SDL_GLOBAL_MOUSE_ID, false, locationInView.x, locationInView.y);
  }
  
@@ -32,7 +32,7 @@ Takes the buttons of a mouse or a trackpad on iPadOS, Mac Catalyst and visionOS 
          int i;
  
          for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
-@@ -228,7 +240,7 @@
+@@ -231,7 +243,7 @@
  
  - (void)indirectPointerReleased:(UITouch *)touch fromEvent:(UIEvent *)event API_AVAILABLE(ios(13.4))
  {
