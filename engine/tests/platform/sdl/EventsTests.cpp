@@ -5,6 +5,10 @@
 #include <utility>
 #include <vector>
 
+#include <SDL3/SDL_hints.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_video.h>
+
 #include "haylen/core/Engine.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/ui/Gui.hpp"
@@ -37,6 +41,28 @@ class EventsTest : public ::testing::Test {
 
     Events events;
 };
+
+// SDL still delivers the events it queued for a window after the window went away, such as the focus that the window of an output loses as it closes, and those events belong to no window of the app, while the events of a window that lives and of no window do.
+TEST_F(EventsTest, TellsTheEventsOfAWindowThatClosedApart) {
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+    ASSERT_TRUE(SDL_InitSubSystem(SDL_INIT_VIDEO)) << SDL_GetError();
+    SDL_Window* output = SDL_CreateWindow("output", 64, 64, SDL_WINDOW_HIDDEN);
+    ASSERT_NE(output, nullptr) << SDL_GetError();
+
+    SDL_Event focus = makeEvent(SDL_EVENT_WINDOW_FOCUS_LOST);
+    focus.window.windowID = SDL_GetWindowID(output);
+    SDL_Event key = makeEvent(SDL_EVENT_KEY_DOWN);
+    key.key.windowID = focus.window.windowID;
+    EXPECT_EQ(Events::getWindowId(focus), focus.window.windowID);
+    EXPECT_FALSE(Events::isOfClosedWindow(focus));
+    EXPECT_FALSE(Events::isOfClosedWindow(key));
+
+    SDL_DestroyWindow(output);
+    EXPECT_TRUE(Events::isOfClosedWindow(focus));
+    EXPECT_TRUE(Events::isOfClosedWindow(key));
+    EXPECT_FALSE(Events::isOfClosedWindow(makeEvent(SDL_EVENT_GAMEPAD_ADDED)));
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
+}
 
 TEST_F(EventsTest, TranslatesKeysByTheirPlaceOnTheKeyboard) {
     SDL_Event key = makeEvent(SDL_EVENT_KEY_DOWN);

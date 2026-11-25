@@ -415,6 +415,11 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
         return SDL_APP_CONTINUE;
     }
 
+    // The events that SDL still holds for a window that is gone, such as the focus that an output window loses as it closes, belong to no window of the app.
+    if (Events::isOfClosedWindow(event)) {
+        return SDL_APP_CONTINUE;
+    }
+
     // The window of the app keeps the focus while the keyboard goes to the window of an output and back.
     if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST && outputs.holdsFocus()) {
         focusInOutput = true;

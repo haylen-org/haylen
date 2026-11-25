@@ -4,6 +4,7 @@
 #include <utility>
 
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_video.h>
 
 #include "platform/sdl/Keys.hpp"
 
@@ -77,6 +78,41 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
 }
 
 // SDL turns the Menu press of the remote into escape.
+SDL_WindowID Events::getWindowId(const SDL_Event& source) noexcept {
+    if (source.type >= SDL_EVENT_WINDOW_FIRST && source.type <= SDL_EVENT_WINDOW_LAST) {
+        return source.window.windowID;
+    }
+
+    switch (source.type) {
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
+        return source.key.windowID;
+    case SDL_EVENT_TEXT_INPUT:
+        return source.text.windowID;
+    case SDL_EVENT_TEXT_EDITING:
+        return source.edit.windowID;
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        return source.button.windowID;
+    case SDL_EVENT_MOUSE_MOTION:
+        return source.motion.windowID;
+    case SDL_EVENT_MOUSE_WHEEL:
+        return source.wheel.windowID;
+    case SDL_EVENT_FINGER_DOWN:
+    case SDL_EVENT_FINGER_MOTION:
+    case SDL_EVENT_FINGER_UP:
+    case SDL_EVENT_FINGER_CANCELED:
+        return source.tfinger.windowID;
+    default:
+        return 0;
+    }
+}
+
+bool Events::isOfClosedWindow(const SDL_Event& source) noexcept {
+    const SDL_WindowID window = getWindowId(source);
+    return window != 0 && SDL_GetWindowFromID(window) == nullptr;
+}
+
 bool Events::isPlatformBack(const SDL_Event& source) noexcept {
     return kRemote && (source.type == SDL_EVENT_KEY_DOWN || source.type == SDL_EVENT_KEY_UP) && source.key.scancode == SDL_SCANCODE_ESCAPE;
 }

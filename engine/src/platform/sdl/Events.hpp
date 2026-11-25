@@ -32,6 +32,12 @@ class Events final {
     // Whether the event is a press or a release of the back button of the platform, the Menu button of the Apple TV remote.
     [[nodiscard]] static bool isPlatformBack(const SDL_Event& source) noexcept;
 
+    // The window that an event of a window, the keyboard, text, the mouse or a finger happened in, or 0 for an event that belongs to no window, such as one of a controller or of the app.
+    [[nodiscard]] static SDL_WindowID getWindowId(const SDL_Event& source) noexcept;
+
+    // Whether the event happened in a window that SDL destroyed since, whose events it delivers after the window went away.
+    [[nodiscard]] static bool isOfClosedWindow(const SDL_Event& source) noexcept;
+
   private:
     // The Apple TV remote reports its touch surface as touches, which the gamepad of the remote stands for instead. Apps of UIKit hear the states of the app, while desktop windows minimize.
 #if defined(__APPLE__) && TARGET_OS_TV

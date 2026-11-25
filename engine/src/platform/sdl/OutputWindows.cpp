@@ -10,6 +10,7 @@
 #include <SDL3/SDL_properties.h>
 
 #include "platform/Player.hpp"
+#include "platform/sdl/Events.hpp"
 #include "platform/sdl/Host.hpp"
 #include "platform/sdl/Window.hpp"
 
@@ -162,23 +163,17 @@ bool OutputWindows::handle(const SDL_Event& event) {
         return entry != nullptr;
     }
 
-    SDL_WindowID window = 0;
     switch (event.type) {
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
     case SDL_EVENT_MOUSE_BUTTON_UP:
-        window = event.button.windowID;
-        break;
     case SDL_EVENT_MOUSE_MOTION:
-        window = event.motion.windowID;
-        break;
     case SDL_EVENT_MOUSE_WHEEL:
-        window = event.wheel.windowID;
         break;
     default:
         return false;
     }
 
-    const Entry* entry = findWindow(window);
+    const Entry* entry = findWindow(Events::getWindowId(event));
     if (entry != nullptr) {
         handlePointer(*entry, event);
     }
