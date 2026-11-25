@@ -1,3 +1,6 @@
+#if os(macOS)
+import Carbon
+#endif
 import CoreLocation
 import XCTest
 
@@ -51,6 +54,11 @@ class HaylenUITestCase: XCTestCase {
 
     override func tearDown() async throws {
         app.terminate()
+#if os(macOS)
+        if selectedInputSource {
+            restoreInputSources()
+        }
+#endif
 #if !os(visionOS)
         if simulatesLocation {
             XCUIDevice.shared.location = nil
@@ -243,6 +251,34 @@ class HaylenUITestCase: XCTestCase {
 #endif
 
 #if os(macOS)
+    // Whether the test selected an input source, whose change the end of the test undoes.
+    var selectedInputSource = false
+
+    // Selects an input source of the Mac by its identifier, such as "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese", until the test ends. The sandbox of the runner keeps the input sources that a test selects to its own process, so the test asks "haylen test --ui" in a line of its output, and the run selects the source, turning on first its input method and the source when the Mac has them off. The test waits until the Mac reports that its current input source changed. Select the source before a field edits, since macOS hands an input source of Chinese, Japanese, Korean or Vietnamese that a process selects to a field only once the field takes the focus.
+    func useInputSource(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
+        waitForInputSourceChange("The input source of the Mac does not change to \"\(identifier)\".", file: file, line: line) {
+            print("HaylenInputSource: \(identifier)")
+        }
+        selectedInputSource = true
+    }
+
+    // Gives the Mac back the input sources it had before the test selected one.
+    func restoreInputSources(file: StaticString = #filePath, line: UInt = #line) {
+        waitForInputSourceChange("The input source of the Mac does not change back after the test.", file: file, line: line) {
+            print("HaylenRestoreInputSources")
+        }
+        selectedInputSource = false
+    }
+
+    // Writes the request of the test and waits for the notification of the system that the current input source changed, which reaches a process in a sandbox too.
+    func waitForInputSourceChange(_ message: String, file: StaticString, line: UInt, request: () -> Void) {
+        let name = Notification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String)
+        let changed = XCTNSNotificationExpectation(name: name, object: nil, notificationCenter: DistributedNotificationCenter.default())
+        request()
+        fflush(stdout)
+        XCTAssertEqual(XCTWaiter.wait(for: [changed], timeout: Self.timeout), .completed, message, file: file, line: line)
+    }
+
     // Holds the key with the virtual key code of the Mac down as a person does, which the app hears as one press and then the repeats of the system, each marked as a repeat, before the key goes up. XCUITest presses a key only once, so the test asks "haylen test --ui" in a line of its output, and the run posts the key to the app in front. The test then waits for what the key does.
     func holdKey(_ code: UInt16, repeats: Int) {
         print("HaylenHoldKey: \(code) \(repeats)")

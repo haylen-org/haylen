@@ -9,6 +9,7 @@ from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.engine.android_ui_tests import AndroidUiTests
+from haylen.engine.mac_keyboard import MacKeyboard
 from haylen.engine.ui_tests import UiTests
 from haylen.engine.unified_log import UnifiedLog
 from haylen.engine.windows_ui_tests import WindowsUiTests
@@ -45,9 +46,9 @@ class UiTestsTest:
         assert [str(part) for part in command[-2:]] == ["-resultBundlePath", "/build/derived/Logs/Test/macos.xcresult"]
         assert UiTests.attachment_name("mac-text-typed_0_F94D26F7-1A0F-4684-8E9F-28323BDE0082.png") == "mac-text-typed.png"
         assert UiTests.attachment_name("Screenshot at failure.png") is None
-        spec = (UiTests.PROJECT / "project.yml").read_text(encoding="utf-8")
         assert UiTests.attachment_name("Debug description for `Any (First Match)`_0_673AA5DB-655A-4A79-AA1E-C275192DDF41.txt") is None
         assert UiTests.attachment_name("App UI hierarchy for com.haylen_0_7E4CC8AB-4832-4597-9ADE-9504291B7D70.tests") is None
+        spec = (UiTests.PROJECT / "project.yml").read_text(encoding="utf-8")
         mac = spec[spec.index("  macOS:\n    type: bundle.ui-testing") : spec.index("schemes:")]
         assert "HaylenUIOutput" not in mac
 
@@ -81,9 +82,9 @@ class UiTestsTest:
             raise BuildFailed('The command "xcrun" failed with exit code 1.')
 
         recorded.context.process.run = fail
-        UiTests(recorded.context, None).keep_screenshots_of_failure(results, tmp_path / "attachments", tmp_path)
+        UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(), results, tmp_path / "attachments", tmp_path)
         assert "could not be exported" in recorded.output.getvalue()
-        UiTests(recorded.context, None).keep_screenshots_of_failure(tmp_path / "missing.xcresult", tmp_path / "attachments", tmp_path)
+        UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(), tmp_path / "missing.xcresult", tmp_path / "attachments", tmp_path)
 
     def test_the_log_of_a_failed_simulator_run_covers_the_whole_run(self):
         show = ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "log", "show", "--last"]

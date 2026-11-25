@@ -225,7 +225,7 @@ class UiTests:
         self.context.terminal.info(f"The log of the simulator during the UI tests is in `{Repository.shown(path)}`.")
 
     def run_on_mac(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
-        """Runs the tests on this Mac. The runner launches the app from the bundle that the run built and ends it after each test, so nothing installs or stays. Its clicks and keys reach the app in front, so the Mac runs nothing else meanwhile, such as on a runner of continuous integration, and the run holds the keys that a test asks it to hold through `MacKeyboard`. The runner of the Mac runs in a sandbox that writes nowhere outside its container, so its screenshots are attachments of the result bundle of the run, which the run exports into the folder of the screenshots, also when the tests failed."""
+        """Runs the tests on this Mac. The runner launches the app from the bundle that the run built and ends it after each test, so nothing installs or stays. Its clicks and keys reach the app in front, so the Mac runs nothing else meanwhile, such as on a runner of continuous integration, and the run holds the keys and selects the input sources that a test asks for through `MacKeyboard`, and gives the Mac back its input sources as the run ends. The runner of the Mac runs in a sandbox that writes nowhere outside its container, so its screenshots are attachments of the result bundle of the run, which the run exports into the folder of the screenshots, also when the tests failed."""
         if device is not None:
             raise UnsupportedTarget(f'The UI tests of "{platform}" run on this Mac, so they take no "--device".')
         project = (runner / "HaylenUITests.xcodeproj", UiTests.MAC_SCHEME, UiTests.mac_destination(), runner / "derived")
@@ -235,16 +235,22 @@ class UiTests:
         results = runner / "derived" / "Logs" / "Test" / f"{platform}.xcresult"
         Folders.remove(results)
         attachments = runner / "attachments"
+        keyboard = MacKeyboard()
         try:
-            UiTestRun(self.context.terminal, answer=MacKeyboard.answer).run(UiTests.command("test-without-building", *project, classes, results), self.context.environment)
-        except BuildFailed:
-            self.keep_screenshots_of_failure(results, attachments, output)
+            UiTestRun(self.context.terminal, answer=keyboard.answer).run(UiTests.command("test-without-building", *project, classes, results), self.context.environment)
+        except BaseException:
+            self.clean_up_failed_mac_run(keyboard, results, attachments, output)
             raise
+        keyboard.restore()
         self.export_screenshots(results, attachments, output)
         return "this Mac"
 
-    def keep_screenshots_of_failure(self, results: Path, attachments: Path, output: Path) -> None:
-        """Exports the screenshots of a run whose tests failed, when the runner wrote a result bundle. An export that fails then only warns, so the failure of the tests stays the error of the run, and the screenshots stay in the result bundle."""
+    def clean_up_failed_mac_run(self, keyboard: MacKeyboard, results: Path, attachments: Path, output: Path) -> None:
+        """Gives the Mac back its input sources and exports the screenshots of a run that failed or stopped, the screenshots only when the runner wrote a result bundle. What fails here only warns, so the failure of the run stays its error, and the screenshots stay in the result bundle."""
+        try:
+            keyboard.restore()
+        except BuildFailed as error:
+            self.context.terminal.warning(str(error))
         if not results.exists():
             return
         try:
