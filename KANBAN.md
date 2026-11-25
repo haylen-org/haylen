@@ -284,7 +284,7 @@
 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
-| **[KB-304 · O playground do site funcionando 100% com a engine](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
+| **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -7814,7 +7814,7 @@ Este repositório guarda só a engine. Plugins ficam nos repositórios deles, e 
 - None
 
 <a name="kb-304"></a>
-### KB-304 — O playground do site funcionando 100% com a engine
+### KB-304 — Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo
 
 - **Status:** todo
 - **Type:** task
@@ -7824,12 +7824,13 @@ Este repositório guarda só a engine. Plugins ficam nos repositórios deles, e 
 
 #### Description
 
-O playground do site, que edita e roda apps no navegador sem backend pelo runtime web pré-compilado e pelo contrato do editor (`Module.haylen.editor`), passa por uma revisão completa no navegador: tudo o que não funciona ou funciona pela metade vira um cartão deste quadro, e o playground é refeito onde for preciso para funcionar 100%, com os plugins do [KB-285](#kb-285) e do [KB-286](#kb-286). O que faltar na engine, no runtime web ou no contrato do editor muda aqui, e o que é do site muda no repositório dele. O dono decidiu que este trabalho começa só depois que o 3D estiver pronto por inteiro.
+O playground do site, que edita e roda apps no navegador sem backend pelo runtime web pré-compilado e pelo contrato do editor (`Module.haylen.editor`), passa por uma revisão completa no navegador: tudo o que não funciona ou funciona pela metade vira um cartão deste quadro, e a IDE do playground é refatorada por inteiro para que tudo funcione: o editor de código, a árvore do projeto, os assets, a execução, a recarga, o console, o inspetor, as estatísticas, os erros e o debug completo do Lua, com pontos de parada, condições, passos, pilha, variáveis e avaliações, com os plugins do [KB-285](#kb-285) e do [KB-286](#kb-286). O que faltar na engine, no runtime web ou no contrato do editor muda aqui, e o que é do site muda no repositório dele. Hoje uma página da web tem uma linha de execução só e não pode parar no meio do código, então o depurador da engine guarda ali só os pontos de log. Para parar de verdade num ponto de parada há caminhos como rodar o módulo no worker do modo Worker e esperá-lo com `SharedArrayBuffer` e `Atomics.wait`, que pede os cabeçalhos de isolamento de origem no site, ou suspender o WebAssembly pelo JSPI, que ainda não existe em todos os navegadores. O dono escolhe o caminho quando o trabalho começar. O dono decidiu que este trabalho começa só depois que o 3D estiver pronto por inteiro.
 
 #### Acceptance criteria
 
 - [ ] A revisão está feita no navegador, com cada problema achado registrado num cartão deste quadro.
 - [ ] O playground edita, roda, recarrega e mostra os erros de todos os samples de navegador, com os plugins com parte web, sem nada pela metade.
+- [ ] O debug completo funciona na IDE em todos os navegadores que o runtime web atende, ou a doc diz exatamente onde não funciona e por quê.
 - [ ] Os testes de página do site e da engine provam cada fluxo do editor.
 
 #### Attachments
