@@ -44,7 +44,7 @@ function Mouse:enter()
     self:frame({
         code = Mouse.code,
         hint = 'Hover a zone to change the cursor, click, scroll and move the mouse. On a touch screen, turn on the finger as the mouse to drive the buttons with the first finger down.',
-        focus = 'visible',
+        focus = 'touchAsMouse',
         controls = {
             ui.toggle{id = 'touchAsMouse', text = 'A finger acts as the mouse', checked = input.touchAsMouse(), onChange = function(event) input.setTouchAsMouse(event.checked) end},
             ui.sectionTitle{text = 'Mouse mode'},
