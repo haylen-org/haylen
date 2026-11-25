@@ -7860,7 +7860,7 @@ Na execução completa 45537704137, dois shards do job `Sanitizers (address)` pe
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** A categoria é opcional (`f1f64c102`), e um app sem versão usa a versão padrão da engine, `1.0.0` com o build 1 (`06d1f4086`). O dono decidiu o resto: sem nome, o app é "Haylen App", e `haylen-app` onde o nome precisa ser uma palavra só; sem identificador, as ferramentas geram um da pasta, único nesta máquina, para rodar localmente, e só a assinatura para um aparelho, o build Release e o empacotamento para loja pedem um identificador real; e a pasta `source/` num app C++ sem Lua vira um aviso. Em andamento.
+- **Progress:** A categoria é opcional (`f1f64c102`) e a versão também (`06d1f4086`). Os três pontos que o dono decidiu estão em commits locais, que esperam o `haylen test` para o push: sem nome, o app é "Haylen App" na engine e nas ferramentas, e `haylen-app` onde precisa ser uma palavra; sem identificador, as ferramentas geram `local.<letras da pasta><8 hexadecimais do caminho>` e o gravam na cópia do `haylen.json` do build, e só os alvos de aparelho da Apple, todo build Release e todo pacote pedem um identificador real; e a pasta `source/` num app C++ sem Lua vira um aviso.
 
 #### Description
 
