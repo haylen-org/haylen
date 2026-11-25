@@ -26,7 +26,7 @@ class AppManifest:
     identifier: str
     version: str
     build: int
-    category: AppCategory
+    category: AppCategory | None
     kind: AppKind
     cpp: CppSources | None
     native: tuple[NativeLibrary, ...]
@@ -78,7 +78,7 @@ class AppManifest:
             identifier=document["identifier"],
             version=document["version"],
             build=document.get("build", 1),
-            category=AppCategory(document["category"]),
+            category=AppCategory(document["category"]) if "category" in document else None,
             kind=kind,
             cpp=cpp,
             native=native,

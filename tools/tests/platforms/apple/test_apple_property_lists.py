@@ -75,6 +75,7 @@ class ApplePropertyListsTest:
         assert self.info(apple, {"category": "game"}, "macos")["LSApplicationCategoryType"] == "public.app-category.games"
         assert self.info(apple, {"category": "developer"}, "catalyst")["LSApplicationCategoryType"] == "public.app-category.developer-tools"
         assert "LSApplicationCategoryType" not in self.info(apple, {"category": "game"}, "ios-simulator")
+        assert "LSApplicationCategoryType" not in self.info(apple, {}, "macos"), "An app without a category leaves the key out."
         assert set(InfoPlistKeys.CATEGORIES) == set(AppCategory)
 
     def test_an_app_that_sets_another_category_of_its_own_stops_the_preparation(self, apple):

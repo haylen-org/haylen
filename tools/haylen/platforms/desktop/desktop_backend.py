@@ -7,9 +7,11 @@ from haylen.content.protected_releases import ProtectedReleases
 from haylen.content.release_entry import ReleaseEntry
 from haylen.content.release_package import ReleasePackage
 from haylen.content.steam_depots import SteamDepots
+from haylen.core.app_category import AppCategory
 from haylen.core.app_kind import AppKind
 from haylen.core.configuration import Configuration
 from haylen.core.errors.build_failed import BuildFailed
+from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.folders import Folders
 from haylen.core.host import Host
@@ -34,6 +36,7 @@ from haylen.platforms.desktop.desktop_system import DesktopSystem
 from haylen.platforms.desktop.desktop_verifier import DesktopVerifier
 from haylen.platforms.desktop.host_native_libraries import HostNativeLibraries
 from haylen.platforms.desktop.inno_setup import InnoSetup
+from haylen.platforms.desktop.linux_entries import LinuxEntries
 from haylen.platforms.environment_report import EnvironmentReport
 from haylen.platforms.generated_tree import GeneratedTree
 from haylen.platforms.launch_request import LaunchRequest
@@ -226,6 +229,7 @@ class DesktopBackend(PlatformBackend):
         resolved = product.prepared.product
         folders = product.prepared.folders
         if resolved.platform == "linux":
+            DesktopBackend.require_categories(product)
             for tool in DesktopBackend.DEBIAN_TOOLS:
                 tool.require()
         tools = [f"-DCPACK_INNOSETUP_EXECUTABLE={InnoSetup.compiler(self.context)}"] if resolved.platform == "windows" else AppImageTools.ensure(self.context).cpack_options()
@@ -243,6 +247,19 @@ class DesktopBackend(PlatformBackend):
         if not packaged:
             raise BuildFailed(f"CPack made no package in `{Repository.shown(staging)}`. Its output in the log of the command shows why.")
         return tuple(packaged)
+
+    @staticmethod
+    def require_categories(product: BuildProduct) -> None:
+        """Stops the Linux installer of an app whose desktop entry lists no categories, since the AppImage tool refuses such an entry."""
+        app = product.prepared.product.app
+        entry = (product.prepared.folders.project / LinuxEntries.ENTRY).read_text(encoding="utf-8")
+        if LinuxEntries.has_categories(entry):
+            return
+        values = ", ".join(f'"{category.value}"' for category in AppCategory)
+        raise InvalidManifest(
+            f'The Linux installer holds an AppImage, which needs the category of the app, and `{app.origin}` names none. Add "category" to it with one of {values}.',
+            origin=app.origin,
+        )
 
     def steam(self, product: BuildProduct, request: PackageRequest) -> tuple[str, ...]:
         """Lays the installed app out as the depot of its platform and its named packs as depots of their own."""

@@ -48,12 +48,12 @@ Creates an app in a folder that does not exist or is empty: `haylen.json`, the l
 | Option | Default |
 | --- | --- |
 | `--kind` | `lua`. The value `cpp` makes an app whose C++ code compiles against the engine SDK. |
-| `--category` | `utility`. The category that the stores and the app menus show the app in: `game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` or `developer`, as [category](distribution.md#category) maps them. |
+| `--category` | None, so the app names no category. The category that the stores and the app menus show the app in: `game`, `entertainment`, `education`, `productivity`, `utility`, `graphics`, `music`, `video`, `social` or `developer`, as [category](distribution.md#category) maps them. |
 | `--name` | The display name, made from the folder name. |
 | `--identifier` | `com.example.<folder>`. |
 | `--orientation` | `landscape`. |
 
-Result: `folder`, `name`, `identifier`, `kind` and `category`.
+Result: `folder`, `name`, `identifier`, `kind` and `category`, which is `null` without one.
 
 ### app prepare
 
@@ -117,7 +117,7 @@ Checks that the backend of the target packages apps, then builds and verifies th
 
 | Target | Format | Options |
 | --- | --- | --- |
-| `windows`, `linux` | `installer`: the Inno Setup installer of Windows, or the `.deb` package and the AppImage of Linux. | None. |
+| `windows`, `linux` | `installer`: the Inno Setup installer of Windows, or the `.deb` package and the AppImage of Linux, whose AppImage needs the `category` of the app. | None. |
 | `windows`, `linux` | `steam`: the depots of the app and of its named packs with the build scripts of SteamPipe. | `appId`, `depots` as `<name>=<id>` once per depot, such as `--option depots=windows=481` for one depot, and `branch`. |
 | `android` | `bundle`: the Android App Bundle with its asset packs. | None. |
 | `android` | `apks`: the APK set of a connected device, built from the bundle in the local testing mode of Google Play and installed. | `device`. |
@@ -277,7 +277,7 @@ Contributions  2
   webModule  native-demo  {"path": "web/native-demo.js"}
 ```
 
-Result: `app`, `backend`, `identity` and `targets`. The `app` holds `folder`, `name`, `identifier`, `version`, `build`, `category` and `kind`. The `targets` hold one entry per architecture, with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion`, `plugins`, `contributions`, `settings`, `nativeLibraries` and `permissions`. The `minimumSystemVersion` holds `value`, `origin` and `justification`, and each contribution holds `type`, `fields`, `owners` and `origins`. The `settings` hold each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`.
+Result: `app`, `backend`, `identity` and `targets`. The `app` holds `folder`, `name`, `identifier`, `version`, `build`, `category`, which is `null` without one, and `kind`. The `targets` hold one entry per architecture, with `target`, `targetName`, `platform`, `kind`, `engineConfiguration`, `sdk`, `minimumSystemVersion`, `plugins`, `contributions`, `settings`, `nativeLibraries` and `permissions`. The `minimumSystemVersion` holds `value`, `origin` and `justification`, and each contribution holds `type`, `fields`, `owners` and `origins`. The `settings` hold each key of each section with its `value` and its `origin`, such as `haylen.json at platforms.apple.team`.
 
 ## Machine and SDKs
 

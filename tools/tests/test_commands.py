@@ -110,14 +110,14 @@ class CommandsTest:
         release = parser.parse_args(["app", "build", str(app), "--target", "fake", "--config", "Release", "--previous-release", str(shipped)])
         assert Arguments.request(release, session, release.previous_release).previous_release == shipped.resolve()
 
-    def test_a_new_app_is_a_utility_unless_the_command_names_its_category(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    def test_a_new_app_names_a_category_only_when_the_command_gives_one(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         session = CommandsTest.session(ToolingFixture(tmp_path), monkeypatch)
         notes = CommandsTest.run(session, ["new", str(tmp_path / "notes")])
         puzzle = CommandsTest.run(session, ["new", str(tmp_path / "puzzle"), "--category", "game"])
 
-        assert (notes["category"], puzzle["category"]) == ("utility", "game")
-        assert json.loads((tmp_path / "notes" / "haylen.json").read_text(encoding="utf-8"))["category"] == "utility"
-        assert json.loads((tmp_path / "puzzle" / "haylen.json").read_text(encoding="utf-8"))["category"] == "game"
+        assert (notes["category"], puzzle["category"]) == (None, "game")
+        assert "category" not in json.loads((tmp_path / "notes" / "haylen.json").read_text(encoding="utf-8"))
+        assert list(json.loads((tmp_path / "puzzle" / "haylen.json").read_text(encoding="utf-8")))[:6] == ["name", "identifier", "version", "build", "category", "description"]
 
     def test_content_publishes_to_the_channel_that_the_engine_follows_by_default(self):
         parser, _ = Application.parser()

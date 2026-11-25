@@ -1,6 +1,7 @@
 import json
 import xml.etree.ElementTree as ElementTree
 from pathlib import Path
+from types import MappingProxyType
 
 import pytest
 
@@ -10,6 +11,7 @@ from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_manifest import InvalidManifest
 from haylen.core.repository import Repository
 from haylen.native.cmake_app import CMakeApp
+from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.desktop.desktop_app import DesktopApp
 from haylen.platforms.desktop.desktop_backend import DesktopBackend
 from haylen.platforms.desktop.desktop_layout import DesktopLayout
@@ -17,6 +19,9 @@ from haylen.platforms.desktop.desktop_verifier import DesktopVerifier
 from haylen.platforms.desktop.linux_categories import LinuxCategories
 from haylen.platforms.desktop.linux_entries import LinuxEntries
 from haylen.platforms.desktop.windows_resources import WindowsResources
+from haylen.platforms.package_request import PackageRequest
+from haylen.platforms.preparation_state import PreparationState
+from haylen.platforms.prepared_project import PreparedProject
 from haylen.platforms.verification_check import VerificationCheck
 from tests.platforms.desktop.desktop_fixture import DesktopFixture
 
@@ -105,6 +110,34 @@ class DesktopProjectTest:
         assert [category.text for category in metainfo.find("categories")] == ["AudioVideo", "Audio"]
         assert "set(HAYLEN_APP_DEBIAN_SECTION [[sound]])" in values
         assert set(LinuxCategories.MENU) == set(LinuxCategories.DEBIAN_SECTIONS) == set(AppCategory)
+
+    def test_an_app_without_a_category_lists_none_and_takes_the_debian_section_of_the_rest(self, fixture: DesktopFixture):
+        project = self.prepare(fixture, fixture.app({}, "notes"), "linux")
+        entry = (project / "resources" / "app.desktop").read_text(encoding="utf-8")
+        metainfo = ElementTree.fromstring((project / "resources" / "app.metainfo.xml").read_text(encoding="utf-8").split("\n", 1)[1])
+
+        assert "Categories=" not in entry
+        assert not LinuxEntries.has_categories(entry)
+        assert metainfo.find("categories") is None
+        assert "set(HAYLEN_APP_DEBIAN_SECTION [[misc]])" in (project / "app.cmake").read_text(encoding="utf-8")
+
+    def test_the_linux_installer_stops_an_app_whose_desktop_entry_lists_no_categories(self, fixture: DesktopFixture):
+        app = fixture.app({}, "notes")
+        product = fixture.resolve(app, "linux", Configuration.RELEASE)
+        folders = DesktopFixture.folders(product)
+        (folders.project / "resources").mkdir(parents=True)
+        (folders.project / LinuxEntries.ENTRY).write_text("[Desktop Entry]\nType=Application\nName=Notes\n", encoding="utf-8")
+        state = PreparationState("", DesktopBackend.NAME, "", "", "", "", "", MappingProxyType({}))
+        built = BuildProduct(PreparedProject(product, folders, folders.project, DesktopBackend.NAME, state, False), folders.products, "app", (), ())
+        request = PackageRequest(DesktopBackend.INSTALLER, fixture.folder / "packages", {})
+
+        with pytest.raises(InvalidManifest) as raised:
+            DesktopBackend(fixture.context).package(built, request)
+        values = ", ".join(f'"{category.value}"' for category in AppCategory)
+        assert raised.value.message == f'The Linux installer holds an AppImage, which needs the category of the app, and `{product.app.origin}` names none. Add "category" to it with one of {values}.'
+
+        (folders.project / LinuxEntries.ENTRY).write_text("[Desktop Entry]\nType=Application\nCategories=Office;\n", encoding="utf-8")
+        DesktopBackend.require_categories(built)
 
     def test_the_files_of_the_section_replace_the_files_of_the_template(self, fixture: DesktopFixture):
         app = fixture.app({"platforms": {"linux": {"files": {"resources/app.desktop": "desktop/garden.desktop", "resources/icons": "desktop/icons"}}}}, "garden")

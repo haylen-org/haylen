@@ -269,7 +269,7 @@ Google Play refuses an upload whose `versionCode` is not higher than the last on
 
 ## Category
 
-Every app names its `category` in `haylen.json`, such as `"game"` or `"utility"`. The stores and the app menus of the systems show the app among the apps of its kind. The key has no default, since only the app knows what it is, so a `haylen.json` without it stops every preparation. The command `haylen new` writes `"utility"` unless `--category` names another.
+An app can name its `category` in `haylen.json`, such as `"game"` or `"utility"`. The stores and the app menus of the systems show the app among the apps of its kind. The key is optional and has no default, since only the app knows what it is and a default would label it wrong. An app without it prepares, builds and runs on every target, and every generated project leaves the category out. The command `haylen new` writes the category only when `--category` names one.
 
 ```json
 {
@@ -296,6 +296,8 @@ Each backend maps the category to the one of its platform. On Linux the desktop 
 | `developer` | `Development` | `devel` | `public.app-category.developer-tools` | None |
 
 The other platforms take no category from the app. The `Info.plist` of iPhones, iPads, the Apple TV and the Vision Pro has none, since App Store Connect sets the category of those apps. The web site writes no web app manifest, the Inno Setup installer of Windows has no category, and Steam and Google Play take the category of an app in Steamworks and the Play Console.
+
+An app without a category gets no `LSApplicationCategoryType`, no `android:appCategory`, no `Categories` in its desktop entry, which the desktop entry specification leaves optional, and no `categories` in its metainfo, so desktops list it with the apps of no category. Its `.deb` package takes the section `misc`, which Debian keeps for packages that fit no other section. The one package that needs a category is the AppImage of the Linux `installer` format, since the AppImage tool refuses a desktop entry without `Categories`, so `haylen app package --format installer` on Linux stops an app whose desktop entry lists none and says to add `category` to `haylen.json`. The Mac App Store also requires `LSApplicationCategoryType` in every app it receives, so an app for it names its category.
 
 ## The Apple project
 
@@ -326,7 +328,7 @@ The `Info.plist` of each platform in the template is complete. It holds `$(HAYLE
 - The status bar that the app launches with, as `UIStatusBarHidden` and `UIStatusBarStyle` from `window.statusBar`.
 - `CADisableMinimumFrameDurationOnPhone`, without which an iPhone shows no app above 60 frames per second, whatever its display refreshes at and whatever `window.frameRate` asks.
 - `LSUIElement` on macOS for an app whose `window.showInTaskbar` is `false`, so macOS never shows its Dock icon, not even while it starts.
-- `LSApplicationCategoryType` on macOS and Mac Catalyst from `category`, as [category](#category) lists.
+- `LSApplicationCategoryType` on macOS and Mac Catalyst from `category`, as [category](#category) lists, which an app without a category leaves out.
 
 The join follows the rule of [how values merge](#how-values-merge): a key that the template, the engine, a plugin and the app give with different values stops the preparation with every origin, so an app that words a key in its own way puts it in its own `Info.plist` through `files` and leaves it out of the plugins, or gives the plugin the words through its parameters. The verification reads the built bundle: its architectures, the frameworks it links, the classes of the plugins, the `Info.plist` keys, the entitlements it is signed with, the privacy declarations and the resources of the plugins.
 
@@ -449,10 +451,10 @@ The backend completes `resources/app.desktop` and `resources/app.metainfo.xml` o
 
 | File | Values of `haylen.json` |
 | --- | --- |
-| `app.desktop` | `Name` from `name`, `Comment` from `description`, `Categories` from `category`, `Exec` from the executable, `Icon` and `StartupWMClass` from `identifier`, and the URL schemes of the plugins in `MimeType`. |
-| `app.metainfo.xml` | `id` from `identifier`, `name`, and `summary` and a `description` of one paragraph from `description`, `developer` with the name of `company` and the identifier without its last part as its id, the `launchable` desktop entry, the `categories` from `category`, and the `homepage` URL from `website`. |
+| `app.desktop` | `Name` from `name`, `Comment` from `description`, `Categories` from `category` when the app names one, `Exec` from the executable, `Icon` and `StartupWMClass` from `identifier`, and the URL schemes of the plugins in `MimeType`. |
+| `app.metainfo.xml` | `id` from `identifier`, `name`, and `summary` and a `description` of one paragraph from `description`, `developer` with the name of `company` and the identifier without its last part as its id, the `launchable` desktop entry, the `categories` from `category` when the app names one, and the `homepage` URL from `website`. |
 
-The metainfo of the template declares the `CC0-1.0` license for the metadata itself, a proprietary license for the app and an empty content rating, which the app changes through its own file. The `.deb` package takes the section of the Debian archive that `category` maps to, as [category](#category) lists. The command `appstreamcli validate` checks the metainfo, which needs a `website` in `haylen.json` to pass, and `desktop-file-validate` checks the desktop entry.
+The metainfo of the template declares the `CC0-1.0` license for the metadata itself, a proprietary license for the app and an empty content rating, which the app changes through its own file. The `.deb` package takes the section of the Debian archive that `category` maps to, as [category](#category) lists, or `misc` without one. The command `appstreamcli validate` checks the metainfo, which needs a `website` in `haylen.json` to pass, and `desktop-file-validate` checks the desktop entry.
 
 ### Links on Windows and Linux
 

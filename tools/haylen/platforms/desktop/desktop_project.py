@@ -105,7 +105,7 @@ class DesktopProject:
             "HAYLEN_APP_NATIVE": self.native.as_posix(),
         }
         if platform == "linux":
-            values["HAYLEN_APP_DEBIAN_SECTION"] = LinuxCategories.DEBIAN_SECTIONS[app.category]
+            values["HAYLEN_APP_DEBIAN_SECTION"] = LinuxCategories.debian_section(app.category)
         if platform == "windows":
             debug = product.request.engine_configuration is Configuration.DEBUG
             values["HAYLEN_MSVC_RUNTIME"] = "MultiThreadedDebugDLL" if debug else "MultiThreadedDLL"

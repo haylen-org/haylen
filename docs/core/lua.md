@@ -59,7 +59,7 @@ These are the parts of `haylen.json` that most apps set.
 
 | Part | What it sets |
 | --- | --- |
-| `name`, `identifier`, `version`, `build`, `category` | Who the app is. The `identifier` also names the folder where the app keeps the files of the player, the `build` is the build number that grows with every upload to a store, and the `category` is what the stores and the app menus show the app among. |
+| `name`, `identifier`, `version`, `build`, `category` | Who the app is. The `identifier` also names the folder where the app keeps the files of the player, the `build` is the build number that grows with every upload to a store, and the optional `category` is what the stores and the app menus show the app among. |
 | `window` | The size and title of the window, fullscreen, and the desktop modes, such as a window without a frame. |
 | `design` | The design resolution: the space of units that the app draws in, whatever the size of the screen. |
 | `orientation`, `splash` | How a phone holds the app, and the launch screen. |

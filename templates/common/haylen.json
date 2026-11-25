@@ -3,7 +3,6 @@
     "identifier": "com.haylen.app",
     "version": "1.0.0",
     "build": 1,
-    "category": "utility",
     "description": "An app made with Haylen.",
     "orientation": "landscape",
     "window": {

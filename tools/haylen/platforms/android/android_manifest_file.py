@@ -15,7 +15,7 @@ class AndroidManifestFile:
     # The permissions of the template, which network access, the network events, the rumble of gamepads and the local network need.
     DEFAULT_PERMISSIONS = ("android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.VIBRATE")
     ORIENTATIONS = {"landscape": "sensorLandscape", "portrait": "sensorPortrait", "any": "fullSensor"}
-    # The values of `android:appCategory`, which has none for the other categories of an app.
+    # The values of `android:appCategory`, which an app without a category and the other categories of an app leave out.
     CATEGORIES = {
         AppCategory.GAME: "game",
         AppCategory.PRODUCTIVITY: "productivity",
@@ -58,7 +58,7 @@ class AndroidManifestFile:
         application_class = product.primary.setting(AndroidContributions.SECTION, "applicationClass")
         if application_class is not None:
             attributes = {"name": str(application_class), **attributes}
-        category = AndroidManifestFile.CATEGORIES.get(app.category)
+        category = AndroidManifestFile.CATEGORIES.get(app.category) if app.category is not None else None
         if category is not None:
             attributes["appCategory"] = category
         for name, value in manifest.get("applicationAttributes", {}).items():

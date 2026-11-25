@@ -21,9 +21,12 @@ class LinuxEntries:
 
     @staticmethod
     def keys(app: DesktopApp, schemes: tuple[str, ...]) -> dict[str, str]:
-        """The keys of the desktop entry that come from `haylen.json`. An app that links open hands each link to the executable after `--link`."""
-        categories = "".join(f"{category};" for category in LinuxCategories.MENU[app.category])
-        keys = {"Name": app.name, "Comment": app.description, "Categories": categories, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
+        """The keys of the desktop entry that come from `haylen.json`. An app without a category has no `Categories`, which the desktop entry specification leaves optional, and an app that links open hands each link to the executable after `--link`."""
+        keys = {"Name": app.name, "Comment": app.description}
+        categories = LinuxCategories.menu(app.category)
+        if categories:
+            keys["Categories"] = "".join(f"{category};" for category in categories)
+        keys |= {"Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
         if schemes:
             keys["Exec"] = f"{app.executable} --link %u"
             keys["MimeType"] = "".join(f"x-scheme-handler/{scheme};" for scheme in schemes)
@@ -39,11 +42,7 @@ class LinuxEntries:
         while end > group + 1 and not lines[end - 1].strip():
             end -= 1
 
-        own = {}
-        for line in lines[group + 1 : end]:
-            if "=" in line and not line.lstrip().startswith("#"):
-                key, _, value = line.partition("=")
-                own[key.strip()] = value.strip()
+        own = LinuxEntries.entry_keys(lines[group + 1 : end])
         added = []
         for key, value in generated.items():
             escaped = LinuxEntries.entry_text(value)
@@ -54,15 +53,29 @@ class LinuxEntries:
         return "\n".join([*lines[:end], *added, *lines[end:]]) + "\n"
 
     @staticmethod
+    def entry_keys(lines: list[str]) -> dict[str, str]:
+        keys = {}
+        for line in lines:
+            if "=" in line and not line.lstrip().startswith("#"):
+                key, _, value = line.partition("=")
+                keys[key.strip()] = value.strip()
+        return keys
+
+    @staticmethod
+    def has_categories(text: str) -> bool:
+        """Whether the `[Desktop Entry]` group of a completed desktop entry lists categories, which an AppImage needs."""
+        lines = text.splitlines()
+        group = next((index for index, line in enumerate(lines) if line.strip() == "[Desktop Entry]"), len(lines))
+        end = next((index for index in range(group + 1, len(lines)) if lines[index].startswith("[")), len(lines))
+        return bool(LinuxEntries.entry_keys(lines[group + 1 : end]).get("Categories"))
+
+    @staticmethod
     def elements(app: DesktopApp) -> list[ElementTree.Element]:
         """The elements of the AppStream metainfo that come from `haylen.json`, in the order the specification lists them. The developer id is the identifier of the app without its last part, the domain of its publisher."""
         description = LinuxEntries.element("description")
         description.append(LinuxEntries.element("p", app.description))
         developer = LinuxEntries.element("developer", id=app.identifier.rsplit(".", 1)[0])
         developer.append(LinuxEntries.element("name", app.company))
-        categories = LinuxEntries.element("categories")
-        for category in LinuxCategories.MENU[app.category]:
-            categories.append(LinuxEntries.element("category", category))
         elements = [
             LinuxEntries.element("id", app.identifier),
             LinuxEntries.element("name", app.name),
@@ -70,8 +83,13 @@ class LinuxEntries:
             description,
             developer,
             LinuxEntries.element("launchable", f"{app.identifier}.desktop", type="desktop-id"),
-            categories,
         ]
+        categories = LinuxCategories.menu(app.category)
+        if categories:
+            listed = LinuxEntries.element("categories")
+            for category in categories:
+                listed.append(LinuxEntries.element("category", category))
+            elements.append(listed)
         if app.website:
             elements.append(LinuxEntries.element("url", app.website, type="homepage"))
         return elements

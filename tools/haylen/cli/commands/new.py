@@ -24,9 +24,8 @@ class NewCommand(Command):
         )
         parser.add_argument(
             "--category",
-            default=AppCategory.UTILITY.value,
             choices=[category.value for category in AppCategory],
-            help='The category that the stores and the app menus show the app in, "utility" by default.',
+            help="The category that the stores and the app menus show the app in. An app without one leaves it out of every generated project.",
         )
         parser.add_argument("--name", help="The display name, from the folder name by default.")
         parser.add_argument("--identifier", help='The reverse domain identifier, "com.example.<folder>" by default.')
@@ -35,7 +34,7 @@ class NewCommand(Command):
     def run(self, arguments: argparse.Namespace, session: CommandSession) -> Mapping[str, object]:
         folder = Path(arguments.folder).expanduser().resolve()
         kind = AppKind(arguments.kind)
-        manifest = AppScaffold.create(folder, kind, AppCategory(arguments.category), arguments.name, arguments.identifier, arguments.orientation)
+        manifest = AppScaffold.create(folder, kind, AppCategory(arguments.category) if arguments.category else None, arguments.name, arguments.identifier, arguments.orientation)
         session.terminal.success(f'Created the {AppScaffold.KIND_WORDS[kind]} app "{manifest.name}" with the identifier "{manifest.identifier}" in `{Repository.shown(folder)}`.')
         session.terminal.info(f'Run it with "haylen app run {Repository.shown(folder)}".')
-        return {"folder": str(folder), "name": manifest.name, "identifier": manifest.identifier, "kind": kind.value, "category": manifest.category.value}
+        return {"folder": str(folder), "name": manifest.name, "identifier": manifest.identifier, "kind": kind.value, "category": manifest.category.value if manifest.category is not None else None}

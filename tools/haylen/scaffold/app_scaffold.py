@@ -31,7 +31,7 @@ class AppScaffold:
         return files
 
     @staticmethod
-    def create(folder: Path, kind: AppKind, category: AppCategory, name: str | None, identifier: str | None, orientation: str) -> AppManifest:
+    def create(folder: Path, kind: AppKind, category: AppCategory | None, name: str | None, identifier: str | None, orientation: str) -> AppManifest:
         if folder.exists() and any(folder.iterdir()):
             raise InvalidOption(f"The folder `{Repository.shown(folder)}` already exists and is not empty. Name a new folder or an empty one.")
         slug = re.sub(r"[^a-z0-9]+", "-", folder.name.lower()).strip("-")
@@ -52,7 +52,12 @@ class AppScaffold:
 
         manifest_path = folder / AppManifest.FILE
         document = json.loads(manifest_path.read_text(encoding="utf-8"))
-        document.update({"name": title, "identifier": chosen, "category": category.value, "orientation": orientation})
+        document.update({"name": title, "identifier": chosen, "orientation": orientation})
+        # The category follows the build number, where the template keeps the identity of the app.
+        if category is not None:
+            identity = list(document.items())
+            place = [key for key, _ in identity].index("build") + 1
+            document = dict([*identity[:place], ("category", category.value), *identity[place:]])
         document["window"]["title"] = title
         document["platforms"]["android"]["applicationClass"] = f"{chosen}.App"
         if kind is AppKind.CPP:

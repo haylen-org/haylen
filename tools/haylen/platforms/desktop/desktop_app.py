@@ -14,7 +14,7 @@ class DesktopApp:
     identifier: str
     version: str
     build: int
-    category: AppCategory
+    category: AppCategory | None
     description: str
     company: str
     copyright: str

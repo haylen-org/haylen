@@ -76,12 +76,15 @@ class AndroidProjectTest:
     def test_the_application_takes_the_category_that_android_has(self, tmp_path):
         fixture = AndroidFixture(tmp_path)
         manifests = {}
-        for category in ("music", "education"):
-            project = fixture.prepare(fixture.resolve(fixture.app({"category": category}, category)), f"{category}-product").project
+        for category in ("music", "education", None):
+            name = category or "uncategorized"
+            document = {"category": category} if category else {}
+            project = fixture.prepare(fixture.resolve(fixture.app(document, name)), f"{name}-product").project
             manifests[category] = (project / "app" / "src" / "main" / "AndroidManifest.xml").read_text(encoding="utf-8")
 
         assert 'android:appCategory="audio"' in manifests["music"]
         assert "android:appCategory" not in manifests["education"]
+        assert "android:appCategory" not in manifests[None]
 
     def test_the_wrapper_downloads_the_pinned_gradle_with_its_hash(self, tmp_path):
         fixture = AndroidFixture(tmp_path)

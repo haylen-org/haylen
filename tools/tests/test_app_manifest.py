@@ -39,23 +39,16 @@ class AppManifestTest:
         assert 'The key "window" has the unknown keys "highDpi".' in message
         assert 'The key "build" is 0, and it must be at least 1.' in message
 
-    def test_an_app_names_a_category_of_the_vocabulary(self, tmp_path):
+    def test_an_app_names_a_category_of_the_vocabulary_or_none(self, tmp_path):
         fixture = ToolingFixture(tmp_path)
         assert AppManifest.load(fixture.app({"category": "education"})).category is AppCategory.EDUCATION
+        assert AppManifest.load(fixture.app({}, "uncategorized")).category is None
 
         unknown = fixture.app({"category": "racing"}, "racing")
         with pytest.raises(InvalidManifest) as raised:
             AppManifest.load(unknown)
         values = '"game", "entertainment", "education", "productivity", "utility", "graphics", "music", "video", "social" or "developer"'
         assert f'The key "category" has the unknown value "racing". It is {values}.' in raised.value.message
-
-        missing = fixture.app({}, "missing")
-        document = json.loads((missing / AppManifest.FILE).read_text(encoding="utf-8"))
-        del document["category"]
-        (missing / AppManifest.FILE).write_text(json.dumps(document), encoding="utf-8")
-        with pytest.raises(InvalidManifest) as raised:
-            AppManifest.load(missing)
-        assert f'The file needs "category". The category that the stores and the app menus of every platform show the app in: {values}.' in raised.value.message
 
     def test_a_cpp_app_names_its_sources(self, tmp_path):
         fixture = ToolingFixture(tmp_path)

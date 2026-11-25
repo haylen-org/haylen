@@ -4,7 +4,7 @@ from haylen.platforms.apple.apple_target import AppleTarget
 
 
 class InfoPlistKeys:
-    """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads the orientations of `orientation`, which the system launches the app in, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`."""
+    """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads the orientations of `orientation`, which the system launches the app in, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`, which an app without one leaves out."""
 
     LANDSCAPE = ("UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
     PHONE_ORIENTATIONS = {"landscape": LANDSCAPE, "portrait": ("UIInterfaceOrientationPortrait",), "any": ("UIInterfaceOrientationPortrait", *LANDSCAPE)}
@@ -31,7 +31,7 @@ class InfoPlistKeys:
     def of(app: AppManifest, target: AppleTarget) -> dict[str, object]:
         window = app.section("window")
         keys: dict[str, object] = {}
-        if target.runs_on_mac:
+        if target.runs_on_mac and app.category is not None:
             keys["LSApplicationCategoryType"] = InfoPlistKeys.CATEGORIES[app.category]
         if target.folder == "macos":
             if not window.get("showInTaskbar", True):
