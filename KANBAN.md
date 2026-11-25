@@ -396,6 +396,7 @@ Os aparelhos, os drivers e as plataformas da camada em SDL3 e da RHI, e a revis�
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 3
+- **Progress:** A máquina Windows 11 da Azure e a Linux com NVIDIA T4 da AWS, com duas telas, estão no ar com desligamento automático. Os testes de GPU do Linux passaram no Vulkan e no OpenGL. O GCC 13 do Ubuntu 24.04 achou dois avisos que o compilador da CI não mostra, um parâmetro que esconde um membro em `lua::Promise::settle` e um laço que copia pares nos testes de fonte, já corrigidos localmente. O projeto de testes ganhou o argumento `--run-all`, que roda todos os testes sem ninguém tocar, e o Windows ganhou um teste de UI dos links entregues ao app que já roda.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
