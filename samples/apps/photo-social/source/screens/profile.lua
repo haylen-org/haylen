@@ -1,10 +1,12 @@
--- A profile: the face, the counts of posts, followers and following, the name and the bio, the buttons that follow and message, or edit the profile and start a post on the person's own, and the grid of pictures, with the saved posts in a second section of the person's own. The profile of the tab is the person's own, and the others open over it.
+-- A profile: the face, the counts of posts, followers and following, the name and the bio, the buttons that follow and message, or edit the profile and start a post on the person's own, and the grid of pictures, with the account and the saved posts in a second section of the person's own. The profile of the tab is the person's own, and the others open over it.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
+local Account = require('account')
 local Page = require('page')
 local Routes = require('routes')
+local SignIn = require('screens.sign-in')
 local Shell = require('shell')
 local Social = require('data.social')
 local Style = require('style')
@@ -88,6 +90,9 @@ function Profile:start()
     events.on('socialChanged', function()
         self:showGrid()
     end, {owner = self})
+    events.on('accountChanged', function()
+        self:showGrid()
+    end, {owner = self})
     self:showGrid()
     -- The head is measured once it draws, and the grid keeps showing it from the top.
     self.list:scrollTo('head', {align = 'start', animated = false})
@@ -124,6 +129,10 @@ function Profile:headTemplate()
             ui.button{part = 'primary', bind = {text = 'primaryText', variant = 'primaryVariant'}, text = '', grow = 1},
             ui.button{part = 'secondary', bind = {text = 'secondaryText'}, text = '', grow = 1},
         },
+        ui.row{part = 'accountRow', bind = {visible = 'mine'}, visible = false, gap = space.s, align = 'stretch',
+            ui.label{part = 'accountText', bind = {text = 'accountText'}, text = '', color = 'textMuted', grow = 1},
+            ui.button{part = 'account', bind = {text = 'accountAction'}, text = '', variant = 'link'},
+        },
         ui.segmentedControl{part = 'section', bind = {visible = 'mine'}, items = Profile.sections, selected = 'posts', visible = false},
     }
 end
@@ -143,6 +152,8 @@ function Profile:headItem()
         primaryText = mine and 'Edit profile' or (person.followed and 'Following' or 'Follow'),
         primaryVariant = (mine or person.followed) and 'default' or 'primary',
         secondaryText = mine and 'New post' or 'Message',
+        accountText = Account.email and ('Signed in as ' .. Account.email) or 'Not signed in',
+        accountAction = Account.email and 'Sign out' or 'Sign in',
         mine = mine,
     }
 end
@@ -169,6 +180,13 @@ function Profile:headAction(part)
         else
             Shell.router:open(Routes.chat(person.id))
         end
+    elseif part == 'account' then
+        if Account.email then
+            Account.signOut()
+            Shell.notify('You signed out.')
+        else
+            self:openSignIn()
+        end
     end
 end
 
@@ -183,6 +201,15 @@ function Profile:openEdit()
         self.person.bio = event.result.bio
         self:showGrid()
         Shell.notify('Your profile is up to date.')
+    end})
+end
+
+-- Signs the person in through a sheet that fits its fields, which hands back the email of the account.
+function Profile:openSignIn()
+    self.signInSheet = ui.present(SignIn(), {detents = {'fit'}, owner = self, onDismiss = function(event)
+        if event.result then
+            Shell.notify('Signed in as ' .. event.result .. '.')
+        end
     end})
 end
 

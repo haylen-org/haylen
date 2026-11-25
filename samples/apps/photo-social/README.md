@@ -1,6 +1,6 @@
 # 📷 Photo Social
 
-Photo Social is an app sample of a photo sharing network: a feed of posts with pictures, likes, comments and captions, stories that play full screen, profiles with a grid of pictures and a follow button, a post with its comments, a new post with a picture, a crop, a filter and a caption, and direct messages with a real chat. It looks like a product of its kind in a bright white look of rounded prints, with a ring that runs from blue to teal around the stories and a blue accent, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every person, post, comment and message is fake data made from a seed, so the same feed shows on every run.
+Photo Social is an app sample of a photo sharing network: a feed of posts with pictures, likes, comments and captions, stories that play full screen, profiles with a grid of pictures and a follow button, a post with its comments, a new post with a picture, a crop, a filter and a caption, direct messages with a real chat, and a sign-in that goes over the network to an echo service. It looks like a product of its kind in a bright white look of rounded prints, with a ring that runs from blue to teal around the stories and a blue accent, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every person, post, comment and message is fake data made from a seed, so the same feed shows on every run.
 
 ## Running it
 
@@ -16,7 +16,9 @@ The commands run from the root of the repository:
 | Browser | `haylen app run samples/apps/photo-social --target web` |
 | Headless player | `build/engine/macos-debug/bin/haylen-headless samples/apps/photo-social` |
 
-On the headless platform the app runs a tour by itself: it likes a post, watches and answers a story, shares a post with a friend, whose answer drops in as a banner, comments on a post and deletes the comment after the alert, follows and unfollows a person, searches people, chats, makes a post with a filter and a crop and deletes it after the alert, edits the profile, saves posts, opens links of the scheme and of the web and sends a post to a friend, logs every step and quits.
+On the headless platform the app runs a tour by itself: it likes a post, watches and answers a story, shares a post with a friend, whose answer drops in as a banner, comments on a post and deletes the comment after the alert, follows and unfollows a person, searches people, chats, makes a post with a filter and a crop and deletes it after the alert, edits the profile, checks the fields of the sign-in, saves posts, opens links of the scheme and of the web and sends a post to a friend, logs every step and quits.
+
+The tour needs no network, so it checks the fields of the sign-in on the device and closes the sheet. The sign-in itself needs the network to reach the echo service, on every platform, the web included, since the service answers the requests of other origins.
 
 ## Screens
 
@@ -25,7 +27,8 @@ On the headless platform the app runs a tour by itself: it likes a post, watches
 | Home | The stories in a row, with the person's own first, over the feed of the people the person follows. Every post shows its author with the place and the time, the caption over the picture, and the buttons with the counts of likes and comments under it. A phone shows the posts under the wordmark, and a wide window shows them as cards in a column, with the person and suggestions of people to follow beside it when there is room. |
 | Story | The pictures of a person, five seconds each, under bars that fill as they play, then the stories of the next person. A tap on the left third goes back and anywhere else goes on, a press holds the story, and the field at the bottom replies in the direct messages. A wide window shows the pictures in a tall frame between two arrows. The status bar shows light content over the dark stage while the stories play. |
 | Post | The post and its comments over the field that adds one, or on a wide window the picture on a dark stage beside the author, the comments, the buttons and the field. A post of the person has the button that deletes it, and a comment of the person has a menu that deletes it, both after an alert. |
-| Profile | The face inside the ring of the app, the name and the bio in the middle, the counts of posts, followers and following on a soft card, the buttons that follow and message, and the grid of pictures. Unfollowing shows a snackbar that follows again, and the message button opens the chat in the messages tab. The person's own profile edits its name and bio in a sheet that asks before it drops changes, starts a post and shows the saved posts in a second section. |
+| Profile | The face inside the ring of the app, the name and the bio in the middle, the counts of posts, followers and following on a soft card, the buttons that follow and message, and the grid of pictures. Unfollowing shows a snackbar that follows again, and the message button opens the chat in the messages tab. The person's own profile edits its name and bio in a sheet that asks before it drops changes, starts a post, signs in and out under the buttons and shows the saved posts in a second section. |
+| Sign in | A sheet that fits its fields: the email, the password, the button that signs in, a spinner while the service answers and the reason when it fails. |
 | Explore | A grid of the pictures of everyone, and the people whose name or handle matches the typed text. |
 | New post | Three steps: a picture of the library, its crop and its filter, each shown on the middle of the picture, and the caption and the place before it goes to the top of the feed. |
 | Messages | The conversations, the newest on top, with a dot on those with messages not read yet, narrowed by a typed name. |
@@ -73,6 +76,7 @@ The app follows the [navigation](../../../docs/ui/navigation.md) of the engine, 
 - The data of `source/data/social.lua` and the conversations of `source/chats.lua` emit `socialChanged` and `chatChanged` on [`haylen.events`](../../../docs/lua-api/events.md), and the screens listen with themselves as owners. The answer of a friend arrives through a timer owned by the conversations, so it reaches the messages after the chat closed, and an answer in a chat that does not show emits `chatAnswered`, which drops a banner of `ui.showMessage` with the face of the friend under the status bar, whose tap opens the chat.
 - The router of `source/routes.lua`, `ui.router` over the tabs with `restore = true`, turns links into screens, and the profiles, posts and chats that the person opens go through it too, so the router knows the location of each screen, builds the stacks and the open chat again after the system ended the app, and gives the location that sharing puts in a link. The route of a chat is a detail of the split of the messages tab, and the banner of an answer and the message button of a profile open it with `router:open`, which shows the messages tab with the chat.
 - Sharing is an action sheet of `ui.presentAlert`, and deleting a post or a comment asks first in an alert with a destructive action. Taking a post out of the collection and unfollowing a person show a snackbar whose `Undo` takes it back, and the other confirmations are toasts at the bottom, which keep above the tab bar through `ui.setMessageArea`.
+- The sign-in of `source/account.lua` posts the email and the password as JSON to `https://httpbin.org/post` with `http.client.post`, which echoes them back, and the email it returns becomes the account, kept in memory, so every start begins signed out. A password shorter than eight characters goes to `https://httpbin.org/status/401` instead, which shows a wrong password. The request runs in a task of the sheet with a controller in a to-be-closed variable and a deadline of ten seconds on a timer of the sheet that cancels it, so closing the sheet ends the request, and the sign-in tells a timeout from a lost connection and from a status outside 200 to 299, each with its own title and message. Sign out takes the account back at once, and `accountChanged` on [`haylen.events`](../../../docs/lua-api/events.md) shows the account on the profile.
 - The field of a chat stays above the on-screen keyboard, and a tap on the send button while the keyboard is open sends at once, because the GUIs hold their place while a press is down.
 
 ## Style guide
@@ -108,7 +112,8 @@ photo-social/
     random.lua           The seeded generator of the fake data.
     tour.lua             The automatic run of the headless platform.
     data/social.lua      The people, their posts, comments and stories, and the person who uses the app.
-    screens/             Home, story, post, profile, explore, the new post with its three steps, and messages with the inbox and the chat.
+    account.lua          The account of the person and the sign-in through the echo service.
+    screens/             Home, story, post, profile, the sign-in sheet, explore, the new post with its three steps, and messages with the inbox and the chat.
   content/
     photos/              The twelve pictures.
     icons/               The line icons.

@@ -1,4 +1,4 @@
--- The automatic run of the headless platform: it likes a post, watches and answers a story, shares a post with a friend, whose answer drops in as a banner, comments on a post and deletes the comment after an alert, follows and unfollows a person, searches people, chats, makes a post with a filter and a crop and deletes it after an alert, edits the profile, saves posts, opens links of the scheme and of the web and sends a post to a friend, logs each step and quits, so an unattended run checks every path of the app.
+-- The automatic run of the headless platform: it likes a post, watches and answers a story, shares a post with a friend, whose answer drops in as a banner, comments on a post and deletes the comment after an alert, follows and unfollows a person, searches people, chats, makes a post with a filter and a crop and deletes it after an alert, edits the profile, checks the fields of the sign-in, saves posts, opens links of the scheme and of the web and sends a post to a friend, logs each step and quits, so an unattended run checks every path of the app.
 local haylen = require('haylen')
 local log = require('haylen.log')
 local timer = require('haylen.timer')
@@ -52,7 +52,10 @@ function Tour.steps()
         {'Delete the post', function() Shell.top().deleteAlert:dismiss({result = 'confirm'}) end},
         {'Open the profile', function() Shell.showTab('profile') end},
         {'Edit the profile', function() Shell.top():headAction('primary') end},
-        {'Show the saved posts', function() local page = Shell.top() page.editSheet:dismiss() Social.toggleSave(feed[5]) Social.toggleSave(feed[8]) page.section = 'saved' page:showGrid() end},
+        {'Open the sign-in', function() local page = Shell.top() page.editSheet:dismiss() page:headAction('account') end},
+        {'Check the fields before they go out', function() Shell.top().signInSheet.screen:submit() end},
+        {'Close the sign-in', function() Shell.top().signInSheet:dismiss() end},
+        {'Show the saved posts', function() local page = Shell.top() Social.toggleSave(feed[5]) Social.toggleSave(feed[8]) page.section = 'saved' page:showGrid() end},
         {'Back home, which kept its screens', function() Shell.showTab('home') end},
         {'Back to the root of home', function() Shell.showTab('home') end},
         {'Open a link to a profile', function() Shell.router:open(Routes.link(Routes.profile('ava'))) end},
