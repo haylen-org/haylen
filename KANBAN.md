@@ -904,7 +904,7 @@ O analógico de um gamepad move o foco da UI nas quatro direções, também incl
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** quatro controles virtuais do SDL nos testes da engine e, no iOS, um controle virtual que reconecta no mesmo lugar e o controle próprio do simulador parado enquanto o virtual age (`e34af0b74`, `611cf76a5`). O segfault do teste de vibração e sensores no Linux era do teste, que guardava os motores dos controles virtuais na pilha, e passou na execução completa da CI 45507380483 (`4a1ad46f8`). Falta um teste do gamepad do navegador na web.
+- **Progress:** O segfault do teste de vibração e sensores no Linux era do teste e passou na execução completa da CI 45507380483 (`4a1ad46f8`). A verificação de página dos gamepads do navegador, com vários controles distintos e a reconexão no mesmo lugar, está escrita e falta rodar e entrar no `main`.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
@@ -7547,6 +7547,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
+- **Progress:** O código, a API Lua, a documentação e os testes estão escritos: `window.mouseMode()` e `window.setMouseMode()` com `normal`, `hidden`, `locked`, `confined` e `confinedHidden`, aplicados só quando a plataforma concede. O SDL cuida dos desktops, a web usa o Pointer Lock, o iPad e o Mac Catalyst escondem e travam o ponteiro pelas APIs do UIKit com a resposta do sistema, e o iPhone, a Apple TV, o visionOS e o Android respondem sem suporte. Nada mais cita as chamadas antigas, e o teste INP-002 do projeto de testes escolhe o modo. Falta a compilação, os testes e o commit.
 
 #### Description
 
@@ -7715,7 +7716,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 4
-- **Progress:** A causa está achada: no Windows e no Linux o texto passa pelo campo do Dear ImGui, que ignora as repetições que o sistema manda, inventa as suas próprias e aplica no máximo uma por quadro. O dono decidiu por um patch pequeno no ImGui, ligado por uma opção da engine, em que cada repetição do sistema vira exatamente uma edição, no ritmo configurado no sistema e em qualquer taxa de quadros, com um teste da engine sem cabeça e a prova no Windows.
+- **Progress:** A causa está achada: no Windows e no Linux o texto passa pelo campo do Dear ImGui, que ignora as repetições que o sistema manda, inventa as suas próprias e aplica no máximo uma por quadro. O dono decidiu por um patch pequeno no ImGui, ligado por uma opção da engine, em que cada repetição do sistema vira exatamente uma edição, no ritmo configurado no sistema e em qualquer taxa de quadros, com um teste da engine sem cabeça e a prova no Windows. O patch está escrito e só vale onde a plataforma manda as repetições das teclas, o que a janela informa, já que os teclados físicos do UIKit não mandam repetições e ficam com as do ImGui.
 
 #### Description
 
@@ -7739,6 +7740,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 3
+- **Progress:** A causa vale para toda plataforma, não só o Windows: enquanto a tela de erro aparece, o plugin da interface não desenha, então ninguém publica a árvore de acessibilidade. A tela de erro passa a publicar o seu diálogo, os textos e os botões e a atender as ações dos leitores de tela. Falta a compilação, os testes e o commit.
 
 #### Description
 
