@@ -32,7 +32,6 @@
 #import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleFonts.hpp"
 #import "platform/apple/AppleGamepads.hpp"
-#import "platform/apple/AppleKeyboard.hpp"
 #import "platform/apple/AppleLanguages.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
@@ -90,9 +89,6 @@ void AppleServices::initialize() {
     // The memory warnings of UIKit tell no level.
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(Event::MemoryLevel::Warning); }];
     [NSNotificationCenter.defaultCenter addObserverForName:AVAudioSessionMediaServicesWereResetNotification object:nil queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::AudioServicesReset}); }];
-#endif
-#if !TARGET_OS_OSX
-    AppleKeyboard::observe();
 #endif
 #if TARGET_OS_MACCATALYST
     CatalystWindow::observe();

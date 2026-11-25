@@ -466,9 +466,10 @@ A change to the source of a dependency is a patch in `engine/cmake/patches/` tha
 
 #### sdl-uikit-presses.patch
 
-SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS into keys only while GameController reads no keyboard, and it turns the arrows and escape of a keyboard into key commands of its view controller too. The runtime reads every key of a hardware keyboard through `GCKeyboard`, so those keys would arrive twice, and while a keyboard is connected SDL drops the presses of remotes and game controllers altogether. SDL also turns the swipes on the touch surface of the Apple TV remote into arrows, while the runtime reads that surface as the stick of the remote. The patch:
+SDL reads the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS through GameController while it knows a keyboard there, and through the presses of UIKit otherwise. GameController sees only the keyboards of the hardware, so the keys of Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests never reached the app. SDL also turns the arrows and escape of a keyboard into key commands of its view controller, drops the presses of remotes and game controllers while a keyboard is connected, and turns the swipes on the touch surface of the Apple TV remote into arrows, while the runtime reads that surface as the stick of the remote. The patch:
 
-- Leaves the presses that carry a key of a keyboard to GameController, and turns the other presses into keys whether a keyboard is connected or not. On tvOS it keeps the Menu press that the Escape key of a keyboard makes, so Escape goes back like the remote.
+- Reads no keyboard through GameController and turns every press of UIKit into a key, the keys of keyboards from any source and the presses of remotes and game controllers, whether a keyboard is connected or not. A press whose key the app drops through its event filter goes on to UIKit, such as the Menu press of the Apple TV remote, or the Escape key of a keyboard of the Apple TV, while the app leaves the back button to the system.
+- Makes the view of SDL the first responder once it is in a window, outside tvOS, whose focus hands the presses to the view, since UIKit hands the presses of a keyboard to the first responder. The hidden field of a text field takes the first responder while it edits and gives it back to the view when the editing finishes.
 - Removes the key commands of the arrows and escape.
 - Removes the swipe gestures of the Apple TV remote.
 - Reads whether the joystick subsystem opened the Siri Remote only where SDL builds that subsystem, which the UIKit builds of the engine leave out.
@@ -484,6 +485,10 @@ SDL connects the scene of a UIKit app on iOS, iPadOS, Mac Catalyst, tvOS and vis
 #### sdl-uikit-tvos-mouse.patch
 
 SDL reads mice through GameController on iOS, iPadOS and tvOS only when the `Info.plist` sets `UIApplicationSupportsIndirectInputEvents`, which makes iOS tell the touches of a pointer apart from the touches of a finger. That key exists only on iOS and iPadOS, and tvOS has no such touches, so every tvOS app logged at launch that the key is missing. The patch reads mice on tvOS without the key.
+
+#### sdl-uikit-pointer.patch
+
+SDL reads the buttons and the wheel of every mouse that GameController knows through GameController alone, on iPadOS, Mac Catalyst and visionOS, and drops the clicks that UIKit reports for the pointer meanwhile. GameController sees only the mice of the hardware, so the clicks of Voice Control, Switch Control, Mouse Keys, remote control and UI tests never reached the app. The patch keeps the lock state of the scene of the window from the notifications of UIKit. While the scene does not lock the pointer, the buttons come from the pointer of UIKit, which reports the clicks of every source, and the runtime reads the scrolls from UIKit through `HaylenScrollGesture`. While the scene locks the pointer, UIKit reports no pointer, so GameController reports the buttons, the wheel and the movement. On tvOS, which has no pointer of UIKit, GameController reports every mouse.
 
 #### sdl-uikit-frame-rate.patch
 

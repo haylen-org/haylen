@@ -856,7 +856,6 @@ elseif(APPLE)
     src/platform/apple/AppleFold.mm
     src/platform/apple/AppleFonts.mm
     src/platform/apple/AppleOutputs.mm
-    src/platform/apple/AppleKeyboard.mm
     src/platform/apple/AppleLanguages.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleOrientation.mm
@@ -896,6 +895,7 @@ elseif(APPLE)
     src/platform/apple/HaylenScreen.mm
     src/platform/apple/HaylenScreenController.mm
     src/platform/apple/HaylenScreenSceneDelegate.mm
+    src/platform/apple/HaylenScrollGesture.mm
     src/platform/apple/HaylenTextEditor.mm
     src/platform/apple/HaylenTextField.mm
     src/platform/apple/HaylenTextView.mm

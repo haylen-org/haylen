@@ -647,9 +647,9 @@ jobs:
       - name: Let the UI tests drive the Mac
         run: sudo automationmodetool enable-automationmode-without-authentication
       - name: UI tests of the macOS app
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target macos --ui-test MacTextInputTests
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target macos --ui-test MacTextInputTests --ui-test KeyboardTests
       - name: UI tests of the Mac Catalyst app
-        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target catalyst --ui-test MacTextInputTests
+        run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/tests --target catalyst --ui-test MacTextInputTests --ui-test KeyboardTests
       - name: Start Tiny Island on macOS
         run: uv run --locked haylen --verbose --jobs ${{ env.JOBS }} test --ui samples/games/tiny-island --target macos
       - name: Start Tiny Island on Mac Catalyst

@@ -20,6 +20,7 @@
 #import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
 #import "platform/apple/HaylenOverlayLayer.h"
+#import "platform/apple/HaylenScrollGesture.h"
 #import "platform/sdl/apple/HaylenRootViewController.h"
 #import "platform/sdl/apple/HaylenSceneDelegate.h"
 #endif
@@ -61,8 +62,8 @@ void AppleApplication::prepareWindow([[maybe_unused]] const core::AppConfig& con
 #endif
 }
 
-// The view of the app holds the overlay of the plugins and the elements of screen readers, and above them the launch screen until the splash ends. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.
-void AppleApplication::finishLaunching(Runtime&) {
+// The view of the app holds the overlay of the plugins and the elements of screen readers, and above them the launch screen until the splash ends, and reads the scrolls of a pointer. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.
+void AppleApplication::finishLaunching([[maybe_unused]] Runtime& runtime) {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     object_setClass(window.rootViewController, HaylenRootViewController.class);
@@ -72,6 +73,10 @@ void AppleApplication::finishLaunching(Runtime&) {
     [HaylenOverlayLayer.shared attachToView:content];
     AppleSplash::cover(window.rootViewController);
     AppleTheme::observe(window);
+#if !TARGET_OS_TV
+    HaylenScrollGesture* scrolls = [[HaylenScrollGesture alloc] initWithDelivery:[&runtime](const Event& event) { runtime.post(event); }];
+    [content addGestureRecognizer:scrolls];
+#endif
     [static_cast<HaylenSceneDelegate*>(window.windowScene.delegate) connectPlugins];
 }
 

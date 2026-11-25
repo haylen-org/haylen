@@ -481,7 +481,7 @@ void Runtime::quit() noexcept {
     running = nullptr;
 }
 
-// The runtime of macOS reads the scrolls of trackpads with their phases on its own, and the keys that reach the native field that edits a text field of the UI belong to that field. UIKit apps read hardware keyboards through GameController, so only the presses of remotes and game controllers, which SDL reports for no keyboard of their own, the keyboard 0, come from SDL there. Fingers count only on the screen itself, not on the trackpads that SDL also reports.
+// The runtime of macOS reads the scrolls of trackpads with their phases on its own, and the keys that reach the native field that edits a text field of the UI belong to that field. UIKit apps take their typed text from the native field alone, and the runtime reads the scrolls of a pointer that the scene does not lock from UIKit, so the wheel of SDL reports only the scrolls of a locked pointer and of the mice of tvOS there. Fingers count only on the screen itself, not on the trackpads that SDL also reports.
 bool Runtime::takes(const SDL_Event& event) const noexcept {
     switch (event.type) {
 #if defined(__APPLE__) && TARGET_OS_OSX
@@ -492,9 +492,6 @@ bool Runtime::takes(const SDL_Event& event) const noexcept {
     case SDL_EVENT_TEXT_INPUT:
         return !AppleApplication::isTextFieldFocused();
 #elif defined(__APPLE__)
-    case SDL_EVENT_KEY_DOWN:
-    case SDL_EVENT_KEY_UP:
-        return event.key.which == 0;
     case SDL_EVENT_TEXT_INPUT:
         return false;
 #elif defined(__EMSCRIPTEN__)

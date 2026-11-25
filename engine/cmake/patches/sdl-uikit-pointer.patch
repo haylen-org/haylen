@@ -1,0 +1,108 @@
+Takes the buttons of a mouse or a trackpad on iPadOS, Mac Catalyst and visionOS from the pointer of UIKit while the scene of the window does not lock the pointer, since UIKit reports the clicks of every source, such as a mouse, a trackpad, Voice Control, Switch Control, remote control and UI tests, while GameController reads only the mice of the hardware. SDL read the buttons and the wheel of every mouse that GameController knows from GameController alone, so no other click reached the app. The view keeps the lock state of the scene from the notifications of UIKit, the buttons come from the pointer of UIKit unless the scene locks the pointer, and GameController reports the buttons and the wheel only while the scene locks it, when UIKit reports neither, and on tvOS, which has no pointer of UIKit. The runtime reads the scrolls of a pointer that the scene does not lock from UIKit itself.
+
+--- a/src/video/uikit/SDL_uikitview.m
++++ b/src/video/uikit/SDL_uikitview.m
+@@ -92,6 +92,10 @@
+             indirectPointerRecognizer.allowedTouchTypes = @[@(UITouchTypeIndirectPointer)];
+             [self addGestureRecognizer:indirectPointerRecognizer];
+         }
++
++        if (@available(iOS 14.0, *)) {
++            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pointerLockStateChanged:) name:UIPointerLockStateDidChangeNotification object:nil];
++        }
+ #endif // !defined(SDL_PLATFORM_TVOS)
+     }
+ 
+@@ -197,9 +201,17 @@
+     SDL_SendMouseMotion(0, sdlwindow, SDL_GLOBAL_MOUSE_ID, false, locationInView.x, locationInView.y);
+ }
+ 
++// The lock of the pointer decides whether the buttons come from UIKit or from GameController.
++- (void)pointerLockStateChanged:(NSNotification *)notification API_AVAILABLE(ios(14.0))
++{
++    UIPointerLockState *state = self.window.windowScene.pointerLockState;
++    UIKit_SetPointerLocked(state != nil && state.isLocked);
++}
++
++// UIKit reports the clicks of every source over a pointer that the scene does not lock, so the buttons come from here unless the scene locks the pointer, when GameController reports them.
+ - (void)indirectPointerPressed:(UITouch *)touch fromEvent:(UIEvent *)event API_AVAILABLE(ios(13.4))
+ {
+-    if (!SDL_HasMouse()) {
++    if (!UIKit_IsPointerLocked()) {
+         int i;
+ 
+         for (i = 1; i <= MAX_MOUSE_BUTTONS; ++i) {
+@@ -228,7 +240,7 @@
+ 
+ - (void)indirectPointerReleased:(UITouch *)touch fromEvent:(UIEvent *)event API_AVAILABLE(ios(13.4))
+ {
+-    if (!SDL_HasMouse()) {
++    if (!UIKit_IsPointerLocked()) {
+         int i;
+         SDL_MouseButtonFlags buttons = SDL_GetMouseState(NULL, NULL);
+ 
+--- a/src/video/uikit/SDL_uikitevents.h
++++ b/src/video/uikit/SDL_uikitevents.h
+@@ -35,6 +35,8 @@
+ 
+ extern void SDL_InitGCMouse(void);
+ extern bool SDL_GCMouseRelativeMode(void);
++extern void UIKit_SetPointerLocked(bool locked);
++extern bool UIKit_IsPointerLocked(void);
+ extern void SDL_QuitGCMouse(void);
+ 
+ #endif // SDL_uikitevents_h_
+--- a/src/video/uikit/SDL_uikitevents.m
++++ b/src/video/uikit/SDL_uikitevents.m
+@@ -297,6 +297,29 @@
+     }
+ }
+ 
++// Whether the scene of the window locks the pointer, which the view keeps from the notifications of UIKit and the handlers of GameController read on their own queue.
++static SDL_AtomicInt pointer_locked;
++
++void UIKit_SetPointerLocked(bool locked)
++{
++    SDL_SetAtomicInt(&pointer_locked, locked ? 1 : 0);
++}
++
++bool UIKit_IsPointerLocked(void)
++{
++    return SDL_GetAtomicInt(&pointer_locked) != 0;
++}
++
++// UIKit reports the buttons and the scrolls of a pointer that the scene does not lock, from any source, such as a mouse, a trackpad, Voice Control, Switch Control, remote control and UI tests, while GameController reads only the mice of the hardware. So GameController reports them only while the scene locks the pointer, when UIKit reports none, and on tvOS, which has no pointer of UIKit.
++static bool IsGCMouseReporting(void)
++{
++#ifdef SDL_PLATFORM_TVOS
++    return true;
++#else
++    return UIKit_IsPointerLocked();
++#endif
++}
++
+ static bool SetGCMouseRelativeMode(bool enabled)
+ {
+     mouse_relative_mode = enabled;
+@@ -306,6 +329,10 @@
+ 
+ static void OnGCMouseButtonChanged(SDL_MouseID mouseID, Uint8 button, BOOL pressed)
+ {
++    if (!IsGCMouseReporting()) {
++        return;
++    }
++
+     Uint64 timestamp = SDL_GetTicksNS();
+     SDL_SendMouseButton(timestamp, SDL_GetMouseFocus(), mouseID, button, pressed);
+ }
+@@ -343,6 +370,10 @@
+     };
+ 
+     mouse.mouseInput.scroll.valueChangedHandler = ^(GCControllerDirectionPad *dpad, float xValue, float yValue) {
++        if (!IsGCMouseReporting()) {
++            return;
++        }
++
+         Uint64 timestamp = SDL_GetTicksNS();
+ 
+         /* Raw scroll values come in here, vertical values in the first axis, horizontal values in the second axis.

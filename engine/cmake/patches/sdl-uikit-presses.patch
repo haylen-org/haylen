@@ -1,4 +1,4 @@
-Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to GameController, through which the engine reads every key with its release, so SDL turns only the presses of remotes and game controllers into keys, whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote, and reads the Siri Remote that the joystick subsystem opens only where SDL builds that subsystem.
+Takes the keys of keyboards on iOS, iPadOS, Mac Catalyst, tvOS and visionOS from the presses of UIKit alone, which carry the keys of every source, such as a hardware keyboard, Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests, while GameController reads only the keyboards of the hardware. So SDL reads no keyboard through GameController, turns every press into a key whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. Outside tvOS, whose focus hands the presses to the view, the view becomes the first responder once it is in a window, since UIKit hands the presses of a keyboard to the first responder. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote, and reads the Siri Remote that the joystick subsystem opens only where SDL builds that subsystem.
 
 --- a/src/video/uikit/SDL_uikitview.m
 +++ b/src/video/uikit/SDL_uikitview.m
@@ -48,37 +48,40 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
      // tvOS doesn't send these for game controllers, but does for the Siri remote
      controller_opened = (SDL_AppleTVRemoteOpenedAsJoystick > 0);
  #else
-@@ -556,42 +539,59 @@
+@@ -556,42 +539,62 @@
      return SDL_SCANCODE_UNKNOWN;
  }
  
 -- (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
-+// The keys of a hardware keyboard reach the app through GameController, except the Escape key of tvOS, which makes the Menu press of the remote.
-+- (BOOL)isKeyboardPress:(UIPress *)press
++#if !defined(SDL_PLATFORM_TVOS)
++// UIKit hands the presses of a keyboard to the first responder, so the view takes them once it is in a window, and a text field that edits holds them until it gives the first responder back.
++- (BOOL)canBecomeFirstResponder
  {
 -    if (!SDL_HasKeyboard()) {
 -        for (UIPress *press in presses) {
 -            SDL_Scancode scancode = [self scancodeFromPress:press];
 -            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
-+#ifdef SDL_PLATFORM_TVOS
-+    return press.key != nil && press.type != UIPressTypeMenu;
-+#else
-+    return press.key != nil;
-+#endif
++    return YES;
 +}
 +
-+// Sends the presses that are no keys of a keyboard as keys, and returns the ones whose key the app dropped through its event filter, which go on to UIKit, such as the Menu press of the remote that leaves the app.
++- (void)didMoveToWindow
++{
++    [super didMoveToWindow];
++    if (self.window != nil) {
++        [self becomeFirstResponder];
++    }
++}
++#endif
++
++// Sends every press as a key, the keys of keyboards from any source, such as a hardware keyboard, Full Keyboard Access, Voice Control, Switch Control, remote control and UI tests, and the buttons of remotes and game controllers, and returns the ones whose key the app dropped through its event filter, which go on to UIKit, such as the Menu press of the remote that leaves the app.
 +- (NSSet<UIPress *> *)sendPresses:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event down:(bool)down
 +{
 +    NSMutableSet<UIPress *> *dropped = [NSMutableSet set];
 +    for (UIPress *press in presses) {
-+        if ([self isKeyboardPress:press]) {
-+            continue;
-         }
 +        SDL_Scancode scancode = [self scancodeFromPress:press];
 +        if (!SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, down)) {
 +            [dropped addObject:press];
-+        }
+         }
      }
 +    return dropped;
 +}
@@ -125,7 +128,7 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
      }
  }
  
-@@ -603,34 +603,6 @@
+@@ -603,34 +606,6 @@
      }
  }
  
@@ -202,3 +205,22 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
  - (void)setView:(UIView *)view
  {
      [super setView:view];
+--- a/src/video/uikit/SDL_uikitvideo.m
++++ b/src/video/uikit/SDL_uikitvideo.m
+@@ -158,7 +158,7 @@
+         return false;
+     }
+ 
+-    SDL_InitGCKeyboard();
++    // Keyboards reach the app through the presses of UIKit, which carry the keys of every source, while GameController reads only the keyboards of the hardware.
+     SDL_InitGCMouse();
+ 
+     UIKit_InitClipboard(_this);
+@@ -174,7 +174,6 @@
+ 
+     UIKit_QuitClipboard(_this);
+ 
+-    SDL_QuitGCKeyboard();
+     SDL_QuitGCMouse();
+     UIKit_QuitPen(_this);
+ 

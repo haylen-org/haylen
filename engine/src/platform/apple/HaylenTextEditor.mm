@@ -243,11 +243,16 @@ using haylen::platform::TextInput;
     }
 }
 
+// The view of the app takes the keys of a hardware keyboard again once no field edits, since UIKit hands them to the first responder.
 - (void)finish {
     editing = NO;
     finishing = YES;
     [current resignFirstResponder];
     finishing = NO;
+#if !TARGET_OS_TV
+    UIView* host = ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).rootViewController.view;
+    [host becomeFirstResponder];
+#endif
 }
 
 - (void)act:(TextInput::Action)action {
