@@ -4,7 +4,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 4 / not set · **Next ID:** KB-304
+**Active WIP:** 4 / not set · **Next ID:** KB-305
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -284,6 +284,7 @@
 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
+| **[KB-304 · O playground do site funcionando 100% com a engine](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -7380,6 +7381,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 5
+- **Depends on:** [KB-031 · Suporte 3D e XR](#kb-031)
 - **Parent:** [KB-280 · Plugins sem limite em toda a engine](#kb-280)
 
 #### Description
@@ -7403,6 +7405,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 7
+- **Depends on:** [KB-031 · Suporte 3D e XR](#kb-031)
 - **Parent:** [KB-280 · Plugins sem limite em toda a engine](#kb-280)
 
 #### Description
@@ -7805,6 +7808,29 @@ Este repositório guarda só a engine. Plugins ficam nos repositórios deles, e 
 - [ ] O `AGENTS.md` e a documentação dizem que só o projeto de testes carrega plugins, que são os de teste do sistema de plugins.
 - [ ] O app de fotos entra e sai da conta pelo httpbin em todas as plataformas, a web inclusive, e mostra cada erro com uma frase clara.
 - [ ] O Tiny Island continua rodando no player sem cabeça e passa nos testes do repositório.
+
+#### Attachments
+
+- None
+
+<a name="kb-304"></a>
+### KB-304 — O playground do site funcionando 100% com a engine
+
+- **Status:** todo
+- **Type:** task
+- **Priority:** medium
+- **Complexity:** 7
+- **Depends on:** [KB-031 · Suporte 3D e XR](#kb-031)
+
+#### Description
+
+O playground do site, que edita e roda apps no navegador sem backend pelo runtime web pré-compilado e pelo contrato do editor (`Module.haylen.editor`), passa por uma revisão completa no navegador: tudo o que não funciona ou funciona pela metade vira um cartão deste quadro, e o playground é refeito onde for preciso para funcionar 100%, com os plugins do [KB-285](#kb-285) e do [KB-286](#kb-286). O que faltar na engine, no runtime web ou no contrato do editor muda aqui, e o que é do site muda no repositório dele. O dono decidiu que este trabalho começa só depois que o 3D estiver pronto por inteiro.
+
+#### Acceptance criteria
+
+- [ ] A revisão está feita no navegador, com cada problema achado registrado num cartão deste quadro.
+- [ ] O playground edita, roda, recarrega e mostra os erros de todos os samples de navegador, com os plugins com parte web, sem nada pela metade.
+- [ ] Os testes de página do site e da engine provam cada fluxo do editor.
 
 #### Attachments
 
