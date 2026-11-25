@@ -8251,7 +8251,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no OpenGL e WebGPU, que
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Todos os itens confirmados estão escritos e esperam o build do Mac antes dos commits. As regras do contrato passam a ser uma só para todo dispositivo, em `gpu::ProgramSlots` e `gpu::ImageRules`, sem cópias em cada dispositivo. Os destroys não alocam em nenhum dispositivo. O V7 virou uma regra nova do contrato, que o dispositivo nulo confere. O incerto V3 ainda vai ser conferido.
+- **Progress:** Todos os itens confirmados estão escritos e esperam o build do Mac antes dos commits. As regras do contrato passam a ser uma só para todo dispositivo, em `gpu::ProgramSlots` e `gpu::ImageRules`, sem cópias em cada dispositivo. Os destroys não alocam em nenhum dispositivo. O V7 traz uma regra nova do contrato, que o dispositivo nulo confere. O incerto V3 ainda vai ser conferido.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
