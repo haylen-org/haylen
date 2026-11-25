@@ -303,8 +303,6 @@ public final class StorePlugin {
 }
 ```
 
-The sign-in of Tiny Island is a real handler of this kind. The local plugin `samples/games/tiny-island/plugins/sign-in` has a `SignInPlugin` that answers `sign-in.signIn` with Credential Manager. It builds the credential option of the identity service with the web client id from the `clientId` parameter of the plugin. It calls `getCredentialAsync` on the main executor of the activity and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `haylen.json` to set.
-
 ### Kotlin coroutines
 
 `HaylenCoroutines.register(method) { params -> result }` registers a Kotlin handler written as a suspending function. Each call runs in a coroutine of a scope on `Dispatchers.Main.immediate`, so it runs on the main thread. The return value answers the call. A thrown exception fails it like `failure(throwable)`. The coroutine is cancelled when the app cancels the call or its timeout passes.

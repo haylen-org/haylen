@@ -1,10 +1,9 @@
--- The settings sheet, shown over the menu or the paused run. It also shows what the system reports about the device and tries the platform bridge with the local plugin sign-in.
+-- The settings sheet, shown over the menu or the paused run. It also shows what the system reports about the device.
 local scene = require('haylen.scene')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
-local signIn = require('sign-in')
 local preferences = require('systems.preferences')
 local sound = require('systems.sound')
 local widgets = require('ui.widgets')
@@ -41,18 +40,6 @@ function settings:enter()
         end}}
     end
 
-    local bridge = {widgets.button('device', 'settings.device', function()
-        local info = system.info()
-        self.gui:set('bridge', {text = string.format('Device "%s", system "%s" %s, language "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', system.languages()[1] or '')})
-    end, {variant = 'default', grow = 1})}
-    if signIn.available then
-        bridge[2] = widgets.button('signIn', 'settings.signIn', function()
-            self:ask(signIn.signIn, function(account)
-                return widgets.text('settings.signedIn', {name = account.name or account.email})
-            end)
-        end, {variant = 'default', grow = 1})
-    end
-
     self.gui = ui.mount(ui.column{
         justify = 'center',
         padding = 48,
@@ -66,8 +53,10 @@ function settings:enter()
             gap = 18,
             ui.label{text = widgets.text('settings.title'), font = 'title', textAlign = 'center', align = 'center'},
             ui.settingsForm{children = rows},
-            ui.row{gap = 24, children = bridge},
-            ui.label{id = 'bridge', text = '', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+            ui.column{width = 420, align = 'center', widgets.button('device', 'settings.device', function()
+                self:showDevice()
+            end, {variant = 'default'})},
+            ui.label{id = 'deviceInfo', text = '', color = 'textMuted', textAlign = 'center', align = 'stretch'},
             ui.column{width = 420, align = 'center', widgets.button('back', 'settings.back', function()
                 self:close()
             end, {sound = 'back'})},
@@ -76,15 +65,10 @@ function settings:enter()
     self.gui:command('back', 'focus')
 end
 
--- Starts a platform call and shows what it answered, or why it failed, under the buttons. The task belongs to the sheet, so an answer that comes after the sheet closed goes nowhere.
-function settings:ask(start, describe)
-    scene.spawn(self, function()
-        local result, err = start():await()
-        if not result then
-            sound.play('error')
-        end
-        self.gui:set('bridge', {text = result and describe(result) or err.message})
-    end)
+function settings:showDevice()
+    local info = system.info()
+    local text = string.format('Device "%s", system "%s" %s, language "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', system.languages()[1] or '')
+    self.gui:set('deviceInfo', {text = text})
 end
 
 function settings:close()

@@ -71,9 +71,7 @@
         "fullscreen": "Fullscreen",
         "touch": "Touch controls",
         "device": "Device info",
-        "signIn": "Sign in",
-        "back": "Back",
-        "signedIn": "Signed in as {name}"
+        "back": "Back"
     },
     "gameOver": {
         "title": "The island fell",

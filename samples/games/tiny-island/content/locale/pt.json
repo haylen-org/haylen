@@ -71,9 +71,7 @@
         "fullscreen": "Tela cheia",
         "touch": "Controles de toque",
         "device": "Dados do aparelho",
-        "signIn": "Entrar",
-        "back": "Voltar",
-        "signedIn": "Conectado como {name}"
+        "back": "Voltar"
     },
     "gameOver": {
         "title": "A ilha caiu",

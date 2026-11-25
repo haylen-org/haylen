@@ -8,7 +8,6 @@ local effects = {
     click = {bus = 'ui', files = {'ui/click.ogg'}},
     confirm = {bus = 'ui', files = {'ui/confirm.ogg'}},
     back = {bus = 'ui', files = {'ui/back.ogg'}},
-    error = {bus = 'ui', files = {'ui/error.ogg'}},
     chop = {bus = 'sfx', files = {'effects/chop.ogg', 'effects/wood-hit-1.ogg', 'effects/wood-hit-2.ogg', 'effects/wood-hit-3.ogg'}},
     treeFall = {bus = 'sfx', files = {'effects/tree-fall.ogg'}},
     pickup = {bus = 'sfx', files = {'effects/wood-pickup.ogg'}, volume = 0.7},

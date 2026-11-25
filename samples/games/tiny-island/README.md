@@ -2,7 +2,7 @@
 
 Tiny Island is a survival game written in Lua on top of Haylen. A survivor lives on an island with a campfire. During the day they chop trees, carry the wood to the fire and hunt sheep for food. At night raiders land on the shores, and only the light of the fire keeps them out. Every piece of wood makes the safe circle larger, the fire burns faster at night and loses fuel with every new day, and an empty belly costs health. The game ends when the survivor falls, and the longest run is saved as the record.
 
-The game uses only the public Lua API of the engine, so it doubles as a worked example of scenes, preload groups, a themed UI, Tiled maps, physics, navigation, particles, lighting, sprite atlases, audio buses, the action map, touch controls, saves, settings, localization and the platform bridge.
+The game uses only the public Lua API of the engine, so it doubles as a worked example of scenes, preload groups, a themed UI, Tiled maps, physics, navigation, particles, lighting, sprite atlases, audio buses, the action map, touch controls, saves, settings, localization and system information.
 
 ## Running it
 
@@ -77,7 +77,7 @@ When the menu loads, `systems/art.lua` packs the atlases of the characters, the 
 
 ## Package layout
 
-The sample folder is the package. Only `haylen.json`, `source/`, `content/` and the `plugin.json` and `source/` of its plugin ship, and the native parts of the plugin reach the projects that the backends generate while this README and the tools stay behind.
+The sample folder is the package. Only `haylen.json`, `source/` and `content/` ship, while this README, the tools and the UI tests stay behind.
 
 ```text
 tiny-island/
@@ -101,8 +101,6 @@ tiny-island/
     audio/               Sounds and music.
     fonts/               The font of the interface with its license.
     preload.json         The boot, menu and gameplay preload groups.
-  plugins/
-    sign-in/             The local plugin that signs the player in: its Lua API, its Android module and its web module.
   tools/
     generate-island-map.py  The island map generator.
   ui-tests/
@@ -111,9 +109,9 @@ tiny-island/
 
 The day runs dawn, day, dusk and night in a loop of 15, 150, 15 and 90 seconds. The file `systems/day-night.lua` counts the days, reports every phase to the run and eases the ambient light from night through a warm dawn into full daylight and back through the dusk color.
 
-## Platform bridge demo
+## Device information
 
-The settings screen shows what `system.info()` of [`haylen.system`](../../../docs/lua-api/system.md) reports about the device and, on Android and the web, signs the player in through the local plugin [`sign-in`](plugins/sign-in) and shows the answer. The sign-in needs the web client id that the identity service of the account gives the game, which `clientId` under `plugins.sign-in` of `haylen.json` gives both platforms. On the other platforms the plugin has only its Lua API, whose `available` is `false`, so the settings screen shows no sign-in there. The plugin holds the native side, a Java plugin class with Credential Manager on Android and a web module with the script of the identity service, which `haylen app run` builds into the generated project of each target, and [the plugin guide](../../../docs/platform/plugins.md) explains how to write plugins of your own.
+The settings screen shows what `system.info()` and `system.languages()` of [`haylen.system`](../../../docs/lua-api/system.md) report about the device: its model, its system with the version and the first language of the person.
 
 ## Credits
 
