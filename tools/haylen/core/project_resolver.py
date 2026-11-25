@@ -54,6 +54,7 @@ class ProjectResolver:
         target_ids = ProjectResolver.target_ids(description, request)
 
         sections = self.sections(app, description.platform)
+        target.backend.check_app(app, description.name)
         loaded = self.plugins.load(request.configuration)
         types = ProjectResolver.contribution_types(self.registry, description.platform)
         resolved = self.plugins.for_platform(loaded, description.platform, types)
@@ -64,7 +65,7 @@ class ProjectResolver:
         native = ProjectResolver.native_libraries(app, resolved.contributions, description.platform)
         package = PackageLayout.of_app(app, {plugin.id: plugin.folder for plugin in resolved.plugins})
         permissions = Frozen.freeze({permission: plugin.id for plugin in resolved.plugins for permission in plugin.manifest.permissions})
-        settings = Frozen.freeze({name: {key: value for key, value in section.items() if key != "minimumSystemVersion"} for name, section in sections.items()})
+        settings, defaulted = ProjectResolver.settings(sections, self.registry.override_sections(), description.platform)
 
         projects = []
         for target_id in target_ids:
@@ -89,6 +90,7 @@ class ProjectResolver:
                     plugins=resolved.plugins,
                     contributions=contributions,
                     settings=settings,
+                    defaulted_settings=defaulted,
                     native_libraries=native,
                     permissions=permissions,
                     minimum_system_version=effective,
@@ -162,6 +164,22 @@ class ProjectResolver:
             if path.is_absolute() or ".." in path.parts or not isinstance(source, str) or not (app.folder / source).exists():
                 problems.append(f'The key "platforms.{name}.files.{destination}" must map a path inside the generated project to a file or folder of the app folder that exists.')
         return problems
+
+    @staticmethod
+    def settings(sections: Mapping[str, Mapping[str, object]], known: Mapping[str, OverrideSection], platform: str) -> tuple[Mapping[str, Mapping[str, object]], Mapping[str, frozenset[str]]]:
+        """Returns the settings of every section that applies to a platform, the ones of the app over the defaults of the backend, with the keys of each section that come from its defaults."""
+        settings: dict[str, dict[str, object]] = {}
+        defaulted: dict[str, frozenset[str]] = {}
+        for name, override in known.items():
+            if platform not in override.platforms:
+                continue
+            given = {key: value for key, value in sections.get(name, {}).items() if key != "minimumSystemVersion"}
+            defaults = {key: value for key, value in override.defaults.items() if key not in given}
+            if name in sections or defaults:
+                settings[name] = {**defaults, **given}
+            if defaults:
+                defaulted[name] = frozenset(defaults)
+        return Frozen.freeze(settings), Frozen.freeze(defaulted)
 
     @staticmethod
     def override_contributions(app: AppManifest, sections: Mapping[str, Mapping[str, object]], known: Mapping[str, OverrideSection], platform: str) -> tuple[Contribution, ...]:

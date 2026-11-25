@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.missing_capability import MissingCapability
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.target_id import TargetId
@@ -29,6 +30,10 @@ class PlatformBackend(ABC):
     @abstractmethod
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         """Finds the tools that a target needs on this machine, without downloading proprietary SDKs or accepting licenses."""
+
+    @abstractmethod
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Fails when a choice of `haylen.json` contradicts a target of the backend, such as an app for iPhones alone and the Mac Catalyst app, before the SDK or the app builds."""
 
     @abstractmethod
     def prepare(self, product: ResolvedProduct, folders: ProductFolders) -> PreparedProject:

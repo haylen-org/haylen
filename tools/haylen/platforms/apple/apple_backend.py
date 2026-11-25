@@ -1,4 +1,5 @@
 from haylen.content.protected_releases import ProtectedReleases
+from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.host import Host
@@ -14,6 +15,7 @@ from haylen.platforms.apple.apple_target import AppleTarget
 from haylen.platforms.apple.apple_targets import AppleTargets
 from haylen.platforms.apple.apple_verifier import AppleVerifier
 from haylen.platforms.apple.background_asset_packs import BackgroundAssetPacks
+from haylen.platforms.apple.ios_devices import IosDevices
 from haylen.platforms.apple.xcode_tools import XcodeTools
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.capability import Capability
@@ -58,6 +60,9 @@ class AppleBackend(PlatformBackend):
             return EnvironmentReport((), (f'Xcode builds the apps of Apple platforms only on macOS, and this machine runs "{Host.system()}".',))
         apple = AppleTargets.of_system(target.system, target.environment)
         return EnvironmentReport((XcodeTools.xcode(), XcodeTools.sdk(apple.sdk, apple.xcode_platform), *XcodeTools.host_tools()), ())
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        IosDevices.check(app, AppleTargets.named(target))
 
     @staticmethod
     def target_of(product: ResolvedProduct) -> AppleTarget:

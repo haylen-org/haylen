@@ -3,6 +3,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from haylen.core.app_kind import AppKind
+from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.folders import Folders
@@ -106,6 +107,9 @@ class PortBackend(PlatformBackend):
             MappingProxyType({LinkedParts.TYPE: part}),
             MappingProxyType({PortAppProject.SECTION: section}),
         )
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         problems = []

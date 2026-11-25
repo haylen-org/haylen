@@ -111,7 +111,7 @@ Everything that an app changes in a generated project is a key of the `platforms
 {
     "platforms": {
         "apple": {"sources": ["native/apple"], "team": "ABCDE12345", "privacy": {"NSPrivacyTracking": false}},
-        "ios": {"infoPlist": {"NSCameraUsageDescription": "The camera scans the cards of the game."}, "minimumSystemVersion": "17.0"},
+        "ios": {"devices": ["iphone"], "infoPlist": {"NSCameraUsageDescription": "The camera scans the cards of the game."}, "minimumSystemVersion": "17.0"},
         "android": {"sources": ["native/android"], "applicationClass": "com.example.mygame.App", "manifest": {"removedPermissions": ["android.permission.VIBRATE"]}},
         "web": {"scripts": ["native/web/app.js"], "files": {"loader.css": "native/web/loader.css"}},
         "windows": {"files": {"resources/app.ico": "art/app.ico"}}
@@ -122,10 +122,13 @@ Everything that an app changes in a generated project is a key of the `platforms
 | Section | Platforms | Keys |
 | --- | --- | --- |
 | `apple` | Every Apple platform. | `sources`: folders and files of Swift, Objective-C, Objective-C++, C and C++ that the app target compiles, such as the bridge handlers. `team`: the development team that signs the apps of devices. `buildSettings`: Xcode build settings of the app target, besides the ones that the backend owns. `privacy`: keys of the privacy manifest. |
-| `ios`, `catalyst`, `tvos`, `visionos`, `macos` | That platform. | `infoPlist`: keys of the `Info.plist`. `entitlements`: the entitlements that the app is signed with. |
+| `ios` | iPhones and iPads. | `devices`: the devices that the app runs on, as [iOS devices](#ios-devices) describe. `infoPlist`: keys of the `Info.plist`. `entitlements`: the entitlements that the app is signed with. |
+| `catalyst`, `tvos`, `visionos`, `macos` | That platform. | `infoPlist`: keys of the `Info.plist`. `entitlements`: the entitlements that the app is signed with. |
 | `android` | Android. | `sources`: the Kotlin and Java folders of the app module. `applicationClass`: the class of the application, where the bridge handlers register. `manifest`: `permissions` to add, `removedPermissions` that the merged manifest leaves out, and `applicationAttributes` of the `<application>` element. |
 | `web` | The web. | `scripts`: the page scripts of the app, which load after the loader. |
 | `windows`, `linux` | That platform. | Only the keys that every section takes. |
+
+A setting that the app leaves out takes the default of its backend, such as both devices of `platforms.ios.devices`, and the command `haylen project inspect` shows every setting of the target with its value and whether it comes from `haylen.json` or from that default.
 
 Every section also takes two keys that the core reads:
 
@@ -335,11 +338,11 @@ The Apple backend serves macOS, Mac Catalyst, iOS and iPadOS, tvOS and visionOS,
 | `HaylenNativeSymbols.mm` | The table of the symbols of the static [native libraries](#native-libraries), when the app links any. |
 | `extensions/<name>/` | The `Info.plist` and entitlements of each app extension of the plugins. |
 
-The build settings of the app target come from the backend: C++20, the bridging header, the device families of the platform, the ad hoc signing of what runs on this Mac, the hardened runtime of macOS and the architectures of the product. The project compiles the Swift of the app and of the app extensions of the plugins in the Swift 6 language mode, as the [platform bridge guide](../platform/platform-bridge.md#swift) describes. The `buildSettings` of the `apple` section come last, so they win over them, except the settings that the backend owns, whose values come from the SDK, the target or `haylen.json`: the architectures, the SDK, the device families and the Mac Catalyst support of the target, `OTHER_LDFLAGS`, the signing, the `Info.plist` file, the deployment targets that `minimumSystemVersion` settles and the name, the bundle identifier and the versions of the app. A key of those stops the preparation with a sentence that names it and where its value comes from, so no setting cancels a constraint of the SDK or the backend. Device builds sign automatically with the development team of `platforms.apple.team`, or else with the team that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration, and a device build without either stops with a sentence that names both.
+The build settings of the app target come from the backend: C++20, the bridging header, the device families of the platform, the ad hoc signing of what runs on this Mac, the hardened runtime of macOS and the architectures of the product. The project compiles the Swift of the app and of the app extensions of the plugins in the Swift 6 language mode, as the [platform bridge guide](../platform/platform-bridge.md#swift) describes. The `buildSettings` of the `apple` section come last, so they win over them, except the settings that the backend owns, whose values come from the SDK, the target or `haylen.json`: the architectures, the SDK and the Mac Catalyst support of the target, the device family, which [iOS devices](#ios-devices) settle on iPhones, iPads and Mac Catalyst, `OTHER_LDFLAGS`, the signing, the `Info.plist` file, the deployment targets that `minimumSystemVersion` settles and the name, the bundle identifier and the versions of the app. A key of those stops the preparation with a sentence that names it and where its value comes from, so no setting cancels a constraint of the SDK or the backend. Device builds sign automatically with the development team of `platforms.apple.team`, or else with the team that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration, and a device build without either stops with a sentence that names both.
 
 The `Info.plist` of each platform in the template is complete. It holds `$(HAYLEN_DISPLAY_NAME)`, `$(MARKETING_VERSION)` and the other build settings for the values of `haylen.json`, and visible defaults such as the scene manifest, `ITSAppUsesNonExemptEncryption`, the statement on export compliance that App Store Connect asks about, and `UIApplicationSupportsIndirectInputEvents`, through which UIKit hands the mouse and the trackpad of an iPad or a Mac to the app as a pointer. The keys of the engine join them:
 
-- The orientations of `orientation` in `haylen.json`, on iPhone and iPad: both landscape orientations for `landscape`, portrait for `portrait`, with portrait upside down on iPad, and every orientation for `any`. The system picks the orientation that an app launches in from that list and the orientation of the device, before any code of the app runs, so a landscape app on an iPhone held upright opens in landscape, with its launch screen, without turning. A foldable iPhone shows an app that lists fewer than every orientation in a box of the size of its outer screen on its inner screen, as it does for every app. While the app runs, its application delegate answers UIKit with the orientations of `haylen.json` or of the lock of [`window.lockOrientation`](../lua-api/window.md#windowlockorientationorientation), which replace the list of the `Info.plist`.
+- The orientations of `orientation` in `haylen.json`, for each device of [iOS devices](#ios-devices): both landscape orientations for `landscape`, portrait for `portrait`, with portrait upside down on iPad, and every orientation for `any`. The system picks the orientation that an app launches in from that list and the orientation of the device, before any code of the app runs, so a landscape app on an iPhone held upright opens in landscape, with its launch screen, without turning. A foldable iPhone shows an app that lists fewer than every orientation in a box of the size of its outer screen on its inner screen, as it does for every app. While the app runs, its application delegate answers UIKit with the orientations of `haylen.json` or of the lock of [`window.lockOrientation`](../lua-api/window.md#windowlockorientationorientation), which replace the list of the `Info.plist`.
 - The status bar that the app launches with, as `UIStatusBarHidden` and `UIStatusBarStyle` from `window.statusBar`.
 - `CADisableMinimumFrameDurationOnPhone`, without which an iPhone shows no app above 60 frames per second, whatever its display refreshes at and whatever `window.frameRate` asks.
 - `LSUIElement` on macOS for an app whose `window.showInTaskbar` is `false`, so macOS never shows its Dock icon, not even while it starts.
@@ -348,6 +351,26 @@ The `Info.plist` of each platform in the template is complete. It holds `$(HAYLE
 The join follows the rule of [how values merge](#how-values-merge): a key that the template, the engine, a plugin and the app give with different values stops the preparation with every origin, so an app that words a key in its own way puts it in its own `Info.plist` through `files` and leaves it out of the plugins, or gives the plugin the words through its parameters. The verification reads the built bundle: its architectures, the frameworks it links, the classes of the plugins, the `Info.plist` keys, the entitlements it is signed with, the privacy declarations and the resources of the plugins.
 
 The asset catalogs of the template carry the Haylen icons, the gradient symbol on the navy `#07112F` of the brand. The iOS icon is an opaque full square that the system masks. The macOS icons put the symbol on a navy rounded plate with a soft drop shadow, on the grid of macOS icons, with every size drawn on its own. The layered tvOS icons have an opaque navy back layer and the symbol on a transparent front layer. The top shelf images show the horizontal logo with its white wordmark on navy.
+
+### iOS devices
+
+The key `platforms.ios.devices` of `haylen.json` names the devices that the iOS app runs on: `"iphone"`, `"ipad"` or both, which is the default. An app that ships for iPhones alone, such as one without screenshots of the iPad for the App Store, names `["iphone"]`, and the project that the backend generates archives for the App Store as it is.
+
+```json
+{
+    "platforms": {
+        "ios": {"devices": ["iphone"]}
+    }
+}
+```
+
+- The device family of the Xcode project, `TARGETED_DEVICE_FAMILY`, is `1` for iPhones, `2` for iPads and `1,2` for both, and the `buildSettings` of the `apple` section never set it.
+- The `Info.plist` lists the orientations of `orientation` for each device: `UISupportedInterfaceOrientations` for iPhones with `UISupportedInterfaceOrientations~ipad` for iPads beside it, and for an app of iPads alone the orientations of iPads in `UISupportedInterfaceOrientations`, which the system reads on every device without a key of its own.
+- No `Info.plist` asks iPadOS for full screen with `UIRequiresFullScreen`. Apple deprecated that key in iPadOS 26, and an app built with the iOS 27 SDK resizes with its scene whatever the key says. The engine follows every size of its scene, so an iPad app runs in every window that iPadOS gives it.
+- An app for iPhones alone also runs on iPads, in the iPhone compatibility mode of iPadOS, while an app for iPads alone does not install on an iPhone.
+- The command `haylen app run --target ios-simulator` takes a simulator of the devices of the app: a booted one of them, or else the first iPhone, or the first iPad for an app of iPads alone. A `--device` that names an iPhone for an app of iPads alone stops with a sentence that says so, on a simulator and on a device.
+- The Mac Catalyst app is the iPad app on a Mac, so the target `catalyst` of an app for iPhones alone stops before anything builds with a sentence that says to add `"ipad"`. An app of iPads alone builds its Mac Catalyst app with the device family `2`.
+- The command `haylen project inspect --target ios` shows the devices with their origin, the key of `haylen.json` or the default of the backend.
 
 ## The Android project
 

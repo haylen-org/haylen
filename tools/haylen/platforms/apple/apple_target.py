@@ -9,7 +9,7 @@ from haylen.platforms.target_description import TargetDescription
 
 @dataclass(frozen=True)
 class AppleTarget:
-    """One Apple target with everything the backend and the engine port know of it: the name that commands take, the system and the platform name of plugins, where it runs, the slice of `Haylen.xcframework` that holds its engine with the SDK of Xcode that builds the slice, the Xcode platform and the target folder of the template that its app target takes, the lists of system frameworks of the engine that it links, the folder suffix of its products, the destination of xcodebuild and the family of its simulators or devices."""
+    """One Apple target with everything the backend and the engine port know of it: the name that commands take, the system and the platform name of plugins, where it runs, the slice of `Haylen.xcframework` that holds its engine with the SDK of Xcode that builds the slice, the Xcode platform and the target folder of the template that its app target takes, the lists of system frameworks of the engine that it links, the device family of a target whose devices the app does not choose, which the iPhone and iPad targets leave empty for `IosDevices`, the folder suffix of its products, the destination of xcodebuild and the family of its simulators or devices."""
 
     TOOLCHAIN = "xcode"
     RUNTIME = "libc++"

@@ -65,7 +65,11 @@ class ProjectInspectCommand(Command):
             terminal.group("Plugins", len(plugins))
             terminal.table(ProjectInspectCommand.PLUGIN_COLUMNS, plugins)
 
-        settings = [(f"platforms.{section}.{key}", json.dumps(setting["value"]), product.app.origin) for section, values in primary.setting_origins().items() for key, setting in values.items()]
+        settings = []
+        for section, values in primary.setting_origins().items():
+            for key, setting in values.items():
+                origin = "The default of the backend" if key in primary.defaulted_settings.get(section, frozenset()) else product.app.origin
+                settings.append((f"platforms.{section}.{key}", json.dumps(setting["value"]), origin))
         if settings:
             terminal.group("Settings", len(settings))
             terminal.table(ProjectInspectCommand.SETTING_COLUMNS, settings)

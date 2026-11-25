@@ -6,6 +6,7 @@ from haylen.content.protected_releases import ProtectedReleases
 from haylen.content.release_entry import ReleaseEntry
 from haylen.content.release_package import ReleasePackage
 from haylen.core.app_kind import AppKind
+from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.repository import Repository
@@ -105,6 +106,9 @@ class WebBackend(PlatformBackend):
             MappingProxyType({WebProject.CONTRIBUTION: module}),
             MappingProxyType({WebBackend.PLATFORM: section}),
         )
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         """Needs CMake and Ninja to link a runtime. Emscripten installs on the first build that links one."""

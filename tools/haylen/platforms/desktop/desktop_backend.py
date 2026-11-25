@@ -10,6 +10,7 @@ from haylen.content.release_package import ReleasePackage
 from haylen.content.steam_depots import SteamDepots
 from haylen.core.app_category import AppCategory
 from haylen.core.app_kind import AppKind
+from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.build_failed import BuildFailed
 from haylen.core.errors.invalid_manifest import InvalidManifest
@@ -122,6 +123,9 @@ class DesktopBackend(PlatformBackend):
             release_profile=system.name,
             description=f"A {system.name.capitalize()} app built with CMake against the desktop SDK, with its installer.",
         )
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         problems = []

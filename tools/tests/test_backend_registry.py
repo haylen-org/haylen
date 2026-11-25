@@ -7,6 +7,7 @@ from haylen.core.errors.incompatible_extension import IncompatibleExtension
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.target_environment import TargetEnvironment
 from haylen.platforms.backend_registry import BackendRegistry
+from haylen.platforms.contract import Contract
 from tests.support.fake_backend import FakeBackend
 from tests.support.fake_port import FakePort
 from tests.support.tooling_fixture import ToolingFixture
@@ -21,7 +22,7 @@ class BackendRegistryTest:
 
     def test_refuses_another_contract_version(self, tmp_path):
         registry = ToolingFixture(tmp_path).registry([FakeBackend.variant("OtherContractBackend", CONTRACT=99)])
-        with pytest.raises(IncompatibleExtension, match=re.escape('The backend "OtherContractBackend" implements the backend contract 99, and this tooling implements 1.')):
+        with pytest.raises(IncompatibleExtension, match=re.escape(f'The backend "OtherContractBackend" implements the backend contract 99, and this tooling implements {Contract.BACKEND}.')):
             registry.target("fake")
 
     def test_an_extension_that_does_not_load_stops_the_commands_that_need_targets(self, tmp_path):

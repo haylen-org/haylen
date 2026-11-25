@@ -17,6 +17,7 @@ from haylen.platforms.apple.apple_native_libraries import AppleNativeLibraries
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
 from haylen.platforms.apple.apple_target import AppleTarget
 from haylen.platforms.apple.info_plist_keys import InfoPlistKeys
+from haylen.platforms.apple.ios_devices import IosDevices
 from haylen.platforms.apple.privacy_manifest import PrivacyManifest
 from haylen.platforms.apple.property_lists import PropertyLists
 from haylen.platforms.apple.splash_catalog import SplashCatalog
@@ -50,7 +51,7 @@ class AppleProject:
         "ONLY_ACTIVE_ARCH": 'the architectures of the target, which "--architecture" chooses',
         "SDKROOT": "the target",
         "SUPPORTS_MACCATALYST": "the target",
-        "TARGETED_DEVICE_FAMILY": "the target",
+        "TARGETED_DEVICE_FAMILY": '"platforms.ios.devices" on iPhones, iPads and Mac Catalyst, and the target elsewhere',
         "OTHER_LDFLAGS": 'the engine SDK and the static native libraries of "native" and the plugins',
         "CODE_SIGN_STYLE": "the signing of the backend",
         "CODE_SIGN_IDENTITY": "the signing of the backend",
@@ -244,8 +245,9 @@ class AppleProject:
             "ONLY_ACTIVE_ARCH": "NO",
             "GCC_PREPROCESSOR_DEFINITIONS": ["$(inherited)", *definitions],
         }
-        if target.device_family:
-            settings["TARGETED_DEVICE_FAMILY"] = target.device_family
+        family = IosDevices.device_family(self.product.app, target)
+        if family:
+            settings["TARGETED_DEVICE_FAMILY"] = family
         if target.folder == "ios":
             settings["SUPPORTS_MACCATALYST"] = "YES" if target.name == "catalyst" else "NO"
             settings["DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER"] = "NO"

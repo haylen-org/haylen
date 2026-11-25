@@ -7,6 +7,7 @@ from haylen.content.protected_release import ProtectedRelease
 from haylen.content.protected_releases import ProtectedReleases
 from haylen.content.release_package import ReleasePackage
 from haylen.core.app_kind import AppKind
+from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.invalid_option import InvalidOption
 from haylen.core.repository import Repository
@@ -85,6 +86,9 @@ class AndroidBackend(PlatformBackend):
             MappingProxyType(AndroidContributions.types()),
             MappingProxyType({AndroidContributions.SECTION: AndroidContributions.section()}),
         )
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         sdk = AndroidSdk(self.context.environment)

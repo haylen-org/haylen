@@ -27,6 +27,7 @@ class ResolvedProject:
     plugins: tuple[ResolvedPlugin, ...]
     contributions: tuple[MergedContribution, ...]
     settings: Mapping[str, Mapping[str, object]]
+    defaulted_settings: Mapping[str, frozenset[str]]
     native_libraries: tuple[NativeLibrary, ...]
     permissions: Mapping[str, str]
     minimum_system_version: ResolvedValue
@@ -39,11 +40,15 @@ class ResolvedProject:
         """Returns a setting of a section of `platforms` in `haylen.json` that applies to this target."""
         return self.settings.get(section, {}).get(key, default)
 
+    def setting_origin(self, section: str, key: str) -> str:
+        """Where a setting comes from: the key of `haylen.json` that gives it, or the default of the backend for a setting that the app leaves out."""
+        if key in self.defaulted_settings.get(section, frozenset()):
+            return f"the default of the backend, since {self.app.origin} sets no platforms.{section}.{key}"
+        return f"{self.app.origin} at platforms.{section}.{key}"
+
     def setting_origins(self) -> dict[str, dict[str, dict[str, object]]]:
-        """The settings of the sections of `platforms` that apply to this target, each with its value and the key of `haylen.json` it comes from, which `project inspect` shows."""
-        return {
-            section: {key: {"value": Frozen.thaw(value), "origin": f"{self.app.origin} at platforms.{section}.{key}"} for key, value in values.items()} for section, values in self.settings.items()
-        }
+        """The settings of the sections of `platforms` that apply to this target, each with its value and where it comes from, which `project inspect` shows."""
+        return {section: {key: {"value": Frozen.thaw(value), "origin": self.setting_origin(section, key)} for key, value in values.items()} for section, values in self.settings.items()}
 
     def describe(self) -> dict[str, object]:
         return {

@@ -5,7 +5,9 @@ from pathlib import Path
 
 from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.tooling_context import ToolingContext
+from haylen.platforms.apple.ios_devices import IosDevices
 from haylen.platforms.device import Device
+from haylen.toolchains.apple_simulators import AppleSimulators
 
 
 class AppleDevices:
@@ -36,7 +38,7 @@ class AppleDevices:
             target = AppleDevices.SIMULATOR_TARGETS[match[1]]
             version = match[2].replace("-", ".")
             for entry in entries:
-                system = AppleDevices.system(match[1], ".iPad" in entry["deviceTypeIdentifier"])
+                system = AppleDevices.system(match[1], AppleSimulators.device_kind(entry) == IosDevices.IPAD)
                 found.append(Device(entry["udid"], entry["name"], "simulator", system, version, entry["state"].lower(), (target,)))
         return found
 

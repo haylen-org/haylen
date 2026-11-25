@@ -2,6 +2,7 @@ from pathlib import Path
 from types import MappingProxyType
 
 from haylen.core.app_kind import AppKind
+from haylen.core.app_manifest import AppManifest
 from haylen.core.configuration import Configuration
 from haylen.core.errors.incompatible_sdk import IncompatibleSdk
 from haylen.core.errors.unsupported_target import UnsupportedTarget
@@ -62,6 +63,9 @@ class PlayerBackend(PlatformBackend):
         )
         capabilities = frozenset({Capability.PREPARE, Capability.BUILD, Capability.VERIFY, Capability.RUN})
         return PlatformDescription(PlayerBackend.NAME, Contract.BACKEND, PlayerBackend.VERSION, (target,), capabilities, ("cmake",), MappingProxyType({}), MappingProxyType({}))
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         if Host.system() in DesktopSystem.names():

@@ -220,12 +220,14 @@ class CommandsTest:
 
         CommandsTest.run(CommandsTest.session(fixture, monkeypatch), ["project", "inspect", str(app), "--target", "fake"])
         lines = fixture.output.getvalue().splitlines()
-        settings = lines.index("Settings  1")
+        settings = lines.index("Settings  2")
         assert re.fullmatch(r"  Setting +Value +Origin", lines[settings + 1])
-        assert re.fullmatch(rf'  platforms\.fake\.signing +"team" +{re.escape(fixture.resolve(app).app.origin)}', lines[settings + 2])
+        assert re.fullmatch(r'  platforms\.fake\.screens +\["small", "large"\] +The default of the backend', lines[settings + 2])
+        assert re.fullmatch(rf'  platforms\.fake\.signing +"team" +{re.escape(fixture.resolve(app).app.origin)}', lines[settings + 3])
 
         described = CommandsTest.run(CommandsTest.session(fixture, monkeypatch, structured=True), ["project", "inspect", str(app), "--target", "fake"])
-        assert described["targets"][0]["settings"] == {"fake": {"signing": {"value": "team", "origin": origin}}}
+        default = f"the default of the backend, since {fixture.resolve(app).app.origin} sets no platforms.fake.screens"
+        assert described["targets"][0]["settings"] == {"fake": {"screens": {"value": ["small", "large"], "origin": default}, "signing": {"value": "team", "origin": origin}}}
 
     def test_a_cpp_app_without_lua_runs_and_warns_once_about_its_lua_files(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         fixture = ToolingFixture(tmp_path)

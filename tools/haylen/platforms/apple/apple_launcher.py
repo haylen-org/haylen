@@ -3,6 +3,7 @@ import re
 import signal
 import subprocess
 
+from haylen.core.errors.unsupported_target import UnsupportedTarget
 from haylen.core.tooling_context import ToolingContext
 from haylen.development.app_run import AppRun
 from haylen.development.development_reach import DevelopmentReach
@@ -10,6 +11,7 @@ from haylen.engine.unified_log import UnifiedLog
 from haylen.platforms.apple.app_bundle import AppBundle
 from haylen.platforms.apple.apple_devices import AppleDevices
 from haylen.platforms.apple.apple_target import AppleTarget
+from haylen.platforms.apple.ios_devices import IosDevices
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.launch_request import LaunchRequest
 from haylen.toolchains.apple_simulators import AppleSimulators
@@ -49,7 +51,7 @@ class AppleLauncher:
                 run.follow(command, environment=environment)
 
     def run_on_simulator(self, product: BuildProduct, launch: LaunchRequest, target: AppleTarget, bundle: AppBundle) -> None:
-        with AppleSimulators(self.context).booted(str(target.family), launch.device) as simulator:
+        with AppleSimulators(self.context).booted(str(target.family), launch.device, IosDevices.of(product.prepared.product.app)) as simulator:
             udid = simulator["udid"]
             self.context.terminal.step(f'Installing the app on the simulator "{simulator["name"]}"')
             self.context.process.run(["xcrun", "simctl", "install", udid, product.path])
@@ -62,6 +64,12 @@ class AppleLauncher:
 
     def run_on_device(self, product: BuildProduct, launch: LaunchRequest, target: AppleTarget, bundle: AppBundle) -> None:
         device = AppleDevices(self.context).device(launch.device, target.name)
+        app = product.prepared.product.app
+        if target.folder == "ios" and device.system != AppleDevices.IPAD and IosDevices.of(app) == (IosDevices.IPAD,):
+            raise UnsupportedTarget(
+                f'The app runs on iPads alone, as "platforms.ios.devices" of `{app.origin}` says, so it does not install on the iPhone "{device.name}". Name an iPad with "--device".',
+                origin=app.origin,
+            )
         self.context.terminal.step(f'Installing the app on "{device.name}"')
         self.context.process.run(["xcrun", "devicectl", "device", "install", "app", "--device", device.identifier, product.path])
         tunnel = AppleDevices(self.context).tunnel_address(device) if launch.development else None

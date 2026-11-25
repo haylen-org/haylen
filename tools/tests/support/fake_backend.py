@@ -1,6 +1,7 @@
 from types import MappingProxyType
 
 from haylen.core.app_kind import AppKind
+from haylen.core.app_manifest import AppManifest
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.target_environment import TargetEnvironment
 from haylen.core.target_id import TargetId
@@ -50,7 +51,11 @@ class FakeBackend(PlatformBackend):
             "packs": ContributionType("packs", platforms, MappingProxyType(exclusive), (), MergeMode.EXCLUSIVE, "Packs."),
             CoreContributions.NATIVE_LIBRARY: CoreContributions.native_library(platforms),
         }
-        section = {"type": "object", "additionalProperties": False, "properties": {"settings": {"type": "object"}, "signing": {"type": "string"}}}
+        section = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {"settings": {"type": "object"}, "signing": {"type": "string"}, "screens": {"type": "array", "default": ["small", "large"]}},
+        }
         sections = {"fake": OverrideSection("fake", platforms, MappingProxyType(section), MappingProxyType({"settings": "settings"}), "The fake platform.")}
         targets = (
             FakeBackend.target("fake", TargetEnvironment.DEVICE, {"arm64": "fake-arm64", "x86_64": "fake-x86_64"}, ("arm64",)),
@@ -76,6 +81,9 @@ class FakeBackend(PlatformBackend):
             release_profile="fake",
             description=f"The fake {environment.value}.",
         )
+
+    def check_app(self, app: AppManifest, target: str) -> None:
+        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         return EnvironmentReport((), ())

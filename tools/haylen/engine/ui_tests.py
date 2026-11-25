@@ -27,6 +27,7 @@ from haylen.engine.ui_test_run import UiTestRun
 from haylen.engine.unified_log import UnifiedLog
 from haylen.engine.windows_ui_tests import WindowsUiTests
 from haylen.platforms.apple.apple_devices import AppleDevices
+from haylen.platforms.apple.ios_devices import IosDevices
 from haylen.platforms.build_product import BuildProduct
 from haylen.platforms.product_folders import ProductFolders
 from haylen.toolchains.apple_simulators import AppleSimulators
@@ -183,7 +184,7 @@ class UiTests:
     def run_on_simulator(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         info = plistlib.loads((product.path / "Info.plist").read_bytes())
         scheme, family = UiTests.PLATFORMS[platform]
-        with AppleSimulators(self.context).booted(family, device) as simulator:
+        with AppleSimulators(self.context).booted(family, device, IosDevices.of(product.prepared.product.app)) as simulator:
             udid = simulator["udid"]
             project = (runner / "HaylenUITests.xcodeproj", scheme, f"id={udid}", runner / "derived")
             self.context.terminal.step("Building the UI test runner")

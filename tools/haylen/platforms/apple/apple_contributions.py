@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 
 from haylen.core.frozen import Frozen
+from haylen.platforms.apple.ios_devices import IosDevices
 from haylen.platforms.contribution_type import ContributionType
 from haylen.platforms.merge_mode import MergeMode
 from haylen.platforms.override_section import OverrideSection
@@ -154,11 +155,16 @@ class AppleContributions:
             )
         }
         for name in AppleContributions.PLATFORM_SECTIONS:
+            schema = platform
+            description = f'The Info.plist keys and entitlements of the "{name}" app.'
+            if name == IosDevices.SECTION:
+                schema = {**platform, "properties": {**platform["properties"], IosDevices.KEY: IosDevices.SCHEMA}}
+                description = 'The devices, Info.plist keys and entitlements of the "ios" app.'
             sections[name] = OverrideSection(
                 name,
                 frozenset({name}),
-                Frozen.freeze(platform),
+                Frozen.freeze(schema),
                 MappingProxyType({"infoPlist": AppleContributions.INFO_PLIST, "entitlements": AppleContributions.ENTITLEMENTS}),
-                f'The Info.plist keys and entitlements of the "{name}" app.',
+                description,
             )
         return MappingProxyType(sections)
