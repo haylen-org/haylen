@@ -450,6 +450,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
+- **Progress:** Escrito, falta compilar: a escrita de imagem do `gpu::Device` leva uma região, que o dispositivo nulo confere, os seis dispositivos copiam só a região, e o `graphics::Device::updateTexture` junta as mudanças de um quadro. O atlas das fontes, o do ImGui, o dos vetores e o das sombras mandam só as suas regiões, o Lua ganha `texture:update(pixels, {region})`, e o benchmark de render ganha uma cena com um glifo novo a cada quadro para a medida.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -473,7 +474,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** Quatro revisões só de leitura, do Vulkan, do Direct3D 11 e 12, do OpenGL com o WebGPU e da camada do SDL3, trouxeram cerca de 45 defeitos candidatos, cada um conferido por um teste ou pelo código antes de ser corrigido. Os mais fortes: o OpenGL e os Direct3D recusam pipelines só de profundidade que o dispositivo nulo e o Metal aceitam, o Vulkan deixa o quadro e as swapchains abertos depois de perder o dispositivo, o SDL manda à janela principal os eventos de janelas de saída já destruídas, o Wayland lista os modos de tela em pontos em vez de pixels, e uma caneta manda eventos de mouse e de toque juntos.
+- **Progress:** Quatro revisões só de leitura, do Vulkan, do Direct3D 11 e 12, do OpenGL com o WebGPU e da camada do SDL3, trouxeram cerca de 45 defeitos candidatos, cada um conferido por um teste ou pelo código antes de ser corrigido. Os mais fortes: o OpenGL e os Direct3D recusam pipelines só de profundidade que o dispositivo nulo e o Metal aceitam, o Vulkan deixa o quadro e as swapchains abertos depois de perder o dispositivo, o SDL manda à janela principal os eventos de janelas de saída já destruídas, o Wayland lista os modos de tela em pontos em vez de pixels, e uma caneta manda eventos de mouse e de toque juntos. As correções do pipeline só de profundidade, do OpenGL que religa o pipeline, dos modos do Wayland em pixels, dos eventos de janelas fechadas e das páginas de upload do Direct3D 12 esperam a compilação. No Wayland, dois monitores iguais têm o mesmo id porque o SDL só entrega o nome do monitor; o dono decidiu por um patch pequeno no SDL que entrega o nome da porta, que vira o id.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
