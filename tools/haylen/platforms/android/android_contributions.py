@@ -18,6 +18,9 @@ class AndroidContributions:
     PROJECT_FILE = "projectFile"
     ASSET_PACKS = "assetPacks"
     SECTION = "android"
+    # The API level that the engine and the template compile against, which the `haylen` library needs at least, and the one that an app targets by default.
+    COMPILE_SDK = 37
+    TARGET_SDK = 37
     PLATFORMS = frozenset({AndroidPlatform.PLATFORM})
     # The pattern of a name of Java and Kotlin, such as the class of the application or a package.
     QUALIFIED_NAME = "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+$"
@@ -90,16 +93,54 @@ class AndroidContributions:
 
     @staticmethod
     def section() -> OverrideSection:
-        names = {"type": "array", "items": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.]*$"}, "uniqueItems": True}
+        name = {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.]*$"}
+        names = {"type": "array", "items": name, "uniqueItems": True}
+        limited = AndroidContributions.object_schema({"name": name, "maxSdkVersion": {"type": "integer", "minimum": 1}}, ("name", "maxSdkVersion"))
+        attribute = {"pattern": "^[a-z][A-Za-z]*$"}
         manifest = {
-            "applicationAttributes": {"type": "object", "propertyNames": {"pattern": "^[a-z][A-Za-z]*$", "not": {"const": "name"}}, "additionalProperties": {"type": "string"}},
-            "permissions": names,
+            "applicationAttributes": {
+                "type": "object",
+                "propertyNames": {**attribute, "not": {"const": "name"}},
+                "additionalProperties": {"type": "string"},
+                "description": "Attributes of the application element, such as allowBackup, which win over the ones of the backend.",
+            },
+            "activityAttributes": {
+                "type": "object",
+                "propertyNames": attribute,
+                "additionalProperties": {"type": "string"},
+                "description": 'Attributes of the activity of the app, such as windowSoftInputMode, besides the ones that the engine needs and the orientation of "orientation", which they may repeat but not change.',
+            },
+            "features": {
+                "type": "object",
+                "propertyNames": name,
+                "additionalProperties": {"type": "boolean"},
+                "description": "The features of the device by their names, such as android.hardware.touchscreen, each true when the app requires it and false when it only uses it. The app uses a touchscreen, both screen orientations, the TV interface and gamepads without requiring them unless it says so.",
+            },
+            "permissions": {
+                "type": "array",
+                "items": {"anyOf": [name, limited]},
+                "uniqueItems": True,
+                "description": "Permissions that the app adds, each a name or an object with its name and the newest API level that it applies to, maxSdkVersion.",
+            },
             "removedPermissions": names,
         }
         properties = {
             "sources": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": True},
             "applicationClass": {"type": "string", "pattern": AndroidContributions.QUALIFIED_NAME},
             "manifest": AndroidContributions.object_schema(manifest, ()),
+            "targetSdkVersion": {
+                "type": "integer",
+                "minimum": 1,
+                "default": AndroidContributions.TARGET_SDK,
+                "description": f"The API level that the app targets, {AndroidContributions.TARGET_SDK} by default, from the oldest API level of the app up to the one that the engine compiles against, {AndroidContributions.COMPILE_SDK}.",
+            },
+            "minify": {"type": "boolean", "default": True, "description": "Whether a release build keeps only the code and the resources that the app reaches, through R8, true by default."},
+            "gradleProperties": {
+                "type": "object",
+                "propertyNames": {"pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"},
+                "additionalProperties": {"type": ["string", "number", "boolean"]},
+                "description": "Properties of gradle.properties, such as org.gradle.jvmargs, which win over the ones of the backend, besides the ones that the engine needs, which they may repeat but not change.",
+            },
         }
         return OverrideSection(
             AndroidContributions.SECTION,

@@ -92,6 +92,15 @@ class ApplePropertyListsTest:
         assert info["CFBundleURLTypes"] == [{"CFBundleURLSchemes": ["demo"]}, {"CFBundleURLSchemes": ["own"]}]
         assert info["UIBackgroundModes"] == ["audio", "fetch"]
 
+    def test_the_app_replaces_the_defaults_of_the_template_and_keeps_its_fixed_keys(self, apple):
+        info = self.info(apple, {"platforms": {"ios": {"infoPlist": {"ITSAppUsesNonExemptEncryption": True, "CFBundleDisplayName": "Garden", "GCSupportsControllerUserInteraction": False}}}})
+        assert info["ITSAppUsesNonExemptEncryption"] is True
+        assert info["CFBundleDisplayName"] == "Garden"
+        assert info["GCSupportsControllerUserInteraction"] is False
+        assert info["UIApplicationSupportsIndirectInputEvents"] is True
+        with pytest.raises(InvalidContribution, match=r'The key "UILaunchStoryboardName" is "LaunchScreen" for the Info\.plist .* and "Own" for "app"'):
+            self.info(apple, {"platforms": {"ios": {"infoPlist": {"UILaunchStoryboardName": "Own"}}}})
+
     def test_a_plugin_that_changes_a_key_of_the_engine_stops_the_preparation(self, apple):
         app = apple.app({"plugins": {"bar": {}}})
         apple.plugin(app, "bar", {"implementations": {"ios": "native"}, "contributions": [{"type": "infoPlist", "platforms": ["ios"], "values": {"UIStatusBarHidden": False}}]})

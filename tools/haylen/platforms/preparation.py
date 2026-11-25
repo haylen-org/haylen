@@ -5,6 +5,8 @@ from pathlib import Path
 from haylen.core.product_inputs import ProductInputs
 from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
+from haylen.core.tooling_context import ToolingContext
+from haylen.platforms.after_prepare_scripts import AfterPrepareScripts
 from haylen.platforms.generated_tree import GeneratedTree
 from haylen.platforms.preparation_state import PreparationState
 from haylen.platforms.prepared_project import PreparedProject
@@ -12,10 +14,10 @@ from haylen.platforms.product_folders import ProductFolders
 
 
 class Preparation:
-    """One preparation of the generated project of a product by a backend: the record that its inputs give, whether the project on disk already matches that record, and the end of a preparation, which deletes the files it no longer writes and records the digest of the generated files. A project matches its record only while its files still have the digest that the record names, so a project that lost a file prepares again.
+    """One preparation of the generated project of a product by a backend: the record that its inputs give, whether the project on disk already matches that record, and the end of a preparation, which deletes the files it no longer writes, runs the `afterPrepare` scripts of the app on the project and records the digest of the project. A project matches its record only while its files still have the digest that the record names, so a project that lost a file prepares again.
 
     ```python
-    preparation = Preparation(product, folders, "web", "1.0.0", template)
+    preparation = Preparation(context, product, folders, "web", "1.0.0", template)
     if preparation.is_current():
         return preparation.unchanged(project)
     tree = GeneratedTree(folders.project)
@@ -24,8 +26,9 @@ class Preparation:
     ```
     """
 
-    def __init__(self, product: ResolvedProduct, folders: ProductFolders, backend: str, version: str, template: Path | None) -> None:
-        """Takes the product, its folders, the backend with its version and the folder of the template that the backend generates from, or nothing for a backend that generates no files of its own."""
+    def __init__(self, context: ToolingContext, product: ResolvedProduct, folders: ProductFolders, backend: str, version: str, template: Path | None) -> None:
+        """Takes the context of the command, the product, its folders, the backend with its version and the folder of the template that the backend generates from, or nothing for a backend that generates no files of its own."""
+        self.context = context
         self.product = product
         self.folders = folders
         self.backend = backend
@@ -78,8 +81,12 @@ class Preparation:
         return PreparedProject(self.product, self.folders, project, self.backend, recorded, False)
 
     def finish(self, tree: GeneratedTree, project: Path) -> PreparedProject:
-        """Deletes the files of the project that this preparation did not write, records the preparation next to the project and returns the prepared project."""
-        tree.finish(frozenset({PreparationState.FILE}))
+        """Deletes the files of the project that this preparation did not write, runs the `afterPrepare` scripts of the app on the project, keeps the files that they write, records the preparation next to the project and returns the prepared project."""
+        kept = frozenset({PreparationState.FILE})
+        tree.finish(kept)
+        if AfterPrepareScripts.of(self.product):
+            AfterPrepareScripts.run(self.context, self.product, self.folders)
+            tree.adopt(kept)
         state = PreparationState(
             generator=self.state.generator,
             backend=self.state.backend,

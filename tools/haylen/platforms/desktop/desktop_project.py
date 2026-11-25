@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -23,6 +24,8 @@ class DesktopProject:
 
     TEMPLATE = Path(__file__).parent / "template"
     VALUES = "app.cmake"
+    WINDOWS_MANIFEST = "resources/app.manifest"
+    EXECUTION_LEVEL = re.compile(r'(<requestedExecutionLevel\b[^>]*\blevel=")([A-Za-z]+)(")')
     # The folders next to the executable of a Linux app, whose names an executable cannot take.
     LINUX_FOLDERS = frozenset({"app", "lib"})
 
@@ -38,10 +41,10 @@ class DesktopProject:
     def write(self, tree: GeneratedTree) -> list[str]:
         """Writes the project into a generated tree and returns the warnings of the files of the app that keep their own values."""
         platform = self.product.platform
-        app = DesktopApp.of(self.product.app)
+        app = DesktopApp.of_product(self.product)
         if platform == "linux" and app.executable in DesktopProject.LINUX_FOLDERS:
             raise InvalidManifest(
-                f'The app folder `{Repository.shown(self.product.app.folder)}` gives the executable "{app.executable}", which is the name of a folder next to the executable of a Linux app. Rename the app folder.',
+                f'The app folder `{Repository.shown(self.product.app.folder)}` gives the executable "{app.executable}", which is the name of a folder next to the executable of a Linux app. Name another executable in "platforms.linux.executableName", or rename the app folder.',
                 origin=self.product.app.origin,
             )
 
@@ -50,12 +53,13 @@ class DesktopProject:
         warnings: list[str] = []
         if platform == "windows":
             files[WindowsResources.HEADER] = (WindowsResources.header(app, self.product.app.origin).encode(), None)
+            files[DesktopProject.WINDOWS_MANIFEST] = (self.windows_manifest(app, self.text(files, DesktopProject.WINDOWS_MANIFEST)).encode(), None)
             if schemes:
                 files[DesktopLinks.SCRIPT] = (DesktopLinks.installer_script(app, schemes).encode(), None)
         else:
             entries = LinuxEntries()
-            entry = entries.complete_entry(DesktopProject.text(files, LinuxEntries.ENTRY), LinuxEntries.keys(app, schemes), self.shown(LinuxEntries.ENTRY))
-            metainfo = entries.complete_metainfo(DesktopProject.text(files, LinuxEntries.METAINFO), LinuxEntries.elements(app), self.shown(LinuxEntries.METAINFO))
+            entry = entries.complete_entry(self.text(files, LinuxEntries.ENTRY), LinuxEntries.keys(app, schemes), self.shown(LinuxEntries.ENTRY))
+            metainfo = entries.complete_metainfo(self.text(files, LinuxEntries.METAINFO), LinuxEntries.elements(app), self.shown(LinuxEntries.METAINFO))
             files[LinuxEntries.ENTRY] = (entry.encode(), None)
             files[LinuxEntries.METAINFO] = (metainfo.encode(), None)
             warnings += entries.warnings
@@ -76,16 +80,35 @@ class DesktopProject:
             files |= ProjectFiles.of(self.product.app.folder / source, destination)
         return files
 
+    def windows_manifest(self, app: DesktopApp, text: str) -> str:
+        """The application manifest of a Windows app with the execution level of `platforms.windows.executionLevel`, which a manifest of the app that `files` gives keeps unless the key names another level, which stops with both owners."""
+        found = DesktopProject.EXECUTION_LEVEL.search(text)
+        if found is None:
+            raise InvalidManifest(
+                f'The application manifest {self.shown(DesktopProject.WINDOWS_MANIFEST)} has no "requestedExecutionLevel", which sets the rights that the app asks Windows for. Keep the one of the template.',
+                origin=self.product.app.origin,
+            )
+        own = DesktopProject.WINDOWS_MANIFEST in Frozen.thaw(self.product.primary.settings.get("windows", {}).get("files", {}))
+        given = "executionLevel" not in self.product.primary.defaulted_settings.get("windows", frozenset())
+        if own and not given:
+            return text
+        if own and found[2] != app.execution_level:
+            raise InvalidManifest(
+                f'The application manifest {self.shown(DesktopProject.WINDOWS_MANIFEST)} asks for the level "{found[2]}", while "platforms.windows.executionLevel" of `{self.product.app.origin}` gives "{app.execution_level}". Remove the key, or make them agree.',
+                origin=self.product.app.origin,
+            )
+        return DesktopProject.EXECUTION_LEVEL.sub(lambda match: f"{match[1]}{app.execution_level}{match[3]}", text, count=1)
+
     def shown(self, relative: str) -> str:
         section = self.product.primary.settings.get(self.product.platform, {})
         own = Frozen.thaw(section.get("files", {})).get(relative)
         return Repository.shown(self.product.app.folder / own) if own else f"the template {relative}"
 
-    @staticmethod
-    def text(files: dict[str, tuple[bytes, int | None]], relative: str) -> str:
+    def text(self, files: dict[str, tuple[bytes, int | None]], relative: str) -> str:
+        platform = self.product.platform
         if relative not in files:
             raise InvalidManifest(
-                f'The Linux project has no "{relative}", which the tooling completes with the values of "haylen.json". Map it to a file of the app in the "files" of the section "linux", or leave it to the template.'
+                f'The {platform.capitalize()} project has no "{relative}", which the tooling completes with the values of "haylen.json". Map it to a file of the app in the "files" of the section "{platform}", or leave it to the template.'
             )
         return files[relative][0].decode("utf-8")
 
@@ -109,6 +132,7 @@ class DesktopProject:
         if platform == "windows":
             debug = product.request.engine_configuration is Configuration.DEBUG
             values["HAYLEN_MSVC_RUNTIME"] = "MultiThreadedDebugDLL" if debug else "MultiThreadedDLL"
+            values["HAYLEN_APP_MINIMUM_SYSTEM"] = str(product.primary.minimum_system_version.value)
         lines = [
             "# The values of haylen.json and the build of the executable of the app with the installed desktop SDK, which the tooling writes.",
             *(f"set({name} {CMakeApp.text(value)})" for name, value in values.items()),
@@ -118,5 +142,5 @@ class DesktopProject:
         if installer_links:
             lines.append(f'set(CPACK_INNOSETUP_EXTRA_SCRIPTS "${{CMAKE_CURRENT_LIST_DIR}}/{DesktopLinks.SCRIPT}")')
         bootstrap = f'"${{CMAKE_CURRENT_LIST_DIR}}/{ProtectedReleases.BOOTSTRAP_FILE}"' if self.bootstrap is not None else None
-        lines += CMakeApp.lines(product.app, "main", '"${HAYLEN_APP_CONTENT}"', bootstrap)
+        lines += CMakeApp.lines(product.app, "main", '"${HAYLEN_APP_CONTENT}"', bootstrap, console=app.console)
         return "\n".join([*lines, ""])

@@ -226,7 +226,7 @@ class DesktopProjectTest:
         assert WindowsResources.read(DesktopProjectTest.executable(manifest), WindowsResources.MANIFEST) == [manifest]
         assert WindowsResources.read(b"not an executable", WindowsResources.MANIFEST) == []
 
-        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, AppCategory.GAME, "", "", "", "", "sky-garden")
+        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, AppCategory.GAME, "", "", "", "", "sky-garden", False, "asInvoker")
         installed = tmp_path / "installed"
         native = tmp_path / "native"
         (installed / "app").mkdir(parents=True)
@@ -250,7 +250,7 @@ class DesktopProjectTest:
         ]
 
     def test_a_linux_app_needs_its_desktop_entry_named_after_the_identifier(self, tmp_path: Path):
-        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, AppCategory.GAME, "", "", "", "", "sky-garden")
+        app = DesktopApp("Sky Garden", "com.haylen.skygarden", "1.0", 1, AppCategory.GAME, "", "", "", "", "sky-garden", False, "asInvoker")
         installed = tmp_path / "installed"
         (installed / "lib" / "sky-garden" / "app").mkdir(parents=True)
         (installed / "lib" / "sky-garden" / "app" / "haylen.json").write_text("{}", encoding="utf-8")

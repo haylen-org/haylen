@@ -7,6 +7,22 @@ from haylen.platforms.apple.ios_devices import IosDevices
 class InfoPlistKeys:
     """The keys that the engine gives the Info.plist of an app from `haylen.json`: on iPhones and iPads the orientations of `orientation` for each device of "platforms.ios.devices", which the system launches the app in, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone` and the status bar the app launches with, on macOS whether the app shows in the Dock, and on macOS and Mac Catalyst the category of the Mac App Store and the Finder from `category`, which an app without one leaves out."""
 
+    # The keys of the template that hold their values: the identity and versions of the app from `haylen.json`, the scenes that the engine runs in, the launch screen, which the App Store requires from iOS 27, the application class of macOS and the oldest system version, which "minimumSystemVersion" settles. The other keys of the template are defaults that the plugins and the app replace.
+    FIXED = frozenset(
+        {
+            "CFBundleExecutable",
+            "CFBundleIdentifier",
+            "CFBundleInfoDictionaryVersion",
+            "CFBundleName",
+            "CFBundlePackageType",
+            "CFBundleShortVersionString",
+            "CFBundleVersion",
+            "LSMinimumSystemVersion",
+            "NSPrincipalClass",
+            "UIApplicationSceneManifest",
+            "UILaunchStoryboardName",
+        }
+    )
     LANDSCAPE = ("UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight")
     PHONE_ORIENTATIONS = {"landscape": LANDSCAPE, "portrait": ("UIInterfaceOrientationPortrait",), "any": ("UIInterfaceOrientationPortrait", *LANDSCAPE)}
     PAD_ORIENTATIONS = {

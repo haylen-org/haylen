@@ -1,4 +1,6 @@
+import html
 import json
+import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -27,6 +29,9 @@ class WebProject:
     SCRIPTS = "scripts"
     PLUGINS = "plugins"
     PLACEHOLDER = "{{SCRIPTS}}"
+    # The token of the language of the page in "index.html", which a page that "files" gives may leave out.
+    LANGUAGE = "{{LANGUAGE}}"
+    DEFAULT_LANGUAGE = "en"
     LOADER = "loader.js"
     CONTRIBUTION = "webModule"
 
@@ -38,6 +43,20 @@ class WebProject:
     def links_runtime(product: ResolvedProduct) -> bool:
         """Whether the build links a runtime for the app, which a release and a C++ app do, instead of taking the prebuilt web player."""
         return product.configuration is Configuration.RELEASE or product.app.kind is AppKind.CPP
+
+    def language(self) -> str:
+        """The language of the page, the fallback language of the `localization` of `haylen.json` in the form of BCP 47 that the engine reads it in, such as `pt-BR` for `pt_br`, which screen readers and the translation of browsers read, or English for an app without one."""
+        given = str(self.product.app.section("localization").get("fallback", WebProject.DEFAULT_LANGUAGE))
+        parts = [part for part in re.split(r"[-_]", given) if part]
+        subtags = [parts[0].lower()] if parts else [WebProject.DEFAULT_LANGUAGE]
+        for part in parts[1:]:
+            if len(part) == 4 and part.isalpha():
+                subtags.append(part.capitalize())
+            elif len(part) == 2 and part.isalpha():
+                subtags.append(part.upper())
+            else:
+                subtags.append(part.lower())
+        return "-".join(subtags)
 
     def write(self, tree: GeneratedTree) -> None:
         files = ProjectFiles.of(WebProject.TEMPLATE, "")
@@ -55,7 +74,8 @@ class WebProject:
                 origin=self.product.app.origin,
             )
         tags = "\n    ".join(f'<script src="{source}"></script>' for source in [WebProject.LOADER, *(f"{WebProject.SCRIPTS}/{script}" for script in scripts)])
-        files["index.html"] = (index[0].replace(WebProject.PLACEHOLDER.encode(), tags.encode()), index[1])
+        page = index[0].replace(WebProject.PLACEHOLDER.encode(), tags.encode()).replace(WebProject.LANGUAGE.encode(), html.escape(self.language()).encode())
+        files["index.html"] = (page, index[1])
 
         splash = WebSplash.of(self.product)
         files[splash.file] = (splash.logo.read_bytes(), None)

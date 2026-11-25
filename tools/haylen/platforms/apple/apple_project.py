@@ -12,6 +12,7 @@ from haylen.core.repository import Repository
 from haylen.core.resolved_product import ResolvedProduct
 from haylen.core.tooling_context import ToolingContext
 from haylen.platforms.apple.app_extension import AppExtension
+from haylen.platforms.apple.apple_build_settings import AppleBuildSettings
 from haylen.platforms.apple.apple_contributions import AppleContributions
 from haylen.platforms.apple.apple_native_libraries import AppleNativeLibraries
 from haylen.platforms.apple.apple_sdk_files import AppleSdkFiles
@@ -44,30 +45,10 @@ class AppleProject:
     MODULE = "HaylenApp"
     BRIDGING_HEADER = "HaylenBridging.h"
     SPLASH_LOGO = "splash-logo.svg"
-    # The build settings that the backend owns, by where their values come from, which `platforms.apple.buildSettings` may not set, since another value would cancel a constraint of the SDK, the target or `haylen.json`.
-    OWNED_SETTINGS = {
-        "ARCHS": 'the architectures of the target, which "--architecture" chooses',
-        "EXCLUDED_ARCHS": 'the architectures of the target, which "--architecture" chooses',
-        "ONLY_ACTIVE_ARCH": 'the architectures of the target, which "--architecture" chooses',
-        "SDKROOT": "the target",
-        "SUPPORTS_MACCATALYST": "the target",
-        "TARGETED_DEVICE_FAMILY": '"platforms.ios.devices" on iPhones, iPads and Mac Catalyst, and the target elsewhere',
-        "OTHER_LDFLAGS": 'the engine SDK and the static native libraries of "native" and the plugins',
-        "CODE_SIGN_STYLE": "the signing of the backend",
-        "CODE_SIGN_IDENTITY": "the signing of the backend",
-        "DEVELOPMENT_TEAM": '"platforms.apple.team" or the variable "HAYLEN_APPLE_TEAM"',
-        "CODE_SIGN_ENTITLEMENTS": 'the entitlements that the backend joins from the "entitlements" of the sections and the plugins',
-        "INFOPLIST_FILE": 'the Info.plist that the backend joins from the "infoPlist" of the sections and the plugins',
-        "GENERATE_INFOPLIST_FILE": 'the Info.plist that the backend joins from the "infoPlist" of the sections and the plugins',
-        "IPHONEOS_DEPLOYMENT_TARGET": 'the oldest system version, which "minimumSystemVersion" of the section of the platform settles',
-        "MACOSX_DEPLOYMENT_TARGET": 'the oldest system version, which "minimumSystemVersion" of the section of the platform settles',
-        "TVOS_DEPLOYMENT_TARGET": 'the oldest system version, which "minimumSystemVersion" of the section of the platform settles',
-        "XROS_DEPLOYMENT_TARGET": 'the oldest system version, which "minimumSystemVersion" of the section of the platform settles',
-        "PRODUCT_NAME": '"name" of "haylen.json"',
-        "PRODUCT_BUNDLE_IDENTIFIER": '"identifier" of "haylen.json"',
-        "MARKETING_VERSION": '"version" of "haylen.json"',
-        "CURRENT_PROJECT_VERSION": '"build" of "haylen.json"',
-    }
+    # The SDK that the project names for each platform of Xcode, whose simulator the destination of a build picks.
+    SDKROOTS = {"macOS": "macosx", "iOS": "iphoneos", "tvOS": "appletvos", "visionOS": "xros"}
+    # The setting of the oldest system version of each platform of Xcode.
+    DEPLOYMENT_TARGETS = {"macOS": "MACOSX_DEPLOYMENT_TARGET", "iOS": "IPHONEOS_DEPLOYMENT_TARGET", "tvOS": "TVOS_DEPLOYMENT_TARGET", "visionOS": "XROS_DEPLOYMENT_TARGET"}
     # The files of the template that every target takes from the root of the template, besides the files of the folder of its platform.
     ROOT_FILES = ("main.m", BRIDGING_HEADER)
     # The bootstrap of a Debug build reads the package as it is and stops a build of the project where the preprocessor marks a release, which needs the protected release.
@@ -99,7 +80,7 @@ class AppleProject:
         return str(self.folders.project / name)
 
     def generate(self) -> GeneratedTree:
-        """Writes every file of the project and returns the tree, whose `finish` the preparation calls, and generates the Xcode project when its spec changed or it is missing."""
+        """Writes every file of the project and returns the tree, whose `finish` the preparation calls before `generate_xcode_project`."""
         files = self.template_files()
         for name, path in files.items():
             if name != AppleProject.INFO_PLIST:
@@ -120,13 +101,15 @@ class AppleProject:
         spec = self.spec(entitlements, native, extensions)
         header = f"# Written by the Apple backend for XcodeGen {XcodeGen.VERSION} from `haylen.json`, the plugins of the app and the engine SDK.\n"
         self.tree.write_bytes(AppleProject.SPEC, (header + json.dumps(spec, indent=4) + "\n").encode("utf-8"))
+        return self.tree
 
+    def generate_xcode_project(self) -> None:
+        """Generates the Xcode project from the spec once the preparation ended, with the changes of the `afterPrepare` scripts of the app, when the spec changed or the Xcode project is missing."""
         if AppleProject.SPEC in self.tree.changed or not (self.xcode_project / "project.pbxproj").is_file():
             self.context.terminal.step(f"Generating `{Repository.shown(self.xcode_project)}` with XcodeGen")
             self.folders.build.mkdir(parents=True, exist_ok=True)
             command = [XcodeGen.path(self.context), "generate", "--quiet", "--spec", self.folders.project / AppleProject.SPEC, "--project", self.folders.build, "--project-root", self.folders.build]
             self.context.process.run(command, cwd=self.folders.project)
-        return self.tree
 
     def template_files(self) -> dict[str, Path]:
         """The files of the template of the platform by their path in the project, with the `files` of the sections of `haylen.json` in place of the template files and folders they name."""
@@ -184,10 +167,14 @@ class AppleProject:
         return [(AppleProject.origin(contribution), contribution.fields["values"]) for contribution in self.project.of_type(kind)]
 
     def write_info_plist(self, template: Path) -> None:
-        """Writes the Info.plist of the app target: the one of the template, or the one that `files` gives, with the keys of the engine and the `infoPlist` keys of the plugins and the app."""
-        base = (f"the Info.plist `{Repository.shown(template)}`", PropertyLists.read(template))
+        """Writes the Info.plist of the app target: the one of the template, or the one that `files` gives, with the keys of the engine and the `infoPlist` keys of the plugins and the app. The keys of the template that `InfoPlistKeys.FIXED` names hold their values, and its other keys are defaults that the plugins and the app replace."""
+        values = PropertyLists.read(template)
+        fixed = {key: value for key, value in values.items() if key in InfoPlistKeys.FIXED}
+        base = (f"the Info.plist `{Repository.shown(template)}`", fixed)
         engine = (f"the engine from `{self.product.app.origin}`", InfoPlistKeys.of(self.product.app, self.target))
         joined = PropertyLists.join([base, engine, *self.contributed(AppleContributions.INFO_PLIST)], f'the Info.plist of "{self.target.name}"')
+        for key, value in values.items():
+            joined.setdefault(key, value)
         self.tree.write_bytes(AppleProject.INFO_PLIST, PropertyLists.dumps(joined))
 
     def write_entitlements(self) -> bool:
@@ -224,8 +211,8 @@ class AppleProject:
         """A path in a list of build settings, which Xcode splits at every space that no quotes hold, so a folder whose name holds a space stays one path."""
         return f'"{path}"'
 
-    def settings(self, native: AppleNativeLibraries.Placement) -> dict:
-        """The build settings of the app target, with the `buildSettings` of the `apple` section of `haylen.json` last, so they win."""
+    def settings(self, native: AppleNativeLibraries.Placement, entitlements: bool) -> dict:
+        """The build settings of the app target, with the `buildSettings` of the `apple` section of `haylen.json` joined over them."""
         target = self.target
         architectures = " ".join(project.target.architecture for project in self.product.projects)
         sdk_settings = json.loads(self.sdk.file(AppleSdkFiles.SETTINGS).read_text(encoding="utf-8"))
@@ -245,6 +232,8 @@ class AppleProject:
             "ONLY_ACTIVE_ARCH": "NO",
             "GCC_PREPROCESSOR_DEFINITIONS": ["$(inherited)", *definitions],
         }
+        if entitlements:
+            settings["CODE_SIGN_ENTITLEMENTS"] = self.in_project(AppleProject.ENTITLEMENTS)
         family = IosDevices.device_family(self.product.app, target)
         if family:
             settings["TARGETED_DEVICE_FAMILY"] = family
@@ -267,20 +256,52 @@ class AppleProject:
             settings["DEVELOPMENT_TEAM"] = self.team()
         else:
             settings["CODE_SIGN_IDENTITY"] = "-"
+        return AppleBuildSettings.join(settings, self.owned_settings(settings, entitlements), self.given_settings(), self.product.app.origin)
 
-        given = Frozen.thaw(self.project.setting(AppleContributions.APPLE_SECTION, "buildSettings", {}))
-        owned = [name for name in given if name in AppleProject.OWNED_SETTINGS]
-        if owned:
-            problems = "\n".join(f'  The key "platforms.apple.buildSettings.{name}" sets a value that comes from {AppleProject.OWNED_SETTINGS[name]}.' for name in owned)
-            raise InvalidManifest(
-                f"The file `{self.product.app.origin}` sets build settings that the Apple backend owns, so they would cancel a constraint of the SDK, the target or the app. Remove them:\n{problems}",
-                origin=self.product.app.origin,
-            )
-        return {**settings, **given}
+    def given_settings(self) -> dict[str, object]:
+        return dict(Frozen.thaw(self.project.setting(AppleContributions.APPLE_SECTION, "buildSettings", {})))
+
+    def owned_settings(self, settings: Mapping[str, object], entitlements: bool) -> dict[str, AppleBuildSettings.Owned]:
+        """The settings whose values another owner settles, with their values and owners, which a setting of the app may repeat but not contradict."""
+        app = self.product.app
+        target = self.target
+        command = 'the target, or "--architecture" of the command,'
+        minimum = self.project.minimum_system_version
+        owned = {
+            "ARCHS": AppleBuildSettings.Owned(str(settings["ARCHS"]), command, words=True),
+            "EXCLUDED_ARCHS": AppleBuildSettings.Owned("", command, words=True),
+            "ONLY_ACTIVE_ARCH": AppleBuildSettings.Owned("NO", command),
+            "SDKROOT": AppleBuildSettings.Owned(AppleProject.SDKROOTS[target.xcode_platform], f'the target "{target.name}"'),
+            "SUPPORTS_MACCATALYST": AppleBuildSettings.Owned(str(settings.get("SUPPORTS_MACCATALYST", "NO")), f'the target "{target.name}"'),
+            "TARGETED_DEVICE_FAMILY": AppleBuildSettings.Owned(str(settings.get("TARGETED_DEVICE_FAMILY", "")), self.family_owner(), words=True),
+            AppleProject.DEPLOYMENT_TARGETS[target.xcode_platform]: AppleBuildSettings.Owned(str(minimum.value), f"the oldest system version from {minimum.origin}"),
+            "PRODUCT_NAME": AppleBuildSettings.Owned(app.name, f'"name" of `{app.origin}`'),
+            "PRODUCT_BUNDLE_IDENTIFIER": AppleBuildSettings.Owned(app.identifier, f'"identifier" of `{app.origin}`'),
+            "MARKETING_VERSION": AppleBuildSettings.Owned(app.version, f'"version" of `{app.origin}`'),
+            "CURRENT_PROJECT_VERSION": AppleBuildSettings.Owned(str(app.build), f'"build" of `{app.origin}`'),
+            "INFOPLIST_FILE": AppleBuildSettings.Owned(str(settings["INFOPLIST_FILE"]), 'the Info.plist that joins the template, the engine, the plugins and the "infoPlist" of the app'),
+            "GENERATE_INFOPLIST_FILE": AppleBuildSettings.Owned("NO", 'the Info.plist that joins the template, the engine, the plugins and the "infoPlist" of the app'),
+            "CODE_SIGN_ENTITLEMENTS": AppleBuildSettings.Owned(
+                self.in_project(AppleProject.ENTITLEMENTS) if entitlements else "", 'the entitlements that join the plugins and the "entitlements" of the app'
+            ),
+        }
+        team = self.named_team()
+        if team is not None:
+            owned["DEVELOPMENT_TEAM"] = AppleBuildSettings.Owned(team, f'"platforms.apple.team" of `{app.origin}`')
+        return owned
+
+    def family_owner(self) -> str:
+        if self.target.folder == "ios":
+            return f'"platforms.ios.devices" of `{self.product.app.origin}`'
+        return f'the target "{self.target.name}"'
+
+    def named_team(self) -> str | None:
+        team = self.project.setting(AppleContributions.APPLE_SECTION, "team")
+        return str(team) if team else None
 
     def team(self) -> str:
-        """The development team that signs the apps of devices: the `team` of the `apple` section of `haylen.json`, or else the team of this machine that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration."""
-        team = self.project.setting(AppleContributions.APPLE_SECTION, "team") or self.context.environment.get("HAYLEN_APPLE_TEAM")
+        """The development team that signs the apps of devices: the `team` of the `apple` section of `haylen.json`, or the `DEVELOPMENT_TEAM` of its `buildSettings`, or else the team of this machine that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration."""
+        team = self.named_team() or self.given_settings().get("DEVELOPMENT_TEAM") or self.context.environment.get("HAYLEN_APPLE_TEAM")
         if not team:
             raise InvalidManifest(
                 f'The apps of "{self.target.name}" are signed with a development team. Name it in "platforms.apple.team" of `{self.product.app.origin}`, or in the variable "HAYLEN_APPLE_TEAM".',
@@ -382,16 +403,8 @@ class AppleProject:
         return packages
 
     def spec(self, entitlements: bool, native: AppleNativeLibraries.Placement, extensions: Mapping[str, dict]) -> dict:
-        settings = self.settings(native)
-        if entitlements:
-            settings["CODE_SIGN_ENTITLEMENTS"] = self.in_project(AppleProject.ENTITLEMENTS)
-        release = {
-            # A release keeps its debug information in a dSYM next to the app and strips the app as it builds, so a release that runs is the one that ships.
-            "DEBUG_INFORMATION_FORMAT": "dwarf-with-dsym",
-            "DEPLOYMENT_POSTPROCESSING": "YES",
-            "STRIP_INSTALLED_PRODUCT": "YES",
-            "STRIP_STYLE": "all",
-        }
+        settings = self.settings(native, entitlements)
+        release = dict(AppleBuildSettings.RELEASE)
         app: dict = {
             "type": "application",
             "platform": self.target.xcode_platform,

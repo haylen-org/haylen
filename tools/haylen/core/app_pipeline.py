@@ -92,7 +92,8 @@ class AppPipeline:
         """Returns the architectures of the request that no installed SDK of the current engine sources holds in the configuration of the engine, which only a build of the SDK makes."""
         description = self.registry.target(request.target).description
         selector = SdkSelector(self.installed_sdks(), Repository.engine_revision())
-        return tuple(target.architecture for target in ProjectResolver.target_ids(description, request) if selector.lacks(target, request.engine_configuration))
+        app = AppManifest.load(request.app_folder)
+        return tuple(target.architecture for target in ProjectResolver.target_ids(description, request, app) if selector.lacks(target, request.engine_configuration))
 
     def backend(self, product: ResolvedProduct, capability: Capability) -> PlatformBackend:
         target = self.registry.target(product.target_name)

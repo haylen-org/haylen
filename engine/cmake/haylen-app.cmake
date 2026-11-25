@@ -91,12 +91,18 @@ function(haylen_place_content target content destination release)
   )
 endfunction()
 
-# Windows apps embed the application manifest of the engine, which selects the Common Controls of version 6 for the controls that native libraries show and UTF-8 as the code page of the process.
-function(haylen_setup_windows_app target)
-  if(WIN32)
-    set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE ON VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target}>")
-    target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/platform/windows/haylen.manifest")
+# Windows apps embed the application manifest of the engine, which selects the Common Controls of version 6 for the controls that native libraries show and UTF-8 as the code page of the process. They run in the windows subsystem, or in the console subsystem with a console of their own, which starts at the same entry point of the runtime.
+function(haylen_setup_windows_app target console)
+  if(NOT WIN32)
+    return()
   endif()
+  set_target_properties(${target} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target}>")
+  if(console)
+    target_link_options(${target} PRIVATE "/ENTRY:WinMainCRTStartup")
+  else()
+    set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE ON)
+  endif()
+  target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/platform/windows/haylen.manifest")
 endfunction()
 
 # Builds a release without the symbols of the app, which stay in the folder `symbols/<target>` of the build tree for crash reports: a dSYM on macOS, the symbol map of Emscripten, the PDB of the public symbols on Windows and a debug file that the stripped binary names elsewhere.
@@ -139,17 +145,18 @@ function(haylen_harden_release target)
 endfunction()
 
 # Builds the binary of an app:
-#   haylen_add_app(<target> LUA|CPP [WITH_LUA] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
+#   haylen_add_app(<target> LUA|CPP [WITH_LUA] [CONSOLE] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
 # - `LUA` links the Lua player of `haylen::player`, which defines the app, and `CPP` compiles the `SOURCES`, which define `haylen::core::Application::create`.
 # - `WITH_LUA` links the Lua layer of `haylen::lua` into a C++ app whose application runs Lua, and a C++ app without it holds nothing of Lua.
+# - `CONSOLE` builds a Windows app in the console subsystem, which opens a console with the app, and the other systems ignore it.
 # - `CONTENT` is the folder that the app ships, the staged package of a Debug build or the protected release of a Release build.
 # - `BOOTSTRAP` is the bootstrap source that the content tool writes for a protected release, which the binary compiles in and which makes the build a release build without symbols.
 # - `WEB_SHELL` is the page of a web app, by default the shell of the engine.
 # On desktops the app is an executable with its content in the folder "app" next to it, on Android the shared library that the activity loads while Gradle takes the content into the assets, and on the web a page that preloads its package or, for a release, streams it from the folder "app" next to it. A port builds the app with the function that `APP_FUNCTION` of its `haylen_port` names.
 function(haylen_add_app target)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "LUA;CPP;WITH_LUA" "CONTENT;BOOTSTRAP;WEB_SHELL" "SOURCES")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "LUA;CPP;WITH_LUA;CONSOLE" "CONTENT;BOOTSTRAP;WEB_SHELL" "SOURCES")
   if(arg_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR "The app \"${target}\" passes \"${arg_UNPARSED_ARGUMENTS}\" to \"haylen_add_app\", which takes \"LUA\" or \"CPP\", \"WITH_LUA\", \"SOURCES\", \"CONTENT\", \"BOOTSTRAP\" and \"WEB_SHELL\".")
+    message(FATAL_ERROR "The app \"${target}\" passes \"${arg_UNPARSED_ARGUMENTS}\" to \"haylen_add_app\", which takes \"LUA\" or \"CPP\", \"WITH_LUA\", \"CONSOLE\", \"SOURCES\", \"CONTENT\", \"BOOTSTRAP\" and \"WEB_SHELL\".")
   endif()
   if(arg_LUA STREQUAL arg_CPP)
     message(FATAL_ERROR "The app \"${target}\" names its kind with exactly one of \"LUA\", for the Lua player of the engine, and \"CPP\", for sources that define \"haylen::core::Application::create\".")
@@ -233,7 +240,7 @@ function(haylen_add_app target)
     set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS ${package_files})
   elseif(NOT ANDROID)
     haylen_place_content(${target} "${content}" "$<TARGET_FILE_DIR:${target}>/app" ${release})
-    haylen_setup_windows_app(${target})
+    haylen_setup_windows_app(${target} "${arg_CONSOLE}")
   endif()
 
   if(release)

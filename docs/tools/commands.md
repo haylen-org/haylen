@@ -31,7 +31,7 @@ The commands that resolve an app for a target share these options:
 | `--target <name>` | The target, such as `ios-simulator`, `android` or `web`, which `haylen doctor` lists. Without it, a Lua app takes `player` and a C++ app takes the target of this machine: `macos`, `windows` or `linux`. |
 | `--config Debug\|Release` | The configuration of the app, `Debug` by default and `Release` for `app package`. A Debug app ships its package as it is and plays in development. A Release app ships its protected release with its bootstrap. |
 | `--engine-config Debug\|Release` | The configuration of the engine SDK that the app links, `Release` by default. A Debug SDK is for debugging the engine itself. |
-| `--architecture <name>` | An architecture to build, such as `arm64` or `x86_64`. It repeats, and the default architectures of the target apply without it. |
+| `--architecture <name>` | An architecture to build, such as `arm64` or `x86_64`. It repeats, and without it the `architectures` of the section of the platform in `haylen.json` apply, or else the default architectures of the target. An architecture outside those `architectures` stops with both owners named. |
 
 The targets of each backend, with their architectures and the systems they build on, are listed in [targets](distribution.md#targets).
 
@@ -257,7 +257,7 @@ Result: `id` and `folder`.
 haylen project inspect [app] [--target] [--config] [--engine-config] [--architecture]
 ```
 
-Shows the resolved project of the app for a target without generating anything. It shows the target, the backend and the SDK slice of every architecture, and the oldest system version with where it comes from and why. It lists the plugins in load order with their parameters. It lists the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from or, for a setting that the app leaves out, the default of the backend, such as `platforms.ios.devices`, and every merged contribution with its owners. Each part is a group with a table.
+Shows the resolved project of the app for a target without generating anything. It shows the target, the backend and the SDK slice of every architecture, and the oldest system version with where it comes from and why. It lists the plugins in load order with their parameters. It lists the settings of the sections of `platforms` that apply to the target, each with the key of `haylen.json` it comes from or, for a setting that the app leaves out, the default of the backend, such as `platforms.ios.devices`, with the `afterPrepare` scripts of the app, and every merged contribution with its owners. Each part is a group with a table.
 
 ```text
 Haylen Tests for web, Debug, with the backend web

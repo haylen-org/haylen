@@ -144,7 +144,7 @@ The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`. Each w
 The file `engine/cmake/haylen-app.cmake` defines the function that builds the binary of an app for the platform of the build.
 
 ```cmake
-haylen_add_app(<target> LUA|CPP [WITH_LUA] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
+haylen_add_app(<target> LUA|CPP [WITH_LUA] [CONSOLE] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
 ```
 
 | Argument | Meaning |
@@ -153,6 +153,7 @@ haylen_add_app(<target> LUA|CPP [WITH_LUA] [SOURCES <files>...] CONTENT <folder>
 | `LUA` | The app runs its Lua modules in the player of the engine. The function links `haylen::player`, whose application runs `source/main.lua`, so a Lua app takes no sources. |
 | `CPP` | The app compiles `SOURCES`, which define `haylen::core::Application::create()`. The function never links the player, so every app holds exactly one application, and without `WITH_LUA` it links nothing of Lua. |
 | `WITH_LUA` | A C++ app whose application runs Lua. The function links the Lua layer `haylen::lua`, as the `cpp.lua` of `haylen.json` asks the backends to. |
+| `CONSOLE` | A Windows app in the console subsystem, which opens a console with the app and starts at the same entry point of the runtime, as `platforms.windows.console` of `haylen.json` asks the desktop backend to. The other systems ignore it. |
 | `SOURCES` | The source files of a C++ app, such as its application and the native handlers of the platform bridge. |
 | `CONTENT` | The folder that the app ships: the staged package of a Debug build, which holds `haylen.json`, `source/`, `content/` and `plugin.json` and `source/` of every plugin, or the protected release of a Release build. The tooling prepares it, and a project that builds the app itself stages it next to its build, as `samples/cpp/embedding` does. |
 | `BOOTSTRAP` | The bootstrap source that the content tool writes for a protected release, which the binary compiles in to open the release. It makes the build a release build without symbols, as [protected releases](#protected-releases) describes. |

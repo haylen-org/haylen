@@ -54,6 +54,16 @@ class WebBackendTest:
             assert "plugins/banner/plugin.json" in archive.namelist()
         assert not (project / WebProject.RUNTIME).exists()
 
+    def test_the_page_speaks_the_fallback_language_of_the_app(self, fixture: DesktopFixture):
+        for name, document, expected in (
+            ("english", {}, "en"),
+            ("brazil", {"localization": {"folder": "languages", "fallback": "pt_br"}}, "pt-BR"),
+            ("chinese", {"localization": {"folder": "languages", "fallback": "zh-hant-tw"}}, "zh-Hant-TW"),
+        ):
+            product = fixture.resolve(fixture.app(document, name), "web")
+            project = WebBackend(fixture.context).prepare(product, DesktopFixture.folders(product)).project
+            assert f'<html lang="{expected}">' in (project / "index.html").read_text(encoding="utf-8")
+
     def test_a_cpp_app_links_a_runtime_of_its_own_against_the_web_sdk(self, fixture: DesktopFixture):
         product = fixture.resolve(fixture.cpp_app(), "web")
         folders = DesktopFixture.folders(product)

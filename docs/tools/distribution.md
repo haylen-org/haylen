@@ -121,19 +121,46 @@ Everything that an app changes in a generated project is a key of the `platforms
 
 | Section | Platforms | Keys |
 | --- | --- | --- |
-| `apple` | Every Apple platform. | `sources`: folders and files of Swift, Objective-C, Objective-C++, C and C++ that the app target compiles, such as the bridge handlers. `team`: the development team that signs the apps of devices. `buildSettings`: Xcode build settings of the app target, besides the ones that the backend owns. `privacy`: keys of the privacy manifest. |
+| `apple` | Every Apple platform. | `sources`: folders and files of Swift, Objective-C, Objective-C++, C and C++ that the app target compiles, such as the bridge handlers. `team`: the development team that signs the apps of devices. `buildSettings`: Xcode build settings of the app target, as [the Apple project](#the-apple-project) describes. `privacy`: keys of the privacy manifest. |
 | `ios` | iPhones and iPads. | `devices`: the devices that the app runs on, as [iOS devices](#ios-devices) describe. `infoPlist`: keys of the `Info.plist`. `entitlements`: the entitlements that the app is signed with. |
 | `catalyst`, `tvos`, `visionos`, `macos` | That platform. | `infoPlist`: keys of the `Info.plist`. `entitlements`: the entitlements that the app is signed with. |
-| `android` | Android. | `sources`: the Kotlin and Java folders of the app module. `applicationClass`: the class of the application, where the bridge handlers register. `manifest`: `permissions` to add, `removedPermissions` that the merged manifest leaves out, and `applicationAttributes` of the `<application>` element. |
+| `android` | Android. | `sources`: the Kotlin and Java folders of the app module. `applicationClass`: the class of the application, where the bridge handlers register. `manifest`: `permissions` to add, `removedPermissions` that the merged manifest leaves out, `applicationAttributes` of the `<application>` element, `activityAttributes` of the activity and the `features` of the device. `targetSdkVersion`, `minify` and `gradleProperties`, as [the Android project](#the-android-project) describes. |
 | `web` | The web. | `scripts`: the page scripts of the app, which load after the loader. |
-| `windows`, `linux` | That platform. | Only the keys that every section takes. |
+| `windows` | Windows. | `executableName`, `console` and `executionLevel`, as [Windows](#windows) describes. |
+| `linux` | Linux. | `executableName`, as [Linux](#linux) describes. |
 
 A setting that the app leaves out takes the default of its backend, such as both devices of `platforms.ios.devices`, and the command `haylen project inspect` shows every setting of the target with its value and whether it comes from `haylen.json` or from that default.
 
-Every section also takes two keys that the core reads:
+Every section also takes the keys that the core reads:
 
 - `minimumSystemVersion`: the oldest system version of the platform that the app supports, in the section named after the platform, such as `platforms.ios` or `platforms.android`, where Android takes an API level such as `"29"`. A section that serves several platforms, such as `apple`, refuses it with a sentence that names the sections of its platforms.
+- `architectures`: the architectures that a build without `--architecture` builds, in the section named after the platform, such as `["arm64-v8a"]` in `platforms.android`. Without it a build takes the default architectures of its target. An `--architecture` that names an architecture outside the list stops with a sentence that names both.
+- `afterPrepare`: a Python script of the app that changes the generated project after every preparation, as [scripts after the preparation](#scripts-after-the-preparation) describe.
 - `files`: paths of the generated project mapped to files or folders of the app, which take the place of the template file or folder at that path. The Apple backend accepts only paths that its template holds, such as `Info.plist`, `LaunchScreen.storyboard` or `Assets.xcassets`, while the other backends also add new files, such as a drawable of Android.
+
+### Scripts after the preparation
+
+The key `afterPrepare` of a section of `platforms` names a Python script of the app folder, such as `native/after-prepare.py`, which changes the generated project in what no key of `haylen.json` reaches, such as a build phase of Xcode or a line of a Gradle script. The tooling runs it with its own Python after every preparation that writes the project, once the backend wrote every file and before the native tools read them, such as XcodeGen on Apple platforms. It runs from the app folder with the folder of the project as its argument and these variables in its environment:
+
+| Variable | Value |
+| --- | --- |
+| `HAYLEN_PROJECT` | The folder of the generated project. |
+| `HAYLEN_TARGET` | The target, such as `ios-simulator`. |
+| `HAYLEN_PLATFORM` | The platform of the target, such as `ios`. |
+| `HAYLEN_APP` | The app folder. |
+
+```python
+import os
+import sys
+from pathlib import Path
+
+project = Path(sys.argv[1])
+script = project / "app" / "build.gradle.kts"
+script.write_text(script.read_text() + "\nandroid.lint.abortOnError = false\n")
+print("Changed the project of", os.environ["HAYLEN_TARGET"])
+```
+
+The script runs the same way in the Debug and the Release configurations, so both declare the same. Its content joins the inputs of the preparation, the files it writes join the project, and a preparation of the same inputs keeps the project as the script left it, so the project stays the same for the same inputs. The scripts of the sections that apply to a target run in the order of the sections, such as `apple` and then `ios`. A script that fails stops the preparation with a sentence that names the script and the target, and its output shows why. The command `haylen project inspect` lists each script with the key it comes from.
 
 ### How values merge
 
@@ -338,9 +365,22 @@ The Apple backend serves macOS, Mac Catalyst, iOS and iPadOS, tvOS and visionOS,
 | `HaylenNativeSymbols.mm` | The table of the symbols of the static [native libraries](#native-libraries), when the app links any. |
 | `extensions/<name>/` | The `Info.plist` and entitlements of each app extension of the plugins. |
 
-The build settings of the app target come from the backend: C++20, the bridging header, the device families of the platform, the ad hoc signing of what runs on this Mac, the hardened runtime of macOS and the architectures of the product. The project compiles the Swift of the app and of the app extensions of the plugins in the Swift 6 language mode, as the [platform bridge guide](../platform/platform-bridge.md#swift) describes. The `buildSettings` of the `apple` section come last, so they win over them, except the settings that the backend owns, whose values come from the SDK, the target or `haylen.json`: the architectures, the SDK and the Mac Catalyst support of the target, the device family, which [iOS devices](#ios-devices) settle on iPhones, iPads and Mac Catalyst, `OTHER_LDFLAGS`, the signing, the `Info.plist` file, the deployment targets that `minimumSystemVersion` settles and the name, the bundle identifier and the versions of the app. A key of those stops the preparation with a sentence that names it and where its value comes from, so no setting cancels a constraint of the SDK or the backend. Device builds sign automatically with the development team of `platforms.apple.team`, or else with the team that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration, and a device build without either stops with a sentence that names both.
+The build settings of the app target come from the backend: C++20, the bridging header, the device families of the platform, the ad hoc signing of what runs on this Mac, the hardened runtime of macOS and the architectures of the product. The project compiles the Swift of the app and of the app extensions of the plugins in the Swift 6 language mode, as the [platform bridge guide](../platform/platform-bridge.md#swift) describes. The `buildSettings` of the `apple` section apply to every configuration and win over the settings of the backend, such as `CODE_SIGN_IDENTITY` for a manual signing or `SWIFT_VERSION`, and the flags of `OTHER_LDFLAGS` join the flags of the SDK and the native libraries. A setting whose value another owner settles takes the value of that owner and stops the preparation with both owners named when it gives another one:
 
-The `Info.plist` of each platform in the template is complete. It holds `$(HAYLEN_DISPLAY_NAME)`, `$(MARKETING_VERSION)` and the other build settings for the values of `haylen.json`, and visible defaults such as the scene manifest, `ITSAppUsesNonExemptEncryption`, the statement on export compliance that App Store Connect asks about, and `UIApplicationSupportsIndirectInputEvents`, through which UIKit hands the mouse and the trackpad of an iPad or a Mac to the app as a pointer. The keys of the engine join them:
+| Setting | Owner |
+| --- | --- |
+| `ARCHS`, `EXCLUDED_ARCHS`, `ONLY_ACTIVE_ARCH` | The architectures of the target or of `--architecture`, which the SDK slices of the build hold. |
+| `SDKROOT`, `SUPPORTS_MACCATALYST` | The target. |
+| `TARGETED_DEVICE_FAMILY` | [iOS devices](#ios-devices) on iPhones, iPads and Mac Catalyst, and the target elsewhere. |
+| `IPHONEOS_DEPLOYMENT_TARGET`, `MACOSX_DEPLOYMENT_TARGET`, `TVOS_DEPLOYMENT_TARGET`, `XROS_DEPLOYMENT_TARGET` | The oldest system version of the target, which `minimumSystemVersion` or the SDK settles. |
+| `PRODUCT_NAME`, `PRODUCT_BUNDLE_IDENTIFIER`, `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION` | `name`, `identifier`, `version` and `build` of `haylen.json`. |
+| `DEVELOPMENT_TEAM` | `platforms.apple.team`, when it names one. |
+| `INFOPLIST_FILE`, `GENERATE_INFOPLIST_FILE`, `CODE_SIGN_ENTITLEMENTS` | The `Info.plist` and the entitlements that join the template, the engine, the plugins and the app, which the app changes through `infoPlist`, `entitlements` and `files`. |
+| `DEBUG_INFORMATION_FORMAT`, `DEPLOYMENT_POSTPROCESSING`, `STRIP_INSTALLED_PRODUCT`, `STRIP_STYLE` | The Release configuration, whose apps ship without symbols and keep them in a dSYM for crash reports. |
+
+Device builds sign automatically with the development team of `platforms.apple.team`, or of the `DEVELOPMENT_TEAM` of `buildSettings`, or else with the team that the variable `HAYLEN_APPLE_TEAM` names, such as in continuous integration, and a device build without any stops with a sentence that names them.
+
+The `Info.plist` of each platform in the template is complete. It holds `$(HAYLEN_DISPLAY_NAME)`, `$(MARKETING_VERSION)` and the other build settings for the values of `haylen.json`, and visible defaults such as `ITSAppUsesNonExemptEncryption`, the statement on export compliance that App Store Connect asks about, and `UIApplicationSupportsIndirectInputEvents`, through which UIKit hands the mouse and the trackpad of an iPad or a Mac to the app as a pointer. Those defaults are choices of the app, which the `infoPlist` of the plugins and the app replace, such as `CFBundleDisplayName` for a shorter name on the Home Screen. The keys that the engine needs hold their values: the identity and the versions of `CFBundleExecutable`, `CFBundleIdentifier`, `CFBundleName`, `CFBundlePackageType`, `CFBundleShortVersionString`, `CFBundleVersion` and `CFBundleInfoDictionaryVersion`, the scene manifest, since the engine runs the app in scenes, `UILaunchStoryboardName`, since the App Store requires a launch screen from iOS 27, `NSPrincipalClass` of macOS and `LSMinimumSystemVersion`, which `minimumSystemVersion` settles. A value that contradicts one of them stops the preparation with both owners. The keys of the engine join them:
 
 - The orientations of `orientation` in `haylen.json`, for each device of [iOS devices](#ios-devices): both landscape orientations for `landscape`, portrait for `portrait`, with portrait upside down on iPad, and every orientation for `any`. The system picks the orientation that an app launches in from that list and the orientation of the device, before any code of the app runs, so a landscape app on an iPhone held upright opens in landscape, with its launch screen, without turning. A foldable iPhone shows an app that lists fewer than every orientation in a box of the size of its outer screen on its inner screen, as it does for every app. While the app runs, its application delegate answers UIKit with the orientations of `haylen.json` or of the lock of [`window.lockOrientation`](../lua-api/window.md#windowlockorientationorientation), which replace the list of the `Info.plist`.
 - The status bar that the app launches with, as `UIStatusBarHidden` and `UIStatusBarStyle` from `window.statusBar`.
@@ -380,8 +420,12 @@ The Android backend serves the target `android`, which builds one APK for phones
 | --- | --- |
 | `sources` | The Kotlin and Java folders of the app, such as `native/android`, which compile into the app module where they lie. |
 | `applicationClass` | The application class of the app, such as `com.example.game.App`, where the native bridge handlers of the app register before the first activity starts. |
-| `manifest` | The `permissions` that the manifest adds, the `removedPermissions` that the merged manifest leaves out, and the `applicationAttributes` of the `<application>` element by their names without the `android:` prefix, such as `{"largeHeap": "true"}`. |
+| `manifest` | The `permissions` that the manifest adds, each a name or an object with its `name` and the newest API level it applies to, `maxSdkVersion`, the `removedPermissions` that the merged manifest leaves out, the `applicationAttributes` of the `<application>` element and the `activityAttributes` of the activity by their names without the `android:` prefix, such as `{"largeHeap": "true"}` and `{"windowSoftInputMode": "adjustResize"}`, and the `features` of the device by their names, each `true` when the app requires it and `false` when it only uses it, such as `{"android.hardware.touchscreen": true}`. |
+| `targetSdkVersion` | The API level that the app targets, 37 by default, from the oldest API level of the app up to the 37 that the engine compiles against. A value outside that range stops the preparation with both values and where they come from. |
+| `minify` | Whether a release build keeps only the code and the resources that the app reaches, through R8, `true` by default. An app whose libraries break under R8 sets it to `false`. |
+| `gradleProperties` | Properties of `gradle.properties`, such as `{"org.gradle.jvmargs": "-Xmx8g"}`, which win over the ones of the backend. |
 | `minimumSystemVersion` | The oldest API level of the app, the `minSdk`. |
+| `architectures` | The ABIs that a build without `--architecture` builds, all three by default, such as `["arm64-v8a"]`. An `--architecture` that names an ABI outside the list stops with both owners. |
 | `files` | Files and folders of the app by their paths in the project, which replace the files of the template there, such as `{"app/src/main/res/drawable/banner.xml": "art/banner.xml"}` for the Android TV banner. |
 
 The generated project holds:
@@ -397,21 +441,38 @@ The generated project holds:
 
 The values reach the scripts as Kotlin strings, the manifest as XML text and the properties as ASCII with `\uXXXX` escapes, so any text survives. Gradle builds the project with its outputs, its project cache and the trees of its native build in `build/apps/<app>-<hash>/android-<config>/build/`, and the APK, with the bundle of a release whose packs Google Play delivers, goes to `products/` next to it under the identifier of the app. Gradle receives the signing keys of the app through its environment, so no password reaches a file of the project or a command line.
 
-The app module depends on `dev.haylen:haylen` from the Maven repository of the Android SDK, which brings GameActivity, AppCompat, the activity library and core. The `minSdk` is the API level that the resolution settles, and at least the 27 that the engine library needs. Release builds sign with the upload key of the app, as [signing](#signing) describes, and R8 shrinks their code and resources.
+The app module depends on `dev.haylen:haylen` from the Maven repository of the Android SDK, which brings GameActivity, AppCompat, the activity library and core. The `minSdk` is the API level that the resolution settles, and at least the 27 that the engine library needs. Release builds sign with the upload key of the app, as [signing](#signing) describes, and R8 shrinks their code and resources unless `minify` is `false`.
+
+Some values of the project stay with the backend, because the engine SDK or the platform needs them, and every other value is a choice of the app:
+
+| Value | Why it stays |
+| --- | --- |
+| `compileSdk` 37 | The `haylen` library is compiled against it and requires it of the app module. |
+| `ndkVersion` | The native libraries of the app link against the engine SDK, which this NDK built. |
+| The versions of the Android Gradle plugin, Kotlin and Gradle | The Android libraries of the engine are built and tested with them. |
+| Java 17 of `compileOptions` | The Android Gradle plugin compiles with it. |
+| `ANDROID_STL=c++_static` and flexible page sizes | The engine SDK links the C++ runtime statically, and Google Play requires libraries that load on devices with 16 KB pages. |
+| `noCompress` of `hpak` | The runtime reads the shards of a protected release in place in the APK. |
+| `android.useAndroidX` | The `haylen` library is built on AndroidX. `gradleProperties` may repeat it, and a value that contradicts it stops with both owners. |
+| `kotlin.project.persistent.dir` | The tooling keeps the cache of Kotlin in the build folder of the product, outside the project. |
+| `glEsVersion` 3.0 of the engine library | OpenGL ES 3 is the graphics API that the engine draws through where Vulkan does not start. |
 
 Java looks up the native method of a class in the library of the app only when it first calls it, so a library that lacks one crashes the app then. Every JNI function of the runtime lives in `engine/src/platform/android/AndroidJniExports.cpp` next to `JNI_OnLoad`, which every library that links the runtime keeps, so the library of a Lua release or of a C++ app holds them all, as the player of the `haylen` library does. The verification of an Android build reads the compiled classes of the Android libraries of the SDK and fails when the library that the activity loads, in any ABI of the APK, lacks `JNI_OnLoad` or the JNI function of a native method that a class of the engine declares. In the other direction, the runtime looks up the static methods of the `haylen` library by name in `JNI_OnLoad`, and R8 shrinks the code of a release, so the library hands apps the rules of `consumer-rules.pro`, which keep each of those methods, and a test of the repository fails when the rules miss a class or a method that the C++ of the runtime looks up.
 
 The manifest declares the normal permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` by default, which Android grants at the install without asking, and no permission that the person grants at run time. Network access, the network events and the rumble of gamepads need them, since the engine library declares no permission. An app that does not use a feature names its permission in `removedPermissions` of `platforms.android.manifest`, and the merged manifest then leaves it out whichever library brings it. A feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](../platform/plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system.
 
-The manifest declares `HaylenActivity` with:
+The manifest declares `HaylenActivity` with these attributes, which `activityAttributes` may repeat but not change, since the engine needs them. A value that contradicts one stops the preparation with both owners named:
 
+- `android:name`, the activity of the engine, which runs the app.
+- `android:exported`, so the launcher starts the activity.
 - `singleTop`, so the launcher icon brings back every screen that shows over the app, such as a purchase.
 - Every change of the configuration in `android:configChanges`, so a new language, font size or display keeps the app running instead of starting it again.
+- `android:screenOrientation` from `orientation` of `haylen.json`, which the activity attributes may repeat but not change either.
 - The meta-data `android.app.lib_name`, set to the native library that GameActivity loads: `haylen`, the Lua player of the haylen library, for the debug builds of Lua apps, and `haylen-app`, the library of the app, for C++ apps and the release builds of Lua apps, whose APK leaves the Lua player out.
 - The meta-data `dev.haylen.statusBar`, which launches the activity with the status bar of `haylen.json` until the engine applies it. Without it, the status bar starts hidden.
 - The categories `LAUNCHER` and `LEANBACK_LAUNCHER` and the TV banner.
 
-The manifest declares a touchscreen, the screen orientations, Android TV and a gamepad as optional features, so the same APK serves phones, tablets and Android TV. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters. So an app without such plugins has no exported component besides its launcher activity.
+The manifest declares a touchscreen, the screen orientations, Android TV and a gamepad as optional features unless `features` requires one, so the same APK serves phones, tablets and Android TV. An app whose `category` is `game` declares `android:isGame`, which gives it the game mode and the game dashboard of Android, and `applicationAttributes` sets it to `false` for an app that wants neither. The links and notifications of the app go to `HaylenLinkActivity`, which the `haylen-links` library of the plugins that receive them declares with their intent filters. So an app without such plugins has no exported component besides its launcher activity.
 
 The resources are vector drawables of the Haylen brand. The adaptive launcher icon has the gradient symbol inside the safe zone of its foreground, over `ic_launcher_background`, the navy `#07112F` of the brand. Its monochrome layer has the silhouette of the symbol, which launchers tint for themed icons. The Android TV banner shows the horizontal logo with its white wordmark on the same navy.
 
@@ -419,12 +480,14 @@ The resources are vector drawables of the Haylen brand. The adaptive launcher ic
 
 The web backend generates the project of the site into `project/` of the product:
 
-- The page files of the template, `index.html`, `loader.js` and `loader.css`, with the files of `platforms.web.files` in their place or next to them.
+- The page files of the template, `index.html`, `loader.js` and `loader.css`, with the files of `platforms.web.files` in their place or next to them. The page takes the fallback language of `localization` in `haylen.json` as its `lang`, in the form of BCP 47 such as `pt-BR`, or `en` without one, so screen readers and the translation of browsers read it right, and a page that `files` gives sets it where it writes `{{LANGUAGE}}`.
 - The page scripts of `platforms.web.scripts` under `scripts/`, which `index.html` loads after the loader where the template marks it.
 - The web module of every plugin with the files of its folder under `plugins/<id>/`.
 - The splash logo and `config.json`.
 - In the Debug configuration of a Lua app, `app.zip`, the zipped package that the prebuilt web player of the web SDK plays. Nothing compiles then.
 - In the Release configuration and for a C++ app, the CMake project of a runtime of its own in `runtime/`, which `haylen_add_app` links against the web SDK with the pinned Emscripten, with the protected release and the bootstrap of the app for a release.
+
+The viewport, the canvas and the styles of the page are choices of the app, which it changes through its own `index.html` and `loader.css` in `files`. Some files stay with the backend: `config.json` and `runtime/CMakeLists.txt` come from `haylen.json` and the contract of the runtime, and the link options of the runtime, the version of Emscripten and the minification of the scripts of a release come from the web SDK and the verification of releases, so `files` replaces none of them.
 
 The build writes the site into `products/`: the page files, the runtime with the processor of its audio output and the worker of its content store, the part of a release that ships with the page in `app/`, and `config.json` with the size of every download, so the loader shows progress when the server sends no length. The verification checks the page with its runtime and every plugin with a web module in `config.json`, and in the Release configuration anything that a release never holds. The run serves the site, in development with the development server on the same port.
 
@@ -441,7 +504,7 @@ The desktop backend generates the CMake project of a Windows or Linux app from t
 | `signing.cmake` | On Windows, the signing of the executable, the installer and the uninstaller, as [signing](#signing) describes. |
 | `links.iss` | On Windows, for an app whose plugins declare URL schemes, the registry entries that the installer adds for them. |
 
-The executable takes the name of the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts, or `haylen-app` for a folder name without letters or digits. The installed app is the app as it ships:
+The executable takes the `executableName` of `platforms.windows` or `platforms.linux`, such as `"sky-tool"`, or else the name of the app folder in lowercase dash-case, such as `my-game` for `My Game`, which every package format accepts, or `haylen-app` for a folder name without letters or digits. The installed app is the app as it ships:
 
 ```text
 build/apps/my-game-1a2b3c4d/windows-debug/products/
@@ -473,7 +536,16 @@ The resource script `resources/app.rc` reads the values of `haylen.json` from `H
 | `InternalName`, `OriginalFilename` | The executable. |
 | `Comments` | `description`. |
 
-The application manifest of the template declares Windows 10 and 11, per-monitor DPI awareness and no elevation, and the build merges it with the manifest of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The executable builds in the Windows subsystem, without a console, and links the C runtime of the configuration of the engine SDK. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a navy plate with rounded corners, every size drawn from the full-size art.
+The section `platforms.windows` takes these settings:
+
+| Key | Value |
+| --- | --- |
+| `executableName` | The name of the executable and of the installer, in lowercase dash-case. |
+| `console` | Whether the app runs in the console subsystem with a console of its own, such as a tool that prints, `false` by default. The executable starts at the same entry point of the runtime in both subsystems. |
+| `executionLevel` | The rights that the app asks Windows for when it starts: `"asInvoker"` by default, `"highestAvailable"` or `"requireAdministrator"`, which shows the prompt of User Account Control. An application manifest of the app that `files` gives keeps its own level unless the key names another one, which stops the preparation with both owners. |
+| `minimumSystemVersion` | The oldest Windows of the app, such as `"10.0.22000"`, which the installer checks before it installs, and `10.0.18362` of the SDK by default. |
+
+The application manifest of the template declares Windows 10 and 11, per-monitor DPI awareness, which the engine needs to draw at the density of each display, and the execution level of `executionLevel`, and the build merges it with the manifest of the engine, which selects the Common Controls of version 6 and UTF-8 as the code page. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The executable builds in the Windows subsystem, without a console, and links the C runtime of the configuration of the engine SDK. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a navy plate with rounded corners, every size drawn from the full-size art.
 
 ### Linux
 
@@ -483,7 +555,7 @@ The executable links the C++ library of the compiler statically, so the app runs
 - A link `bin/<executable>` to the executable, so desktops start the app by name.
 - The desktop entry into `share/applications/`, the metainfo into `share/metainfo/` and the icons into `share/icons/hicolor/`, all named after the identifier of `haylen.json`. The identifier is also the class of the window of the app, so desktops show the name and the icon of the entry for the window.
 
-The executable cannot share the name of those folders, so a Linux build of an app whose folder gives the executable the name `app` or `lib` stops and asks for another folder name.
+The executable cannot share the name of those folders, so a Linux build of an app whose executable is `app` or `lib` stops and asks for another `executableName` or folder name. The section `platforms.linux` takes `executableName` and no `minimumSystemVersion`, since a Linux app runs on every distribution whose C library is as new as the one of the SDK that built it, so the key stops the resolution with that reason, and an app that supports older distributions builds its SDK on the oldest of them.
 
 The backend completes `resources/app.desktop` and `resources/app.metainfo.xml` of the template, or the files of the app that `platforms.linux.files` puts in their place. What the file gives wins, with a warning when it differs from `haylen.json`, and the values of `haylen.json` fill what is missing:
 

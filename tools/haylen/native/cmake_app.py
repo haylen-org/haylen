@@ -19,11 +19,12 @@ class CMakeApp:
         return f"[{'=' * level}[{value}]{'=' * level}]"
 
     @staticmethod
-    def lines(app: AppManifest, target: str, content: str, bootstrap: str | None) -> list[str]:
-        """The call of `haylen_add_app` for a target, with `content` and `bootstrap` as CMake expressions, and the include folders and definitions of a C++ app."""
+    def lines(app: AppManifest, target: str, content: str, bootstrap: str | None, *, console: bool = False) -> list[str]:
+        """The call of `haylen_add_app` for a target, with `content` and `bootstrap` as CMake expressions, the console subsystem of Windows when `console` asks for it, and the include folders and definitions of a C++ app."""
         release = f" BOOTSTRAP {bootstrap}" if bootstrap is not None else ""
+        subsystem = " CONSOLE" if console else ""
         if app.kind is AppKind.LUA:
-            return [f"haylen_add_app({target} LUA CONTENT {content}{release})"]
+            return [f"haylen_add_app({target} LUA{subsystem} CONTENT {content}{release})"]
 
         cpp = app.cpp
         files = cpp.files()
@@ -35,7 +36,7 @@ class CMakeApp:
             )
         sources = " ".join(CMakeApp.text(file.as_posix()) for file in files)
         lua = " WITH_LUA" if cpp.lua else ""
-        lines = [f"haylen_add_app({target} CPP{lua} SOURCES {sources} CONTENT {content}{release})"]
+        lines = [f"haylen_add_app({target} CPP{lua}{subsystem} SOURCES {sources} CONTENT {content}{release})"]
         if cpp.include_directories:
             lines.append(f"target_include_directories({target} PRIVATE {' '.join(CMakeApp.text(path.as_posix()) for path in cpp.include_directories)})")
         if cpp.definitions:

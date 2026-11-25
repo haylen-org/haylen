@@ -52,6 +52,8 @@ set(CPACK_INNOSETUP_SETUP_AppId "${HAYLEN_APP_IDENTIFIER}")
 set(CPACK_INNOSETUP_SETUP_AppCopyright "${HAYLEN_APP_COPYRIGHT}")
 set(CPACK_INNOSETUP_SETUP_UninstallDisplayIcon "{app}\\${HAYLEN_APP_EXECUTABLE}.exe")
 set(CPACK_INNOSETUP_SETUP_PrivilegesRequiredOverridesAllowed "dialog")
+# The installer refuses a Windows older than the oldest system version of the app, which "platforms.windows.minimumSystemVersion" of `haylen.json` or the SDK settles.
+set(CPACK_INNOSETUP_SETUP_MinVersion "${HAYLEN_APP_MINIMUM_SYSTEM}")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
   set(CPACK_INNOSETUP_ARCHITECTURE arm64)
   set(CPACK_INNOSETUP_SETUP_ArchitecturesAllowed arm64)

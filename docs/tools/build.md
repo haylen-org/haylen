@@ -556,7 +556,7 @@ The core header of Clipper2 uses `std::back_inserter` without including the head
 The file `engine/cmake/haylen-app.cmake` defines the one CMake function that builds the binary of an app, Lua or C++, against the engine of an installed SDK or of a source tree:
 
 ```cmake
-haylen_add_app(<target> LUA|CPP [WITH_LUA] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
+haylen_add_app(<target> LUA|CPP [WITH_LUA] [CONSOLE] [SOURCES <files>...] CONTENT <folder> [BOOTSTRAP <file>] [WEB_SHELL <file>])
 ```
 
 The option `LUA` links the Lua player `haylen::player`, and `CPP` compiles the `SOURCES` that define `haylen::core::Application::create`, with the Lua layer `haylen::lua` only when `WITH_LUA` names it. The folder `CONTENT` is what the app ships, which the tooling prepares, and `BOOTSTRAP` is the release bootstrap that the content tool writes. The function builds an executable on desktops, the shared library of the activity on Android and a page on the web, and calls the `APP_FUNCTION` of a port, while Xcode builds the apps of Apple platforms. The generated projects of the desktop, Android and web backends call it, and the [embedding guide](embedding.md#haylen_add_app) describes every argument and what it makes on each platform.

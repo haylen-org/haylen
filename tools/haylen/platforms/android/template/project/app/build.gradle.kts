@@ -22,7 +22,7 @@ android {
     // The NDK that built the native libraries of the app strips their debug information from the APK, while the build folder keeps it for the debugger.
     ndkVersion = {{NDK_VERSION}}
     compileSdk {
-        version = release(37) {
+        version = release({{COMPILE_SDK}}) {
             minorApiLevel = 2
         }
     }
@@ -30,7 +30,7 @@ android {
     defaultConfig {
         applicationId = {{IDENTIFIER}}
         minSdk = {{MINIMUM_SDK}}
-        targetSdk = 37
+        targetSdk = {{TARGET_SDK}}
         versionCode = {{VERSION_CODE}}
         versionName = {{VERSION_NAME}}
 {{PLACEHOLDERS}}
@@ -62,10 +62,10 @@ android {
     }
 
     buildTypes {
-        // A release keeps only the code and the resources that the app reaches, which R8 finds from the manifest, the layouts and the code.
+        // A release keeps only the code and the resources that the app reaches, which R8 finds from the manifest, the layouts and the code, unless `platforms.android.minify` of `haylen.json` is false.
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = {{MINIFY}}
+            isShrinkResources = {{MINIFY}}
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
             signingConfig = signingConfigs.findByName("release")
         }

@@ -81,7 +81,7 @@ class PlayerBackend(PlatformBackend):
             raise UnsupportedTarget(
                 f'The player runs apps in development alone, so it has no "Release" configuration. Build the release of `{Repository.shown(product.app.folder)}` for the target of a platform, such as "windows" or "ios".'
             )
-        preparation = Preparation(product, folders, PlayerBackend.NAME, PlayerBackend.VERSION, None)
+        preparation = Preparation(self.context, product, folders, PlayerBackend.NAME, PlayerBackend.VERSION, None)
         if preparation.is_current() and folders.package.is_dir() and PlayerBackend.native_folder(folders).is_dir():
             return preparation.unchanged(folders.project)
 

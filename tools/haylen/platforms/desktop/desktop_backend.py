@@ -82,8 +82,28 @@ class DesktopBackend(PlatformBackend):
         "required": ["scheme"],
         "properties": {"scheme": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9+.-]*$", "description": 'A URL scheme as RFC 3986 spells one, such as "camera-scanner".'}},
     }
-    # The sections of the desktops hold only the keys that the core reads, the files of the project and the oldest system version.
-    SECTION = {"type": "object", "additionalProperties": False, "properties": {}}
+    EXECUTABLE_NAME = {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$",
+        "description": "The name of the executable and of the packages of the app in lowercase dash-case, the name of the app folder in lowercase dash-case by default.",
+    }
+    # The settings of each desktop, besides the keys that the core reads.
+    SECTIONS = {
+        "windows": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "executableName": EXECUTABLE_NAME,
+                "console": {"type": "boolean", "default": False, "description": "Whether the app runs in the console subsystem with a console of its own, false by default."},
+                "executionLevel": {
+                    "enum": ["asInvoker", "highestAvailable", "requireAdministrator"],
+                    "default": "asInvoker",
+                    "description": 'The rights that the app asks Windows for when it starts, "asInvoker" by default, "highestAvailable" or "requireAdministrator", which shows the prompt of User Account Control.',
+                },
+            },
+        },
+        "linux": {"type": "object", "additionalProperties": False, "properties": {"executableName": EXECUTABLE_NAME}},
+    }
 
     def describe(self) -> PlatformDescription:
         targets = tuple(DesktopBackend.target(DesktopSystem.of(name)) for name in DesktopBackend.PLATFORMS)
@@ -100,7 +120,9 @@ class DesktopBackend(PlatformBackend):
             ),
         }
         sections = {
-            name: OverrideSection(name, frozenset({name}), MappingProxyType(DesktopBackend.SECTION), MappingProxyType({}), f"The files of the {name.capitalize()} project of the app.")
+            name: OverrideSection(
+                name, frozenset({name}), MappingProxyType(DesktopBackend.SECTIONS[name]), MappingProxyType({}), f"The settings and the files of the {name.capitalize()} project of the app."
+            )
             for name in DesktopBackend.PLATFORMS
         }
         capabilities = frozenset({Capability.PREPARE, Capability.BUILD, Capability.VERIFY, Capability.RUN, Capability.PACKAGE})
@@ -125,7 +147,12 @@ class DesktopBackend(PlatformBackend):
         )
 
     def check_app(self, app: AppManifest, target: str) -> None:
-        """Every app suits the targets of this backend, whatever `haylen.json` chooses."""
+        """Refuses an oldest system version of Linux, where an app runs on every distribution whose C library is as new as the one of the SDK that builds it."""
+        if "minimumSystemVersion" in app.platforms.get("linux", {}):
+            raise InvalidManifest(
+                f'A Linux app runs on every distribution whose C library is as new as the one of the SDK that builds it, so "platforms.linux.minimumSystemVersion" of `{app.origin}` has nothing to set. Remove it, and build the SDK on the oldest distribution that the app supports.',
+                origin=app.origin,
+            )
 
     def check_environment(self, target: TargetId) -> EnvironmentReport:
         problems = []
@@ -153,7 +180,7 @@ class DesktopBackend(PlatformBackend):
     def prepare(self, product: ResolvedProduct, folders: ProductFolders) -> PreparedProject:
         """Generates the project, after the staged package of a Debug build, or the protected release with the bootstrap of a Release build, which the content tool builds every time, since the keys of the app are no input of the preparation, and the native libraries of this machine."""
         platform = product.platform
-        preparation = Preparation(product, folders, DesktopBackend.NAME, DesktopBackend.VERSION, DesktopProject.template(platform))
+        preparation = Preparation(self.context, product, folders, DesktopBackend.NAME, DesktopBackend.VERSION, DesktopProject.template(platform))
         native = DesktopBackend.native_folder(folders)
         release = product.configuration is Configuration.RELEASE
         if not release and preparation.is_current() and folders.package.is_dir() and native.is_dir():
@@ -186,7 +213,7 @@ class DesktopBackend(PlatformBackend):
         Folders.remove(folders.products)
         self.context.process.run(["cmake", "--install", tree.folder, "--config", configuration, "--prefix", folders.products])
 
-        app = DesktopApp.of(prepared.product.app)
+        app = DesktopApp.of_product(prepared.product)
         layout = DesktopLayout.of(prepared.product.platform, app, folders.products)
         components = tuple(ProductComponent(project.target, layout.executable, "executable") for project in prepared.product.projects)
         symbols = tree.folder / "symbols"
@@ -195,7 +222,7 @@ class DesktopBackend(PlatformBackend):
 
     def verify(self, product: BuildProduct) -> VerificationReport:
         resolved = product.prepared.product
-        app = DesktopApp.of(resolved.app)
+        app = DesktopApp.of_product(resolved)
         layout = DesktopLayout.of(resolved.platform, app, product.path)
         checks = DesktopVerifier.checks(resolved.platform, app, layout, resolved.configuration, DesktopBackend.native_folder(product.prepared.folders))
         if resolved.configuration is Configuration.RELEASE:
@@ -206,7 +233,7 @@ class DesktopBackend(PlatformBackend):
     def run(self, product: BuildProduct, launch: LaunchRequest) -> None:
         """Registers the links of the URL schemes of the app for the installed app and runs it, in development with the Debug configuration."""
         resolved = product.prepared.product
-        app = DesktopApp.of(resolved.app)
+        app = DesktopApp.of_product(resolved)
         layout = DesktopLayout.of(resolved.platform, app, product.path)
         links = DesktopLinks(self.context)
         schemes = DesktopLinks.schemes(resolved.primary)
@@ -289,6 +316,6 @@ class DesktopBackend(PlatformBackend):
         source = ReleasePackage.of(resolved)
         profile = self.profile(resolved)
         release: ProtectedRelease = ProtectedReleases.last(resolved.app, profile)
-        layout = DesktopLayout.of(resolved.platform, DesktopApp.of(resolved.app), product.path)
+        layout = DesktopLayout.of(resolved.platform, DesktopApp.of_product(resolved), product.path)
         script = SteamDepots(self.context).stage(source, release, depot=resolved.platform, product=product.path, bundle=False, packs_place=layout.home, options=options, output=request.output)
         return (str(script),)

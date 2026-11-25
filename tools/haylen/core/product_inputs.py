@@ -7,7 +7,7 @@ from haylen.core.resolved_product import ResolvedProduct
 
 
 class ProductInputs:
-    """Hashes everything a preparation reads from the app and its plugins: the resolved product, the files of the package, the folders of the plugins, the C++ sources of the app and the files that the sections of `platforms` name. Two preparations with the same digest, the same tooling, backend, template and SDK write the same project."""
+    """Hashes everything a preparation reads from the app and its plugins: the resolved product, the files of the package, the folders of the plugins, the C++ sources of the app and the files and the `afterPrepare` scripts that the sections of `platforms` name. Two preparations with the same digest, the same tooling, backend, template and SDK write the same project."""
 
     IGNORED = frozenset({".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin"})
 
@@ -23,6 +23,8 @@ class ProductInputs:
         for section in product.primary.settings.values():
             for destination, source in Frozen.thaw(section.get("files", {})).items():
                 files |= ProductInputs.folder(f"files:{destination}", product.app.folder / source)
+            if "afterPrepare" in section:
+                files |= ProductInputs.folder(f"afterPrepare:{section['afterPrepare']}", product.app.folder / str(section["afterPrepare"]))
         for library in product.primary.native_libraries:
             if library.cmake is not None:
                 files |= ProductInputs.folder(f"native:{library.name}", library.cmake)

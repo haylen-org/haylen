@@ -156,18 +156,37 @@ class AppleProjectTest:
         assert {"path": str(app / "native" / "apple"), "group": "App", "type": "syncedFolder"} in target["sources"]
         assert target["settings"]["base"]["SWIFT_VERSION"] == "5.0"
 
-    def test_build_settings_never_set_what_the_backend_owns(self, apple):
-        app = apple.app({"platforms": {"apple": {"buildSettings": {"SWIFT_VERSION": "5.0", "ARCHS": "x86_64", "IPHONEOS_DEPLOYMENT_TARGET": "12.0", "PRODUCT_BUNDLE_IDENTIFIER": "com.other"}}}})
+    def test_a_build_setting_that_contradicts_its_owner_stops_with_both_owners(self, apple):
+        settings = {"SWIFT_VERSION": "5.0", "ARCHS": "x86_64", "IPHONEOS_DEPLOYMENT_TARGET": "12.0", "PRODUCT_BUNDLE_IDENTIFIER": "com.other", "STRIP_STYLE": "debugging"}
+        app = apple.app({"platforms": {"apple": {"buildSettings": settings}, "ios": {"minimumSystemVersion": "17.0"}}})
         with pytest.raises(InvalidManifest) as raised:
             apple.prepare(app)
         message = raised.value.message
-        assert 'The key "platforms.apple.buildSettings.ARCHS" sets a value that comes from the architectures of the target, which "--architecture" chooses.' in message
+        origin = apple.resolve(app).app.origin
+        assert 'The key "platforms.apple.buildSettings.ARCHS" is "x86_64", while the target, or "--architecture" of the command, gives "arm64".' in message
         assert (
-            '"platforms.apple.buildSettings.IPHONEOS_DEPLOYMENT_TARGET" sets a value that comes from the oldest system version, which "minimumSystemVersion" of the section of the platform settles.'
+            f'The key "platforms.apple.buildSettings.IPHONEOS_DEPLOYMENT_TARGET" is "12.0", while the oldest system version from {origin} at "platforms.ios.minimumSystemVersion" gives "17.0".'
             in message
         )
-        assert '"platforms.apple.buildSettings.PRODUCT_BUNDLE_IDENTIFIER" sets a value that comes from "identifier" of "haylen.json".' in message
+        assert f'The key "platforms.apple.buildSettings.PRODUCT_BUNDLE_IDENTIFIER" is "com.other", while "identifier" of `{origin}` gives "com.haylen.tests".' in message
+        assert 'The key "platforms.apple.buildSettings.STRIP_STYLE" is "debugging", while the Release configuration, whose apps ship without symbols and keep them in a dSYM, gives "all".' in message
         assert "SWIFT_VERSION" not in message
+
+    def test_a_build_setting_that_repeats_its_owner_and_every_choice_of_the_app_apply(self, apple):
+        settings = {
+            "ARCHS": "arm64",
+            "IPHONEOS_DEPLOYMENT_TARGET": "17.0",
+            "TARGETED_DEVICE_FAMILY": "2, 1",
+            "CODE_SIGN_IDENTITY": "Apple Distribution",
+            "OTHER_LDFLAGS": ["-ObjC"],
+            "ENABLE_BITCODE": False,
+        }
+        app = apple.app({"platforms": {"apple": {"buildSettings": settings}, "ios": {"minimumSystemVersion": "17.0"}}})
+        base = AppleFixture.spec(apple.prepare(app))["targets"]["App"]["settings"]["base"]
+        assert (base["ARCHS"], base["IPHONEOS_DEPLOYMENT_TARGET"], base["TARGETED_DEVICE_FAMILY"]) == ("arm64", "17.0", "2, 1")
+        assert base["CODE_SIGN_IDENTITY"] == "Apple Distribution"
+        assert base["OTHER_LDFLAGS"] == ["$(inherited)", "-ObjC"]
+        assert base["ENABLE_BITCODE"] is False
 
     def test_devices_sign_with_the_team_of_the_app(self, apple):
         app = apple.app({"platforms": {"apple": {"team": "ABCDE12345"}}})

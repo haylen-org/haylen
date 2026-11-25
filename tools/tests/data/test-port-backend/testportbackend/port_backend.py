@@ -131,7 +131,7 @@ class PortBackend(PlatformBackend):
                 f'The backend "{PortBackend.NAME}" builds the "Debug" configuration alone, which ships the package as it is, and `{Repository.shown(product.app.folder)}` asks for "{product.configuration.value}".'
             )
         PortAppProject.sdk_package(product)
-        preparation = Preparation(product, folders, PortBackend.NAME, PortBackend.VERSION, PortBackend.TEMPLATE)
+        preparation = Preparation(self.context, product, folders, PortBackend.NAME, PortBackend.VERSION, PortBackend.TEMPLATE)
         if preparation.is_current() and folders.package.is_dir():
             return preparation.unchanged(folders.project)
 

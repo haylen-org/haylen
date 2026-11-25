@@ -34,7 +34,9 @@ class ProjectResolver:
     """Turns a request into a resolved product in one pipeline, before any backend runs: it picks the target from the descriptions of the registry, resolves the plugins for its platform, merges the contributions of the app and the plugins, settles the oldest system version, chooses the SDK slice of every architecture and freezes the result. The core never names a platform, so a new backend joins without a change here."""
 
     # The keys that the core reads in every section of `platforms`, apart from the settings that the backend of the section reads.
-    CORE_KEYS = ("minimumSystemVersion", "files")
+    CORE_KEYS = ("minimumSystemVersion", "architectures", "files", "afterPrepare")
+    # The keys that belong to one platform, so only the section named after a platform takes them.
+    PLATFORM_KEYS = ("minimumSystemVersion", "architectures")
 
     registry: BackendRegistry
     plugins: PluginResolver
@@ -51,10 +53,9 @@ class ProjectResolver:
         description = target.description
         if app.kind not in description.kinds:
             raise UnsupportedTarget(f'The target "{description.name}" does not build apps of the kind "{app.kind.value}", and `{app.origin}` describes one.', origin=app.origin)
-        target_ids = ProjectResolver.target_ids(description, request)
-
         sections = self.sections(app, description.platform)
         target.backend.check_app(app, description.name)
+        target_ids = ProjectResolver.target_ids(description, request, app)
         loaded = self.plugins.load(request.configuration)
         types = ProjectResolver.contribution_types(self.registry, description.platform)
         resolved = self.plugins.for_platform(loaded, description.platform, types)
@@ -97,16 +98,37 @@ class ProjectResolver:
                 )
             )
 
-        architectures = request.architectures or description.default_architectures
+        architectures = ProjectResolver.architectures(description, request, app)
         identity = f"{description.name}-{request.configuration.value.lower()}"
         if tuple(architectures) != description.default_architectures:
             identity += "-" + "-".join(architectures)
         return ResolvedProduct(request, target.platform.name, identity, tuple(projects))
 
     @staticmethod
-    def target_ids(description: TargetDescription, request: ProductRequest) -> tuple[TargetId, ...]:
-        """Returns what the request builds on each architecture it names, or on the default architectures of the target, and fails on an architecture that the target does not build for."""
-        architectures = request.architectures or description.default_architectures
+    def architectures(description: TargetDescription, request: ProductRequest, app: AppManifest) -> tuple[str, ...]:
+        """Returns the architectures that a request builds: the ones it names, or else the `architectures` of the section of the platform in `haylen.json`, or else the default architectures of the target. A request that names an architecture that the app leaves out fails with both owners."""
+        named = app.platforms.get(description.platform, {}).get("architectures")
+        if named is None:
+            return tuple(request.architectures or description.default_architectures)
+        key = f"platforms.{description.platform}.architectures"
+        unknown = [architecture for architecture in named if architecture not in description.abis]
+        if unknown:
+            raise InvalidManifest(
+                f'The key "{key}" of `{app.origin}` names {SchemaValidator.choices(unknown, "and")}, while "{description.name}" builds for {SchemaValidator.choices(description.architectures)}.',
+                origin=app.origin,
+            )
+        left_out = [architecture for architecture in request.architectures or () if architecture not in named]
+        if left_out:
+            raise UnsupportedTarget(
+                f'The option "--architecture" names {SchemaValidator.choices(left_out, "and")}, which "{key}" of `{app.origin}` leaves out. Add it to the key, or name one of {SchemaValidator.choices(list(named))}.',
+                origin=app.origin,
+            )
+        return tuple(request.architectures or named)
+
+    @staticmethod
+    def target_ids(description: TargetDescription, request: ProductRequest, app: AppManifest) -> tuple[TargetId, ...]:
+        """Returns what the request builds on each of its architectures, and fails on an architecture that the target does not build for."""
+        architectures = ProjectResolver.architectures(description, request, app)
         unknown = [architecture for architecture in architectures if architecture not in description.abis]
         if unknown:
             raise UnsupportedTarget(f'The target "{description.name}" builds for {SchemaValidator.choices(description.architectures)}, not for {SchemaValidator.choices(unknown, "and")}.')
@@ -150,11 +172,19 @@ class ProjectResolver:
         minimum = section.get("minimumSystemVersion")
         if minimum is not None and not (isinstance(minimum, str) and Version.is_valid(minimum)):
             problems.append(f'The key "platforms.{name}.minimumSystemVersion" must be a version such as "16.3".')
-        # The oldest system version belongs to one platform, so only the section named after a platform takes it.
-        if minimum is not None and name not in override.platforms:
-            takers = [f"platforms.{platform}" for platform in sorted(override.platforms) if platform in known]
-            sections = f"The sections {SchemaValidator.choices(takers, 'and')} take it." if takers else "No section of its platforms takes it."
-            problems.append(f'The section "platforms.{name}" is named after no platform, so it takes no "minimumSystemVersion", which belongs to one platform. {sections}')
+        architectures = section.get("architectures")
+        listed = isinstance(architectures, list | tuple) and len(architectures) > 0 and all(isinstance(item, str) for item in architectures)
+        if architectures is not None and not (listed and len(set(architectures)) == len(architectures)):
+            problems.append(f'The key "platforms.{name}.architectures" must list one or more architectures of the platform, each once, such as ["arm64-v8a"].')
+        # The oldest system version and the architectures belong to one platform, so only the section named after a platform takes them.
+        for key in ProjectResolver.PLATFORM_KEYS:
+            if key in section and name not in override.platforms:
+                takers = [f"platforms.{platform}" for platform in sorted(override.platforms) if platform in known]
+                sections = f"The sections {SchemaValidator.choices(takers, 'and')} take it." if takers else "No section of its platforms takes it."
+                problems.append(f'The section "platforms.{name}" is named after no platform, so it takes no "{key}", which belongs to one platform. {sections}')
+        script = section.get("afterPrepare")
+        if script is not None and not (isinstance(script, str) and script.endswith(".py") and (app.folder / script).is_file()):
+            problems.append(f'The key "platforms.{name}.afterPrepare" must name a Python script of the app folder that exists, such as "native/after-prepare.py".')
         files = section.get("files", {})
         if not isinstance(files, Mapping):
             problems.append(f'The key "platforms.{name}.files" must map paths of the generated project to files or folders of the app.')

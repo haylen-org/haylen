@@ -74,9 +74,14 @@ class IosDevicesTest:
             with pytest.raises(InvalidManifest, match=r'In "platforms\.ios"'):
                 apple.resolve(apple.app({"platforms": {"ios": {"devices": devices}}}))
 
-    def test_the_device_family_belongs_to_the_devices_of_the_app(self, apple):
-        with pytest.raises(InvalidManifest, match=re.escape('"platforms.apple.buildSettings.TARGETED_DEVICE_FAMILY" sets a value that comes from "platforms.ios.devices"')):
-            apple.prepare(apple.app({"platforms": {"apple": {"buildSettings": {"TARGETED_DEVICE_FAMILY": "1"}}}}))
+    def test_the_device_family_of_the_build_settings_follows_the_devices_of_the_app(self, apple):
+        repeated = apple.app({"platforms": {"ios": {"devices": ["iphone"]}, "apple": {"buildSettings": {"TARGETED_DEVICE_FAMILY": "1"}}}}, "repeated")
+        assert AppleFixture.spec(apple.prepare(repeated))["targets"][AppleProject.TARGET]["settings"]["base"]["TARGETED_DEVICE_FAMILY"] == "1"
+        contradicting = apple.app({"platforms": {"apple": {"buildSettings": {"TARGETED_DEVICE_FAMILY": "1"}}}}, "contradicting")
+        origin = apple.resolve(contradicting).app.origin
+        expected = f'The key "platforms.apple.buildSettings.TARGETED_DEVICE_FAMILY" is "1", while "platforms.ios.devices" of `{origin}` gives "1,2".'
+        with pytest.raises(InvalidManifest, match=re.escape(expected)):
+            apple.prepare(contradicting)
 
     @staticmethod
     def simulators(tmp_path, *entries: tuple[str, str, str]) -> AppleSimulators:

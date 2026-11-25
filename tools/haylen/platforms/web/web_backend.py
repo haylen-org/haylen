@@ -123,7 +123,7 @@ class WebBackend(PlatformBackend):
 
     def prepare(self, product: ResolvedProduct, folders: ProductFolders) -> PreparedProject:
         """Generates the site project, after the staged package of a C++ app in Debug, or the protected release with its bootstrap in Release, which the content tool builds every time, since the keys of the app are no input of the preparation."""
-        preparation = Preparation(product, folders, WebBackend.NAME, WebBackend.VERSION, WebProject.TEMPLATE)
+        preparation = Preparation(self.context, product, folders, WebBackend.NAME, WebBackend.VERSION, WebProject.TEMPLATE)
         release = product.configuration is Configuration.RELEASE
         content = None
         bootstrap = None

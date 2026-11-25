@@ -99,7 +99,7 @@ class AndroidBackend(PlatformBackend):
         return ProtectedReleases.locate(self.context, BackendRegistry.discover(self.context))
 
     def prepare(self, product: ResolvedProduct, folders: ProductFolders) -> PreparedProject:
-        preparation = Preparation(product, folders, AndroidBackend.NAME, AndroidBackend.VERSION, AndroidTemplate.FOLDER)
+        preparation = Preparation(self.context, product, folders, AndroidBackend.NAME, AndroidBackend.VERSION, AndroidTemplate.FOLDER)
         sdk = AndroidSdk(self.context.environment).folder
         cmake = BuildTools.CMAKE.require().parent.parent
         # The Android SDK and the CMake of this machine reach the project too, so another one prepares it again.

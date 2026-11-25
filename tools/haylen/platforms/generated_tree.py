@@ -45,6 +45,13 @@ class GeneratedTree:
                 path.unlink()
                 self.changed.append(relative.as_posix())
 
+    def adopt(self, kept: frozenset[str] = frozenset()) -> None:
+        """Takes every file of the tree as written by this preparation, such as the files that a script of the app wrote after it, besides the top folders that `kept` names."""
+        for path in sorted(self.root.rglob("*")):
+            relative = path.relative_to(self.root)
+            if path.is_file() and relative.parts[0] not in kept:
+                self.written.add(relative.as_posix())
+
     def digest(self) -> str:
         """Hashes the paths and contents of every written file, which names the generated project."""
         hashed = hashlib.sha256()

@@ -124,8 +124,8 @@ class AppleContributions:
     def sections() -> Mapping[str, OverrideSection]:
         settings = {
             "type": "object",
-            "additionalProperties": {"type": ["string", "number", "boolean"]},
-            "description": "Xcode build settings of the app target, which win over the ones of the backend, besides the ones that the backend owns, such as the architectures, the signing, the deployment targets and the identity of the app.",
+            "additionalProperties": {"anyOf": [{"type": ["string", "number", "boolean"]}, {"type": "array", "items": {"type": "string"}}]},
+            "description": "Xcode build settings of the app target in every configuration, which win over the ones of the backend. A setting that another owner settles, such as the architectures, the oldest system version, the devices or the identity of the app, takes only the value of that owner, and the flags of OTHER_LDFLAGS join the flags of the backend.",
         }
         apple = {
             "type": "object",

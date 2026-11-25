@@ -74,12 +74,13 @@ class AppleBackend(PlatformBackend):
         if target.device:
             product.app.require_identifier(f'Signing an app for a device of "{target.name}" needs an identifier that Apple registers for your team')
         project = AppleProject(self.context, product, target, folders)
-        preparation = Preparation(product, folders, AppleBackend.NAME, AppleBackend.VERSION, AppleProject.TEMPLATE)
+        preparation = Preparation(self.context, product, folders, AppleBackend.NAME, AppleBackend.VERSION, AppleProject.TEMPLATE)
         current = product.configuration is Configuration.DEBUG and preparation.is_current()
         if current and (project.xcode_project / "project.pbxproj").is_file():
             return preparation.unchanged(project.xcode_project)
-        tree = project.generate()
-        return preparation.finish(tree, project.xcode_project)
+        prepared = preparation.finish(project.generate(), project.xcode_project)
+        project.generate_xcode_project()
+        return prepared
 
     def build(self, prepared: PreparedProject) -> BuildProduct:
         product = prepared.product

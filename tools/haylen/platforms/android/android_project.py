@@ -110,6 +110,41 @@ class AndroidProject:
         return int(value)
 
     @property
+    def target_sdk(self) -> int:
+        """The API level that the app targets, which lies between the oldest API level of the app and the one that the engine compiles against."""
+        app = self.product.app
+        value = int(self.product.primary.setting(AndroidContributions.SECTION, "targetSdkVersion", AndroidContributions.TARGET_SDK))
+        origin = self.product.primary.setting_origin(AndroidContributions.SECTION, "targetSdkVersion")
+        if value < self.minimum_sdk:
+            raise InvalidManifest(
+                f"The app targets API level {value}, from {origin}, while its oldest API level is {self.minimum_sdk}, from {self.product.primary.minimum_system_version.origin}. Target the oldest API level or a newer one.",
+                origin=app.origin,
+            )
+        if value > AndroidContributions.COMPILE_SDK:
+            raise InvalidManifest(
+                f"The app targets API level {value}, from {origin}, while the engine compiles against API level {AndroidContributions.COMPILE_SDK}. Target API level {AndroidContributions.COMPILE_SDK} or an older one.",
+                origin=app.origin,
+            )
+        return value
+
+    def gradle_properties(self) -> str:
+        """The lines of `gradle.properties`: the properties of the backend with the `gradleProperties` of the app over them, which fails with both owners for a property that the engine needs and the app changes."""
+        app = self.product.app
+        fixed = {"android.useAndroidX": "true", "kotlin.project.persistent.dir": (self.folders.build / "kotlin").as_posix()}
+        properties: dict[str, str] = {"org.gradle.jvmargs": "-Xmx4g -Dfile.encoding=UTF-8", "org.gradle.configuration-cache": "true", **fixed}
+        given = {name: str(value).lower() if isinstance(value, bool) else str(value) for name, value in self.product.primary.setting(AndroidContributions.SECTION, "gradleProperties", {}).items()}
+        problems = [
+            f'The key "platforms.android.gradleProperties.{name}" is "{value}", while the Android backend gives "{fixed[name]}".'
+            for name, value in given.items()
+            if name in fixed and value != fixed[name]
+        ]
+        if problems:
+            lines = "\n".join(f"  {problem}" for problem in problems)
+            raise InvalidManifest(f"The Gradle properties of `{app.origin}` contradict the values that the engine needs. Remove the keys, or make them agree:\n{lines}", origin=app.origin)
+        properties |= given
+        return "\n".join(JavaProperties.line(name, value) for name, value in properties.items())
+
+    @property
     def maven(self) -> Path:
         """The local Maven repository of the Android libraries of the engine, which every ABI of the product takes from one SDK, since the `haylen` library carries the player of every ABI."""
         folders = {project.sdk.manifest.folder for project in self.product.projects}
@@ -139,13 +174,16 @@ class AndroidProject:
             "REPOSITORIES": repositories,
             "MODULES": included,
             "GRADLE_PLUGINS": "\n".join(f"        classpath({kotlin(f'{identifier}:{identifier}.gradle.plugin:{version}')})" for identifier, version in self.plugins.gradle_plugins),
-            "KOTLIN_DIRECTORY": JavaProperties.escape((self.folders.build / "kotlin").as_posix()),
             "GRADLE_VERSION": Gradle.VERSION,
             "GRADLE_SHA256": Gradle.SHA256,
             "NAMESPACE": kotlin(app.identifier),
             "NDK_VERSION": kotlin(AndroidNdk.VERSION),
             "IDENTIFIER": kotlin(app.identifier),
             "MINIMUM_SDK": str(self.minimum_sdk),
+            "COMPILE_SDK": str(AndroidContributions.COMPILE_SDK),
+            "TARGET_SDK": str(self.target_sdk),
+            "MINIFY": "true" if self.product.primary.setting(AndroidContributions.SECTION, "minify", True) else "false",
+            "PROPERTIES": self.gradle_properties(),
             "VERSION_CODE": str(app.build),
             "VERSION_NAME": kotlin(app.version),
             "PLACEHOLDERS": self.placeholders(),
