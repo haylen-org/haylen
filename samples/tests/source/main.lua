@@ -1,4 +1,4 @@
--- Haylen Tests: every feature test of the engine, in a menu of categories, with a code per test. The headless platform runs every test by itself, and the launch arguments "--test <code>" open one test, the way the UI tests do.
+-- Haylen Tests: every feature test of the engine, in a menu of categories, with a code per test. The headless platform and the launch argument "--run-all" run every test by itself and quit, and the launch arguments "--test <code>" open one test, the way the UI tests do.
 local haylen = require('haylen')
 local scene = require('haylen.scene')
 
@@ -9,8 +9,8 @@ catalog.load()
 navigation.install()
 navigation.useActions(nil)
 
-if haylen.platform == 'headless' then
-    require('harness.runner').start()
+if haylen.platform == 'headless' or navigation.launchedRunAll() then
+    require('harness.runner').start({quit = true})
     return
 end
 

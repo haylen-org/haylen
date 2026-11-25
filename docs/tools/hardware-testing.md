@@ -10,7 +10,7 @@ Every place runs the same suites:
 
 - The engine tests: `haylen test`.
 - The GPU tests, the conformance suite and the reference scenes of the 2D renderer on each graphics API: `haylen test --gpu`, or one API with `--graphics-api <name>`.
-- The test project in its run-all mode, which runs every test of `samples/tests` for two seconds each and ends with the line "Ran N tests, and none failed.".
+- The test project in its run-all mode, which runs every test of `samples/tests` for two seconds each and ends with the line "Ran N tests, and none failed.". The launch argument `--run-all` starts it in a window without a person and quits at the end with the status 1 when a test failed, such as `haylen --dev samples/tests --graphics-api openGl -- --run-all` with the desktop player.
 - The benchmarks on each API: `haylen engine bench --gpu`, described in [Benchmarks](benchmarks.md).
 - The stress samples in `samples/stress`, whose readout shows the API and the GPU time.
 
@@ -158,7 +158,7 @@ haylen test --ui samples/tests --target ios --device-farm "Apple iPhone 16"
 The run builds the app and the runner, the test APK that instruments itself on Android and the runner of the team of the app as an IPA on iOS, creates a project of Device Farm for the run, uploads both, runs them once on each device with a timeout of 30 minutes per device, prints what each device ended with and copies the files that Device Farm keeps of each job, such as the log and the video, into `ui-tests/device-farm-<platform>` of the build folder of the app. Device Farm runs every test on its own, so the files of a job hold the output of its last test alone, and the files of each test that did not pass go into a folder of their own inside the folder of its device. Whatever the run ends with, it deletes the project with its uploads and its run, and then checks that Device Farm no longer lists it. The AWS command line takes the credentials from the environment. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
 
 1. Build the debug APK of the test project with `haylen app build samples/tests --target android`, and the GPU test app with `haylen test --gpu --target android`, which leaves it in `build/engine/android-gpu-tests-<abi>-debug/apk/haylen-gpu-tests.apk`.
-2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode, and collect logcat.
+2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode with the launch argument `--run-all` in the extra `dev.haylen.arguments` of its intent, and collect logcat.
 3. Choose devices of different GPUs, such as Adreno, Mali, PowerVR and Xclipse, and of old and new Android versions. The free call `aws devicefarm get-device-pool-compatibility` shows which devices accept the app before you pay.
 4. Give every job a short timeout, so a hang cannot bill its full default time.
 

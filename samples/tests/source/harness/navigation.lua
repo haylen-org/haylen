@@ -41,6 +41,16 @@ function navigation.launchedTest()
     return nil
 end
 
+-- Whether the launch argument "--run-all" asks for the automatic run, such as a machine of the cloud that runs every test in a window without a person.
+function navigation.launchedRunAll()
+    for _, argument in ipairs(haylen.launchArguments()) do
+        if argument == '--run-all' then
+            return true
+        end
+    end
+    return false
+end
+
 function navigation.lastTest()
     return catalog.byCode[preferences.get('tests.last', '')]
 end

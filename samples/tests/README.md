@@ -21,6 +21,7 @@ HAYLEN_TESTS_SHARD=2/4 build/engine/macos-debug/bin/haylen-headless samples/test
 ```
 
 - UI tests: `haylen test --ui samples/tests --target ios-simulator --device "iPad Pro 13-inch (M5)"` taps a category of the menu, and on an iPad tiles the window to each half, resizes it there and resizes it in Stage Manager, checking at each size that the framebuffer follows the window. The same command with `--target visionos-simulator` taps the menu with a look and a pinch. The tests of the plugins answer the prompts, tap the notifications, press the remote and the back button and read the checks of PLG-008, PLG-009, PLG-015, PLG-016, PLG-017, PLG-019, PLG-023, PLG-024 and PLG-025 on the simulators, on the devices of `--target ios`, `tvos` and `android`, and on the phones of AWS Device Farm with `--device-farm`, as [the UI tests](../../docs/tools/testing.md#the-ui-tests) describe. The accessibility tree holds only the cards of checks that show, so on a small screen, such as a phone held in landscape, the Android tests drag the list of checks toward each end until the check they read shows, as a person does.
+- Automatic in a window: the launch argument `--run-all` starts the same run in the window of any platform without a person, such as a machine of the cloud, and quits once every test ran, with the status 1 when any test failed, which the desktop player exits with. So `haylen --dev samples/tests --graphics-api vulkan -- --run-all` runs every test that the platform supports on one graphics API.
 - One test: the launch arguments `--test <code>` open the test with that code over its list, such as `haylen --dev samples/tests -- --test PLG-016`, which the UI tests use to start on the test they check. A test opened this way is not the one that `Continue with` offers next time, since no person picked it. A code of no test stops the project with the code.
 
 ## Using the project
@@ -42,7 +43,7 @@ The menu lists the categories by section with their prefixes and the number of t
 | Path | Contents |
 | --- | --- |
 | `haylen.json` | The project in landscape at a design size of 1920 by 1080, the autoload of the Events tests, the native test libraries and the plugins the tests use. |
-| `source/main.lua` | Loads the catalog, makes the app recoverable and opens the menu, or the test that the launch arguments `--test <code>` name, or starts the automatic run on the headless platform. |
+| `source/main.lua` | Loads the catalog, makes the app recoverable and opens the menu, or the test that the launch arguments `--test <code>` name, or starts the automatic run on the headless platform and with the launch argument `--run-all`. |
 | `source/harness/` | What every test shares: the catalog of the manifests, the menu, the test list, the base class `Test` with its frame and play area, the unsupported page, the automatic run with its shards, rows of checks, a log of lines, a pointer for every device and the way between the screens. |
 | `source/categories/<category>/` | One folder per category with `manifest.lua`, one file per test and the modules its tests share. |
 | `content/<category>/` | The assets of each category, and `content/fonts/` the open-license fonts that several categories share, each next to its license. |

@@ -1,4 +1,4 @@
--- Runs every test that this platform supports, one after the other for a few seconds each, and lists the tests that raised an error, failed a check or whose scene failed to load with their codes. The menu starts it with "Run all", and the headless platform starts it by itself and quits once every test ran. The run takes no input, so it keeps the screen on until it ends.
+-- Runs every test that this platform supports, one after the other for a few seconds each, and lists the tests that raised an error, failed a check or whose scene failed to load with their codes. The menu starts it with "Run all", and the headless platform and the launch argument "--run-all" start it by themselves and quit once every test ran. The run takes no input, so it keeps the screen on until it ends.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local log = require('haylen.log')
@@ -60,7 +60,9 @@ function runner.reset()
     scene.push(runner.screen)
 end
 
-function runner.start()
+-- The option "quit" ends the app once every test ran, with the status 1 when any test failed.
+function runner.start(options)
+    runner.quits = options ~= nil and options.quit == true
     runner.queue = {}
     for _, test in ipairs(catalog.tests) do
         if not catalog.unsupported(test) then
@@ -161,7 +163,7 @@ function runner.next()
     end, {processMode = 'always', unscaled = true})
 end
 
--- The headless platform quits once every test ran, with the status 1 when any test failed, which the headless player exits with.
+-- A run that quits ends the app once every test ran, with the status 1 when any test failed, which the headless player and the desktop player exit with.
 function runner.finish()
     local codes = {}
     for index, failure in ipairs(runner.failures) do
@@ -174,7 +176,7 @@ function runner.finish()
     else
         log.error(string.format('Ran %d tests, and %d failed: %s.', #runner.queue, #codes, table.concat(codes, ', ')))
     end
-    if haylen.platform == 'headless' then
+    if runner.quits then
         haylen.quit({status = #codes == 0 and 0 or 1})
     end
 end
