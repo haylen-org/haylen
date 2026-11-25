@@ -313,10 +313,9 @@ if(TARGET haylen AND TARGET haylen-headless)
   target_compile_definitions(haylen-test-support PUBLIC HAYLEN_PLAYER_FOLDER="${player_folder}" HAYLEN_HEADLESS_PLAYER_FOLDER="$<TARGET_FILE_DIR:haylen-headless>")
 endif()
 
-# Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs.
+# Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs. The tests find their data through absolute paths, so discovery and every test run in the build tree and write nothing into the sources.
 include(GoogleTest)
 gtest_discover_tests(haylen-tests
-  WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
   DISCOVERY_TIMEOUT 60
   PROPERTIES TIMEOUT 120
 )
