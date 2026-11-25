@@ -30,9 +30,10 @@ function SignIn:build()
             end},
         },
         ui.alert{id = 'failure', tone = 'danger', title = '', message = '', visible = false},
-        ui.row{gap = space.s, align = 'stretch',
-            ui.busyIndicator{id = 'busy', size = 32, visible = false},
-            ui.button{id = 'submit', text = 'Sign in', variant = 'primary', grow = 1, onClick = function() self:submit() end},
+        -- The spinner turns inside the start of the button, so the button keeps its width while the service answers.
+        ui.stack{align = 'stretch',
+            ui.button{id = 'submit', text = 'Sign in', variant = 'primary', align = 'stretch', onClick = function() self:submit() end},
+            ui.row{gap = 0, align = 'stretch', padding = {0, 0, 0, space.m}, ui.busyIndicator{id = 'busy', size = 28, color = 'onAccent', visible = false}},
         },
         ui.button{id = 'cancel', text = 'Cancel', variant = 'link', align = 'center', onClick = function() ui.goBack() end},
     }
