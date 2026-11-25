@@ -7836,7 +7836,7 @@ O SDL só muda o tamanho do drawable do canvas quando a página muda de tamanho 
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** No Docker, uma ligação Debug com o sanitizer de endereços de cada programa de testes pelo `ld.bfd` do GCC 15 usa de 6,6 a 6,9 GB, e só o `libhaylen-engine.a` tem 2 GB, então as duas ligações em paralelo não cabem nos 16 GB da máquina da CI. A correção espera a compilação.
+- **Progress:** A causa da queda no shard 1 está provada no Docker: cada ligação Debug com o sanitizer de endereços de um programa de testes passa de 7,5 GB, e as duas em paralelo estouram os 16 GB da máquina da CI. A correção é um pool de ligação do Ninja que liga um programa de testes por vez. Falta medir a memória dos testes do shard 3, que perdeu a máquina em três execuções sem deixar log.
 
 #### Description
 
@@ -7858,7 +7858,7 @@ Na execução completa 45537704137, dois shards do job `Sanitizers (address)` pe
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** A categoria é opcional desde `f1f64c102`: sem ela, os projetos gerados deixam de fora a categoria da Apple, a do Android e as categorias do menu e do metainfo do Linux, e o `.deb` fica na seção `misc` do Debian. Só o instalador do Linux recusa um app sem categoria, porque a ferramenta do AppImage exige a chave `Categories`, com um teste. A revisão do nome, do identificador e da versão começou.
+- **Progress:** A categoria é opcional (`f1f64c102`), e um app sem versão usa a versão padrão da engine, `1.0.0` com o build 1 (`06d1f4086`). O dono decidiu o resto: sem nome, o app é "Haylen App", e `haylen-app` onde o nome precisa ser uma palavra só; sem identificador, as ferramentas geram um da pasta, único nesta máquina, para rodar localmente, e só a assinatura para um aparelho, o build Release e o empacotamento para loja pedem um identificador real; e a pasta `source/` num app C++ sem Lua vira um aviso. Em andamento.
 
 #### Description
 
