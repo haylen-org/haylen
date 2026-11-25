@@ -35,6 +35,7 @@ class HaylenUiTestCase:
     CF_UNICODETEXT = 13
     GMEM_MOVEABLE = 0x0002
     WM_INPUTLANGCHANGEREQUEST = 0x0050
+    GA_ROOT = 2
     # The process sees the screen in physical pixels, as UI Automation reports the bounds of elements, so a click lands where an element is at any scale of the display.
     DPI_AWARENESS_PER_MONITOR_V2 = -4
 
@@ -109,6 +110,12 @@ class HaylenUiTestCase:
         user32.GetKeyboardLayout.restype = ctypes.c_void_p
         user32.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.c_void_p)
         user32.GetForegroundWindow.restype = wintypes.HWND
+        user32.WindowFromPoint.argtypes = (wintypes.POINT,)
+        user32.WindowFromPoint.restype = wintypes.HWND
+        user32.GetAncestor.argtypes = (wintypes.HWND, wintypes.UINT)
+        user32.GetAncestor.restype = wintypes.HWND
+        user32.GetWindowTextW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+        user32.GetClassNameW.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
         user32.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, ctypes.c_void_p)
         user32.GetDC.argtypes = (wintypes.HWND,)
         user32.GetDC.restype = wintypes.HDC
@@ -183,9 +190,14 @@ class HaylenUiTestCase:
         assert sent == 1, f"Windows takes no input from the test, error {ctypes.get_last_error()}. The UI tests need the desktop of a person who is signed in, unlocked and in front."
 
     def click(self, name: str) -> None:
-        """Clicks the middle of the element with the name, as the mouse of a person does."""
+        """Clicks the middle of the element with the name, as the mouse of a person does. Windows keeps an app that the tests start behind the window that is active, so the click reaches the app only where no other window covers it, and the test fails with the window that does instead of clicking into it."""
         bounds = self.wait_for(name).CurrentBoundingRectangle
-        self.user32.SetCursorPos((bounds.left + bounds.right) // 2, (bounds.top + bounds.bottom) // 2)
+        point = wintypes.POINT((bounds.left + bounds.right) // 2, (bounds.top + bounds.bottom) // 2)
+        cover = self.user32.GetAncestor(self.user32.WindowFromPoint(point), HaylenUiTestCase.GA_ROOT)
+        assert self.owns(cover), (
+            f'The window {self.describe_window(cover)} covers the element "{name}" of the app, so the click would reach it. Close every other window of the desktop of the user who runs the tests, such as the first sign-in screens and the Start menu of Windows.'
+        )
+        self.user32.SetCursorPos(point.x, point.y)
         for flag in (HaylenUiTestCase.MOUSEEVENTF_LEFTDOWN, HaylenUiTestCase.MOUSEEVENTF_LEFTUP):
             self.send(HaylenUiTestCase.INPUT_MOUSE, HaylenUiTestCase.MouseInput(dwFlags=flag))
 
@@ -199,11 +211,23 @@ class HaylenUiTestCase:
         self.click(name)
         self.wait_for_focus(name)
 
+    def owns(self, window: int) -> bool:
+        """Whether the top-level window belongs to the process of the app."""
+        process = wintypes.DWORD()
+        self.user32.GetWindowThreadProcessId(window, ctypes.byref(process))
+        return process.value == self.process.pid
+
+    def describe_window(self, window: int) -> str:
+        """The title and the class of a top-level window, so a failure names the window that stood in the way."""
+        title = ctypes.create_unicode_buffer(256)
+        kind = ctypes.create_unicode_buffer(256)
+        self.user32.GetWindowTextW(window, title, len(title))
+        self.user32.GetClassNameW(window, kind, len(kind))
+        return f'"{title.value}" of the class "{kind.value}"'
+
     def in_front(self) -> bool:
         """Whether the window in front of the desktop belongs to the app, which the keys of the tests reach."""
-        process = wintypes.DWORD()
-        self.user32.GetWindowThreadProcessId(self.user32.GetForegroundWindow(), ctypes.byref(process))
-        return process.value == self.process.pid
+        return self.owns(self.user32.GetForegroundWindow())
 
     def key(self, code: int, down: bool) -> None:
         assert self.in_front(), (

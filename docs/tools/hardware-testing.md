@@ -190,15 +190,17 @@ The V620 of these machines is a virtual function of a shared GPU, whose driver m
 
 ### UI tests of Windows
 
-The [UI tests of Windows](testing.md#windows) click and type into the desktop of a person who is signed in, so a machine of the cloud runs them once its console signs a user in on its own. A burstable Azure machine such as `Standard_B8ms` with Windows Server 2025 serves, since the tests need no GPU and WARP draws the app:
+The [UI tests of Windows](testing.md#windows) click and type into the desktop of a person who is signed in, so a machine of the cloud runs them once its console signs a user in on its own. A Windows 11 machine of Azure, such as a `Standard_F8s_v2` with the image `MicrosoftWindowsDesktop:windows-11:win11-25h2-pro:latest`, serves, since the tests need no GPU and WARP draws the app. The desktop edition of Windows opens none of the screens of a server, such as the Server Manager, at sign-in. Its image needs Trusted Launch, `--security-type TrustedLaunch`, and `--license-type Windows_Client`, which states that the account holds a license of Windows 11 for the cloud:
 
-1. Create the machine in a resource group of its own, give it a shutdown timer with `az vm auto-shutdown`, open SSH only to the address of your machine, and turn on its OpenSSH server with `az vm run-command invoke`, which runs a PowerShell script on it.
+1. Create the machine in a resource group of its own, give it a shutdown timer with `az vm auto-shutdown` and with `shutdown /s /t <seconds>` on the machine, open SSH only to the address of your machine, and turn on its OpenSSH server with `az vm run-command invoke`, which runs a PowerShell script on it.
 2. Install the build tools of Windows that the [requirements](build.md#requirements) name and the Japanese language with its input method, `Install-Language ja-JP`, which the composition test types with.
-3. Copy the sources and build the app with `haylen app build samples/tests --target windows` over SSH, from the environment of `vcvars64.bat`.
-4. Sign the user in on the console at every start with the `AutoAdminLogon` values of `Winlogon`, turn off the lock screen, the screen saver, the Server Manager that opens at sign-in and the privacy screen of the first sign-in, with the policy `DisablePrivacyExperience` of `OOBE`, and restart the machine. Each of them would take the front of the desktop from the app.
-5. Give the console a resolution that holds the window of the app whole, such as `Set-DisplayResolution -Width 1920 -Height 1080` in the session of the user, since the console of a machine of the cloud starts at 1024 by 768.
+3. Copy the sources and build the app with `haylen app build samples/tests --target windows` over SSH, from the environment of `vcvars64.bat`. An archive made with `tar` on macOS holds a file `._<name>` of the attributes of each file unless `COPYFILE_DISABLE=1` is set, and those files break the build.
+4. Sign the user in on the console at every start with the `AutoAdminLogon` values of `Winlogon`, turn off the lock screen, the screen saver and the privacy screen of the first sign-in, with the policy `DisablePrivacyExperience` of `OOBE`, and the offers of Windows, with the policies `DisableWindowsConsumerFeatures` and `DisableSoftLanding` of `CloudContent`. Then restart the machine twice, since the first sign-in of a new user can leave the Start menu open, and check that no window is in front of the desktop before the tests run.
+5. Give the console a resolution that holds the window of the app whole, 1920 by 1080, since the console of a machine of the cloud starts at 1024 by 768. Windows 11 has no `Set-DisplayResolution`, so a PowerShell script in the session of the user calls `ChangeDisplaySettings` of `user32`, which keeps the resolution for the next sign-ins.
 6. Run `haylen test --ui samples/tests --target windows` in the session of that user through a scheduled task that runs only while the user is signed in, `schtasks /create ... /it`, since a command of SSH runs in a session without a desktop, and start the task through `conhost.exe --headless`, so no console window covers the app. Read its log over SSH.
 7. Delete the resource group and check with `az group exists` that it is gone.
+
+Windows keeps an app that the tests start behind the window that is active, so any other window, such as the Start menu or an app that a click opened, takes the clicks meant for the app. The click of a test therefore fails with the name of the window that covers the element, instead of clicking into it.
 
 ## What the hardware covers
 

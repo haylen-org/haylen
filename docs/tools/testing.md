@@ -643,7 +643,7 @@ The class `HaylenUiTestCase` of Windows gives the tests these helpers:
 | --- | --- |
 | `launch_arguments` | The launch arguments of the app, which a test class sets, empty by default. |
 | `element(name)`, `wait_for(name)` | The first element of the window of the app whose name is the text, or a wait until it shows, which fails with the names of every element of the window. |
-| `click(name)` | Clicks the middle of the element with the name. |
+| `click(name)` | Clicks the middle of the element with the name. The click fails the test with a sentence that names the window covering the element when another window of the desktop covers it, since the click would reach that window. |
 | `wait_for_focus(name)`, `start_typing(name)` | Waits until the element with the name takes the keyboard focus, such as the field that a screen focuses a few frames after it shows, or clicks a field and waits until it takes the focus, so the keys that follow reach it. |
 | `press(key, *modifiers)`, `type_keys(text)` | Presses a virtual key once with modifier keys held around it, such as `press(ord("V"), VK_CONTROL)`, or types letters and digits with their keys. Each key fails the test with a sentence when the window of the app is not in front of the desktop, since the key would reach another window. |
 | `hold_until(key, name)` | Holds a virtual key down until the app shows an element with the name, sending the key down again for each repeat at the rate of the keyboard settings, as a keyboard does, which Windows marks as a repeat, and lets it go. |
