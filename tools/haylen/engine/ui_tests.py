@@ -48,6 +48,7 @@ class UiTests:
     # The targets of the apps of this Mac, which the runner of the Mac drives, since a Mac Catalyst app is an app of the Mac too.
     MACS = ("macos", "catalyst")
     MAC_SCHEME = "macOS"
+    INPUT_SOURCE_FILE = "input-source"
     # The longest that one UI test runs before xcodebuild stops it, so a gesture that the system never finishes fails the test instead of the run waiting forever.
     TEST_SECONDS = 600
     # The folder of the screenshots in the container of the runner on a device, which the run copies back.
@@ -86,7 +87,21 @@ class UiTests:
     def generation(environment: Mapping[str, str], tests: Path, runner: Path, identifier: str, output: str, bundle: Path | None = None) -> dict[str, str]:
         """The environment of XcodeGen, which writes the tests of the app into the project of the runner, and the identifier of the app, the bundle that the runner of the Mac launches and the folder of the screenshots into the Info.plist of the runner."""
         app = "" if bundle is None else str(bundle)
-        return {**environment, "HAYLEN_UI_TESTS": str(tests), "HAYLEN_UI_RUNNER": str(runner), "HAYLEN_UI_APP": identifier, "HAYLEN_UI_APP_PATH": app, "HAYLEN_UI_OUTPUT": output}
+        input_source = "" if bundle is None else str(UiTests.input_source_file(runner))
+        return {
+            **environment,
+            "HAYLEN_UI_TESTS": str(tests),
+            "HAYLEN_UI_RUNNER": str(runner),
+            "HAYLEN_UI_APP": identifier,
+            "HAYLEN_UI_APP_PATH": app,
+            "HAYLEN_UI_OUTPUT": output,
+            "HAYLEN_UI_INPUT_SOURCE": input_source,
+        }
+
+    @staticmethod
+    def input_source_file(runner: Path) -> Path:
+        """The file where the run of the Mac writes the input source that it selected for a test, which the runner reads in its sandbox to know that the selection happened."""
+        return runner / UiTests.INPUT_SOURCE_FILE
 
     @staticmethod
     def mac_destination() -> str:
@@ -235,7 +250,7 @@ class UiTests:
         results = runner / "derived" / "Logs" / "Test" / f"{platform}.xcresult"
         Folders.remove(results)
         attachments = runner / "attachments"
-        keyboard = MacKeyboard()
+        keyboard = MacKeyboard(UiTests.input_source_file(runner))
         try:
             UiTestRun(self.context.terminal, answer=keyboard.answer).run(UiTests.command("test-without-building", *project, classes, results), self.context.environment)
         except BaseException:

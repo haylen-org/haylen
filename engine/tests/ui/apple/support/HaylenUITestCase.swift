@@ -1,6 +1,3 @@
-#if os(macOS)
-import Carbon
-#endif
 import CoreLocation
 import XCTest
 
@@ -254,48 +251,33 @@ class HaylenUITestCase: XCTestCase {
     // Whether the test selected an input source, whose change the end of the test undoes.
     var selectedInputSource = false
 
-    // Selects an input source of the Mac by its identifier, such as "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese", until the test ends. The sandbox of the runner keeps the input sources that a test selects to its own process, so the test asks "haylen test --ui" in a line of its output, and the run selects the source, turning on first its input method and the source when the Mac has them off. The test waits until the Mac reports that its current input source changed. Select the source before a field edits, since macOS hands an input source of Chinese, Japanese, Korean or Vietnamese that a process selects to a field only once the field takes the focus.
+    // Selects an input source of the Mac by its identifier, such as "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese", until the test ends. The sandbox of the runner keeps the input sources that a test selects to its own process, so the test asks "haylen test --ui" in a line of its output, and the run selects the source, turning on first its input method and the source when the Mac has them off. The test waits until the run reports the source in its file. An app in front keeps typing through the input source it had when it came to the front when another process in the background selects one, even in a native field that takes the focus after the change, while a person who switches from the menu bar or with Control+Space switches the app in front. So the test starts the app again, which comes to the front with the new source.
     func useInputSource(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
-        waitForInputSourceChange("The input source of the Mac does not change to \"\(identifier)\".", file: file, line: line) {
-            print("HaylenInputSource: \(identifier)")
-        }
+        print("HaylenInputSource: \(identifier)")
+        fflush(stdout)
+        waitForInputSource(identifier, "The run does not select the input source \"\(identifier)\" of the Mac.", file: file, line: line)
         selectedInputSource = true
+        app.terminate()
+        app.launch()
     }
 
     // Gives the Mac back the input sources it had before the test selected one.
     func restoreInputSources(file: StaticString = #filePath, line: UInt = #line) {
-        waitForInputSourceChange("The input source of the Mac does not change back after the test.", file: file, line: line) {
-            print("HaylenRestoreInputSources")
-        }
+        print("HaylenRestoreInputSources")
+        fflush(stdout)
+        waitForInputSource("", "The run does not give the Mac back its input sources after the test.", file: file, line: line)
         selectedInputSource = false
     }
 
-    // Writes the request of the test and waits for the notification of the system that the current input source changed, which reaches a process in a sandbox too.
-    func waitForInputSourceChange(_ message: String, file: StaticString, line: UInt, request: () -> Void) {
-        let observer = InputSourceObserver()
-        request()
-        fflush(stdout)
-        XCTAssertEqual(XCTWaiter.wait(for: [observer.changed], timeout: Self.timeout), .completed, message, file: file, line: line)
-        observer.stop()
-    }
-
-    // Fulfills its expectation when the current input source of the Mac changes. The system holds the distributed notifications of an app in the background until it comes to the front, as the runner is while the app it drives is in front, so the observer asks for its notification at once.
-    final class InputSourceObserver: NSObject {
-        let changed = XCTestExpectation(description: "The input source of the Mac changes.")
-
-        override init() {
-            super.init()
-            changed.assertForOverFulfill = false
-            let name = NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String)
-            DistributedNotificationCenter.default().addObserver(self, selector: #selector(inputSourceChanged(_:)), name: name, object: nil, suspensionBehavior: .deliverImmediately)
+    // Waits until the file of the run names the input source, or names none once the Mac has its input sources back. The sandbox of the runner lets it read files anywhere.
+    func waitForInputSource(_ identifier: String, _ message: String, file: StaticString, line: UInt) {
+        guard let path = Self.info["HaylenUIInputSource"] as? String, !path.isEmpty else {
+            XCTFail("Build the UI tests with \"haylen test --ui\", which names the file of the input source of the run.", file: file, line: line)
+            return
         }
 
-        @objc func inputSourceChanged(_ notification: Notification) {
-            changed.fulfill()
-        }
-
-        func stop() {
-            DistributedNotificationCenter.default().removeObserver(self)
+        waitUntil(message, file: file, line: line) {
+            (try? String(contentsOfFile: path, encoding: .utf8)) == identifier
         }
     }
 

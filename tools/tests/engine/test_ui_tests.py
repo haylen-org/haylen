@@ -36,9 +36,11 @@ class UiTestsTest:
             "HAYLEN_UI_APP": "com.haylen.tests",
             "HAYLEN_UI_APP_PATH": "",
             "HAYLEN_UI_OUTPUT": "/build/screenshots",
+            "HAYLEN_UI_INPUT_SOURCE": "",
         }
         mac = UiTests.generation({}, Path("/app/ui-tests/apple"), Path("/build/runner"), "com.haylen.tests", "/build/screenshots", Path("/build/products/Tests.app"))
         assert mac["HAYLEN_UI_APP_PATH"] == "/build/products/Tests.app"
+        assert mac["HAYLEN_UI_INPUT_SOURCE"] == str(Path("/build/runner/input-source"))
 
     def test_the_runner_of_the_mac_keeps_its_screenshots_in_its_result_bundle_under_the_names_of_the_tests(self, tmp_path):
         project = (Path("/build/HaylenUITests.xcodeproj"), "macOS", "platform=macOS,arch=arm64", Path("/build/derived"))
@@ -82,9 +84,9 @@ class UiTestsTest:
             raise BuildFailed('The command "xcrun" failed with exit code 1.')
 
         recorded.context.process.run = fail
-        UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(), results, tmp_path / "attachments", tmp_path)
+        UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(tmp_path / "input-source"), results, tmp_path / "attachments", tmp_path)
         assert "could not be exported" in recorded.output.getvalue()
-        UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(), tmp_path / "missing.xcresult", tmp_path / "attachments", tmp_path)
+        UiTests(recorded.context, None).clean_up_failed_mac_run(MacKeyboard(tmp_path / "input-source"), tmp_path / "missing.xcresult", tmp_path / "attachments", tmp_path)
 
     def test_the_log_of_a_failed_simulator_run_covers_the_whole_run(self):
         show = ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "log", "show", "--last"]
@@ -106,7 +108,7 @@ class UiTestsTest:
         assert UiTests.mac_destination().startswith("platform=macOS,arch=")
         assert set(UiTests.DEVICES.values()) == {scheme for scheme, _ in UiTests.PLATFORMS.values()}
         assert "path: ${HAYLEN_UI_TESTS}" in spec
-        for variable in ("HAYLEN_UI_RUNNER", "HAYLEN_UI_APP", "HAYLEN_UI_OUTPUT"):
+        for variable in ("HAYLEN_UI_RUNNER", "HAYLEN_UI_APP", "HAYLEN_UI_OUTPUT", "HAYLEN_UI_INPUT_SOURCE"):
             assert f"${{{variable}}}" in spec
         assert f"PRODUCT_BUNDLE_IDENTIFIER: {UiTests.RUNNER.removesuffix('.xctrunner')}" in spec
 

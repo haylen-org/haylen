@@ -41,7 +41,7 @@ class MacTextInputTests: TestProjectCase {
         try saveScreenshot("mac-backspace-held")
     }
 
-    // The Japanese input method composes the kana of the Latin letters while they are typed, and Return commits them into the field. The input source is selected before the field edits, as a person picks it before typing: macOS hands an input source of Chinese, Japanese, Korean or Vietnamese that a process selects to a field only once the field takes the focus, so a field that already edits keeps typing Latin letters.
+    // The Japanese input method composes the kana of the Latin letters while they are typed, and Return commits them into the field.
     func testAnInputMethodComposesTheTextOfTheField() throws {
         useInputSource(Self.japanese)
         startTyping("Island name")

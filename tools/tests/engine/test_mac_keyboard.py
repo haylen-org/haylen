@@ -3,7 +3,7 @@ from haylen.engine.mac_keyboard import MacKeyboard
 
 
 class MacKeyboardTest:
-    """A UI test of the Mac asks with a line of its output to hold a key with its virtual key code and repeats, to press keys one after the other, to select an input source by its identifier or to give the Mac back its input sources, and every other line asks for nothing. The input sources go back only once a test selected one."""
+    """A UI test of the Mac asks with a line of its output to hold a key with its virtual key code and repeats, to press keys one after the other, to select an input source by its identifier or to give the Mac back its input sources, and every other line asks for nothing. The input sources go back only once a test selected one, and the file of the run tells the test the input source that the run selected."""
 
     class Sources:
         """Input sources of the Mac that record what the run asks of them."""
@@ -17,28 +17,33 @@ class MacKeyboardTest:
         def restore(self) -> None:
             self.calls.append("restore")
 
-    def test_a_line_that_asks_holds_its_key_with_its_repeats(self, monkeypatch):
+    def test_a_line_that_asks_holds_its_key_with_its_repeats(self, monkeypatch, tmp_path):
         held: list[tuple[int, int]] = []
         monkeypatch.setattr(MacKeyboard, "hold", lambda code, repeats: held.append((code, repeats)))
-        keyboard = MacKeyboard()
+        keyboard = MacKeyboard(tmp_path / "input-source")
         for line in ("Test Case '-[HaylenUITests.MacTextInputTests testHolding]' started.", "HaylenHoldKey: 51 3\r", "HaylenHoldKey: delete 3"):
             keyboard.answer(line)
         assert held == [(51, 3)]
 
-    def test_a_line_that_asks_presses_its_keys_one_after_the_other(self, monkeypatch):
+    def test_a_line_that_asks_presses_its_keys_one_after_the_other(self, monkeypatch, tmp_path):
         posted: list[list[tuple[int, bool, bool, float]]] = []
         monkeypatch.setattr(MacKeyboard, "post", lambda presses: posted.append(presses))
-        keyboard = MacKeyboard()
+        keyboard = MacKeyboard(tmp_path / "input-source")
         for line in ("HaylenPressKeys: 45 34\r", "HaylenPressKeys: n i", "HaylenPressKeys:"):
             keyboard.answer(line)
         pause = MacKeyboard.TYPING_SECONDS
         assert posted == [[(45, True, False, pause), (45, False, False, pause), (34, True, False, pause), (34, False, False, pause)]]
 
-    def test_a_line_that_asks_selects_an_input_source_until_the_mac_gets_its_sources_back(self, monkeypatch):
+    def test_a_line_that_asks_selects_an_input_source_until_the_mac_gets_its_sources_back(self, monkeypatch, tmp_path):
         calls: list[str] = []
         monkeypatch.setattr(mac_keyboard, "MacInputSources", lambda: MacKeyboardTest.Sources(calls))
-        keyboard = MacKeyboard()
+        keyboard = MacKeyboard(tmp_path / "input-source")
+        status = tmp_path / "input-source"
         keyboard.restore()
-        for line in ("HaylenInputSource: com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese\r", "Test Case started.", "HaylenRestoreInputSources"):
+        assert status.read_text(encoding="utf-8") == ""
+        keyboard.answer("HaylenInputSource: com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese\r")
+        assert status.read_text(encoding="utf-8") == "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese"
+        for line in ("Test Case started.", "HaylenRestoreInputSources"):
             keyboard.answer(line)
         assert calls == ["select com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese", "restore"]
+        assert status.read_text(encoding="utf-8") == ""

@@ -1,4 +1,4 @@
-# XcodeGen spec of the UI test runner of apps, which "haylen test --ui" generates into the folder that "HAYLEN_UI_RUNNER" names with the Swift tests of the folder that "HAYLEN_UI_TESTS" names, the folder "ui-tests/apple" of the app. The Info.plist of each runner names the app it drives, "HAYLEN_UI_APP", and the folder of its screenshots, "HAYLEN_UI_OUTPUT", so the runner needs nothing from the command that runs it, as on a farm of devices. The runner of the Mac drives a macOS or a Mac Catalyst app, both apps of the Mac, which it launches from the bundle that "HAYLEN_UI_APP_PATH" names, since a Mac installs no app for the tests, and it keeps its screenshots in its result bundle, since its sandbox lets it write nowhere else.
+# XcodeGen spec of the UI test runner of apps, which "haylen test --ui" generates into the folder that "HAYLEN_UI_RUNNER" names with the Swift tests of the folder that "HAYLEN_UI_TESTS" names, the folder "ui-tests/apple" of the app. The Info.plist of each runner names the app it drives, "HAYLEN_UI_APP", and the folder of its screenshots, "HAYLEN_UI_OUTPUT", so the runner needs nothing from the command that runs it, as on a farm of devices. The runner of the Mac drives a macOS or a Mac Catalyst app, both apps of the Mac, which it launches from the bundle that "HAYLEN_UI_APP_PATH" names, since a Mac installs no app for the tests, and it keeps its screenshots in its result bundle, since its sandbox lets it write nowhere else. It reads the input source that the run selected for a test in the file that "HAYLEN_UI_INPUT_SOURCE" names.
 name: HaylenUITests
 options:
   deploymentTarget:
@@ -57,6 +57,7 @@ targets:
       properties:
         HaylenUIApp: ${HAYLEN_UI_APP}
         HaylenUIAppPath: ${HAYLEN_UI_APP_PATH}
+        HaylenUIInputSource: ${HAYLEN_UI_INPUT_SOURCE}
     sources: *sources
 # The test action of every scheme runs the runner without a debugger, since a runner that xcodebuild launches under the debugger waits for it to attach, and nothing attaches in a run from the command line. It captures the screen as screenshots, since the test manager of iOS 17 ends when Xcode asks it for a screen recording.
 schemes:
