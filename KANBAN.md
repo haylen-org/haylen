@@ -7509,6 +7509,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 3
+- **Progress:** O campo escondido da engine já manda ao Android o pedido oficial de nenhuma sugestão (`TYPE_TEXT_FLAG_NO_SUGGESTIONS`, sem correção), e o Gboard mostra a sua faixa de sugestões mesmo assim, porque o pedido é só um aviso ao teclado. O dono decidiu manter o pedido e documentar que alguns teclados mostram a faixa, que tocar numa sugestão entra no campo normalmente, e o teste de UI confere o pedido que a engine manda.
 
 #### Description
 
