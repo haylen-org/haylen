@@ -8209,7 +8209,12 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no Direct3D, que ainda 
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Começou num trabalho próprio, que corrige cada defeito confirmado na raiz com um teste que falha sem a correção e confirma ou descarta cada incerto com o motivo.
+- **Progress:** A raiz do G7 está no compilador de shaders: os alvos GLSL convertem o espaço de recorte, o que tira de todo programa GL a precisão de que a profundidade invertida precisa. O plano aprovado:
+  1. O compilador para de converter. O commit dele é refeito, com uma release nova e um pin novo.
+  2. O `gpu::Device` ganha a faixa de profundidade: 0 a 1 no Metal, Direct3D, Vulkan e WebGPU, e no OpenGL onde existe `glClipControl`, que o dispositivo liga. Onde não existe, a faixa é -1 a 1.
+  3. O Lua lê `graphics.depthRange()`, e as projeções de `haylen.math` usam essa faixa.
+
+O G3 troca o máximo de amostras pelas contagens de amostras de cada formato, lidas em todo dispositivo. O D4 acrescenta `maxVolumeSize` e `maxCubeSize`. Os dois chegam ao Lua.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
