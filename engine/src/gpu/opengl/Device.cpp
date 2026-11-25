@@ -114,8 +114,9 @@ void Device::applyDriverIssues() {
     const std::optional<std::string_view> callingThread = DriverIssues::find(driver, DriverIssues::Issue::CompileOnCallingThread);
     const std::optional<std::string_view> layerClears = DriverIssues::find(driver, DriverIssues::Issue::ClearLayersByDrawing);
     const std::optional<std::string_view> noAnisotropy = DriverIssues::find(driver, DriverIssues::Issue::NoAnisotropy);
+    const std::optional<std::string_view> depthWithStencil = DriverIssues::find(driver, DriverIssues::Issue::MakeFloatDepthWithStencil);
 
-    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, noAnisotropy}) {
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears, noAnisotropy, depthWithStencil}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
@@ -124,6 +125,7 @@ void Device::applyDriverIssues() {
     noFloatFiltering = floatFiltering.has_value();
     anisotropic = !noAnisotropy.has_value();
     flushEachPass = passFlushes.has_value();
+    floatDepthWithStencil = depthWithStencil.has_value();
 
     if (noGpuDisjoint) {
         timer.setReadsDisjoint(false);
@@ -421,7 +423,13 @@ Device::Image Device::makeImage(const ImageDesc& desc) {
         return {images.add(std::move(record))};
     }
 
-    record.name = makeTexture(desc, pixel, record.target);
+    // A texture of 32-bit float depth on a driver that needs it takes a stencil plane, which no pass attaches or clears, since its depth still attaches alone.
+    Conversions::Pixel stored = pixel;
+    if (floatDepthWithStencil && desc.format == PixelFormat::Depth32Float) {
+        stored.internalFormat = Gl::kDepth32fStencil8;
+    }
+
+    record.name = makeTexture(desc, stored, record.target);
     if (desc.kind == ImageKind::Texture) {
         uploadTexture(desc, record);
     }

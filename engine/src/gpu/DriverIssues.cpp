@@ -6,7 +6,7 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 9> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 10> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -61,6 +61,13 @@ const std::array<DriverIssues::Entry, 9> DriverIssues::kEntries{{
         .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)",
         .version = "SwiftShader 4.0.0",
         .reason = "The OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1 clears, reads and blits the first layer of an array or a volume texture whatever layer the framebuffer attaches, while its draws reach that layer, which the x86_64 images of Android 17 showed on a Linux host, so a pass clears an attachment at a later layer by drawing.",
+    },
+    {
+        .api = Device::Api::OpenGlEs,
+        .issue = Issue::MakeFloatDepthWithStencil,
+        .renderer = "Google SwiftShader",
+        .version = "SwiftShader 4.0.0",
+        .reason = "The OpenGL ES of SwiftShader 4.0.0.1, which the Android emulator draws through on a Linux host, writes the depth that a draw gives a texture of \"GL_DEPTH_COMPONENT32F\" in other places than its lookups read, so a plane drawn into the left half reads as every other whole row, while its clears and the other depth formats keep their texels, so a texture of 32-bit float depth takes a stencil plane there.",
     },
     {
         .api = Device::Api::OpenGl,

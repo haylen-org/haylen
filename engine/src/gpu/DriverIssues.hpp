@@ -32,6 +32,8 @@ class DriverIssues final {
         NoAnisotropy,
         // The swapchain waits for its next image without a timeout, since its platform takes no other wait and warns at every bounded one.
         UnboundedAcquire,
+        // Textures of 32-bit float depth are made with a stencil plane, since the lookups of the driver read the depth that its draws write into a texture of 32-bit float depth alone in other places.
+        MakeFloatDepthWithStencil,
     };
 
     // A driver as its graphics API describes it: the name of its GPU, its version text and its version number, which is 0 where the API gives none.
@@ -58,7 +60,7 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 9> kEntries;
+    static const std::array<Entry, 10> kEntries;
 
     // Mesa numbers its Vulkan drivers with 10 bits for the minor version and 12 bits for the patch, so larger parts saturate there.
     [[nodiscard]] static constexpr std::uint64_t makeMesaVersion(std::uint64_t major, std::uint64_t minor, std::uint64_t patch) noexcept {

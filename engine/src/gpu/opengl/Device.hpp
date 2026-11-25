@@ -234,6 +234,8 @@ class Device final : public gpu::Device {
     bool anisotropic = true;
     // Whether each pass ends with a flush, which the driver issues ask of a driver that drops passes otherwise.
     bool flushEachPass = false;
+    // Whether textures of 32-bit float depth take a stencil plane, which the driver issues ask of a driver whose lookups read 32-bit float depth in other places than its draws write it.
+    bool floatDepthWithStencil = false;
     DebugOutput debug;
     GpuTimer timer;
     std::unique_ptr<UploadRing> ring;
