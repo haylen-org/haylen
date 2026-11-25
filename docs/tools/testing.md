@@ -568,6 +568,7 @@ With `--target macos` or `--target catalyst` the app is an app of this Mac, and 
 - The clicks and the keys of the tests reach the app in front, so the Mac runs nothing else meanwhile. The tests run on the runners of CI, never on a Mac that a person is using.
 - XCUITest presses a key only once. A test that holds a key, such as Backspace that repeats, calls `holdKey(_:repeats:)`, which writes a line to its output, and the run, which reads the output of the runner, posts the key down, its repeats and the key up into the events of the system with `CGEventPost`, each repeat marked as one, as a held key arrives. macOS lets a process post such events only once the app that runs the tests is allowed in Accessibility of Privacy & Security, as [the quit check](#the-quit-check-of-an-app-on-a-mac) needs too, and the run fails with that sentence otherwise.
 
+- The test of the Japanese input method in `MacTextInputTests` turns the input method and its mode on with `TISEnableInputSource` when the Mac has them off, and turns off what it turned on as it ends. A mode reports itself on while its input method is off, as on a runner of CI, and macOS selects the mode only once its input method is on.
 The class `HaylenUITestCase` starts the app again for each test, with the launch arguments of its class, and gives the tests these helpers:
 
 | Helper | What it does |

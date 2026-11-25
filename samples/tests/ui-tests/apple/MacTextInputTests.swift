@@ -14,16 +14,16 @@ class MacTextInputTests: TestProjectCase {
         "GUI-005"
     }
 
-    // The input source of the Mac before the test, which the test selects again, and whether the test turned the Japanese input source on, which it turns off again.
+    // The input source of the Mac before the test, which the test selects again, and the input sources that the test turned on, which it turns off again, the last one first.
     var inputSource: TISInputSource?
-    var enabledJapanese = false
+    var enabledSources: [TISInputSource] = []
 
     override func tearDown() async throws {
         if let source = inputSource {
             TISSelectInputSource(source)
         }
-        if enabledJapanese, let japanese = Self.inputSource(Self.japanese) {
-            TISDisableInputSource(japanese)
+        for source in enabledSources.reversed() {
+            TISDisableInputSource(source)
         }
         try await super.tearDown()
     }
@@ -95,18 +95,23 @@ class MacTextInputTests: TestProjectCase {
         waitFor(element("The field \"\(field)\" reported \"change\" with \"\(text)\"."), timeout: 10, file: file, line: line)
     }
 
-    // Selects an input source of the Mac until the test ends, enabling it first when the Mac has it off.
+    // Selects an input mode of the Mac until the test ends, turning on first its input method and the mode when the Mac has them off. A mode can report itself on while its input method is off, as on a Mac where nobody added the language, and then only once the input method is on can the mode be selected.
     func useInputSource(_ identifier: String, file: StaticString = #filePath, line: UInt = #line) {
-        guard let source = Self.inputSource(identifier) else {
+        guard let mode = Self.inputSource(identifier) else {
             XCTFail("The Mac has no input source \"\(identifier)\".", file: file, line: line)
             return
         }
-        inputSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
-        if !Self.isEnabled(source) {
-            XCTAssertEqual(TISEnableInputSource(source), noErr, "The input source \"\(identifier)\" does not turn on.", file: file, line: line)
-            enabledJapanese = true
+        guard let method = Self.inputMethod(of: mode) else {
+            XCTFail("The Mac has no input method for the input source \"\(identifier)\".", file: file, line: line)
+            return
         }
-        XCTAssertEqual(TISSelectInputSource(source), noErr, "The input source \"\(identifier)\" cannot be selected.", file: file, line: line)
+
+        inputSource = TISCopyCurrentKeyboardInputSource().takeRetainedValue()
+        for source in [method, mode] where !Self.isEnabled(source) {
+            XCTAssertEqual(TISEnableInputSource(source), noErr, "The input source \"\(Self.property(source, kTISPropertyInputSourceID) as? String ?? identifier)\" does not turn on.", file: file, line: line)
+            enabledSources.append(source)
+        }
+        XCTAssertEqual(TISSelectInputSource(mode), noErr, "The input source \"\(identifier)\" cannot be selected.", file: file, line: line)
     }
 
     static func inputSource(_ identifier: String) -> TISInputSource? {
@@ -115,12 +120,27 @@ class MacTextInputTests: TestProjectCase {
         return sources?.first
     }
 
-    static func isEnabled(_ source: TISInputSource) -> Bool {
-        guard let value = TISGetInputSourceProperty(source, kTISPropertyInputSourceIsEnabled) else {
-            return false
+    // The input method that a mode belongs to, the input source of its bundle that has modes.
+    static func inputMethod(of mode: TISInputSource) -> TISInputSource? {
+        guard let bundle = property(mode, kTISPropertyBundleID) as? String else {
+            return nil
         }
 
-        return Unmanaged<CFBoolean>.fromOpaque(value).takeUnretainedValue() == kCFBooleanTrue
+        let filter = [kTISPropertyBundleID as String: bundle, kTISPropertyInputSourceType as String: kTISTypeKeyboardInputMethodModeEnabled as String] as CFDictionary
+        let sources = TISCreateInputSourceList(filter, true)?.takeRetainedValue() as? [TISInputSource]
+        return sources?.first
+    }
+
+    static func isEnabled(_ source: TISInputSource) -> Bool {
+        property(source, kTISPropertyInputSourceIsEnabled) as? Bool == true
+    }
+
+    static func property(_ source: TISInputSource, _ key: CFString) -> AnyObject? {
+        guard let value = TISGetInputSourceProperty(source, key) else {
+            return nil
+        }
+
+        return Unmanaged<AnyObject>.fromOpaque(value).takeUnretainedValue()
     }
 }
 #endif
