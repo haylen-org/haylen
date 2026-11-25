@@ -97,7 +97,7 @@ The plain keyboard of `window.setKeyboardVisible` leaves key events to SDL and t
 
 `HaylenActivity` adds a hidden `HaylenEditText` with alpha 0 to the layout of the surface of the app, above the surface. The engine places it over the focused field, in window pixels. It is an ordinary view of the activity, which GameActivity hosts, so it takes the focus and the keyboard like any field. Touches pass through it to the app, which places the caret itself.
 
-- Its `inputType` follows the keyboard, the capitalization and the autocorrection of the field. A field without autocorrection asks for no suggestions.
+- Its `inputType` follows the keyboard, the capitalization and the autocorrection of the field. A field without autocorrection asks for no suggestions through `TYPE_TEXT_FLAG_NO_SUGGESTIONS`, the flag that Android offers for it, and a field with autocorrection asks for corrections through `TYPE_TEXT_FLAG_AUTO_CORRECT`. The flag tells the keyboard that the field needs no suggestions, and the keyboard decides what it shows. Some keyboards, such as Gboard, still show their strip of candidates, and a candidate that the person taps reaches the field as a commit of the input method, like any typed text.
 - Its `imeOptions` carry the action of the return key, with `IME_FLAG_NO_EXTRACT_UI` and `IME_FLAG_NO_FULLSCREEN`. So the input method never covers the app with its own editor.
 - Every call from the engine runs on the UI thread through `runOnUiThread`.
 - After `afterTextChanged` and `onSelectionChanged`, once the input method finishes its batch of changes, the field sends its text, selection and composing span through JNI. The method `onEditorAction` sends the submit action.

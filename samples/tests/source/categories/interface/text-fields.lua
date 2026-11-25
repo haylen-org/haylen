@@ -12,7 +12,7 @@ ui.textField{keyboard = 'email', returnKey = 'send', placeholder = 'captain@isla
 ui.textField{placeholder = 'Short code', maxLength = 12, autocorrect = false, autocapitalize = 'characters'}
 ui.secretField{placeholder = 'Password', returnKey = 'go'}
 ui.filterField{placeholder = 'Filter recipes', onChange = function(event) filter(event.value) end}
-ui.textArea{rows = 5, value = 'Dear diary,\nthe raft is ready and the wind turns west at dawn.'}  -- Long lines wrap.]]
+ui.textArea{rows = 5, autocorrect = true, value = 'Dear diary,\nthe raft is ready and the wind turns west at dawn.'}  -- Long lines wrap.]]
 
 -- Every keyboard of `textField`, each with one of the return key labels.
 TextFields.fields = {
@@ -61,10 +61,10 @@ function TextFields:columns()
         layout.section('Keyboards, return keys, limits and secrets', {grow = 3, ui.grid{columns = 3, gap = 20, rowGap = 28, children = keyboards}}),
         ui.column{grow = 1, gap = 24,
             layout.section('Component "textArea"', {
-                ui.textArea{rows = 5, value = TextFields.diary, onChange = function(event)
+                ui.textArea{rows = 5, value = TextFields.diary, autocorrect = true, onChange = function(event)
                     self:set('status', {text = string.format('The diary has %d characters.', utf8.len(event.value))})
                 end},
-                ui.label{text = 'Enter starts a new line, so a text area never submits.', color = 'textMuted'},
+                ui.label{text = 'Enter starts a new line, so a text area never submits, and the keyboard corrects its words.', color = 'textMuted'},
             }),
             layout.section('Component "filterField"', {
                 ui.formField{help = 'The search keyboard and a clear button',
