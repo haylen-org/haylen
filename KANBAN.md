@@ -7666,6 +7666,7 @@ Motivo da retirada: o dono decidiu que o JSON da engine continua sendo o nlohman
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
+- **Progress:** A causa está achada: o executor antigo lia o sistema de arquivos depois que o runtime saía, e nos builds com verificações o erro de uma pasta que falta chama `strerror` depois da saída, o que aborta duas vezes por pasta, e a leitura engolia isso. As imagens passam a ser recolhidas na página antes do sistema de arquivos fechar, e o executor grava um relatório com toda parada e exceção, que a verificação em Python faz falhar. Falta o commit.
 
 #### Description
 
@@ -7758,6 +7759,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 2
+- **Progress:** A causa está achada: o `GoogleTestAddTests` do CMake 4.2.3 da imagem Ubuntu escreve o arquivo na pasta de trabalho dos testes, que era `engine/tests`, enquanto o CMake 4.4 escreve na pasta do build. Os testes já acham os seus dados por caminhos absolutos, então a pasta de trabalho sai e um teste do repositório falha se ela voltar. Falta o commit.
 
 #### Description
 
@@ -7918,6 +7920,7 @@ O SDL só muda o tamanho do drawable do canvas quando a página muda de tamanho 
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
+- **Progress:** No shard 1, a máquina caiu no passo 2538 de 2541, durante as ligações em paralelo de `haylen-tests` e `haylen-lua-tests` com o sanitizer de endereços pelo `ld.bfd` do GCC 15. O shard 3 perdeu a máquina nas execuções 45469392035, 45537704137 e 45545074199 sem deixar log. A medição da memória da ligação e dos testes do shard 3 está rodando no Docker.
 
 #### Description
 
