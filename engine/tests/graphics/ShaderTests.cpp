@@ -165,7 +165,8 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{program + "/pairs/0/texture", 2}}), Problem::UnknownPair);
     EXPECT_EQ(parseError({{glsl + "/fragment/source", 1}}), Problem::MissingSource);
     EXPECT_EQ(parseError({{glsl + "/vertex/source", -1}}), Problem::MissingSource);
-    EXPECT_EQ(parseError({{program + "/outputs", 0}}), Problem::Outputs);
+    EXPECT_EQ(parseError({{program + "/outputs", -1}}), Problem::Outputs);
+    EXPECT_FALSE(parseError({{program + "/outputs", 0}}).has_value());
     EXPECT_TRUE(parseError({{glsl + "/fragment", nullptr}}).has_value());
 
     // Names outside the ones the shader compiler writes fail instead of taking a default.

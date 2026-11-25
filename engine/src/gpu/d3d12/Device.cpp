@@ -534,7 +534,7 @@ int Device::getSwapchainSampleCount() const noexcept {
 gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     const ProgramRecord& program = programs.get(desc.program.id);
 
-    if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
+    if ((desc.colors.empty() && !desc.depthStencil.format) || desc.colors.size() > kMaxColorTargets || desc.buffers.size() > kMaxVertexBuffers) {
         throw ContractError(ContractError::Rule::Pipeline);
     }
 

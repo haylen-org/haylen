@@ -234,8 +234,9 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const core::Json& value)
         info.pairs.push_back(std::move(read));
     }
 
+    // A program without color outputs draws depth alone, such as into a shadow map.
     const auto outputs = value.at("outputs").get<std::int64_t>();
-    if (outputs < 1 || std::cmp_greater(outputs, gpu::Device::kMaxColorTargets)) {
+    if (outputs < 0 || std::cmp_greater(outputs, gpu::Device::kMaxColorTargets)) {
         throw ShaderPackageError(ShaderPackageError::Problem::Outputs);
     }
 

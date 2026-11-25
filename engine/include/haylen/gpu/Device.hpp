@@ -492,7 +492,7 @@ class Device {
         float depthBiasSlope = 0.0F;
     };
 
-    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its targets name, and the others draw into the attachments their formats and sample count describe. A device without `independentBlend` applies the blend and the write mask of the first color target to all of them.
+    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its targets name, and the others draw into the attachments their formats and sample count describe. A pipeline without color targets draws depth alone, such as into a shadow map, and names the format of its depth stencil attachment. A device without `independentBlend` applies the blend and the write mask of the first color target to all of them.
     struct PipelineDesc {
         Program program{};
         std::span<const VertexBufferLayout> buffers{};

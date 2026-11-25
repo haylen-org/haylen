@@ -464,8 +464,10 @@ Device::Program Device::makeProgram(const ProgramDesc& desc) {
 void Device::prepareProgram(const ProgramDesc&, core::JobSystem&) {}
 
 StateCache::Raster Device::toRaster(const PipelineDesc& desc) const {
+    // A pipeline that draws depth alone, such as into a shadow map, writes no color.
     StateCache::Raster raster;
-    const ColorTarget& first = desc.colors.front();
+    const ColorTarget none{.writeMask = ColorMask::None};
+    const ColorTarget& first = desc.colors.empty() ? none : desc.colors.front();
     raster.independent = capabilities.independentBlend && std::ranges::any_of(desc.colors, [&](const ColorTarget& color) { return color.blend != first.blend || color.writeMask != first.writeMask; });
     for (std::size_t index = 0; index < StateCache::kTargets; ++index) {
         const ColorTarget& color = raster.independent && index < desc.colors.size() ? desc.colors[index] : first;
@@ -499,7 +501,7 @@ StateCache::Raster Device::toRaster(const PipelineDesc& desc) const {
 Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     std::shared_ptr<ShaderProgram> shader = programs.get(desc.program.id);
 
-    if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets) {
+    if ((desc.colors.empty() && !desc.depthStencil.format) || desc.colors.size() > kMaxColorTargets) {
         throw ContractError(ContractError::Rule::Pipeline);
     }
 

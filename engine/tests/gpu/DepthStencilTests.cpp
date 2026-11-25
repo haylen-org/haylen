@@ -151,6 +151,47 @@ TEST_P(GpuDepthStencilTest, SamplesDepthThroughAComparison) {
     device().destroy(pipeline);
 }
 
+// A pipeline without color targets draws depth alone into a pass without colors, as a shadow map does, and a later draw samples the depth it wrote.
+TEST_P(GpuDepthStencilTest, DrawsDepthWithoutColorTargets) {
+    const Device::PixelFormat format = getDepthFormat();
+    if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
+        GTEST_SKIP() << "The device samples no image of the depth format of the tests.";
+    }
+
+    const Device::Image depth = makeDepth(format);
+    const Device::Pipeline writing = device().makePipeline({.program = program("depth"), .depthStencil = {.format = format, .depthCompare = Device::CompareFunction::Always, .depthWrite = true}, .label = "haylen-test-depth-only"});
+    device().beginPass({.depthStencil = Device::DepthStencilAttachment{.image = depth, .depthStore = Device::Store::Store, .clearDepth = 1.0F}});
+    device().applyPipeline(writing);
+    device().applyViewport({0.0F, 0.0F, static_cast<float>(kSize) / 2.0F, static_cast<float>(kSize)});
+    drawPlane(math::Color::white(), 0.0F);
+    device().endPass();
+
+    // The plane lies at the depth 0 or 0.5 of the API, in front of the reference, and the cleared half stays behind it.
+    const Device::Image color = makeTarget(kSize, kSize);
+    const std::array<Device::ColorTarget, 1> formats{};
+    const Device::Pipeline sampling = device().makePipeline({.program = program("shadow"), .colors = formats, .label = "haylen-test-shadow"});
+    const Device::Sampler sampler = device().makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest, .compare = Device::CompareFunction::LessEqual});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = color}}};
+    const std::array<float, 4> lookup{0.0F, 0.0F, 0.75F, 1.0F};
+    device().beginPass({.colors = colors});
+    device().applyPipeline(sampling);
+    Device::Bindings bindings;
+    bindings.textures[0] = depth;
+    bindings.samplers[0] = sampler;
+    device().applyBindings(bindings);
+    device().applyUniforms(0, std::as_bytes(std::span(lookup)));
+    device().draw(0, 3, 1);
+    device().endPass();
+    device().commit();
+
+    const Pixels pixels = read(color, kSize, kSize);
+    EXPECT_TRUE(isNear(pixels.at(1, 4), math::Color::black()));
+    EXPECT_TRUE(isNear(pixels.at(6, 4), math::Color::white()));
+    device().destroy(sampler);
+    device().destroy(sampling);
+    device().destroy(writing);
+}
+
 INSTANTIATE_TEST_SUITE_P(Devices, GpuDepthStencilTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GpuDepthStencilTest);
 

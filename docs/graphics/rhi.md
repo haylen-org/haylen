@@ -59,7 +59,7 @@ A device makes five kinds of objects. Each `make` method returns a small handle,
 | `Image` | `makeImage(ImageDesc)` | A flat image, an array, a cube or a volume, with mip levels and a pixel format. Its kind is a texture, a dynamic image, a render target or a depth stencil image. |
 | `Sampler` | `makeSampler(SamplerDesc)` | Filters, wraps, levels of detail, anisotropy and an optional compare function. |
 | `Program` | `makeProgram(ProgramDesc)` | The vertex and fragment stages in the language of the device, with the bindings that the reflection of the shader package gives. |
-| `Pipeline` | `makePipeline(PipelineDesc)` | A program with its vertex layout, primitive, index type, blend and write mask for each color target, depth and stencil tests, culling and sample count. |
+| `Pipeline` | `makePipeline(PipelineDesc)` | A program with its vertex layout, primitive, index type, blend and write mask for each color target, depth and stencil tests, culling and sample count. A pipeline without color targets draws depth alone, such as into a shadow map. |
 
 A device makes the native state object of a pipeline once, in `makePipeline`, and never makes one while it draws. A pipeline that draws into the swapchain takes the formats and the sample count of the swapchain, so the renderer never needs to know them.
 

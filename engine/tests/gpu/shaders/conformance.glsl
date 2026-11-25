@@ -93,6 +93,14 @@ void main() {
 }
 @end
 
+// Writes no color, so the plane reaches only the depth attachment of a pass without colors, as a shadow map takes it.
+@fs depth_fs
+in vec4 tint;
+
+void main() {
+}
+@end
+
 // One triangle that covers the viewport with texture coordinates whose origin is the top-left corner.
 @vs fullscreen_vs
 out vec2 uv;
@@ -217,6 +225,7 @@ void main() {
 @program instanced instanced_vs color_fs
 @program tinted moved_vs tinted_fs
 @program plane plane_vs plane_fs
+@program depth plane_vs depth_fs
 @program textured fullscreen_vs textured_fs
 @program array fullscreen_vs array_fs
 @program volume fullscreen_vs volume_fs
