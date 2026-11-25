@@ -9,7 +9,7 @@
 
 namespace haylen::gpu::d3d12 {
 
-// Memory of upload heaps that stays mapped, which each frame fills from the start of its pages with uniforms and the data that copies take into buffers and images. Pages go back to the pool once the GPU finished the frame that filled them, so a frame never waits for the GPU. The pool starts with a page for every frame in flight, so a frame like the one before takes pages from the pool without allocating however far the GPU falls behind. A piece larger than a page takes a page of its own, which goes once its frame finished.
+// Memory of upload heaps that stays mapped, which each frame fills from the start of its pages with uniforms and the data that copies take into buffers and images. Pages go back to the pool once the GPU finished the frame that filled them, so a frame never waits for the GPU. The pool starts with a page for every frame in flight, so a frame like the one before takes pages from the pool without allocating however far the GPU falls behind. A piece larger than a page takes a page of its own size, which goes back to the pool like the others, so a frame that uploads such a piece again, such as a whole atlas of glyphs, allocates nothing either.
 class UploadAllocator final {
   public:
     struct Allocation {
@@ -39,6 +39,7 @@ class UploadAllocator final {
     };
 
     [[nodiscard]] Page makePage(UINT64 size);
+    [[nodiscard]] Page takePage(UINT64 size);
 
     ID3D12Device& device;
     std::vector<Page> free;

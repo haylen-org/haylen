@@ -51,4 +51,25 @@ TEST_F(UploadAllocatorTest, KeepsAPageForEveryFrameInFlight) {
     EXPECT_EQ(tracker.getTotal(), 0U);
 }
 
+// A piece larger than a page, such as the pixels of a whole atlas, takes a page of its own, which goes back to the pool once its frame finished, so frames that upload such a piece again allocate nothing.
+TEST_F(UploadAllocatorTest, KeepsThePagesOfPiecesLargerThanAPage) {
+    constexpr UINT64 kLarge = 6ULL << 20U;
+    UploadAllocator uploads(*device.Get(), kFramesInFlight);
+    std::uint64_t fence = 0;
+    for (int frame = 0; frame < 4; ++frame) {
+        uploads.release(fence > 0 ? fence - 1 : 0);
+        static_cast<void>(uploads.allocate(kLarge, 512));
+        uploads.endFrame(++fence);
+    }
+
+    const test::AllocationTracker tracker;
+    for (int frame = 0; frame < 8; ++frame) {
+        uploads.release(fence - 1);
+        EXPECT_NE(uploads.allocate(kLarge, 512).data, nullptr);
+        uploads.endFrame(++fence);
+    }
+
+    EXPECT_EQ(tracker.getTotal(), 0U);
+}
+
 } // namespace haylen::gpu::d3d12

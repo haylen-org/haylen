@@ -45,20 +45,31 @@ UploadAllocator::Allocation UploadAllocator::allocate(UINT64 size, UINT64 alignm
             filled.push_back(std::move(current));
         }
 
-        if (size > kPageSize) {
-            current = makePage((size + kPageSize - 1) / kPageSize * kPageSize);
-        } else if (free.empty()) {
-            current = makePage(kPageSize);
-        } else {
-            current = std::move(free.back());
-            free.pop_back();
-        }
-
+        current = takePage((size + kPageSize - 1) / kPageSize * kPageSize);
         offset = 0;
     }
 
     cursor = offset + size;
     return {.resource = current.resource.Get(), .offset = offset, .data = current.data + offset, .address = current.address + offset};
+}
+
+// A frame takes the smallest page of the pool that holds the piece, so a frame like the one before takes the pages it filled back, and the pool grows only when no page is large enough.
+UploadAllocator::Page UploadAllocator::takePage(UINT64 size) {
+    auto found = free.end();
+    for (auto page = free.begin(); page != free.end(); ++page) {
+        if (page->size >= size && (found == free.end() || page->size < found->size)) {
+            found = page;
+        }
+    }
+
+    if (found == free.end()) {
+        return makePage(size);
+    }
+
+    std::iter_swap(found, free.end() - 1);
+    Page taken = std::move(free.back());
+    free.pop_back();
+    return taken;
 }
 
 // The page in use closes with the frame, so the next frame starts on a page of its own.
@@ -79,9 +90,7 @@ void UploadAllocator::endFrame(std::uint64_t fenceValue) {
 void UploadAllocator::release(std::uint64_t completedValue) {
     const auto finished = std::ranges::partition(retired, [completedValue](const Page& page) { return page.fence > completedValue; });
     for (auto page = finished.begin(); page != finished.end(); ++page) {
-        if (page->size == kPageSize) {
-            free.push_back(std::move(*page));
-        }
+        free.push_back(std::move(*page));
     }
 
     retired.erase(finished.begin(), finished.end());
