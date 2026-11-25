@@ -7715,6 +7715,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 4
+- **Progress:** A causa está achada: no Windows e no Linux o texto passa pelo campo do Dear ImGui, que ignora as repetições que o sistema manda, inventa as suas próprias e aplica no máximo uma por quadro. O dono decidiu por um patch pequeno no ImGui, ligado por uma opção da engine, em que cada repetição do sistema vira exatamente uma edição, no ritmo configurado no sistema e em qualquer taxa de quadros, com um teste da engine sem cabeça e a prova no Windows.
 
 #### Description
 
