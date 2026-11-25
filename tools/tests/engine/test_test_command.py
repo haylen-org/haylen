@@ -101,7 +101,7 @@ class TestCommandTest:
         expected = [("samples/tests", "Release", "webGl2"), ("samples/tests", "Debug", None), ("samples/tests", "Release", "emulator-5554"), ("samples/tests", "Release", "catalyst")]
         assert called == expected
 
-    def test_the_engine_tests_build_both_programs_and_run_them_in_one_run_of_ctest(self, tmp_path, monkeypatch):
+    def test_the_engine_tests_build_both_programs_with_the_player_of_this_machine_and_run_them_in_one_run_of_ctest(self, tmp_path, monkeypatch):
         built = []
         monkeypatch.setattr(Repository, "ENGINE_BUILDS", tmp_path)
         monkeypatch.setattr(EngineTree, "ensure", lambda self, command, env=None: None)
@@ -109,15 +109,15 @@ class TestCommandTest:
         monkeypatch.setattr(EngineTree, "build", lambda self, targets, configuration, *arguments: built.append(list(targets)))
         monkeypatch.setattr(type(BuildTools.CTEST), "require", lambda self: Path(self.name))
         recorded = RecordedCommands(tmp_path)
-        EngineTests(recorded.context).run("Debug", None, list(EngineTests.TARGETS), None)
-        assert built == [["haylen-tests", "haylen-lua-tests"]]
+        EngineTests(recorded.context).run("Debug", None, list(EngineTests.DEFAULT_TARGETS), None)
+        assert built == [["haylen-tests", "haylen-lua-tests", "haylen"]]
         assert [command[0] for command in recorded.commands] == ["ctest"]
 
     def test_a_shard_runs_its_part_of_the_engine_tests_through_the_numbers_of_ctest(self, tmp_path, monkeypatch):
         called = []
         monkeypatch.setattr(EngineTests, "run", lambda self, configuration, sanitizers, targets, shard: called.append((sanitizers, targets, shard)) or {})
         TestCommandTest.run(tmp_path, "--sanitizers", "address", "--shard", "2/4")
-        assert called == [("address", ["haylen-tests", "haylen-lua-tests"], SuiteShard(2, 4))]
+        assert called == [("address", ["haylen-tests", "haylen-lua-tests", "haylen"], SuiteShard(2, 4))]
         assert SuiteShard(2, 4).ctest_arguments() == ["--tests-information", "2,,4"]
 
     def test_a_shard_names_a_part_that_exists_of_the_engine_tests_alone(self, tmp_path):
