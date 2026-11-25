@@ -193,6 +193,7 @@ class Device final : public gpu::Device {
     void applySizes();
     void waitForFrame(std::size_t slot);
     void requirePass() const;
+    void bindApplied();
     [[nodiscard]] Drawable& requireDrawable(int number);
     void makeDrawableCurrent(int number, GlContext& drawable);
     void scaleDrawable(std::unique_ptr<ScaledDrawable>& scaled, const Surface::Size& size);
@@ -260,6 +261,17 @@ class Device final : public gpu::Device {
 #endif
     PipelineRecord* applied = nullptr;
     int indexOffset = 0;
+
+    // The texture and the sampler of each unit that the bindings of the applied pipeline name.
+    struct DrawUnit {
+        Gl::Enum target = Gl::kTexture2d;
+        Gl::Uint texture = 0;
+        Gl::Uint sampler = 0;
+    };
+
+    std::array<DrawUnit, StateCache::kMaxUnits> drawUnits{};
+    std::size_t appliedUnits = 0;
+
     // The largest anisotropy of a sampler, which stays 1 where samplers filter without it.
     float maxAnisotropy = 1.0F;
     std::vector<std::byte> staging;

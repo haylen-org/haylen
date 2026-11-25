@@ -126,6 +126,27 @@ TEST_P(GpuDrawTest, DrawsTrianglesAndStripsFromVertexBuffers) {
     device().destroy(strip);
 }
 
+// A program and a pipeline made while a pass draws leave the pipeline that the pass applied as it was, so the uniforms and the draw that follow reach that pipeline.
+TEST_P(GpuDrawTest, KeepsTheAppliedPipelineWhileOtherObjectsAreMade) {
+    const Device::Pipeline triangles = makeColorPipeline("color");
+    const Device::Buffer square = makeVertices(kSquare);
+
+    beginPass();
+    device().applyPipeline(triangles);
+    Device::Bindings bindings;
+    bindings.vertexBuffers[0] = square;
+    device().applyBindings(bindings);
+    const Device::Pipeline instanced = makeColorPipeline("instanced");
+    applyColorParams({});
+    device().draw(0, 6, 1);
+    const Pixels pixels = finish();
+
+    EXPECT_TRUE(isNear(pixels.at(4, 4), {1.0F, 0.0F, 0.0F, 1.0F}));
+    device().destroy(square);
+    device().destroy(instanced);
+    device().destroy(triangles);
+}
+
 // Indices of 16 and 32 bits pick the corners of the square, from an offset into the index buffer.
 TEST_P(GpuDrawTest, DrawsIndexedTrianglesOfBothIndexSizes) {
     const Device::Buffer corners = makeVertices(kCorners);

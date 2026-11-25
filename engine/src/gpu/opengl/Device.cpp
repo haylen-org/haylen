@@ -993,7 +993,9 @@ void Device::applyPipeline(Pipeline pipeline) {
     }
 
     applied = &pipelines.get(pipeline.id);
+    appliedUnits = 0;
     state.useProgram(applied->shader->getName());
+    state.bindVertexArray(applied->vertexArray->getName());
     state.applyRaster(applied->raster);
 }
 
@@ -1033,8 +1035,21 @@ void Device::applyBindings(const Bindings& bindings) {
             throw ContractError(ContractError::Rule::Bindings);
         }
 
-        state.bindTexture(unit, image.target, image.name);
-        state.bindSampler(unit, samplers.get(bindings.samplers[units[unit].sampler].id));
+        drawUnits[unit] = {.target = image.target, .texture = image.name, .sampler = samplers.get(bindings.samplers[units[unit].sampler].id)};
+    }
+
+    appliedUnits = units.size();
+    bindApplied();
+}
+
+// Making an object of the device binds the program, the vertex array or the texture units it sets up, so the uniforms and the draws of the pipeline that the pass applied bind its state again, which the state cache makes free when nothing else bound since.
+void Device::bindApplied() {
+    state.useProgram(applied->shader->getName());
+    state.bindVertexArray(applied->vertexArray->getName());
+    for (std::size_t unit = 0; unit < appliedUnits; ++unit) {
+        const DrawUnit& bound = drawUnits[unit];
+        state.bindTexture(unit, bound.target, bound.texture);
+        state.bindSampler(unit, bound.sampler);
     }
 }
 
@@ -1049,6 +1064,7 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         throw ContractError(ContractError::Rule::PipelineState);
     }
 
+    state.useProgram(applied->shader->getName());
     applied->shader->applyUniforms(slot, data);
 }
 
@@ -1083,6 +1099,7 @@ void Device::draw(int first, int count, int instances) {
         return;
     }
 
+    bindApplied();
     if (!applied->indexed) {
         gl.drawArraysInstanced(applied->primitive, first, count, instances);
         return;
