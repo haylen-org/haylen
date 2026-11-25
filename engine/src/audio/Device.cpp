@@ -115,7 +115,7 @@ void Device::checkFailure() {
         return;
     }
 
-    core::Log::warning("The app runs without sound because the audio output is unavailable. {}", *reason);
+    core::Log::warning("The audio output stopped working, so the app runs without sound until the system allows it again. {}", *reason);
     disconnect();
 }
 
@@ -170,7 +170,7 @@ ma_ios_session_category Device::toSessionCategory(Session::Category category) no
 }
 
 void Device::open(Connection& target, const Mixer::Setup& setup) {
-    std::optional<std::string> refusal = initialize(target, setup);
+    std::optional<Refusal> refusal = initialize(target, setup);
     const std::scoped_lock lock(target.mutex);
     target.finished = true;
     target.opened = !refusal;
@@ -180,7 +180,7 @@ void Device::open(Connection& target, const Mixer::Setup& setup) {
     }
 }
 
-std::optional<std::string> Device::initialize(Connection& target, const Mixer::Setup& setup) {
+std::optional<Device::Refusal> Device::initialize(Connection& target, const Mixer::Setup& setup) {
     // Creating the context sets the category of the iOS audio session and activates it, and other platforms ignore the session. Closing a context leaves the session active, because a closing that a restart or an abandoned opening runs late would otherwise silence the output that opened after it, and deactivating blocks the thread that closes.
     ma_context_config contextConfig = ma_context_config_init();
     contextConfig.coreaudio.noAudioSessionDeactivate = MA_TRUE;
@@ -196,7 +196,7 @@ std::optional<std::string> Device::initialize(Connection& target, const Mixer::S
     }
 
     if (const ma_result result = ma_context_init(hosted ? &custom : nullptr, hosted ? 1U : 0U, &contextConfig, &target.context); result != MA_SUCCESS) {
-        return describeRefusal(result);
+        return refuse(result);
     }
 
     ma_device_config config = ma_device_config_init(ma_device_type_playback);
@@ -217,14 +217,63 @@ std::optional<std::string> Device::initialize(Connection& target, const Mixer::S
     config.aaudio.contentType = ma_aaudio_content_type_sonification;
     if (const ma_result result = ma_device_init(&target.context, &config, &target.device); result != MA_SUCCESS) {
         ma_context_uninit(&target.context);
-        return hosted && !target.hosted->getRefusal().empty() ? target.hosted->getRefusal() : describeRefusal(result);
+        if (hosted && !target.hosted->getRefusal().empty()) {
+            return Refusal{.problem = Problem::Refused, .reason = target.hosted->getRefusal()};
+        }
+
+        return refuse(result);
     }
 
     return std::nullopt;
 }
 
-std::string Device::describeRefusal(ma_result result) {
-    return std::string("The system refused it with \"") + ma_result_description(result) + "\".";
+Device::Refusal Device::refuse(ma_result result) {
+    const Problem problem = toProblem(result);
+    return {.problem = problem, .reason = std::string(describe(problem))};
+}
+
+Device::Problem Device::toProblem(ma_result result) noexcept {
+    switch (result) {
+    case MA_NO_BACKEND:
+    case MA_NO_DEVICE:
+    case MA_DEVICE_TYPE_NOT_SUPPORTED:
+    case MA_FAILED_TO_INIT_BACKEND:
+    case MA_DOES_NOT_EXIST:
+        return Problem::NoDevice;
+    case MA_ACCESS_DENIED:
+        return Problem::Denied;
+    case MA_BUSY:
+    case MA_ALREADY_IN_USE:
+    case MA_SHARE_MODE_NOT_SUPPORTED:
+        return Problem::Busy;
+    case MA_FORMAT_NOT_SUPPORTED:
+    case MA_INVALID_DEVICE_CONFIG:
+        return Problem::UnsupportedFormat;
+    case MA_OUT_OF_MEMORY:
+        return Problem::OutOfMemory;
+    default:
+        return Problem::Failed;
+    }
+}
+
+std::string_view Device::describe(Problem problem) noexcept {
+    switch (problem) {
+    case Problem::NoDevice:
+        return "The system has no audio output to play on. Check that speakers or headphones are connected and turned on in the sound settings of the system.";
+    case Problem::Denied:
+        return "The system denied the app the audio output. Check the sound and privacy settings of the system.";
+    case Problem::Busy:
+        return "Another app holds the audio output for itself. Close the apps that keep the audio output to themselves.";
+    case Problem::UnsupportedFormat:
+        return "The audio output does not play the sample rate or the channels of the app. Check the format of the output in the sound settings of the system.";
+    case Problem::OutOfMemory:
+        return "The system ran out of memory to open the audio output. Close other apps and open the app again.";
+    case Problem::Failed:
+    case Problem::Refused:
+        break;
+    }
+
+    return "The system could not open the audio output. Check the sound settings of the system and that its audio service runs.";
 }
 
 bool Device::isLocked() const noexcept {
@@ -273,7 +322,7 @@ void Device::take() {
     const std::shared_ptr<Connection> done = std::exchange(opening, nullptr);
     if (done->refusal) {
         if (warnRefusal && !warnedWaiting) {
-            core::Log::warning("The app runs without sound because the audio output is unavailable. {}", *done->refusal);
+            core::Log::warning("The app could not open the audio output, so it runs without sound until the system allows it. {}", done->refusal->reason);
         }
 
         return;
@@ -314,7 +363,7 @@ void Device::apply() {
     }
 
     if (const ma_result result = ma_device_start(&connection->device); result != MA_SUCCESS) {
-        core::Log::warning("The audio output could not start ({}), so the app runs without sound until it resumes again.", ma_result_description(result));
+        core::Log::warning("The audio output could not start, so the app runs without sound until it resumes again. {}", describe(toProblem(result)));
         return;
     }
 

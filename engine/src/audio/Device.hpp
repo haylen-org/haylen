@@ -3,10 +3,12 @@
 #include <miniaudio.h>
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "audio/HostedOutput.hpp"
@@ -24,6 +26,27 @@ class Device final {
 
     // The period of the device at low latency, which takes the lead over the default of the platform.
     static constexpr ma_uint32 kLowLatencyPeriodMilliseconds = 5;
+
+    // Why the system did not open or start the output.
+    enum class Problem : std::uint8_t {
+        NoDevice,
+        Denied,
+        Busy,
+        UnsupportedFormat,
+        OutOfMemory,
+        Failed,
+        Refused,
+    };
+
+    // A refusal of the output: its problem and the sentence that says what the person can check, which the audio output of the host writes for `Refused`.
+    struct Refusal {
+        Problem problem = Problem::Failed;
+        std::string reason;
+    };
+
+    // The problem of a result of the audio library, and the sentence of a problem that the system reported.
+    [[nodiscard]] static Problem toProblem(ma_result result) noexcept;
+    [[nodiscard]] static std::string_view describe(Problem problem) noexcept;
 
     explicit Device(const Mixer::Setup& value);
     ~Device();
@@ -109,7 +132,7 @@ class Device final {
         bool abandoned = false;
         bool opened = false;
         std::optional<HostedOutput> hosted;
-        std::optional<std::string> refusal;
+        std::optional<Refusal> refusal;
     };
 
     static void onData(ma_device* playback, void* output, const void* input, ma_uint32 frames);
@@ -118,8 +141,8 @@ class Device final {
 
     // Opens the context and the device of the connection, and closes them at once when the device gave the opening up meanwhile.
     static void open(Connection& target, const Mixer::Setup& setup);
-    [[nodiscard]] static std::optional<std::string> initialize(Connection& target, const Mixer::Setup& setup);
-    [[nodiscard]] static std::string describeRefusal(ma_result result);
+    [[nodiscard]] static std::optional<Refusal> initialize(Connection& target, const Mixer::Setup& setup);
+    [[nodiscard]] static Refusal refuse(ma_result result);
     static void close(Connection& target) noexcept;
 
     // Starts an opening, whose refusal the log writes when `warn` is true.

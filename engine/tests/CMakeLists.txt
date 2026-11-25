@@ -53,6 +53,7 @@ set(HAYLEN_TEST_SOURCES
   ai/DecisionTests.cpp
   ai/StateMachineTests.cpp
   audio/AudioAssetTests.cpp
+  audio/AudioDeviceTests.cpp
   audio/AudioEffectTests.cpp
   audio/AudioInterruptionTests.cpp
   audio/AudioPauseTests.cpp
