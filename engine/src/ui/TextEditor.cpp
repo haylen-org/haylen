@@ -234,10 +234,12 @@ TextEditor::Input TextEditor::edit(Context& context, std::string& value, const O
         context.keepDrag(ImGui::GetItemID());
     }
 
-    // A submit, cancel or dismiss of the platform ends the editing, and only a submit reports the text.
+    // A submit, cancel or dismiss of the platform ends the editing of the field, and only a submit reports the text. The native field reports it after the person may have pressed another item already, such as the dismiss that a tap on the next field makes, so the action ends the editing only while the field still edits and never takes the press of that item.
     if (const std::optional<platform::TextInput::Action> action = editing.session->takeAction(id)) {
         input.submitted = input.submitted || action == platform::TextInput::Action::Submit;
-        ImGui::ClearActiveID();
+        if (ImGui::GetActiveID() == id) {
+            ImGui::ClearActiveID();
+        }
     }
 
     ImGui::PopStyleVar(3);

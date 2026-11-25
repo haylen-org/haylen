@@ -142,7 +142,7 @@ class Backend final {
     [[nodiscard]] bool isUsingPointer() const;
     [[nodiscard]] bool isUsingKeyboard() const;
 
-    // Whether ImGui or the input of the UI has still to settle in the next frames: input that ImGui keeps in its queue for the next frame, a move of the focus whose result ImGui applies in the next frame, a text field that edits and blinks its caret, the UI that glides above the keyboard or a gesture of a wheel that waits for its pause.
+    // Whether ImGui or the input of the UI has still to settle in the next frames: input that ImGui keeps in its queue for the next frame, a press of the mouse that waits for ImGui to move the pointer to it, a move of the focus whose result ImGui applies in the next frame, a text field that edits and blinks its caret, the UI that glides above the keyboard or a gesture of a wheel that waits for its pause.
     [[nodiscard]] bool isSettling() const;
 
     // Keeps the pointer from the app over an area of a surface, which also takes the pointer from the GUIs drawn under it.
@@ -330,6 +330,16 @@ class Backend final {
         graphics2d::Glass glass;
     };
 
+    // An input of the mouse for ImGui: a position or the steps of a wheel in `value`, or a button that goes down or up where the mouse stands at `value`.
+    struct MouseInput {
+        enum class Kind : std::uint8_t { Position, Button, Wheel };
+
+        Kind kind = Kind::Position;
+        math::Vec2 value;
+        int button = 0;
+        bool down = false;
+    };
+
     // The draws a callback command draws, a run of the draws of the frame.
     struct DrawRun {
         Backend* owner = nullptr;
@@ -371,6 +381,8 @@ class Backend final {
     [[nodiscard]] Face addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
     [[nodiscard]] const Face& findFace(std::string_view name, bool bold, bool italic) const;
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
+    void addMouse(const MouseInput& input);
+    static void feedMouse(const MouseInput& input);
     void handleTextAction(const platform::Event& event);
     void feedGamepad(const input::Input& input, const NavigationInput& navigation);
 
@@ -452,6 +464,8 @@ class Backend final {
     std::optional<std::uint64_t> primaryTouch;
     bool touchShared = false;
     std::vector<bool> queuedTouchTaps;
+    std::vector<MouseInput> heldMouse;
+    int heldSince = 0;
     std::optional<math::Vec2> pointerPosition;
     std::string clipboard;
     platform::Window::Cursor cursor = platform::Window::Cursor::Default;

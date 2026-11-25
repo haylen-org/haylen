@@ -723,6 +723,45 @@ TEST_F(TextInputTest, KeepsTheNativeInputWhenAFingerTapsAnotherField) {
     EXPECT_EQ(getPublished().options.keyboard, TextInput::Keyboard::Number);
 }
 
+// A finger that presses and lifts at once reaches ImGui as a press in one frame and a release in the next, and the native field of the first field reports its dismiss as the second one takes the focus of the page, after that press. The dismiss ends only the editing of its own field, so the tap still moves the editing to the field it tapped.
+TEST_F(TextInputTest, MovesTheEditingWhenTheFieldThatEditedHearsItsDismissDuringAnInstantTap) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name"}, {"kind": "secretField", "id": "crew"}]})");
+    const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
+    ASSERT_EQ(fields.size(), 2U);
+    focus(*gui, "name");
+    ASSERT_TRUE(getInput().isEditing());
+
+    const haylen::math::Vec2 crew = test::LuaUiFixture::getComponent(*gui, "crew").getBounds().getCenter();
+    touch(haylen::platform::Event::Type::TouchBegan, crew);
+    touch(haylen::platform::Event::Type::TouchEnded, crew);
+    fixture.frames(2);
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::TextAction, .textEdit = {.field = fields[0].id}, .textAction = TextInput::Action::Dismissed});
+    for (int frame = 0; frame < 6; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing()) << "The native input ends in frame " << frame << " after the dismiss.";
+    }
+
+    EXPECT_EQ(getPublished().id, fields[1].id);
+}
+
+// A click that moves the mouse and presses at once, as the click of a tool, a pen or a remote desktop does, presses the field under it, also where the field lies over the surface of a sheet that the mouse hovered before, which takes the presses that no control takes.
+TEST_F(TextInputTest, StartsEditingAFieldThatAClickReachesAtOnce) {
+    fixture.runLua("local ui = require('haylen.ui') sheet = ui.present({build = function() return ui.column{padding = 24, gap = 160, ui.label{text = 'Name'}, ui.textField{id = 'name'}} end})");
+    fixture.frames(60);
+    const std::vector<TextInput::Field> fields = getInput().getVisibleFields();
+    ASSERT_EQ(fields.size(), 1U);
+    const haylen::math::Vec2 field = fields[0].bounds.getCenter();
+    const haylen::math::Vec2 surface{field.x, fields[0].bounds.y - 20.0F};
+    send({.type = haylen::platform::Event::Type::MouseMove, .position = surface});
+
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::MouseMove, .position = field});
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::MouseDown, .position = field});
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::MouseUp, .position = field});
+    fixture.frames(4);
+    ASSERT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().id, fields[0].id);
+}
+
 // A screen that turns lays the GUI out again around the field being edited, which keeps its text, its focus and the keyboard.
 TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Name"}, {"kind": "textField", "id": "name", "align": "stretch"}]})");

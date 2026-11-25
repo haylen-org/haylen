@@ -596,35 +596,44 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
 
     ImGuiIO& io = ImGui::GetIO();
     // clang-format off
-    const auto place = [&](math::Vec2 framebufferPoint) {
-        const math::Vec2 point = toUi(viewport.toDesign(framebufferPoint));
-        io.AddMousePosEvent(point.x, point.y);
+    const auto locate = [&](math::Vec2 framebufferPoint) {
         pointerPosition = framebufferPoint;
+        return toUi(viewport.toDesign(framebufferPoint));
+    };
+
+    const auto place = [&](math::Vec2 framebufferPoint) {
+        const math::Vec2 point = locate(framebufferPoint);
+        io.AddMousePosEvent(point.x, point.y);
+        return point;
+    };
+
+    const auto placeMouse = [&](math::Vec2 framebufferPoint) {
+        const math::Vec2 point = locate(framebufferPoint);
+        addMouse({.kind = MouseInput::Kind::Position, .value = point});
         return point;
     };
     // clang-format on
 
     switch (event.type) {
     case platform::Event::Type::MouseMove:
-        io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
-        place(event.position);
+        placeMouse(event.position);
         break;
     case platform::Event::Type::MouseDown:
-    case platform::Event::Type::MouseUp:
-        io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
-        place(event.position);
-        io.AddMouseButtonEvent(static_cast<int>(event.mouseButton), event.type == platform::Event::Type::MouseDown);
+    case platform::Event::Type::MouseUp: {
+        const math::Vec2 point = placeMouse(event.position);
+        addMouse({.kind = MouseInput::Kind::Button, .value = point, .button = static_cast<int>(event.mouseButton), .down = event.type == platform::Event::Type::MouseDown});
         break;
+    }
     case platform::Event::Type::MouseScroll: {
         // Shift turns a wheel that only scrolls up and down sideways for the components, as macOS does for every app, and the ImGui windows of the app take the scroll as it came in steps of ImGui, since ImGui turns it with Shift itself.
         const bool sideways = !event.preciseScroll && event.modifiers.shift && event.scroll.x == 0.0F;
         scrollArbiter->addWheel(sideways ? math::Vec2{event.scroll.y, 0.0F} : event.scroll, event.preciseScroll, event.scrollPhase);
         const math::Vec2 steps = event.preciseScroll ? event.scroll / (pointsPerUnit * kImGuiScrollFonts * kBaseFontSize) : event.scroll;
-        io.AddMouseWheelEvent(steps.x, steps.y);
+        addMouse({.kind = MouseInput::Kind::Wheel, .value = steps});
         break;
     }
     case platform::Event::Type::MouseLeave:
-        io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+        addMouse({.kind = MouseInput::Kind::Position, .value = {-FLT_MAX, -FLT_MAX}});
         pointerPosition.reset();
         break;
     default:
@@ -694,6 +703,39 @@ void Backend::handlePointer(const platform::Event& event, const graphics::Viewpo
 
         break;
     default:
+        break;
+    }
+}
+
+// ImGui gives a press to the item that it hovers in the frame of the press, and an item that other items overlap, such as the surface of a sheet under its controls, keeps the hover of the frame the pointer arrives in. So a press where the mouse only arrives in this frame, as the click of a tool, a pen or a remote desktop that moves and presses at once, reaches ImGui in the next frame with every input of the mouse after it, as ImGui does for the presses of touch screens, and the item under the pointer takes it.
+void Backend::addMouse(const MouseInput& input) {
+    // ImGui keeps the pointer on whole units.
+    const ImGuiIO& io = ImGui::GetIO();
+    const bool arrives = input.kind == MouseInput::Kind::Button && input.down && (std::floor(input.value.x) != io.MousePos.x || std::floor(input.value.y) != io.MousePos.y);
+    if (arrives && heldMouse.empty()) {
+        heldSince = imguiContext->FrameCount;
+    }
+
+    if (arrives || !heldMouse.empty()) {
+        heldMouse.push_back(input);
+        return;
+    }
+
+    feedMouse(input);
+}
+
+void Backend::feedMouse(const MouseInput& input) {
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
+    switch (input.kind) {
+    case MouseInput::Kind::Position:
+        io.AddMousePosEvent(input.value.x, input.value.y);
+        break;
+    case MouseInput::Kind::Button:
+        io.AddMouseButtonEvent(input.button, input.down);
+        break;
+    case MouseInput::Kind::Wheel:
+        io.AddMouseWheelEvent(input.value.x, input.value.y);
         break;
     }
 }
@@ -811,6 +853,15 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     pointsPerUnit = std::min(density.x, density.y) / window.getDpiScale();
     origin = visible.getMin();
     safeRect = math::Rect::fromMinMax(toUi(viewport.getSafeRect().getMin()), toUi(viewport.getSafeRect().getMax()));
+
+    // The inputs of the mouse held for a press go to ImGui once ImGui moved the pointer to the press in a frame of its own.
+    if (!heldMouse.empty() && imguiContext->FrameCount > heldSince) {
+        for (const MouseInput& held : heldMouse) {
+            feedMouse(held);
+        }
+
+        heldMouse.clear();
+    }
 
     // The pointer keeps its place on the screen when design space moves under it, such as after the app changes its scaling.
     if (pointerPosition) {
@@ -1005,7 +1056,7 @@ void Backend::blockPointer(const math::Rect& area) {
 
 bool Backend::isSettling() const {
     const ImGuiContext& state = *imguiContext;
-    if (!state.InputEventsQueue.empty() || state.NavMoveSubmitted || state.NavMoveScoringItems || state.NavInitRequest) {
+    if (!state.InputEventsQueue.empty() || !heldMouse.empty() || state.NavMoveSubmitted || state.NavMoveScoringItems || state.NavInitRequest) {
         return true;
     }
 

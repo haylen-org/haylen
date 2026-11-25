@@ -1404,8 +1404,8 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Native text editing. A hidden textarea, or a password input, lies over the focused field next to the canvas, so phones open their keyboard and browsers bring their input methods, paste, copy and undo. The engine also lists the fields on screen, because Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture.
-    const text = { elements: {}, field: null, fields: [], tapSlop: 0, active: null, composition: null, finishing: false, keyboard: [0, 0, 0, 0] };
+    // Native text editing. A hidden textarea, or a password input, lies over the focused field next to the canvas, so phones open their keyboard and browsers bring their input methods, paste, copy and undo. The engine also lists the fields on screen, because Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture. A tap on a field hands its element to that field at once, in `tapped`, and the element keeps what the person types there until the engine edits the field.
+    const text = { elements: {}, field: null, fields: [], tapSlop: 0, active: null, tapped: null, composition: null, finishing: false, keyboard: [0, 0, 0, 0] };
     haylen.textInput = text;
 
     // The engine counts code points, while JavaScript strings count characters outside the Basic Multilingual Plane twice.
@@ -1449,10 +1449,10 @@ Module.haylen = Module.haylen || {};
         target.setSelectionRange(caret, caret);
     };
 
-    const report = () => {
-        const target = text.active;
+    // Reports what an element holds to the field that it edits, which an element that a tap handed to a field the engine does not edit yet has none of.
+    const report = (target) => {
         const field = text.field;
-        if (!field || !target) {
+        if (!field || target !== text.active || (text.tapped && text.tapped.target === target)) {
             return;
         }
 
@@ -1465,6 +1465,14 @@ Module.haylen = Module.haylen || {};
     };
 
     // Actions are 0 for submit, 1 for next, 2 for cancel and 3 for a keyboard the user closed.
+    const readAction = (event, field) => {
+        if (event.type !== "keydown" || event.isComposing || event.keyCode === 229) {
+            return -1;
+        }
+
+        return event.key === "Enter" && !field.multiline ? 0 : event.key === "Tab" ? 1 : event.key === "Escape" ? 2 : -1;
+    };
+
     const act = (action) => {
         if (text.field) {
             engine.call("haylen_web_text_action", null, ["number", "number"], [text.field.id, action]);
@@ -1517,6 +1525,19 @@ Module.haylen = Module.haylen || {};
             return;
         }
 
+        // The element that a tap handed to a field takes the keys before the engine edits the field, and its action waits for the editing.
+        const tapped = text.tapped;
+        if (tapped && event.target === tapped.target) {
+            event.stopImmediatePropagation();
+            const action = readAction(event, tapped.field);
+            if (action >= 0) {
+                event.preventDefault();
+                tapped.action = action;
+            }
+
+            return;
+        }
+
         const field = text.field;
         if (!field || !isElement(event.target) || (field.id === 0 && event.type !== "keypress")) {
             if (event.type === "keydown") {
@@ -1529,11 +1550,7 @@ Module.haylen = Module.haylen || {};
 
         event.stopImmediatePropagation();
 
-        if (field.id === 0 || event.type !== "keydown" || event.isComposing || event.keyCode === 229) {
-            return;
-        }
-
-        const action = event.key === "Enter" && !field.multiline ? 0 : event.key === "Tab" ? 1 : event.key === "Escape" ? 2 : -1;
+        const action = field.id === 0 ? -1 : readAction(event, field);
         if (action >= 0) {
             event.preventDefault();
             act(action);
@@ -1585,8 +1602,8 @@ Module.haylen = Module.haylen || {};
         // A font of 16 pixels keeps Safari on iOS from zooming into the page when the element takes the focus.
         target.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;color:transparent;caret-color:transparent;background:transparent;border:0;margin:0;padding:0;outline:none;resize:none;overflow:hidden;font-size:16px;pointer-events:none;z-index:1;";
         target.setAttribute("autocomplete", "off");
-        target.addEventListener("input", report);
-        target.addEventListener("selectionchange", report);
+        target.addEventListener("input", () => report(target));
+        target.addEventListener("selectionchange", () => report(target));
         target.addEventListener("compositionstart", () => {
             text.composition = { start: target.selectionStart, length: 0 };
         });
@@ -1597,7 +1614,7 @@ Module.haylen = Module.haylen || {};
         });
         target.addEventListener("compositionend", () => {
             text.composition = null;
-            report();
+            report(target);
         });
 
         for (const type of ["paste", "copy", "cut"]) {
@@ -1636,7 +1653,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Starts editing a field, or follows it. The text and the selection change only with a new revision, so an open composition survives.
+    // Starts editing a field, or follows it. The text and the selection change only with a new revision, so an open composition survives. What the person typed into the element since a tap handed it to the field goes in place of the selection of the field, with its composition, and reaches the engine with the revision of the editing, and so does an action of a key typed meanwhile.
     text.edit = function (field) {
         const target = element(field.password);
         if (text.active !== target) {
@@ -1644,13 +1661,28 @@ Module.haylen = Module.haylen || {};
         }
 
         configure(target, field);
-        const replaced = !text.field || text.field.id !== field.id || text.field.revision !== field.revision || text.active !== target;
+        const tapped = text.tapped;
+        text.tapped = null;
+        const handed = tapped && tapped.target === target;
+        const typed = handed && tapped.field.id === field.id ? target.value : "";
+        const replaced = handed || !text.field || text.field.id !== field.id || text.field.revision !== field.revision || text.active !== target;
         text.active = target;
         text.field = field;
         if (replaced) {
-            text.composition = null;
-            target.value = field.text;
-            target.setSelectionRange(toUtf16(field.text, field.selectionStart), toUtf16(field.text, field.selectionEnd));
+            const start = toUtf16(field.text, field.selectionStart);
+            const end = toUtf16(field.text, field.selectionEnd);
+            target.value = field.text.slice(0, start) + typed + field.text.slice(end);
+            if (typed && text.composition) {
+                text.composition.start += start;
+            } else {
+                text.composition = null;
+            }
+
+            if (typed) {
+                target.setSelectionRange(start + typed.length, start + typed.length);
+            } else {
+                target.setSelectionRange(start, end);
+            }
         }
 
         if (document.activeElement !== target) {
@@ -1658,12 +1690,28 @@ Module.haylen = Module.haylen || {};
         }
 
         reportKeyboard();
+        if (typed) {
+            report(target);
+        }
+
+        if (handed && tapped.field.id === field.id && tapped.action !== undefined) {
+            act(tapped.action);
+        }
     };
 
+    // A field that a tap handed its element to and that the engine never edits lets the element go too.
     text.finish = function () {
+        const tapped = text.tapped;
+        text.tapped = null;
         text.field = null;
         text.composition = null;
         blurActive();
+        if (tapped && document.activeElement === tapped.target) {
+            text.finishing = true;
+            tapped.target.blur();
+            text.finishing = false;
+        }
+
         reportKeyboard();
     };
 
@@ -1710,6 +1758,13 @@ Module.haylen = Module.haylen || {};
                     text.finishing = true;
                     target.blur();
                     text.finishing = false;
+                }
+
+                // A tap on another field hands the element to that field at once, empty, so the keys typed before the engine edits the field reach the field instead of the one that edited.
+                if (!text.field || text.field.id !== field.id || text.active !== target) {
+                    text.tapped = { field, target };
+                    text.composition = null;
+                    target.value = "";
                 }
 
                 target.focus({ preventScroll: true });
@@ -2404,7 +2459,7 @@ Module.haylen = Module.haylen || {};
         Module.canvas.addEventListener("pointercancel", (event) => presses.delete(event.pointerId), true);
         document.addEventListener("selectionchange", () => {
             if (text.active && document.activeElement === text.active) {
-                report();
+                report(text.active);
             }
         });
 

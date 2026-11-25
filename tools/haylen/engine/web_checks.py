@@ -64,6 +64,9 @@ class WebChecks:
         "fallback": ["ready", "fell back to WebGL2", "fills the page", "follows a resize"],
     }
     CANVAS_BROWSERS = {"first": "starts the graphics API of the page", "fallback": "offers no WebGPU adapter"}
+    # The text input check: a press and a release that arrive at once on each field of a sheet, by a finger of a phone or by the mouse of a desktop, and keys typed right after them, which must reach the field pressed, also the second field while the first one edits.
+    TEXT_INPUT_STEPS = ["ready", "the first field took the keys", "the second field took the keys"]
+    TEXT_INPUT_BROWSERS = {"touch": "emulates a phone with a touch screen", "mouse": "clicks with the mouse of a desktop"}
     # The fullscreen check: each promise settles once the window reports its mode, and a change that a newer one replaces fails with the code `denied`.
     FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
     # The orientation check: a phone held in portrait shows the turn screen of the page over an app that takes landscape while the app runs on, the screen goes away once the phone turns, and the lock of the app replaces the orientation of `haylen.json`.
@@ -164,6 +167,7 @@ class WebChecks:
             "memory": self.memory,
             "screens": self.screens,
             "canvas": self.canvas,
+            "textInput": self.text_input,
             "loading": self.loading,
         }
         reports = {}
@@ -287,6 +291,17 @@ class WebChecks:
                 report = self.drive("canvas-check.mjs", HeadlessBrowser.SOFTWARE_GPU, "the canvas check of the web", served.page(query), mode)
                 WebChecks.check_steps(report, steps, f"The page of the canvas check in a browser that {browser}")
         self.context.terminal.success("The canvas filled a page of density 2 and followed a resize, also after the browser offered no WebGPU adapter and the page fell back to WebGL2.")
+
+    def text_input(self, api: str | None) -> None:
+        site = self.site(WebChecks.DATA / "web-text-input")
+        with ServedSite(site) as served:
+            for mode, browser in WebChecks.TEXT_INPUT_BROWSERS.items():
+                self.context.terminal.step(f"Running the text input check of the web in a headless browser that {browser}")
+                report = self.drive("text-input-check.mjs", (), "the text input check of the web", served.page(WebChecks.query(api)), mode)
+                WebChecks.check_steps(report, WebChecks.TEXT_INPUT_STEPS, f"The page of the text input check in a browser that {browser}")
+        self.context.terminal.success(
+            "A tap of a finger and a click of the mouse whose press and release arrived at once started the editing of the field they pressed, also while another field edited, and the keys typed right after them reached that field."
+        )
 
     def fullscreen(self, api: str | None) -> None:
         site = self.site(WebChecks.DATA / "web-fullscreen")
