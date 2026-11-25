@@ -2,7 +2,7 @@ from haylen_ui_test_case import HaylenUiTestCase
 
 
 class ErrorScreenTests(HaylenUiTestCase):
-    """The error screen of the test "Errors and recovery" reads to UI Automation as Narrator reads it: its title, the message and the place of the error and its buttons, and its button "Back to the app" goes back to the test."""
+    """The error screen of the test "Errors and recovery" reads to UI Automation as Narrator reads it: its title, the message and the place of the error and its buttons, and its button "Back to the app" leaves it, which takes the test project back to its list of tests."""
 
     launch_arguments = ("--test", "DEV-007")
     TITLE = "The app stopped with an error"
@@ -16,4 +16,4 @@ class ErrorScreenTests(HaylenUiTestCase):
             self.wait_for(button)
         self.save_screenshot("windows-error-screen")
         self.click("Back to the app")
-        self.wait_for("Errors and recovery")
+        self.wait_until("The error screen stays after its button \"Back to the app\".", lambda: self.element(ErrorScreenTests.TITLE) is None)
