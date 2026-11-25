@@ -435,7 +435,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** Verificado no Mac: os 3021 testes da engine e os 71 testes de GPU do Metal passam, com os testes novos da escrita de região, do pipeline só de profundidade e do pipeline aplicado que sobrevive a objetos criados dentro de um pass. No benchmark de render do Metal num Apple M5 Pro, a cena com um glifo novo a cada quadro envia 28,1 KB por quadro em vez de 1747,7 KB, cerca de 62 vezes menos. O código do Direct3D 11 e 12 não compila neste Mac, então os commits estão no branch `rhi-kb008` com a execução completa da CI 45585549922, e o `main` avança só quando o Windows compilar e os testes de GPU passarem em toda API.
+- **Progress:** Os commits estão no branch `rhi-kb008`. Na execução completa da CI 45585549922 desse branch, o teste novo do pipeline só de profundidade falhou no OpenGL ES do emulador Android, que pinta a metade da imagem que devia ficar sem o plano, enquanto a versão Vulkan do mesmo teste passou. A causa está sendo procurada no dispositivo OpenGL, e o `main` só avança quando a CI passar inteira, com o Windows compilando.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
