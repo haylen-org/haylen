@@ -18,9 +18,13 @@
 | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
 | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-321 · Corrigir os defeitos confirmados da revisão da RHI no SDL](#kb-321)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-322 · Corrigir os defeitos confirmados da revisão da RHI no Direct3D](#kb-322)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-323 · Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU](#kb-323)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | — |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
+| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -455,7 +459,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** Sete commits estão no branch `rhi-kb008`, com a execução completa da CI 45585549922 rodando: o envio de só a região que mudou, os pipelines só de profundidade e os programas sem saída de cor, o OpenGL que mantém o estado do pipeline aplicado, os eventos de janelas fechadas, os modos do Wayland em pixels, as telas do Wayland nomeadas pela saída por um patch do SDL e as páginas de envio do Direct3D 12 maiores que 4 MiB. O `main` avança quando o Windows compilar e os testes de GPU passarem em toda API, e a lista com o veredito de cada candidato da revisão fica no relatório final.
+- **Progress:** A revisão terminou: dos cerca de 45 candidatos, os sete corrigidos estão no branch `rhi-kb008`, com a execução completa da CI 45585549922, e os confirmados que faltam corrigir estão nos cartões KB-321 a KB-324. Um foi descartado de propósito, a sessão Wayland sem tela que lança um erro claro. A revisão também listou o que falta à RHI para a fase 1 do 3D, como compute, desenhos indiretos, anexos de profundidade em camadas, vistas de sub-recursos, formatos comprimidos, swapchain sRGB e HDR, cache de pipelines e consultas, que os cartões KB-045 a KB-065 cobrem.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8107,6 +8111,94 @@ O [KB-009](#kb-009) passa a nomear as telas do Wayland pelo nome da saída, como
 
 - None
 
+### KB-321
+
+- **Title:** Corrigir os defeitos confirmados da revisão da RHI no SDL
+- **Status:** todo
+- **Type:** fix
+- **Priority:** high
+- **Complexity:** 6
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+A revisão do [KB-009](#kb-009) confirmou estes defeitos no SDL, que ainda não foram corrigidos: S2 (o foco que sai por uma janela de saída nunca é avisado); S5 (a caneta manda eventos de mouse e de toque juntos, pela dica de caneta como mouse que fica ligada); S6 (uma partida na web em que nenhuma API gráfica funciona só registra no log e não chega à página); S7 (as janelas de saída traduzem o ponteiro diferente da janela principal: sinal da roda horizontal, botões extras e modificadores); S10 (os resultados das chamadas de contexto do GL são ignorados); S11 (o `SDL_Metal_CreateView` não é conferido); S12 (a falha ao empurrar um marcador não é tratada); S13 (uma saída antecipada pula a limpeza); e conferir os incertos S8 (soltar teclas perdido com um campo de texto em foco) e S9 (o filtro do voltar do tvOS). Cada um é corrigido na raiz com um teste que falha sem a correção, e um incerto é confirmado ou descartado com o motivo. Os que só aparecem em hardware, como os do Direct3D, rodam na CI completa ou numa máquina da nuvem. Vêm antes da fase 1 do 3D, que estende a RHI.
+
+#### Acceptance criteria
+
+- [ ] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
+- [ ] A CI completa passa nas APIs que o cartão toca.
+
+#### Attachments
+
+- None
+
+### KB-322
+
+- **Title:** Corrigir os defeitos confirmados da revisão da RHI no Direct3D
+- **Status:** todo
+- **Type:** fix
+- **Priority:** high
+- **Complexity:** 6
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+A revisão do [KB-009](#kb-009) confirmou estes defeitos no Direct3D, que ainda não foram corrigidos: D2 (a imagem de resolve de um pass pode ser lida dentro do mesmo pass, o que pede uma regra do contrato no dispositivo nulo); D4 (falta a capacidade do tamanho de volume); D5 (as contagens de amostras das superfícies acrescentadas podem divergir); D6 (o `addSurface` vaza descritores quando falha); D7 (falhas de apresentação que não são perda de dispositivo somem); D8 (lacunas de validação: o offset do `writeBuffer`, a regra errada do `readRegisters` e slots de textura repetidos); D9 (funções `noexcept` que alocam); D11 (o tempo de GPU deixa de fora a lista de transferência); D12 (o D3D11 espera o quadro girando a CPU); D13 (o `Adapter::list` pode chamar um adaptador nulo); e conferir os incertos D10 e D14. Cada um é corrigido na raiz com um teste que falha sem a correção, e um incerto é confirmado ou descartado com o motivo. Os que só aparecem em hardware, como os do Direct3D, rodam na CI completa ou numa máquina da nuvem. Vêm antes da fase 1 do 3D, que estende a RHI.
+
+#### Acceptance criteria
+
+- [ ] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
+- [ ] A CI completa passa nas APIs que o cartão toca.
+
+#### Attachments
+
+- None
+
+### KB-323
+
+- **Title:** Corrigir os defeitos confirmados da revisão da RHI no OpenGL e WebGPU
+- **Status:** todo
+- **Type:** fix
+- **Priority:** high
+- **Complexity:** 6
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+A revisão do [KB-009](#kb-009) confirmou estes defeitos no OpenGL e WebGPU, que ainda não foram corrigidos: G3 (o WebGPU anuncia 4 amostras para formatos que não aceitam multiamostragem, o que pede uma capacidade de amostras por formato); G4 (o WebGPU pula chamadas em silêncio sem pass aberto e lança `std::runtime_error` em vez de `ContractError` numa quebra de contrato); G5 (uma mudança de tamanho no meio do quadro no WebGPU muda o tamanho do pass cedo demais); G6 (o `attachSurface` do GL guarda um tamanho pendente velho); G7 (falta o `glClipControl` e a capacidade da faixa de profundidade que o `AGENTS.md` promete); e conferir os incertos G8, G9 e G10. Cada um é corrigido na raiz com um teste que falha sem a correção, e um incerto é confirmado ou descartado com o motivo. Os que só aparecem em hardware, como os do Direct3D, rodam na CI completa ou numa máquina da nuvem. Vêm antes da fase 1 do 3D, que estende a RHI.
+
+#### Acceptance criteria
+
+- [ ] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
+- [ ] A CI completa passa nas APIs que o cartão toca.
+
+#### Attachments
+
+- None
+
+### KB-324
+
+- **Title:** Corrigir os defeitos confirmados da revisão da RHI no Vulkan
+- **Status:** todo
+- **Type:** fix
+- **Priority:** high
+- **Complexity:** 6
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+A revisão do [KB-009](#kb-009) confirmou estes defeitos no Vulkan, que ainda não foram corrigidos: V1 (um dispositivo perdido deixa o quadro e as swapchains abertos, e um `detachSurface` ou `removeSurface` depois pode terminar o app, o que pede um ponto de injeção de falha nos testes); V2 (uma aquisição que falha é tentada de novo por cada pass de swapchain do quadro); V4 (os limites da GPU lançam `ContractError`, e um cubo de lados diferentes não é recusado); V5 (os formatos de render anunciados são conferidos com menos usos do que o `makeImage` pede); V6 (slots sem conferência para quem chama direto); V7 (grupos de depuração fora de um pass encerram o render da swapchain); V8 (o `addSurface` é mais rígido que o dispositivo nulo); V9 (a preparação dos módulos de shader segura a trava enquanto compila); e conferir os incertos V3 e V10. Cada um é corrigido na raiz com um teste que falha sem a correção, e um incerto é confirmado ou descartado com o motivo. Os que só aparecem em hardware, como os do Direct3D, rodam na CI completa ou numa máquina da nuvem. Vêm antes da fase 1 do 3D, que estende a RHI.
+
+#### Acceptance criteria
+
+- [ ] Cada defeito da lista está corrigido com o seu teste, e cada incerto tem o seu veredito.
+- [ ] A CI completa passa nas APIs que o cartão toca.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8129,7 +8221,7 @@ O [KB-009](#kb-009) passa a nomear as telas do Wayland pelo nome da saída, como
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-321. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-325. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
