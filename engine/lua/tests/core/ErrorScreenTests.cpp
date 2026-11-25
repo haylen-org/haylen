@@ -24,6 +24,7 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/io/PackageReader.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/DrawingScene.hpp"
@@ -497,6 +498,44 @@ TEST_F(ErrorScreenTest, DrawsAndScrollsInTheHeadlessEngine) {
 }
 
 // clang-format off
+// The error screen draws without the UI, so it describes itself to screen readers, which read its texts and press its buttons.
+TEST_F(ErrorScreenTest, ReadsToScreenReadersAndTakesTheirActions) {
+    using Element = haylen::platform::AccessibilityElement;
+    test::LuaFixture fixture = startFailingApp();
+    fixture.host().setAccessibilityTreeWanted(true);
+    fixture.frames(3);
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    ASSERT_FALSE(fixture.host().getAccessibilityTrees().empty());
+
+    const std::vector<Element>& elements = fixture.host().getAccessibilityTrees().back().elements;
+    ASSERT_GE(elements.size(), 2U);
+    EXPECT_EQ(elements[0].role, Element::Role::Dialog);
+    EXPECT_EQ(elements[0].label, haylen::core::ErrorScreen::kTitle);
+    EXPECT_EQ(elements[1].role, Element::Role::Heading);
+    EXPECT_EQ(elements[1].label, haylen::core::ErrorScreen::kTitle);
+    EXPECT_NE(std::ranges::find(elements, "File \"source/scenes/battle.lua\", line 2", &Element::label), elements.end());
+    EXPECT_NE(std::ranges::find(elements, fixture.engine().getError()->getMessage(), &Element::label), elements.end());
+
+    const auto restart = std::ranges::find(elements, "Restart app", &Element::label);
+    const auto copy = std::ranges::find(elements, "Copy report", &Element::label);
+    ASSERT_NE(restart, elements.end());
+    ASSERT_NE(copy, elements.end());
+    EXPECT_EQ(restart->role, Element::Role::Button);
+    EXPECT_TRUE(restart->can(Element::Activate));
+    EXPECT_FALSE(restart->bounds.isEmpty());
+    const std::uint64_t restartId = restart->id;
+    const std::uint64_t copyId = copy->id;
+
+    fixture.engine().getAccessibility().perform({.element = copyId, .action = Element::Activate});
+    fixture.frames(2);
+    EXPECT_EQ(fixture.host().getClipboard(), haylen::core::ErrorScreen(fixture.engine(), *fixture.engine().getError(), true).getReport());
+    EXPECT_FALSE(fixture.engine().isRestartRequested());
+
+    fixture.engine().getAccessibility().perform({.element = restartId, .action = Element::Activate});
+    fixture.frames(1);
+    EXPECT_TRUE(fixture.engine().isRestartRequested());
+}
+
 TEST_F(ErrorScreenTest, TellsWhichErrorsAFixCanResume) {
     const std::map<std::string, bool> cases{
         {"require('haylen.scene').push({update = function() error('update', 0) end})", true},

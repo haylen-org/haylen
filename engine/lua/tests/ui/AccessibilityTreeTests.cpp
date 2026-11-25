@@ -78,7 +78,10 @@ class AccessibilityTreeTest : public ::testing::Test {
         return trees.back();
     }
 
-    test::LuaFixture fixture;
+    // A picture that the images of the tests show, so no image fails to load and stops the app.
+    static constexpr std::string_view kMap = R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" fill="#3366FF"/></svg>)";
+
+    test::LuaFixture fixture{{{"content/map.svg", std::string(kMap)}}};
 };
 
 TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
@@ -96,8 +99,8 @@ TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
             ui.secretField{value = 'abc', placeholder = 'Password'},
             ui.radioGroup{items = {{id = 'easy', text = 'Easy'}, {id = 'hard', text = 'Hard'}}, selected = 'hard', accessibilityLabel = 'Difficulty'},
             ui.progress{value = 0.5, text = 'Download'},
-            ui.image{image = 'missing.png'},
-            ui.image{image = 'missing.png', accessibilityLabel = 'Map'},
+            ui.image{image = 'map.svg'},
+            ui.image{image = 'map.svg', accessibilityLabel = 'Map'},
             ui.richText{text = 'A [b]bold[/b] [lb]word[rb]'},
             ui.column{accessibilityHidden = true, ui.label{text = 'Hidden'}},
             ui.card{accessibilityLabel = 'Coins', accessibilityRole = 'text', accessibilityHint = 'Spent in the shop', ui.label{text = '12'}},
@@ -107,6 +110,7 @@ TEST_F(AccessibilityTreeTest, DescribesEveryKindWithItsRoleLabelValueAndState) {
     )");
     // clang-format on
     fixture.frames(3);
+    ASSERT_EQ(fixture.engine().getError(), nullptr);
 
     const Element* header = find("Settings, Audio");
     ASSERT_NE(header, nullptr);

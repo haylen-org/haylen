@@ -14,6 +14,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/io/Package.hpp"
+#include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/platform/Window.hpp"
@@ -96,6 +97,25 @@ std::string ErrorScreen::getLocation() const {
     return "File \"" + error.getFile() + "\", line " + std::to_string(error.getLine());
 }
 
+// The lines of the excerpt with their numbers right-aligned, where the error line starts with a marker.
+std::string ErrorScreen::getExcerptText() const {
+    std::string text;
+    const std::size_t width = std::to_string(excerpt.back().number).size();
+    for (const SourceLine& line : excerpt) {
+        const std::string number = std::to_string(line.number);
+        if (!text.empty()) {
+            text += "\n";
+        }
+
+        text += std::string(line.number == error.getLine() ? "> " : "  ") + std::string(width - number.size(), ' ') + number;
+        if (!line.text.empty()) {
+            text += "  " + line.text;
+        }
+    }
+
+    return text;
+}
+
 std::string ErrorScreen::buildReport() const {
     std::string text = std::string(kTitle) + "\n" + getDetails() + "\n\n" + expandTabs(error.getMessage());
     if (!error.getFile().empty()) {
@@ -103,15 +123,7 @@ std::string ErrorScreen::buildReport() const {
     }
 
     if (!excerpt.empty()) {
-        text += "\n";
-        const std::size_t width = std::to_string(excerpt.back().number).size();
-        for (const SourceLine& line : excerpt) {
-            const std::string number = std::to_string(line.number);
-            text += "\n" + std::string(line.number == error.getLine() ? "> " : "  ") + std::string(width - number.size(), ' ') + number;
-            if (!line.text.empty()) {
-                text += "  " + line.text;
-            }
-        }
+        text += "\n\n" + getExcerptText();
     }
 
     if (!error.getFrames().empty()) {
@@ -129,6 +141,21 @@ bool ErrorScreen::isTouchDevice() const {
 // A gamepad drives the screen once it was the last device, and on TVs, which have no pointer, from the start.
 bool ErrorScreen::isGamepadDriven() const {
     return engine.getInput().getLastDevice() == input::InputDevice::Gamepad || !engine.getWindow().hasPointerDevice();
+}
+
+// The screen shows going back only in a recoverable app and closing only in an app that another app launched.
+bool ErrorScreen::isShown(Action action) const {
+    switch (action) {
+    case Action::Back:
+        return engine.isRecoverable();
+    case Action::Close:
+        return engine.isLaunched();
+    case Action::Copy:
+    case Action::Restart:
+        break;
+    }
+
+    return true;
 }
 
 bool ErrorScreen::isInDevelopment() const {
@@ -355,7 +382,30 @@ void ErrorScreen::handleTouch(const platform::Event& event) {
     }
 }
 
+// The actions of a screen reader reach the screen before the plugins start their frame, so the UI of the app that stopped never takes them.
+void ErrorScreen::performAccessibility() {
+    engine.getAccessibility().takeRequests(requests);
+    for (const platform::Accessibility::Request& request : requests) {
+        if (request.element < kFirstActionElement || request.element >= kFirstActionElement + kActionCount) {
+            continue;
+        }
+
+        const auto action = static_cast<Action>(request.element - kFirstActionElement);
+        if (!isShown(action)) {
+            continue;
+        }
+
+        if (request.action == platform::AccessibilityElement::Activate) {
+            run(action);
+        } else if (request.action == platform::AccessibilityElement::Focus) {
+            focused = action;
+        }
+    }
+}
+
 void ErrorScreen::update() {
+    performAccessibility();
+
     const input::Input& input = engine.getInput();
     const float line = kLineStep * getUnit();
     for (std::size_t index = 0; index < input::Input::kMaxGamepads; ++index) {
@@ -441,28 +491,125 @@ void ErrorScreen::render() {
     const float height = drawContent(renderer, font, {content.x, content.y - scroll}, content.width, unit);
     renderer.popClip();
     maxScroll = std::max(0.0F, height - content.height);
+    publishAccessibility(content);
 }
 
-float ErrorScreen::drawContent(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const {
+// Each text records where it showed, which its element covers for screen readers.
+float ErrorScreen::drawContent(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) {
     const float gap = kGap * unit;
     float y = origin.y;
-    y += drawLine(renderer, font, kTitle, {origin.x, y}, {.size = kTitleSize * unit, .color = kTitleColor}) + gap * 0.3F;
-    y += drawLine(renderer, font, getDetails(), {origin.x, y}, {.size = kSmallSize * unit, .color = kMutedColor}) + gap;
-    y += drawLine(renderer, font, expandTabs(error.getMessage()), {origin.x, y}, {.size = kMessageSize * unit, .color = kTextColor, .maxWidth = width}) + gap * 0.5F;
+    partBounds.fill({});
+
+    const auto part = [this](Part which) -> math::Rect& { return partBounds[static_cast<std::size_t>(which)]; };
+    float drawn = drawLine(renderer, font, kTitle, {origin.x, y}, {.size = kTitleSize * unit, .color = kTitleColor});
+    part(Part::Title) = {origin.x, y, width, drawn};
+    y += drawn + gap * 0.3F;
+
+    drawn = drawLine(renderer, font, getDetails(), {origin.x, y}, {.size = kSmallSize * unit, .color = kMutedColor});
+    part(Part::Details) = {origin.x, y, width, drawn};
+    y += drawn + gap;
+
+    drawn = drawLine(renderer, font, expandTabs(error.getMessage()), {origin.x, y}, {.size = kMessageSize * unit, .color = kTextColor, .maxWidth = width});
+    part(Part::Message) = {origin.x, y, width, drawn};
+    y += drawn + gap * 0.5F;
 
     if (!error.getFile().empty()) {
-        y += drawLine(renderer, font, getLocation(), {origin.x, y}, {.size = kBodySize * unit, .color = kAccentColor}) + gap;
+        drawn = drawLine(renderer, font, getLocation(), {origin.x, y}, {.size = kBodySize * unit, .color = kAccentColor});
+        part(Part::Location) = {origin.x, y, width, drawn};
+        y += drawn + gap;
     }
 
     if (!excerpt.empty()) {
-        y += drawExcerpt(renderer, font, {origin.x, y}, width, unit) + gap;
+        drawn = drawExcerpt(renderer, font, {origin.x, y}, width, unit);
+        part(Part::Excerpt) = {origin.x, y, width, drawn};
+        y += drawn + gap;
     }
 
     if (!error.getFrames().empty()) {
-        y += drawStack(renderer, font, {origin.x, y}, unit);
+        drawn = drawStack(renderer, font, {origin.x, y}, unit);
+        part(Part::Stack) = {origin.x, y, width, drawn};
+        y += drawn;
     }
 
     return y - origin.y;
+}
+
+math::Rect ErrorScreen::toFramebuffer(const math::Rect& bounds) const {
+    const graphics::Viewport& viewport = engine.getViewport();
+    return math::Rect::fromMinMax(viewport.toFramebuffer(bounds.getMin()), viewport.toFramebuffer(bounds.getMax()));
+}
+
+void ErrorScreen::describe(std::size_t index, std::uint64_t id, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label, std::string_view value) {
+    if (index == elements.size()) {
+        elements.emplace_back();
+    }
+
+    platform::AccessibilityElement& element = elements[index];
+    element.id = id;
+    element.parent = id == kDialogElement ? 0 : kDialogElement;
+    element.bounds = bounds;
+    element.role = role;
+    element.label = label;
+    element.value = value;
+    element.hint.clear();
+    element.states = 0;
+    element.actions = 0;
+    if (role == platform::AccessibilityElement::Role::Button) {
+        element.actions = platform::AccessibilityElement::Focus | platform::AccessibilityElement::Activate;
+    }
+}
+
+// The texts of the content cover only what the scrolling area shows of them, and a text scrolled out of sight is a line without area on the nearest edge of the area, which a screen reader still moves to.
+void ErrorScreen::publishAccessibility(const math::Rect& content) {
+    platform::Accessibility& accessibility = engine.getAccessibility();
+    if (!accessibility.isTreeWanted()) {
+        return;
+    }
+
+    using Role = platform::AccessibilityElement::Role;
+    const math::Vec2 framebuffer = engine.getWindow().getFramebufferSize();
+    std::size_t count = 0;
+    describe(count++, kDialogElement, {0.0F, 0.0F, framebuffer.x, framebuffer.y}, Role::Dialog, kTitle, {});
+
+    const std::array<std::pair<Role, std::string>, kPartCount> parts{{
+        {Role::Heading, std::string(kTitle)},
+        {Role::Text, getDetails()},
+        {Role::Text, expandTabs(error.getMessage())},
+        {Role::Text, getLocation()},
+        {Role::Text, excerpt.empty() ? std::string() : getExcerptText()},
+        {Role::Text, "Stack"},
+    }};
+
+    for (std::size_t index = 0; index < kPartCount; ++index) {
+        const math::Rect& bounds = partBounds[index];
+        if (bounds.isEmpty()) {
+            continue;
+        }
+
+        const math::Rect shown = math::Rect::fromMinMax(content.clamp(bounds.getMin()), content.clamp(bounds.getMax()));
+        const bool stack = static_cast<Part>(index) == Part::Stack;
+        describe(count++, kFirstPartElement + index, toFramebuffer(shown), parts[index].first, parts[index].second, stack ? error.getTraceback() : std::string());
+    }
+
+    const std::array<std::pair<Action, const math::Rect*>, kActionCount> buttons{{{Action::Copy, &copyButton}, {Action::Restart, &restartButton}, {Action::Back, &backButton}, {Action::Close, &closeButton}}};
+    const std::array<std::string_view, kActionCount> labels{getCopyLabel(), "Restart app", "Back to the app", "Close app"};
+    const std::uint64_t focusedElement = isGamepadDriven() ? kFirstActionElement + static_cast<std::size_t>(focused) : 0;
+    for (std::size_t index = 0; index < kActionCount; ++index) {
+        if (!isShown(buttons[index].first)) {
+            continue;
+        }
+
+        const std::uint64_t id = kFirstActionElement + index;
+        describe(count, id, toFramebuffer(*buttons[index].second), Role::Button, labels[index], {});
+        if (id == focusedElement) {
+            elements[count].states = platform::AccessibilityElement::Focused;
+        }
+
+        ++count;
+    }
+
+    elements.resize(count);
+    accessibility.publish(elements, focusedElement);
 }
 
 // Line numbers sit right-aligned in a column of their own, so the code starts at the same place on every line, and the error line is highlighted.

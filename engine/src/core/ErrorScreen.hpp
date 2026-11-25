@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -12,6 +13,8 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/Accessibility.hpp"
+#include "haylen/platform/AccessibilityElement.hpp"
 
 namespace haylen::platform {
 struct Event;
@@ -30,7 +33,7 @@ namespace haylen::core {
 
 class Engine;
 
-// What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag, the arrow keys and the directional pad. C copies the report and R restarts the app, and in a recoverable app Escape, the east button and the back button of the platform go back to the app. Every action is a button too, the only way to reach it on touch devices. Gamepads and TV remotes move the focus between the buttons with the directional pad, or the arrow keys that TV remotes also send, and press the focused one with the south button or Enter, and the focus starts on going back in a recoverable app and on Restart otherwise. It draws with the renderer alone, so it keeps working when the UI is what failed.
+// What the engine draws in place of the app once a script error stops it: the app and engine it ran on, the message, a source excerpt, the stack and the actions. Content taller than the screen scrolls with the mouse wheel, a drag, the arrow keys and the directional pad. C copies the report and R restarts the app, and in a recoverable app Escape, the east button and the back button of the platform go back to the app. Every action is a button too, the only way to reach it on touch devices. Gamepads and TV remotes move the focus between the buttons with the directional pad, or the arrow keys that TV remotes also send, and press the focused one with the south button or Enter, and the focus starts on going back in a recoverable app and on Restart otherwise. It draws with the renderer alone, so it keeps working when the UI is what failed, and hands screen readers its texts and its buttons as a dialog, whose buttons they press and focus as a click and the directional pad do.
 class ErrorScreen final {
   public:
     enum class Action { Copy, Restart, Back, Close };
@@ -113,6 +116,16 @@ class ErrorScreen final {
         float scroll = 0.0F;
     };
 
+    // The texts of the content in the order a screen reader reads them.
+    enum class Part : std::uint8_t { Title, Details, Message, Location, Excerpt, Stack };
+
+    // The ids of the elements that screen readers read: the dialog, then its texts by `Part` and its buttons by `Action`.
+    static constexpr std::uint64_t kDialogElement = 1;
+    static constexpr std::uint64_t kFirstPartElement = 2;
+    static constexpr std::size_t kPartCount = 6;
+    static constexpr std::uint64_t kFirstActionElement = kFirstPartElement + kPartCount;
+    static constexpr std::size_t kActionCount = 4;
+
     static constexpr int kExcerptRadius = 3;
     static constexpr std::size_t kTabWidth = 4;
 
@@ -142,11 +155,13 @@ class ErrorScreen final {
     [[nodiscard]] std::vector<SourceLine> readExcerpt() const;
     [[nodiscard]] std::string getDetails() const;
     [[nodiscard]] std::string getLocation() const;
+    [[nodiscard]] std::string getExcerptText() const;
     [[nodiscard]] std::string_view getCopyLabel() const noexcept;
     [[nodiscard]] std::string buildReport() const;
     [[nodiscard]] bool isTouchDevice() const;
     [[nodiscard]] bool isGamepadDriven() const;
     [[nodiscard]] bool isInDevelopment() const;
+    [[nodiscard]] bool isShown(Action action) const;
 
     // Design units per point, from the pixel density of the window and the scale of the viewport.
     [[nodiscard]] float getUnit() const;
@@ -160,9 +175,13 @@ class ErrorScreen final {
     void press(math::Vec2 point);
     void drag(math::Vec2 point);
     void scrollBy(float amount);
+    void performAccessibility();
+    void publishAccessibility(const math::Rect& content);
+    void describe(std::size_t index, std::uint64_t id, const math::Rect& bounds, platform::AccessibilityElement::Role role, std::string_view label, std::string_view value);
+    [[nodiscard]] math::Rect toFramebuffer(const math::Rect& bounds) const;
 
     float drawLine(graphics2d::Renderer& renderer, text::Font& font, std::string_view text, math::Vec2 position, const text::Style& style) const;
-    [[nodiscard]] float drawContent(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const;
+    [[nodiscard]] float drawContent(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit);
     [[nodiscard]] float drawExcerpt(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float width, float unit) const;
     [[nodiscard]] float drawStack(graphics2d::Renderer& renderer, text::Font& font, math::Vec2 origin, float unit) const;
     [[nodiscard]] float drawFooter(graphics2d::Renderer& renderer, text::Font& font, const math::Rect& area, float unit);
@@ -183,6 +202,11 @@ class ErrorScreen final {
     math::Rect closeButton{};
     Action focused;
     bool canResume = true;
+
+    // Where each text of the content and each button showed in the last frame, in design units, empty for the ones it did not show.
+    std::array<math::Rect, kPartCount> partBounds{};
+    std::vector<platform::AccessibilityElement> elements;
+    std::vector<platform::Accessibility::Request> requests;
 
     // The answer of the clipboard comes at a later frame, which may come after the screen is gone.
     std::shared_ptr<CopyState> copyState = std::make_shared<CopyState>(CopyState::Idle);
