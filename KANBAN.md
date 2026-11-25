@@ -16,7 +16,7 @@
 | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
 | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
 | **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-314 · Revisar toda escolha de plataforma que o app não consegue fazer pelo haylen.json](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -7950,7 +7950,7 @@ O backend da Apple fixa o `TARGETED_DEVICE_FAMILY` do iOS em iPhone e iPad e nã
 
 ### KB-314
 
-- **Title:** Revisar toda escolha de plataforma que o app não consegue fazer pelo haylen.json
+- **Title:** O projeto do app tem controle total sobre o projeto nativo de cada plataforma
 - **Status:** todo
 - **Type:** task
 - **Priority:** high
@@ -7958,12 +7958,14 @@ O backend da Apple fixa o `TARGETED_DEVICE_FAMILY` do iOS em iPhone e iPad e nã
 
 #### Description
 
-O dono não quer limitações como a dos aparelhos do iOS do [KB-313](#kb-313). Cada backend tem configurações que ele mesmo controla e que o app não pode mudar, como as `OWNED_SETTINGS` da Apple, as chaves do `Info.plist`, os valores do manifesto do Android, o `build.gradle`, o projeto de desktop e a página da web. Algumas são restrições reais do SDK ou do alvo, e outras são escolhas legítimas do app que hoje ficam presas, como em quais aparelhos ele roda, em quais telas e formatos, se exige tela de toque ou se roda na TV. Cada configuração presa recebe um veredito: é uma restrição real e continua do backend, com o motivo na documentação, ou é uma escolha do app e vira uma chave do `haylen.json` com o nome comum das engines grandes, com o seu teste. A lista completa com os vereditos fica no cartão.
+O dono não quer limitações como a dos aparelhos do iOS do [KB-313](#kb-313). Cada backend tem configurações que ele mesmo controla e que o app não pode mudar, como as `OWNED_SETTINGS` da Apple, as chaves do `Info.plist`, os valores do manifesto do Android, o `build.gradle`, o projeto de desktop e a página da web. Algumas são restrições reais do SDK ou do alvo, e outras são escolhas legítimas do app que hoje ficam presas, como em quais aparelhos ele roda, em quais telas e formatos, se exige tela de toque ou se roda na TV. Cada configuração presa recebe um veredito: é uma restrição real e continua do backend, com o motivo na documentação, ou é uma escolha do app e vira uma chave do `haylen.json` com o nome comum das engines grandes, com o seu teste. A lista completa com os vereditos fica no cartão. O controle total vem em três camadas, como nas engines grandes e mais simples que nelas: as escolhas comuns são chaves do `haylen.json` com nomes conhecidos; toda configuração, inclusive as que hoje o backend recusa, pode ser mudada pelas seções `platforms` do app, e a ferramenta confere a consistência e para com os dois donos nomeados quando um valor contradiz outro, em vez de proibir a chave; e, para o que nenhuma chave cobre, um gancho do app roda depois de cada preparação sobre o projeto gerado, entra no resumo da preparação para que o projeto continue determinístico e aparece no `haylen project inspect`, ao lado da troca de arquivos inteiros pelo `files` que já existe.
 
 #### Acceptance criteria
 
 - [ ] Toda configuração que cada backend controla está listada com o seu veredito.
 - [ ] Toda escolha legítima do app vira uma chave do `haylen.json` com teste e documentação, em cartões próprios quando for grande.
+- [ ] Toda configuração do projeto nativo pode ser mudada pelo app, conferida contra as outras, e um valor que contradiz outro para com os dois donos nomeados.
+- [ ] Um gancho do app roda depois de cada preparação, entra no resumo da preparação e tem teste e documentação.
 - [ ] A documentação diz por que cada configuração que continua presa não pode mudar.
 
 #### Attachments
