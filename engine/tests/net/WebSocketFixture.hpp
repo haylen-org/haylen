@@ -55,7 +55,7 @@ class WebSocketFixture : public ::testing::Test {
         }
 
       private:
-        // Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, `bye` closes from the server side and `drop` hangs up without a close frame. The path `/refuse` answers the upgrade request with 403 instead.
+        // Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, `bye` closes from the server side and `drop` hangs up without a close frame. The path `/refuse` answers the upgrade request with 403 instead, and the path `/sink` reads every message and answers none.
         class Handler final : public Poco::Net::HTTPRequestHandler {
           public:
             explicit Handler(std::shared_ptr<std::atomic<std::size_t>> counter) : received(std::move(counter)) {}
@@ -72,6 +72,7 @@ class WebSocketFixture : public ::testing::Test {
                     response.set("Sec-WebSocket-Protocol", "chat");
                 }
 
+                const bool sink = request.getURI() == "/sink";
                 Poco::Net::WebSocket socket(request, response);
                 socket.setReceiveTimeout(Poco::Timespan(kReceiveSeconds, 0));
                 Poco::Buffer<char> frame(0);
@@ -88,6 +89,10 @@ class WebSocketFixture : public ::testing::Test {
                     if ((length == 0 && flags == 0) || opcode == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                         socket.shutdown(Poco::Net::WebSocket::WS_NORMAL_CLOSE, "");
                         return;
+                    }
+
+                    if (sink) {
+                        continue;
                     }
 
                     if (opcode == Poco::Net::WebSocket::FRAME_OP_PONG) {

@@ -1,5 +1,6 @@
 #include "haylen/plugins/NetPlugin.hpp"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -62,6 +63,10 @@ void NetPlugin::beginFrame(core::Engine& engine, float) {
 
     pumping.clear();
     std::erase_if(sockets, [](const std::shared_ptr<net::WebSocket>& socket) { return socket->getState() == net::WebSocket::State::Closed; });
+}
+
+bool NetPlugin::isAnimating() const {
+    return std::ranges::any_of(sockets, [](const std::shared_ptr<net::WebSocket>& socket) { return socket->getBufferedAmount() > 0; });
 }
 
 } // namespace haylen::plugins

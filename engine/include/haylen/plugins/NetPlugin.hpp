@@ -26,6 +26,9 @@ class NetPlugin final : public Plugin {
     void stop(core::Engine& engine) override;
     void beginFrame(core::Engine& engine, float deltaSeconds) override;
 
+    // A socket with bytes that wait to be written keeps an app that redraws on change updating, so code that sends as fast as the connection carries sees the count fall.
+    [[nodiscard]] bool isAnimating() const override;
+
     [[nodiscard]] std::shared_ptr<net::WebSocket> connectWebSocket(std::string url, net::WebSocket::Options options = {});
     [[nodiscard]] std::size_t getOpenSocketCount() const noexcept {
         return sockets.size();

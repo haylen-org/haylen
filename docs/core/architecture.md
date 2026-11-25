@@ -444,6 +444,7 @@ The built-in plugins that change what they draw by themselves answer `isAnimatin
 | `content` | The update screen shows the progress of the content that the start waits for. |
 | `debug` | The statistics, the inspector or a trace show. |
 | `jobs` | Lua jobs wait for the next frame. |
+| `net` | A WebSocket has bytes of its messages that wait to be written to the network, so code that sends no faster than the connection carries sees its `bufferedAmount` fall. |
 | `nodes2d` | Particles of a node of a tree that Lua made live. |
 | `particles2d` | An emitter, a system or a trail that Lua made lives. |
 | `physics2d` | A world that Lua made has awake bodies. |

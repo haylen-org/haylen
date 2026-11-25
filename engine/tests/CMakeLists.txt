@@ -133,6 +133,7 @@ set(HAYLEN_TEST_SOURCES
   math/UtilityTests.cpp
   math/Vec3Tests.cpp
   math/VectorTests.cpp
+  net/NetRedrawTests.cpp
   net/WebSocketTests.cpp
   platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp
