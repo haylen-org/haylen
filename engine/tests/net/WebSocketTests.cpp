@@ -557,12 +557,23 @@ TEST_F(WebSocketTest, CountsTheBytesThatWaitToBeWritten) {
     EXPECT_EQ(socket.getBufferedAmount(), 0U);
 
     const std::string chunk(1024 * 1024, 'c');
+    const std::size_t total = 8 * chunk.size();
     for (int index = 0; index < 8; ++index) {
         socket.send(chunk);
     }
 
-    EXPECT_GT(socket.getBufferedAmount(), 0U);
-    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getBufferedAmount() == 0 && echoed == 8 * chunk.size(); }));
+    EXPECT_EQ(socket.getBufferedAmount(), total);
+
+    // The connection writes on its own thread, and what it wrote leaves the count only when the socket pumps, as in browsers, however fast the network takes it.
+    ASSERT_TRUE(waitUntil([&] { return server.getReceivedBytes() == total; }));
+    EXPECT_EQ(socket.getBufferedAmount(), total);
+    socket.send("one more");
+    EXPECT_EQ(socket.getBufferedAmount(), total + 8);
+
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getBufferedAmount() == 0 && echoed == total + 8; }));
+    socket.close();
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_EQ(socket.getBufferedAmount(), 0U);
 }
 
 TEST_F(WebSocketTest, KeepsReadingWhileItWaitsToWrite) {

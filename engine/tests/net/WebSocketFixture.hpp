@@ -13,10 +13,14 @@
 #include <Poco/Net/WebSocket.h>
 #include <Poco/Timespan.h>
 
+#include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 #include "haylen/net/WebSocket.hpp"
 
@@ -31,7 +35,7 @@ class WebSocketFixture : public ::testing::Test {
 
     class EchoServer final {
       public:
-        EchoServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new Factory(), listener, new Poco::Net::HTTPServerParams()) {
+        EchoServer() : listener(Poco::Net::SocketAddress("127.0.0.1", 0)), server(new Factory(received), listener, new Poco::Net::HTTPServerParams()) {
             server.start();
         }
         ~EchoServer() {
@@ -45,10 +49,17 @@ class WebSocketFixture : public ::testing::Test {
             return "ws://127.0.0.1:" + std::to_string(listener.address().port()) + path;
         }
 
+        // Counts the bytes of the payloads of the text and binary frames that the server read.
+        [[nodiscard]] std::size_t getReceivedBytes() const noexcept {
+            return received->load();
+        }
+
       private:
         // Echoes every message, answers pings with pongs and understands a few commands: `fragments` answers in two frames, `ping-me` pings the client and reports its pong, `bye` closes from the server side and `drop` hangs up without a close frame. The path `/refuse` answers the upgrade request with 403 instead.
         class Handler final : public Poco::Net::HTTPRequestHandler {
           public:
+            explicit Handler(std::shared_ptr<std::atomic<std::size_t>> counter) : received(std::move(counter)) {}
+
             void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
                 if (request.getURI() == "/refuse") {
                     response.setStatusAndReason(Poco::Net::HTTPResponse::HTTP_FORBIDDEN);
@@ -70,6 +81,9 @@ class WebSocketFixture : public ::testing::Test {
                     const int length = socket.receiveFrame(frame, flags);
                     const int opcode = flags & Poco::Net::WebSocket::FRAME_OP_BITMASK;
                     const std::string text(frame.begin(), frame.size());
+                    if (opcode == Poco::Net::WebSocket::FRAME_OP_TEXT || opcode == Poco::Net::WebSocket::FRAME_OP_BINARY) {
+                        received->fetch_add(frame.size());
+                    }
 
                     if ((length == 0 && flags == 0) || opcode == Poco::Net::WebSocket::FRAME_OP_CLOSE) {
                         socket.shutdown(Poco::Net::WebSocket::WS_NORMAL_CLOSE, "");
@@ -101,15 +115,23 @@ class WebSocketFixture : public ::testing::Test {
             static void send(Poco::Net::WebSocket& socket, const std::string& text) {
                 socket.sendFrame(text.data(), static_cast<int>(text.size()), Poco::Net::WebSocket::FRAME_TEXT);
             }
+
+            std::shared_ptr<std::atomic<std::size_t>> received;
         };
 
         class Factory final : public Poco::Net::HTTPRequestHandlerFactory {
           public:
+            explicit Factory(std::shared_ptr<std::atomic<std::size_t>> counter) : received(std::move(counter)) {}
+
             Poco::Net::HTTPRequestHandler* createRequestHandler(const Poco::Net::HTTPServerRequest&) override {
-                return new Handler();
+                return new Handler(received);
             }
+
+          private:
+            std::shared_ptr<std::atomic<std::size_t>> received;
         };
 
+        std::shared_ptr<std::atomic<std::size_t>> received = std::make_shared<std::atomic<std::size_t>>(0);
         Poco::Net::ServerSocket listener;
         Poco::Net::HTTPServer server;
     };

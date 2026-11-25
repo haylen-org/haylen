@@ -99,8 +99,10 @@ class WebSocket final {
         return attempt;
     }
 
-    // The bytes of the messages sent on the current connection that still wait to be written to the network, which an app that sends a lot watches to send no faster than the connection carries.
-    [[nodiscard]] std::size_t getBufferedAmount() const noexcept;
+    // The bytes of the messages sent on the current connection that still waited to be written to the network at the last pump, plus the messages sent since, which an app that sends a lot watches to send no faster than the connection carries. It falls only when the socket pumps, as in browsers, so it holds still while the code of a frame reads it.
+    [[nodiscard]] std::size_t getBufferedAmount() const noexcept {
+        return transport ? bufferedAmount : 0;
+    }
 
     core::Signal<> opened;
     core::Signal<std::string_view, bool> received;
@@ -155,6 +157,7 @@ class WebSocket final {
     std::unique_ptr<WebSocketTransport> transport;
     double nextAttemptAt = 0.0;
     double attemptStartedAt = 0.0;
+    std::size_t bufferedAmount = 0;
     int attempt = 0;
     bool connected = false;
     bool closeRequested = false;

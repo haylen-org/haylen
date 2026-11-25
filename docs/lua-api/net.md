@@ -246,7 +246,7 @@ end)
 
 ### socket.bufferedAmount
 
-Read-only integer with the bytes of the messages sent on the current connection that still wait to go out to the network. An app that sends a lot, such as a stream of positions or a large upload in pieces, sends the next piece only while this stays low. So it never sends faster than the connection carries and never piles up memory. It is `0` without a connection, and in the browser it is the `bufferedAmount` of the WebSocket of the page.
+Read-only integer with the bytes of the messages sent on the current connection that still wait to go out to the network. Each `send` and `sendBinary` adds the size of its message at once, and the bytes that went out leave the count only at the start of a frame, when the socket delivers its events. So the value never changes on its own while the code of a frame runs, as in browsers. An app that sends a lot, such as a stream of positions or a large upload in pieces, sends the next piece only while this stays low. So it never sends faster than the connection carries and never piles up memory. It is `0` without a connection, and in the browser it is the `bufferedAmount` of the WebSocket of the page.
 
 ```lua
 local net = require('haylen.net')

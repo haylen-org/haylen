@@ -79,6 +79,7 @@ WebSocket::~WebSocket() = default;
 void WebSocket::connect() {
     state = State::Connecting;
     attemptStartedAt = clock();
+    bufferedAmount = 0;
     // clang-format off
     transport = WebSocketTransport::open(url, protocols, maxMessageSize, connectTimeout, blockedReason, [delivery = inbox](WebSocketTransport::Event event) {
         const std::scoped_lock lock(delivery->mutex);
@@ -93,6 +94,7 @@ void WebSocket::send(std::string_view text) {
     }
 
     transport->send(std::string(text), false);
+    bufferedAmount += text.size();
 }
 
 void WebSocket::sendBinary(std::span<const std::uint8_t> bytes) {
@@ -101,6 +103,7 @@ void WebSocket::sendBinary(std::span<const std::uint8_t> bytes) {
     }
 
     transport->send(std::string(bytes.begin(), bytes.end()), true);
+    bufferedAmount += bytes.size();
 }
 
 void WebSocket::ping(std::string_view payload) {
@@ -139,10 +142,6 @@ void WebSocket::close(int code, std::string_view reason) {
     }
 
     transport->close(code, std::string(reason));
-}
-
-std::size_t WebSocket::getBufferedAmount() const noexcept {
-    return transport ? transport->getBufferedAmount() : 0;
 }
 
 bool WebSocket::canReconnect() const noexcept {
@@ -200,6 +199,11 @@ bool WebSocket::pump() {
             finished = finishConnection(event.code, event.text);
             break;
         }
+    }
+
+    // The bytes that the transport wrote leave the count only here, so a frame sees the count fall between its pumps and never while its code runs.
+    if (transport) {
+        bufferedAmount = transport->getBufferedAmount();
     }
 
     const bool delivered = !events.empty() || state != before;
