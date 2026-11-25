@@ -53,7 +53,6 @@ class OutputWindows final {
     static void destroy(Entry& entry) noexcept;
     static void refresh(Entry& entry);
     void end(Entry& entry, Output::Ending ending);
-    static void deliver(const Entry& entry, platform::Event event, float x, float y);
     void handleWindow(Entry& entry, const SDL_Event& event);
     void handlePointer(const Entry& entry, const SDL_Event& event);
 

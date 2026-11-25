@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <SDL3/SDL_error.h>
@@ -55,7 +56,7 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
     SDL_DestroyProperties(properties);
 
     if (entry.window == nullptr) {
-        entry.report = {.ending = Output::Ending::Unsupported, .reason = "The window of the output could not open. " + std::string(SDL_GetError())};
+        entry.report = {.ending = Output::Ending::Unsupported, .reason = "The window of the output could not open on its display, since the window system refused it."};
         Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = number});
         return;
     }
@@ -67,6 +68,12 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
 
     if (main.getApi() == gpu::Device::Api::Metal) {
         entry.view = SDL_Metal_CreateView(entry.window);
+        if (entry.view == nullptr) {
+            destroy(entry);
+            entry.report = {.ending = Output::Ending::Unsupported, .reason = "The window of the output could not make the Metal layer that the GPU device draws into."};
+            Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = number});
+            return;
+        }
     }
 
     if (options.fullscreen) {
@@ -205,32 +212,16 @@ void OutputWindows::handleWindow(Entry& entry, const SDL_Event& event) {
     }
 }
 
-// SDL places the pointer in the units of the window, which are its points on macOS and its pixels on Windows and X11.
+// SDL places the pointer in the units of the window, which are its points on macOS and its pixels on Windows and X11, and the pointer over an output translates as the one over the window of the app does.
 void OutputWindows::handlePointer(const Entry& entry, const SDL_Event& event) {
     const float points = SDL_GetWindowPixelDensity(entry.window) / SDL_GetWindowDisplayScale(entry.window);
-    switch (event.type) {
-    case SDL_EVENT_MOUSE_BUTTON_DOWN:
-    case SDL_EVENT_MOUSE_BUTTON_UP: {
-        const platform::Event::Type type = event.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? platform::Event::Type::MouseDown : platform::Event::Type::MouseUp;
-        const input::MouseButton button = event.button.button == SDL_BUTTON_RIGHT ? input::MouseButton::Right : (event.button.button == SDL_BUTTON_MIDDLE ? input::MouseButton::Middle : input::MouseButton::Left);
-        deliver(entry, {.type = type, .mouseButton = button}, event.button.x * points, event.button.y * points);
+    std::optional<platform::Event> pointer = Events::translatePointer(event, points, SDL_GetModState());
+    if (!pointer) {
         return;
     }
-    case SDL_EVENT_MOUSE_MOTION:
-        deliver(entry, {.type = platform::Event::Type::MouseMove}, event.motion.x * points, event.motion.y * points);
-        return;
-    case SDL_EVENT_MOUSE_WHEEL:
-        deliver(entry, {.type = platform::Event::Type::MouseScroll, .scroll = {event.wheel.x, event.wheel.y}}, event.wheel.mouse_x * points, event.wheel.mouse_y * points);
-        return;
-    default:
-        return;
-    }
-}
 
-void OutputWindows::deliver(const Entry& entry, platform::Event event, float x, float y) {
-    event.output = entry.number;
-    event.position = {x, y};
-    Player::handleEvent(event);
+    pointer->output = entry.number;
+    Player::handleEvent(*pointer);
 }
 
 } // namespace haylen::platform::sdl

@@ -25,6 +25,7 @@ class GlContext final : public gpu::GlContext {
     SDL_Window* window;
     SDL_GLContext context;
     bool owned = true;
+    bool intervalRefused = false;
 };
 
 } // namespace haylen::platform::sdl

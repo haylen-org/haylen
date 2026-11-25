@@ -141,6 +141,8 @@ class Player final {
     static void requestRedraw() noexcept;
 
   private:
+    static void prepare(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost);
+
     // Stands in for the app when its package cannot be opened or its `haylen.json` is invalid, so the window explains the problem instead of closing.
     class FailedApplication final : public core::Application {
       public:

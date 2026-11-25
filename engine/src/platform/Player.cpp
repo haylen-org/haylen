@@ -39,8 +39,19 @@ int Player::getExitStatus() noexcept {
     return getProcess().exitStatus;
 }
 
+// A player that fails to start leaves the services of the platform as it found them, so the process ends without a player to clean up.
 void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost) {
     Services::initialize();
+    try {
+        prepare(argc, argv, std::move(nativeHost));
+    } catch (...) {
+        getProcess().current.reset();
+        Services::shutdown();
+        throw;
+    }
+}
+
+void Player::prepare(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost) {
     Process& process = getProcess();
     process.current = std::make_unique<Player>(std::move(nativeHost));
     Player& runtime = *process.current;

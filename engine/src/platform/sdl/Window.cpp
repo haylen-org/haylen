@@ -41,7 +41,7 @@ void Window::open(const core::AppConfig::Window& options, gpu::Device::Api value
     SDL_DestroyProperties(properties);
 
     if (window == nullptr) {
-        throw std::runtime_error("The window could not open. " + std::string(SDL_GetError()));
+        throw std::runtime_error("The window could not open, since the window system refused its size, its place or its graphics API.");
     }
 
     // Desktops whose window coordinates are pixels, as on Windows and X11, open the window as large in points as on the others.
@@ -247,7 +247,7 @@ void Window::attachApi() {
     case gpu::Device::Api::Metal:
         metalView = SDL_Metal_CreateView(window);
         if (metalView == nullptr) {
-            throw std::runtime_error("The window could not create its Metal layer. " + std::string(SDL_GetError()));
+            throw std::runtime_error("The window could not create the Metal layer that the GPU device draws into.");
         }
 
         break;
@@ -329,7 +329,7 @@ SDL_DisplayID Window::findDisplay(const Display& display) {
     const SDL_Point point{.x = static_cast<int>(std::lround(center.x)), .y = static_cast<int>(std::lround(center.y))};
     const SDL_DisplayID found = SDL_GetDisplayForPoint(&point);
     if (found == 0) {
-        throw std::runtime_error("The window system knows no display at the place of the display \"" + display.id + "\". " + SDL_GetError());
+        throw std::runtime_error("The window system knows no display at the place of the display \"" + display.id + "\".");
     }
 
     return found;

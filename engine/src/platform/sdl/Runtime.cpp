@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdint>
 #include <exception>
+#include <format>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -24,6 +25,7 @@
 #include "platform/CrashGuard.hpp"
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
+#include "platform/sdl/Hints.hpp"
 #include "platform/sdl/Host.hpp"
 #include "platform/sdl/WaylandDisplays.hpp"
 #include "platform/web/PageModifiers.hpp"
@@ -39,7 +41,6 @@
 #include <emscripten/emscripten.h>
 
 #include "platform/web/WebEntry.hpp"
-#include "platform/web/WebPage.hpp"
 #elif defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -82,11 +83,15 @@ bool Runtime::prepareDevice() {
     return openedDevice != nullptr || gpu::DeviceFactory::prepare(window.getApi(), getDeviceOptions());
 }
 
+// Every posted event has a marker in the queue of SDL, so a marker that SDL refuses takes its event back, which would otherwise reach the app at the marker of the next one.
 void Runtime::post(const platform::Event& event) {
     posted.push_back(event);
     SDL_Event marker{};
     marker.type = postedType;
-    SDL_PushEvent(&marker);
+    if (!SDL_PushEvent(&marker)) {
+        posted.pop_back();
+        core::Log::error("An event of the platform could not reach the app, since the queue of the events of the window is full.");
+    }
 }
 
 void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
@@ -173,27 +178,6 @@ void Runtime::onQuit(void* state, SDL_AppResult) {
     delete runtime;
 }
 
-// SDL names the app after its identifier, which Linux desktops match with the desktop entry of the app through the class of its window. The screen saver keeps its system settings, touches stay touches and the first click on a window in the background reaches the app, as with every native app of the platform.
-void Runtime::describeApp(const core::AppConfig& config) {
-    SDL_SetAppMetadata(config.window.title.c_str(), nullptr, config.identifier.c_str());
-    SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
-    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
-    SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-#if !defined(__APPLE__) || TARGET_OS_OSX
-    // Controllers reach the app also while its window has no focus, such as a window that never takes it above the taskbar.
-    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-#endif
-#if defined(__APPLE__) && TARGET_OS_TV
-    // The presses of the Apple TV remote reach UIKit, which leaves the app on the Menu press that the app does not take.
-    SDL_SetHint(SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS, "1");
-#elif defined(__EMSCRIPTEN__)
-    SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebPage::getCanvasSelector().c_str());
-#elif defined(__linux__)
-    // Linux apps open their window on X11 first, also through XWayland in a Wayland session, since Wayland lets no app place its window, keep it above the others, leave the taskbar or let clicks through. A session without X11 opens it on Wayland, and the variable `SDL_VIDEO_DRIVER` picks either one.
-    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11,wayland");
-#endif
-}
-
 // Debug builds validate every call of the graphics API, and the app picks the GPU of a machine that has two.
 gpu::DeviceOptions Runtime::getDeviceOptions() noexcept {
 #if defined(NDEBUG)
@@ -210,15 +194,13 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     // SDL makes the process aware of the DPI of each monitor as it starts, while the player reads the monitors before, so the process is aware from the start and the monitors have the coordinates of the window.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
-    // Without a player there is no window and no error screen, so a failure to create one goes to the log and the page, which would otherwise wait for an app that never starts.
     try {
         auto created = std::make_unique<Host>(*this);
         host = created.get();
         Player::create(argc, argv, std::move(created));
+        playerCreated = true;
     } catch (const std::exception& error) {
-        core::Log::error("The player could not start: {}", error.what());
-        Services::reportError(core::AppError(error.what()).toJson());
-        return SDL_APP_FAILURE;
+        return failStart(std::format("The player could not start: {}", error.what()));
     }
 
     if (Player::isLaunchForwarded()) {
@@ -228,11 +210,10 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     const core::AppConfig& config = Player::getOpeningConfig();
     window.setMaxPixelDensity(config.window.maxPixelDensity);
     transparent = config.window.transparent;
-    describeApp(config);
+    Hints::apply(config);
 
     if (!SDL_Init(kSubsystems)) {
-        core::Log::error("The window system could not start. {}", SDL_GetError());
-        return SDL_APP_FAILURE;
+        return failStart("The window system of this machine could not start, so the app cannot open its window.");
     }
 
     postedType = SDL_RegisterEvents(1);
@@ -253,6 +234,13 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     return start();
 }
 
+// Without a player or a window there is no error screen, so a start that fails goes to the log and to the page, which would otherwise wait for an app that never starts.
+SDL_AppResult Runtime::failStart(const std::string& reason) {
+    core::Log::error("{}", reason);
+    Services::reportError(core::AppError(reason).toJson());
+    return SDL_APP_FAILURE;
+}
+
 // The app starts once its window opened, which may take some frames while a graphics API prepares, such as WebGPU, whose adapter the browser hands over in a later turn of its event loop.
 SDL_AppResult Runtime::start() {
     try {
@@ -260,8 +248,7 @@ SDL_AppResult Runtime::start() {
             return SDL_APP_CONTINUE;
         }
     } catch (const std::exception& error) {
-        core::Log::error("{}", error.what());
-        return SDL_APP_FAILURE;
+        return failStart(error.what());
     }
 #if defined(__APPLE__)
     AppleApplication::finishLaunching(*this);
@@ -449,22 +436,22 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
         return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
     }
 
+    // The focus of every window of the app, also of the window of an output and of a window that closed, reaches the translation, which tells the app only when the keyboard comes into the windows of the app or leaves them all.
+    if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED || event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
+        if (event.window.windowID == SDL_GetWindowID(window.get())) {
+            followWindow(event);
+        }
+
+        deliver(event);
+        return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
+    }
+
     if (outputs.handle(event)) {
         return SDL_APP_CONTINUE;
     }
 
-    // The events that SDL still holds for a window that is gone, such as the focus that an output window loses as it closes, belong to no window of the app.
+    // The events that SDL still holds for a window that is gone belong to no window of the app.
     if (Events::isOfClosedWindow(event)) {
-        return SDL_APP_CONTINUE;
-    }
-
-    // The window of the app keeps the focus while the keyboard goes to the window of an output and back.
-    if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST && outputs.holdsFocus()) {
-        focusInOutput = true;
-        return SDL_APP_CONTINUE;
-    }
-
-    if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && std::exchange(focusInOutput, false)) {
         return SDL_APP_CONTINUE;
     }
 
@@ -502,9 +489,10 @@ void Runtime::deliver(const SDL_Event& event) {
     }
 }
 
+// A runtime that ends before its app started, such as one whose window system or graphics API could not start or that handed its link to the instance that runs, cleans up the player it made too.
 void Runtime::quit() noexcept {
-    if (started) {
-        started = false;
+    started = false;
+    if (std::exchange(playerCreated, false)) {
         Player::cleanup();
     }
 
@@ -522,14 +510,15 @@ void Runtime::quit() noexcept {
     running = nullptr;
 }
 
-// The runtime of macOS reads the scrolls of trackpads with their phases on its own, and the keys that reach the native field that edits a text field of the UI belong to that field. UIKit apps take their typed text from the native field alone, and the runtime reads the scrolls of a pointer that the scene does not lock from UIKit, so the wheel of SDL reports only the scrolls of a locked pointer and of the mice of tvOS there. Fingers count only on the screen itself, not on the trackpads that SDL also reports.
+// The runtime of macOS reads the scrolls of trackpads with their phases on its own, and the keys that reach the native field that edits a text field of the UI belong to that field, except the release of a key that the app heard go down before the field took the keyboard. UIKit apps take their typed text from the native field alone, and the runtime reads the scrolls of a pointer that the scene does not lock from UIKit, so the wheel of SDL reports only the scrolls of a locked pointer and of the mice of tvOS there. Fingers count only on the screen itself, not on the trackpads that SDL also reports.
 bool Runtime::takes(const SDL_Event& event) const noexcept {
     switch (event.type) {
 #if defined(__APPLE__) && TARGET_OS_OSX
     case SDL_EVENT_MOUSE_WHEEL:
         return false;
-    case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
+        return !AppleApplication::isTextFieldFocused() || events.isHeld(event.key.scancode);
+    case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_TEXT_INPUT:
         return !AppleApplication::isTextFieldFocused();
 #elif defined(__APPLE__)
@@ -550,7 +539,8 @@ bool Runtime::takes(const SDL_Event& event) const noexcept {
 }
 
 Events::Context Runtime::getContext() const noexcept {
-    return {.density = window.getPixelDensity(), .framebuffer = window.getPixelSize(), .modifiers = SDL_GetModState()};
+    const bool appHoldsKeyboard = SDL_GetKeyboardFocus() == window.get() || outputs.holdsFocus();
+    return {.density = window.getPixelDensity(), .framebuffer = window.getPixelSize(), .modifiers = SDL_GetModState(), .appHoldsKeyboard = appHoldsKeyboard};
 }
 
 // The swapchain follows the drawable as its size or scale changes, the frames slow down while the window shows nothing, since no display paces them then, and the host follows the window into fullscreen and out of it. The Metal view of UIKit reports the size of its drawable on its own, such as when the scene turns to the orientation of the app after the window opened, before SDL reports the window resized.

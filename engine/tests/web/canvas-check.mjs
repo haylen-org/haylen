@@ -1,11 +1,13 @@
-// Opens the page of the canvas check in a headless browser over its debugging protocol as a desktop window of density 2, resizes the page and moves it to a screen of density 1, then prints what happened as JSON. The canvas must fill the page each time, with a framebuffer of the pixels of the page, which the app logs. With "first" the page draws through the first graphics API that starts, with "fallback" the browser offers no WebGPU adapter, so the window of WebGPU closes and the window of WebGL2 opens on the same canvas, and with "worker" the page runs the app in the Worker mode, whose canvas the worker draws into.
-// Run it with Node: node canvas-check.mjs <debugging port> <page address> <first|fallback|worker>
+// Opens the page of the canvas check in a headless browser over its debugging protocol as a desktop window of density 2, resizes the page and moves it to a screen of density 1, then prints what happened as JSON. The canvas must fill the page each time, with a framebuffer of the pixels of the page, which the app logs. With "first" the page draws through the first graphics API that starts, with "fallback" the browser offers no WebGPU adapter, so the window of WebGPU closes and the window of WebGL2 opens on the same canvas, with "worker" the page runs the app in the Worker mode, whose canvas the worker draws into, and with "noGraphics" the browser offers no WebGPU adapter and no WebGL2 context on the canvas of the app, so the splash of the page must show that no graphics API started.
+// Run it with Node: node canvas-check.mjs <debugging port> <page address> <first|fallback|worker|noGraphics>
 const [port, url, mode] = process.argv.slice(2);
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);
 const pending = new Map();
 const waiters = [];
 const result = { steps: [], warnings: [], failure: null, log: [] };
+// The reason that the runtime logs and the page reports when no graphics API starts, which a page that offers none must give and which is no failure of that page.
+const noGraphicsReason = "No graphics API could start on this machine";
 let id = 0;
 
 const send = (method, params = {}, sessionId = undefined) =>
@@ -48,7 +50,7 @@ socket.onmessage = (event) => {
         result.log.push(text);
         if (message.params.type === "warning") {
             result.warnings.push(text);
-        } else if (message.params.type === "error") {
+        } else if (message.params.type === "error" && !(mode === "noGraphics" && text.includes(noGraphicsReason))) {
             result.failure = text;
         }
         for (const waiter of waiters.splice(0)) {
@@ -81,8 +83,13 @@ const moveToScreen = async (width, height, density) => {
     await size(width, height, density);
     await send("Runtime.evaluate", { expression: 'for (const list of window.haylenResolutionQueries.splice(0)) { list.dispatchEvent(new Event("change")); }' }, sessionId);
 };
-if (mode === "fallback") {
+if (mode === "fallback" || mode === "noGraphics") {
     await send("Page.addScriptToEvaluateOnNewDocument", { source: "if (window.GPU) { GPU.prototype.requestAdapter = async () => null; }" }, sessionId);
+}
+if (mode === "noGraphics") {
+    // The loader of the page finds WebGL2 on a canvas of its own, so the page starts the runtime, whose canvas then gives no context, as a driver that refuses the attributes of the app does.
+    const noWebGl = "const pageGetContext = HTMLCanvasElement.prototype.getContext; HTMLCanvasElement.prototype.getContext = function (type, ...options) { return type === 'webgl2' && this.id === 'canvas' ? null : pageGetContext.call(this, type, ...options); };";
+    await send("Page.addScriptToEvaluateOnNewDocument", { source: noWebGl }, sessionId);
 }
 await send("Page.navigate", { url }, sessionId);
 
@@ -109,7 +116,23 @@ const fills = async (name, width, height, density, since, seconds = 10) => {
     }
 };
 
-if (await step("ready", "The canvas check is ready", { seconds: 60, since: 0 })) {
+// The splash of the page shows the failure of a start that never reached the app, with the reason that the runtime reported.
+const showsFailure = async (text, seconds) => {
+    const deadline = Date.now() + seconds * 1000;
+    const splash = 'JSON.stringify({ failed: document.getElementById("splash")?.classList.contains("failed") ?? false, details: document.getElementById("splash-details")?.textContent ?? "" })';
+    while (Date.now() < deadline) {
+        const state = JSON.parse((await send("Runtime.evaluate", { expression: splash, returnByValue: true }, sessionId)).result?.value ?? "{}");
+        if (state.failed && state.details.includes(text)) {
+            return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    return false;
+};
+
+if (mode === "noGraphics") {
+    result.steps.push({ name: "showed the failure", reached: await showsFailure(noGraphicsReason, 60) });
+} else if (await step("ready", "The canvas check is ready", { seconds: 60, since: 0 })) {
     if (mode === "fallback") {
         await step("fell back to WebGL2", 'The app draws through "webGl2"', { since: 0 });
     }

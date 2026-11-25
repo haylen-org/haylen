@@ -408,7 +408,8 @@ The canvas of a page fills the page at every density and follows it, which only 
 2. The driver `engine/tests/web/canvas-check.mjs` opens the page in a headless Chrome that emulates a desktop window of 1440 by 900 points at density 2, on the API of `--graphics-api` or on the first API that starts. Before the page loads, it keeps the media queries of the resolution that the page makes.
 3. The canvas must cover the whole page with a drawable of every pixel of the page, and the app must log that framebuffer. The same must hold after the page shrinks to 1200 by 760 points, and after it moves to a screen of density 1. The debugging protocol changes the density without the change of the resolution that a browser reports when a window moves to another screen, so the driver sends that change to the media queries that it kept.
 4. Then a browser that offers no WebGPU adapter opens the page without a graphics API in its address. The page must fall back to WebGL2 and pass the same steps.
-5. Last, the page opens with `?hosting=worker` and must pass the same steps in the Worker mode, where the app logs its framebuffer from the worker that draws into the canvas.
+5. Then the page opens with `?hosting=worker` and must pass the same steps in the Worker mode, where the app logs its framebuffer from the worker that draws into the canvas.
+6. Last, a browser that offers no WebGPU adapter and no WebGL2 context on the canvas of the app, while the loader of the page still finds WebGL2 on a canvas of its own, opens the page, whose splash must show the failure that the runtime reports, that no graphics API could start, instead of waiting for an app that never starts.
 
 ## The text input check of the web
 

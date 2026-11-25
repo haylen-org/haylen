@@ -143,7 +143,7 @@ void Host::applyFullscreen(bool value, std::function<void(SystemAnswer answer)> 
     fullscreenRequest.begin(value, std::move(callback));
 
     if (!SDL_SetWindowFullscreen(runtime.getWindow().get(), value)) {
-        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = std::format("The window could not {} fullscreen. {}", value ? "go" : "leave", SDL_GetError())});
+        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = std::format("The window could not {} fullscreen, since the window system refused it.", value ? "go" : "leave")});
         return;
     }
 
@@ -228,7 +228,7 @@ void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<
     fullscreenRequest.beginLeaving(std::move(destination), std::move(callback));
 
     if (!SDL_SetWindowFullscreen(window, false)) {
-        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not leave fullscreen to cover the display \"" + target.display.id + "\". " + SDL_GetError()});
+        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not leave fullscreen to cover the display \"" + target.display.id + "\", since the window system refused it."});
     }
 }
 
@@ -242,7 +242,7 @@ void Host::coverDisplay(const FullscreenRequest::Destination& destination) {
 
     const SDL_DisplayMode* mode = destination.mode ? &*destination.mode : nullptr;
     if (!SDL_SetWindowFullscreenMode(window, mode) || !SDL_SetWindowFullscreen(window, true)) {
-        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + destination.displayId + "\". " + SDL_GetError()});
+        fullscreenRequest.fail({.state = SystemAnswer::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + destination.displayId + "\", since the window system refused it."});
         return;
     }
 
@@ -277,12 +277,11 @@ void Host::applyMouseMode(MouseMode value, std::function<void(SystemAnswer answe
 
     const MouseMode previous = appliedMouseMode;
     if (!applySdlMouseMode(value)) {
-        const std::string error = SDL_GetError();
         if (!applySdlMouseMode(previous)) {
-            core::Log::error("The mouse could not go back to the mode \"{}\". {}", mouseModeName(previous), SDL_GetError());
+            core::Log::error("The mouse could not go back to the mode \"{}\", since the window system refused it.", mouseModeName(previous));
         }
 
-        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The mouse could not take the mode \"{}\". {}", mouseModeName(value), error)});
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The mouse could not take the mode \"{}\", since the window system refused it.", mouseModeName(value))});
         return;
     }
 
@@ -296,7 +295,7 @@ void Host::applyMouseMode(MouseMode value, std::function<void(SystemAnswer answe
     // clang-format off
     awaitMouseLock([this, previous, change, callback = std::move(callback)](SystemAnswer answer) {
         if (answer.state != SystemAnswer::State::Granted && change == mouseModeChange && !applySdlMouseMode(previous)) {
-            core::Log::error("The mouse could not go back to the mode \"{}\". {}", mouseModeName(previous), SDL_GetError());
+            core::Log::error("The mouse could not go back to the mode \"{}\", since the window system refused it.", mouseModeName(previous));
         }
 
         callback(std::move(answer));
@@ -363,7 +362,7 @@ void Host::setClipboard(std::string_view value, std::function<void(SystemAnswer 
     WebPage::setClipboard(value, std::move(callback));
 #else
     if (!SDL_SetClipboardText(TextHelper::toValidUtf8(value).c_str())) {
-        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The clipboard could not be written: {}", SDL_GetError())});
+        callback({.state = SystemAnswer::State::Unsupported, .message = "The clipboard could not be written, since the system refused it."});
         return;
     }
 
@@ -584,7 +583,7 @@ void Host::setScreenSaverSuspended(bool value, std::function<void(SystemAnswer a
     WebPage::setScreenKeptOn(value, std::move(callback));
 #else
     if (!(value ? SDL_DisableScreenSaver() : SDL_EnableScreenSaver())) {
-        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The screen saver could not be {}. {}", value ? "kept away" : "let back", SDL_GetError())});
+        callback({.state = SystemAnswer::State::Unsupported, .message = std::format("The screen saver could not be {}, since the system refused it.", value ? "kept away" : "let back")});
         return;
     }
 

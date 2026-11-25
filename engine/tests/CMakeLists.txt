@@ -173,6 +173,7 @@ set(HAYLEN_TEST_SOURCES
   platform/SharedTextInputTests.cpp
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp
+  platform/sdl/HintsTests.cpp
   platform/sdl/MouseMotionTests.cpp
   platform/sdl/OutputPlacementTests.cpp
   platform/sdl/FullscreenRequestTests.cpp
@@ -262,7 +263,7 @@ haylen_enable_coverage(haylen-test-support)
 # A link of a test program takes gigabytes of memory, and most under AddressSanitizer, so the two test programs link one at a time and a machine that builds both never runs out of memory. The pool binds the generators that run jobs side by side, such as Ninja.
 set_property(GLOBAL APPEND PROPERTY JOB_POOLS haylen-test-link=1)
 
-add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FullscreenRequest.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/GlContext.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/OutputPlacement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/TextInput.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/WaylandDisplays.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Window.cpp")
+add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FullscreenRequest.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/GlContext.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Hints.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/OutputPlacement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/TextInput.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/WaylandDisplays.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Window.cpp")
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" JOB_POOL_LINK haylen-test-link)
 # The tests export the variables that the drivers of a laptop with two GPUs read, like the player and the apps.
 if(WIN32)

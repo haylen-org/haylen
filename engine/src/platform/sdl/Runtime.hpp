@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <SDL3/SDL_events.h>
@@ -150,9 +151,9 @@ class Runtime final {
     static bool SDLCALL onFilter(void* state, SDL_Event* event);
     static SDL_AppResult onEvent(void* state, SDL_Event* event);
     static void onQuit(void* state, SDL_AppResult result);
-    static void describeApp(const core::AppConfig& config);
     [[nodiscard]] static gpu::DeviceOptions getDeviceOptions() noexcept;
     [[nodiscard]] static bool isHiddenUntilComplete() noexcept;
+    [[nodiscard]] static SDL_AppResult failStart(const std::string& reason);
 
     SDL_AppResult initialize(int argc, char* argv[]);
     [[nodiscard]] SDL_AppResult start();
@@ -191,8 +192,8 @@ class Runtime final {
     bool started = false;
     bool closing = false;
 
-    // Whether the keyboard went from the window of the app to the window of an output, which keeps the app focused.
-    bool focusInOutput = false;
+    // Whether the player of the process exists, which the runtime cleans up as it ends, also before the app started.
+    bool playerCreated = false;
 
     // Whether the device of the app stopped working, until its replacement exists, and what a loss of the device leads to.
     bool recovering = false;

@@ -11,7 +11,6 @@
 namespace haylen::platform::sdl {
 
 void Events::translate(const SDL_Event& source, const Context& context, std::vector<platform::Event>& events) {
-    const input::KeyModifiers held = toModifiers(context.modifiers);
     switch (source.type) {
     case SDL_EVENT_KEY_DOWN:
     case SDL_EVENT_KEY_UP:
@@ -24,23 +23,13 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
         appendText(source.text.text, context, events);
         return;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
-    case SDL_EVENT_MOUSE_BUTTON_UP: {
-        // Buttons beyond the three the engine names, such as the back and forward buttons of a mouse, reach the app as nothing.
-        const std::optional<input::MouseButton> button = toMouseButton(source.button.button);
-        if (!button) {
-            return;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+    case SDL_EVENT_MOUSE_MOTION:
+    case SDL_EVENT_MOUSE_WHEEL:
+        if (const std::optional<platform::Event> pointer = translatePointer(source, context.density, context.modifiers)) {
+            events.push_back(*pointer);
         }
 
-        const platform::Event::Type type = source.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? platform::Event::Type::MouseDown : platform::Event::Type::MouseUp;
-        events.push_back({.type = type, .modifiers = held, .mouseButton = *button, .position = {source.button.x * context.density, source.button.y * context.density}});
-        return;
-    }
-    case SDL_EVENT_MOUSE_MOTION:
-        events.push_back({.type = platform::Event::Type::MouseMove, .modifiers = held, .position = {source.motion.x * context.density, source.motion.y * context.density}, .delta = {source.motion.xrel * context.density, source.motion.yrel * context.density}});
-        return;
-    case SDL_EVENT_MOUSE_WHEEL:
-        // The wheels of SDL scroll right with positive steps, while the engine scrolls left with them.
-        events.push_back({.type = platform::Event::Type::MouseScroll, .modifiers = held, .scroll = {-source.wheel.x, source.wheel.y}});
         return;
     case SDL_EVENT_FINGER_DOWN:
     case SDL_EVENT_FINGER_MOTION:
@@ -65,7 +54,7 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
     }
 
     if (source.type >= SDL_EVENT_WINDOW_FIRST && source.type <= SDL_EVENT_WINDOW_LAST) {
-        if (const std::optional<platform::Event> window = translateWindow(source)) {
+        if (const std::optional<platform::Event> window = translateWindow(source, context)) {
             events.push_back(*window);
         }
 
@@ -77,7 +66,29 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
     }
 }
 
-// SDL turns the Menu press of the remote into escape.
+// Buttons beyond the three the engine names, such as the back and forward buttons of a mouse, reach the app as nothing. The wheels of SDL scroll right with positive steps, while the engine scrolls left with them.
+std::optional<platform::Event> Events::translatePointer(const SDL_Event& source, float scale, SDL_Keymod modifiers) noexcept {
+    const input::KeyModifiers held = toModifiers(modifiers);
+    switch (source.type) {
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP: {
+        const std::optional<input::MouseButton> button = toMouseButton(source.button.button);
+        if (!button) {
+            return std::nullopt;
+        }
+
+        const platform::Event::Type type = source.type == SDL_EVENT_MOUSE_BUTTON_DOWN ? platform::Event::Type::MouseDown : platform::Event::Type::MouseUp;
+        return platform::Event{.type = type, .modifiers = held, .mouseButton = *button, .position = {source.button.x * scale, source.button.y * scale}};
+    }
+    case SDL_EVENT_MOUSE_MOTION:
+        return platform::Event{.type = platform::Event::Type::MouseMove, .modifiers = held, .position = {source.motion.x * scale, source.motion.y * scale}, .delta = {source.motion.xrel * scale, source.motion.yrel * scale}};
+    case SDL_EVENT_MOUSE_WHEEL:
+        return platform::Event{.type = platform::Event::Type::MouseScroll, .modifiers = held, .position = {source.wheel.mouse_x * scale, source.wheel.mouse_y * scale}, .scroll = {-source.wheel.x, source.wheel.y}};
+    default:
+        return std::nullopt;
+    }
+}
+
 SDL_WindowID Events::getWindowId(const SDL_Event& source) noexcept {
     if (source.type >= SDL_EVENT_WINDOW_FIRST && source.type <= SDL_EVENT_WINDOW_LAST) {
         return source.window.windowID;
@@ -113,6 +124,7 @@ bool Events::isOfClosedWindow(const SDL_Event& source) noexcept {
     return window != 0 && SDL_GetWindowFromID(window) == nullptr;
 }
 
+// SDL turns the Menu press of the remote into escape.
 bool Events::isPlatformBack(const SDL_Event& source) noexcept {
     return kRemote && (source.type == SDL_EVENT_KEY_DOWN || source.type == SDL_EVENT_KEY_UP) && source.key.scancode == SDL_SCANCODE_ESCAPE;
 }
@@ -141,20 +153,23 @@ std::optional<platform::Event> Events::translateKey(const SDL_KeyboardEvent& sou
         return std::nullopt;
     }
 
+    if (source.scancode < SDL_SCANCODE_COUNT) {
+        held.set(static_cast<std::size_t>(source.scancode), source.down);
+    }
+
     return platform::Event{.type = type, .key = key, .repeat = source.repeat, .modifiers = toModifiers(source.mod)};
 }
 
 // A desktop window that comes back from the taskbar resumes the app, while a window that only leaves its maximized size does not.
-std::optional<platform::Event> Events::translateWindow(const SDL_Event& source) noexcept {
+std::optional<platform::Event> Events::translateWindow(const SDL_Event& source, const Context& context) noexcept {
     switch (source.type) {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
     case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
         return platform::Event{.type = platform::Event::Type::Resized};
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
-        return kAppStates ? std::nullopt : std::optional<platform::Event>({.type = platform::Event::Type::FocusGained});
     case SDL_EVENT_WINDOW_FOCUS_LOST:
-        return kAppStates ? std::nullopt : std::optional<platform::Event>({.type = platform::Event::Type::FocusLost});
+        return kAppStates ? std::nullopt : translateFocus(source.type == SDL_EVENT_WINDOW_FOCUS_GAINED, context);
     case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
         return platform::Event{.type = platform::Event::Type::WindowMoved};
     case SDL_EVENT_WINDOW_MOUSE_ENTER:
@@ -180,6 +195,20 @@ std::optional<platform::Event> Events::translateWindow(const SDL_Event& source) 
     default:
         return std::nullopt;
     }
+}
+
+// The windows of a desktop app share its focus, so the keyboard that goes from the window of the app to the window of an output or back keeps the app focused, and the app loses the focus once the keyboard leaves every window of the app, whichever window it leaves from.
+std::optional<platform::Event> Events::translateFocus(bool gained, const Context& context) noexcept {
+    if (!gained && context.appHoldsKeyboard) {
+        return std::nullopt;
+    }
+
+    if (focused == gained) {
+        return std::nullopt;
+    }
+
+    focused = gained;
+    return platform::Event{.type = gained ? platform::Event::Type::FocusGained : platform::Event::Type::FocusLost};
 }
 
 // The scene of a UIKit app that resigns active, under the app switcher, Control Center or a call, loses the focus while its frames go on, and the app suspends only once the scene enters the background. SDL reports each change for the scene and again for the application, and the app hears it once.

@@ -11,8 +11,8 @@ class EngineMessagesTest:
     CALL = re.compile(r"\bthrow\s+[\w:]+\s*[({]|\bluaL_error\s*\(|\bLog::(?:error|warning|info|debug)\s*\(")
     # An index of a list after a name, with a number or a value that the message fills in, the root of a JSON path, a constant of the code, a code of an enum, a name of the standard library, a method of the Java code of the engine and a library that the engine uses.
     INTERNAL = re.compile(r"\w\[(?:\d+|\{\})\]|\$\.|\bk[A-Z][A-Za-z0-9]+\b|\bCode::|\bstd::|\bdev\.haylen\.\w+\.\w+|\b(?:SDL|Dear ImGui|Varn|nlohmann)\b")
-    # The text that the audio library writes for its results, which no message of the engine repeats.
-    LIBRARY_TEXT = re.compile(r"\bma_result_description\s*\(")
+    # The texts that the audio library and the window system write for their failures, which no message of the engine repeats.
+    LIBRARY_TEXT = re.compile(r"\b(?:ma_result_description|SDL_GetError)\s*\(")
     # A failure of a GPU device that describes a broken contract in words instead of throwing the rule that the call breaks.
     CONTRACT_TEXT = re.compile(r'throw std::(?:logic_error|invalid_argument|out_of_range)\(\s*(?:std::format\(\s*)?"')
     GPU_SOURCES = ("engine/src/gpu/*.cpp", "engine/src/gpu/*.hpp", "engine/src/gpu/*.mm")
@@ -77,13 +77,17 @@ class EngineMessagesTest:
                     wrong.append(f"{name}:{line}: {text}")
         assert wrong == []
 
-    def test_no_source_of_the_engine_repeats_the_text_of_the_audio_library(self):
-        """The engine tells why the audio output did not open with a problem of its own and a sentence of Haylen, so no source reads the text that the audio library writes for a result."""
+    def test_no_source_of_the_engine_repeats_the_text_of_a_library(self):
+        """The engine tells why the audio output did not open and why the window system refused a request with a sentence of Haylen, so no source reads the text that the audio library writes for a result or that the window system writes for a failure."""
         wrong = []
         for name in TrackedFiles.names(*EngineMessagesTest.SOURCES):
             source = (Repository.ROOT / name).read_text(encoding="utf-8")
             wrong.extend(f"{name}:{source.count(chr(10), 0, match.start()) + 1}" for match in EngineMessagesTest.LIBRARY_TEXT.finditer(source))
         assert wrong == []
+
+    def test_the_rule_finds_the_text_of_a_library(self):
+        source = 'throw std::runtime_error("The window could not open. " + std::string(SDL_GetError()));\ncore::Log::error("{}", ma_result_description(result));\nthrow std::runtime_error("The window could not open.");\n'
+        assert len(EngineMessagesTest.LIBRARY_TEXT.findall(source)) == 2
 
     def test_the_rule_finds_a_contract_described_in_words(self):
         source = 'throw std::logic_error(std::format("The pipeline {} does not exist.", id));\nthrow ContractError(ContractError::Rule::PassOrder);\nthrow std::runtime_error("The GPU ran out of memory.");\n'

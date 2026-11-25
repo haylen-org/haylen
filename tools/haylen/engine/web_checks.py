@@ -63,8 +63,14 @@ class WebChecks:
         "first": ["ready", "fills the page", "follows a resize", "follows the density"],
         "fallback": ["ready", "fell back to WebGL2", "fills the page", "follows a resize", "follows the density"],
         "worker": ["ready", "fills the page", "follows a resize", "follows the density"],
+        "noGraphics": ["showed the failure"],
     }
-    CANVAS_BROWSERS = {"first": "starts the graphics API of the page", "fallback": "offers no WebGPU adapter", "worker": "runs the app in the Worker mode"}
+    CANVAS_BROWSERS = {
+        "first": "starts the graphics API of the page",
+        "fallback": "offers no WebGPU adapter",
+        "worker": "runs the app in the Worker mode",
+        "noGraphics": "offers no graphics API to the canvas of the app",
+    }
     # The text input check: a press and a release that arrive at once on each field of a sheet, by a finger of a phone or by the mouse of a desktop, and keys typed right after them, which must reach the field pressed, also the second field while the first one edits.
     TEXT_INPUT_STEPS = ["ready", "the first field took the keys", "the second field took the keys"]
     TEXT_INPUT_BROWSERS = {"touch": "emulates a phone with a touch screen", "mouse": "clicks with the mouse of a desktop"}
@@ -286,17 +292,17 @@ class WebChecks:
         )
 
     def canvas(self, api: str | None) -> None:
-        """Opens the page on the API that `api` names, or on the first API that starts, opens it again without an API in a browser that offers no WebGPU adapter, so the page falls back to WebGL2, and opens it in the Worker mode. The browsers draw through SwiftShader, so WebGPU starts on a machine without a GPU for it."""
+        """Opens the page on the API that `api` names, or on the first API that starts, opens it again without an API in a browser that offers no WebGPU adapter, so the page falls back to WebGL2, opens it in the Worker mode, and opens it in a browser that offers no graphics API to the canvas of the app, whose splash must show the failure. The browsers draw through SwiftShader, so WebGPU starts on a machine without a GPU for it."""
         site = self.site(WebChecks.DATA / "web-canvas")
         with ServedSite(site) as served:
             for mode, steps in WebChecks.CANVAS_STEPS.items():
                 browser = WebChecks.CANVAS_BROWSERS[mode]
-                query = WebChecks.query(None) if mode == "fallback" else WebChecks.query(api, *([WebChecks.WORKER_HOSTING] if mode == "worker" else []))
+                query = WebChecks.query(None) if mode in ("fallback", "noGraphics") else WebChecks.query(api, *([WebChecks.WORKER_HOSTING] if mode == "worker" else []))
                 self.context.terminal.step(f"Running the canvas check of the web in a headless browser that {browser}")
                 report = self.drive("canvas-check.mjs", HeadlessBrowser.SOFTWARE_GPU, "the canvas check of the web", served.page(query), mode)
                 WebChecks.check_steps(report, steps, f"The page of the canvas check in a browser that {browser}")
         self.context.terminal.success(
-            "The canvas filled a page of density 2 and followed a resize and a move to a screen of density 1, also after the browser offered no WebGPU adapter and the page fell back to WebGL2, and in the Worker mode."
+            "The canvas filled a page of density 2 and followed a resize and a move to a screen of density 1, also after the browser offered no WebGPU adapter and the page fell back to WebGL2, and in the Worker mode, and the splash showed the failure of a browser that offered no graphics API to the canvas of the app."
         )
 
     def text_input(self, api: str | None) -> None:

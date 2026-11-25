@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -91,6 +92,22 @@ TEST_F(EventsTest, TranslatesKeysByTheirPlaceOnTheKeyboard) {
     EXPECT_TRUE(translate(key).empty());
 }
 
+// The release of a key that the app heard go down reaches it also while the native field of a text field holds the keyboard, which the translation tells by the keys it holds, so no key stays down in the app.
+TEST_F(EventsTest, HoldsTheKeysThatWentDownUntilTheyComeUp) {
+    SDL_Event key = makeEvent(SDL_EVENT_KEY_DOWN);
+    key.key.scancode = SDL_SCANCODE_W;
+    key.key.down = true;
+    EXPECT_FALSE(events.isHeld(SDL_SCANCODE_W));
+    ASSERT_EQ(translate(key).size(), 1U);
+    EXPECT_TRUE(events.isHeld(SDL_SCANCODE_W));
+    EXPECT_FALSE(events.isHeld(SDL_SCANCODE_S));
+
+    key.type = SDL_EVENT_KEY_UP;
+    key.key.down = false;
+    ASSERT_EQ(translate(key).size(), 1U);
+    EXPECT_FALSE(events.isHeld(SDL_SCANCODE_W));
+}
+
 TEST_F(EventsTest, TurnsTextIntoOneCharacterPerCodePoint) {
     char text[] = "a\xC3\xA9\xF0\x9F\x98\x80";
     SDL_Event input = makeEvent(SDL_EVENT_TEXT_INPUT);
@@ -172,6 +189,48 @@ TEST_F(EventsTest, ScrollsWheelsLeftAndUpWithPositiveSteps) {
     EXPECT_EQ(scrolled[0].scroll, math::Vec2(-1.0F, 2.0F));
     EXPECT_FALSE(scrolled[0].preciseScroll);
     EXPECT_EQ(scrolled[0].scrollPhase, platform::Event::ScrollPhase::None);
+}
+
+// The windows of the outputs of an app translate the pointer as the window of the app does, with the same buttons, the same direction of the wheel and the modifiers held, in their own units.
+TEST_F(EventsTest, TranslatesThePointerOfEveryWindowAlike) {
+    SDL_Event wheel = makeEvent(SDL_EVENT_MOUSE_WHEEL);
+    wheel.wheel.x = 1.0F;
+    wheel.wheel.y = 2.0F;
+    wheel.wheel.mouse_x = 4.0F;
+    wheel.wheel.mouse_y = 8.0F;
+    const std::optional<platform::Event> scrolled = Events::translatePointer(wheel, 0.5F, SDL_KMOD_LSHIFT);
+    ASSERT_TRUE(scrolled.has_value());
+    EXPECT_EQ(scrolled->type, platform::Event::Type::MouseScroll);
+    EXPECT_EQ(scrolled->scroll, math::Vec2(-1.0F, 2.0F));
+    EXPECT_EQ(scrolled->position, math::Vec2(2.0F, 4.0F));
+    EXPECT_TRUE(scrolled->modifiers.shift);
+
+    SDL_Event button = makeEvent(SDL_EVENT_MOUSE_BUTTON_DOWN);
+    button.button.button = SDL_BUTTON_X2;
+    EXPECT_FALSE(Events::translatePointer(button, 1.0F, SDL_KMOD_NONE).has_value());
+    button.button.button = SDL_BUTTON_LEFT;
+    const std::optional<platform::Event> pressed = Events::translatePointer(button, 1.0F, SDL_KMOD_RCTRL);
+    ASSERT_TRUE(pressed.has_value());
+    EXPECT_TRUE(pressed->modifiers.control);
+    EXPECT_FALSE(Events::translatePointer(makeEvent(SDL_EVENT_KEY_DOWN), 1.0F, SDL_KMOD_NONE).has_value());
+}
+
+// The app keeps its focus while the keyboard goes from its window to the window of an output and back, and loses it once the keyboard leaves through the window of an output.
+TEST_F(EventsTest, LosesTheFocusOnceTheKeyboardLeavesEveryWindowOfTheApp) {
+    const std::vector<platform::Event> gained = translate(makeEvent(SDL_EVENT_WINDOW_FOCUS_GAINED), {.appHoldsKeyboard = true});
+    ASSERT_EQ(gained.size(), 1U);
+    EXPECT_EQ(gained[0].type, platform::Event::Type::FocusGained);
+    EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WINDOW_FOCUS_LOST), {.appHoldsKeyboard = true}).empty());
+    EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WINDOW_FOCUS_GAINED), {.appHoldsKeyboard = true}).empty());
+
+    const std::vector<platform::Event> lost = translate(makeEvent(SDL_EVENT_WINDOW_FOCUS_LOST), {.appHoldsKeyboard = false});
+    ASSERT_EQ(lost.size(), 1U);
+    EXPECT_EQ(lost[0].type, platform::Event::Type::FocusLost);
+    EXPECT_TRUE(translate(makeEvent(SDL_EVENT_WINDOW_FOCUS_LOST), {.appHoldsKeyboard = false}).empty());
+
+    const std::vector<platform::Event> back = translate(makeEvent(SDL_EVENT_WINDOW_FOCUS_GAINED), {.appHoldsKeyboard = true});
+    ASSERT_EQ(back.size(), 1U);
+    EXPECT_EQ(back[0].type, platform::Event::Type::FocusGained);
 }
 
 TEST_F(EventsTest, HandsEveryFingerWithEachChange) {
