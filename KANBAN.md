@@ -4,7 +4,7 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 6 / not set · **Next ID:** KB-309
+**Active WIP:** 6 / not set · **Next ID:** KB-310
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -24,6 +24,7 @@
 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
+| **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | — | — | — | — | — |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -7916,6 +7917,27 @@ O SDL só muda o tamanho do drawable do canvas quando a página muda de tamanho 
 #### Acceptance criteria
 
 - [ ] Um app com `window.resizable` falso enche a página e acompanha cada mudança de tamanho na web, ou a documentação diz o que ele faz ali e por quê, com uma verificação de página que prova o comportamento.
+
+#### Attachments
+
+- None
+
+<a name="kb-309"></a>
+### KB-309 — Os shards do sanitizer de endereços perdem a máquina da CI
+
+- **Status:** todo
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 4
+
+#### Description
+
+Na execução completa 45537704137, dois shards do job `Sanitizers (address)` perderam a máquina no meio: o 1/3 com "runner has received a shutdown signal" e o 3/3 com "The hosted runner lost communication with the server", sem log nenhum, e o aviso do GitHub cita falta de CPU ou de memória como causa possível. Um stream viu antes a ligação de `haylen-tests` com o sanitizer de endereços morrer por falta de memória num Docker de 7,7 GB. O esperado é achar a causa e resolvê-la na raiz, como uma ligação que cabe na memória da máquina, sem repetir o job até passar.
+
+#### Acceptance criteria
+
+- [ ] A causa está achada pelos logs e pelo uso de memória e de CPU dos shards.
+- [ ] Os três shards do sanitizer de endereços passam em execuções completas seguidas sem perder a máquina.
 
 #### Attachments
 
