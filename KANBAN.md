@@ -15,9 +15,11 @@
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
 | **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-314 · Revisar toda escolha de plataforma que o app não consegue fazer pelo haylen.json](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | — |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | — |
 | **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -7923,6 +7925,51 @@ O `haylen test`, que é a verificação de cada commit, compila só os programas
 
 - None
 
+### KB-313
+
+- **Title:** O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois
+- **Status:** todo
+- **Type:** feature
+- **Priority:** high
+- **Complexity:** 4
+
+#### Description
+
+O backend da Apple fixa o `TARGETED_DEVICE_FAMILY` do iOS em iPhone e iPad e não deixa o app mudá-lo, nem pelo `platforms.apple.buildSettings`, que recusa essa chave. Um app que quer sair só para iPhone, por exemplo para não precisar das capturas de tela do iPad na App Store, tinha que mudar o arquivo do projeto gerado na hora de arquivar, o que se perde no build seguinte. As engines grandes oferecem essa escolha nas configurações do projeto: só iPhone, só iPad ou os dois. A Haylen ganha a chave `platforms.ios.devices` no `haylen.json`, com `iphone` e `ipad` e os dois por padrão, que o backend leva ao `TARGETED_DEVICE_FAMILY`, às chaves de orientação de cada aparelho no `Info.plist`, aos requisitos de tela cheia do iPad e ao destino do simulador que `haylen app run` escolhe. Um app sem iPad que pede um alvo que exige o iPad, como o Mac Catalyst, para com uma frase clara, e o `haylen project inspect` mostra a escolha com a sua origem.
+
+#### Acceptance criteria
+
+- [ ] A chave `platforms.ios.devices` aceita `iphone`, `ipad` ou os dois, com os dois por padrão, e está no esquema e na documentação.
+- [ ] O projeto gerado leva o `TARGETED_DEVICE_FAMILY` e as chaves do `Info.plist` de cada escolha, provado por testes das ferramentas.
+- [ ] Um app só de iPhone arquiva para a App Store sem nenhuma mudança à mão no projeto gerado.
+- [ ] Um alvo que contradiz a escolha para com uma frase clara.
+
+#### Attachments
+
+- None
+
+### KB-314
+
+- **Title:** Revisar toda escolha de plataforma que o app não consegue fazer pelo haylen.json
+- **Status:** todo
+- **Type:** task
+- **Priority:** high
+- **Complexity:** 6
+
+#### Description
+
+O dono não quer limitações como a dos aparelhos do iOS do [KB-313](#kb-313). Cada backend tem configurações que ele mesmo controla e que o app não pode mudar, como as `OWNED_SETTINGS` da Apple, as chaves do `Info.plist`, os valores do manifesto do Android, o `build.gradle`, o projeto de desktop e a página da web. Algumas são restrições reais do SDK ou do alvo, e outras são escolhas legítimas do app que hoje ficam presas, como em quais aparelhos ele roda, em quais telas e formatos, se exige tela de toque ou se roda na TV. Cada configuração presa recebe um veredito: é uma restrição real e continua do backend, com o motivo na documentação, ou é uma escolha do app e vira uma chave do `haylen.json` com o nome comum das engines grandes, com o seu teste. A lista completa com os vereditos fica no cartão.
+
+#### Acceptance criteria
+
+- [ ] Toda configuração que cada backend controla está listada com o seu veredito.
+- [ ] Toda escolha legítima do app vira uma chave do `haylen.json` com teste e documentação, em cartões próprios quando for grande.
+- [ ] A documentação diz por que cada configuração que continua presa não pode mudar.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -7945,7 +7992,7 @@ O `haylen test`, que é a verificação de cada commit, compila só os programas
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-313. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-315. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
