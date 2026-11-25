@@ -4,7 +4,7 @@ import XCTest
 // The base of the UI tests of a Haylen app. The command "haylen test --ui" installs the app on a simulator or a device and names it to the runner, or on a Mac names the bundle of the macOS or Mac Catalyst app that it built, and each test starts it again with the launch arguments of its class. The GUIs of the app expose their components to the tests through the accessibility tree, by the text they show.
 @MainActor
 class HaylenUITestCase: XCTestCase {
-    // The Info.plist of the runner names the app it drives and the folder of its screenshots, which "haylen test --ui" writes into it.
+    // The Info.plist of the runner names the app it drives and, except on a Mac, the folder of its screenshots, which "haylen test --ui" writes into it.
     static let info = Bundle(for: HaylenUITestCase.self).infoDictionary ?? [:]
     static let timeout: TimeInterval = 60
 
@@ -263,14 +263,21 @@ class HaylenUITestCase: XCTestCase {
         }
     }
 
-    // Saves a picture of the window of the app as a PNG named after the text in the folder of the screenshots of the run, which on a device is relative to the container of the runner.
+    // Saves a picture of the window of the app as a PNG named after the text in the folder of the screenshots of the run, which on a device is relative to the container of the runner. The runner of the Mac runs in a sandbox that writes nowhere outside its container, so there the picture is an attachment of the result bundle, which "haylen test --ui" exports into the folder of the screenshots.
     func saveScreenshot(_ name: String) throws {
+        let window = app.windows.firstMatch
+        let screenshot = window.exists ? window.screenshot() : app.screenshot()
+#if os(macOS)
+        let attachment = XCTAttachment(screenshot: screenshot, quality: .original)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+#else
         let path = try XCTUnwrap(Self.info["HaylenUIOutput"] as? String, "Build the UI tests with \"haylen test --ui\", which names the folder of their screenshots.")
         let folder = URL(fileURLWithPath: path, relativeTo: URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true))
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let window = app.windows.firstMatch
-        let screenshot = window.exists ? window.screenshot() : app.screenshot()
         try screenshot.pngRepresentation.write(to: folder.appendingPathComponent("\(name).png"))
+#endif
     }
 
 #if os(iOS)

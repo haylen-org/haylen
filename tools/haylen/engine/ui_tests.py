@@ -1,3 +1,4 @@
+import json
 import math
 import plistlib
 import re
@@ -51,6 +52,8 @@ class UiTests:
     TEST_SECONDS = 600
     # The folder of the screenshots in the container of the runner on a device, which the run copies back.
     DEVICE_OUTPUT = "Library/Caches/ui-tests"
+    # The name that Xcode suggests for an attachment of a result bundle as it exports it: the name of the attachment, its place and a unique identifier, and the extension of its type.
+    ATTACHMENT_NAME = re.compile(r"^(?P<name>.+)_\d+_[0-9A-F-]{36}(?P<extension>\.\w+)$")
     # The development team in the signature of an app, as "codesign" describes it.
     TEAM = re.compile(r"^TeamIdentifier=(\w+)$", re.MULTILINE)
     # The file of the unified log of a simulator during a failed run, next to the result bundles of the run.
@@ -64,12 +67,14 @@ class UiTests:
         self.pipeline = pipeline
 
     @staticmethod
-    def command(action: str, project: Path, scheme: str, destination: str, derived: Path, classes: Sequence[str] = ()) -> list[object]:
-        """The command that builds the runner of a scheme with "build-for-testing", or runs its tests on the destination with "test-without-building", a simulator or a device by its identifier or this Mac by its processor, whose output holds only the tests, the classes that it names alone or every class. The target of the runner of each platform takes the name of its scheme."""
+    def command(action: str, project: Path, scheme: str, destination: str, derived: Path, classes: Sequence[str] = (), results: Path | None = None) -> list[object]:
+        """The command that builds the runner of a scheme with "build-for-testing", or runs its tests on the destination with "test-without-building", a simulator or a device by its identifier or this Mac by its processor, whose output holds only the tests, the classes that it names alone or every class, into the result bundle that `results` names or one of its own. The target of the runner of each platform takes the name of its scheme."""
         command: list[object] = ["xcodebuild", action, "-project", project, "-scheme", scheme, "-destination", destination, "-derivedDataPath", derived]
         if action == "test-without-building":
             command += ["-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", str(UiTests.TEST_SECONDS), "-collect-test-diagnostics", "never"]
             command += [f"-only-testing:{scheme}/{name}" for name in classes]
+            if results is not None:
+                command += ["-resultBundlePath", results]
         return command
 
     @staticmethod
@@ -144,7 +149,7 @@ class UiTests:
         # The Info.plist of an app of the Mac sits in the folder "Contents" of its bundle.
         info = product.path / "Contents" / "Info.plist" if platform in UiTests.MACS else product.path / "Info.plist"
         identifier = plistlib.loads(info.read_bytes())["CFBundleIdentifier"]
-        # A runner on a simulator or on this Mac writes its screenshots into the folder of the app on this Mac, and a runner on a device into its own container.
+        # A runner on a simulator writes its screenshots into the folder of the app on this Mac, a runner on a device into its own container, and the runner of the Mac into its result bundle.
         screenshots = UiTests.DEVICE_OUTPUT if platform in UiTests.DEVICES else str(output)
         bundle = product.path if platform in UiTests.MACS else None
         generate = [XcodeGen.path(self.context), "generate", "--quiet", "--spec", UiTests.PROJECT / "project.yml", "--project", runner]
@@ -220,15 +225,50 @@ class UiTests:
         self.context.terminal.info(f"The log of the simulator during the UI tests is in `{Repository.shown(path)}`.")
 
     def run_on_mac(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
-        """Runs the tests on this Mac. The runner launches the app from the bundle that the run built and ends it after each test, so nothing installs or stays. Its clicks and keys reach the app in front, so the Mac runs nothing else meanwhile, such as on a runner of continuous integration, and the run holds the keys that a test asks it to hold through `MacKeyboard`."""
+        """Runs the tests on this Mac. The runner launches the app from the bundle that the run built and ends it after each test, so nothing installs or stays. Its clicks and keys reach the app in front, so the Mac runs nothing else meanwhile, such as on a runner of continuous integration, and the run holds the keys that a test asks it to hold through `MacKeyboard`. The runner of the Mac runs in a sandbox that writes nowhere outside its container, so its screenshots are attachments of the result bundle of the run, which the run exports into the folder of the screenshots, also when the tests failed."""
         if device is not None:
             raise UnsupportedTarget(f'The UI tests of "{platform}" run on this Mac, so they take no "--device".')
         project = (runner / "HaylenUITests.xcodeproj", UiTests.MAC_SCHEME, UiTests.mac_destination(), runner / "derived")
         self.context.terminal.step("Building the UI test runner of the Mac")
         self.context.process.run(UiTests.command("build-for-testing", *project))
         self.context.terminal.step(f'Running the UI tests of "{product.prepared.product.app.name}" on this Mac')
-        UiTestRun(self.context.terminal, answer=MacKeyboard.answer).run(UiTests.command("test-without-building", *project, classes), self.context.environment)
+        results = runner / "derived" / "Logs" / "Test" / f"{platform}.xcresult"
+        Folders.remove(results)
+        attachments = runner / "attachments"
+        try:
+            UiTestRun(self.context.terminal, answer=MacKeyboard.answer).run(UiTests.command("test-without-building", *project, classes, results), self.context.environment)
+        except BuildFailed:
+            self.keep_screenshots_of_failure(results, attachments, output)
+            raise
+        self.export_screenshots(results, attachments, output)
         return "this Mac"
+
+    def keep_screenshots_of_failure(self, results: Path, attachments: Path, output: Path) -> None:
+        """Exports the screenshots of a run whose tests failed, when the runner wrote a result bundle. An export that fails then only warns, so the failure of the tests stays the error of the run, and the screenshots stay in the result bundle."""
+        if not results.exists():
+            return
+        try:
+            self.export_screenshots(results, attachments, output)
+        except BuildFailed as error:
+            self.context.terminal.warning(f"The screenshots of the UI tests stay in `{Repository.shown(results)}`, since they could not be exported: {error}")
+
+    def export_screenshots(self, results: Path, attachments: Path, output: Path) -> None:
+        """Exports the attachments of a result bundle and moves the ones that the tests added, which no failure made, into the folder of the screenshots under the names the tests gave them."""
+        Folders.remove(attachments)
+        self.context.process.run(["xcrun", "xcresulttool", "export", "attachments", "--path", results, "--output-path", attachments])
+        manifest = json.loads((attachments / "manifest.json").read_text(encoding="utf-8"))
+        for test in manifest:
+            for attachment in test["attachments"]:
+                name = UiTests.attachment_name(attachment["suggestedHumanReadableName"])
+                if name is not None and not attachment["isAssociatedWithFailure"]:
+                    (attachments / attachment["exportedFileName"]).replace(output / name)
+        Folders.remove(attachments)
+
+    @staticmethod
+    def attachment_name(suggested: str) -> str | None:
+        """The file name of an attachment from the name that Xcode suggests for it, or None for a name of another form."""
+        match = UiTests.ATTACHMENT_NAME.match(suggested)
+        return None if match is None else match["name"] + match["extension"]
 
     def run_on_device(self, product: BuildProduct, platform: str, device: str | None, runner: Path, output: Path, classes: Sequence[str]) -> str:
         """Runs the tests on a device, which gives the Mac no stream of its unified log, so the checks of the tests are the results. The tests write their screenshots into the container of the runner on the device, which the run copies back."""

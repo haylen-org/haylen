@@ -39,6 +39,50 @@ class UiTestsTest:
         mac = UiTests.generation({}, Path("/app/ui-tests/apple"), Path("/build/runner"), "com.haylen.tests", "/build/screenshots", Path("/build/products/Tests.app"))
         assert mac["HAYLEN_UI_APP_PATH"] == "/build/products/Tests.app"
 
+    def test_the_runner_of_the_mac_keeps_its_screenshots_in_its_result_bundle_under_the_names_of_the_tests(self, tmp_path):
+        project = (Path("/build/HaylenUITests.xcodeproj"), "macOS", "platform=macOS,arch=arm64", Path("/build/derived"))
+        command = UiTests.command("test-without-building", *project, ["MacTextInputTests"], Path("/build/derived/Logs/Test/macos.xcresult"))
+        assert [str(part) for part in command[-2:]] == ["-resultBundlePath", "/build/derived/Logs/Test/macos.xcresult"]
+        assert UiTests.attachment_name("mac-text-typed_0_F94D26F7-1A0F-4684-8E9F-28323BDE0082.png") == "mac-text-typed.png"
+        assert UiTests.attachment_name("Screenshot at failure.png") is None
+        spec = (UiTests.PROJECT / "project.yml").read_text(encoding="utf-8")
+        mac = spec[spec.index("  macOS:\n    type: bundle.ui-testing") : spec.index("schemes:")]
+        assert "HaylenUIOutput" not in mac
+
+        recorded = RecordedCommands(tmp_path)
+        attachments = tmp_path / "attachments"
+        output = tmp_path / "screenshots"
+        output.mkdir()
+
+        def export(command, **options):
+            recorded.run(command, **options)
+            attachments.mkdir()
+            (attachments / "A.png").write_bytes(b"typed")
+            (attachments / "B.png").write_bytes(b"failure")
+            typed = {"exportedFileName": "A.png", "suggestedHumanReadableName": "mac-text-typed_0_F94D26F7-1A0F-4684-8E9F-28323BDE0082.png", "isAssociatedWithFailure": False}
+            failure = {"exportedFileName": "B.png", "suggestedHumanReadableName": "mac-pasted_1_A2876D28-5DAC-4DC1-AF86-A41E51F9C697.png", "isAssociatedWithFailure": True}
+            (attachments / "manifest.json").write_text(json.dumps([{"testIdentifier": "MacTextInputTests/testTyping()", "attachments": [typed, failure]}]), encoding="utf-8")
+
+        recorded.context.process.run = export
+        UiTests(recorded.context, None).export_screenshots(tmp_path / "macos.xcresult", attachments, output)
+        assert [path.name for path in output.iterdir()] == ["mac-text-typed.png"]
+        assert (output / "mac-text-typed.png").read_bytes() == b"typed"
+        assert not attachments.exists()
+        assert recorded.commands == [["xcrun", "xcresulttool", "export", "attachments", "--path", str(tmp_path / "macos.xcresult"), "--output-path", str(attachments)]]
+
+    def test_a_failed_export_after_failed_mac_tests_only_warns_so_the_failure_of_the_tests_stays(self, tmp_path):
+        recorded = RecordedCommands(tmp_path)
+        results = tmp_path / "macos.xcresult"
+        results.mkdir()
+
+        def fail(command, **options):
+            raise BuildFailed('The command "xcrun" failed with exit code 1.')
+
+        recorded.context.process.run = fail
+        UiTests(recorded.context, None).keep_screenshots_of_failure(results, tmp_path / "attachments", tmp_path)
+        assert "could not be exported" in recorded.output.getvalue()
+        UiTests(recorded.context, None).keep_screenshots_of_failure(tmp_path / "missing.xcresult", tmp_path / "attachments", tmp_path)
+
     def test_the_log_of_a_failed_simulator_run_covers_the_whole_run(self):
         show = ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "log", "show", "--last"]
         assert UiTests.log_command("SIMULATOR-ID", 59.0) == [*show, "2m", "--style", "compact"]
