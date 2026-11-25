@@ -272,6 +272,7 @@
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
+| **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8063,7 +8064,7 @@ No Galaxy A14 5G, o dispositivo Vulkan fica com cerca de 200 MB de memória de G
 - **Type:** fix
 - **Priority:** medium
 - **Complexity:** 2
-- **Progress:** Começou no trabalho da plataforma, junto com o KB-316, o KB-317, o KB-318, o KB-320 e o KB-326.
+- **Progress:** Codificado, com os testes da verificação compilando: a causa era o `audio::Device`, que punha o texto de resultado da biblioteca de áudio nos avisos de recusa e de partida. O motivo é um valor tipado, `Device::Problem` (sem dispositivo, negado, ocupado, formato não aceito, sem memória, falha e recusado), com frases da Haylen que dizem o que conferir. O teste `AudioDeviceTest` confere o mapa e que nenhuma frase tem o texto da biblioteca, e o `EngineMessagesTest` falha em qualquer fonte da engine que pede esse texto. O guia do áudio foi atualizado.
 
 #### Description
 
@@ -8242,7 +8243,7 @@ Na execução completa 45585549922, o teste `WebSocketTest.CountsTheBytesThatWai
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 2
-- **Progress:** Começou no trabalho da plataforma, junto com o KB-316, o KB-317, o KB-318, o KB-320 e o KB-326.
+- **Progress:** Codificado, com os testes da verificação compilando: o `NetPlugin` não respondia `isAnimating`, então a queda do `bufferedAmount` não pedia quadro. Agora ele responde verdadeiro enquanto algum socket tem bytes à espera. O teste `NetRedrawTest` roda um app `onChange` que envia 16 MB do seu update para um caminho `/sink` novo do servidor de eco, e prova que o envio termina e os quadros depois descansam.
 
 #### Description
 
@@ -8252,6 +8253,29 @@ Num app com `window.redraw` igual a `onChange`, os sockets só andam nos quadros
 
 - [ ] Num app `onChange`, um envio grande pelo WebSocket termina sem nenhuma outra mudança no app, provado por um teste da engine.
 - [ ] Sem bytes à espera, o plugin da rede não pede quadros.
+
+#### Attachments
+
+- None
+
+### KB-327
+
+- **Title:** As mensagens da camada SDL não repetem o texto de erro do SDL
+- **Status:** todo
+- **Type:** bug
+- **Priority:** medium
+- **Complexity:** 3
+- **Progress:** Ainda não começou. Vai para o trabalho dos defeitos da RHI, que já mexe na camada SDL no [KB-321](#kb-321).
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+O trabalho da plataforma achou cerca de 18 mensagens em `engine/src/platform/sdl/` que acrescentam o texto de `SDL_GetError()`. A regra das mensagens do `AGENTS.md` diz que nenhuma mensagem da engine tem palavras de uma biblioteca que ela usa. Cada mensagem passa a dizer, com palavras da Haylen, o que aconteceu, com o quê e o que fazer, com o motivo como um valor tipado onde um teste o confere, e o `EngineMessagesTest` passa a falhar numa mensagem da engine que leva o texto de `SDL_GetError()`. Quando o texto do SDL ajuda a investigar, ele vai só para o log de diagnóstico que a própria regra permite, se ela permitir, e senão sai.
+
+#### Acceptance criteria
+
+- [ ] Nenhuma mensagem da engine leva o texto de `SDL_GetError()`, e o `EngineMessagesTest` falha se uma voltar.
+- [ ] Cada mensagem diz o que aconteceu e o que fazer, com palavras da Haylen.
 
 #### Attachments
 
@@ -8279,7 +8303,7 @@ Num app com `window.redraw` igual a `onChange`, os sockets só andam nos quadros
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-327. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-328. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
