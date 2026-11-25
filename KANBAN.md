@@ -4,13 +4,13 @@
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 4 / not set · **Next ID:** KB-303
+**Active WIP:** 5 / not set · **Next ID:** KB-304
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | **[KB-303 · Tirar o plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | **[KB-003 · Tiny Island refeito com arte própria](#kb-003)**<br>🟢 low · `feature` · 5/10 | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
 | **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
 | **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
@@ -257,7 +257,6 @@
 | **[KB-262 · Guia docs/core/extending.md de como crescer a engine em 2D e em 3D por plugins nativos e por plugins em Lua…](#kb-262)**<br>🟡 medium · `docs` · 3/10 | — | — | — | — | — |
 | **[KB-263 · O AGENTS.md descreve o 3D e o XR no presente](#kb-263)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-264 · Revisar o projeto inteiro de novo em busca de bugs, código legado, código sem uso, erros, condições de…](#kb-264)**<br>🟡 medium · `task` · 3/10 | — | — | — | — | — |
-| **[KB-265 · O Tiny Island não compila para iOS, tvOS e macOS porque o plugin sign-in do repositório irmão de plugins só…](#kb-265)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-266 · Acordar na hora certa no modo onChange do window.redraw](#kb-266)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-267 · Revisão de desempenho da engine inteira, medida nos aparelhos modestos, na web e nos desktops: shaders de…](#kb-267)**<br>🟡 medium · `task` · 8/10 | — | — | — | — | — |
 | **[KB-268 · O AGENTS.md com tudo o que for relevante do projeto que mudar neste grupo](#kb-268)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
@@ -286,7 +285,6 @@
 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
-| **[KB-002 · Plugin de exemplo do Tiny Island só com APIs da plataforma](#kb-002)**<br>🟢 low · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
 | **[KB-288 · Documentação final e repositório sem passado](#kb-288)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
@@ -327,9 +325,13 @@ A arte própria dos samples e os samples de jogos, de apps e de stress, conferid
 - **Type:** feature
 - **Priority:** low
 - **Complexity:** 5
+- **Disposition:** canceled
+- **Archived:** 2026-11-24
 - **Parent:** [KB-001 · Arte, samples e jogos](#kb-001)
 
 #### Description
+
+Cancelado: o plugin sai do sample pelo [KB-303](#kb-303), porque plugins não ficam neste repositório.
 
 **Plugin de exemplo do Tiny Island** só com APIs da plataforma. Existe: o plugin local `sign-in` do sample entra pelo Credential Manager no Android (`SignInPlugin`, com o client id do parâmetro `clientId`) e pelo script de um serviço de identidade na web, e nas outras plataformas tem só a API Lua, com `available` falso. Falta: refazê-lo só com APIs da plataforma, porque os plugins de SDKs de terceiros não ficam neste repositório e o módulo Android usa a biblioteca de identidade de terceiros enquanto a web carrega o script desse serviço. Um caminho é o Credential Manager com senha ou passkey no Android, o AuthenticationServices na Apple e a Credential Management API na web, com um teste de UI do login.
 
@@ -6901,9 +6903,13 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** feature
 - **Priority:** medium
 - **Complexity:** 3
+- **Disposition:** canceled
+- **Archived:** 2026-11-24
 - **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
 
 #### Description
+
+Cancelado: o plugin sai do sample pelo [KB-303](#kb-303), porque plugins não ficam neste repositório.
 
 Etapa: Revisão.
 
@@ -7774,6 +7780,28 @@ O CMake 4.2 da imagem Ubuntu da CI escreve `cmake_test_discovery_<hash>.json` em
 
 - [ ] Uma build do Linux com o CMake da imagem da CI não deixa nenhum arquivo novo em `engine/tests/`.
 - [ ] A descoberta dos testes continua achando todos os testes dos dois programas.
+
+#### Attachments
+
+- None
+
+<a name="kb-303"></a>
+### KB-303 — Tirar o plugin sign-in do Tiny Island
+
+- **Status:** doing
+- **Type:** refactor
+- **Priority:** high
+- **Complexity:** 3
+
+#### Description
+
+Este repositório guarda só a engine. Plugins ficam nos repositórios deles, e aqui ficam apenas os plugins de teste do projeto de testes, que provam o próprio sistema de plugins. O Tiny Island carrega o plugin local `sign-in`, que entra com uma conta por uma biblioteca de identidade de terceiros no Android e pelo script desse serviço na web. O plugin sai do sample inteiro, com o botão de entrar da tela de configurações, os textos dele e tudo o que o cita. O `AGENTS.md` passa a dizer que um sample não carrega plugins, exceto os plugins de teste do projeto de testes.
+
+#### Acceptance criteria
+
+- [ ] O Tiny Island não tem a pasta `plugins/` nem a seção `plugins` no `haylen.json`, e nada do repositório cita o plugin `sign-in` do sample.
+- [ ] O `AGENTS.md` e a documentação dizem que só o projeto de testes carrega plugins, que são os de teste do sistema de plugins.
+- [ ] O Tiny Island continua rodando no player sem cabeça e passa nos testes do repositório.
 
 #### Attachments
 
