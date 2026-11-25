@@ -12,8 +12,8 @@
 | **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 | — | — | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 | — | — | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 |
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
-| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
-| **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
+| **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | — | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 |
@@ -273,7 +273,6 @@
 | **[KB-296 · Texturas HDR carregadas de arquivo no 2D e no 3D](#kb-296)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-304 · Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo](#kb-304)**<br>🟡 medium · `task` · 7/10 | — | — | — | — | — |
 | **[KB-319 · Juntar famílias de métodos que descrevem um só estado num método com um enum](#kb-319)**<br>🟡 medium · `refactor` · 6/10 | — | — | — | — | — |
-| **[KB-327 · As mensagens da camada SDL não repetem o texto de erro do SDL](#kb-327)**<br>🟡 medium · `bug` · 3/10 | — | — | — | — | — |
 | **[KB-001 · Arte, samples e jogos](#kb-001)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-004 · Recursos e problemas comuns de jogos 2D](#kb-004)**<br>🟢 low · `epic` · 9/10 | — | — | — | — | — |
 | **[KB-005 · Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste](#kb-005)**<br>🟢 low · `feature` · 8/10 | — | — | — | — | — |
@@ -8168,7 +8167,7 @@ O [KB-009](#kb-009) passa a nomear as telas do Wayland pelo nome da saída, como
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Começou num trabalho próprio, que corrige cada defeito confirmado na raiz com um teste que falha sem a correção e confirma ou descarta cada incerto com o motivo.
+- **Progress:** Todos os itens confirmados estão escritos e esperam o build do Mac antes dos commits. As regras do contrato passam a ser uma só para todo dispositivo, em `gpu::ProgramSlots` e `gpu::ImageRules`, sem cópias em cada dispositivo. Os destroys não alocam em nenhum dispositivo. Na revisão, o incerto S9 foi descartado com o motivo, e o S8 foi conferido.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8191,7 +8190,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no SDL, que ainda não 
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Os itens só do Direct3D estão escritos e vão para o branch `rhi-defects`, que tem uma CI própria, com os testes de conformidade comuns:
+- **Progress:** Todos os itens confirmados estão escritos e esperam o build do Mac antes dos commits. As regras do contrato passam a ser uma só para todo dispositivo, em `gpu::ProgramSlots` e `gpu::ImageRules`, sem cópias em cada dispositivo. Os destroys não alocam em nenhum dispositivo. O D12 segue a decisão do dono: a fence do Direct3D 11.4 e o objeto de latência da swapchain nos dois Direct3D. O D10 foi descartado. O código do Direct3D vai para o branch `rhi-defects`.
   - D5: as superfícies acrescentadas seguem as amostras da janela.
   - D6: o `addSurface` devolve as suas vistas quando falha.
   - D7: falhas de apresentação que não são perda de dispositivo lançam erro.
@@ -8224,7 +8223,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no Direct3D, que ainda 
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** A raiz do G7 está no compilador de shaders: os alvos GLSL convertem o espaço de recorte, o que tira de todo programa GL a precisão de que a profundidade invertida precisa. O plano aprovado:
+- **Progress:** Todos os itens confirmados estão escritos e esperam o build do Mac antes dos commits. As regras do contrato passam a ser uma só para todo dispositivo, em `gpu::ProgramSlots` e `gpu::ImageRules`, sem cópias em cada dispositivo. Os destroys não alocam em nenhum dispositivo. As contagens de amostras de cada formato (G3), o `maxVolumeSize` e o `maxCubeSize` (D4) e a faixa de profundidade (G7) chegam ao Lua por `graphics.sampleCounts(format)`, `graphics.maxVolumeSize()`, `graphics.maxCubeSize()` e `graphics.depthRange()`. O G8 e o G9 foram descartados depois de conferir as fontes do WebGPU do Emscripten. O G10 ganha um teste de leitura que o emulador do Android e o WebGL2 decidem. A mudança do compilador de shaders está pronta, com o formato dos pacotes na versão 3, e entra por último, com o pin novo e os 61 pacotes do projeto de testes compilados de novo.
   1. O compilador para de converter. O commit dele é refeito, com uma release nova e um pin novo.
   2. O `gpu::Device` ganha a faixa de profundidade: 0 a 1 no Metal, Direct3D, Vulkan e WebGPU, e no OpenGL onde existe `glClipControl`, que o dispositivo liga. Onde não existe, a faixa é -1 a 1.
   3. O Lua lê `graphics.depthRange()`, e as projeções de `haylen.math` usam essa faixa.
@@ -8252,7 +8251,7 @@ A revisão do [KB-009](#kb-009) confirmou estes defeitos no OpenGL e WebGPU, que
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Começou num trabalho próprio, que corrige cada defeito confirmado na raiz com um teste que falha sem a correção e confirma ou descarta cada incerto com o motivo.
+- **Progress:** Todos os itens confirmados estão escritos e esperam o build do Mac antes dos commits. As regras do contrato passam a ser uma só para todo dispositivo, em `gpu::ProgramSlots` e `gpu::ImageRules`, sem cópias em cada dispositivo. Os destroys não alocam em nenhum dispositivo. O V7 virou uma regra nova do contrato, que o dispositivo nulo confere. O incerto V3 ainda vai ser conferido.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -8315,11 +8314,11 @@ Num app com `window.redraw` igual a `onChange`, os sockets só andam nos quadros
 ### KB-327
 
 - **Title:** As mensagens da camada SDL não repetem o texto de erro do SDL
-- **Status:** todo
+- **Status:** doing
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 3
-- **Progress:** Ainda não começou. Vai para o trabalho dos defeitos da RHI, que já mexe na camada SDL no [KB-321](#kb-321).
+- **Progress:** Escrito: nenhum fonte da engine leva mais o texto de `SDL_GetError()`. Espera o build do Mac antes do commit.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
