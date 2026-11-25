@@ -1,26 +1,22 @@
-# 🗂️ Haylen — Kanban
-
-## Board
+# Project Kanban
 
 <!-- KANBAN:BOARD:START -->
 
-**Active WIP:** 19 / not set · **Next ID:** KB-310
-
-| TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30d) |
+| TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
 | **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -288,9 +284,9 @@
 
 <!-- KANBAN:CARDS:START -->
 
-<a name="kb-001"></a>
-### KB-001 — Arte, samples e jogos
+### KB-001
 
+- **Title:** Arte, samples e jogos
 - **Status:** todo
 - **Type:** epic
 - **Priority:** low
@@ -308,41 +304,14 @@ A arte própria dos samples e os samples de jogos, de apps e de stress, conferid
 
 - None
 
-<a name="kb-002"></a>
-### KB-002 — Plugin de exemplo do Tiny Island só com APIs da plataforma
+### KB-003
 
-- **Status:** todo
-- **Type:** feature
-- **Priority:** low
-- **Complexity:** 5
-- **Disposition:** canceled
-- **Archived:** 2026-11-24
-- **Parent:** [KB-001 · Arte, samples e jogos](#kb-001)
-
-#### Description
-
-Cancelado: o plugin sai do sample pelo [KB-303](#kb-303), porque plugins não ficam neste repositório.
-
-**Plugin de exemplo do Tiny Island** só com APIs da plataforma. Existe: o plugin local `sign-in` do sample entra pelo Credential Manager no Android (`SignInPlugin`, com o client id do parâmetro `clientId`) e pelo script de um serviço de identidade na web, e nas outras plataformas tem só a API Lua, com `available` falso. Falta: refazê-lo só com APIs da plataforma, porque os plugins de SDKs de terceiros não ficam neste repositório e o módulo Android usa a biblioteca de identidade de terceiros enquanto a web carrega o script desse serviço. Um caminho é o Credential Manager com senha ou passkey no Android, o AuthenticationServices na Apple e a Credential Management API na web, com um teste de UI do login.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-#### Acceptance criteria
-
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
-
-#### Attachments
-
-- None
-
-<a name="kb-003"></a>
-### KB-003 — Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop
-
+- **Title:** Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop
 - **Status:** doing
 - **Type:** test
 - **Priority:** low
 - **Complexity:** 5
-- **Progress:** iOS e tvOS passam (`4eb1974e1`). O macOS, o Mac Catalyst e a conferência de fechar o player rodam no job `apple-mac-ui` da próxima execução completa da CI. Na execução completa 45507380483 o job `Mac UI tests` falhou nos cinco testes de texto do Mac: o XCUITest espera 60 s em cada ação porque o app nunca fica ocioso para ele, o método de entrada japonês não pode ser escolhido na máquina da CI (erro `-50`) e o executor de testes não tem permissão para salvar as capturas na pasta do build. Na execução completa 45524929771, com as correções (`60117e57c`, `ce14dcb11`, `1a4de6479`), o XCUITest acha o app do Mac ocioso entre os quadros e 4 dos 5 testes de texto do Mac passaram, de 10 a 34 s cada; o teste do método de entrada japonês ainda falha, porque o texto composto não aparece depois do Return, e por isso os passos do Mac Catalyst e do Tiny Island não rodaram.
+- **Progress:** Espera o job `Mac UI tests` da próxima execução completa, que roda os passos do Tiny Island no macOS e no Mac Catalyst e a conferência de fechar o player depois que o teste japonês do [KB-013](#kb-013) passar.
 - **Parent:** [KB-001 · Arte, samples e jogos](#kb-001)
 
 #### Description
@@ -357,9 +326,9 @@ O Tiny Island já está pronto, com a arte própria do projeto: guerreiro, arque
 
 - None
 
-<a name="kb-004"></a>
-### KB-004 — Recursos e problemas comuns de jogos 2D
+### KB-004
 
+- **Title:** Recursos e problemas comuns de jogos 2D
 - **Status:** todo
 - **Type:** epic
 - **Priority:** low
@@ -377,9 +346,9 @@ Os recursos de baixo nível que jogos e apps 2D de alto desempenho usam e os pro
 
 - None
 
-<a name="kb-005"></a>
-### KB-005 — Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste
+### KB-005
 
+- **Title:** Os problemas mais comuns de quem faz jogos e apps 2D, cada um com uma solução da engine e um teste
 - **Status:** todo
 - **Type:** feature
 - **Priority:** low
@@ -400,9 +369,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-006"></a>
-### KB-006 — Fechamento da plataforma em SDL3 e da RHI
+### KB-006
 
+- **Title:** Fechamento da plataforma em SDL3 e da RHI
 - **Status:** todo
 - **Type:** epic
 - **Priority:** high
@@ -420,9 +389,9 @@ Os aparelhos, os drivers e as plataformas da camada em SDL3 e da RHI, e a revis�
 
 - None
 
-<a name="kb-007"></a>
-### KB-007 — Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…
+### KB-007
 
+- **Title:** Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…
 - **Status:** doing
 - **Type:** feature
 - **Priority:** high
@@ -443,9 +412,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-008"></a>
-### KB-008 — Enviar só a região alterada de uma textura dinâmica
+### KB-008
 
+- **Title:** Enviar só a região alterada de uma textura dinâmica
 - **Status:** doing
 - **Type:** feature
 - **Priority:** high
@@ -467,9 +436,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-009"></a>
-### KB-009 — Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…
+### KB-009
 
+- **Title:** Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…
 - **Status:** doing
 - **Type:** task
 - **Priority:** high
@@ -493,9 +462,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-010"></a>
-### KB-010 — Estabilização do texto, da ferramenta, dos samples e revisão geral
+### KB-010
 
+- **Title:** Estabilização do texto, da ferramenta, dos samples e revisão geral
 - **Status:** todo
 - **Type:** epic
 - **Priority:** high
@@ -513,9 +482,9 @@ A estabilização da entrada de texto, do comando `haylen`, dos templates, dos p
 
 - None
 
-<a name="kb-011"></a>
-### KB-011 — Limpeza de legibilidade em todos os arquivos da engine
+### KB-011
 
+- **Title:** Limpeza de legibilidade em todos os arquivos da engine
 - **Status:** todo
 - **Type:** feature
 - **Priority:** high
@@ -538,9 +507,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-012"></a>
-### KB-012 — O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto
+### KB-012
 
+- **Title:** O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto
 - **Status:** todo
 - **Type:** feature
 - **Priority:** high
@@ -563,14 +532,14 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-013"></a>
-### KB-013 — Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos
+### KB-013
 
+- **Title:** Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos
 - **Status:** testing
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** o executor do macOS e do Mac Catalyst roda no job `apple-mac-ui` da próxima execução completa da CI (`611cf76a5`, `b6e0d0902`). O executor do Windows (`11d1ef4c4`) roda pela UI Automation numa máquina da Azure: uma rodada de 4 passou 20 de 20, mas rodadas seguintes falharam 1 ou 2 testes, com cliques num campo que não recebem o foco em 10 s e teclas que vão para o campo que tinha o foco antes. A causa está achada e não é da engine: o teste clicava no ponto do campo enquanto outra janela o cobria, primeiro o menu Iniciar do primeiro login e depois o Bloco de Notas que esse clique abriu, e o clique nunca chegava ao app. Em todos os testes que passaram, o clique chegou ao SDL e ao ImGui no mesmo frame, também logo depois de trocar o layout do teclado, sem perda de foco no meio. O executor agora recusa um clique num ponto que outra janela cobre, com uma frase que nomeia essa janela (`fe87fb192`), e a receita da máquina do Windows 11 está em `docs/tools/hardware-testing.md`. Depois disso o Windows 11 passou 15 rodadas seguidas, 75 de 75 testes. Falta o job `apple-mac-ui` da execução completa da CI confirmar o macOS e o Mac Catalyst. Na execução completa 45507380483 o job `Mac UI tests` falhou nos cinco testes de texto do Mac: o XCUITest espera 60 s em cada ação porque o app nunca fica ocioso para ele, o método de entrada japonês não pode ser escolhido na máquina da CI (erro `-50`) e o executor de testes não tem permissão para salvar as capturas na pasta do build. As causas estão achadas: no macOS o laço do SDL nunca devolve a vez ao AppKit, então o laço de eventos nunca espera, e o app passa a dormir no laço de eventos com cada quadro vindo do display link da tela; o modo japonês só pode ser escolhido com o método de entrada pai ligado; e o executor do Mac, que roda numa sandbox, salva as capturas no seu próprio contêiner, de onde as ferramentas as copiam. O dono decidiu subir o macOS mínimo para o 14, onde existe o display link do laço de eventos. Na execução completa 45524929771, com as correções (`60117e57c`, `ce14dcb11`, `1a4de6479`), o XCUITest acha o app do Mac ocioso entre os quadros e 4 dos 5 testes de texto do Mac passaram, de 10 a 34 s cada; o teste do método de entrada japonês ainda falha, porque o texto composto não aparece depois do Return, e por isso os passos do Mac Catalyst e do Tiny Island não rodaram. A causa do teste japonês está achada: o executor do XCUITest no Mac roda numa sandbox que guarda só para ele as trocas de método de entrada, então o app recebia as letras sem composição; agora o teste pede a troca às ferramentas, que rodam fora da sandbox, selecionam o modo e o devolvem ao fim, e o teste espera o aviso do sistema de que a troca valeu.
+- **Progress:** O Windows 11 passou 15 rodadas seguidas da entrada de texto, 75 de 75 testes, depois que o executor passou a recusar um clique num ponto que outra janela cobre (`fe87fb192`). No Mac, 4 dos 5 testes de texto passam na CI, e o teste do método de entrada japonês, que agora reabre o app depois que as ferramentas trocam o teclado fora da sandbox do executor (`dd5abbb09`), espera a próxima execução completa, junto com o Mac Catalyst.
 - **Parent:** [KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)
 
 #### Description
@@ -581,7 +550,7 @@ Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por 
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
-Decisão do dono: testes de UI do macOS e do Mac Catalyst por XCUITest num runner macOS do GitHub, só na execução completa, e um executor do Windows em Python pela UI Automation numa máquina da Azure por cerca de uma hora, apagada logo depois. Em andamento num stream.
+Decisão do dono: testes de UI do macOS e do Mac Catalyst por XCUITest num runner macOS do GitHub, só na execução completa, e um executor do Windows em Python pela UI Automation numa máquina da Azure por cerca de uma hora, apagada logo depois.
 
 #### Acceptance criteria
 
@@ -591,9 +560,9 @@ Decisão do dono: testes de UI do macOS e do Mac Catalyst por XCUITest num runne
 
 - None
 
-<a name="kb-014"></a>
-### KB-014 — Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple
+### KB-014
 
+- **Title:** Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple
 - **Status:** done
 - **Type:** feature
 - **Priority:** high
@@ -613,9 +582,9 @@ Os testes de entrada de texto do Android (`TextInputTests.kt`) conferem no emula
 
 - [Testes](docs/tools/testing.md)
 
-<a name="kb-015"></a>
-### KB-015 — Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…
+### KB-015
 
+- **Title:** Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…
 - **Status:** done
 - **Type:** test
 - **Priority:** high
@@ -636,9 +605,9 @@ Os testes de UI do PLG-023 leem as data views pelo app: a parte nativa (Swift ou
 - [Testes](docs/tools/testing.md)
 - [Projeto de testes](samples/tests/README.md)
 
-<a name="kb-016"></a>
-### KB-016 — O check da web confere o carregamento
+### KB-016
 
+- **Title:** O check da web confere o carregamento
 - **Status:** done
 - **Type:** feature
 - **Priority:** high
@@ -658,9 +627,9 @@ A página web carrega na ordem certa e o check da web confere: a porcentagem só
 
 - [Testes](docs/tools/testing.md)
 
-<a name="kb-017"></a>
-### KB-017 — Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock
+### KB-017
 
+- **Title:** Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock
 - **Status:** done
 - **Type:** test
 - **Priority:** high
@@ -680,9 +649,9 @@ Os plugins vindos de repositório git têm testes com repositórios git locais d
 
 - [Testes](docs/tools/testing.md)
 
-<a name="kb-018"></a>
-### KB-018 — Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…
+### KB-018
 
+- **Title:** Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…
 - **Status:** doing
 - **Type:** feature
 - **Priority:** high
@@ -707,9 +676,9 @@ Decisão do dono: a medição roda em celulares modestos alugados no AWS Device 
 
 - None
 
-<a name="kb-019"></a>
-### KB-019 — Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…
+### KB-019
 
+- **Title:** Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…
 - **Status:** done
 - **Type:** test
 - **Priority:** high
@@ -729,9 +698,9 @@ O cartão de destaque do app de música mantém os textos e a ilustração separ
 
 - [README do app de música](samples/apps/music-streaming/README.md)
 
-<a name="kb-020"></a>
-### KB-020 — Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
+### KB-020
 
+- **Title:** Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
 - **Status:** todo
 - **Type:** task
 - **Priority:** high
@@ -754,9 +723,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-021"></a>
-### KB-021 — Estabilização do tooling, da CI e das ferramentas de desenvolvimento
+### KB-021
 
+- **Title:** Estabilização do tooling, da CI e das ferramentas de desenvolvimento
 - **Status:** todo
 - **Type:** epic
 - **Priority:** high
@@ -774,9 +743,9 @@ A estabilização que fica depois da reestruturação do tooling, da CI e das fe
 
 - None
 
-<a name="kb-022"></a>
-### KB-022 — Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…
+### KB-022
 
+- **Title:** Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** high
@@ -799,9 +768,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-023"></a>
-### KB-023 — Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…
+### KB-023
 
+- **Title:** Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…
 - **Status:** done
 - **Type:** feature
 - **Priority:** high
@@ -818,8 +787,6 @@ Os testes instrumentados das bibliotecas Android (`engine/platform/android/hayle
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
-Andamento: o teste no emulador passou (`HaylenTouchpadSwipeTest` local e `HaylenAccessibilityTreeTest` no emulador, sem falha). Falta o passo da CI no job de GPU do Android, que roda na execução completa.
-
 #### Acceptance criteria
 
 - [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
@@ -828,9 +795,9 @@ Andamento: o teste no emulador passou (`HaylenTouchpadSwipeTest` local e `Haylen
 
 - None
 
-<a name="kb-024"></a>
-### KB-024 — Tirar os ganchos de teste da API pública do DebugPlugin
+### KB-024
 
+- **Title:** Tirar os ganchos de teste da API pública do DebugPlugin
 - **Status:** done
 - **Type:** refactor
 - **Priority:** high
@@ -852,9 +819,9 @@ A API pública do `DebugPlugin` não tem ganchos de teste. O inspetor atualiza p
 
 - [Referência de `haylen.debug`](docs/lua-api/debug.md)
 
-<a name="kb-025"></a>
-### KB-025 — O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…
+### KB-025
 
+- **Title:** O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…
 - **Status:** done
 - **Type:** bug
 - **Priority:** high
@@ -874,9 +841,9 @@ O mouse não para por erro da engine: uma janela só recebe o movimento do mouse
 
 - [Entrada](docs/input/input.md)
 
-<a name="kb-026"></a>
-### KB-026 — No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)
+### KB-026
 
+- **Title:** No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)
 - **Status:** done
 - **Type:** bug
 - **Priority:** high
@@ -898,9 +865,9 @@ O analógico de um gamepad move o foco da UI nas quatro direções, também incl
 - [UI](docs/ui/ui.md)
 - [Testes](docs/tools/testing.md)
 
-<a name="kb-027"></a>
-### KB-027 — Vários gamepads ao mesmo tempo sem perder nada em toda plataforma
+### KB-027
 
+- **Title:** Vários gamepads ao mesmo tempo sem perder nada em toda plataforma
 - **Status:** doing
 - **Type:** feature
 - **Priority:** high
@@ -916,9 +883,7 @@ Vários gamepads ao mesmo tempo sem perder nada em toda plataforma: cada control
 
 A complexidade é uma estimativa provisória pelo tamanho do item.
 
-Andamento: os testes com quatro controles virtuais do SDL passam: índices estáveis, conectar e desconectar no jogo, um mapa por jogador, vibração e sensores de cada controle, e o foco da UI segue só o controle do mapa padrão (commit `e34af0b74`). Falta a opção A do dono na Apple, com o `GCVirtualController` no simulador do iOS, e a web não tem teste do gamepad do navegador.
-
-Decisão do dono: opção A: dois `GCVirtualController` no simulador do iOS mantêm os jogadores separados. Em andamento num stream.
+Decisão do dono: opção A: dois `GCVirtualController` no simulador do iOS mantêm os jogadores separados.
 
 #### Acceptance criteria
 
@@ -928,9 +893,9 @@ Decisão do dono: opção A: dois `GCVirtualController` no simulador do iOS mant
 
 - None
 
-<a name="kb-028"></a>
-### KB-028 — Nada silenciado
+### KB-028
 
+- **Title:** Nada silenciado
 - **Status:** done
 - **Type:** refactor
 - **Priority:** high
@@ -950,9 +915,9 @@ Nada fica silenciado no código da engine: as flags que escondiam campos sem ini
 
 - [Build](docs/tools/build.md)
 
-<a name="kb-029"></a>
-### KB-029 — Gravar o áudio do app
+### KB-029
 
+- **Title:** Gravar o áudio do app
 - **Status:** todo
 - **Type:** feature
 - **Priority:** high
@@ -975,9 +940,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-030"></a>
-### KB-030 — Seleção de objetos na tela e gizmos no inspetor de desenvolvimento
+### KB-030
 
+- **Title:** Seleção de objetos na tela e gizmos no inspetor de desenvolvimento
 - **Status:** todo
 - **Type:** feature
 - **Priority:** high
@@ -1000,9 +965,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-031"></a>
-### KB-031 — Suporte 3D e XR
+### KB-031
 
+- **Title:** Suporte 3D e XR
 - **Status:** todo
 - **Type:** epic
 - **Priority:** medium
@@ -1050,9 +1015,9 @@ Ordem do trabalho e dependências entre as fases: primeiro a estabilização do 
 
 - None
 
-<a name="kb-032"></a>
-### KB-032 — Convenções 3D fixas em toda a engine
+### KB-032
 
+- **Title:** Convenções 3D fixas em toda a engine
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1076,9 +1041,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-033"></a>
-### KB-033 — Mundos grandes
+### KB-033
 
+- **Title:** Mundos grandes
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1101,9 +1066,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-034"></a>
-### KB-034 — Matemática em lote e SIMD
+### KB-034
 
+- **Title:** Matemática em lote e SIMD
 - **Status:** done
 - **Type:** feature
 - **Priority:** medium
@@ -1127,9 +1092,9 @@ Matemática em lote sem chamada por item, para quem transforma ou testa muitos o
 - [Matemática 3D](docs/3d/math.md)
 - [Build](docs/tools/build.md)
 
-<a name="kb-035"></a>
-### KB-035 — Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa
+### KB-035
 
+- **Title:** Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1152,9 +1117,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-036"></a>
-### KB-036 — Ordem do quadro com 3D, escrita em docs/core/architecture.md
+### KB-036
 
+- **Title:** Ordem do quadro com 3D, escrita em docs/core/architecture.md
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1177,9 +1142,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-037"></a>
-### KB-037 — Handles e threads de todo objeto 3D
+### KB-037
 
+- **Title:** Handles e threads de todo objeto 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1202,9 +1167,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-038"></a>
-### KB-038 — Dados em lote entre Lua e C++ sem chamada por objeto
+### KB-038
 
+- **Title:** Dados em lote entre Lua e C++ sem chamada por objeto
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1227,9 +1192,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-039"></a>
-### KB-039 — A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md
+### KB-039
 
+- **Title:** A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1252,9 +1217,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-040"></a>
-### KB-040 — Níveis de qualidade e capacidades do renderizador 3D
+### KB-040
 
+- **Title:** Níveis de qualidade e capacidades do renderizador 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1277,9 +1242,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-041"></a>
-### KB-041 — Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua
+### KB-041
 
+- **Title:** Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1302,9 +1267,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-042"></a>
-### KB-042 — Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…
+### KB-042
 
+- **Title:** Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1329,9 +1294,9 @@ Depende do KB-293, que dá o modo do mouse da janela.
 
 - None
 
-<a name="kb-043"></a>
-### KB-043 — Acessibilidade no 3D
+### KB-043
 
+- **Title:** Acessibilidade no 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1354,9 +1319,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-044"></a>
-### KB-044 — Estado térmico e de desempenho do sistema em platform::System e haylen.system…
+### KB-044
 
+- **Title:** Estado térmico e de desempenho do sistema em platform::System e haylen.system…
 - **Status:** done
 - **Type:** feature
 - **Priority:** medium
@@ -1379,9 +1344,9 @@ O estado térmico do aparelho chega ao app: `platform::ThermalState` (`unknown`,
 - [Referência de `haylen.system`](docs/lua-api/system.md)
 - [Eventos](docs/lua-api/events.md)
 
-<a name="kb-045"></a>
-### KB-045 — Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)
+### KB-045
 
+- **Title:** Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1404,9 +1369,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-046"></a>
-### KB-046 — Compute no gpu::Device
+### KB-046
 
+- **Title:** Compute no gpu::Device
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1429,9 +1394,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-047"></a>
-### KB-047 — Simulação por texturas no nível portátil
+### KB-047
 
+- **Title:** Simulação por texturas no nível portátil
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1454,9 +1419,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-048"></a>
-### KB-048 — Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno
+### KB-048
 
+- **Title:** Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1479,9 +1444,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-049"></a>
-### KB-049 — Barreiras e hazards
+### KB-049
 
+- **Title:** Barreiras e hazards
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1504,9 +1469,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-050"></a>
-### KB-050 — Draws indiretos
+### KB-050
 
+- **Title:** Draws indiretos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1529,9 +1494,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-051"></a>
-### KB-051 — Tipos de textura até graphics
+### KB-051
 
+- **Title:** Tipos de textura até graphics
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1554,9 +1519,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-052"></a>
-### KB-052 — Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)
+### KB-052
 
+- **Title:** Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1579,9 +1544,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-053"></a>
-### KB-053 — Samplers completos
+### KB-053
 
+- **Title:** Samplers completos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1604,9 +1569,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-054"></a>
-### KB-054 — Renderização em várias camadas num pass (multiview)
+### KB-054
 
+- **Title:** Renderização em várias camadas num pass (multiview)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1629,9 +1594,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-055"></a>
-### KB-055 — Render targets completos em graphics::RenderTarget (hoje só cor)
+### KB-055
 
+- **Title:** Render targets completos em graphics::RenderTarget (hoje só cor)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1654,9 +1619,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-056"></a>
-### KB-056 — Consultas de GPU
+### KB-056
 
+- **Title:** Consultas de GPU
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1679,9 +1644,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-057"></a>
-### KB-057 — Formatos de vértice e topologias para 3D
+### KB-057
 
+- **Title:** Formatos de vértice e topologias para 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1704,9 +1669,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-058"></a>
-### KB-058 — Texturas externas para XR
+### KB-058
 
+- **Title:** Texturas externas para XR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1729,9 +1694,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-059"></a>
-### KB-059 — Cache de pipelines
+### KB-059
 
+- **Title:** Cache de pipelines
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1754,9 +1719,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-060"></a>
-### KB-060 — Envio e memória de GPU para 3D
+### KB-060
 
+- **Title:** Envio e memória de GPU para 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1779,9 +1744,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-061"></a>
-### KB-061 — Grafo de render em graphics::RenderGraph (engine/include/haylen/graphics/RenderGraph.hpp, comum a 2D, 3D e XR)
+### KB-061
 
+- **Title:** Grafo de render em graphics::RenderGraph (engine/include/haylen/graphics/RenderGraph.hpp, comum a 2D, 3D e XR)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1804,9 +1769,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-062"></a>
-### KB-062 — O renderizador 2D monta seus passes no grafo de render
+### KB-062
 
+- **Title:** O renderizador 2D monta seus passes no grafo de render
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1830,9 +1795,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-063"></a>
-### KB-063 — Composição de 2D, 3D, UI, saídas e XR no mesmo quadro
+### KB-063
 
+- **Title:** Composição de 2D, 3D, UI, saídas e XR no mesmo quadro
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1855,9 +1820,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-064"></a>
-### KB-064 — Marcadores de depuração de GPU por pass e grupo em todas as APIs, com os nomes dos passes do grafo, para que…
+### KB-064
 
+- **Title:** Marcadores de depuração de GPU por pass e grupo em todas as APIs, com os nomes dos passes do grafo, para que…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1880,9 +1845,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-065"></a>
-### KB-065 — A tabela de capacidades por API e plataforma em docs/graphics/rhi.md cobre cada recurso novo e o estado de…
+### KB-065
 
+- **Title:** A tabela de capacidades por API e plataforma em docs/graphics/rhi.md cobre cada recurso novo e o estado de…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1905,9 +1870,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-066"></a>
-### KB-066 — Estágio de compute no haylen-shaderc
+### KB-066
 
+- **Title:** Estágio de compute no haylen-shaderc
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1930,9 +1895,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-067"></a>
-### KB-067 — Buffers e imagens de storage no compilador
+### KB-067
 
+- **Title:** Buffers e imagens de storage no compilador
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1955,9 +1920,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-068"></a>
-### KB-068 — Reflexão 3D no compilador
+### KB-068
 
+- **Title:** Reflexão 3D no compilador
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -1980,9 +1945,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-069"></a>
-### KB-069 — Variantes de shader sem explosão
+### KB-069
 
+- **Title:** Variantes de shader sem explosão
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2005,9 +1970,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-070"></a>
-### KB-070 — Formato do pacote .shader com programas de compute, recursos de storage, variantes, recursos exigidos e…
+### KB-070
 
+- **Title:** Formato do pacote .shader com programas de compute, recursos de storage, variantes, recursos exigidos e…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2030,9 +1995,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-071"></a>
-### KB-071 — Bibliotecas Metal pré-compiladas também para os programas do renderizador 3D, para que o dispositivo Metal…
+### KB-071
 
+- **Title:** Bibliotecas Metal pré-compiladas também para os programas do renderizador 3D, para que o dispositivo Metal…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2055,9 +2020,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-072"></a>
-### KB-072 — Biblioteca de shaders 3D em engine/shaders/include/haylen/3d/
+### KB-072
 
+- **Title:** Biblioteca de shaders 3D em engine/shaders/include/haylen/3d/
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2080,9 +2045,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-073"></a>
-### KB-073 — Contrato de superfície para shaders 3D de apps e plugins
+### KB-073
 
+- **Title:** Contrato de superfície para shaders 3D de apps e plugins
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2105,9 +2070,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-074"></a>
-### KB-074 — Grafos de material no compilador
+### KB-074
 
+- **Title:** Grafos de material no compilador
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2130,9 +2095,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-075"></a>
-### KB-075 — Recarga de shaders e materiais 3D no desenvolvimento
+### KB-075
 
+- **Title:** Recarga de shaders e materiais 3D no desenvolvimento
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2155,9 +2120,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-076"></a>
-### KB-076 — Núcleo do graphics3d::Renderer em engine/src/3d/graphics/
+### KB-076
 
+- **Title:** Núcleo do graphics3d::Renderer em engine/src/3d/graphics/
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2180,9 +2145,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-077"></a>
-### KB-077 — Planos de recorte e cortes de seção
+### KB-077
 
+- **Title:** Planos de recorte e cortes de seção
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2205,9 +2170,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-078"></a>
-### KB-078 — Câmeras graphics3d::Camera
+### KB-078
 
+- **Title:** Câmeras graphics3d::Camera
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2230,9 +2195,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-079"></a>
-### KB-079 — Controles de câmera prontos em graphics3d, com mouse, toque, teclado, gamepad e controle remoto de TV
+### KB-079
 
+- **Title:** Controles de câmera prontos em graphics3d, com mouse, toque, teclado, gamepad e controle remoto de TV
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2255,9 +2220,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-080"></a>
-### KB-080 — Malhas
+### KB-080
 
+- **Title:** Malhas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2280,9 +2245,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-081"></a>
-### KB-081 — Primitivas e geradores de geometria
+### KB-081
 
+- **Title:** Primitivas e geradores de geometria
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2305,9 +2270,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-082"></a>
-### KB-082 — Utilitários de malha em graphics3d::MeshTools, que trabalham sobre MeshData em jobs sem Lua, com versão…
+### KB-082
 
+- **Title:** Utilitários de malha em graphics3d::MeshTools, que trabalham sobre MeshData em jobs sem Lua, com versão…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2330,9 +2295,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-083"></a>
-### KB-083 — Linhas e pontos 3D
+### KB-083
 
+- **Title:** Linhas e pontos 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2355,9 +2320,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-084"></a>
-### KB-084 — Instanciação e lotes
+### KB-084
 
+- **Title:** Instanciação e lotes
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2380,9 +2345,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-085"></a>
-### KB-085 — Caminhos de render avançados, medidos antes de entrar
+### KB-085
 
+- **Title:** Caminhos de render avançados, medidos antes de entrar
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2405,9 +2370,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-086"></a>
-### KB-086 — Traçado de caminhos progressivo no nível moderno
+### KB-086
 
+- **Title:** Traçado de caminhos progressivo no nível moderno
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2430,9 +2395,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-087"></a>
-### KB-087 — Culling
+### KB-087
 
+- **Title:** Culling
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2455,9 +2420,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-088"></a>
-### KB-088 — Níveis de detalhe
+### KB-088
 
+- **Title:** Níveis de detalhe
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2480,9 +2445,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-089"></a>
-### KB-089 — Transparência
+### KB-089
 
+- **Title:** Transparência
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2505,9 +2470,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-090"></a>
-### KB-090 — Várias visões e alvos
+### KB-090
 
+- **Title:** Várias visões e alvos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2530,9 +2495,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-091"></a>
-### KB-091 — Antisserrilhado
+### KB-091
 
+- **Title:** Antisserrilhado
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2555,9 +2520,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-092"></a>
-### KB-092 — Escala de resolução
+### KB-092
 
+- **Title:** Escala de resolução
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2580,9 +2545,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-093"></a>
-### KB-093 — Pipeline HDR e cor
+### KB-093
 
+- **Title:** Pipeline HDR e cor
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2605,9 +2570,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-094"></a>
-### KB-094 — Saída HDR em telas HDR onde a plataforma oferece, com o pico de brilho da tela lido pela API do sistema, o…
+### KB-094
 
+- **Title:** Saída HDR em telas HDR onde a plataforma oferece, com o pico de brilho da tela lido pela API do sistema, o…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2630,9 +2595,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-095"></a>
-### KB-095 — Bloom, brilho e luz
+### KB-095
 
+- **Title:** Bloom, brilho e luz
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2655,9 +2620,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-096"></a>
-### KB-096 — Efeitos de espaço de tela
+### KB-096
 
+- **Title:** Efeitos de espaço de tela
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2680,9 +2645,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-097"></a>
-### KB-097 — Efeitos de câmera
+### KB-097
 
+- **Title:** Efeitos de câmera
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2705,9 +2670,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-098"></a>
-### KB-098 — Efeitos estilizados de pós
+### KB-098
 
+- **Title:** Efeitos estilizados de pós
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2730,9 +2695,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-099"></a>
-### KB-099 — Pós por visão em Lua e C++
+### KB-099
 
+- **Title:** Pós por visão em Lua e C++
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2755,9 +2720,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-100"></a>
-### KB-100 — Visões de depuração e estatísticas do 3D
+### KB-100
 
+- **Title:** Visões de depuração e estatísticas do 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2780,9 +2745,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-101"></a>
-### KB-101 — Desenho de depuração 3D
+### KB-101
 
+- **Title:** Desenho de depuração 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2805,9 +2770,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-102"></a>
-### KB-102 — Billboards, sprites e texto no mundo
+### KB-102
 
+- **Title:** Billboards, sprites e texto no mundo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2830,9 +2795,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-103"></a>
-### KB-103 — GUIs no mundo
+### KB-103
 
+- **Title:** GUIs no mundo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2855,9 +2820,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-104"></a>
-### KB-104 — Rótulos e marcadores presos ao mundo
+### KB-104
 
+- **Title:** Rótulos e marcadores presos ao mundo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2880,9 +2845,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-105"></a>
-### KB-105 — Picking
+### KB-105
 
+- **Title:** Picking
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2905,9 +2870,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-106"></a>
-### KB-106 — Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)
+### KB-106
 
+- **Title:** Leitor de glTF 2.0 em haylen::gltf (engine/src/3d/gltf/)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2930,9 +2895,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-107"></a>
-### KB-107 — O núcleo do glTF 2.0 inteiro, sem nada para depois
+### KB-107
 
+- **Title:** O núcleo do glTF 2.0 inteiro, sem nada para depois
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2955,9 +2920,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-108"></a>
-### KB-108 — Extensões de material e de textura do glTF, todas as ratificadas no registro do Khronos e na mesma fase do…
+### KB-108
 
+- **Title:** Extensões de material e de textura do glTF, todas as ratificadas no registro do Khronos e na mesma fase do…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -2980,9 +2945,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-109"></a>
-### KB-109 — Extensões de geometria, cena e comportamento do glTF, todas as ratificadas no registro do Khronos e na mesma…
+### KB-109
 
+- **Title:** Extensões de geometria, cena e comportamento do glTF, todas as ratificadas no registro do Khronos e na mesma…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3005,9 +2970,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-110"></a>
-### KB-110 — Conformidade com o glTF 2.0, a prova do suporte de 100%
+### KB-110
 
+- **Title:** Conformidade com o glTF 2.0, a prova do suporte de 100%
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3031,9 +2996,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-111"></a>
-### KB-111 — Asset de modelo
+### KB-111
 
+- **Title:** Asset de modelo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3056,9 +3021,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-112"></a>
-### KB-112 — KTX2 e Basis Universal
+### KB-112
 
+- **Title:** KTX2 e Basis Universal
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3081,9 +3046,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-113"></a>
-### KB-113 — Imagens HDR e EXR
+### KB-113
 
+- **Title:** Imagens HDR e EXR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3106,9 +3071,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-114"></a>
-### KB-114 — Imagens WebP
+### KB-114
 
+- **Title:** Imagens WebP
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3131,9 +3096,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-115"></a>
-### KB-115 — Perfis de compressão de texturas
+### KB-115
 
+- **Title:** Perfis de compressão de texturas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3156,9 +3121,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-116"></a>
-### KB-116 — Preparação de modelos glTF no build
+### KB-116
 
+- **Title:** Preparação de modelos glTF no build
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3181,9 +3146,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-117"></a>
-### KB-117 — Importação de modelos pela ferramenta de importação, o haylen-model com o comando haylen app import
+### KB-117
 
+- **Title:** Importação de modelos pela ferramenta de importação, o haylen-model com o comando haylen app import
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3206,9 +3171,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-118"></a>
-### KB-118 — Exportadores
+### KB-118
 
+- **Title:** Exportadores
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3231,9 +3196,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-119"></a>
-### KB-119 — Streaming de conteúdo 3D
+### KB-119
 
+- **Title:** Streaming de conteúdo 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3256,9 +3221,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-120"></a>
-### KB-120 — Inspeção de glTF em Lua (haylen.gltf)
+### KB-120
 
+- **Title:** Inspeção de glTF em Lua (haylen.gltf)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3281,9 +3246,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-121"></a>
-### KB-121 — Recarga e dependências de assets 3D
+### KB-121
 
+- **Title:** Recarga e dependências de assets 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3306,9 +3271,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-122"></a>
-### KB-122 — Segurança de todos os parsers 3D
+### KB-122
 
+- **Title:** Segurança de todos os parsers 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3331,9 +3296,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-123"></a>
-### KB-123 — Modelo de material graphics3d::Material
+### KB-123
 
+- **Title:** Modelo de material graphics3d::Material
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3356,9 +3321,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-124"></a>
-### KB-124 — Material PBR padrão completo
+### KB-124
 
+- **Title:** Material PBR padrão completo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3381,9 +3346,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-125"></a>
-### KB-125 — Outros modelos de luz embutidos, escolhidos por model no material
+### KB-125
 
+- **Title:** Outros modelos de luz embutidos, escolhidos por model no material
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3406,9 +3371,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-126"></a>
-### KB-126 — Materiais com shaders próprios pelo contrato de superfície
+### KB-126
 
+- **Title:** Materiais com shaders próprios pelo contrato de superfície
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3431,9 +3396,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-127"></a>
-### KB-127 — Coleções de parâmetros de cena e de visão
+### KB-127
 
+- **Title:** Coleções de parâmetros de cena e de visão
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3456,9 +3421,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-128"></a>
-### KB-128 — Grafos de material na engine
+### KB-128
 
+- **Title:** Grafos de material na engine
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3481,9 +3446,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-129"></a>
-### KB-129 — Decalques
+### KB-129
 
+- **Title:** Decalques
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3506,9 +3471,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-130"></a>
-### KB-130 — Efeitos por stencil nos materiais
+### KB-130
 
+- **Title:** Efeitos por stencil nos materiais
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3531,9 +3496,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-131"></a>
-### KB-131 — Materiais e efeitos de material prontos, feitos pelo contrato de superfície e pelos grafos em…
+### KB-131
 
+- **Title:** Materiais e efeitos de material prontos, feitos pelo contrato de superfície e pelos grafos em…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3556,9 +3521,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-132"></a>
-### KB-132 — Arame e coordenadas baricêntricas
+### KB-132
 
+- **Title:** Arame e coordenadas baricêntricas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3581,9 +3546,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-133"></a>
-### KB-133 — Texturas vivas em materiais 3D
+### KB-133
 
+- **Title:** Texturas vivas em materiais 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3606,9 +3571,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-134"></a>
-### KB-134 — Luzes em haylen::lighting3d (engine/src/3d/lighting/, Lua haylen.lighting3d, componente de nó)
+### KB-134
 
+- **Title:** Luzes em haylen::lighting3d (engine/src/3d/lighting/, Lua haylen.lighting3d, componente de nó)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3631,9 +3596,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-135"></a>
-### KB-135 — Culling de luzes
+### KB-135
 
+- **Title:** Culling de luzes
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3656,9 +3621,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-136"></a>
-### KB-136 — Sombras
+### KB-136
 
+- **Title:** Sombras
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3681,9 +3646,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-137"></a>
-### KB-137 — Ambiente e IBL em lighting3d::Environment, por mundo ou por câmera
+### KB-137
 
+- **Title:** Ambiente e IBL em lighting3d::Environment, por mundo ou por câmera
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3706,9 +3671,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-138"></a>
-### KB-138 — Sondas de reflexo
+### KB-138
 
+- **Title:** Sondas de reflexo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3731,9 +3696,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-139"></a>
-### KB-139 — Iluminação global difusa
+### KB-139
 
+- **Title:** Iluminação global difusa
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3756,9 +3721,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-140"></a>
-### KB-140 — Neblina
+### KB-140
 
+- **Title:** Neblina
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3781,9 +3746,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-141"></a>
-### KB-141 — Céu e atmosfera
+### KB-141
 
+- **Title:** Céu e atmosfera
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3806,9 +3771,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-142"></a>
-### KB-142 — Qualidade e orçamentos de luz e sombra
+### KB-142
 
+- **Title:** Qualidade e orçamentos de luz e sombra
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3831,9 +3796,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-143"></a>
-### KB-143 — Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)
+### KB-143
 
+- **Title:** Árvore de nós 3D em haylen::nodes3d (engine/src/3d/nodes/, Lua haylen.nodes3d)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3856,9 +3821,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-144"></a>
-### KB-144 — Componentes de nós 3D
+### KB-144
 
+- **Title:** Componentes de nós 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3881,9 +3846,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-145"></a>
-### KB-145 — Comportamentos em Lua presos a nós
+### KB-145
 
+- **Title:** Comportamentos em Lua presos a nós
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3906,9 +3871,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-146"></a>
-### KB-146 — Cenas e prefabs 3D
+### KB-146
 
+- **Title:** Cenas e prefabs 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3931,9 +3896,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-147"></a>
-### KB-147 — Integração com as cenas de hoje (core::Scene)
+### KB-147
 
+- **Title:** Integração com as cenas de hoje (core::Scene)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3956,9 +3921,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-148"></a>
-### KB-148 — Streaming de mundo
+### KB-148
 
+- **Title:** Streaming de mundo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -3981,9 +3946,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-149"></a>
-### KB-149 — Interação com o mundo 3D
+### KB-149
 
+- **Title:** Interação com o mundo 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4006,9 +3971,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-150"></a>
-### KB-150 — Grafos de comportamento do glTF (KHR_interactivity), lidos em haylen::gltf e executados em nodes3d
+### KB-150
 
+- **Title:** Grafos de comportamento do glTF (KHR_interactivity), lidos em haylen::gltf e executados em nodes3d
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4031,9 +3996,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-151"></a>
-### KB-151 — Gizmos de transformação em tempo de execução e o gizmo de eixos no canto da visão, que mostra a orientação da…
+### KB-151
 
+- **Title:** Gizmos de transformação em tempo de execução e o gizmo de eixos no canto da visão, que mostra a orientação da…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4056,9 +4021,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-152"></a>
-### KB-152 — Grade de ladrilhos 3D
+### KB-152
 
+- **Title:** Grade de ladrilhos 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4081,9 +4046,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-153"></a>
-### KB-153 — Inspetor 3D no desenvolvimento
+### KB-153
 
+- **Title:** Inspetor 3D no desenvolvimento
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4106,9 +4071,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-154"></a>
-### KB-154 — Caminhos, marcadores e anexos
+### KB-154
 
+- **Title:** Caminhos, marcadores e anexos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4131,9 +4096,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-155"></a>
-### KB-155 — Interpolação de desenho no passo fixo
+### KB-155
 
+- **Title:** Interpolação de desenho no passo fixo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4156,9 +4121,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-156"></a>
-### KB-156 — Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)
+### KB-156
 
+- **Title:** Clipes e trilhas em haylen::animation3d (engine/src/3d/animation/, Lua haylen.animation3d)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4181,9 +4146,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-157"></a>
-### KB-157 — Esqueletos e skin
+### KB-157
 
+- **Title:** Esqueletos e skin
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4206,9 +4171,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-158"></a>
-### KB-158 — Alvos de morph
+### KB-158
 
+- **Title:** Alvos de morph
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4231,9 +4196,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-159"></a>
-### KB-159 — Animador com camadas
+### KB-159
 
+- **Title:** Animador com camadas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4256,9 +4221,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-160"></a>
-### KB-160 — Árvores de mistura e máquinas de estado
+### KB-160
 
+- **Title:** Árvores de mistura e máquinas de estado
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4281,9 +4246,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-161"></a>
-### KB-161 — Redirecionamento de animações
+### KB-161
 
+- **Title:** Redirecionamento de animações
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4306,9 +4271,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-162"></a>
-### KB-162 — IK e animação procedural como modificadores de esqueleto em pilha depois da animação
+### KB-162
 
+- **Title:** IK e animação procedural como modificadores de esqueleto em pilha depois da animação
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4331,9 +4296,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-163"></a>
-### KB-163 — Ragdoll e animação física
+### KB-163
 
+- **Title:** Ragdoll e animação física
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4356,9 +4321,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-164"></a>
-### KB-164 — Linha do tempo de cinema
+### KB-164
 
+- **Title:** Linha do tempo de cinema
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4381,9 +4346,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-165"></a>
-### KB-165 — Opções de animação na preparação de modelos
+### KB-165
 
+- **Title:** Opções de animação na preparação de modelos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4406,9 +4371,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-166"></a>
-### KB-166 — Texturas de animação de vértices
+### KB-166
 
+- **Title:** Texturas de animação de vértices
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4431,9 +4396,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-167"></a>
-### KB-167 — Física 3D pela Jolt Physics, como dependência fixada no CMake da engine, com o mesmo cuidado da física 2D
+### KB-167
 
+- **Title:** Física 3D pela Jolt Physics, como dependência fixada no CMake da engine, com o mesmo cuidado da física 2D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4456,9 +4421,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-168"></a>
-### KB-168 — Mundo physics3d::World (engine/src/3d/physics/)
+### KB-168
 
+- **Title:** Mundo physics3d::World (engine/src/3d/physics/)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4481,9 +4446,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-169"></a>
-### KB-169 — Corpos physics3d::Body
+### KB-169
 
+- **Title:** Corpos physics3d::Body
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4506,9 +4471,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-170"></a>
-### KB-170 — Formas
+### KB-170
 
+- **Title:** Formas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4531,9 +4496,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-171"></a>
-### KB-171 — Camadas de colisão
+### KB-171
 
+- **Title:** Camadas de colisão
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4556,9 +4521,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-172"></a>
-### KB-172 — Restrições
+### KB-172
 
+- **Title:** Restrições
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4581,9 +4546,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-173"></a>
-### KB-173 — Personagem
+### KB-173
 
+- **Title:** Personagem
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4606,9 +4571,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-174"></a>
-### KB-174 — Veículos
+### KB-174
 
+- **Title:** Veículos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4631,9 +4596,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-175"></a>
-### KB-175 — Corpos moles
+### KB-175
 
+- **Title:** Corpos moles
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4656,9 +4621,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-176"></a>
-### KB-176 — Consultas
+### KB-176
 
+- **Title:** Consultas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4681,9 +4646,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-177"></a>
-### KB-177 — Eventos de contato
+### KB-177
 
+- **Title:** Eventos de contato
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4706,9 +4671,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-178"></a>
-### KB-178 — Ganchos de passo e ajudantes em C++
+### KB-178
 
+- **Title:** Ganchos de passo e ajudantes em C++
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4731,9 +4696,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-179"></a>
-### KB-179 — Ligação entre física e nós 3D
+### KB-179
 
+- **Title:** Ligação entre física e nós 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4756,9 +4721,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-180"></a>
-### KB-180 — Gravar e restaurar o estado do mundo para rollback em rede, repetição e testes, com o hash de estado
+### KB-180
 
+- **Title:** Gravar e restaurar o estado do mundo para rollback em rede, repetição e testes, com o hash de estado
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4781,9 +4746,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-181"></a>
-### KB-181 — Fratura 3D
+### KB-181
 
+- **Title:** Fratura 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4806,9 +4771,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-182"></a>
-### KB-182 — Guia docs/3d/physics.md com os problemas comuns da física 3D e a solução de cada um, e um teste do projeto de…
+### KB-182
 
+- **Title:** Guia docs/3d/physics.md com os problemas comuns da física 3D e a solução de cada um, e um teste do projeto de…
 - **Status:** todo
 - **Type:** docs
 - **Priority:** medium
@@ -4831,9 +4796,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-183"></a>
-### KB-183 — Malha de navegação 3D em haylen::navigation3d pela Recast e Detour
+### KB-183
 
+- **Title:** Malha de navegação 3D em haylen::navigation3d pela Recast e Detour
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4856,9 +4821,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-184"></a>
-### KB-184 — Obstáculos e ligações
+### KB-184
 
+- **Title:** Obstáculos e ligações
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4881,9 +4846,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-185"></a>
-### KB-185 — Consultas e agentes
+### KB-185
 
+- **Title:** Consultas e agentes
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4906,9 +4871,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-186"></a>
-### KB-186 — Navegação no espaço para agentes que voam e nadam
+### KB-186
 
+- **Title:** Navegação no espaço para agentes que voam e nadam
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4931,9 +4896,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-187"></a>
-### KB-187 — Grafos de caminhos genéricos em 3D para apps que montam suas próprias redes, como as faixas do trânsito de…
+### KB-187
 
+- **Title:** Grafos de caminhos genéricos em 3D para apps que montam suas próprias redes, como as faixas do trânsito de…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4956,9 +4921,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-188"></a>
-### KB-188 — Sentidos da IA
+### KB-188
 
+- **Title:** Sentidos da IA
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -4981,9 +4946,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-189"></a>
-### KB-189 — Desenho de depuração da navegação pelos desenhos 3D, e o guia docs/3d/navigation.md
+### KB-189
 
+- **Title:** Desenho de depuração da navegação pelos desenhos 3D, e o guia docs/3d/navigation.md
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5006,9 +4971,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-190"></a>
-### KB-190 — Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)
+### KB-190
 
+- **Title:** Estruturas espaciais em haylen::spatial3d (engine/src/3d/spatial/, Lua haylen.spatial3d)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5031,9 +4996,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-191"></a>
-### KB-191 — Posição 3D no mixer (audio::Mixer)
+### KB-191
 
+- **Title:** Posição 3D no mixer (audio::Mixer)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5056,9 +5021,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-192"></a>
-### KB-192 — Áudio binaural (HRTF) para fones e XR,
+### KB-192
 
+- **Title:** Áudio binaural (HRTF) para fones e XR,
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5081,9 +5046,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-193"></a>
-### KB-193 — Oclusão e ambiente acústico
+### KB-193
 
+- **Title:** Oclusão e ambiente acústico
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5106,9 +5071,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-194"></a>
-### KB-194 — Ciclo de vida do áudio 3D
+### KB-194
 
+- **Title:** Ciclo de vida do áudio 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5131,9 +5096,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-195"></a>
-### KB-195 — Análise do áudio
+### KB-195
 
+- **Title:** Análise do áudio
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5156,9 +5121,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-196"></a>
-### KB-196 — Partículas 3D na CPU em haylen::particles3d (engine/src/3d/particles/, Lua haylen.particles3d)
+### KB-196
 
+- **Title:** Partículas 3D na CPU em haylen::particles3d (engine/src/3d/particles/, Lua haylen.particles3d)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5181,9 +5146,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-197"></a>
-### KB-197 — Partículas na GPU no nível moderno
+### KB-197
 
+- **Title:** Partículas na GPU no nível moderno
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5206,9 +5171,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-198"></a>
-### KB-198 — Rastros e fitas 3D
+### KB-198
 
+- **Title:** Rastros e fitas 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5231,9 +5196,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-199"></a>
-### KB-199 — Água
+### KB-199
 
+- **Title:** Água
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5256,9 +5221,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-200"></a>
-### KB-200 — Terreno em haylen::terrain3d (engine/src/3d/terrain/, Lua haylen.terrain3d)
+### KB-200
 
+- **Title:** Terreno em haylen::terrain3d (engine/src/3d/terrain/, Lua haylen.terrain3d)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5281,9 +5246,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-201"></a>
-### KB-201 — Vegetação e vento
+### KB-201
 
+- **Title:** Vegetação e vento
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5306,9 +5271,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-202"></a>
-### KB-202 — Geração procedural 3D em haylen::procedural3d (engine/src/3d/procedural/, Lua haylen.procedural3d)
+### KB-202
 
+- **Title:** Geração procedural 3D em haylen::procedural3d (engine/src/3d/procedural/, Lua haylen.procedural3d)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5331,9 +5296,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-203"></a>
-### KB-203 — Splats gaussianos
+### KB-203
 
+- **Title:** Splats gaussianos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5356,9 +5321,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-204"></a>
-### KB-204 — Nuvens de pontos e volumes
+### KB-204
 
+- **Title:** Nuvens de pontos e volumes
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5381,9 +5346,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-205"></a>
-### KB-205 — Núcleo de XR em haylen::xr (engine/include/haylen/xr/, engine/src/xr/, Lua haylen.xr)
+### KB-205
 
+- **Title:** Núcleo de XR em haylen::xr (engine/include/haylen/xr/, engine/src/xr/, Lua haylen.xr)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5406,9 +5371,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-206"></a>
-### KB-206 — Renderização de XR
+### KB-206
 
+- **Title:** Renderização de XR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5431,9 +5396,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-207"></a>
-### KB-207 — Entrada de XR
+### KB-207
 
+- **Title:** Entrada de XR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5456,9 +5421,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-208"></a>
-### KB-208 — Runtime OpenXR
+### KB-208
 
+- **Title:** Runtime OpenXR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5481,9 +5446,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-209"></a>
-### KB-209 — Runtime do visionOS pelos Compositor Services
+### KB-209
 
+- **Title:** Runtime do visionOS pelos Compositor Services
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5506,9 +5471,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-210"></a>
-### KB-210 — Runtime WebXR
+### KB-210
 
+- **Title:** Runtime WebXR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5531,9 +5496,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-211"></a>
-### KB-211 — AR de celular por plugin
+### KB-211
 
+- **Title:** AR de celular por plugin
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5556,9 +5521,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-212"></a>
-### KB-212 — Recursos de XR protegidos por permissão pelo ponto de extensão xr::Extension, que plugins implementam para…
+### KB-212
 
+- **Title:** Recursos de XR protegidos por permissão pelo ponto de extensão xr::Extension, que plugins implementam para…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5581,9 +5546,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-213"></a>
-### KB-213 — Conforto e interface em XR como ajudantes de haylen.xr
+### KB-213
 
+- **Title:** Conforto e interface em XR como ajudantes de haylen.xr
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5606,9 +5571,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-214"></a>
-### KB-214 — Runtime de XR de desenvolvimento
+### KB-214
 
+- **Title:** Runtime de XR de desenvolvimento
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5631,9 +5596,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-215"></a>
-### KB-215 — Janelas e painéis do sistema
+### KB-215
 
+- **Title:** Janelas e painéis do sistema
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5656,9 +5621,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-216"></a>
-### KB-216 — Empacotamento de XR nos backends
+### KB-216
 
+- **Title:** Empacotamento de XR nos backends
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5681,9 +5646,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-217"></a>
-### KB-217 — Protocolo de checagem de XR em docs/tools/hardware-testing.md
+### KB-217
 
+- **Title:** Protocolo de checagem de XR em docs/tools/hardware-testing.md
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5706,9 +5671,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-218"></a>
-### KB-218 — Pontos de extensão do 3D, pela regra dos plugins sem limite do grupo BI
+### KB-218
 
+- **Title:** Pontos de extensão do 3D, pela regra dos plugins sem limite do grupo BI
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5731,9 +5696,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-219"></a>
-### KB-219 — Plugins de engine dentro de plugins nativos
+### KB-219
 
+- **Title:** Plugins de engine dentro de plugins nativos
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5756,9 +5721,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-220"></a>
-### KB-220 — Extensões em C++ por subsistema, cada uma com exemplo e teste
+### KB-220
 
+- **Title:** Extensões em C++ por subsistema, cada uma com exemplo e teste
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5781,9 +5746,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-221"></a>
-### KB-221 — Plugins em Lua que melhoram a engine (plugins com implementations igual a lua e source/)
+### KB-221
 
+- **Title:** Plugins em Lua que melhoram a engine (plugins com implementations igual a lua e source/)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5806,9 +5771,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-222"></a>
-### KB-222 — Dados para editores
+### KB-222
 
+- **Title:** Dados para editores
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5831,9 +5796,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-223"></a>
-### KB-223 — Os mesmos mecanismos no 2D
+### KB-223
 
+- **Title:** Os mesmos mecanismos no 2D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5856,9 +5821,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-224"></a>
-### KB-224 — Modelo de plugin com extensões
+### KB-224
 
+- **Title:** Modelo de plugin com extensões
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5881,9 +5846,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-225"></a>
-### KB-225 — Campo de distância 2D da cena
+### KB-225
 
+- **Title:** Campo de distância 2D da cena
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5906,9 +5871,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-226"></a>
-### KB-226 — Partículas 2D na GPU no nível moderno, com a simulação de hoje na CPU como caminho do portátil e o estado…
+### KB-226
 
+- **Title:** Partículas 2D na GPU no nível moderno, com a simulação de hoje na CPU como caminho do portátil e o estado…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5931,9 +5896,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-227"></a>
-### KB-227 — Malhas justas a partir do alfa dos sprites
+### KB-227
 
+- **Title:** Malhas justas a partir do alfa dos sprites
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5956,9 +5921,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-228"></a>
-### KB-228 — Camadas com máscaras de ossos nas animações de esqueleto 2D, no mesmo modelo do animador 3D. Testes
+### KB-228
 
+- **Title:** Camadas com máscaras de ossos nas animações de esqueleto 2D, no mesmo modelo do animador 3D. Testes
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -5981,9 +5946,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-229"></a>
-### KB-229 — Modelos 3D dentro de jogos 2D
+### KB-229
 
+- **Title:** Modelos 3D dentro de jogos 2D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6006,9 +5971,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-230"></a>
-### KB-230 — Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake
+### KB-230
 
+- **Title:** Jolt Physics como dependência em engine/cmake/haylen-dependencies.cmake
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6031,9 +5996,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-231"></a>
-### KB-231 — As outras dependências do 3D, cada uma fixada com SHA-256 na última release, com avisos desligados, sem cópia…
+### KB-231
 
+- **Title:** As outras dependências do 3D, cada uma fixada com SHA-256 na última release, com avisos desligados, sem cópia…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6056,9 +6021,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-232"></a>
-### KB-232 — Interação com o Varn
+### KB-232
 
+- **Title:** Interação com o Varn
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6081,9 +6046,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-233"></a>
-### KB-233 — Ferramenta de host haylen-model em engine/tools/model/, no SDK de desktop ao lado do haylen-content e listada…
+### KB-233
 
+- **Title:** Ferramenta de host haylen-model em engine/tools/model/, no SDK de desktop ao lado do haylen-content e listada…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6106,9 +6071,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-234"></a>
-### KB-234 — O build dos apps com 3D
+### KB-234
 
+- **Title:** O build dos apps com 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6131,9 +6096,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-235"></a>
-### KB-235 — Esquemas
+### KB-235
 
+- **Title:** Esquemas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6156,9 +6121,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-236"></a>
-### KB-236 — Backends com 3D e XR
+### KB-236
 
+- **Title:** Backends com 3D e XR
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6181,9 +6146,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-237"></a>
-### KB-237 — O manifesto do SDK registra por fatia os runtimes de XR que ela traz e o esquema sdk.schema.json os descreve…
+### KB-237
 
+- **Title:** O manifesto do SDK registra por fatia os runtimes de XR que ela traz e o esquema sdk.schema.json os descreve…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6206,9 +6171,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-238"></a>
-### KB-238 — CI sem jobs novos e sem repetir provas, pelas regras do AGENTS.md
+### KB-238
 
+- **Title:** CI sem jobs novos e sem repetir provas, pelas regras do AGENTS.md
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6231,9 +6196,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-239"></a>
-### KB-239 — Testes de regras do repositório
+### KB-239
 
+- **Title:** Testes de regras do repositório
 - **Status:** todo
 - **Type:** test
 - **Priority:** medium
@@ -6256,9 +6221,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-240"></a>
-### KB-240 — Testes em GPUs e aparelhos reais pelo docs/tools/hardware-testing.md
+### KB-240
 
+- **Title:** Testes em GPUs e aparelhos reais pelo docs/tools/hardware-testing.md
 - **Status:** todo
 - **Type:** test
 - **Priority:** medium
@@ -6281,9 +6246,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-241"></a>
-### KB-241 — Categorias novas do projeto de testes em samples/tests/source/categories/, cada uma com manifest.lua, um…
+### KB-241
 
+- **Title:** Categorias novas do projeto de testes em samples/tests/source/categories/, cada uma com manifest.lua, um…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6306,9 +6271,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-242"></a>
-### KB-242 — Um jogo 3D completo em samples/games/ com nome e arte próprios no estilo da família da Tiny Island levado ao…
+### KB-242
 
+- **Title:** Um jogo 3D completo em samples/games/ com nome e arte próprios no estilo da família da Tiny Island levado ao…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6332,9 +6297,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-243"></a>
-### KB-243 — Um jogo 3D de mundo aberto numa cidade em samples/games/, com nome e arte próprios no estilo da família da…
+### KB-243
 
+- **Title:** Um jogo 3D de mundo aberto numa cidade em samples/games/, com nome e arte próprios no estilo da família da…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6357,9 +6322,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-244"></a>
-### KB-244 — Um app 3D de produto real com dados falsos em samples/apps/
+### KB-244
 
+- **Title:** Um app 3D de produto real com dados falsos em samples/apps/
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6382,9 +6347,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-245"></a>
-### KB-245 — Amostras de estresse 3D em samples/stress/, cada uma com leitura na tela do tempo de quadro e das contagens
+### KB-245
 
+- **Title:** Amostras de estresse 3D em samples/stress/, cada uma com leitura na tela do tempo de quadro e das contagens
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6407,9 +6372,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-246"></a>
-### KB-246 — Uma amostra de XR em samples/xr/ (categoria nova)
+### KB-246
 
+- **Title:** Uma amostra de XR em samples/xr/ (categoria nova)
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6432,9 +6397,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-247"></a>
-### KB-247 — Uma amostra C++ 3D em samples/cpp/ que usa a API C++ do 3D e registra um plugin de engine com um passe de…
+### KB-247
 
+- **Title:** Uma amostra C++ 3D em samples/cpp/ que usa a API C++ do 3D e registra um plugin de engine com um passe de…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6457,9 +6422,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-248"></a>
-### KB-248 — Arte 3D das amostras feita para o projeto, com as ferramentas de geração de modelos em tools/ que escrevem…
+### KB-248
 
+- **Title:** Arte 3D das amostras feita para o projeto, com as ferramentas de geração de modelos em tools/ que escrevem…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6482,9 +6447,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-249"></a>
-### KB-249 — Todo recurso 3D funciona em todas as plataformas e APIs gráficas da Haylen, ou a doc diz onde não e por quê…
+### KB-249
 
+- **Title:** Todo recurso 3D funciona em todas as plataformas e APIs gráficas da Haylen, ou a doc diz onde não e por quê…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6507,9 +6472,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-250"></a>
-### KB-250 — Organização dos testes do 3D
+### KB-250
 
+- **Title:** Organização dos testes do 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6532,9 +6497,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-251"></a>
-### KB-251 — Testes de conformidade de GPU para cada recurso novo da RHI no haylen-gpu-tests, em todas as APIs
+### KB-251
 
+- **Title:** Testes de conformidade de GPU para cada recurso novo da RHI no haylen-gpu-tests, em todas as APIs
 - **Status:** todo
 - **Type:** test
 - **Priority:** medium
@@ -6557,9 +6522,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-252"></a>
-### KB-252 — Imagens de referência do 3D
+### KB-252
 
+- **Title:** Imagens de referência do 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6582,9 +6547,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-253"></a>
-### KB-253 — Quadro sem alocação no 3D
+### KB-253
 
+- **Title:** Quadro sem alocação no 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6607,9 +6572,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-254"></a>
-### KB-254 — Testes Lua de cada módulo 3D
+### KB-254
 
+- **Title:** Testes Lua de cada módulo 3D
 - **Status:** todo
 - **Type:** test
 - **Priority:** medium
@@ -6632,9 +6597,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-255"></a>
-### KB-255 — Benchmarks do 3D no haylen engine bench, com suítes novas e as métricas P50, P95 e P99 de CPU e GPU, tempo de…
+### KB-255
 
+- **Title:** Benchmarks do 3D no haylen engine bench, com suítes novas e as métricas P50, P95 e P99 de CPU e GPU, tempo de…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6657,9 +6622,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-256"></a>
-### KB-256 — Checagens de plataforma do 3D em cada plataforma que o item toca
+### KB-256
 
+- **Title:** Checagens de plataforma do 3D em cada plataforma que o item toca
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6682,9 +6647,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-257"></a>
-### KB-257 — Auditoria final do 3D, depois de todas as fases
+### KB-257
 
+- **Title:** Auditoria final do 3D, depois de todas as fases
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -6707,9 +6672,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-258"></a>
-### KB-258 — Bloco docs/3d/ com índice e guias, um arquivo por assunto com os nomes que o mapa das seções usa
+### KB-258
 
+- **Title:** Bloco docs/3d/ com índice e guias, um arquivo por assunto com os nomes que o mapa das seções usa
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6732,9 +6697,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-259"></a>
-### KB-259 — Bloco docs/xr/ com índice e guias
+### KB-259
 
+- **Title:** Bloco docs/xr/ com índice e guias
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6757,9 +6722,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-260"></a>
-### KB-260 — Páginas de referência novas em docs/lua-api/
+### KB-260
 
+- **Title:** Páginas de referência novas em docs/lua-api/
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6782,9 +6747,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-261"></a>
-### KB-261 — Guias atualizados na mesma mudança de cada item
+### KB-261
 
+- **Title:** Guias atualizados na mesma mudança de cada item
 - **Status:** todo
 - **Type:** docs
 - **Priority:** medium
@@ -6807,9 +6772,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-262"></a>
-### KB-262 — Guia docs/core/extending.md de como crescer a engine em 2D e em 3D por plugins nativos e por plugins em Lua…
+### KB-262
 
+- **Title:** Guia docs/core/extending.md de como crescer a engine em 2D e em 3D por plugins nativos e por plugins em Lua…
 - **Status:** todo
 - **Type:** docs
 - **Priority:** medium
@@ -6832,9 +6797,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-263"></a>
-### KB-263 — O AGENTS.md descreve o 3D e o XR no presente
+### KB-263
 
+- **Title:** O AGENTS.md descreve o 3D e o XR no presente
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6857,9 +6822,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-264"></a>
-### KB-264 — Revisar o projeto inteiro de novo em busca de bugs, código legado, código sem uso, erros, condições de…
+### KB-264
 
+- **Title:** Revisar o projeto inteiro de novo em busca de bugs, código legado, código sem uso, erros, condições de…
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -6882,38 +6847,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-265"></a>
-### KB-265 — O Tiny Island não compila para iOS, tvOS e macOS porque o plugin sign-in do repositório irmão de plugins só…
+### KB-266
 
-- **Status:** todo
-- **Type:** feature
-- **Priority:** medium
-- **Complexity:** 3
-- **Disposition:** canceled
-- **Archived:** 2026-11-24
-- **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
-
-#### Description
-
-Cancelado: o plugin sai do sample pelo [KB-303](#kb-303), porque plugins não ficam neste repositório.
-
-Etapa: Revisão.
-
-O Tiny Island não compila para iOS, tvOS e macOS porque o plugin `sign-in` do repositório irmão de plugins só tem Android e web. Todo sample roda em todas as plataformas: o plugin ganha a parte Apple (Sign in with Apple e o Game Center onde couber), com o seu sample e teste, e o Tiny Island compila e roda nos simuladores da Apple.
-
-A complexidade é uma estimativa provisória pelo tamanho do item.
-
-#### Acceptance criteria
-
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
-
-#### Attachments
-
-- None
-
-<a name="kb-266"></a>
-### KB-266 — Acordar na hora certa no modo onChange do window.redraw
-
+- **Title:** Acordar na hora certa no modo onChange do window.redraw
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6936,9 +6872,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-267"></a>
-### KB-267 — Revisão de desempenho da engine inteira, medida nos aparelhos modestos, na web e nos desktops: shaders de…
+### KB-267
 
+- **Title:** Revisão de desempenho da engine inteira, medida nos aparelhos modestos, na web e nos desktops: shaders de…
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -6961,9 +6897,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-268"></a>
-### KB-268 — O AGENTS.md com tudo o que for relevante do projeto que mudar neste grupo
+### KB-268
 
+- **Title:** O AGENTS.md com tudo o que for relevante do projeto que mudar neste grupo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -6986,9 +6922,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-269"></a>
-### KB-269 — Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
+### KB-269
 
+- **Title:** Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -7011,9 +6947,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-270"></a>
-### KB-270 — Engine isolada do sistema e C++ separado da camada Lua
+### KB-270
 
+- **Title:** Engine isolada do sistema e C++ separado da camada Lua
 - **Status:** todo
 - **Type:** epic
 - **Priority:** medium
@@ -7033,9 +6969,9 @@ Convenções desta lista: "todas as plataformas" quer dizer macOS, Windows, Linu
 
 - None
 
-<a name="kb-271"></a>
-### KB-271 — Os samples de cada plugin do repositório irmão de plugins testam tudo o que a engine deixa aos plugins, de…
+### KB-271
 
+- **Title:** Os samples de cada plugin do repositório irmão de plugins testam tudo o que a engine deixa aos plugins, de…
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7059,9 +6995,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-272"></a>
-### KB-272 — Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…
+### KB-272
 
+- **Title:** Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…
 - **Status:** done
 - **Type:** feature
 - **Priority:** medium
@@ -7082,9 +7018,9 @@ Todo build da CI trata aviso como erro nos alvos da engine, pela opção `HAYLEN
 - [Build](docs/tools/build.md)
 - [Testes](docs/tools/testing.md)
 
-<a name="kb-273"></a>
-### KB-273 — Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e…
+### KB-273
 
+- **Title:** Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e…
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -7107,9 +7043,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-274"></a>
-### KB-274 — Itens de BD que mudam com a camada Lua, a conferir quando cada um for feito
+### KB-274
 
+- **Title:** Itens de BD que mudam com a camada Lua, a conferir quando cada um for feito
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7132,9 +7068,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-275"></a>
-### KB-275 — Desfoque progressivo, polígonos com morph, layouts e rolagem aninhada
+### KB-275
 
+- **Title:** Desfoque progressivo, polígonos com morph, layouts e rolagem aninhada
 - **Status:** todo
 - **Type:** epic
 - **Priority:** medium
@@ -7152,9 +7088,9 @@ Recursos de UI e de gráficos dos toolkits nativos que fazem sentido para a Hayl
 
 - None
 
-<a name="kb-276"></a>
-### KB-276 — Desfoque progressivo
+### KB-276
 
+- **Title:** Desfoque progressivo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7175,9 +7111,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-277"></a>
-### KB-277 — Polígonos arredondados e morph entre formas
+### KB-277
 
+- **Title:** Polígonos arredondados e morph entre formas
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7198,9 +7134,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-278"></a>
-### KB-278 — Layouts
+### KB-278
 
+- **Title:** Layouts
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7221,9 +7157,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-279"></a>
-### KB-279 — Rolagem aninhada com o resto do gesto e a velocidade certa
+### KB-279
 
+- **Title:** Rolagem aninhada com o resto do gesto e a velocidade certa
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7244,9 +7180,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-280"></a>
-### KB-280 — Plugins sem limite em toda a engine
+### KB-280
 
+- **Title:** Plugins sem limite em toda a engine
 - **Status:** todo
 - **Type:** epic
 - **Priority:** medium
@@ -7264,9 +7200,9 @@ Um plugin acrescenta, muda ou substitui qualquer capacidade da engine, no 2D, no
 
 - None
 
-<a name="kb-281"></a>
-### KB-281 — Backends substituíveis, parte da auditoria de extensibilidade abaixo
+### KB-281
 
+- **Title:** Backends substituíveis, parte da auditoria de extensibilidade abaixo
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7287,9 +7223,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-282"></a>
-### KB-282 — Auditoria de extensibilidade de toda a engine
+### KB-282
 
+- **Title:** Auditoria de extensibilidade de toda a engine
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -7311,9 +7247,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-283"></a>
-### KB-283 — Binários prontos de plugins em toda plataforma
+### KB-283
 
+- **Title:** Binários prontos de plugins em toda plataforma
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7334,9 +7270,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-284"></a>
-### KB-284 — Conteúdo nos plugins
+### KB-284
 
+- **Title:** Conteúdo nos plugins
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7357,9 +7293,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-285"></a>
-### KB-285 — Plugins no playground de um site
+### KB-285
 
+- **Title:** Plugins no playground de um site
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7381,9 +7317,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-286"></a>
-### KB-286 — Plugins que estendem o C++ da engine também no runtime web pré-compilado
+### KB-286
 
+- **Title:** Plugins que estendem o C++ da engine também no runtime web pré-compilado
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7405,9 +7341,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-287"></a>
-### KB-287 — Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
+### KB-287
 
+- **Title:** Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -7428,9 +7364,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-288"></a>
-### KB-288 — Documentação final e repositório sem passado
+### KB-288
 
+- **Title:** Documentação final e repositório sem passado
 - **Status:** todo
 - **Type:** epic
 - **Priority:** low
@@ -7448,9 +7384,9 @@ A revisão final do `README.md`, de `docs` e do `AGENTS.md`, para que uma pessoa
 
 - None
 
-<a name="kb-289"></a>
-### KB-289 — README.md final, revisto quando todo o resto estiver pronto
+### KB-289
 
+- **Title:** README.md final, revisto quando todo o resto estiver pronto
 - **Status:** todo
 - **Type:** docs
 - **Priority:** low
@@ -7471,9 +7407,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-290"></a>
-### KB-290 — Documentação completa em docs
+### KB-290
 
+- **Title:** Documentação completa em docs
 - **Status:** todo
 - **Type:** docs
 - **Priority:** low
@@ -7494,9 +7430,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-291"></a>
-### KB-291 — Revisão final do AGENTS.md, do KANBAN.md, do README.md, de docs, dos comentários e de todo arquivo do…
+### KB-291
 
+- **Title:** Revisão final do AGENTS.md, do KANBAN.md, do README.md, de docs, dos comentários e de todo arquivo do…
 - **Status:** todo
 - **Type:** task
 - **Priority:** low
@@ -7517,9 +7453,9 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 - None
 
-<a name="kb-292"></a>
-### KB-292 — Montar os dados de instância do renderizador 3D em lote
+### KB-292
 
+- **Title:** Montar os dados de instância do renderizador 3D em lote
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7541,9 +7477,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-293"></a>
-### KB-293 — Modo do mouse da janela: normal, oculto, travado e preso
+### KB-293
 
+- **Title:** Modo do mouse da janela: normal, oculto, travado e preso
 - **Status:** doing
 - **Type:** feature
 - **Priority:** high
@@ -7566,9 +7502,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-294"></a>
-### KB-294 — O teclado do Android não mostra sugestões num campo de texto do app
+### KB-294
 
+- **Title:** O teclado do Android não mostra sugestões num campo de texto do app
 - **Status:** doing
 - **Type:** bug
 - **Priority:** high
@@ -7589,9 +7525,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-295"></a>
-### KB-295 — Texto ao longo de caminhos, arcos e curvas 3D
+### KB-295
 
+- **Title:** Texto ao longo de caminhos, arcos e curvas 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7612,9 +7548,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-296"></a>
-### KB-296 — Texturas HDR carregadas de arquivo no 2D e no 3D
+### KB-296
 
+- **Title:** Texturas HDR carregadas de arquivo no 2D e no 3D
 - **Status:** todo
 - **Type:** feature
 - **Priority:** medium
@@ -7635,41 +7571,14 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-297"></a>
-### KB-297 — Medir o custo do JSON nos carregamentos
+### KB-298
 
-- **Status:** todo
-- **Type:** spike
-- **Priority:** low
-- **Complexity:** 3
-- **Disposition:** canceled
-- **Archived:** 2026-11-24
-
-#### Description
-
-Pergunta: quanto do tempo de carga de mapas do Tiled, esqueletos, atlas, localização e `haylen.json` vai na leitura do JSON pelo nlohmann/json, nos aparelhos modestos? Duração: um dia. Resultado: uma tabela em `docs/graphics/rendering.md` ou no guia de assets com o tempo de cada formato, e, se o JSON pesar, as opções para o dono com o que as engines de referência fazem. O nlohmann/json é parte da base fixa do contrato de plugins, então qualquer troca vai ao dono antes.
-
-A complexidade é uma estimativa provisória.
-
-Motivo da retirada: o dono decidiu que o JSON da engine continua sendo o nlohmann/json, então medir o custo para avaliar uma troca não tem uso.
-
-#### Acceptance criteria
-
-- [ ] A tabela com o tempo de leitura do JSON de cada formato em pelo menos um aparelho modesto.
-- [ ] Uma recomendação ao dono, se o JSON pesar.
-
-#### Attachments
-
-- None
-
-<a name="kb-298"></a>
-### KB-298 — A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde
-
-- **Status:** doing
+- **Title:** A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde
+- **Status:** testing
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** A causa está achada: o executor antigo lia o sistema de arquivos depois que o runtime saía, e nos builds com verificações o erro de uma pasta que falta chama `strerror` depois da saída, o que aborta duas vezes por pasta, e a leitura engolia isso. As imagens passam a ser recolhidas na página antes do sistema de arquivos fechar, e o executor grava um relatório com toda parada e exceção, que a verificação em Python faz falhar. Falta o commit.
+- **Progress:** Corrigido em `5ae574537`: a página recolhe as imagens antes de o sistema de arquivos fechar, e o executor grava um relatório com toda parada e exceção, que a verificação faz falhar, com um teste em pytest. No Mac, com WebGL2, a nova execução passou 68 testes sem nenhum aborto, enquanto a página e o executor antigos abortavam duas vezes e saíam com sucesso. Falta a execução completa da CI.
 
 #### Description
 
@@ -7686,9 +7595,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-299"></a>
-### KB-299 — O foco pedido por uma GUI não tira o foco que a pessoa já deu
+### KB-299
 
+- **Title:** O foco pedido por uma GUI não tira o foco que a pessoa já deu
 - **Status:** testing
 - **Type:** bug
 - **Priority:** high
@@ -7710,9 +7619,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-300"></a>
-### KB-300 — A tecla segurada no Windows repete no ritmo do sistema
+### KB-300
 
+- **Title:** A tecla segurada no Windows repete no ritmo do sistema
 - **Status:** doing
 - **Type:** bug
 - **Priority:** medium
@@ -7734,9 +7643,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-301"></a>
-### KB-301 — A tela de erro expõe os seus elementos aos leitores de tela no Windows
+### KB-301
 
+- **Title:** A tela de erro expõe os seus elementos aos leitores de tela no Windows
 - **Status:** doing
 - **Type:** bug
 - **Priority:** medium
@@ -7757,9 +7666,9 @@ A complexidade é uma estimativa provisória.
 
 - None
 
-<a name="kb-302"></a>
-### KB-302 — A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`
+### KB-302
 
+- **Title:** A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`
 - **Status:** doing
 - **Type:** bug
 - **Priority:** medium
@@ -7779,9 +7688,9 @@ O CMake 4.2 da imagem Ubuntu da CI escreve `cmake_test_discovery_<hash>.json` em
 
 - None
 
-<a name="kb-303"></a>
-### KB-303 — Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island
+### KB-303
 
+- **Title:** Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island
 - **Status:** done
 - **Type:** refactor
 - **Priority:** high
@@ -7804,9 +7713,9 @@ Este repositório guarda só a engine. Plugins ficam nos repositórios deles, e 
 
 - None
 
-<a name="kb-304"></a>
-### KB-304 — Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo
+### KB-304
 
+- **Title:** Refatoração completa da IDE do playground do site, com tudo funcionando até o debug completo
 - **Status:** todo
 - **Type:** task
 - **Priority:** medium
@@ -7830,9 +7739,9 @@ O playground do site, que edita e roda apps no navegador sem backend pelo runtim
 
 - None
 
-<a name="kb-305"></a>
-### KB-305 — No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json
+### KB-305
 
+- **Title:** No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json
 - **Status:** testing
 - **Type:** bug
 - **Priority:** high
@@ -7852,9 +7761,9 @@ Com `devicePixelRatio` 2 e uma janela de navegador de desktop, o canvas ganha o 
 
 - None
 
-<a name="kb-306"></a>
-### KB-306 — Um toque ou clique instantâneo num campo às vezes não começa a edição na web
+### KB-306
 
+- **Title:** Um toque ou clique instantâneo num campo às vezes não começa a edição na web
 - **Status:** testing
 - **Type:** bug
 - **Priority:** high
@@ -7875,9 +7784,9 @@ No navegador, um toque instantâneo no campo de senha enquanto o campo de e-mail
 
 - None
 
-<a name="kb-307"></a>
-### KB-307 — Na web, o canvas do modo de página não acompanha a mudança de densidade da tela
+### KB-307
 
+- **Title:** Na web, o canvas do modo de página não acompanha a mudança de densidade da tela
 - **Status:** testing
 - **Type:** bug
 - **Priority:** medium
@@ -7897,9 +7806,9 @@ Quando a janela do navegador vai para uma tela de outra densidade, o modo de pá
 
 - None
 
-<a name="kb-308"></a>
-### KB-308 — Conferir na web um app com window.resizable falso
+### KB-308
 
+- **Title:** Conferir na web um app com window.resizable falso
 - **Status:** testing
 - **Type:** task
 - **Priority:** medium
@@ -7918,14 +7827,14 @@ O SDL só muda o tamanho do drawable do canvas quando a página muda de tamanho 
 
 - None
 
-<a name="kb-309"></a>
-### KB-309 — Os shards do sanitizer de endereços perdem a máquina da CI
+### KB-309
 
+- **Title:** Os shards do sanitizer de endereços perdem a máquina da CI
 - **Status:** doing
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** No shard 1, a máquina caiu no passo 2538 de 2541, durante as ligações em paralelo de `haylen-tests` e `haylen-lua-tests` com o sanitizer de endereços pelo `ld.bfd` do GCC 15. O shard 3 perdeu a máquina nas execuções 45469392035, 45537704137 e 45545074199 sem deixar log. A medição da memória da ligação e dos testes do shard 3 está rodando no Docker.
+- **Progress:** No Docker, uma ligação Debug com o sanitizer de endereços de cada programa de testes pelo `ld.bfd` do GCC 15 usa de 6,6 a 6,9 GB, e só o `libhaylen-engine.a` tem 2 GB, então as duas ligações em paralelo não cabem nos 16 GB da máquina da CI. A correção espera a compilação.
 
 #### Description
 
@@ -7956,23 +7865,114 @@ Na execução completa 45537704137, dois shards do job `Sanitizers (address)` pe
 - **Service expectation:** não definida. Não há previsão medida.
 - **Time convention:** America/Sao_Paulo.
 - **Idioma:** o texto dos cartões é em português, para o dono, e os marcadores, as chaves dos campos e os valores de status, tipo e prioridade ficam em inglês.
+- **Version control:** versionado a pedido do dono. O `KANBAN.md` faz parte do repositório, como o `AGENTS.md` diz, porque os streams leem os cartões nas suas worktrees e os testes do repositório conferem o quadro.
 - **Passado:** nenhum cartão registra como algo era antes. Cada cartão descreve o que falta e, quando termina, o que existe.
 
 ### Board rules
 
-- **Layout:** Only the title precedes the board. Card records follow it in numeric ID order, and these agreements stay last.
-- **Records:** Card records are authoritative. Update the board and records together through direct Markdown edits.
+- **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
+- **Next ID:** KB-310. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
+- **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
+- **Terms:** Types use common work-item words such as feature, bug, fix or hotfix. Common status and priority words map to the six statuses and four priorities. Canceled or duplicate work is a withdrawal, not done. A word never blocks an edit.
+- **Progress:** Started work may carry a `Progress` field with its current state in one or two sentences, rewritten at each substantial step and never appended.
 - **Column order:** TODO, DOING, BLOCKED, REVIEW and TESTING put the highest priority on top: critical → high → medium → low, then numeric ID ascending.
 - **DONE order:** Most recently finished on top: Finished date descending, then numeric ID descending. `unknown` dates go at the bottom.
 - **Unblock:** A blocked card returns to the column in its Blocked from field, and its blocked fields are removed.
 - **Moves:** Only the affected columns change, plus done-window archiving. Cells below a departing card move up one row, and cells below an inserted card move down one row.
-- **Done window:** 30 calendar days. A card finished on 2026-10-25 stays through 2026-11-24 and leaves on 2026-11-25. Check the window on every edit. An older done card gets `Archived` with the date it left the board and loses its cell, keeping its record. A shorter window archives more cards at once. A longer one does not restore archived cards.
+- **Done window:** 30 calendar days, shown in the DONE header. A card finished on 2026-10-25 stays through 2026-11-24. The first edit on or after 2026-11-25 archives it. Check the window on every edit. An older done card gets `Archived` with the date, loses its cell and moves to the end of the archive. A shorter window archives more cards at once. A longer one does not restore archived cards.
 - **Finished:** Required on every done card, with the actual completion date or `unknown`. A completion reported or observed today uses today's date. Unknown dates keep the card on the board, at the bottom of DONE.
 - **Priority change:** Move the cell to its new priority position within its column. A done card keeps its place.
-- **Reopen:** Remove Finished and any Archived field, record why and place the cell by its new column's rule.
+- **Reopen:** Remove Finished and any Archived field, move an archived record back to Cards, record why and place the cell by its new column's rule.
 - **Priority labels:** 🔴 critical, 🟠 high, 🟡 medium, 🟢 low.
-- **Next ID:** A new card takes the larger of the highest retained ID plus one and Next ID. Advance Next ID with every new card. Never reuse or renumber an ID.
-- **Archived:** Cards with an Archived date stay only in Cards. Delete archived records only on request, without reusing their IDs.
-- **Withdrawal:** A canceled, duplicate or superseded card keeps its last status and gets Archived with the date, a Disposition and the reason.
-- **Restore:** Only on request. Remove Archived, and Disposition for a withdrawn card, then place the cell by its column's rule. A done card still outside the window stays archived.
+- **Archive:** Archived records live only below `## Archive`, each added at the end when archived. Deleting everything below that heading clears old work, and the next edit restores the marker. Delete archived records only on request.
+- **Withdrawal:** A canceled, duplicate or replaced card keeps its last status, gets Archived with the date, a `Closed as` value and the reason, and moves to the archive.
+- **Restore:** Only on request. Remove Archived, and `Closed as` for a withdrawn card, move the record back to Cards in ID order and place the cell by its column's rule. A done card still outside the window stays archived.
+
+## Archive
+
+<!-- KANBAN:ARCHIVE -->
+
+### KB-002
+
+- **Title:** Plugin de exemplo do Tiny Island só com APIs da plataforma
+- **Status:** todo
+- **Type:** feature
+- **Priority:** low
+- **Complexity:** 5
+- **Closed as:** canceled
+- **Archived:** 2026-11-24
+- **Parent:** [KB-001 · Arte, samples e jogos](#kb-001)
+
+#### Description
+
+Cancelado: o plugin sai do sample pelo [KB-303](#kb-303), porque plugins não ficam neste repositório.
+
+**Plugin de exemplo do Tiny Island** só com APIs da plataforma. Existe: o plugin local `sign-in` do sample entra pelo Credential Manager no Android (`SignInPlugin`, com o client id do parâmetro `clientId`) e pelo script de um serviço de identidade na web, e nas outras plataformas tem só a API Lua, com `available` falso. Falta: refazê-lo só com APIs da plataforma, porque os plugins de SDKs de terceiros não ficam neste repositório e o módulo Android usa a biblioteca de identidade de terceiros enquanto a web carrega o script desse serviço. Um caminho é o Credential Manager com senha ou passkey no Android, o AuthenticationServices na Apple e a Credential Management API na web, com um teste de UI do login.
+
+A complexidade é uma estimativa provisória pelo tamanho do item.
+
+#### Acceptance criteria
+
+- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+
+#### Attachments
+
+- None
+
+### KB-265
+
+- **Title:** O Tiny Island não compila para iOS, tvOS e macOS porque o plugin sign-in do repositório irmão de plugins só…
+- **Status:** todo
+- **Type:** feature
+- **Priority:** medium
+- **Complexity:** 3
+- **Closed as:** canceled
+- **Archived:** 2026-11-24
+- **Parent:** [KB-031 · Suporte 3D e XR](#kb-031)
+
+#### Description
+
+Cancelado: o plugin sai do sample pelo [KB-303](#kb-303), porque plugins não ficam neste repositório.
+
+Etapa: Revisão.
+
+O Tiny Island não compila para iOS, tvOS e macOS porque o plugin `sign-in` do repositório irmão de plugins só tem Android e web. Todo sample roda em todas as plataformas: o plugin ganha a parte Apple (Sign in with Apple e o Game Center onde couber), com o seu sample e teste, e o Tiny Island compila e roda nos simuladores da Apple.
+
+A complexidade é uma estimativa provisória pelo tamanho do item.
+
+#### Acceptance criteria
+
+- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+
+#### Attachments
+
+- None
+
+### KB-297
+
+- **Title:** Medir o custo do JSON nos carregamentos
+- **Status:** todo
+- **Type:** spike
+- **Priority:** low
+- **Complexity:** 3
+- **Closed as:** canceled
+- **Archived:** 2026-11-24
+
+#### Description
+
+Pergunta: quanto do tempo de carga de mapas do Tiled, esqueletos, atlas, localização e `haylen.json` vai na leitura do JSON pelo nlohmann/json, nos aparelhos modestos? Duração: um dia. Resultado: uma tabela em `docs/graphics/rendering.md` ou no guia de assets com o tempo de cada formato, e, se o JSON pesar, as opções para o dono com o que as engines de referência fazem. O nlohmann/json é parte da base fixa do contrato de plugins, então qualquer troca vai ao dono antes.
+
+A complexidade é uma estimativa provisória.
+
+Motivo da retirada: o dono decidiu que o JSON da engine continua sendo o nlohmann/json, então medir o custo para avaliar uma troca não tem uso.
+
+#### Acceptance criteria
+
+- [ ] A tabela com o tempo de leitura do JSON de cada formato em pelo menos um aparelho modesto.
+- [ ] Uma recomendação ao dono, se o JSON pesar.
+
+#### Attachments
+
+- None

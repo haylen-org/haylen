@@ -2,7 +2,7 @@
 
 Haylen is a reusable engine for games, multimedia apps and applications. It is 2D and organized so that 3D can grow next to it without renaming anything. Its core is C++20, and its whole API is exported to Lua through [Varn](https://github.com/varn-org/varn). Lua is the primary way to write apps, and every capability stays fully usable from C++. The repository holds the engine, its command line with the backends of every platform, the scaffolds of apps and plugins, and the sample apps.
 
-This file is binding for every change. It describes the project as it is and the rules every feature and fix follows, so read it before working and follow it exactly instead of re-deriving conventions. When a rule or a design decision changes, update this file in the same change and describe the new state in the present tense. `KANBAN.md` holds the work that is missing, as cards on a board whose working agreements close the file, and the docs describe what exists.
+This file is binding for every change. It describes the project as it is and the rules every feature and fix follows, so read it before working and follow it exactly instead of re-deriving conventions. When a rule or a design decision changes, update this file in the same change and describe the new state in the present tense. `KANBAN.md` holds the work that is missing, as cards on a board followed by its working agreements and closed by the archive of finished and withdrawn cards, and the docs describe what exists.
 
 ## Core principles
 
@@ -173,7 +173,7 @@ haylen, haylen.cmd        The command "haylen" for macOS and Linux and for Windo
 pyproject.toml            The Python package of the tooling: its dependency, its entry point "haylen", the entry points of its backends and engine ports, its development tools and the settings of Ruff and pytest.
 uv.lock                   The exact versions and hashes of every Python package of the tooling, which uv installs.
 .python-version           The version of Python that uv runs the tooling with.
-KANBAN.md                 The board of the work that is missing, one card for each piece of work (Portuguese).
+KANBAN.md                 The board of the work that is missing, one card for each piece of work, with the archive of finished and withdrawn cards at its end (Portuguese).
 CONTRIBUTING.md           The terms of contributions, which become part of Haylen under its MIT License, and the promise that Haylen is free forever.
 engine/
   CMakeLists.txt          Standalone engine project, consumable by other projects.

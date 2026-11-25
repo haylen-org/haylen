@@ -25,11 +25,10 @@ class MarkdownPage:
                 yield number, line
 
     def anchors(self) -> set[str]:
-        """The anchors of the page: those GitHub makes for its headings and those its named anchors declare, such as `<a name="kb-001"></a>`."""
+        """The anchors that GitHub makes for the headings of the page."""
         found: set[str] = set()
         seen: collections.Counter[str] = collections.Counter()
         for _, line in self.prose():
-            found.update(re.findall(r'<a name="([^"]+)"></a>', line))
             heading = re.match(r"^#{1,6} (.+)$", line)
             if not heading:
                 continue

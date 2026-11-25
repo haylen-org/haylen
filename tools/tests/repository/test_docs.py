@@ -26,11 +26,11 @@ class DocsTest:
         return [DocsTest.DOCS / "README.md", *sorted(DocsTest.DOCS.glob("*/README.md"))]
 
     def test_every_page_starts_with_a_title_that_starts_with_an_emoji(self):
-        # The main page opens with the logo, and an issue template opens with the front matter whose name GitHub shows.
+        # The main page opens with the logo, an issue template opens with the front matter whose name GitHub shows, and the board keeps the fixed title of its format.
         wrong = []
         for path in DocsTest.pages():
             name = DocsTest.shown(path)
-            if name == "README.md" or name.startswith(".github/ISSUE_TEMPLATE/"):
+            if name in ("README.md", "KANBAN.md") or name.startswith(".github/ISSUE_TEMPLATE/"):
                 continue
             title = path.read_text(encoding="utf-8").split("\n", 1)[0]
             if not title.startswith("# ") or unicodedata.category(title[2:3]) != "So":
