@@ -5,17 +5,17 @@
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-293 · Modo do mouse da janela: normal, oculto, travado, preso e preso oculto](#kb-293)**<br>🟠 high · `feature` · 5/10 | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | — | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | — | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | — | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
 | **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
@@ -880,11 +880,11 @@ O analógico de um gamepad move o foco da UI nas quatro direções, também incl
 ### KB-027
 
 - **Title:** Vários gamepads ao mesmo tempo sem perder nada em toda plataforma
-- **Status:** doing
+- **Status:** testing
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** O segfault do teste de vibração e sensores no Linux era do teste e passou na execução completa da CI 45507380483 (`4a1ad46f8`). A verificação de página dos gamepads do navegador, com vários controles distintos e a reconexão no mesmo lugar, está escrita e falta rodar e entrar no `main`.
+- **Progress:** A verificação de página dos gamepads do navegador passa na página e no modo Worker (`a64fa1bf2`): dois controles têm um lugar cada, o segundo mantém o seu quando o primeiro sai, e o primeiro volta ao seu lugar. Os testes do SDL com quatro controles virtuais, o do iOS com controles virtuais e o segfault do Linux já passaram na CI. Falta a execução completa da CI com a verificação nova.
 - **Parent:** [KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)
 
 #### Description
@@ -7491,24 +7491,22 @@ A complexidade é uma estimativa provisória.
 
 ### KB-293
 
-- **Title:** Modo do mouse da janela: normal, oculto, travado e preso
-- **Status:** doing
+- **Title:** Modo do mouse da janela: normal, oculto, travado, preso e preso oculto
+- **Status:** testing
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 5
-- **Progress:** O commit está pronto localmente e espera a compilação dos runtimes de plataforma, do macOS, da web e do simulador do iOS, antes do push. Essa compilação achou um erro no `sdl/Host.cpp` que os testes da engine não compilam, descrito no [KB-312](#kb-312).
+- **Progress:** Pronto no `main` (`09a8523f9`): os testes da engine, o SDK do macOS, o da web e o do simulador do iOS compilam e passam, e a busca pelos nomes de antes no código, na documentação e nos samples está vazia. Falta a execução completa da CI.
 
 #### Description
 
-O mouse da janela tem um modo, com os termos comuns das engines: `window.setMouseMode(mode)` em Lua e `platform::Window::setMouseMode` em C++, com `normal` (cursor visível e livre), `hidden` (cursor escondido e livre), `locked` (cursor escondido e travado, com o movimento relativo em `input.mouseDelta()`, para câmeras em primeira pessoa e paddles) e `confined` (cursor visível e preso dentro da janela, para estratégia com rolagem pela borda e jogos com cursor), e `window.mouseMode` diz o modo atual. A resposta é um `platform::SystemAnswer`, como nas outras chamadas que o sistema pode recusar. O `window.setMouseLocked` sai da engine, dos samples, dos templates e da documentação, e `setMouseMode('locked')` é o único jeito de travar o mouse. Desktops: o modo relativo e o grab do mouse do SDL. Web: `locked` pelo Pointer Lock do navegador, que só começa com um gesto da pessoa, e `confined` responde `unsupported`, porque o navegador não deixa uma página prender um cursor visível. Celular e TV: só `normal`, e os outros respondem `unsupported`, porque não há cursor. Um modo que prende ou trava solta quando a janela perde o foco e volta quando ela o recebe, como o sistema faz.
-
-A complexidade é uma estimativa provisória.
+O mouse da janela tem um modo, com os termos comuns das engines: `window.setMouseMode(mode)` em Lua e `platform::Window::setMouseMode` em C++, e `window.mouseMode()` diz o modo atual. Os modos são `normal` (cursor visível e livre), `hidden` (cursor escondido e livre), `locked` (cursor escondido e travado, com o movimento relativo, para câmeras em primeira pessoa e paddles), `confined` (cursor visível e preso dentro da janela) e `confinedHidden` (cursor escondido e preso, para um cursor que o app desenha, como na estratégia com rolagem pela borda). É a única API do cursor e do mouse travado. A resposta é um `platform::SystemAnswer`, e a janela só muda de modo quando a plataforma concede. Desktops: o modo relativo e o grab do SDL, que soltam quando a janela perde o foco e voltam quando ela o recebe. Web: `hidden` pelo cursor do canvas e `locked` pelo Pointer Lock, que só começa com um gesto da pessoa, e os modos presos respondem `unsupported`. iPad e Mac Catalyst com ponteiro: `hidden` pelo estilo do ponteiro e `locked` pelo `prefersPointerLocked`, com a resposta do sistema. iPhone, Apple TV, visionOS e Android: só `normal`.
 
 #### Acceptance criteria
 
-- [ ] Os quatro modos funcionam no macOS, no Windows e no Linux, e a web, o iOS, o tvOS, o visionOS e o Android respondem como a descrição diz, com frases claras.
-- [ ] O `window.setMouseLocked` não existe mais em lugar nenhum do repositório (busca vazia).
-- [ ] Testes de engine, testes Lua, um teste no projeto de testes e a referência em `docs/lua-api/window.md`.
+- [x] Os cinco modos funcionam no macOS, no Windows e no Linux, e a web, o iPad, o Mac Catalyst, o iPhone, a Apple TV, o visionOS e o Android respondem como a descrição diz, com frases claras.
+- [x] O modo é a única API do cursor e do mouse travado em todo o repositório.
+- [x] Testes de engine, testes Lua, um seletor de modo no teste INP-002 do projeto de testes e a referência em `docs/lua-api/window.md`.
 
 #### Attachments
 
@@ -7521,7 +7519,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** O campo escondido da engine já manda ao Android o pedido oficial de nenhuma sugestão (`TYPE_TEXT_FLAG_NO_SUGGESTIONS`, sem correção), e o Gboard mostra a sua faixa de sugestões mesmo assim, porque o pedido é só um aviso ao teclado. O dono decidiu manter o pedido e documentar que alguns teclados mostram a faixa, que tocar numa sugestão entra no campo normalmente, e o teste de UI confere o pedido que a engine manda.
+- **Progress:** A documentação diz que alguns teclados, como o Gboard, ainda mostram a faixa de sugestões, e o teste de UI do Android lê o pedido que a engine manda pelo `dumpsys input_method` (`5b194d126`). Falta rodar esse teste no emulador.
 
 #### Description
 
@@ -7639,7 +7637,7 @@ A complexidade é uma estimativa provisória.
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 4
-- **Progress:** A causa está achada: no Windows e no Linux o texto passa pelo campo do Dear ImGui, que ignora as repetições que o sistema manda, inventa as suas próprias e aplica no máximo uma por quadro. O dono decidiu por um patch pequeno no ImGui, ligado por uma opção da engine, em que cada repetição do sistema vira exatamente uma edição, no ritmo configurado no sistema e em qualquer taxa de quadros, com um teste da engine sem cabeça e a prova no Windows. O patch está escrito e só vale onde a plataforma manda as repetições das teclas, o que a janela informa, já que os teclados físicos do UIKit não mandam repetições e ficam com as do ImGui.
+- **Progress:** O patch do ImGui está num commit local (`bce658595`) e passa nos 3021 testes da engine no Windows. O push espera o teste de UI da digitação numa máquina Windows 11 da Azure.
 
 #### Description
 
@@ -7659,11 +7657,11 @@ A complexidade é uma estimativa provisória.
 ### KB-301
 
 - **Title:** A tela de erro expõe os seus elementos aos leitores de tela no Windows
-- **Status:** doing
+- **Status:** testing
 - **Type:** bug
 - **Priority:** medium
 - **Complexity:** 3
-- **Progress:** A causa vale para toda plataforma, não só o Windows: enquanto a tela de erro aparece, o plugin da interface não desenha, então ninguém publica a árvore de acessibilidade. A tela de erro passa a publicar o seu diálogo, os textos e os botões e a atender as ações dos leitores de tela. Falta a compilação, os testes e o commit.
+- **Progress:** Pronto no `main` (`e1716cb1f`): a tela de erro publica uma árvore de diálogo, com o título, os detalhes, a mensagem, o local, o trecho, a pilha e os botões, e atende a ativação e o foco dos leitores de tela em toda plataforma. Os 3021 testes da engine passam no Windows, e o teste de UI `ErrorScreenTests` roda numa máquina Windows 11 da Azure.
 
 #### Description
 
