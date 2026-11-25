@@ -135,7 +135,7 @@ class FontFileTest : public ::testing::Test {
                 const int y = at / width;
                 touches = touches || x == 0 || y == 0 || x == width - 1 || y == height - 1;
 
-                for (const auto [dx, dy] : {std::pair{1, 0}, std::pair{-1, 0}, std::pair{0, 1}, std::pair{0, -1}}) {
+                for (const auto& [dx, dy] : {std::pair{1, 0}, std::pair{-1, 0}, std::pair{0, 1}, std::pair{0, -1}}) {
                     const int nx = x + dx;
                     const int ny = y + dy;
                     const std::size_t next = static_cast<std::size_t>(ny * width + nx);
