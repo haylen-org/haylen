@@ -8,10 +8,43 @@
   <canvas id="canvas" width="64" height="64"></canvas>
   <script>
     // The GPU tests run in this page on the graphics API that the parameter "api" of the address names, or on every device of the build, and print their output and their result to the console, which the driver of "gpu-tests.mjs" reads.
-    const api = new URLSearchParams(location.search).get("api") ?? "";
+    const parameters = new URLSearchParams(location.search);
+    const api = parameters.get("api") ?? "";
+    const output = parameters.get("output") ?? "";
+
+    // The images of the scenes that differ from their references, by their paths inside the folder that the parameter "output" names. The page reads them from its files while the runtime exits, before its files close, and the driver takes them from here, so nothing reaches the runtime once it ended.
+    var differences = {};
+    const isFolder = (path) => {
+      try {
+        return FS.isDir(FS.stat(path).mode);
+      } catch (error) {
+        if (error.name !== "ErrnoError") {
+          throw error;
+        }
+        return false;
+      }
+    };
+    const collect = (path) => {
+      for (const name of FS.readdir(path).filter((entry) => entry !== "." && entry !== "..")) {
+        const child = `${path}/${name}`;
+        if (FS.isDir(FS.stat(child).mode)) {
+          collect(child);
+        } else {
+          differences[child.slice(output.length + 1)] = btoa(Array.from(FS.readFile(child), (byte) => String.fromCharCode(byte)).join(""));
+        }
+      }
+    };
+
     var Module = {
       arguments: ["--gtest_color=no"],
-      preRun: [() => { ENV.HAYLEN_TEST_GRAPHICS_API = api; }],
+      preRun: [() => {
+        ENV.HAYLEN_TEST_GRAPHICS_API = api;
+        addOnExit(() => {
+          if (isFolder(output)) {
+            collect(output);
+          }
+        });
+      }],
       print: (text) => console.log(text),
       printErr: (text) => console.error(text),
       onExit: (code) => console.log(`The GPU tests finished with the status ${code}.`),

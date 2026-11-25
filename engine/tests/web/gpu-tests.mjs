@@ -1,12 +1,13 @@
-// Opens the page of the GPU tests in a headless browser over its debugging protocol, prints what the tests print, copies the images of the scenes that differ from their references out of the files of the page into the output folder, and exits with the status of the tests once they finish, or with 1 when the page fails or the time runs out.
-// Run it with Node: node gpu-tests.mjs <debugging port> <page address> <seconds> <output folder>
+// Opens the page of the GPU tests in a headless browser over its debugging protocol, prints what the tests print, writes the images of the scenes that differ from their references, which the page kept, into the output folder, and writes the report of the page as JSON: the status that the tests finished with, or null when they did not finish within the time, and every stop and uncaught exception of the page, whenever it came.
+// Run it with Node: node gpu-tests.mjs <debugging port> <page address> <seconds> <output folder> <report file>
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const [port, url, seconds, output] = process.argv.slice(2);
+const [port, url, seconds, output, report] = process.argv.slice(2);
 const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: "PUT" })).json();
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 const pending = new Map();
+const failures = [];
 let id = 0;
 let finish;
 const finished = new Promise((resolve) => (finish = resolve));
@@ -30,11 +31,14 @@ socket.onmessage = (event) => {
         if (status) {
             finish(Number(status[1]));
         } else if (text.startsWith("The GPU tests stopped:")) {
-            finish(1);
+            failures.push(text);
+            finish(null);
         }
     } else if (message.method === "Runtime.exceptionThrown") {
-        console.log(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text);
-        finish(1);
+        const text = message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text;
+        console.log(text);
+        failures.push(text);
+        finish(null);
     }
 };
 
@@ -43,33 +47,14 @@ await send("Runtime.enable");
 await send("Page.navigate", { url });
 const timeout = new Promise((resolve) => setTimeout(() => resolve(null), Number(seconds) * 1000));
 const status = await Promise.race([finished, timeout]);
-if (status === null) {
-    console.log(`The GPU tests did not finish within ${seconds} seconds.`);
-}
 
-// The page writes the images under the same path that the output folder has on this machine.
-const listing = `(() => {
-    const files = {};
-    const walk = (path) => {
-        for (const name of FS.readdir(path).filter((entry) => entry !== "." && entry !== "..")) {
-            const child = path + "/" + name;
-            if (FS.isDir(FS.stat(child).mode)) {
-                walk(child);
-            } else {
-                files[child.slice(${JSON.stringify(output)}.length + 1)] = btoa(Array.from(FS.readFile(child), (byte) => String.fromCharCode(byte)).join(""));
-            }
-        }
-    };
-    if (FS.analyzePath(${JSON.stringify(output)}).exists) {
-        walk(${JSON.stringify(output)});
-    }
-    return files;
-})()`;
-const files = (await send("Runtime.evaluate", { expression: listing, returnByValue: true })).result?.value ?? {};
-for (const [name, data] of Object.entries(files)) {
+// The page wrote the images under the same path that the output folder has on this machine, and kept them in a plain object as its runtime exited.
+const differences = (await send("Runtime.evaluate", { expression: "differences", returnByValue: true })).result?.value ?? {};
+for (const [name, data] of Object.entries(differences)) {
     const path = join(output, name);
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, Buffer.from(data, "base64"));
 }
 socket.close();
-process.exit(status ?? 1);
+writeFileSync(report, JSON.stringify({ status, failures }));
+process.exit(0);

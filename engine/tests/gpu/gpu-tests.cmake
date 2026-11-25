@@ -107,14 +107,14 @@ else()
   target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_tests_dir}/data/gpu" HAYLEN_GPU_TEST_OUTPUT="${CMAKE_BINARY_DIR}/gpu-test-output")
 endif()
 
-# On the web the tests run in the page of `tests/web/gpu-tests.html`, which names the API through the environment and whose files the driver of the page reads the images of the scenes that differ from. They wait for the GPU in turns of the event loop of the browser through the promise integration of WebAssembly, and read the reference images that the page preloads at their paths on this machine.
+# On the web the tests run in the page of `tests/web/gpu-tests.html`, which names the API through the environment and reads the images of the scenes that differ from their files as the runtime exits, before the files close. They wait for the GPU in turns of the event loop of the browser through the promise integration of WebAssembly, and read the reference images that the page preloads at their paths on this machine.
 if(EMSCRIPTEN)
   target_link_options(haylen-gpu-tests PRIVATE
     -sJSPI
     -sEXIT_RUNTIME=1
     -sALLOW_MEMORY_GROWTH=1
     -sSTACK_SIZE=1048576
-    "-sEXPORTED_RUNTIME_METHODS=[ENV,FS]"
+    "-sEXPORTED_RUNTIME_METHODS=[ENV,FS,addOnExit]"
     "--preload-file=${haylen_tests_dir}/data/gpu@${haylen_tests_dir}/data/gpu"
   )
   set_property(TARGET haylen-gpu-tests APPEND PROPERTY LINK_DEPENDS "${haylen_tests_dir}/web/gpu-tests.html")
