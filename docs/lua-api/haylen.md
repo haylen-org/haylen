@@ -103,7 +103,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | `window.width`, `window.height` | integer | `1280`, `720` | The size of the window when it opens. |
 | `window.fullscreen` | boolean | `false` | Starts in fullscreen. |
 | `window.maxPixelDensity` | number | `0` | The most framebuffer pixels in each window point, or `0` for every pixel of the display, as [`window.setMaxPixelDensity`](window.md#windowsetmaxpixeldensitycap) describes. |
-| `window.resizable` | boolean | `true` | Whether the player may resize a desktop window. [`window.setResizable`](window.md#desktop-windows) changes it later. |
+| `window.resizable` | boolean | `true` | Whether the player may resize a desktop window. [`window.setResizable`](window.md#desktop-windows) changes it later. The canvas of a web page follows the size of the page whatever it says, since the page decides that size. |
 | `window.vsync` | boolean | `true` | Waits for the refresh of the display before it shows a frame. |
 | `window.frameRate` | integer | `0` | The frames per second the app aims for, from 1 to 1000, or `0` for every refresh of the display. [`window.setFrameRate`](window.md#windowsetframerateframespersecond) changes it later. |
 | `window.sampleCount` | integer | `1` | The sample count of multisampling. |

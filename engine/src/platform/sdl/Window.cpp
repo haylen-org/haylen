@@ -169,9 +169,14 @@ SDL_WindowFlags Window::getFlags(const core::AppConfig::Window& options, gpu::De
         flags |= SDL_WINDOW_FULLSCREEN;
     }
 
+    // The page decides the size of the canvas, so the window of a page follows it whatever `window.resizable` says, as the windows that always fill the screen of a phone do, and SDL follows the size of the page only for a window that it may resize.
+#if defined(__EMSCRIPTEN__)
+    flags |= SDL_WINDOW_RESIZABLE;
+#else
     if (options.resizable) {
         flags |= SDL_WINDOW_RESIZABLE;
     }
+#endif
 
     if (!options.decorated) {
         flags |= SDL_WINDOW_BORDERLESS;

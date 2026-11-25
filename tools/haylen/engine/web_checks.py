@@ -58,7 +58,7 @@ class WebChecks:
         "missing": ["ready", "unsupported"],
     }
     SCREENS_BROWSERS = {"granted": "grants every screen", "denied": "denies every screen", "missing": "has no Window Management API"}
-    # The canvas check: a page in a desktop window of density 2 whose canvas fills the page and follows a resize and a move to a screen of density 1, when the first graphics API starts, when the browser offers no WebGPU adapter, so the window of WebGL2 opens on the canvas after the window of WebGPU closed, and in the Worker mode.
+    # The canvas check: a page in a desktop window of density 2 whose canvas, of a window that `haylen.json` keeps from resizing, fills the page and follows a resize and a move to a screen of density 1, when the first graphics API starts, when the browser offers no WebGPU adapter, so the window of WebGL2 opens on the canvas after the window of WebGPU closed, and in the Worker mode.
     CANVAS_STEPS = {
         "first": ["ready", "fills the page", "follows a resize", "follows the density"],
         "fallback": ["ready", "fell back to WebGL2", "fills the page", "follows a resize", "follows the density"],
