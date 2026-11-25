@@ -183,7 +183,8 @@ haylen_enable_warnings(haylen-lua-tests)
 haylen_enable_coverage(haylen-lua-tests)
 add_dependencies(haylen-lua-tests haylen-native-test)
 
-# The tests read their data from the folder of the tests of the core, as those do.
+# The tests read their data from the folder of the tests of the core, as those do. Each directory that discovers tests includes the module itself, since CMake 3.28 keeps the script of the discovery in the scope of the directory that included it.
+include(GoogleTest)
 gtest_discover_tests(haylen-lua-tests
   WORKING_DIRECTORY "${HAYLEN_ENGINE_DIR}/tests"
   DISCOVERY_TIMEOUT 60
