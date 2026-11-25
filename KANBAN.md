@@ -4,19 +4,20 @@
 
 | TODO | DOING | BLOCKED | REVIEW | TESTING | DONE (30 days) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
-| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)**<br>🟠 high · `epic` · 9/10 | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-013 · Conferir a entrada de texto no Windows (numa VM da Azure) e no Mac Catalyst por testes automáticos](#kb-013)**<br>🟠 high · `task` · 3/10 | **[KB-310 · O haylen.json só exige o que a engine e a plataforma realmente precisam](#kb-310)**<br>🟠 high · `fix` · 3/10 |
+| **[KB-010 · Estabilização do texto, da ferramenta, dos samples e revisão geral](#kb-010)**<br>🟠 high · `epic` · 9/10 | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-011 · Limpeza de legibilidade em todos os arquivos da engine](#kb-011)**<br>🟠 high · `feature` · 3/10 | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
+| **[KB-012 · O AGENTS.md com tudo o que for relevante do que este grupo muda no projeto](#kb-012)**<br>🟠 high · `feature` · 3/10 | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-305 · No navegador de desktop com tela de alta densidade, o canvas fica preso no tamanho da janela do haylen.json](#kb-305)**<br>🟠 high · `bug` · 4/10 | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-020 · Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado](#kb-020)**<br>🟠 high · `task` · 3/10 | **[KB-293 · Modo do mouse da janela: normal, oculto, travado e preso](#kb-293)**<br>🟠 high · `feature` · 5/10 | — | — | **[KB-306 · Um toque ou clique instantâneo num campo às vezes não começa a edição na web](#kb-306)**<br>🟠 high · `bug` · 5/10 | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-021 · Estabilização do tooling, da CI e das ferramentas de desenvolvimento](#kb-021)**<br>🟠 high · `epic` · 9/10 | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 | — | — | **[KB-309 · Os shards do sanitizer de endereços perdem a máquina da CI](#kb-309)**<br>🟠 high · `bug` · 4/10 | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-022 · Concluir os itens abertos do grupo BA e conferir contra o código a engine sem APIs de sistema, o ciclo de…](#kb-022)**<br>🟠 high · `feature` · 3/10 | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 | — | — | **[KB-302 · A descoberta dos testes do Linux deixa um arquivo na pasta `engine/tests`](#kb-302)**<br>🟡 medium · `bug` · 2/10 | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 | — | — | **[KB-307 · Na web, o canvas do modo de página não acompanha a mudança de densidade da tela](#kb-307)**<br>🟡 medium · `bug` · 3/10 | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | **[KB-308 · Conferir na web um app com window.resizable falso](#kb-308)**<br>🟡 medium · `task` · 2/10 | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-312 · O haylen test compila o runtime da plataforma desta máquina](#kb-312)**<br>🟠 high · `fix` · 3/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-313 · O app escolhe os aparelhos do iOS em que roda: iPhone, iPad ou os dois](#kb-313)**<br>🟠 high · `feature` · 4/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-314 · O projeto do app tem controle total sobre o projeto nativo de cada plataforma](#kb-314)**<br>🟠 high · `task` · 6/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-316 · No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some](#kb-316)**<br>🟠 high · `bug` · 5/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
 | **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
 | **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
 | **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
@@ -397,11 +398,12 @@ Os aparelhos, os drivers e as plataformas da camada em SDL3 e da RHI, e a revis�
 ### KB-007
 
 - **Title:** Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…
-- **Status:** doing
+- **Status:** done
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** No Linux com NVIDIA T4, GCC 13 e duas telas no X11, o projeto de testes inteiro passou no Vulkan e no OpenGL, 468 testes em cada um, e a digitação, o Backspace, colar, Unicode, o japonês do ibus-mozc e um link pelo D-Bus chegam ao app; o Wayland com o Weston está rodando. No Windows com T4, os testes de GPU passam no Direct3D 12, no Direct3D 11, no Vulkan e no OpenGL, e na máquina Windows 11 da Azure passam os 3013 testes da engine e os de GPU no WARP. Três correções estão no `main`: um parâmetro que escondia um membro e um laço que copiava pares, achados pelo GCC 13, e os testes Lua que o CMake 3.28 do Ubuntu 24.04 não descobria (`82d6320db`, `d47a518fc`, `bd8cd9c4b`), e o projeto de testes ganhou `--run-all` (`b44dc00e3`). Na máquina Windows 11 da Azure passaram também os seis testes de UI, os cinco de texto e o novo de links pelo pipe nomeado, e o instalador instala, roda, fecha com o status 0 e desinstala limpo; o grupo da Azure já foi apagado. O japonês só funcionou depois de pôr o `ja-JP` na lista de idiomas do usuário, o que vai para a receita.
+- **Finished:** 2026-11-25
+- **Progress:** Pronto em máquinas reais. No Windows com NVIDIA T4, o projeto de testes inteiro roda numa janela com `--run-all`, 469 testes sem falha no Direct3D 12, no Direct3D 11, no Vulkan e no OpenGL, e os testes de GPU passam nas quatro APIs; no Windows 11 da Azure passam os 3013 testes da engine, os de GPU no WARP, os seis testes de UI e o instalador. No Linux com T4, 468 testes sem falha no Vulkan e no OpenGL, no X11 e no Wayland com o Weston, com texto, o japonês do IBus Mozc, colar, Unicode e links pelo AT-SPI e pelo D-Bus, e o `.deb` e o AppImage instalam, rodam e fecham. As correções estão no `main` (`82d6320db`, `d47a518fc`, `bd8cd9c4b`, `b44dc00e3`, `043086853`, `c1e629939`), e todas as máquinas da nuvem foram apagadas e conferidas. O bloqueio do quadro no Wayland com a tela apagada ficou no [KB-316](#kb-316).
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
@@ -412,7 +414,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 
 #### Acceptance criteria
 
-- [ ] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
+- [x] O que a descrição pede está implementado, exportado para Lua quando é API, testado e documentado, sem nada silenciado nem mascarado.
 
 #### Attachments
 
@@ -7994,6 +7996,28 @@ Um app sem `identifier` que roda pelo `haylen app run` recebe o identificador ge
 
 - None
 
+### KB-316
+
+- **Title:** No Wayland, a linha de quadros não trava quando a tela apaga ou a janela some
+- **Status:** todo
+- **Type:** bug
+- **Priority:** high
+- **Complexity:** 5
+
+#### Description
+
+No Linux com Wayland, o Weston apaga as telas depois de cinco minutos parado, e enquanto a tela está apagada o compositor não manda os avisos de quadro à janela. A swapchain do Vulkan, pelo comportamento do Mesa, então trava a linha de quadros até o próximo aviso, e com ela os timers, a rede, o áudio controlado pelo app e tudo o que roda no quadro. O `AGENTS.md` diz que a linha de quadros nunca trava. No macOS a engine já resolve o mesmo caso: com a janela escondida ou coberta, os quadros vêm de um timer num ritmo baixo e nada é apresentado. A Haylen faz o mesmo no Wayland: quando o compositor diz que a janela está suspensa ou não manda o aviso de quadro, a engine para de apresentar e roda os quadros por um timer no ritmo de janela escondida, e volta a apresentar quando os avisos voltam, sem esperar dentro da swapchain. Achado no Weston de uma máquina Linux com NVIDIA T4, que só passou com `--idle-time=0`.
+
+#### Acceptance criteria
+
+- [ ] Com a tela apagada ou a janela suspensa no Wayland, a linha de quadros continua rodando os timers e a rede sem apresentar, e volta a apresentar quando a janela volta.
+- [ ] Um teste numa máquina Linux com Wayland prova isso com o tempo de espera normal do Weston.
+- [ ] A documentação do ritmo dos quadros diz o que acontece no Wayland.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8016,7 +8040,7 @@ Um app sem `identifier` que roda pelo `haylen app run` recebe o identificador ge
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-316. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-317. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
