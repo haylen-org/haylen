@@ -473,6 +473,7 @@ A complexidade é uma estimativa provisória pelo tamanho do item.
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 3
+- **Progress:** Quatro revisões só de leitura, do Vulkan, do Direct3D 11 e 12, do OpenGL com o WebGPU e da camada do SDL3, trouxeram cerca de 45 defeitos candidatos, cada um conferido por um teste ou pelo código antes de ser corrigido. Os mais fortes: o OpenGL e os Direct3D recusam pipelines só de profundidade que o dispositivo nulo e o Metal aceitam, o Vulkan deixa o quadro e as swapchains abertos depois de perder o dispositivo, o SDL manda à janela principal os eventos de janelas de saída já destruídas, o Wayland lista os modos de tela em pontos em vez de pixels, e uma caneta manda eventos de mouse e de toque juntos.
 - **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
 
 #### Description
