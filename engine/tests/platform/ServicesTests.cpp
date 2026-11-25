@@ -53,6 +53,10 @@ class MinimalServices final : public port::PlatformService, public port::Display
         return false;
     }
 
+    [[nodiscard]] bool hasKeyRepeats() const noexcept override {
+        return false;
+    }
+
     [[nodiscard]] std::vector<Display> getDisplays() override {
         return {Display{.id = "screen", .bounds = getWindowFrame(), .workArea = getWindowFrame(), .scale = 1.0F, .primary = true}};
     }

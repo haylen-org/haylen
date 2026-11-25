@@ -29,6 +29,7 @@ class AppleServices final : public port::PlatformService, public port::DisplaySe
     [[nodiscard]] std::string getUserDataRefusal() override;
     [[nodiscard]] SystemInfo getSystemInfo() override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
+    [[nodiscard]] bool hasKeyRepeats() const noexcept override;
 
     [[nodiscard]] std::vector<Display> getDisplays() override;
     [[nodiscard]] std::string getWindowDisplayId() override;

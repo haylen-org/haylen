@@ -49,6 +49,7 @@ class NativeHost : public Host {
     [[nodiscard]] SystemGestures getSystemGestures() const noexcept override;
     void setSystemGestures(SystemGestures value) override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
+    [[nodiscard]] bool hasKeyRepeats() const noexcept override;
     [[nodiscard]] bool isScreenKeptOn() const noexcept override;
     [[nodiscard]] int getFrameRate() const noexcept override;
     void setFrameRate(int value) override;

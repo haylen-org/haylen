@@ -55,6 +55,7 @@ class Services final {
     [[nodiscard]] static std::string getUserDataRefusal();
     [[nodiscard]] static SystemInfo getSystemInfo();
     [[nodiscard]] static bool hasPointerDevice() noexcept;
+    [[nodiscard]] static bool hasKeyRepeats() noexcept;
 
     [[nodiscard]] static std::vector<Display> getDisplays();
     [[nodiscard]] static std::string getWindowDisplayId();

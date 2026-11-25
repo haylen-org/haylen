@@ -52,6 +52,11 @@ bool TestPortServices::hasPointerDevice() const noexcept {
     return false;
 }
 
+// The test port takes no keyboard.
+bool TestPortServices::hasKeyRepeats() const noexcept {
+    return false;
+}
+
 std::vector<Display> TestPortServices::getDisplays() {
     return {Display{.id = "test-port", .name = "Test port", .bounds = getWindowFrame(), .workArea = getWindowFrame(), .scale = 1.0F, .primary = true}};
 }

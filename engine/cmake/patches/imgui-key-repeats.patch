@@ -1,0 +1,171 @@
+Lets the backend report each repeat of a held keyboard key that the system makes, with io.ConfigKeyRepeatFromBackend, which turns off the repeats that Dear ImGui makes for keyboard keys, and lets InputText apply an editing key once for each press in the frame, so a held key follows the key repeat of the system at any framerate.
+
+--- a/imgui.h
++++ b/imgui.h
+@@ -2448,6 +2448,7 @@
+     float       DownDuration;       // Duration the key has been down (<0.0f: not pressed, 0.0f: just pressed, >0.0f: time held)
+     float       DownDurationPrev;   // Last frame duration the key has been down
+     float       AnalogValue;        // 0.0f..1.0f for gamepad values
++    int         RepeatCount;        // Repeats of the held key that the backend reported this frame through AddKeyRepeatEvent()
+ };
+ 
+ struct ImGuiIO
+@@ -2482,6 +2483,7 @@
+ 
+     // Widget options
+     bool        ConfigMacOSXBehaviors;          // = defined(__APPLE__) // Swap Cmd<>Ctrl keys + OS X style text editing cursor movement using Alt instead of Ctrl, Shortcuts using Cmd/Super instead of Ctrl, Line/Text Start and End using Cmd+Arrows instead of Home/End, Double click selects by word instead of selecting whole text, Multi-selection in lists uses Cmd/Super instead of Ctrl.
++    bool        ConfigKeyRepeatFromBackend;     // = false          // Keyboard keys repeat only through AddKeyRepeatEvent(), each repeat one press, instead of KeyRepeatDelay and KeyRepeatRate, so they follow the key repeat of the system at any framerate. Gamepad keys keep repeating through KeyRepeatDelay and KeyRepeatRate.
+     bool        ConfigInputTrickleEventQueue;   // = true           // Enable input queue trickling: some types of events submitted during the same frame (e.g. button down + up) will be spread over multiple frames, improving interactions with low framerates.
+     bool        ConfigInputTextCursorBlink;     // = true           // Enable blinking cursor (optional as some users consider it to be distracting).
+     bool        ConfigInputTextEnterKeepActive; // = false          // [BETA] Pressing Enter will reactivate item and select all text (single-line only). Ctrl+Enter or Shift+Enter will deactivate normally.
+@@ -2584,7 +2586,8 @@
+ 
+     // Input Functions
+     IMGUI_API void  AddKeyEvent(ImGuiKey key, bool down);                   // Queue a new key down/up event. Key should be "translated" (as in, generally ImGuiKey_A matches the key end-user would use to emit an 'A' character)
+-    IMGUI_API void  AddKeyAnalogEvent(ImGuiKey key, bool down, float v);    // Queue a new key down/up event for analog values (e.g. ImGuiKey_Gamepad_ values). Dead-zones should be handled by the backend.
++    IMGUI_API void  AddKeyAnalogEvent(ImGuiKey key, bool down, float v);
++    IMGUI_API void  AddKeyRepeatEvent(ImGuiKey key);                        // Queue a repeat of a held keyboard key that the system reported, with ConfigKeyRepeatFromBackend.    // Queue a new key down/up event for analog values (e.g. ImGuiKey_Gamepad_ values). Dead-zones should be handled by the backend.
+     IMGUI_API void  AddMousePosEvent(float x, float y);                     // Queue a mouse position update. Use -FLT_MAX,-FLT_MAX to signify no mouse (e.g. app not focused and not hovered)
+     IMGUI_API void  AddMouseButtonEvent(int button, bool down);             // Queue a mouse button change
+     IMGUI_API void  AddMouseWheelEvent(float wheel_x, float wheel_y);       // Queue a mouse wheel update. wheel_y<0: scroll down, wheel_y>0: scroll up, wheel_x<0: scroll right, wheel_x>0: scroll left.
+--- a/imgui_internal.h	2026-11-25 03:00:24
++++ b/imgui_internal.h	2026-11-25 03:00:43
+@@ -1636,7 +1636,7 @@
+ struct ImGuiInputEventMousePos      { float PosX, PosY; ImGuiMouseSource MouseSource; };
+ struct ImGuiInputEventMouseWheel    { float WheelX, WheelY; ImGuiMouseSource MouseSource; };
+ struct ImGuiInputEventMouseButton   { int Button; bool Down; ImGuiMouseSource MouseSource; };
+-struct ImGuiInputEventKey           { ImGuiKey Key; bool Down; float AnalogValue; };
++struct ImGuiInputEventKey           { ImGuiKey Key; bool Down; bool Repeat; float AnalogValue; };
+ struct ImGuiInputEventText          { unsigned int Char; };
+ struct ImGuiInputEventAppFocused    { bool Focused; };
+ 
+--- a/imgui.cpp
++++ b/imgui.cpp
+@@ -1739,6 +1739,7 @@
+ #else
+     ConfigMacOSXBehaviors = false;
+ #endif
++    ConfigKeyRepeatFromBackend = false;
+     ConfigInputTrickleEventQueue = true;
+     ConfigInputTextCursorBlink = true;
+     ConfigInputTextEnterKeepActive = false;
+@@ -1963,6 +1964,25 @@
+     e.Key.Key = key;
+     e.Key.Down = down;
+     e.Key.AnalogValue = analog_value;
++    g.InputEventsQueue.push_back(e);
++}
++
++void ImGuiIO::AddKeyRepeatEvent(ImGuiKey key)
++{
++    IM_ASSERT(Ctx != NULL);
++    if (key == ImGuiKey_None || !AppAcceptingEvents)
++        return;
++    ImGuiContext& g = *Ctx;
++    IM_ASSERT(ImGui::IsKeyboardKey(key)); // Only keyboard keys repeat through the backend.
++
++    ImGuiInputEvent e;
++    e.Type = ImGuiInputEventType_Key;
++    e.Source = ImGuiInputSource_Keyboard;
++    e.EventId = g.InputEventsNextEventId++;
++    e.Key.Key = key;
++    e.Key.Down = true;
++    e.Key.Repeat = true;
++    e.Key.AnalogValue = 1.0f;
+     g.InputEventsQueue.push_back(e);
+ }
+ 
+@@ -9767,6 +9787,8 @@
+     if (!key_data->Down) // In theory this should already be encoded as (DownDuration < 0.0f), but testing this facilitates eating mechanism (until we finish work on key ownership)
+         return 0;
+     const float t = key_data->DownDuration;
++    if (g.IO.ConfigKeyRepeatFromBackend && IsKeyboardKey(key))
++        return (t == 0.0f ? 1 : 0) + key_data->RepeatCount;
+     return CalcTypematicRepeatAmount(t - g.IO.DeltaTime, t, repeat_delay, repeat_rate);
+ }
+ 
+@@ -10084,7 +10106,10 @@
+     {
+         float repeat_delay, repeat_rate;
+         GetTypematicRepeatRate(flags, &repeat_delay, &repeat_rate);
+-        pressed = (t > repeat_delay) && GetKeyPressedAmount(key, repeat_delay, repeat_rate) > 0;
++        if (GImGui->IO.ConfigKeyRepeatFromBackend && IsKeyboardKey(key))
++            pressed = key_data->RepeatCount > 0;
++        else
++            pressed = (t > repeat_delay) && GetKeyPressedAmount(key, repeat_delay, repeat_rate) > 0;
+         if (pressed && (flags & ImGuiInputFlags_RepeatUntilMask_))
+         {
+             // Slightly bias 'key_pressed_time' as DownDuration is an accumulation of DeltaTime which we compare to an absolute time value.
+@@ -10773,6 +10798,8 @@
+     bool mouse_moved = false, mouse_wheeled = false, key_changed = false, key_changed_nonchar = false, text_inputted = false;
+     int  mouse_button_changed = 0x00;
+     ImBitArray<ImGuiKey_NamedKey_COUNT> key_changed_mask;
++    for (int key = ImGuiKey_NamedKey_BEGIN; key < ImGuiKey_NamedKey_END; key++)
++        io.KeysData[key - ImGuiKey_NamedKey_BEGIN].RepeatCount = 0;
+ 
+     int event_n = 0;
+     for (; event_n < g.InputEventsQueue.Size; event_n++)
+@@ -10829,6 +10856,16 @@
+             if (trickle_interleaved_nonchar_keys_and_text && (text_inputted && !key_is_potentially_for_char_input))
+                 break;
+ 
++            // A repeat of the backend counts as one more press of the held key.
++            if (e->Key.Repeat)
++            {
++                if (key_data->Down)
++                    key_data->RepeatCount++;
++                if (trickle_interleaved_nonchar_keys_and_text && !key_is_potentially_for_char_input)
++                    key_changed_nonchar = true;
++                continue;
++            }
++
+             if (key_data->Down != e->Key.Down) // Analog change only do not trigger this, so it won't block e.g. further mouse pos events testing key_changed.
+             {
+                 key_changed = true;
+--- a/imgui_widgets.cpp	2026-11-25 03:00:24
++++ b/imgui_widgets.cpp	2026-11-25 03:01:28
+@@ -4778,6 +4778,13 @@
+     offset.x = InputTextCalcTextSize(&g, line_start, cursor_ptr, buf_end, NULL, NULL, ImDrawTextFlags_WrapKeepBlanks).x;
+     offset.y = (line_no + 1) * g.FontSize;
+     return offset;
++}
++
++// The presses of a pressed editing key that InputText applies this frame: one, or with io.ConfigKeyRepeatFromBackend the press of the key and each repeat that the backend reported.
++static int InputTextCountKeyPresses(ImGuiKey key)
++{
++    ImGuiContext& g = *GImGui;
++    return g.IO.ConfigKeyRepeatFromBackend ? ImMax(1, ImGui::GetKeyPressedAmount(key, 0.0f, 0.0f)) : 1;
+ }
+ 
+ // Edit a string of text
+@@ -5227,15 +5234,16 @@
+ 
+         // FIXME: Should use more Shortcut() and reduce IsKeyPressed()+SetKeyOwner(), but requires modifiers combination to be taken account of.
+         // FIXME-OSX: Missing support for Alt(option)+Right/Left = go to end of line, or next line if already in end of line.
+-        if (IsKeyPressed(ImGuiKey_LeftArrow))                        { state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_LINESTART : is_wordmove_key_down ? STB_TEXTEDIT_K_WORDLEFT : STB_TEXTEDIT_K_LEFT) | k_mask); }
+-        else if (IsKeyPressed(ImGuiKey_RightArrow))                  { state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_LINEEND : is_wordmove_key_down ? STB_TEXTEDIT_K_WORDRIGHT : STB_TEXTEDIT_K_RIGHT) | k_mask); }
+-        else if (IsKeyPressed(ImGuiKey_UpArrow) && is_multiline)     { if (io.KeyCtrl) SetScrollY(draw_window, ImMax(draw_window->Scroll.y - g.FontSize, 0.0f)); else state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTSTART : STB_TEXTEDIT_K_UP) | k_mask); }
+-        else if (IsKeyPressed(ImGuiKey_DownArrow) && is_multiline)   { if (io.KeyCtrl) SetScrollY(draw_window, ImMin(draw_window->Scroll.y + g.FontSize, GetScrollMaxY())); else state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTEND : STB_TEXTEDIT_K_DOWN) | k_mask); }
+-        else if (IsKeyPressed(ImGuiKey_PageUp) && is_multiline)      { state->OnKeyPressed(STB_TEXTEDIT_K_PGUP | k_mask); scroll_y -= row_count_per_page * g.FontSize; }
+-        else if (IsKeyPressed(ImGuiKey_PageDown) && is_multiline)    { state->OnKeyPressed(STB_TEXTEDIT_K_PGDOWN | k_mask); scroll_y += row_count_per_page * g.FontSize; }
++        if (IsKeyPressed(ImGuiKey_LeftArrow))                        { for (int n = InputTextCountKeyPresses(ImGuiKey_LeftArrow); n > 0; n--) state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_LINESTART : is_wordmove_key_down ? STB_TEXTEDIT_K_WORDLEFT : STB_TEXTEDIT_K_LEFT) | k_mask); }
++        else if (IsKeyPressed(ImGuiKey_RightArrow))                  { for (int n = InputTextCountKeyPresses(ImGuiKey_RightArrow); n > 0; n--) state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_LINEEND : is_wordmove_key_down ? STB_TEXTEDIT_K_WORDRIGHT : STB_TEXTEDIT_K_RIGHT) | k_mask); }
++        else if (IsKeyPressed(ImGuiKey_UpArrow) && is_multiline)     { if (io.KeyCtrl) SetScrollY(draw_window, ImMax(draw_window->Scroll.y - g.FontSize, 0.0f)); else for (int n = InputTextCountKeyPresses(ImGuiKey_UpArrow); n > 0; n--) state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTSTART : STB_TEXTEDIT_K_UP) | k_mask); }
++        else if (IsKeyPressed(ImGuiKey_DownArrow) && is_multiline)   { if (io.KeyCtrl) SetScrollY(draw_window, ImMin(draw_window->Scroll.y + g.FontSize, GetScrollMaxY())); else for (int n = InputTextCountKeyPresses(ImGuiKey_DownArrow); n > 0; n--) state->OnKeyPressed((is_startend_key_down ? STB_TEXTEDIT_K_TEXTEND : STB_TEXTEDIT_K_DOWN) | k_mask); }
++        else if (IsKeyPressed(ImGuiKey_PageUp) && is_multiline)      { for (int n = InputTextCountKeyPresses(ImGuiKey_PageUp); n > 0; n--) { state->OnKeyPressed(STB_TEXTEDIT_K_PGUP | k_mask); scroll_y -= row_count_per_page * g.FontSize; } }
++        else if (IsKeyPressed(ImGuiKey_PageDown) && is_multiline)    { for (int n = InputTextCountKeyPresses(ImGuiKey_PageDown); n > 0; n--) { state->OnKeyPressed(STB_TEXTEDIT_K_PGDOWN | k_mask); scroll_y += row_count_per_page * g.FontSize; } }
+         else if (IsKeyPressed(ImGuiKey_Home))                        { state->OnKeyPressed(io.KeyCtrl ? STB_TEXTEDIT_K_TEXTSTART | k_mask : STB_TEXTEDIT_K_LINESTART | k_mask); }
+         else if (IsKeyPressed(ImGuiKey_End))                         { state->OnKeyPressed(io.KeyCtrl ? STB_TEXTEDIT_K_TEXTEND | k_mask : STB_TEXTEDIT_K_LINEEND | k_mask); }
+         else if (IsKeyPressed(ImGuiKey_Delete) && !is_readonly && !is_cut)
++        for (int n = InputTextCountKeyPresses(ImGuiKey_Delete); n > 0; n--)
+         {
+             if (!state->HasSelection())
+             {
+@@ -5246,6 +5254,7 @@
+             state->OnKeyPressed(STB_TEXTEDIT_K_DELETE | k_mask);
+         }
+         else if (IsKeyPressed(ImGuiKey_Backspace) && !is_readonly)
++        for (int n = InputTextCountKeyPresses(ImGuiKey_Backspace); n > 0; n--)
+         {
+             if (!state->HasSelection())
+             {

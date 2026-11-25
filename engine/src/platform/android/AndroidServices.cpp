@@ -120,6 +120,10 @@ bool AndroidServices::hasPointerDevice() const noexcept {
     return !AndroidActivity::isTelevision();
 }
 
+bool AndroidServices::hasKeyRepeats() const noexcept {
+    return true;
+}
+
 Orientation AndroidServices::getOrientation() {
     return AndroidActivity::getOrientation();
 }

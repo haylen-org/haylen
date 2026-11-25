@@ -60,6 +60,7 @@ class WindowBinding final {
     static int foldSimulation(lua_State* L);
     static int setFoldSimulation(lua_State* L);
     static int hasPointerDevice(lua_State* L);
+    static int hasKeyRepeats(lua_State* L);
     static int backLeavesApp(lua_State* L);
     static int setBackLeavesApp(lua_State* L);
     static int keepScreenOn(lua_State* L);

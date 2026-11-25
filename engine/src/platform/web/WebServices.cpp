@@ -222,6 +222,10 @@ bool WebServices::hasPointerDevice() const noexcept {
     return true;
 }
 
+bool WebServices::hasKeyRepeats() const noexcept {
+    return true;
+}
+
 Orientation WebServices::getOrientation() {
     return static_cast<Orientation>(haylen_js_orientation());
 }

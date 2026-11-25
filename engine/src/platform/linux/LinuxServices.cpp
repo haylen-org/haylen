@@ -104,6 +104,10 @@ bool LinuxServices::hasPointerDevice() const noexcept {
     return true;
 }
 
+bool LinuxServices::hasKeyRepeats() const noexcept {
+    return true;
+}
+
 void LinuxServices::setWindowStyle(const WindowStyle& value) {
     LinuxDesktop::setStyle(value);
 }

@@ -312,6 +312,31 @@ TEST_F(TextInputTest, LeavesTheTextInputOfThePlatformOffInPlay) {
     EXPECT_FALSE(fixture.host().isKeyboardVisible());
 }
 
+// A platform that reports the repeats of a held key, as Windows and Linux do, deletes once for every repeat, also when several repeats arrive in one frame of a slow app, and the UI makes no repeats of its own.
+TEST_F(TextInputTest, DeletesOnceForEveryRepeatThatTheSystemReports) {
+    getInput().setNative(false);
+    auto gui = mount(R"({"kind": "textField", "id": "name", "value": "abcdefgh"})");
+    focus(*gui, "name");
+    press(haylen::input::Key::End, 0);
+    events.clear();
+
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Backspace});
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyDown, .key = haylen::input::Key::Backspace, .repeat = true});
+    }
+
+    // The field edits in the frame that the keys reach, and reports the change at the next one.
+    fixture.frames(2);
+    EXPECT_EQ(getLastEvent(), R"(name:change {"value":"abcd"})");
+
+    // A key that stays down for a second without a repeat of the system deletes nothing more.
+    fixture.frames(60);
+    getEngine().handleEvent({.type = haylen::platform::Event::Type::KeyUp, .key = haylen::input::Key::Backspace});
+    fixture.frames(1);
+    EXPECT_EQ(getLastEvent(), R"(name:change {"value":"abcd"})");
+    EXPECT_EQ(events.size(), 1U);
+}
+
 TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "abc"})");
     focus(*gui, "name");

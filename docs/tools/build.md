@@ -501,6 +501,10 @@ SDL measures the CSS size of the canvas when a window opens. A canvas that the p
 
 The Direct3D devices compose a transparent window of Windows with the desktop through a swapchain of DirectComposition with premultiplied alpha. SDL creates every window with a redirection surface, which covers the visual of that swapchain. The patch creates the transparent windows that draw through neither OpenGL nor Vulkan with `WS_EX_NOREDIRECTIONBITMAP`, so the visual shows. The windows of OpenGL keep the redirection surface, through which SDL makes them transparent.
 
+#### sdl-windows-key-repeats.patch
+
+Windows merges the autorepeats of a held key that an app has not read yet into one key message and one character message, whose repeat count tells how many repeats they stand for. SDL sent one key down and one character for each message, so an app whose frames slowed down heard fewer repeats than the keyboard made, and a held Backspace deleted less than the settings of the system ask for. The patch sends a key down and a character for every repeat that a message counts, so the UI applies each repeat of the system once, as [`window.hasKeyRepeats()`](../lua-api/window.md#windowhaskeyrepeats) describes.
+
 #### sdl-x11-quick-clicks.patch
 
 On X11, SDL hears every press and release of a mouse twice, once from the device itself and once from the virtual pointer that merges every device, and it counts on the state of the buttons to drop the second copy. The X server may deliver the press and the release of a quick click from the device before those of the virtual pointer. So a tap of a touchpad, a click that an assistive tool or a remote desktop makes through the XTEST extension, or a mouse that releases its button at once reached the app as a double click. The patch remembers the last press and the last release that SDL took from a device, and drops the event of the virtual pointer with the same source, button and time, while a press of the virtual pointer whose device event SDL skipped still reaches the app.
@@ -524,6 +528,10 @@ A gradient of SVG lays itself out in the bounding box of its shape, unless it se
 #### nanosvg-style-bounds.patch
 
 NanoSVG reads a style, such as the attribute `style` or the rules of a `<style>` element, one declaration at a time between semicolons, and trims the spaces at its ends. A declaration that holds nothing but spaces, such as the rule `.empty { }`, ended one byte past its text, so NanoSVG read memory after the end of the style, which the fuzzer of the vector images found. The patch trims each declaration and each name inside its own bytes.
+
+#### imgui-key-repeats.patch
+
+Dear ImGui makes the repeats of a held key itself, from its own delay and rate, and a text field reads each key once a frame, so a held Backspace deleted at most one character a frame, at a pace other than the one of the settings of the system, and slower when the frames slowed down. The patch adds `io.ConfigKeyRepeatFromBackend` and `io.AddKeyRepeatEvent`. While the flag is on, a keyboard key repeats only through the repeats that the backend reports, each one press, and the editing keys of a text field, the arrows, Page Up, Page Down, Delete and Backspace, apply once for every press of the frame. Gamepad keys keep the repeats of Dear ImGui. The UI turns the flag on where [`window.hasKeyRepeats()`](../lua-api/window.md#windowhaskeyrepeats) is `true` and hands every repeat of a key-down to Dear ImGui.
 
 #### clipper2-iterator.patch
 

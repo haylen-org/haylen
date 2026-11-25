@@ -138,9 +138,10 @@ endif()
 # SDL reads the keys of the whole page on the web, so a page that hosts the app next to elements of its own, such as an editor, could keep their keys from the app only by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks.
 # SDL writes a CSS size of one pixel on a canvas whose window closes at a pixel density other than 1, also on a canvas that the page sizes itself, so the next window on it takes the size of "haylen.json" and never follows the page, and the next patch leaves the style of such a canvas to the page.
 # The Direct3D devices compose transparent windows of Windows through DirectComposition, whose visual the redirection surface of the window covers, so the next patch creates such windows without one.
+# Windows merges the autorepeats of a held key that the app has not read yet into one message that counts them, which SDL sent as one key and one character, so the next patch sends one for every repeat.
 # SDL drops the copy of a click that X11 reports from both a device and the virtual pointer by the state of the buttons, which a quick click has already left, so the last patch drops the copy with the same source, button and time.
 if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
-  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-status-bar.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-scene-launch.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-tvos-mouse.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-frame-rate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-canvas-style.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-composition.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-x11-quick-clicks.patch")
+  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-status-bar.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-scene-launch.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-tvos-mouse.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-frame-rate.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-canvas-style.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-composition.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-windows-key-repeats.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-x11-quick-clicks.patch")
   set(sdl_hash f3bb06f55bed9557227a700af2ea62e49497ebdf58037732a731a5fb3ef8581f)
   haylen_patched_package_key(sdl_cache_key ${sdl_hash} ${sdl_patches})
   # SDL picks its UIKit backend by the system name, which Mac Catalyst builds name Darwin for the macOS SDK they compile against, so SDL configures with the name of iOS there.
@@ -263,10 +264,16 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
+# Dear ImGui repeats a held key itself, at most once a frame, so a patch lets the backend report each repeat that the system makes and lets a text field apply every press of the frame.
+set(imgui_patches "${CMAKE_CURRENT_LIST_DIR}/patches/imgui-key-repeats.patch")
+set(imgui_hash f7bf6bc76e5d79d40d751096663e6c5d18daf08129dd52e7f7b09e4251c8eeee)
+haylen_patched_package_key(imgui_cache_key ${imgui_hash} ${imgui_patches})
 CPMAddPackage(
   NAME imgui
   URL "https://github.com/ocornut/imgui/archive/refs/tags/v1.93.0.tar.gz"
-  URL_HASH SHA256=f7bf6bc76e5d79d40d751096663e6c5d18daf08129dd52e7f7b09e4251c8eeee
+  URL_HASH SHA256=${imgui_hash}
+  PATCHES ${imgui_patches}
+  CUSTOM_CACHE_KEY ${imgui_cache_key}
   DOWNLOAD_ONLY YES
 )
 

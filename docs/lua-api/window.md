@@ -242,6 +242,16 @@ local hint = window.hasPointerDevice() and 'Click to start' or 'Press select to 
 print(hint)
 ```
 
+### window.hasKeyRepeats()
+
+Returns `true` where a held key of the keyboard repeats as `keyDown` events whose `repeat` is `true`, at the delay and the rate of the settings of the system: on macOS, Windows, Linux, the web and Android. The UI applies each repeat once, so a held Backspace deletes at the pace of the system at any frame rate. It returns `false` on iPhones, iPads, Mac Catalyst windows, the Apple TV and Apple Vision Pro, whose hardware keyboards report presses and releases alone, so the UI repeats a held key itself there.
+
+```lua
+local window = require('haylen.window')
+
+print(window.hasKeyRepeats())
+```
+
 ## Keyboard
 
 ### window.setKeyboardVisible(visible)

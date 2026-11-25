@@ -45,6 +45,9 @@ class PlatformService {
 
     // Whether the device has a mouse or a touch screen, which TVs and consoles lack.
     [[nodiscard]] virtual bool hasPointerDevice() const noexcept = 0;
+
+    // Whether the keyboard of the platform repeats a held key as key-down events that are repeats, at the delay and the rate of the settings of the system.
+    [[nodiscard]] virtual bool hasKeyRepeats() const noexcept = 0;
 };
 
 } // namespace haylen::port

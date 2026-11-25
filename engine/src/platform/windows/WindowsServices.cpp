@@ -164,6 +164,10 @@ bool WindowsServices::hasPointerDevice() const noexcept {
     return true;
 }
 
+bool WindowsServices::hasKeyRepeats() const noexcept {
+    return true;
+}
+
 SystemInfo WindowsServices::getSystemInfo() {
     return WindowsSystem::getInfo();
 }

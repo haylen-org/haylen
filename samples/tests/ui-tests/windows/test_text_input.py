@@ -2,7 +2,7 @@ from haylen_ui_test_case import HaylenUiTestCase
 
 
 class TextInputTests(HaylenUiTestCase):
-    """The fields of the test "Text fields" type through the keyboard of Windows: each key types once, Backspace deletes, a held Backspace goes on deleting while it repeats, the Microsoft Japanese IME composes text, a paste replaces the selection, and Tab moves to the next field."""
+    """The fields of the test "Text fields" type through the keyboard of Windows: each key types once, Backspace deletes, a held Backspace goes on deleting while it repeats, once for each repeat, the Microsoft Japanese IME composes text, a paste replaces the selection, and Tab moves to the next field."""
 
     launch_arguments = ("--test", "GUI-005")
     URL = "https://haylen.dev"
@@ -38,6 +38,17 @@ class TextInputTests(HaylenUiTestCase):
         self.expect_report("url", "ilhas")
         self.hold_until(HaylenUiTestCase.VK_BACK, 'The field "url" reported "change" with "".', 10)
         self.save_screenshot("windows-backspace-held")
+
+    # Each repeat of a held key that Windows reports deletes once, also when the repeats come faster than the frames of the app, so a held key follows the delay and the rate of the keyboard settings.
+    def test_each_repeat_of_backspace_deletes_once(self) -> None:
+        self.start_typing(TextInputTests.URL)
+        self.type_keys("ilhasdomar")
+        self.expect_report("url", "ilhasdomar")
+        for _ in range(8):
+            self.key(HaylenUiTestCase.VK_BACK, True)
+        self.key(HaylenUiTestCase.VK_BACK, False)
+        self.expect_report("url", "il")
+        self.save_screenshot("windows-backspace-repeats")
 
     def test_an_input_method_composes_the_text_of_the_field(self) -> None:
         self.start_typing(TextInputTests.NAME)

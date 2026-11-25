@@ -174,6 +174,9 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool hasPointerDevice() const noexcept override {
         return pointerDevice;
     }
+    [[nodiscard]] bool hasKeyRepeats() const noexcept override {
+        return keyRepeats;
+    }
     [[nodiscard]] bool isScreenKeptOn() const noexcept override {
         return screenKeptOn;
     }
@@ -498,6 +501,11 @@ class HeadlessHost final : public Host {
     }
     void setPointerDevice(bool value) noexcept {
         pointerDevice = value;
+    }
+
+    // Makes the keyboard of the headless platform report presses and releases alone, as the hardware keyboards of iPhones and iPads do, for the UIs that the engine creates afterwards.
+    void setKeyRepeats(bool value) noexcept {
+        keyRepeats = value;
     }
 
     // Opens the headless window with the samples of `window.sampleCount` of `haylen.json`, which the null device then draws the window with.
@@ -838,6 +846,7 @@ class HeadlessHost final : public Host {
     std::function<void(SystemAnswer answer)> heldMouseModeAnswer;
     bool quitRequested = false;
     bool pointerDevice = true;
+    bool keyRepeats = true;
     bool screenKeptOn = false;
     int frameRate = 0;
     bool transparencySupported = false;

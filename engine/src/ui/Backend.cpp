@@ -342,6 +342,9 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
     io.ConfigErrorRecoveryEnableTooltip = false;
     io.ConfigErrorRecoveryEnableDebugLog = false;
 
+    // A held key repeats as the system repeats it, at the delay and the rate of its settings and once for each repeat whatever the frame rate, where the platform reports its repeats.
+    io.ConfigKeyRepeatFromBackend = hostWindow.hasKeyRepeats();
+
     ImGuiPlatformIO& platform = ImGui::GetPlatformIO();
     platform.Platform_ClipboardUserData = this;
     platform.Platform_GetClipboardTextFn = &getClipboardText;
@@ -550,7 +553,13 @@ void Backend::handleEvent(const platform::Event& event, const graphics::Viewport
         // A native field edits the focused text itself, so its editing keys reach ImGui only as the actions the platform reports.
         const ImGuiKey key = toImGuiKey(event.key);
         const bool native = event.type == platform::Event::Type::KeyDown && textSession->isNativeEditing() && isEditKey(key);
-        if (key != ImGuiKey_None && !native) {
+        if (key == ImGuiKey_None || native) {
+            break;
+        }
+
+        if (event.repeat && io.ConfigKeyRepeatFromBackend) {
+            io.AddKeyRepeatEvent(key);
+        } else {
             io.AddKeyEvent(key, event.type == platform::Event::Type::KeyDown);
         }
 

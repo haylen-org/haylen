@@ -417,7 +417,9 @@ TEST_F(FocusTest, NeverOpensTheWindowSwitcherOfImGui) {
     frames(30);
     getUi().getBackend().makeCurrent();
     EXPECT_EQ(GImGui->NavWindowingTarget, nullptr);
-    EXPECT_TRUE(isFocused(*gui, "play"));
+
+    // Ctrl+Tab leaves the focus where it is, except on a Mac, where Control+Tab moves the focus to the next control as in the windows of macOS, once, since the held keys of the test repeat nothing.
+    EXPECT_TRUE(isFocused(*gui, GImGui->IO.ConfigMacOSXBehaviors ? "quit" : "play"));
 }
 
 TEST_F(FocusTest, ScrollsTheFocusedControlIntoView) {

@@ -1,0 +1,30 @@
+Sends a key down and a character for every autorepeat that Windows counts in the low word of the messages of a held key, which merge the autorepeats that the app has not read yet into one message, so a slow app hears every repeat of the system.
+
+--- a/src/video/windows/SDL_windowsevents.c
++++ b/src/video/windows/SDL_windowsevents.c
+@@ -1598,7 +1598,11 @@
+         }
+ 
+         if (virtual_key || !data->videodata->raw_keyboard_enabled || data->window->text_input_active) {
+-            SDL_SendKeyboardKey(WIN_GetEventTimestamp(), SDL_GLOBAL_KEYBOARD_ID, rawcode, code, true);
++            // Windows merges the autorepeats of a held key that the app has not read yet into one message, whose low word counts them.
++            const int count = SDL_max(1, (int)LOWORD(lParam));
++            for (int i = 0; i < count; ++i) {
++                SDL_SendKeyboardKey(WIN_GetEventTimestamp(), SDL_GLOBAL_KEYBOARD_ID, rawcode, code, true);
++            }
+         }
+     }
+ 
+@@ -1659,7 +1663,11 @@
+                 char utf8[5];
+                 int result = WIN_WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, utf16, -1, utf8, sizeof(utf8), NULL, NULL);
+                 if (result > 0) {
+-                    SDL_SendKeyboardText(utf8);
++                    // The character of a held key counts its merged autorepeats like the key message it comes from.
++                    const int count = SDL_max(1, (int)LOWORD(lParam));
++                    for (int i = 0; i < count; ++i) {
++                        SDL_SendKeyboardText(utf8);
++                    }
+                 }
+                 data->high_surrogate = L'\0';
+             }

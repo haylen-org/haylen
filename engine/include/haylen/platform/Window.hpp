@@ -195,6 +195,9 @@ class Window {
     // Whether the player can point at the screen with a mouse or a touch screen, which a TV remote cannot.
     [[nodiscard]] virtual bool hasPointerDevice() const noexcept = 0;
 
+    // Whether a held key of the keyboard repeats as key-down events whose `repeat` is set, at the delay and the rate of the settings of the system, which desktops, browsers and Android do. The hardware keyboards of iPhones, iPads, Mac Catalyst windows, TVs and headsets report presses and releases alone, so the UI repeats a held key there itself.
+    [[nodiscard]] virtual bool hasKeyRepeats() const noexcept = 0;
+
     // Whether the desktop shows through the transparent pixels of the window. Only a window that opened able to be transparent, which `window.transparent` in `haylen.json` decides, can turn transparent again after it turned opaque, and turning such a window transparent otherwise throws `std::logic_error`. An opaque window shows alpha 1 everywhere, whatever the app draws.
     [[nodiscard]] virtual bool canBeTransparent() const noexcept = 0;
     [[nodiscard]] virtual bool isTransparent() const noexcept = 0;

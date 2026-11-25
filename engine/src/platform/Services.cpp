@@ -78,6 +78,10 @@ bool Services::hasPointerDevice() noexcept {
     return installed.platform->hasPointerDevice();
 }
 
+bool Services::hasKeyRepeats() noexcept {
+    return installed.platform->hasKeyRepeats();
+}
+
 std::vector<Display> Services::getDisplays() {
     return getInstalled().displays->getDisplays();
 }

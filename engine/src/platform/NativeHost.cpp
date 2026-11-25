@@ -73,6 +73,10 @@ bool NativeHost::hasPointerDevice() const noexcept {
     return Services::hasPointerDevice();
 }
 
+bool NativeHost::hasKeyRepeats() const noexcept {
+    return Services::hasKeyRepeats();
+}
+
 bool NativeHost::isScreenKeptOn() const noexcept {
     return screenKeptOn;
 }

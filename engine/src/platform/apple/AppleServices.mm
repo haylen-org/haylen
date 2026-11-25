@@ -231,6 +231,11 @@ bool AppleServices::hasPointerDevice() const noexcept {
     return TARGET_OS_TV == 0;
 }
 
+// AppKit repeats a held key, while UIKit apps read their hardware keyboard through GameController, which reports presses and releases alone.
+bool AppleServices::hasKeyRepeats() const noexcept {
+    return TARGET_OS_OSX != 0;
+}
+
 // Only iPhones and iPads turn their screen, while Macs, Mac Catalyst windows and TVs count as landscape.
 Orientation AppleServices::getOrientation() {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
