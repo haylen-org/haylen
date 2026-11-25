@@ -7,6 +7,7 @@ from haylen.core.app_category import AppCategory
 from haylen.core.app_kind import AppKind
 from haylen.core.app_manifest import AppManifest
 from haylen.core.errors.invalid_manifest import InvalidManifest
+from haylen.core.repository import Repository
 from tests.support.tooling_fixture import ToolingFixture
 
 
@@ -26,6 +27,16 @@ class AppManifestTest:
         )
         assert manifest.plugins[0].id == "camera"
         assert manifest.plugins[0].parameters["usage"] == "Scans."
+
+    def test_an_app_without_a_version_takes_the_version_of_the_engine(self, tmp_path):
+        app = ToolingFixture(tmp_path).app({})
+        document = json.loads((app / AppManifest.FILE).read_text(encoding="utf-8"))
+        del document["version"]
+        (app / AppManifest.FILE).write_text(json.dumps(document), encoding="utf-8")
+
+        assert (AppManifest.load(app).version, AppManifest.load(app).build) == (AppManifest.DEFAULT_VERSION, 1)
+        engine = (Repository.ENGINE / "include" / "haylen" / "core" / "AppConfig.hpp").read_text(encoding="utf-8")
+        assert f'std::string version = "{AppManifest.DEFAULT_VERSION}";' in engine, "The tooling and the engine read a haylen.json without a version alike."
 
     def test_fails_with_every_problem_and_its_key(self, tmp_path):
         app = ToolingFixture(tmp_path).app({"orientation": "sideways", "window": {"width": "wide", "highDpi": True}, "build": 0})

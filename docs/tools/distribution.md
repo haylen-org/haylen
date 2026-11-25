@@ -245,7 +245,7 @@ Type `help` to list the commands of the app, with how to type each one in a colu
 
 ## Version and build number
 
-Every platform takes two numbers from `haylen.json`. The `version`, such as `1.2.0`, is the version that people see in the stores. The `build` is a whole number that grows with every upload of the app, such as 1, 2 and 3, and it starts at 1 when `haylen.json` gives none. The `build` is the only source of every build number of the app, so nothing derives one from the version, and no setting of a section sets one of its own.
+Every platform takes two numbers from `haylen.json`. The `version`, such as `1.2.0`, is the version that people see in the stores, and it is `1.0.0` when `haylen.json` gives none, as the engine reads it too. The `build` is a whole number that grows with every upload of the app, such as 1, 2 and 3, and it starts at 1 when `haylen.json` gives none. The `build` is the only source of every build number of the app, so nothing derives one from the version, and no setting of a section sets one of its own.
 
 | Platform | `version` | `build` |
 | --- | --- | --- |

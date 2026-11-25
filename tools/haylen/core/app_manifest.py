@@ -19,6 +19,8 @@ class AppManifest:
     """The `haylen.json` of an app, read and checked once against its schema: the identity of the app, its category, its kind, its C++ code, its native libraries, its plugins and the sections of its generated projects. The engine reads the same file from the package, and the tooling never writes another manifest next to it."""
 
     FILE = "haylen.json"
+    # The version of an app that names none, the same one that the engine reads from such a `haylen.json`.
+    DEFAULT_VERSION = "1.0.0"
 
     folder: Path
     document: Mapping[str, object]
@@ -76,7 +78,7 @@ class AppManifest:
             document=Frozen.freeze(document),
             name=document["name"],
             identifier=document["identifier"],
-            version=document["version"],
+            version=document.get("version", AppManifest.DEFAULT_VERSION),
             build=document.get("build", 1),
             category=AppCategory(document["category"]) if "category" in document else None,
             kind=kind,
