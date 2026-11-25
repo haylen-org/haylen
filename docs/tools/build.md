@@ -509,6 +509,10 @@ Windows merges the autorepeats of a held key that an app has not read yet into o
 
 On X11, SDL hears every press and release of a mouse twice, once from the device itself and once from the virtual pointer that merges every device, and it counts on the state of the buttons to drop the second copy. The X server may deliver the press and the release of a quick click from the device before those of the virtual pointer. So a tap of a touchpad, a click that an assistive tool or a remote desktop makes through the XTEST extension, or a mouse that releases its button at once reached the app as a double click. The patch remembers the last press and the last release that SDL took from a device, and drops the event of the virtual pointer with the same source, button and time, while a press of the virtual pointer whose device event SDL skipped still reaches the app.
 
+#### sdl-wayland-output-names.patch
+
+On Wayland, SDL names a display after the description or the model of its monitor, so two monitors of one model have the same name. It reads the name of each output that the compositor gives, such as `DP-1`, which stays with the connector of the monitor, and keeps it to itself. The patch publishes that name as the property `SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_NAME_STRING` of the display, where the compositor names its outputs through `wl_output` version 4 or `xdg-output`, and the engine takes it as the id of the display.
+
 #### box2d-material-contacts.patch
 
 Box2D recycles a contact between two shapes that moved less than about 5 centimeters or 11 degrees against each other since its last update. A recycled contact keeps its points and also the friction, restitution, rolling resistance and tangent speed it mixed from the shapes then. So a crate at rest on a belt that starts to run, or on a ramp that turns to ice, never felt the new material. The patch makes `b2Shape_SetFriction`, `b2Shape_SetRestitution` and `b2Shape_SetSurfaceMaterial` clear the recycling of every contact of the shape, so the next step updates those contacts with the new material.

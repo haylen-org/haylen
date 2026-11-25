@@ -1,0 +1,33 @@
+Publishes the name of each Wayland output, such as "DP-1", as a property of its display, since the name that SDL gives a display is the description or the model of the monitor, which two monitors of one model share.
+
+--- a/include/SDL3/SDL_video.h
++++ b/include/SDL3/SDL_video.h
+@@ -665,6 +665,8 @@
+  *
+  * - `SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER`: the wl_output associated
+  *   with the display
++ * - `SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_NAME_STRING`: the name of the
++ *   wl_output, such as "DP-1", where the compositor names its outputs
+  *
+  * On Windows:
+  *
+@@ -684,6 +686,7 @@
+ #define SDL_PROP_DISPLAY_HDR_ENABLED_BOOLEAN             "SDL.display.HDR_enabled"
+ #define SDL_PROP_DISPLAY_KMSDRM_PANEL_ORIENTATION_NUMBER "SDL.display.KMSDRM.panel_orientation"
+ #define SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER       "SDL.display.wayland.wl_output"
++#define SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_NAME_STRING   "SDL.display.wayland.wl_output_name"
+ #define SDL_PROP_DISPLAY_WINDOWS_HMONITOR_POINTER        "SDL.display.windows.hmonitor"
+ 
+ /**
+--- a/src/video/wayland/SDL_waylandvideo.c
++++ b/src/video/wayland/SDL_waylandvideo.c
+@@ -1097,6 +1097,9 @@
+ 
+         internal->placeholder.props = SDL_CreateProperties();
+         SDL_SetPointerProperty(internal->placeholder.props, SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_POINTER, internal->output);
++        if (internal->wl_output_name) {
++            SDL_SetStringProperty(internal->placeholder.props, SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_NAME_STRING, internal->wl_output_name);
++        }
+ 
+         // During initialization, the displays will be added after enumeration is complete.
+         if (!video->initializing) {

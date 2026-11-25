@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 
+#include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_video.h>
 
 #include "haylen/platform/Display.hpp"
@@ -22,9 +23,13 @@ class WaylandDisplays final {
     // Returns the SDL display of the id. Throws `std::runtime_error` when no display of SDL has that id.
     [[nodiscard]] static SDL_DisplayID find(const Display& display);
 
+    // The id of a display from its properties, the name of its output, such as `DP-1`. Throws `std::runtime_error` when the compositor names no output.
+    [[nodiscard]] static std::string readId(SDL_PropertiesID properties);
+
   private:
     [[nodiscard]] static Display describe(SDL_DisplayID id, SDL_DisplayID primary);
     [[nodiscard]] static std::string getId(SDL_DisplayID id);
+    [[nodiscard]] static std::string getName(SDL_DisplayID id);
 };
 
 } // namespace haylen::platform::sdl

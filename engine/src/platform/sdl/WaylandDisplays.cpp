@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include <SDL3/SDL_error.h>
+#include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_stdinc.h>
 
 #include "platform/sdl/Window.hpp"
@@ -74,7 +75,7 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
     const float scale = SDL_GetDisplayContentScale(id);
     Display display{
         .id = getId(id),
-        .name = getId(id),
+        .name = getName(id),
         .bounds = {static_cast<float>(bounds.x), static_cast<float>(bounds.y), static_cast<float>(bounds.w), static_cast<float>(bounds.h)},
         .workArea = {static_cast<float>(usable.x), static_cast<float>(usable.y), static_cast<float>(usable.w), static_cast<float>(usable.h)},
         .scale = scale > 0.0F ? scale : 1.0F,
@@ -98,11 +99,25 @@ Display WaylandDisplays::describe(SDL_DisplayID id, SDL_DisplayID primary) {
     return display;
 }
 
-// The name of a Wayland output, such as `DP-1`, stays the same while the monitor stays on its connector.
-std::string WaylandDisplays::getId(SDL_DisplayID id) {
+// The name that people know a display by is the description or the model of its monitor.
+std::string WaylandDisplays::getName(SDL_DisplayID id) {
     const char* name = SDL_GetDisplayName(id);
     if (name == nullptr) {
         throw std::runtime_error("The window system could not read the name of a display. " + std::string(SDL_GetError()));
+    }
+
+    return name;
+}
+
+// The name of a Wayland output, such as `DP-1`, stays the same while the monitor stays on its connector, while two monitors of one model share their description, which SDL names a display by.
+std::string WaylandDisplays::getId(SDL_DisplayID id) {
+    return readId(SDL_GetDisplayProperties(id));
+}
+
+std::string WaylandDisplays::readId(SDL_PropertiesID properties) {
+    const char* name = SDL_GetStringProperty(properties, SDL_PROP_DISPLAY_WAYLAND_WL_OUTPUT_NAME_STRING, nullptr);
+    if (name == nullptr) {
+        throw std::runtime_error("The Wayland compositor names none of its outputs, which takes version 4 of \"wl_output\" or the protocol \"xdg-output\", so the app cannot tell its displays apart.");
     }
 
     return name;
