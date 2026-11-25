@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <limits>
 #include <map>
@@ -13,6 +14,7 @@
 #include <utility>
 
 #include "content/format/Manifest.hpp"
+#include "core/AppIdentifier.hpp"
 #include "haylen/assets/GroupManifest.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
@@ -464,7 +466,15 @@ void AppConfig::Content::expandGroups(const io::Package& package) {
 }
 
 AppConfig AppConfig::fromPackage(const io::Package& package, std::span<const std::string_view> applicationSections) {
-    AppConfig config = fromJson(JsonValidator::parse(package.readText(io::Path::kAppConfigFile), io::Path::kAppConfigFile), applicationSections);
+    const Json document = JsonValidator::parse(package.readText(io::Path::kAppConfigFile), io::Path::kAppConfigFile);
+    AppConfig config = fromJson(document, applicationSections);
+
+    // A package on disk without an identifier takes the one of its location that the tooling gives the same folder, so two apps that a player runs directly never share their storage.
+    const std::optional<std::filesystem::path> location = package.getLocation();
+    if (location && !document.contains("identifier")) {
+        config.identifier = AppIdentifier::generate(*location);
+    }
+
     requirePluginManifests(package, config);
     return config;
 }

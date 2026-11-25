@@ -31,6 +31,18 @@ class AppIdentifierTest:
         assert first.identifier.startswith("local.skygarden")
         assert len(first.identifier) == len("local.skygarden") + 8
 
+    def test_the_engine_composes_the_same_identifiers_as_the_tooling(self):
+        cases = json.loads((Repository.ROOT / "engine" / "tests" / "data" / "app-identifiers.json").read_text(encoding="utf-8"))
+        assert cases, "The engine test AppIdentifierTest reads the same cases, so both sides follow one rule."
+        for case in cases:
+            assert AppIdentifier.compose(case["name"], case["path"]) == case["identifier"], case["path"]
+
+    def test_the_identifier_takes_the_name_and_the_path_of_the_resolved_folder(self, tmp_path: Path):
+        folder = tmp_path / "Sky Garden"
+        folder.mkdir()
+        roundabout = tmp_path / "." / "Sky Garden" / ".." / "Sky Garden"
+        assert AppIdentifier.generate(roundabout) == AppIdentifier.compose("Sky Garden", str(folder.resolve()))
+
     @pytest.mark.parametrize("name", ["Sky Garden", "2048 Puzzle!", "123", "new", "日本"])
     def test_every_generated_identifier_is_a_bundle_identifier_and_an_application_id(self, tmp_path: Path, name: str):
         identifier = AppIdentifier.generate(tmp_path / name)

@@ -22,6 +22,9 @@ class DirectoryPackage final : public Package {
     [[nodiscard]] std::optional<std::filesystem::path> getDirectory() const override {
         return root;
     }
+    [[nodiscard]] std::optional<std::filesystem::path> getLocation() const override {
+        return root;
+    }
 
   private:
     std::filesystem::path root;

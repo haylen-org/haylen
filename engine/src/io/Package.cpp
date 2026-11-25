@@ -42,7 +42,7 @@ std::unique_ptr<Package> Package::openZip(const std::filesystem::path& file) {
         throw std::runtime_error("The package archive \"" + file.filename().generic_string() + "\" is not a valid zip file, and the zip reader reported \"" + message + "\".");
     }
 
-    return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::vector<std::uint8_t>{}, file.filename().generic_string()));
+    return std::make_unique<ZipPackage>(std::make_shared<ZipArchive>(archive, std::vector<std::uint8_t>{}, file.filename().generic_string()), std::filesystem::canonical(file));
 }
 
 std::unique_ptr<Package> Package::openZip(std::vector<std::uint8_t> bytes, std::string name) {

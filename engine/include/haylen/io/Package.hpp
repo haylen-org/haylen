@@ -39,6 +39,11 @@ class Package {
         return std::nullopt;
     }
 
+    // The folder or the zip file on disk that a package reads from, which a package in memory or in the bundle of an app lacks.
+    [[nodiscard]] virtual std::optional<std::filesystem::path> getLocation() const {
+        return std::nullopt;
+    }
+
     // Tells whether a file holds the bytecode of a Lua module that the authenticated catalog of a protected release vouches for, which only the module loader of the engine loads. Every other file of every package loads only as text.
     [[nodiscard]] virtual bool isLuaBytecode(std::string_view path) const;
 

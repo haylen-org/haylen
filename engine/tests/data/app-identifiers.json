@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Sky Garden",
+    "path": "/apps/Sky Garden",
+    "identifier": "local.skygardenb05cba2f"
+  },
+  {
+    "name": "2048 Puzzle!",
+    "path": "/apps/2048 Puzzle!",
+    "identifier": "local.puzzlecb7426e3"
+  },
+  {
+    "name": "日本",
+    "path": "/apps/日本",
+    "identifier": "local.haylenappd1f4f310"
+  },
+  {
+    "name": "Café Ärt",
+    "path": "/apps/Café Ärt",
+    "identifier": "local.cafrtf8c452e8"
+  },
+  {
+    "name": "tiny-island.zip",
+    "path": "C:\\Apps\\tiny-island.zip",
+    "identifier": "local.tinyislandzip994a27c4"
+  },
+  {
+    "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "path": "/apps/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "identifier": "local.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa0fa38b7b"
+  }
+]
