@@ -14,27 +14,28 @@
 | **[KB-029 · Gravar o áudio do app](#kb-029)**<br>🟠 high · `feature` · 3/10 | **[KB-324 · Corrigir os defeitos confirmados da revisão da RHI no Vulkan](#kb-324)**<br>🟠 high · `fix` · 6/10 | — | — | — | **[KB-301 · A tela de erro expõe os seus elementos aos leitores de tela no Windows](#kb-301)**<br>🟡 medium · `bug` · 3/10 |
 | **[KB-030 · Seleção de objetos na tela e gizmos no inspetor de desenvolvimento](#kb-030)**<br>🟠 high · `feature` · 3/10 | **[KB-315 · O player gera o mesmo identificador quando roda direto uma pasta sem identificador](#kb-315)**<br>🟡 medium · `fix` · 2/10 | — | — | — | **[KB-300 · A tecla segurada no Windows repete no ritmo do sistema](#kb-300)**<br>🟡 medium · `bug` · 4/10 |
 | **[KB-311 · Os relatórios de crash mostram a função, o arquivo e a linha dentro da engine em toda plataforma](#kb-311)**<br>🟠 high · `fix` · 6/10 | **[KB-317 · O Vulkan devolve a memória de GPU que sobra depois de uma rajada de cargas](#kb-317)**<br>🟡 medium · `performance` · 4/10 | — | — | — | **[KB-299 · O foco pedido por uma GUI não tira o foco que a pessoa já deu](#kb-299)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
-| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
-| **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
-| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
-| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
-| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
-| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
-| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
-| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
-| **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
-| **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
-| **[KB-052 · Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)](#kb-052)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
-| **[KB-053 · Samplers completos](#kb-053)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-328 · Ritmo de quadros de baixa latência em todo dispositivo de GPU](#kb-328)**<br>🟠 high · `feature` · 7/10 | **[KB-318 · A mensagem de aviso do áudio não repete o texto de erro da biblioteca de áudio](#kb-318)**<br>🟡 medium · `fix` · 2/10 | — | — | — | **[KB-298 · A página web aborta depois que o runtime termina, e o executor dos testes de GPU esconde](#kb-298)**<br>🟠 high · `bug` · 4/10 |
+| **[KB-031 · Suporte 3D e XR](#kb-031)**<br>🟡 medium · `epic` · 9/10 | **[KB-320 · Conferir no Wayland duas telas iguais pelo nome da saída](#kb-320)**<br>🟡 medium · `test` · 2/10 | — | — | — | **[KB-294 · O teclado do Android não mostra sugestões num campo de texto do app](#kb-294)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-032 · Convenções 3D fixas em toda a engine](#kb-032)**<br>🟡 medium · `feature` · 8/10 | **[KB-326 · Um app que redesenha só quando algo muda continua enviando pelo WebSocket enquanto há bytes à espera](#kb-326)**<br>🟡 medium · `bug` · 2/10 | — | — | — | **[KB-027 · Vários gamepads ao mesmo tempo sem perder nada em toda plataforma](#kb-027)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-033 · Mundos grandes](#kb-033)**<br>🟡 medium · `feature` · 5/10 | **[KB-003 · Conferir o Tiny Island no macOS, no Mac Catalyst e no player de desktop](#kb-003)**<br>🟢 low · `test` · 5/10 | — | — | — | **[KB-018 · Medir as texturas de hoje nos aparelhos modestos, como a base de comparação do item de KTX2 e Basis Universal…](#kb-018)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-035 · Plugins internos do 3D em engine/src/plugins/ pelo mesmo contrato plugins::Plugin que o 2D usa](#kb-035)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-009 · Revisar de novo, item por item, a camada de plataforma em SDL3, a RHI, os dispositivos de GPU e os testes em…](#kb-009)**<br>🟠 high · `task` · 3/10 |
+| **[KB-036 · Ordem do quadro com 3D, escrita em docs/core/architecture.md](#kb-036)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-008 · Enviar só a região alterada de uma textura dinâmica](#kb-008)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-037 · Handles e threads de todo objeto 3D](#kb-037)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-007 · Rodar os recursos de janela, texto e plataforma do Windows e do Linux numa máquina real, alugada na AWS ou na…](#kb-007)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-038 · Dados em lote entre Lua e C++ sem chamada por objeto](#kb-038)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-303 · Login simulado pelo httpbin no app de fotos, no lugar do plugin sign-in do Tiny Island](#kb-303)**<br>🟠 high · `refactor` · 3/10 |
+| **[KB-039 · A API Lua do 3D como uma API só, com as palavras do 2D e de docs/tools/api-policy.md](#kb-039)**<br>🟡 medium · `feature` · 8/10 | — | — | — | — | **[KB-272 · Os builds da CI falham com qualquer aviso nos alvos da engine, para que as correções de avisos tenham um…](#kb-272)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-040 · Níveis de qualidade e capacidades do renderizador 3D](#kb-040)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-044 · Estado térmico e de desempenho do sistema em platform::System e haylen.system…](#kb-044)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-041 · Seções novas do haylen.json, validadas pelo esquema com erros claros e lidas antes de qualquer Lua](#kb-041)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-034 · Matemática em lote e SIMD](#kb-034)**<br>🟡 medium · `feature` · 5/10 |
+| **[KB-042 · Mouse relativo para câmeras em primeira pessoa e de voo, sobre o window.setMouseMode('locked') e o input.mouseDelta()…](#kb-042)**<br>🟡 medium · `feature` · 7/10 | — | — | — | — | **[KB-028 · Nada silenciado](#kb-028)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-043 · Acessibilidade no 3D](#kb-043)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-026 · No Apple TV, o analógico de um gamepad não sobe nos menus (só o direcional sobe)](#kb-026)**<br>🟠 high · `bug` · 3/10 |
+| **[KB-045 · Usos de buffer separados do modo de atualização em gpu::Device (engine/include/haylen/gpu/Device.hpp)](#kb-045)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-025 · O mouse às vezes para por alguns segundos e a janela deixa de receber eventos enquanto um jogo roda: achar a…](#kb-025)**<br>🟠 high · `bug` · 5/10 |
+| **[KB-046 · Compute no gpu::Device](#kb-046)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-024 · Tirar os ganchos de teste da API pública do DebugPlugin](#kb-024)**<br>🟠 high · `refactor` · 5/10 |
+| **[KB-047 · Simulação por texturas no nível portátil](#kb-047)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-023 · Os testes instrumentados das bibliotecas Android rodam pelo haylen test --target android no emulador e num…](#kb-023)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-048 · Algoritmos de GPU prontos em graphics::GpuAlgorithms, por compute no nível moderno](#kb-048)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-019 · Teste de regressão do cartão de destaque do music-streaming numa janela de iPad mini em retrato, conferindo…](#kb-019)**<br>🟠 high · `test` · 3/10 |
+| **[KB-049 · Barreiras e hazards](#kb-049)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-017 · Testes pytest das referências de plugins por repositório git (git, ref e path) e do haylen.lock](#kb-017)**<br>🟠 high · `test` · 5/10 |
+| **[KB-050 · Draws indiretos](#kb-050)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-016 · O check da web confere o carregamento](#kb-016)**<br>🟠 high · `feature` · 5/10 |
+| **[KB-051 · Tipos de textura até graphics](#kb-051)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-015 · Testes de UI de PLG-023 em samples/tests/ui-tests/apple e samples/tests/ui-tests/android, que conferem que os…](#kb-015)**<br>🟠 high · `test` · 3/10 |
+| **[KB-052 · Formatos de pixel novos com tabelas de capacidade por API (filtrável, renderizável, mesclável e de storage)](#kb-052)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | **[KB-014 · Escrever TextInputTests.kt em samples/tests/ui-tests/android, como o TextInputTests.swift da Apple](#kb-014)**<br>🟠 high · `feature` · 3/10 |
+| **[KB-053 · Samplers completos](#kb-053)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
 | **[KB-054 · Renderização em várias camadas num pass (multiview)](#kb-054)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-055 · Render targets completos em graphics::RenderTarget (hoje só cor)](#kb-055)**<br>🟡 medium · `feature` · 5/10 | — | — | — | — | — |
 | **[KB-056 · Consultas de GPU](#kb-056)**<br>🟡 medium · `feature` · 3/10 | — | — | — | — | — |
@@ -7926,7 +7927,7 @@ Pelo código, um crash nativo de um app Release não mostra onde foi dentro da e
 - **Type:** fix
 - **Priority:** high
 - **Complexity:** 3
-- **Progress:** Começou no trabalho das ferramentas, junto com o KB-312, o KB-313, o KB-314 e o KB-315.
+- **Progress:** Implementado no trabalho das ferramentas e passando nos testes da engine, 3034 com avisos como erros. Falta medir o tempo do build do player, rodar todas as verificações e enviar o commit.
 
 #### Description
 
@@ -7948,7 +7949,7 @@ O `haylen test`, que é a verificação de cada commit, compila só os programas
 - **Type:** feature
 - **Priority:** high
 - **Complexity:** 4
-- **Progress:** Começou no trabalho das ferramentas, junto com o KB-312, o KB-313, o KB-314 e o KB-315.
+- **Progress:** Implementado no trabalho das ferramentas com a chave `platforms.ios.devices`, e passando nos testes da engine e do pytest. Falta rodar todas as verificações e enviar o commit.
 
 #### Description
 
@@ -7972,7 +7973,26 @@ O backend da Apple fixa o `TARGETED_DEVICE_FAMILY` do iOS em iPhone e iPad e nã
 - **Type:** task
 - **Priority:** high
 - **Complexity:** 6
-- **Progress:** Começou no trabalho das ferramentas, junto com o KB-312, o KB-313, o KB-314 e o KB-315.
+- **Progress:** O dono aprovou a lista inteira de vereditos, em três camadas:
+  1. As chaves comuns do `haylen.json`.
+  2. O override de qualquer configuração pelas seções `platforms`, sem nenhuma chave recusada. Um valor que contradiz outro dono para e nomeia os dois.
+  3. O script `platforms.<seção>.afterPrepare` do app, que roda no projeto gerado depois de cada preparação. O digest do script entra no registro da preparação.
+
+As restrições reais continuam com o backend e o motivo vai na documentação: as arquiteturas do SDK, o SDK do alvo, os arquivos montados de `Info.plist` e entitlements, as cenas e a launch screen do iOS, o `configChanges`, o `singleTop` e o `exported` da activity, o OpenGL ES 3, o `compileSdk` e as ferramentas com que o SDK foi feito, o DPI do Windows, e o `config.json` e as opções do Emscripten na web.
+
+As chaves novas:
+  - Android: `manifest.activityAttributes`, `manifest.features`, `maxSdkVersion` por permissão, `targetSdkVersion`, `architectures`, `minify` e `gradleProperties`.
+  - Windows: `console`, `executableName` e `executionLevel`.
+  - Linux: `executableName`.
+
+As travas escondidas que caem:
+  - Os valores de Release da Apple deixam de passar por cima dos `buildSettings` do app, menos a remoção de símbolos.
+  - As chaves do `Info.plist` do template viram um padrão que o app troca.
+  - O `minimumSystemVersion` do Windows vai para o manifesto e o instalador.
+  - O `<html lang>` segue o idioma de reserva da `localization`.
+  - Um app com `category: game` sai marcado como jogo no Android.
+
+A implementação começa depois dos commits do KB-312, do KB-315 e do KB-313.
 
 #### Description
 
@@ -7997,7 +8017,7 @@ O dono não quer limitações como a dos aparelhos do iOS do [KB-313](#kb-313). 
 - **Type:** fix
 - **Priority:** medium
 - **Complexity:** 2
-- **Progress:** Começou no trabalho das ferramentas, junto com o KB-312, o KB-313, o KB-314 e o KB-315.
+- **Progress:** Implementado no trabalho das ferramentas e passando nos testes da engine e do pytest. Falta rodar todas as verificações e enviar o commit.
 
 #### Description
 
@@ -8291,6 +8311,34 @@ O trabalho da plataforma achou cerca de 18 mensagens em `engine/src/platform/sdl
 
 - None
 
+### KB-328
+
+- **Title:** Ritmo de quadros de baixa latência em todo dispositivo de GPU
+- **Status:** todo
+- **Type:** feature
+- **Priority:** high
+- **Complexity:** 7
+- **Progress:** Ainda não começou. Vai para o trabalho dos defeitos da RHI, depois do KB-321 ao KB-324 e do KB-327.
+- **Parent:** [KB-006 · Fechamento da plataforma em SDL3 e da RHI](#kb-006)
+
+#### Description
+
+A revisão do D12 achou que o Metal e o Vulkan esperam o quadro depois de entregar os eventos do quadro e pegam a imagem da swapchain no meio do quadro, por isso a entrada que aparece na tela pode ter de 2 a 3 quadros de idade. No Metal, isso vem dos 3 quadros em voo e do `nextDrawable` com 3 drawables. No Vulkan, vem da espera da fence depois da entrada, da aquisição no meio do quadro e do FIFO com uma imagem a mais que o mínimo. O Direct3D 11 e o 12 já esperam o objeto de latência da swapchain antes de o quadro seguinte ler a entrada. A Haylen ganha um método do contrato, como `gpu::Device::waitForDisplay()`, que toda camada de plataforma chama antes de ler os eventos de um quadro: a linha de quadros do Android, a camada do worker e o SDL no fim de cada iteração. Os dispositivos o implementam assim:
+  - Metal: o `CAMetalDisplayLink` onde o sistema o tem e menos drawables.
+  - Vulkan: a espera antes da entrada, com `VK_KHR_present_id` e `VK_KHR_present_wait` onde o driver os tem.
+  - OpenGL, WebGPU e o dispositivo nulo: o equivalente real de cada um.
+
+Assim, a entrada chega à tela com a menor idade que a tela permite, sem custo no quadro e sem perder quadros.
+
+#### Acceptance criteria
+
+- [ ] Toda camada de plataforma espera a tela antes de ler os eventos, e todo dispositivo implementa a espera de verdade.
+- [ ] Um teste mede a idade da entrada na tela em cada API que a CI roda, e a documentação da RHI descreve o ritmo.
+
+#### Attachments
+
+- None
+
 <!-- KANBAN:CARDS:END -->
 
 ## Working agreements
@@ -8313,7 +8361,7 @@ O trabalho da plataforma achou cerca de 18 mensagens em `engine/src/platform/sdl
 ### Board rules
 
 - **Layout:** The title `# Project Kanban` and the board open the file. Active card records follow in numeric ID order, then these agreements, then the archive as the last section.
-- **Next ID:** KB-328. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
+- **Next ID:** KB-329. A new card takes the larger of the highest retained ID plus one and this value. Advance it with every new card and never reuse or renumber an ID, even after the archive is cleared.
 - **Records:** Card records are the source of truth. Update the board and records together through direct Markdown edits.
 - **Cells:** One card per cell with its linked ID and title, priority, type and complexity. Unused cells hold `—`.
 - **Card links:** Each card heading is `### KB-nnn` alone, followed by its `Title` field. Links use the lowercase ID, such as `#kb-001`, so a title change breaks no link. No HTML anchors.
