@@ -7797,6 +7797,7 @@ O CMake 4.2 da imagem Ubuntu da CI escreve `cmake_test_discovery_<hash>.json` em
 - **Type:** refactor
 - **Priority:** high
 - **Complexity:** 3
+- **Progress:** O plugin saiu do Tiny Island, com o botão, os textos e o som que só ele usava (`cfe65f7b4`), e o `AGENTS.md` diz que as dependências do repositório são só as da engine e dos testes e que os plugins locais dos samples usam só as APIs de cada plataforma. O app de fotos entra pelo perfil numa folha com e-mail e senha que manda JSON para o httpbin, com os erros de senha, status, rede e tempo esgotado e o botão de sair (`90bca3563`), provado no player sem cabeça com e sem rede. Falta ver a folha em capturas de um navegador sem janela e provar a chamada ao httpbin pela página.
 
 #### Description
 
